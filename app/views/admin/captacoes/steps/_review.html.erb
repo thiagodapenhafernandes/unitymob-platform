@@ -1,0 +1,84 @@
+<h1 class="wizard-section-title"><i class="bi bi-check2-circle text-success me-2"></i>Revisão final</h1>
+<p class="wizard-section-subtitle">Confira antes de finalizar. Depois de finalizar, admin pode ajustar se necessário.</p>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <h6 class="fw-bold text-uppercase small text-muted mb-2">Imóvel</h6>
+    <dl class="row mb-0 small">
+      <dt class="col-5">Tipo</dt><dd class="col-7"><%= @captacao.property_kind.humanize %></dd>
+      <dt class="col-5">Modalidade</dt><dd class="col-7"><%= @captacao.modalidade.humanize %></dd>
+      <dt class="col-5">Endereço</dt>
+      <dd class="col-7"><%= [@captacao.street, @captacao.street_number].compact_blank.join(", ").presence || "—" %></dd>
+      <% if @captacao.edificio_nome.present? %>
+        <dt class="col-5">Edifício</dt>
+        <dd class="col-7"><%= @captacao.edificio_nome %><%= " · Un. #{@captacao.unidade_numero}" if @captacao.unidade_numero.present? %></dd>
+      <% end %>
+      <dt class="col-5">Cidade</dt><dd class="col-7"><%= [@captacao.city, @captacao.state].compact_blank.join("/") %></dd>
+      <% if @captacao.area_privativa.present? %>
+        <dt class="col-5">Área privativa</dt><dd class="col-7"><%= @captacao.area_privativa %> m²</dd>
+      <% end %>
+      <% if @captacao.area_total.present? %>
+        <dt class="col-5">Área total</dt><dd class="col-7"><%= @captacao.area_total %> m²</dd>
+      <% end %>
+      <% if @captacao.property_kind_residencial? %>
+        <dt class="col-5">Dorms / Suítes / Banheiros</dt>
+        <dd class="col-7"><%= [@captacao.dormitorios, @captacao.suites, @captacao.banheiros].join(" / ") %></dd>
+      <% end %>
+    </dl>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <h6 class="fw-bold text-uppercase small text-muted mb-2">Proprietário</h6>
+    <dl class="row mb-0 small">
+      <dt class="col-5">Nome</dt><dd class="col-7"><%= @captacao.proprietario_nome %></dd>
+      <dt class="col-5">Telefone</dt><dd class="col-7"><%= @captacao.proprietario_telefone %></dd>
+      <% if @captacao.proprietario_email.present? %>
+        <dt class="col-5">E-mail</dt><dd class="col-7"><%= @captacao.proprietario_email %></dd>
+      <% end %>
+    </dl>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <h6 class="fw-bold text-uppercase small text-muted mb-2">Negociação</h6>
+    <dl class="row mb-0 small">
+      <% if @captacao.valor_venda.present? %>
+        <dt class="col-5">Valor de venda</dt>
+        <dd class="col-7"><%= number_to_currency(@captacao.valor_venda, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+      <% end %>
+      <% if @captacao.valor_locacao.present? %>
+        <dt class="col-5">Valor locação</dt>
+        <dd class="col-7"><%= number_to_currency(@captacao.valor_locacao, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+      <% end %>
+      <% if @captacao.valor_condominio.present? %>
+        <dt class="col-5">Condomínio</dt>
+        <dd class="col-7"><%= number_to_currency(@captacao.valor_condominio, unit: "R$ ") %></dd>
+      <% end %>
+    </dl>
+  </div>
+</div>
+
+<% if @captacao.fotos.attached? %>
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <h6 class="fw-bold text-uppercase small text-muted mb-2">
+        Fotos (<%= @captacao.fotos.count %>)
+      </h6>
+      <div class="row g-1 wizard-photo-grid">
+        <% @captacao.fotos.first(6).each do |photo| %>
+          <div class="col-4 col-md-2">
+            <%= image_tag photo.representation(resize_to_limit: [200, 200]), loading: "lazy" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<div class="alert alert-info small">
+  <i class="bi bi-info-circle-fill me-1"></i>
+  Ao finalizar, a captação fica registrada em seu nome e disponível para publicação no site pelo admin.
+</div>

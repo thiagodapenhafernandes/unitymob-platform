@@ -1,0 +1,164 @@
+<div data-controller="sidebar advanced-filters" class="mt-[72px]">
+  
+  <!-- Advanced Filters Sidebar (Off-canvas) -->
+  <div data-advanced-filters-target="overlay" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity duration-300" data-action="click->advanced-filters#close"></div>
+  
+  <div data-advanced-filters-target="sidebar" class="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 transform translate-x-full transition-transform duration-300 shadow-2xl overflow-y-auto">
+    <div class="p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-blue-three">Filtros Avançados</h3>
+        <button type="button" data-action="click->advanced-filters#close" class="text-gray-400 hover:text-red-500 transition-colors">
+          <i class="bi bi-x-lg text-xl"></i>
+        </button>
+      </div>
+      
+      <%= form_with url: public_landing_page_path(@landing_page.slug), method: :get, id: "advanced-filters-form" do |f| %>
+        <!-- Preserve existing fixed filters and params -->
+        <% (@landing_page.filter_params || {}).each do |key, value| %>
+          <% if value.is_a?(Array) %>
+            <% value.each do |v| %>
+              <%= hidden_field_tag "#{key}[]", v %>
+            <% end %>
+          <% elsif value.present? %>
+            <%= hidden_field_tag key, value %>
+          <% end %>
+        <% end %>
+
+        <%= render 'habitations/advanced_filters_fields', f: f %>
+
+        <div class="sticky bottom-0 bg-white pt-4 pb-2 border-t border-gray-100">
+          <button type="submit" class="w-full py-3 bg-blue-three text-white font-bold rounded-lg hover:bg-blue-one transition-colors shadow-lg">
+            Aplicar Filtros
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Horizontal Filter Bar (TOP) -->
+  <div class="bg-white border-b border-gray-200 sticky top-[72px] z-30 shadow-sm py-3">
+    <div class="container-custom">
+      <%= form_with url: public_landing_page_path(@landing_page.slug), method: :get, class: "flex flex-col gap-3" do |f| %>
+        
+        <div class="flex flex-wrap lg:flex-nowrap items-center gap-3 w-full">
+          <%= render 'habitations/horizontal_filters_fields', f: f %>
+
+          <!-- Submit Button -->
+          <button type="submit" class="bg-blue-three hover:bg-blue-one text-white px-8 py-2.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap">
+            <i class="bi bi-search"></i>
+            Aplicar Filtros
+          </button>
+          
+          <!-- Plus Button (Advanced Filters) -->
+          <button type="button" 
+                  data-action="click->advanced-filters#open"
+                  class="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:border-blue-three hover:text-blue-three text-gray-500 transition-colors shadow-sm flex-shrink-0">
+            <i class="bi bi-plus-lg text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Row 2: Quick Filter Chips -->
+        <div class="flex flex-wrap items-center gap-2 pt-1">
+           <%= render 'habitations/quick_filter_chips' %>
+
+          <!-- Clear Filters (Within context) -->
+          <% if params.except(:controller, :action, :page, :slug).present? %>
+            <%= link_to public_landing_page_path(@landing_page.slug), class: "flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors ml-auto" do %>
+              <i class="bi bi-x-circle"></i>
+              Limpar refinamentos
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Header & Breadcrumbs -->
+  <div class="bg-white border-b border-gray-100 py-6">
+    <div class="container-custom">
+      <div class="flex items-center gap-2 text-xs text-gray-400 mb-2 uppercase tracking-wide">
+        <%= link_to "Início", root_path, class: "hover:text-blue-three" %>
+        <i class="bi bi-chevron-right text-[10px]"></i>
+        <span class="text-blue-three font-bold"><%= @landing_page.title %></span>
+      </div>
+      
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+          <h1 class="text-3xl font-extrabold text-blue-three mb-2">
+            <%= @landing_page.title %>
+          </h1>
+          <% if @landing_page.description.present? %>
+            <p class="text-gray-500 max-w-2xl"><%= @landing_page.description %></p>
+          <% end %>
+          <div class="mt-4 flex items-center gap-2">
+            <span class="px-3 py-1 bg-blue-50 text-blue-three text-sm font-bold rounded-full">
+              <%= @habitations.count %> Imóveis encontrados
+            </span>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-2 self-end">
+          <span class="text-sm text-gray-500 font-medium">Ordenar por:</span>
+          <select class="form-select border border-gray-200 rounded-lg text-sm font-bold text-blue-three focus:ring-blue-three/20 focus:border-blue-three cursor-pointer py-2 pl-3 pr-10" onchange="window.location.href = this.value">
+            <option value="<%= url_for(params.permit!.merge(sort: 'newest')) %>" <%= 'selected' if params[:sort] == 'newest' || params[:sort].blank? %>>Mais recentes</option>
+            <option value="<%= url_for(params.permit!.merge(sort: 'price_desc')) %>" <%= 'selected' if params[:sort] == 'price_desc' %>>Maior valor</option>
+            <option value="<%= url_for(params.permit!.merge(sort: 'price_asc')) %>" <%= 'selected' if params[:sort] == 'price_asc' %>>Menor valor</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="bg-gray-50 min-h-screen py-8">
+    <div class="container-custom">
+  
+      <div class="results-section">
+          <% if @habitations.any? %>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 items-start">
+              <% @habitations.each do |property| %>
+                <%= render 'shared/tailwind/property_card', property: property %>
+              <% end %>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="flex justify-center mt-8">
+              <%= will_paginate @habitations, 
+                  renderer: WillPaginate::ActionView::TailwindLinkRenderer,
+                  inner_window: 2,
+                  outer_window: 0,
+                  previous_label: '<i class="bi bi-chevron-left"></i>',
+                  next_label: '<i class="bi bi-chevron-right"></i>' %>
+            </div>
+          <% else %>
+            <!-- Empty State -->
+            <div class="bg-white rounded-xl border border-gray-200 p-16 text-center max-w-2xl mx-auto">
+              <div class="w-20 h-20 mx-auto mb-6 bg-gray-50 rounded-full flex items-center justify-center">
+                <i class="bi bi-search text-3xl text-gray-400"></i>
+              </div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">Nenhum imóvel encontrado</h3>
+              <p class="text-gray-500 mb-8">
+                Tente ajustar seus filtros de busca ou remover refinamentos.
+              </p>
+              <%= link_to "Ver todos desta página", public_landing_page_path(@landing_page.slug), class: "btn-primary inline-flex items-center gap-2" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+  </div>
+
+  <% if @landing_page.content.present? %>
+    <div class="bg-white py-16 border-t border-gray-200">
+      <div class="container-custom">
+        <div class="max-w-4xl mx-auto">
+          <div class="prose prose-blue lg:prose-lg text-gray-600">
+             <h2 class="text-2xl font-bold text-blue-three mb-6">Mais informações</h2>
+             <div class="seo-text-rich">
+                <%= @landing_page.content.html_safe %>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

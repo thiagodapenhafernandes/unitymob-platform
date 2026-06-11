@@ -1,0 +1,85 @@
+<!-- Página de Corretores -->
+<div class="bg-gray-50 min-h-screen">
+  
+  <!-- Hero Section -->
+  <div class="relative h-[40vh] min-h-[300px] bg-gradient-to-br from-blue-three to-blue-one mt-[72px]">
+    <div class="absolute inset-0 flex items-center">
+      <div class="container-custom text-center">
+        <h1 class="text-4xl lg:text-5xl font-bold text-white mb-4">
+          Nossos Corretores
+        </h1>
+        <p class="text-lg text-white/90 max-w-2xl mx-auto">
+          Conheça nossa equipe de especialistas em imóveis em Balneário Camboriú
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Brokers Grid -->
+  <div class="container-custom py-12">
+    <% if @brokers.any? %>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <% @brokers.each do |broker| %>
+          <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden">
+            <!-- Photo -->
+            <div class="aspect-square bg-gray-100 overflow-hidden">
+              <% if broker.avatar.attached? %>
+                <%= image_tag broker.avatar,
+                    alt: broker.name,
+                    class: "w-full h-full object-cover" %>
+              <% else %>
+                <div class="w-full h-full flex items-center justify-center bg-gray-200">
+                  <i class="bi bi-person-circle text-gray-400 text-6xl"></i>
+                </div>
+              <% end %>
+            </div>
+
+            <!-- Info -->
+            <div class="p-6">
+              <h3 class="font-bold text-gray-900 text-lg mb-1"><%= broker.name %></h3>
+              
+              <% if broker.creci.present? %>
+                <p class="text-sm text-gray-500 mb-3">CRECI: <%= broker.creci %></p>
+              <% end %>
+
+              <!-- Specialties -->
+              <div class="flex gap-2 mb-4">
+                <% if broker.sales? || broker.both? %>
+                  <span class="px-2 py-1 bg-blue-50 text-blue-three text-xs font-semibold rounded">Venda</span>
+                <% end %>
+                <% if broker.rentals? || broker.both? %>
+                  <span class="px-2 py-1 bg-golden-50 text-golden-one text-xs font-semibold rounded">Locação</span>
+                <% end %>
+              </div>
+
+              <!-- Contact Buttons -->
+              <div class="space-y-2">
+                <% if broker.phone.present? %>
+                  <%= link_to "https://wa.me/55#{broker.phone.gsub(/\D/, '')}?text=#{url_encode('Olá, gostaria de falar sobre um imóvel')}",
+                      target: "_blank",
+                      class: "w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white text-sm font-bold rounded-lg hover:bg-green-600 transition-colors" do %>
+                    <i class="fab fa-whatsapp"></i>
+                    WhatsApp
+                  <% end %>
+                <% end %>
+
+                <% if broker.email.present? %>
+                  <%= link_to "mailto:#{broker.email}",
+                      class: "w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-bold rounded-lg hover:bg-gray-200 transition-colors" do %>
+                    <i class="bi bi-envelope"></i>
+                    Email
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-12">
+        <i class="bi bi-people text-6xl text-gray-300 mb-4"></i>
+        <p class="text-gray-500">Nenhum corretor disponível no momento.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

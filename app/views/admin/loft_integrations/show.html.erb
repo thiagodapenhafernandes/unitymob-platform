@@ -1,0 +1,131 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800">Integração Vista Soft</h1>
+    <p class="text-muted small mb-0">Configure o acesso, reconcilie imóveis pela API e acompanhe o histórico.</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-key me-2 text-primary"></i>Configuração de Acesso</h5>
+      </div>
+      <div class="card-body p-4">
+        <%= form_with url: admin_loft_integrations_path, method: :patch, scope: :loft, local: true do |f| %>
+          <div class="form-check form-switch mb-3">
+            <%= f.check_box :enabled, { class: "form-check-input", checked: @loft_enabled }, "true", "false" %>
+            <%= f.label :enabled, "Ativar integração Vista Soft", class: "form-check-label" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :host, "Host da API", class: "form-label fw-semibold" %>
+            <%= f.text_field :host, class: "form-control", value: @loft_host, placeholder: "http://seu-host-rest.vistahost.com.br" %>
+            <div class="form-text">Informe o endereço da API REST da Vista.</div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :token, "Token da API", class: "form-label fw-semibold" %>
+            <%= f.password_field :token, class: "form-control", autocomplete: "off", placeholder: (@loft_token.present? ? "Token já configurado. Preencha apenas para substituir." : "Cole o token da API") %>
+            <div class="form-text">Use o token fornecido para autenticação da integração.</div>
+          </div>
+
+          <div class="alert alert-info small">
+            A reconciliação usa a API Vista como fonte de verdade para dados cadastrais. Nesta etapa ela não baixa arquivos:
+            reaproveita anexos já encontrados, remove mídia incompatível e deixa fotos/documentos pendentes para a rotina de download.
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <%= f.label :sync_batch_size, "Imóveis por lote", class: "form-label fw-semibold" %>
+              <%= f.number_field :sync_batch_size, class: "form-control", min: 1, max: 1000, value: @loft_sync_batch_size %>
+            </div>
+            <div class="col-md-6">
+              <%= f.label :images_sync_limit, "Imóveis por lote de arquivos", class: "form-label fw-semibold" %>
+              <%= f.number_field :images_sync_limit, class: "form-control", min: 1, max: 500, value: @loft_images_sync_limit %>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <%= f.label :poll_processing_interval_ms, "Atualização durante sincronização (ms)", class: "form-label fw-semibold" %>
+              <%= f.number_field :poll_processing_interval_ms, class: "form-control", min: 1000, max: 30000, step: 500, value: @loft_poll_processing_interval_ms %>
+            </div>
+            <div class="col-md-4">
+              <%= f.label :poll_idle_interval_ms, "Atualização quando inativo (ms)", class: "form-label fw-semibold" %>
+              <%= f.number_field :poll_idle_interval_ms, class: "form-control", min: 2000, max: 60000, step: 500, value: @loft_poll_idle_interval_ms %>
+            </div>
+            <div class="col-md-4">
+              <%= f.label :poll_slow_interval_ms, "Atualização em segundo plano (ms)", class: "form-label fw-semibold" %>
+              <%= f.number_field :poll_slow_interval_ms, class: "form-control", min: 5000, max: 120000, step: 1000, value: @loft_poll_slow_interval_ms %>
+            </div>
+          </div>
+
+          <hr>
+          <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-primary"></i>Agendamento Automático</h6>
+          <div class="form-check form-switch mb-3">
+            <%= f.check_box :schedule_enabled, { class: "form-check-input", checked: @loft_schedule_enabled }, "true", "false" %>
+            <%= f.label :schedule_enabled, "Ativar sincronização automática", class: "form-check-label" %>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-7">
+              <%= f.label :schedule_cron, "Agenda automática (cron)", class: "form-label fw-semibold" %>
+              <%= f.text_field :schedule_cron, class: "form-control", value: @loft_schedule_cron, placeholder: "20 4 * * *" %>
+              <div class="form-text">Ex.: <code>*/30 * * * *</code> ou <code>20 4 * * *</code>.</div>
+            </div>
+            <div class="col-md-5">
+              <%= f.label :schedule_mode, "Modo", class: "form-label fw-semibold" %>
+              <%= f.select :schedule_mode, options_for_select([["Completa", "full"], ["Lote", "batch"]], @loft_schedule_mode), {}, class: "form-select" %>
+              <div class="form-text">Último slot: <%= @loft_schedule_last_slot.presence || "N/D" %></div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <%= f.submit "Salvar Configurações", class: "btn btn-primary" %>
+          </div>
+        <% end %>
+
+        <div class="mt-2">
+          <%= button_to "Testar Conexão", test_connection_admin_loft_integrations_path, method: :post, class: "btn btn-outline-primary" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-arrow-repeat me-2 text-info"></i>Controles de Sincronização</h5>
+      </div>
+      <div class="card-body p-4">
+        <%= form_with url: sync_property_admin_loft_integrations_path, method: :post, local: true, class: "row g-2 align-items-end mb-4" do |f| %>
+          <div class="col-md-8">
+            <%= label_tag :property_code, "Código do imóvel", class: "form-label fw-semibold" %>
+            <%= text_field_tag :property_code, nil, class: "form-control", placeholder: "Ex: 12345" %>
+          </div>
+          <div class="col-md-4">
+            <%= f.submit "Reconciliar Imóvel", class: "btn btn-primary w-100" %>
+          </div>
+        <% end %>
+
+        <div class="d-flex flex-wrap gap-2">
+          <%= button_to "Reconciliar Tudo pela API", sync_now_admin_loft_integrations_path, method: :post, class: "btn btn-info text-white" %>
+          <%= button_to "Reconciliar Lote", sync_batch_admin_loft_integrations_path, method: :post, class: "btn btn-outline-info" %>
+          <%= button_to "Baixar Arquivos Pendentes", sync_images_now_admin_loft_integrations_path, method: :post, class: "btn btn-outline-primary" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <%= turbo_frame_tag "loft_status_panel",
+                        src: status_admin_loft_integrations_path,
+                        loading: "eager",
+                        data: {
+                          controller: "dwv-sync-status",
+                          dwv_sync_status_processing_interval_value: @loft_poll_processing_interval_ms,
+                          dwv_sync_status_idle_interval_value: @loft_poll_idle_interval_ms,
+                          dwv_sync_status_slow_interval_value: @loft_poll_slow_interval_ms
+                        } do %>
+      <%= render "status_panel" %>
+    <% end %>
+  </div>
+</div>

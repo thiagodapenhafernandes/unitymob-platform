@@ -1,0 +1,126 @@
+<% property = local_assigns[:property] %>
+<% 
+  is_opportunity = property.valor_venda_anterior_cents.to_i > property.valor_venda_cents.to_i 
+  discount_percent = if is_opportunity && property.valor_venda_anterior_cents.to_i > 0
+    ((property.valor_venda_anterior_cents.to_i - property.valor_venda_cents.to_i).to_f / property.valor_venda_anterior_cents.to_i * 100).to_i
+  else
+    0
+  end
+%>
+
+<div class="col-lg-4 col-md-6 d-flex align-items-stretch mb-4" data-aos="fade-up">
+  <div class="property-card w-100 position-relative">
+    <div class="adjunct">
+      <!-- Badges Overlay (max 2) -->
+      <%
+        badges = []
+        badges << { text: "Na Planta/2029", class: "badge-new" } if property.lancamento_flag
+        badges << { text: "Frente Mar", class: "badge-feature" } if property.frente_mar_avenida_atlantica_flag || property.vista_frente_mar_flag
+        badges << { text: "Quadra mar", class: "badge-feature" } if property.quadra_mar_flag && !badges.any? { |b| b[:text] == "Frente Mar" }
+        badges << { text: "Mobiliado", class: "badge-dark" } if property.mobiliado_flag
+        badges << { text: "Decorado", class: "badge-light" } if property.decorado_flag
+        badges = badges.first(2) # Limit to 2 badges
+      %>
+      
+      <% if badges.any? %>
+        <div class="card-badges">
+          <% badges.each do |badge| %>
+            <span class="badge <%= badge[:class] %>"><%= badge[:text] %></span>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Property Code - Top Right of Image -->
+      <div class="property-code-badge">
+        <span class="badge bg-light text-dark border"><%= property.codigo %></span>
+      </div>
+
+      <!-- Swiper Image Carousel -->
+      <div class="pic" data-controller="swiper">
+        <div class="swiper" data-swiper-target="container">
+          <div class="swiper-wrapper">
+            <% 
+              images = property.pictures.presence || []
+              images = [property.primary_image] if images.empty? && property.primary_image.present?
+            %>
+            
+            <% if images.any? %>
+              <% images.first(5).each do |img| %> <!-- Limit to 5 images for performance -->
+                <% img_url = img.is_a?(Hash) ? (img['url'] || img[:url]) : img %>
+                <div class="swiper-slide">
+                  <%= image_tag img_url, class: "img-fluid w-100", loading: "lazy", alt: property.display_title %>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="swiper-slide">
+                <%= image_tag "salute-imoveis.svg", class: "img-fluid p-5 w-100", style: "background: #f8f9fa;", alt: "Sem imagem" %>
+              </div>
+            <% end %>
+          </div>
+          <div class="swiper-pagination"></div>
+          <div class="swiper-button-prev"></div>
+          <div class="swiper-button-next"></div>
+        </div>
+
+        <!-- Novidade Badge Removed -->
+      </div>
+      
+      <div class="adjunct-info">
+        <!-- Location First -->
+        <div class="property-location mb-2">
+          <i class="bi bi-geo-alt-fill"></i> 
+          <%= property.cidade %> – <%= property.bairro %>
+        </div>
+
+        <!-- Title -->
+        <div class="title mb-2">
+          <h4 class="text-overflow"><%= property.display_title %></h4>
+        </div>
+
+        <!-- Price Section -->
+        <div class="property-price mb-3">
+          <% if is_opportunity %>
+            <div class="d-flex flex-column">
+              <div class="d-flex align-items-center gap-2">
+                <span class="text-decoration-line-through text-muted small">de <%= number_to_currency(property.valor_venda_anterior_cents / 100.0) %></span>
+                <span class="badge bg-success bg-opacity-10 text-success small px-2 py-1">▼ <%= discount_percent %>%</span>
+              </div>
+              <span class="price-current">Por <%= property.preco_principal %></span>
+            </div>
+          <% else %>
+            <span class="price-current"><%= property.preco_principal %></span>
+          <% end %>
+        </div>
+
+        <!-- Feature Icons Row -->
+        <div class="property-features-row">
+          <% if property.area_total_m2.present? && property.area_total_m2 > 0 %>
+            <div class="feature-item">
+              <i class="bi bi-rulers"></i>
+              <span><%= property.area_formatted %></span>
+            </div>
+          <% end %>
+          
+          <% if property.vagas_qtd.present? && property.vagas_qtd > 0 %>
+            <div class="feature-item">
+              <i class="bi bi-car-front"></i>
+              <span><%= property.vagas_qtd %> Vagas</span>
+            </div>
+          <% end %>
+          
+          <% if property.dormitorios_qtd.present? && property.dormitorios_qtd > 0 %>
+            <div class="feature-item">
+              <i class="bi bi-door-open"></i>
+              <span><%= property.dormitorios_qtd %> Quartos</span>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Action Button -->
+        <div>
+          <%= link_to 'VER DETALHES', habitation_path(property), class: 'btn btn-details w-100' %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

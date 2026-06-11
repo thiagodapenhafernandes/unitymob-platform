@@ -1,0 +1,337 @@
+<%
+  can_launch_signup = @diagnostics.all? { |item| item[:ok] || item[:fallback].present? }
+  active_tab = params[:tab].presence || "whatsapp"
+%>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800">
+      <i class="bi bi-whatsapp text-success me-2"></i>Integração WhatsApp
+    </h1>
+    <p class="text-muted small mb-0">Conecte o WhatsApp Business pela Meta e configure os telefones usados nos formulários do site.</p>
+  </div>
+
+  <% if @whatsapp_integration.persisted? && @whatsapp_integration.connected? %>
+    <%= button_to disconnect_admin_whatsapp_integration_path, method: :delete, class: "btn btn-outline-danger", data: { turbo_confirm: "Remover a conexão atual do WhatsApp?" } do %>
+      <i class="bi bi-box-arrow-right me-1"></i> Desconectar WhatsApp
+    <% end %>
+  <% end %>
+</div>
+
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item">
+    <%= link_to admin_whatsapp_integration_path(tab: "whatsapp"), class: "nav-link #{'active' if active_tab == 'whatsapp'}" do %>
+      <i class="bi bi-whatsapp me-1"></i> WhatsApp Business API
+    <% end %>
+  </li>
+  <li class="nav-item">
+    <%= link_to admin_whatsapp_integration_path(tab: "site_phones"), class: "nav-link #{'active' if active_tab == 'site_phones'}" do %>
+      <i class="bi bi-telephone-outbound me-1"></i> Telefones do Site
+    <% end %>
+  </li>
+</ul>
+
+<% if active_tab == "site_phones" %>
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-telephone-outbound text-success me-2"></i>Telefones dos formulários do site</h5>
+          <small class="text-muted">Defina o número de destino e se o visitante passa pelo formulário intermediário antes do WhatsApp.</small>
+        </div>
+        <div class="card-body p-4">
+          <% if @phone_settings_errors.present? %>
+            <div class="alert alert-warning">
+              <strong>Revise os campos:</strong>
+              <%= @phone_settings_errors.to_sentence %>
+            </div>
+          <% end %>
+
+          <%= form_with model: @whatsapp_integration, url: phone_settings_admin_whatsapp_integration_path, method: :patch, local: true do |f| %>
+            <div class="mb-4">
+              <%= f.label :default_whatsapp_number, "Número padrão", class: "form-label fw-bold" %>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text"><i class="bi bi-whatsapp text-success"></i></span>
+                <%= f.telephone_field :default_whatsapp_number,
+                                      class: "form-control",
+                                      placeholder: "5547999999999",
+                                      value: @whatsapp_integration.default_whatsapp_number.presence || ContactSetting.first&.whatsapp_primary %>
+              </div>
+              <small class="text-muted">Usado quando o tipo de negociação não tiver número específico.</small>
+            </div>
+
+            <div class="row g-3">
+              <% WhatsappBusinessIntegration::NEGOTIATION_TYPES.each do |key, config| %>
+                <div class="col-md-4">
+                  <div class="border rounded-3 p-3 h-100">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <span class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                        <i class="bi bi-whatsapp"></i>
+                      </span>
+                      <div>
+                        <h6 class="fw-bold mb-0"><%= config[:label] %></h6>
+                        <small class="text-muted"><%= config[:default_message] %></small>
+                      </div>
+                    </div>
+
+                    <div class="mb-3">
+                      <%= f.label config[:phone_attribute], "WhatsApp de destino", class: "form-label small fw-bold text-muted text-uppercase" %>
+                      <%= f.telephone_field config[:phone_attribute],
+                                            class: "form-control",
+                                            placeholder: "Usar número padrão" %>
+                    </div>
+
+                    <div class="form-check form-switch">
+                      <%= f.check_box config[:form_attribute], class: "form-check-input" %>
+                      <%= f.label config[:form_attribute], "Captar dados antes de redirecionar", class: "form-check-label" %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4">
+              <%= f.submit "Salvar telefones do site", class: "btn btn-success rounded-pill px-4 fw-bold" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+          <h6 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-primary"></i>Como o site usa</h6>
+          <div class="vstack gap-3 small">
+            <% @site_phone_settings[:negotiations].each do |key, item| %>
+              <div class="d-flex justify-content-between gap-3 border-bottom pb-2">
+                <div>
+                  <strong><%= item[:label] %></strong>
+                  <div class="text-muted"><%= item[:requires_form] ? "Com formulário intermediário" : "Direto para o WhatsApp" %></div>
+                </div>
+                <code><%= item[:phone].presence || @site_phone_settings[:default_phone] %></code>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+          <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-2 text-primary"></i>Regra padrão</h6>
+          <p class="small text-muted mb-0">
+            Se um número específico ficar em branco, o site usa o número padrão. Locação diária entra na regra de locação.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title mb-0 fw-bold"><i class="bi bi-meta me-2 text-primary"></i>Embedded Signup v4</h5>
+            <small class="text-muted">Config WABA NotificaLead: <code><%= @embedded_signup_config_id %></code></small>
+          </div>
+          <% if @whatsapp_integration.connected? %>
+            <span class="badge bg-success-subtle text-success px-3 py-2">Conectado</span>
+          <% else %>
+            <span class="badge bg-secondary-subtle text-secondary px-3 py-2">Aguardando conexão</span>
+          <% end %>
+        </div>
+        <div class="card-body p-4">
+          <% if @whatsapp_integration.connected? %>
+            <div class="p-3 rounded-3 bg-light border border-success border-opacity-25 mb-4">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <small class="text-muted d-block">WABA ID</small>
+                  <strong><%= @whatsapp_integration.waba_id %></strong>
+                </div>
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Phone Number ID</small>
+                  <strong><%= @whatsapp_integration.phone_number_id %></strong>
+                </div>
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Business ID</small>
+                  <strong><%= @whatsapp_integration.business_id.presence || "Não informado" %></strong>
+                </div>
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Token</small>
+                  <strong><%= @whatsapp_integration.token_preview || "Salvo" %></strong>
+                </div>
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Conectado por</small>
+                  <strong><%= @whatsapp_integration.connected_by_admin_user&.name || "Sistema" %></strong>
+                </div>
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Data</small>
+                  <strong><%= l(@whatsapp_integration.connected_at, format: :short) if @whatsapp_integration.connected_at %></strong>
+                </div>
+              </div>
+            </div>
+          <% elsif @whatsapp_integration.last_error_message.present? %>
+            <div class="alert alert-warning">
+              <strong>Último retorno da Meta:</strong>
+              <%= @whatsapp_integration.last_error_message %>
+              <% if @whatsapp_integration.last_error_code.present? %>
+                <span class="text-muted">(<%= @whatsapp_integration.last_error_code %>)</span>
+              <% end %>
+            </div>
+          <% end %>
+
+          <div id="whatsapp-signup-feedback" class="alert d-none" role="alert"></div>
+
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button type="button"
+                    id="whatsapp-embedded-signup-button"
+                    class="btn btn-success btn-lg rounded-pill px-5 fw-bold shadow-sm"
+                    <%= "disabled" unless can_launch_signup %>>
+              <i class="bi bi-whatsapp me-2"></i> Conectar WhatsApp pela Meta
+            </button>
+            <% unless can_launch_signup %>
+              <span class="small text-muted">Revise os itens de configuração antes de conectar.</span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+          <h6 class="fw-bold mb-3"><i class="bi bi-clipboard-check me-2 text-primary"></i>Diagnóstico</h6>
+          <div class="list-group list-group-flush">
+            <% @diagnostics.each do |item| %>
+              <div class="list-group-item px-0 d-flex justify-content-between align-items-start gap-3">
+                <div>
+                  <div class="fw-semibold"><%= item[:label] %></div>
+                  <% if item[:fallback].present? && !item[:ok] %>
+                    <small class="text-muted">Usando padrão: <code><%= item[:fallback] %></code></small>
+                  <% elsif item[:detail].present? %>
+                    <small class="text-muted"><%= item[:detail] %></small>
+                  <% end %>
+                </div>
+                <% if item[:ok] || item[:fallback].present? %>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                <% else %>
+                  <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+          <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-success"></i>Segurança</h6>
+          <p class="small text-muted mb-0">
+            O token retornado pela Meta é salvo no backend e não é exibido completo na interface.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const button = document.getElementById("whatsapp-embedded-signup-button");
+      const feedback = document.getElementById("whatsapp-signup-feedback");
+      if (!button) return;
+
+      const appId = "<%= j ENV.fetch('FACEBOOK_APP_ID', '') %>";
+      const apiVersion = "<%= j(ENV['WHATSAPP_EMBEDDED_SIGNUP_API_VERSIONS'].presence || ENV['WHATSAPP_GRAPH_API_VERSION'].presence || ENV['META_API_VERSION'].presence || 'v24.0') %>";
+      const configId = "<%= j @embedded_signup_config_id %>";
+      const callbackUrl = "<%= embedded_signup_callback_admin_whatsapp_integration_path %>";
+      let latestSession = {};
+
+      function showFeedback(type, message) {
+        if (!feedback) return;
+        feedback.className = "alert alert-" + type;
+        feedback.textContent = message;
+      }
+
+      window.addEventListener("message", function (event) {
+        if (!event.origin.endsWith("facebook.com")) return;
+
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "WA_EMBEDDED_SIGNUP") {
+            latestSession = data;
+          }
+        } catch (_error) {
+          latestSession = {};
+        }
+      });
+
+      window.fbAsyncInit = function () {
+        FB.init({
+          appId: appId,
+          cookie: true,
+          xfbml: false,
+          version: apiVersion
+        });
+      };
+
+      if (!document.getElementById("facebook-jssdk")) {
+        const script = document.createElement("script");
+        script.id = "facebook-jssdk";
+        script.src = "https://connect.facebook.net/pt_BR/sdk.js";
+        document.body.appendChild(script);
+      }
+
+      function submitResult(response) {
+        const code = response && response.authResponse && response.authResponse.code;
+        const payload = {
+          code: code,
+          event: latestSession.event || (code ? "FINISH" : "ERROR"),
+          session_info: latestSession.data || {}
+        };
+
+        fetch(callbackUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
+          },
+          body: JSON.stringify(payload)
+        }).then(function (result) {
+          return result.json().then(function (body) {
+            if (!result.ok) throw new Error(body.message || "Não foi possível concluir a conexão.");
+            return body;
+          });
+        }).then(function (body) {
+          showFeedback("success", body.message || "WhatsApp conectado com sucesso.");
+          setTimeout(function () { window.location.reload(); }, 900);
+        }).catch(function (error) {
+          showFeedback("warning", error.message);
+        }).finally(function () {
+          button.disabled = false;
+        });
+      }
+
+      button.addEventListener("click", function () {
+        if (!window.FB) {
+          showFeedback("warning", "SDK da Meta ainda está carregando. Tente novamente em alguns segundos.");
+          return;
+        }
+
+        button.disabled = true;
+        showFeedback("info", "Abrindo fluxo de conexão da Meta...");
+        latestSession = {};
+
+        FB.login(submitResult, {
+          config_id: configId,
+          response_type: "code",
+          override_default_response_type: true,
+          extras: {
+            setup: {}
+          }
+        });
+      });
+    })();
+  </script>
+<% end %>

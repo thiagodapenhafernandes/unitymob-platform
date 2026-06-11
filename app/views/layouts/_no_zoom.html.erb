@@ -1,0 +1,11 @@
+<%# Bloqueia pinch-to-zoom e double-tap zoom em layouts admin/PWA. %>
+<%# O site público (application.html.erb) NÃO inclui este partial — preserva zoom por acessibilidade. %>
+<style>
+  html, body { touch-action: manipulation; }
+</style>
+<script>
+  // iOS Safari ignora user-scalable=no fora de standalone. Isso bloqueia pinch via gesture API.
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (evt) {
+    document.addEventListener(evt, function (e) { e.preventDefault(); }, { passive: false });
+  });
+</script>

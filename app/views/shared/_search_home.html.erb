@@ -1,0 +1,47 @@
+<!-- Search Home Component - V2 Style -->
+<div class="w-full max-w-4xl bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+  <%= form_with url: habitations_path, method: :get, class: "space-y-4" do |f| %>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      
+      <!-- Finalidade -->
+      <div>
+        <label class="block text-white text-sm font-semibold mb-2">Finalidade</label>
+        <%= f.select :finalidade,
+            options_for_select([['Comprar', 'Venda'], ['Alugar', 'Locação']], params[:finalidade]),
+            { prompt: 'Selecione' },
+            class: "w-full px-4 py-3 rounded-lg bg-white/90 border-0 focus:ring-2 focus:ring-golden-one" %>
+      </div>
+      
+      <!-- Tipo -->
+      <div>
+        <label class="block text-white text-sm font-semibold mb-2">Tipo</label>
+        <%= f.select :tipo,
+            options_for_select([
+              ['Apartamento', 'Apartamento'],
+              ['Casa', 'Casa'],
+              ['Cobertura', 'Cobertura'],
+              ['Terreno', 'Terreno'],
+              ['Comercial', 'Comercial']
+            ], params[:tipo]),
+            { prompt: 'Todos' },
+            class: "w-full px-4 py-3 rounded-lg bg-white/90 border-0 focus:ring-2 focus:ring-golden-one" %>
+      </div>
+      
+      <!-- Cidade -->
+      <div>
+        <label class="block text-white text-sm font-semibold mb-2">Cidade</label>
+        <%= f.text_field :cidade,
+            value: params[:cidade],
+            placeholder: "Ex: Balneário Camboriú",
+            class: "w-full px-4 py-3 rounded-lg bg-white/90 border-0 focus:ring-2 focus:ring-golden-one" %>
+      </div>
+    </div>
+    
+    <!-- Search Button -->
+    <div class="flex justify-center">
+      <%= f.submit @home_setting.hero_cta_text.presence || "Buscar Imóveis", class: "btn-primary bg-hero-button text-hero-button-text hover:opacity-90 px-12 py-3 text-lg font-bold transition-all shadow-md" %>
+    </div>
+    
+  <% end %>
+</div>

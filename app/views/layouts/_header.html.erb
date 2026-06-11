@@ -1,0 +1,129 @@
+<header class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300" data-controller="navbar">
+  <% is_buying = controller_name == "habitations" && params[:transaction_type].to_s.downcase == "venda" %>
+  <% is_renting = controller_name == "habitations" && %w[aluguel locacao locação].include?(params[:transaction_type].to_s.downcase) %>
+  <% is_developments = controller_name == "empreendimentos" || (controller_name == "habitations" && Array(params[:category]).map(&:to_s).include?("Empreendimento")) %>
+  <% is_launches = controller_name == "habitations" && Array(params[:characteristics]).map(&:to_s).include?("lancamento") %>
+  <div class="w-full max-w-[1600px] mx-auto px-4 lg:px-8">
+    <div class="flex items-center justify-between py-3">
+      
+      <!-- Logo + Phone -->
+      <div class="flex items-center gap-4">
+        <%= link_to root_path, class: "flex items-center" do %>
+          <%= image_tag "salute-imoveis.svg", alt: "Salute Imóveis", class: "h-10 w-[170px] object-contain lg:hidden" %>
+          <span class="hidden lg:flex items-center">
+            <% if @layout_setting&.logo&.attached? %>
+              <% if @layout_setting.logo.content_type == 'image/svg+xml' || @layout_setting.logo.filename.to_s.downcase.end_with?('.svg') %>
+                <%= image_tag @layout_setting.logo, alt: @layout_setting.site_name, class: 'h-10', style: 'width: 170px; object-fit: contain;' %>
+              <% else %>
+                <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 100]), alt: @layout_setting.site_name, class: 'h-10', style: 'width: 170px; object-fit: contain;' %>
+              <% end %>
+            <% else %>
+              <%= image_tag 'salute-imoveis.svg', alt: 'Salute Imóveis', class: 'h-10', style: 'width: 170px;' %>
+            <% end %>
+          </span>
+        <% end %>
+        <div class="hidden lg:flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <i class="bi bi-telephone"></i>
+          <span>(47) 3311-1067</span>
+        </div>
+      </div>
+      
+      <!-- Desktop Menu -->
+      <div class="hidden xl:flex items-center gap-3 text-[13px]">
+        <div class="hidden xl:flex items-center gap-1 text-gray-700">
+          <%= link_to "Comprar",
+              habitations_path(transaction_type: "venda"),
+              class: "px-3 py-2 rounded-md font-semibold transition-colors #{is_buying ? 'text-blue-three' : 'hover:text-blue-three'}" %>
+          <%= link_to "Alugar",
+              habitations_path(transaction_type: "aluguel"),
+              class: "px-3 py-2 rounded-md font-semibold transition-colors #{is_renting ? 'text-blue-three' : 'hover:text-blue-three'}" %>
+          <%= link_to "Anunciar",
+              contato_path,
+              class: "px-3 py-2 rounded-md font-semibold transition-colors hover:text-blue-three" %>
+          <%= link_to "Empreendimentos",
+              empreendimentos_path,
+              class: "px-3 py-2 rounded-md font-semibold transition-colors #{is_developments ? 'text-blue-three' : 'hover:text-blue-three'}" %>
+          <%= link_to "Lançamentos",
+              habitations_path(characteristics: ['lancamento']),
+              class: "px-3 py-2 rounded-md font-semibold transition-colors #{is_launches ? 'text-blue-three' : 'hover:text-blue-three'}" %>
+          <%= link_to "Blog",
+              "https://blog.saluteimoveis.com", target: "_blank",
+              class: "px-3 py-2 rounded-md font-semibold transition-colors hover:text-blue-three" %>
+        </div>
+
+        <!-- Code Search Trigger -->
+        <button type="button" 
+                class="text-gray-500 hover:text-blue-three transition-colors p-2"
+                onclick="document.dispatchEvent(new CustomEvent('open-code-search'))"
+                title="Buscar por código">
+          <i class="bi bi-search"></i>
+        </button>
+        
+        <%= link_to "Fale Conosco", contato_path, class: "hidden lg:inline-flex items-center justify-center px-5 py-2 border border-transparent text-xs font-bold rounded-full text-white bg-blue-three hover:bg-blue-one transition-colors shadow-sm whitespace-nowrap" %>
+
+        <!-- Hamburger for submenu -->
+        <button type="button"
+                class="text-blue-three p-2"
+                data-action="click->navbar#toggleDesktopMenu">
+          <i class="bi bi-list text-2xl"></i>
+        </button>
+      </div>
+      
+      <!-- Mobile Menu Toggle -->
+      <button type="button"
+              class="lg:hidden text-blue-three p-2"
+              data-action="click->navbar#toggleMobile">
+        <i class="bi bi-list text-2xl"></i>
+      </button>
+      
+    </div>
+    
+    <!-- Desktop Dropdown Menu (hidden by default) -->
+    <div class="hidden" data-navbar-target="desktopMenu">
+      <nav class="py-4 border-t">
+        <ul class="flex flex-col gap-3">
+          <li><%= link_to "Home", root_path, class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Comprar", habitations_path(transaction_type: "venda"), class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Alugar", habitations_path(transaction_type: "aluguel"), class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Anunciar", contato_path, class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Empreendimentos", empreendimentos_path, class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Lançamentos", habitations_path(characteristics: ['lancamento']), class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Blog", "https://blog.saluteimoveis.com", target: "_blank", class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Parceria", parcerias_path, class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Fale com um corretor", brokers_path, class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Galpões", corporativos_path, class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Simule um financiamento", simulador_path, class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Trabalhe conosco", trabalhe_conosco_path, class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Sobre nós", "/imobiliaria", class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Youtube", "https://www.youtube.com/channel/UC9BG_PI0pFj-m65sR6KeZtA", target: "_blank", class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Links Úteis", links_uteis_path, class: "text-gray-700 hover:text-blue-three" %></li>
+          <li><%= link_to "Contato", contato_path, class: "text-gray-700 hover:text-blue-three" %></li>
+        </ul>
+      </nav>
+    </div>
+    
+    <!-- Mobile Menu -->
+    <div class="hidden lg:hidden" data-navbar-target="mobileMenu">
+      <nav class="py-4 border-t">
+        <ul class="flex flex-col gap-3">
+          <li><%= link_to "Comprar", habitations_path(transaction_type: "venda"), class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Alugar", habitations_path(transaction_type: "aluguel"), class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Anunciar", contato_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Empreendimentos", empreendimentos_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Lançamentos", habitations_path(characteristics: ['lancamento']), class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Blog", "https://blog.saluteimoveis.com", target: "_blank", class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Parceria", parcerias_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Home", root_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Fale com um corretor", brokers_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Galpões", corporativos_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Simule um financiamento", simulador_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Trabalhe conosco", trabalhe_conosco_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Sobre nós", sobre_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Youtube", "https://www.youtube.com/channel/UC9BG_PI0pFj-m65sR6KeZtA", target: "_blank", class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Links Úteis", links_uteis_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Contato", contato_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+</header>

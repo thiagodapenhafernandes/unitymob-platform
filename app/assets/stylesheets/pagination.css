@@ -1,0 +1,27 @@
+/* Custom Pagination Styles for will_paginate with Tailwind */
+.pagination {
+  @apply flex gap-2 items-center justify-center;
+}
+
+.pagination a,
+.pagination em,
+.pagination span {
+  @apply px-4 py-2 rounded-lg border transition-colors;
+}
+
+.pagination a {
+  @apply border-gray-300 text-blue-three hover:bg-blue-three hover:text-white;
+}
+
+.pagination em {
+  @apply bg-blue-three text-white border-blue-three font-bold;
+}
+
+.pagination .disabled {
+  @apply text-gray-400 border-gray-200 cursor-not-allowed;
+}
+
+.pagination .previous_page,
+.pagination .next_page {
+  @apply font-semibold;
+}

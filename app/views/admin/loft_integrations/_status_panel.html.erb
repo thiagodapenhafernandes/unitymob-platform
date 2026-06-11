@@ -1,0 +1,80 @@
+<span class="d-none" data-dwv-sync-status-state data-sync-status="<%= @loft_sync_status.presence || "idle" %>"></span>
+
+<div class="card shadow-sm border-0 mb-4 bg-light">
+  <div class="card-body p-4">
+    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2 text-primary"></i>Status Atual</h6>
+    <ul class="small mb-0 ps-3">
+      <li class="mb-2">Integração ativa: <strong><%= @loft_enabled ? "Sim" : "Não" %></strong></li>
+      <li class="mb-2">Host configurado: <strong><%= @loft_host.present? ? "Sim" : "Não" %></strong></li>
+      <li class="mb-2">Token configurado: <strong><%= @loft_token.present? ? "Sim" : "Não" %></strong></li>
+      <li class="mb-2">Agendamento automático: <strong><%= @loft_schedule_enabled ? "Ativo" : "Inativo" %></strong></li>
+      <li class="mb-2">Preservar campos manuais: <strong><%= @loft_preserve_manual_fields ? "Ativo" : "Inativo" %></strong></li>
+      <li class="mb-2">Agenda: <strong><code><%= @loft_schedule_cron %></code></strong></li>
+      <li class="mb-2">Status atual: <strong><%= @loft_sync_status %></strong></li>
+      <li class="mb-2">Progresso atual: <strong><%= @loft_sync_progress %>%</strong></li>
+      <li class="mb-2">Última execução: <strong><%= @loft_last_sync_time.present? ? l(@loft_last_sync_time, format: :short) : "N/D" %></strong></li>
+      <li>Resumo: <%= @loft_last_sync_message.presence || "Sem execuções registradas." %></li>
+    </ul>
+
+    <div class="mt-3">
+      <div class="d-flex justify-content-between small mb-1">
+        <span>Andamento</span>
+        <span><%= @loft_sync_progress %>%</span>
+      </div>
+      <div class="progress" style="height: 10px;">
+        <div class="progress-bar <%= @loft_sync_status == 'failed' ? 'bg-danger' : (@loft_sync_status == 'completed' ? 'bg-success' : 'bg-info') %>"
+             role="progressbar"
+             style="width: <%= @loft_sync_progress %>%"
+             aria-valuenow="<%= @loft_sync_progress %>"
+             aria-valuemin="0"
+             aria-valuemax="100"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body p-4">
+    <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-info"></i>Últimas 5 Sincronizações</h6>
+    <% if @loft_sync_history.present? %>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Status</th>
+              <th>Modo</th>
+              <th>Criados</th>
+              <th>Atualizados</th>
+              <th>Fotos</th>
+              <th>Erros</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @loft_sync_history.each do |item| %>
+              <% item_time = (Time.zone.parse(item["at"].to_s) rescue nil) %>
+              <% status = item["status"].to_s %>
+              <% stats = item["stats"].is_a?(Hash) ? item["stats"] : {} %>
+              <tr>
+                <td class="small text-nowrap"><%= item_time ? l(item_time, format: :short) : "N/D" %></td>
+                <td>
+                  <span class="badge <%= status == 'completed' ? 'bg-success' : (status == 'failed' ? 'bg-danger' : (status == 'processing' ? 'bg-info' : 'bg-secondary')) %>">
+                    <%= status.presence || "N/D" %>
+                  </span>
+                </td>
+                <td class="small"><%= item["mode"].presence || "-" %></td>
+                <td class="small"><%= stats["created"].to_i %></td>
+                <td class="small"><%= stats["updated"].to_i %></td>
+                <% photos_count = stats["images_synced"].presence || (stats["photos_reused"].to_i + stats["photos_downloaded"].to_i + stats["photos_pending_download"].to_i) %>
+                <td class="small" title="Reaproveitadas, baixadas ou pendentes de download"><%= photos_count.to_i %></td>
+                <td class="small"><%= stats["errors_count"].to_i %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="small text-muted mb-0">Ainda não há histórico de sincronizações.</p>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,172 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="fw-bold mb-0 text-primary">Atributos Dinâmicos</h4>
+      <p class="text-muted small mb-0">Gerencie as opções de Características, Infraestrutura e Destaques.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+          <h6 class="fw-bold mb-0">Novo Atributo</h6>
+        </div>
+        <div class="card-body pt-0">
+          <% context_options = AttributeOption::CONTEXTS.map { |ctx| [ctx == 'habitation' ? 'Imóvel' : 'Lead', ctx] } %>
+          <% category_options = [
+            ['Característica Interna', 'feature'],
+            ['Infraestrutura/Lazer', 'infrastructure'],
+            ['Destaque Único', 'unique_feature'],
+            ['Motivo de venda', 'sale_reason'],
+            ['Origem de Lead', 'source'],
+            ['Status de Lead', 'status']
+          ] %>
+          <%= form_with model: [:admin, AttributeOption.new], class: "row g-3" do |f| %>
+            <div class="col-12">
+              <%= f.label :context, "Módulo/Contexto", class: "form-label small fw-bold" %>
+              <%= f.select :context, context_options, {}, class: "form-select form-select-sm" %>
+            </div>
+            <div class="col-12">
+              <%= f.label :category, "Categoria", class: "form-label small fw-bold" %>
+              <%= f.select :category, category_options, {}, class: "form-select form-select-sm" %>
+            </div>
+            <div class="col-12">
+              <%= f.label :name, "Nome do Atributo", class: "form-label small fw-bold" %>
+              <%= f.text_field :name, class: "form-control form-control-sm", placeholder: "Ex: Ar Condicionado", required: true %>
+            </div>
+            <div class="col-12 d-grid">
+              <%= f.submit "Criar Atributo", class: "btn btn-primary btn-sm" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 py-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold mb-0 text-dark">Filtrar Atributos</h6>
+          </div>
+        </div>
+        <div class="card-body pt-0">
+          <% context_filter_options = [['Todos', '']] + context_options %>
+          <% category_filter_options = [['Todas', '']] + category_options.map { |label, value| [label.sub(' de Lead', ''), value] } %>
+          <%= form_with url: admin_attribute_options_path, method: :get, local: true, class: "row g-2 align-items-end" do |f| %>
+            <div class="col-md-4">
+              <%= f.label :query, "Buscar por nome", class: "form-label extra-small fw-bold mb-1" %>
+              <%= f.text_field :query, value: params[:query], class: "form-control form-control-sm", placeholder: "Ex: Ar condicionado..." %>
+            </div>
+            <div class="col-md-3">
+              <%= f.label :context, "Contexto", class: "form-label extra-small fw-bold mb-1" %>
+              <%= f.select :context, context_filter_options, { selected: params[:context] }, class: "form-select form-select-sm" %>
+            </div>
+            <div class="col-md-3">
+              <%= f.label :category, "Categoria", class: "form-label extra-small fw-bold mb-1" %>
+              <%= f.select :category, category_filter_options, { selected: params[:category] }, class: "form-select form-select-sm" %>
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+              <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                <i class="bi bi-search me-1"></i>Filtrar
+              </button>
+              <%= link_to admin_attribute_options_path, class: "btn btn-outline-secondary btn-sm", title: "Limpar Filtros" do %>
+                <i class="bi bi-x-lg"></i>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+          <h6 class="fw-bold mb-0 text-dark">Lista de Atributos</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th class="ps-3 border-0 small fw-bold">Contexto</th>
+                  <th class="border-0 small fw-bold">Categoria</th>
+                  <th class="border-0 small fw-bold">Nome</th>
+                  <th class="text-end pe-3 border-0 small fw-bold">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @options.each do |option| %>
+                  <tr>
+                    <td class="ps-3">
+                      <span class="badge bg-soft-primary text-primary border-0 fw-normal small px-2 py-1">
+                        <%= option.context.capitalize %>
+                      </span>
+                    </td>
+                    <td>
+                      <small class="text-muted"><%= option.category.humanize %></small>
+                    </td>
+                    <td>
+                      <span class="small fw-semibold"><%= option.name %></span>
+                    </td>
+                    <td class="text-end pe-3">
+                      <button type="button" class="btn btn-link text-primary p-0"
+                              data-bs-toggle="modal" data-bs-target="#editOptionModal_<%= option.id %>">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                      <%= link_to admin_attribute_option_path(option), data: { turbo_method: :delete, turbo_confirm: "Tem certeza? Isso pode afetar os registros que já utilizam este atributo." }, class: "btn btn-link text-danger p-0 ms-2" do %>
+                        <i class="bi bi-trash"></i>
+                      <% end %>
+                      <div class="modal fade text-start" id="editOptionModal_<%= option.id %>" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <h6 class="modal-title fw-bold">Editar Atributo</h6>
+                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <%= form_with model: [:admin, option], method: :patch, local: true do |f| %>
+                              <div class="modal-body">
+                                <div class="mb-2">
+                                  <label class="form-label small fw-bold">Contexto</label>
+                                  <input type="text" class="form-control form-control-sm" value="<%= option.context.humanize %>" readonly>
+                                  <%= f.hidden_field :context %>
+                                </div>
+                                <div class="mb-2">
+                                  <label class="form-label small fw-bold">Categoria</label>
+                                  <input type="text" class="form-control form-control-sm" value="<%= option.category.humanize %>" readonly>
+                                  <%= f.hidden_field :category %>
+                                </div>
+                                <div>
+                                  <%= f.label :name, "Nome", class: "form-label small fw-bold" %>
+                                  <%= f.text_field :name, class: "form-control form-control-sm", required: true %>
+                                </div>
+                              </div>
+                              <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                <%= f.submit "Salvar", class: "btn btn-primary btn-sm" %>
+                              </div>
+                            <% end %>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                <% end %>
+                <% if @options.empty? %>
+                  <tr>
+                    <td colspan="4" class="text-center py-5 text-muted small">Nenhum atributo encontrado.</td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <% if @options.total_pages > 1 %>
+          <div class="card-footer bg-white border-0 py-3">
+            <div class="d-flex justify-content-center">
+              <%= will_paginate @options, renderer: WillPaginate::ActionView::BootstrapLinkRenderer, class: "pagination-sm mb-0" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

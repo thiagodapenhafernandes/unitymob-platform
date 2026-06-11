@@ -1,0 +1,18 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="mb-1"><i class="bi bi-pencil-square"></i> Editar Webhook</h1>
+      <p class="text-muted mb-0">Alterar configurações da integração #<%= @webhook_setting.id %></p>
+    </div>
+    <%= link_to 'Voltar', admin_webhook_settings_path, class: 'btn btn-outline-secondary' %>
+  </div>
+
+  <%= render 'form', webhook_setting: @webhook_setting %>
+  
+  <div class="mt-5 pt-4 border-top">
+     <h5 class="text-muted mb-3">Zona de Perigo</h5>
+     <%= button_to admin_webhook_setting_path(@webhook_setting), method: :delete, class: "btn btn-outline-danger", data: { confirm: "Tem certeza? Esta ação não pode ser desfeita." } do %>
+       <i class="bi bi-trash me-2"></i>Excluir este Webhook
+     <% end %>
+  </div>
+</div>

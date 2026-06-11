@@ -1,0 +1,21 @@
+<div class="container-fluid py-3 seo-editor-shell">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 mb-1"><i class="bi bi-search me-2 text-primary"></i>Editar SEO</h1>
+      <p class="text-muted mb-0"><%= @seo_setting.display_name %></p>
+    </div>
+    <div class="d-flex gap-2">
+      <%= link_to admin_seo_settings_path, class: "btn btn-sm btn-outline-secondary" do %>
+        <i class="bi bi-arrow-left me-1"></i>Voltar
+      <% end %>
+      <%= button_to generate_ai_admin_seo_setting_path(@seo_setting),
+          method: :post,
+          class: "btn btn-sm btn-outline-primary",
+          data: { turbo_submits_with: "Gerando..." } do %>
+        <i class="bi bi-stars me-1"></i>Gerar com IA
+      <% end %>
+    </div>
+  </div>
+
+  <%= render "form", seo_setting: @seo_setting %>
+</div>

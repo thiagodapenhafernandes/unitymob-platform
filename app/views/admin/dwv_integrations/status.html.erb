@@ -1,0 +1,3 @@
+<%= turbo_frame_tag "dwv_status_panel", data: { controller: "dwv-sync-status", dwv_sync_status_processing_interval_value: @dwv_poll_processing_interval_ms, dwv_sync_status_idle_interval_value: @dwv_poll_idle_interval_ms, dwv_sync_status_slow_interval_value: @dwv_poll_slow_interval_ms } do %>
+  <%= render "status_panel" %>
+<% end %>

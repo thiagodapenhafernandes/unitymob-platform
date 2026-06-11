@@ -1,0 +1,8 @@
+<div class="mb-4">
+  <%= link_to admin_distribution_rules_path, class: "text-decoration-none text-muted small" do %>
+    <i class="bi bi-arrow-left"></i> Voltar para a lista
+  <% end %>
+  <h1 class="h3 mb-0 text-gray-800 mt-2">Editar Regra: <%= @rule.name %></h1>
+</div>
+
+<%= render 'form', distribution_rule: @rule %>

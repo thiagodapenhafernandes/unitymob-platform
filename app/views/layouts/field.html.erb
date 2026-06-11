@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <title>Salute Imóveis — Campo</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Salute Campo">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= render 'layouts/no_zoom' %>
+
+    <link rel="manifest" href="<%= field_manifest_path(format: :json) %>">
+    <link rel="apple-touch-icon" href="/field-icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/field-icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/field-icons/icon-512.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/field-service-worker.js", { scope: "/field/" })
+            .then(function (reg) {
+              console.log("[field SW] registered, scope:", reg.scope);
+              // Tenta assinar push notifications automaticamente se permissão concedida
+              subscribeToPush(reg);
+            })
+            .catch(function (err) { console.warn("[field SW] registration failed:", err); });
+        });
+      }
+
+      // Web Push subscription. Só dispara prompt de permissão uma vez; nas
+      // próximas visitas, se já aceito, revalida/renova subscription silenciosamente.
+      async function subscribeToPush(registration) {
+        if (!("PushManager" in window)) return;
+        const alreadyAsked = localStorage.getItem("field_push_asked");
+        if (Notification.permission === "default" && alreadyAsked) return;
+
+        try {
+          let permission = Notification.permission;
+          if (permission === "default") {
+            localStorage.setItem("field_push_asked", "1");
+            permission = await Notification.requestPermission();
+          }
+          if (permission !== "granted") return;
+
+          // Busca a VAPID public key do servidor
+          const keyResp = await fetch("/field/push_subscriptions/vapid_key", { credentials: "same-origin" });
+          if (!keyResp.ok) return;
+          const { public_key } = await keyResp.json();
+          if (!public_key) return;
+
+          const sub = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(public_key)
+          });
+
+          const csrfToken = document.querySelector("[name=csrf-token]")?.content;
+          await fetch("/field/push_subscriptions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": csrfToken || "",
+              "Accept": "application/json"
+            },
+            credentials: "same-origin",
+            body: JSON.stringify({ subscription: sub.toJSON() })
+          });
+        } catch (e) {
+          console.warn("[push] subscribe failed:", e);
+        }
+      }
+
+      function urlBase64ToUint8Array(base64) {
+        const padding = "=".repeat((4 - base64.length % 4) % 4);
+        const base = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const raw = atob(base);
+        return Uint8Array.from(raw, c => c.charCodeAt(0));
+      }
+    </script>
+
+    <script type="module">
+      // FingerprintJS open-source — hash estável por dispositivo/browser.
+      // Usado como sinal de antifraude (detecção de fingerprint duplicado).
+      import FingerprintJS from "https://openfpcdn.io/fingerprintjs/v4";
+      (async function () {
+        try {
+          const fp = await FingerprintJS.load();
+          const result = await fp.get();
+          window.__fieldFingerprint = result.visitorId;
+        } catch (e) {
+          console.warn("[field fp] failed:", e);
+        }
+      })();
+    </script>
+
+    <style>
+      html, body {
+        background: #f8f9fa;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding-top: 54px;
+      }
+      .field-layout {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 1rem 1rem 5rem;
+      }
+      @supports (-webkit-touch-callout: none) {
+        @media (max-width: 767.98px) {
+          html, body { padding-top: 58px; }
+        }
+      }
+      .field-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        padding: 1.25rem;
+      }
+      .field-status-banner {
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        text-align: center;
+      }
+      .status-ok    { background: #d1e7dd; color: #0a3622; }
+      .status-warn  { background: #fff3cd; color: #664d03; }
+      .status-error { background: #f8d7da; color: #58151c; }
+      .status-info  { background: #cff4fc; color: #055160; }
+      .status-neutral { background: #e9ecef; color: #495057; }
+      .big-action-btn {
+        width: 100%;
+        padding: 1.25rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <% flash.each do |type, msg| %>
+      <% next if msg.blank? %>
+      <div class="alert alert-<%= type == 'notice' ? 'info' : 'warning' %> mb-0" style="border-radius: 0;">
+        <%= msg %>
+      </div>
+    <% end %>
+
+    <div id="field-offline-banner" style="display: none; background: #fff3cd; color: #664d03; padding: .5rem 1rem; text-align: center; font-size: .875rem; border-bottom: 1px solid #ffe69c;">
+      <i class="bi bi-wifi-off"></i> Você está offline — pings ficarão em fila.
+    </div>
+
+    <!-- Install Modal (inline styles porque field layout não carrega Bootstrap) -->
+    <div id="field-install-overlay" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,.75); backdrop-filter: blur(4px); z-index: 1060;">
+      <div class="field-install-card">
+        <div class="field-install-header">
+          <div class="field-install-icon">
+            <i class="bi bi-phone"></i>
+          </div>
+          <h3>Instale o app Salute Campo</h3>
+          <p>Experiência mais rápida, notificações e acesso offline.</p>
+        </div>
+
+        <div id="field-install-android" class="field-install-section">
+          <ul>
+            <li>Abre como app, sem barra de endereço</li>
+            <li>GPS em background funciona melhor</li>
+            <li>Pings continuam quando app fica escondido</li>
+          </ul>
+          <button id="field-install-btn" class="field-install-btn-primary">
+            <i class="bi bi-download"></i> Instalar agora
+          </button>
+        </div>
+
+        <div id="field-install-ios" class="field-install-section">
+          <ol>
+            <li>Toque em <i class="bi bi-box-arrow-up"></i> <strong>Compartilhar</strong> no Safari</li>
+            <li>Escolha <strong>"Adicionar à Tela de Início"</strong></li>
+            <li>Confirme em "Adicionar"</li>
+          </ol>
+        </div>
+
+        <div id="field-install-fallback" class="field-install-section">
+          <p>Abra no Chrome (Android) ou Safari (iPhone) e use a opção "Instalar app" ou "Adicionar à Tela de Início" do navegador.</p>
+        </div>
+
+        <button id="field-install-dismiss" class="field-install-btn-link">
+          Continuar no navegador por enquanto
+        </button>
+      </div>
+    </div>
+
+    <style>
+      .field-install-card {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 16px 48px rgba(0,0,0,.25);
+        padding: 1.5rem;
+        max-width: 420px;
+        width: 92%;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .field-install-header { text-align: center; margin-bottom: 1rem; }
+      .field-install-icon {
+        width: 64px; height: 64px;
+        border-radius: 14px;
+        background: rgba(13,110,253,.12);
+        color: #0d6efd;
+        font-size: 2rem;
+        display: inline-flex;
+        align-items: center; justify-content: center;
+        margin-bottom: .75rem;
+      }
+      .field-install-header h3 { font-size: 1.25rem; font-weight: 700; margin: 0 0 .25rem; color: #0f172a; }
+      .field-install-header p { font-size: .875rem; color: #64748b; margin: 0; }
+      .field-install-section { display: none; }
+      .field-install-section.active { display: block; }
+      .field-install-section ul, .field-install-section ol {
+        font-size: .875rem; color: #64748b;
+        padding-left: 1.25rem; margin: 0 0 1rem;
+      }
+      .field-install-section li { margin-bottom: .25rem; }
+      .field-install-section p { font-size: .875rem; color: #64748b; margin: 0 0 1rem; }
+      .field-install-btn-primary {
+        width: 100%;
+        background: #0d6efd; color: #fff;
+        border: none; border-radius: 10px;
+        padding: .875rem 1rem;
+        font-size: 1rem; font-weight: 600;
+        cursor: pointer;
+        margin-bottom: .5rem;
+      }
+      .field-install-btn-primary:active { background: #0a58ca; }
+      .field-install-btn-link {
+        display: block;
+        width: 100%;
+        background: none; border: none;
+        color: #64748b; font-size: .875rem;
+        padding: .75rem;
+        cursor: pointer;
+      }
+    </style>
+
+    <!-- Pull-to-refresh indicator -->
+    <div id="field-ptr" style="position: fixed; top: env(safe-area-inset-top, 0px); left: 50%; transform: translate(-50%, -80px); z-index: 1030; transition: transform .2s ease; pointer-events: none;">
+      <div style="background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,.08); border-radius: 999px; padding: .5rem 1rem; display: flex; align-items: center; gap: .5rem; font-size: .85rem; color: #0f172a;">
+        <i id="field-ptr-icon" class="bi bi-arrow-down" style="transition: transform .2s;"></i>
+        <span id="field-ptr-label">Arraste para atualizar</span>
+      </div>
+    </div>
+
+    <main class="field-layout">
+      <%= yield %>
+    </main>
+
+    <script>
+      (function () {
+        const DISMISS_KEY = "field_install_dismissed_until";
+        const overlay   = document.getElementById("field-install-overlay");
+        const androidBox = document.getElementById("field-install-android");
+        const iosBox    = document.getElementById("field-install-ios");
+        const fallback  = document.getElementById("field-install-fallback");
+        const installBtn = document.getElementById("field-install-btn");
+        const dismissBtn = document.getElementById("field-install-dismiss");
+
+        function isStandalone() {
+          return window.matchMedia("(display-mode: standalone)").matches
+              || window.navigator.standalone === true;
+        }
+
+        function isIos() {
+          return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        }
+
+        function shouldShow() {
+          if (isStandalone()) return false;
+          if (!navigator.onLine) return false;  // offline: não faz sentido
+          const until = parseInt(localStorage.getItem(DISMISS_KEY) || "0", 10);
+          if (until && Date.now() < until) return false;
+          return true;
+        }
+
+        function showOverlay(mode) {
+          if (!shouldShow()) return;
+          androidBox.classList.remove("active");
+          iosBox.classList.remove("active");
+          fallback.classList.remove("active");
+          if (mode === "android") androidBox.classList.add("active");
+          else if (mode === "ios") iosBox.classList.add("active");
+          else fallback.classList.add("active");
+          overlay.style.display = "block";
+        }
+
+        function hideOverlay() {
+          overlay.style.display = "none";
+        }
+
+        let deferredPrompt;
+        window.addEventListener("beforeinstallprompt", function (e) {
+          e.preventDefault();
+          deferredPrompt = e;
+          showOverlay("android");
+        });
+
+        if (isIos() && shouldShow()) {
+          setTimeout(() => showOverlay("ios"), 800);
+        }
+
+        if (installBtn) {
+          installBtn.addEventListener("click", function () {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.finally(function () {
+              deferredPrompt = null;
+              hideOverlay();
+            });
+          });
+        }
+
+        if (dismissBtn) {
+          dismissBtn.addEventListener("click", function () {
+            localStorage.setItem(DISMISS_KEY, (Date.now() + 7 * 24 * 60 * 60 * 1000).toString());
+            hideOverlay();
+          });
+        }
+
+        // Indicador offline
+        function toggleOffline() {
+          const banner = document.getElementById("field-offline-banner");
+          if (!banner) return;
+          if (navigator.onLine) banner.style.display = "none";
+          else banner.style.display = "block";
+        }
+        window.addEventListener("online", toggleOffline);
+        window.addEventListener("offline", toggleOffline);
+        toggleOffline();
+      })();
+
+      // Pull-to-refresh — arrastar pra baixo no topo recarrega a página
+      (function () {
+        const PULL_THRESHOLD = 70;      // px até marcar como "pode soltar"
+        const MAX_PULL = 140;            // limite visual
+        const indicator = document.getElementById("field-ptr");
+        const icon      = document.getElementById("field-ptr-icon");
+        const label     = document.getElementById("field-ptr-label");
+        if (!indicator) return;
+
+        let startY = 0;
+        let pulling = false;
+        let refreshArmed = false;
+        let refreshing = false;
+
+        function atTop() {
+          return (window.scrollY || window.pageYOffset || 0) <= 0;
+        }
+
+        function show(y) {
+          // y em pixels de translate (começa de -80)
+          indicator.style.transform = `translate(-50%, ${y - 80}px)`;
+        }
+
+        function reset() {
+          indicator.style.transform = "translate(-50%, -80px)";
+          icon.style.transform = "rotate(0deg)";
+          label.textContent = "Arraste para atualizar";
+          refreshArmed = false;
+        }
+
+        document.addEventListener("touchstart", (e) => {
+          if (refreshing) return;
+          if (!atTop()) { pulling = false; return; }
+          startY = e.touches[0].clientY;
+          pulling = true;
+        }, { passive: true });
+
+        document.addEventListener("touchmove", (e) => {
+          if (!pulling || refreshing) return;
+          const dy = e.touches[0].clientY - startY;
+          if (dy <= 0) { reset(); return; }
+          if (!atTop()) { pulling = false; reset(); return; }
+
+          const pulled = Math.min(dy, MAX_PULL);
+          show(pulled);
+
+          if (pulled >= PULL_THRESHOLD && !refreshArmed) {
+            refreshArmed = true;
+            icon.style.transform = "rotate(180deg)";
+            label.textContent = "Solte para atualizar";
+          } else if (pulled < PULL_THRESHOLD && refreshArmed) {
+            refreshArmed = false;
+            icon.style.transform = "rotate(0deg)";
+            label.textContent = "Arraste para atualizar";
+          }
+        }, { passive: true });
+
+        document.addEventListener("touchend", () => {
+          if (!pulling) return;
+          pulling = false;
+
+          if (refreshArmed) {
+            refreshing = true;
+            label.textContent = "Atualizando…";
+            icon.className = "bi bi-arrow-repeat";
+            icon.style.animation = "field-ptr-spin .8s linear infinite";
+            // fixa o indicador visível
+            indicator.style.transform = "translate(-50%, 10px)";
+            setTimeout(() => window.location.reload(), 300);
+          } else {
+            reset();
+          }
+        }, { passive: true });
+      })();
+    </script>
+
+    <style>
+      @keyframes field-ptr-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+    </style>
+  </body>
+</html>

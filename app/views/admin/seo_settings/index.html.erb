@@ -1,0 +1,239 @@
+<div class="container-fluid py-3 seo-settings-page">
+  <% current_base_url = request.base_url %>
+
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-search me-2 text-primary"></i>SEO Técnico</h1>
+      <p class="text-muted small mb-0">Inventário automático, aplicação pública, score e geração com IA.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <%= button_to discover_admin_seo_settings_path,
+          method: :post,
+          class: "btn btn-sm btn-success",
+          data: { turbo_submits_with: "Descobrindo..." } do %>
+        <i class="bi bi-compass me-1"></i>Descobrir SEO
+      <% end %>
+      <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#seoStrategyModal">
+        <i class="bi bi-stars me-1"></i>Estratégia IA
+      </button>
+      <%= link_to admin_seo_redirects_path, class: "btn btn-sm btn-outline-primary" do %>
+        <i class="bi bi-signpost-split me-1"></i>Redirects
+      <% end %>
+      <%= link_to new_admin_seo_setting_path, class: "btn btn-sm btn-primary" do %>
+        <i class="bi bi-plus-circle me-1"></i>Novo SEO
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm seo-stat"><div class="card-body"><div class="text-muted small">Mapeadas</div><div class="h4 mb-0"><%= @stats[:total] %></div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm seo-stat"><div class="card-body"><div class="text-muted small">Ativas</div><div class="h4 mb-0"><%= @stats[:active] %></div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm seo-stat"><div class="card-body"><div class="text-muted small">Públicas</div><div class="h4 mb-0"><%= @stats[:public] %></div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm seo-stat"><div class="card-body"><div class="text-muted small">Com IA</div><div class="h4 mb-0"><%= @stats[:generated] %></div></div></div></div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <h2 class="h6 fw-bold mb-1"><i class="bi bi-compass me-1 text-success"></i>Descoberta automática</h2>
+          <p class="small text-muted mb-0"><%= @seo_discovery_status[:message] %></p>
+          <% if @seo_discovery_status[:last_run_at].present? %>
+            <div class="small text-muted mt-1">Última execução: <%= l(@seo_discovery_status[:last_run_at], format: :short) %></div>
+          <% end %>
+          <% if @seo_discovery_status[:last_error].present? %>
+            <div class="small text-danger mt-1"><%= @seo_discovery_status[:last_error] %></div>
+          <% end %>
+        </div>
+        <div class="d-flex flex-wrap gap-2 justify-content-end">
+          <span class="badge <%= @seo_discovery_enabled ? "bg-success" : "bg-secondary" %>">Proativa: <%= @seo_discovery_enabled ? "ativa" : "off" %></span>
+          <span class="badge bg-light text-dark">avaliadas: <%= @seo_discovery_status[:evaluated] %></span>
+          <span class="badge bg-primary">criadas: <%= @seo_discovery_status[:created] %></span>
+          <span class="badge bg-info text-dark">atualizadas: <%= @seo_discovery_status[:updated] %></span>
+          <span class="badge bg-success">indexáveis: <%= @seo_discovery_status[:indexable] %></span>
+          <span class="badge bg-dark">noindex: <%= @seo_discovery_status[:noindex] %></span>
+          <span class="badge bg-warning text-dark">IA fila: <%= @seo_discovery_status[:ai_enqueued] %></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2 d-flex flex-wrap gap-2 align-items-center">
+      <span class="badge <%= @auto_inventory_enabled ? "bg-success" : "bg-secondary" %>">Inventário: <%= @auto_inventory_enabled ? "auto" : "manual" %></span>
+      <span class="badge <%= @auto_apply_enabled ? "bg-success" : "bg-secondary" %>">Público default: <%= @auto_apply_enabled ? "auto" : "manual" %></span>
+      <span class="badge <%= @auto_ai_enabled ? "bg-success" : "bg-secondary" %>">IA: <%= @auto_ai_enabled ? "auto" : "manual" %></span>
+      <span class="text-muted small">Admin já recebe <code>noindex, nofollow</code> por meta tag e header.</span>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <div>
+          <h2 class="h6 fw-bold mb-0"><i class="bi bi-diagram-3 me-1 text-primary"></i>Sitemap para buscadores</h2>
+          <p class="small text-muted mb-0">Use estes links no Google Search Console e em outras ferramentas de busca.</p>
+        </div>
+        <%= link_to "#{current_base_url}/sitemap.xml", target: "_blank", rel: "noopener", class: "btn btn-sm btn-outline-primary" do %>
+          <i class="bi bi-box-arrow-up-right me-1"></i>Abrir sitemap
+        <% end %>
+      </div>
+      <div class="row g-2">
+        <div class="col-lg-6">
+          <label class="form-label small fw-semibold mb-1">Sitemap XML</label>
+          <div class="input-group input-group-sm">
+            <input type="text" readonly class="form-control" value="<%= "#{current_base_url}/sitemap.xml" %>">
+            <%= link_to "Copiar", "#", class: "btn btn-outline-secondary", onclick: "navigator.clipboard.writeText('#{j("#{current_base_url}/sitemap.xml")}'); return false;" %>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <label class="form-label small fw-semibold mb-1">Robots.txt</label>
+          <div class="input-group input-group-sm">
+            <input type="text" readonly class="form-control" value="<%= "#{current_base_url}/robots.txt" %>">
+            <%= link_to "Copiar", "#", class: "btn btn-outline-secondary", onclick: "navigator.clipboard.writeText('#{j("#{current_base_url}/robots.txt")}'); return false;" %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-body py-2 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="small text-muted">
+        Exibindo <%= @seo_settings.offset + 1 %>-<%= [@seo_settings.offset + @seo_settings.length, @seo_settings.total_entries].min %>
+        de <%= @seo_settings.total_entries %> páginas
+      </div>
+      <%= will_paginate @seo_settings,
+          renderer: WillPaginate::ActionView::BootstrapLinkRenderer,
+          class: "pagination-sm mb-0" %>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Página</th>
+            <th>SEO</th>
+            <th class="text-center">Score</th>
+            <th class="text-center">Acessos</th>
+            <th class="text-center">Flags</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @seo_settings.each do |seo| %>
+            <tr>
+              <td class="seo-page-cell">
+                <% public_url = seo.public_url(current_base_url) %>
+                <div class="d-flex align-items-start gap-2">
+                  <%= link_to public_url,
+                      target: "_blank",
+                      rel: "noopener",
+                      class: "btn btn-sm btn-outline-secondary seo-public-link",
+                      title: "Abrir página pública" do %>
+                    <i class="bi bi-box-arrow-up-right"></i>
+                  <% end %>
+                  <div class="min-w-0 flex-grow-1">
+                    <div class="fw-bold text-truncate" title="<%= seo.display_name %>"><%= seo.display_name %></div>
+                    <div class="small text-muted text-truncate" title="<%= seo.page_type %>"><%= seo.page_type %></div>
+                    <div class="small text-muted text-truncate" title="<%= seo.sanitized_canonical_path %>"><%= seo.sanitized_canonical_path %></div>
+                  </div>
+                </div>
+              </td>
+              <td class="seo-copy-cell">
+                <div class="fw-semibold"><%= seo.meta_title.presence || "Sem meta title" %></div>
+                <div class="small text-muted"><%= truncate(seo.meta_description.to_s, length: 110) %></div>
+                <% if seo.ai_insights.present? %>
+                  <div class="small text-warning mt-1"><i class="bi bi-lightbulb me-1"></i><%= truncate(seo.ai_insights.lines.first.to_s.strip, length: 80) %></div>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <span class="badge <%= seo.seo_score.to_i >= 80 ? "bg-success" : seo.seo_score.to_i >= 60 ? "bg-warning text-dark" : "bg-danger" %>">
+                  <%= seo.seo_score %>
+                </span>
+                <div class="small text-muted"><%= seo.score_label %></div>
+              </td>
+              <td class="text-center">
+                <div class="fw-bold"><%= seo.access_count %></div>
+                <div class="small text-muted"><%= seo.last_accessed_at ? l(seo.last_accessed_at, format: :short) : "sem acesso" %></div>
+              </td>
+              <td class="seo-flags-cell">
+                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                  <%= button_to toggle_admin_seo_setting_path(seo, field: "active"), method: :patch, class: "btn btn-xs #{seo.active? ? "btn-success" : "btn-outline-secondary"}" do %><%= seo.active? ? "Ativo" : "Off" %><% end %>
+                  <%= button_to toggle_admin_seo_setting_path(seo, field: "apply_to_public"), method: :patch, class: "btn btn-xs #{seo.apply_to_public? ? "btn-primary" : "btn-outline-secondary"}" do %><%= seo.apply_to_public? ? "Público" : "Manual" %><% end %>
+                  <span class="badge <%= seo.robots_index? ? "bg-info" : "bg-dark" %>"><%= seo.robots_index? ? "index" : "noindex" %></span>
+                </div>
+              </td>
+              <td class="text-end seo-actions-cell">
+                <div class="d-inline-flex gap-1 align-items-center">
+                  <%= button_to generate_ai_admin_seo_setting_path(seo), method: :post, class: "btn btn-sm btn-outline-primary px-2", title: "Gerar com IA" do %>
+                    <i class="bi bi-stars"></i>
+                  <% end %>
+                  <%= link_to edit_admin_seo_setting_path(seo), class: "btn btn-sm btn-warning px-2", title: "Editar" do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                  <%= button_to admin_seo_setting_path(seo), method: :delete, class: "btn btn-sm btn-outline-danger px-2", form: { data: { turbo_confirm: "Excluir este registro de SEO?" } } do %>
+                    <i class="bi bi-trash"></i>
+                  <% end %>
+                </div>
+                <div class="small text-muted mt-1">IA: <%= seo.ai_status %></div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body py-2 border-top d-flex justify-content-end">
+      <%= will_paginate @seo_settings,
+          renderer: WillPaginate::ActionView::BootstrapLinkRenderer,
+          class: "pagination-sm mb-0" %>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="seoStrategyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <%= form_with url: update_strategy_admin_seo_settings_path, method: :patch, local: true do %>
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-stars me-2 text-primary"></i>Estratégia da IA para SEO</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label class="custom-checkbox-card w-100 justify-content-between">
+                <span>Criar SEO ao acessar</span>
+                <%= check_box_tag :seo_auto_inventory_enabled, "1", @auto_inventory_enabled, class: "form-check-input" %>
+              </label>
+            </div>
+            <div class="col-md-4">
+              <label class="custom-checkbox-card w-100 justify-content-between">
+                <span>Aplicar por padrão</span>
+                <%= check_box_tag :seo_auto_apply_enabled, "1", @auto_apply_enabled, class: "form-check-input" %>
+              </label>
+            </div>
+            <div class="col-md-4">
+              <label class="custom-checkbox-card w-100 justify-content-between">
+                <span>Gerar IA automaticamente</span>
+                <%= check_box_tag :seo_ai_auto_generate_enabled, "1", @auto_ai_enabled, class: "form-check-input" %>
+              </label>
+            </div>
+            <div class="col-md-4">
+              <label class="custom-checkbox-card w-100 justify-content-between">
+                <span>Descobrir oportunidades todo dia</span>
+                <%= check_box_tag :seo_discovery_enabled, "1", @seo_discovery_enabled, class: "form-check-input" %>
+              </label>
+            </div>
+          </div>
+          <label class="form-label fw-bold">Instruções para IA</label>
+          <%= text_area_tag :seo_ai_strategy_prompt, @seo_strategy_prompt, rows: 18, class: "form-control font-monospace" %>
+          <p class="form-text">Essas instruções guiam a IA em todas as páginas, especialmente listagens por filtros.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <%= submit_tag "Salvar estratégia", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

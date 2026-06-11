@@ -1,0 +1,44 @@
+:root {
+  --whatsapp-color: #61D367;
+  --blue-one: #0f1f2f;
+  --blue-two: #0a2749;
+  --blue-three: #1e3957;
+  --golden-one: #ae8a3c;
+  --golden-two: #be9b47;
+  --pantone-gold: rgb(166, 144, 86);
+  --pantone-black: rgb(36, 41, 46);
+  --swiper-theme-color: #0f1f2f;
+  --bs-primary-rgb: 41, 53, 94;
+}
+
+$blue-one: #0f1f2f;
+$blue-two: #0a2749;
+$blue-three: #1e3957;
+$golden-one: #ae8a3c;
+$golden-two: #be9b47;
+$danger: #dc3545;
+
+body {
+  font-family: "Open Sans", sans-serif;
+  color: #444444;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Raleway", sans-serif;
+}
+
+a {
+  color: var(--blue-three);
+  text-decoration: none;
+  transition: 0.3s;
+}
+
+a:hover {
+  color: var(--golden-one);
+  text-decoration: none;
+}

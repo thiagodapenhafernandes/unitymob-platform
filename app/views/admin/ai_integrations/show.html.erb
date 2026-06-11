@@ -1,0 +1,112 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-stars me-2 text-primary"></i>IA</h1>
+    <p class="text-muted small mb-0">Configure a OpenAI e as instruções usadas para sugerir título e descrição dos imóveis.</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-key me-2 text-primary"></i>Configuração OpenAI</h5>
+      </div>
+      <div class="card-body p-4">
+        <div class="alert <%= @openai_connected ? "alert-success" : "alert-warning" %> d-flex align-items-center gap-2 py-2">
+          <i class="bi <%= @openai_connected ? "bi-check-circle" : "bi-exclamation-triangle" %>"></i>
+          <span>
+            Status:
+            <strong><%= @openai_connected ? "Conectado" : "Aguardando token" %></strong>
+          </span>
+        </div>
+
+        <%= form_with url: admin_ai_integration_path, method: :patch, scope: :ai, local: true do |f| %>
+          <div class="mb-3">
+            <%= f.label :api_key, "Token da OpenAI", class: "form-label fw-semibold" %>
+            <%= f.password_field :api_key,
+                class: "form-control",
+                autocomplete: "off",
+                placeholder: (@openai_connected ? "Token já configurado. Preencha apenas para substituir." : "Cole o token da OpenAI") %>
+            <div class="form-text">Ao salvar um token, o sistema passa a considerar a integração como conectada.</div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :model, "Modelo", class: "form-label fw-semibold" %>
+            <%= f.text_field :model, class: "form-control", value: @openai_model %>
+            <div class="form-text">Padrão: <code><%= Ai::PropertyContentService::DEFAULT_MODEL %></code>.</div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :property_enrichment_prompt, "Instruções para autopreenchimento e enriquecimento", class: "form-label fw-semibold" %>
+            <%= f.text_area :property_enrichment_prompt,
+                class: "form-control font-monospace",
+                rows: 18,
+                value: @openai_prompt %>
+            <div class="form-text">
+              Este texto é a instrução principal usada pela IA. Alterações aqui passam a valer para as próximas sugestões.
+            </div>
+          </div>
+
+          <%= f.submit "Salvar Configurações", class: "btn btn-primary" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-lightning-charge me-2 text-warning"></i>Geração em lote</h5>
+      </div>
+      <div class="card-body p-4">
+        <p class="small text-muted">
+          O lote gera sugestões de título e descrição para os imóveis, mas não aplica automaticamente. Cada sugestão precisa ser revisada e confirmada na edição do imóvel.
+        </p>
+
+        <div class="mb-3">
+          <div class="d-flex justify-content-between small mb-1">
+            <span>Status: <strong><%= @batch_status %></strong></span>
+            <span><%= @batch_progress %>%</span>
+          </div>
+          <div class="progress" style="height: 10px;">
+            <div class="progress-bar <%= @batch_status == "failed" ? "bg-danger" : "bg-info" %>"
+                 style="width: <%= @batch_progress %>%"
+                 aria-valuenow="<%= @batch_progress %>"
+                 aria-valuemin="0"
+                 aria-valuemax="100"></div>
+          </div>
+          <p class="small text-muted mt-2 mb-0"><%= @batch_message %></p>
+          <% if @batch_last_at.present? %>
+            <p class="small text-muted mb-0">Última atualização: <%= l(@batch_last_at, format: :short) %></p>
+          <% end %>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <div class="border rounded p-3 text-center">
+              <div class="h4 mb-0"><%= number_with_delimiter(@pending_suggestions_count) %></div>
+              <div class="small text-muted">Sugestões pendentes</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="border rounded p-3 text-center">
+              <div class="h4 mb-0"><%= number_with_delimiter(@failed_suggestions_count) %></div>
+              <div class="small text-muted">Falhas</div>
+            </div>
+          </div>
+        </div>
+
+        <%= button_to generate_batch_admin_ai_integration_path,
+            method: :post,
+            class: "btn btn-outline-primary w-100",
+            data: { turbo_confirm: "Gerar sugestões para todos os imóveis em segundo plano? Nada será aplicado automaticamente." } do %>
+          <i class="bi bi-magic me-2"></i>Gerar sugestões para todos os imóveis
+        <% end %>
+      </div>
+    </div>
+
+    <div class="alert alert-info small">
+      <strong>Fluxo seguro:</strong> a IA apenas sugere. Para alterar título, descrição e SEO do imóvel, abra a edição do imóvel e confirme a sugestão manualmente.
+    </div>
+  </div>
+</div>

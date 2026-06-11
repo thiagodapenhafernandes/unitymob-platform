@@ -1,0 +1,121 @@
+<div>
+  <!-- Backdrop -->
+  <div class="sidebar-backdrop" data-sidebar-target="backdrop" data-action="click->sidebar#close"></div>
+
+  <!-- Sidebar Panel -->
+  <div class="sidebar-panel" data-sidebar-target="sidebar">
+    <!-- Header -->
+    <div class="sidebar-header">
+      <h5 class="sidebar-title">Filtros</h5>
+      <button type="button" class="sidebar-close-btn" data-action="click->sidebar#close">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <!-- Form Content -->
+    <%= form_with url: habitations_path, method: :get, class: "h-100 d-flex flex-column", data: { controller: "filters" } do |f| %>
+      
+      <div class="sidebar-content">
+        <!-- Busca por Código -->
+        <div class="filter-section">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <%= f.text_field :search, 
+              class: 'form-control', 
+              placeholder: 'Digite o código ou empreendimento',
+              value: params[:search] %>
+          </div>
+        </div>
+
+        <!-- Características do Imóvel -->
+        <div class="filter-section">
+          <button 
+            type="button" 
+            class="filter-section-header" 
+            data-bs-toggle="collapse" 
+            data-bs-target="#characteristicsCollapse"
+            aria-expanded="true">
+            <span>Características do imóvel</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          
+          <div class="collapse show" id="characteristicsCollapse">
+            <div class="filter-section-content">
+              <% 
+                characteristics = [
+                  { key: 'churrasqueira', label: 'Churrasqueira' },
+                  { key: 'mobiliado', label: 'Mobiliado' },
+                  { key: 'sacada', label: 'Sacada' },
+                  { key: 'decorado', label: 'Decorado' },
+                  { key: 'quadra_mar', label: 'Quadra mar' },
+                  { key: 'vista_mar', label: 'Vista mar' },
+                  { key: 'frente_mar', label: 'Frente Mar' },
+                  { key: 'cozinha_gourmet_churrasqueira', label: 'Cozinha gourmet com churrasqueira' },
+                  { key: 'closet', label: 'Closet' },
+                  { key: 'semi_mobiliado', label: 'Semi mobiliado' },
+                  { key: 'sala_estar', label: 'Sala de estar' },
+                  { key: 'lavabo', label: 'Lavabo' },
+                  { key: 'sala_jantar', label: 'Sala de jantar' },
+                  { key: 'lavanderia', label: 'Lavanderia' },
+                  { key: 'dependencia_empregada', label: 'Dependência de empregada' },
+                  { key: 'hidromassagem', label: 'Banheira de hidromassagem' },
+                  { key: 'piscina', label: 'Área Externa com piscina' },
+                  { key: 'sol_manha', label: 'Sol da manhã' },
+                  { key: 'sol_tarde', label: 'Sol da tarde' },
+                  { key: 'sol_dia_todo', label: 'Sol o dia todo' }
+                ]
+              %>
+              
+              <% characteristics.each do |char| %>
+                <div class="form-check">
+                  <%= check_box_tag 'characteristics[]', char[:key], 
+                    params[:characteristics]&.include?(char[:key]),
+                    class: 'form-check-input',
+                    id: "char_#{char[:key]}" %>
+                  <%= label_tag "char_#{char[:key]}", char[:label], class: 'form-check-label' %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header" data-bs-toggle="collapse" data-bs-target="#areaSection">
+          <span>Área</span>
+          <i class="bi bi-chevron-down"></i>
+        </div>
+        <div class="collapse show" id="areaSection">
+          <div class="sidebar-section-content">
+            <div class="row g-2">
+              <div class="col-12">
+                <%= text_field_tag :min_area,
+                    params[:min_area],
+                    class: 'form-control',
+                    placeholder: 'Mínimo',
+                    value: params[:min_area] %>
+              </div>
+              <div class="col-12">
+                <%= text_field_tag :max_area,
+                    params[:max_area],
+                    class: 'form-control',
+                    placeholder: 'Máximo',
+                    value: params[:max_area] %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="sidebar-footer">
+        <!-- Aplicar Filtros -->
+        <button type="submit" class="btn btn-primary w-100 mt-3">
+          <i class="bi bi-funnel"></i> Aplicar filtro
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+```

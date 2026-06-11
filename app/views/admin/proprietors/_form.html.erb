@@ -1,0 +1,235 @@
+<%= form_with(model: [:admin, proprietor], local: true, class: "needs-validation") do |f| %>
+  <% if proprietor.errors.any? %>
+    <div class="alert alert-danger shadow-sm border-0 mb-4">
+      <h6 class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Verifique os erros:</h6>
+      <ul class="mb-0 small">
+        <% proprietor.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row g-3">
+    <div class="col-md-4">
+      <%= f.label :vista_code, "Código", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :vista_code, class: "form-control #{'bg-light' if proprietor.persisted?}", readonly: proprietor.persisted? %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :role, "Tipo", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.select :role, [
+        ["Proprietário", "owner"],
+        ["Incorporadora", "developer"],
+        ["Construtora", "builder"],
+        ["Imobiliária", "real_estate_agency"],
+        ["Corretor", "broker"],
+        ["Parceiro", "partner"],
+        ["Investidor", "investor"]
+      ], {}, class: "form-select" %>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <label class="form-check-label d-flex align-items-center gap-2">
+        <%= f.check_box :is_client, class: "form-check-input" %>
+        Cliente
+      </label>
+    </div>
+
+    <div class="col-md-6">
+      <%= f.label :name, "Nome", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :name, class: "form-control", required: true, autocomplete: "name" %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :cpf_cnpj, "CPF / CNPJ", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :cpf_cnpj, class: "form-control", data: { controller: "mask", mask_type_value: "cpf_cnpj" } %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :rg_ie, "RG / IE", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :rg_ie, class: "form-control" %>
+    </div>
+
+    <div class="col-md-4">
+      <%= f.label :email, "E-mail", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.email_field :email, class: "form-control", autocomplete: "email" %>
+    </div>
+    <div class="col-md-2">
+      <%= f.label :phone_primary, "Telefone", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :phone_primary, class: "form-control", autocomplete: "tel", data: { controller: "mask", mask_type_value: "phone" } %>
+    </div>
+    <div class="col-md-2">
+      <%= f.label :mobile_phone, "Celular", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :mobile_phone, class: "form-control", autocomplete: "tel-national", data: { controller: "mask", mask_type_value: "phone" } %>
+    </div>
+    <div class="col-md-2">
+      <%= f.label :residential_phone, "Residencial", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :residential_phone, class: "form-control", autocomplete: "tel", data: { controller: "mask", mask_type_value: "phone" } %>
+    </div>
+    <div class="col-md-2">
+      <%= f.label :business_phone, "Comercial", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :business_phone, class: "form-control", autocomplete: "tel", data: { controller: "mask", mask_type_value: "phone" } %>
+    </div>
+
+    <div class="col-md-3">
+      <%= f.label :profession, "Profissão", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :profession, class: "form-control" %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :marital_status, "Estado civil", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.select :marital_status,
+                   options_for_select(Proprietor::MARITAL_STATUS_OPTIONS, f.object.marital_status),
+                   { include_blank: "Selecione..." },
+                   { class: "form-select", data: { controller: "tom-select", tom_select_create_value: true } } %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :marriage_regime, "Regime de casamento", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :marriage_regime, class: "form-control" %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :nationality, "Nacionalidade", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_field :nationality, class: "form-control" %>
+    </div>
+
+    <div class="col-md-3">
+      <%= f.label :capture_vehicle, "Veículo de captação", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.select :capture_vehicle,
+                   options_for_select(Proprietor::CAPTURE_VEHICLES, f.object.capture_vehicle),
+                   { include_blank: "Selecione..." },
+                   { class: "form-select", data: { controller: "tom-select", tom_select_create_value: true } } %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :registered_at, "Cadastro", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.date_field :registered_at, class: "form-control" %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :birth_date, "Data nascimento", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.date_field :birth_date, class: "form-control", autocomplete: "bday" %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :issuing_authority, "Emissor", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.select :issuing_authority,
+                   options_for_select(Proprietor::ISSUING_AUTHORITIES, f.object.issuing_authority),
+                   { include_blank: "Selecione..." },
+                   { class: "form-select", data: { controller: "tom-select", tom_select_create_value: true } } %>
+    </div>
+
+    <div class="col-12">
+      <div class="card border-0 bg-light-subtle">
+        <div class="card-header bg-transparent border-0 pb-0">
+          <h6 class="fw-bold text-primary mb-0">
+            <i class="bi bi-geo-alt me-2"></i>Endereço
+          </h6>
+        </div>
+        <div class="card-body pt-3">
+          <div data-controller="cep-search">
+            <div class="row g-3">
+              <div class="col-md-5">
+                <%= f.label :cep, "CEP", class: "form-label fw-bold small text-muted text-uppercase" %>
+                <div class="input-group">
+                  <%= f.text_field :cep,
+                                   class: "form-control",
+                                   placeholder: "00000-000",
+                                   autocomplete: "postal-code",
+                                   data: { controller: "mask", mask_type_value: "cep", cep_search_target: "cep", action: "blur->cep-search#search" } %>
+                  <button class="btn btn-outline-secondary" type="button" data-action="click->cep-search#search">
+                    <i class="bi bi-search me-1"></i> Buscar CEP
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <%= f.label :address_type, "Tipo de endereço", class: "form-label fw-bold small text-muted text-uppercase" %>
+                <%= f.select :address_type,
+                             options_for_select(Proprietor::ADDRESS_TYPES, f.object.address_type),
+                             { include_blank: "Selecione..." },
+                             { class: "form-select", data: { controller: "tom-select", tom_select_create_value: true, cep_search_target: "tipo" } } %>
+              </div>
+              <div class="col-md-2">
+                <%= f.label :uf, "UF", class: "form-label fw-bold small text-muted text-uppercase" %>
+                <%= f.select :uf, Habitation::UF_OPTIONS,
+                             { include_blank: "UF" },
+                             { class: "form-select", autocomplete: "address-level1", data: { cep_search_target: "uf" } } %>
+              </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+              <div class="col-md-6">
+                <%= f.label :street, "Logradouro", class: "form-label fw-bold small text-muted text-uppercase" %>
+                <%= f.text_field :street, class: "form-control", autocomplete: "address-line1", data: { cep_search_target: "logradouro" } %>
+              </div>
+              <div class="col-md-2">
+                <%= f.label :number, "Número", class: "form-label fw-bold small text-muted text-uppercase" %>
+                <%= f.text_field :number, class: "form-control", autocomplete: "address-line2", data: { cep_search_target: "numero" } %>
+              </div>
+              <div class="col-md-3">
+                <%= f.label :complement, "Complemento", class: "form-label fw-bold small text-muted text-uppercase" %>
+                <%= f.text_field :complement, class: "form-control", autocomplete: "address-line3", data: { cep_search_target: "complemento" } %>
+              </div>
+              <div class="col-md-1">
+                <%= f.label :block, "Bloco", class: "form-label fw-bold small text-muted text-uppercase" %>
+                <%= f.text_field :block, class: "form-control" %>
+              </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+              <div class="col-md-5">
+                <%= f.label :neighborhood, "Bairro", class: "form-label fw-bold small text-muted text-uppercase" %>
+                <%= f.text_field :neighborhood, class: "form-control", autocomplete: "address-level3", data: { cep_search_target: "bairro" } %>
+              </div>
+              <div class="col-md-5">
+                <%= f.label :city, "Cidade", class: "form-label fw-bold small text-muted text-uppercase" %>
+                <%= f.text_field :city, class: "form-control", autocomplete: "address-level2", data: { cep_search_target: "cidade" } %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :profile_image, "Imagem de perfil", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.file_field :profile_image, class: "form-control", accept: "image/*" %>
+      <% if proprietor.profile_image.attached? %>
+        <div class="mt-2">
+          <%= image_tag proprietor.profile_image, class: "img-thumbnail", style: "max-height: 120px;" %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="col-12">
+      <div class="card border-0 bg-light-subtle">
+        <div class="card-header bg-transparent border-0 pb-0">
+          <h6 class="fw-bold text-primary mb-0">
+            <i class="bi bi-people me-2"></i>Dados do Cônjuge
+          </h6>
+        </div>
+        <div class="card-body pt-3">
+          <div class="row g-3">
+            <div class="col-md-5">
+              <%= f.label :spouse_name, "Nome", class: "form-label fw-bold small text-muted text-uppercase" %>
+              <%= f.text_field :spouse_name, class: "form-control", autocomplete: "section-spouse name" %>
+            </div>
+            <div class="col-md-3">
+              <%= f.label :spouse_email, "E-mail", class: "form-label fw-bold small text-muted text-uppercase" %>
+              <%= f.email_field :spouse_email, class: "form-control", autocomplete: "section-spouse email" %>
+            </div>
+            <div class="col-md-2">
+              <%= f.label :spouse_phone, "Telefone", class: "form-label fw-bold small text-muted text-uppercase" %>
+              <%= f.text_field :spouse_phone, class: "form-control", autocomplete: "section-spouse tel", data: { controller: "mask", mask_type_value: "phone" } %>
+            </div>
+            <div class="col-md-2">
+              <%= f.label :spouse_cpf_cnpj, "CPF / CNPJ", class: "form-label fw-bold small text-muted text-uppercase" %>
+              <%= f.text_field :spouse_cpf_cnpj, class: "form-control", data: { controller: "mask", mask_type_value: "cpf_cnpj" } %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <%= f.label :notes, "Observações", class: "form-label fw-bold small text-muted text-uppercase" %>
+      <%= f.text_area :notes, class: "form-control", rows: 3 %>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-3">
+    <%= link_to "Cancelar", admin_proprietors_path, class: "btn btn-light" %>
+    <%= f.submit(proprietor.persisted? ? "Salvar Alterações" : "Cadastrar Proprietário", class: "btn btn-primary px-4 fw-bold") %>
+  </div>
+<% end %>

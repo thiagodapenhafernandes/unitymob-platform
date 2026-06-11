@@ -1,0 +1,55 @@
+<% if banner.present? %>
+  <% 
+    options ||= {}
+    # Use default container-custom unless specified otherwise
+    container_class = options.key?(:container_class) ? options[:container_class] : 'container-custom my-8'
+    force_mobile = options[:force_mobile] == true
+  %>
+  
+  <% desktop_image = banner.image_desktop.attached? ? banner.image_desktop : banner.image_mobile %>
+  <% mobile_image = banner.image_mobile.attached? ? banner.image_mobile : desktop_image %>
+  <% desktop_source = public_image_url(desktop_image, resize_to_limit: [1440, 360]) %>
+  <% mobile_source = public_image_url(mobile_image, resize_to_limit: [768, 360]) %>
+  <% image_classes = "w-full rounded-lg shadow-md hover:shadow-xl transition-shadow" %>
+  <% banner_body = capture do %>
+    <% if desktop_image&.attached? %>
+      <% if force_mobile %>
+        <%= image_tag mobile_source,
+              alt: banner.title,
+              class: image_classes,
+              loading: "lazy",
+              decoding: "async",
+              sizes: "100vw" %>
+      <% else %>
+        <picture>
+          <% if mobile_image&.attached? %>
+            <source media="(max-width: 768px)" srcset="<%= mobile_source %>">
+          <% end %>
+          <%= image_tag desktop_source,
+                alt: banner.title,
+                class: image_classes,
+                loading: "lazy",
+                decoding: "async",
+                sizes: "100vw" %>
+        </picture>
+      <% end %>
+    <% else %>
+      <div class="rounded-lg shadow-md bg-blue-three text-white p-6 md:p-8">
+        <h2 class="text-xl md:text-2xl font-bold mb-2"><%= banner.title %></h2>
+        <% if banner.description.present? %>
+          <p class="text-white/80 mb-0"><%= banner.description %></p>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <div class="<%= container_class %>">
+    <% if banner.link_url.present? %>
+      <%= link_to banner.link_url, target: '_blank', rel: "noopener", class: 'block' do %>
+        <%= banner_body %>
+      <% end %>
+    <% else %>
+      <%= banner_body %>
+    <% end %>
+  </div>
+<% end %>

@@ -1,0 +1,53 @@
+<% overlay_color = @home_setting.overlay_color || '#000000' %>
+<% overlay_opacity = @home_setting.overlay_opacity || 0.7 %>
+
+<!-- Hero Section - Cinematic Master Edition -->
+<section id="hero" class="relative min-h-[100dvh] md:h-[90vh] lg:h-screen pt-[env(safe-area-inset-top)] py-8 md:py-0 flex items-center justify-center bg-gray-900 overflow-x-clip"
+         data-controller="hero-slider" 
+         data-hero-slider-interval-value="10000"
+         style="--hero-overlay-start: <%= overlay_color %><%= format('%02x', (overlay_opacity * 255).to_i) %>; 
+                --hero-overlay-end: <%= overlay_color %><%= format('%02x', ((overlay_opacity * 0.45) * 255).to_i) %>;">
+  
+  <!-- Cinematic Slider Container -->
+  <div class="hero-slider-container">
+    <% (@hero_images.presence || [{ source: asset_path("hero_05.jpeg"), alt: "Salute Imóveis - Luxo e Exclusividade" }]).each_with_index do |image, index| %>
+      <% desktop_source = public_image_url(image[:source]) %>
+      <% mobile_source = public_image_url(image[:mobile_source] || image[:source]) %>
+      <div class="hero-slide <%= 'active' if index == 0 %>" data-hero-slider-target="slide">
+        <%= image_tag desktop_source,
+                      class: "hero-image", 
+                      alt: image[:alt],
+                      srcset: "#{mobile_source} 900w, #{desktop_source} 1920w",
+                      sizes: "100vw",
+                      fetchpriority: index == 0 ? "high" : "low",
+                      loading: index == 0 ? "eager" : "lazy",
+                      decoding: "async" %>
+      </div>
+    <% end %>
+  </div>
+  
+  <!-- Overlay with Premium Gradient -->
+  <div class="hero-overlay"></div>
+  
+  <!-- Content -->
+  <div class="container-custom hero-content-wrapper w-full">
+    <div class="text-center mb-6 md:mb-10 max-w-4xl mx-auto">
+      <h1 class="font-bold text-white mb-3 sm:mb-6 tracking-tight leading-tight px-2 break-words"
+          style="font-size: clamp(2rem, <%= @home_setting.hero_title_font_size_value %>px, 9vw);">
+        <%= @home_setting.hero_title || "Encontre o imóvel dos seus sonhos" %>
+      </h1>
+      <p class="text-white/90 max-w-2xl mx-auto font-medium px-4"
+         style="font-size: clamp(0.875rem, <%= @home_setting.hero_subtitle_font_size_value %>px, 4vw);">
+        <%= @home_setting.hero_subtitle || "As melhores oportunidades em Balneário Camboriú e região" %>
+      </p>
+    </div>
+
+    <!-- Search Form Imobill Style -->
+    <div class="relative z-20">
+      <%= render 'shared/search_hero_imobill' %>
+    </div>
+  </div>
+
+  <!-- Bottom Fade to Content (atrás do conteúdo, z baixo pra não cobrir o card) -->
+  <div class="absolute bottom-0 left-0 right-0 h-16 md:h-32 bg-gradient-to-t from-gray-900 to-transparent z-[5] pointer-events-none"></div>
+</section>

@@ -1,0 +1,6 @@
+<p class="<%= local_assigns.fetch(:class_name, "text-xs text-center text-gray-500 mt-3") %>">
+  Ao enviar, você concorda com a
+  <%= link_to "Política de Privacidade", privacy_policy_path, class: local_assigns.fetch(:link_class, "underline hover:text-blue-three"), target: "_blank", rel: "noopener" %>
+  e os
+  <%= link_to "Termos de Uso", terms_of_use_path, class: local_assigns.fetch(:link_class, "underline hover:text-blue-three"), target: "_blank", rel: "noopener" %>.
+</p>

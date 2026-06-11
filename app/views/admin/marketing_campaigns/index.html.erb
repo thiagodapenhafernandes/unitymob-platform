@@ -1,0 +1,81 @@
+<div class="container-fluid py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-bullseye me-2 text-primary"></i>Campanhas</h1>
+      <p class="text-muted small mb-0">Planeje ações para SEO, tráfego pago, Instagram, WhatsApp, Home e Rodapé.</p>
+    </div>
+    <%= link_to new_admin_marketing_campaign_path, class: "btn btn-primary btn-sm" do %>
+      <i class="bi bi-plus-circle me-1"></i>Nova campanha
+    <% end %>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2 d-flex flex-wrap gap-2">
+      <%= link_to "Todas", admin_marketing_campaigns_path, class: "btn btn-sm #{@status.blank? ? 'btn-primary' : 'btn-outline-primary'}" %>
+      <% MarketingCampaign::STATUSES.each do |key, label| %>
+        <%= link_to label, admin_marketing_campaigns_path(status: key), class: "btn btn-sm #{@status == key ? 'btn-primary' : 'btn-outline-primary'}" %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Campanha</th>
+            <th>Canal</th>
+            <th>Status</th>
+            <th>Prioridade</th>
+            <th>Período</th>
+            <th class="text-center">Cliques</th>
+            <th class="text-center">Conversões</th>
+            <th class="text-center">Taxa</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @campaigns.each do |campaign| %>
+            <tr>
+              <td>
+                <div class="fw-bold"><%= campaign.name %></div>
+                <% if campaign.target_url.present? %>
+                  <%= link_to campaign.target_url, campaign.target_url, target: "_blank", rel: "noopener", class: "small text-muted" %>
+                <% end %>
+                <% if campaign.generated_url(request.base_url).present? %>
+                  <input type="text" class="form-control form-control-sm mt-2" readonly value="<%= campaign.generated_url(request.base_url) %>">
+                <% end %>
+                <% if campaign.seo_setting %>
+                  <div class="small text-muted">SEO: <%= campaign.seo_setting.display_name %></div>
+                <% end %>
+              </td>
+              <td><span class="badge bg-light text-dark border"><%= campaign.channel_label %></span></td>
+              <td><span class="badge bg-<%= campaign.status_badge_class %>"><%= campaign.status_label %></span></td>
+              <td><%= campaign.priority %></td>
+              <td class="small text-muted">
+                <%= [campaign.starts_on&.strftime("%d/%m/%Y"), campaign.ends_on&.strftime("%d/%m/%Y")].compact.join(" - ").presence || "Sem período" %>
+              </td>
+              <td class="text-center fw-bold"><%= number_with_delimiter(campaign.clicks_count) %></td>
+              <td class="text-center fw-bold"><%= number_with_delimiter(campaign.conversions_count) %></td>
+              <td class="text-center"><span class="badge bg-light text-dark border"><%= campaign.conversion_rate %>%</span></td>
+              <td class="text-end">
+                <%= link_to edit_admin_marketing_campaign_path(campaign), class: "btn btn-sm btn-outline-primary" do %>
+                  <i class="bi bi-pencil"></i>
+                <% end %>
+                <%= button_to admin_marketing_campaign_path(campaign), method: :delete, class: "btn btn-sm btn-outline-danger d-inline-flex", form: { class: "d-inline", data: { turbo_confirm: "Remover esta campanha?" } } do %>
+                  <i class="bi bi-trash"></i>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          <% if @campaigns.blank? %>
+            <tr><td colspan="9" class="text-center text-muted py-5">Nenhuma campanha cadastrada.</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body py-2 border-top d-flex justify-content-end">
+      <%= will_paginate @campaigns, renderer: WillPaginate::ActionView::BootstrapLinkRenderer, class: "pagination-sm mb-0" %>
+    </div>
+  </div>
+</div>

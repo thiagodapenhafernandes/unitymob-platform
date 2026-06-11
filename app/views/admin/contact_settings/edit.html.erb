@@ -1,0 +1,249 @@
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="mb-1"><i class="bi bi-telephone-fill"></i> Informações de Contato</h1>
+      <p class="text-muted mb-0">Configure os canais de comunicação da empresa</p>
+    </div>
+    <%= link_to 'Voltar', admin_root_path, class: 'btn btn-outline-secondary' %>
+  </div>
+
+  <%= form_with(model: @contact_setting, url: admin_contact_setting_path, method: :patch) do |f| %>
+    <% if @contact_setting.errors.any? %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i><%= pluralize(@contact_setting.errors.count, "erro") %> encontrado:</h5>
+        <ul class="mb-0">
+          <% @contact_setting.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% end %>
+
+    <div class="row g-4">
+      <!-- Contact Information -->
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-primary bg-opacity-10 border-0">
+            <h5 class="mb-0 text-primary">
+              <i class="bi bi-person-lines-fill me-2"></i>Contato Principal
+            </h5>
+          </div>
+          <div class="card-body">
+            <!-- WhatsApp Primary -->
+            <div class="mb-4">
+              <%= f.label :whatsapp_primary, class: "form-label fw-bold" do %>
+                <i class="bi bi-whatsapp text-success me-2"></i>WhatsApp Principal
+              <% end %>
+              <div class="input-group">
+                <span class="input-group-text bg-success bg-opacity-10">
+                  <i class="bi bi-whatsapp text-success"></i>
+                </span>
+                <%= f.text_field :whatsapp_primary, class: "form-control", placeholder: "5547991234567" %>
+              </div>
+              <small class="text-muted">Formato: código do país + DDD + número (sem espaços)</small>
+            </div>
+
+            <!-- Phone -->
+            <div class="mb-4">
+              <%= f.label :phone, class: "form-label fw-bold" do %>
+                <i class="bi bi-telephone text-primary me-2"></i>Telefone Fixo
+              <% end %>
+              <div class="input-group">
+                <span class="input-group-text bg-primary bg-opacity-10">
+                  <i class="bi bi-telephone text-primary"></i>
+                </span>
+                <%= f.text_field :phone, class: "form-control", placeholder: "(47) 3311-1067" %>
+              </div>
+              <small class="text-muted">Telefone fixo da empresa</small>
+            </div>
+
+            <!-- Email -->
+            <div class="mb-4">
+              <%= f.label :email_primary, class: "form-label fw-bold" do %>
+                <i class="bi bi-envelope text-danger me-2"></i>Email Principal
+              <% end %>
+              <div class="input-group">
+                <span class="input-group-text bg-danger bg-opacity-10">
+                  <i class="bi bi-envelope text-danger"></i>
+                </span>
+                <%= f.email_field :email_primary, class: "form-control", placeholder: "contato@saluteimoveis.com" %>
+              </div>
+              <small class="text-muted">Email principal para contato</small>
+            </div>
+
+            <!-- WhatsApp Secondary -->
+            <div class="mb-0">
+              <%= f.label :whatsapp_secondary, class: "form-label fw-bold" do %>
+                <i class="bi bi-whatsapp text-success me-2"></i>WhatsApp Secundário
+                <span class="badge bg-secondary ms-2">Opcional</span>
+              <% end %>
+              <div class="input-group">
+                <span class="input-group-text bg-success bg-opacity-10">
+                  <i class="bi bi-whatsapp text-success"></i>
+                </span>
+                <%= f.text_field :whatsapp_secondary, class: "form-control", placeholder: "5547991234567" %>
+              </div>
+              <small class="text-muted">WhatsApp alternativo (opcional)</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Social Media -->
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-info bg-opacity-10 border-0">
+            <h5 class="mb-0 text-info">
+              <i class="bi bi-share-fill me-2"></i>Redes Sociais
+            </h5>
+          </div>
+          <div class="card-body">
+            <!-- Facebook -->
+            <div class="mb-4">
+              <%= f.label :facebook_url, class: "form-label fw-bold" do %>
+                <i class="bi bi-facebook text-primary me-2"></i>Facebook
+              <% end %>
+              <div class="input-group">
+                <span class="input-group-text bg-primary bg-opacity-10">
+                  <i class="bi bi-facebook text-primary"></i>
+                </span>
+                <%= f.url_field :facebook_url, class: "form-control", placeholder: "https://facebook.com/saluteimoveis" %>
+              </div>
+              <small class="text-muted">URL completa da página do Facebook</small>
+            </div>
+
+            <!-- Instagram -->
+            <div class="mb-4">
+              <%= f.label :instagram_url, class: "form-label fw-bold" do %>
+                <i class="bi bi-instagram text-danger me-2"></i>Instagram
+              <% end %>
+              <div class="input-group">
+                <span class="input-group-text bg-danger bg-opacity-10">
+                  <i class="bi bi-instagram text-danger"></i>
+                </span>
+                <%= f.url_field :instagram_url, class: "form-control", placeholder: "https://instagram.com/saluteimoveis" %>
+              </div>
+              <small class="text-muted">URL completa do perfil do Instagram</small>
+            </div>
+
+            <!-- YouTube -->
+            <div class="mb-4">
+              <%= f.label :youtube_url, class: "form-label fw-bold" do %>
+                <i class="bi bi-youtube text-danger me-2"></i>YouTube
+              <% end %>
+              <div class="input-group">
+                <span class="input-group-text bg-danger bg-opacity-10">
+                  <i class="bi bi-youtube text-danger"></i>
+                </span>
+                <%= f.url_field :youtube_url, class: "form-control", placeholder: "https://youtube.com/@saluteimoveis" %>
+              </div>
+              <small class="text-muted">URL completa do canal do YouTube</small>
+            </div>
+
+            <!-- LinkedIn -->
+            <div class="mb-0">
+              <%= f.label :linkedin_url, class: "form-label fw-bold" do %>
+                <i class="bi bi-linkedin text-primary me-2"></i>LinkedIn
+              <% end %>
+              <div class="input-group">
+                <span class="input-group-text bg-primary bg-opacity-10">
+                  <i class="bi bi-linkedin text-primary"></i>
+                </span>
+                <%= f.url_field :linkedin_url, class: "form-control", placeholder: "https://linkedin.com/company/saluteimoveis" %>
+              </div>
+              <small class="text-muted">URL completa da página do LinkedIn</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Section -->
+    <div class="card shadow-sm border-0 mt-4">
+      <div class="card-header bg-warning bg-opacity-10 border-0">
+        <h5 class="mb-0 text-warning">
+          <i class="bi bi-eye-fill me-2"></i>Preview dos Links
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <div class="d-flex align-items-center p-3 bg-light rounded">
+              <i class="bi bi-whatsapp text-success fs-3 me-3"></i>
+              <div>
+                <small class="text-muted d-block">WhatsApp</small>
+                <strong class="text-success"><%= @contact_setting.whatsapp_primary || "Não configurado" %></strong>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="d-flex align-items-center p-3 bg-light rounded">
+              <i class="bi bi-telephone text-primary fs-3 me-3"></i>
+              <div>
+                <small class="text-muted d-block">Telefone</small>
+                <strong class="text-primary"><%= @contact_setting.phone || "Não configurado" %></strong>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="d-flex align-items-center p-3 bg-light rounded">
+              <i class="bi bi-envelope text-danger fs-3 me-3"></i>
+              <div class="flex-grow-1">
+                <small class="text-muted d-block">Email</small>
+                <strong class="text-danger text-truncate d-block"><%= @contact_setting.email_primary || "Não configurado" %></strong>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="row g-3 mt-2">
+          <div class="col-12">
+            <p class="text-muted mb-2"><i class="bi bi-share me-2"></i>Redes Sociais Configuradas:</p>
+            <div class="d-flex gap-2 flex-wrap">
+              <% if @contact_setting.facebook_url.present? %>
+                <a href="<%= @contact_setting.facebook_url %>" target="_blank" class="btn btn-outline-primary btn-sm">
+                  <i class="bi bi-facebook me-1"></i>Facebook
+                </a>
+              <% end %>
+              <% if @contact_setting.instagram_url.present? %>
+                <a href="<%= @contact_setting.instagram_url %>" target="_blank" class="btn btn-outline-danger btn-sm">
+                  <i class="bi bi-instagram me-1"></i>Instagram
+                </a>
+              <% end %>
+              <% if @contact_setting.youtube_url.present? %>
+                <a href="<%= @contact_setting.youtube_url %>" target="_blank" class="btn btn-outline-danger btn-sm">
+                  <i class="bi bi-youtube me-1"></i>YouTube
+                </a>
+              <% end %>
+              <% if @contact_setting.linkedin_url.present? %>
+                <a href="<%= @contact_setting.linkedin_url %>" target="_blank" class="btn btn-outline-primary btn-sm">
+                  <i class="bi bi-linkedin me-1"></i>LinkedIn
+                </a>
+              <% end %>
+              <% if [@contact_setting.facebook_url, @contact_setting.instagram_url, @contact_setting.youtube_url, @contact_setting.linkedin_url].all?(&:blank?) %>
+                <span class="text-muted fst-italic">Nenhuma rede social configurada</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Alert -->
+    <div class="alert alert-info mt-4">
+      <i class="bi bi-info-circle me-2"></i>
+      <strong>Importante:</strong> Essas informações são exibidas no footer do site e na página de contato. Certifique-se de que todos os links estejam corretos e funcionando.
+    </div>
+
+    <!-- Save Button -->
+    <div class="d-flex justify-content-between align-items-center mt-4 p-4 bg-light rounded">
+      <div>
+        <i class="bi bi-shield-check text-success me-2"></i>
+        <span class="text-muted">As informações serão atualizadas em todo o site</span>
+      </div>
+      <%= f.submit "Salvar Configurações", class: "btn btn-primary btn-lg px-5", data: { disable_with: "Salvando..." } %>
+    </div>
+  <% end %>
+</div>

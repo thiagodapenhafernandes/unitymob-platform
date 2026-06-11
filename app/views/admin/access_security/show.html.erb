@@ -1,0 +1,298 @@
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800">
+      <i class="bi bi-fingerprint text-primary me-2"></i>Segurança de Acesso
+    </h1>
+    <p class="text-muted mb-0">Controle logins administrativos por IP e aparelho, sem bloquear a navegação pública do site.</p>
+  </div>
+  <%= link_to admin_access_audit_logs_path, class: "btn btn-outline-primary btn-sm" do %>
+    <i class="bi bi-person-lock me-1"></i> Ver auditoria
+  <% end %>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-bold">Regras ativas</div>
+        <div class="display-6 fw-bold"><%= @rules.select(&:enabled?).size %></div>
+        <div class="text-muted small">IPs permitidos, bloqueados ou ignorados nas métricas.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-bold">Aparelhos pendentes</div>
+        <div class="display-6 fw-bold"><%= @trusted_devices.count { |device| device.status == "pending" } %></div>
+        <div class="text-muted small">Aguardando aprovação quando a exigência estiver ativa.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-bold">Modo corretores</div>
+        <div class="fw-bold mt-2">
+          <span class="badge <%= @broker_ip_allowlist_enabled ? 'bg-primary' : 'bg-secondary' %>">IP <%= @broker_ip_allowlist_enabled ? 'obrigatório' : 'opcional' %></span>
+          <span class="badge <%= @broker_trusted_devices_enabled ? 'bg-primary' : 'bg-secondary' %>">Aparelho <%= @broker_trusted_devices_enabled ? 'obrigatório' : 'opcional' %></span>
+        </div>
+        <div class="text-muted small mt-2">Admin continua podendo ter regra individual.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ul class="nav nav-tabs mb-4" id="accessSecurityTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link <%= @active_tab == "settings" ? "active" : "" %>" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-pane" type="button" role="tab">
+      Configurações
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link <%= @active_tab == "rules" ? "active" : "" %>" id="rules-tab" data-bs-toggle="tab" data-bs-target="#rules-pane" type="button" role="tab">
+      Regras de IP
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link <%= @active_tab == "devices" ? "active" : "" %>" id="devices-tab" data-bs-toggle="tab" data-bs-target="#devices-pane" type="button" role="tab">
+      Aparelhos
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+  <div class="tab-pane fade <%= @active_tab == "settings" ? "show active" : "" %>" id="settings-pane" role="tabpanel" aria-labelledby="settings-tab">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3">
+        <h2 class="h5 mb-0 fw-bold">Regras gerais para corretores</h2>
+      </div>
+      <div class="card-body">
+        <%= form_with url: admin_access_security_path, method: :patch, local: true do %>
+          <div class="form-check form-switch mb-3">
+            <%= check_box_tag :enforce_broker_ip_allowlist, "1", @broker_ip_allowlist_enabled, class: "form-check-input", id: "enforce_broker_ip_allowlist" %>
+            <%= label_tag :enforce_broker_ip_allowlist, "Corretores só podem logar por IP permitido", class: "form-check-label fw-semibold" %>
+            <div class="form-text">Use para exigir rede da imobiliária, VPN ou faixas específicas para perfis não administrativos.</div>
+          </div>
+
+          <div class="form-check form-switch mb-4">
+            <%= check_box_tag :enforce_broker_trusted_devices, "1", @broker_trusted_devices_enabled, class: "form-check-input", id: "enforce_broker_trusted_devices" %>
+            <%= label_tag :enforce_broker_trusted_devices, "Corretores só podem logar em aparelhos aprovados", class: "form-check-label fw-semibold" %>
+            <div class="form-text">Ao tentar logar em aparelho novo, ele fica pendente para aprovação nesta tela.</div>
+          </div>
+
+          <%= submit_tag "Salvar configurações", class: "btn btn-primary" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade <%= @active_tab == "rules" ? "show active" : "" %>" id="rules-pane" role="tabpanel" aria-labelledby="rules-tab">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3">
+        <h2 class="h5 mb-0 fw-bold">Nova regra de IP</h2>
+      </div>
+      <div class="card-body">
+        <%= form_with model: [:admin, @new_rule], url: admin_access_control_rules_path, local: true, class: "row g-3 align-items-end" do |f| %>
+          <div class="col-md-3">
+            <%= f.label :name, "Nome", class: "form-label fw-semibold" %>
+            <%= f.text_field :name, class: "form-control", placeholder: "Ex: Loja Centro" %>
+          </div>
+          <div class="col-md-2">
+            <%= f.label :rule_type, "Tipo", class: "form-label fw-semibold" %>
+            <%= f.select :rule_type, AccessControlRule::RULE_TYPES.map { |key, label| [label, key] }, {}, class: "form-select" %>
+          </div>
+          <div class="col-md-2">
+            <%= f.label :ip_value, "IP ou CIDR", class: "form-label fw-semibold" %>
+            <%= f.text_field :ip_value, class: "form-control", placeholder: "189.1.2.3 ou 189.1.2.0/24" %>
+          </div>
+          <div class="col-md-2">
+            <%= f.label :scope_type, "Aplicar para", class: "form-label fw-semibold" %>
+            <%= f.select :scope_type, AccessControlRule::SCOPE_TYPES.map { |key, label| [label, key] }, {}, class: "form-select" %>
+          </div>
+          <div class="col-md-3">
+            <%= f.label :description, "Observação", class: "form-label fw-semibold" %>
+            <%= f.text_field :description, class: "form-control", placeholder: "Uso interno, VPN, campanha..." %>
+          </div>
+          <div class="col-md-6">
+            <%= f.label :profile_id, "Perfil", class: "form-label fw-semibold" %>
+            <%= f.collection_select :profile_id, @profiles, :id, :name, { prompt: "Somente quando aplicar para Perfil" }, { class: "form-select", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." } } } %>
+          </div>
+          <div class="col-md-6">
+            <%= f.label :admin_user_id, "Usuário", class: "form-label fw-semibold" %>
+            <%= f.select :admin_user_id, @admin_users.map { |user| ["#{user.name} · #{user.email}", user.id] }, { prompt: "Somente quando aplicar para Usuário" }, { class: "form-select", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." } } } %>
+          </div>
+          <div class="col-12">
+            <%= f.submit "Adicionar regra", class: "btn btn-primary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white py-3">
+        <h2 class="h5 mb-0 fw-bold">Regras cadastradas</h2>
+      </div>
+      <div class="card-body border-bottom">
+        <%= form_with url: admin_access_security_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
+          <div class="col-md-2">
+            <%= label_tag :rule_type, "Tipo", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :rule_type, options_for_select([["Todos", ""], *AccessControlRule::RULE_TYPES.map { |key, label| [label, key] }], params[:rule_type]), class: "form-select form-select-sm" %>
+          </div>
+          <div class="col-md-2">
+            <%= label_tag :scope_type, "Aplicar para", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :scope_type, options_for_select([["Todos", ""], *AccessControlRule::SCOPE_TYPES.map { |key, label| [label, key] }], params[:scope_type]), class: "form-select form-select-sm" %>
+          </div>
+          <div class="col-md-2">
+            <%= label_tag :rule_enabled, "Status", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :rule_enabled, options_for_select([["Todos", ""], ["Ativa", "true"], ["Inativa", "false"]], params[:rule_enabled]), class: "form-select form-select-sm" %>
+          </div>
+          <div class="col-md-2">
+            <%= label_tag :rule_profile_id, "Perfil", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :rule_profile_id, options_from_collection_for_select(@profiles, :id, :name, params[:rule_profile_id]), include_blank: "Todos", class: "form-select form-select-sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." } } %>
+          </div>
+          <div class="col-md-2">
+            <%= label_tag :rule_admin_user_id, "Usuário", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :rule_admin_user_id, options_from_collection_for_select(@admin_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:rule_admin_user_id]), include_blank: "Todos", class: "form-select form-select-sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." } } %>
+          </div>
+          <div class="col-md-2">
+            <%= label_tag :rule_ip, "IP contém", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= text_field_tag :rule_ip, params[:rule_ip], class: "form-control form-control-sm", placeholder: "127.0.0.1" %>
+          </div>
+          <div class="col-md-2 d-grid">
+            <%= submit_tag "Filtrar", class: "btn btn-primary btn-sm" %>
+          </div>
+          <div class="col-md-2 d-grid">
+            <%= link_to "Limpar", admin_access_security_path(anchor: "rules-pane"), class: "btn btn-outline-secondary btn-sm" %>
+          </div>
+        <% end %>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Regra</th>
+              <th>Tipo</th>
+              <th>IP</th>
+              <th>Aplicação</th>
+              <th>Status</th>
+              <th class="text-end">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @rules.each do |rule| %>
+              <tr>
+                <td>
+                  <div class="fw-semibold"><%= rule.name %></div>
+                  <% if rule.description.present? %>
+                    <div class="small text-muted"><%= rule.description %></div>
+                  <% end %>
+                </td>
+                <td><%= rule.rule_type_label %></td>
+                <td><code><%= rule.ip_value %></code></td>
+                <td><%= rule.scope_label %></td>
+                <td>
+                  <span class="badge <%= rule.enabled? ? 'bg-success' : 'bg-secondary' %>"><%= rule.enabled? ? 'Ativa' : 'Inativa' %></span>
+                </td>
+                <td class="text-end">
+                  <%= form_with model: [:admin, rule], local: true, class: "d-inline" do |f| %>
+                    <%= f.hidden_field :enabled, value: (!rule.enabled?).to_s %>
+                    <%= f.submit(rule.enabled? ? "Desativar" : "Ativar", class: "btn btn-sm btn-outline-secondary") %>
+                  <% end %>
+                  <%= button_to "Remover", admin_access_control_rule_path(rule), method: :delete, class: "btn btn-sm btn-outline-danger", form: { class: "d-inline", data: { turbo_confirm: "Remover esta regra?" } } %>
+                </td>
+              </tr>
+            <% end %>
+            <% if @rules.empty? %>
+              <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma regra cadastrada.</td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade <%= @active_tab == "devices" ? "show active" : "" %>" id="devices-pane" role="tabpanel" aria-labelledby="devices-tab">
+    <div class="card border-0 shadow-sm" id="devices">
+      <div class="card-header bg-white py-3">
+        <h2 class="h5 mb-0 fw-bold">Aparelhos identificados</h2>
+      </div>
+      <div class="card-body border-bottom">
+        <%= form_with url: admin_access_security_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
+          <div class="col-md-2">
+            <%= label_tag :device_status, "Status", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :device_status, options_for_select([["Todos", ""], *TrustedDevice::STATUSES.map { |key, label| [label, key] }], params[:device_status]), class: "form-select form-select-sm" %>
+          </div>
+          <div class="col-md-2">
+            <%= label_tag :device_profile_id, "Perfil", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :device_profile_id, options_from_collection_for_select(@profiles, :id, :name, params[:device_profile_id]), include_blank: "Todos", class: "form-select form-select-sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." } } %>
+          </div>
+          <div class="col-md-3">
+            <%= label_tag :device_admin_user_id, "Usuário", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :device_admin_user_id, options_from_collection_for_select(@admin_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:device_admin_user_id]), include_blank: "Todos", class: "form-select form-select-sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." } } %>
+          </div>
+          <div class="col-md-2">
+            <%= label_tag :device_type, "Dispositivo", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :device_type, options_for_select([["Todos", ""]] + @available_device_types.map { |value| [value, value] }, params[:device_type]), class: "form-select form-select-sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar dispositivo..." } } %>
+          </div>
+          <div class="col-md-2">
+            <%= label_tag :device_browser, "Navegador", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= select_tag :device_browser, options_for_select([["Todos", ""]] + @available_browsers.map { |value| [value, value] }, params[:device_browser]), class: "form-select form-select-sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar navegador..." } } %>
+          </div>
+          <div class="col-md-2">
+            <%= label_tag :device_ip, "IP", class: "form-label small fw-bold text-muted text-uppercase" %>
+            <%= text_field_tag :device_ip, params[:device_ip], class: "form-control form-control-sm", placeholder: "127.0.0.1" %>
+          </div>
+          <div class="col-md-2 d-grid">
+            <%= submit_tag "Filtrar", class: "btn btn-primary btn-sm" %>
+          </div>
+          <div class="col-md-2 d-grid">
+            <%= link_to "Limpar", admin_access_security_path(anchor: "devices"), class: "btn btn-outline-secondary btn-sm" %>
+          </div>
+        <% end %>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Usuário</th>
+              <th>Aparelho</th>
+              <th>Último IP</th>
+              <th>Status</th>
+              <th>Último uso</th>
+              <th class="text-end">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @trusted_devices.each do |device| %>
+              <tr>
+                <td>
+                  <div class="fw-semibold"><%= device.admin_user.name %></div>
+                  <div class="small text-muted"><%= device.admin_user.email %></div>
+                </td>
+                <td>
+                  <div><%= device.name.presence || device.device_label %></div>
+                  <div class="small text-muted"><%= device.fingerprint.first(12) %>...</div>
+                </td>
+                <td><code><%= device.last_ip %></code></td>
+                <td>
+                  <% badge_class = { "trusted" => "bg-success", "blocked" => "bg-danger", "pending" => "bg-warning text-dark" }[device.status] || "bg-secondary" %>
+                  <span class="badge <%= badge_class %>"><%= device.status_label %></span>
+                </td>
+                <td><%= l(device.last_seen_at || device.created_at, format: :short) %></td>
+                <td class="text-end">
+                  <%= button_to "Aprovar", admin_trusted_device_path(device, status: "trusted"), method: :patch, class: "btn btn-sm btn-outline-success", form: { class: "d-inline" } unless device.status == "trusted" %>
+                  <%= button_to "Bloquear", admin_trusted_device_path(device, status: "blocked"), method: :patch, class: "btn btn-sm btn-outline-danger", form: { class: "d-inline" } unless device.status == "blocked" %>
+                  <%= button_to "Remover", admin_trusted_device_path(device), method: :delete, class: "btn btn-sm btn-outline-secondary", form: { class: "d-inline", data: { turbo_confirm: "Remover este aparelho?" } } %>
+                </td>
+              </tr>
+            <% end %>
+            <% if @trusted_devices.empty? %>
+              <tr><td colspan="6" class="text-center text-muted py-4">Nenhum aparelho identificado ainda.</td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

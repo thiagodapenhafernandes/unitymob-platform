@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <%
+      seo = current_public_seo_setting || SeoSetting.for_page(@page_name || 'home')
+      seo_public = seo&.public_applicable?
+      effective_title = (seo_public ? seo.meta_title.presence : nil) || @page_title || "#{@layout_setting&.site_name.presence || 'Salute Imóveis'} - Encontre seu Imóvel Ideal"
+      effective_description = (seo_public ? seo.meta_description.presence : nil) || @page_description || "Os melhores imóveis para venda e locação. Encontre seu imóvel ideal com a #{@layout_setting&.site_name.presence || 'Salute Imóveis'}."
+      effective_keywords = (seo_public ? seo.meta_keywords.presence : nil) || @page_keywords
+      effective_robots = seo_public ? seo.robots_content : "index, follow"
+      effective_robots = "noindex, follow" if params[:page].to_i >= 3
+    %>
+    
+    <%# Dynamic Metadata %>
+    <title><%= effective_title %></title>
+    <meta name="description" content="<%= strip_tags(effective_description) %>">
+    <% if effective_keywords.present? %>
+      <meta name="keywords" content="<%= effective_keywords %>">
+    <% end %>
+    <meta name="author" content="<%= @layout_setting&.site_name.presence || 'Salute Imóveis' %>">
+    <meta name="robots" content="<%= effective_robots %>">
+    
+    <%# Resource Hints %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <% if defined?(@hero_preload_source) && @hero_preload_source.present? %>
+      <% hero_preload_source = public_image_url(@hero_preload_source) %>
+      <% hero_preload_mobile_source = public_image_url(@hero_preload_mobile_source || @hero_preload_source) %>
+      <link rel="preload"
+            as="image"
+            href="<%= hero_preload_source %>"
+            imagesrcset="<%= "#{hero_preload_mobile_source} 900w, #{hero_preload_source} 1920w" %>"
+            imagesizes="100vw"
+            fetchpriority="high">
+    <% end %>
+    
+    <%# Image Metadata Logic %>
+    <% 
+      sanitize_utf8 = ->(value) { value.to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "").scrub }
+      final_image = seo&.social_image_url(base_url: request.base_url, page_image: @page_image) || "#{request.base_url}/icon.png"
+      canonical_url = sanitize_utf8.call(seo_public ? seo.public_url(request.base_url) : request.original_url)
+      og_title = sanitize_utf8.call((seo_public ? seo.og_title.presence : nil) || effective_title)
+      og_description = strip_tags((seo_public ? seo.og_description.presence : nil) || effective_description)
+      social_property = defined?(@habitation) ? @habitation : nil
+      og_type = social_property.present? ? "product" : "website"
+      image_alt = sanitize_utf8.call([og_title, @layout_setting&.site_name.presence || "Salute Imóveis"].reject(&:blank?).join(" | "))
+      social_price_cents = if social_property.present?
+        social_property.valor_venda_cents.to_i.positive? ? social_property.valor_venda_cents : social_property.valor_locacao_cents
+      end
+      social_price_value = (social_price_cents || 0).to_i
+      social_price_amount = social_price_value.positive? ? format("%.2f", social_price_value / 100.0) : nil
+      social_modified_at = (seo&.updated_at || social_property&.updated_at)
+    %>
+    
+    <%# Open Graph / Facebook %>
+    <meta property="og:type" content="<%= og_type %>">
+    <meta property="og:url" content="<%= canonical_url %>">
+    <meta property="og:title" content="<%= og_title %>">
+    <meta property="og:description" content="<%= og_description %>">
+    <meta property="og:site_name" content="<%= @layout_setting&.site_name.presence || 'Salute Imóveis' %>">
+    <meta property="og:locale" content="pt_BR">
+    <meta property="og:image" content="<%= final_image %>">
+    <meta property="og:image:secure_url" content="<%= final_image.to_s.sub('http://', 'https://') %>">
+    <meta property="og:image:alt" content="<%= image_alt %>">
+    <% if social_modified_at.present? %>
+      <meta property="og:updated_time" content="<%= social_modified_at.iso8601 %>">
+    <% end %>
+    <% if social_property.present? && social_price_amount.present? %>
+      <meta property="product:price:amount" content="<%= social_price_amount %>">
+      <meta property="product:price:currency" content="BRL">
+      <meta property="product:availability" content="in stock">
+    <% end %>
+    
+    <%# Twitter %>
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="<%= canonical_url %>">
+    <meta name="twitter:title" content="<%= og_title %>">
+    <meta name="twitter:description" content="<%= og_description %>">
+    <meta name="twitter:image" content="<%= final_image %>">
+    <meta name="twitter:image:alt" content="<%= image_alt %>">
+    
+    <link rel="canonical" href="<%= canonical_url %>">
+    <% if @layout_setting&.favicon&.attached? %>
+      <link rel="icon" href="<%= rails_blob_path(@layout_setting.favicon) %>">
+    <% else %>
+      <link rel="icon" href="<%= asset_path "salute.icon.svg" %>">
+    <% end %>
+    
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= render "layouts/tracking_head" %>
+    <%= yield :head %>
+
+    <%# Critical Third Party Styles %>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" media="print" onload="this.media='all'">
+
+    <%# Fonts loading with swap %>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    
+    <%# Layout Settings (Colors) %>
+    <style>
+      :root {
+        --color-primary: <%= @layout_setting&.primary_color || '#022B3A' %>;
+        --color-secondary: <%= @layout_setting&.secondary_color || '#053C5E' %>;
+        --color-accent: <%= @layout_setting&.accent_color || '#BFAB25' %>;
+        --color-hero-button: <%= @home_setting&.hero_button_color || '#BFAB25' %>;
+        --color-hero-button-text: <%= @home_setting&.hero_button_text_color || '#FFFFFF' %>;
+      }
+    </style>
+
+    <%# Theme Styles %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    
+    <%# JS with Defer %>
+    <%= javascript_importmap_tags "public" %>
+  </head>
+
+  <body class="antialiased"
+        data-controller="lead-capture"
+        data-lead-capture-enabled-value="<%= WebhookSetting.active.where(lead_capture_enabled: true).exists? %>"
+        data-lead-capture-phone-settings-value="<%= json_escape(WhatsappBusinessIntegration.site_phone_settings.to_json) %>"
+        data-lead-capture-share-token-value="<%= @lead_share_token %>">
+    <%= render "layouts/tracking_body" %>
+    <%= render 'layouts/header' %>
+    
+    <main role="main">
+      <% if flash[:notice] %>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+          <%= flash[:notice] %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      <% end %>
+      
+      <% if flash[:alert] %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <%= flash[:alert] %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      <% end %>
+      
+      <%= yield %>
+    </main>
+    
+    <%= render 'layouts/footer' %>
+    
+    <%# Performance: Defer non-critical external libraries %>
+    <script>
+      function loadDeferredAssets() {
+        var scripts = [
+          'https://unpkg.com/aos@2.3.1/dist/aos.js'
+        ];
+
+        scripts.forEach(function(src) {
+          if (document.querySelector('script[src="' + src + '"]')) return;
+
+          var s = document.createElement('script');
+          s.src = src;
+          s.async = true;
+          if (src.includes('aos.js')) {
+            s.onload = function() { AOS.init({ duration: 800, once: true }); };
+          }
+          document.body.appendChild(s);
+        });
+      }
+
+      if (window.addEventListener) window.addEventListener('load', loadDeferredAssets);
+      else if (window.attachEvent) window.attachEvent('onload', loadDeferredAssets);
+    </script>
+    
+    <%= render 'shared/code_search_modal' %>
+    <%= render 'shared/lead_modal' %>
+    <%= render 'shared/lgpd_consent' %>
+  </body>
+</html>

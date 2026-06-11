@@ -1,0 +1,88 @@
+<%
+  status = local_assigns[:status] || Vista::SyncStatusService.new.snapshot
+  stats = status[:stats] || {}
+  show = status[:status] == "processing" || (status[:finished_at].present? && status[:finished_at] > 15.minutes.ago)
+  color = case status[:status]
+          when "processing" then "primary"
+          when "completed"  then "success"
+          when "failed"     then "danger"
+          else "secondary"
+          end
+%>
+
+<% if show %>
+  <div id="vista-sync-panel"
+       class="card border-0 shadow-sm mb-4"
+       data-controller="vista-sync-status"
+       data-vista-sync-status-url-value="<%= vista_sync_status_admin_admin_users_path %>"
+       data-vista-sync-status-status-value="<%= status[:status] %>">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+          <h6 class="fw-bold mb-1">
+            <i class="bi bi-arrow-repeat text-<%= color %> me-2 <%= 'spin' if status[:status] == 'processing' %>"></i>
+            Sincronização Vista
+            <span class="badge bg-<%= color %>-subtle text-<%= color %> ms-1">
+              <%= status[:status].humanize %>
+            </span>
+          </h6>
+          <div class="small text-muted"><%= status[:message].presence || "—" %></div>
+        </div>
+        <div class="text-end small text-muted">
+          <% if status[:started_at] %>
+            <div><i class="bi bi-play-circle me-1"></i>Início: <%= l(status[:started_at], format: :short) %></div>
+          <% end %>
+          <% if status[:finished_at] %>
+            <div><i class="bi bi-check2-circle me-1"></i>Fim: <%= l(status[:finished_at], format: :short) %></div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="progress mb-3" style="height: 22px;">
+        <div class="progress-bar bg-<%= color %> <%= 'progress-bar-striped progress-bar-animated' if status[:status] == 'processing' %>"
+             role="progressbar"
+             style="width: <%= status[:progress] %>%;"
+             aria-valuenow="<%= status[:progress] %>"
+             aria-valuemin="0"
+             aria-valuemax="100">
+          <%= status[:progress] %>%
+        </div>
+      </div>
+
+      <div class="row g-2 text-center">
+        <div class="col">
+          <div class="border rounded p-2 bg-light">
+            <div class="fw-bold fs-5"><%= stats["processed"].to_i %></div>
+            <small class="text-muted text-uppercase"><i class="bi bi-people-fill text-primary me-1"></i>Processados</small>
+          </div>
+        </div>
+        <div class="col">
+          <div class="border rounded p-2 bg-light">
+            <div class="fw-bold fs-5 text-success"><%= stats["created"].to_i %></div>
+            <small class="text-muted text-uppercase"><i class="bi bi-person-plus-fill text-success me-1"></i>Criados</small>
+          </div>
+        </div>
+        <div class="col">
+          <div class="border rounded p-2 bg-light">
+            <div class="fw-bold fs-5 text-info"><%= stats["updated"].to_i %></div>
+            <small class="text-muted text-uppercase"><i class="bi bi-arrow-clockwise text-info me-1"></i>Atualizados</small>
+          </div>
+        </div>
+        <div class="col">
+          <div class="border rounded p-2 bg-light">
+            <div class="fw-bold fs-5 text-danger"><%= stats["errors"].to_i %></div>
+            <small class="text-muted text-uppercase"><i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>Erros</small>
+          </div>
+        </div>
+        <div class="col">
+          <div class="border rounded p-2 bg-light">
+            <div class="fw-bold fs-5"><%= stats["page"].to_i %>/<%= stats["total_pages"].to_i %></div>
+            <small class="text-muted text-uppercase"><i class="bi bi-file-earmark-text text-secondary me-1"></i>Página</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <div id="vista-sync-panel"></div>
+<% end %>

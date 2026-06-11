@@ -1,0 +1,65 @@
+<% if properties.present? %>
+<div class="property-carousel-wrapper relative group px-4 lg:px-12">
+  <div class="swiper property-carousel" data-controller="property-carousel">
+    <div class="swiper-wrapper pb-12">
+      <% properties.each do |property| %>
+        <div class="swiper-slide h-auto">
+          <%= render 'shared/tailwind/property_card', property: property %>
+        </div>
+      <% end %>
+    </div>
+    
+    <!-- Pagination inside swiper container -->
+    <div class="swiper-pagination !bottom-0"></div>
+  </div>
+
+  <!-- Navigation buttons (Outside Swiper, Inside Wrapper) -->
+  <div class="swiper-button-prev property-carousel-prev !text-blue-three hover:!text-golden-one transition-colors !left-0 opacity-0 group-hover:opacity-100 pointer-events-auto !z-50" style="background: none !important; box-shadow: none !important;"></div>
+  <div class="swiper-button-next property-carousel-next !text-blue-three hover:!text-golden-one transition-colors !right-0 opacity-0 group-hover:opacity-100 pointer-events-auto !z-50" style="background: none !important; box-shadow: none !important;"></div>
+</div>
+<% end %>
+
+<style>
+.property-carousel-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+.property-carousel-container {
+  width: 100%;
+  padding: 0 20px;
+}
+
+/* Custom Pagination Styles */
+.swiper-pagination-bullet {
+  width: 10px;
+  height: 10px;
+  background: #022B3A;
+  opacity: 0.3;
+  transition: all 0.3s;
+}
+
+.swiper-pagination-bullet-active {
+  opacity: 1;
+  width: 24px;
+  border-radius: 5px;
+  background: #022B3A;
+}
+
+/* FORCE 3 COLUMNS ON DESKTOP - ONLY for main property carousel, NOT card swipers */
+@media (min-width: 1024px) {
+  .property-carousel > .swiper-wrapper > .swiper-slide {
+    width: calc(33.333% - 20px) !important;
+    margin-right: 30px !important;
+  }
+}
+
+/* Ensure card-swiper slides are ALWAYS 100% width */
+.card-swiper .swiper-slide {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  flex: 0 0 100% !important;
+  margin-right: 0 !important;
+}
+</style>

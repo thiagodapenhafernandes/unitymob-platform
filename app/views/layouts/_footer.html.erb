@@ -1,0 +1,130 @@
+<footer class="bg-gradient-to-br from-blue-three to-blue-one text-white">
+  <div class="container-custom py-12 lg:py-16">
+    
+    <!-- Main Footer Content -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+      
+      <!-- Company Info -->
+      <div>
+        <% if @layout_setting&.logo&.attached? %>
+          <% if @layout_setting.logo.content_type == 'image/svg+xml' || @layout_setting.logo.filename.to_s.downcase.end_with?('.svg') %>
+            <%= image_tag @layout_setting.logo, alt: @layout_setting.site_name, class: 'h-10 mb-4', style: 'max-width: 170px; object-fit: contain; filter: brightness(0) invert(1);' %>
+          <% else %>
+            <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 100]), alt: @layout_setting.site_name, class: 'h-10 mb-4', style: 'max-width: 170px; object-fit: contain; filter: brightness(0) invert(1);' %>
+          <% end %>
+        <% else %>
+          <%= image_tag 'salute-imoveis.svg', alt: 'Salute Imóveis', class: 'h-10 mb-4', style: 'max-width: 170px; object-fit: contain; filter: brightness(0) invert(1);' %>
+        <% end %>
+        <p class="text-white/80 mb-4">
+          <%= @footer_setting.about_text %>
+        </p>
+      </div>
+      
+      <!-- Quick Links -->
+      <div>
+        <h3 class="text-lg font-bold mb-4 text-golden-one"><%= @footer_setting.links_title %></h3>
+        <ul class="space-y-2">
+          <% if @footer_links.any? %>
+            <% @footer_links.each do |link| %>
+              <li>
+                <%= link_to link.label,
+                            link.url,
+                            class: "text-white/80 hover:text-white transition-colors",
+                            data: {
+                              controller: "marketing-tracker",
+                              action: "click->marketing-tracker#track",
+                              marketing_tracker_event_type_value: "footer_click",
+                              marketing_tracker_placement_value: "footer_quick_links",
+                              marketing_tracker_label_value: link.label,
+                              marketing_tracker_target_url_value: link.url
+                            } %>
+              </li>
+            <% end %>
+          <% else %>
+            <li><%= link_to "Home", root_path, class: "text-white/80 hover:text-white transition-colors" %></li>
+            <li><%= link_to "Buscar Imóveis", habitations_path, class: "text-white/80 hover:text-white transition-colors" %></li>
+            <li><%= link_to "Contato", contato_path, class: "text-white/80 hover:text-white transition-colors" %></li>
+          <% end %>
+        </ul>
+      </div>
+      
+      <!-- Store Information -->
+      <div>
+        <h3 class="text-lg font-bold mb-4 text-golden-one"><%= @footer_setting.stores_title %></h3>
+        <% if @footer_stores.any? %>
+          <% @footer_stores.each do |store| %>
+            <div class="mb-6 last:mb-0">
+              <h4 class="font-bold text-white mb-1"><%= store.name %></h4>
+              <ul class="space-y-1 text-sm text-white/80">
+                <% if store.respond_to?(:footer_address_line) %>
+                  <% if store.footer_address_line.present? %><li><%= store.footer_address_line %></li><% end %>
+                  <% if store.footer_city_line.present? %><li><%= store.footer_city_line %></li><% end %>
+                <% elsif store.address.present? %>
+                  <li><%= store.address %></li>
+                <% end %>
+                <% if store.zip_code.present? %><li><strong>CEP:</strong> <%= store.zip_code %></li><% end %>
+                <% if store.creci.present? %><li><strong>CRECI:</strong> <%= store.creci %></li><% end %>
+                <% if store.phone.present? %>
+                  <li><strong>Tel:</strong> <a href="tel:+55<%= store.phone.gsub(/\D/, '') %>" class="text-golden-one hover:text-white transition-colors"><%= store.phone %></a></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-white/60 text-sm italic">Nenhuma loja cadastrada.</p>
+        <% end %>
+      </div>
+      
+      <!-- Contact & Social -->
+      <div>
+        <h3 class="text-lg font-bold mb-4 text-golden-one"><%= @footer_setting.contact_title %></h3>
+        <ul class="space-y-3 text-white/80 mb-6 font-medium">
+          <% if @footer_setting.whatsapp.present? %>
+            <li class="flex items-center">
+              <i class="bi bi-whatsapp mr-2 flex-shrink-0 text-golden-one text-lg"></i>
+              <a href="https://wa.me/55<%= @footer_setting.whatsapp.gsub(/\D/, '') %>" target="_blank" class="hover:text-white transition-colors">
+                <%= @footer_setting.whatsapp %>
+              </a>
+            </li>
+          <% end %>
+          <% if @footer_setting.email.present? %>
+            <li class="flex items-center">
+              <i class="bi bi-envelope mr-2 flex-shrink-0 text-golden-one text-lg"></i>
+              <a href="mailto:<%= @footer_setting.email %>" class="hover:text-white transition-colors">
+                <%= @footer_setting.email %>
+              </a>
+            </li>
+          <% end %>
+        </ul>
+        
+        <!-- Social Media -->
+        <% if @footer_social_links.any? %>
+          <h4 class="font-bold text-white mb-3"><%= @footer_setting.social_title %></h4>
+          <div class="flex flex-wrap gap-2">
+            <% @footer_social_links.each do |social| %>
+              <a href="<%= social.url %>" target="_blank" class="w-10 h-10 rounded-full bg-white/10 hover:bg-golden-one hover:text-blue-three flex items-center justify-center transition-all" title="<%= social.platform %>">
+                <i class="bi <%= social.icon_class %>"></i>
+              </a>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+      
+    </div>
+    
+    <!-- Bottom Bar -->
+    <div class="border-t border-white/20 pt-6 mt-8">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-white/70 text-sm">
+          <%= @footer_setting.copyright_text.presence || "© #{Date.current.year} Salute Imóveis. Todos os direitos reservados. CRECI 6834" %>
+        </p>
+        <div class="flex gap-4 text-sm font-medium">
+          <%= link_to "Política de Privacidade", privacy_policy_path, class: "text-white/70 hover:text-white transition-colors" %>
+          <span class="text-white/30">|</span>
+          <%= link_to "Termos de Uso", terms_of_use_path, class: "text-white/70 hover:text-white transition-colors" %>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</footer>

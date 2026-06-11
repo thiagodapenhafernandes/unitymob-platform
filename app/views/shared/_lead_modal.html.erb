@@ -1,0 +1,85 @@
+<div id="lead-capture-modal" 
+     class="fixed inset-0 z-[100] hidden overflow-y-auto" 
+     aria-labelledby="modal-title" 
+     role="dialog" 
+     aria-modal="true"
+     data-lead-capture-target="modal">
+  
+  <!-- Backdrop -->
+  <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" 
+       data-action="click->lead-capture#close"></div>
+
+  <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+    <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+      
+      <!-- Close Button -->
+      <button type="button" 
+              class="absolute right-4 top-4 text-gray-400 hover:text-gray-500 z-10"
+              data-action="click->lead-capture#close">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+
+      <!-- Content -->
+      <div class="bg-white px-4 pb-4 pt-5 sm:p-8">
+        <div class="text-center mb-6">
+          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 mb-4">
+            <i class="bi bi-whatsapp text-3xl text-green-500"></i>
+          </div>
+          <h3 class="text-xl font-bold leading-6 text-gray-900" id="modal-title">
+            Falar com um Especialista
+          </h3>
+          <p class="mt-2 text-sm text-gray-500">
+            Preencha rapidinho para iniciarmos seu atendimento personalizado.
+          </p>
+        </div>
+
+        <form data-action="submit->lead-capture#submit" class="space-y-4">
+          <input type="hidden" name="property_id" data-lead-capture-target="propertyId">
+          <input type="hidden" name="lead_type" data-lead-capture-target="leadType">
+          <input type="hidden" name="origin" data-lead-capture-target="origin">
+          <input type="hidden" name="share_token" data-lead-capture-target="shareToken">
+          
+          <div>
+            <label for="name" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Nome Completo *</label>
+            <input type="text" name="name" id="lead_name" required
+                   class="block w-full rounded-lg border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
+                   placeholder="Seu nome"
+                   data-lead-capture-target="name">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="phone" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">WhatsApp *</label>
+              <input type="tel" name="phone" id="lead_phone" required
+                     class="block w-full rounded-lg border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
+                     placeholder="(00) 00000-0000"
+                     data-lead-capture-target="phone"
+                     data-action="input->lead-capture#applyMask">
+            </div>
+            <div>
+              <label for="email" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">E-mail</label>
+              <input type="email" name="email" id="lead_email"
+                     class="block w-full rounded-lg border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
+                     placeholder="seu@email.com"
+                     data-lead-capture-target="email">
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button type="submit" 
+                    id="submit-lead-btn"
+                    data-lead-capture-target="submitButton"
+                    class="w-full inline-flex justify-center items-center gap-2 rounded-lg bg-blue-three px-6 py-4 text-sm font-bold text-white shadow-lg hover:bg-blue-one focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-all">
+              <span>Iniciar Conversa no WhatsApp</span>
+              <i class="fas fa-arrow-right text-xs"></i>
+            </button>
+          </div>
+          
+          <%= render "shared/form_consent_notice",
+                     class_name: "text-[10px] text-center text-gray-400 mt-4 leading-tight",
+                     link_class: "underline hover:text-blue-three" %>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

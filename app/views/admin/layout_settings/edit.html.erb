@@ -1,0 +1,144 @@
+<div class="admin-header">
+  <div class="header-body">
+    <div class="row align-items-end">
+      <div class="col">
+        <h6 class="header-pretitle">
+          Administração
+        </h6>
+        <h1 class="header-title">
+          Layout do Site
+        </h1>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <%# Remove extra admin-content wrapper to avoid redundant margins %>
+  <div class="card card-luxury">
+    <div class="card-header">
+      <h4 class="card-header-title">Configurações de Cores e Logo</h4>
+    </div>
+    
+    <div class="card-body">
+      <%= form_with(model: [:admin, @layout_setting], local: true, class: "needs-validation") do |f| %>
+        <% if @layout_setting.errors.any? %>
+          <div class="alert alert-danger">
+            <h4><%= pluralize(@layout_setting.errors.count, "erro") %> impediram que as configurações fossem salvas:</h4>
+            <ul>
+              <% @layout_setting.errors.full_messages.each do |msg| %>
+                <li><%= msg %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div class="row">
+          <div class="col-md-4">
+            <div class="mb-3">
+              <%= f.label :primary_color, "Cor Primária (Blue Three)", class: "form-label" %>
+              <div class="input-group">
+                <%= f.color_field :primary_color, class: "form-control form-control-color", title: "Escolha uma cor", oninput: "this.nextElementSibling.value = this.value" %>
+                <%= f.text_field :primary_color, class: "form-control", oninput: "this.previousElementSibling.value = this.value" %>
+              </div>
+              <div class="form-text small">Cor padrão: #022B3A.</div>
+            </div>
+          </div>
+          
+          <div class="col-md-4">
+            <div class="mb-3">
+              <%= f.label :secondary_color, "Cor Secundária (Blue One)", class: "form-label" %>
+              <div class="input-group">
+                <%= f.color_field :secondary_color, class: "form-control form-control-color", title: "Escolha uma cor", oninput: "this.nextElementSibling.value = this.value" %>
+                <%= f.text_field :secondary_color, class: "form-control", oninput: "this.previousElementSibling.value = this.value" %>
+              </div>
+              <div class="form-text small">Cor padrão: #053C5E.</div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="mb-3">
+              <%= f.label :accent_color, "Cor de Destaque (Gold/Ícones)", class: "form-label" %>
+              <div class="input-group">
+                <%= f.color_field :accent_color, class: "form-control form-control-color", title: "Escolha uma cor", oninput: "this.nextElementSibling.value = this.value" %>
+                <%= f.text_field :accent_color, class: "form-control", oninput: "this.previousElementSibling.value = this.value" %>
+              </div>
+              <div class="form-text small">Cor padrão: #BFAB25.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-12">
+            <div class="alert alert-info">
+              <h5 class="alert-heading text-blue-one"><i class="bi bi-info-circle-fill me-2"></i>Dicas para o Logo Perfeito</h5>
+              <p class="mb-0 small">
+                Para um visual profissional, recomendamos logos com <strong>fundo transparente</strong>. 
+                O sistema tentará ajustar a proporção automaticamente, mas para melhores resultados siga estas diretrizes:
+              </p>
+              <ul class="mt-2 small mb-0">
+                <li><strong>Logo Header:</strong> Formato retangular (proporção 3:1 ou 4:1). Ex: 300x80px.</li>
+                <li><strong>Favicon:</strong> Formato quadrado. Ex: 64x64px ou 128x128px.</li>
+                <li><strong>Formatos:</strong> Preferência para <strong>SVG</strong> (qualidade infinita) ou <strong>PNG</strong> transparente.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <%= f.label :site_name, "Nome do Site (aparece se não houver logo)", class: "form-label" %>
+          <%= f.text_field :site_name, class: "form-control", placeholder: "Ex: Salute Imóveis" %>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-4">
+              <%= f.label :logo, "Logo do Site", class: "form-label" %>
+              <%= f.file_field :logo, class: "form-control" %>
+              
+              <% if @layout_setting.logo.attached? && @layout_setting.logo.persisted? %>
+                <div class="mt-3 p-3 bg-light rounded text-center">
+                  <p class="text-muted mb-2">Logo atual:</p>
+                  <% if @layout_setting.logo.content_type == 'image/svg+xml' %>
+                    <%= image_tag @layout_setting.logo, style: "max-height: 80px; max-width: 100%;" %>
+                  <% else %>
+                    <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 160]), style: "max-height: 80px; max-width: 100%;" %>
+                  <% end %>
+                </div>
+              <% else %>
+                 <div class="mt-3 p-3 bg-light rounded text-center">
+                  <p class="text-muted mb-0">Nenhum logo personalizado carregado. Usando o padrão do sistema.</p>
+                </div>
+              <% end %>
+              <div class="form-text">Formato recomendado: SVG ou PNG (transparente).</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="mb-4">
+              <%= f.label :favicon, "Favicon (ícone da aba)", class: "form-label" %>
+              <%= f.file_field :favicon, class: "form-control" %>
+              
+              <% if @layout_setting.favicon.attached? && @layout_setting.favicon.persisted? %>
+                <div class="mt-3 p-3 bg-light rounded text-center">
+                  <p class="text-muted mb-2">Favicon atual:</p>
+                  <%= image_tag @layout_setting.favicon, style: "width: 32px; height: 32px;" %>
+                </div>
+              <% else %>
+                 <div class="mt-3 p-3 bg-light rounded text-center">
+                  <p class="text-muted mb-0">Usando favicon padrão.</p>
+                </div>
+              <% end %>
+              <div class="form-text">Formato recomendado: PNG ou ICO (32x32 ou 64x64).</div>
+            </div>
+          </div>
+        </div>
+
+        <hr>
+
+        <div class="d-flex justify-content-end">
+          <%= f.submit "Salvar Configurações", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<%# Closing tag removed as the wrapper was removed %>

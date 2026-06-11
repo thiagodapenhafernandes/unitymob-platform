@@ -1,0 +1,146 @@
+<div class="filter-bar-wrapper">
+  <%= form_with url: habitations_path, method: :get, class: "filter-bar", data: { controller: "filters", turbo_frame: "properties-list" } do |f| %>
+    <div class="filter-bar-inner">
+      <!-- Localização -->
+      <div class="filter-dropdown">
+        <button type="button" class="filter-btn" data-action="click->filters#toggleDropdown" data-target="location">
+          <i class="bi bi-geo-alt"></i>
+          <span>Localização</span>
+          <i class="bi bi-chevron-down ms-auto"></i>
+        </button>
+        <div class="filter-dropdown-menu" 
+             data-filters-target="locationDropdown"
+             data-controller="autocomplete"
+             data-autocomplete-url-value="/autocomplete/locations">
+          <%= f.text_field :city, 
+            class: 'form-control mb-2', 
+            placeholder: 'Cidade, bairro ou empreendimento',
+            value: params[:city],
+            data: {
+              autocomplete_target: 'input',
+              action: 'focus->autocomplete#showPopular input->autocomplete#search keydown->autocomplete#handleKeydown blur->autocomplete#hideResults'
+            },
+            autocomplete: 'off' %>
+          <div class="autocomplete-results" 
+               data-autocomplete-target="results"
+               data-action="mousedown->autocomplete#selectItem"></div>
+        </div>
+      </div>
+
+      <!-- Tipo de Imóvel -->
+      <div class="filter-dropdown">
+        <button type="button" class="filter-btn" data-action="click->filters#toggleDropdown" data-target="type">
+          <i class="bi bi-building"></i>
+          <span>Tipo</span>
+          <i class="bi bi-chevron-down ms-auto"></i>
+        </button>
+        <div class="filter-dropdown-menu" data-filters-target="typeDropdown">
+          <%= f.select :category, 
+            options_for_select([
+              ['Apartamento', 'Apartamento'],
+              ['Casa', 'Casa'],
+              ['Casa em Condomínio', 'Casa em Condomínio'],
+              ['Cobertura', 'Cobertura'],
+              ['Terreno', 'Terreno'],
+              ['Loja', 'Loja'],
+              ['Sala/Conjunto', 'Salas/Conjuntos'],
+              ['Galpão', 'Galpão']
+            ], params[:category]),
+            { prompt: 'Todos os tipos' },
+            class: 'form-select' %>
+        </div>
+      </div>
+
+      <!-- Venda/Locação -->
+      <div class="filter-dropdown">
+        <button type="button" class="filter-btn" data-action="click->filters#toggleDropdown" data-target="transaction">
+          <i class="bi bi-tag"></i>
+          <span>Negócio</span>
+          <i class="bi bi-chevron-down ms-auto"></i>
+        </button>
+        <div class="filter-dropdown-menu" data-filters-target="transactionDropdown">
+          <%= f.select :transaction_type,
+            options_for_select([
+              ['Venda', 'venda'],
+              ['Locação', 'aluguel']
+            ], params[:transaction_type]),
+            { prompt: 'Ambos' },
+            class: 'form-select' %>
+        </div>
+      </div>
+
+      <!-- Preço -->
+      <div class="filter-dropdown">
+        <button type="button" class="filter-btn" data-action="click->filters#toggleDropdown" data-target="price">
+          <i class="bi bi-currency-dollar"></i>
+          <span>Preço</span>
+          <i class="bi bi-chevron-down ms-auto"></i>
+        </button>
+        <div class="filter-dropdown-menu" data-filters-target="priceDropdown">
+          <div class="row g-2">
+            <div class="col-6">
+              <%= f.text_field :min_price, 
+                class: 'form-control', 
+                placeholder: 'R$ Mínimo',
+                value: params[:min_price],
+                data: { 
+                  controller: 'currency-mask',
+                  action: 'input->currency-mask#format'
+                },
+                inputmode: 'numeric' %>
+            </div>
+            <div class="col-6">
+              <%= f.text_field :max_price, 
+                class: 'form-control', 
+                placeholder: 'R$ Máximo',
+                value: params[:max_price],
+                data: { 
+                  controller: 'currency-mask',
+                  action: 'input->currency-mask#format'
+                },
+                inputmode: 'numeric' %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quartos/Vagas -->
+      <div class="filter-dropdown">
+        <button type="button" class="filter-btn" data-action="click->filters#toggleDropdown" data-target="rooms">
+          <i class="bi bi-door-open"></i>
+          <span>Quartos</span>
+          <i class="bi bi-chevron-down ms-auto"></i>
+        </button>
+        <div class="filter-dropdown-menu" data-filters-target="roomsDropdown">
+          <div class="mb-2">
+            <label class="form-label small">Quartos</label>
+            <%= f.number_field :min_bedrooms, 
+              class: 'form-control form-control-sm', 
+              placeholder: 'Mínimo',
+              min: 0,
+              value: params[:min_bedrooms] %>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Vagas</label>
+            <%= f.number_field :min_parking, 
+              class: 'form-control form-control-sm', 
+              placeholder: 'Mínimo',
+              min: 0,
+              value: params[:min_parking] %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botão Aplicar -->
+      <button type="submit" class="btn-apply-filters">
+        <i class="bi bi-search"></i>
+        Aplicar Filtros
+      </button>
+
+      <!-- Botão Mais Filtros (Sidebar) -->
+      <button type="button" class="filter-btn-icon ms-2" data-action="click->sidebar#open">
+        <i class="bi bi-plus-lg"></i>
+      </button>
+    </div>
+  <% end %>
+</div>

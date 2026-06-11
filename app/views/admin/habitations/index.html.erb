@@ -1,0 +1,2200 @@
+<style>
+  .habitations-master-detail-layout {
+    display: grid;
+    grid-template-columns: clamp(320px, 20vw, 360px) minmax(0, 1fr);
+    grid-template-areas: "detail master";
+    gap: 0.85rem;
+    align-items: start;
+    width: 100%;
+    max-width: none;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .habitations-master-pane {
+    grid-area: master;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .habitations-detail-pane {
+    grid-area: detail;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .habitations-filter-workspace {
+    border: 1px solid #c9ced6 !important;
+    border-radius: 4px;
+    overflow: visible;
+    background: #eef0f3;
+    position: relative;
+    height: 100%;
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .filter-sticky-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 48px;
+    padding: 0.45rem 0.55rem;
+    background: #dedede;
+    border-bottom: 1px solid #c4c8cf;
+  }
+  .filter-sticky-toolbar .btn {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-height: 34px;
+    border-radius: 3px;
+    font-size: 0.86rem;
+    line-height: 1;
+  }
+  .filter-sticky-toolbar .btn i {
+    line-height: 1;
+  }
+  .filter-sticky-toolbar .btn-success {
+    --bs-btn-bg: #5f7fa8;
+    --bs-btn-border-color: #5f7fa8;
+    --bs-btn-hover-bg: #526f94;
+    --bs-btn-hover-border-color: #526f94;
+    --bs-btn-active-bg: #496484;
+    --bs-btn-active-border-color: #496484;
+  }
+  .filter-collapse-button {
+    width: auto;
+    min-width: 34px;
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+  }
+  .filter-active-counter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.1rem;
+    padding: 0 0.28rem;
+    border-radius: 999px;
+    background: #0d6efd;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .filter-collapse-button.collapsed i {
+    transform: rotate(180deg);
+  }
+  .filter-collapse-button i {
+    display: inline-block;
+    transition: transform 0.18s ease;
+  }
+  .habitations-filter-workspace .card-body,
+  .filter-detail-section,
+  .habitations-filter-detail .border.rounded-3.p-3 {
+    overflow: visible;
+  }
+  .habitations-filter-master {
+    padding: 0.45rem 0.65rem 0.55rem;
+    background: #eef0f3;
+  }
+  .filter-master-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+    align-items: stretch;
+  }
+  .filter-pane {
+    min-width: 0;
+    border: 0;
+    border-bottom: 1px solid #d2d6dd;
+    background: transparent;
+    border-radius: 0;
+    padding: 0.45rem 0;
+    box-shadow: none;
+  }
+  .filter-pane-primary {
+    border-color: #d7c69a;
+    background: transparent;
+  }
+  .filter-pane-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.28rem;
+    color: #0f172a;
+    font-size: 0.78rem;
+  }
+  .filter-pane-kicker {
+    display: inline-flex;
+    color: #64748b;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .filter-search-input .form-control,
+  .filter-search-input .input-group-text,
+  .filter-inline-fields .form-select {
+    min-height: 31px;
+    height: 31px;
+  }
+  .filter-inline-fields {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.38rem;
+  }
+  .filter-action-stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+  .filter-compact-hint {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    border-top: 1px solid #d2d6dd;
+    color: #64748b;
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .filter-action-stack .btn {
+    border-radius: 3px;
+  }
+  .filter-detail-collapse {
+    background: #eef0f3;
+    border-radius: 0 0 4px 4px;
+  }
+  .habitations-filter-detail {
+    padding: 0.55rem 0.65rem 0.65rem;
+    background: #eef0f3 !important;
+  }
+  .habitations-filter-detail .filter-advanced-body {
+    background: #eef0f3 !important;
+    border-color: #d2d6dd !important;
+  }
+  .filter-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+    align-items: start;
+  }
+  .filter-detail-section {
+    min-width: 0;
+    border: 0;
+    border-top: 1px solid #d2d6dd;
+    border-radius: 0;
+    background: transparent;
+    padding: 0.5rem 0 0;
+  }
+  .filter-detail-section__title {
+    color: #64748b;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+  .filter-location-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(82px, 0.55fr);
+    gap: 0.35rem;
+  }
+  .filter-location-grid .wide,
+  .filter-business-grid .wide,
+  .filter-date-grid .wide {
+    grid-column: span 2;
+  }
+  .filter-business-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+  .filter-price-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(90px, 1fr));
+    gap: 0.3rem;
+  }
+  .filter-date-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+  .filter-date-grid .form-control {
+    min-width: 0;
+  }
+  .habitations-filter-detail .row.g-3 {
+    --bs-gutter-x: 0.45rem;
+    --bs-gutter-y: 0.38rem;
+  }
+  .habitations-filter-detail .d-flex.justify-content-between.align-items-center.gap-3.mb-3 {
+    margin-bottom: 0.45rem !important;
+  }
+  .habitations-filter-detail .d-flex.justify-content-between.align-items-center.gap-3.mb-3 h6 {
+    font-size: 0.78rem;
+  }
+  .habitations-filter-detail .form-label {
+    margin-bottom: 0.16rem;
+  }
+  .habitations-filter-detail .form-control,
+  .habitations-filter-detail .form-select,
+  .habitations-filter-detail .input-group-text {
+    min-height: 30px;
+    height: 30px;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.76rem;
+    border-radius: 3px;
+  }
+  .habitations-filter-detail .filter-multi-compact {
+    min-height: 30px;
+    height: 31px;
+    overflow: hidden;
+  }
+  .habitations-filter-detail details {
+    border: 0 !important;
+    border-top: 1px solid #d2d6dd !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none;
+  }
+  .habitations-filter-detail details > summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0.25rem 0 !important;
+    font-size: 0.78rem;
+  }
+  .habitations-filter-detail details > summary::-webkit-details-marker {
+    display: none;
+  }
+  .habitations-filter-detail details > summary::after {
+    content: "\F282";
+    font-family: "bootstrap-icons";
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: #64748b;
+    transition: transform 0.18s ease;
+  }
+  .habitations-filter-detail details[open] > summary::after {
+    transform: rotate(180deg);
+  }
+  .habitations-filter-detail details > div {
+    max-height: none;
+    overflow-y: auto;
+    padding: 0.45rem 0 0 !important;
+  }
+  .habitations-filter-workspace .filter-action-stack {
+    grid-template-columns: 1fr 1fr;
+  }
+  .habitations-filter-workspace .filter-action-stack > button {
+    grid-column: 1 / -1;
+  }
+  .habitations-detail-pane .habitations-filter-card {
+    margin-bottom: 0 !important;
+  }
+  .habitations-detail-pane .habitations-filter-card .card-body {
+    padding: 0.55rem 0.65rem;
+  }
+  .habitations-detail-pane .card {
+    box-shadow: none !important;
+  }
+  .habitations-detail-pane .filter-pane-heading strong {
+    font-size: 0.78rem;
+  }
+  .habitations-detail-pane .filter-pane-kicker {
+    letter-spacing: 0.06em;
+  }
+  .habitations-detail-pane .form-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.03em;
+  }
+  .habitations-detail-pane .btn {
+    white-space: nowrap;
+  }
+  .habitations-detail-pane .filter-detail-collapse {
+    border-top: 0 !important;
+  }
+  .habitations-detail-pane .filter-detail-section:first-child {
+    border-top: 0;
+  }
+  .habitations-detail-pane .filter-pane-actions {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+  .habitations-master-pane .habitations-scopes {
+    margin-bottom: 0.6rem !important;
+  }
+  .habitations-master-pane > .d-flex:first-child {
+    flex: 0 0 auto;
+    margin-bottom: 0.55rem !important;
+  }
+  .habitations-master-pane > .habitations-scopes {
+    flex: 0 0 auto;
+  }
+  .habitations-results-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .habitations-results-header {
+    flex: 0 0 auto;
+    margin-bottom: 0.55rem !important;
+  }
+  .habitations-results-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 0.25rem 1rem 0;
+  }
+  .habitations-results-list > .row {
+    margin-right: 0;
+  }
+  .habitations-master-pane .property-card-horizontal {
+    border: 1px solid #e6edf5 !important;
+  }
+  .property-card-horizontal.property-card--inactive {
+    background: #f1f3f5;
+    filter: grayscale(.82);
+    opacity: .78;
+  }
+  .property-card-horizontal.property-card--inactive img {
+    filter: grayscale(1);
+  }
+  .habitations-master-pane .property-card-horizontal .card-body {
+    padding: 1rem 1.2rem !important;
+  }
+  .habitations-filter-detail .border.rounded-3.p-3 {
+    padding: 0.45rem 0 !important;
+    background: transparent;
+    border: 0 !important;
+    border-top: 1px solid #d2d6dd !important;
+    border-radius: 0 !important;
+  }
+  .habitations-filter-detail h6 {
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.35rem !important;
+  }
+  .habitations-filter-detail .form-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.28rem;
+    min-height: 22px;
+    margin-bottom: 0.12rem;
+    padding-left: 0;
+  }
+  .habitations-filter-detail .form-check-input {
+    width: 0.92rem;
+    height: 0.92rem;
+    margin-left: 0;
+    margin-top: 0.08rem;
+    flex: 0 0 auto;
+  }
+  .habitations-filter-detail .form-check-label {
+    font-size: 0.72rem;
+    line-height: 1.17;
+    overflow-wrap: anywhere;
+  }
+  .habitations-filter-detail .row.g-2 {
+    --bs-gutter-x: 0.45rem;
+    --bs-gutter-y: 0.18rem;
+  }
+  .habitations-filter-detail .row.g-2 > [class*="col-"],
+  .habitations-filter-detail .row.g-3 > [class*="col-md-"] {
+    flex: 0 0 auto;
+    width: 50%;
+  }
+  .habitations-filter-detail .row.g-3 > .col-md-2 {
+    width: 33.333333%;
+  }
+  .habitations-filter-detail .row.g-3 > .col-12,
+  .habitations-filter-detail .row.g-3 > .col-md-6 {
+    width: 100%;
+  }
+  .habitations-filter-detail .ts-wrapper,
+  .habitations-filter-detail .ts-control {
+    min-height: 30px;
+    font-size: 0.76rem;
+    border-radius: 3px;
+  }
+  .habitations-filter-detail .ts-control {
+    padding: 0.2rem 0.45rem;
+  }
+  .habitations-filter-detail .ts-dropdown {
+    font-size: 0.78rem;
+  }
+  .habitations-filter-detail .input-group .input-group-text {
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+  }
+  body.admin-drawer-catalog-layout .admin-content {
+    margin-left: 0 !important;
+    padding: calc(var(--admin-navbar-height) + env(safe-area-inset-top, 0px) + 1.35rem) 1rem 0.85rem;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  body.admin-drawer-catalog-layout .habitations-header {
+    max-width: none;
+    flex: 0 0 auto;
+    margin-bottom: 0.9rem !important;
+  }
+  body.admin-drawer-catalog-layout .admin-content > * {
+    max-width: none;
+  }
+  @media (max-width: 1199.98px) {
+    .habitations-master-detail-layout {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "detail"
+        "master";
+    }
+    .habitations-filter-workspace {
+      position: static;
+      max-height: none;
+      overflow-y: visible;
+    }
+    .filter-master-layout {
+      grid-template-columns: minmax(280px, 1.3fr) minmax(220px, 0.9fr) minmax(170px, 0.6fr);
+    }
+    .filter-detail-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .filter-detail-section-dates {
+      grid-column: 1 / -1;
+    }
+    .filter-pane-actions {
+      grid-column: 1 / -1;
+    }
+    .filter-action-stack {
+      grid-template-columns: minmax(160px, 1fr) minmax(140px, 0.6fr);
+    }
+    .habitations-filter-workspace .filter-action-stack > button {
+      grid-column: auto;
+    }
+  }
+  /* Mobile-specific tweaks for /admin/habitations */
+  @media (max-width: 767.98px) {
+    body.admin-drawer-catalog-layout .admin-navbar {
+      z-index: 1100;
+    }
+
+    body.admin-drawer-catalog-layout .admin-content {
+      height: auto;
+      max-height: none;
+      min-height: 100vh;
+      overflow: visible;
+      padding: calc(var(--admin-navbar-height) + env(safe-area-inset-top, 0px) + 1rem) .75rem 1.25rem;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    body.admin-drawer-catalog-layout .admin-content > * {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .habitations-header { flex-direction: column !important; align-items: stretch !important; gap: .75rem; }
+    .habitations-header-actions { flex-wrap: wrap; }
+    .habitations-header-actions .btn { flex: 1 1 auto; min-width: 0; font-size: .85rem; padding: .5rem .75rem; }
+    .habitations-header h1 { font-size: 1.4rem !important; }
+
+    .habitations-master-detail-layout,
+    .habitations-master-pane,
+    .habitations-detail-pane,
+    .habitations-results-shell,
+    .habitations-results-list {
+      height: auto;
+      max-height: none;
+      min-height: 0;
+      overflow: visible;
+    }
+
+    .habitations-master-pane,
+    .habitations-results-shell {
+      display: block;
+    }
+
+    .habitations-filter-workspace {
+      height: auto;
+      max-height: none;
+      overflow: visible;
+      overscroll-behavior: auto;
+    }
+
+    body.admin-drawer-catalog-layout .filter-sticky-toolbar {
+      gap: .35rem;
+      padding: .45rem;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, .12);
+      border: 0;
+      border-bottom: 1px solid #c4c8cf;
+      border-radius: 0;
+      margin: 0;
+    }
+
+    body.admin-drawer-catalog-layout .filter-sticky-toolbar.is-filter-toolbar-fixed {
+      position: fixed !important;
+      top: 64px !important;
+      z-index: 900 !important;
+      left: 0;
+      right: 0;
+      width: auto;
+    }
+
+    .filter-sticky-toolbar .btn {
+      min-height: 38px;
+      font-size: .84rem;
+    }
+
+    .filter-sticky-toolbar .btn-success {
+      flex: 1 1 0;
+    }
+
+    .filter-sticky-toolbar .btn-link {
+      align-items: center;
+      display: inline-flex;
+      flex: 1 1 0;
+      justify-content: center;
+      background: #fff;
+      border: 1px solid #d2d6dd;
+      border-radius: 4px;
+      color: #495057 !important;
+    }
+
+    .filter-collapse-button {
+      flex: 0 0 38px;
+      width: 38px;
+      min-width: 38px;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .filter-pane-heading {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: .15rem;
+    }
+
+    /* Quick scope pills: scroll horizontal em vez de quebrar linha */
+    .habitations-scopes {
+      flex-wrap: nowrap !important;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: .5rem;
+      margin-left: -.25rem; margin-right: -.25rem; padding-left: .25rem; padding-right: .25rem;
+    }
+    .habitations-scopes .btn { flex: 0 0 auto; white-space: nowrap; }
+
+    .ownership-toggle {
+      display: grid !important;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: 100%;
+    }
+    .ownership-toggle .btn {
+      min-width: 0;
+      white-space: normal;
+      border-radius: 0;
+    }
+    .ownership-toggle .btn:last-child {
+      grid-column: 1 / -1;
+    }
+
+    /* Results header: empilha */
+    .habitations-results-header { flex-direction: column !important; align-items: stretch !important; gap: .5rem; }
+    .habitations-results-header .text-muted { font-size: .8rem; }
+    .habitations-results-actions {
+      flex-wrap: nowrap;
+      gap: .5rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: .25rem;
+    }
+    .habitations-results-actions > * {
+      flex: 0 0 auto;
+    }
+    .habitations-results-actions .btn { font-size: .8rem; padding: .45rem .6rem; white-space: nowrap; }
+    .habitations-results-list > .d-flex.justify-content-center {
+      justify-content: flex-start !important;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: .35rem;
+    }
+    .habitations-results-list .pagination {
+      flex-wrap: nowrap;
+      margin-bottom: 0;
+    }
+    .habitations-results-list .pagination > * {
+      flex: 0 0 auto;
+    }
+
+    /* Filter card compactação */
+    .filter-master-layout,
+    .filter-detail-grid,
+    .filter-action-stack {
+      grid-template-columns: 1fr;
+    }
+    .filter-inline-fields,
+    .filter-location-grid,
+    .filter-business-grid,
+    .filter-date-grid,
+    .filter-price-pair {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .filter-detail-section-dates,
+    .filter-location-grid .wide,
+    .filter-business-grid .wide,
+    .filter-date-grid .wide {
+      grid-column: 1 / -1;
+    }
+    .habitations-filter-master,
+    .habitations-filter-detail {
+      padding: .85rem;
+    }
+    .filter-pane {
+      padding: .75rem;
+    }
+    .habitations-filter-detail details > div {
+      overflow: visible;
+    }
+    .habitations-filter-detail .row.g-2 > [class*="col-"],
+    .habitations-filter-detail .row.g-3 > [class*="col-"],
+    .habitations-filter-detail .row.g-3 > [class*="col-md-"] {
+      width: 50%;
+    }
+    .habitations-filter-detail .row.g-3 > .col-12,
+    .habitations-filter-detail .row.g-3 > .col-md-6 {
+      width: 100%;
+    }
+    .habitations-filter-detail .d-flex.flex-wrap.gap-3 {
+      gap: .45rem !important;
+    }
+    .habitations-filter-card .form-label { font-size: .7rem; margin-bottom: .25rem; }
+    .habitations-filter-card .form-control,
+    .habitations-filter-card .form-select {
+      min-height: 42px;
+      height: auto;
+      font-size: .9rem;
+    }
+    .habitations-filter-card .input-group-text {
+      min-height: 42px;
+      height: auto;
+    }
+    .habitations-filter-card .form-label {
+      white-space: normal;
+      line-height: 1.1;
+    }
+    .property-card-horizontal {
+      height: auto !important;
+    }
+    .property-card-horizontal .row.g-0.h-100 {
+      height: auto !important;
+    }
+    .property-card-horizontal .col-md-4,
+    .property-card-horizontal .col-lg-3 {
+      height: 220px !important;
+    }
+    .habitations-master-pane .property-card-horizontal .card-body {
+      padding: .85rem !important;
+    }
+    .property-card-horizontal .card-title {
+      font-size: 1rem;
+      line-height: 1.25;
+    }
+    .property-card-horizontal .d-flex.gap-3.mb-4 {
+      flex-wrap: wrap;
+      gap: .55rem !important;
+      margin-bottom: 1rem !important;
+    }
+    .property-card-horizontal .mt-auto.pt-3.border-top {
+      flex-direction: column;
+      align-items: flex-start !important;
+      gap: .75rem;
+    }
+  }
+  @media (max-width: 380px) {
+    .filter-inline-fields,
+    .filter-location-grid,
+    .filter-business-grid,
+    .filter-date-grid,
+    .filter-price-pair,
+    .habitations-filter-detail .row.g-2 > [class*="col-"],
+    .habitations-filter-detail .row.g-3 > [class*="col-"],
+    .habitations-filter-detail .row.g-3 > [class*="col-md-"] {
+      grid-template-columns: 1fr;
+      width: 100%;
+    }
+  }
+</style>
+
+<div class="habitations-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800" style="color: #bfa15f !important; font-family: 'Outfit', sans-serif; font-weight: 700;">Catálogo de Imóveis</h1>
+    <p class="text-muted small mb-0">Gerencie seu portfólio de imóveis com filtros avançados.</p>
+  </div>
+  <div class="habitations-header-actions d-flex gap-2">
+    <% if current_admin_user&.admin? %>
+      <%= link_to admin_proprietors_path, class: "btn btn-outline-primary d-flex align-items-center justify-content-center bg-white fw-semibold" do %>
+        <i class="bi bi-person-vcard me-2"></i><span class="d-none d-sm-inline">Proprietários</span>
+      <% end %>
+    <% end %>
+    <% if current_admin_user&.admin? || current_admin_user&.profile&.name == "Administrativo" %>
+      <button type="button" class="btn btn-white border d-flex align-items-center justify-content-center bg-white" data-bs-toggle="modal" data-bs-target="#habitationsExportModal">
+        <i class="bi bi-download me-2"></i><span>Exportar</span>
+      </button>
+    <% end %>
+    <%= link_to new_admin_habitation_path, class: "btn btn-primary d-flex align-items-center justify-content-center fw-bold shadow-sm" do %>
+      <i class="bi bi-plus-lg me-2"></i><span>Novo Imóvel</span>
+    <% end %>
+  </div>
+</div>
+
+<%
+  array_filter_keys = %w[dorms suites vagas banheiros]
+  extra_filter_keys = %w[
+    logradouro numero cep cidade bairro bairro_comercial promotion_status accepts_exchange key_location salute_rental_management min_price max_price
+    foto_classificacao
+    amenities
+    permuta_vehicle permuta_property permuta_others permuta_min_value permuta_location
+    permuta_min_dorms permuta_min_suites permuta_min_garagens
+    situacao face ocupacao_status estado_conservacao area_total_min area_total_max area_privativa_min area_privativa_max
+    destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo empreendimento_codigo corretor_id proprietor_id regiao_foco
+    publicar_imovelweb_2 publicar_lais_ai
+    publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
+    captacao_inicio captacao_fim somente_com_imagens somente_sem_imagens somente_dwv
+  ] + array_filter_keys
+  active_extra_filters_count = extra_filter_keys.count do |key|
+    value = params[key]
+    value.is_a?(Array) ? value.reject(&:blank?).any? : value.present?
+  end
+  extras_open = true
+  vista_advanced_keys = %w[
+    situacao face ocupacao_status estado_conservacao area_total_min area_total_max area_privativa_min area_privativa_max
+    destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo banheiros dorms suites vagas
+    foto_classificacao
+    amenities
+    publicar_imovelweb_2 publicar_lais_ai
+    publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
+    empreendimento_codigo corretor_id proprietor_id permuta_vehicle permuta_property permuta_others permuta_min_value
+    permuta_location permuta_min_dorms permuta_min_suites permuta_min_garagens regiao_foco
+    captacao_inicio captacao_fim somente_com_imagens somente_sem_imagens somente_dwv
+  ]
+  vista_advanced_open = vista_advanced_keys.any? do |key|
+    value = params[key]
+    value.is_a?(Array) ? value.reject(&:blank?).any? : value.present?
+  end
+  clear_extras_params = request.query_parameters.except(*extra_filter_keys, "page")
+%>
+
+<div class="habitations-master-detail-layout">
+  <aside class="habitations-detail-pane" aria-label="Filtros do catálogo">
+<div class="card shadow-sm mb-4 border-0 habitations-filter-card habitations-filter-workspace" data-controller="collapse">
+  <%= form_with url: admin_habitations_path, method: :get, local: true do |f| %>
+    <div class="filter-sticky-toolbar">
+      <button class="btn btn-success fw-semibold" type="submit">
+        <i class="bi bi-search me-2"></i>Pesquisar
+      </button>
+      <%= link_to admin_habitations_path, class: "btn btn-link text-muted text-decoration-none fw-semibold px-2" do %>
+        <i class="bi bi-eraser me-1"></i>Limpar
+      <% end %>
+      <button class="btn btn-light border ms-auto filter-collapse-button <%= extras_open ? '' : 'collapsed' %>"
+              type="button"
+              data-action="click->collapse#toggle"
+              data-collapse-target="button"
+              aria-expanded="<%= extras_open %>"
+              title="Abrir ou recolher filtros detalhados">
+        <% if active_extra_filters_count.positive? %>
+          <span class="filter-active-counter me-1"><%= active_extra_filters_count %></span>
+        <% end %>
+        <i class="bi bi-chevron-left"></i>
+      </button>
+    </div>
+
+  <div class="card-body habitations-filter-master">
+      <%= hidden_field_tag :sort, params[:sort] if params[:sort].present? %>
+      <%= hidden_field_tag :direction, params[:direction] if params[:direction].present? %>
+      <%= hidden_field_tag :scope, params[:scope] if params[:scope].present? %>
+      <%= hidden_field_tag :ownership, @ownership_scope if @ownership_scope.present? %>
+      <%= hidden_field_tag :intake_review, @intake_review if @intake_review.present? %>
+
+      <div class="filter-master-layout">
+        <div class="filter-pane filter-pane-primary">
+          <div class="filter-pane-heading">
+            <span class="filter-pane-kicker">Busca</span>
+            <strong>Localizar imóvel</strong>
+          </div>
+          <label class="form-label small fw-bold text-muted text-uppercase">Palavra-chave</label>
+          <div class="input-group filter-search-input">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <%= f.text_field :q, value: params[:q], class: "form-control border-start-0", placeholder: "Código, empreendimento, endereço..." %>
+          </div>
+        </div>
+
+        <div class="filter-pane filter-pane-secondary">
+          <div class="filter-pane-heading">
+            <span class="filter-pane-kicker">Recorte</span>
+            <strong>Tipo e status</strong>
+          </div>
+          <div class="filter-inline-fields">
+            <div>
+              <label class="form-label small fw-bold text-muted text-uppercase">Status</label>
+              <%= f.select :status, @filter_statuses, { include_blank: "Todos", selected: params[:status] }, class: "form-select" %>
+            </div>
+            <div>
+              <label class="form-label small fw-bold text-muted text-uppercase">Categoria</label>
+              <%= f.select :categoria, @filter_categories, { include_blank: "Todas", selected: params[:categoria] }, class: "form-select" %>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-compact-hint">
+          <span>Extras</span>
+          <span><%= active_extra_filters_count.positive? ? "#{active_extra_filters_count} ativos" : "Nenhum ativo" %></span>
+        </div>
+      </div>
+  </div>
+
+  <div class="collapse <%= extras_open ? 'show' : '' %> border-top filter-detail-collapse" data-collapse-target="content">
+    <div class="card-body bg-white habitations-filter-detail">
+      <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+        <div>
+          <span class="filter-pane-kicker">Detalhamento</span>
+          <h6 class="mb-0 fw-bold text-primary">
+            <i class="bi bi-funnel me-2"></i>Refinar catálogo
+          </h6>
+        </div>
+        <%= link_to "Limpar extras", admin_habitations_path(clear_extras_params), class: "btn btn-link text-decoration-none text-muted fw-semibold small p-0" %>
+      </div>
+
+        <div class="filter-detail-grid">
+          <section class="filter-detail-section">
+            <div class="filter-detail-section__title">Localização</div>
+            <div class="filter-location-grid">
+              <div class="wide">
+                <label class="form-label small fw-bold text-muted text-uppercase">Rua</label>
+                <%= f.text_field :logradouro, value: params[:logradouro], class: "form-control", placeholder: "Ex: Avenida Brasil" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Número</label>
+                <%= f.text_field :numero, value: params[:numero], class: "form-control", placeholder: "123" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">CEP</label>
+                <%= f.text_field :cep, value: params[:cep], class: "form-control", placeholder: "88330-590" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Cidade</label>
+                <%= f.select :cidade, @filter_cities, { include_blank: "Todas", selected: params[:cidade] }, class: "form-select" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Bairro</label>
+                <%= f.text_field :bairro, value: params[:bairro], class: "form-control", placeholder: "Centro" %>
+              </div>
+              <div class="wide">
+                <label class="form-label small fw-bold text-muted text-uppercase">Bairro comercial</label>
+                <%= f.select :bairro_comercial,
+                             @filter_bairros_comerciais,
+                             { include_blank: "Todos", selected: params[:bairro_comercial] },
+                             {
+                               class: "form-select",
+                               data: {
+                                 controller: "tom-select",
+                                 tom_select_create_value: true,
+                                 placeholder: "Ex: Barra"
+                               }
+                             } %>
+              </div>
+            </div>
+          </section>
+
+          <section class="filter-detail-section">
+            <div class="filter-detail-section__title">Negócio</div>
+            <div class="filter-business-grid">
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Situação</label>
+                <%= f.select :situacao, @filter_situacoes, { include_blank: "Todas", selected: params[:situacao] }, class: "form-select" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Preço reduzido</label>
+                <%= f.select :promotion_status,
+                             [["Com preço reduzido", "with_promo"], ["Sem preço reduzido", "without_promo"]],
+                             { include_blank: "Todos", selected: params[:promotion_status] },
+                             class: "form-select" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Aceita permuta</label>
+                <%= f.select :accepts_exchange,
+                             [["Sim", "1"], ["Não", "0"]],
+                             { include_blank: "Todos", selected: params[:accepts_exchange] },
+                             class: "form-select" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Chaves</label>
+                <%= f.select :key_location, @filter_key_locations, { include_blank: "Todos", selected: params[:key_location] }, class: "form-select" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Adm. locação</label>
+                <%= f.select :salute_rental_management,
+                             [["Sim", "1"], ["Não", "0"]],
+                             { include_blank: "Todos", selected: params[:salute_rental_management] },
+                             class: "form-select" %>
+              </div>
+              <div class="wide">
+                <label class="form-label small fw-bold text-muted text-uppercase">Preço</label>
+                <div class="filter-price-pair">
+                  <div class="input-group">
+                    <span class="input-group-text bg-white">R$</span>
+                    <%= f.text_field :min_price, value: params[:min_price], class: "form-control money-mask", placeholder: "Mín." %>
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text bg-white">R$</span>
+                    <%= f.text_field :max_price, value: params[:max_price], class: "form-control money-mask", placeholder: "Máx." %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="filter-detail-section filter-detail-section-dates">
+            <div class="filter-detail-section__title">Datas</div>
+            <div class="filter-date-grid">
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Cadastro de</label>
+                <%= f.date_field :captacao_inicio, value: params[:captacao_inicio], class: "form-control" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Cadastro até</label>
+                <%= f.date_field :captacao_fim, value: params[:captacao_fim], class: "form-control" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Atualiz. de</label>
+                <%= f.date_field :atualizacao_inicio, value: params[:atualizacao_inicio], class: "form-control" %>
+              </div>
+              <div>
+                <label class="form-label small fw-bold text-muted text-uppercase">Atualiz. até</label>
+                <%= f.date_field :atualizacao_fim, value: params[:atualizacao_fim], class: "form-control" %>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <details class="mt-4 border rounded-3 bg-light-subtle" <%= "open" if vista_advanced_open %>>
+          <summary class="px-3 py-2 fw-bold text-primary" style="cursor: pointer;">
+            <i class="bi bi-grid-3x3-gap me-2"></i>Filtro avançado
+          </summary>
+          <div class="p-3 border-top rounded-bottom-3 filter-advanced-body">
+            <div class="border rounded-3 p-3 mb-3">
+              <h6 class="fw-bold text-secondary mb-3">Localização</h6>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Empreendimento</label>
+                  <%= f.select :empreendimento_codigo,
+                               @filter_empreendimentos,
+                               { include_blank: "Todos", selected: params[:empreendimento_codigo] },
+                               {
+                                 class: "form-select",
+                                 data: {
+                                   controller: "tom-select",
+                                   tom_select_create_value: false,
+                                   tom_select_options_value: { placeholder: "Selecione empreendimento" }
+                                 }
+                               } %>
+                </div>
+                <% if current_admin_user&.admin? || current_admin_user&.profile&.name == "Administrativo" %>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Corretor</label>
+                    <%= f.select :corretor_id,
+                                 @filter_brokers,
+                                 { include_blank: "Todos", selected: params[:corretor_id] },
+                                 {
+                                   class: "form-select",
+                                   data: {
+                                     controller: "tom-select",
+                                     tom_select_create_value: false,
+                                     tom_select_options_value: { placeholder: "Selecione corretor" }
+                                   }
+                                 } %>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Proprietário</label>
+                    <%= f.select :proprietor_id,
+                                 @filter_proprietors,
+                                 { include_blank: "Todas", selected: params[:proprietor_id] },
+                                 {
+                                   class: "form-select",
+                                   data: {
+                                     controller: "tom-select",
+                                     tom_select_create_value: false,
+                                     tom_select_options_value: { placeholder: "Selecione proprietário" }
+                                   }
+                                 } %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="border rounded-3 p-3 mb-3">
+              <h6 class="fw-bold text-secondary mb-3">Características</h6>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Face</label>
+                  <%= f.select :face, @filter_faces, { include_blank: "Todas", selected: params[:face] }, class: "form-select" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Ocupação</label>
+                  <%= f.select :ocupacao_status, @filter_ocupacao_statuses, { include_blank: "Todas", selected: params[:ocupacao_status] }, class: "form-select" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Conservação</label>
+                  <%= f.select :estado_conservacao, @filter_estado_conservacoes, { include_blank: "Todas", selected: params[:estado_conservacao] }, class: "form-select" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Região foco?</label>
+                  <%= f.select :regiao_foco, @filter_regioes_foco, { include_blank: "Todas", selected: params[:regiao_foco] }, class: "form-select" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Banheiros (exato)</label>
+                  <%= f.select :banheiros,
+                               options_for_select((1..8).map { |n| [n.to_s, n] }, @banheiros),
+                               {},
+                               {
+                                 multiple: true,
+                                 class: "form-select filter-multi-compact",
+                                 data: {
+                                   controller: "tom-select",
+                                   tom_select_create_value: false,
+                                   tom_select_options_value: { placeholder: "Selecione banheiros" }
+                                 }
+                               } %>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Dormitórios (exato)</label>
+                  <%= f.select :dorms,
+                               options_for_select((1..8).map { |n| [n.to_s, n] }, @dorms),
+                               {},
+                               {
+                                 multiple: true,
+                                 class: "form-select filter-multi-compact",
+                                 data: {
+                                   controller: "tom-select",
+                                   tom_select_create_value: false,
+                                   tom_select_options_value: { placeholder: "Selecione dormitórios" }
+                                 }
+                               } %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Suítes (exato)</label>
+                  <%= f.select :suites,
+                               options_for_select((1..8).map { |n| [n.to_s, n] }, @suites),
+                               {},
+                               {
+                                 multiple: true,
+                                 class: "form-select filter-multi-compact",
+                                 data: {
+                                   controller: "tom-select",
+                                   tom_select_create_value: false,
+                                   tom_select_options_value: { placeholder: "Selecione suítes" }
+                                 }
+                               } %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Vagas (exato)</label>
+                  <%= f.select :vagas,
+                               options_for_select((1..8).map { |n| [n.to_s, n] }, @vagas),
+                               {},
+                               {
+                                 multiple: true,
+                                 class: "form-select filter-multi-compact",
+                                 data: {
+                                   controller: "tom-select",
+                                   tom_select_create_value: false,
+                                   tom_select_options_value: { placeholder: "Selecione vagas" }
+                                 }
+                               } %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Área Total mín. (m²)</label>
+                  <%= f.number_field :area_total_min, value: params[:area_total_min], class: "form-control", step: "0.01", min: "0" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Área Total máx. (m²)</label>
+                  <%= f.number_field :area_total_max, value: params[:area_total_max], class: "form-control", step: "0.01", min: "0" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Área Privativa mín. (m²)</label>
+                  <%= f.number_field :area_privativa_min, value: params[:area_privativa_min], class: "form-control", step: "0.01", min: "0" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Área Privativa máx. (m²)</label>
+                  <%= f.number_field :area_privativa_max, value: params[:area_privativa_max], class: "form-control", step: "0.01", min: "0" %>
+                </div>
+              </div>
+            </div>
+
+            <div class="border rounded-3 p-3 mb-3">
+              <h6 class="fw-bold text-secondary mb-3">Destaques</h6>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Destaque Web</label>
+                  <%= f.select :destaque_web,
+                               [["Sim", "1"], ["Não", "0"]],
+                               { include_blank: "Todos", selected: params[:destaque_web] },
+                               class: "form-select" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Super Destaque</label>
+                  <%= f.select :festival_salute,
+                               [["Sim", "1"], ["Não", "0"]],
+                               { include_blank: "Todos", selected: params[:festival_salute] },
+                               class: "form-select" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Exibir no site Salute</label>
+                  <%= f.select :exibir_no_site_salute,
+                               [["Sim", "1"], ["Não", "0"]],
+                               { include_blank: "Todos", selected: params[:exibir_no_site_salute] },
+                               class: "form-select" %>
+                </div>
+              </div>
+            </div>
+
+            <div class="border rounded-3 p-3 mb-3">
+              <h6 class="fw-bold text-secondary mb-3">Outros critérios</h6>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <div class="form-check">
+                    <%= check_box_tag :somente_com_imagens, "1", params[:somente_com_imagens] == "1", class: "form-check-input", id: "somente_com_imagens_filter" %>
+                    <%= label_tag :somente_com_imagens_filter, "Somente com imagens", class: "form-check-label" %>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-check">
+                    <%= check_box_tag :somente_sem_imagens, "1", params[:somente_sem_imagens] == "1", class: "form-check-input", id: "somente_sem_imagens_filter" %>
+                    <%= label_tag :somente_sem_imagens_filter, "Somente sem imagens", class: "form-check-label" %>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-check">
+                    <%= check_box_tag :tem_placa, "1", params[:tem_placa] == "1", class: "form-check-input", id: "tem_placa_filter_outros" %>
+                    <%= label_tag :tem_placa_filter_outros, "Tem Placa", class: "form-check-label" %>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-check">
+                    <%= check_box_tag :exclusivo, "1", params[:exclusivo] == "1", class: "form-check-input", id: "exclusivo_filter_outros" %>
+                    <%= label_tag :exclusivo_filter_outros, "Exclusivo", class: "form-check-label" %>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-check">
+                    <%= check_box_tag :somente_dwv, "1", params[:somente_dwv] == "1", class: "form-check-input", id: "somente_dwv_filter" %>
+                    <%= label_tag :somente_dwv_filter, "Somente imóveis do DWV", class: "form-check-label" %>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-3 mt-1">
+                <div class="col-12">
+                  <label class="form-label small fw-bold text-muted text-uppercase mb-2">Publicado com fotos</label>
+                  <% selected_foto_classificacoes = Array(params[:foto_classificacao]).map(&:to_s) %>
+                  <div class="d-flex flex-wrap gap-3">
+                    <% ["Profissionais", "Boas", "Aceitáveis", "Não tem fotos"].each do |opcao| %>
+                      <div class="form-check">
+                        <%= check_box_tag "foto_classificacao[]", opcao, selected_foto_classificacoes.include?(opcao), class: "form-check-input", id: "foto_classificacao_#{opcao.parameterize}" %>
+                        <%= label_tag "foto_classificacao_#{opcao.parameterize}", opcao, class: "form-check-label" %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-3 mt-1">
+                <div class="col-12">
+                  <label class="form-label small fw-bold text-muted text-uppercase mb-2">Características e infraestrutura</label>
+                  <% amenity_options = Admin::HabitationsController::AMENITY_FILTER_OPTIONS %>
+                  <% selected_amenities = Array(params[:amenities]).map(&:to_s) %>
+                  <div class="row g-2">
+                    <% amenity_options.each_with_index do |opcao, idx| %>
+                      <div class="col-md-4">
+                        <div class="form-check">
+                          <%= check_box_tag "amenities[]", opcao, selected_amenities.include?(opcao), class: "form-check-input", id: "amenity_filter_#{idx}" %>
+                          <%= label_tag "amenity_filter_#{idx}", opcao, class: "form-check-label" %>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              <div class="row g-3 mt-1">
+                <div class="col-12">
+                  <label class="form-label small fw-bold text-muted text-uppercase mb-2">Publicação em portais</label>
+                  <div class="row g-2">
+                    <div class="col-md-6">
+                      <div class="form-check">
+                        <%= check_box_tag :publicar_imovelweb_2, "1", params[:publicar_imovelweb_2] == "1", class: "form-check-input", id: "publicar_imovelweb_2_filter" %>
+                        <%= label_tag :publicar_imovelweb_2_filter, "Publicar Imovelweb 2", class: "form-check-label" %>
+                      </div>
+                      <div class="form-check">
+                        <%= check_box_tag :publicar_lais_ai, "1", params[:publicar_lais_ai] == "1", class: "form-check-input", id: "publicar_lais_ai_filter" %>
+                        <%= label_tag :publicar_lais_ai_filter, "Publicar Lais Ai", class: "form-check-label" %>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-check">
+                        <%= check_box_tag :publicar_chaves_na_mao, "1", params[:publicar_chaves_na_mao] == "1", class: "form-check-input", id: "publicar_chaves_na_mao_filter" %>
+                        <%= label_tag :publicar_chaves_na_mao_filter, "Publicar Chaves Na Mao", class: "form-check-label" %>
+                      </div>
+                      <div class="form-check">
+                        <%= check_box_tag :publicar_casa_mineira, "1", params[:publicar_casa_mineira] == "1", class: "form-check-input", id: "publicar_casa_mineira_filter" %>
+                        <%= label_tag :publicar_casa_mineira_filter, "Publicar Casa Mineira", class: "form-check-label" %>
+                      </div>
+                      <div class="form-check">
+                        <%= check_box_tag :publicar_imovelweb, "1", params[:publicar_imovelweb] == "1", class: "form-check-input", id: "publicar_imovelweb_filter" %>
+                        <%= label_tag :publicar_imovelweb_filter, "Publicar Imovelweb", class: "form-check-label" %>
+                      </div>
+                      <div class="form-check">
+                        <%= check_box_tag :publicar_viva_real_vrsync, "1", params[:publicar_viva_real_vrsync] == "1", class: "form-check-input", id: "publicar_viva_real_vrsync_filter" %>
+                        <%= label_tag :publicar_viva_real_vrsync_filter, "Publicar Viva Real VRSync", class: "form-check-label" %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="border rounded-3 p-3 mb-3">
+              <h6 class="fw-bold text-secondary mb-3">Permuta</h6>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <div class="form-check mt-4">
+                    <%= check_box_tag :permuta_vehicle, "1", params[:permuta_vehicle] == "1", class: "form-check-input", id: "permuta_vehicle_filter" %>
+                    <%= label_tag :permuta_vehicle_filter, "Aceita permuta veículo", class: "form-check-label" %>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-check mt-4">
+                    <%= check_box_tag :permuta_property, "1", params[:permuta_property] == "1", class: "form-check-input", id: "permuta_property_filter" %>
+                    <%= label_tag :permuta_property_filter, "Aceita permuta imóvel", class: "form-check-label" %>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-check mt-4">
+                    <%= check_box_tag :permuta_others, "1", params[:permuta_others] == "1", class: "form-check-input", id: "permuta_others_filter" %>
+                    <%= label_tag :permuta_others_filter, "Aceita permuta outros", class: "form-check-label" %>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Valor mín. permuta</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-white">R$</span>
+                    <%= f.text_field :permuta_min_value, value: params[:permuta_min_value], class: "form-control money-mask", placeholder: "0,00" %>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Localização permuta</label>
+                  <%= f.text_field :permuta_location, value: params[:permuta_location], class: "form-control", placeholder: "Cidade, bairro ou região" %>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Dormit. mín.</label>
+                  <%= f.number_field :permuta_min_dorms, value: params[:permuta_min_dorms], class: "form-control", min: 0 %>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Suítes mín.</label>
+                  <%= f.number_field :permuta_min_suites, value: params[:permuta_min_suites], class: "form-control", min: 0 %>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small fw-bold text-muted text-uppercase">Garagens mín.</label>
+                  <%= f.number_field :permuta_min_garagens, value: params[:permuta_min_garagens], class: "form-control", min: 0 %>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </details>
+
+    </div>
+  </div>
+  <% end %>
+</div>
+  </aside>
+
+  <section class="habitations-master-pane" aria-label="Catálogo de imóveis">
+
+<!-- Quick Scopes (Pills) -->
+<%
+  ownership_base_params = request.query_parameters.except("ownership", "intake_review", "page")
+  mine_active = @ownership_scope == "mine" && @intake_review.blank?
+  all_active = @ownership_scope == "all" && @intake_review.blank?
+  pending_review_active = @intake_review == "pending"
+%>
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+  <div class="btn-group ownership-toggle" role="group" aria-label="Escopo dos imóveis">
+    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "mine")), class: "btn btn-sm #{mine_active ? 'btn-primary' : 'btn-white bg-white border text-muted'} fw-semibold" do %>
+      <i class="bi bi-person-check me-1"></i> Meus imóveis
+    <% end %>
+    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all")), class: "btn btn-sm #{all_active ? 'btn-primary' : 'btn-white bg-white border text-muted'} fw-semibold" do %>
+      <i class="bi bi-collection me-1"></i> Todos
+    <% end %>
+    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "pending")), class: "btn btn-sm #{pending_review_active ? 'btn-primary' : 'btn-white bg-white border text-muted'} fw-semibold" do %>
+      <i class="bi bi-clipboard-check me-1"></i> Pendente de revisão
+    <% end %>
+  </div>
+  <% if mine_active %>
+    <span class="small text-muted">Mostrando imóveis vinculados ao corretor logado.</span>
+  <% elsif pending_review_active %>
+    <span class="small text-muted">Captações em revisão ou aguardando aceite do corretor responsável.</span>
+  <% end %>
+</div>
+
+<div class="habitations-scopes d-flex flex-wrap gap-2 mb-4">
+  <% 
+    scopes = [
+      { key: 'destaque_web', label: 'Destaque Web', icon: 'star-fill' },
+      { key: 'super_destaque', label: 'Super Destaque', icon: 'stars' },
+      { key: 'oportunidade', label: 'Oportunidade', icon: 'lightning-fill' },
+      { key: 'frente_mar', label: 'Frente Mar', icon: 'building' },
+      { key: 'lancamento', label: 'Lançamento', icon: 'rocket-takeoff' },
+      { key: 'na_planta', label: 'Na Planta', icon: 'rulers' },
+      { key: 'mobiliado', label: 'Mobiliado', icon: 'sofa' },
+      { key: 'sacada', label: 'Sacada', icon: 'layout-sidebar' },
+      { key: 'dependencia_empregada', label: 'Dependência', icon: 'door-closed' },
+      { key: 'cozinha_gourmet_churrasqueira', label: 'Cozinha gourmet', icon: 'fire' },
+      { key: 'sol_manha', label: 'Sol manhã', icon: 'sunrise' },
+      { key: 'sol_tarde', label: 'Sol tarde', icon: 'sunset' },
+      { key: 'sol_dia_todo', label: 'Sol dia todo', icon: 'sun' },
+      { key: 'decorado', label: 'Decorado', icon: 'palette' }
+    ]
+  %>
+  <% scopes.each do |scope| %>
+    <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(scope: scope[:key])), class: "btn btn-sm rounded-pill fw-semibold px-3 py-2 #{params[:scope] == scope[:key] ? 'btn-primary shadow-sm' : 'btn-white bg-white border text-muted shadow-sm hover-shadow'}" do %>
+       <i class="bi bi-<%= scope[:icon] %> me-1"></i> <%= scope[:label] %>
+    <% end %>
+  <% end %>
+  <% if params[:scope].present? %>
+    <%= link_to admin_habitations_path(request.query_parameters.except("scope", "page")), class: "btn btn-sm btn-link text-muted text-decoration-none d-flex align-items-center" do %>
+      <i class="bi bi-x-lg me-1"></i>
+    <% end %>
+  <% end %>
+</div>
+
+<div class="modal fade" id="habitationsExportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header">
+        <h5 class="modal-title fw-semibold">
+          <i class="bi bi-download me-2"></i>Exportação de <%= @filtered_count %> imóveis
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <%= form_with url: export_admin_habitations_path, method: :get, local: true do %>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Formatação dos dados</label>
+            <%= select_tag :data_format,
+                           options_for_select([["CSV (;)", "csv_semicolon"], ["CSV (,)", "csv_comma"]], "csv_semicolon"),
+                           class: "form-select" %>
+          </div>
+
+          <% request.query_parameters.except("fields", "data_format").each do |key, value| %>
+            <% if value.is_a?(Array) %>
+              <% value.each do |entry| %>
+                <%= hidden_field_tag "#{key}[]", entry %>
+              <% end %>
+            <% else %>
+              <%= hidden_field_tag key, value %>
+            <% end %>
+          <% end %>
+
+          <div class="border rounded-3 overflow-hidden">
+            <div class="px-3 py-2 bg-light fw-semibold">Selecione os campos para exportação</div>
+            <div style="max-height: 340px; overflow-y: auto;">
+              <% @export_fields.each do |field_key, field_label| %>
+                <% next if !(current_admin_user&.admin? || current_admin_user&.profile&.name == "Administrativo") && field_key == "proprietario" %>
+                <label class="d-flex align-items-center gap-2 px-3 py-2 border-bottom small">
+                  <%= check_box_tag "fields[]", field_key, @default_export_fields.include?(field_key), class: "form-check-input mt-0" %>
+                  <span><%= field_label %></span>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary px-4">Exportar</button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% bulk_actions_allowed = can?(:manage, :imoveis) && current_admin_user&.admin? %>
+
+<% filters_json = request.query_parameters.except("page").to_json.html_safe if bulk_actions_allowed %>
+
+<div class="habitations-results-shell" <% if bulk_actions_allowed %>data-controller="bulk-publish"
+     data-bulk-publish-url-value="<%= bulk_publish_admin_habitations_path %>"
+     data-bulk-publish-csrf-value="<%= form_authenticity_token %>"
+     data-bulk-publish-filtered-total-value="<%= @filtered_count %>"
+     data-bulk-publish-filters-json-value='<%= filters_json %>'<% end %>>
+
+<% if bulk_actions_allowed %>
+<!-- Floating bulk action toolbar -->
+<div data-bulk-publish-target="toolbar"
+     class="bulk-publish-toolbar d-none position-sticky top-0 bg-white border rounded-3 shadow-sm px-3 py-2 mb-3 d-flex align-items-center justify-content-between"
+     style="z-index: 1020;">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-check2-square text-success"></i>
+    <span class="fw-semibold"><span data-bulk-publish-target="count">0</span> imóvel(is) selecionado(s)</span>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-action="click->bulk-publish#clearSelection">
+      Limpar
+    </button>
+    <button type="button" class="btn btn-sm btn-success" data-action="click->bulk-publish#openModal">
+      <i class="bi bi-megaphone me-1"></i> Divulgar
+    </button>
+  </div>
+</div>
+
+<% end %>
+
+<!-- Results Header -->
+<div class="habitations-results-header d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <% if bulk_actions_allowed %>
+      <div class="form-check mb-0">
+        <input type="checkbox" class="form-check-input"
+               id="bulkPublishMaster"
+               data-bulk-publish-target="master"
+               data-action="change->bulk-publish#toggleAll">
+        <label class="form-check-label small fw-bold text-muted text-uppercase" for="bulkPublishMaster">
+          Selecionar todos
+        </label>
+      </div>
+    <% end %>
+    <span class="small text-muted fw-semibold">
+      <span class="text-dark fw-bold"><%= @habitations.count %></span> de <%= Habitation.count %>
+    </span>
+    <% if params[:q].present? || params[:status].present? || params[:categoria].present? || params[:scope].present? || @ownership_scope == "mine" || @intake_review.present? || active_extra_filters_count.positive? %>
+      <span class="badge bg-warning-subtle text-warning border">Filtrando</span>
+    <% end %>
+  </div>
+  <div class="habitations-results-actions d-flex align-items-center gap-3">
+
+    <div class="dropdown" data-controller="dropdown">
+      <button class="btn btn-white btn-sm border dropdown-toggle text-muted"
+              type="button"
+              data-action="click->dropdown#toggle"
+              aria-expanded="false">
+        <i class="bi bi-printer me-1"></i> Impressão
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0"
+          data-dropdown-target="menu"
+          style="right: 0; left: auto; min-width: 320px;">
+        <% printable_params = request.query_parameters.except("report_type", "page") %>
+        <% @report_types.to_h.each do |report_key, report_label| %>
+          <li>
+            <%= form_with url: print_admin_habitations_path, method: :get, local: true, html: { target: "_blank", class: "m-0" } do %>
+              <%= hidden_field_tag :report_type, report_key %>
+              <%= hidden_field_tag :full_print, "1" %>
+              <% printable_params.each do |key, value| %>
+                <% if value.is_a?(Array) %>
+                  <% value.each do |entry| %>
+                    <%= hidden_field_tag "#{key}[]", entry %>
+                  <% end %>
+                <% else %>
+                  <%= hidden_field_tag key, value %>
+                <% end %>
+              <% end %>
+              <button type="submit" class="dropdown-item small"><%= report_label %></button>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+    
+    <%
+      current_sort_key = sort_options.key?(params[:sort].to_s) ? params[:sort].to_s : "data_cadastro_crm"
+      current_sort_label = sort_options[current_sort_key][:label]
+      next_sort_direction = sort_direction == "asc" ? "desc" : "asc"
+    %>
+    <div class="d-flex align-items-center gap-1">
+      <div class="dropdown" data-controller="dropdown">
+        <button class="btn btn-white btn-sm border dropdown-toggle text-muted d-flex align-items-center"
+                type="button"
+                data-action="click->dropdown#toggle"
+                aria-expanded="false">
+          <i class="bi bi-sort-down me-1"></i>
+          <span>Ordenar: <strong class="text-dark"><%= current_sort_label %></strong></span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0"
+            data-dropdown-target="menu"
+            style="right: 0; left: auto; min-width: 240px;">
+          <% sort_options.each do |sort_key, sort_config| %>
+            <% active_sort = current_sort_key == sort_key %>
+            <li>
+              <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: sort_key, direction: sort_config[:default_direction])),
+                          class: "dropdown-item small d-flex align-items-center gap-2 #{active_sort ? 'active' : ''}" do %>
+                <i class="bi <%= active_sort ? 'bi-check-lg' : 'bi-dot' %>"></i>
+                <span><%= sort_config[:label] %></span>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+      <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: current_sort_key, direction: next_sort_direction)),
+                  class: "btn btn-white btn-sm border text-muted",
+                  title: sort_direction == "asc" ? "Ordenar decrescente" : "Ordenar crescente" do %>
+        <i class="bi bi-sort-<%= sort_direction == "asc" ? "up" : "down" %>"></i>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<%
+  active_filter_chips = []
+  active_filter_chips << "Busca: #{params[:q]}" if params[:q].present?
+  active_filter_chips << "Status: #{params[:status]}" if params[:status].present?
+  active_filter_chips << "Categoria: #{params[:categoria]}" if params[:categoria].present?
+  active_filter_chips << "Rua: #{params[:logradouro]}" if params[:logradouro].present?
+  active_filter_chips << "Número: #{params[:numero]}" if params[:numero].present?
+  active_filter_chips << "CEP: #{params[:cep]}" if params[:cep].present?
+  active_filter_chips << "Cidade: #{params[:cidade]}" if params[:cidade].present?
+  active_filter_chips << "Bairro: #{params[:bairro]}" if params[:bairro].present?
+  active_filter_chips << "Bairro comercial: #{params[:bairro_comercial]}" if params[:bairro_comercial].present?
+  active_filter_chips << "Somente com imagens" if params[:somente_com_imagens] == "1"
+  active_filter_chips << "Somente sem imagens" if params[:somente_sem_imagens] == "1"
+  active_filter_chips << "Somente imóveis do DWV" if params[:somente_dwv] == "1"
+  active_filter_chips << "Destaque Web: Sim" if params[:destaque_web] == "1"
+  active_filter_chips << "Destaque Web: Não" if params[:destaque_web] == "0"
+  active_filter_chips << "Super Destaque: Sim" if params[:festival_salute] == "1"
+  active_filter_chips << "Super Destaque: Não" if params[:festival_salute] == "0"
+  active_filter_chips << "Portal: Imovelweb 2" if params[:publicar_imovelweb_2] == "1"
+  active_filter_chips << "Portal: Lais Ai" if params[:publicar_lais_ai] == "1"
+  active_filter_chips << "Portal: Chaves Na Mao" if params[:publicar_chaves_na_mao] == "1"
+  active_filter_chips << "Portal: Casa Mineira" if params[:publicar_casa_mineira] == "1"
+  active_filter_chips << "Portal: Imovelweb" if params[:publicar_imovelweb] == "1"
+  active_filter_chips << "Portal: Viva Real VRSync" if params[:publicar_viva_real_vrsync] == "1"
+  Array(params[:foto_classificacao]).reject(&:blank?).each do |fc|
+    active_filter_chips << "Foto: #{fc}"
+  end
+  Array(params[:amenities]).reject(&:blank?).each do |amenity|
+    active_filter_chips << "Item: #{amenity}"
+  end
+  active_filter_chips << "Tem Placa" if params[:tem_placa] == "1"
+  active_filter_chips << "Exclusivo" if params[:exclusivo] == "1"
+  active_filter_chips << "Permuta: Sim" if params[:accepts_exchange] == "1"
+  active_filter_chips << "Permuta: Não" if params[:accepts_exchange] == "0"
+  active_filter_chips << "Permuta veículo: Sim" if params[:permuta_vehicle] == "1"
+  active_filter_chips << "Permuta imóvel: Sim" if params[:permuta_property] == "1"
+  active_filter_chips << "Permuta outros: Sim" if params[:permuta_others] == "1"
+  active_filter_chips << "Valor mín. permuta: R$ #{params[:permuta_min_value]}" if params[:permuta_min_value].present?
+  active_filter_chips << "Localização permuta: #{params[:permuta_location]}" if params[:permuta_location].present?
+  active_filter_chips << "Dorms permuta ≥ #{params[:permuta_min_dorms]}" if params[:permuta_min_dorms].present?
+  active_filter_chips << "Suítes permuta ≥ #{params[:permuta_min_suites]}" if params[:permuta_min_suites].present?
+  active_filter_chips << "Garagens permuta ≥ #{params[:permuta_min_garagens]}" if params[:permuta_min_garagens].present?
+  active_filter_chips << "Empreendimento: #{params[:empreendimento_codigo]}" if params[:empreendimento_codigo].present?
+  active_filter_chips << "Corretor: #{params[:corretor_id]}" if params[:corretor_id].present?
+  active_filter_chips << "Proprietário: #{params[:proprietor_id]}" if (current_admin_user&.admin? || current_admin_user&.profile&.name == "Administrativo") && params[:proprietor_id].present?
+  active_filter_chips << "Região foco?: #{params[:regiao_foco]}" if params[:regiao_foco].present?
+  active_filter_chips << "Meus imóveis" if @ownership_scope == "mine"
+  active_filter_chips << "Pendente de revisão" if @intake_review == "pending"
+  active_filter_chips << "Captação de: #{params[:captacao_inicio]}" if params[:captacao_inicio].present?
+  active_filter_chips << "Captação até: #{params[:captacao_fim]}" if params[:captacao_fim].present?
+  active_filter_chips << "Escopo: #{params[:scope]}" if params[:scope].present?
+%>
+
+<div class="habitations-results-list">
+<% if active_filter_chips.any? %>
+  <div class="mb-3 d-flex flex-wrap gap-2">
+    <% active_filter_chips.each do |chip| %>
+      <span class="badge rounded-pill text-bg-light border px-3 py-2 fw-semibold"><%= chip %></span>
+    <% end %>
+  </div>
+<% end %>
+
+<!-- Property Cards List -->
+<div class="row g-3">
+  <% if @habitations.any? %>
+    <% @habitations.each do |imovel| %>
+      <% details_path = admin_habitation_path(imovel, return_to: request.fullpath) %>
+      <% edit_path = edit_admin_habitation_path(imovel, return_to: request.fullpath) if admin_can_edit_habitation?(imovel) %>
+      <% catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: request.fullpath) %>
+      <div class="col-12">
+        <div class="card shadow-sm border-0 overflow-hidden property-card-horizontal <%= 'property-card--inactive' if imovel.inactive_for_admin_card? %>"
+             style="height: 240px; cursor: pointer;"
+             data-controller="clickable-card"
+             data-clickable-card-url-value="<%= catalog_card_path %>">
+          <div class="row g-0 h-100">
+            <!-- Image Column -->
+            <div class="col-md-4 col-lg-3 position-relative h-100">
+              <% if imovel.primary_image.present? %>
+                <img src="<%= imovel.primary_image['url_pequena'] || imovel.primary_image['url'] %>" class="img-fluid h-100 w-100 object-fit-cover" alt="<%= imovel.display_title %>">
+              <% else %>
+                <div class="bg-light h-100 w-100 d-flex align-items-center justify-content-center text-muted">
+                  <i class="bi bi-image display-4 opacity-25"></i>
+                </div>
+              <% end %>
+              <!-- Selection checkbox (admin only) -->
+              <% if bulk_actions_allowed %>
+                <div class="position-absolute top-0 end-0 p-2" style="z-index: 5;">
+                  <label class="bulk-select-label m-0 d-inline-flex align-items-center justify-content-center bg-white rounded-2 shadow-sm" style="width: 28px; height: 28px; cursor: pointer;" onclick="event.stopPropagation();">
+                    <input type="checkbox"
+                           class="form-check-input m-0"
+                           data-bulk-publish-target="item"
+                           data-id="<%= imovel.id %>"
+                           data-action="change->bulk-publish#toggleOne"
+                           aria-label="Selecionar imóvel <%= imovel.codigo %>">
+                  </label>
+                </div>
+              <% end %>
+
+              <div class="mobile-property-actions admin-property-actions d-md-none position-absolute end-0 p-2 d-flex flex-column gap-2"
+                   style="top: <%= bulk_actions_allowed ? '38px' : '0' %>; z-index: 6;"
+                   onclick="event.stopPropagation();">
+                <%= render "shared/broker_share_menu", property: imovel %>
+
+                <div class="dropdown" data-controller="dropdown">
+                  <button class="btn btn-sm rounded-circle dropdown-toggle no-caret mobile-property-action-button admin-property-actions__button"
+                          type="button"
+                          aria-expanded="false"
+                          data-action="click->dropdown#toggle"
+                          title="Ações do imóvel">
+                    <i class="bi bi-three-dots-vertical"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mobile-property-actions-menu"
+                      data-dropdown-target="menu"
+                      style="right: 0; left: auto;">
+                    <li><%= link_to "Visualizar cadastro", details_path, class: "dropdown-item small" %></li>
+                    <% if edit_path.present? %>
+                      <li><%= link_to "Editar", edit_path, class: "dropdown-item small" %></li>
+                    <% end %>
+                    <li><%= link_to "Ver no Site", habitation_path(imovel), target: "_blank", class: "dropdown-item small" %></li>
+                    <% if current_admin_user&.admin? %>
+                      <li><hr class="dropdown-divider"></li>
+                      <li>
+                        <%= button_to admin_habitation_path(imovel),
+                                      method: :delete,
+                                      class: "dropdown-item small text-danger",
+                                      form: { data: { turbo_confirm: "Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita." } } do %>
+                          Excluir
+                        <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Badges -->
+              <div class="position-absolute top-0 start-0 p-3">
+                 <span class="badge bg-white text-dark shadow-sm uppercase-badge fw-bold"><%= imovel.status %></span>
+                 <% if imovel.destaque_web_flag %>
+                    <span class="badge bg-warning text-dark shadow-sm ms-1"><i class="bi bi-star-fill"></i></span>
+                 <% end %>
+                 <% if !imovel.has_any_photo? %>
+                    <span class="badge bg-danger shadow-sm ms-1">SEM FOTOS</span>
+                 <% elsif imovel.hidden_from_site_with_photos? %>
+                    <span class="badge bg-danger shadow-sm ms-1">FORA SITE</span>
+                 <% end %>
+              </div>
+              
+              <!-- Update Badge -->
+              <% 
+                 data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max
+                 days_since_update = ((Time.current - data_referencia) / 1.day).to_i
+                 badge_class = if days_since_update <= 30
+                                 'bg-success text-white'
+                               elsif days_since_update <= 60
+                                 'bg-warning text-dark'
+                               else
+                                 'bg-danger text-white'
+                               end
+              %>
+              <div class="position-absolute bottom-0 start-0 w-100 p-2 d-flex justify-content-center" style="background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);">
+                 <span class="badge <%= badge_class %> shadow-sm fw-normal d-flex align-items-center gap-1 rounded-pill px-3" style="font-size: 0.75rem; backdrop-filter: blur(4px);">
+                    <i class="bi bi-clock-history"></i> Atualizado há <%= time_ago_in_words(data_referencia) %>
+                 </span>
+              </div>
+            </div>
+            
+            <!-- Content Column -->
+            <div class="col-md-8 col-lg-9">
+              <div class="card-body p-4 d-flex flex-column h-100">
+                 <!-- Header -->
+                 <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                       <h5 class="card-title fw-bold text-dark mb-1" style="font-family: 'Outfit', sans-serif;"><%= imovel.bairro %> <span class="text-muted fw-light mx-1">•</span> <%= imovel.nome_empreendimento.presence || imovel.titulo_anuncio %></h5>
+                       <div class="small font-monospace text-muted mt-1">
+                          REF: <span class="fw-bold text-dark"><%= imovel.codigo %></span>
+                          <% if imovel.dwv_property? %>
+                            <span class="badge admin-property-dwv-badge ms-2" title="<%= imovel.codigo_dwv.present? ? "Código DWV: #{imovel.codigo_dwv}" : "Imóvel sincronizado via DWV" %>">
+                              DWV
+                            </span>
+                          <% end %>
+                          <span class="badge bg-primary-subtle text-primary border-0 ms-2 text-uppercase" style="font-size: 0.65rem;"><%= imovel.status || 'VENDA' %></span>
+                          <% if imovel.broker_intake? %>
+                            <span class="badge bg-warning-subtle text-warning-emphasis border-0 ms-2" style="font-size: 0.65rem;"><%= imovel.intake_status_label %></span>
+                          <% end %>
+                          <span class="text-muted ms-1">• <%= imovel.categoria %></span>
+                       </div>
+                    </div>
+                    <div class="admin-property-actions d-none d-md-flex align-items-start gap-2">
+                      <%= render "shared/broker_share_menu", property: imovel %>
+
+                      <div class="dropdown" data-controller="dropdown">
+                          <button class="btn btn-sm rounded-circle dropdown-toggle no-caret admin-property-actions__button"
+                                  type="button"
+                                  title="Ações do imóvel"
+                                  data-action="click->dropdown#toggle">
+                            <i class="bi bi-three-dots-vertical"></i>
+                          </button>
+                          <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" 
+                              data-dropdown-target="menu"
+                              style="right: 0; left: auto;">
+                            <li><%= link_to "Visualizar cadastro", details_path, class: "dropdown-item small" %></li>
+                            <% if edit_path.present? %>
+                              <li><%= link_to "Editar", edit_path, class: "dropdown-item small" %></li>
+                            <% end %>
+                            <li><%= link_to "Ver no Site", habitation_path(imovel), target: "_blank", class: "dropdown-item small" %></li>
+                            <% if current_admin_user&.admin? %>
+                              <li><hr class="dropdown-divider"></li>
+                              <li>
+                                <%= button_to admin_habitation_path(imovel),
+                                              method: :delete,
+                                              class: "dropdown-item small text-danger",
+                                              form: { data: { turbo_confirm: "Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita." } } do %>
+                                   Excluir
+                                <% end %>
+                              </li>
+                            <% end %>
+                          </ul>
+                      </div>
+                    </div>
+                 </div>
+
+                 <!-- Address -->
+                 <div class="d-flex align-items-center text-muted small mb-3">
+                    <i class="bi bi-geo-alt me-1"></i>
+                    <span>
+                      <%= imovel.endereco %>, <%= imovel.numero %>
+                      <% if imovel.complemento.present? %>
+                        <span class="ms-2 text-dark fw-semibold">Apto. <%= imovel.complemento %></span>
+                      <% end %>
+                      - <%= imovel.cidade %>/<%= imovel.uf %>
+                    </span>
+                 </div>
+
+                 <!-- Features -->
+                 <div class="d-flex gap-3 mb-4">
+                    <div class="d-flex align-items-center text-dark small fw-semibold" title="Dormitórios">
+                       <i class="bi bi-door-closed me-1 text-secondary"></i> <%= imovel.dormitorios_qtd %> <span class="text-muted fw-normal ms-1">Dorm.</span>
+                    </div>
+                    <div class="d-flex align-items-center text-dark small fw-semibold" title="Suítes">
+                       <i class="bi bi-key me-1 text-secondary"></i> <%= imovel.suites_qtd %> <span class="text-muted fw-normal ms-1">Suítes</span>
+                    </div>
+                    <div class="d-flex align-items-center text-dark small fw-semibold" title="Vagas">
+                       <i class="bi bi-car-front me-1 text-secondary"></i> <%= imovel.vagas_qtd %> <span class="text-muted fw-normal ms-1">Vagas</span>
+                    </div>
+                    <div class="d-flex align-items-center text-dark small fw-semibold" title="Área Privativa">
+                       <i class="bi bi-arrows-angle-expand me-1 text-secondary"></i> <%= imovel.area_privativa_m2 %> <span class="text-muted fw-normal ms-1">m²</span>
+                    </div>
+                 </div>
+
+                 <!-- Footer / Price -->
+                 <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                    <div>
+                       <div class="extra-small text-muted text-uppercase fw-bold">VALOR DO IMÓVEL</div>
+                       <div class="h4 mb-0 fw-bold" style="color: #bfa15f;">
+                          <% if imovel.valor_venda_cents.to_i > 0 %>
+                             <%= number_to_currency(imovel.valor_venda_cents / 100.0) %>
+                          <% elsif imovel.valor_locacao_cents.to_i > 0 %>
+                             <%= number_to_currency(imovel.valor_locacao_cents / 100.0) %><small>/mês</small>
+                          <% else %>
+                             Sob Consulta
+                          <% end %>
+                       </div>
+                    </div>
+                    <div class="d-flex gap-3 text-end">
+                       <div>
+                          <div class="extra-small text-muted">Cond.</div>
+                          <div class="small fw-bold"><%= imovel.valor_condominio_cents.to_i > 0 ? number_to_currency(imovel.valor_condominio_cents / 100.0) : 'R$ 0' %></div>
+                       </div>
+                       <div>
+                          <div class="extra-small text-muted">IPTU</div>
+                          <div class="small fw-bold"><%= imovel.valor_iptu_cents.to_i > 0 ? number_to_currency(imovel.valor_iptu_cents / 100.0) : 'R$ 0' %></div>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="col-12">
+      <div class="alert alert-light border-0 shadow-sm text-center py-5">
+        <div class="display-1 text-muted opacity-25 mb-3"><i class="bi bi-search"></i></div>
+        <h5 class="fw-bold text-muted">Nenhum imóvel encontrado</h5>
+        <p class="text-muted small">Tente ajustar seus filtros ou buscar por outro termo.</p>
+        <%= link_to "Limpar Filtros", admin_habitations_path, class: "btn btn-outline-primary mt-2" %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<div class="d-flex justify-content-center mt-5 mb-4">
+  <%= will_paginate @habitations, renderer: WillPaginate::ActionView::BootstrapLinkRenderer, class: "shadow-sm" %>
+</div>
+</div>
+
+<!-- Bulk Publish Modal -->
+<div class="modal fade" id="bulkPublishModal" tabindex="-1" aria-hidden="true"
+     data-bulk-publish-target="modal"
+     data-bulk-publish-eligibility-url-value="<%= bulk_publish_eligibility_admin_habitations_path %>">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title d-flex align-items-center gap-2">
+          <i class="bi bi-megaphone-fill text-success"></i>
+          Divulgação de <span data-bulk-publish-target="modalCount">0</span> Imóveis
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="bulkPublishForm" data-bulk-publish-target="form">
+          <!-- Canal (single-select) -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Selecione o canal de divulgação.</label>
+            <select name="channel" class="form-select"
+                    data-bulk-publish-target="channelSelect"
+                    data-action="change->bulk-publish#onChannelChange">
+              <option value="">Selecione</option>
+              <option value="site">Site da Imobiliária</option>
+              <option value="lais_ai">Lais Ai</option>
+              <option value="chaves_na_mao">Chaves Na Mão</option>
+              <option value="casa_mineira">Casa Mineira</option>
+              <option value="imovelweb">Imovelweb</option>
+              <option value="imovelweb_2">Imovelweb 2</option>
+              <option value="viva_real_vrsync">Viva Real VRSync</option>
+            </select>
+          </div>
+
+          <!-- Ação -->
+          <div class="mb-3">
+            <div class="d-flex gap-4 align-items-center">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="action_type" value="publicar" id="bulkActionPublish" checked
+                       data-bulk-publish-target="actionRadio"
+                       data-action="change->bulk-publish#onActionChange">
+                <label class="form-check-label" for="bulkActionPublish">Publicar</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="action_type" value="despublicar" id="bulkActionUnpublish"
+                       data-bulk-publish-target="actionRadio"
+                       data-action="change->bulk-publish#onActionChange">
+                <label class="form-check-label text-success fw-semibold" for="bulkActionUnpublish">Despublicar</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-opções específicas do canal (só visíveis quando canal tem opções E ação=publicar) -->
+          <div class="mb-3 d-none" data-bulk-publish-target="channelOptionsWrapper">
+            <!-- Chaves Na Mão -->
+            <div class="channel-options-block d-none border rounded-3 p-2" data-channel="chaves_na_mao">
+              <div class="small fw-semibold text-muted mb-1">Destaque</div>
+              <div class="d-flex flex-wrap mb-2">
+                <% Habitation::CHAVES_NA_MAO_DESTAQUE_OPTIONS.each do |(label, val)| %>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="channel_options[chaves_na_mao][destaque_chaves_na_mao]" value="<%= val %>" id="bulk_chaves_destaque_<%= val %>">
+                    <label class="form-check-label small" for="bulk_chaves_destaque_<%= val %>"><%= label %></label>
+                  </div>
+                <% end %>
+              </div>
+              <div class="small fw-semibold text-muted mb-1">Período Locação</div>
+              <div class="d-flex flex-wrap">
+                <% Habitation::CHAVES_NA_MAO_PERIODO_LOCACAO_OPTIONS.each do |(label, val)| %>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="channel_options[chaves_na_mao][periodo_locacao_chaves_na_mao]" value="<%= val %>" id="bulk_chaves_periodo_<%= val %>">
+                    <label class="form-check-label small" for="bulk_chaves_periodo_<%= val %>"><%= label %></label>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- Casa Mineira -->
+            <div class="channel-options-block d-none border rounded-3 p-2" data-channel="casa_mineira">
+              <div class="small fw-semibold text-muted mb-1">Modelo</div>
+              <div class="d-flex flex-wrap">
+                <% Habitation::CASA_MINEIRA_MODELO_OPTIONS.each do |(label, val)| %>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="channel_options[casa_mineira][modelo_casa_mineira]" value="<%= val %>" id="bulk_casa_modelo_<%= val %>">
+                    <label class="form-check-label small" for="bulk_casa_modelo_<%= val %>"><%= label %></label>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- Imovelweb -->
+            <div class="channel-options-block d-none border rounded-3 p-2" data-channel="imovelweb">
+              <div class="small fw-semibold text-muted mb-1">Tipo Publicação</div>
+              <div class="d-flex flex-wrap mb-2">
+                <% Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS.each do |(label, val)| %>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="channel_options[imovelweb][tipo_publicacao_imovelweb]" value="<%= val %>" id="bulk_iw_tipo_<%= val %>">
+                    <label class="form-check-label small" for="bulk_iw_tipo_<%= val %>"><%= label %></label>
+                  </div>
+                <% end %>
+              </div>
+              <div class="small fw-semibold text-muted mb-1">Mostrar Mapa</div>
+              <div class="d-flex flex-wrap">
+                <% Habitation::IMOVELWEB_MOSTRAR_MAPA_OPTIONS.each do |(label, val)| %>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="channel_options[imovelweb][mostrar_mapa_imovelweb]" value="<%= val %>" id="bulk_iw_mapa_<%= val %>">
+                    <label class="form-check-label small" for="bulk_iw_mapa_<%= val %>"><%= label %></label>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- Imovelweb 2 -->
+            <div class="channel-options-block d-none border rounded-3 p-2" data-channel="imovelweb_2">
+              <div class="small fw-semibold text-muted mb-1">Tipo Publicação</div>
+              <div class="d-flex flex-wrap mb-2">
+                <% Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS.each do |(label, val)| %>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="channel_options[imovelweb_2][tipo_publicacao_imovelweb_2]" value="<%= val %>" id="bulk_iw2_tipo_<%= val %>">
+                    <label class="form-check-label small" for="bulk_iw2_tipo_<%= val %>"><%= label %></label>
+                  </div>
+                <% end %>
+              </div>
+              <div class="small fw-semibold text-muted mb-1">Mostrar Mapa</div>
+              <div class="d-flex flex-wrap">
+                <% Habitation::IMOVELWEB_MOSTRAR_MAPA_OPTIONS.each do |(label, val)| %>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="channel_options[imovelweb_2][mostrar_mapa_imovelweb_2]" value="<%= val %>" id="bulk_iw2_mapa_<%= val %>">
+                    <label class="form-check-label small" for="bulk_iw2_mapa_<%= val %>"><%= label %></label>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <!-- Viva Real VRSync -->
+            <div class="channel-options-block d-none border rounded-3 p-2" data-channel="viva_real_vrsync">
+              <div class="small fw-semibold text-muted mb-1">Tipo Publicação</div>
+              <div class="d-flex flex-wrap mb-2">
+                <% Habitation::VIVA_REAL_TIPO_PUBLICACAO_OPTIONS.each do |(label, val)| %>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="channel_options[viva_real_vrsync][tipo_publicacao_viva_real]" value="<%= val %>" id="bulk_vr_tipo_<%= val %>">
+                    <label class="form-check-label small" for="bulk_vr_tipo_<%= val %>"><%= label %></label>
+                  </div>
+                <% end %>
+              </div>
+              <div class="small fw-semibold text-muted mb-1">Divulgar Endereço</div>
+              <div class="d-flex flex-wrap">
+                <% Habitation::VIVA_REAL_DIVULGAR_ENDERECO_OPTIONS.each do |(label, val)| %>
+                  <div class="form-check me-3">
+                    <input class="form-check-input" type="radio" name="channel_options[viva_real_vrsync][divulgar_endereco_viva_real]" value="<%= val %>" id="bulk_vr_endereco_<%= val %>">
+                    <label class="form-check-label small" for="bulk_vr_endereco_<%= val %>"><%= label %></label>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contador de elegibilidade -->
+          <div class="bg-light rounded-3 p-3 small text-muted">
+            Você selecionou <strong class="text-dark" data-bulk-publish-target="eligTotal">0</strong> imóveis.<br>
+            Em <strong class="text-dark" data-bulk-publish-target="eligCount">—</strong> você pode atualizar as opções de divulgação.
+            <i class="bi bi-question-circle-fill text-muted ms-1" data-bs-toggle="tooltip" title="Quantos dos imóveis selecionados realmente serão afetados pela ação escolhida."></i>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-success" data-action="click->bulk-publish#submit">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /data-controller="bulk-publish" -->
+  </section>
+</div>
+
+<script>
+  (function() {
+    if (window.__saluteCatalogToolbarScrollBound) {
+      requestAnimationFrame(window.__saluteCatalogToolbarScrollBound.refresh);
+      return;
+    }
+
+    var fixedTop = 64;
+    var fixAtScrollY = 0;
+
+    function toolbarElement() {
+      return document.querySelector(".filter-sticky-toolbar");
+    }
+
+    function shouldRun() {
+      return document.body.classList.contains("admin-drawer-catalog-layout") && window.matchMedia("(max-width: 767.98px)").matches;
+    }
+
+    function measureFixPoint() {
+      var toolbar = toolbarElement();
+      if (!toolbar) return;
+
+      var wasFixed = toolbar.classList.contains("is-filter-toolbar-fixed");
+      toolbar.classList.remove("is-filter-toolbar-fixed");
+      fixAtScrollY = Math.max(0, window.scrollY + toolbar.getBoundingClientRect().top - fixedTop);
+      if (wasFixed) toolbar.classList.add("is-filter-toolbar-fixed");
+    }
+
+    function syncToolbarFixedState() {
+      var toolbar = toolbarElement();
+      if (!toolbar) return;
+
+      if (!shouldRun()) {
+        toolbar.classList.remove("is-filter-toolbar-fixed");
+        return;
+      }
+
+      toolbar.classList.toggle("is-filter-toolbar-fixed", window.scrollY >= fixAtScrollY);
+    }
+
+    function refreshToolbarScrollState() {
+      measureFixPoint();
+      syncToolbarFixedState();
+    }
+
+    window.__saluteCatalogToolbarScrollBound = {
+      refresh: refreshToolbarScrollState,
+      sync: syncToolbarFixedState
+    };
+    document.addEventListener("turbo:load", refreshToolbarScrollState);
+    document.addEventListener("DOMContentLoaded", refreshToolbarScrollState);
+    window.addEventListener("scroll", syncToolbarFixedState, { passive: true });
+    window.addEventListener("resize", refreshToolbarScrollState, { passive: true });
+    window.addEventListener("orientationchange", refreshToolbarScrollState, { passive: true });
+    requestAnimationFrame(refreshToolbarScrollState);
+  })();
+</script>
+
+<style>
+  .uppercase-badge {
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+  }
+  .hover-shadow:hover {
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    transform: translateY(-1px);
+    transition: all 0.2s;
+  }
+  .bulk-select-label input[type="checkbox"] { width: 1rem; height: 1rem; cursor: pointer; }
+  .property-card-horizontal:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05) !important;
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+  }
+  .money-mask {
+    /* Add javascript mask library later if needed */
+  }
+  .dropdown-toggle.no-caret::after {
+    display: none !important;
+  }
+  .admin-property-dwv-badge {
+    background: #022b3a;
+    color: #ffffff;
+    border: 1px solid rgba(2, 43, 58, 0.08);
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 0.32rem 0.52rem;
+    box-shadow: 0 2px 5px rgba(2, 43, 58, 0.12);
+  }
+  .admin-property-actions {
+    --admin-action-size: 38px;
+  }
+  .admin-property-actions .broker-share__trigger,
+  .admin-property-actions__button {
+    width: var(--admin-action-size);
+    height: var(--admin-action-size);
+    min-width: var(--admin-action-size);
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #022b3a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  }
+  .admin-property-actions .broker-share__trigger i,
+  .admin-property-actions__button i {
+    font-size: 0.98rem;
+    line-height: 1;
+  }
+  .admin-property-actions .broker-share__trigger:hover,
+  .admin-property-actions .broker-share__trigger:focus-visible,
+  .admin-property-actions__button:hover,
+  .admin-property-actions__button:focus-visible {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: var(--admin-primary);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.1);
+    transform: translateY(-1px);
+    outline: none;
+  }
+  .mobile-property-action-button {
+    --admin-action-size: 34px;
+  }
+  .mobile-property-actions.admin-property-actions {
+    --admin-action-size: 34px;
+  }
+  .mobile-property-actions-menu {
+    min-width: 150px;
+    z-index: 1080;
+  }
+  @media (max-width: 767.98px) {
+    .ownership-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 100%;
+    }
+    .ownership-toggle .btn {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+</style>

@@ -1,0 +1,100 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800">
+      <i class="bi bi-shop text-primary me-2"></i>Lojas
+    </h1>
+    <p class="text-muted small mb-0">Lojas físicas com geofence e diretor para check-in de corretores. A escala de turnos é definida nas regras de distribuição.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <%= form_with url: admin_stores_path, method: :get, local: true, class: "d-flex gap-2" do %>
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+        <%= text_field_tag :q, params[:q], class: "form-control form-control-sm", placeholder: "Buscar por nome..." %>
+      </div>
+    <% end %>
+    <%= link_to new_admin_store_path, class: "btn btn-primary btn-sm" do %>
+      <i class="bi bi-plus-lg me-1"></i>Nova loja
+    <% end %>
+  </div>
+</div>
+
+<% if @stores.any? %>
+  <div class="row g-3">
+    <% @stores.each do |store| %>
+      <div class="col-lg-6 col-xl-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h5 class="fw-bold mb-0">
+                <i class="bi bi-geo-alt-fill text-primary me-1"></i>
+                <%= store.name %>
+              </h5>
+              <% if store.active? %>
+                <span class="badge bg-success-subtle text-success border">
+                  <i class="bi bi-check-circle-fill me-1"></i>Ativa
+                </span>
+              <% else %>
+                <span class="badge bg-secondary-subtle text-secondary border">
+                  <i class="bi bi-pause-circle-fill me-1"></i>Inativa
+                </span>
+              <% end %>
+            </div>
+
+            <% if store.address.present? || store.city.present? %>
+              <p class="small text-muted mb-2">
+                <i class="bi bi-pin-map text-muted me-1"></i>
+                <%= [store.address, store.city, store.state].compact_blank.join(" • ") %>
+              </p>
+            <% end %>
+
+            <div class="row g-2 mb-3 small">
+              <div class="col-6">
+                <div class="border rounded p-2 bg-light-subtle text-center">
+                  <div class="text-muted" style="font-size: 0.7rem;">
+                    <i class="bi bi-bullseye text-info me-1"></i>RAIO
+                  </div>
+                  <div class="fw-bold"><%= store.geofence_radius_meters %>m</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="border rounded p-2 bg-light-subtle text-center">
+                  <div class="text-muted" style="font-size: 0.7rem;">
+                    <i class="bi bi-hourglass-split text-warning me-1"></i>TOLERÂNCIA
+                  </div>
+                  <div class="fw-bold"><%= store.out_of_radius_tolerance_minutes %>min</div>
+                </div>
+              </div>
+            </div>
+
+            <% if store.director %>
+              <div class="small text-muted mb-2">
+                <i class="bi bi-person-badge text-primary me-1"></i>
+                Diretor: <strong><%= store.director.name %></strong>
+              </div>
+            <% end %>
+
+            <div class="d-flex gap-2 mt-3">
+              <%= link_to admin_store_path(store), class: "btn btn-sm btn-outline-primary flex-fill" do %>
+                <i class="bi bi-eye me-1"></i>Ver
+              <% end %>
+              <%= link_to edit_admin_store_path(store), class: "btn btn-sm btn-outline-secondary flex-fill" do %>
+                <i class="bi bi-pencil me-1"></i>Editar
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-shop-window text-muted" style="font-size: 3rem;"></i>
+      <h5 class="fw-bold mt-3">Nenhuma loja cadastrada</h5>
+      <p class="text-muted mb-3">Cadastre a primeira loja para começar a usar check-in de corretores.</p>
+      <%= link_to new_admin_store_path, class: "btn btn-primary" do %>
+        <i class="bi bi-plus-lg me-1"></i>Cadastrar primeira loja
+      <% end %>
+    </div>
+  </div>
+<% end %>

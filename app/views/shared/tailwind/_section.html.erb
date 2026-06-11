@@ -1,0 +1,44 @@
+<!--
+  Section Wrapper Component
+  Usage: <%= render 'shared/tailwind/section', title: 'Title', subtitle: 'Subtitle', bg: 'white' do %>
+-->
+
+<%
+  bg ||= 'white'
+  padding ||= 'default'
+  
+  bg_classes = {
+    'white' => 'bg-white',
+    'gray' => 'bg-gray-50',
+    'blue' => 'bg-gradient-to-br from-blue-three to-blue-one text-white',
+  }
+  
+  padding_classes = {
+    'none' => '',
+    'sm' => 'py-8 lg:py-12',
+    'default' => 'py-16 lg:py-20',
+    'lg' => 'py-20 lg:py-28',
+  }
+%>
+
+<section class="<%= bg_classes[bg] %> <%= padding_classes[padding] %>">
+  <div class="container-custom">
+    <% if title.present? || subtitle.present? %>
+      <div class="text-center mb-12" data-aos="fade-up">
+        <% if title.present? %>
+          <h2 class="text-3xl lg:text-4xl font-bold mb-4 <%= bg == 'blue' ? 'text-white' : 'text-blue-three' %>">
+            <%= title %>
+          </h2>
+        <% end %>
+        
+        <% if subtitle.present? %>
+          <p class="text-lg <%= bg == 'blue' ? 'text-white/90' : 'text-gray-600' %> max-w-2xl mx-auto">
+            <%= subtitle %>
+          </p>
+        <% end %>
+      </div>
+    <% end %>
+    
+    <%= yield %>
+  </div>
+</section>

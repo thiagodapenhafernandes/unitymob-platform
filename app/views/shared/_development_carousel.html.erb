@@ -1,0 +1,24 @@
+<% if developments.present? %>
+<div class="property-carousel-wrapper relative group px-4 lg:px-12">
+  <div class="swiper property-carousel" data-controller="property-carousel">
+    <div class="swiper-wrapper pb-12">
+      <% developments.each do |development| %>
+        <% 
+          # Use pre-calculated counts if available (performance)
+          unit_count = local_assigns[:unit_counts] ? unit_counts[development.codigo] : nil 
+        %>
+        <div class="swiper-slide h-auto">
+          <%= render 'shared/tailwind/development_card', development: development, unit_count: unit_count %>
+        </div>
+      <% end %>
+    </div>
+    
+    <!-- Pagination inside swiper container -->
+    <div class="swiper-pagination !bottom-0"></div>
+  </div>
+
+  <!-- Navigation buttons -->
+  <div class="swiper-button-prev property-carousel-prev !text-blue-three hover:!text-golden-one transition-colors !left-0 opacity-0 group-hover:opacity-100 pointer-events-auto !z-50" style="background: none !important; box-shadow: none !important;"></div>
+  <div class="swiper-button-next property-carousel-next !text-blue-three hover:!text-golden-one transition-colors !right-0 opacity-0 group-hover:opacity-100 pointer-events-auto !z-50" style="background: none !important; box-shadow: none !important;"></div>
+</div>
+<% end %>

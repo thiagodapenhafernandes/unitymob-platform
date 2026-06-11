@@ -1,0 +1,245 @@
+<%
+  action_meta = {
+    "created"                 => { label: "Check-in criado",          icon: "bi-plus-circle-fill",      color: "primary" },
+    "closed"                  => { label: "Check-out",                icon: "bi-box-arrow-right",       color: "secondary" },
+    "forced_closed"           => { label: "Fechado pelo admin",       icon: "bi-exclamation-octagon",   color: "warning" },
+    "flagged_suspicious"      => { label: "Flagged suspeito",         icon: "bi-exclamation-triangle-fill", color: "danger" },
+    "manual_request_created"  => { label: "Pedido manual criado",     icon: "bi-hand-index-thumb",      color: "info" },
+    "manual_request_approved" => { label: "Pedido manual aprovado",   icon: "bi-check-circle-fill",     color: "success" },
+    "manual_request_rejected" => { label: "Pedido manual rejeitado",  icon: "bi-x-circle-fill",         color: "dark" }
+  }
+
+  grouped = @logs.group_by { |l| l.created_at.to_date }
+%>
+
+<style>
+  .audit-kpi {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+  }
+  .audit-kpi .val { font-size: 1.8rem; font-weight: 700; line-height: 1; color: #0f172a; }
+  .audit-kpi .lbl { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: #64748b; margin-top: .35rem; }
+
+  .audit-timeline { position: relative; padding-left: 1.5rem; }
+  .audit-timeline::before {
+    content: ""; position: absolute; top: 0; bottom: 0; left: .5rem;
+    width: 2px; background: #e5e7eb;
+  }
+  .audit-day {
+    display: inline-block;
+    margin: 1rem 0 .5rem -.5rem;
+    padding: .15rem .6rem;
+    background: #0f172a; color: #fff;
+    font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    border-radius: 999px;
+  }
+  .audit-row {
+    position: relative;
+    display: flex; gap: .75rem;
+    padding: .75rem 0 .75rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .audit-row::before {
+    content: "";
+    position: absolute; left: -2px; top: 1.1rem;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #cbd5e1; border: 3px solid #fff;
+    box-shadow: 0 0 0 1px #e5e7eb;
+  }
+  .audit-row.audit-primary::before   { background: #0d6efd; }
+  .audit-row.audit-danger::before    { background: #dc3545; }
+  .audit-row.audit-warning::before   { background: #f59e0b; }
+  .audit-row.audit-success::before   { background: #198754; }
+  .audit-row.audit-info::before      { background: #0dcaf0; }
+
+  .audit-row-body { flex: 1 1 auto; min-width: 0; }
+  .audit-row-title { font-weight: 600; color: #0f172a; font-size: .95rem; }
+  .audit-row-meta { font-size: .8rem; color: #64748b; margin-top: .15rem; }
+  .audit-row-time { font-size: .75rem; color: #94a3b8; white-space: nowrap; }
+  .audit-row-extra {
+    margin-top: .35rem;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 6px;
+    padding: .4rem .6rem;
+    font-family: monospace; font-size: .72rem; color: #475569;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <h1 class="h3 mb-1">
+      <i class="bi bi-shield-lock-fill text-danger me-2"></i>Auditoria de Campo
+    </h1>
+    <p class="text-muted small mb-0">
+      Log <strong>append-only</strong> — todos os eventos de check-in são imutáveis no banco de dados (trigger PG bloqueia UPDATE/DELETE).
+    </p>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="audit-kpi">
+      <div class="val text-primary"><%= @total_events %></div>
+      <div class="lbl"><i class="bi bi-funnel me-1"></i>Filtrados</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="audit-kpi">
+      <div class="val"><%= @events_today %></div>
+      <div class="lbl"><i class="bi bi-calendar-day me-1"></i>Hoje</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="audit-kpi">
+      <div class="val <%= @flagged_count > 0 ? 'text-danger' : '' %>"><%= @flagged_count %></div>
+      <div class="lbl"><i class="bi bi-exclamation-triangle me-1"></i>Suspeitos</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="audit-kpi">
+      <div class="val <%= @forced_count > 0 ? 'text-warning' : '' %>"><%= @forced_count %></div>
+      <div class="lbl"><i class="bi bi-hammer me-1"></i>Forçados</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="card shadow-sm border-0 mb-3">
+  <div class="card-body py-3">
+    <%= form_with url: admin_field_audit_logs_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
+      <div class="col-6 col-md-3">
+        <label class="form-label small text-muted mb-1">Ação</label>
+        <%= select_tag :action_filter,
+                       options_for_select(
+                         [["Todas", ""]] + @available_actions.map { |a| [action_meta.dig(a, :label) || a.humanize, a] },
+                         params[:action_filter]),
+                       class: "form-select form-select-sm", onchange: "this.form.submit()" %>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label small text-muted mb-1">Corretor</label>
+        <%= select_tag :admin_user_id,
+                       options_from_collection_for_select(@available_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:admin_user_id]),
+                       class: "form-select form-select-sm",
+                       include_blank: "Todos",
+                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar corretor..." } },
+                       onchange: "this.form.submit()" %>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label small text-muted mb-1">Perfil</label>
+        <%= select_tag :profile_id,
+                       options_from_collection_for_select(@available_profiles, :id, :name, params[:profile_id]),
+                       class: "form-select form-select-sm",
+                       include_blank: "Todos",
+                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." } },
+                       onchange: "this.form.submit()" %>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label small text-muted mb-1">Executado por</label>
+        <%= select_tag :actor_admin_user_id,
+                       options_from_collection_for_select(@available_actors, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:actor_admin_user_id]),
+                       class: "form-select form-select-sm",
+                       include_blank: "Todos",
+                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." } },
+                       onchange: "this.form.submit()" %>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label small text-muted mb-1">Loja</label>
+        <%= select_tag :store_id,
+                       options_from_collection_for_select(@available_stores, :id, :name, params[:store_id]),
+                       class: "form-select form-select-sm",
+                       include_blank: "Todas",
+                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar loja..." } },
+                       onchange: "this.form.submit()" %>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small text-muted mb-1">IP</label>
+        <%= text_field_tag :ip, params[:ip], class: "form-control form-control-sm", placeholder: "000.000.000.000" %>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small text-muted mb-1">De</label>
+        <%= date_field_tag :start_date, params[:start_date], class: "form-control form-control-sm" %>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small text-muted mb-1">Até</label>
+        <%= date_field_tag :end_date, params[:end_date], class: "form-control form-control-sm" %>
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <%= submit_tag "Aplicar", class: "btn btn-primary btn-sm flex-fill" %>
+        <%= link_to "Limpar", admin_field_audit_logs_path, class: "btn btn-outline-secondary btn-sm" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Timeline -->
+<div class="card shadow-sm border-0">
+  <div class="card-body">
+    <% if grouped.any? %>
+      <div class="audit-timeline">
+        <% grouped.each do |date, logs| %>
+          <div class="audit-day">
+            <i class="bi bi-calendar3 me-1"></i><%= l(date, format: :long) %>
+            · <%= pluralize(logs.size, "evento") %>
+          </div>
+          <% logs.each do |log| %>
+            <% meta = action_meta[log.action] || { label: log.action.humanize, icon: "bi-info-circle", color: "secondary" } %>
+            <div class="audit-row audit-<%= meta[:color] %>">
+              <div class="audit-row-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <div>
+                    <div class="audit-row-title">
+                      <i class="bi <%= meta[:icon] %> text-<%= meta[:color] %> me-1"></i>
+                      <%= meta[:label] %>
+                    </div>
+                    <div class="audit-row-meta">
+                      <% if log.admin_user %>
+                        <i class="bi bi-person me-1"></i><strong><%= log.admin_user.name %></strong>
+                      <% end %>
+                      <% if log.actor_admin_user && log.actor_admin_user_id != log.admin_user_id %>
+                        · por <%= log.actor_admin_user.name %>
+                      <% end %>
+                      <% if log.check_in && log.check_in.store %>
+                        · <i class="bi bi-shop-window"></i> <%= log.check_in.store.name %>
+                      <% end %>
+                      <% if log.ip.present? %>
+                        · <i class="bi bi-globe"></i> <%= log.ip %>
+                      <% end %>
+                    </div>
+                  </div>
+                  <div class="audit-row-time">
+                    <%= l(log.created_at, format: :short).split(" ").last %>
+                  </div>
+                </div>
+                <% if log.metadata.present? && log.metadata.any? %>
+                  <details class="mt-1">
+                    <summary class="small text-muted" style="cursor: pointer;">Metadados</summary>
+                    <pre class="audit-row-extra mb-0"><%= JSON.pretty_generate(log.metadata) %></pre>
+                  </details>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <div class="d-flex justify-content-center mt-3">
+        <%= will_paginate @logs, renderer: WillPaginate::ActionView::BootstrapLinkRenderer %>
+      </div>
+    <% else %>
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-inbox" style="font-size: 2.5rem;"></i>
+        <p class="mt-2 mb-0">Nenhum evento encontrado com esses filtros.</p>
+        <% if params[:action_filter].present? || params[:admin_user_id].present? || params[:profile_id].present? || params[:actor_admin_user_id].present? || params[:store_id].present? || params[:ip].present? || params[:start_date].present? || params[:end_date].present? %>
+          <%= link_to "Limpar filtros", admin_field_audit_logs_path, class: "btn btn-sm btn-outline-primary mt-3" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

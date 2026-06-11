@@ -1,0 +1,8 @@
+<div class="mb-4">
+  <%= link_to admin_admin_users_path, class: "text-muted text-decoration-none small" do %>
+    <i class="bi bi-arrow-left me-1"></i> Voltar para a lista
+  <% end %>
+  <h1 class="h3 mt-2 fw-bold text-gray-800">Novo Usuário Administrativo</h1>
+</div>
+
+<%= render 'form', admin_user: @admin_user %>

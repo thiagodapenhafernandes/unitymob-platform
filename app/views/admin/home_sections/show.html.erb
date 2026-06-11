@@ -1,0 +1,71 @@
+<div class="container-fluid py-4">
+  <%= link_to admin_home_sections_path, class: "btn btn-secondary mb-4" do %>
+    <i class="bi bi-arrow-left"></i> Voltar
+  <% end %>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><%= @home_section.title %></h3>
+    </div>
+    <div class="card-body">
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <strong>Tipo:</strong>
+          <span class="badge bg-info ms-2"><%= @home_section.section_type_label %></span>
+        </div>
+        <div class="col-md-6">
+          <strong>Status:</strong>
+          <span class="badge <%= @home_section.active ? 'bg-success' : 'bg-secondary' %> ms-2">
+            <%= @home_section.active ? 'Ativo' : 'Inativo' %>
+          </span>
+        </div>
+      </div>
+
+      <% if @home_section.subtitle.present? %>
+        <div class="mb-3">
+          <strong>Subtítulo:</strong>
+          <p><%= @home_section.subtitle %></p>
+        </div>
+      <% end %>
+
+      <div class="mb-3">
+        <strong>Ordem de Exibição:</strong>
+        <span class="badge bg-secondary"><%= @home_section.order_position || @home_section.display_order || '-' %></span>
+      </div>
+
+      <div class="mb-3">
+        <strong>Filtros dos imóveis:</strong>
+        <% if @home_section.property_filter_labels.any? %>
+          <div class="d-flex flex-wrap gap-1 mt-2">
+            <% @home_section.property_filter_labels.each do |label| %>
+              <span class="badge text-bg-light border"><%= label %></span>
+            <% end %>
+          </div>
+        <% else %>
+          <span class="text-muted ms-2">Nenhum filtro adicional.</span>
+        <% end %>
+      </div>
+
+      <% if @home_section.home_section_items.any? %>
+        <hr>
+        <h5>Itens desta Seção</h5>
+        <ul class="list-group">
+          <% @home_section.home_section_items.each do |item| %>
+            <li class="list-group-item">
+              <strong><%= item.title %></strong>
+              <% if item.description.present? %>
+                <p class="mb-0 text-muted"><%= item.description %></p>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+
+      <div class="mt-4">
+        <%= link_to "Editar", edit_admin_home_section_path(@home_section), class: "btn btn-warning" %>
+        <%= link_to "Excluir", admin_home_section_path(@home_section), method: :delete,
+            data: { confirm: "Tem certeza?" }, class: "btn btn-danger" %>
+      </div>
+    </div>
+  </div>
+</div>

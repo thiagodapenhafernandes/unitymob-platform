@@ -1,0 +1,120 @@
+<style>
+  .habitation-audit-modal .modal-dialog { max-width: 980px; }
+  .habitation-audit-tabs .nav-link { font-weight: 700; color: #64748b; }
+  .habitation-audit-tabs .nav-link.active { color: #0d6efd; }
+  .habitation-audit-timeline { position: relative; padding-left: 1.4rem; }
+  .habitation-audit-timeline::before {
+    content: "";
+    position: absolute;
+    left: .35rem;
+    top: .25rem;
+    bottom: .25rem;
+    width: 2px;
+    background: #e2e8f0;
+  }
+  .habitation-audit-item {
+    position: relative;
+    padding: 0 0 1.1rem 1rem;
+  }
+  .habitation-audit-item::before {
+    content: "";
+    position: absolute;
+    left: -.18rem;
+    top: .3rem;
+    width: .7rem;
+    height: .7rem;
+    border-radius: 999px;
+    background: #0d6efd;
+    box-shadow: 0 0 0 4px #eff6ff;
+  }
+  .habitation-audit-title { font-weight: 700; color: #0f172a; }
+  .habitation-audit-meta { font-size: .78rem; color: #64748b; }
+  .habitation-audit-change {
+    border: 1px solid #e5e7eb;
+    border-radius: .75rem;
+    padding: .65rem .75rem;
+    background: #f8fafc;
+  }
+  .habitation-audit-value {
+    display: block;
+    max-height: 4.5rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .habitation-audit-empty {
+    border: 1px dashed #cbd5e1;
+    border-radius: .85rem;
+    padding: 1.5rem;
+    text-align: center;
+    color: #64748b;
+    background: #f8fafc;
+  }
+  .habitation-audit-detail-list {
+    margin: .75rem 0 0;
+    padding-left: 1rem;
+    color: #334155;
+  }
+  .habitation-audit-detail-list li {
+    margin-bottom: .25rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>
+
+<%
+  logs = Array(logs)
+  vista_entries = Array(local_assigns.fetch(:vista_entries, @habitation_vista_timeline_entries))
+  publication_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? }
+  intake_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? }
+%>
+
+<div class="modal fade habitation-audit-modal" id="habitationHistoryModal" tabindex="-1" aria-labelledby="habitationHistoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-xl">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold" id="habitationHistoryModalLabel">
+            <i class="bi bi-clock-history text-primary me-2"></i>Timeline de edições do cadastro
+          </h5>
+          <div class="text-muted small">
+            Código <%= habitation.codigo %> · últimas <%= logs.size %> movimentações registradas
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <div class="modal-body">
+        <ul class="nav nav-tabs habitation-audit-tabs mb-3" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="audit-all-tab" data-bs-toggle="tab" data-bs-target="#audit-all" type="button" role="tab">
+              Alterações <span class="badge bg-light text-dark border ms-1"><%= logs.size %></span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="audit-publication-tab" data-bs-toggle="tab" data-bs-target="#audit-publication" type="button" role="tab">
+              Publicação <span class="badge bg-light text-dark border ms-1"><%= publication_logs.size %></span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="audit-intake-tab" data-bs-toggle="tab" data-bs-target="#audit-intake" type="button" role="tab">
+              Captação <span class="badge bg-light text-dark border ms-1"><%= intake_logs.size %></span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="audit-vista-tab" data-bs-toggle="tab" data-bs-target="#audit-vista" type="button" role="tab">
+              Vista <span class="badge bg-light text-dark border ms-1"><%= vista_entries.size %></span>
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-all", active: true, logs: logs %>
+          <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-publication", active: false, logs: publication_logs %>
+          <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-intake", active: false, logs: intake_logs %>
+          <%= render "admin/habitations/audit_history_vista_timeline", tab_id: "audit-vista", active: false, entries: vista_entries %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

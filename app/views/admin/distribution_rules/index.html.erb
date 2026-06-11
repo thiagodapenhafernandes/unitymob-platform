@@ -1,0 +1,112 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800">Regras de Distribuição</h1>
+    <p class="text-muted small mb-0">Gerencie como os leads são roteados para sua equipe.</p>
+  </div>
+  <%= link_to new_admin_distribution_rule_path, class: "btn btn-primary" do %>
+    <i class="bi bi-plus-lg me-1"></i> Nova Regra
+  <% end %>
+</div>
+
+<% if @holding_leads_count > 0 %>
+  <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center">
+      <i class="bi bi-pause-circle-fill fs-4 me-3"></i>
+      <div>
+        <span class="fw-bold d-block">Leads Represados</span>
+        <span class="small">Você tem <%= @holding_leads_count %> leads aguardando distribuição no bolsão.</span>
+      </div>
+    </div>
+    <%= link_to "Ver Leads", admin_leads_path(status: Lead.status_value(:represado)), class: "btn btn-sm btn-warning fw-bold" %>
+  </div>
+<% end %>
+
+<div class="card shadow-sm border-0">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="bg-light">
+        <tr>
+          <th class="ps-4 py-3 text-uppercase text-secondary small fw-bold">Nome</th>
+          <th class="py-3 text-uppercase text-secondary small fw-bold">Tipo</th>
+          <th class="py-3 text-uppercase text-secondary small fw-bold">Fontes</th>
+          <th class="py-3 text-uppercase text-secondary small fw-bold">Modo</th>
+          <th class="py-3 text-uppercase text-secondary small fw-bold">Status</th>
+          <th class="text-end pe-4 py-3 text-uppercase text-secondary small fw-bold">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @distribution_rules.any? %>
+          <% @distribution_rules.each do |rule| %>
+            <tr>
+              <td class="ps-4">
+                <div class="fw-bold text-dark"><%= rule.name %></div>
+                <div class="d-flex gap-1 mt-1">
+                  <% if rule.pocket_active? %>
+                    <span class="badge bg-warning text-dark border-0 small" style="font-size: 10px;">
+                      <i class="bi bi-hourglass-split"></i> <%= rule.pocket_time %>m
+                    </span>
+                  <% end %>
+                  <% if rule.represamento_active? %>
+                    <span class="badge bg-info text-white border-0 small" style="font-size: 10px;">
+                      <i class="bi bi-moon-stars"></i> Bolsão
+                    </span>
+                  <% end %>
+                </div>
+              </td>
+              <td>
+                <span class="badge bg-light text-dark border font-monospace text-uppercase" style="font-size: 10px;">
+                  <%= rule.business_type %>
+                </span>
+              </td>
+              <td>
+                <div class="d-flex gap-2">
+                   <% if rule.source_meta? %><i class="bi bi-facebook text-primary" title="Meta"></i><% end %>
+                   <% if rule.source_webhook? %><i class="bi bi-diagram-2 text-secondary" title="Webhook"></i><% end %>
+                   <% if rule.source_site? %><i class="bi bi-globe text-info" title="Site"></i><% end %>
+                   <% if rule.source_portal? %><i class="bi bi-building text-success" title="Portais"></i><% end %>
+                </div>
+              </td>
+              <td>
+                <div class="d-flex align-items-center small fw-bold text-uppercase text-secondary">
+                  <i class="bi bi-<%= rule.rotary? ? 'arrow-repeat text-info' : (rule.performance? ? 'graph-up-arrow text-success' : 'lightning-fill text-warning') %> me-2"></i>
+                  <%= rule.distribution_mode %>
+                </div>
+              </td>
+              <td>
+                <% if rule.active? %>
+                  <span class="badge bg-success-subtle text-success border-0 px-2">Ativa</span>
+                <% else %>
+                  <span class="badge bg-secondary-subtle text-secondary border-0 px-2">Inativa</span>
+                <% end %>
+              </td>
+              <td class="text-end pe-4">
+                <div class="btn-group">
+                  <%= link_to admin_distribution_rule_path(rule), class: "btn btn-sm btn-outline-secondary border-0", title: "Ver" do %>
+                    <i class="bi bi-eye"></i>
+                  <% end %>
+                  <%= link_to edit_admin_distribution_rule_path(rule), class: "btn btn-sm btn-outline-primary border-0", title: "Editar" do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                  <%= button_to toggle_active_admin_distribution_rule_path(rule), method: :patch, class: "btn btn-sm btn-outline-warning border-0", title: rule.active? ? "Pausar" : "Ativar" do %>
+                    <i class="bi bi-<%= rule.active? ? 'pause-circle' : 'play-circle' %>"></i>
+                  <% end %>
+                  <%= button_to admin_distribution_rule_path(rule), method: :delete, data: { confirm: "Tem certeza?" }, class: "btn btn-sm btn-outline-danger border-0", title: "Excluir" do %>
+                    <i class="bi bi-trash"></i>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="6" class="text-center py-5 text-muted">
+              <i class="bi bi-diagram-3 display-4 d-block mb-3 opacity-25"></i>
+              <p>Nenhuma regra definida ainda.</p>
+              <%= link_to "Criar Primeira Regra", new_admin_distribution_rule_path, class: "btn btn-sm btn-primary" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

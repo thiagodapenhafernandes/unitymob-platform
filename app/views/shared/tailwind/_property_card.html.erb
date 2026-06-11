@@ -1,0 +1,291 @@
+<div class="group bg-white rounded-[16px] overflow-hidden shadow-[0_14px_34px_rgba(15,23,42,0.1)] hover:shadow-[0_20px_46px_rgba(15,23,42,0.16)] transition-all duration-300 border border-white/80 ring-1 ring-slate-900/5 flex flex-col relative cursor-pointer"
+     data-controller="clickable-card"
+     data-clickable-card-url-value="<%= habitation_path(property) %>"
+     data-property-id="<%= property.id %>">
+  
+  <!-- Image Carousel Area -->
+  <div class="relative h-[320px] overflow-hidden bg-gray-100">
+    <!-- Badges (Top Left) - Dynamic with max 2 -->
+    <div class="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start">
+      <% property.display_badges.each do |badge| %>
+        <span class="px-2.5 py-1 bg-<%= badge[:tailwind_color] %> text-white text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-[0_8px_18px_rgba(2,43,58,0.12)] border border-white/25">
+          <%= badge[:text] %>
+        </span>
+      <% end %>
+    </div>
+
+    <!-- Code & Constructor Badge (Top Right) -->
+    <div class="absolute top-3 right-3 z-20 flex flex-col items-end gap-2">
+      <span class="px-2.5 py-1.5 bg-white/60 backdrop-blur-md text-blue-three text-[10px] font-bold rounded-lg shadow-[0_8px_18px_rgba(2,43,58,0.1)] border border-white/50">
+        <%= property.codigo %>
+      </span>
+      
+    <% if property.effective_constructor&.favicon_url.present? %>
+      <div class="w-8 h-8 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm border border-gray-100 flex items-center justify-center transition-transform hover:scale-110" title="<%= property.effective_constructor.name %>">
+        <img src="<%= property.effective_constructor.favicon_url %>" 
+             alt="<%= property.effective_constructor.name %>" 
+             class="w-full h-full object-contain filter grayscale hover:grayscale-0 transition-all">
+      </div>
+    <% end %>
+
+      <div class="z-30">
+        <%= render "shared/broker_share_menu", property: property %>
+      </div>
+    </div>
+
+    <!-- Development Units Badge (Bottom Left) -->
+    <% if property.empreendimento? && property.available_units_count > 0 %>
+      <div class="absolute bottom-3 left-3 z-20">
+        <span class="px-3 py-1.5 bg-blue-three text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1.5">
+          <i class="bi bi-building"></i>
+          <%= property.available_units_count %> <%= property.available_units_count == 1 ? 'unidade' : 'unidades' %>
+        </span>
+      </div>
+    <% end %>
+
+
+    <!-- Swiper for Images -->
+    <div class="swiper card-swiper h-full w-full" data-controller="card-swiper" style="overflow: hidden !important;">
+      <div class="swiper-wrapper" style="display: flex !important; width: 100% !important;">
+        <% card_images = property.card_image_sources(5) %>
+        <% if card_images.present? %>
+          <% card_images.each_with_index do |pic, index| %>
+            <div class="swiper-slide w-full aspect-[4/3]" style="width: 100% !important; flex-shrink: 0 !important;">
+              <% image_source = public_image_url(pic, resize_to_fill: [640, 480]) %>
+              <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
+              <%= image_tag(index.zero? ? image_source : placeholder,
+                    alt: property.titulo_anuncio,
+                    width: 640,
+                    height: 480,
+                    class: "w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700",
+                    loading: "lazy",
+                    decoding: "async",
+                    sizes: "(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw",
+                    data: (index.zero? ? {} : { src: image_source })) %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="swiper-slide">
+            <div class="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
+              <i class="bi bi-image text-4xl"></i>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      
+      <!-- Navigation (Visible on Hover) -->
+      <div class="swiper-button-next !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
+      <div class="swiper-button-prev !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
+      
+      <!-- Pagination -->
+      <div class="swiper-pagination !bottom-2 !z-30"></div>
+    </div>
+
+    <div class="absolute inset-0 z-[12] pointer-events-none bg-gradient-to-b from-black/10 via-transparent to-black/15"></div>
+    
+    <!-- Link Overlay -->
+    <%= link_to "",
+                habitation_path(property),
+                class: "absolute inset-0 z-10",
+                data: {
+                  controller: "marketing-tracker",
+                  action: "click->marketing-tracker#track",
+                  marketing_tracker_event_type_value: "property_card_click",
+                  marketing_tracker_placement_value: "property_card_image",
+                  marketing_tracker_label_value: property.titulo_anuncio,
+                  marketing_tracker_target_url_value: habitation_path(property),
+                  marketing_tracker_habitation_id_value: property.id
+                } %>
+  </div>
+
+  <!-- Content -->
+  <div class="pt-4 px-5 flex flex-col flex-1 <%= (property.sale_discount? || property.rent_discount?) ? 'pb-0' : 'pb-4' %>">
+    
+    <!-- Location -->
+    <div class="flex items-center gap-1.5 text-gray-500 mb-2 text-xs font-medium uppercase tracking-wide">
+      <i class="bi bi-geo-alt text-golden-one"></i>
+      <span class="truncate"><%= property.cidade %> - <%= property.bairro %></span>
+    </div>
+
+    <!-- Title -->
+    <div class="mb-3 min-h-[3rem]">
+      <h3 class="text-base font-bold text-blue-three line-clamp-2 leading-tight group-hover:text-blue-one transition-colors">
+        <%= property.titulo_anuncio %>
+      </h3>
+    </div>
+
+    <!-- Price with Discount Indicator -->
+    <%
+      # Determinar se é venda ou aluguel baseado no status
+      is_rental = property.status&.include?('Aluguel')
+      is_sale = property.status&.include?('Venda')
+      
+      # Escolher o preço correto
+      current_price = is_rental ? property.valor_locacao_cents : property.valor_venda_cents
+      previous_price = is_rental ? property.valor_locacao_anterior_cents : property.valor_venda_anterior_cents
+    %>
+    <div class="mb-4">
+      <% if previous_price.present? && current_price.present? && previous_price > current_price && current_price.to_f > 0 %>
+        <% desconto_percentual = (((previous_price - current_price).to_f / previous_price) * 100).round %>
+        
+        <!-- Preço Anterior Riscado + Badge de Desconto -->
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-sm text-gray-400 line-through font-medium">
+            de <%= number_to_currency(previous_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
+          </span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded">
+            <i class="fas fa-arrow-down"></i>
+            <%= desconto_percentual %>%
+          </span>
+        </div>
+        
+        <!-- Preço Atual Destacado -->
+        <div class="flex items-center justify-between">
+          <p class="text-xl font-bold text-gray-800">
+            Por <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
+          </p>
+          <button type="button"
+                  class="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 focus:outline-none"
+                  data-action="click->marketing-tracker#track click->lead-capture#open"
+                  data-controller="marketing-tracker"
+                  data-marketing-tracker-event-type-value="whatsapp_click"
+                  data-marketing-tracker-placement-value="property_card"
+                  data-marketing-tracker-label-value="<%= property.titulo_anuncio %>"
+                  data-marketing-tracker-target-url-value="<%= habitation_path(property) %>"
+                  data-marketing-tracker-habitation-id-value="<%= property.id %>"
+                  data-property-id="<%= property.id %>"
+                  data-property-code="<%= property.codigo %>"
+                  data-property-title="<%= property.titulo_anuncio %>"
+                  data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
+                  data-whatsapp-message="Olá, vi o imóvel <%= property.titulo_anuncio %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
+                  title="Falar no WhatsApp">
+            <i class="bi bi-whatsapp text-lg"></i>
+          </button>
+        </div>
+      <% else %>
+        <!-- Preço Normal -->
+        <div class="flex items-center justify-between">
+          <p class="text-lg font-bold text-gray-800">
+            <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
+          </p>
+          <button type="button"
+                  class="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 focus:outline-none"
+                  data-action="click->marketing-tracker#track click->lead-capture#open"
+                  data-controller="marketing-tracker"
+                  data-marketing-tracker-event-type-value="whatsapp_click"
+                  data-marketing-tracker-placement-value="property_card"
+                  data-marketing-tracker-label-value="<%= property.titulo_anuncio %>"
+                  data-marketing-tracker-target-url-value="<%= habitation_path(property) %>"
+                  data-marketing-tracker-habitation-id-value="<%= property.id %>"
+                  data-property-id="<%= property.id %>"
+                  data-property-code="<%= property.codigo %>"
+                  data-property-title="<%= property.titulo_anuncio %>"
+                  data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
+                  data-whatsapp-message="Olá, vi o imóvel <%= property.titulo_anuncio %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
+                  title="Falar no WhatsApp">
+            <i class="bi bi-whatsapp text-lg"></i>
+          </button>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Features Grid with Font Awesome Icons -->
+    <%
+      area_label = property.card_area_text
+      vagas_label = property.card_vagas_text
+      dorms_label = property.card_dormitorios_text
+    %>
+    <div class="grid grid-cols-3 gap-2 mb-4 border-t border-gray-100 pt-4">
+      <div class="flex flex-col items-center justify-center text-center">
+        <i class="fas fa-ruler-combined text-golden-one text-xl mb-1"></i>
+        <span class="text-xs text-gray-500 font-medium"><%= area_label.presence || "—" %></span>
+      </div>
+      <div class="flex flex-col items-center justify-center text-center border-l border-gray-100">
+        <i class="fas fa-car text-golden-one text-xl mb-1"></i>
+        <span class="text-xs text-gray-500 font-medium"><%= vagas_label.present? ? "#{vagas_label} Vagas" : "—" %></span>
+      </div>
+      <div class="flex flex-col items-center justify-center text-center border-l border-gray-100">
+        <i class="fas fa-door-open text-golden-one text-xl mb-1"></i>
+        <span class="text-xs text-gray-500 font-medium"><%= dorms_label.present? ? "#{dorms_label} Quartos" : "—" %></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Opportunity Banner (Bottom) - Reduced sale or rent prices -->
+  <% if property.sale_discount? || property.rent_discount? %>
+    <div class="w-full bg-green-600 py-2 px-4 flex items-center justify-center">
+      <span class="text-white text-xs font-bold uppercase tracking-widest"><%= property.rent_discount? ? "LOCAÇÃO COM PREÇO REDUZIDO" : "OPORTUNIDADE" %></span>
+    </div>
+  <% end %>
+
+</div>
+
+<style>
+/* Força layout correto do mini-carrossel dentro dos cards */
+.card-swiper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.card-swiper .swiper-wrapper {
+  display: flex;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition-property: transform;
+}
+
+.card-swiper .swiper-slide {
+  width: 100% !important;
+  height: 100%;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Garante que apenas um slide seja visível por vez */
+.card-swiper .swiper-wrapper {
+  transform: translate3d(0px, 0px, 0px);
+}
+
+/* Estiliza botões de navegação do card */
+/* Estiliza botões de navegação do card */
+.card-swiper .swiper-button-next,
+.card-swiper .swiper-button-prev {
+  /* color: #1F7A8C !important; Removed to allow inline class override or default */
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 40 !important;
+  width: 24px !important; /* Standard size */
+  height: 24px !important;
+}
+
+.card-swiper .swiper-button-next::after,
+.card-swiper .swiper-button-prev::after {
+  font-size: 20px !important; /* Adjust icon size */
+  font-weight: bold;
+}
+
+/* Mostra setas no hover do card inteiro */
+.group:hover .card-swiper .swiper-button-next,
+.group:hover .card-swiper .swiper-button-prev {
+  opacity: 1 !important;
+}
+
+/* Estiliza paginação do card */
+.card-swiper .swiper-pagination {
+  z-index: 30 !important;
+}
+
+.card-swiper .swiper-pagination-bullet {
+  background: white;
+  opacity: 0.7;
+}
+
+.card-swiper .swiper-pagination-bullet-active {
+  opacity: 1;
+  background: white;
+}
+</style>

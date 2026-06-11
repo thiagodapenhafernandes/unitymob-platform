@@ -1,0 +1,97 @@
+<div class="admin-header shadow-sm">
+  <div class="admin-header-title">
+    <h1>Detalhes do Banner</h1>
+    <p>Visualização e informações técnicas do banner</p>
+  </div>
+  <div class="admin-header-actions d-flex gap-2">
+    <%= link_to admin_banners_path, class: "btn btn-outline-secondary" do %>
+      <i class="bi bi-arrow-left"></i> Voltar
+    <% end %>
+    <%= link_to edit_admin_banner_path(@banner), class: "btn btn-warning px-4" do %>
+      <i class="bi bi-pencil-square"></i> Editar Banner
+    <% end %>
+  </div>
+</div>
+
+<div class="card card-luxury">
+  <div class="card-header">
+    <i class="bi bi-eye-fill"></i> Pré-visualização do Banner
+  </div>
+  <div class="card-body p-4">
+    <div class="preview-container">
+      <div class="preview-desktop text-center">
+        <span class="preview-title"><i class="bi bi-pc-display pe-1"></i> Preview Desktop</span>
+        <% if @banner.image_desktop.attached? %>
+          <%= image_tag @banner.image_desktop, class: "shadow-sm border border-secondary border-opacity-10" %>
+        <% else %>
+          <div class="py-5 bg-light rounded text-muted">No Desktop Image</div>
+        <% end %>
+      </div>
+      <div class="preview-mobile text-center">
+        <span class="preview-title"><i class="bi bi-phone pe-1"></i> Preview Mobile</span>
+        <% if @banner.image_mobile.attached? %>
+          <%= image_tag @banner.image_mobile, class: "shadow-sm border border-secondary border-opacity-10" %>
+        <% else %>
+          <div class="py-5 bg-light rounded text-muted w-100">No Mobile Image</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-12">
+    <div class="card card-luxury">
+      <div class="card-header">
+        <i class="bi bi-info-circle-fill"></i> Dados Detalhados
+      </div>
+      <div class="card-body p-4">
+        <div class="row">
+          <div class="col-md-3">
+            <label class="text-muted small text-uppercase fw-bold d-block mb-1">Título</label>
+            <div class="fw-bold text-dark fs-5"><%= @banner.title %></div>
+          </div>
+          <div class="col-md-3">
+            <label class="text-muted small text-uppercase fw-bold d-block mb-1">Status</label>
+            <% if @banner.active? %>
+              <span class="badge badge-pill badge-soft-success">Banner Ativo</span>
+            <% else %>
+              <span class="badge badge-pill badge-soft-secondary">Banner Inativo</span>
+            <% end %>
+          </div>
+          <div class="col-md-3">
+            <label class="text-muted small text-uppercase fw-bold d-block mb-1">Ordem</label>
+            <span class="badge bg-light text-dark border">Posição #<%= @banner.display_order %></span>
+          </div>
+          <div class="col-md-3">
+            <label class="text-muted small text-uppercase fw-bold d-block mb-1">Link Externo</label>
+            <% if @banner.link_url.present? %>
+              <a href="<%= @banner.link_url %>" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
+                <i class="bi bi-box-arrow-up-right"></i> <%= @banner.link_text.presence || "Acessar Link" %>
+              </a>
+            <% else %>
+              <span class="text-muted">Nenhum configurado</span>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="row mt-4 pt-4 border-top">
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase fw-bold d-block mb-2">Descrição</label>
+            <p class="mb-0 text-dark"><%= @banner.description.presence || "Sem descrição" %></p>
+          </div>
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase fw-bold d-block mb-2">Posições de Exibição</label>
+            <div class="d-flex flex-wrap gap-2">
+              <% @banner.positions&.each do |pos| %>
+                <span class="badge badge-pill badge-soft-info p-2">
+                  <i class="bi bi-geo-alt-fill me-1"></i><%= Banner::POSITIONS[pos] || pos.humanize %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

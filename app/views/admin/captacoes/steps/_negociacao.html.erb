@@ -1,0 +1,129 @@
+<h1 class="wizard-section-title"><i class="bi bi-cash-stack text-primary me-2"></i>Negociação</h1>
+<p class="wizard-section-subtitle">
+  Modalidade: <strong><%= @captacao.modalidade.to_s.humanize %></strong>. Preencha conforme aplicável.
+</p>
+
+<% if @captacao.requires_sale_price? %>
+  <div class="wizard-field-group">
+    <%= f.label :valor_venda, "Valor de venda (R$)", class: "form-label" %>
+    <span class="required-star">*</span>
+    <%= f.text_field :valor_venda,
+                     value: @captacao.valor_venda_formatted,
+                     inputmode: "numeric",
+                     class: field_state.call(:valor_venda),
+                     data: { controller: "mask", mask_type_value: "currency" } %>
+    <% if field_invalid.call(:valor_venda) %><div class="invalid-feedback d-block"><%= @captacao.intake_sale_price_requirement_message %></div><% end %>
+  </div>
+
+  <div class="wizard-field-group">
+    <%= f.label :motivo_venda, "Motivo da venda", class: "form-label" %>
+    <%= f.select :motivo_venda,
+                 options_for_select(Array(@sale_reasons), @captacao.motivo_venda),
+                 { include_blank: "Selecione" },
+                 class: "form-select" %>
+  </div>
+
+  <div class="wizard-field-group">
+    <%= f.label :aceita_permuta_answer, "Aceita permuta?", class: "form-label" %>
+    <span class="required-star">*</span>
+    <%= f.select :aceita_permuta_answer,
+                 Habitation::YES_NO_ANSWERS.map { |key, label| [label, key] },
+                 { include_blank: "Selecione" },
+                 class: field_state.call(:aceita_permuta_answer, "form-select") %>
+    <% if field_invalid.call(:aceita_permuta_answer) %><div class="invalid-feedback d-block">Informe se aceita permuta.</div><% end %>
+  </div>
+
+  <div class="row g-2">
+    <div class="col-md-6">
+      <div class="wizard-field-group">
+        <%= f.label :cidade_permuta, "Cidade aceita permuta", class: "form-label" %>
+        <%= f.text_field :cidade_permuta, class: "form-control" %>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="wizard-field-group">
+        <%= f.label :aceita_parcelamento_flag, "Aceita parcelamento?", class: "form-label" %>
+        <%= f.select :aceita_parcelamento_flag, [["Sim", true], ["Não", false]], { include_blank: "Selecione" }, class: "form-select" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="wizard-field-group">
+    <%= f.label :numero_prestacoes, "Se aceita parcelamento, em quantas vezes?", class: "form-label" %>
+    <%= f.number_field :numero_prestacoes, min: 1, inputmode: "numeric", class: field_state.call(:numero_prestacoes) %>
+    <% if field_invalid.call(:numero_prestacoes) %><div class="invalid-feedback d-block">Informe a quantidade de parcelas.</div><% end %>
+  </div>
+<% end %>
+
+<% if @captacao.requires_rent_price? %>
+  <hr class="my-3">
+  <div class="wizard-field-group">
+    <%= f.label :valor_locacao, "Valor de locação (R$)", class: "form-label" %>
+    <span class="required-star">*</span>
+    <%= f.text_field :valor_locacao,
+                     value: @captacao.valor_locacao_formatted,
+                     inputmode: "numeric",
+                     class: field_state.call(:valor_locacao),
+                     data: { controller: "mask", mask_type_value: "currency" } %>
+    <% if field_invalid.call(:valor_locacao) %><div class="invalid-feedback d-block"><%= @captacao.intake_rent_price_requirement_message %></div><% end %>
+  </div>
+
+  <div class="wizard-field-group">
+    <%= f.label :salute_rental_management_answer, "Administração de locação feita pela Salute?", class: "form-label" %>
+    <span class="required-star">*</span>
+    <%= f.select :salute_rental_management_answer,
+                 Habitation::YES_NO_ANSWERS.map { |key, label| [label, key] },
+                 { include_blank: "Selecione" },
+                 class: field_state.call(:salute_rental_management_answer, "form-select") %>
+    <% if field_invalid.call(:salute_rental_management_answer) %><div class="invalid-feedback d-block">Informe se a administração será feita pela Salute.</div><% end %>
+  </div>
+<% end %>
+
+<hr class="my-3">
+<h6 class="fw-bold mb-2 text-muted small text-uppercase">Taxas e despesas</h6>
+
+<div class="row g-2">
+  <div class="col-6">
+    <div class="wizard-field-group">
+      <%= f.label :valor_condominio, "Condomínio (R$)", class: "form-label" %>
+      <%= f.text_field :valor_condominio,
+                       value: @captacao.valor_condominio_formatted,
+                       inputmode: "numeric",
+                       class: field_state.call(:valor_condominio),
+                       data: { controller: "mask", mask_type_value: "currency" } %>
+      <% if field_invalid.call(:valor_condominio) %><div class="invalid-feedback d-block">Informe condomínio ou IPTU.</div><% end %>
+    </div>
+  </div>
+  <div class="col-6">
+    <div class="wizard-field-group">
+      <%= f.label :valor_iptu, "IPTU anual (R$)", class: "form-label" %>
+      <%= f.text_field :valor_iptu,
+                       value: @captacao.valor_iptu_formatted,
+                       inputmode: "numeric",
+                       class: field_state.call(:valor_iptu),
+                       data: { controller: "mask", mask_type_value: "currency" } %>
+      <% if field_invalid.call(:valor_iptu) %><div class="invalid-feedback d-block">Informe IPTU ou condomínio.</div><% end %>
+    </div>
+  </div>
+</div>
+
+<div class="wizard-field-group">
+  <%= f.label :saldo_devedor, "Saldo devedor (R$)", class: "form-label" %>
+  <%= f.text_field :saldo_devedor,
+                   value: @captacao.saldo_devedor_formatted,
+                   inputmode: "numeric",
+                   class: "form-control",
+                   data: { controller: "mask", mask_type_value: "currency" } %>
+  <small class="text-muted">Se houver financiamento em aberto.</small>
+</div>
+
+<div class="wizard-field-group">
+  <label class="form-label">Outras taxas / contribuições</label>
+  <% ["Fundo de reserva", "Taxa extra", "Lazer", "Água", "Gás", "Taxa de lixo"].each do |opt| %>
+    <% selected = Array(@captacao.outras_taxas).include?(opt) %>
+    <label class="wizard-feature-chip <%= 'selected' if selected %>">
+      <%= check_box_tag "captacao[outras_taxas][]", opt, selected, onchange: "this.closest('label').classList.toggle('selected', this.checked)" %>
+      <%= opt %>
+    </label>
+  <% end %>
+</div>

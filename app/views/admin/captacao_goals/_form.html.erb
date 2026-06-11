@@ -1,0 +1,44 @@
+<%= form_with model: [:admin, goal], local: true do |f| %>
+  <% if goal.errors.any? %>
+    <div class="alert alert-danger small">
+      <% goal.errors.full_messages.each do |msg| %><div><%= msg %></div><% end %>
+    </div>
+  <% end %>
+
+  <div class="row g-3">
+    <div class="col-md-3">
+      <%= f.label :start_date, "Data inicial", class: "form-label" %>
+      <%= f.date_field :start_date, class: "form-control" %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :end_date, "Data final", class: "form-label" %>
+      <%= f.date_field :end_date, class: "form-control" %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :kind, "Tipo", class: "form-label" %>
+      <%= f.select :kind, [["Venda", "venda"], ["Locação", "locacao"]], {}, class: "form-select" %>
+    </div>
+    <div class="col-md-3">
+      <%= f.label :target, "Meta de captações", class: "form-label" %>
+      <%= f.number_field :target, class: "form-control", min: 1 %>
+    </div>
+
+    <div class="col-md-12">
+      <%= f.label :foco_regiao, "Observação da meta (opcional)", class: "form-label" %>
+      <%= f.text_field :foco_regiao, class: "form-control", placeholder: "Ex.: meta comercial interna" %>
+    </div>
+    <div class="col-md-6">
+      <%= f.label :foco_valor_min, "Faixa de valor — mínimo (R$)", class: "form-label" %>
+      <%= f.number_field :foco_valor_min, step: 0.01, class: "form-control" %>
+    </div>
+    <div class="col-md-6">
+      <%= f.label :foco_valor_max, "Faixa de valor — máximo (R$)", class: "form-label" %>
+      <%= f.number_field :foco_valor_max, step: 0.01, class: "form-control" %>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-end gap-2 mt-3">
+    <%= link_to "Cancelar", admin_captacao_goals_path, class: "btn btn-outline-secondary" %>
+    <%= f.submit class: "btn btn-primary" %>
+  </div>
+<% end %>

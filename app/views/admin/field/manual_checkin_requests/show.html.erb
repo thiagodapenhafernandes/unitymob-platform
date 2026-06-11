@@ -1,0 +1,48 @@
+<div class="mb-3">
+  <%= link_to admin_field_manual_checkin_requests_path, class: "text-muted small text-decoration-none" do %>
+    <i class="bi bi-arrow-left me-1"></i>Voltar
+  <% end %>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white py-3">
+    <h4 class="fw-bold mb-0">
+      <i class="bi bi-hand-index-thumb-fill text-warning me-2"></i>Solicitação #<%= @request.id %>
+    </h4>
+  </div>
+  <div class="card-body">
+    <dl class="row">
+      <dt class="col-sm-3">Corretor</dt>
+      <dd class="col-sm-9"><%= @request.admin_user.name %> (<%= @request.admin_user.email %>)</dd>
+      <dt class="col-sm-3">Loja</dt>
+      <dd class="col-sm-9"><%= @request.store.name %></dd>
+      <dt class="col-sm-3">Status</dt>
+      <dd class="col-sm-9">
+        <% case @request.status
+           when "pending" %>
+          <span class="badge bg-warning text-dark">Pendente</span>
+        <% when "approved" %>
+          <span class="badge bg-success">Aprovada</span>
+        <% else %>
+          <span class="badge bg-danger">Rejeitada</span>
+        <% end %>
+      </dd>
+      <dt class="col-sm-3">Justificativa</dt>
+      <dd class="col-sm-9"><%= simple_format(@request.justification) %></dd>
+      <% if @request.review_notes.present? %>
+        <dt class="col-sm-3">Notas da revisão</dt>
+        <dd class="col-sm-9"><%= simple_format(@request.review_notes) %></dd>
+      <% end %>
+    </dl>
+  </div>
+  <% if @request.pending? %>
+    <div class="card-footer bg-white d-flex gap-2 justify-content-end">
+      <%= button_to approve_admin_field_manual_checkin_request_path(@request), method: :post, class: "btn btn-success" do %>
+        <i class="bi bi-check-circle-fill me-1"></i>Aprovar
+      <% end %>
+      <%= button_to reject_admin_field_manual_checkin_request_path(@request), method: :post, class: "btn btn-outline-danger" do %>
+        <i class="bi bi-x-circle-fill me-1"></i>Rejeitar
+      <% end %>
+    </div>
+  <% end %>
+</div>

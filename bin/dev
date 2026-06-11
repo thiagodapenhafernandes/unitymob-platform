@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+
+RUBY_VERSION="$(cat .ruby-version 2>/dev/null || true)"
+
+if [ -n "$RUBY_VERSION" ] && command -v rvm >/dev/null 2>&1; then
+  export rvm_silence_path_mismatch_check_flag=1
+
+  if ! rvm "$RUBY_VERSION" do ruby -S foreman version >/dev/null 2>&1; then
+    echo "Installing foreman for $RUBY_VERSION..."
+    rvm "$RUBY_VERSION" do gem install foreman
+  fi
+
+  exec rvm "$RUBY_VERSION" do foreman start -f Procfile.dev -p "${PORT:-3001}" "$@"
+fi
+
+if ! command -v foreman >/dev/null 2>&1; then
+  echo "Installing foreman..."
+  gem install foreman
+fi
+
+exec foreman start -f Procfile.dev -p "${PORT:-3001}" "$@"

@@ -1,0 +1,152 @@
+/* Sidebar Overlay */
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.sidebar-backdrop.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sidebar-panel {
+  position: fixed;
+  top: 0;
+  right: -400px;
+  /* Hidden by default */
+  width: 400px;
+  max-width: 100vw;
+  height: 100vh;
+  background-color: #fff;
+  z-index: 1050;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+  transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-panel.show {
+  right: 0;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.sidebar-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: color 0.2s;
+}
+
+.sidebar-close-btn:hover {
+  color: #000;
+}
+
+/* Sidebar Content */
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+/* Filter Sections inside Sidebar */
+.filter-section {
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 1.5rem;
+}
+
+.filter-section:last-child {
+  border-bottom: none;
+}
+
+.filter-section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.filter-section-header i {
+  transition: transform 0.2s;
+}
+
+.filter-section-header.collapsed i {
+  transform: rotate(-90deg);
+}
+
+.filter-section-content {
+  padding-left: 0.5rem;
+}
+
+/* Checkboxes styling */
+.form-check {
+  margin-bottom: 0.5rem;
+}
+
+.form-check-input:checked {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+/* Footer Actions */
+.sidebar-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #eee;
+  background-color: #fff;
+}
+
+/* Trigger Button */
+.filter-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #e0e0e0;
+  background-color: #fff;
+  border-radius: 8px;
+  /* Slightly rounded corners like reference */
+  color: #333;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-btn-icon:hover {
+  background-color: #f8f9fa;
+  border-color: #d0d0d0;
+  color: #000;
+}

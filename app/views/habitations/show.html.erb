@@ -1,0 +1,350 @@
+<% images = @habitation.public_image_sources %>
+<% image_url = ->(photo) { public_image_url(photo) } %>
+<% title = @habitation.titulo_anuncio.presence || "#{@habitation.categoria} em #{@habitation.bairro}" %>
+<% address_parts = [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank %>
+<% address_text = address_parts.join(" - ") %>
+<% area_text = (@habitation.area_total_m2.presence || @habitation.area_privativa_m2.presence) %>
+<% has_sale_price = @habitation.valor_venda_cents.to_i.positive? %>
+<% has_rent_price = @habitation.valor_locacao_cents.to_i.positive? %>
+<% has_discount = @habitation.sale_discount? %>
+<% has_rent_discount = @habitation.rent_discount? %>
+
+<% content_for :head do %>
+  <%= json_ld_tag(real_estate_listing_schema(@habitation)) %>
+<% end %>
+
+<div class="bg-gray-50 min-h-screen pb-14 habitation-details" data-property-id="<%= @habitation.id %>">
+  <div class="bg-white border-b border-gray-100 py-3 mt-[72px]">
+    <div class="container-custom">
+      <div class="flex items-center gap-2 text-xs text-gray-400 uppercase tracking-wide">
+        <%= link_to "Início", root_path, class: "hover:text-blue-three" %>
+        <i class="bi bi-chevron-right text-[10px]"></i>
+        <%= link_to "Imóveis", habitations_path, class: "hover:text-blue-three" %>
+        <i class="bi bi-chevron-right text-[10px]"></i>
+        <span class="text-blue-three font-bold"><%= @habitation.codigo %></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-custom pt-8">
+    <section class="relative overflow-hidden rounded-2xl bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]" data-controller="fancybox-gallery">
+      <% if images.any? %>
+        <div class="grid h-[360px] grid-cols-1 gap-2 md:h-[480px] lg:grid-cols-[1.08fr_1fr]">
+          <a href="<%= image_url.call(images.first) %>"
+             data-fancybox="property-gallery"
+             data-caption="<%= title %> - Foto 1"
+             class="relative block h-full overflow-hidden bg-gray-100">
+            <%= image_tag public_image_url(images.first, resize_to_fill: [960, 720]),
+                alt: "#{title} - Foto 1",
+                class: "h-full w-full object-cover transition-transform duration-700 hover:scale-105",
+                fetchpriority: "high",
+                loading: "eager",
+                decoding: "async",
+                width: 960,
+                height: 720,
+                sizes: "(min-width: 1024px) 52vw, 100vw" %>
+          </a>
+
+          <div class="hidden grid-cols-2 gap-2 lg:grid">
+            <% images.drop(1).first(4).each_with_index do |photo, index| %>
+              <a href="<%= image_url.call(photo) %>"
+                 data-fancybox="property-gallery"
+                 data-caption="<%= title %> - Foto <%= index + 2 %>"
+                 class="relative block overflow-hidden bg-gray-100">
+                <%= image_tag public_image_url(photo, resize_to_fill: [520, 360]),
+                    alt: "#{title} - Foto #{index + 2}",
+                    class: "h-full w-full object-cover transition-transform duration-700 hover:scale-105",
+                    loading: "lazy",
+                    decoding: "async",
+                    width: 520,
+                    height: 360,
+                    sizes: "24vw" %>
+              </a>
+            <% end %>
+          </div>
+        </div>
+
+        <% images.drop(5).each_with_index do |photo, index| %>
+          <a href="<%= image_url.call(photo) %>"
+             data-fancybox="property-gallery"
+             data-caption="<%= title %> - Foto <%= index + 6 %>"
+             class="hidden"></a>
+        <% end %>
+
+        <div class="absolute bottom-4 left-4 z-20">
+          <%= render "shared/broker_share_menu", property: @habitation %>
+        </div>
+
+        <button type="button"
+           data-gallery-open
+           class="absolute bottom-4 right-4 z-20 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-blue-three shadow-md transition hover:bg-gray-50">
+          <i class="bi bi-images"></i>
+          Ver <%= images.size %> fotos
+        </button>
+      <% else %>
+        <div class="flex h-[360px] items-center justify-center bg-gray-100">
+          <div class="text-center text-gray-400">
+            <i class="bi bi-image text-6xl"></i>
+            <p class="mt-3">Sem fotos disponíveis</p>
+          </div>
+        </div>
+      <% end %>
+    </section>
+
+    <div class="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+      <main class="min-w-0 space-y-8">
+        <section>
+          <div class="mb-4 flex flex-wrap items-center gap-2">
+            <span class="rounded bg-blue-three/10 px-2 py-1 text-[11px] font-bold uppercase tracking-widest text-blue-three">
+              <%= @habitation.codigo %>
+            </span>
+            <% @habitation.display_badges.each do |badge| %>
+              <span class="rounded bg-<%= badge[:tailwind_color] %> px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
+                <%= badge[:text] %>
+              </span>
+            <% end %>
+          </div>
+
+          <h1 class="text-3xl font-extrabold leading-tight text-gray-950 lg:text-4xl">
+            <%= title %>
+          </h1>
+
+          <% if address_text.present? %>
+            <p class="mt-3 flex items-start gap-2 text-sm text-gray-500">
+              <i class="bi bi-geo-alt text-golden-one"></i>
+              <span><%= address_text %><%= "/#{@habitation.uf}" if @habitation.uf.present? %></span>
+            </p>
+          <% end %>
+        </section>
+
+        <section>
+          <h2 class="mb-4 text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Características</h2>
+          <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div class="flex min-h-[116px] items-center gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-three/10 text-blue-three">
+                <i class="bi bi-arrows-fullscreen text-lg"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Área</p>
+                <p class="mt-2 text-lg font-extrabold leading-none text-gray-900"><%= area_text.present? ? "#{number_with_precision(area_text, precision: 0)} m²" : "—" %></p>
+              </div>
+            </div>
+
+            <div class="flex min-h-[116px] items-center gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-golden-one/15 text-golden-one">
+                <i class="bi bi-door-closed text-lg"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Quartos</p>
+                <p class="mt-2 text-lg font-extrabold leading-none text-gray-900"><%= @habitation.dormitorios_qtd.to_i.positive? ? @habitation.dormitorios_qtd : "—" %></p>
+              </div>
+            </div>
+
+            <div class="flex min-h-[116px] items-center gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-three/10 text-blue-three">
+                <i class="bi bi-stars text-lg"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Suítes</p>
+                <p class="mt-2 text-lg font-extrabold leading-none text-gray-900"><%= @habitation.suites_qtd.to_i.positive? ? @habitation.suites_qtd : "—" %></p>
+              </div>
+            </div>
+
+            <div class="flex min-h-[116px] items-center gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-golden-one/15 text-golden-one">
+                <i class="bi bi-car-front text-lg"></i>
+              </div>
+              <div class="min-w-0">
+                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Vagas</p>
+                <p class="mt-2 text-lg font-extrabold leading-none text-gray-900"><%= @habitation.vagas_qtd.to_i.positive? ? @habitation.vagas_qtd : "—" %></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="mb-4 text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Descrição</h2>
+          <div class="prose prose-gray max-w-none text-gray-600">
+            <% description_content = @habitation.display_description %>
+            <% if description_content.present? %>
+              <%= formatted_habitation_description(description_content) %>
+            <% else %>
+              <p>Sem descrição disponível.</p>
+            <% end %>
+          </div>
+        </section>
+
+        <%= display_banner('property_detail', container_class: 'w-full my-8') %>
+
+        <% property_features = @habitation.property_features_for_display %>
+        <% leisure_features = @habitation.leisure_features_for_display %>
+        <% if property_features.any? || leisure_features.any? %>
+          <section class="space-y-5">
+            <h2 class="text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Características e Infraestrutura</h2>
+
+            <% if property_features.any? %>
+              <div class="flex flex-wrap gap-2">
+                <% property_features.each do |feature| %>
+                  <span class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700">
+                    <i class="bi bi-house-check text-golden-one"></i>
+                    <%= feature %>
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+
+            <% if leisure_features.any? %>
+              <div class="flex flex-wrap gap-2">
+                <% leisure_features.each do |feature| %>
+                  <span class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700">
+                    <i class="bi bi-stars text-blue-three"></i>
+                    <%= feature %>
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+          </section>
+        <% end %>
+      </main>
+
+      <aside class="space-y-6 lg:sticky lg:top-[96px] lg:self-start">
+        <section class="rounded-2xl bg-white p-6 shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
+          <p class="text-xs font-bold uppercase tracking-[0.22em] text-gray-400">
+            <%= has_rent_price ? "Valor de locação" : "Valor de venda" %>
+          </p>
+
+          <% if has_sale_price %>
+            <% if has_discount %>
+              <p class="mt-3 text-sm font-semibold text-gray-400 line-through">
+                <%= number_to_currency(@habitation.valor_venda_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+              </p>
+            <% end %>
+            <p class="mt-2 text-4xl font-extrabold text-blue-three">
+              <%= number_to_currency(@habitation.valor_venda_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+            </p>
+            <% if has_discount %>
+              <% discount_percent = ((@habitation.valor_venda_anterior_cents - @habitation.valor_venda_cents).to_f / @habitation.valor_venda_anterior_cents * 100).round(1) %>
+              <p class="mt-2 text-sm font-bold text-golden-one"><%= discount_percent %>% de desconto</p>
+            <% end %>
+          <% elsif has_rent_price %>
+            <% if has_rent_discount %>
+              <p class="mt-3 text-sm font-semibold text-gray-400 line-through">
+                <%= number_to_currency(@habitation.valor_locacao_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+              </p>
+            <% end %>
+            <p class="mt-2 text-4xl font-extrabold text-blue-three">
+              <%= number_to_currency(@habitation.valor_locacao_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+            </p>
+            <p class="text-sm font-semibold text-gray-500">/mês</p>
+            <% if has_rent_discount %>
+              <% rent_discount_percent = ((@habitation.valor_locacao_anterior_cents - @habitation.valor_locacao_cents).to_f / @habitation.valor_locacao_anterior_cents * 100).round(1) %>
+              <p class="mt-2 text-sm font-bold text-golden-one">Locação com preço reduzido · <%= rent_discount_percent %>% de desconto</p>
+            <% end %>
+          <% else %>
+            <p class="mt-2 text-3xl font-extrabold text-blue-three">Sob consulta</p>
+          <% end %>
+
+          <div class="my-6 h-px bg-gray-100"></div>
+
+          <dl class="space-y-3 text-sm">
+            <div class="flex justify-between gap-4">
+              <dt class="text-gray-500">Status</dt>
+              <dd class="font-bold text-gray-900"><%= @habitation.status.presence || "Disponível" %></dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-gray-500">Tipo</dt>
+              <dd class="font-bold text-gray-900"><%= @habitation.categoria %></dd>
+            </div>
+            <% if @habitation.displayable_condominio_cents.present? %>
+              <div class="flex justify-between gap-4">
+                <dt class="text-gray-500">Condomínio</dt>
+                <dd class="font-bold text-gray-900"><%= number_to_currency(@habitation.displayable_condominio_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+              </div>
+            <% end %>
+            <% if @habitation.displayable_iptu_cents.present? %>
+              <div class="flex justify-between gap-4">
+                <dt class="text-gray-500">IPTU</dt>
+                <dd class="font-bold text-gray-900"><%= number_to_currency(@habitation.displayable_iptu_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+              </div>
+            <% end %>
+            <% if @habitation.taxes_included_indicator? %>
+              <div class="flex justify-between gap-4">
+                <dt class="text-gray-500">Taxas</dt>
+                <dd class="font-bold text-green-700">Taxas inclusas</dd>
+              </div>
+            <% end %>
+          </dl>
+
+          <button type="button"
+              class="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-three px-4 py-3 font-bold text-white transition hover:bg-blue-one"
+              data-action="click->lead-capture#open"
+              data-property-id="<%= @habitation.id %>"
+              data-property-code="<%= @habitation.codigo %>"
+              data-property-title="<%= title %>"
+              data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
+              data-whatsapp-message="Olá, estou interessado no imóvel <%= title %> (Código: <%= @habitation.codigo %>). Gostaria de mais informações.">
+            <i class="bi bi-whatsapp text-green-400"></i>
+            Falar no WhatsApp
+          </button>
+
+          <button type="button"
+              class="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-blue-three/15 bg-blue-three/5 px-4 py-3 font-bold text-blue-three transition hover:bg-blue-three/10"
+              data-action="click->lead-capture#open"
+              data-property-id="<%= @habitation.id %>"
+              data-property-code="<%= @habitation.codigo %>"
+              data-property-title="<%= title %>"
+              data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
+              data-whatsapp-message="Olá, gostaria de agendar uma visita para o imóvel <%= title %> (Código: <%= @habitation.codigo %>).">
+            <i class="bi bi-calendar-check text-golden-one"></i>
+            Agendar visita
+          </button>
+
+          <p class="mt-4 text-center text-xs text-gray-400">Código: <%= @habitation.codigo %></p>
+        </section>
+
+        <% if @shared_broker.present? %>
+          <%= render "habitations/shared_broker_card",
+              shared_broker: @shared_broker,
+              habitation: @habitation,
+              share_token: @lead_share_token %>
+        <% end %>
+
+        <section class="rounded-2xl bg-white p-6 shadow-sm">
+          <h3 class="text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Informações</h3>
+          <div class="mt-4 space-y-3 text-sm">
+            <% if @habitation.unique_features.present? %>
+              <div>
+                <p class="text-gray-500">Característica</p>
+                <p class="font-bold text-gray-900"><%= @habitation.unique_features.join(", ") %></p>
+              </div>
+            <% end %>
+            <% if @habitation.delivery_date_visible? %>
+              <div>
+                <p class="text-gray-500">Previsão de entrega</p>
+                <p class="font-bold text-gray-900"><%= l(@habitation.data_entrega, format: :long) %></p>
+              </div>
+            <% elsif @habitation.data_entrega.present? && @habitation.ready_to_move? %>
+              <div>
+                <p class="text-gray-500">Situação</p>
+                <p class="font-bold text-gray-900">Pronto para morar</p>
+              </div>
+            <% end %>
+          </div>
+        </section>
+
+        <%= display_banner('sidebar', container_class: 'mt-6', force_mobile: true) %>
+      </aside>
+    </div>
+
+    <% if @related_properties&.any? %>
+      <section class="mt-14">
+        <h2 class="mb-6 text-2xl font-bold text-gray-900">Imóveis Semelhantes</h2>
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <% @related_properties.each do |property| %>
+            <%= render 'shared/tailwind/property_card', property: property %>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+  </div>
+</div>

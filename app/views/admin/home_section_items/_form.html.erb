@@ -1,0 +1,62 @@
+<div class="admin-content">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><%= @home_section_item.persisted? ? "Editar Item" : "Novo Item" %></h1>
+    <%= link_to "← Voltar", admin_home_section_path(@home_section), class: "btn btn-secondary" %>
+  </div>
+
+  <%= form_with(model: [:admin, @home_section, @home_section_item], local: true, class: "admin-form") do |f| %>
+    <% if @home_section_item.errors.any? %>
+      <div class="alert alert-danger">
+        <h4><%= pluralize(@home_section_item.errors.count, "erro") %> encontrado:</h4>
+        <ul>
+          <% @home_section_item.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-8 mb-3">
+            <%= f.label :title, "Título", class: "form-label" %>
+            <%= f.text_field :title, class: "form-control", required: true %>
+          </div>
+
+          <div class="col-md-4 mb-3">
+            <%= f.label :display_order, "Ordem", class: "form-label" %>
+            <%= f.number_field :display_order, class: "form-control", value: @home_section_item.display_order || 0 %>
+          </div>
+
+          <div class="col-md-12 mb-3">
+            <%= f.label :description, "Descrição", class: "form-label" %>
+            <%= f.text_area :description, rows: 3, class: "form-control" %>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <%= f.label :icon, "Ícone", class: "form-label" %>
+            <%= f.file_field :icon, class: "form-control", accept: "image/*" %>
+            <% if @home_section_item.icon.attached? %>
+              <div class="mt-2">
+                <%= image_tag @home_section_item.icon, style: "max-height: 80px;" %>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <div class="form-check form-switch mt-4">
+              <%= f.check_box :active, class: "form-check-input", role: "switch" %>
+              <%= f.label :active, "Item Ativo", class: "form-check-label" %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+      <%= link_to "Cancelar", admin_home_section_path(@home_section), class: "btn btn-secondary" %>
+      <%= f.submit @home_section_item.persisted? ? "Atualizar Item" : "Criar Item", class: "btn btn-primary" %>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,25 @@
+<% modal_id = local_assigns.fetch(:modal_id, "attributeManagerModal") %>
+<div class="modal fade" id="<%= modal_id %>" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-white border-bottom-0 pb-0">
+        <h6 class="modal-title fw-bold" id="<%= "#{modal_id}Title" %>">Gerenciar Atributos</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="p-3 bg-white sticky-top">
+          <form data-action="submit->attribute-manager#create">
+            <div class="input-group input-group-sm">
+              <input type="text" id="<%= "#{modal_id}Input" %>" class="form-control" placeholder="Adicionar novo..." required>
+              <button class="btn btn-primary" type="submit">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+        <div id="<%= "#{modal_id}List" %>" class="overflow-auto px-3 pb-3" style="max-height: 300px;">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

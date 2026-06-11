@@ -1,0 +1,153 @@
+<%
+  sample_webhook_payload = {
+    origin_form: "whatsapp_lead",
+    timestamp: "2026-05-26T14:30:00-03:00",
+    source: {
+      page_url: "https://saluteimoveis.com.br/imoveis/apartamento-frente-mar-123",
+      request_url: "https://saluteimoveis.com.br/leads",
+      referrer_url: "https://google.com/search?q=apartamento+balneario+camboriu",
+      user_agent: "Mozilla/5.0",
+      utm: {
+        utm_source: "google",
+        utm_medium: "cpc",
+        utm_campaign: "frente-mar-maio",
+        utm_term: "apartamento frente mar",
+        utm_content: "botao-whatsapp",
+        gclid: "EAIaIQobChMI..."
+      }
+    },
+    data: {
+      name: "Cliente Exemplo",
+      email: "cliente@example.com",
+      phone: "(47) 99999-9999",
+      lead_type: "whatsapp_modal",
+      origin: "Site",
+      property_id: 123,
+      property_code: "8001",
+      property_title: "Apartamento frente mar",
+      property_url: "https://saluteimoveis.com.br/imoveis/apartamento-frente-mar-123",
+      business_type: "sale",
+      business_type_label: "Venda",
+      source_url: "https://saluteimoveis.com.br/imoveis/apartamento-frente-mar-123",
+      share_token: "abc123"
+    }
+  }
+%>
+
+<%= form_with(model: [:admin, webhook_setting]) do |f| %>
+  <% if webhook_setting.errors.any? %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i><%= pluralize(webhook_setting.errors.count, "erro") %> encontrado:</h5>
+      <ul class="mb-0">
+        <% webhook_setting.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% end %>
+
+  <div class="row g-4">
+    <!-- Configuration -->
+    <div class="col-md-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary bg-opacity-10 border-0">
+          <h5 class="mb-0 text-primary">
+            <i class="bi bi-gear-fill me-2"></i>Detalhes da Integração
+          </h5>
+        </div>
+        <div class="card-body">
+          <!-- Webhook URL -->
+          <div class="mb-4">
+            <%= f.label :webhook_url, class: "form-label fw-bold" do %>
+              <i class="bi bi-link-45deg text-primary me-2"></i>URL do Webhook (Padrão)
+            <% end %>
+            <div class="input-group">
+              <span class="input-group-text bg-primary bg-opacity-10">
+                <i class="bi bi-globe text-primary"></i>
+              </span>
+              <%= f.text_field :webhook_url, class: "form-control", placeholder: "https://seu-servidor.com/webhook" %>
+            </div>
+            <small class="text-muted">URL principal para envio de dados (POST).</small>
+          </div>
+
+          <!-- WhatsApp Webhook URL -->
+          <div class="mb-4">
+            <%= f.label :whatsapp_webhook_url, class: "form-label fw-bold" do %>
+              <i class="fab fa-whatsapp text-success me-2"></i>URL do Webhook (Específico WhatsApp/Leads)
+            <% end %>
+            <div class="input-group">
+              <span class="input-group-text bg-success bg-opacity-10">
+                <i class="bi bi-link-45deg text-success"></i>
+              </span>
+              <%= f.text_field :whatsapp_webhook_url, class: "form-control", placeholder: "https://n8n.seu-servidor.com/webhook/leads" %>
+            </div>
+            <small class="text-muted">Opcional. Se preenchido, leads de WhatsApp serão enviados para esta URL prioritariamente.</small>
+          </div>
+
+          <!-- Enabled Toggles -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="form-check form-switch">
+                <%= f.check_box :enabled, class: "form-check-input", role: "switch", id: "webhook_enabled" %>
+                <%= f.label :enabled, class: "form-check-label fw-bold" do %>
+                  <i class="bi bi-power text-success me-2"></i>Habilitar Webhook
+                <% end %>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-check form-switch">
+                <%= f.check_box :lead_capture_enabled, class: "form-check-input", role: "switch", id: "lead_capture_enabled" %>
+                <%= f.label :lead_capture_enabled, class: "form-check-label fw-bold" do %>
+                  <i class="bi bi-person-badge text-primary me-2"></i>Captura de Leads (Modal)
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="mb-0">
+            <%= f.label :description, "Descrição / Identificação", class: "form-label fw-bold" %>
+            <%= f.text_field :description, class: "form-control", placeholder: "Ex: Integração CRM PipeDrive" %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payload Info (Simplified) -->
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-info bg-opacity-10 border-0">
+          <h5 class="mb-0 text-info"><i class="bi bi-info-circle me-2"></i>Informações</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small">Este webhook disparará sempre que um formulário for preenchido no site.</p>
+          <hr>
+          <h6>Formulários Monitorados:</h6>
+          <ul class="small text-muted ps-3 mb-0">
+            <li>Contato Geral</li>
+            <li>Agendamento de Visita</li>
+            <li>Trabalhe Conosco</li>
+            <li>Busca de Imóveis</li>
+            <li>Captura de Leads (WhatsApp)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-secondary bg-opacity-10 border-0">
+          <h5 class="mb-0 text-secondary"><i class="bi bi-braces me-2"></i>Exemplo de Payload</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">Envio via <strong>POST</strong> com <code>Content-Type: application/json</code>.</p>
+          <pre class="bg-light border rounded p-3 small mb-0 overflow-auto" style="max-height: 420px;"><code><%= JSON.pretty_generate(sample_webhook_payload) %></code></pre>
+        </div>
+      </div>
+      
+      <div class="d-grid gap-2">
+         <%= f.submit "Salvar Webhook", class: "btn btn-primary btn-lg" %>
+         <%= link_to "Cancelar", admin_webhook_settings_path, class: "btn btn-outline-secondary" %>
+      </div>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,334 @@
+<%
+  enabled_sources = distribution_rule_enabled_sources(@rule)
+  enabled_notifications = distribution_rule_enabled_notifications(@rule)
+  meta_pages = distribution_rule_meta_pages(@rule)
+  meta_forms = distribution_rule_meta_forms(@rule)
+  checkin_store_names = distribution_rule_store_names(@rule)
+%>
+
+<div class="mb-4">
+  <%= link_to admin_distribution_rules_path, class: "text-decoration-none text-muted small" do %>
+    <i class="bi bi-arrow-left"></i> Voltar para a lista
+  <% end %>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mt-2">
+    <div>
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+        <h1 class="h3 mb-0 text-gray-800"><%= @rule.name %></h1>
+        <% if @rule.active? %>
+          <span class="badge rounded-pill bg-success-subtle text-success border-0 px-3">Ativa</span>
+        <% else %>
+          <span class="badge rounded-pill bg-secondary-subtle text-secondary border-0 px-3">Inativa</span>
+        <% end %>
+      </div>
+      <div class="text-muted">
+        <%= distribution_rule_business_label(@rule) %> · <%= distribution_rule_mode_label(@rule) %> · <%= enabled_sources.presence&.to_sentence || "Nenhuma fonte habilitada" %>
+      </div>
+    </div>
+
+    <%= link_to edit_admin_distribution_rule_path(@rule), class: "btn btn-outline-primary px-4" do %>
+      <i class="bi bi-pencil me-1"></i> Editar regra
+    <% end %>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <div class="small fw-bold text-muted text-uppercase mb-1">Tipo</div>
+        <div class="fs-5 fw-bold"><%= distribution_rule_business_label(@rule) %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <div class="small fw-bold text-muted text-uppercase mb-1">Distribuição</div>
+        <div class="fs-5 fw-bold"><%= distribution_rule_mode_label(@rule) %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <div class="small fw-bold text-muted text-uppercase mb-1">Corretores</div>
+        <div class="fs-5 fw-bold"><%= @agents_queue.size %> na fila</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body">
+        <div class="small fw-bold text-muted text-uppercase mb-1">Preço</div>
+        <div class="fs-6 fw-bold"><%= distribution_rule_price_range(@rule) %></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-5">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-sliders me-2 text-primary"></i>Configuração da regra</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-flex flex-column gap-3">
+          <div>
+            <div class="small fw-bold text-muted text-uppercase mb-2">Fontes habilitadas</div>
+            <% if enabled_sources.any? %>
+              <div class="d-flex flex-wrap gap-2">
+                <% enabled_sources.each do |source| %>
+                  <span class="badge bg-primary-subtle text-primary border-0 px-3 py-2"><%= source %></span>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-muted small">Nenhuma fonte habilitada.</div>
+            <% end %>
+          </div>
+
+          <hr class="my-1">
+
+          <div>
+            <div class="small fw-bold text-muted text-uppercase mb-2">Meta Ads</div>
+            <% if @rule.source_meta? %>
+              <div class="mb-2">
+                <span class="fw-semibold">Páginas:</span>
+                <% if meta_pages.any? %>
+                  <span><%= meta_pages.map(&:name).to_sentence %></span>
+                <% else %>
+                  <span class="text-muted">nenhuma página encontrada.</span>
+                <% end %>
+              </div>
+              <div class="mb-2">
+                <span class="fw-semibold">Formulários:</span>
+                <span><%= distribution_rule_meta_forms_summary(@rule) %></span>
+              </div>
+              <% if meta_forms.any? && !@rule.auto_add_forms? %>
+                <div class="d-flex flex-wrap gap-2">
+                  <% meta_forms.each do |form| %>
+                    <span class="badge bg-light text-dark border fw-normal">
+                      <%= form.name %><%= " · #{form.meta_facebook_page.name}" if form.meta_facebook_page.present? %>
+                    </span>
+                  <% end %>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="text-muted small">Meta Ads desligado nesta regra.</div>
+            <% end %>
+          </div>
+
+          <hr class="my-1">
+
+          <div>
+            <div class="small fw-bold text-muted text-uppercase mb-2">Webhook personalizado</div>
+            <% if @rule.source_webhook? %>
+              <div class="mb-2">
+                <span class="fw-semibold">URL:</span>
+                <span class="text-break"><%= @rule.webhook_url.presence || "Não configurada" %></span>
+              </div>
+              <div>
+                <span class="fw-semibold">Tags:</span>
+                <% if Array(@rule.webhook_tags).compact_blank.any? %>
+                  <%= Array(@rule.webhook_tags).compact_blank.to_sentence %>
+                <% else %>
+                  <span class="text-muted">sem tags específicas.</span>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-muted small">Webhook desligado nesta regra.</div>
+            <% end %>
+          </div>
+
+          <hr class="my-1">
+
+          <div>
+            <div class="small fw-bold text-muted text-uppercase mb-2">Filtros adicionais</div>
+            <% if Array(@rule.neighborhoods).compact_blank.any? || Array(@rule.custom_filters).compact_blank.any? %>
+              <% if Array(@rule.neighborhoods).compact_blank.any? %>
+                <div class="mb-2">
+                  <span class="fw-semibold">Bairros:</span>
+                  <%= Array(@rule.neighborhoods).compact_blank.to_sentence %>
+                </div>
+              <% end %>
+              <% if Array(@rule.custom_filters).compact_blank.any? %>
+                <div>
+                  <span class="fw-semibold">Filtros:</span>
+                  <%= Array(@rule.custom_filters).compact_blank.to_sentence %>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="text-muted small">Sem filtros adicionais configurados.</div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-geo-alt-fill me-2 text-success"></i>Check-in geolocalizado</h5>
+      </div>
+      <div class="card-body">
+        <div class="list-group list-group-flush">
+          <% distribution_rule_checkin_rows(@rule).each do |label, enabled| %>
+            <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+              <span><%= label %></span>
+              <% if enabled %>
+                <span class="badge bg-success-subtle text-success border-0">Ativo</span>
+              <% else %>
+                <span class="badge bg-light text-muted border">Desligado</span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="mt-3">
+          <div class="small fw-bold text-muted text-uppercase mb-2">Lojas consideradas</div>
+          <% if checkin_store_names.any? %>
+            <div class="d-flex flex-wrap gap-2">
+              <% checkin_store_names.each do |store_name| %>
+                <span class="badge bg-light text-dark border fw-normal"><%= store_name %></span>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-muted small">Todas as lojas contam para esta regra.</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-7">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-list-ol me-2 text-primary"></i>Fila de distribuição</h5>
+          <div class="small text-muted mt-1">Arraste pelo ícone para mudar a ordem e salve somente a fila.</div>
+        </div>
+        <%= link_to edit_admin_distribution_rule_path(@rule, anchor: "team"), class: "btn btn-sm btn-outline-secondary" do %>
+          <i class="bi bi-people me-1"></i> Alterar corretores
+        <% end %>
+      </div>
+
+      <div class="card-body">
+        <% if @agents_queue.any? %>
+          <%= form_with url: reorder_agents_admin_distribution_rule_path(@rule), method: :patch, local: true do %>
+            <div class="list-group mb-3" data-controller="sortable" data-sortable-handle-value=".drag-handle">
+              <% @agents_queue.each do |dra| %>
+                <div class="nested-form-wrapper list-group-item d-flex align-items-center gap-3 py-3">
+                  <span class="drag-handle text-muted" style="cursor: grab;" title="Arrastar para reordenar">
+                    <i class="bi bi-grip-vertical"></i>
+                  </span>
+                  <%= hidden_field_tag "agent_ids[]", dra.id %>
+                  <span class="badge bg-primary-subtle text-primary rounded-circle position-display d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                    <%= dra.position %>
+                  </span>
+                  <div class="flex-grow-1">
+                    <div class="fw-bold"><%= dra.admin_user&.name %></div>
+                    <div class="extra-small text-muted"><%= dra.admin_user&.email %></div>
+                  </div>
+                  <div class="text-end small text-muted">
+                    <div class="fw-semibold text-dark">Último lead</div>
+                    <div><%= dra.last_lead_received_at.present? ? l(dra.last_lead_received_at, format: :short) : "--" %></div>
+                  </div>
+                  <% if @rule.performance? %>
+                    <span class="badge bg-primary">Peso <%= dra.weight %></span>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+            <div class="d-flex justify-content-end">
+              <%= submit_tag "Salvar ordem da fila", class: "btn btn-primary px-4" %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="text-center py-5 text-muted">
+            <i class="bi bi-person-plus fs-2 d-block mb-2"></i>
+            Nenhum corretor selecionado para esta regra.
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0 fw-bold"><i class="bi bi-clock me-2 text-warning"></i>Horários e bolsão</h5>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="fw-semibold">Bolsão fora do horário</span>
+              <% if @rule.represamento_active? %>
+                <span class="badge bg-warning-subtle text-warning border-0">Ativo</span>
+              <% else %>
+                <span class="badge bg-light text-muted border">Desligado</span>
+              <% end %>
+            </div>
+
+            <% if @rule.represamento_active? %>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead>
+                    <tr class="extra-small text-muted text-uppercase">
+                      <th>Dia</th>
+                      <th>Status</th>
+                      <th>Horário</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% distribution_rule_schedule_rows(@rule).each do |label, active, start_time, end_time| %>
+                      <tr>
+                        <td class="fw-semibold"><%= label %></td>
+                        <td><%= active ? "Ativo" : "Desligado" %></td>
+                        <td><%= active ? "#{start_time} às #{end_time}" : "--" %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% else %>
+              <div class="text-muted small">Leads não ficam represados por horário nesta regra.</div>
+            <% end %>
+
+            <hr>
+
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-semibold">Tempo limite para aceite</span>
+              <% if @rule.pocket_active? %>
+                <span class="badge bg-info-subtle text-info border-0"><%= @rule.pocket_time %> min</span>
+              <% else %>
+                <span class="badge bg-light text-muted border">Desligado</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0 fw-bold"><i class="bi bi-bell me-2 text-danger"></i>Notificações</h5>
+          </div>
+          <div class="card-body">
+            <% if enabled_notifications.any? %>
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <% enabled_notifications.each do |notification| %>
+                  <span class="badge bg-danger-subtle text-danger border-0 px-3 py-2"><%= notification %></span>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="text-muted small mb-3">Nenhum canal de notificação ativo.</div>
+            <% end %>
+
+            <div class="small text-muted">
+              Canais ativos são usados quando um lead passa por esta regra. Para mudar destinatários, ordem ou peso, use a fila acima ou a edição completa.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

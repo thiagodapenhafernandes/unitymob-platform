@@ -1,0 +1,21 @@
+{
+  "short_name": "Salute Campo",
+  "name": "Salute Imóveis — Campo",
+  "icons": [
+    {
+      "src": "/field-icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/field-icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/field",
+  "background_color": "#f8f9fa",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#0d6efd"
+}

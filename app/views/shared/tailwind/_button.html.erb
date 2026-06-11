@@ -1,0 +1,47 @@
+<!-- 
+  Button Component
+  Usage: <%= render 'shared/tailwind/button', text: 'Click me', variant: 'primary', size: 'md' %>
+-->
+
+<%
+  variant ||= 'primary'
+  size ||= 'md'
+  href ||= nil
+  type ||= 'button'
+  icon ||= nil
+  classes ||= ''
+  
+  base_classes = "inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2"
+  
+  variant_classes = {
+    'primary' => 'bg-blue-three text-white hover:bg-blue-one focus:ring-blue-two shadow-md hover:shadow-lg',
+    'secondary' => 'bg-golden-one text-blue-three hover:bg-golden-two focus:ring-golden-one',
+    'outline' => 'border-2 border-blue-three text-blue-three hover:bg-blue-three hover:text-white focus:ring-blue-two',
+    'ghost' => 'text-blue-three hover:bg-blue-three/10 focus:ring-blue-two',
+    'danger' => 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+  }
+  
+  size_classes = {
+    'sm' => 'px-4 py-2 text-sm',
+    'md' => 'px-6 py-3 text-base',
+    'lg' => 'px-8 py-4 text-lg',
+  }
+  
+  final_classes = [base_classes, variant_classes[variant], size_classes[size], classes].join(' ')
+%>
+
+<% if href.present? %>
+  <%= link_to href, class: final_classes do %>
+    <% if icon.present? %>
+      <i class="bi bi-<%= icon %> mr-2"></i>
+    <% end %>
+    <%= text %>
+  <% end %>
+<% else %>
+  <button type="<%= type %>" class="<%= final_classes %>">
+    <% if icon.present? %>
+      <i class="bi bi-<%= icon %> mr-2"></i>
+    <% end %>
+    <%= text %>
+  </button>
+<% end %>

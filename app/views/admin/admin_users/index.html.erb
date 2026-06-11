@@ -1,0 +1,180 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800">Usuários Administrativos</h1>
+    <p class="text-muted small mb-0">Gerencie a equipe e defina a hierarquia de atendimento.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <%= button_to sync_from_vista_admin_admin_users_path,
+          method: :post,
+          class: "btn btn-outline-primary d-flex align-items-center shadow-sm",
+          data: { turbo_confirm: "Sincronizar corretores do Vista agora? Roda em background." } do %>
+      <i class="bi bi-arrow-repeat me-2"></i> Sincronizar corretores
+    <% end %>
+    <%= button_to backfill_brokers_admin_admin_users_path,
+          method: :post,
+          class: "btn btn-outline-info d-flex align-items-center shadow-sm",
+          data: { turbo_confirm: "Vincular imóveis aos corretores (via CodigoCorretor do Vista)? Roda em background." } do %>
+      <i class="bi bi-link-45deg me-2"></i> Vincular imóveis
+    <% end %>
+    <%= link_to new_admin_admin_user_path, class: "btn btn-primary d-flex align-items-center shadow-sm" do %>
+      <i class="bi bi-person-plus me-2"></i> Adicionar Usuário
+    <% end %>
+  </div>
+</div>
+
+<%= render "vista_sync_panel" %>
+<%= render "backfill_brokers_panel" %>
+
+<!-- Search Filter -->
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body py-3">
+    <%= form_with url: admin_admin_users_path, method: :get, class: "row g-2 align-items-center" do |f| %>
+      <div class="col-md-4">
+        <div class="input-group">
+          <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+          <%= f.text_field :query, value: params[:query], class: "form-control border-start-0 bg-light", placeholder: "Buscar por nome, email, CRECI ou ID..." %>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <%= f.collection_select :profile_id, Profile.all, :id, :name, { selected: params[:profile_id], prompt: "Todos os Perfis" }, { class: "form-select", onchange: "this.form.submit()" } %>
+      </div>
+      <div class="col-md-2">
+        <%= f.select :status, [["Todos status", ""], ["Apenas ativos", "active"], ["Apenas inativos", "inactive"]], { selected: params[:status] }, { class: "form-select", onchange: "this.form.submit()" } %>
+      </div>
+      <div class="col-md-2">
+        <%= f.submit "Filtrar", class: "btn btn-primary w-100 fw-bold" %>
+      </div>
+      <div class="col-md-1 text-end">
+        <% if params[:query].present? || params[:profile_id].present? || params[:status].present? %>
+          <%= link_to "Limpar", admin_admin_users_path, class: "btn btn-outline-secondary w-100" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light text-muted small text-uppercase fw-bold">
+          <tr>
+            <th class="px-4 py-3 border-0">Usuário</th>
+            <th class="py-3 border-0">Perfil / Função</th>
+            <th class="py-3 border-0 text-center">Status</th>
+            <th class="py-3 border-0 text-center">Atuação</th>
+            <th class="py-3 border-0">Gestor</th>
+            <th class="py-3 border-0 text-center">Imóveis</th>
+            <th class="px-4 py-3 border-0 text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @admin_users.any? %>
+            <% @admin_users.each do |user| %>
+              <tr>
+                <td class="px-4 py-3 border-0">
+                  <div class="d-flex align-items-center">
+                    <div class="me-3 position-relative">
+                      <% if user.avatar.attached? %>
+                        <%= image_tag user.avatar, class: "rounded-circle object-fit-cover shadow-sm", style: "width: 40px; height: 40px;" %>
+                      <% else %>
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-weight: bold;">
+                          <%= user.name[0].upcase %>
+                        </div>
+                      <% end %>
+                      <% if user.vista_id.present? %>
+                        <span class="position-absolute bottom-0 start-100 translate-middle p-1 bg-success border border-light rounded-circle" title="Integrado com Vista">
+                          <span class="visually-hidden">Vista</span>
+                        </span>
+                      <% end %>
+                    </div>
+                    <div>
+                      <div class="fw-bold text-dark"><%= user.name %></div>
+                      <div class="text-muted extra-small"><%= user.email %></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <% if user.creci.present? %>
+                          <span class="text-secondary extra-small"><i class="bi bi-card-heading me-1"></i>CRECI: <%= user.creci %></span>
+                        <% end %>
+                        <% if user.phone.present? %>
+                          <span class="text-secondary extra-small"><i class="bi bi-whatsapp me-1"></i><%= user.phone %></span>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-3 border-0">
+                  <% if user.profile %>
+                    <span class="badge bg-primary-subtle text-primary border-0 rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                      <%= user.profile.name %>
+                    </span>
+                  <% else %>
+                    <span class="badge bg-light text-muted border px-2 py-1 rounded-pill" style="font-size: 0.7rem;">
+                      <%= user.role.humanize %>
+                    </span>
+                  <% end %>
+                </td>
+                <td class="py-3 border-0 text-center">
+                  <% if user.active %>
+                    <span class="badge bg-success-subtle text-success border"><i class="bi bi-check-circle-fill me-1"></i>Ativo</span>
+                  <% else %>
+                    <span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-pause-circle me-1"></i>Inativo</span>
+                  <% end %>
+                </td>
+                <td class="py-3 border-0 text-center">
+                  <% case user.acting_type %>
+                  <% when 'sales' %>
+                    <span class="badge bg-info text-dark border">Venda</span>
+                  <% when 'rentals' %>
+                    <span class="badge bg-warning text-dark border">Locação</span>
+                  <% when 'both' %>
+                    <span class="badge bg-success text-white border">Ambos</span>
+                  <% else %>
+                    <span class="text-muted small">-</span>
+                  <% end %>
+                </td>
+                <td class="py-3 border-0">
+                  <% if user.manager %>
+                    <div class="small fw-semibold text-dark"><%= user.manager.name %></div>
+                  <% end %>
+                </td>
+                <td class="py-3 border-0 text-center">
+                  <span class="badge bg-light text-dark border"><%= user.habitations.size %></span>
+                </td>
+                <td class="px-4 py-3 border-0 text-end">
+                  <div class="btn-group">
+                    <% if current_admin_user.admin? && user != current_admin_user %>
+                      <%= button_to impersonate_admin_admin_user_path(user),
+                            method: :post,
+                            class: "btn btn-sm btn-outline-primary border-0",
+                            title: "Acessar como #{user.name}",
+                            data: { turbo_confirm: "Acessar o sistema como #{user.name}?" } do %>
+                        <i class="bi bi-person-check"></i>
+                      <% end %>
+                    <% end %>
+                    <%= link_to edit_admin_admin_user_path(user), class: "btn btn-sm btn-outline-secondary border-0", title: "Editar" do %>
+                      <i class="bi bi-pencil"></i>
+                    <% end %>
+                    <%= button_to admin_admin_user_path(user), method: :delete, class: "btn btn-sm btn-outline-danger border-0", data: { confirm: "Tem certeza?" }, title: "Excluir" do %>
+                      <i class="bi bi-trash"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="4" class="text-center py-5">
+                <p class="text-muted mb-0">Nenhum usuário cadastrado.</p>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card-footer bg-white py-3">
+    <div class="d-flex justify-content-center">
+      <%= will_paginate @admin_users, renderer: WillPaginate::ActionView::BootstrapLinkRenderer %>
+    </div>
+  </div>
+</div>

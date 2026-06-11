@@ -1,0 +1,119 @@
+<div class="container-fluid py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-lightbulb me-2 text-warning"></i>Oportunidades de Marketing</h1>
+      <p class="text-muted small mb-0">Prioridades automáticas para campanhas, SEO e links internos.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <%= link_to admin_marketing_tools_path, class: "btn btn-sm btn-outline-primary" do %>
+        <i class="bi bi-link-45deg me-1"></i>UTM Builder
+      <% end %>
+      <%= link_to admin_marketing_campaigns_path, class: "btn btn-sm btn-primary" do %>
+        <i class="bi bi-bullseye me-1"></i>Campanhas
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-xl-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h5 fw-bold mb-3">Páginas com maior potencial</h2>
+          <div class="list-group list-group-flush">
+            <% @insights[:campaign_opportunities].each do |item| %>
+              <% seo = item.seo %>
+              <div class="list-group-item px-0">
+                <div class="d-flex justify-content-between gap-3">
+                  <div>
+                    <div class="fw-semibold"><%= truncate(seo.display_name, length: 70) %></div>
+                    <%= link_to seo.sanitized_canonical_path, seo.public_url(request.base_url), target: "_blank", rel: "noopener", class: "small text-muted" %>
+                    <div class="mt-2 d-flex flex-wrap gap-1">
+                      <% item.reasons.each do |reason| %>
+                        <span class="badge bg-warning-subtle text-dark border"><%= reason %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                  <div class="text-end flex-shrink-0">
+                    <span class="badge bg-success">score <%= item.score %></span>
+                    <div><%= link_to "Criar campanha", new_admin_marketing_campaign_path(seo_setting_id: seo.id), class: "btn btn-sm btn-outline-success mt-2" %></div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+            <% if @insights[:campaign_opportunities].blank? %>
+              <div class="text-center text-muted py-4">Sem oportunidades suficientes ainda.</div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h5 fw-bold mb-3">Páginas estratégicas</h2>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Página</th>
+                  <th class="text-center">Estoque</th>
+                  <th class="text-center">SEO</th>
+                  <th class="text-center">Acessos</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @insights[:strategic_pages].each do |row| %>
+                  <tr>
+                    <td><%= link_to row[:path], row[:path], target: "_blank", rel: "noopener", class: "text-decoration-none" %></td>
+                    <td class="text-center fw-bold"><%= row[:stock] %></td>
+                    <td class="text-center"><span class="badge <%= row[:score] >= 80 ? "bg-success" : row[:score] >= 60 ? "bg-warning text-dark" : "bg-danger" %>"><%= row[:score] %></span></td>
+                    <td class="text-center"><%= row[:access_count] %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h2 class="h5 fw-bold mb-3">Campanhas recentes</h2>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Campanha</th>
+                  <th>Canal</th>
+                  <th class="text-center">Cliques</th>
+                  <th class="text-center">Conversões</th>
+                  <th class="text-center">Taxa</th>
+                  <th class="text-center">Custo/conversão</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @insights[:campaign_metrics].each do |row| %>
+                  <% campaign = row[:campaign] %>
+                  <tr>
+                    <td><%= link_to campaign.name, edit_admin_marketing_campaign_path(campaign), class: "fw-semibold text-decoration-none" %></td>
+                    <td><span class="badge bg-light text-dark border"><%= campaign.channel_label %></span></td>
+                    <td class="text-center fw-bold"><%= row[:clicks] %></td>
+                    <td class="text-center fw-bold"><%= row[:conversions] %></td>
+                    <td class="text-center"><%= row[:conversion_rate] %>%</td>
+                    <td class="text-center"><%= number_to_currency(row[:cost_per_conversion], unit: "R$ ", separator: ",", delimiter: ".") %></td>
+                  </tr>
+                <% end %>
+                <% if @insights[:campaign_metrics].blank? %>
+                  <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma campanha cadastrada.</td></tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

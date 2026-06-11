@@ -1,0 +1,39 @@
+<div class="quick-filters-wrapper">
+  <div class="quick-filters">
+    <% 
+      quick_filters = [
+        { key: 'lancamento', label: 'Lançamento', icon: 'bi-stars' },
+        { key: 'na_planta', label: 'Na Planta', icon: 'bi-map' },
+        { key: 'frente_mar', label: 'Frente Mar', icon: 'bi-water' },
+        { key: 'quadra_mar', label: 'Quadra Mar', icon: 'bi-building' },
+        { key: 'churrasqueira', label: 'Churrasqueira', icon: 'bi-fire' },
+        { key: 'dependencia_empregada', label: 'Dependência', icon: 'bi-door-closed' },
+        { key: 'mobiliado', label: 'Mobiliado', icon: 'bi-house-heart' },
+        { key: 'sacada', label: 'Sacada', icon: 'bi-door-open' },
+        { key: 'decorado', label: 'Decorado', icon: 'bi-palette' }
+      ]
+    %>
+    
+    <% quick_filters.each do |filter| %>
+      <% 
+        count = characteristic_counter(filter[:key])
+        is_active = params[:characteristics]&.include?(filter[:key])
+      %>
+      
+      <%= link_to habitations_path(params.permit!.merge(characteristics: toggle_characteristic(params[:characteristics], filter[:key]))), 
+        class: "quick-filter-pill #{is_active ? 'active' : ''}", 
+        data: { turbo_frame: "properties-list" } do %>
+        <i class="<%= filter[:icon] %>"></i>
+        <span><%= filter[:label] %></span>
+        <span class="filter-count"><%= count %></span>
+      <% end %>
+    <% end %>
+    
+    <!-- Clear All Filters Button -->
+    <% if params.except(:controller, :action, :button).to_h.any? %>
+      <%= link_to habitations_path, class: "btn btn-sm btn-outline-secondary ms-2 d-flex align-items-center gap-1", style: "height: fit-content;" do %>
+        <i class="bi bi-x-circle"></i> Limpar filtros
+      <% end %>
+    <% end %>
+  </div>
+</div>

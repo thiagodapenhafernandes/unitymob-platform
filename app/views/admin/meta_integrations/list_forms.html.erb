@@ -1,0 +1,40 @@
+<turbo-frame id="<%= @frame_id %>">
+  <% if @forms.any? %>
+    <% if @page_number == 1 %>
+      <div class="d-flex justify-content-between align-items-center ms-4 mt-2 mb-1">
+        <span class="extra-small text-muted">
+          Exibindo <strong><%= [@forms_per_page, @forms_total_count].min %></strong> de <strong><%= @forms_total_count %></strong> formulários
+        </span>
+      </div>
+    <% end %>
+
+    <ul class="list-unstyled mb-0 ms-4 mt-2">
+      <% @forms.each do |form| %>
+        <li class="d-flex justify-content-between align-items-center extra-small py-1 border-bottom-dashed">
+          <span>
+             <i class="bi bi-file-earmark-text me-1 text-muted"></i>
+             <%= form.name %>
+          </span>
+          <span class="text-muted">
+            <%= form.facebook_created_at&.to_date&.strftime("%d/%m") %>, <%= form.facebook_created_at&.strftime("%H:%M") %>
+          </span>
+        </li>
+      <% end %>
+    </ul>
+
+    <% if @next_page %>
+      <% next_frame_id = "page_forms_#{@page.id}_page_#{@next_page}" %>
+      <turbo-frame id="<%= next_frame_id %>"
+                   src="<%= list_forms_admin_meta_integrations_path(page_id: @page.id, page: @next_page, frame_id: next_frame_id) %>"
+                   loading="lazy">
+        <div class="d-flex justify-content-center py-3">
+          <div class="spinner-border spinner-border-sm text-primary" role="status">
+            <span class="visually-hidden">Carregando mais formulários...</span>
+          </div>
+        </div>
+      </turbo-frame>
+    <% end %>
+  <% else %>
+    <p class="text-muted extra-small ms-4 mt-2 mb-0">Nenhum formulário encontrado para esta página.</p>
+  <% end %>
+</turbo-frame>

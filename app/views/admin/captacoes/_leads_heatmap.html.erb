@@ -1,0 +1,116 @@
+<style>
+  .heatmap-wrap { overflow-x: auto; }
+  .heatmap-table {
+    border-collapse: separate;
+    border-spacing: 2px;
+    font-size: .8rem;
+    width: 100%;
+  }
+  .heatmap-table th, .heatmap-table td {
+    text-align: center;
+    padding: .35rem .25rem;
+    min-width: 32px;
+    white-space: nowrap;
+  }
+  .heatmap-table th.broker-col {
+    text-align: left;
+    position: sticky; left: 0;
+    background: #fff;
+    min-width: 160px;
+    z-index: 2;
+  }
+  .heatmap-table thead th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #64748b;
+    font-size: .72rem;
+  }
+  .heatmap-table td.hc {
+    border-radius: 4px;
+    font-weight: 600;
+    color: #3f2d00;
+  }
+  .heatmap-table tbody tr:hover td {
+    outline: 1px solid #0d6efd;
+  }
+  .heatmap-table tfoot td {
+    font-weight: 700;
+    border-top: 2px solid #e5e7eb;
+    background: #fafafa;
+  }
+</style>
+
+<div class="card shadow-sm border-0">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h6 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Leads por Corretor</h6>
+      <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "d-flex gap-2 flex-wrap align-items-center" do %>
+        <%= hidden_field_tag :start_date, @period_start %>
+        <%= hidden_field_tag :end_date,   @period_end %>
+        <%= hidden_field_tag :month,      @month_filter %>
+        <%= select_tag :lead_category,
+                       options_for_select([["Categoria: Todos", ""]] + @lead_categories.map { |c| [c.to_s.humanize, c] }, params[:lead_category]),
+                       class: "form-select form-select-sm", onchange: "this.form.submit()" %>
+        <%= select_tag :lead_source,
+                       options_for_select([["Fonte: Todos", ""]] + @lead_sources.map { |s| [s.to_s, s] }, params[:lead_source]),
+                       class: "form-select form-select-sm", onchange: "this.form.submit()" %>
+        <% if params[:lead_category].present? || params[:lead_source].present? %>
+          <%= link_to "Limpar", dashboard_admin_captacoes_path(start_date: @period_start, end_date: @period_end, month: @month_filter), class: "btn btn-sm btn-outline-secondary" %>
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if @heatmap_corretores.any? %>
+      <div class="heatmap-wrap">
+        <table class="heatmap-table">
+          <thead>
+            <tr>
+              <th class="broker-col">Corretor</th>
+              <% @heatmap_dates.each do |d| %>
+                <th><%= d.strftime("%d/%m") %></th>
+              <% end %>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @heatmap_corretores.each do |user| %>
+              <% user_total = @heatmap_matrix[user.id].values.sum %>
+              <tr>
+                <th class="broker-col"><%= user.name %></th>
+                <% @heatmap_dates.each do |d| %>
+                  <% count = @heatmap_matrix[user.id][d] %>
+                  <% if count.zero? %>
+                    <td class="text-muted">·</td>
+                  <% else %>
+                    <% intensity = @heatmap_max.positive? ? (count.to_f / @heatmap_max) : 0 %>
+                    <% alpha = 0.25 + (intensity * 0.75) %>
+                    <td class="hc" style="background-color: rgba(245,130,32,<%= alpha.round(2) %>);">
+                      <%= count %>
+                    </td>
+                  <% end %>
+                <% end %>
+                <td class="fw-bold"><%= user_total %></td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="broker-col">Total</td>
+              <% @heatmap_dates.each do |d| %>
+                <% col_total = @heatmap_corretores.sum { |u| @heatmap_matrix[u.id][d] } %>
+                <td><%= col_total.zero? ? "·" : col_total %></td>
+              <% end %>
+              <% grand_total = @heatmap_corretores.sum { |u| @heatmap_matrix[u.id].values.sum } %>
+              <td class="text-primary"><%= grand_total %></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-inbox" style="font-size: 2.5rem;"></i>
+        <p class="mt-2 mb-0">Nenhum lead atribuído a corretor no período.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

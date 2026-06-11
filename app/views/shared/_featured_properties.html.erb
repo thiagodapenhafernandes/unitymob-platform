@@ -1,0 +1,22 @@
+<% if @featured_properties.present? %>
+  <section id="featured-properties" class="featured-properties section-bg">
+    <div class="container">
+      <div class="section-title text-center py-5">
+        <h2 style="font-weight: 700; color: var(--blue-three);">Imóveis em Destaque</h2>
+        <p>Confira nossa seleção exclusiva de imóveis para você.</p>
+      </div>
+
+      <div class="row">
+        <% @featured_properties.each do |property| %>
+          <%= render "shared/property_card", property: property %>
+        <% end %>
+      </div>
+      
+      <div class="text-center mt-4">
+        <a href="<%= habitations_path %>" class="btn-get-started" style="background: var(--blue-three); border-color: var(--blue-three);">
+          Ver todos os imóveis
+        </a>
+      </div>
+    </div>
+  </section>
+<% end %>

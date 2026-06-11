@@ -1,0 +1,309 @@
+/* Property Card Redesign */
+.property-card {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: visible;
+  /* Changed from hidden to allow shadow to show */
+  background: #fff;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  /* Single shadow on card */
+}
+
+.property-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.adjunct {
+  position: relative;
+  height: auto !important;
+  /* Override fixed height from custom.scss */
+  min-height: auto !important;
+  border-radius: 8px;
+  overflow: hidden;
+  /* Keep overflow hidden on adjunct for image clipping */
+  box-shadow: none !important;
+  /* Remove shadow from adjunct to prevent double shadow */
+}
+
+.card-badges {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.badge-new {
+  background: #ff9800;
+  /* Solid orange */
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 14px;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+  font-size: 0.75rem;
+}
+
+.badge-feature {
+  background: #2196f3;
+  /* Solid blue */
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 14px;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+  font-size: 0.75rem;
+}
+
+.badge-dark {
+  background: #673ab7;
+  /* Solid deep purple */
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 14px;
+  box-shadow: 0 2px 8px rgba(103, 58, 183, 0.3);
+  font-size: 0.75rem;
+}
+
+.badge-light {
+  background: #4caf50;
+  /* Solid green */
+  color: #fff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 14px;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  font-size: 0.75rem;
+}
+
+/* Property Code Badge on Image */
+.property-code-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+}
+
+.property-code-badge .badge {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Fix for card-code positioning */
+.card-code {
+  position: static !important;
+  /* Override custom.scss absolute positioning */
+  margin-bottom: 0 !important;
+  background: none !important;
+  padding: 0 !important;
+  width: auto !important;
+}
+
+.card-code .badge {
+  font-size: 0.85rem;
+  padding: 0.5em 0.8em;
+}
+
+.box-save-share {
+  display: flex;
+  gap: 10px;
+}
+
+.box-save-share i {
+  background: #fff;
+  border-radius: 50%;
+  width: 32px;
+  /* Slightly smaller for body */
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #eee;
+  /* Add border for visibility on white */
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.box-save-share i:hover {
+  color: #dc3545;
+  border-color: #dc3545;
+  transform: scale(1.1);
+}
+
+.badge-novidade {
+  position: absolute;
+  bottom: 10px;
+  right: -30px;
+  background: #0d6efd;
+  color: #fff;
+  padding: 5px 40px;
+  transform: rotate(-45deg);
+  font-size: 0.7rem;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.adjunct-info {
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  /* Reduced bottom padding */
+  cursor: default;
+  height: auto !important;
+  /* Override fixed height from custom.scss */
+  min-height: auto !important;
+}
+
+.property-location {
+  font-size: 0.9rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.property-location i {
+  color: var(--golden-one);
+}
+
+.title h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0;
+}
+
+.property-code-row {
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.property-code-text {
+  font-family: 'monospace';
+}
+
+.property-price {
+  margin: 0.5rem 0;
+}
+
+.price-current {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--blue-three);
+}
+
+.property-features-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  gap: 1rem;
+}
+
+.feature-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+
+.feature-item i {
+  font-size: 1.5rem;
+  color: var(--golden-one);
+  margin-bottom: 0.3rem;
+}
+
+.feature-item span {
+  font-size: 0.8rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.btn-details {
+  background-color: #e6f2ff;
+  color: #0d6efd;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+}
+
+.btn-details:hover {
+  background-color: #0d6efd;
+  color: #fff;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+
+.card-actions i {
+  font-size: 1.2rem;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.card-actions i:hover {
+  color: var(--golden-one);
+  transform: scale(1.1);
+}
+
+/* Remove old styles */
+.social,
+.box-caracts,
+.box-save-share {
+  display: none !important;
+}
+
+.btn-light-blue {
+  display: none !important;
+}
+
+/* Swiper Styles */
+@import url('https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css');
+
+.swiper {
+  width: 100%;
+  height: 250px;
+  /* Fixed height for consistency */
+}
+
+.swiper-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  color: #fff;
+  transform: scale(0.7);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.swiper-pagination-bullet-active {
+  background: #fff;
+}
+
+/* Hide pagination bullets */
+.swiper-pagination {
+  display: none !important;
+}

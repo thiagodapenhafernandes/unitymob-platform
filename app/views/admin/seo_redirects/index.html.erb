@@ -1,0 +1,97 @@
+<div class="container-fluid py-3 seo-settings-page">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 mb-1"><i class="bi bi-signpost-split me-2 text-primary"></i>Redirects SEO</h1>
+      <p class="text-muted small mb-0">Corrija URLs antigas, evite 404 e preserve autoridade de páginas movidas.</p>
+    </div>
+    <%= link_to admin_seo_settings_path, class: "btn btn-sm btn-outline-secondary" do %>
+      <i class="bi bi-arrow-left me-1"></i>SEO Técnico
+    <% end %>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <%= form_with model: [:admin, @seo_redirect], local: true, class: "row g-2 align-items-end" do |f| %>
+        <% if @seo_redirect.errors.any? %>
+          <div class="col-12">
+            <div class="alert alert-danger mb-2"><%= @seo_redirect.errors.full_messages.to_sentence %></div>
+          </div>
+        <% end %>
+        <div class="col-lg-4">
+          <%= f.label :from_path, "URL antiga", class: "form-label fw-semibold" %>
+          <%= f.text_field :from_path, class: "form-control", placeholder: "/imoveis-antigo" %>
+        </div>
+        <div class="col-lg-4">
+          <%= f.label :to_path, "URL destino", class: "form-label fw-semibold" %>
+          <%= f.text_field :to_path, class: "form-control", placeholder: "/imoveis" %>
+        </div>
+        <div class="col-lg-2">
+          <%= f.label :status_code, "Tipo", class: "form-label fw-semibold" %>
+          <%= f.select :status_code, SeoRedirect::VALID_STATUS_CODES, {}, class: "form-select" %>
+        </div>
+        <div class="col-lg-1">
+          <label class="custom-checkbox-card justify-content-between">
+            <span>Ativo</span>
+            <%= f.check_box :active, class: "form-check-input" %>
+          </label>
+        </div>
+        <div class="col-lg-1 d-grid">
+          <%= f.submit "Criar", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th class="text-center">Tipo</th>
+            <th class="text-center">Hits</th>
+            <th class="text-center">Status</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @seo_redirects.each do |redirect| %>
+            <tr>
+              <%= form_with model: [:admin, redirect], local: true do |f| %>
+                <td><%= f.text_field :from_path, class: "form-control form-control-sm" %></td>
+                <td><%= f.text_field :to_path, class: "form-control form-control-sm" %></td>
+                <td class="text-center"><%= f.select :status_code, SeoRedirect::VALID_STATUS_CODES, {}, class: "form-select form-select-sm" %></td>
+                <td class="text-center">
+                  <div class="fw-bold"><%= redirect.hit_count %></div>
+                  <div class="small text-muted"><%= redirect.last_hit_at ? l(redirect.last_hit_at, format: :short) : "sem acesso" %></div>
+                </td>
+                <td class="text-center">
+                  <label class="custom-checkbox-card justify-content-between">
+                    <span><%= redirect.active? ? "Ativo" : "Off" %></span>
+                    <%= f.check_box :active, class: "form-check-input" %>
+                  </label>
+                </td>
+                <td class="text-end">
+                  <div class="d-inline-flex gap-1">
+                    <%= f.submit "Salvar", class: "btn btn-sm btn-outline-primary" %>
+                    <%= link_to admin_seo_redirect_path(redirect),
+                        class: "btn btn-sm btn-outline-danger",
+                        data: { turbo_method: :delete, turbo_confirm: "Remover este redirect?" } do %>
+                      <i class="bi bi-trash"></i>
+                    <% end %>
+                  </div>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body py-2 border-top d-flex justify-content-end">
+      <%= will_paginate @seo_redirects,
+          renderer: WillPaginate::ActionView::BootstrapLinkRenderer,
+          class: "pagination-sm mb-0" %>
+    </div>
+  </div>
+</div>

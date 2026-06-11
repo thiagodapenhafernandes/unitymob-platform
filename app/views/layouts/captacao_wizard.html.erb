@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <title>Captação — Salute Imóveis</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Salute Campo">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= render 'layouts/no_zoom' %>
+
+    <link rel="manifest" href="/captacao-manifest.json">
+    <link rel="apple-touch-icon" href="/field-icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/field-icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/field-icons/icon-512.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <%= stylesheet_link_tag "admin", media: "all" %>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <%= javascript_importmap_tags %>
+
+    <style>
+      body {
+        background: #f6f7f9;
+        font-family: Inter, -apple-system, sans-serif;
+        padding-bottom: calc(90px + env(safe-area-inset-bottom, 0));
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding-top: 54px;
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100%;
+      }
+      html { overflow-x: hidden; }
+      .wizard-shell {
+        max-width: 480px;
+        margin: 0 auto;
+        width: 100%;
+      }
+      .wizard-top-bar {
+        position: sticky; top: 54px; z-index: 1020;
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: .75rem calc(1rem + env(safe-area-inset-right, 0)) .75rem calc(1rem + env(safe-area-inset-left, 0));
+      }
+      .wizard-progress { height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+      .wizard-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #0d6efd, #0a58ca);
+        transition: width .3s ease;
+      }
+      .wizard-content {
+        padding: 1.5rem 1rem 2rem;
+      }
+      .wizard-bottom-nav {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 1020;
+        background: #fff;
+        border-top: 1px solid #e5e7eb;
+        padding: .75rem calc(1rem + env(safe-area-inset-right, 0)) calc(.75rem + env(safe-area-inset-bottom, 0)) calc(1rem + env(safe-area-inset-left, 0));
+      }
+      .wizard-bottom-nav .btn { min-height: 48px; font-weight: 600; }
+
+      .wizard-option-card {
+        display: block;
+        min-height: 116px;
+        border: 2px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all .15s ease;
+        background: #fff;
+        text-align: center;
+      }
+      .wizard-option-card:hover { border-color: #0d6efd; background: rgba(13,110,253,.04); }
+      .wizard-option-card input[type="radio"] { display: none; }
+      .wizard-option-card.selected {
+        border-color: #0d6efd;
+        background: rgba(13,110,253,.08);
+        box-shadow: 0 4px 12px rgba(13,110,253,.18);
+      }
+      .wizard-option-card .icon { font-size: 2rem; color: #0d6efd; }
+
+      .wizard-field-group { margin-bottom: 1.25rem; }
+      .wizard-field-group .form-label {
+        font-weight: 600;
+        font-size: .85rem;
+        color: #374151;
+        margin-bottom: .35rem;
+      }
+      .wizard-field-group .form-control,
+      .wizard-field-group .form-select {
+        min-height: 50px;
+        font-size: 1rem;
+      }
+      .wizard-field-group .required-star { color: #dc3545; }
+
+      .wizard-section-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-bottom: .25rem;
+        color: #0f172a;
+      }
+      .wizard-section-subtitle {
+        color: #64748b;
+        font-size: .95rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .wizard-feature-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: .6rem 1rem;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 999px;
+        font-size: .9rem;
+        margin: .2rem;
+        cursor: pointer;
+        transition: all .12s ease;
+        background: #fff;
+      }
+      .wizard-feature-chip input { display: none; }
+      .wizard-feature-chip.selected {
+        background: #0d6efd;
+        color: #fff;
+        border-color: #0d6efd;
+      }
+      .wizard-invalid-choice {
+        border: 1px solid #dc3545;
+        border-radius: 12px;
+        padding: .45rem;
+        background: rgba(220, 53, 69, .04);
+      }
+
+      .wizard-photo-grid img {
+        width: 100%;
+        height: 110px;
+        object-fit: cover;
+        border-radius: 8px;
+      }
+
+      .captacao-photo-picker-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .65rem;
+      }
+      .captacao-photo-picker-button {
+        min-height: 50px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        white-space: normal;
+      }
+
+      .captacao-photo-list {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: .85rem;
+      }
+      .captacao-photo-empty {
+        border: 1px dashed #cbd5e1;
+        border-radius: 12px;
+        color: #64748b;
+        padding: .8rem;
+        text-align: center;
+        font-size: .9rem;
+      }
+      .captacao-photo-row {
+        display: grid;
+        grid-template-columns: 34px 68px 1fr;
+        gap: .7rem;
+        align-items: center;
+        padding: .7rem 0;
+        border-bottom: 1px solid #eef2f7;
+      }
+      .captacao-photo-row:last-child { border-bottom: 0; }
+      .captacao-photo-index {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: #eef4ff;
+        color: #0d6efd;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: .85rem;
+      }
+      .captacao-photo-thumb {
+        width: 64px;
+        height: 64px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 1px solid #e5e7eb;
+        background: #f8fafc;
+      }
+      .captacao-photo-meta {
+        min-width: 0;
+      }
+      .captacao-photo-meta strong,
+      .captacao-photo-meta small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .captacao-photo-meta strong {
+        color: #111827;
+        font-size: .9rem;
+      }
+      .captacao-photo-meta small {
+        color: #64748b;
+        font-size: .78rem;
+      }
+      .captacao-highlight-choice {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        margin-top: .35rem;
+        font-size: .82rem;
+        font-weight: 600;
+        color: #374151;
+      }
+      .captacao-photo-actions {
+        grid-column: 2 / 4;
+        display: flex;
+        gap: .4rem;
+      }
+      .captacao-photo-actions .btn {
+        min-width: 40px;
+      }
+      .captacao-schedule-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        background: #fff;
+        border: 1px solid #dbeafe;
+        border-radius: 14px;
+        padding: .85rem;
+      }
+      .captacao-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .5rem;
+      }
+      .captacao-calendar-day {
+        border: 1px solid #dbe4f0;
+        border-radius: 12px;
+        background: #fff;
+        color: #334155;
+        font-weight: 700;
+        min-height: 48px;
+      }
+      .captacao-calendar-day.active {
+        background: #0d6efd;
+        border-color: #0d6efd;
+        color: #fff;
+      }
+      .captacao-slot-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .5rem;
+      }
+      .captacao-time-slot {
+        min-height: 46px;
+        font-weight: 700;
+      }
+
+      @media (min-width: 768px) {
+        body {
+          padding-bottom: 0;
+          padding-top: 0;
+        }
+        .wizard-admin-content {
+          margin-left: 260px;
+          min-height: 100vh;
+          padding-top: 64px;
+          width: calc(100% - 260px);
+        }
+        .wizard-top-bar {
+          top: 64px;
+        }
+        .wizard-bottom-nav {
+          position: static;
+          max-width: 480px;
+          margin: 1rem auto 2rem;
+          border-radius: 14px;
+          border: 1px solid #e5e7eb;
+        }
+        .captacao-photo-row {
+          grid-template-columns: 34px 76px 1fr auto;
+        }
+        .captacao-photo-actions {
+          grid-column: auto;
+        }
+      }
+      @media (min-width: 768px) and (max-width: 991.98px) {
+        .wizard-admin-content {
+          margin-left: 220px;
+          width: calc(100% - 220px);
+        }
+      }
+      @media (min-width: 992px) {
+        .wizard-start-shell,
+        .wizard-start-page {
+          max-width: 960px;
+        }
+
+        .wizard-start-page {
+          padding-top: 2rem;
+        }
+
+        .wizard-start-page .alert {
+          max-width: none;
+        }
+
+        .wizard-start-form {
+          background: #fff;
+          border: 1px solid #e5e7eb;
+          border-radius: 18px;
+          box-shadow: 0 18px 40px rgba(15, 23, 42, .08);
+          padding: 2rem;
+        }
+
+        .wizard-start-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+          gap: 1.25rem;
+          align-items: start;
+        }
+
+        .wizard-start-grid .wizard-field-group {
+          margin-bottom: 0;
+        }
+
+        .wizard-start-grid .wizard-option-card {
+          min-height: 132px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .wizard-start-grid .wizard-option-card .icon {
+          font-size: 2.15rem;
+        }
+
+        .wizard-start-form > .alert {
+          margin-top: 1.5rem;
+          margin-bottom: 0;
+        }
+
+        .wizard-start-form + .wizard-bottom-nav {
+          max-width: 960px;
+        }
+
+        .wizard-bottom-nav .wizard-start-shell {
+          max-width: none;
+          justify-content: flex-end;
+        }
+
+        .wizard-bottom-nav .wizard-start-shell .btn {
+          flex: 0 0 220px !important;
+        }
+      }
+      @media (max-width: 420px) {
+        .wizard-top-bar {
+          padding-bottom: .9rem;
+        }
+
+        .wizard-content {
+          padding-top: 1.75rem;
+        }
+
+        .wizard-section-subtitle {
+          margin-top: .2rem;
+        }
+
+        .captacao-photo-picker-actions {
+          grid-template-columns: 1fr;
+        }
+      }
+      @supports (-webkit-touch-callout: none) {
+        @media (max-width: 767.98px) {
+          body {
+            padding-top: 58px;
+          }
+          .wizard-top-bar {
+            top: 58px;
+          }
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="admin-navbar d-none d-md-flex">
+      <%= link_to((current_admin_user&.admin? ? admin_root_path : field_root_path), class: "admin-navbar-brand") do %>
+        <i class="bi bi-speedometer2"></i>
+        <span class="admin-navbar-brand-text"><%= @layout_setting&.site_name.presence || 'Salute' %> Admin</span>
+      <% end %>
+      <div class="admin-navbar-user">
+        <span class="admin-navbar-user-name">
+          <i class="bi bi-person-circle"></i> <%= current_admin_user&.name.to_s.split.first || current_admin_user&.email %>
+        </span>
+        <%= link_to destroy_admin_user_session_path, data: { turbo_method: :delete }, class: "btn btn-sm btn-outline-danger admin-navbar-logout" do %>
+          <i class="bi bi-box-arrow-right"></i><span class="ms-1">Sair</span>
+        <% end %>
+      </div>
+    </nav>
+
+    <aside class="admin-sidebar d-none d-md-block">
+      <%= render 'admin/shared/sidebar' %>
+    </aside>
+
+    <div class="wizard-admin-content">
+    <% if flash.any? %>
+      <div class="wizard-shell">
+        <% flash.each do |type, msg| %>
+          <% next if msg.blank? %>
+          <div class="alert alert-<%= type == 'notice' ? 'info' : 'warning' %> mb-0 rounded-0"><%= msg %></div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%= yield %>
+    </div>
+    <%= render 'layouts/pwa_service_worker' %>
+  </body>
+</html>

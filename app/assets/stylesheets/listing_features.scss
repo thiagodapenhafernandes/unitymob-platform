@@ -1,0 +1,468 @@
+/* ========================================
+   ADVANCED LISTING FEATURES STYLES
+   ======================================== */
+
+/* Filter Bar */
+.filter-bar-wrapper {
+  background: white;
+  padding: 20px 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin-bottom: 30px;
+}
+
+.filter-bar {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.filter-bar-inner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-dropdown {
+  position: relative;
+  flex: 1;
+  min-width: 150px;
+}
+
+.filter-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+  border-color: var(--blue-two);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-btn.active {
+  border-color: var(--blue-two);
+  background: rgba(var(--blue-two-rgb), 0.05);
+}
+
+.filter-btn i:first-child {
+  color: var(--blue-two);
+  font-size: 16px;
+}
+
+.filter-btn .bi-chevron-down {
+  font-size: 12px;
+  transition: transform 0.3s ease;
+}
+
+.filter-btn.active .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+.filter-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 250px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  display: none;
+  z-index: 1000;
+}
+
+.filter-dropdown-menu.show {
+  display: block;
+}
+
+.btn-apply-filters {
+  padding: 12px 32px;
+  background: linear-gradient(135deg, var(--blue-two), var(--blue-three));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-apply-filters:hover {
+  box-shadow: 0 4px 15px rgba(0, 119, 182, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Quick Filters */
+.quick-filters-wrapper {
+  margin-bottom: 30px;
+}
+
+.quick-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.quick-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 50px;
+  font-size: 14px;
+  color: #333;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.quick-filter-pill:hover {
+  border-color: var(--blue-two);
+  background: rgba(var(--blue-two-rgb), 0.05);
+  transform: translateY(-2px);
+}
+
+.quick-filter-pill.active {
+  background: linear-gradient(135deg, var(--blue-two), var(--blue-three));
+  border-color: var(--blue-two);
+  color: white;
+}
+
+.quick-filter-pill i {
+  font-size: 16px;
+}
+
+.quick-filter-pill .filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 8px;
+}
+
+.quick-filter-pill.active .filter-count {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Filter Sidebar */
+.filter-sidebar {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+  position: sticky;
+  top: 100px;
+}
+
+.filter-section {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #eee;
+}
+
+.filter-section:last-of-type {
+  border-bottom: none;
+}
+
+.filter-section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.filter-section-header:hover {
+  color: var(--blue-two);
+}
+
+.filter-section-header i {
+  transition: transform 0.3s ease;
+}
+
+.filter-section-header.collapsed i {
+  transform: rotate(180deg);
+}
+
+.filter-section-content {
+  padding-top: 16px;
+}
+
+.form-check {
+  margin-bottom: 12px;
+}
+
+.form-check-input {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.form-check-input:checked {
+  background-color: var(--blue-two);
+  border-color: var(--blue-two);
+}
+
+.form-check-label {
+  font-size: 14px;
+  color: #555;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.filter-actions {
+  padding-top: 24px;
+}
+
+/* Listing Header */
+.listing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.listing-count {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.listing-count span {
+  color: var(--blue-two);
+}
+
+.listing-sort select {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Enhanced Property Cards */
+.property-card-carousel {
+  position: relative;
+  overflow: hidden;
+}
+
+.carousel-images {
+  position: relative;
+  width: 100%;
+  height: 250px;
+}
+
+.carousel-image {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.carousel-image.active {
+  opacity: 1;
+}
+
+.carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.carousel-nav:hover {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.carousel-nav-prev {
+  left: 12px;
+}
+
+.carousel-nav-next {
+  right: 12px;
+}
+
+.carousel-indicators {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+}
+
+.carousel-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.carousel-indicator.active {
+  background: white;
+  width: 24px;
+  border-radius: 4px;
+}
+
+/* Property Badges */
+.property-badges {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 5;
+}
+
+.property-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  display: inline-block;
+}
+
+.badge-new {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+}
+
+.badge-ocean {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+
+.badge-feature {
+  background: linear-gradient(135deg, var(--golden-one), var(--golden-two));
+}
+
+.badge-furnished {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+/* Novidade Ribbon */
+.property-ribbon {
+  position: absolute;
+  top: 20px;
+  right: -35px;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+  color: white;
+  padding: 6px 40px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 5;
+}
+
+/* Favorite Button */
+.favorite-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.favorite-btn:hover {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.favorite-btn i {
+  font-size: 18px;
+  color: #333;
+  transition: all 0.3s ease;
+}
+
+.favorite-btn.favorited i {
+  color: var(--golden-one);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .filter-sidebar {
+    position: static;
+    margin-bottom: 30px;
+  }
+
+  .filter-bar-inner {
+    flex-direction: column;
+  }
+
+  .filter-dropdown {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .quick-filters {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 10px;
+  }
+
+  .quick-filter-pill {
+    flex-shrink: 0;
+  }
+
+  .listing-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

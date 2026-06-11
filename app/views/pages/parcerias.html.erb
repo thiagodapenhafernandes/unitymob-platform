@@ -1,0 +1,100 @@
+<section class="relative overflow-hidden bg-[#0b2340] pt-28 pb-16 lg:pt-36 lg:pb-24">
+  <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px); background-size: 22px 22px;"></div>
+  <div class="absolute inset-0 bg-gradient-to-br from-[#0b2340]/95 via-[#12345d]/90 to-[#0b2340]/95"></div>
+
+  <div class="container-custom relative z-10">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div class="lg:col-span-7 text-white">
+        <span class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider">
+          <i class="bi bi-briefcase"></i>
+          Salute Parcerias
+        </span>
+        <h1 class="mt-6 text-4xl lg:text-5xl font-semibold leading-tight">
+          Seja um Corretor Parceiro da Salute Imóveis
+        </h1>
+        <p class="mt-4 text-white/80 text-lg max-w-2xl">
+          Potencialize seus negócios com uma curadoria de imóveis qualificados, atendimento ágil e suporte comercial dedicado.
+        </p>
+
+        <div class="mt-10 space-y-6 max-w-2xl">
+          <div class="flex gap-4">
+            <div class="h-10 w-10 rounded-full bg-golden-one/25 text-golden-one flex items-center justify-center flex-shrink-0">
+              <i class="bi bi-building"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold">Portfólio premium para seus clientes</h3>
+              <p class="text-white/80">Acesso a imóveis de alto potencial em Balneário Camboriú e região.</p>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <div class="h-10 w-10 rounded-full bg-golden-one/25 text-golden-one flex items-center justify-center flex-shrink-0">
+              <i class="bi bi-people"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold">Suporte especializado</h3>
+              <p class="text-white/80">Conte com nosso time para acelerar negociações e reduzir fricção no atendimento.</p>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <div class="h-10 w-10 rounded-full bg-golden-one/25 text-golden-one flex items-center justify-center flex-shrink-0">
+              <i class="bi bi-shield-check"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold">Parceria segura e transparente</h3>
+              <p class="text-white/80">Processo organizado para colaboração recorrente e previsível.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-5">
+        <div class="rounded-2xl bg-white/95 p-6 lg:p-8 shadow-2xl border border-white/30">
+          <div class="mb-5">
+            <h2 class="text-2xl font-bold text-blue-three">Quero ser parceiro</h2>
+            <p class="text-sm text-gray-600 mt-1">Preencha os dados e nosso time entra em contato.</p>
+          </div>
+
+          <%= form_with url: submit_parcerias_path, method: :post, scope: :partnership, local: true, class: "space-y-4" do |f| %>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Nome completo *</label>
+              <%= f.text_field :name, required: true, class: "w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-three/30 focus:border-blue-three" %>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">E-mail *</label>
+                <%= f.email_field :email, required: true, class: "w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-three/30 focus:border-blue-three" %>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Telefone *</label>
+                <%= f.telephone_field :phone, required: true, class: "w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-three/30 focus:border-blue-three" %>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">CRECI</label>
+                <%= f.text_field :creci, class: "w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-three/30 focus:border-blue-three" %>
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Cidade/UF</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <%= f.text_field :city, placeholder: "Cidade", class: "col-span-2 rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-three/30 focus:border-blue-three" %>
+                  <%= f.text_field :state, placeholder: "UF", class: "rounded-lg border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-blue-three/30 focus:border-blue-three" %>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Descrição do imóvel / demanda *</label>
+              <%= f.text_area :property_description, rows: 4, required: true, class: "w-full rounded-lg border border-gray-300 px-4 py-2.5 resize-none focus:ring-2 focus:ring-blue-three/30 focus:border-blue-three" %>
+            </div>
+
+            <%= f.submit "Continuar", class: "w-full rounded-lg bg-golden-one text-blue-three font-bold py-3 hover:bg-golden-two transition-colors" %>
+            <%= render "shared/form_consent_notice", class_name: "text-xs text-center text-gray-500" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

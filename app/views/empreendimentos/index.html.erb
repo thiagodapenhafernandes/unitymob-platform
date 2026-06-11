@@ -1,0 +1,308 @@
+<div class="bg-gradient-to-b from-gray-50 to-white min-h-screen pt-40 pb-20" style="padding-top: 160px;">
+  <div class="container-custom">
+    
+    <!-- Hero Header -->
+    <div class="text-center mb-16 max-w-4xl mx-auto">
+      <div class="inline-block mb-4">
+        <div class="w-20 h-20 bg-gradient-to-br from-blue-three to-blue-one rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+          <i class="bi bi-buildings text-white text-4xl"></i>
+        </div>
+      </div>
+      <h1 class="text-5xl lg:text-6xl font-bold text-blue-three mb-4">
+        Nossos <span class="text-transparent bg-clip-text bg-gradient-to-r from-golden-one to-yellow-600">Empreendimentos</span>
+      </h1>
+      <div class="h-1.5 w-32 bg-gradient-to-r from-golden-one to-yellow-600 mx-auto rounded-full mb-6"></div>
+      <p class="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+        Explore nossa seleção exclusiva de empreendimentos de alto padrão. Encontre o imóvel perfeito para você.
+      </p>
+    </div>
+    <!-- Search Section -->
+    <div class="max-w-3xl mx-auto mb-16">
+      <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-10 h-10 bg-blue-three/10 rounded-lg flex items-center justify-center">
+            <i class="bi bi-search text-blue-three text-xl"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-blue-three">Buscar Empreendimento</h2>
+        </div>
+        
+        <div class="relative">
+          <form action="<%= empreendimentos_path %>" method="get" class="relative">
+            <div class="relative">
+              <input type="text" 
+                     name="q" 
+                     value="<%= params[:q] %>"
+                     placeholder="Digite o nome do empreendimento..." 
+                     class="w-full pl-14 pr-14 py-5 rounded-2xl border-2 border-gray-200 focus:outline-none focus:border-golden-one focus:ring-4 focus:ring-golden-one/20 transition-all text-gray-700 placeholder-gray-400 text-lg shadow-sm"
+                     autocomplete="off"
+                     id="development-search">
+              <div class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400">
+                <i class="bi bi-search text-2xl"></i>
+              </div>
+              <% if params[:q].present? %>
+                <a href="<%= empreendimentos_path %>" class="absolute right-5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Limpar busca">
+                  <i class="bi bi-x-lg"></i>
+                </a>
+              <% else %>
+                <button type="submit" class="absolute right-5 top-1/2 -translate-y-1/2 px-6 py-2.5 bg-gradient-to-r from-golden-one to-yellow-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
+                  Buscar
+                </button>
+              <% end %>
+            </div>
+            
+            <!-- Autocomplete Dropdown -->
+            <div id="autocomplete-results" 
+                 class="absolute w-full bg-white mt-3 rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-50 hidden">
+            </div>
+          </form>
+        </div>
+        
+        <% if params[:q].present? %>
+          <div class="mt-4 flex items-center gap-2 text-sm text-gray-600">
+            <i class="bi bi-funnel text-golden-one"></i>
+            <span>Filtrando por: <strong class="text-blue-three">"<%= params[:q] %>"</strong></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <% listing_seo = current_public_seo_setting %>
+    <% if listing_seo&.public_applicable? && listing_seo.intro_text.present? %>
+      <section class="max-w-5xl mx-auto bg-white border border-gray-100 rounded-2xl p-6 md:p-8 shadow-sm mb-10">
+        <div class="prose prose-slate max-w-none text-gray-600 leading-relaxed">
+          <%= simple_format(listing_seo.intro_text) %>
+        </div>
+      </section>
+    <% end %>
+
+    <nav class="max-w-5xl mx-auto bg-white border border-gray-100 rounded-2xl p-5 shadow-sm mb-10" aria-label="Buscas estratégicas de empreendimentos">
+      <h2 class="text-sm font-bold text-blue-three uppercase tracking-wide mb-3">Buscas relacionadas</h2>
+      <div class="flex flex-wrap gap-2">
+        <% Seo::StrategicLanding.development_links.each do |link| %>
+          <%= link_to link[:label], link[:path], class: "inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-golden-one hover:text-blue-three transition-colors" %>
+        <% end %>
+      </div>
+    </nav>
+
+    <!-- Grid Layout -->
+    <div class="max-w-6xl mx-auto">
+      <% if @empreendimentos.any? %>
+        
+        <!-- Results Header -->
+        <div class="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+          <h3 class="text-2xl font-bold text-blue-three">
+            <span class="text-golden-one"><%= @empreendimentos.total_entries %></span> 
+            <%= @empreendimentos.total_entries == 1 ? 'Empreendimento' : 'Empreendimentos' %> 
+            <%= 'encontrado' if params[:q].present? %>
+          </h3>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mb-20">
+          <% @empreendimentos.each do |empreendimento| %>
+            <% unit_count = @unit_counts[empreendimento.codigo] || 0 %>
+            <% image = empreendimento.primary_image %>
+            
+            <div class="bg-white rounded-3xl shadow-sm hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 h-full flex flex-col transform hover:-translate-y-2 cursor-pointer"
+                 data-controller="clickable-card"
+                 data-clickable-card-url-value="<%= empreendimento_details_path(empreendimento) %>">
+              
+              <!-- Image Section -->
+              <div class="relative h-64 overflow-hidden bg-gray-100">
+                <% if image.present? %>
+                  <img src="<%= image['url'] || image[:url] %>" 
+                       alt="<%= empreendimento.nome_empreendimento %>" 
+                       width="420"
+                       height="256"
+                       class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                       loading="lazy">
+                <% else %>
+                  <div class="w-full h-full flex flex-col items-center justify-center bg-blue-three/5 text-blue-three/20">
+                    <i class="bi bi-building text-6xl mb-2"></i>
+                    <span class="text-xs font-bold uppercase tracking-widest">Sem Imagem</span>
+                  </div>
+                <% end %>
+                
+                <!-- Overlay Badges -->
+                <div class="absolute top-4 left-4 flex flex-col gap-2">
+                  <span class="px-3 py-1 bg-blue-three/90 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-sm">
+                    #<%= empreendimento.codigo %>
+                  </span>
+                </div>
+                
+                <div class="absolute bottom-4 right-4">
+                  <div class="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-white/20">
+                    <div class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter leading-none mb-0.5">Unidades</div>
+                    <div class="text-xl font-black text-blue-three leading-none"><%= unit_count %></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Content Section -->
+              <div class="p-6 flex-grow flex flex-col">
+                <h3 class="text-xl font-extrabold text-blue-three mb-2 group-hover:text-golden-one transition-colors line-clamp-2 leading-tight">
+                  <%= empreendimento.nome_empreendimento %>
+                </h3>
+                
+                <% if empreendimento.bairro.present? %>
+                  <div class="flex items-center gap-1.5 text-gray-400 text-sm mb-4">
+                    <i class="bi bi-geo-alt-fill text-golden-one"></i>
+                    <span class="font-medium"><%= empreendimento.bairro %><%= ", #{empreendimento.cidade}" if empreendimento.cidade.present? %></span>
+                  </div>
+                <% end %>
+
+                <div class="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
+                  <div class="w-full flex items-center justify-between group/btn">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest group-hover/btn:text-blue-three transition-colors">Ver Unidades do Projeto</span>
+                    <div class="w-10 h-10 rounded-xl bg-blue-three/5 group-hover/btn:bg-golden-one group-hover/btn:text-white flex items-center justify-center text-blue-three transition-all duration-300">
+                      <i class="bi bi-arrow-right text-lg"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Pagination -->
+        <div class="developments-pagination mt-12 flex justify-center">
+          <%= will_paginate @empreendimentos,
+                            class: "pagination",
+                            previous_label: "←",
+                            next_label: "→",
+                            inner_window: 2,
+                            outer_window: 1 %>
+        </div>
+
+      <% else %>
+        <!-- Empty State -->
+        <div class="text-center py-20">
+          <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i class="bi bi-building-slash text-gray-400 text-4xl"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-gray-700 mb-3">Nenhum empreendimento encontrado</h3>
+          <p class="text-gray-500 mb-6 max-w-md mx-auto">
+            <% if params[:q].present? %>
+              Não encontramos resultados para "<strong><%= params[:q] %></strong>". Tente buscar por outro nome.
+            <% else %>
+              Não há empreendimentos disponíveis no momento.
+            <% end %>
+          </p>
+          <% if params[:q].present? %>
+            <%= link_to "Limpar busca e ver todos", empreendimentos_path, class: "inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-golden-one to-yellow-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all" %>
+          <% end %>
+          <div class="mt-6 flex flex-wrap justify-center gap-2">
+            <% Seo::StrategicLanding.development_links.first(5).each do |link| %>
+              <%= link_to link[:label], link[:path], class: "inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-blue-three hover:text-blue-three transition-colors" %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+  </div>
+</div>
+
+<script type="application/ld+json">
+  <%= raw({
+    "@context" => "https://schema.org",
+    "@type" => "ItemList",
+    "name" => @page_title.presence || "Empreendimentos Salute Imóveis",
+    "numberOfItems" => @empreendimentos.size,
+    "itemListElement" => @empreendimentos.each_with_index.map do |empreendimento, index|
+      image = empreendimento.primary_image_url
+      item = {
+        "@type" => "ListItem",
+        "position" => index + 1,
+        "url" => empreendimento_details_url(empreendimento),
+        "name" => empreendimento.nome_empreendimento.presence || empreendimento.display_title
+      }
+      item["image"] = image if image.present?
+      item
+    end
+  }.to_json) %>
+</script>
+
+<script>
+  // Enhanced Autocomplete Logic
+  document.addEventListener('turbo:load', function() {
+    const input = document.getElementById('development-search');
+    const resultsContainer = document.getElementById('autocomplete-results');
+    let debounceTimer;
+
+    if (!input || !resultsContainer) return;
+
+    input.addEventListener('input', function(e) {
+      const term = e.target.value;
+      
+      clearTimeout(debounceTimer);
+      
+      if (term.length < 2) {
+        resultsContainer.classList.add('hidden');
+        resultsContainer.innerHTML = '';
+        return;
+      }
+
+      debounceTimer = setTimeout(() => {
+        fetch(`/empreendimentos/search?q=${encodeURIComponent(term)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.length > 0) {
+              const html = data.map((item, index) => `
+                <div class="px-6 py-4 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 transition-all group" 
+                     onclick="selectDevelopment('${item.value.replace(/'/g, "\\'")}')">
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                      <div class="w-10 h-10 rounded-lg bg-blue-three/10 flex items-center justify-center group-hover:bg-blue-three transition-colors">
+                        <i class="bi bi-building text-blue-three group-hover:text-white text-lg"></i>
+                      </div>
+                      <div>
+                        <span class="text-gray-800 font-semibold block group-hover:text-blue-three transition-colors">${item.label}</span>
+                        <span class="text-xs text-gray-500">Empreendimento</span>
+                      </div>
+                    </div>
+                    <i class="bi bi-arrow-right text-gray-400 group-hover:text-golden-one transition-colors"></i>
+                  </div>
+                </div>
+              `).join('');
+              
+              resultsContainer.innerHTML = html;
+              resultsContainer.classList.remove('hidden');
+            } else {
+              resultsContainer.innerHTML = `
+                <div class="px-6 py-8 text-center">
+                  <i class="bi bi-search text-gray-300 text-3xl mb-2"></i>
+                  <p class="text-gray-500 text-sm">Nenhum resultado encontrado</p>
+                </div>
+              `;
+              resultsContainer.classList.remove('hidden');
+            }
+          })
+          .catch(error => {
+            console.error('Erro ao buscar empreendimentos:', error);
+            resultsContainer.classList.add('hidden');
+          });
+      }, 300);
+    });
+
+    // Close on click outside
+    document.addEventListener('click', function(e) {
+      if (!input.contains(e.target) && !resultsContainer.contains(e.target)) {
+        resultsContainer.classList.add('hidden');
+      }
+    });
+    
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        resultsContainer.classList.add('hidden');
+      }
+    });
+  });
+
+  function selectDevelopment(name) {
+    const input = document.getElementById('development-search');
+    const form = input.closest('form');
+    input.value = name;
+    form.submit();
+  }
+</script>

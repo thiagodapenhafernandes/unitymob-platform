@@ -1,0 +1,328 @@
+<% kanban_params = request.query_parameters.merge(view: "kanban", page: nil).compact %>
+<% list_params = request.query_parameters.merge(view: "list", page: nil).compact %>
+
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800">Gerenciar Leads</h1>
+    <p class="text-muted mb-0">Acompanhe o funil por status ou use a listagem tradicional.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <% if defined?(can?) && can?(:manage, :catalogos) %>
+      <%= link_to admin_attribute_options_path(context: "lead", category: "status"), class: "btn btn-outline-primary" do %>
+        <i class="bi bi-sliders me-1"></i> Status
+      <% end %>
+    <% end %>
+    <div class="btn-group" role="group" aria-label="Alternar visualização">
+      <%= link_to admin_leads_path(kanban_params), class: "btn #{@view_mode == 'kanban' ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        <i class="bi bi-kanban me-1"></i> Kanban
+      <% end %>
+      <%= link_to admin_leads_path(list_params), class: "btn #{@view_mode == 'list' ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        <i class="bi bi-list-ul me-1"></i> Lista
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <%= form_with url: admin_leads_path, method: :get, class: "row g-3" do |f| %>
+      <%= hidden_field_tag :view, @view_mode %>
+      <div class="col-lg-4">
+        <%= f.text_field :q, value: params[:q], class: "form-control", placeholder: "Buscar por nome, email, telefone ou origem..." %>
+      </div>
+      <div class="col-lg-3">
+        <%= f.select :status, @status_options, { include_blank: "Todos os Status", selected: params[:status] }, class: "form-select" %>
+      </div>
+      <div class="col-lg-3">
+        <%= f.select :origin, @origin_options, { include_blank: "Todas as Origens", selected: params[:origin] }, class: "form-select" %>
+      </div>
+      <div class="col-lg-2 d-grid">
+        <button type="submit" class="btn btn-secondary">
+          <i class="bi bi-search me-1"></i> Filtrar
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% if @view_mode == "kanban" %>
+  <div class="lead-kanban" data-controller="lead-kanban">
+    <% @lead_statuses.each do |status| %>
+      <section class="lead-kanban-column">
+        <div class="lead-kanban-column__header">
+          <div>
+            <h2 class="lead-kanban-column__title"><%= status %></h2>
+            <span class="text-muted small">Status do lead</span>
+          </div>
+          <span class="badge rounded-pill bg-light text-dark" data-lead-kanban-count="<%= status %>">
+            <%= @lead_counts_by_status[status].to_i %>
+          </span>
+        </div>
+
+        <div class="lead-kanban-column__body"
+             data-lead-kanban-target="column"
+             data-lead-kanban-status="<%= status %>">
+          <% @leads_by_status[status].to_a.each do |lead| %>
+            <% property = @properties_by_id[lead.property_id] if lead.property_id.present? %>
+            <article class="lead-kanban-card"
+                     data-update-url="<%= admin_lead_path(lead) %>"
+                     data-current-status="<%= lead.status.presence || Lead.default_status %>">
+              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <div>
+                  <h3 class="lead-kanban-card__title"><%= lead.name %></h3>
+                  <div class="lead-kanban-card__meta"><%= lead.phone.presence || "Sem telefone" %></div>
+                </div>
+                <span class="badge bg-<%= Lead.status_badge_class(lead.status) %>" data-lead-kanban-status-badge>
+                  <%= lead.status.presence || Lead.default_status %>
+                </span>
+              </div>
+
+              <% if lead.email.present? %>
+                <div class="lead-kanban-card__line"><i class="bi bi-envelope me-1"></i><%= lead.email %></div>
+              <% end %>
+
+              <div class="lead-kanban-card__line">
+                <i class="bi bi-megaphone me-1"></i><%= lead.origin.presence || "Origem não informada" %>
+              </div>
+              <div class="lead-kanban-card__line">
+                <i class="bi bi-person-badge me-1"></i><%= lead.admin_user&.name.presence || "Sem corretor atribuído" %>
+              </div>
+
+              <% if property.present? %>
+                <div class="lead-kanban-card__property">
+                  <%= link_to property.display_title, admin_habitation_path(property), class: "text-decoration-none fw-semibold" %>
+                  <div class="text-muted small"><%= property.codigo %></div>
+                </div>
+              <% elsif lead.property_id.present? %>
+                <div class="lead-kanban-card__property text-muted">Imóvel indisponível</div>
+              <% else %>
+                <div class="lead-kanban-card__property text-muted">Contato geral</div>
+              <% end %>
+
+              <div class="lead-kanban-card__footer">
+                <small class="text-muted"><%= l(lead.created_at, format: "%d/%m/%Y %H:%M") %></small>
+                <%= link_to admin_lead_path(lead), class: "btn btn-sm btn-outline-primary" do %>
+                  <i class="bi bi-eye"></i>
+                <% end %>
+              </div>
+
+              <div class="mt-3 d-lg-none">
+                <label class="form-label small fw-bold mb-1">Mover para</label>
+                <select class="form-select form-select-sm"
+                        data-action="change->lead-kanban#changeStatus"
+                        data-lead-kanban-status-select>
+                  <% @status_options.each do |option| %>
+                    <option value="<%= option %>" <%= "selected" if option == Lead.status_value(lead.status) %>><%= option %></option>
+                  <% end %>
+                </select>
+              </div>
+            </article>
+          <% end %>
+
+          <div class="lead-kanban-empty">Nenhum lead neste status.</div>
+        </div>
+      </section>
+    <% end %>
+  </div>
+<% else %>
+  <div class="card shadow-sm overflow-hidden border-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-4">Contato</th>
+            <th>Origem/Imóvel</th>
+            <th>Status</th>
+            <th>Data</th>
+            <th class="text-end pe-4">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @leads.each do |lead| %>
+            <% property = @properties_by_id[lead.property_id] if lead.property_id.present? %>
+            <tr>
+              <td class="ps-4">
+                <div class="fw-bold text-dark"><%= lead.name %></div>
+                <small class="text-muted"><%= [lead.email, lead.phone].compact_blank.join(" | ") %></small>
+              </td>
+              <td>
+                <% if lead.origin.present? %>
+                  <div><span class="badge bg-light text-dark"><%= lead.origin %></span></div>
+                <% end %>
+                <div class="small text-muted mb-1">
+                  <i class="bi bi-person-badge me-1"></i><%= lead.admin_user&.name.presence || "Sem corretor atribuído" %>
+                </div>
+                <% if property.present? %>
+                  <div class="small">
+                    <%= link_to property.display_title, admin_habitation_path(property), class: "text-decoration-none" %>
+                    <br>
+                    <code class="text-muted"><%= property.codigo %></code>
+                  </div>
+                <% elsif lead.property_id.present? %>
+                  <span class="text-muted small">Imóvel indisponível</span>
+                <% else %>
+                  <span class="badge bg-light text-dark">Geral</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="badge bg-<%= Lead.status_badge_class(lead.status) %>"><%= lead.status.presence || Lead.default_status %></span>
+              </td>
+              <td>
+                <div class="small text-muted">
+                  <%= lead.created_at.strftime("%d/%m/%Y") %><br>
+                  <%= lead.created_at.strftime("%H:%M") %>
+                </div>
+              </td>
+              <td class="text-end pe-4">
+                <div class="btn-group btn-group-sm">
+                  <%= link_to admin_lead_path(lead), class: "btn btn-outline-primary", title: "Ver Detalhes" do %>
+                    <i class="bi bi-eye"></i>
+                  <% end %>
+                  <%= button_to admin_lead_path(lead), method: :delete, data: { confirm: "Tem certeza?" }, class: "btn btn-outline-danger", title: "Excluir" do %>
+                    <i class="bi bi-trash"></i>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @leads.total_pages > 1 %>
+      <div class="card-footer bg-white py-3">
+        <div class="d-flex justify-content-center">
+          <%= will_paginate @leads %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<style>
+  .lead-kanban {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(300px, 360px);
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+  }
+
+  .lead-kanban-column {
+    background: #f7f9fc;
+    border: 1px solid #e7ebf2;
+    border-radius: 12px;
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lead-kanban-column__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: 1rem;
+    border-bottom: 1px solid #e7ebf2;
+  }
+
+  .lead-kanban-column__title {
+    font-size: .95rem;
+    font-weight: 800;
+    margin: 0;
+    color: #1f2937;
+  }
+
+  .lead-kanban-column__body {
+    flex: 1;
+    padding: .85rem;
+    display: flex;
+    flex-direction: column;
+    gap: .85rem;
+  }
+
+  .lead-kanban-card {
+    background: #fff;
+    border: 1px solid #e6e9ef;
+    border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, .08);
+    padding: 1rem;
+    cursor: grab;
+    transition: opacity .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+
+  .lead-kanban-card:active {
+    cursor: grabbing;
+  }
+
+  .lead-kanban-card--ghost {
+    opacity: .35;
+  }
+
+  .lead-kanban-card--chosen {
+    box-shadow: 0 14px 30px rgba(15, 23, 42, .16);
+  }
+
+  .lead-kanban-card--saving {
+    opacity: .7;
+    pointer-events: none;
+  }
+
+  .lead-kanban-card__title {
+    font-size: 1rem;
+    font-weight: 800;
+    margin: 0;
+    color: #111827;
+  }
+
+  .lead-kanban-card__meta,
+  .lead-kanban-card__line {
+    color: #6b7280;
+    font-size: .86rem;
+  }
+
+  .lead-kanban-card__property {
+    border-top: 1px solid #eef1f5;
+    margin-top: .8rem;
+    padding-top: .8rem;
+    font-size: .9rem;
+  }
+
+  .lead-kanban-card__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    margin-top: .85rem;
+  }
+
+  .lead-kanban-empty {
+    border: 1px dashed #cfd6e3;
+    border-radius: 10px;
+    color: #8a94a6;
+    font-size: .9rem;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .lead-kanban-column__body:has(.lead-kanban-card) .lead-kanban-empty {
+    display: none;
+  }
+
+  @media (max-width: 991.98px) {
+    .lead-kanban {
+      grid-auto-columns: minmax(86vw, 88vw);
+      margin-left: -.25rem;
+      padding-left: .25rem;
+    }
+
+    .lead-kanban-column {
+      min-height: 420px;
+    }
+
+    .lead-kanban-card {
+      cursor: default;
+    }
+  }
+</style>

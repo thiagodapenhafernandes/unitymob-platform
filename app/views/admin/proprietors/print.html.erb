@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <title>Impressão de Proprietários</title>
+    <style>
+      body { font-family: Arial, sans-serif; font-size: 12px; color: #222; margin: 24px; }
+      h1 { font-size: 20px; margin: 0 0 8px; }
+      .meta { margin-bottom: 16px; color: #666; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #d6d6d6; padding: 8px; text-align: left; vertical-align: top; }
+      th { background: #f4f4f4; font-weight: 700; }
+      .text-right { text-align: right; }
+      .nowrap { white-space: nowrap; }
+      @media print {
+        body { margin: 8mm; }
+      }
+    </style>
+  </head>
+  <body>
+    <h1><%= Admin::ProprietorsController::REPORT_TYPES[@report_type] %></h1>
+    <div class="meta">
+      Gerado em <%= l(Time.current, format: :long) %> · Total: <%= @proprietors.count %> proprietários
+    </div>
+
+    <% if @report_type == "proprietors_with_habitations" %>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome/Denominação</th>
+            <th>Fone principal</th>
+            <th>CPF/CNPJ</th>
+            <th>Imóvel.Código</th>
+            <th>Imóvel.Status</th>
+            <th>Imóvel.Categoria</th>
+            <th class="text-right">Valor Venda</th>
+            <th class="text-right">Valor Aluguel</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @rows.each do |proprietor, habitation| %>
+            <tr>
+              <td><%= proprietor.name %></td>
+              <td class="nowrap"><%= proprietor.phone_primary.presence || proprietor.mobile_phone.presence || "-" %></td>
+              <td class="nowrap"><%= proprietor.cpf_cnpj.presence || "-" %></td>
+              <td class="nowrap"><%= habitation&.codigo || "-" %></td>
+              <td><%= habitation&.status || "-" %></td>
+              <td><%= habitation&.categoria || "-" %></td>
+              <td class="text-right"><%= habitation&.valor_venda_cents.to_i > 0 ? number_to_currency(habitation.valor_venda_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") : "-" %></td>
+              <td class="text-right"><%= habitation&.valor_locacao_cents.to_i > 0 ? number_to_currency(habitation.valor_locacao_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") : "-" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome/Denominação</th>
+            <th>Tipo</th>
+            <th>Código</th>
+            <th>Fone principal</th>
+            <th>Email</th>
+            <th>Cidade</th>
+            <th class="text-right">Qtd. imóveis</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @proprietors.each do |proprietor| %>
+            <tr>
+              <td><%= proprietor.name %></td>
+              <td><%= proprietor.display_role %></td>
+              <td class="nowrap"><%= proprietor.vista_code.presence || "-" %></td>
+              <td class="nowrap"><%= proprietor.phone_primary.presence || proprietor.mobile_phone.presence || "-" %></td>
+              <td><%= proprietor.email.presence || "-" %></td>
+              <td><%= proprietor.city.presence || "-" %></td>
+              <td class="text-right"><%= proprietor.habitations.count %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+
+    <script>
+      window.addEventListener('load', function() { window.print(); });
+    </script>
+  </body>
+</html>

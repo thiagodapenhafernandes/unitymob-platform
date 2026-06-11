@@ -1,0 +1,21 @@
+{
+  "short_name": "Salute",
+  "name": "Salute Imóveis Admin",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/admin",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#022B3A"
+}

@@ -1,0 +1,130 @@
+<div class="admin-header shadow-sm">
+  <div class="admin-header-title">
+    <h1><%= @banner.persisted? ? "Editar Banner" : "Novo Banner" %></h1>
+    <p><%= @banner.persisted? ? "Atualize as informações e imagens do banner" : "Cadastre um novo banner para o site" %></p>
+  </div>
+  <div class="admin-header-actions">
+    <%= link_to admin_banners_path, class: "btn btn-outline-secondary px-4 d-flex align-items-center gap-2 shadow-sm" do %>
+      <i class="bi bi-arrow-left-circle"></i> Voltar à Lista
+    <% end %>
+  </div>
+</div>
+
+<%= form_with(model: [:admin, @banner], local: true, class: "admin-form") do |f| %>
+  <% if @banner.errors.any? %>
+    <div class="alert alert-danger shadow-sm border-0 mb-4 p-4 rounded-3">
+      <div class="d-flex align-items-center gap-2 mb-3 text-danger">
+        <i class="bi bi-exclamation-octagon-fill fs-4"></i>
+        <h5 class="mb-0 fw-bold"><%= pluralize(@banner.errors.count, "erro") %> impediram o salvamento:</h5>
+      </div>
+      <ul class="mb-0">
+        <% @banner.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card card-luxury">
+        <div class="card-header">
+          <i class="bi bi-card-image"></i> Cadastro de Mídia
+        </div>
+        <div class="card-body p-4">
+          <div class="preview-container mb-4">
+            <div class="preview-desktop">
+              <span class="preview-title"><i class="bi bi-pc-display pe-1"></i> Imagem Desktop</span>
+              <div class="mb-2">
+                <% if @banner.image_desktop.attached? %>
+                  <img src="<%= url_for(@banner.image_desktop) %>" class="rounded border shadow-sm w-100" style="max-height: 120px; object-fit: cover;">
+                <% else %>
+                  <div class="py-4 bg-white border rounded text-muted text-center small">Sem imagem desktop</div>
+                <% end %>
+              </div>
+              <%= f.label :image_desktop, "Alterar Desktop", class: "form-label small fw-bold mt-2" %>
+              <%= f.file_field :image_desktop, class: "form-control form-control-sm", accept: "image/*" %>
+            </div>
+            <div class="preview-mobile">
+              <span class="preview-title"><i class="bi bi-phone pe-1"></i> Imagem Mobile</span>
+              <div class="mb-2">
+                <% if @banner.image_mobile.attached? %>
+                  <img src="<%= url_for(@banner.image_mobile) %>" class="rounded border shadow-sm" style="height: 120px; max-width: 100%; object-fit: cover;">
+                <% else %>
+                  <div class="py-4 bg-white border rounded text-muted text-center small w-100" style="height: 120px;">Sem imagem mobile</div>
+                <% end %>
+              </div>
+              <%= f.label :image_mobile, "Alterar Mobile", class: "form-label small fw-bold mt-2" %>
+              <%= f.file_field :image_mobile, class: "form-control form-control-sm", accept: "image/*" %>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-12">
+              <%= f.label :title, "Título Principal (Título do Banner)", class: "form-label fw-bold" %>
+              <%= f.text_field :title, class: "form-control form-control-lg", placeholder: "Ex: Lançamento em Balneário Camboriú", required: true %>
+            </div>
+            <div class="col-md-12">
+              <%= f.label :description, "Subtítulo / Descrição Curta", class: "form-label fw-bold" %>
+              <%= f.text_area :description, rows: 2, class: "form-control", placeholder: "Breve texto para atrair atenção" %>
+            </div>
+            <div class="col-md-6">
+              <%= f.label :link_url, "URL do Botão (Link)", class: "form-label fw-bold" %>
+              <%= f.text_field :link_url, class: "form-control", placeholder: "https://saluteimoveis.com.br/detalhes" %>
+            </div>
+            <div class="col-md-6">
+              <%= f.label :link_text, "Texto no Botão", class: "form-label fw-bold" %>
+              <%= f.text_field :link_text, class: "form-control", placeholder: "Ex: Saiba Mais" %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card card-luxury mb-4">
+        <div class="card-header">
+          <i class="bi bi-gear-fill"></i> Publicação
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-4">
+            <label class="form-label fw-bold d-block mb-3">Onde exibir este banner?</label>
+            <div class="bg-light p-3 border rounded-3">
+              <% Banner::POSITIONS.each do |value, label| %>
+                <div class="form-check mb-2">
+                  <%= check_box_tag 'banner[positions][]', value, 
+                      @banner.positions&.include?(value), 
+                      id: "banner_positions_#{value}", 
+                      class: "form-check-input" %>
+                  <label class="form-check-label small" for="banner_positions_<%= value %>"><%= label %></label>
+                </div>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="row align-items-center mb-4 g-2">
+            <div class="col-8">
+              <%= f.label :display_order, "Ordem de Exibição", class: "form-label fw-bold mb-0" %>
+              <small class="text-muted d-block small mt-1">Ex: 0, 1, 2...</small>
+            </div>
+            <div class="col-4">
+              <%= f.number_field :display_order, class: "form-control shadow-sm", value: @banner.display_order || 0 %>
+            </div>
+          </div>
+
+          <div class="form-check form-switch p-3 border rounded-3 bg-light d-flex justify-content-between align-items-center mb-4">
+            <label class="form-check-label fw-bold mb-0" for="banner_active">
+              <i class="bi bi-circle-fill text-success small me-1"></i> Banner Ativo
+            </label>
+            <%= f.check_box :active, class: "form-check-input ms-0", role: "switch", id: "banner_active" %>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 btn-lg shadow-sm mb-2">
+            <i class="bi bi-cloud-arrow-up-fill pe-2"></i> <%= @banner.persisted? ? "Salvar Alterações" : "Publicar Banner" %>
+          </button>
+          <%= link_to "Cancelar", admin_banners_path, class: "btn btn-outline-danger w-100" %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

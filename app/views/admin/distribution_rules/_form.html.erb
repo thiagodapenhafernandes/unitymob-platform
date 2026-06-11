@@ -1,0 +1,447 @@
+<%= form_with(model: [:admin, distribution_rule], local: true, data: { controller: "distribution-rule" }) do |f| %>
+  <% if distribution_rule.errors.any? %>
+    <div class="alert alert-danger shadow-sm border-0 mb-4">
+      <ul class="mb-0 small">
+        <% distribution_rule.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row g-4">
+    <!-- Coluna Principal -->
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-info-circle me-2 text-primary"></i>Dados Gerais</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-4">
+            <%= f.label :name, "Nome da Regra", class: "form-label fw-bold small text-muted text-uppercase" %>
+            <%= f.text_field :name, class: "form-control", placeholder: "Ex: Vendas Zona Sul - Facebook" %>
+          </div>
+          
+          <div class="row mb-0">
+            <div class="col-md-6">
+              <%= f.label :business_type, "Tipo de Negócio", class: "form-label fw-bold small text-muted text-uppercase" %>
+              <%= f.select :business_type, DistributionRule.business_types.keys.map { |k| [k.humanize, k] }, {}, class: "form-select" %>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+              <div class="form-check form-switch mb-2">
+                <%= f.check_box :active, class: "form-check-input", id: "flexSwitchCheckActive" %>
+                <%= f.label :active, "Regra Ativa", class: "form-check-label fw-bold", for: "flexSwitchCheckActive" %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fontes dos leads -->
+      <div class="card shadow-sm border-0 mb-4" data-controller="meta-rules" data-meta-rules-structure-value="<%= @meta_structure.to_json %>">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-hdd-network me-2 text-success"></i>Fontes dos leads</h5>
+        </div>
+        <div class="card-body">
+          <!-- Meta Ads -->
+          <div class="card border-0 bg-light mb-4">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="d-flex align-items-center">
+                  <div class="form-check form-switch me-3">
+                    <%= f.check_box :source_meta, class: "form-check-input", data: { action: "change->distribution-rule#toggleMeta" } %>
+                  </div>
+                  <h6 class="mb-0 fw-bold"><i class="bi bi-facebook text-primary me-2"></i>Meta Ads (Facebook/Instagram)</h6>
+                </div>
+                <div class="badge bg-soft-success text-success px-3 py-2 border-dashed-success d-none" data-distribution-rule-target="metaStatusBadge">Conectado</div>
+              </div>
+
+              <div class="section-toggle-container d-none" data-distribution-rule-target="metaSection">
+                <div class="ps-3 border-start border-4 border-warning">
+                  <div class="mb-4">
+                    <label class="form-label fw-bold small text-muted text-uppercase">Páginas do Facebook</label>
+                    <%= f.select :meta_page_ids, MetaFacebookPage.all.map { |p| [p.name, p.page_id] }, {}, 
+                        { multiple: true, class: "form-select", data: { action: "change->meta-rules#updateForms", controller: "tom-select", tom_select_create_value: "false" } } %>
+                  </div>
+
+                  <% selected_forms_count = Array(distribution_rule.meta_forms).compact_blank.size %>
+                  <div class="mb-4" data-controller="collapsible-count">
+                    <label class="form-label fw-bold small text-muted text-uppercase d-block">Formulários Específicos</label>
+
+                    <details class="border rounded-3 bg-light-subtle"
+                             <%= 'open' if distribution_rule.new_record? && selected_forms_count.zero? %>
+                             data-collapsible-count-target="details">
+                      <summary class="px-3 py-2 d-flex justify-content-between align-items-center" style="cursor: pointer; list-style: none;">
+                        <span class="fw-semibold small">
+                          <i class="bi bi-list-check text-primary me-1"></i>
+                          <span data-collapsible-count-target="label" data-meta-rules-target="formCountLabel">
+                            <% if selected_forms_count.zero? %>
+                              Nenhum formulário selecionado
+                            <% else %>
+                              <strong><%= selected_forms_count %></strong>
+                              <%= "formulário".pluralize(selected_forms_count).capitalize.sub(/^./, &:downcase) %>
+                              selecionado<%= "s" if selected_forms_count != 1 %>
+                            <% end %>
+                          </span>
+                        </span>
+                        <span class="small text-muted">
+                          <i class="bi bi-chevron-down"></i>
+                          <span class="ms-1">Abrir/Fechar</span>
+                        </span>
+                      </summary>
+                      <div class="px-3 pb-3 pt-1 border-top">
+                        <%= f.select :meta_forms,
+                                     options_for_select(@all_form_options || [], distribution_rule.meta_forms), {},
+                                     { multiple: true,
+                                       class: "form-select",
+                                         data: {
+                                          meta_rules_target: "formSelect",
+                                         action: "change->collapsible-count#recount change->meta-rules#syncAutoSummary"
+                                       } } %>
+                        <div class="form-text small mt-2">
+                          Use a busca pra filtrar — o resumo lá em cima atualiza conforme você marca/desmarca.
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+
+                  <div class="card border shadow-none bg-white">
+                    <div class="card-body py-3 px-4 d-flex align-items-center justify-content-between">
+                      <div class="d-flex align-items-center">
+                        <div class="form-check form-switch me-3">
+                          <%= f.check_box :auto_add_forms, class: "form-check-input", id: "autoSyncForms", data: { meta_rules_target: "autoSync", action: "change->meta-rules#toggleAutoSync" } %>
+                        </div>
+                        <div>
+                          <div class="fw-bold small">Sincronização Automática</div>
+                          <div class="extra-small text-muted">Novos formulários criados nestas páginas serão adicionados automaticamente a esta regra.</div>
+                        </div>
+                      </div>
+                      <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-action="click->meta-rules#syncNow">
+                        <i class="bi bi-arrow-repeat me-1"></i> Sincronizar Agora
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Webhooks -->
+          <div class="card border-0 bg-light mb-4">
+            <div class="card-body">
+              <div class="d-flex align-items-center mb-4">
+                <div class="form-check form-switch me-3">
+                  <%= f.check_box :source_webhook, class: "form-check-input", data: { action: "change->distribution-rule#toggleWebhook" } %>
+                </div>
+                <h6 class="mb-0 fw-bold"><i class="bi bi-share text-secondary me-2"></i>Webhooks Personalizados</h6>
+              </div>
+
+              <div class="section-toggle-container d-none" data-distribution-rule-target="webhookSection">
+                <div class="ps-3 border-start border-4 border-dark">
+                  <div class="mb-4">
+                    <label class="form-label fw-bold small text-muted text-uppercase">Tags de Filtragem</label>
+                    <%= f.select :webhook_tags, options_for_select(distribution_rule.webhook_tags || [], distribution_rule.webhook_tags), {}, 
+                        { multiple: true, class: "form-select", data: { controller: "tom-select", tom_select_create_value: "true" } } %>
+                    <div class="form-text extra-small mt-2">Leads que chegarem via webhook com estas tags serão processados por esta regra.</div>
+                  </div>
+
+                  <div class="bg-dark text-white p-3 rounded-3 extra-small">
+                    <div class="fw-bold text-warning mb-2">Instruções para o Webhook:</div>
+                    <p class="mb-2">Envie um POST para a URL do sistema com o seguinte payload JSON:</p>
+                    <pre class="bg-secondary bg-opacity-25 p-2 rounded border border-secondary mb-0"><code>{
+  "name": "Nome do Lead",
+  "email": "lead@email.com",
+  "phone": "47999999999",
+  "keywords": ["<%= distribution_rule.webhook_tags&.first || 'tag-exemplo' %>"]
+}</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <!-- Site -->
+            <div class="col-md-6">
+              <div class="card border-0 bg-light">
+                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center">
+                    <div class="form-check form-switch me-3">
+                      <%= f.check_box :source_site, class: "form-check-input" %>
+                    </div>
+                    <h6 class="mb-0 fw-bold">Site (WhatsApp/Forms)</h6>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Portais -->
+            <div class="col-md-6">
+              <div class="card border-0 bg-light">
+                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center">
+                    <div class="form-check form-switch me-3">
+                      <%= f.check_box :source_portal, class: "form-check-input" %>
+                    </div>
+                    <h6 class="mb-0 fw-bold">Portais Imobiliários</h6>
+                  </div>
+                  <div class="extra-small text-muted">ZAP, VivaReal...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Equipe -->
+      <div class="card shadow-sm border-0 mb-4" id="team"
+           data-controller="team-rules" 
+           data-team-rules-structure-value="<%= AdminUser.where(role: :admin).includes(:subordinates).map { |u| [u.id, { agents: u.subordinates.map { |s| { id: s.id, name: s.name } } }] }.to_h.to_json %>">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-people me-2 text-info"></i>Equipe</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-bold small text-muted text-uppercase">Filtrar por Gestor</label>
+            <%= select_tag :manager_id, options_from_collection_for_select(AdminUser.where(id: AdminUser.pluck(:manager_id).compact.uniq), :id, :name), 
+                include_blank: "Todos os Corretores", class: "form-select", data: { action: "change->team-rules#filterAgents" } %>
+          </div>
+
+            <!-- Corretores da regra (adição automática ao selecionar) -->
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-muted text-uppercase">Corretores na regra</label>
+              <%
+                preselected_agent_ids = Array(distribution_rule.distribution_rule_agents)
+                                          .reject { |a| a.marked_for_destruction? }
+                                          .map(&:admin_user_id).compact
+              %>
+              <%= select_tag :agent_select,
+                             options_from_collection_for_select(AdminUser.active.order(:name), :id, :name, preselected_agent_ids),
+                             multiple: true,
+                             class: "form-select",
+                             data: { team_rules_target: "agentSelect" } %>
+              <div class="form-text extra-small mt-1">
+                <i class="bi bi-info-circle me-1"></i>
+                Selecione corretores — eles aparecem automaticamente na fila abaixo. Remova o chip para tirar da regra.
+              </div>
+            </div>
+
+            <!-- Agents List -->
+            <label class="form-label fw-bold small text-muted text-uppercase mb-2">Fila de Distribuição</label>
+            <div class="list-group mb-3" data-team-rules-target="list" data-controller="sortable" data-sortable-handle-value=".drag-handle">
+              <%= f.fields_for :distribution_rule_agents do |agent_fields| %>
+                <%= render "agent_fields", f: agent_fields %>
+              <% end %>
+            </div>
+            
+            <div class="form-text extra-small mb-3">
+              <i class="bi bi-info-circle me-1"></i>
+              Arraste pelo ícone para reordenar. No modo <strong>Performance</strong>, defina os ciclos (peso). No modo <strong>Rotativo</strong>, a ordem da lista define a fila.
+            </div>
+
+            <!-- Template for new agents -->
+            <template data-team-rules-target="template">
+              <%= f.fields_for :distribution_rule_agents, DistributionRuleAgent.new, child_index: "NEW_RECORD" do |agent_fields| %>
+                <%= render "agent_fields", f: agent_fields %>
+              <% end %>
+            </template>
+        </div>
+      </div>
+
+      <!-- Horários e Bolsão -->
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-clock me-2 text-warning"></i>Horários e Bolsão</h5>
+        </div>
+        <div class="card-body">
+          <div class="form-check form-switch mb-3">
+            <%= f.check_box :represamento_active, class: "form-check-input", id: "checkRepresamento", data: { action: "change->distribution-rule#toggleRepresamento" } %>
+            <%= f.label :represamento_active, "Ativar Bolsão (Represamento fora do horário)", class: "form-check-label fw-bold", for: "checkRepresamento" %>
+          </div>
+
+          <div class="section-toggle-container d-none" data-distribution-rule-target="represamentoSection">
+            <div class="bg-light p-3 rounded-3 mb-4 border">
+              <table class="table table-sm table-borderless mb-0">
+                <thead>
+                  <tr class="extra-small text-muted text-uppercase">
+                    <th>Dia</th>
+                    <th class="text-center">Ativo</th>
+                    <th>Início</th>
+                    <th>Fim</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% day_labels = { 'mon' => 'Segunda', 'tue' => 'Terça', 'wed' => 'Quarta', 'thu' => 'Quinta', 'fri' => 'Sexta', 'sat' => 'Sábado', 'sun' => 'Domingo' } %>
+                  <% ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].each do |day| %>
+                    <% config = distribution_rule.represamento_schedule[day] || {} %>
+                    <tr class="align-middle border-bottom-dashed">
+                      <td><span class="small fw-bold"><%= day_labels[day] %></span></td>
+                      <td class="text-center">
+                        <%= hidden_field_tag "distribution_rule[represamento_schedule][#{day}][active]", "false" %>
+                        <%= check_box_tag "distribution_rule[represamento_schedule][#{day}][active]", "true", config["active"] == "true", class: "form-check-input" %>
+                      </td>
+                      <td><%= time_field_tag "distribution_rule[represamento_schedule][#{day}][start]", config["start"] || "09:00", class: "form-control form-control-sm" %></td>
+                      <td><%= time_field_tag "distribution_rule[represamento_schedule][#{day}][end]", config["end"] || "18:00", class: "form-control form-control-sm" %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <hr class="opacity-10">
+
+          <div class="form-check form-switch mb-3 mt-3">
+            <%= f.check_box :pocket_active, class: "form-check-input", id: "checkPocket", data: { action: "change->distribution-rule#togglePocket" } %>
+            <%= f.label :pocket_active, "Ativar Tempo Limite (Pocket)", class: "form-check-label fw-bold", for: "checkPocket" %>
+          </div>
+          <div class="section-toggle-container d-none" data-distribution-rule-target="pocketSection">
+            <div class="row align-items-center bg-light p-3 rounded-3 border mx-0">
+              <div class="col-md-4">
+                <div class="input-group">
+                  <%= f.number_field :pocket_time, class: "form-control", placeholder: "30" %>
+                  <span class="input-group-text">minutos</span>
+                </div>
+              </div>
+              <div class="col-md-8 extra-small text-muted">
+                Tempo que o corretor tem para aceitar o lead antes de ele ser repassado.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coluna Lateral -->
+    <div class="col-lg-4">
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-gear me-2 text-dark"></i>Lógica</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-4">
+            <label class="form-label fw-bold small text-muted text-uppercase">Modo de Distribuição</label>
+            <div class="card-radio-group">
+              <% [[:rotary, 'arrow-repeat', 'Rotativo', 'Fila sequencial'], 
+                  [:performance, 'graph-up', 'Performance', 'Baseado em peso'], 
+                  [:shark_tank, 'lightning-charge', 'Shark Tank', 'Primeiro a aceitar']].each do |mode, icon, label, sub| %>
+                <%= f.radio_button :distribution_mode, mode, class: "btn-check", id: "mode_#{mode}", data: { action: "change->distribution-rule#toggleMode" } %>
+                <%= f.label "mode_#{mode}", class: "btn btn-outline-secondary text-start p-3 w-100", for: "mode_#{mode}" do %>
+                   <div class="d-flex align-items-center">
+                     <i class="bi bi-<%= icon %> fs-4 me-3 text-secondary"></i>
+                     <div>
+                       <div class="fw-bold"><%= label %></div>
+                       <div class="extra-small text-muted"><%= sub %></div>
+                     </div>
+                   </div>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="mb-0">
+            <label class="form-label fw-bold small text-muted text-uppercase">Preço (R$)</label>
+            <div class="row g-2">
+              <div class="col-6">
+                <%= f.number_field :min_price, class: "form-control form-control-sm", placeholder: "Mínimo" %>
+              </div>
+              <div class="col-6">
+                <%= f.number_field :max_price, class: "form-control form-control-sm", placeholder: "Máximo" %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title mb-0 fw-bold">
+            <i class="bi bi-geo-alt-fill me-2 text-success"></i>Check-in geolocalizado
+            <span class="badge bg-light text-muted ms-2 fw-normal">Opcional</span>
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            Quando ativo, a regra só distribui leads para corretores com <strong>check-in ativo</strong> no momento.
+            Todas as flags ficam desligadas por padrão — a regra funciona como antes.
+          </p>
+
+          <div class="form-check form-switch mb-2">
+            <%= f.check_box :require_active_checkin, class: "form-check-input" %>
+            <%= f.label :require_active_checkin, "Exigir check-in ativo", class: "form-check-label small" %>
+          </div>
+
+          <div class="form-check form-switch mb-2">
+            <%= f.check_box :require_inside_radius, class: "form-check-input" %>
+            <%= f.label :require_inside_radius, "Exigir corretor dentro do raio da loja agora", class: "form-check-label small" %>
+          </div>
+
+          <div class="form-check form-switch mb-2">
+            <%= f.check_box :require_active_shift, class: "form-check-input" %>
+            <%= f.label :require_active_shift, "Exigir turno ativo no momento", class: "form-check-label small" %>
+          </div>
+
+          <div class="form-check form-switch mb-3">
+            <%= f.check_box :exclude_suspicious_checkins, class: "form-check-input" %>
+            <%= f.label :exclude_suspicious_checkins, "Excluir check-ins marcados como suspeitos", class: "form-check-label small" %>
+          </div>
+
+          <div class="mb-0">
+            <label class="form-label small text-muted text-uppercase fw-bold">
+              <i class="bi bi-shop me-1 text-primary"></i>Limitar a uma ou mais lojas
+            </label>
+            <%= f.collection_select :checkin_store_ids,
+                                    Store.active.order(:name),
+                                    :id, :name,
+                                    {},
+                                    multiple: true,
+                                    class: "form-select form-select-sm",
+                                    data: { controller: "tom-select", placeholder: "Selecione uma ou mais lojas (vazio = todas)" } %>
+            <div class="form-text small">
+              Vazio = check-ins em qualquer loja contam. Selecione 1 ou mais para restringir.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-bell me-2 text-danger"></i>Notificações</h5>
+        </div>
+        <div class="card-body">
+          <div class="form-check mb-2">
+            <%= f.check_box :notify_whatsapp, class: "form-check-input" %>
+            <%= f.label :notify_whatsapp, class: "form-check-label small" do %>
+              <i class="bi bi-whatsapp text-success me-1"></i>WhatsApp <span class="text-muted">(via webhook configurado em Integrações)</span>
+            <% end %>
+          </div>
+          <div class="form-check mb-2">
+            <%= f.check_box :notify_email, class: "form-check-input" %>
+            <%= f.label :notify_email, class: "form-check-label small" do %>
+              <i class="bi bi-envelope text-primary me-1"></i>E-mail ao corretor
+            <% end %>
+          </div>
+          <div class="form-check mb-2">
+            <%= f.check_box :notify_push, class: "form-check-input" %>
+            <%= f.label :notify_push, class: "form-check-label small" do %>
+              <i class="bi bi-phone-vibrate text-info me-1"></i>Push no PWA <span class="text-muted">(se o corretor autorizou notificações no celular)</span>
+            <% end %>
+          </div>
+          <div class="form-check mb-0">
+            <%= f.check_box :notify_webhook, class: "form-check-input" %>
+            <%= f.label :notify_webhook, class: "form-check-label small" do %>
+              <i class="bi bi-broadcast text-secondary me-1"></i>Webhook Externo
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 mt-2 sticky-bottom" style="z-index: 100;">
+    <div class="card-body d-flex justify-content-end gap-2 py-3">
+      <%= link_to "Cancelar", admin_distribution_rules_path, class: "btn btn-light border-0" %>
+      <%= f.submit (distribution_rule.persisted? ? "Salvar Alterações" : "Criar Regra"), class: "btn btn-primary px-5 fw-bold shadow-sm" %>
+    </div>
+  </div>
+<% end %>

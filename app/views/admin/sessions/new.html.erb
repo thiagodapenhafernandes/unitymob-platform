@@ -1,0 +1,41 @@
+<h2 class="login-title">Entrar no painel</h2>
+
+<%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
+  <div class="form-group">
+    <%= f.label :email, "E-mail", class: "form-label" %>
+    <div class="input-group">
+      <span class="input-group-text">
+        <i class="bi bi-envelope"></i>
+      </span>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "form-control", placeholder: "nome@salute.com.br" %>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <%= f.label :password, "Senha", class: "form-label" %>
+    <div class="input-group">
+      <span class="input-group-text">
+        <i class="bi bi-key"></i>
+      </span>
+      <%= f.password_field :password, autocomplete: "current-password", class: "form-control", placeholder: "Digite sua senha" %>
+    </div>
+  </div>
+
+  <% if devise_mapping.rememberable? %>
+    <div class="form-check">
+      <%= f.check_box :remember_me, class: "form-check-input" %>
+      <%= f.label :remember_me, "Manter conectado", class: "form-check-label" %>
+    </div>
+  <% end %>
+
+  <div class="form-group mb-0">
+    <%= f.button type: :submit, class: "btn-login" do %>
+      <span>Entrar</span>
+      <i class="bi bi-arrow-right"></i>
+    <% end %>
+  </div>
+
+  <% if devise_mapping.recoverable? %>
+    <%= link_to "Esqueci minha senha", new_password_path(resource_name), class: "forgot-link" %>
+  <% end %>
+<% end %>

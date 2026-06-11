@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+      <h2 style="color: #022B3A; margin-bottom: 20px;">Novo Lead Recebido! 🚀</h2>
+      
+      <p>Um novo contato foi registrado no site.</p>
+      
+      <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <p><strong>Nome:</strong> <%= @lead.name %></p>
+        <p><strong>Email:</strong> <%= @lead.email %></p>
+        <p><strong>Telefone:</strong> <%= @lead.phone %> 
+           <% if @lead.phone.present? %>
+             <a href="https://wa.me/55<%= @lead.phone.gsub(/\D/, '') %>" style="color: #25D366; text-decoration: none; font-weight: bold; font-size: 12px; margin-left: 5px;">(WhatsApp)</a>
+           <% end %>
+        </p>
+        <p><strong>Data:</strong> <%= @lead.created_at.strftime("%d/%m/%Y às %H:%M") %></p>
+      </div>
+
+      <% if @property %>
+        <div style="border-top: 1px solid #eee; padding-top: 15px;">
+          <h3 style="color: #053C5E;">Interesse no Imóvel:</h3>
+          <p><strong>Código:</strong> <%= @property.codigo %></p>
+          <p><strong>Título:</strong> <%= @property.display_title %></p>
+          <p><strong>Local:</strong> <%= @property.bairro %>, <%= @property.cidade %></p>
+          
+          <p style="margin-top: 15px;">
+            <a href="<%= admin_lead_url(@lead) %>" style="background-color: #022B3A; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ver Lead no Admin</a>
+            <a href="<%= habitation_url(@property) %>" style="background-color: #eee; color: #333; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-left: 10px;">Ver Imóvel</a>
+          </p>
+        </div>
+      <% else %>
+        <div style="border-top: 1px solid #eee; padding-top: 15px;">
+          <p><strong>Origem:</strong> Contato Geral / <%= @lead.source_url %></p>
+          <p style="margin-top: 15px;">
+            <a href="<%= admin_lead_url(@lead) %>" style="background-color: #022B3A; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ver Lead no Admin</a>
+          </p>
+        </div>
+      <% end %>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,122 @@
+          <!-- Tipo de Imóvel (Checklist Dropdown) -->
+          <div class="relative min-w-[200px]" data-controller="category-filter">
+            <% selected_categories = Array(@selected_categories || params[:category]).reject(&:blank?) %>
+            <button type="button"
+                    class="block w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg leading-5 bg-white text-gray-700 text-left focus:outline-none focus:ring-1 focus:ring-blue-three focus:border-blue-three sm:text-sm"
+                    data-category-filter-target="trigger"
+                    data-action="click->category-filter#toggle">
+              <i class="bi bi-building absolute left-3 top-2.5 text-gray-400"></i>
+              <span data-category-filter-target="summary">Tipo de imóvel</span>
+              <i class="bi bi-chevron-down absolute right-3 top-2.5 text-gray-400"></i>
+            </button>
+
+            <div class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 max-h-[60vh] overflow-y-auto overscroll-contain p-2"
+                 style="-webkit-overflow-scrolling: touch;"
+                 data-category-filter-target="panel">
+              <label class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-gray-50 cursor-pointer border-b border-gray-100 mb-1">
+                <input type="checkbox" class="form-check-input mt-0" data-category-filter-target="allCheckbox" data-action="change->category-filter#toggleAll">
+                <span class="text-sm font-semibold text-gray-700">Todos</span>
+              </label>
+
+              <% (@property_types || Habitation::CATEGORIES).each do |type| %>
+                <label class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox"
+                         value="<%= type %>"
+                         class="form-check-input mt-0"
+                         data-category-filter-target="checkbox"
+                         data-action="change->category-filter#sync"
+                         <%= "checked" if selected_categories.include?(type) %>>
+                  <span class="text-sm text-gray-700"><%= type %></span>
+                </label>
+              <% end %>
+            </div>
+
+            <div data-category-filter-target="hiddenContainer">
+              <% selected_categories.each do |category| %>
+                <%= hidden_field_tag "category[]", category %>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Localização (Checklist Multiseleção) -->
+          <div class="relative flex-grow min-w-[200px]" data-controller="location-filter">
+            <% selected_locations = Array(@selected_locations || params[:city]).reject(&:blank?) %>
+            <button type="button"
+                    class="block w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg leading-5 bg-white text-gray-700 text-left focus:outline-none focus:ring-1 focus:ring-blue-three focus:border-blue-three sm:text-sm"
+                    data-location-filter-target="trigger"
+                    data-action="click->location-filter#toggle">
+              <i class="bi bi-geo-alt absolute left-3 top-2.5 text-gray-400"></i>
+              <span data-location-filter-target="summary">Localização</span>
+              <i class="bi bi-chevron-down absolute right-3 top-2.5 text-gray-400"></i>
+            </button>
+
+            <div class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 max-h-[60vh] overflow-y-auto overscroll-contain p-2"
+                 style="-webkit-overflow-scrolling: touch;"
+                 data-location-filter-target="panel">
+              <div class="sticky top-0 z-10 bg-white pb-2 space-y-2">
+                <div class="flex items-center justify-between px-1 pt-1">
+                  <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Localização</span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[11px] text-gray-500" data-location-filter-target="count">0 selecionados</span>
+                    <button type="button"
+                            class="text-[11px] font-semibold text-blue-three hover:underline"
+                            data-action="click->location-filter#clear">
+                      Limpar
+                    </button>
+                  </div>
+                </div>
+                <input type="text"
+                       placeholder="Filtrar bairros/cidades"
+                       class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-1 focus:ring-blue-three focus:border-blue-three"
+                       data-location-filter-target="search"
+                       data-action="input->location-filter#filter">
+              </div>
+
+              <label class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-gray-50 cursor-pointer border-b border-gray-100 mb-1">
+                <input type="checkbox" class="form-check-input mt-0" data-location-filter-target="allCheckbox" data-action="change->location-filter#toggleAll">
+                <span class="text-sm font-semibold text-gray-700">Todos</span>
+              </label>
+
+              <% (@location_options || []).each do |option| %>
+                <label class="flex items-center gap-2 px-2 py-2 rounded-md hover:bg-gray-50 cursor-pointer"
+                       data-location-filter-row="true">
+                  <input type="checkbox"
+                         value="<%= option[:value] %>"
+                         data-label="<%= option[:label].to_s.downcase %>"
+                         class="form-check-input mt-0"
+                         data-location-filter-target="checkbox"
+                         data-action="change->location-filter#sync"
+                         <%= "checked" if selected_locations.include?(option[:value]) %>>
+                  <span class="text-sm text-gray-700"><%= option[:label] %></span>
+                </label>
+              <% end %>
+            </div>
+
+            <div data-location-filter-target="hiddenContainer">
+              <% selected_locations.each do |city| %>
+                <%= hidden_field_tag "city[]", city %>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Finalidade (Hidden but preserved) -->
+          <%= f.hidden_field :transaction_type, value: params[:transaction_type] %>
+
+          <!-- Valores -->
+          <div class="relative min-w-[160px]">
+            <% price_range_options = public_price_range_options(params[:transaction_type]) %>
+            <i class="bi bi-chevron-down absolute right-3 top-2.5 text-gray-400 pointer-events-none"></i>
+            <%= f.select :price_range,
+                options_for_select(price_range_options, params[:price_range]),
+                {},
+                class: "block w-full appearance-none px-4 pr-10 py-2.5 border border-gray-200 rounded-lg leading-5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-three focus:border-blue-three sm:text-sm" %>
+          </div>
+
+          <!-- Código (Botão Modal) -->
+          <button type="button" 
+                  onclick="document.dispatchEvent(new CustomEvent('open-code-search'))"
+                  class="px-4 py-2.5 bg-white border border-gray-200 rounded-lg hover:border-blue-three hover:text-blue-three text-gray-500 text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
+                  title="Buscar por código">
+            <i class="bi bi-house-check"></i>
+            <span>Cód</span>
+          </button>

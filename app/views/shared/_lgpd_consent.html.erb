@@ -1,0 +1,29 @@
+<div class="fixed inset-x-0 bottom-4 z-[90] hidden px-4"
+     data-controller="lgpd-consent"
+     data-lgpd-consent-target="banner"
+     role="region"
+     aria-label="Consentimento de privacidade">
+  <div class="mx-auto flex max-w-3xl flex-col gap-4 rounded-2xl border border-gray-200 bg-white/95 p-4 text-gray-700 shadow-2xl backdrop-blur md:flex-row md:items-center md:justify-between md:p-5">
+    <div class="flex gap-3">
+      <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-three text-white">
+        <i class="bi bi-shield-check text-lg"></i>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-blue-three">Privacidade e cookies</h2>
+        <p class="mt-1 text-xs leading-relaxed text-gray-600 sm:text-sm">
+          Usamos cookies e tecnologias semelhantes para melhorar sua experiência, medir a navegação e personalizar o atendimento.
+          Ao continuar, você concorda com nossa
+          <%= link_to "Política de Privacidade", privacy_policy_path, class: "font-semibold text-blue-three underline decoration-golden-one underline-offset-2" %>
+          e os
+          <%= link_to "Termos de Uso", terms_of_use_path, class: "font-semibold text-blue-three underline decoration-golden-one underline-offset-2" %>.
+        </p>
+      </div>
+    </div>
+
+    <button type="button"
+            class="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-lg bg-blue-three px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-one focus:outline-none focus:ring-2 focus:ring-golden-one focus:ring-offset-2"
+            data-action="click->lgpd-consent#accept">
+      Aceitar e continuar
+    </button>
+  </div>
+</div>

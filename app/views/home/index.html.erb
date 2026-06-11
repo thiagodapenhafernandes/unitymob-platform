@@ -1,0 +1,164 @@
+<% content_for :head do %>
+  <%= json_ld_tag(real_estate_agent_schema) %>
+<% end %>
+
+<!-- Hero Section -->
+<%= render 'hero' %>
+
+<!-- Banner Após Hero -->
+<%= display_banner('home_after_hero') %>
+
+<!-- Dynamic Home Sections (ordered by order_position) -->
+<% @home_sections.each_with_index do |section, index| %>
+  <% bg_class = index.even? ? 'bg-white' : 'bg-gray-50' %>
+  
+  <% case section.section_type %>
+  <% when 'featured_properties' %>
+    <% if @featured_properties.present? %>
+      <% cache ['featured_properties_v2', @featured_properties.map(&:id), @featured_properties.map(&:updated_at).max] do %>
+        <section class="home-deferred-section py-16 <%= bg_class %>">
+          <div class="container-custom">
+            <div class="text-center mb-12">
+              <h2 class="text-3xl lg:text-4xl font-bold text-blue-three mb-2">
+                <%= section.title %>
+              </h2>
+              <% if section.subtitle.present? %>
+                <p class="text-gray-500">
+                  <%= section.subtitle %>
+                </p>
+              <% end %>
+            </div>
+
+            <%= render 'shared/property_carousel', properties: @featured_properties %>
+
+            <div class="text-center mt-8">
+              <%= link_to habitations_path(characteristics: ['featured']), class: "inline-block px-10 py-4 bg-blue-three text-white font-bold rounded-lg hover:bg-golden-one hover:text-blue-three transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5" do %>
+                Ver Todos os Destaques
+              <% end %>
+            </div>
+          </div>
+        </section>
+      <% end %>
+    <% end %>
+    
+  <% when 'opportunities' %>
+    <% if @opportunity_properties.present? %>
+      <% cache ['opportunity_properties_v2', @opportunity_properties.map(&:id), @opportunity_properties.map(&:updated_at).max] do %>
+        <section class="home-deferred-section py-16 <%= bg_class %>">
+          <div class="container-custom">
+            <div class="text-center mb-12">
+              <h2 class="text-3xl lg:text-4xl font-bold text-blue-three mb-2">
+                <%= section.title %>
+              </h2>
+              <% if section.subtitle.present? %>
+                <p class="text-gray-500">
+                  <%= section.subtitle %>
+                </p>
+              <% end %>
+            </div>
+
+            <%= render 'shared/property_carousel', properties: @opportunity_properties %>
+
+            <div class="text-center mt-8">
+              <%= link_to habitations_path(characteristics: ['opportunity']), class: "inline-block px-10 py-4 bg-blue-three text-white font-bold rounded-lg hover:bg-golden-one hover:text-blue-three transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5" do %>
+                Ver Todas as Oportunidades
+              <% end %>
+            </div>
+          </div>
+        </section>
+      <% end %>
+    <% end %>
+    
+  <% when 'developments' %>
+    <% if @recent_properties.present? %>
+      <% cache ['developments_v3', @recent_properties.map(&:id), @recent_properties.map(&:updated_at).max] do %>
+        <section class="home-deferred-section py-16 <%= bg_class %>">
+          <div class="container-custom">
+            <div class="text-center mb-12">
+              <h2 class="text-3xl lg:text-4xl font-bold text-blue-three mb-2">
+                <%= section.title %>
+              </h2>
+              <% if section.subtitle.present? %>
+                <p class="text-gray-500">
+                  <%= section.subtitle %>
+                </p>
+              <% end %>
+            </div>
+
+            <%= render 'shared/development_carousel', developments: @recent_properties, unit_counts: @dev_unit_counts %>
+
+            <div class="text-center mt-8">
+              <%= link_to empreendimentos_path, class: "inline-block px-10 py-4 bg-blue-three text-white font-bold rounded-lg hover:bg-golden-one hover:text-blue-three transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5" do %>
+                Ver Todos os Empreendimentos
+              <% end %>
+            </div>
+          </div>
+        </section>
+      <% end %>
+    <% end %>
+    
+  <% when 'rentals' %>
+    <% if @rental_properties.present? %>
+      <section class="home-deferred-section py-16 <%= bg_class %>">
+        <div class="container-custom">
+          <div class="text-center mb-12">
+            <h2 class="text-3xl lg:text-4xl font-bold text-blue-three mb-2">
+              <%= section.title %>
+            </h2>
+            <% if section.subtitle.present? %>
+              <p class="text-gray-500">
+                <%= section.subtitle %>
+              </p>
+            <% end %>
+          </div>
+
+          <%= render 'shared/property_carousel', properties: @rental_properties %>
+
+          <div class="text-center mt-8">
+            <%= link_to habitations_path(transaction_type: 'aluguel'), class: "inline-block px-10 py-4 bg-blue-three text-white font-bold rounded-lg hover:bg-golden-one hover:text-blue-three transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5" do %>
+              Ver Todos os Imóveis para Alugar
+            <% end %>
+          </div>
+        </div>
+      </section>
+
+      <% if @corporate_properties.present? %>
+        <%= render 'shared/corporate_showcase', properties: @corporate_properties %>
+      <% end %>
+    <% end %>
+    
+  <% when 'services' %>
+    <!-- Custom Services Section (if implemented) -->
+    
+  <% when 'why_choose_us' %>
+    <!-- Custom Why Choose Us Section (if implemented) -->
+    
+  <% when 'cta_contact' %>
+    <!-- CTA Contact Section -->
+    <section class="home-deferred-section py-20 bg-blue-three text-white">
+      <div class="container-custom text-center">
+        <h2 class="text-3xl lg:text-4xl font-bold mb-6">
+          <%= section.title %>
+        </h2>
+        <% if section.subtitle.present? %>
+          <p class="text-lg text-white/80 mb-10 max-w-2xl mx-auto">
+            <%= section.subtitle %>
+          </p>
+        <% end %>
+        
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <%= link_to contato_path, class: "px-8 py-3 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-golden-two transition-colors" do %>
+            Fale Conosco
+          <% end %>
+          
+          <%= link_to "tel:+5547999999999", class: "px-8 py-3 border-2 border-white text-white font-bold rounded-lg hover:bg-white hover:text-blue-three transition-colors" do %>
+            WhatsApp
+          <% end %>
+        </div>
+      </div>
+    </section>
+  <% end %>
+<% end %>
+
+<!-- Banner Antes do Rodapé -->
+<%= display_banner('home_before_footer') %>

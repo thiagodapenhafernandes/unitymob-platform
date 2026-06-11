@@ -1,0 +1,42 @@
+# examples:
+#   periodic_cleanup:
+#     class: CleanSoftDeletedRecordsJob
+#     queue: background
+#     args: [ 1000, { batch_size: 500 } ]
+#     schedule: every hour
+#   periodic_cleanup_with_command:
+#     command: "SoftDeletedRecord.due.delete_all"
+#     priority: 2
+#     schedule: at 5am every day
+
+production:
+  clear_solid_queue_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    schedule: every hour at minute 12
+  habitations_hierarchy_audit:
+    command: "result = Habitations::HierarchyAuditService.new(strict: false).call; Rails.logger.info(\"[HierarchyAudit] #{result.to_json}\")"
+    schedule: every day at 3:40am
+  dwv_daily_sync:
+    class: DwvSyncJob
+    queue: dwv
+    args:
+      - mode: "full"
+    schedule: every day at 4:20am
+  seo_discovery:
+    class: SeoDiscoveryJob
+    queue: default
+    args:
+      - generate_ai: true
+    schedule: every day at 5:10am
+  loft_schedule_tick:
+    class: LoftScheduleTickJob
+    queue: default
+    schedule: every minute
+  field_auto_checkout_shift_end:
+    class: CheckIns::AutoCheckoutShiftEndJob
+    queue: checkin
+    schedule: every minute
+  field_stale_active_checkin:
+    class: CheckIns::StaleActiveCheckinJob
+    queue: checkin
+    schedule: every 5 minutes

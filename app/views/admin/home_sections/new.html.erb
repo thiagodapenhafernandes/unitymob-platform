@@ -1,0 +1,9 @@
+<div class="container-fluid py-4">
+  <%= link_to admin_home_sections_path, class: "btn btn-secondary mb-4" do %>
+    <i class="bi bi-arrow-left"></i> Voltar
+  <% end %>
+
+  <h1 class="mb-4"><%= @home_section.persisted? ? 'Editar' : 'Nova' %> Seção</h1>
+
+  <%= render 'form' %>
+</div>

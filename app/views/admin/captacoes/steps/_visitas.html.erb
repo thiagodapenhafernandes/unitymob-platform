@@ -1,0 +1,41 @@
+<h1 class="wizard-section-title"><i class="bi bi-key-fill text-primary me-2"></i>Visitação e chaves</h1>
+<p class="wizard-section-subtitle">Para agendar visitas: onde estão as chaves, senhas, melhores dias.</p>
+
+<div class="wizard-field-group">
+  <%= f.label :chaves_com, "Chaves com quem?", class: "form-label" %>
+  <%= f.select :chaves_com,
+               [["Com o corretor", "corretor"], ["Com o proprietário", "proprietario"], ["Na portaria", "portaria"], ["Outro", "outro"]],
+               { include_blank: "—" },
+               class: "form-select" %>
+</div>
+
+<div class="wizard-field-group">
+  <label class="form-label">Dias / horários melhores para visita</label>
+  <% %w[Seg Ter Qua Qui Sex Sáb Dom Manhã Tarde Noite].each do |opt| %>
+    <% selected = Array(@captacao.dias_visitas).include?(opt) %>
+    <label class="wizard-feature-chip <%= 'selected' if selected %>">
+      <%= check_box_tag "captacao[dias_visitas][]", opt, selected, onchange: "this.closest('label').classList.toggle('selected', this.checked)" %>
+      <%= opt %>
+    </label>
+  <% end %>
+</div>
+
+<div class="row g-2">
+  <div class="col-md-6">
+    <div class="wizard-field-group">
+      <%= f.label :senha_imovel, "Senha do imóvel", class: "form-label" %>
+      <%= f.text_field :senha_imovel, class: "form-control", autocomplete: "off" %>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="wizard-field-group">
+      <%= f.label :senha_portaria, "Senha da portaria", class: "form-label" %>
+      <%= f.text_field :senha_portaria, class: "form-control", autocomplete: "off" %>
+    </div>
+  </div>
+</div>
+
+<div class="wizard-field-group">
+  <%= f.label :observacoes, "Observações gerais", class: "form-label" %>
+  <%= f.text_area :observacoes, rows: 4, class: "form-control", placeholder: "Detalhes úteis sobre o imóvel ou a negociação" %>
+</div>

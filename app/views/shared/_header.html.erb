@@ -1,0 +1,23 @@
+<header id="header" class="fixed-top d-flex align-items-center">
+  <div class="container d-flex align-items-center justify-content-between">
+
+    <div class="logo">
+      <a href="<%= root_path %>">
+        <%= image_tag "salute-imoveis.svg", alt: "Salute Imóveis", class: "img-fluid" %>
+      </a>
+    </div>
+
+    <nav id="navbar" class="navbar">
+      <ul>
+        <li><a class="nav-link scrollto active" href="<%= root_path %>">Home</a></li>
+        <li><a class="nav-link scrollto" href="#">Sobre nós</a></li>
+        <li><a class="nav-link scrollto" href="<%= habitations_path %>">Imóveis</a></li>
+        <li><a class="nav-link scrollto" href="#">Trabalhe Conosco</a></li>
+        <li><a class="nav-link scrollto" href="#">Blog</a></li>
+        <li><a class="nav-link scrollto" href="#">Contato</a></li>
+      </ul>
+      <i class="bi bi-list mobile-nav-toggle"></i>
+    </nav>
+
+  </div>
+</header>

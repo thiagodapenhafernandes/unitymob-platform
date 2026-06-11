@@ -1,0 +1,21 @@
+<% gtm_container_id = TrackingIntegrationSetting.google_tag_manager_container_id %>
+<% meta_pixel_id = TrackingIntegrationSetting.meta_pixel_id %>
+
+<% if TrackingIntegrationSetting.google_tag_manager_enabled? %>
+  <noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=<%= gtm_container_id %>"
+            height="0"
+            width="0"
+            style="display:none;visibility:hidden"></iframe>
+  </noscript>
+<% end %>
+
+<% if TrackingIntegrationSetting.meta_pixel_enabled? %>
+  <noscript>
+    <img height="1"
+         width="1"
+         style="display:none"
+         src="https://www.facebook.com/tr?id=<%= meta_pixel_id %>&ev=PageView&noscript=1"
+         alt="">
+  </noscript>
+<% end %>

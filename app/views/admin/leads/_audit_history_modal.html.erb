@@ -1,0 +1,66 @@
+<div class="modal fade" id="leadAuditHistoryModal" tabindex="-1" aria-labelledby="leadAuditHistoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold" id="leadAuditHistoryModalLabel">Histórico do Lead</h5>
+          <div class="text-muted small"><%= lead.display_name %></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <% if audit_logs.present? %>
+          <div class="lead-audit-timeline">
+            <% audit_logs.each do |log| %>
+              <div class="lead-audit-item">
+                <div class="d-flex justify-content-between gap-3 mb-2">
+                  <div>
+                    <div class="fw-bold"><%= log.title %></div>
+                    <div class="small text-muted">
+                      <%= l(log.created_at, format: :short) %>
+                      <span class="mx-1">|</span>
+                      <%= log.source_label %>
+                      <% if log.ip.present? %>
+                        <span class="mx-1">|</span>
+                        IP <%= log.ip %>
+                      <% end %>
+                    </div>
+                  </div>
+                  <span class="badge bg-light text-dark align-self-start"><%= log.action_label %></span>
+                </div>
+
+                <% log.change_summaries.each do |change| %>
+                  <div class="row g-2 small border-top py-2">
+                    <div class="col-md-3 fw-semibold"><%= change[:label] %></div>
+                    <div class="col-md-4 text-muted"><%= change[:before] %></div>
+                    <div class="col-md-1 text-center text-muted">→</div>
+                    <div class="col-md-4"><%= change[:after] %></div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center text-muted py-5">
+            Nenhuma alteração registrada para este lead.
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .lead-audit-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .lead-audit-item {
+    border: 1px solid #e7ebf2;
+    border-radius: 10px;
+    padding: 1rem;
+    background: #fff;
+  }
+</style>

@@ -1,0 +1,160 @@
+require "rails_helper"
+
+RSpec.describe HabitationDuplicateChecker do
+  it "ignora imóveis do mesmo grupo de captação desdobrada sem ocultar imóveis comuns" do
+    group_uuid = SecureRandom.uuid
+    sale = create(:habitation, intake_group_uuid: group_uuid, nome_empreendimento: "Edifício Solar", bloco: "501")
+    sale.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    rental = create(:habitation, intake_group_uuid: group_uuid, nome_empreendimento: "Edifício Solar", bloco: "501")
+    rental.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    common_duplicate = create(:habitation, nome_empreendimento: "Edifício Solar", bloco: "501")
+    common_duplicate.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: sale.logradouro,
+      number: sale.numero,
+      building: sale.nome_empreendimento,
+      unit: sale.bloco,
+      status: sale.status,
+      ignored_id: sale.id
+    ).call
+
+    expect(result.matches).to include(common_duplicate)
+    expect(result.matches).not_to include(rental)
+  end
+
+  it "bloqueia duplicidade somente quando o status comercial é igual" do
+    sale = create(:habitation, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: "501")
+    sale.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+    rental = create(:habitation, status: "Aluguel", nome_empreendimento: "Edifício Solar", bloco: "501")
+    rental.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Edificio Solar",
+      unit: "Apto 501",
+      status: "Aluguel"
+    ).call
+
+    expect(result.matches).to include(rental)
+    expect(result.matches).not_to include(sale)
+  end
+
+  it "ignora imóveis inativos como duplicados" do
+    inactive = create(:habitation, :unavailable, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: "501")
+    inactive.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Edifício Solar",
+      unit: "501",
+      status: "Venda"
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.matches).to be_empty
+  end
+
+  it "bloqueia imóvel sem unidade por rua e número quando status é igual" do
+    house = create(:habitation, status: "Venda", nome_empreendimento: nil, bloco: nil, complemento: nil)
+    house.create_address!(logradouro: "Rua 3000", numero: "50", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 3000",
+      number: "50",
+      building: "",
+      unit: "",
+      status: "Venda"
+    ).call
+
+    expect(result.matches).to include(house)
+  end
+
+  it "libera casa em condomínio no mesmo endereço quando complemento é diferente" do
+    existing = create(:habitation, categoria: "Casa em Condomínio", status: "Venda", bloco: nil)
+    existing.create_address!(
+      logradouro: "Rua Higino João Pio",
+      numero: "420",
+      complemento: "01",
+      bairro: "Praia do Estaleirinho",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+
+    result = described_class.new(
+      street: "Rua Higino Joao Pio",
+      number: "420",
+      building: "",
+      unit: "",
+      complement: "02",
+      category: "Casa em Condomínio",
+      status: "Venda",
+      comparison: :condominium_unit
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.matches).to be_empty
+  end
+
+  it "bloqueia casa em condomínio no mesmo endereço quando complemento e bloco são iguais" do
+    existing = create(:habitation, categoria: "Casa em Condomínio", status: "Venda", bloco: "A")
+    existing.create_address!(
+      logradouro: "Rua Higino João Pio",
+      numero: "420",
+      complemento: "01",
+      bairro: "Praia do Estaleirinho",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+
+    result = described_class.new(
+      street: "Rua Higino Joao Pio",
+      number: "420",
+      building: "",
+      unit: "Bloco A",
+      complement: "01",
+      category: "Casa em Condomínio",
+      status: "Venda",
+      comparison: :condominium_unit
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.matches).to include(existing)
+  end
+
+  it "não compara imóvel sem unidade com unidade do mesmo endereço" do
+    apartment = create(:habitation, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: "501")
+    apartment.create_address!(logradouro: "Rua 3000", numero: "50", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 3000",
+      number: "50",
+      building: "",
+      unit: "",
+      status: "Venda"
+    ).call
+
+    expect(result.matches).not_to include(apartment)
+  end
+
+  it "não compara unidade de apartamento com cadastro do empreendimento sem unidade" do
+    development = create(:habitation, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: nil, complemento: nil)
+    development.create_address!(logradouro: "Rua 3000", numero: "50", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 3000",
+      number: "50",
+      building: "Edifício Solar",
+      unit: "501",
+      status: "Venda",
+      comparison: :unit
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.matches).not_to include(development)
+  end
+end

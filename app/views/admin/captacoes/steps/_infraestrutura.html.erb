@@ -1,0 +1,68 @@
+<%
+  kind = @captacao.property_kind.to_s
+  fallback_features_predio = case kind
+                             when "residencial"
+                               ["Elevador", "Salão de festas", "Academia", "Playground", "Piscina", "Churrasqueira",
+                                "Portaria 24h", "Quadra poliesportiva", "Sauna", "Bicicletário", "Pet place", "Coworking"]
+                             when "sala_comercial"
+                               ["Elevador", "Gerador", "Estacionamento rotativo", "Portaria 24h", "Câmeras de segurança", "Heliponto"]
+                             else
+                               []
+                             end
+
+  features_predio = captacao_feature_options(@external_features, fallback_features_predio, @captacao.caracteristicas_predio)
+%>
+
+<h1 class="wizard-section-title"><i class="bi bi-building text-primary me-2"></i>Edifício e lazer</h1>
+<p class="wizard-section-subtitle">Informe estrutura do prédio, condomínio e áreas de lazer.</p>
+
+<% if @captacao.property_kind_terreno? %>
+  <div class="alert alert-light border">
+    Terrenos não precisam de características de edifício. Avance para continuar a ficha.
+  </div>
+<% else %>
+  <% if @captacao.uses_building_infrastructure? %>
+    <div class="row g-2">
+      <div class="col-6 col-md-4">
+        <div class="wizard-field-group">
+          <%= f.label :andares_total, "Total andares", class: "form-label" %>
+          <%= f.number_field :andares_total, min: 0, inputmode: "numeric", class: "form-control" %>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="wizard-field-group">
+          <%= f.label :aptos_por_andar, "Aptos/andar", class: "form-label" %>
+          <%= f.number_field :aptos_por_andar, min: 0, inputmode: "numeric", class: "form-control" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="wizard-field-group">
+    <%= f.label :distancia_praia, "Distância da praia (m)", class: "form-label" %>
+    <%= f.number_field :distancia_praia, min: 0, inputmode: "decimal", class: "form-control" %>
+  </div>
+
+  <% unless @captacao.uses_building_infrastructure? %>
+    <div class="alert alert-light border">
+      Este tipo de imóvel não precisa de dados de edifício. Avance para continuar a ficha.
+    </div>
+  <% end %>
+
+  <% if @captacao.uses_building_infrastructure? && features_predio.any? %>
+    <hr class="my-3">
+    <div class="wizard-field-group">
+      <label class="form-label">Características do edifício, lazer e condomínio</label>
+      <div class="<%= 'wizard-invalid-choice' if field_invalid.call(:caracteristicas_predio) %>">
+        <% features_predio.each do |feat| %>
+          <% selected = captacao_feature_selected?(@captacao.caracteristicas_predio, feat) %>
+          <label class="wizard-feature-chip <%= 'selected' if selected %>">
+            <%= check_box_tag "captacao[caracteristicas_predio][]", feat, selected, onchange: "this.closest('label').classList.toggle('selected', this.checked)" %>
+            <%= feat %>
+          </label>
+        <% end %>
+      </div>
+      <% if field_invalid.call(:caracteristicas_predio) %><div class="invalid-feedback d-block">Marque ao menos uma característica do edifício.</div><% end %>
+    </div>
+  <% end %>
+<% end %>

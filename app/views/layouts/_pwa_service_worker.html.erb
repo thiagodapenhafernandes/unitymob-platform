@@ -1,0 +1,16 @@
+<%# Registra /service-worker.js (escopo /) em produção. Em dev, desregistra qualquer SW pré-existente pra evitar surpresa de cache. %>
+<script>
+  if ('serviceWorker' in navigator) {
+    var isProd = <%= Rails.env.production? ? 'true' : 'false' %>;
+    if (isProd) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/service-worker.js')
+          .catch(function (err) { console.warn('[SW] register failed:', err); });
+      });
+    } else {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (reg) { reg.unregister(); });
+      }).catch(function () { /* noop */ });
+    }
+  }
+</script>

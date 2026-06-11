@@ -1,0 +1,162 @@
+
+        <!-- Faixa de Preço (Sincronizada) -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Faixa de Preço (R$)</label>
+          <div class="flex gap-4 items-center">
+            <% 
+              target_val = params[:target_price].to_s.gsub(/\D/, '').to_i
+              min_p = params[:min_price].presence || (target_val > 0 ? (target_val * 0.8).to_i : nil)
+              max_p = params[:max_price].presence || (target_val > 0 ? (target_val * 1.2).to_i : nil)
+            %>
+            <div class="relative w-full">
+               <span class="absolute left-3 top-2.5 text-gray-400 text-sm">R$</span>
+               <%= text_field_tag :min_price, min_p, 
+                   placeholder: "Mínimo", 
+                   data: { controller: "currency-mask", action: "input->currency-mask#format" },
+                   class: "w-full pl-10 rounded-lg border-gray-200 focus:ring-blue-three focus:border-blue-three" %>
+            </div>
+            <span class="text-gray-400">-</span>
+            <div class="relative w-full">
+               <span class="absolute left-3 top-2.5 text-gray-400 text-sm">R$</span>
+               <%= text_field_tag :max_price, max_p, 
+                   placeholder: "Máximo", 
+                   data: { controller: "currency-mask", action: "input->currency-mask#format" },
+                   class: "w-full pl-10 rounded-lg border-gray-200 focus:ring-blue-three focus:border-blue-three" %>
+            </div>
+          </div>
+          <p class="text-[10px] text-gray-400 mt-2 italic">* Calculado automaticamente +/- 20% do valor aproximado</p>
+        </div>
+
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Dormitórios</label>
+          <div class="grid grid-cols-5 gap-2">
+            <% (1..4).each do |n| %>
+              <label class="cursor-pointer">
+                <%= radio_button_tag :min_bedrooms, n, params[:min_bedrooms].to_s == n.to_s, class: "peer sr-only" %>
+                <div class="h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 peer-checked:bg-blue-three peer-checked:text-white peer-checked:border-blue-three hover:bg-gray-50 transition-all font-medium">
+                  <%= n %>+
+                </div>
+              </label>
+            <% end %>
+            <label class="cursor-pointer">
+              <%= radio_button_tag :min_bedrooms, "", params[:min_bedrooms].blank?, class: "peer sr-only" %>
+              <div class="h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 peer-checked:bg-blue-three peer-checked:text-white peer-checked:border-blue-three hover:bg-gray-50 transition-all font-medium">
+                Todos
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Suítes -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Suítes</label>
+          <div class="grid grid-cols-5 gap-2">
+            <% (1..4).each do |n| %>
+              <label class="cursor-pointer">
+                <%= radio_button_tag :min_suites, n, params[:min_suites].to_s == n.to_s, class: "peer sr-only" %>
+                <div class="h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 peer-checked:bg-blue-three peer-checked:text-white peer-checked:border-blue-three hover:bg-gray-50 transition-all font-medium">
+                  <%= n %>+
+                </div>
+              </label>
+            <% end %>
+            <label class="cursor-pointer">
+              <%= radio_button_tag :min_suites, "", params[:min_suites].blank?, class: "peer sr-only" %>
+              <div class="h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 peer-checked:bg-blue-three peer-checked:text-white peer-checked:border-blue-three hover:bg-gray-50 transition-all font-medium">
+                Todos
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Vagas -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Vagas de Garagem</label>
+          <div class="grid grid-cols-5 gap-2">
+            <% (1..4).each do |n| %>
+              <label class="cursor-pointer">
+                <%= radio_button_tag :min_parking, n, params[:min_parking].to_s == n.to_s, class: "peer sr-only" %>
+                <div class="h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 peer-checked:bg-blue-three peer-checked:text-white peer-checked:border-blue-three hover:bg-gray-50 transition-all font-medium">
+                  <%= n %>+
+                </div>
+              </label>
+            <% end %>
+            <label class="cursor-pointer">
+              <%= radio_button_tag :min_parking, "", params[:min_parking].blank?, class: "peer sr-only" %>
+              <div class="h-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 peer-checked:bg-blue-three peer-checked:text-white peer-checked:border-blue-three hover:bg-gray-50 transition-all font-medium">
+                Todos
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Área Privativa -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-2">Área Privativa (m²)</label>
+          <div class="flex gap-4 items-center">
+            <%= number_field_tag :min_area, params[:min_area], placeholder: "Mín", class: "w-full rounded-lg border-gray-200 focus:ring-blue-three focus:border-blue-three" %>
+            <span class="text-gray-400">-</span>
+            <%= number_field_tag :max_area, params[:max_area], placeholder: "Máx", class: "w-full rounded-lg border-gray-200 focus:ring-blue-three focus:border-blue-three" %>
+          </div>
+        </div>
+
+        <!-- Destaques (Toggles) -->
+        <div class="mb-6">
+          <label class="block text-sm font-bold text-gray-700 mb-3">Destaques</label>
+          <div class="space-y-3">
+            <% highlights_list = [
+              ['opportunity', 'Oportunidade (Valor Reduzido)'],
+              ['lancamento', 'Lançamento'],
+              ['na_planta', 'Na Planta'],
+              ['pronto', 'Pronto Para Morar']
+            ] %>
+            <% highlights_list.each do |value, label| %>
+              <label class="flex items-center justify-between cursor-pointer group">
+                <span class="text-sm font-medium text-gray-700 group-hover:text-blue-three transition-colors"><%= label %></span>
+                <div class="relative inline-flex items-center cursor-pointer">
+                  <%= check_box_tag "characteristics[]", value, (params[:characteristics] || []).include?(value), class: "sr-only peer" %>
+                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-three"></div>
+                </div>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Características (Toggles) -->
+        <div class="mb-8">
+          <label class="block text-sm font-bold text-gray-700 mb-3">Características</label>
+          <div class="space-y-3">
+            <% characteristics_list = [
+              ['frente_mar', 'Frente Mar'],
+              ['quadra_mar', 'Quadra Mar'],
+              ['vista_mar', 'Vista Mar'],
+              ['churrasqueira', 'Churrasqueira'],
+              ['cozinha_gourmet_churrasqueira', 'Cozinha gourmet com churrasqueira'],
+              ['mobiliado', 'Mobiliado'],
+              ['sacada', 'Sacada'],
+              ['decorado', 'Decorado'],
+              ['closet', 'Closet'],
+              ['semi_mobiliado', 'Semi Mobiliado'],
+              ['lavabo', 'Lavabo'],
+              ['lavanderia', 'Lavanderia'],
+              ['dependencia_empregada', 'Dependência de empregada'],
+              ['hidromassagem', 'Hidromassagem'],
+              ['piscina', 'Piscina'],
+              ['sala_estar', 'Sala de Estar'],
+              ['sala_jantar', 'Sala de Jantar'],
+              ['sol_manha', 'Sol da manhã'],
+              ['sol_tarde', 'Sol da tarde'],
+              ['sol_dia_todo', 'Sol o dia todo'],
+              ['varanda', 'Varanda']
+            ] %>
+            
+            <% characteristics_list.each do |value, label| %>
+              <label class="flex items-center justify-between cursor-pointer group">
+                <span class="text-sm font-medium text-gray-700 group-hover:text-blue-three transition-colors"><%= label %></span>
+                <div class="relative inline-flex items-center cursor-pointer">
+                  <%= check_box_tag "characteristics[]", value, (params[:characteristics] || []).include?(value), class: "sr-only peer" %>
+                  <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-three"></div>
+                </div>
+              </label>
+            <% end %>
+          </div>
+        </div>

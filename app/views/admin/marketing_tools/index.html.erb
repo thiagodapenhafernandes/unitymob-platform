@@ -1,0 +1,64 @@
+<div class="container-fluid py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-link-45deg me-2 text-primary"></i>UTM Builder</h1>
+      <p class="text-muted small mb-0">Monte links rastreáveis para Google, Meta, Instagram, WhatsApp, rodapé e home.</p>
+    </div>
+    <%= link_to new_admin_marketing_campaign_path, class: "btn btn-sm btn-primary" do %>
+      <i class="bi bi-plus-circle me-1"></i>Nova campanha
+    <% end %>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-xl-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h2 class="h5 fw-bold mb-3">Gerar link rápido</h2>
+          <%= form_with url: admin_marketing_tools_path, method: :get, local: true do |f| %>
+            <div class="mb-3">
+              <%= label_tag :target_url, "URL alvo", class: "form-label fw-semibold" %>
+              <%= text_field_tag :target_url, @campaign.target_url, class: "form-control", placeholder: "/imoveis/frente-mar" %>
+            </div>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <%= label_tag :utm_source, "Origem", class: "form-label small fw-semibold" %>
+                <%= text_field_tag :utm_source, @campaign.utm_source, class: "form-control", placeholder: "instagram" %>
+              </div>
+              <div class="col-md-6">
+                <%= label_tag :utm_medium, "Mídia", class: "form-label small fw-semibold" %>
+                <%= text_field_tag :utm_medium, @campaign.utm_medium, class: "form-control", placeholder: "social" %>
+              </div>
+              <div class="col-12">
+                <%= label_tag :utm_campaign, "Campanha", class: "form-label small fw-semibold" %>
+                <%= text_field_tag :utm_campaign, @campaign.utm_campaign, class: "form-control", placeholder: "frente-mar-maio" %>
+              </div>
+              <div class="col-md-6">
+                <%= label_tag :utm_term, "Termo", class: "form-label small fw-semibold" %>
+                <%= text_field_tag :utm_term, @campaign.utm_term, class: "form-control" %>
+              </div>
+              <div class="col-md-6">
+                <%= label_tag :utm_content, "Conteúdo", class: "form-label small fw-semibold" %>
+                <%= text_field_tag :utm_content, @campaign.utm_content, class: "form-control" %>
+              </div>
+            </div>
+            <div class="mt-3 text-end">
+              <%= f.submit "Gerar", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h5 fw-bold mb-3">Link gerado</h2>
+          <input type="text" class="form-control form-control-lg mb-3" readonly value="<%= @campaign.generated_url(request.base_url) %>">
+          <div class="alert alert-info small mb-0">
+            Use este link nos anúncios e publicações. Quando ele gerar clique, lead ou agendamento, o dashboard tenta associar automaticamente pelo parâmetro <code>utm_campaign</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

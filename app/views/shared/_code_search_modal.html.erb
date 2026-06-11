@@ -1,0 +1,68 @@
+<!-- Code Search Modal (Image Replica) -->
+<div id="code-search-modal"
+     class="code-search-modal fixed inset-0 z-[100] hidden"
+     aria-labelledby="modal-title"
+     role="dialog"
+     aria-modal="true"
+     data-controller="code-search">
+  
+  <!-- Backdrop -->
+  <div class="code-search-modal__backdrop fixed inset-0 transition-opacity"
+       data-action="click->code-search#close"></div>
+
+  <div class="fixed inset-0 z-10 overflow-y-auto">
+    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+      
+      <!-- Modal Panel -->
+      <div class="code-search-modal__panel relative transform overflow-hidden text-left transition-all sm:my-8 sm:w-full sm:max-w-lg">
+        
+        <!-- Header -->
+        <div class="code-search-modal__header px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+          <div class="flex items-center gap-2">
+            <div class="code-search-modal__icon flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full">
+              <i class="bi bi-search text-blue-three text-lg"></i>
+            </div>
+            <h3 class="code-search-modal__title text-lg font-semibold leading-6" id="modal-title">
+              Buscar por Código
+            </h3>
+            <button type="button" class="code-search-modal__close ml-auto" data-action="click->code-search#close">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="code-search-modal__body px-4 py-8 sm:p-10">
+          <%= form_with url: search_by_code_path, method: :get, data: { turbo: false } do |f| %>
+            <div class="space-y-6">
+              <div>
+                <label for="code-input" class="code-search-modal__label block text-sm font-medium mb-2">
+                  Digite o código do imóvel
+                </label>
+                <div class="relative mt-2">
+                  <%= f.text_field :code, 
+                      id: "code-input",
+                      class: "code-search-modal__input block w-full border-0 py-4 pl-4 pr-4 text-center tracking-widest font-bold sm:text-2xl",
+                      placeholder: "Ex: 1234",
+                      autofocus: true,
+                      data: { code_search_target: "input" } %>
+                </div>
+                <p class="code-search-modal__hint mt-2 text-center text-sm flex items-center justify-center gap-1">
+                  <i class="bi bi-info-circle"></i>
+                  Digite apenas números
+                </p>
+              </div>
+
+              <div class="mt-5 sm:mt-6">
+                <%= button_tag type: 'submit', class: "code-search-modal__submit inline-flex w-full justify-center px-3 py-3 text-sm font-semibold transition-colors" do %>
+                  Buscar Imóvel
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        
+      </div>
+    </div>
+  </div>
+</div>

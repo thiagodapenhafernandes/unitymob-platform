@@ -1,0 +1,87 @@
+<h1 class="wizard-section-title"><i class="bi bi-house-heart-fill text-primary me-2"></i>Vamos começar</h1>
+<p class="wizard-section-subtitle">
+  Olá, <strong><%= current_admin_user.name.split.first %></strong>! Selecione o tipo de cadastro, a categoria e a modalidade.
+</p>
+
+<%
+  cadastro_categories = {
+    "apartamentos" => ["Apartamento", "Cobertura", "Loft", "Studio"],
+    "comerciais_industriais" => ["Sala Comercial", "Loja", "Prédio Comercial", "Galpão", "Galpão Industrial", "Área", "Casa comercial", "Condomínio Industrial", "Ponto Comercial", "Salas/Conjuntos"],
+    "imoveis_residenciais" => ["Casa", "Casa em Condomínio", "Sobrado", "Rural", "Condomínio", "Chácara", "Sítio"],
+    "terrenos" => ["Terreno", "Terreno em Condomínio", "Área", "Terreno Comercial", "Terreno Industrial"]
+  }
+  cadastro_type_labels = {
+    "apartamentos" => "Apartamentos",
+    "comerciais_industriais" => "Comerciais e industriais",
+    "imoveis_residenciais" => "Imóveis residenciais",
+    "terrenos" => "Terrenos"
+  }
+  cadastro_type_icons = {
+    "apartamentos" => "bi-building-fill",
+    "comerciais_industriais" => "bi-shop",
+    "imoveis_residenciais" => "bi-house-door-fill",
+    "terrenos" => "bi-tree-fill"
+  }
+  inferred_cadastro_type = cadastro_categories.find { |_key, values| values.include?(@captacao.categoria) }&.first || "apartamentos"
+%>
+
+<div class="wizard-start-grid"
+     data-controller="habitation-form"
+     data-habitation-form-categories-by-type-value="<%= json_escape(cadastro_categories.to_json) %>"
+     data-habitation-form-tipo-by-type-value="<%= json_escape({ apartamentos: "Unitário", comerciais_industriais: "Unitário", imoveis_residenciais: "Unitário", terrenos: "Unitário" }.to_json) %>">
+  <div class="wizard-field-group">
+    <label class="form-label">Tipo de cadastro <span class="required-star">*</span></label>
+    <div class="row g-2" data-controller="option-picker">
+      <% cadastro_type_labels.each do |val, label| %>
+        <div class="col-6">
+          <label class="wizard-option-card <%= 'selected' if inferred_cadastro_type == val %>">
+            <%= radio_button_tag "habitation[cadastro_type]",
+                                 val,
+                                 inferred_cadastro_type == val,
+                                 data: {
+                                   habitation_form_target: "cadastroType",
+                                   action: "change->option-picker#pick change->habitation-form#cadastroTypeChanged"
+                                 } %>
+            <div class="icon mb-2"><i class="bi <%= cadastro_type_icons[val] %>"></i></div>
+            <div class="small fw-semibold"><%= label %></div>
+          </label>
+        </div>
+      <% end %>
+    </div>
+    <%= f.hidden_field :tipo, value: "Unitário", data: { habitation_form_target: "tipo" } %>
+  </div>
+
+  <div class="wizard-field-group">
+    <%= f.label :categoria, "Categoria relacionada", class: "form-label" %>
+    <%= f.select :categoria,
+                 cadastro_categories.fetch(inferred_cadastro_type),
+                 { include_blank: "Selecione..." },
+                 class: "form-select",
+                 data: { controller: "tom-select", placeholder: "Selecione...", habitation_form_target: "category" } %>
+  </div>
+
+  <div class="wizard-field-group">
+    <label class="form-label">Modalidade <span class="required-star">*</span></label>
+    <div class="row g-2" data-controller="option-picker">
+      <% [
+        ["venda",          "Venda",           "bi-cash-coin"],
+        ["locacao_anual",  "Locação anual",   "bi-calendar-month"],
+        ["ambos",          "Venda e locação", "bi-arrow-left-right"],
+        ["locacao_diaria", "Locação diária",  "bi-calendar-day"]
+      ].each do |val, label, icon| %>
+        <div class="col-6">
+          <label class="wizard-option-card <%= 'selected' if @captacao.modalidade == val %>">
+            <%= f.radio_button :modalidade, val, data: { action: "change->option-picker#pick" } %>
+            <div class="icon mb-2"><i class="bi <%= icon %>"></i></div>
+            <div class="small fw-semibold"><%= label %></div>
+          </label>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-light border mt-4 small">
+  <i class="bi bi-info-circle-fill text-primary me-1"></i>
+  Você está logado como <strong><%= current_admin_user.name %></strong>. A captação vai ficar atribuída a você automaticamente.
+</div>

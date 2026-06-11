@@ -1,0 +1,1522 @@
+# == Schema Information
+#
+# Table name: habitations
+#
+class Habitation < ApplicationRecord
+  attr_accessor :skip_auto_audit, :auto_audit_destroy_snapshot
+
+  # Concerns organizados por responsabilidade
+  include Habitation::PriceFormatting
+  include Habitation::SearchScopes
+  include Habitation::CacheableMethods
+  include Habitation::SeoHelpers
+  
+  # Constantes Padronizadas para Enums e Atributos
+  CATEGORIES = [
+    'Apartamento', 'Casa', 'Casa em Condomínio', 'Cobertura', 'Sobrado',
+    'Terreno', 'Terreno em Condomínio', 'Loft', 'Studio', 'Sala Comercial',
+    'Loja', 'Prédio Comercial', 'Galpão', 'Área', 'Rural'
+  ].freeze
+
+  PUBLIC_FILTER_EXTRA_CATEGORIES = [
+    'Diferenciado', 'Garden'
+  ].freeze
+
+  TITLE_CATEGORY_TERMS = (CATEGORIES + PUBLIC_FILTER_EXTRA_CATEGORIES).sort_by { |category| -category.length }.freeze
+
+  STATUS_OPTIONS = [
+    'Venda', 'Aluguel', 'Diária', 'Pendente', 'Lançamento', 'Suspenso',
+    'Alugado imobiliária', 'Alugado terceiros',
+    'Vendido imobiliária', 'Vendido terceiros'
+  ].freeze
+
+  # Mapeia variações que aparecem na Vista (case mixed, sinônimos, etc.) para os
+  # valores canônicos em STATUS_OPTIONS. Usado pelo SyncPropertyService no import
+  # e pela migration de normalização.
+  STATUS_NORMALIZATION_MAP = {
+    "venda"                => "Venda",
+    "venda e aluguel"      => "Venda",
+    "aluguel"              => "Aluguel",
+    "locacao"              => "Aluguel",
+    "locação"              => "Aluguel",
+    "diaria"               => "Diária",
+    "diária"               => "Diária",
+    "pendente"             => "Pendente",
+    "lancamento"           => "Lançamento",
+    "lançamento"           => "Lançamento",
+    "suspenso"             => "Suspenso",
+    "alugado imobiliaria"  => "Alugado imobiliária",
+    "alugado imobiliária"  => "Alugado imobiliária",
+    "alugado terceiros"    => "Alugado terceiros",
+    "vendido imobiliaria"  => "Vendido imobiliária",
+    "vendido imobiliária"  => "Vendido imobiliária",
+    "vendido terceiros"    => "Vendido terceiros"
+  }.freeze
+
+  PUBLIC_STATUSES = ['Venda', 'Aluguel', 'Locação', 'Locacao'].freeze
+  NUMERIC_CODIGO_SQL = "codigo ~ '^[0-9]+$'".freeze
+  VISTA_REFERENCE_CODIGO_SQL = "#{NUMERIC_CODIGO_SQL} AND COALESCE(imovel_dwv, '') <> 'Sim'".freeze
+
+  def self.normalize_status(value)
+    return nil if value.blank?
+    key = value.to_s.strip.downcase
+    STATUS_NORMALIZATION_MAP[key] || value.to_s.strip
+  end
+
+  def self.highest_numeric_codigo
+    where(NUMERIC_CODIGO_SQL).maximum("codigo::bigint").to_i
+  end
+
+  def self.highest_vista_reference_codigo
+    where(VISTA_REFERENCE_CODIGO_SQL).maximum("codigo::bigint").to_i
+  end
+
+  def self.next_automatic_codigo
+    next_code = [highest_numeric_codigo, highest_vista_reference_codigo].max + 1
+    next_code += 1 while exists?(codigo: next_code.to_s)
+    next_code.to_s
+  end
+
+  SITUATIONS = [
+    'Pré Lançamento', 'Lançamento', 'Construção', 'Pronto para Morar',
+    'Novo', 'Usado'
+  ].freeze
+
+  INTAKE_ORIGIN_BROKER = "broker_intake".freeze
+  INTAKE_MODALITIES = %w[venda locacao_anual ambos locacao_diaria].freeze
+  INTAKE_STATUSES = {
+    "draft" => "Rascunho",
+    "submitted_for_admin_review" => "Em revisão administrativa",
+    "admin_approved" => "Aguardando aceite do corretor",
+    "returned_to_broker" => "Devolvido ao corretor",
+    "internal" => "Disponível internamente",
+    "published" => "Liberado para site"
+  }.freeze
+  CATALOG_VISIBLE_INTAKE_STATUSES = %w[internal published].freeze
+  PENDING_REVIEW_INTAKE_STATUSES = %w[submitted_for_admin_review admin_approved].freeze
+  PHOTO_FLOW_CHOICES = {
+    "upload" => "Enviar fotos",
+    "schedule" => "Agendar fotógrafo"
+  }.freeze
+  YES_NO_ANSWERS = {
+    "sim" => "Sim",
+    "nao" => "Não"
+  }.freeze
+  PHOTO_SCHEDULE_URL = "https://calendly.com/fotografias-saluteimoveis/30min".freeze
+  MINIMUM_INTAKE_SALE_PRICE_CENTS = 10_000_00
+  MINIMUM_INTAKE_RENT_PRICE_CENTS = 100_00
+  STRATEGIC_TAX_PLACEHOLDER_CENTS = [1, 100].freeze
+
+  def self.public_property_types
+    (where(exibir_no_site_flag: true).distinct.pluck(:categoria).compact + PUBLIC_FILTER_EXTRA_CATEGORIES)
+      .map(&:to_s)
+      .map(&:strip)
+      .reject(&:blank?)
+      .uniq
+      .sort
+  end
+
+  def self.photography_schedule_url
+    Setting.get("photography_schedule_url", "").to_s.strip
+  end
+
+  def inactive_for_admin_card?
+    status.to_s.match?(/suspenso|vendido|alugado/i)
+  end
+
+  def unavailable_for_duplicate_check?
+    !exibir_no_site_flag? || inactive_for_admin_card?
+  end
+
+  # INTERNAL_FEATURES = [ ... ] (Deprecated in favor of AttributeOption)
+  def self.internal_features
+    AttributeOption.where(context: 'habitation', category: 'feature').order(name: :asc).pluck(:name)
+  end
+
+  # EXTERNAL_FEATURES = [ ... ] (Deprecated in favor of AttributeOption)
+  def self.external_features
+    AttributeOption.where(context: 'habitation', category: 'infrastructure').order(name: :asc).pluck(:name)
+  end
+
+  # Endereço e Localização
+  has_one :address, as: :addressable, dependent: :destroy
+  accepts_nested_attributes_for :address, allow_destroy: true, reject_if: :all_blank
+  
+  # Delegations for backward compatibility
+  delegate :logradouro, :numero, :complemento, :bairro, :cidade, :uf, :cep, :latitude, :longitude,
+           :tipo_endereco, :bairro_comercial, :pais, :imediacoes,
+           to: :address, prefix: false, allow_nil: true
+
+  # Constants for Standardization
+  STREET_TYPES = ["Avenida", "Rua", "Alameda", "Travessa", "Rodovia", "Estrada", "Servidão", "Beco", "Praça"].freeze
+  UF_OPTIONS = ["SC", "PR", "SP", "RS", "RJ", "MG", "ES", "DF", "GO", "MS", "MT", "BA"].freeze
+  FACES = ["Norte", "Sul", "Leste", "Oeste", "Nordeste", "Noroeste", "Sudeste", "Sudoeste"].freeze
+  CONSTRUCTION_PROFILES = ["Econômico", "Médio", "Alto", "Luxo", "Super Luxo"].freeze
+  VAGA_TYPES = ["Privativa", "Rotativa", "Coberta", "Descoberta", "Gaveta", "Dupla"].freeze
+  
+  # Novos Enums (Gap Analysis)
+  OCUPACAO_STATUS = ["Desocupado", "Ocupado", "Inquilino", "Proprietário", "Reservado"].freeze
+  ESTADO_CONSERVACAO = ["Novo", "Ótimo", "Bom", "Regular", "Seminovo", "Usado", "Reformado", "Original", "Em Obras", "Na Planta"].freeze
+  TOPOGRAFIA_OPTIONS = ["Plano", "Aclive", "Declive", "Irregular"].freeze
+  FOTO_CLASSIFICACAO = ["Profissionais", "Boas", "Aceitáveis", "Amadoras", "Não tem fotos"].freeze
+  KEY_LOCATION_OPTIONS = ["Imobiliária", "Corretor(a)", "Proprietário", "Zelador", "Portaria", "Inquilino", "Outro"].freeze
+  REGIAO_FOCO_OPTIONS = ["Sim", "Não"].freeze
+  PORTAL_PUBLICATION_FIELDS = {
+    "zapimoveis" => :publicar_zapimoveis,
+    "vivareal_vrsync" => :publicar_viva_real_vrsync,
+    "imovelweb" => :publicar_imovelweb,
+    "imovelweb_2" => :publicar_imovelweb_2,
+    "chavesnamao" => :publicar_chaves_na_mao,
+    "casamineira" => :publicar_casa_mineira,
+    "lais_ai" => :publicar_lais_ai,
+    "netimoveis2" => :publicar_netimoveis_2
+  }.freeze
+
+  CHAVES_NA_MAO_DESTAQUE_OPTIONS = [["Sim", "sim"], ["Não", "nao"]].freeze
+  CHAVES_NA_MAO_PERIODO_LOCACAO_OPTIONS = [
+    ["Por Mês", "por_mes"],
+    ["Por Dia", "por_dia"],
+    ["Por Ano", "por_ano"],
+    ["Por Semana", "por_semana"],
+    ["Imóvel de Venda", "imovel_de_venda"]
+  ].freeze
+  CASA_MINEIRA_MODELO_OPTIONS = [
+    ["Simples", "simples"],
+    ["Destaque", "destaque"],
+    ["Home Destaque", "home_destaque"]
+  ].freeze
+  VIVA_REAL_TIPO_PUBLICACAO_OPTIONS = [
+    ["Padrão", "padrao"],
+    ["Destaque", "destaque"],
+    ["Super Destaque", "super_destaque"],
+    ["Destaque Superior", "destaque_superior"],
+    ["Destaque Exclusivo", "destaque_exclusivo"],
+    ["Destaque Triplo", "destaque_triplo"]
+  ].freeze
+  VIVA_REAL_DIVULGAR_ENDERECO_OPTIONS = [
+    ["Exata", "exata"],
+    ["Rua", "rua"],
+    ["Bairro", "bairro"]
+  ].freeze
+  IMOVELWEB_TIPO_PUBLICACAO_OPTIONS = [
+    ["Simples", "simples"],
+    ["Destaque", "destaque"],
+    ["Super Destaque", "super_destaque"]
+  ].freeze
+  IMOVELWEB_MOSTRAR_MAPA_OPTIONS = [
+    ["Exato", "exato"],
+    ["Não mostrar", "nao_mostrar"],
+    ["Aproximado", "aproximado"]
+  ].freeze
+
+  # FriendlyId para URLs amigáveis (SEO)
+  extend FriendlyId
+  friendly_id :slug_candidates, use: [:slugged, :finders]
+  
+  # Paginação
+  self.per_page = 12
+  
+  belongs_to :empreendimento, 
+    class_name: 'Habitation',
+    primary_key: 'codigo',
+    foreign_key: 'codigo_empreendimento',
+    optional: true
+  
+  belongs_to :constructor, optional: true
+  belongs_to :proprietor, optional: true
+  belongs_to :admin_reviewed_by, class_name: "AdminUser", optional: true
+  has_many :habitation_interactions, dependent: :nullify
+  
+  has_many :units, 
+    class_name: 'Habitation',
+    primary_key: 'codigo',
+    foreign_key: 'codigo_empreendimento'
+  
+  # Active Storage Photos (For manual upload)
+  has_many_attached :photos
+  has_many :ai_property_suggestions, dependent: :destroy
+  has_many :habitation_audit_logs
+
+  # Documentos internos do imóvel (só admin/editor enxergam — não vão para o site público)
+  # Após anexar, AttachmentOrganizerService move os blobs para
+  # imoveis/{codigo}/fichas-cadastro/ e imoveis/{codigo}/autorizacoes/ no DO Spaces.
+  has_many_attached :fichas_cadastro
+  has_many_attached :autorizacoes_venda
+
+  after_commit :organize_document_attachments, on: %i[create update]
+
+  def organize_document_attachments
+    return unless fichas_cadastro.attached? || autorizacoes_venda.attached?
+    Habitations::AttachmentOrganizerService.new(self).call
+  end
+
+  belongs_to :admin_user, optional: true, foreign_key: 'admin_user_id'
+  
+  has_many :broker_assignments, class_name: "HabitationBrokerAssignment", dependent: :destroy
+  has_many :habitation_share_links, dependent: :destroy
+  accepts_nested_attributes_for :broker_assignments, allow_destroy: true, reject_if: :all_blank
+
+  # ActionText for Rich Text
+  has_rich_text :descricao_web
+  has_rich_text :meta_description
+
+  # Validations
+  validates :codigo, presence: true, uniqueness: true
+  validates :categoria, presence: true
+  validates :captador_commission_percentage,
+            numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
+            allow_nil: true
+  validates :broker_commission_percentage,
+            numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
+            allow_nil: true
+  validates :key_location, inclusion: { in: KEY_LOCATION_OPTIONS }, allow_blank: true
+  validate :codigo_empreendimento_must_exist, if: :validate_codigo_empreendimento?
+  validate :codigo_empreendimento_cannot_reference_self
+  validate :key_location_notes_required_for_other
+  
+  # Callbacks
+  before_validation :assign_codigo_automaticamente, on: :create
+  before_validation :set_data_cadastro_crm, on: :create
+  before_validation :normalize_codigo_empreendimento
+  before_validation :sync_hierarchy_data
+  before_validation :sync_construtora_from_constructor
+  before_validation :sanitize_fields
+  before_save :capture_price_reductions
+  before_save :sync_flags_from_features
+  before_save :sync_intake_answers
+  after_save :clear_cache
+  after_destroy :clear_cache
+  after_create_commit :record_auto_audit_create, unless: :skip_auto_audit?
+  after_update_commit :record_auto_audit_update, unless: :skip_auto_audit?
+  before_destroy :capture_auto_audit_destroy_snapshot, unless: :skip_auto_audit?
+  after_destroy_commit :record_auto_audit_destroy, unless: :skip_auto_audit?
+
+  scope :broker_intakes, -> { where(intake_origin: INTAKE_ORIGIN_BROKER) }
+  scope :pending_admin_review_from_intake, -> {
+    broker_intakes.where(intake_status: PENDING_REVIEW_INTAKE_STATUSES)
+  }
+
+  def step
+    intake_step.presence || "intro"
+  end
+
+  def completed?
+    intake_status.in?(%w[submitted_for_admin_review admin_approved internal published])
+  end
+
+  def published_on_site?
+    exibir_no_site_flag?
+  end
+
+  def submitted_at
+    submitted_for_review_at
+  end
+
+  def corretor
+    admin_user
+  end
+
+  def primary_captador_assignment
+    assignments = if broker_assignments.loaded?
+                    broker_assignments.reject(&:marked_for_destruction?)
+                  else
+                    broker_assignments.includes(:admin_user)
+                  end
+
+    assignments.find { |assignment| assignment.role == "captador" && assignment.admin_user.present? }
+  end
+
+  def primary_captador
+    primary_captador_assignment&.admin_user || admin_user
+  end
+
+  def primary_captador_name
+    primary_captador&.name.presence || corretor_nome.presence
+  end
+
+  def property_kind
+    return "casa_rua" if street_house?
+    return "terreno" if categoria.to_s.match?(/terreno/i)
+    return "sala_comercial" if categoria.to_s.match?(/sala|loja|comercial|ponto|conjunto/i)
+    return "galpao" if categoria.to_s.match?(/galp/i)
+    "residencial"
+  end
+
+  def property_kind=(value)
+    self.categoria = case value
+                     when "sala_comercial" then "Sala Comercial"
+                     when "terreno" then "Terreno"
+                     else "Apartamento"
+                     end
+  end
+
+  def property_kind_residencial?
+    property_kind.in?(%w[residencial casa_rua])
+  end
+
+  def property_kind_sala_comercial?
+    property_kind == "sala_comercial"
+  end
+
+  def property_kind_terreno?
+    property_kind == "terreno"
+  end
+
+  def property_kind_galpao?
+    property_kind == "galpao"
+  end
+
+  def property_kind_street_house?
+    property_kind == "casa_rua"
+  end
+
+  def property_kind_apartment_unit?
+    categoria.to_s.match?(/apartamento|cobertura|loft|studio/i)
+  end
+
+  def condominium_house?
+    categoria.to_s.match?(/casa.*condom[ií]nio|condom[ií]nio.*casa/i)
+  end
+
+  def requires_unit_number?
+    property_kind_apartment_unit?
+  end
+
+  def uses_building_infrastructure?
+    property_kind_apartment_unit?
+  end
+
+  def street_house?
+    categoria.to_s.match?(/\bcasa\b|sobrado|rural|chácara|chacara|sítio|sitio/i)
+  end
+
+  def has_required_intake_area?
+    return area_total_m2.to_f.positive? if property_kind_terreno?
+
+    area_privativa_m2.to_f.positive?
+  end
+
+  def duplicate_identity_scope
+    return :condominium_unit if condominium_house? && (complemento.present? || bloco.present?)
+
+    requires_unit_number? || bloco.present? ? :unit : :street
+  end
+
+  def modalidade
+    return intake_modalidade if intake_modalidade.in?(INTAKE_MODALITIES)
+
+    if valor_venda_cents.to_i.positive? && valor_locacao_cents.to_i.positive?
+      "ambos"
+    elsif rental_intake?
+      "locacao_anual"
+    else
+      "venda"
+    end
+  end
+
+  def modalidade=(value)
+    normalized = value.to_s.presence_in(INTAKE_MODALITIES)
+    self.intake_modalidade = normalized
+    self.status = normalized.in?(%w[locacao_anual locacao_diaria]) ? "Aluguel" : "Venda"
+  end
+
+  def requires_sale_price?
+    modalidade.in?(%w[venda ambos])
+  end
+
+  def requires_rent_price?
+    modalidade.in?(%w[locacao_anual locacao_diaria ambos])
+  end
+
+  def valid_intake_sale_price?
+    valor_venda_cents.to_i >= MINIMUM_INTAKE_SALE_PRICE_CENTS
+  end
+
+  def valid_intake_rent_price?
+    valor_locacao_cents.to_i >= MINIMUM_INTAKE_RENT_PRICE_CENTS
+  end
+
+  def intake_sale_price_requirement_message
+    "Informe um valor de venda válido (mínimo R$ 10.000)."
+  end
+
+  def intake_rent_price_requirement_message
+    "Informe um valor de locação válido (mínimo R$ 100)."
+  end
+
+  def skip_visitas?
+    property_kind_terreno?
+  end
+
+  def progress_percentage
+    total = Captacao::STEPS.size
+    current = Captacao::STEPS.index(step).to_i + 1
+    ((current.to_f / total) * 100).round
+  end
+
+  def previous_step
+    idx = Captacao::STEPS.index(step)
+    return nil if idx.blank? || idx.zero?
+    Captacao::STEPS[idx - 1]
+  end
+
+  def next_step
+    idx = Captacao::STEPS.index(step).to_i
+    Captacao::STEPS[[idx + 1, Captacao::STEPS.size - 1].min]
+  end
+
+  def zip_code = cep
+  def street = logradouro
+  def street_number = numero
+  def neighborhood = bairro
+  def city = cidade
+  def state = uf
+
+  def edificio_nome = nome_empreendimento
+  def unidade_numero = bloco
+
+  def proprietario_nome = proprietario
+  def proprietario_telefone
+    proprietario_celular.presence ||
+      proprietor&.mobile_phone.presence ||
+      proprietor&.phone_primary.presence ||
+      proprietor&.business_phone.presence ||
+      proprietor&.residential_phone.presence
+  end
+
+  def proprietario_telefone_comercial_display
+    proprietario_telefone_comercial.presence || proprietor&.business_phone
+  end
+
+  def proprietario_telefone_residencial_display
+    proprietario_telefone_residencial.presence || proprietor&.residential_phone
+  end
+
+  def proprietario_cpf_cnpj = proprietario_codigo
+  def proprietario_cidade = captacao_note_value("Cidade do proprietário")
+
+  def area_total = area_total_m2
+  def area_privativa = area_privativa_m2
+  def dormitorios = dormitorios_qtd
+  def suites = suites_qtd
+  def demi_suites = demi_suites_qtd
+  def banheiros = banheiros_qtd
+  def vagas_garagem = vagas_qtd
+  def salas = salas_qtd
+
+  def valor_venda = valor_venda_cents.to_i.positive? ? valor_venda_cents / 100.0 : nil
+  def valor_locacao = valor_locacao_cents.to_i.positive? ? valor_locacao_cents / 100.0 : nil
+  def valor_condominio = valor_condominio_cents.to_i.positive? ? valor_condominio_cents / 100.0 : nil
+  def valor_iptu = valor_iptu_cents.to_i.positive? ? valor_iptu_cents / 100.0 : nil
+  def saldo_devedor = saldo_devedor_cents.to_i.positive? ? saldo_devedor_cents / 100.0 : nil
+
+  def displayable_condominio_cents
+    displayable_tax_cents(valor_condominio_cents)
+  end
+
+  def displayable_iptu_cents
+    displayable_tax_cents(valor_iptu_cents)
+  end
+
+  def taxes_included_indicator?
+    displayable_condominio_cents.blank? && displayable_iptu_cents.blank?
+  end
+
+  def rent_discount?
+    valor_locacao_cents.to_i.positive? &&
+      valor_locacao_anterior_cents.to_i > valor_locacao_cents.to_i
+  end
+
+  def sale_discount?
+    valor_venda_cents.to_i.positive? &&
+      valor_venda_anterior_cents.to_i > valor_venda_cents.to_i
+  end
+
+  def caracteristicas_imovel = normalize_captacao_list(caracteristicas, category: "feature")
+  def caracteristicas_predio = normalize_captacao_list(infra_estrutura, category: "infrastructure")
+  def aceita_permuta
+    aceita_permuta_answer == "sim" || aceita_permuta_flag? ? ["Sim"] : []
+  end
+  def aceita_parcelamento = aceita_parcelamento_flag? ? "sim" : "nao"
+  def outras_taxas = captacao_note_list("Outras taxas")
+  def dias_visitas = captacao_note_list("Dias/horários para visita")
+  def extras
+    {
+      "frente_metros" => dimensoes_terreno.to_s[/Frente:\s*([^|]+)/, 1]&.strip&.delete_suffix(" m"),
+      "topografia" => topografia.to_s.parameterize(separator: "_"),
+      "face" => face
+    }.compact_blank
+  end
+  def chaves_com
+    {
+      "Corretor(a)" => "corretor",
+      "Proprietário" => "proprietario",
+      "Portaria" => "portaria",
+      "Outro" => "outro"
+    }[key_location]
+  end
+  def senha_imovel = captacao_note_value("Senha do imóvel")
+  def senha_portaria = captacao_note_value("Senha da portaria")
+  def ocupacao = ocupacao_status
+  def estado_imovel = estado_conservacao
+  def situacao_imovel = situacao
+  def sacada = captacao_feature_enabled?("Sacada")
+  def terraco = captacao_feature_enabled?("Terraço")
+  def dependencia_empregada = captacao_feature_enabled?("Dependência de empregada")
+  def precisa_reforma = captacao_feature_enabled?("Precisa reforma")
+  def andares_total = andares_qtd
+  def aptos_por_andar = aptos_andar
+  def distancia_praia = captacao_note_value("Distância da praia").to_s.delete_suffix(" m")
+  def cidade_permuta = permuta_localizacao
+  def fotos = photos
+  def autorizacao_pdf = autorizacoes_venda.attachments.first
+
+  {
+    zip_code: [:address, :cep],
+    street: [:address, :logradouro],
+    street_number: [:address, :numero],
+    neighborhood: [:address, :bairro],
+    city: [:address, :cidade],
+    state: [:address, :uf],
+    edificio_nome: [:self, :nome_empreendimento],
+    unidade_numero: [:self, :bloco],
+    proprietario_nome: [:self, :proprietario],
+    proprietario_telefone: [:self, :proprietario_celular],
+    proprietario_cpf_cnpj: [:self, :proprietario_codigo],
+    area_total: [:self, :area_total_m2],
+    area_privativa: [:self, :area_privativa_m2],
+    dormitorios: [:self, :dormitorios_qtd],
+    suites: [:self, :suites_qtd],
+    demi_suites: [:self, :demi_suites_qtd],
+    banheiros: [:self, :banheiros_qtd],
+    vagas_garagem: [:self, :vagas_qtd],
+    salas: [:self, :salas_qtd],
+    caracteristicas_imovel: [:self, :caracteristicas],
+    caracteristicas_predio: [:self, :infra_estrutura],
+    ocupacao: [:self, :ocupacao_status],
+    estado_imovel: [:self, :estado_conservacao],
+    situacao_imovel: [:self, :situacao],
+    andares_total: [:self, :andares_qtd],
+    aptos_por_andar: [:self, :aptos_andar],
+    cidade_permuta: [:self, :permuta_localizacao]
+  }.each do |method_name, (target, attribute)|
+    define_method("#{method_name}=") do |value|
+      receiver = target == :address ? ensure_address : self
+      receiver.public_send("#{attribute}=", value)
+    end
+  end
+
+  def captacao_note_value(label)
+    observacoes_visitas.to_s.each_line do |line|
+      key, value = line.split(":", 2)
+      return value.to_s.strip if key == label
+    end
+    nil
+  end
+
+  def captacao_note_list(label)
+    captacao_note_value(label).to_s.split(",").map(&:strip).compact_blank
+  end
+
+  def captacao_feature_enabled?(label)
+    values = caracteristicas.is_a?(Hash) ? caracteristicas.to_a.flatten : Array(caracteristicas)
+    values.any? { |value| value.to_s.casecmp?(label) }
+  end
+
+  {
+    valor_venda: :valor_venda_formatted,
+    valor_locacao: :valor_locacao_formatted,
+    valor_condominio: :valor_condominio_formatted,
+    valor_iptu: :valor_iptu_formatted,
+    saldo_devedor: :saldo_devedor_formatted,
+    valor_comissao: :valor_comissao_formatted,
+    valor_livre_proprietario: :valor_livre_proprietario_formatted,
+    valor_alugado_terceiros: :valor_alugado_terceiros_formatted,
+    valor_vendido_terceiros: :valor_vendido_terceiros_formatted
+  }.each do |method_name, formatted_attribute|
+    define_method("#{method_name}=") { |value| public_send("#{formatted_attribute}=", value) }
+  end
+
+  def aceita_permuta=(value)
+    self.aceita_permuta_answer = Array(value).include?("Sim") ? "sim" : "nao"
+  end
+
+  def aceita_parcelamento=(value)
+    self.aceita_parcelamento_flag = value != "nao"
+  end
+
+  def ensure_address
+    address || build_address
+  end
+
+  def preco_principal
+    if valor_venda_cents.to_i > 0
+      ActiveSupport::NumberHelper.number_to_currency(valor_venda_cents / 100.0)
+    elsif valor_locacao_cents.to_i > 0
+      "#{ActiveSupport::NumberHelper.number_to_currency(valor_locacao_cents / 100.0)}/mês"
+    else
+      "Sob Consulta"
+    end
+  end
+
+  def tipo_transacao
+    if status.to_s.downcase.include?('locacao') || status.to_s.downcase.include?('aluguel')
+      'Locação'
+    else
+      'Venda'
+    end
+  end
+
+  def displayable_tax_cents(value)
+    cents = value.to_i
+    return nil if cents <= 0 || STRATEGIC_TAX_PLACEHOLDER_CENTS.include?(cents)
+
+    cents
+  end
+
+  def self.portal_publication_column_for(portal_key)
+    PORTAL_PUBLICATION_FIELDS[portal_key.to_s]
+  end
+
+  def broker_intake?
+    intake_origin == INTAKE_ORIGIN_BROKER
+  end
+
+  def vista_integrated?
+    vista_import_batch_id.present? ||
+      vista_codigo.present? ||
+      vista_imo_codigo.present? ||
+      vista_referencia_externa.present? ||
+      status_vista.present?
+  end
+
+  def intake_status_label
+    INTAKE_STATUSES[intake_status] || intake_status.to_s.humanize
+  end
+
+  def intake_draft?
+    intake_status.blank? || intake_status == "draft"
+  end
+
+  def intake_submitted_for_admin_review?
+    intake_status == "submitted_for_admin_review"
+  end
+
+  def intake_admin_approved?
+    intake_status == "admin_approved"
+  end
+
+  def intake_internal?
+    intake_status == "internal"
+  end
+
+  def intake_published?
+    intake_status == "published"
+  end
+
+  def has_any_photo?
+    photos.attached? || image_urls.any?
+  end
+
+  def hidden_from_site_with_photos?
+    has_any_photo? && !exibir_no_site_flag?
+  end
+
+  def rental_intake?
+    modalidade = intake_modalidade.presence
+    return true if modalidade.in?(%w[locacao_anual locacao_diaria ambos])
+    return false if modalidade == "venda"
+
+    status.to_s.downcase.match?(/aluguel|loca/)
+  end
+
+  def sale_intake?
+    modalidade = intake_modalidade.presence
+    return true if modalidade.in?(%w[venda ambos])
+
+    !rental_intake?
+  end
+
+  def whatsapp_negotiation_type
+    has_sale_price = valor_venda_cents.to_i.positive?
+    has_rent_price = valor_locacao_cents.to_i.positive?
+
+    return "sale_rent" if intake_modalidade == "ambos" || (has_sale_price && has_rent_price)
+    return "rent" if rental_intake? || has_rent_price
+
+    "sale"
+  end
+
+  def intake_missing_requirements
+    missing = []
+    missing << "Dados do proprietário" if proprietario.blank? || (proprietario_celular.blank? && proprietario_email.blank?) || proprietario_cidade.blank?
+    missing << intake_sale_price_requirement_message if requires_sale_price? && !valid_intake_sale_price?
+    missing << intake_rent_price_requirement_message if requires_rent_price? && !valid_intake_rent_price?
+    missing << "Definições básicas" if categoria.blank? || status.blank?
+    missing << "Título do anúncio" if titulo_anuncio.blank?
+    missing << "Título do anúncio coerente com a categoria" if title_category_inconsistent?
+    missing << "Descrição do imóvel" if display_description_plain_text.blank?
+    missing << "Endereço e localização" if address.blank? || cep.blank? || logradouro.blank? || bairro.blank? || cidade.blank? || uf.blank?
+    missing << "Número da unidade" if requires_unit_number? && bloco.blank?
+    if property_kind_terreno?
+      missing << "Dimensões e estrutura física" if area_total_m2.to_f <= 0
+    elsif !has_required_intake_area?
+      missing << "Área privativa" if area_privativa_m2.to_f <= 0
+    elsif property_kind_sala_comercial? && salas_qtd.to_i <= 0 && banheiros_qtd.to_i <= 0 && vagas_qtd.to_i <= 0
+      missing << "Dimensões e estrutura física"
+    elsif property_kind_residencial? && dormitorios_qtd.to_i <= 0 && suites_qtd.to_i <= 0 && vagas_qtd.to_i <= 0
+      missing << "Dimensões e estrutura física"
+    end
+    missing << "Financeiro e valores" if valor_condominio_cents.blank? && valor_iptu_cents.blank?
+    missing << "Mais características" if caracteristicas.blank?
+    missing << "Infraestrutura & Lazer" if uses_building_infrastructure? && infra_estrutura.blank?
+    missing << "Administração de locação feita pela Salute" if rental_intake? && salute_rental_management_answer.blank?
+    missing << "Aceita permuta" if sale_intake? && aceita_permuta_answer.blank?
+    missing << "Quantidade de parcelas" if aceita_parcelamento_flag? && numero_prestacoes.blank?
+    missing << "Fotos ou agenda com fotógrafo" if photo_flow_choice == "upload" && !has_any_photo?
+    missing << "Agenda com fotógrafo" if photo_flow_choice == "schedule" && photo_session_requested_at.blank?
+    missing << "Fotos ou agenda com fotógrafo" if photo_flow_choice.blank? && !has_any_photo?
+    missing << "Anexo da autorização do proprietário" unless autorizacoes_venda.attached?
+    missing
+  end
+
+  def intake_ready_for_admin_review?
+    intake_missing_requirements.empty?
+  end
+
+  def broker_can_release_to_site?
+    intake_admin_approved? && intake_ready_for_admin_review?
+  end
+
+  def intake_display_title
+    title_category_inconsistent? ? default_title : display_title
+  end
+
+  def title_category_inconsistent?
+    return false if titulo_anuncio.blank? || categoria.blank?
+
+    title_category = title_category_terms_in_title.first
+    return false if title_category.blank?
+
+    title_category_key = normalize_title_category(title_category)
+    current_category_key = normalize_title_category(categoria)
+    return false if title_category_key == current_category_key
+
+    !current_category_key.start_with?(title_category_key) && !title_category_key.start_with?(current_category_key)
+  end
+
+  def display_description_plain_text
+    ActionController::Base.helpers.strip_tags(display_description.to_s).squish
+  end
+  
+  # Retorna a URL da imagem principal
+  def primary_image_url
+    img = primary_image
+    return nil unless img
+    img.is_a?(Hash) ? img['url'] : img
+  end
+
+  def primary_image_source
+    public_image_sources.first
+  end
+
+  def card_image_sources(limit = 5)
+    public_image_sources.first(limit)
+  end
+
+  # Retorna lista de URLs de todas as imagens
+  def image_urls
+    all_images.map do |img|
+      img.is_a?(Hash) ? img['url'] : img
+    end.compact
+  end
+  
+  # Retorna a primeira imagem do imóvel (Hash format)
+  def primary_image
+    public_image_sources.first
+  end
+
+  def public_image_sources
+    own_sources = own_public_image_sources
+    return own_sources if own_sources.present?
+
+    return [] unless use_development_photos?
+
+    empreendimento&.own_public_image_sources.presence || development_image_payload_sources
+  end
+
+  def own_public_image_sources
+    attached_images = public_ordered_photos.map { |photo| { "attachment" => photo, "url" => blob_path_for(photo) } }
+    api_images = image_payload_sources
+
+    return api_images.presence || attached_images if dwv_property?
+
+    attached_images.presence || api_images
+  end
+
+  def use_development_photos?
+    use_development_photos_flag? && !empreendimento? && codigo_empreendimento.present?
+  end
+  
+  # Retorna todas as imagens (Hash format)
+  def all_images
+    public_image_sources
+  end
+
+  def image_payload_sources
+    images = if empreendimento?
+               fotos_empreendimento.present? ? fotos_empreendimento : pictures
+             else
+               pictures
+             end
+
+    if images.is_a?(Array)
+      images.filter_map do |pic|
+        payload = pic.is_a?(Hash) ? pic : { "url" => pic }
+        payload unless picture_hidden_from_site?(payload)
+      end
+    else
+      []
+    end
+  end
+
+  def development_image_payload_sources
+    return [] unless fotos_empreendimento.is_a?(Array)
+
+    fotos_empreendimento.filter_map do |pic|
+      payload = pic.is_a?(Hash) ? pic : { "url" => pic }
+      payload unless picture_hidden_from_site?(payload)
+    end
+  end
+
+  def blob_path_for(attachment)
+    Rails.application.routes.url_helpers.rails_blob_path(attachment, only_path: true)
+  rescue StandardError
+    nil
+  end
+
+  # Photo Sorting Logic
+  def ordered_photo_ids=(ids)
+    ids = ids.split(',') if ids.is_a?(String)
+    # Ensure IDs are integers and unique, reject blanks
+    self.photo_ids_order = ids.compact.map(&:to_i).uniq - [0]
+  end
+
+  def site_hidden_photo_ids=(ids)
+    ids = ids.split(",") if ids.is_a?(String)
+    super(Array(ids).filter_map { |id| id.to_s.strip.match?(/\A\d+\z/) ? id.to_i : nil }.uniq)
+  end
+
+  def site_hidden_picture_urls=(urls)
+    return unless pictures.is_a?(Array)
+
+    hidden_urls = Array(urls).flat_map { |url| url.to_s.split(",") }.map(&:strip).reject(&:blank?).uniq
+    self.pictures = pictures.map do |picture|
+      payload = picture.is_a?(Hash) ? picture.deep_dup : { "url" => picture }
+      payload["site_hidden"] = hidden_urls.include?(picture_url_for_visibility(payload))
+      payload
+    end
+  end
+
+  def ordered_picture_indices=(indices)
+    return unless pictures.is_a?(Array)
+
+    indexes = indices.is_a?(String) ? indices.split(",") : Array(indices)
+    ordered_indexes = indexes.filter_map do |raw_index|
+      raw_index = raw_index.to_s.strip
+      next unless raw_index.match?(/\A\d+\z/)
+
+      index = raw_index.to_i
+      index if index < pictures.length
+    end.uniq
+
+    return if ordered_indexes.blank?
+
+    ordered_pictures = ordered_indexes.map { |index| pictures[index] }
+    remaining_pictures = pictures.each_with_index.filter_map do |picture, index|
+      picture unless ordered_indexes.include?(index)
+    end
+
+    self.pictures = ordered_pictures + remaining_pictures
+  end
+
+  def ordered_photos
+    return photos unless photo_ids_order.present? && photos.attached?
+
+    # Fetch all photos efficiently
+    attached_photos = photos.includes(:blob)
+    
+    # Sort them in memory according to the ID list
+    # Photos not in the list go to the end
+    attached_photos.sort_by do |photo|
+      idx = photo_ids_order.index(photo.id)
+      idx || 999999 # Place unordered photos at the end
+    end
+  end
+
+  def public_ordered_photos
+    hidden_ids = Array(site_hidden_photo_ids).map(&:to_i)
+    ordered_photos.reject { |photo| hidden_ids.include?(photo.id) }
+  end
+
+  def picture_hidden_from_site?(picture)
+    ActiveModel::Type::Boolean.new.cast(picture.try(:[], "site_hidden") || picture.try(:[], :site_hidden))
+  end
+
+  def picture_url_for_visibility(picture)
+    picture.try(:[], "url") || picture.try(:[], :url) || picture.try(:[], "src") || picture.try(:[], :src) || picture.try(:[], "link") || picture.try(:[], :link)
+  end
+
+  def sync_intake_answers
+    self.aceita_permuta_flag = aceita_permuta_answer == "sim" if aceita_permuta_answer.present?
+    self.salute_rental_management_flag = salute_rental_management_answer == "sim" if salute_rental_management_answer.present?
+    self.photo_session_url = self.class.photography_schedule_url if photo_flow_choice == "schedule" && photo_session_url.blank?
+  end
+
+  # Dynamic Field Setters (Array handling)
+  def meta_keywords=(value)
+    if value.is_a?(Array)
+      super(value.reject(&:blank?).join(','))
+    else
+      super
+    end
+  end
+
+  def caracteristicas=(value)
+    if value.is_a?(Array)
+      hash = AttributeOptions::HabitationFeatureNormalizer
+             .normalize_list(value, category: "feature")
+             .index_by(&:itself)
+      super(hash)
+    else
+      super
+    end
+  end
+
+  def infra_estrutura=(value)
+    if value.is_a?(Array)
+      super(AttributeOptions::HabitationFeatureNormalizer.normalize_list(value, category: "infrastructure"))
+    else
+      super
+    end
+  end
+
+  def endereco
+    address&.logradouro.presence || self[:endereco]
+  end
+
+  def unique_features
+    raw = self[:caracteristica_unica]
+    Array(raw).flatten.compact.map { |feature| feature.to_s.strip }.reject(&:blank?)
+  end
+
+  def effective_constructor
+    constructor || empreendimento&.constructor
+  end
+
+  def constructor_name
+    effective_constructor&.name.presence || construtora.presence
+  end
+  
+  # Verifica se é um empreendimento
+  def empreendimento?
+    tipo == 'Empreendimento'
+  end
+
+  def dwv_property?
+    imovel_dwv.to_s.strip.casecmp("sim").zero?
+  end
+
+  def publicly_viewable?
+    return false unless exibir_no_site_flag?
+    return false unless PUBLIC_STATUSES.include?(status)
+    return true if empreendimento?
+
+    has_public_photo? && has_public_price?
+  end
+
+  def delivery_date_visible?(today = Date.current)
+    data_entrega.present? && data_entrega >= today
+  end
+
+  def ready_to_move?
+    readiness_values = [situacao, estado_conservacao, unique_features]
+
+    if caracteristicas.is_a?(Hash)
+      readiness_values << caracteristicas.select { |_key, value| ActiveModel::Type::Boolean.new.cast(value) }.keys
+      readiness_values << caracteristicas.values
+    end
+
+    if infra_estrutura.is_a?(Array)
+      readiness_values << infra_estrutura
+    end
+
+    readiness_values.flatten.compact.any? do |value|
+      value.to_s.parameterize.include?("pronto")
+    end
+  end
+
+  def public_unavailable_reason
+    return "exibir_no_site_flag=false" unless exibir_no_site_flag?
+    return "status=#{status.inspect}" unless PUBLIC_STATUSES.include?(status)
+    return nil if empreendimento?
+    return "sem fotos" unless has_public_photo?
+    return "sem preco" unless has_public_price?
+
+    nil
+  end
+  
+  # Verifica se é uma unidade de empreendimento
+  def unidade?
+    codigo_empreendimento.present?
+  end
+  
+  # Retorna todas as unidades disponíveis deste empreendimento
+  # Empreendimento tem 'codigo', unidades têm 'codigo_empreendimento'
+  def development_units
+    return Habitation.none unless empreendimento? && codigo.present?
+    Habitation.active.where(codigo_empreendimento: codigo)
+  end
+  
+  # Conta quantas unidades disponíveis esse empreendimento tem
+  def available_units_count
+    return 0 unless empreendimento?
+    development_units.count
+  end
+  
+  # Verifica se é um empreendimento com unidades
+  def has_available_units?
+    empreendimento? && available_units_count > 0
+  end
+
+  # --- Helpers para o card público ---
+  # Para empreendimentos, agregam min..max das unidades disponíveis.
+  # Para imóveis avulsos/unidades, retornam o valor próprio.
+
+  def card_dormitorios_text
+    if empreendimento?
+      values = development_units.where("dormitorios_qtd > 0").pluck(:dormitorios_qtd).compact.uniq.sort
+      return nil if values.empty?
+      values.size == 1 ? values.first.to_s : "#{values.min} a #{values.max}"
+    else
+      dormitorios_qtd.to_i.positive? ? dormitorios_qtd.to_s : nil
+    end
+  end
+
+  def card_vagas_text
+    if empreendimento?
+      values = development_units.where("vagas_qtd > 0").pluck(:vagas_qtd).compact.uniq.sort
+      return nil if values.empty?
+      values.size == 1 ? values.first.to_s : "#{values.min} a #{values.max}"
+    else
+      vagas_qtd.to_i.positive? ? vagas_qtd.to_s : nil
+    end
+  end
+
+  def card_suites_text
+    if empreendimento?
+      values = development_units.where("suites_qtd > 0").pluck(:suites_qtd).compact.uniq.sort
+      return nil if values.empty?
+      values.size == 1 ? values.first.to_s : "#{values.min} a #{values.max}"
+    else
+      suites_qtd.to_i.positive? ? suites_qtd.to_s : nil
+    end
+  end
+
+  def card_area_text
+    if empreendimento?
+      values = development_units.where("area_privativa_m2 > 0").pluck(:area_privativa_m2).compact
+      return nil if values.empty?
+      min = values.min.to_i
+      max = values.max.to_i
+      min == max ? "#{min} m²" : "#{min} a #{max} m²"
+    else
+      area_privativa_m2.to_f.positive? ? "#{area_privativa_m2.to_i} m²" : nil
+    end
+  end
+  
+  # Retorna o título para exibição
+  def display_title
+    titulo_anuncio.presence || default_title
+  end
+
+  # Description fallback for legacy/plain-text and rich text sources.
+  def display_description
+    rich_html = rich_text_descricao_web&.body&.to_s.presence
+    legacy_html = read_attribute(:descricao_web).to_s.presence
+    internal_text = descricao_interna.to_s.presence
+    development_text = descricao_empreendimento.to_s.presence
+
+    rich_html || legacy_html || internal_text || development_text
+  end
+
+  def property_features_for_display
+    normalize_feature_values(caracteristicas, category: "feature")
+  end
+
+  def leisure_features_for_display
+    normalize_feature_values(infra_estrutura, category: "infrastructure")
+  end
+  
+  # Título padrão baseado nas características
+  def default_title
+    parts = []
+    parts << categoria if categoria.present?
+    parts << "#{dormitorios_qtd} dormitórios" if dormitorios_qtd > 0
+    parts << "em #{bairro}" if bairro.present?
+    parts << cidade if cidade.present?
+    parts.join(' ')
+  end
+
+  def title_category_terms_in_title
+    title_key = normalize_title_category(titulo_anuncio)
+
+    TITLE_CATEGORY_TERMS.select do |term|
+      term_key = normalize_title_category(term)
+      title_key.start_with?(term_key)
+    end
+  end
+
+  def normalize_title_category(value)
+    value.to_s.parameterize
+  end
+
+  # Retorna lista de badges (etiquetas) para exibição no card
+  def display_badges
+    badges = []
+    
+    # Priority 1: Caracteristica Unica (Mapped labels from Vista)
+    unique_features.each do |feature|
+      text = feature.upcase
+      badges << {
+        text: text,
+        color: badge_color_for(text),
+        tailwind_color: tailwind_color_for(text)
+      }
+    end
+    
+    # Priority 2: Lançamento Flag (Manual flag)
+    has_lancamento_badge = unique_features.any? { |feature| I18n.transliterate(feature.downcase).include?('lancamento') }
+    if lancamento_flag && !has_lancamento_badge
+      badges << { 
+        text: 'LANÇAMENTO', 
+        color: 'success',
+        tailwind_color: 'orange-500'
+      }
+    end
+    
+    # Priority 3: Destaque Web (Featured)
+    if destaque_web_flag
+      badges << { 
+        text: 'DESTAQUE', 
+        color: 'warning text-dark',
+        tailwind_color: 'yellow-500'
+      }
+    end
+    
+    badges.first(2)
+  end
+
+  def tailwind_color_for(text)
+    t = text.to_s.upcase
+    if t.include?('PLANTA') || t.include?('CONSTRUÇÃO') || t.include?('PRÉ-LANÇAMENTO')
+      'primary-600'
+    elsif t.include?('LANÇAMENTO')
+      'orange-500'
+    elsif t.include?('DESTAQUE') || t.include?('OPORTUNIDADE')
+      'yellow-500'
+    elsif t.include?('PRONTO')
+      'green-600'
+    else
+      'primary-500'
+    end
+  end
+
+  def badge_color_for(text)
+    t = text.to_s.upcase
+    if t.include?('PLANTA') || t.include?('CONSTRUÇÃO') || t.include?('PRÉ-LANÇAMENTO')
+      'primary'
+    elsif t.include?('LANÇAMENTO')
+      'success'
+    elsif t.include?('DESTAQUE') || t.include?('OPORTUNIDADE')
+      'warning text-dark'
+    elsif t.include?('PRONTO')
+      'info'
+    else
+      'secondary'
+    end
+  end
+
+  private
+
+  def validate_codigo_empreendimento?
+    codigo_empreendimento.present? && (new_record? || will_save_change_to_codigo_empreendimento?)
+  end
+
+  def codigo_empreendimento_must_exist
+    parent = Habitation.empreendimentos.find_by(codigo: codigo_empreendimento)
+    return if parent.present?
+
+    errors.add(:codigo_empreendimento, "não corresponde a um empreendimento válido")
+  end
+
+  def key_location_notes_required_for_other
+    return unless key_location == "Outro" && key_location_notes.blank?
+
+    errors.add(:key_location_notes, "deve ser informado quando o local da chave for Outro")
+  end
+
+  def codigo_empreendimento_cannot_reference_self
+    return if codigo.blank? || codigo_empreendimento.blank?
+    return unless codigo.to_s == codigo_empreendimento.to_s
+
+    errors.add(:codigo_empreendimento, "não pode referenciar o próprio imóvel")
+  end
+
+  def normalize_codigo_empreendimento
+    self.codigo_empreendimento = codigo_empreendimento.to_s.strip.presence
+  end
+
+  def sync_hierarchy_data
+    if empreendimento?
+      self.codigo_empreendimento = nil
+      return
+    end
+
+    return if codigo_empreendimento.blank?
+
+    parent = Habitation.empreendimentos.find_by(codigo: codigo_empreendimento)
+    return if parent.blank?
+
+    self.nome_empreendimento = parent.nome_empreendimento.presence || parent.titulo_anuncio
+    self.constructor_id = parent.constructor_id if parent.constructor_id.present?
+  end
+
+  def sync_construtora_from_constructor
+    self.construtora = constructor.name if constructor.present?
+  end
+
+  def sync_flags_from_features
+    return unless caracteristicas.is_a?(Array)
+    
+    self.mobiliado_flag = caracteristicas.include?('Mobiliado')
+    self.sem_mobilia_flag = caracteristicas.include?('Sem Mobília')
+    self.decorado_flag = caracteristicas.include?('Decorado')
+    # Piscina can be 'Piscina' or 'Piscina Privativa', let's cover both for the flag if appropriate, or just the specific one.
+    # Assessing based on usual logic:
+    self.piscina_flag = caracteristicas.include?('Piscina Privativa') || caracteristicas.include?('Piscina')
+    self.varanda_gourmet_flag = caracteristicas.include?('Varanda Gourmet')
+    self.garden_flag = caracteristicas.include?('Garden')
+    self.quadra_mar_flag = caracteristicas.include?('Quadra Mar')
+    self.frente_mar_avenida_atlantica_flag = caracteristicas.include?('Frente Mar')
+    # Vista mar usually maps to vista mar
+    self.vista_frente_mar_flag = caracteristicas.include?('Vista Mar') || caracteristicas.include?('Vista para o Mar')
+    self.aceita_financiamento_flag = caracteristicas.include?('Aceita Financiamento')
+    self.aceita_permuta_flag = caracteristicas.include?('Aceita Permuta')
+    self.lavabo_flag = caracteristicas.include?('Lavabo')
+  end
+
+  def sanitize_fields
+    fields_to_sanitize = [
+      :categoria, :status, :situacao,
+      :nome_empreendimento,
+      :proprietario, :proprietario_email,
+      :ocupacao_status, :estado_conservacao, :topografia, :foto_classificacao,
+      :numero_box, :dimensoes_terreno, :podcast_url,
+      :matricula_imovel, :zona, :responsavel_reserva, :zelador_nome, :zelador_telefone, :regiao_foco,
+      :construtora, :tipo_fachada,
+      :tipo_veiculo_aceito_permuta, :permuta_localizacao
+    ]
+    
+    fields_to_sanitize.each do |field|
+      val = send(field)
+      if val.is_a?(String)
+        # Convert to nil if blank, just a dot, or just whitespace
+        if val.blank? || val.strip == '.'
+          send("#{field}=", nil)
+        else
+          send("#{field}=", val.strip)
+        end
+      end
+    end
+  end
+
+  def assign_codigo_automaticamente
+    return if codigo.present?
+
+    self.codigo = self.class.next_automatic_codigo
+  end
+
+  def slug_candidates
+    if empreendimento?
+      return [
+        :development_slug_base,
+        [:development_slug_base, :codigo]
+      ]
+    end
+
+    [
+      [:tipo_imovel_slug, :cidade_slug, :bairro_slug, :codigo],
+      [:tipo_imovel_slug, :cidade_slug, :codigo],
+      [:categoria, :codigo]
+    ]
+  end
+
+  def should_generate_new_friendly_id?
+    slug.blank? || (empreendimento? && will_save_change_to_nome_empreendimento?)
+  end
+  
+  # Métodos auxiliares para o slug
+  def development_slug_base
+    nome_empreendimento.presence || titulo_anuncio.presence || default_title
+  end
+
+  def tipo_imovel_slug
+    categoria&.parameterize
+  end
+  
+  def cidade_slug
+    cidade&.parameterize
+  end
+  
+  def bairro_slug
+    bairro&.parameterize
+  end
+  
+  private
+
+  def skip_auto_audit?
+    ActiveModel::Type::Boolean.new.cast(skip_auto_audit)
+  end
+
+  def record_auto_audit_create
+    build_auto_audit_recorder.record_create!
+  end
+
+  def record_auto_audit_update
+    build_auto_audit_recorder.record_update!
+  end
+
+  def capture_auto_audit_destroy_snapshot
+    self.auto_audit_destroy_snapshot = Habitations::AuditChangeRecorder.snapshot_for(self)
+  end
+
+  def record_auto_audit_destroy
+    build_auto_audit_recorder(before_snapshot: auto_audit_destroy_snapshot).record_destroy!
+  end
+
+  def build_auto_audit_recorder(before_snapshot: nil)
+    Habitations::AuditChangeRecorder.new(
+      self,
+      actor: Current.admin_user,
+      source: auto_audit_source,
+      before_snapshot: before_snapshot,
+      metadata: { auto_recorded: true }
+    )
+  end
+
+  def auto_audit_source
+    return "captacao" if broker_intake?
+    return "admin" if Current.admin_user.present?
+
+    "integracao"
+  end
+
+  def has_public_photo?
+    public_image_sources.any?
+  end
+
+  def has_public_price?
+    valor_venda_cents.to_i.positive? || valor_locacao_cents.to_i.positive?
+  end
+
+  def set_data_cadastro_crm
+    self.data_cadastro_crm ||= Time.current
+  end
+
+  def capture_price_reductions
+    capture_sale_price_reduction
+    capture_rent_price_reduction
+  end
+
+  def capture_sale_price_reduction
+    return unless will_save_change_to_valor_venda_cents?
+
+    old_cents, new_cents = attribute_change_to_be_saved(:valor_venda_cents).map(&:to_i)
+    return unless old_cents.positive? && new_cents.positive? && new_cents < old_cents
+
+    self.valor_venda_anterior_cents = old_cents
+    self.valor_promocional_cents = new_cents
+  end
+
+  def capture_rent_price_reduction
+    return unless will_save_change_to_valor_locacao_cents?
+
+    old_cents, new_cents = attribute_change_to_be_saved(:valor_locacao_cents).map(&:to_i)
+    return unless old_cents.positive? && new_cents.positive? && new_cents < old_cents
+
+    self.valor_locacao_anterior_cents = old_cents
+    self.valor_promocional_cents = new_cents
+  end
+  
+  def clear_cache
+    Rails.cache.delete(cache_key)
+    Rails.cache.delete([self.class.name, id])
+    Rails.cache.delete("habitation_#{id}")
+    
+    # Limpar cache da view materializada se for um imóvel em destaque
+    if destaque_web_flag_changed? || exibir_no_site_flag_changed?
+      refresh_materialized_view
+    end
+  end
+  
+  def refresh_materialized_view
+    # Atualizar a materialized view em background
+    RefreshFeaturedPropertiesJob.perform_later if defined?(RefreshFeaturedPropertiesJob)
+  end
+
+  def normalize_feature_values(source, category: "feature")
+    case source
+    when Array
+      source
+    when Hash
+      normalize_hash_features(source)
+    else
+      []
+    end
+      .map { |item| item.to_s.strip }
+      .reject { |item| item.blank? || item == "." }
+      .then { |items| AttributeOptions::HabitationFeatureNormalizer.normalize_list(items, category: category) }
+  end
+
+  def normalize_captacao_list(source, category: "feature")
+    case source
+    when String
+      source.split(",")
+    else
+      normalize_feature_values(source, category: category)
+    end
+      .map { |item| item.to_s.strip }
+      .reject(&:blank?)
+      .uniq
+  end
+
+  def normalize_hash_features(source)
+    values = source.values
+    boolean_like_hash = values.all? { |value| boolean_like_value?(value) }
+
+    if boolean_like_hash
+      source.select { |_key, value| truthy_value?(value) }.keys
+    else
+      source.map { |key, value| value.to_s.strip.presence || key.to_s.strip }
+    end
+  end
+
+  def boolean_like_value?(value)
+    [true, false, nil, 0, 1, "0", "1", "true", "false", "t", "f"].include?(value)
+  end
+
+  def truthy_value?(value)
+    [true, 1, "1", "true", "t"].include?(value)
+  end
+end

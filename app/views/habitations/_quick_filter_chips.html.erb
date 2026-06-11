@@ -1,0 +1,27 @@
+          <% quick_filters = [
+            ['frente_mar', 'Frente Mar', 'bi-water'],
+            ['quadra_mar', 'Quadra Mar', 'bi-building'],
+            ['mobiliado', 'Mobiliado', 'bi-house-heart'],
+            ['pronto', 'Pronto Morar', 'bi-check2-circle'],
+            ['na_planta', 'Na Planta', 'bi-map'],
+            ['opportunity', 'Ofertas', 'bi-tag-fill'],
+            ['churrasqueira', 'Churrasqueira', 'bi-fire'],
+            ['dependencia_empregada', 'Dependência', 'bi-door-closed'],
+            ['sacada', 'Sacada', 'bi-door-open'],
+            ['decorado', 'Decorado', 'bi-palette']
+          ] %>
+
+          <% quick_filters.each do |value, label, icon| %>
+            <label class="cursor-pointer group">
+              <%= check_box_tag "characteristics[]", value, (params[:characteristics] || []).include?(value), class: "peer sr-only", onchange: "this.form.submit()" %>
+              <div class="flex items-center gap-2 px-4 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-medium text-gray-600 peer-checked:bg-gray-200 peer-checked:text-gray-900 peer-checked:border-gray-300 hover:border-blue-three hover:text-blue-three transition-all select-none">
+                <% if icon.present? %>
+                  <i class="bi <%= icon %> <%= 'text-red-500' if value == 'opportunity' %>"></i>
+                <% end %>
+                <%= label %>
+                <% if (params[:characteristics] || []).include?(value) %>
+                  <i class="bi bi-check-lg ml-1"></i>
+                <% end %>
+              </div>
+            </label>
+          <% end %>

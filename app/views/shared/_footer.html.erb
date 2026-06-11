@@ -1,0 +1,74 @@
+<footer id="footer">
+  <div class="footer-top">
+    <div class="container">
+      <div class="row">
+
+        <div class="col-lg-3 col-md-6 footer-info">
+          <%= image_tag "salute-imoveis-white.svg", alt: "Salute Imóveis", style: "height: 32px;" %>
+          <br><br>
+          <strong>Loja Atlântica</strong>
+          <p>
+            Av. Atlântica, 3750 - Sala E<br>
+            Balneário Camboriú - SC<br>
+            <strong>Tel:</strong> (47) 3311-1067<br>
+          </p>
+          <br>
+          <strong>Loja Brasil Sul</strong>
+          <p>
+            Av. Brasil, 3160 - sala 1<br>
+            Balneário Camboriú - SC<br>
+            <strong>Tel:</strong> (47) 2122-8669<br>
+          </p>
+          
+          <div class="social-links mt-3">
+            <a href="#" class="twitter"><i class="bi bi-tiktok"></i></a>
+            <a href="#" class="facebook"><i class="bi bi-facebook"></i></a>
+            <a href="#" class="instagram"><i class="bi bi-instagram"></i></a>
+            <a href="#" class="linkedin"><i class="bi bi-linkedin"></i></a>
+          </div>
+        </div>
+
+        <div class="col-lg-2 col-md-6 footer-links">
+          <h4>Menu</h4>
+          <ul>
+            <li><i class="bi bi-chevron-right"></i> <a href="<%= root_path %>">Home</a></li>
+            <li><i class="bi bi-chevron-right"></i> <a href="#">Sobre nós</a></li>
+            <li><i class="bi bi-chevron-right"></i> <a href="<%= habitations_path %>">Imóveis</a></li>
+            <li><i class="bi bi-chevron-right"></i> <a href="#">Trabalhe Conosco</a></li>
+            <li><i class="bi bi-chevron-right"></i> <a href="#">Contato</a></li>
+          </ul>
+        </div>
+
+        <div class="col-lg-3 col-md-6 footer-links">
+          <h4>Links Úteis</h4>
+          <ul>
+            <li><i class="bi bi-chevron-right"></i> <a href="#">Frente Mar</a></li>
+            <li><i class="bi bi-chevron-right"></i> <a href="#">Quadra Mar</a></li>
+            <li><i class="bi bi-chevron-right"></i> <a href="#">Apartamento na planta</a></li>
+            <li><i class="bi bi-chevron-right"></i> <a href="#">Alto Padrão</a></li>
+            <li><i class="bi bi-chevron-right"></i> <a href="#">Locação</a></li>
+          </ul>
+        </div>
+
+        <div class="col-lg-4 col-md-6 footer-newsletter">
+          <h4>Quem somos</h4>
+          <p>A Salute Imóveis nasceu do ideal de garantir o melhor negócio para aqueles que buscam adquirir um imóvel, seja para investir ou para morar.</p>
+          <p>© <%= Time.current.year %></p>
+          
+          <h4>Inscreva-se na Salute</h4>
+          <p>Receba as melhores oportunidades do mercado.</p>
+          <form action="" method="post">
+            <input type="email" name="email"><input type="submit" value="Inscreva-se">
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="copyright">
+      &copy; Copyright <strong><span>Salute Imóveis</span></strong>. Todos os direitos reservados
+    </div>
+  </div>
+</footer>

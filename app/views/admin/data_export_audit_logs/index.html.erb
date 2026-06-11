@@ -1,0 +1,167 @@
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h1 class="h3 mb-1 text-gray-800">
+      <i class="bi bi-file-earmark-arrow-down text-primary me-2"></i>Auditoria de Exportações
+    </h1>
+    <p class="text-muted mb-0">Registro de CSVs, relatórios e impressões que retiram dados da plataforma.</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-bold">Eventos</div>
+        <div class="h2 fw-bold mb-0"><%= @total_exports %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-bold">CSVs</div>
+        <div class="h2 fw-bold mb-0"><%= @csv_exports %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-bold">Relatórios</div>
+        <div class="h2 fw-bold mb-0"><%= @print_reports %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="small text-muted text-uppercase fw-bold">Registros expostos</div>
+        <div class="h2 fw-bold mb-0"><%= number_with_delimiter(@total_records) %></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <%= form_with url: admin_data_export_audit_logs_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
+      <div class="col-md-2">
+        <%= label_tag :export_type, "Tipo", class: "form-label small fw-bold text-muted text-uppercase" %>
+        <%= select_tag :export_type, options_for_select([["Todos", ""], *DataExportAuditLog::EXPORT_TYPES.map { |key, label| [label, key] }], params[:export_type]), class: "form-select" %>
+      </div>
+      <div class="col-md-2">
+        <%= label_tag :resource_name, "Dados", class: "form-label small fw-bold text-muted text-uppercase" %>
+        <%= select_tag :resource_name, options_for_select([["Todos", ""], *DataExportAuditLog::RESOURCE_NAMES.map { |key, label| [label, key] }], params[:resource_name]), class: "form-select" %>
+      </div>
+      <div class="col-md-3">
+        <%= label_tag :admin_user_id, "Usuário", class: "form-label small fw-bold text-muted text-uppercase" %>
+        <%= select_tag :admin_user_id,
+                       options_from_collection_for_select(@available_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:admin_user_id]),
+                       include_blank: "Todos",
+                       class: "form-select",
+                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." } } %>
+      </div>
+      <div class="col-md-2">
+        <%= label_tag :profile_id, "Perfil", class: "form-label small fw-bold text-muted text-uppercase" %>
+        <%= select_tag :profile_id,
+                       options_from_collection_for_select(@available_profiles, :id, :name, params[:profile_id]),
+                       include_blank: "Todos",
+                       class: "form-select",
+                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." } } %>
+      </div>
+      <div class="col-md-2">
+        <%= label_tag :ip, "IP", class: "form-label small fw-bold text-muted text-uppercase" %>
+        <%= text_field_tag :ip, params[:ip], class: "form-control", placeholder: "127.0.0.1" %>
+      </div>
+      <div class="col-md-2">
+        <%= label_tag :data_format, "Formato", class: "form-label small fw-bold text-muted text-uppercase" %>
+        <%= select_tag :data_format,
+                       options_for_select([["Todos", ""]] + @available_formats.map { |format| [format.to_s.upcase, format] }, params[:data_format]),
+                       class: "form-select",
+                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar formato..." } } %>
+      </div>
+      <div class="col-md-3">
+        <%= label_tag :filename, "Arquivo contém", class: "form-label small fw-bold text-muted text-uppercase" %>
+        <%= text_field_tag :filename, params[:filename], class: "form-control", placeholder: "nome do arquivo" %>
+      </div>
+      <div class="col-md-1">
+        <%= label_tag :start_date, "De", class: "form-label small fw-bold text-muted text-uppercase" %>
+        <%= date_field_tag :start_date, params[:start_date], class: "form-control" %>
+      </div>
+      <div class="col-md-1">
+        <%= label_tag :end_date, "Até", class: "form-label small fw-bold text-muted text-uppercase" %>
+        <%= date_field_tag :end_date, params[:end_date], class: "form-control" %>
+      </div>
+      <div class="col-md-1 d-grid">
+        <%= submit_tag "Filtrar", class: "btn btn-primary" %>
+      </div>
+      <div class="col-md-1 d-grid">
+        <%= link_to "Limpar", admin_data_export_audit_logs_path, class: "btn btn-outline-secondary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Quando</th>
+          <th>Usuário</th>
+          <th>Tipo</th>
+          <th>Dados</th>
+          <th>Registros</th>
+          <th>Formato</th>
+          <th>IP</th>
+          <th>Detalhes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @logs.each do |log| %>
+          <tr>
+            <td><%= l(log.created_at, format: :short) %></td>
+            <td>
+              <div class="fw-semibold"><%= log.actor_name %></div>
+              <div class="small text-muted"><%= log.admin_user&.email %></div>
+            </td>
+            <td><span class="badge bg-primary-subtle text-primary"><%= log.export_type_label %></span></td>
+            <td><%= log.resource_label %></td>
+            <td>
+              <div class="fw-semibold"><%= number_with_delimiter(log.record_count) %></div>
+              <% if log.selected_count.positive? %>
+                <div class="small text-muted"><%= log.selected_count %> selecionados</div>
+              <% end %>
+            </td>
+            <td><%= log.format.upcase %></td>
+            <td><code><%= log.ip %></code></td>
+            <td>
+              <% if log.filename.present? %>
+                <div class="small"><%= log.filename %></div>
+              <% end %>
+              <% if log.fields.present? %>
+                <div class="small text-muted"><%= pluralize(log.fields.size, "campo", "campos") %></div>
+              <% end %>
+              <% if log.filters.present? %>
+                <details class="small mt-1">
+                  <summary>Filtros</summary>
+                  <pre class="bg-light border rounded p-2 mt-2 mb-0"><%= JSON.pretty_generate(log.filters) %></pre>
+                </details>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @logs.empty? %>
+          <tr>
+            <td colspan="8" class="text-center text-muted py-4">Nenhuma exportação registrada.</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <% if @logs.respond_to?(:total_pages) && @logs.total_pages > 1 %>
+    <div class="card-footer bg-white">
+      <%= will_paginate @logs, class: "pagination justify-content-center mb-0" %>
+    </div>
+  <% end %>
+</div>
