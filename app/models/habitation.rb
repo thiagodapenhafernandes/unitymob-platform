@@ -748,7 +748,11 @@ class Habitation < ApplicationRecord
   end
 
   def has_any_photo?
-    photos.attached? || image_urls.any?
+    if attached_photos_loaded?
+      photos_attachments.any? || image_urls.any?
+    else
+      photos.attached? || image_urls.any?
+    end
   end
 
   def hidden_from_site_with_photos?
@@ -1039,10 +1043,8 @@ class Habitation < ApplicationRecord
   end
 
   def ordered_photos
-    return photos unless photo_ids_order.present? && photos.attached?
-
-    # Fetch all photos efficiently
-    attached_photos = photos.includes(:blob)
+    attached_photos = attached_photos_for_display
+    return attached_photos unless photo_ids_order.present? && attached_photos.any?
     
     # Sort them in memory according to the ID list
     # Photos not in the list go to the end
@@ -1055,6 +1057,17 @@ class Habitation < ApplicationRecord
   def public_ordered_photos
     hidden_ids = Array(site_hidden_photo_ids).map(&:to_i)
     ordered_photos.reject { |photo| hidden_ids.include?(photo.id) }
+  end
+
+  def attached_photos_loaded?
+    association(:photos_attachments).loaded?
+  end
+
+  def attached_photos_for_display
+    return photos_attachments.to_a if attached_photos_loaded?
+    return [] unless photos.attached?
+
+    photos.includes(:blob).to_a
   end
 
   def picture_hidden_from_site?(picture)

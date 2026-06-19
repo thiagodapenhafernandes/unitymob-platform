@@ -3,8 +3,28 @@ import "@hotwired/turbo-rails"
 import "controllers"
 import "ax_toast"
 
-import "trix"
-import "@rails/actiontext"
+let actionTextLoadPromise = null
+
+const loadActionText = () => {
+  if (actionTextLoadPromise) return actionTextLoadPromise
+
+  actionTextLoadPromise = import("trix")
+    .then(() => import("@rails/actiontext"))
+    .catch((error) => {
+      actionTextLoadPromise = null
+      console.error("Failed to load rich text editor", error)
+    })
+
+  return actionTextLoadPromise
+}
+
+const maybeLoadActionText = () => {
+  if (document.querySelector("trix-editor")) loadActionText()
+}
+
+document.addEventListener("DOMContentLoaded", maybeLoadActionText)
+document.addEventListener("turbo:load", maybeLoadActionText)
+maybeLoadActionText()
 
 // ============================================================
 //  Compat de data-* legados — handlers leves para os data-bs-*

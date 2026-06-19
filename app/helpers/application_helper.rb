@@ -5,7 +5,7 @@ module ApplicationHelper
     "/rails/active_storage/representations/redirect/" => "/rails/active_storage/representations/proxy/"
   }.freeze
 
-  def optimized_image_source(source, resize_to_limit: nil, resize_to_fill: nil, saver: { quality: 82 })
+  def optimized_image_source(source, resize_to_limit: nil, resize_to_fill: nil, saver: { quality: 82 }, force_variant: false)
     return if source.blank?
 
     image = if source.is_a?(Hash)
@@ -18,7 +18,7 @@ module ApplicationHelper
       source
     end
     return image unless image.respond_to?(:variant)
-    return image unless active_storage_variants_enabled?
+    return image unless active_storage_variants_enabled?(force: force_variant)
 
     transformations = {}
     transformations[:resize_to_limit] = resize_to_limit if resize_to_limit.present?
@@ -28,8 +28,8 @@ module ApplicationHelper
     transformations.present? ? image.variant(transformations) : image
   end
 
-  def active_storage_variants_enabled?
-    ENV["ACTIVE_STORAGE_VARIANTS_ENABLED"] == "true"
+  def active_storage_variants_enabled?(force: false)
+    force || ENV["ACTIVE_STORAGE_VARIANTS_ENABLED"] == "true"
   end
 
   def public_price_range_options(transaction_type = nil)
@@ -56,11 +56,11 @@ module ApplicationHelper
     end
   end
 
-  def public_image_url(source, resize_to_limit: nil, resize_to_fill: nil, saver: { quality: 82 })
+  def public_image_url(source, resize_to_limit: nil, resize_to_fill: nil, saver: { quality: 82 }, force_variant: false)
     return if source.blank?
 
     image = if resize_to_limit.present? || resize_to_fill.present?
-              optimized_image_source(source, resize_to_limit: resize_to_limit, resize_to_fill: resize_to_fill, saver: saver)
+              optimized_image_source(source, resize_to_limit: resize_to_limit, resize_to_fill: resize_to_fill, saver: saver, force_variant: force_variant)
             else
               image_source_from(source)
             end
