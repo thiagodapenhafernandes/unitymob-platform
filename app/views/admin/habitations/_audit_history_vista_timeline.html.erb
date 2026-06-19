@@ -3,7 +3,7 @@
     <div class="habitation-audit-timeline">
       <% entries.each do |entry| %>
         <div class="habitation-audit-item">
-          <div class="d-flex justify-content-between gap-3 flex-wrap">
+          <div class="tw-flex tw-justify-between tw-gap-3 tw-flex-wrap">
             <div>
               <div class="habitation-audit-title"><%= entry[:title] %></div>
               <div class="habitation-audit-meta">
@@ -12,13 +12,13 @@
                 <% else %>
                   Data não informada
                 <% end %>
-                · <span class="badge bg-light text-dark border"><%= entry[:type] %></span>
+                · <span class="ax-badge ax-badge--gray"><%= entry[:type] %></span>
                 <% if entry[:actor].present? %>
                   · <%= entry[:actor] %>
                 <% end %>
               </div>
               <% if entry[:source_table].present? || entry[:source_key].present? %>
-                <div class="habitation-audit-meta mt-1">
+                <div class="habitation-audit-meta tw-mt-2">
                   Origem: <%= [entry[:source_table], entry[:source_key]].compact_blank.join(" · ") %>
                 </div>
               <% end %>
@@ -26,20 +26,20 @@
           </div>
 
           <% if entry[:details].present? %>
-            <ul class="habitation-audit-detail-list small">
+            <ul class="habitation-audit-detail-list tw-text-sm">
               <% entry[:details].each do |detail| %>
                 <li><%= detail %></li>
               <% end %>
             </ul>
           <% else %>
-            <div class="text-muted small mt-2">Registro do Vista sem detalhe adicional.</div>
+            <div class="tw-text-ink-muted tw-text-sm tw-mt-2">Registro do Vista sem detalhe adicional.</div>
           <% end %>
         </div>
       <% end %>
     </div>
   <% else %>
     <div class="habitation-audit-empty">
-      <i class="bi bi-database d-block fs-3 mb-2"></i>
+      <i class="bi bi-database tw-mb-2" style="display:block;font-size:1.75rem"></i>
       Nenhum histórico do Vista encontrado para este imóvel ainda.
     </div>
   <% end %>

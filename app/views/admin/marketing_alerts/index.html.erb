@@ -1,72 +1,62 @@
-<div class="container-fluid py-3">
-  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div>
-      <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-exclamation-triangle me-2 text-warning"></i>Alertas de Marketing</h1>
-      <p class="text-muted small mb-0">Sinais automáticos para evitar campanha sem estoque, SEO fraco ou página sem tráfego.</p>
-    </div>
-    <%= link_to admin_seo_dashboard_path, class: "btn btn-sm btn-outline-primary" do %>
-      <i class="bi bi-graph-up-arrow me-1"></i>Dashboard SEO
-    <% end %>
+<%# Alertas de Marketing — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
+<% bs_to_ax = { "success" => "green", "danger" => "red", "warning" => "amber", "info" => "blue", "primary" => "blue", "secondary" => "gray" } %>
+<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
+  <div>
+    <h1 class="ax-page-title">Alertas de Marketing</h1>
+    <p class="ax-page-subtitle">Sinais automáticos para evitar campanha sem estoque, SEO fraco ou página sem tráfego.</p>
   </div>
+  <%= link_to admin_seo_dashboard_path, class: "ax-btn ax-btn--sm" do %>
+    <i class="bi bi-graph-up-arrow ax-ico"></i><span>Dashboard SEO</span>
+  <% end %>
+</div>
 
-  <div class="row g-3">
-    <div class="col-xl-5">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <h2 class="h5 fw-bold mb-3">Alertas ativos</h2>
-          <div class="list-group list-group-flush">
-            <% @alerts.each do |alert| %>
-              <div class="list-group-item px-0">
-                <div class="d-flex justify-content-between gap-3">
-                  <div>
-                    <span class="badge bg-<%= alert.level %> mb-2"><%= alert.level %></span>
-                    <div class="fw-bold"><%= alert.title %></div>
-                    <div class="small text-muted"><%= alert.description %></div>
-                  </div>
-                  <div class="flex-shrink-0">
-                    <%= link_to alert.action_label, alert.action_path, class: "btn btn-sm btn-outline-primary" %>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-            <% if @alerts.blank? %>
-              <div class="text-center text-muted py-4">Nenhum alerta crítico agora.</div>
-            <% end %>
+<div class="tw-grid tw-grid-cols-1 xl:tw-grid-cols-12 tw-gap-4">
+  <div class="xl:tw-col-span-5">
+    <div class="ax-card">
+      <div class="ax-card__header"><span class="ax-card__title">Alertas ativos</span></div>
+      <div class="ax-card__body tw-flex tw-flex-col tw-gap-3">
+        <% @alerts.each do |alert| %>
+          <div class="tw-flex tw-justify-between tw-gap-3 tw-pb-3 tw-border-b tw-border-line last:tw-border-0 last:tw-pb-0">
+            <div>
+              <span class="ax-badge ax-badge--<%= bs_to_ax[alert.level.to_s] || 'gray' %> tw-mb-1"><%= alert.level %></span>
+              <div class="ax-strong"><%= alert.title %></div>
+              <div class="tw-text-2xs tw-text-ink-muted"><%= alert.description %></div>
+            </div>
+            <div class="tw-flex-none"><%= link_to alert.action_label, alert.action_path, class: "ax-btn ax-btn--sm" %></div>
           </div>
-        </div>
+        <% end %>
+        <% if @alerts.blank? %><div class="ax-empty tw-py-6">Nenhum alerta crítico agora.</div><% end %>
       </div>
     </div>
+  </div>
 
-    <div class="col-xl-7">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <h2 class="h5 fw-bold mb-3">Checklist das páginas estratégicas</h2>
-          <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>Página</th>
-                  <th class="text-center">Estoque</th>
-                  <th class="text-center">Únicos</th>
-                  <th class="text-center">SEO</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% @strategic_pages.each do |row| %>
-                  <% status_ok = row[:stock].to_i.positive? && row[:score].to_i >= 70 %>
-                  <tr>
-                    <td><%= link_to row[:path], row[:path], target: "_blank", rel: "noopener", class: "text-decoration-none" %></td>
-                    <td class="text-center fw-bold"><%= row[:stock] %></td>
-                    <td class="text-center"><%= row[:unique_visitors] %></td>
-                    <td class="text-center"><span class="badge <%= row[:score] >= 80 ? "bg-success" : row[:score] >= 60 ? "bg-warning text-dark" : "bg-danger" %>"><%= row[:score] %></span></td>
-                    <td><span class="badge <%= status_ok ? "bg-success" : "bg-warning text-dark" %>"><%= status_ok ? "pronta" : "atenção" %></span></td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
-        </div>
+  <div class="xl:tw-col-span-7">
+    <div class="ax-card">
+      <div class="ax-card__header"><span class="ax-card__title">Checklist das páginas estratégicas</span></div>
+      <div class="ax-table-wrap" style="border:0;border-radius:0">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th>Página</th>
+              <th class="ax-num" style="width:90px">Estoque</th>
+              <th class="ax-num" style="width:80px">Únicos</th>
+              <th class="ax-num" style="width:80px">SEO</th>
+              <th style="width:100px">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @strategic_pages.each do |row| %>
+              <% status_ok = row[:stock].to_i.positive? && row[:score].to_i >= 70 %>
+              <tr>
+                <td><%= link_to row[:path], row[:path], target: "_blank", rel: "noopener" %></td>
+                <td class="ax-num ax-strong"><%= row[:stock] %></td>
+                <td class="ax-num"><%= row[:unique_visitors] %></td>
+                <td class="ax-num"><span class="ax-badge ax-badge--<%= row[:score] >= 80 ? 'green' : row[:score] >= 60 ? 'amber' : 'red' %>"><%= row[:score] %></span></td>
+                <td><span class="ax-badge ax-badge--<%= status_ok ? 'green' : 'amber' %>"><%= status_ok ? "pronta" : "atenção" %></span></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>

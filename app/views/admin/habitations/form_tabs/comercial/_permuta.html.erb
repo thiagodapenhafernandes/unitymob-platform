@@ -1,0 +1,42 @@
+<%= ax_form_section(title: "Permuta", eyebrow: "Condição especial") do %>
+  <%= ax_field_grid(class_name: "ax-field-grid--spaced ax-exchange-summary-grid") do %>
+    <div class="ax-span-3 ax-field-align-end">
+      <%= ax_toggle_chip(f, :aceita_permuta_flag, label: "Aceita permuta") %>
+    </div>
+    <div class="ax-span-3">
+      <%= ax_currency_field(form: f, method: :valor_aceito_permuta_formatted, label: "Valor aceito na permuta", data: { controller: "mask", mask_type_value: "currency" }) %>
+    </div>
+    <div class="ax-span-4">
+      <%= ax_text_field(form: f, method: :tipo_veiculo_aceito_permuta, label: "Tipo de veículo aceito", placeholder: "Ex: SUV, Sedan...") %>
+    </div>
+    <div class="ax-span-2">
+      <%= ax_number_field(form: f, method: :ano_minimo_veiculo_aceito_permuta, label: "Ano mínimo", min: 1900, max: 2100) %>
+    </div>
+  <% end %>
+
+  <%= ax_chip_grid(class_name: "ax-chip-grid--inline") do %>
+    <%= ax_toggle_chip(f, :aceita_permuta_veiculo_flag, label: "Veículo") %>
+    <%= ax_toggle_chip(f, :aceita_permuta_imovel_flag, label: "Imóvel") %>
+    <%= ax_toggle_chip(f, :aceita_permuta_outros_flag, label: "Outros") %>
+  <% end %>
+
+  <%= ax_field_group(title: "Imóvel aceito na permuta") do %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-4">
+        <%= ax_currency_field(form: f, method: :permuta_valor_formatted, label: "Valor", data: { controller: "mask", mask_type_value: "currency" }) %>
+      </div>
+      <div class="ax-span-8">
+        <%= ax_text_field(form: f, method: :permuta_localizacao, label: "Localização", placeholder: "Cidade, bairro ou região de interesse") %>
+      </div>
+      <div class="ax-span-4">
+        <%= ax_number_field(form: f, method: :permuta_dormitorios_qtd, label: "Dormitórios", min: 0) %>
+      </div>
+      <div class="ax-span-4">
+        <%= ax_number_field(form: f, method: :permuta_suites_qtd, label: "Suítes", min: 0) %>
+      </div>
+      <div class="ax-span-4">
+        <%= ax_number_field(form: f, method: :permuta_garagens_qtd, label: "Garagens", min: 0) %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

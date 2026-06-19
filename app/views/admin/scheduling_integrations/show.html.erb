@@ -1,37 +1,37 @@
 <% can_manage_schedule = can?(:manage, :agenda_fotografia) || can?(:manage, :integracoes) %>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
   <div>
-    <h1 class="h3 mb-1 text-gray-800">Agenda de fotografia</h1>
-    <p class="text-muted small mb-0">Acompanhe os imóveis pendentes de fotos e controle os dias indisponíveis.</p>
+    <h1 class="ax-page-title">Agenda de fotografia</h1>
+    <p class="ax-page-subtitle">Acompanhe os imóveis pendentes de fotos e controle os dias indisponíveis.</p>
   </div>
 </div>
 
-<div class="row g-4">
-  <div class="col-xl-7">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
-        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-camera me-2 text-primary"></i>Pendentes de fotografia</h5>
-        <span class="badge bg-primary-subtle text-primary"><%= @pending_photo_habitations.size %></span>
+<%= ax_field_grid do %>
+  <div class="ax-span-6">
+    <div class="ax-card">
+      <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-camera me-2 text-primary"></i>Pendentes de fotografia</h5>
+        <span class="ax-badge ax-badge--blue"><%= @pending_photo_habitations.size %></span>
       </div>
-      <div class="card-body p-0">
+      <div class="ax-card__body" style="padding:0">
         <% if @pending_photo_habitations.any? %>
-          <div class="table-responsive">
-            <table class="table align-middle mb-0">
-              <thead class="table-light small text-uppercase text-muted">
+          <div class="ax-table-wrap">
+            <table class="ax-table">
+              <thead class="tw-text-sm text-uppercase tw-text-ink-muted">
                 <tr>
                   <th>Imóvel</th>
                   <th>Agendamento</th>
                   <th>Captador</th>
-                  <th class="text-end">Ações</th>
+                  <th class="tw-text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 <% @pending_photo_habitations.each do |habitation| %>
                   <tr>
                     <td>
-                      <div class="fw-semibold"><%= habitation.display_title.presence || habitation.categoria.presence || "Imóvel sem título" %></div>
-                      <div class="small text-muted">
+                      <div class="tw-font-semibold"><%= habitation.display_title.presence || habitation.categoria.presence || "Imóvel sem título" %></div>
+                      <div class="tw-text-sm tw-text-ink-muted">
                         <%= habitation.codigo %>
                         <% if habitation.endereco.present? || habitation.cidade.present? %>
                           · <%= [habitation.endereco, habitation.cidade].compact_blank.join(" - ") %>
@@ -40,15 +40,15 @@
                     </td>
                     <td>
                       <% if habitation.photo_session_requested_at.present? %>
-                        <span class="fw-semibold"><%= l(habitation.photo_session_requested_at, format: "%d/%m/%Y %H:%M") %></span>
+                        <span class="tw-font-semibold"><%= l(habitation.photo_session_requested_at, format: "%d/%m/%Y %H:%M") %></span>
                       <% else %>
-                        <span class="badge bg-warning-subtle text-warning-emphasis">Sem horário</span>
+                        <span class="ax-badge ax-badge--amber">Sem horário</span>
                       <% end %>
                     </td>
                     <td><%= habitation.admin_user&.name.presence || "Sem captador" %></td>
-                    <td class="text-end">
+                    <td class="tw-text-right">
                       <% details_path = can?(:manage, :captacoes) ? edit_admin_captacao_path(habitation, step: "fotos") : pending_property_admin_scheduling_integration_path(habitation) %>
-                      <%= link_to "Abrir", details_path, class: "btn btn-sm btn-outline-primary" %>
+                      <%= link_to "Abrir", details_path, class: "ax-btn ax-btn--ghost ax-btn--sm" %>
                     </td>
                   </tr>
                 <% end %>
@@ -56,24 +56,24 @@
             </table>
           </div>
         <% else %>
-          <div class="p-4 text-muted">Nenhum imóvel pendente de fotografia no momento.</div>
+          <div class="p-4 tw-text-ink-muted">Nenhum imóvel pendente de fotografia no momento.</div>
         <% end %>
       </div>
     </div>
   </div>
 
-  <div class="col-xl-5">
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-calendar2-check me-2 text-primary"></i>Configuração da agenda</h5>
+  <div class="ax-span-6">
+    <div class="ax-card tw-mb-4">
+      <div class="ax-card__header">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-calendar2-check me-2 text-primary"></i>Configuração da agenda</h5>
       </div>
-      <div class="card-body p-4">
+      <div class="ax-card__body">
         <% if can_manage_schedule %>
           <%= form_with url: admin_scheduling_integration_path, method: :patch, scope: :scheduling, local: true do |f| %>
-            <div class="mb-3">
-              <%= f.label :photography_schedule_url, "URL externa de agendamento", class: "form-label fw-semibold" %>
+            <div class="tw-mb-3">
+              <%= f.label :photography_schedule_url, "URL externa de agendamento", class: "ax-label tw-font-semibold" %>
               <%= f.url_field :photography_schedule_url,
-                              class: "form-control",
+                              class: "ax-control",
                               value: @photography_schedule_url,
                               placeholder: "https://calendly.com/fotografias-saluteimoveis/30min" %>
               <div class="form-text">
@@ -81,60 +81,62 @@
               </div>
             </div>
 
-            <%= f.submit "Salvar configuração", class: "btn btn-primary" %>
+            <%= f.submit "Salvar configuração", class: "ax-btn ax-btn--primary" %>
           <% end %>
         <% else %>
-          <p class="text-muted small mb-0">Você pode consultar os imóveis pendentes. A configuração da agenda fica disponível para perfis com permissão de gerenciar.</p>
+          <p class="tw-text-ink-muted tw-text-sm mb-0">Você pode consultar os imóveis pendentes. A configuração da agenda fica disponível para perfis com permissão de gerenciar.</p>
         <% end %>
       </div>
     </div>
 
-    <div class="card shadow-sm border-0">
-      <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-calendar-x me-2 text-primary"></i>Dias bloqueados</h5>
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-calendar-x me-2 text-primary"></i>Dias bloqueados</h5>
       </div>
-      <div class="card-body p-4">
+      <div class="ax-card__body">
         <% if @block_day_error.present? %>
-          <div class="alert alert-danger py-2"><%= @block_day_error %></div>
+          <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle") do %><%= @block_day_error %><% end %>
         <% end %>
 
         <% if can_manage_schedule %>
-          <%= form_with url: block_day_admin_scheduling_integration_path, scope: :photography_schedule_block, local: true, class: "row g-2 mb-4" do |f| %>
-            <div class="col-sm-5">
-              <%= f.label :date, "Data", class: "form-label fw-semibold" %>
-              <%= f.date_field :date, class: "form-control", min: Date.current %>
-            </div>
-            <div class="col-sm-7">
-              <%= f.label :reason, "Motivo", class: "form-label fw-semibold" %>
-              <%= f.text_field :reason, class: "form-control", placeholder: "Ex: feriado, evento, folga" %>
-            </div>
-            <div class="col-12">
-              <%= f.submit "Bloquear dia", class: "btn btn-outline-danger btn-sm" %>
-            </div>
+          <%= form_with url: block_day_admin_scheduling_integration_path, scope: :photography_schedule_block, local: true, class: "tw-mb-4" do |f| %>
+            <%= ax_field_grid do %>
+              <div class="ax-span-6">
+                <%= f.label :date, "Data", class: "ax-label tw-font-semibold" %>
+                <%= f.date_field :date, class: "ax-control", min: Date.current %>
+              </div>
+              <div class="ax-span-6">
+                <%= f.label :reason, "Motivo", class: "ax-label tw-font-semibold" %>
+                <%= f.text_field :reason, class: "ax-control", placeholder: "Ex: feriado, evento, folga" %>
+              </div>
+              <div class="ax-span-12">
+                <%= f.submit "Bloquear dia", class: "ax-btn ax-btn--danger ax-btn--sm" %>
+              </div>
+            <% end %>
           <% end %>
         <% end %>
 
         <% if @blocked_days.any? %>
-          <div class="list-group list-group-flush">
+          <ul style="list-style:none;margin:0;padding:0">
             <% @blocked_days.each do |block| %>
-              <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+              <li class="tw-flex tw-items-center tw-justify-between tw-gap-2 tw-py-2" style="border-bottom:1px solid #e7ebf2">
                 <div>
-                  <div class="fw-semibold"><%= l(block.date, format: "%d/%m/%Y") %></div>
-                  <div class="small text-muted"><%= block.reason.presence || "Sem motivo informado" %></div>
+                  <div class="tw-font-semibold"><%= l(block.date, format: "%d/%m/%Y") %></div>
+                  <div class="tw-text-sm tw-text-ink-muted"><%= block.reason.presence || "Sem motivo informado" %></div>
                 </div>
                 <% if can_manage_schedule %>
                   <%= button_to "Remover",
                                 unblock_day_admin_scheduling_integration_path(block),
                                 method: :delete,
-                                class: "btn btn-sm btn-outline-secondary" %>
+                                class: "ax-btn ax-btn--ghost ax-btn--sm" %>
                 <% end %>
-              </div>
+              </li>
             <% end %>
-          </div>
+          </ul>
         <% else %>
-          <p class="text-muted small mb-0">Nenhum dia bloqueado.</p>
+          <p class="tw-text-ink-muted tw-text-sm mb-0">Nenhum dia bloqueado.</p>
         <% end %>
       </div>
     </div>
   </div>
-</div>
+<% end %>

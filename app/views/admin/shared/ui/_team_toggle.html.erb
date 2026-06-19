@@ -1,0 +1,15 @@
+<%
+  # Alterna o recorte por equipe preservando os filtros atuais (remove paginação).
+  # Usa request.path + query string (robusto, independe da rota corrente).
+  target_params = request.query_parameters.merge("team" => (checked ? "0" : "1")).except("page")
+  target_href = target_params.any? ? "#{request.path}?#{target_params.to_query}" : request.path
+  chip_classes = ["ax-toggle-chip", "ax-filter-check", "ax-team-toggle", ("is-checked" if checked), local_assigns[:class_name]].compact_blank.join(" ")
+%>
+<%= link_to target_href,
+            class: chip_classes,
+            role: "switch",
+            "aria-checked": checked.to_s,
+            title: "Inclui os registros da sua equipe (subárvore de gestão)" do %>
+  <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-<%= icon %>"></i></span>
+  <span class="ax-toggle-chip__label"><%= label %></span>
+<% end %>

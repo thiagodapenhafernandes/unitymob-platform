@@ -11,215 +11,297 @@
       false
     end
   %>
-<ul class="sidebar-menu">
+<ul class="ax-nav">
+    <li class="ax-nav__section">Produto</li>
 
-    <!-- 1. Dashboard -->
+    <%# 1. Painel %>
     <% if can_access.call(:view, :dashboard) %>
-      <li class="sidebar-menu-item">
-        <%= link_to admin_root_path, class: request.path == admin_root_path ? 'active' : '' do %>
-          <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+      <li>
+        <%= link_to admin_root_path, class: "ax-nav__link #{'active' if request.path == admin_root_path}" do %>
+          <i class="bi bi-speedometer2"></i><span>Painel</span>
         <% end %>
       </li>
     <% end %>
 
-    <!-- 2. Imóveis -->
+    <%# 2. Imóveis %>
     <% if can_access.call(:view, :imoveis) %>
-      <li class="sidebar-menu-item">
-        <%= link_to admin_habitations_path(ownership: "all"), class: controller_name == 'habitations' ? 'active' : '' do %>
+      <li>
+        <%= link_to admin_habitations_path(ownership: "all"), class: "ax-nav__link #{'active' if controller_name == 'habitations'}" do %>
           <i class="bi bi-houses"></i><span>Imóveis</span>
         <% end %>
       </li>
     <% end %>
 
-    <!-- 3. Proprietários -->
-    <% if can_access.call(:view, :proprietarios) %>
-      <li class="sidebar-menu-item">
-        <%= link_to admin_proprietors_path, class: controller_name == 'proprietors' ? 'active' : '' do %>
-          <i class="bi bi-person-vcard"></i><span>Proprietários</span>
-        <% end %>
-      </li>
-    <% end %>
-
-    <!-- 4. Leads -->
+    <%# 4. Leads %>
     <% if can_access.call(:view, :leads) %>
-      <li class="sidebar-menu-item">
-        <%= link_to admin_leads_path, class: controller_name == 'leads' ? 'active' : '' do %>
+      <li>
+        <%= link_to admin_leads_path, class: "ax-nav__link #{'active' if controller_name == 'leads'}" do %>
           <i class="bi bi-person-badge"></i><span>Leads</span>
         <% end %>
       </li>
     <% end %>
 
-    <!-- 4. Distribuição de Leads -->
+    <li class="ax-nav__section">Operação</li>
+
+    <%# 4a. Comercial: Tarefas + Agenda %>
+    <% if can_access.call(:view, :comercial) %>
+      <% comercial_open = %w[tasks appointments proposals].include?(controller_name) %>
+      <li class="ax-nav__group <%= 'is-open' if comercial_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= comercial_open %>">
+        <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= comercial_open %>">
+          <i class="bi bi-briefcase"></i><span>Comercial</span>
+          <i class="bi bi-chevron-down ax-nav__chevron"></i>
+        </button>
+        <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless comercial_open %>>
+          <li><%= link_to admin_leads_path, class: "ax-nav__link #{'active' if controller_name == 'leads'}" do %><i class="bi bi-kanban"></i><span>Funil de Leads</span><% end %></li>
+          <li><%= link_to admin_tasks_path, class: "ax-nav__link #{'active' if controller_name == 'tasks'}" do %><i class="bi bi-check2-square"></i><span>Minhas Tarefas</span><% end %></li>
+          <li><%= link_to admin_appointments_path, class: "ax-nav__link #{'active' if controller_name == 'appointments'}" do %><i class="bi bi-calendar-event"></i><span>Agenda</span><% end %></li>
+        </ul>
+      </li>
+    <% end %>
+
+    <%# 4a2. Atendimento WhatsApp (inbox) %>
+    <% if can_access.call(:view, :whatsapp_inbox) %>
+      <li>
+        <%= link_to admin_whatsapp_conversations_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_inbox'}" do %>
+          <i class="bi bi-whatsapp"></i><span>Atendimento</span>
+        <% end %>
+      </li>
+    <% end %>
+
+    <%# 4c. Automação %>
+    <% if can_access.call(:manage, :automacoes) %>
+      <li>
+        <%= link_to admin_automation_rules_path, class: "ax-nav__link #{'active' if controller_name == 'automation_rules'}" do %>
+          <i class="bi bi-lightning-charge"></i><span>Automação</span>
+        <% end %>
+      </li>
+    <% end %>
+
+    <%# 4b. Distribuição de Leads %>
     <% if can_access.call(:view, :distribution_rules) || can_access.call(:manage, :distribution_rules) %>
-      <li class="sidebar-menu-item">
-        <%= link_to admin_distribution_rules_path, class: controller_name == 'distribution_rules' ? 'active' : '' do %>
+      <li>
+        <%= link_to admin_distribution_rules_path, class: "ax-nav__link #{'active' if controller_name == 'distribution_rules'}" do %>
           <i class="bi bi-diagram-3"></i><span>Distribuição de Leads</span>
         <% end %>
       </li>
     <% end %>
 
-    <!-- 5. Lojas -->
-    <% if can_access.call(:view, :lojas) || can_access.call(:manage, :lojas) %>
-      <li class="sidebar-menu-item">
-        <%= link_to admin_stores_path, class: controller_name == 'stores' ? 'active' : '' do %>
-          <i class="bi bi-shop"></i><span>Lojas</span>
-        <% end %>
-      </li>
-    <% end %>
-
-    <!-- Captações -->
+    <%# Captações %>
     <% if can_access.call(:view, :captacoes) %>
-      <li class="sidebar-menu-item">
-        <%= link_to admin_captacoes_path, class: ((controller_name == 'captacoes' && action_name != 'dashboard') || controller_name == 'captacao_goals') ? 'active' : '' do %>
+      <li>
+        <%= link_to admin_captacoes_path, class: "ax-nav__link #{'active' if controller_name == 'captacoes' && action_name != 'dashboard'}" do %>
           <i class="bi bi-journal-plus"></i><span>Captações</span>
         <% end %>
       </li>
     <% end %>
 
     <% if can_access.call(:view, :captacao_dashboard) %>
-      <li class="sidebar-menu-item">
-        <%= link_to dashboard_admin_captacoes_path, class: (controller_name == 'captacoes' && action_name == 'dashboard') ? 'active' : '' do %>
+      <li>
+        <%= link_to dashboard_admin_captacoes_path, class: "ax-nav__link #{'active' if controller_name == 'captacoes' && action_name == 'dashboard'}" do %>
           <i class="bi bi-bullseye"></i><span>Dashboard Captação</span>
         <% end %>
       </li>
     <% end %>
 
-    <!-- Campo: check-ins, pedidos manuais, settings -->
+    <%# Campo: check-ins, pedidos manuais %>
     <% if can_access.call(:view, :field_checkins) %>
-      <li class="sidebar-menu-item">
-        <%= link_to admin_field_check_ins_path, class: (controller_path == 'admin/field/check_ins') ? 'active' : '' do %>
+      <li>
+        <%= link_to admin_field_check_ins_path, class: "ax-nav__link #{'active' if controller_path == 'admin/field/check_ins'}" do %>
           <i class="bi bi-geo-fill"></i><span>Check-ins em Campo</span>
         <% end %>
       </li>
     <% end %>
 
     <% if can_access.call(:view, :field_manual) %>
-      <li class="sidebar-menu-item">
-        <%= link_to admin_field_manual_checkin_requests_path, class: (controller_path == 'admin/field/manual_checkin_requests') ? 'active' : '' do %>
+      <li>
+        <%= link_to admin_field_manual_checkin_requests_path, class: "ax-nav__link #{'active' if controller_path == 'admin/field/manual_checkin_requests'}" do %>
           <i class="bi bi-hand-index-thumb-fill"></i><span>Pedidos manuais</span>
         <% end %>
       </li>
     <% end %>
 
-    <!-- Marketing -->
-    <% if can_access.call(:manage, :marketing) %>
-      <% marketing_controllers = ['landing_pages', 'marketing_campaigns', 'marketing_opportunities', 'marketing_properties', 'marketing_alerts', 'marketing_tools', 'seo_dashboard', 'seo_settings', 'seo_redirects', 'banners', 'home_sections', 'contact_settings', 'layout_settings', 'footer_settings', 'home_settings'] %>
-      <li class="sidebar-menu-item">
-        <a href="#submenu-marketing" data-bs-toggle="collapse" class="d-flex justify-content-between align-items-center <%= marketing_controllers.include?(controller_name) ? '' : 'collapsed' %>">
-          <span><i class="bi bi-megaphone"></i><span class="ms-2">Marketing e Conteúdo</span></span>
-          <i class="bi bi-chevron-down small"></i>
-        </a>
-        <div class="collapse <%= marketing_controllers.include?(controller_name) ? 'show' : '' %>" id="submenu-marketing">
-          <ul class="sidebar-menu ps-3 mt-1 bg-light rounded">
-            <li class="px-3 pt-2 pb-1 small text-uppercase text-muted fw-bold">Estratégia</li>
-            <li class="sidebar-menu-item"><%= link_to admin_seo_dashboard_path, class: controller_name == 'seo_dashboard' ? 'active' : '' do %><i class="bi bi-graph-up-arrow"></i><span>Dashboard SEO</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to admin_marketing_opportunities_path, class: controller_name == 'marketing_opportunities' ? 'active' : '' do %><i class="bi bi-lightbulb"></i><span>Oportunidades</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to admin_marketing_campaigns_path, class: controller_name == 'marketing_campaigns' ? 'active' : '' do %><i class="bi bi-bullseye"></i><span>Campanhas</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to admin_marketing_tools_path, class: controller_name == 'marketing_tools' ? 'active' : '' do %><i class="bi bi-link-45deg"></i><span>UTM Builder</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to admin_marketing_properties_path, class: controller_name == 'marketing_properties' ? 'active' : '' do %><i class="bi bi-house-heart"></i><span>Imóveis com Potencial</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to admin_marketing_alerts_path, class: controller_name == 'marketing_alerts' ? 'active' : '' do %><i class="bi bi-exclamation-triangle"></i><span>Alertas</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to admin_seo_settings_path, class: controller_name == 'seo_settings' ? 'active' : '' do %><i class="bi bi-search"></i><span>Páginas SEO</span><% end %></li>
-            <li class="px-3 pt-2 pb-1 small text-uppercase text-muted fw-bold">Conteúdo</li>
-            <li class="sidebar-menu-item"><%= link_to admin_landing_pages_path, class: controller_name == 'landing_pages' ? 'active' : '' do %><i class="bi bi-file-earmark-post"></i><span>Landing Pages</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to admin_banners_path, class: controller_name == 'banners' ? 'active' : '' do %><i class="bi bi-image"></i><span>Banners</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to admin_home_sections_path, class: controller_name == 'home_sections' ? 'active' : '' do %><i class="bi bi-layout-text-sidebar"></i><span>Seções da Home</span><% end %></li>
-            <li class="px-3 pt-2 pb-1 small text-uppercase text-muted fw-bold">Site</li>
-            <li class="sidebar-menu-item"><%= link_to edit_admin_contact_setting_path, class: controller_name == 'contact_settings' ? 'active' : '' do %><i class="bi bi-telephone"></i><span>Contato</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to edit_admin_layout_setting_path, class: controller_name == 'layout_settings' ? 'active' : '' do %><i class="bi bi-palette"></i><span>Aparência</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to edit_admin_footer_setting_path, class: controller_name == 'footer_settings' ? 'active' : '' do %><i class="bi bi-layout-sidebar"></i><span>Rodapé</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to edit_admin_home_setting_path, class: controller_name == 'home_settings' ? 'active' : '' do %><i class="bi bi-house-door"></i><span>Home</span><% end %></li>
-            <li class="sidebar-menu-item"><%= link_to admin_seo_redirects_path, class: controller_name == 'seo_redirects' ? 'active' : '' do %><i class="bi bi-signpost-split"></i><span>Redirecionamentos SEO</span><% end %></li>
-          </ul>
-        </div>
+    <li class="ax-nav__section">Gestão</li>
+
+    <%# Proprietários %>
+    <% if can_access.call(:view, :proprietarios) %>
+      <li>
+        <%= link_to admin_proprietors_path, class: "ax-nav__link #{'active' if controller_name == 'proprietors'}" do %>
+          <i class="bi bi-person-vcard"></i><span>Proprietários</span>
+        <% end %>
       </li>
     <% end %>
 
-    <!-- Integrações -->
+    <%# Lojas %>
+    <% if can_access.call(:view, :lojas) || can_access.call(:manage, :lojas) %>
+      <li>
+        <%= link_to admin_stores_path, class: "ax-nav__link #{'active' if controller_name == 'stores'}" do %>
+          <i class="bi bi-shop"></i><span>Lojas</span>
+        <% end %>
+      </li>
+    <% end %>
+
+    <%# Usuários %>
+    <% if can_access.call(:view, :corretores) %>
+      <li>
+        <%= link_to admin_admin_users_path, class: "ax-nav__link #{'active' if controller_name == 'admin_users'}" do %>
+          <i class="bi bi-people"></i><span>Usuários</span>
+        <% end %>
+      </li>
+    <% end %>
+
+    <%# Metas de captação %>
+    <% if can_access.call(:view, :metas_captacao) %>
+      <li>
+        <%= link_to admin_captacao_goals_path, class: "ax-nav__link #{'active' if controller_name == 'captacao_goals'}" do %>
+          <i class="bi bi-bullseye"></i><span>Metas de Captação</span>
+        <% end %>
+      </li>
+    <% end %>
+
+    <li class="ax-nav__section">Crescimento</li>
+
+    <%# Marketing e Conteúdo (submenu) %>
+    <% if can_access.call(:manage, :marketing) %>
+      <% marketing_controllers = ['landing_pages', 'marketing_campaigns', 'marketing_opportunities', 'marketing_properties', 'marketing_alerts', 'marketing_tools', 'seo_dashboard', 'seo_settings', 'seo_redirects', 'banners', 'home_sections', 'contact_settings', 'footer_settings', 'home_settings'] %>
+      <% mkt_open = marketing_controllers.include?(controller_name) %>
+      <li class="ax-nav__group <%= 'is-open' if mkt_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= mkt_open %>">
+        <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= mkt_open %>">
+          <i class="bi bi-megaphone"></i><span>Marketing e Conteúdo</span>
+          <i class="bi bi-chevron-down ax-nav__chevron"></i>
+        </button>
+        <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless mkt_open %>>
+          <li class="ax-nav__caption">Estratégia</li>
+          <li><%= link_to admin_seo_dashboard_path, class: "ax-nav__link #{'active' if controller_name == 'seo_dashboard'}" do %><i class="bi bi-graph-up-arrow"></i><span>Dashboard SEO</span><% end %></li>
+          <li><%= link_to admin_marketing_opportunities_path, class: "ax-nav__link #{'active' if controller_name == 'marketing_opportunities'}" do %><i class="bi bi-lightbulb"></i><span>Oportunidades</span><% end %></li>
+          <li><%= link_to admin_marketing_campaigns_path, class: "ax-nav__link #{'active' if controller_name == 'marketing_campaigns'}" do %><i class="bi bi-bullseye"></i><span>Campanhas</span><% end %></li>
+          <li><%= link_to admin_marketing_tools_path, class: "ax-nav__link #{'active' if controller_name == 'marketing_tools'}" do %><i class="bi bi-link-45deg"></i><span>UTM Builder</span><% end %></li>
+          <li><%= link_to admin_marketing_properties_path, class: "ax-nav__link #{'active' if controller_name == 'marketing_properties'}" do %><i class="bi bi-house-heart"></i><span>Imóveis com Potencial</span><% end %></li>
+          <li><%= link_to admin_marketing_alerts_path, class: "ax-nav__link #{'active' if controller_name == 'marketing_alerts'}" do %><i class="bi bi-exclamation-triangle"></i><span>Alertas</span><% end %></li>
+          <li><%= link_to admin_seo_settings_path, class: "ax-nav__link #{'active' if controller_name == 'seo_settings'}" do %><i class="bi bi-search"></i><span>Páginas SEO</span><% end %></li>
+          <li class="ax-nav__caption">Conteúdo</li>
+          <li><%= link_to admin_landing_pages_path, class: "ax-nav__link #{'active' if controller_name == 'landing_pages'}" do %><i class="bi bi-file-earmark-post"></i><span>Landing Pages</span><% end %></li>
+          <li><%= link_to admin_banners_path, class: "ax-nav__link #{'active' if controller_name == 'banners'}" do %><i class="bi bi-image"></i><span>Banners</span><% end %></li>
+          <li><%= link_to admin_home_sections_path, class: "ax-nav__link #{'active' if controller_name == 'home_sections'}" do %><i class="bi bi-layout-text-sidebar"></i><span>Seções da Home</span><% end %></li>
+          <li class="ax-nav__caption">Site</li>
+          <li><%= link_to edit_admin_contact_setting_path, class: "ax-nav__link #{'active' if controller_name == 'contact_settings'}" do %><i class="bi bi-telephone"></i><span>Contato</span><% end %></li>
+          <li><%= link_to edit_admin_footer_setting_path, class: "ax-nav__link #{'active' if controller_name == 'footer_settings'}" do %><i class="bi bi-layout-sidebar"></i><span>Rodapé</span><% end %></li>
+          <li><%= link_to edit_admin_home_setting_path, class: "ax-nav__link #{'active' if controller_name == 'home_settings'}" do %><i class="bi bi-house-door"></i><span>Home</span><% end %></li>
+          <li><%= link_to admin_seo_redirects_path, class: "ax-nav__link #{'active' if controller_name == 'seo_redirects'}" do %><i class="bi bi-signpost-split"></i><span>Redirecionamentos SEO</span><% end %></li>
+        </ul>
+      </li>
+    <% end %>
+
+    <li class="ax-nav__section">Sistema</li>
+
+    <%# Configurações internas %>
+    <%
+      settings_controllers = ['layout_settings', 'attribute_options', 'property_settings', 'field_settings']
+      settings_open = settings_controllers.include?(controller_name)
+      settings_visible = can_access.call(:manage, :marketing) ||
+                         can_access.call(:view, :catalogos) ||
+                         current_admin_user&.admin? ||
+                         can_access.call(:manage, :field_settings)
+    %>
+    <% if settings_visible %>
+      <li class="ax-nav__group <%= 'is-open' if settings_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= settings_open %>">
+        <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= settings_open %>">
+          <i class="bi bi-sliders"></i><span>Configurações</span>
+          <i class="bi bi-chevron-down ax-nav__chevron"></i>
+        </button>
+        <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless settings_open %>>
+          <% if can_access.call(:manage, :marketing) %>
+            <li><%= link_to edit_admin_layout_setting_path, class: "ax-nav__link #{'active' if controller_name == 'layout_settings'}" do %><i class="bi bi-palette"></i><span>Aparência do Admin</span><% end %></li>
+          <% end %>
+          <% if can_access.call(:view, :catalogos) %>
+            <li><%= link_to admin_attribute_options_path, class: "ax-nav__link #{'active' if controller_name == 'attribute_options'}" do %><i class="bi bi-tags"></i><span>Catálogos Dinâmicos</span><% end %></li>
+          <% end %>
+          <% if current_admin_user&.admin? %>
+            <li><%= link_to edit_admin_property_setting_path, class: "ax-nav__link #{'active' if controller_name == 'property_settings' && action_name == 'edit'}" do %><i class="bi bi-house-gear"></i><span>Config Imóveis</span><% end %></li>
+            <li><%= link_to review_workflow_admin_property_setting_path, class: "ax-nav__link #{'active' if controller_name == 'property_settings' && action_name == 'review_workflow'}" do %><i class="bi bi-diagram-3"></i><span>Fluxo de revisão</span><% end %></li>
+          <% end %>
+          <% if can_access.call(:manage, :field_settings) %>
+            <li class="ax-nav__caption">Campo</li>
+            <li><%= link_to edit_admin_field_settings_path, class: "ax-nav__link #{'active' if controller_name == 'field_settings'}" do %><i class="bi bi-toggles2"></i><span>Configurações de Campo</span><% end %></li>
+          <% end %>
+        </ul>
+      </li>
+    <% end %>
+
+    <%# Integrações técnicas %>
     <% schedule_context = can_access.call(:view, :agenda_fotografia) || can_access.call(:manage, :agenda_fotografia) || can_access.call(:manage, :integracoes) %>
     <% if can_access.call(:manage, :integracoes) || schedule_context %>
-      <li class="sidebar-menu-item">
-        <a href="#submenu-integracoes" data-bs-toggle="collapse" class="d-flex justify-content-between align-items-center <%= (['meta_integrations', 'whatsapp_integrations', 'webhook_settings', 'dwv_integrations', 'loft_integrations', 'portal_integrations', 'scheduling_integrations', 'image_migration_status', 'ai_integrations', 'google_integrations', 'tracking_integrations'].include?(controller_name) || vista_soft_context) ? '' : 'collapsed' %>">
-          <span><i class="bi bi-plug"></i><span class="ms-2">Integrações</span></span>
-          <i class="bi bi-chevron-down small"></i>
-        </a>
-        <div class="collapse <%= (['meta_integrations', 'whatsapp_integrations', 'webhook_settings', 'dwv_integrations', 'loft_integrations', 'portal_integrations', 'scheduling_integrations', 'image_migration_status', 'ai_integrations', 'google_integrations', 'tracking_integrations'].include?(controller_name) || vista_soft_context) ? 'show' : '' %>" id="submenu-integracoes">
-          <ul class="sidebar-menu ps-3 mt-1 bg-light rounded">
-            <% if can_access.call(:manage, :integracoes) %>
-              <li class="sidebar-menu-item"><%= link_to admin_portal_integrations_path, class: controller_name == 'portal_integrations' ? 'active' : '' do %><i class="bi bi-building"></i><span>Portais</span><% end %></li>
-              <li class="sidebar-menu-item"><%= link_to admin_loft_integrations_path, class: controller_name == 'loft_integrations' ? 'active' : '' do %><i class="bi bi-hdd-rack"></i><span>Loft Soft</span><% end %></li>
-              <li class="sidebar-menu-item"><%= link_to admin_dwv_integrations_path, class: controller_name == 'dwv_integrations' ? 'active' : '' do %><i class="bi bi-hdd-network"></i><span>DWV</span><% end %></li>
-              <li class="sidebar-menu-item"><%= link_to admin_whatsapp_integration_path, class: controller_name == 'whatsapp_integrations' ? 'active' : '' do %><i class="bi bi-whatsapp"></i><span>WhatsApp</span><% end %></li>
-              <li class="sidebar-menu-item"><%= link_to admin_meta_integrations_path, class: controller_name == 'meta_integrations' ? 'active' : '' do %><i class="bi bi-meta"></i><span>Meta Leads</span><% end %></li>
-              <li class="sidebar-menu-item"><%= link_to admin_google_integration_path, class: controller_name == 'google_integrations' ? 'active' : '' do %><i class="bi bi-google"></i><span>Google</span><% end %></li>
-              <li class="sidebar-menu-item"><%= link_to admin_tracking_integration_path, class: controller_name == 'tracking_integrations' ? 'active' : '' do %><i class="bi bi-bullseye"></i><span>Trackeamento</span><% end %></li>
-            <% end %>
-            <% if schedule_context %>
-              <li class="sidebar-menu-item"><%= link_to admin_scheduling_integration_path, class: controller_name == 'scheduling_integrations' ? 'active' : '' do %><i class="bi bi-calendar2-check"></i><span>Agendamento</span><% end %></li>
-            <% end %>
-            <% if can_access.call(:manage, :integracoes) %>
-              <li class="sidebar-menu-item"><%= link_to admin_webhook_settings_path, class: controller_name == 'webhook_settings' ? 'active' : '' do %><i class="bi bi-broadcast"></i><span>Webhooks</span><% end %></li>
-              <li class="sidebar-menu-item"><%= link_to admin_ai_integration_path, class: controller_name == 'ai_integrations' ? 'active' : '' do %><i class="bi bi-stars"></i><span>IA</span><% end %></li>
-              <li class="sidebar-menu-item"><%= link_to admin_habitations_path(sort: "last_sync_at", direction: "desc"), class: vista_soft_context ? 'active' : '' do %><i class="bi bi-arrow-repeat"></i><span>Vista Soft</span><% end %></li>
-              <li class="sidebar-menu-item"><%= link_to admin_image_migration_status_path, class: controller_name == 'image_migration_status' ? 'active' : '' do %><i class="bi bi-images"></i><span>Migração de Imagens</span><% end %></li>
-            <% end %>
-          </ul>
-        </div>
+      <% integ_open = ['meta_integrations', 'whatsapp_integrations', 'webhook_settings', 'dwv_integrations', 'loft_integrations', 'portal_integrations', 'scheduling_integrations', 'image_migration_status', 'ai_integrations', 'google_integrations', 'tracking_integrations'].include?(controller_name) || vista_soft_context %>
+      <li class="ax-nav__group <%= 'is-open' if integ_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= integ_open %>">
+        <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= integ_open %>">
+          <i class="bi bi-plug"></i><span>Integrações</span>
+          <i class="bi bi-chevron-down ax-nav__chevron"></i>
+        </button>
+        <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless integ_open %>>
+          <% if can_access.call(:manage, :integracoes) %>
+            <li><%= link_to admin_portal_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'portal_integrations'}" do %><i class="bi bi-building"></i><span>Portais</span><% end %></li>
+            <li><%= link_to admin_loft_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'loft_integrations'}" do %><i class="bi bi-hdd-rack"></i><span>Loft Soft</span><% end %></li>
+            <li><%= link_to admin_dwv_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'dwv_integrations'}" do %><i class="bi bi-hdd-network"></i><span>DWV</span><% end %></li>
+            <li><%= link_to admin_whatsapp_integration_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_integrations'}" do %><i class="bi bi-whatsapp"></i><span>WhatsApp</span><% end %></li>
+            <li><%= link_to admin_meta_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'meta_integrations'}" do %><i class="bi bi-meta"></i><span>Meta Leads</span><% end %></li>
+            <li><%= link_to admin_google_integration_path, class: "ax-nav__link #{'active' if controller_name == 'google_integrations'}" do %><i class="bi bi-google"></i><span>Google</span><% end %></li>
+            <li><%= link_to admin_tracking_integration_path, class: "ax-nav__link #{'active' if controller_name == 'tracking_integrations'}" do %><i class="bi bi-bullseye"></i><span>Trackeamento</span><% end %></li>
+          <% end %>
+          <% if schedule_context %>
+            <li><%= link_to admin_scheduling_integration_path, class: "ax-nav__link #{'active' if controller_name == 'scheduling_integrations'}" do %><i class="bi bi-calendar2-check"></i><span>Agendamento</span><% end %></li>
+          <% end %>
+          <% if can_access.call(:manage, :integracoes) %>
+            <li><%= link_to admin_webhook_settings_path, class: "ax-nav__link #{'active' if controller_name == 'webhook_settings'}" do %><i class="bi bi-broadcast"></i><span>Webhooks</span><% end %></li>
+            <li><%= link_to admin_ai_integration_path, class: "ax-nav__link #{'active' if controller_name == 'ai_integrations'}" do %><i class="bi bi-stars"></i><span>IA</span><% end %></li>
+            <li><%= link_to admin_habitations_path(sort: "last_sync_at", direction: "desc"), class: "ax-nav__link #{'active' if vista_soft_context}" do %><i class="bi bi-arrow-repeat"></i><span>Vista Soft</span><% end %></li>
+            <li><%= link_to admin_image_migration_status_path, class: "ax-nav__link #{'active' if controller_name == 'image_migration_status'}" do %><i class="bi bi-images"></i><span>Migração de Imagens</span><% end %></li>
+          <% end %>
+        </ul>
       </li>
     <% end %>
 
-    <!-- Administração -->
+    <%# Administração (submenu) %>
     <%
-      admin_controllers = ['admin_users', 'profiles', 'captacao_goals', 'attribute_options', 'property_settings', 'access_security', 'field_settings', 'access_audit_logs', 'data_export_audit_logs']
+      admin_controllers = ['profiles', 'access_security', 'access_audit_logs', 'data_export_audit_logs']
       admin_context = admin_controllers.include?(controller_name) || controller_path == 'admin/field/audit_logs'
       audit_menu_visible = can_access.call(:view, :field_audit) || can_access.call(:view, :access_audit) || can_access.call(:view, :data_export_audit)
-      security_menu_visible = can_access.call(:manage, :access_security) || can_access.call(:manage, :field_settings)
+      security_menu_visible = can_access.call(:manage, :access_security)
     %>
-    <% if can_access.call(:view, :corretores) || can_access.call(:manage, :perfis) || can_access.call(:view, :metas_captacao) || can_access.call(:view, :catalogos) || audit_menu_visible || security_menu_visible %>
-      <li class="sidebar-menu-item">
-        <a href="#submenu-admin" data-bs-toggle="collapse" class="d-flex justify-content-between align-items-center <%= admin_context ? '' : 'collapsed' %>">
-          <span><i class="bi bi-shield-lock-fill"></i><span class="ms-2">Administração</span></span>
-          <i class="bi bi-chevron-down small"></i>
-        </a>
-        <div class="collapse <%= admin_context ? 'show' : '' %>" id="submenu-admin">
-          <ul class="sidebar-menu ps-3 mt-1 bg-light rounded">
-            <% if can_access.call(:view, :corretores) %>
-              <li class="sidebar-menu-item"><%= link_to admin_admin_users_path, class: controller_name == 'admin_users' ? 'active' : '' do %><i class="bi bi-people"></i><span>Corretores</span><% end %></li>
-            <% end %>
-            <% if can_access.call(:manage, :perfis) %>
-              <li class="sidebar-menu-item"><%= link_to admin_profiles_path, class: controller_name == 'profiles' ? 'active' : '' do %><i class="bi bi-shield-lock"></i><span>Perfis</span><% end %></li>
-            <% end %>
-            <% if can_access.call(:view, :metas_captacao) %>
-              <li class="sidebar-menu-item"><%= link_to admin_captacao_goals_path, class: controller_name == 'captacao_goals' ? 'active' : '' do %><i class="bi bi-bullseye"></i><span>Metas de Captação</span><% end %></li>
-            <% end %>
-            <% if can_access.call(:view, :catalogos) %>
-              <li class="sidebar-menu-item"><%= link_to admin_attribute_options_path, class: controller_name == 'attribute_options' ? 'active' : '' do %><i class="bi bi-tags"></i><span>Catálogos Dinâmicos</span><% end %></li>
-            <% end %>
-            <% if current_admin_user&.admin? %>
-              <li class="sidebar-menu-item"><%= link_to edit_admin_property_setting_path, class: controller_name == 'property_settings' ? 'active' : '' do %><i class="bi bi-house-gear"></i><span>Config Imóveis</span><% end %></li>
-            <% end %>
-            <% if security_menu_visible %>
-              <li class="px-3 pt-2 pb-1 small text-uppercase text-muted fw-bold">Segurança</li>
-            <% end %>
-            <% if can_access.call(:manage, :access_security) %>
-              <li class="sidebar-menu-item"><%= link_to admin_access_security_path, class: controller_name == 'access_security' ? 'active' : '' do %><i class="bi bi-fingerprint"></i><span>Segurança de Acesso</span><% end %></li>
-            <% end %>
-            <% if can_access.call(:manage, :field_settings) %>
-              <li class="sidebar-menu-item"><%= link_to edit_admin_field_settings_path, class: controller_name == 'field_settings' ? 'active' : '' do %><i class="bi bi-toggles2"></i><span>Configurações de Campo</span><% end %></li>
-            <% end %>
-            <% if audit_menu_visible %>
-              <li class="px-3 pt-2 pb-1 small text-uppercase text-muted fw-bold">Auditorias</li>
-            <% end %>
-            <% if can_access.call(:view, :field_audit) %>
-              <li class="sidebar-menu-item"><%= link_to admin_field_audit_logs_path, class: controller_path == 'admin/field/audit_logs' ? 'active' : '' do %><i class="bi bi-shield-lock-fill"></i><span>Auditoria de Campo</span><% end %></li>
-            <% end %>
-            <% if can_access.call(:view, :access_audit) %>
-              <li class="sidebar-menu-item"><%= link_to admin_access_audit_logs_path, class: controller_name == 'access_audit_logs' ? 'active' : '' do %><i class="bi bi-person-lock"></i><span>Auditoria de Acessos</span><% end %></li>
-            <% end %>
-            <% if can_access.call(:view, :data_export_audit) %>
-              <li class="sidebar-menu-item"><%= link_to admin_data_export_audit_logs_path, class: controller_name == 'data_export_audit_logs' ? 'active' : '' do %><i class="bi bi-file-earmark-arrow-down"></i><span>Auditoria de Exportações</span><% end %></li>
-            <% end %>
-          </ul>
-        </div>
+    <% if current_admin_user&.admin? || security_menu_visible || audit_menu_visible %>
+      <li class="ax-nav__group <%= 'is-open' if admin_context %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= admin_context %>">
+        <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= admin_context %>">
+          <i class="bi bi-shield-lock-fill"></i><span>Administração</span>
+          <i class="bi bi-chevron-down ax-nav__chevron"></i>
+        </button>
+        <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless admin_context %>>
+          <% if current_admin_user&.admin? %>
+            <li><%= link_to admin_profiles_path, class: "ax-nav__link #{'active' if controller_name == 'profiles'}" do %><i class="bi bi-shield-lock"></i><span>Perfis</span><% end %></li>
+          <% end %>
+          <% if security_menu_visible %>
+            <li class="ax-nav__caption">Segurança</li>
+            <li><%= link_to admin_access_security_path, class: "ax-nav__link #{'active' if controller_name == 'access_security'}" do %><i class="bi bi-fingerprint"></i><span>Segurança de Acesso</span><% end %></li>
+          <% end %>
+          <% if audit_menu_visible %>
+            <li class="ax-nav__caption">Auditorias</li>
+          <% end %>
+          <% if can_access.call(:view, :field_audit) %>
+            <li><%= link_to admin_field_audit_logs_path, class: "ax-nav__link #{'active' if controller_path == 'admin/field/audit_logs'}" do %><i class="bi bi-shield-lock-fill"></i><span>Auditoria de Campo</span><% end %></li>
+          <% end %>
+          <% if can_access.call(:view, :access_audit) %>
+            <li><%= link_to admin_access_audit_logs_path, class: "ax-nav__link #{'active' if controller_name == 'access_audit_logs'}" do %><i class="bi bi-person-lock"></i><span>Auditoria de Acessos</span><% end %></li>
+          <% end %>
+          <% if can_access.call(:view, :data_export_audit) %>
+            <li><%= link_to admin_data_export_audit_logs_path, class: "ax-nav__link #{'active' if controller_name == 'data_export_audit_logs'}" do %><i class="bi bi-file-earmark-arrow-down"></i><span>Auditoria de Exportações</span><% end %></li>
+          <% end %>
+        </ul>
+      </li>
+    <% end %>
+
+    <%# Admin do Sistema — acima da conta, visível só para super admins. %>
+    <% if current_admin_user&.system_admin? %>
+      <li class="ax-nav__item">
+        <%= link_to admin_system_path, class: "ax-nav__link #{'active' if controller_name == 'system'}" do %>
+          <i class="bi bi-hdd-stack"></i><span>Painel do Sistema</span>
+        <% end %>
       </li>
     <% end %>
 

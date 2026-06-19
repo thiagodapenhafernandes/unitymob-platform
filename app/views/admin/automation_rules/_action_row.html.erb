@@ -1,0 +1,52 @@
+<% action = (local_assigns[:action] || {}).with_indifferent_access %>
+<div class="ax-card" data-automation-builder-target="row" style="margin-bottom:8px;background:#f7f8fa">
+  <div class="ax-card__body tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+    <i class="bi bi-arrow-return-right tw-text-ink-faint"></i>
+    <select class="ax-select ab-type" data-action="change->automation-builder#changeType" style="max-width:200px">
+      <% AutomationRule::ACTION_TYPES.each do |k, v| %>
+        <option value="<%= k %>" <%= 'selected' if action[:type].to_s == k %>><%= v %></option>
+      <% end %>
+    </select>
+
+    <div data-ab-wrap data-ab-for="create_task" class="tw-flex tw-gap-2" style="flex:1;min-width:240px">
+      <input type="text" class="ax-input" data-ab-field="title" data-ab-for="create_task" placeholder="Título da tarefa" value="<%= action[:title] %>">
+      <input type="number" class="ax-input" data-ab-field="due_in_hours" data-ab-for="create_task" placeholder="em h" style="max-width:90px" value="<%= action[:due_in_hours] %>">
+    </div>
+
+    <div data-ab-wrap data-ab-for="send_whatsapp" style="flex:1;min-width:240px">
+      <input type="text" class="ax-input" data-ab-field="message" data-ab-for="send_whatsapp" placeholder="Mensagem (use {{nome}})" value="<%= action[:message] %>">
+    </div>
+
+    <div data-ab-wrap data-ab-for="send_whatsapp_template" style="flex:1;min-width:200px">
+      <select class="ax-select" data-ab-field="template" data-ab-for="send_whatsapp_template">
+        <option value="">Selecione um modelo</option>
+        <% Array(@templates).each do |t| %><option value="<%= t.name %>" <%= 'selected' if action[:template].to_s == t.name %>><%= t.name %></option><% end %>
+      </select>
+    </div>
+
+    <div data-ab-wrap data-ab-for="move_stage" style="flex:1;min-width:200px">
+      <select class="ax-select" data-ab-field="to" data-ab-for="move_stage">
+        <% Array(@status_options).each do |s| %><option value="<%= s %>" <%= 'selected' if action[:to].to_s == s %>><%= s %></option><% end %>
+      </select>
+    </div>
+
+    <div data-ab-wrap data-ab-for="assign_agent" style="flex:1;min-width:200px">
+      <select class="ax-select" data-ab-field="admin_user_id" data-ab-for="assign_agent">
+        <% Array(@broker_options).each do |name, id| %><option value="<%= id %>" <%= 'selected' if action[:admin_user_id].to_s == id.to_s %>><%= name %></option><% end %>
+      </select>
+    </div>
+
+    <div data-ab-wrap data-ab-for="add_note" style="flex:1;min-width:240px">
+      <input type="text" class="ax-input" data-ab-field="body" data-ab-for="add_note" placeholder="Nota interna" value="<%= action[:body] %>">
+    </div>
+
+    <div data-ab-wrap data-ab-for="wait" style="min-width:150px">
+      <div class="tw-flex tw-items-center tw-gap-1">
+        <input type="number" class="ax-input" data-ab-field="days" data-ab-for="wait" placeholder="dias" style="max-width:80px" value="<%= action[:days] %>">
+        <span class="ax-page-subtitle">dia(s)</span>
+      </div>
+    </div>
+
+    <button type="button" class="ax-ico-btn" data-action="automation-builder#removeRow" title="Remover ação"><i class="bi bi-x-lg"></i></button>
+  </div>
+</div>

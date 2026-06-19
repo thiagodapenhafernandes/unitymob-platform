@@ -1,103 +1,129 @@
-<%= form_with model: [:admin, profile], local: true do |f| %>
-  <% if profile.errors.any? %>
-    <div class="alert alert-danger">
-      <% profile.errors.full_messages.each do |msg| %><div><%= msg %></div><% end %>
-    </div>
-  <% end %>
+<%= form_with model: [:admin, profile], local: true, html: { class: "prof-form" } do |f| %>
+  <%= ax_error_summary(profile) %>
 
-  <div class="card shadow-sm border-0 mb-3">
-    <div class="card-body">
-      <div class="row g-3">
-        <div class="col-md-8">
-          <%= f.label :name, "Nome do perfil", class: "form-label fw-semibold" %>
-          <%= f.text_field :name, class: "form-control", placeholder: "Ex: Corretor, Gerente, Diretor, Administrativo" %>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">Status</label>
-          <div class="form-check form-switch fs-5 mt-1">
-            <%= f.check_box :active, class: "form-check-input" %>
-            <%= f.label :active, "Perfil ativo", class: "form-check-label" %>
+  <div class="prof-grid">
+    <div class="prof-main">
+      <%= ax_operational_panel(eyebrow: "Permissões", title: "Permissões por recurso") do %>
+        <div class="prof-body">
+          <p class="prof-hint">Marque o que este perfil pode fazer. O menu lateral esconde automaticamente o que não for permitido.</p>
+
+          <% all_actions = %w[view manage review publish sync] %>
+          <div class="prof-matrix-wrap">
+            <table class="ax-table prof-matrix">
+              <thead>
+                <tr>
+                  <th style="min-width:230px">Recurso</th>
+                  <% all_actions.each do |action| %>
+                    <th class="ax-num" style="min-width:72px"><%= Profile::ACTION_LABELS[action] || action.humanize %></th>
+                  <% end %>
+                  <th style="min-width:170px">Escopo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% Profile::RESOURCES.each do |resource| %>
+                  <% existing = (profile.permissions || {})[resource[:key]] || {} %>
+                  <tr>
+                    <td>
+                      <div class="prof-res">
+                        <span class="prof-res__icon"><i class="bi <%= resource[:icon] %>"></i></span>
+                        <div class="prof-res__main">
+                          <strong><%= resource[:label] %></strong>
+                          <span><%= resource[:description] %></span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <% all_actions.each do |action| %>
+                      <td class="ax-num">
+                        <% if resource[:actions].include?(action) %>
+                          <label class="ax-switch ax-switch--compact" title="<%= Profile::ACTION_LABELS[action] || action.humanize %>">
+                            <%= check_box_tag "profile[permissions][#{resource[:key]}][#{action}]",
+                                              "1",
+                                              existing[action] == true,
+                                              class: "ax-switch__input",
+                                              aria: { label: "#{resource[:label]}: #{Profile::ACTION_LABELS[action] || action.humanize}" } %>
+                            <span class="ax-switch__track"></span>
+                          </label>
+                        <% else %>
+                          <span class="prof-dash">—</span>
+                        <% end %>
+                      </td>
+                    <% end %>
+
+                    <td>
+                      <% if resource[:scopeable] %>
+                        <%= select_tag "profile[permissions][#{resource[:key]}][scope]",
+                                       options_for_select([["Apenas os próprios", "own"], ["Equipe (subárvore)", "team"], ["Todos", "all"]], existing["scope"] || "own"),
+                                       class: "ax-control ax-control--sm" %>
+                      <% else %>
+                        <%= ax_badge("Global", tone: :gray) %>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      <% end %>
+    </div>
 
-      <hr>
+    <aside class="prof-side">
+      <%= ax_operational_panel(eyebrow: "Identidade", title: "Dados do perfil") do %>
+        <div class="prof-body">
+          <div class="prof-field">
+            <%= ax_field_label(f, :name, text: "Nome do perfil", tooltip: "Ex: Corretor, Gerente, Administrativo") %>
+            <%= f.text_field :name, class: "ax-control", placeholder: "Nome do perfil" %>
+          </div>
 
-      <div class="alert alert-warning mb-0">
-        <div class="form-check form-switch fs-5 mb-0">
-          <%= check_box_tag "profile[permissions][admin]", "1", (profile.permissions || {})["admin"] == true, class: "form-check-input", id: "profile_admin_toggle" %>
-          <%= label_tag "profile_admin_toggle", class: "form-check-label fw-bold" do %>
-            <i class="bi bi-shield-fill-check text-warning me-1"></i>
-            Acesso total (Super-administrador)
-          <% end %>
+          <div class="prof-field">
+            <span class="prof-field__label">Status</span>
+            <%= ax_switch_field(label: "Perfil ativo", form: f, method: :active) %>
+            <p class="prof-hint">Perfis inativos deixam de ser usados em novos acessos.</p>
+          </div>
         </div>
-        <div class="form-text">
-          Quando ativado, este perfil tem acesso irrestrito a todos os recursos,
-          ignorando as permissões granulares abaixo.
+      <% end %>
+
+      <div class="prof-fullaccess">
+        <i class="bi bi-shield-fill-check prof-fullaccess__icon"></i>
+        <div>
+          <%= ax_switch_field(label: tag.strong("Acesso total"), name: "profile[permissions][admin]", value: "1", checked: (profile.permissions || {})["admin"] == true, id: "profile_admin_toggle", class_name: "prof-fullaccess__toggle") %>
+          <p>Quando ativado, este perfil ignora permissões granulares e acessa todos os recursos.</p>
         </div>
       </div>
-    </div>
+    </aside>
   </div>
 
-  <div class="card shadow-sm border-0 mb-3">
-    <div class="card-header bg-white py-3">
-      <h5 class="fw-bold mb-0"><i class="bi bi-sliders me-2 text-primary"></i>Permissões por recurso</h5>
-      <small class="text-muted">Marque o que este perfil pode fazer. O menu lateral esconde automaticamente o que não for permitido.</small>
-    </div>
-    <div class="table-responsive">
-      <table class="table align-middle mb-0">
-        <thead class="bg-light small text-uppercase fw-bold text-muted">
-          <tr>
-            <th class="px-3" style="min-width: 240px;">Recurso</th>
-            <% all_actions = %w[view manage review publish sync] %>
-            <% all_actions.each do |a| %>
-              <th class="text-center" style="min-width: 90px;"><%= Profile::ACTION_LABELS[a] || a.humanize %></th>
-            <% end %>
-            <th style="min-width: 200px;">Escopo</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% Profile::RESOURCES.each do |res| %>
-            <% existing = (profile.permissions || {})[res[:key]] || {} %>
-            <tr>
-              <td class="px-3">
-                <div class="fw-semibold"><i class="bi <%= res[:icon] %> me-2 text-primary"></i><%= res[:label] %></div>
-                <div class="text-muted small"><%= res[:description] %></div>
-              </td>
-              <% all_actions.each do |a| %>
-                <td class="text-center">
-                  <% if res[:actions].include?(a) %>
-                    <div class="form-check form-switch d-inline-block m-0">
-                      <%= check_box_tag "profile[permissions][#{res[:key]}][#{a}]", "1",
-                                        existing[a] == true,
-                                        class: "form-check-input" %>
-                    </div>
-                  <% else %>
-                    <span class="text-muted">—</span>
-                  <% end %>
-                </td>
-              <% end %>
-              <td>
-                <% if res[:scopeable] %>
-                  <%= select_tag "profile[permissions][#{res[:key]}][scope]",
-                                 options_for_select([
-                                   ["Apenas os próprios", "own"],
-                                   ["Todos (sem restrição)", "all"]
-                                 ], existing["scope"] || "own"),
-                                 class: "form-select form-select-sm" %>
-                <% else %>
-                  <span class="text-muted small">—</span>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="d-flex justify-content-end gap-2 mb-4">
-    <%= link_to "Cancelar", admin_profiles_path, class: "btn btn-outline-secondary" %>
-    <%= f.submit (profile.persisted? ? "Salvar alterações" : "Criar perfil"), class: "btn btn-primary px-4 fw-bold" %>
-  </div>
+  <%= ax_sticky_action_footer do %>
+    <%= link_to "Cancelar", admin_profiles_path, class: "ax-btn" %>
+    <%= f.submit (profile.persisted? ? "Salvar alterações" : "Criar perfil"), class: "ax-btn ax-btn--primary" %>
+  <% end %>
 <% end %>
+
+<style id="profiles-form-styles">
+  .prof-form { display: grid; gap: 8px; padding-top: 8px; }
+  .prof-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
+  @media (min-width: 1080px) { .prof-grid { grid-template-columns: minmax(0, 1fr) 320px; } }
+  .prof-main, .prof-side { display: grid; gap: 8px; min-width: 0; }
+  .prof-body { padding: 12px; display: grid; gap: 12px; }
+  .prof-hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.45; }
+  .prof-field { display: grid; gap: 5px; min-width: 0; }
+  .prof-field__label { color: #1f2733; font-size: 12px; font-weight: 700; }
+
+  .prof-matrix-wrap { overflow-x: auto; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; }
+  .prof-matrix { margin: 0; }
+  .prof-matrix th, .prof-matrix td { vertical-align: middle; }
+  .prof-matrix .ax-control { min-height: 30px; padding: 3px 8px; font-size: 12px; }
+  .prof-dash { color: #c2c9d4; }
+  .prof-res { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .prof-res__icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: 0 0 auto; border-radius: 7px; background: #eef2f7; color: var(--admin-primary, #365f8f); }
+  .prof-res__main { display: grid; gap: 1px; min-width: 0; }
+  .prof-res__main strong { color: #1f2733; font-size: 12.5px; }
+  .prof-res__main span { color: #8a93a3; font-size: 10.5px; }
+
+  .prof-fullaccess { display: flex; gap: 10px; padding: 12px; border: 1px solid #f4d492; border-left-width: 3px; border-radius: 8px; background: #fffbeb; }
+  .prof-fullaccess__icon { color: #d97706; font-size: 16px; flex: 0 0 auto; margin-top: 2px; }
+  .prof-fullaccess__toggle { gap: 8px; }
+  .prof-fullaccess__toggle strong { color: #92400e; font-size: 13px; }
+  .prof-fullaccess p { margin: 4px 0 0; color: #a16207; font-size: 11.5px; line-height: 1.4; }
+</style>

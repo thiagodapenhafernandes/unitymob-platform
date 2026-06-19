@@ -1,5 +1,9 @@
 module ApplicationHelper
   INTERNAL_ACTIVE_STORAGE_PATH = "/rails/active_storage/".freeze
+  ACTIVE_STORAGE_REDIRECT_SEGMENTS = {
+    "/rails/active_storage/blobs/redirect/" => "/rails/active_storage/blobs/proxy/",
+    "/rails/active_storage/representations/redirect/" => "/rails/active_storage/representations/proxy/"
+  }.freeze
 
   def optimized_image_source(source, resize_to_limit: nil, resize_to_fill: nil, saver: { quality: 82 })
     return if source.blank?
@@ -198,15 +202,15 @@ module ApplicationHelper
     if image.respond_to?(:attached?)
       return unless image.attached?
 
-      rails_blob_path(image.attachment, only_path: true)
+      rails_storage_proxy_path(image.attachment, only_path: true)
     elsif defined?(ActiveStorage::VariantWithRecord) && image.is_a?(ActiveStorage::VariantWithRecord)
-      rails_representation_path(image, only_path: true)
+      rails_representation_proxy_path(image, only_path: true)
     elsif defined?(ActiveStorage::Variant) && image.is_a?(ActiveStorage::Variant)
-      rails_representation_path(image, only_path: true)
+      rails_representation_proxy_path(image, only_path: true)
     elsif defined?(ActiveStorage::Attachment) && image.is_a?(ActiveStorage::Attachment)
-      rails_blob_path(image, only_path: true)
+      rails_storage_proxy_path(image, only_path: true)
     elsif defined?(ActiveStorage::Blob) && image.is_a?(ActiveStorage::Blob)
-      rails_blob_path(image, only_path: true)
+      rails_storage_proxy_path(image, only_path: true)
     end
   rescue StandardError
     nil
@@ -215,13 +219,22 @@ module ApplicationHelper
   def normalize_public_image_url(image)
     value = image.to_s
     return value if value.blank?
+    return proxy_active_storage_redirect_path(value) if value.start_with?(INTERNAL_ACTIVE_STORAGE_PATH)
     return value if value.start_with?("/", "data:", "blob:")
 
     uri = URI.parse(value)
     return value unless uri.path.start_with?(INTERNAL_ACTIVE_STORAGE_PATH)
 
-    [uri.path, uri.query.presence && "?#{uri.query}"].compact.join
+    proxy_active_storage_redirect_path([uri.path, uri.query.presence && "?#{uri.query}"].compact.join)
   rescue URI::InvalidURIError
+    value
+  end
+
+  def proxy_active_storage_redirect_path(value)
+    ACTIVE_STORAGE_REDIRECT_SEGMENTS.each do |redirect_segment, proxy_segment|
+      return value.sub(redirect_segment, proxy_segment) if value.include?(redirect_segment)
+    end
+
     value
   end
 

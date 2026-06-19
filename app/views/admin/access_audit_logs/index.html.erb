@@ -34,37 +34,37 @@
   }
 </style>
 
-<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+<div class="tw-flex tw-justify-between tw-items-start tw-mb-4 tw-flex-wrap tw-gap-2">
   <div>
-    <h1 class="h3 mb-1">
-      <i class="bi bi-person-lock text-primary me-2"></i>Auditoria de Acessos
+    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+      <i class="bi bi-person-lock tw-text-primary"></i>Auditoria de Acessos
     </h1>
-    <p class="text-muted small mb-0">
+    <p class="ax-page-subtitle">
       Log append-only de logins, logouts, tentativas negadas, IPs, aparelhos e rotas administrativas.
     </p>
   </div>
 </div>
 
-<div class="row g-2 mb-3">
-  <div class="col-6 col-md-3">
+<div class="ax-field-grid ax-field-grid--12 tw-mb-3">
+  <div class="ax-span-3">
     <div class="access-audit-kpi">
       <div class="value"><%= @total_events %></div>
       <div class="label">Eventos filtrados</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="ax-span-3">
     <div class="access-audit-kpi">
-      <div class="value text-success"><%= @allowed_events %></div>
+      <div class="value" style="color:#16a34a"><%= @allowed_events %></div>
       <div class="label">Permitidos</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="ax-span-3">
     <div class="access-audit-kpi">
-      <div class="value <%= @denied_events.positive? ? "text-danger" : "" %>"><%= @denied_events %></div>
+      <div class="value" style="<%= "color:#dc2626" if @denied_events.positive? %>"><%= @denied_events %></div>
       <div class="label">Negados</div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
+  <div class="ax-span-3">
     <div class="access-audit-kpi">
       <div class="value"><%= @unique_ips %></div>
       <div class="label">IPs únicos</div>
@@ -72,125 +72,125 @@
   </div>
 </div>
 
-<div class="card shadow-sm border-0 mb-3">
-  <div class="card-body py-3">
-    <%= form_with url: admin_access_audit_logs_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
-      <div class="col-6 col-md-2">
-        <label class="form-label small text-muted mb-1">Evento</label>
+<div class="ax-card tw-mb-3">
+  <div class="ax-card__body">
+    <%= form_with url: admin_access_audit_logs_path, method: :get, local: true, class: "ax-field-grid ax-field-grid--12 tw-items-end" do %>
+      <div class="ax-span-2">
+        <label class="ax-label">Evento</label>
         <%= select_tag :event_type,
                        options_for_select([["Todos", ""]] + AccessAuditLog::EVENT_TYPES.map { |type| [AccessAuditLog::EVENT_LABELS[type], type] }, params[:event_type]),
-                       class: "form-select form-select-sm",
+                       class: "ax-control ax-control--sm",
                        onchange: "this.form.submit()" %>
       </div>
-      <div class="col-6 col-md-2">
-        <label class="form-label small text-muted mb-1">Resultado</label>
+      <div class="ax-span-2">
+        <label class="ax-label">Resultado</label>
         <%= select_tag :result,
                        options_for_select([["Todos", ""]] + AccessAuditLog::RESULTS.map { |result| [AccessAuditLog::RESULT_LABELS[result], result] }, params[:result]),
-                       class: "form-select form-select-sm",
+                       class: "ax-control ax-control--sm",
                        onchange: "this.form.submit()" %>
       </div>
-      <div class="col-12 col-md-3">
-        <label class="form-label small text-muted mb-1">Usuário</label>
+      <div class="ax-span-3">
+        <label class="ax-label">Usuário</label>
         <%= select_tag :admin_user_id,
                        options_from_collection_for_select(@available_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:admin_user_id]),
                        include_blank: "Todos",
-                       class: "form-select form-select-sm",
+                       class: "ax-control ax-control--sm",
                        data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." } },
                        onchange: "this.form.submit()" %>
       </div>
-      <div class="col-12 col-md-2">
-        <label class="form-label small text-muted mb-1">Perfil</label>
+      <div class="ax-span-2">
+        <label class="ax-label">Perfil</label>
         <%= select_tag :profile_id,
                        options_from_collection_for_select(@available_profiles, :id, :name, params[:profile_id]),
                        include_blank: "Todos",
-                       class: "form-select form-select-sm",
+                       class: "ax-control ax-control--sm",
                        data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." } },
                        onchange: "this.form.submit()" %>
       </div>
-      <div class="col-6 col-md-2">
-        <label class="form-label small text-muted mb-1">IP</label>
-        <%= text_field_tag :ip, params[:ip], class: "form-control form-control-sm", placeholder: "000.000.000.000" %>
+      <div class="ax-span-2">
+        <label class="ax-label">IP</label>
+        <%= text_field_tag :ip, params[:ip], class: "ax-control ax-control--sm", placeholder: "000.000.000.000" %>
       </div>
-      <div class="col-6 col-md-2">
-        <label class="form-label small text-muted mb-1">Dispositivo</label>
+      <div class="ax-span-2">
+        <label class="ax-label">Dispositivo</label>
         <%= select_tag :device_type,
                        options_for_select([["Todos", ""]] + @available_device_types.map { |value| [value, value] }, params[:device_type]),
-                       class: "form-select form-select-sm",
+                       class: "ax-control ax-control--sm",
                        data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar dispositivo..." } },
                        onchange: "this.form.submit()" %>
       </div>
-      <div class="col-6 col-md-2">
-        <label class="form-label small text-muted mb-1">Navegador</label>
+      <div class="ax-span-2">
+        <label class="ax-label">Navegador</label>
         <%= select_tag :browser,
                        options_for_select([["Todos", ""]] + @available_browsers.map { |value| [value, value] }, params[:browser]),
-                       class: "form-select form-select-sm",
+                       class: "ax-control ax-control--sm",
                        data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar navegador..." } },
                        onchange: "this.form.submit()" %>
       </div>
-      <div class="col-12 col-md-3">
-        <label class="form-label small text-muted mb-1">Controller</label>
+      <div class="ax-span-3">
+        <label class="ax-label">Controller</label>
         <%= select_tag :access_controller,
                        options_for_select([["Todos", ""]] + @available_controllers.map { |value| [value, value] }, params[:access_controller]),
-                       class: "form-select form-select-sm",
+                       class: "ax-control ax-control--sm",
                        data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar controller..." } },
                        onchange: "this.form.submit()" %>
       </div>
-      <div class="col-12 col-md-2">
-        <label class="form-label small text-muted mb-1">Ação</label>
+      <div class="ax-span-2">
+        <label class="ax-label">Ação</label>
         <%= select_tag :access_action,
                        options_for_select([["Todas", ""]] + @available_actions.map { |value| [value, value] }, params[:access_action]),
-                       class: "form-select form-select-sm",
+                       class: "ax-control ax-control--sm",
                        data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar ação..." } },
                        onchange: "this.form.submit()" %>
       </div>
-      <div class="col-12 col-md-3">
-        <label class="form-label small text-muted mb-1">Rota contém</label>
-        <%= text_field_tag :path, params[:path], class: "form-control form-control-sm", placeholder: "/admin/..." %>
+      <div class="ax-span-3">
+        <label class="ax-label">Rota contém</label>
+        <%= text_field_tag :path, params[:path], class: "ax-control ax-control--sm", placeholder: "/admin/..." %>
       </div>
-      <div class="col-6 col-md-1">
-        <label class="form-label small text-muted mb-1">De</label>
-        <%= date_field_tag :start_date, params[:start_date], class: "form-control form-control-sm" %>
+      <div class="ax-span-2">
+        <label class="ax-label">De</label>
+        <%= date_field_tag :start_date, params[:start_date], class: "ax-control ax-control--sm" %>
       </div>
-      <div class="col-6 col-md-1">
-        <label class="form-label small text-muted mb-1">Até</label>
-        <%= date_field_tag :end_date, params[:end_date], class: "form-control form-control-sm" %>
+      <div class="ax-span-2">
+        <label class="ax-label">Até</label>
+        <%= date_field_tag :end_date, params[:end_date], class: "ax-control ax-control--sm" %>
       </div>
-      <div class="col-12 col-md-2 d-flex gap-2">
-        <%= submit_tag "Filtrar", class: "btn btn-primary btn-sm flex-fill" %>
-        <%= link_to "Limpar", admin_access_audit_logs_path, class: "btn btn-outline-secondary btn-sm" %>
+      <div class="ax-span-3 tw-flex tw-gap-2">
+        <%= submit_tag "Filtrar", class: "ax-btn ax-btn--primary ax-btn--sm tw-w-full" %>
+        <%= link_to "Limpar", admin_access_audit_logs_path, class: "ax-btn ax-btn--ghost ax-btn--sm" %>
       </div>
     <% end %>
   </div>
 </div>
 
-<div class="card shadow-sm border-0">
-  <div class="card-body">
+<div class="ax-card">
+  <div class="ax-card__body">
     <% if @logs.any? %>
       <% @logs.each do |log| %>
         <div class="access-audit-row">
-          <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-            <div class="flex-grow-1">
-              <div class="access-audit-title">
-                <span class="badge <%= log.result == "allowed" ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger" %> border me-2">
+          <div class="tw-flex tw-justify-between tw-items-start tw-gap-3 tw-flex-wrap">
+            <div style="flex:1 1 0%">
+              <div class="access-audit-title tw-flex tw-items-center tw-gap-2">
+                <span class="ax-badge <%= log.result == "allowed" ? "ax-badge--green" : "ax-badge--red" %>">
                   <%= log.result_label %>
                 </span>
                 <%= log.event_label %> · <%= log.actor_name %>
               </div>
-              <div class="access-audit-meta mt-1">
-                <i class="bi bi-clock me-1"></i><%= l(log.created_at, format: "%d/%m/%Y às %H:%M") %>
+              <div class="access-audit-meta tw-mt-2 tw-flex tw-items-center tw-gap-1">
+                <i class="bi bi-clock"></i><%= l(log.created_at, format: "%d/%m/%Y às %H:%M") %>
                 <% if log.ip.present? %> · <i class="bi bi-globe2"></i> <%= log.ip %><% end %>
                 · <i class="bi bi-phone"></i> <%= log.device_label %>
               </div>
               <% if log.reason.present? %>
-                <div class="small mt-1"><strong>Motivo:</strong> <%= log.reason %></div>
+                <div class="tw-text-sm tw-mt-2"><strong>Motivo:</strong> <%= log.reason %></div>
               <% end %>
               <% if log.path.present? %>
                 <% clean_path, query_string = log.path.to_s.split("?", 2) %>
-                <div class="access-audit-path mt-1"><%= log.request_method %> <%= clean_path %></div>
+                <div class="access-audit-path tw-mt-2"><%= log.request_method %> <%= clean_path %></div>
                 <% if query_string.present? %>
-                  <details class="small mt-1">
-                    <summary class="text-muted">Parâmetros</summary>
-                    <div class="access-audit-path mt-1"><%= query_string %></div>
+                  <details class="tw-text-sm tw-mt-2">
+                    <summary class="tw-text-ink-muted">Parâmetros</summary>
+                    <div class="access-audit-path tw-mt-2"><%= query_string %></div>
                   </details>
                 <% end %>
               <% end %>
@@ -199,12 +199,10 @@
         </div>
       <% end %>
 
-      <div class="d-flex justify-content-center mt-3">
-        <%= will_paginate @logs, renderer: WillPaginate::ActionView::BootstrapLinkRenderer %>
-      </div>
+      <%= ax_pagination @logs, params: request.query_parameters %>
     <% else %>
-      <div class="text-center text-muted py-5">
-        <i class="bi bi-inbox d-block fs-1 mb-2"></i>
+      <div class="tw-text-center tw-text-ink-muted" style="padding:3rem 0">
+        <i class="bi bi-inbox tw-mb-2" style="display:block;font-size:2rem"></i>
         Nenhum acesso encontrado com os filtros atuais.
       </div>
     <% end %>

@@ -1,0 +1,81 @@
+<%
+  aside_first = local_assigns[:aside_first]
+  shell_class = ["ax-workspace-shell", ("ax-workspace-shell--aside-first" if aside_first), local_assigns[:class_name]].compact.join(" ")
+  main_class = ["ax-workspace-main", local_assigns[:main_class]].compact.join(" ")
+  main_body_class = ["ax-workspace-main__body", local_assigns[:main_body_class]].compact.join(" ")
+  aside_class = ["ax-workspace-aside", local_assigns[:aside_class]].compact.join(" ")
+  contextbar_class = ["ax-workspace-contextbar", local_assigns[:contextbar_class]].compact.join(" ")
+  aside_content = local_assigns[:aside]
+  aside_partial = local_assigns[:aside_partial]
+  aside_locals = local_assigns[:aside_locals] || {}
+  aside_present = aside_content.present? || aside_partial.present?
+  controller_name = local_assigns[:controller].presence
+  controller_data_prefix = controller_name&.tr("-", "_")
+  storage_key = local_assigns[:storage_key]
+  preload_class = local_assigns[:preload_class]
+  pin_workspace = local_assigns[:pin_workspace]
+  contextbar = local_assigns.fetch(:contextbar) { true }
+  contextbar_actions = contextbar ? local_assigns.fetch(:contextbar_actions) { admin_contextbar_actions } : nil
+  contextbar_breadcrumb = contextbar ? local_assigns.fetch(:contextbar_breadcrumb) { admin_contextbar_breadcrumb } : nil
+  shell_data = {}
+  shell_data[:controller] = controller_name if controller_name.present?
+  if controller_data_prefix.present?
+    shell_data[:"#{controller_data_prefix}_storage_key_value"] = storage_key if storage_key.present?
+    shell_data[:"#{controller_data_prefix}_preload_class_value"] = preload_class if preload_class.present?
+    shell_data[:"#{controller_data_prefix}_pin_workspace_value"] = pin_workspace unless pin_workspace.nil?
+  end
+  shell_attributes = { class: shell_class }
+  shell_attributes[:data] = shell_data if shell_data.any?
+  main_attributes = {
+    class: main_class,
+    aria: { label: local_assigns[:main_label].presence || "Conteúdo principal" }
+  }
+  aside_attributes = {
+    class: aside_class,
+    aria: { label: local_assigns[:aside_label].presence || "Painel contextual" }
+  }
+  if aside_first
+    main_attributes[:style] = "grid-column: 1; grid-row: 1;"
+    aside_attributes[:style] = "grid-column: 2; grid-row: 1;"
+  end
+%>
+
+<%= tag.div(**shell_attributes) do %>
+  <% if aside_present && aside_first %>
+    <%= tag.aside(**aside_attributes) do %>
+      <% if aside_partial.present? %>
+        <%= render partial: aside_partial, locals: aside_locals %>
+      <% else %>
+        <%= aside_content %>
+      <% end %>
+    <% end %>
+  <% end %>
+
+  <%= tag.section(**main_attributes) do %>
+    <% if contextbar %>
+      <div class="<%= contextbar_class %>">
+        <nav class="ax-breadcrumb" aria-label="Contexto atual">
+          <%= contextbar_breadcrumb %>
+        </nav>
+
+        <div class="ax-contextbar__actions">
+          <%= contextbar_actions %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="<%= main_body_class %>">
+      <%= local_assigns[:main] %>
+    </div>
+  <% end %>
+
+  <% if aside_present && !aside_first %>
+    <%= tag.aside(**aside_attributes) do %>
+      <% if aside_partial.present? %>
+        <%= render partial: aside_partial, locals: aside_locals %>
+      <% else %>
+        <%= aside_content %>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>

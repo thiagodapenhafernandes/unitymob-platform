@@ -1,0 +1,10 @@
+<%= content_tag(
+      "turbo-frame",
+      render(
+        "admin/habitations/filter_inspector",
+        active_extra_filters_count: active_extra_filters_count,
+        clear_extras_params: clear_extra_filter_params
+      ),
+      id: "admin_habitations_filter_inspector",
+      target: "_top"
+    ) %>

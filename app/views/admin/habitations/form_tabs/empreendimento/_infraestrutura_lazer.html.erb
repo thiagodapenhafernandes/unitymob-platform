@@ -1,0 +1,25 @@
+<% infrastructure_actions = capture do %>
+  <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm"
+          data-attribute-manager-context-value="habitation"
+          data-attribute-manager-category-value="infrastructure"
+          data-attribute-manager-field-name-value="habitation[infra_estrutura][]"
+          data-attribute-manager-modal-id-value="attributeManagerModal"
+          data-action="click->attribute-manager#open"
+          data-title="Gerenciar Infraestrutura"
+          data-select-id="infra-checkbox-list">
+    <i class="bi bi-gear ax-ico"></i>Gerenciar
+  </button>
+<% end %>
+
+<%= ax_form_section(title: "Infraestrutura e lazer", eyebrow: "Checklist", actions: infrastructure_actions) do %>
+  <% current_infra = f.object.infra_estrutura.is_a?(Array) ? f.object.infra_estrutura : [] %>
+  <%= ax_chip_grid(id: "infra-checkbox-list") do %>
+    <% @external_features.to_a.each do |feature| %>
+      <% checked = current_infra.include?(feature) %>
+      <label class="custom-checkbox-card ax-chip-grid__item <%= 'is-checked' if checked %>">
+        <input type="checkbox" name="habitation[infra_estrutura][]" value="<%= feature %>" <%= 'checked' if checked %>>
+        <span title="<%= feature %>"><%= feature %></span>
+      </label>
+    <% end %>
+  <% end %>
+<% end %>

@@ -1,0 +1,64 @@
+<% content_for :title, "Proposta #{@proposal.public_token}" %>
+<% broker = @proposal.admin_user&.name %>
+
+<div class="pp-brandbar">Proposta comercial</div>
+
+<div class="pp-card">
+  <div class="pp-hero">
+    <small>Ref. <%= @proposal.public_token %></small>
+    <h1><%= @habitation&.try(:display_title).presence || @proposal.title.presence || "Proposta de negociação" %></h1>
+    <% if @habitation %>
+      <div style="opacity:.9;font-size:13px;margin-top:4px">
+        <%= [@habitation.try(:bairro), @habitation.try(:cidade)].compact.join(", ") %>
+      </div>
+    <% end %>
+  </div>
+
+  <% img = @habitation&.try(:primary_image) %>
+  <% if img.present? && img["url"].present? %>
+    <img src="<%= img["url"] %>" alt="" class="pp-img">
+  <% end %>
+
+  <div class="pp-body">
+    <% if @proposal.valor_cents.to_i.positive? %>
+      <div class="pp-row">
+        <span class="k">Valor da proposta</span>
+        <span class="pp-big">R$ <%= number_with_precision(@proposal.valor, precision: 2, delimiter: ".", separator: ",") %></span>
+      </div>
+    <% end %>
+    <% if @proposal.entrada_cents.to_i.positive? %>
+      <div class="pp-row">
+        <span class="k">Entrada</span>
+        <span class="v">R$ <%= number_with_precision(@proposal.entrada, precision: 2, delimiter: ".", separator: ",") %></span>
+      </div>
+    <% end %>
+
+    <% if @proposal.condicoes.present? %>
+      <div class="pp-cond"><%= @proposal.condicoes %></div>
+    <% end %>
+
+    <div class="pp-meta">
+      <% if broker %>Corretor responsável: <strong><%= broker %></strong><br><% end %>
+      <% if @proposal.validade.present? %>Válida até <%= @proposal.validade.strftime("%d/%m/%Y") %>.<% end %>
+    </div>
+
+    <% if @proposal.status == "aceita" %>
+      <div class="pp-status ok"><i></i>✓ Proposta aceita em <%= @proposal.responded_at&.strftime("%d/%m/%Y %H:%M") %></div>
+    <% elsif @proposal.status == "recusada" %>
+      <div class="pp-status no">Proposta recusada.</div>
+    <% elsif @proposal.expired? %>
+      <div class="pp-status exp">Esta proposta expirou. Fale com seu corretor.</div>
+    <% else %>
+      <div class="pp-actions">
+        <%= button_to "Aceitar", decide_public_proposal_path(@proposal.public_token, decision: "aceita"), class: "pp-btn pp-accept", form: { style: "display:contents" } %>
+        <%= button_to "Recusar", decide_public_proposal_path(@proposal.public_token, decision: "recusada"), class: "pp-btn pp-refuse", form: { style: "display:contents" }, data: { turbo_confirm: "Confirmar recusa da proposta?" } %>
+      </div>
+    <% end %>
+
+    <% if @proposal.viewed_at.present? %>
+      <div class="pp-viewed">✓ Visualizada em <%= @proposal.viewed_at.strftime("%d/%m %H:%M") %></div>
+    <% end %>
+  </div>
+</div>
+
+<div class="pp-footer">Documento gerado pela plataforma · não compartilhe este link.</div>

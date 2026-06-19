@@ -76,7 +76,7 @@ module Vista
     end
 
     def import_admin_users
-      default_profile = profile_for("Corretor")
+      default_profile = profile_for("corretor")
 
       raw("CADEMP").find_each do |record|
         row = record.payload
@@ -563,22 +563,29 @@ module Vista
     end
 
     def profile_for_agent(row)
-      name = if yes?(row["DIRETOR"])
-               "Diretor"
-             elsif yes?(row["GERENTE"])
-               "Gerente"
-             elsif yes?(row["CADUSU"])
-               "Administrativo"
-             elsif yes?(row["CORRETOR"])
-               "Corretor"
-             end
-      profile_for(name) if name
+      key = if yes?(row["DIRETOR"])
+              "diretor"
+            elsif yes?(row["GERENTE"])
+              "gerente"
+            elsif yes?(row["CADUSU"])
+              "administrativo"
+            elsif yes?(row["CORRETOR"])
+              "corretor"
+            end
+      profile_for(key)
     end
 
-    def profile_for(name)
-      return if name.blank?
+    # Casa o perfil pelo `key` estável (não pelo nome): renomear um perfil no admin
+    # não faz o import recriar/duplicar o papel.
+    def profile_for(key)
+      return if key.blank?
 
-      Profile.where("LOWER(name) = ?", name.downcase).first_or_create!(name: name, permissions: {}, active: true)
+      Profile.where(key: key).first_or_create! do |profile|
+        profile.key = key
+        profile.name = Profile::ROLE_KEY_NAMES[key] || key.humanize
+        profile.permissions = {}
+        profile.active = true
+      end
     end
 
     def email_for_agent(row, vista_id)

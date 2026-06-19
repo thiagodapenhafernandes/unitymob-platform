@@ -1,0 +1,56 @@
+<%= ax_form_section(title: "Atendimento, chaves e reservas", eyebrow: "Operação") do %>
+  <%= ax_field_grid(class_name: "ax-attendance-grid") do %>
+    <div class="ax-span-6">
+      <%= ax_field_group(title: "Observações internas") do %>
+        <%= ax_text_field(form: f, method: :observacoes, label: "Observações internas e restritas", type: :textarea, rows: 4) %>
+      <% end %>
+    </div>
+    <div class="ax-span-6">
+      <%= ax_field_group(title: "Vista e reservas", class_name: "ax-field-group--spaced") do %>
+        <%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :responsavel_reserva, label: "Responsável por reserva") %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_select_field(
+                  form: f,
+                  method: :key_location,
+                  label: "Onde estão as chaves",
+                  choices: Habitation::KEY_LOCATION_OPTIONS,
+                  select_options: { include_blank: "Selecione..." },
+                  html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+                ) %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :key_location_notes, label: "Detalhe das chaves", placeholder: "Ex: com zelador João") %>
+          </div>
+          <div class="ax-span-12">
+            <%= ax_text_field(form: f, method: :observacoes_visitas, label: "Observações para visitas", type: :textarea, rows: 3) %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :zelador_nome, label: "Zelador") %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :zelador_telefone, label: "Telefone do zelador", data: { controller: "mask", mask_type_value: "phone" }) %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_select_field(
+                  form: f,
+                  method: :regiao_foco,
+                  label: "Região foco?",
+                  choices: Habitation::REGIAO_FOCO_OPTIONS,
+                  select_options: { include_blank: "Selecione..." },
+                  html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+                ) %>
+          </div>
+          <div class="ax-span-3">
+            <%= ax_currency_field(form: f, method: :saldo_devedor_formatted, label: "Saldo devedor", data: { controller: "mask", mask_type_value: "currency" }) %>
+          </div>
+          <div class="ax-span-3">
+            <%= ax_number_field(form: f, method: :numero_prestacoes, label: "Nº de prestações", min: 0) %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

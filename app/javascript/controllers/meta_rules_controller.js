@@ -82,7 +82,7 @@ export default class extends Controller {
     setTimeout(() => {
       btn.disabled = false
       if (icon) icon.classList.remove('fa-spin')
-      alert("Sincronização concluída com sucesso!")
+      window.axToast({ message: "Sincronização concluída com sucesso!", type: "success" })
     }, 1500)
   }
 

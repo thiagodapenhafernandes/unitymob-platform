@@ -4,7 +4,6 @@ export default class extends Controller {
   static targets = ["input", "preview", "placeholder", "filename", "domain"]
 
   connect() {
-    console.log("✅ ImagePreviewController connected!")
   }
 
   update(event) {
@@ -22,7 +21,7 @@ export default class extends Controller {
     let domainInput = this.domainTarget.value.trim()
 
     if (!domainInput) {
-      alert("Por favor, preencha o domínio primeiro (ex: google.com)")
+      this.showMessage("Preencha o domínio primeiro. Ex.: google.com", "warning")
       return
     }
 
@@ -42,15 +41,15 @@ export default class extends Controller {
 
     const btn = event.currentTarget
     const originalContent = btn.innerHTML
+    const originalClassName = btn.className
 
     // Set loading state
     btn.innerHTML = `
-      <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-      <span class="visually-hidden">Carregando...</span>
+      <span class="ax-spinner" aria-hidden="true"></span>
       Buscando...
     `
     btn.disabled = true
-    btn.classList.add('disabled')
+    btn.setAttribute("aria-busy", "true")
 
     const googleUrl = `https://www.google.com/s2/favicons?domain=${domainInput}&sz=256`
 
@@ -84,23 +83,42 @@ export default class extends Controller {
       this._updatePreview(file)
 
       // Success feedback
-      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Sucesso!'
-      btn.classList.replace('btn-outline-primary', 'btn-success')
+      btn.innerHTML = '<i class="bi bi-check-lg ax-ico"></i> Sucesso!'
+      btn.className = this.successButtonClass(originalClassName)
+      this.showMessage("Logo carregado com sucesso.", "success")
       setTimeout(() => {
         btn.innerHTML = originalContent
-        btn.classList.replace('btn-success', 'btn-outline-primary')
+        btn.className = originalClassName
         btn.disabled = false
-        btn.classList.remove('disabled')
+        btn.removeAttribute("aria-busy")
       }, 2000)
     } catch (error) {
       console.error("Erro no download:", error)
 
-      alert(`Não foi possível encontrar um logo válido para "${domainInput}".\n\nMotivos comuns:\n1. O domínio não possui logo público.\n2. Bloqueadores de anúncio impedindo a conexão.\n\nPor favor, faça o upload manual.`)
+      this.showMessage(`Não foi possível encontrar um logo válido para "${domainInput}". Faça o upload manual.`, "danger")
 
       btn.innerHTML = originalContent
+      btn.className = originalClassName
       btn.disabled = false
-      btn.classList.remove('disabled')
+      btn.removeAttribute("aria-busy")
     }
+  }
+
+  successButtonClass(originalClassName) {
+    if (originalClassName.includes("ax-btn")) return `${originalClassName} ax-btn--success`
+    return originalClassName.replace("btn-outline-primary", "btn-success")
+  }
+
+  showMessage(message, tone = "info") {
+    let status = this.element.querySelector("[data-image-preview-status]")
+    if (!status) {
+      status = document.createElement("div")
+      status.dataset.imagePreviewStatus = "true"
+      this.element.appendChild(status)
+    }
+
+    status.className = `ax-controller-status ax-controller-status--${tone}`
+    status.textContent = message
   }
 
   _updatePreview(file) {

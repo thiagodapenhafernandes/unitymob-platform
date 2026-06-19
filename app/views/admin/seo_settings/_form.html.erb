@@ -16,135 +16,125 @@
 <div id="seo-setting-form" class="seo-editor-page">
 <%= form_with(model: [:admin, seo_setting], local: true, data: { controller: "seo-editor" }) do |f| %>
   <% if local_assigns[:ai_message].present? %>
-    <div class="alert alert-<%= local_assigns[:ai_message_type].presence || "info" %> alert-dismissible fade show" role="alert">
+    <%= ax_inline_notice(tone: (local_assigns[:ai_message_type].presence || "info").to_sym, icon: "info-circle") do %>
       <%= local_assigns[:ai_message] %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
+    <% end %>
   <% end %>
 
-  <% if seo_setting.errors.any? %>
-    <div class="alert alert-danger">
-      <strong>Revise os campos:</strong>
-      <ul class="mb-0">
-        <% seo_setting.errors.full_messages.each do |message| %>
-          <li><%= message %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
+  <%= ax_error_summary(seo_setting) %>
 
   <div class="seo-editor-grid">
     <div class="seo-editor-main">
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body p-4">
-          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+      <div class="ax-card tw-mb-3">
+        <div class="ax-card__body">
+          <div class="tw-flex tw-justify-between tw-items-start tw-gap-3 tw-mb-3">
             <div>
-              <h2 class="h6 fw-bold mb-1">Identificação técnica</h2>
-              <p class="small text-muted mb-0">Chaves, URL canônica e tipo da página.</p>
+              <h2 class="ax-card__title tw-mb-1">Identificação técnica</h2>
+              <p class="tw-text-sm tw-text-ink-muted">Chaves, URL canônica e tipo da página.</p>
             </div>
-            <span class="badge <%= seo_setting.auto_discovered? ? "bg-info text-dark" : "bg-secondary" %>">
+            <span class="ax-badge <%= seo_setting.auto_discovered? ? "ax-badge--blue" : "ax-badge--gray" %>">
               <%= seo_setting.auto_discovered? ? "auto descoberta" : "manual" %>
             </span>
           </div>
 
-          <div class="row g-3">
-            <div class="col-md-6">
-              <%= f.label :page_name, "Nome interno", class: "form-label fw-semibold" %>
-              <%= f.text_field :page_name, class: "form-control form-control-sm" %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <%= f.label :page_name, "Nome interno", class: "ax-label" %>
+              <%= f.text_field :page_name, class: "ax-control ax-control--sm" %>
             </div>
-            <div class="col-md-6">
-              <%= f.label :canonical_key, "Chave canônica", class: "form-label fw-semibold" %>
-              <%= f.text_field :canonical_key, class: "form-control form-control-sm" %>
+            <div class="ax-span-6">
+              <%= f.label :canonical_key, "Chave canônica", class: "ax-label" %>
+              <%= f.text_field :canonical_key, class: "ax-control ax-control--sm" %>
             </div>
-            <div class="col-md-4">
-              <%= f.label :page_type, "Tipo", class: "form-label fw-semibold" %>
-              <%= f.text_field :page_type, class: "form-control form-control-sm" %>
+            <div class="ax-span-4">
+              <%= f.label :page_type, "Tipo", class: "ax-label" %>
+              <%= f.text_field :page_type, class: "ax-control ax-control--sm" %>
             </div>
-            <div class="col-md-8">
-              <%= f.label :canonical_url, "Canonical URL", class: "form-label fw-semibold" %>
-              <%= f.text_field :canonical_url, class: "form-control form-control-sm", data: { seo_field: "canonical" } %>
+            <div class="ax-span-8">
+              <%= f.label :canonical_url, "Canonical URL", class: "ax-label" %>
+              <%= f.text_field :canonical_url, class: "ax-control ax-control--sm", data: { seo_field: "canonical" } %>
             </div>
-          </div>
+          <% end %>
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body p-4">
-          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+      <div class="ax-card tw-mb-3">
+        <div class="ax-card__body">
+          <div class="tw-flex tw-justify-between tw-items-start tw-gap-3 tw-mb-3">
             <div>
-              <h2 class="h6 fw-bold mb-1">Snippet para buscadores</h2>
-              <p class="small text-muted mb-0">Título, descrição, palavras-chave e texto introdutório público.</p>
+              <h2 class="ax-card__title tw-mb-1">Snippet para buscadores</h2>
+              <p class="tw-text-sm tw-text-ink-muted">Título, descrição, palavras-chave e texto introdutório público.</p>
             </div>
-            <span class="badge bg-light text-dark">score <%= seo_setting.seo_score.to_i %></span>
+            <span class="ax-badge ax-badge--gray">score <%= seo_setting.seo_score.to_i %></span>
           </div>
 
-          <div class="row g-3">
-            <div class="col-12">
-              <div class="d-flex justify-content-between align-items-center">
-                <%= f.label :meta_title, "Meta title", class: "form-label fw-semibold" %>
-                <span class="small text-muted"><span data-seo-count="title"><%= title_length %></span>/65</span>
+          <%= ax_field_grid do %>
+            <div class="ax-span-12">
+              <div class="tw-flex tw-justify-between tw-items-center">
+                <%= f.label :meta_title, "Meta title", class: "ax-label" %>
+                <span class="tw-text-sm tw-text-ink-muted"><span data-seo-count="title"><%= title_length %></span>/65</span>
               </div>
-              <%= f.text_field :meta_title, class: "form-control", data: { seo_field: "title" } %>
+              <%= f.text_field :meta_title, class: "ax-control", data: { seo_field: "title" } %>
             </div>
-            <div class="col-12">
-              <div class="d-flex justify-content-between align-items-center">
-                <%= f.label :meta_description, "Meta description", class: "form-label fw-semibold" %>
-                <span class="small text-muted"><span data-seo-count="description"><%= description_length %></span>/160</span>
+            <div class="ax-span-12">
+              <div class="tw-flex tw-justify-between tw-items-center">
+                <%= f.label :meta_description, "Meta description", class: "ax-label" %>
+                <span class="tw-text-sm tw-text-ink-muted"><span data-seo-count="description"><%= description_length %></span>/160</span>
               </div>
-              <%= f.text_area :meta_description, rows: 3, class: "form-control", data: { seo_field: "description" } %>
+              <%= f.text_area :meta_description, rows: 3, class: "ax-control", data: { seo_field: "description" } %>
             </div>
-            <div class="col-12">
-              <%= f.label :meta_keywords, "Keywords e foco", class: "form-label fw-semibold" %>
-              <%= f.text_area :meta_keywords, rows: 2, class: "form-control", placeholder: "Separe por vírgulas. A primeira keyword será tratada como foco principal.", data: { seo_field: "keywords" } %>
+            <div class="ax-span-12">
+              <%= f.label :meta_keywords, "Keywords e foco", class: "ax-label" %>
+              <%= f.text_area :meta_keywords, rows: 2, class: "ax-control", placeholder: "Separe por vírgulas. A primeira keyword será tratada como foco principal.", data: { seo_field: "keywords" } %>
             </div>
-            <div class="col-12">
-              <%= f.label :focus_keyword_list, "Keywords foco persistidas", class: "form-label fw-semibold" %>
+            <div class="ax-span-12">
+              <%= f.label :focus_keyword_list, "Keywords foco persistidas", class: "ax-label" %>
               <%= f.text_field :focus_keyword_list,
                   value: seo_setting.focus_keyword_list.presence || seo_setting.meta_keywords,
-                  class: "form-control",
+                  class: "ax-control",
                   placeholder: "Até 5 termos, separados por vírgula",
                   data: { seo_field: "focusKeywords" } %>
-              <div class="form-text">Essas keywords alimentam a análise, sugestões de links internos e futuras gerações com IA.</div>
+              <div class="tw-text-sm tw-text-ink-muted tw-mt-1">Essas keywords alimentam a análise, sugestões de links internos e futuras gerações com IA.</div>
             </div>
-            <div class="col-12">
-              <div class="d-flex justify-content-between align-items-center">
-                <%= f.label :intro_text, "Texto introdutório da página", class: "form-label fw-semibold" %>
-                <span class="small text-muted"><span data-seo-count="intro"><%= intro_word_count %></span> palavras</span>
+            <div class="ax-span-12">
+              <div class="tw-flex tw-justify-between tw-items-center">
+                <%= f.label :intro_text, "Texto introdutório da página", class: "ax-label" %>
+                <span class="tw-text-sm tw-text-ink-muted"><span data-seo-count="intro"><%= intro_word_count %></span> palavras</span>
               </div>
-              <%= f.text_area :intro_text, rows: 5, class: "form-control", placeholder: "Use 150 a 250 palavras para páginas de listagem estratégicas. Esse texto aparece acima dos imóveis/empreendimentos.", data: { seo_field: "intro", listing: listing_page } %>
-              <div class="form-text">Para listagens indexáveis, explique intenção da busca, diferenciais da região e caminhos para filtros relacionados.</div>
+              <%= f.text_area :intro_text, rows: 5, class: "ax-control", placeholder: "Use 150 a 250 palavras para páginas de listagem estratégicas. Esse texto aparece acima dos imóveis/empreendimentos.", data: { seo_field: "intro", listing: listing_page } %>
+              <div class="tw-text-sm tw-text-ink-muted tw-mt-1">Para listagens indexáveis, explique intenção da busca, diferenciais da região e caminhos para filtros relacionados.</div>
             </div>
-          </div>
+          <% end %>
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body p-4">
-          <h2 class="h6 fw-bold mb-3">Compartilhamento social</h2>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <%= f.label :og_title, "Open Graph title", class: "form-label fw-semibold" %>
-              <%= f.text_field :og_title, class: "form-control", data: { seo_field: "ogTitle" } %>
+      <div class="ax-card tw-mb-3">
+        <div class="ax-card__body">
+          <h2 class="ax-card__title tw-mb-3">Compartilhamento social</h2>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <%= f.label :og_title, "Open Graph title", class: "ax-label" %>
+              <%= f.text_field :og_title, class: "ax-control", data: { seo_field: "ogTitle" } %>
             </div>
-            <div class="col-md-6">
-              <%= f.label :og_image_file, "Imagem OG", class: "form-label fw-semibold" %>
-              <%= f.file_field :og_image_file, class: "form-control" %>
-              <div class="form-text">Fallback automático: primeira imagem do imóvel ou logo quadrada da Salute.</div>
+            <div class="ax-span-6">
+              <%= f.label :og_image_file, "Imagem OG", class: "ax-label" %>
+              <%= f.file_field :og_image_file, class: "ax-control" %>
+              <div class="tw-text-sm tw-text-ink-muted tw-mt-1">Fallback automático: primeira imagem do imóvel ou logo quadrada da Salute.</div>
             </div>
-            <div class="col-12">
-              <%= f.label :og_description, "Open Graph description", class: "form-label fw-semibold" %>
-              <%= f.text_area :og_description, rows: 2, class: "form-control", data: { seo_field: "ogDescription" } %>
+            <div class="ax-span-12">
+              <%= f.label :og_description, "Open Graph description", class: "ax-label" %>
+              <%= f.text_area :og_description, rows: 2, class: "ax-control", data: { seo_field: "ogDescription" } %>
             </div>
-          </div>
+          <% end %>
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body p-4">
-          <h2 class="h6 fw-bold mb-3">Controle público</h2>
-          <div class="row g-2">
+      <div class="ax-card tw-mb-4">
+        <div class="ax-card__body">
+          <h2 class="ax-card__title tw-mb-3">Controle público</h2>
+          <div class="tw-flex tw-flex-wrap tw-gap-2">
             <% [["active", "Ativo"], ["apply_to_public", "Usar na página pública"], ["manual_mode", "Manual"], ["robots_index", "Index"], ["robots_follow", "Follow"]].each do |field, label| %>
-              <div class="col-md">
+              <div class="tw-flex-1">
                 <label class="custom-checkbox-card w-100 justify-content-between">
                   <span><%= label %></span>
                   <%= f.check_box field, class: "form-check-input", data: { seo_field: field } %>
@@ -156,27 +146,27 @@
       </div>
 
       <% if seo_setting.ai_insights.present? %>
-        <div class="alert alert-info shadow-sm">
-          <strong><i class="bi bi-lightbulb me-1"></i>Insights da IA:</strong>
-          <div class="mt-2" style="white-space: pre-line;"><%= seo_setting.ai_insights %></div>
-        </div>
+        <%= ax_inline_notice(tone: :info, icon: "lightbulb") do %>
+          <strong>Insights da IA:</strong>
+          <div class="tw-mt-2" style="white-space: pre-line;"><%= seo_setting.ai_insights %></div>
+        <% end %>
       <% end %>
 
-      <div class="d-flex justify-content-end gap-2">
-        <%= link_to "Cancelar", admin_seo_settings_path, class: "btn btn-outline-secondary" %>
-        <%= f.submit "Salvar SEO", class: "btn btn-primary" %>
+      <div class="tw-flex tw-justify-end tw-gap-2">
+        <%= link_to "Cancelar", admin_seo_settings_path, class: "ax-btn ax-btn--ghost" %>
+        <%= f.submit "Salvar SEO", class: "ax-btn ax-btn--primary" %>
       </div>
     </div>
 
     <aside class="seo-editor-side">
-      <div class="card border-0 shadow-sm mb-3 seo-sticky-panel">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="ax-card tw-mb-3 seo-sticky-panel">
+        <div class="ax-card__body">
+          <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
             <div>
-              <div class="small text-muted">Análise SEO</div>
-              <div class="h4 mb-0"><%= seo_setting.seo_score.to_i %></div>
+              <div class="tw-text-sm tw-text-ink-muted">Análise SEO</div>
+              <div class="tw-font-bold" style="font-size:1.5rem; margin-bottom:0"><%= seo_setting.seo_score.to_i %></div>
             </div>
-            <span class="badge <%= seo_setting.seo_score.to_i >= 80 ? "bg-success" : seo_setting.seo_score.to_i >= 60 ? "bg-warning text-dark" : "bg-danger" %>">
+            <span class="ax-badge <%= seo_setting.seo_score.to_i >= 80 ? "ax-badge--green" : seo_setting.seo_score.to_i >= 60 ? "ax-badge--amber" : "ax-badge--red" %>">
               <%= seo_setting.score_label %>
             </span>
           </div>
@@ -192,12 +182,12 @@
 
           <hr>
 
-          <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="tw-flex tw-justify-between tw-items-center tw-mb-2">
             <div>
-              <div class="small text-muted">Legibilidade</div>
-              <div class="fw-bold"><%= readability.score %> - <%= readability.label %></div>
+              <div class="tw-text-sm tw-text-ink-muted">Legibilidade</div>
+              <div class="tw-font-bold"><%= readability.score %> - <%= readability.label %></div>
             </div>
-            <i class="bi bi-body-text text-primary fs-4"></i>
+            <i class="bi bi-body-text tw-text-primary" style="font-size:1.5rem"></i>
           </div>
           <div class="seo-checklist">
             <% readability.checks.each do |_key, item| %>
@@ -210,20 +200,20 @@
 
           <hr>
 
-          <div class="d-grid gap-2">
-            <%= link_to public_url, target: "_blank", rel: "noopener", class: "btn btn-sm btn-outline-primary" do %>
-              <i class="bi bi-box-arrow-up-right me-1"></i>Abrir página pública
+          <div class="tw-gap-2" style="display:grid">
+            <%= link_to public_url, target: "_blank", rel: "noopener", class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
+              <i class="bi bi-box-arrow-up-right"></i>Abrir página pública
             <% end %>
-            <%= link_to "#{current_base_url}/sitemap.xml", target: "_blank", rel: "noopener", class: "btn btn-sm btn-outline-secondary" do %>
-              <i class="bi bi-diagram-3 me-1"></i>Ver sitemap
+            <%= link_to "#{current_base_url}/sitemap.xml", target: "_blank", rel: "noopener", class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
+              <i class="bi bi-diagram-3"></i>Ver sitemap
             <% end %>
           </div>
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body p-3">
-          <h3 class="h6 fw-bold mb-2">Prévia no Google</h3>
+      <div class="ax-card tw-mb-3">
+        <div class="ax-card__body">
+          <h3 class="ax-card__title tw-mb-2">Prévia no Google</h3>
           <div class="seo-serp-preview">
             <div class="seo-serp-url"><%= public_url %></div>
             <div class="seo-serp-title" data-seo-preview="title"><%= meta_title_value.presence || "Título da página" %></div>
@@ -232,9 +222,9 @@
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-3">
-          <h3 class="h6 fw-bold mb-2">Prévia social</h3>
+      <div class="ax-card">
+        <div class="ax-card__body">
+          <h3 class="ax-card__title tw-mb-2">Prévia social</h3>
           <div class="seo-social-preview">
             <% if effective_og_image.present? %>
               <%= image_tag effective_og_image, alt: "Imagem atual para compartilhamento", class: "seo-social-image" %>
@@ -248,36 +238,36 @@
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm mt-3">
-        <div class="card-body p-3">
-          <h3 class="h6 fw-bold mb-2">Links internos sugeridos</h3>
+      <div class="ax-card tw-mt-3">
+        <div class="ax-card__body">
+          <h3 class="ax-card__title tw-mb-2">Links internos sugeridos</h3>
           <% if internal_link_suggestions.any? %>
             <div class="seo-link-suggestions">
               <% internal_link_suggestions.each do |suggestion| %>
                 <%= link_to suggestion.url, target: "_blank", rel: "noopener", class: "seo-link-suggestion" do %>
-                  <span class="fw-semibold text-truncate"><%= suggestion.title %></span>
+                  <span class="tw-font-semibold tw-truncate"><%= suggestion.title %></span>
                   <small><%= suggestion.reason %></small>
                 <% end %>
               <% end %>
             </div>
           <% else %>
-            <p class="small text-muted mb-0">Adicione keywords foco para receber sugestões melhores.</p>
+            <p class="tw-text-sm tw-text-ink-muted">Adicione keywords foco para receber sugestões melhores.</p>
           <% end %>
         </div>
       </div>
 
-      <div class="card border-0 shadow-sm mt-3">
-        <div class="card-body p-3">
-          <h3 class="h6 fw-bold mb-2">Histórico</h3>
+      <div class="ax-card tw-mt-3">
+        <div class="ax-card__body">
+          <h3 class="ax-card__title tw-mb-2">Histórico</h3>
           <% if change_logs.any? %>
             <div class="seo-history-list">
               <% change_logs.each do |log| %>
                 <div class="seo-history-item">
-                  <div class="d-flex justify-content-between gap-2">
+                  <div class="tw-flex tw-justify-between tw-gap-2">
                     <strong><%= log.event_type == "ai_generate" ? "IA" : "Edição" %></strong>
-                    <small class="text-muted"><%= l(log.created_at, format: :short) %></small>
+                    <small class="tw-text-ink-muted"><%= l(log.created_at, format: :short) %></small>
                   </div>
-                  <div class="small text-muted">
+                  <div class="tw-text-sm tw-text-ink-muted">
                     <%= log.admin_user&.try(:name).presence || log.admin_user&.email.presence || "Sistema" %>
                     alterou <%= pluralize(log.changed_fields.keys.size, "campo") %>.
                   </div>
@@ -285,7 +275,7 @@
               <% end %>
             </div>
           <% else %>
-            <p class="small text-muted mb-0">Nenhuma alteração registrada ainda.</p>
+            <p class="tw-text-sm tw-text-ink-muted">Nenhuma alteração registrada ainda.</p>
           <% end %>
         </div>
       </div>
@@ -293,55 +283,4 @@
   </div>
 <% end %>
 
-<script>
-  (() => {
-    const root = document.getElementById("seo-setting-form");
-    if (!root) return;
-
-    const field = (name) => root.querySelector(`[data-seo-field="${name}"]`);
-    const preview = (name) => root.querySelector(`[data-seo-preview="${name}"]`);
-    const counter = (name) => root.querySelector(`[data-seo-count="${name}"]`);
-    const check = (name) => root.querySelector(`[data-seo-check="${name}"]`);
-    const text = (name) => (field(name)?.value || "").trim();
-    const words = (value) => (value.match(/\S+/g) || []).length;
-
-    const setCheck = (name, ok) => {
-      const item = check(name);
-      if (!item) return;
-      item.classList.toggle("is-ok", ok);
-      item.classList.toggle("is-warning", !ok);
-    };
-
-    const update = () => {
-      const title = text("title");
-      const description = text("description");
-      const keywords = text("keywords").split(",").map((item) => item.trim()).filter(Boolean);
-      const persistedKeywords = text("focusKeywords").split(",").map((item) => item.trim()).filter(Boolean);
-      const focus = persistedKeywords[0] || keywords[0] || "";
-      const canonical = text("canonical");
-      const intro = text("intro");
-      const listing = field("intro")?.dataset.listing === "true";
-
-      if (counter("title")) counter("title").textContent = title.length;
-      if (counter("description")) counter("description").textContent = description.length;
-      if (counter("intro")) counter("intro").textContent = words(intro);
-
-      if (preview("title")) preview("title").textContent = title || "Título da página";
-      if (preview("description")) preview("description").textContent = description || "Descrição que aparecerá nos resultados de busca.";
-      if (preview("ogTitle")) preview("ogTitle").textContent = text("ogTitle") || title || "Título social";
-      if (preview("ogDescription")) preview("ogDescription").textContent = text("ogDescription") || description || "Descrição social.";
-
-      setCheck("title", title.length >= 35 && title.length <= 65);
-      setCheck("description", description.length >= 110 && description.length <= 165);
-      setCheck("keyword", focus.length > 0 && `${title} ${description}`.toLowerCase().includes(focus.toLowerCase()));
-      setCheck("canonical", canonical.length > 0);
-      setCheck("intro", !listing || words(intro) >= 80);
-      setCheck("index", field("active")?.checked && field("apply_to_public")?.checked && field("robots_index")?.checked);
-    };
-
-    root.querySelectorAll("[data-seo-field]").forEach((input) => input.addEventListener("input", update));
-    root.querySelectorAll("input[type='checkbox'][data-seo-field]").forEach((input) => input.addEventListener("change", update));
-    update();
-  })();
-</script>
 </div>

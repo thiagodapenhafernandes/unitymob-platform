@@ -1,47 +1,47 @@
-<div class="mb-3">
-  <%= link_to admin_field_manual_checkin_requests_path, class: "text-muted small text-decoration-none" do %>
-    <i class="bi bi-arrow-left me-1"></i>Voltar
+<div class="tw-mb-3">
+  <%= link_to admin_field_manual_checkin_requests_path, class: "tw-inline-flex tw-items-center tw-gap-2 tw-text-ink-muted tw-text-sm text-decoration-none" do %>
+    <i class="bi bi-arrow-left"></i>Voltar
   <% end %>
 </div>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-header bg-white py-3">
-    <h4 class="fw-bold mb-0">
-      <i class="bi bi-hand-index-thumb-fill text-warning me-2"></i>Solicitação #<%= @request.id %>
+<div class="ax-card">
+  <div class="ax-card__header">
+    <h4 class="ax-card__title tw-flex tw-items-center tw-gap-2">
+      <i class="bi bi-hand-index-thumb-fill" style="color:#d97706"></i>Solicitação #<%= @request.id %>
     </h4>
   </div>
-  <div class="card-body">
-    <dl class="row">
-      <dt class="col-sm-3">Corretor</dt>
-      <dd class="col-sm-9"><%= @request.admin_user.name %> (<%= @request.admin_user.email %>)</dd>
-      <dt class="col-sm-3">Loja</dt>
-      <dd class="col-sm-9"><%= @request.store.name %></dd>
-      <dt class="col-sm-3">Status</dt>
-      <dd class="col-sm-9">
+  <div class="ax-card__body">
+    <dl style="display:grid;grid-template-columns:25% 75%;gap:.25rem .75rem;margin-bottom:0">
+      <dt>Corretor</dt>
+      <dd><%= @request.admin_user.name %> (<%= @request.admin_user.email %>)</dd>
+      <dt>Loja</dt>
+      <dd><%= @request.store.name %></dd>
+      <dt>Status</dt>
+      <dd>
         <% case @request.status
            when "pending" %>
-          <span class="badge bg-warning text-dark">Pendente</span>
+          <span class="ax-badge ax-badge--amber">Pendente</span>
         <% when "approved" %>
-          <span class="badge bg-success">Aprovada</span>
+          <span class="ax-badge ax-badge--green">Aprovada</span>
         <% else %>
-          <span class="badge bg-danger">Rejeitada</span>
+          <span class="ax-badge ax-badge--red">Rejeitada</span>
         <% end %>
       </dd>
-      <dt class="col-sm-3">Justificativa</dt>
-      <dd class="col-sm-9"><%= simple_format(@request.justification) %></dd>
+      <dt>Justificativa</dt>
+      <dd><%= simple_format(@request.justification) %></dd>
       <% if @request.review_notes.present? %>
-        <dt class="col-sm-3">Notas da revisão</dt>
-        <dd class="col-sm-9"><%= simple_format(@request.review_notes) %></dd>
+        <dt>Notas da revisão</dt>
+        <dd><%= simple_format(@request.review_notes) %></dd>
       <% end %>
     </dl>
   </div>
   <% if @request.pending? %>
-    <div class="card-footer bg-white d-flex gap-2 justify-content-end">
-      <%= button_to approve_admin_field_manual_checkin_request_path(@request), method: :post, class: "btn btn-success" do %>
-        <i class="bi bi-check-circle-fill me-1"></i>Aprovar
+    <div class="tw-flex tw-gap-2 tw-justify-end tw-p-2" style="border-top:1px solid #e5e7eb">
+      <%= button_to approve_admin_field_manual_checkin_request_path(@request), method: :post, class: "ax-btn ax-btn--primary tw-inline-flex tw-items-center tw-gap-2" do %>
+        <i class="bi bi-check-circle-fill"></i>Aprovar
       <% end %>
-      <%= button_to reject_admin_field_manual_checkin_request_path(@request), method: :post, class: "btn btn-outline-danger" do %>
-        <i class="bi bi-x-circle-fill me-1"></i>Rejeitar
+      <%= button_to reject_admin_field_manual_checkin_request_path(@request), method: :post, class: "ax-btn ax-btn--danger tw-inline-flex tw-items-center tw-gap-2" do %>
+        <i class="bi bi-x-circle-fill"></i>Rejeitar
       <% end %>
     </div>
   <% end %>

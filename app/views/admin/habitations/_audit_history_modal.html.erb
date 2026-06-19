@@ -1,59 +1,251 @@
+<%
+  logs = Array(logs)
+  vista_entries = Array(local_assigns.fetch(:vista_entries, @habitation_vista_timeline_entries))
+  publication_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? }
+  intake_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? }
+
+  audit_modal_body = capture do
+%>
+  <p class="habitation-audit-sub">
+    Código <%= habitation.codigo %> · últimas <%= logs.size %> movimentações registradas
+  </p>
+
+  <nav class="habitation-audit-tabs" data-controller="ax-tabs" aria-label="Categorias da timeline">
+    <button type="button" class="habitation-audit-tab active"
+            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-all"
+            data-action="click->ax-tabs#select" aria-selected="true">
+      Alterações <span class="habitation-audit-tab__count"><%= logs.size %></span>
+    </button>
+    <button type="button" class="habitation-audit-tab"
+            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-publication"
+            data-action="click->ax-tabs#select" aria-selected="false">
+      Publicação <span class="habitation-audit-tab__count"><%= publication_logs.size %></span>
+    </button>
+    <button type="button" class="habitation-audit-tab"
+            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-intake"
+            data-action="click->ax-tabs#select" aria-selected="false">
+      Captação <span class="habitation-audit-tab__count"><%= intake_logs.size %></span>
+    </button>
+    <button type="button" class="habitation-audit-tab"
+            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-vista"
+            data-action="click->ax-tabs#select" aria-selected="false">
+      Vista <span class="habitation-audit-tab__count"><%= vista_entries.size %></span>
+    </button>
+  </nav>
+
+  <div class="tab-content habitation-audit-content">
+    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-all", active: true, logs: logs %>
+    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-publication", active: false, logs: publication_logs %>
+    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-intake", active: false, logs: intake_logs %>
+    <%= render "admin/habitations/audit_history_vista_timeline", tab_id: "audit-vista", active: false, entries: vista_entries %>
+  </div>
+<% end %>
+
+<%= ax_quick_modal(
+      id: "habitationHistoryModal",
+      title: "Timeline de edições do cadastro",
+      size: :lg,
+      class_name: "habitation-audit-modal",
+      body: audit_modal_body
+    ) %>
+
 <style>
-  .habitation-audit-modal .modal-dialog { max-width: 980px; }
-  .habitation-audit-tabs .nav-link { font-weight: 700; color: #64748b; }
-  .habitation-audit-tabs .nav-link.active { color: #0d6efd; }
-  .habitation-audit-timeline { position: relative; padding-left: 1.4rem; }
-  .habitation-audit-timeline::before {
-    content: "";
-    position: absolute;
-    left: .35rem;
-    top: .25rem;
-    bottom: .25rem;
-    width: 2px;
-    background: #e2e8f0;
+  .habitation-audit-modal { z-index: 3000; }
+  .habitation-audit-modal .ax-quick-modal__panel {
+    width: min(860px, calc(100vw - 32px));
+    max-height: min(740px, calc(100vh - 88px));
   }
-  .habitation-audit-item {
-    position: relative;
-    padding: 0 0 1.1rem 1rem;
+  .habitation-audit-modal .ax-quick-modal__body { padding: 0; }
+
+  .habitation-audit-sub {
+    margin: 0;
+    padding: 12px 16px;
+    color: var(--ab-muted, #657386);
+    font-size: 12.5px;
+    border-bottom: 1px solid var(--ab-line-soft, #e7ebf2);
   }
-  .habitation-audit-item::before {
-    content: "";
-    position: absolute;
-    left: -.18rem;
-    top: .3rem;
-    width: .7rem;
-    height: .7rem;
+
+  .habitation-audit-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ab-line, #d8dee8);
+    background: var(--ab-panel-soft, #f4f7fb);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .habitation-audit-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ab-muted, #657386);
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color .12s ease, color .12s ease, background .12s ease;
+  }
+
+  .habitation-audit-tab:hover {
+    border-color: var(--ab-field-hover, #b8c5d6);
+    color: var(--ab-ink, #202a37);
+  }
+
+  .habitation-audit-tab.active {
+    border-color: color-mix(in srgb, var(--admin-primary) 40%, #d8dee8);
+    background: var(--admin-primary);
+    color: #fff;
+  }
+
+  .habitation-audit-tab__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
     border-radius: 999px;
-    background: #0d6efd;
-    box-shadow: 0 0 0 4px #eff6ff;
+    background: var(--ab-panel-header, #eef2f7);
+    color: var(--ab-muted, #657386);
+    font-size: 11px;
+    font-weight: 800;
   }
-  .habitation-audit-title { font-weight: 700; color: #0f172a; }
-  .habitation-audit-meta { font-size: .78rem; color: #64748b; }
-  .habitation-audit-change {
-    border: 1px solid #e5e7eb;
-    border-radius: .75rem;
-    padding: .65rem .75rem;
-    background: #f8fafc;
+
+  .habitation-audit-tab.active .habitation-audit-tab__count {
+    background: rgba(255, 255, 255, .22);
+    color: #fff;
   }
-  .habitation-audit-value {
-    display: block;
-    max-height: 4.5rem;
-    overflow: auto;
-    white-space: pre-wrap;
-    word-break: break-word;
+
+  .habitation-audit-content { padding: 16px; }
+
+  /* Garante o toggle dos panes mesmo sem o JS do Bootstrap. */
+  .habitation-audit-modal .tab-content > .tab-pane { display: none; }
+  .habitation-audit-modal .tab-content > .tab-pane.active { display: block; }
+
+  /* Timeline compacta, agrupada por data (identidade DS). */
+  .ax-tl-day {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 16px 0 10px;
+    color: var(--ab-muted, #657386);
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: .02em;
+    text-transform: uppercase;
   }
+  .ax-tl-day:first-child { margin-top: 0; }
+
+  .ax-tl {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0 0 4px 7px;
+    padding-left: 18px;
+    border-left: 2px solid var(--ab-line-soft, #e7ebf2);
+  }
+
+  .ax-tl-item { position: relative; }
+
+  .ax-tl-node {
+    position: absolute;
+    left: -27px;
+    top: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 2px solid var(--admin-primary, #365f8f);
+    background: #fff;
+    color: var(--admin-primary, #365f8f);
+    font-size: 8px;
+  }
+
+  .ax-tl-card {
+    border: 1px solid var(--ab-line-soft, #e7ebf2);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #fff;
+  }
+
+  .ax-tl-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .ax-tl-title { font-size: 13px; font-weight: 700; color: var(--ab-ink, #202a37); }
+  .ax-tl-time { flex: 0 0 auto; font-size: 11.5px; color: var(--ab-muted, #657386); }
+
+  .ax-tl-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: var(--ab-muted, #657386);
+  }
+  .ax-tl-actor { font-weight: 700; color: var(--ab-ink, #202a37); }
+  .ax-tl-source {
+    padding: 1px 7px;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+
+  .ax-tl-changes {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ax-tl-changes li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--ab-panel-soft, #f4f7fb);
+    font-size: 12px;
+  }
+  .ax-tl-changes li i { flex: 0 0 auto; color: var(--ab-muted, #9aa6b6); font-size: 11px; }
+  .ax-tl-field { flex: 0 0 auto; font-weight: 700; color: var(--ab-ink, #202a37); }
+  .ax-tl-before,
+  .ax-tl-after {
+    min-width: 0;
+    max-width: 42%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ax-tl-before { color: var(--ab-muted, #657386); }
+  .ax-tl-after { color: var(--ab-ink, #202a37); font-weight: 600; }
+
   .habitation-audit-empty {
-    border: 1px dashed #cbd5e1;
+    border: 1px dashed var(--ab-field-border, #cfd8e5);
     border-radius: .85rem;
     padding: 1.5rem;
     text-align: center;
-    color: #64748b;
-    background: #f8fafc;
+    color: var(--ab-muted, #657386);
+    background: var(--ab-panel-soft, #f8fafc);
   }
   .habitation-audit-detail-list {
     margin: .75rem 0 0;
     padding-left: 1rem;
-    color: #334155;
+    color: var(--ab-ink, #202a37);
   }
   .habitation-audit-detail-list li {
     margin-bottom: .25rem;
@@ -61,60 +253,3 @@
     word-break: break-word;
   }
 </style>
-
-<%
-  logs = Array(logs)
-  vista_entries = Array(local_assigns.fetch(:vista_entries, @habitation_vista_timeline_entries))
-  publication_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? }
-  intake_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? }
-%>
-
-<div class="modal fade habitation-audit-modal" id="habitationHistoryModal" tabindex="-1" aria-labelledby="habitationHistoryModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-scrollable modal-xl">
-    <div class="modal-content border-0 shadow-lg">
-      <div class="modal-header">
-        <div>
-          <h5 class="modal-title fw-bold" id="habitationHistoryModalLabel">
-            <i class="bi bi-clock-history text-primary me-2"></i>Timeline de edições do cadastro
-          </h5>
-          <div class="text-muted small">
-            Código <%= habitation.codigo %> · últimas <%= logs.size %> movimentações registradas
-          </div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-
-      <div class="modal-body">
-        <ul class="nav nav-tabs habitation-audit-tabs mb-3" role="tablist">
-          <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="audit-all-tab" data-bs-toggle="tab" data-bs-target="#audit-all" type="button" role="tab">
-              Alterações <span class="badge bg-light text-dark border ms-1"><%= logs.size %></span>
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="audit-publication-tab" data-bs-toggle="tab" data-bs-target="#audit-publication" type="button" role="tab">
-              Publicação <span class="badge bg-light text-dark border ms-1"><%= publication_logs.size %></span>
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="audit-intake-tab" data-bs-toggle="tab" data-bs-target="#audit-intake" type="button" role="tab">
-              Captação <span class="badge bg-light text-dark border ms-1"><%= intake_logs.size %></span>
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="audit-vista-tab" data-bs-toggle="tab" data-bs-target="#audit-vista" type="button" role="tab">
-              Vista <span class="badge bg-light text-dark border ms-1"><%= vista_entries.size %></span>
-            </button>
-          </li>
-        </ul>
-
-        <div class="tab-content">
-          <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-all", active: true, logs: logs %>
-          <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-publication", active: false, logs: publication_logs %>
-          <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-intake", active: false, logs: intake_logs %>
-          <%= render "admin/habitations/audit_history_vista_timeline", tab_id: "audit-vista", active: false, entries: vista_entries %>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>

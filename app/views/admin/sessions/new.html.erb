@@ -2,30 +2,21 @@
 
 <%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
   <div class="form-group">
-    <%= f.label :email, "E-mail", class: "form-label" %>
-    <div class="input-group">
-      <span class="input-group-text">
-        <i class="bi bi-envelope"></i>
-      </span>
-      <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "form-control", placeholder: "nome@salute.com.br" %>
-    </div>
+    <%= f.label :email, "E-mail", class: "ax-label" %>
+    <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope")) do %>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "ax-control", placeholder: "nome@salute.com.br" %>
+    <% end %>
   </div>
 
   <div class="form-group">
-    <%= f.label :password, "Senha", class: "form-label" %>
-    <div class="input-group">
-      <span class="input-group-text">
-        <i class="bi bi-key"></i>
-      </span>
-      <%= f.password_field :password, autocomplete: "current-password", class: "form-control", placeholder: "Digite sua senha" %>
-    </div>
+    <%= f.label :password, "Senha", class: "ax-label" %>
+    <%= ax_input_group(prefix: tag.i(class: "bi bi-key")) do %>
+      <%= f.password_field :password, autocomplete: "current-password", class: "ax-control", placeholder: "Digite sua senha" %>
+    <% end %>
   </div>
 
   <% if devise_mapping.rememberable? %>
-    <div class="form-check">
-      <%= f.check_box :remember_me, class: "form-check-input" %>
-      <%= f.label :remember_me, "Manter conectado", class: "form-check-label" %>
-    </div>
+    <%= ax_check_field(label: "Manter conectado", form: f, method: :remember_me) %>
   <% end %>
 
   <div class="form-group mb-0">

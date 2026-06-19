@@ -1,0 +1,139 @@
+<% return_path = @return_to_path || edit_admin_habitation_path(@habitation, anchor: "media") %>
+<% media_count = (@habitation.photos.attached? ? @habitation.photos.attachments.size : 0) + (@habitation.pictures.is_a?(Array) ? @habitation.pictures.size : 0) %>
+
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Imóveis", admin_habitations_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to @habitation.codigo.presence || "Cadastro", edit_admin_habitation_path(@habitation) %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Mídia</strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= admin_contextbar_link("Voltar", return_path, icon: "arrow-left") %>
+  <%= admin_contextbar_link("Cadastro", edit_admin_habitation_path(@habitation, anchor: "media"), icon: "pencil-square") %>
+  <%= admin_contextbar_link("Ver no site", habitation_path(@habitation), icon: "box-arrow-up-right", primary: true, target: "_blank", rel: "noopener") %>
+<% end %>
+
+<% media_main = capture do %>
+  <%= form_with model: [:admin, @habitation],
+                url: admin_habitation_media_path(@habitation),
+                method: :patch,
+                local: true,
+                html: {
+                  id: "admin_habitation_media_form",
+                  class: "habitation-form-ui habitation-media-module-form",
+                  multipart: true
+                },
+                data: { turbo: false } do |f| %>
+    <%= hidden_field_tag :return_to, @return_to_path if @return_to_path.present? %>
+
+    <header class="ax-dashboard-command ax-property-form-command">
+      <div class="ax-dashboard-command__main">
+        <span class="ax-dashboard-command__eyebrow">Organizador de mídia</span>
+        <div class="ax-property-form-command__meta">
+          <strong><%= @habitation.codigo.present? ? "##{@habitation.codigo}" : "Cadastro" %></strong>
+          <% if @habitation.status.present? %>
+            <%= ax_badge(@habitation.status, tone: :blue) %>
+          <% end %>
+          <% if @habitation.categoria.present? %>
+            <%= ax_badge(@habitation.categoria, tone: :neutral) %>
+          <% end %>
+        </div>
+        <h1><%= @habitation.display_title %></h1>
+        <p class="ax-property-form-command__location">
+          <i class="bi bi-geo-alt"></i>
+          <span><%= [@habitation.logradouro, @habitation.numero, @habitation.bairro, @habitation.cidade].reject(&:blank?).join(" · ") %></span>
+        </p>
+      </div>
+    </header>
+
+    <div class="ax-form-workspace">
+      <%= render "admin/habitations/media/manager",
+                 f: f,
+                 habitation: @habitation,
+                 upload_input_id: "habitation_media_photos" %>
+    </div>
+
+    <%= ax_sticky_action_footer(
+          meta: tag.span(safe_join([
+            tag.i(class: "bi bi-images"),
+            " #{media_count} mídia(s) vinculada(s)"
+          ]))
+        ) do %>
+      <%= link_to "Cancelar", return_path, class: "ax-btn" %>
+      <%= f.submit "Salvar mídia", class: "ax-btn ax-btn--primary" %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% media_aside = capture do %>
+  <%= ax_aside_panel(
+        title: "Mídia",
+        token: "#{media_count} itens",
+        rail_label: "Abrir painel de mídia",
+        rail_icon: "images",
+        collapse_label: "Recolher painel de mídia",
+        rail_class: "habitation-editor-inspector-rail",
+        panel_class: "habitation-editor-inspector-panel",
+        header_class: "habitation-editor-panel-head",
+        actions_class: "habitation-editor-panel-head__actions",
+        toggle_class: "habitation-editor-panel-head__toggle"
+      ) do %>
+    <div class="ax-aside-panel__section">
+      <%= ax_inline_notice(
+            tone: :neutral,
+            icon: "info-circle",
+            body: "Este módulo reaproveita o pipeline atual de upload, ordenação, ocultação no site e marca d'água do cadastro."
+          ) %>
+    </div>
+    <nav class="ax-form-tabs habitation-tabs-bar" aria-label="Atalhos de mídia">
+      <ul class="ax-form-tabs__list" role="list">
+        <li>
+          <%= link_to edit_admin_habitation_path(@habitation, anchor: "media"), class: "ax-form-tabs__item active" do %>
+            <span class="ax-form-tabs__icon"><i class="bi bi-images"></i></span>
+            <span class="ax-form-tabs__copy">
+              <strong>Fotos e vídeos</strong>
+              <span class="ax-form-tabs__description">Uploads e ordenação</span>
+            </span>
+          <% end %>
+        </li>
+        <li>
+          <%= link_to edit_admin_habitation_path(@habitation, anchor: "seo"), class: "ax-form-tabs__item" do %>
+            <span class="ax-form-tabs__icon"><i class="bi bi-globe2"></i></span>
+            <span class="ax-form-tabs__copy">
+              <strong>Publicação</strong>
+              <span class="ax-form-tabs__description">Site, portais e SEO</span>
+            </span>
+          <% end %>
+        </li>
+        <li>
+          <%= link_to edit_admin_habitation_path(@habitation, anchor: "documents"), class: "ax-form-tabs__item" do %>
+            <span class="ax-form-tabs__icon"><i class="bi bi-folder2"></i></span>
+            <span class="ax-form-tabs__copy">
+              <strong>Documentos</strong>
+              <span class="ax-form-tabs__description">Fichas e autorizações</span>
+            </span>
+          <% end %>
+        </li>
+      </ul>
+    </nav>
+  <% end %>
+<% end %>
+
+<%= render "admin/shared/ui/workspace_shell",
+           class_name: "habitation-property-editor-main habitation-media-page-shell",
+           main_class: "habitation-property-main-pane",
+           main_label: "Módulo de mídia do imóvel",
+           main_body_class: "habitation-property-main-body habitation-media-page-body",
+           main: media_main,
+           aside: media_aside,
+           aside_first: true,
+           aside_class: "habitation-editor-explorer habitation-editor-inspector",
+           aside_label: "Painel de mídia",
+           contextbar_class: "habitation-property-middle-contextbar",
+           controller: "ax-aside",
+           storage_key: "admin-habitation-form-editor-collapsed",
+           preload_class: "ax-habitation-editor-collapsed-preload" %>

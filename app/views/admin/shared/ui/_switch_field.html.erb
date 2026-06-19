@@ -1,0 +1,14 @@
+<%
+  input_opts = { class: "ax-switch__input" }
+  input_opts[:id] = id if id.present?
+  input_opts = input_opts.merge(input_html || {})
+%>
+<label class="ax-switch <%= class_name %>">
+  <% if form && method %>
+    <%= form.check_box method, input_opts, checked_value, unchecked_value %>
+  <% else %>
+    <%= check_box_tag name, value, checked, input_opts %>
+  <% end %>
+  <span class="ax-switch__track"></span>
+  <% if label.present? %><span><%= label %></span><% end %>
+</label>

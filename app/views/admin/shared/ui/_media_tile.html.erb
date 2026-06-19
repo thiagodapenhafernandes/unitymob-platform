@@ -1,0 +1,38 @@
+<% root_classes = ["ax-media-grid__item", root_class].compact_blank.join(" ") %>
+<% tile_classes = ["ax-media-tile__frame media-photo-tile", ("is-site-hidden" if hidden_from_site)].compact.join(" ") %>
+<% image_classes = ["ax-media-tile__image", image_class].compact_blank.join(" ") %>
+
+<%= tag.div(class: root_classes, data:) do %>
+  <%= tag.div(class: tile_classes, data: { site_hidden: hidden_from_site }) do %>
+    <%= link_to link_url,
+        class: "ax-media-tile__link",
+        title: "Abrir imagem",
+        data: { fancybox: "habitation-media-gallery", caption: } do %>
+      <%= image_tag image_source, class: image_classes, alt: caption %>
+    <% end %>
+
+    <div class="media-photo-overlay">
+      <div class="ax-media-tile__row ax-media-tile__row--top">
+        <span class="ax-media-tag ax-media-tag--dark" data-photo-position-badge>#<%= position %></span>
+        <%= top_right %>
+      </div>
+
+      <% if center.present? %>
+        <div class="ax-media-tile__row ax-media-tile__row--center">
+          <%= center %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if bottom_left.present? || bottom_right.present? %>
+    <div class="ax-media-tile__footer">
+      <div class="ax-media-tile__footer-slot ax-media-tile__footer-slot--left">
+        <%= bottom_left %>
+      </div>
+      <div class="ax-media-tile__footer-slot ax-media-tile__footer-slot--right">
+        <%= bottom_right %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

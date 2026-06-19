@@ -50,7 +50,7 @@ export default class extends Controller {
       } else {
         this.showAvailable()
       }
-      this.toggleSubmit(this.hasDuplicate)
+      this.toggleSubmit(false)
     } catch (error) {
       console.error("[habitation-duplicate-check] erro:", error)
       this.clearStatus()
@@ -100,27 +100,28 @@ export default class extends Controller {
   showDuplicate(matches) {
     if (!this.hasStatusTarget) return
 
-    this.statusTarget.className = "alert alert-danger small mt-2 mb-0"
+    this.statusTarget.hidden = false
+    this.statusTarget.className = "ax-duplicate-status ax-duplicate-status--danger"
     const links = matches.map((match) => {
       const code = match.codigo ? `#${match.codigo}` : `ID ${match.id}`
-      return `<a href="${match.edit_url}" class="alert-link" target="_blank" rel="noopener">${this.escapeHtml(code)}</a>`
+      return `<a href="${match.edit_url}" class="ax-duplicate-status__link" target="_blank" rel="noopener">${this.escapeHtml(code)}</a>`
     }).join(", ")
     const identity = this.comparisonValue() === "unit"
       ? "este endereço, unidade e status comercial"
       : (this.comparisonValue() === "condominium_unit" ? "este endereço, complemento, bloco e status comercial" : "este endereço e status comercial")
-    this.statusTarget.innerHTML = `Já existe imóvel com ${identity}${links ? `: ${links}` : "."}. Ajuste os dados antes de continuar.`
+    this.statusTarget.innerHTML = `Já existe imóvel com ${identity}${links ? `: ${links}` : "."}. Ajuste os dados antes de salvar.`
   }
 
   showAvailable() {
-    if (!this.hasStatusTarget) return
-
-    this.statusTarget.className = "form-text text-success small mt-2"
-    this.statusTarget.textContent = "Endereço sem duplicidade encontrada."
+    // Sem aviso de "tudo certo" — apenas limpa o status.
+    // O alerta de duplicata (showDuplicate) continua aparecendo quando houver.
+    this.clearStatus()
   }
 
   clearStatus() {
     if (!this.hasStatusTarget) return
-    this.statusTarget.className = "form-text text-muted small mt-2"
+    this.statusTarget.hidden = true
+    this.statusTarget.className = "ax-duplicate-status"
     this.statusTarget.textContent = ""
   }
 

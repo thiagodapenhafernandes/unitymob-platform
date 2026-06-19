@@ -1,0 +1,25 @@
+<% feature_actions = capture do %>
+  <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm"
+          data-attribute-manager-context-value="habitation"
+          data-attribute-manager-category-value="feature"
+          data-attribute-manager-field-name-value="habitation[caracteristicas][]"
+          data-attribute-manager-modal-id-value="attributeManagerModal"
+          data-action="click->attribute-manager#open"
+          data-title="Gerenciar Características Internas"
+          data-select-id="features-checkbox-list">
+    <i class="bi bi-gear ax-ico"></i>Gerenciar
+  </button>
+<% end %>
+
+<%= ax_form_section(title: "Características internas", eyebrow: "Checklist", actions: feature_actions) do %>
+  <% current_chars = f.object.caracteristicas.is_a?(Hash) ? f.object.caracteristicas.keys : Array(f.object.caracteristicas) %>
+  <%= ax_chip_grid(id: "features-checkbox-list") do %>
+    <% @internal_features.to_a.each do |feature| %>
+      <% checked = current_chars.include?(feature) %>
+      <label class="custom-checkbox-card ax-chip-grid__item <%= 'is-checked' if checked %>">
+        <input type="checkbox" name="habitation[caracteristicas][]" value="<%= feature %>" <%= 'checked' if checked %>>
+        <span title="<%= feature %>"><%= feature %></span>
+      </label>
+    <% end %>
+  <% end %>
+<% end %>

@@ -1,13 +1,13 @@
 <div class="admin-header">
   <div class="header-body">
-    <div class="row align-items-end">
-      <div class="col">
+    <div class="tw-flex tw-items-end tw-justify-between tw-gap-3">
+      <div>
         <h6 class="header-pretitle">Administração</h6>
-        <h1 class="header-title">Configurações do Rodapé</h1>
+        <h1 class="ax-page-title">Configurações do Rodapé</h1>
       </div>
-      <div class="col-auto">
-        <%= link_to admin_root_path, class: "btn btn-outline-secondary" do %>
-          <i class="bi bi-arrow-left me-1"></i> Voltar
+      <div>
+        <%= link_to admin_root_path, class: "ax-btn ax-btn--ghost tw-gap-2" do %>
+          <i class="bi bi-arrow-left"></i> Voltar
         <% end %>
       </div>
     </div>
@@ -16,130 +16,118 @@
 
   <%# Remove extra admin-content wrapper to avoid redundant margins %>
   <%= form_with(model: [:admin, @footer_setting], local: true, class: "needs-validation") do |f| %>
-    <% if @footer_setting.errors.any? %>
-      <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Erro ao salvar!</h4>
-        <ul class="mb-0">
-          <% @footer_setting.errors.full_messages.each do |msg| %>
-            <li><%= msg %></li>
-          <% end %>
-        </ul>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
-    <% end %>
+    <%= ax_error_summary(@footer_setting) %>
 
     <!-- Tabs Card -->
-    <div class="card card-luxury">
-      <div class="card-header">
-        <ul class="nav nav-tabs card-header-tabs" id="footerTabs" role="tablist">
-          <li class="nav-item">
-            <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
-              <i class="bi bi-gear-fill me-2"></i>Geral & Títulos
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <ul class="ax-form-tabs" id="footerTabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#footerTabsContent">
+          <li>
+            <button class="ax-form-tabs__item active" id="general-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#general" data-action="click->ax-tabs#select" type="button" role="tab">
+              <i class="bi bi-gear-fill"></i>Geral & Títulos
             </button>
           </li>
-          <li class="nav-item">
-            <button class="nav-link" id="links-tab" data-bs-toggle="tab" data-bs-target="#links" type="button" role="tab">
-              <i class="bi bi-link-45deg me-2"></i>Links Rápidos
+          <li>
+            <button class="ax-form-tabs__item" id="links-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#links" data-action="click->ax-tabs#select" type="button" role="tab">
+              <i class="bi bi-link-45deg"></i>Links Rápidos
             </button>
           </li>
-          <li class="nav-item">
-            <button class="nav-link" id="stores-tab" data-bs-toggle="tab" data-bs-target="#stores" type="button" role="tab">
-              <i class="bi bi-geo-alt-fill me-2"></i>Nossas Lojas
+          <li>
+            <button class="ax-form-tabs__item" id="stores-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#stores" data-action="click->ax-tabs#select" type="button" role="tab">
+              <i class="bi bi-geo-alt-fill"></i>Nossas Lojas
             </button>
           </li>
-          <li class="nav-item">
-            <button class="nav-link" id="social-tab" data-bs-toggle="tab" data-bs-target="#social" type="button" role="tab">
-              <i class="bi bi-share-fill me-2"></i>Redes Sociais
+          <li>
+            <button class="ax-form-tabs__item" id="social-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#social" data-action="click->ax-tabs#select" type="button" role="tab">
+              <i class="bi bi-share-fill"></i>Redes Sociais
             </button>
           </li>
         </ul>
       </div>
 
-      <div class="card-body">
+      <div class="ax-card__body">
         <div class="tab-content" id="footerTabsContent">
           
           <!-- Tab: Geral & Títulos -->
           <div class="tab-pane fade show active" id="general" role="tabpanel">
-            <div class="row g-4">
-              <div class="col-md-6">
-                <div class="card border h-100">
-                  <div class="card-header bg-light">
-                    <h5 class="mb-0 text-primary">Sobre a Empresa (Coluna 1)</h5>
+            <%= ax_field_grid(columns: 12, gap: :compact) do %>
+              <div class="ax-span-6">
+                <div class="ax-card tw-h-full">
+                  <div class="ax-card__header">
+                    <h5 class="ax-card__title">Sobre a Empresa (Coluna 1)</h5>
                   </div>
-                  <div class="card-body">
-                    <div class="mb-3">
-                      <%= f.label :about_title, "Título da Coluna", class: "form-label fw-bold" %>
-                      <%= f.text_field :about_title, class: "form-control", placeholder: "Ex: Salute Imóveis" %>
+                  <div class="ax-card__body">
+                    <div class="tw-mb-3">
+                      <%= f.label :about_title, "Título da Coluna", class: "ax-label" %>
+                      <%= f.text_field :about_title, class: "ax-control", placeholder: "Ex: Salute Imóveis" %>
                     </div>
-                    <div class="mb-0">
-                      <%= f.label :about_text, "Texto 'Sobre Nós'", class: "form-label fw-bold" %>
-                      <%= f.text_area :about_text, rows: 4, class: "form-control", placeholder: "Breve descrição da imobiliária..." %>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-md-6">
-                <div class="card border h-100">
-                  <div class="card-header bg-light">
-                    <h5 class="mb-0 text-primary">Títulos das Colunas 2, 3 e 4</h5>
-                  </div>
-                  <div class="card-body">
-                    <div class="mb-3">
-                      <%= f.label :links_title, "Título Coluna 2 (Links)", class: "form-label fw-bold" %>
-                      <%= f.text_field :links_title, class: "form-control", placeholder: "Ex: Links Rápidos" %>
-                    </div>
-                    <div class="mb-3">
-                      <%= f.label :stores_title, "Título Coluna 3 (Lojas)", class: "form-label fw-bold" %>
-                      <%= f.text_field :stores_title, class: "form-control", placeholder: "Ex: Nossas Lojas" %>
-                    </div>
-                    <div class="mb-0">
-                      <%= f.label :contact_title, "Título Coluna 4 (Contato)", class: "form-label fw-bold" %>
-                      <%= f.text_field :contact_title, class: "form-control", placeholder: "Ex: Contato" %>
+                    <div>
+                      <%= f.label :about_text, "Texto 'Sobre Nós'", class: "ax-label" %>
+                      <%= f.text_area :about_text, rows: 4, class: "ax-control", placeholder: "Breve descrição da imobiliária..." %>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="col-12">
-                <div class="card border">
-                  <div class="card-header bg-light">
-                    <h5 class="mb-0 text-primary">Informações Globais & Rodapé</h5>
+              <div class="ax-span-6">
+                <div class="ax-card tw-h-full">
+                  <div class="ax-card__header">
+                    <h5 class="ax-card__title">Títulos das Colunas 2, 3 e 4</h5>
                   </div>
-                  <div class="card-body">
-                    <div class="row">
-                      <div class="col-md-6 mb-3">
-                        <%= f.label :whatsapp, "WhatsApp de Contato", class: "form-label fw-bold" %>
-                        <div class="input-group">
-                          <span class="input-group-text text-success"><i class="bi bi-whatsapp"></i></span>
-                          <%= f.text_field :whatsapp, class: "form-control", placeholder: "(47) 98863-0198" %>
-                        </div>
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <%= f.label :email, "E-mail de Contato", class: "form-label fw-bold" %>
-                        <div class="input-group">
-                          <span class="input-group-text text-primary"><i class="bi bi-envelope"></i></span>
-                          <%= f.email_field :email, class: "form-control", placeholder: "exemplo@email.com" %>
-                        </div>
-                      </div>
-                      <div class="col-12">
-                        <%= f.label :copyright_text, "Texto de Copyright (Barra Inferior)", class: "form-label fw-bold" %>
-                        <%= f.text_field :copyright_text, class: "form-control", placeholder: "© 2026 Salute Imóveis..." %>
-                      </div>
+                  <div class="ax-card__body">
+                    <div class="tw-mb-3">
+                      <%= f.label :links_title, "Título Coluna 2 (Links)", class: "ax-label" %>
+                      <%= f.text_field :links_title, class: "ax-control", placeholder: "Ex: Links Rápidos" %>
+                    </div>
+                    <div class="tw-mb-3">
+                      <%= f.label :stores_title, "Título Coluna 3 (Lojas)", class: "ax-label" %>
+                      <%= f.text_field :stores_title, class: "ax-control", placeholder: "Ex: Nossas Lojas" %>
+                    </div>
+                    <div>
+                      <%= f.label :contact_title, "Título Coluna 4 (Contato)", class: "ax-label" %>
+                      <%= f.text_field :contact_title, class: "ax-control", placeholder: "Ex: Contato" %>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+
+              <div class="ax-span-12">
+                <div class="ax-card">
+                  <div class="ax-card__header">
+                    <h5 class="ax-card__title">Informações Globais & Rodapé</h5>
+                  </div>
+                  <div class="ax-card__body">
+                    <%= ax_field_grid(columns: 12, gap: :compact) do %>
+                      <div class="ax-span-6 tw-mb-3">
+                        <%= f.label :whatsapp, "WhatsApp de Contato", class: "ax-label" %>
+                        <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp", style: "color: #16a34a;")) do %>
+                          <%= f.text_field :whatsapp, class: "ax-control", placeholder: "(47) 98863-0198" %>
+                        <% end %>
+                      </div>
+                      <div class="ax-span-6 tw-mb-3">
+                        <%= f.label :email, "E-mail de Contato", class: "ax-label" %>
+                        <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope", style: "color: #2563eb;")) do %>
+                          <%= f.email_field :email, class: "ax-control", placeholder: "exemplo@email.com" %>
+                        <% end %>
+                      </div>
+                      <div class="ax-span-12">
+                        <%= f.label :copyright_text, "Texto de Copyright (Barra Inferior)", class: "ax-label" %>
+                        <%= f.text_field :copyright_text, class: "ax-control", placeholder: "© 2026 Salute Imóveis..." %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           </div>
 
           <!-- Tab: Links Rápidos -->
           <div class="tab-pane fade" id="links" role="tabpanel">
             <div data-controller="nested-form" data-nested-form-wrapper-selector-value=".nested-fields">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0 text-primary"><i class="bi bi-link-45deg me-2"></i>Gerenciar Links Rápidos</h5>
-                <button type="button" class="btn btn-sm btn-success" data-action="nested-form#add">
-                  <i class="bi bi-plus-circle me-1"></i> Adicionar Link
+              <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
+                <h5 class="tw-mb-0 tw-flex tw-items-center tw-gap-2"><i class="bi bi-link-45deg"></i>Gerenciar Links Rápidos</h5>
+                <button type="button" class="ax-btn ax-btn--primary ax-btn--sm tw-gap-2" data-action="nested-form#add">
+                  <i class="bi bi-plus-circle"></i> Adicionar Link
                 </button>
               </div>
 
@@ -149,7 +137,7 @@
                 <% end %>
               </template>
 
-              <div class="row g-3" data-nested-form-target="container">
+              <div class="tw-flex tw-flex-col tw-gap-3" data-nested-form-target="container">
                 <%= f.fields_for :footer_links do |link_f| %>
                   <%= render 'footer_link_fields', f: link_f %>
                 <% end %>
@@ -160,10 +148,10 @@
           <!-- Tab: Nossas Lojas -->
           <div class="tab-pane fade" id="stores" role="tabpanel">
             <div data-controller="nested-form" data-nested-form-wrapper-selector-value=".nested-fields">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0 text-primary"><i class="bi bi-geo-alt-fill me-2"></i>Gerenciar Unidades / Lojas</h5>
-                <button type="button" class="btn btn-sm btn-success" data-action="nested-form#add">
-                  <i class="bi bi-plus-circle me-1"></i> Adicionar Loja
+              <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
+                <h5 class="tw-mb-0 tw-flex tw-items-center tw-gap-2"><i class="bi bi-geo-alt-fill"></i>Gerenciar Unidades / Lojas</h5>
+                <button type="button" class="ax-btn ax-btn--primary ax-btn--sm tw-gap-2" data-action="nested-form#add">
+                  <i class="bi bi-plus-circle"></i> Adicionar Loja
                 </button>
               </div>
 
@@ -173,7 +161,7 @@
                 <% end %>
               </template>
 
-              <div class="row g-3" data-nested-form-target="container">
+              <div class="tw-flex tw-flex-col tw-gap-3" data-nested-form-target="container">
                 <%= f.fields_for :footer_stores do |store_f| %>
                   <%= render 'footer_store_fields', f: store_f %>
                 <% end %>
@@ -184,10 +172,10 @@
           <!-- Tab: Redes Sociais -->
           <div class="tab-pane fade" id="social" role="tabpanel">
             <div data-controller="nested-form" data-nested-form-wrapper-selector-value=".nested-fields">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0 text-primary"><i class="bi bi-share-fill me-2"></i>Ícones de Redes Sociais</h5>
-                <button type="button" class="btn btn-sm btn-success" data-action="nested-form#add">
-                  <i class="bi bi-plus-circle me-1"></i> Adicionar Rede Social
+              <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
+                <h5 class="tw-mb-0 tw-flex tw-items-center tw-gap-2"><i class="bi bi-share-fill"></i>Ícones de Redes Sociais</h5>
+                <button type="button" class="ax-btn ax-btn--primary ax-btn--sm tw-gap-2" data-action="nested-form#add">
+                  <i class="bi bi-plus-circle"></i> Adicionar Rede Social
                 </button>
               </div>
 
@@ -197,7 +185,7 @@
                 <% end %>
               </template>
 
-              <div class="row g-3" data-nested-form-target="container">
+              <div class="tw-flex tw-flex-col tw-gap-3" data-nested-form-target="container">
                 <%= f.fields_for :footer_social_links do |social_f| %>
                   <%= render 'footer_social_link_fields', f: social_f %>
                 <% end %>
@@ -208,8 +196,8 @@
         </div>
       </div>
 
-      <div class="card-footer bg-light border-0 d-flex justify-content-end p-4">
-        <%= f.submit "Salvar Configurações", class: "btn btn-primary btn-lg px-5" %>
+      <div class="ax-card__footer tw-flex tw-justify-end tw-p-4">
+        <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary tw-px-5" %>
       </div>
     </div>
   <% end %>

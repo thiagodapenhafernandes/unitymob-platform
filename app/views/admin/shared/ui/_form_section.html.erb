@@ -1,0 +1,64 @@
+<%
+  section_collapse_id = local_assigns[:collapse_id].presence
+  section_collapsed = local_assigns[:collapsed] && section_collapse_id.present?
+  section_open = !section_collapsed
+  section_classes = ["ax-form-section", local_assigns[:class_name]]
+  section_classes << "is-open" if section_collapse_id.present? && section_open
+  section_options = { class: section_classes.compact.join(" ") }
+  if section_collapse_id.present?
+    section_options[:data] = {
+      controller: "ax-disclosure",
+      ax_disclosure_open_value: section_open
+    }
+  end
+  section_body_classes = ["ax-form-section__body"]
+  section_body_options = { class: section_body_classes.join(" ") }
+  if section_collapse_id.present?
+    section_body_options[:id] = section_collapse_id
+    section_body_options[:data] = { ax_disclosure_target: "content" }
+    section_body_options[:hidden] = true if section_collapsed
+  end
+%>
+<%= tag.section(**section_options) do %>
+  <header class="ax-form-section__header">
+    <h3 class="ax-form-section__title">
+      <span><%= title %></span>
+      <% if local_assigns[:tooltip].present? %>
+        <button type="button"
+                class="ax-field-label__info"
+                aria-label="Ajuda: <%= title %>"
+                data-controller="ax-tooltip"
+                data-ax-tooltip-text-value="<%= tooltip %>">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
+        </button>
+      <% end %>
+    </h3>
+    <% if local_assigns[:eyebrow].present? || local_assigns[:actions].present? || section_collapse_id.present? %>
+      <div class="ax-form-section__meta">
+        <% if local_assigns[:eyebrow].present? %>
+          <span class="ax-form-section__eyebrow"><%= eyebrow %></span>
+        <% end %>
+        <% if local_assigns[:actions].present? %>
+          <div class="ax-form-section__actions">
+            <%= actions %>
+          </div>
+        <% end %>
+        <% if section_collapse_id.present? %>
+          <button class="ax-form-section__toggle"
+                  type="button"
+                  title="Alternar seção"
+                  aria-label="Alternar seção"
+                  data-action="click->ax-disclosure#toggle"
+                  data-ax-disclosure-target="trigger"
+                  aria-expanded="<%= section_collapsed ? 'false' : 'true' %>"
+                  aria-controls="<%= section_collapse_id %>">
+            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+          </button>
+        <% end %>
+      </div>
+    <% end %>
+  </header>
+  <%= tag.div(**section_body_options) do %>
+    <%= local_assigns[:body] %>
+  <% end %>
+<% end %>

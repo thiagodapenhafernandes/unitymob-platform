@@ -1,114 +1,105 @@
 <%= form_with model: [:admin, campaign], local: true do |f| %>
-  <% if campaign.errors.any? %>
-    <div class="alert alert-danger">
-      <strong>Corrija os erros:</strong>
-      <ul class="mb-0 mt-2">
-        <% campaign.errors.full_messages.each do |message| %>
-          <li><%= message %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
+  <%= ax_error_summary(campaign) %>
 
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
-      <div class="row g-3">
-        <div class="col-lg-8">
-          <%= f.label :name, "Nome da campanha", class: "form-label fw-semibold" %>
-          <%= f.text_field :name, class: "form-control", required: true %>
+  <div class="ax-card tw-mb-4">
+    <div class="ax-card__body">
+      <%= ax_field_grid do %>
+        <div class="ax-span-6">
+          <%= f.label :name, "Nome da campanha", class: "ax-label tw-font-semibold" %>
+          <%= f.text_field :name, class: "ax-control", required: true %>
         </div>
-        <div class="col-lg-4">
-          <%= f.label :seo_setting_id, "Página SEO vinculada", class: "form-label fw-semibold" %>
+        <div class="ax-span-4">
+          <%= f.label :seo_setting_id, "Página SEO vinculada", class: "ax-label tw-font-semibold" %>
           <%= f.collection_select :seo_setting_id,
                                   SeoSetting.order(access_count: :desc, page_name: :asc).limit(200),
                                   :id,
                                   :display_name,
                                   { include_blank: "Sem vínculo" },
-                                  class: "form-select" %>
+                                  class: "ax-control" %>
         </div>
-        <div class="col-lg-4">
-          <%= f.label :channel, "Canal", class: "form-label fw-semibold" %>
-          <%= f.select :channel, MarketingCampaign::CHANNELS.map { |key, label| [label, key] }, {}, class: "form-select" %>
+        <div class="ax-span-4">
+          <%= f.label :channel, "Canal", class: "ax-label tw-font-semibold" %>
+          <%= f.select :channel, MarketingCampaign::CHANNELS.map { |key, label| [label, key] }, {}, class: "ax-control" %>
         </div>
-        <div class="col-lg-4">
-          <%= f.label :status, "Status", class: "form-label fw-semibold" %>
-          <%= f.select :status, MarketingCampaign::STATUSES.map { |key, label| [label, key] }, {}, class: "form-select" %>
+        <div class="ax-span-4">
+          <%= f.label :status, "Status", class: "ax-label tw-font-semibold" %>
+          <%= f.select :status, MarketingCampaign::STATUSES.map { |key, label| [label, key] }, {}, class: "ax-control" %>
         </div>
-        <div class="col-lg-4">
-          <%= f.label :priority, "Prioridade", class: "form-label fw-semibold" %>
-          <%= f.number_field :priority, class: "form-control", min: 1, max: 5 %>
+        <div class="ax-span-4">
+          <%= f.label :priority, "Prioridade", class: "ax-label tw-font-semibold" %>
+          <%= f.number_field :priority, class: "ax-control", min: 1, max: 5 %>
         </div>
-        <div class="col-lg-8">
-          <%= f.label :target_url, "URL alvo", class: "form-label fw-semibold" %>
-          <%= f.text_field :target_url, class: "form-control", placeholder: "/imoveis/frente-mar" %>
+        <div class="ax-span-6">
+          <%= f.label :target_url, "URL alvo", class: "ax-label tw-font-semibold" %>
+          <%= f.text_field :target_url, class: "ax-control", placeholder: "/imoveis/frente-mar" %>
         </div>
-        <div class="col-lg-4">
-          <%= f.label :budget, "Orçamento previsto", class: "form-label fw-semibold" %>
-          <%= f.text_field :budget, value: number_with_precision(campaign.budget, precision: 2), class: "form-control", placeholder: "0,00" %>
+        <div class="ax-span-4">
+          <%= f.label :budget, "Orçamento previsto", class: "ax-label tw-font-semibold" %>
+          <%= f.text_field :budget, value: number_with_precision(campaign.budget, precision: 2), class: "ax-control", placeholder: "0,00" %>
         </div>
-        <div class="col-12">
-          <div class="border rounded-3 p-3 bg-light">
-            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <div class="ax-span-12">
+          <div class="tw-rounded-lg tw-p-2" style="border:1px solid var(--ax-border, #e5e7eb)">
+            <div class="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-flex-wrap tw-gap-2">
               <div>
-                <h2 class="h6 fw-bold mb-1"><i class="bi bi-link-45deg me-1"></i>UTM Builder</h2>
-                <p class="small text-muted mb-0">Preencha os campos para gerar o link final da campanha.</p>
+                <h2 class="tw-font-bold tw-mb-1"><i class="bi bi-link-45deg" style="margin-right:.25rem"></i>UTM Builder</h2>
+                <p class="tw-text-sm tw-text-ink-muted">Preencha os campos para gerar o link final da campanha.</p>
               </div>
               <% if campaign.persisted? %>
-                <span class="badge bg-primary"><%= campaign.clicks_count %> cliques · <%= campaign.conversions_count %> conversões</span>
+                <span class="ax-badge ax-badge--blue"><%= campaign.clicks_count %> cliques · <%= campaign.conversions_count %> conversões</span>
               <% end %>
             </div>
-            <div class="row g-3">
-              <div class="col-lg-4">
-                <%= f.label :utm_source, "Origem", class: "form-label small fw-semibold" %>
-                <%= f.text_field :utm_source, class: "form-control", placeholder: "google, instagram, footer" %>
+            <%= ax_field_grid do %>
+              <div class="ax-span-4">
+                <%= f.label :utm_source, "Origem", class: "ax-label tw-text-sm tw-font-semibold" %>
+                <%= f.text_field :utm_source, class: "ax-control", placeholder: "google, instagram, footer" %>
               </div>
-              <div class="col-lg-4">
-                <%= f.label :utm_medium, "Mídia", class: "form-label small fw-semibold" %>
-                <%= f.text_field :utm_medium, class: "form-control", placeholder: "cpc, social, organic" %>
+              <div class="ax-span-4">
+                <%= f.label :utm_medium, "Mídia", class: "ax-label tw-text-sm tw-font-semibold" %>
+                <%= f.text_field :utm_medium, class: "ax-control", placeholder: "cpc, social, organic" %>
               </div>
-              <div class="col-lg-4">
-                <%= f.label :utm_campaign, "Campanha", class: "form-label small fw-semibold" %>
-                <%= f.text_field :utm_campaign, class: "form-control", placeholder: "frente-mar-maio" %>
+              <div class="ax-span-4">
+                <%= f.label :utm_campaign, "Campanha", class: "ax-label tw-text-sm tw-font-semibold" %>
+                <%= f.text_field :utm_campaign, class: "ax-control", placeholder: "frente-mar-maio" %>
               </div>
-              <div class="col-lg-6">
-                <%= f.label :utm_term, "Termo", class: "form-label small fw-semibold" %>
-                <%= f.text_field :utm_term, class: "form-control", placeholder: "apartamento frente mar" %>
+              <div class="ax-span-6">
+                <%= f.label :utm_term, "Termo", class: "ax-label tw-text-sm tw-font-semibold" %>
+                <%= f.text_field :utm_term, class: "ax-control", placeholder: "apartamento frente mar" %>
               </div>
-              <div class="col-lg-6">
-                <%= f.label :utm_content, "Conteúdo", class: "form-label small fw-semibold" %>
-                <%= f.text_field :utm_content, class: "form-control", placeholder: "botao-footer, criativo-a" %>
+              <div class="ax-span-6">
+                <%= f.label :utm_content, "Conteúdo", class: "ax-label tw-text-sm tw-font-semibold" %>
+                <%= f.text_field :utm_content, class: "ax-control", placeholder: "botao-footer, criativo-a" %>
               </div>
-            </div>
+            <% end %>
             <% if campaign.target_url.present? %>
-              <div class="mt-3">
-                <label class="form-label small fw-semibold">Link atual gerado</label>
-                <input type="text" class="form-control form-control-sm" readonly value="<%= campaign.generated_url(request.base_url) %>">
+              <div class="tw-mt-3">
+                <label class="ax-label tw-text-sm tw-font-semibold">Link atual gerado</label>
+                <input type="text" class="ax-control ax-control--sm" readonly value="<%= campaign.generated_url(request.base_url) %>">
               </div>
             <% end %>
           </div>
         </div>
-        <div class="col-lg-4">
-          <%= f.label :starts_on, "Início", class: "form-label fw-semibold" %>
-          <%= f.date_field :starts_on, class: "form-control" %>
+        <div class="ax-span-4">
+          <%= f.label :starts_on, "Início", class: "ax-label tw-font-semibold" %>
+          <%= f.date_field :starts_on, class: "ax-control" %>
         </div>
-        <div class="col-lg-4">
-          <%= f.label :ends_on, "Fim", class: "form-label fw-semibold" %>
-          <%= f.date_field :ends_on, class: "form-control" %>
+        <div class="ax-span-4">
+          <%= f.label :ends_on, "Fim", class: "ax-label tw-font-semibold" %>
+          <%= f.date_field :ends_on, class: "ax-control" %>
         </div>
-        <div class="col-12">
-          <%= f.label :objective, "Objetivo", class: "form-label fw-semibold" %>
-          <%= f.text_field :objective, class: "form-control", placeholder: "Ex: gerar leads para imóveis frente mar" %>
+        <div class="ax-span-12">
+          <%= f.label :objective, "Objetivo", class: "ax-label tw-font-semibold" %>
+          <%= f.text_field :objective, class: "ax-control", placeholder: "Ex: gerar leads para imóveis frente mar" %>
         </div>
-        <div class="col-12">
-          <%= f.label :notes, "Notas", class: "form-label fw-semibold" %>
-          <%= f.text_area :notes, class: "form-control", rows: 5 %>
+        <div class="ax-span-12">
+          <%= f.label :notes, "Notas", class: "ax-label tw-font-semibold" %>
+          <%= f.text_area :notes, class: "ax-control", rows: 5 %>
         </div>
-      </div>
+      <% end %>
     </div>
   </div>
 
-  <div class="d-flex justify-content-end gap-2">
-    <%= link_to "Cancelar", admin_marketing_campaigns_path, class: "btn btn-outline-secondary" %>
-    <%= f.submit "Salvar campanha", class: "btn btn-primary" %>
+  <div class="tw-flex tw-justify-end tw-gap-2">
+    <%= link_to "Cancelar", admin_marketing_campaigns_path, class: "ax-btn ax-btn--ghost" %>
+    <%= f.submit "Salvar campanha", class: "ax-btn ax-btn--primary" %>
   </div>
 <% end %>

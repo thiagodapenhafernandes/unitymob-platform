@@ -18,7 +18,7 @@ export default class extends Controller {
 
     // Create the item
     const wrapper = document.createElement('div')
-    wrapper.classList.add('input-group', 'mb-2')
+    wrapper.classList.add('ax-input-group', 'ax-dynamic-list__item')
 
     // Use template if exists, otherwise default simple input
     if (this.hasTemplateTarget) {
@@ -32,8 +32,8 @@ export default class extends Controller {
       // Name attribute should be passed via data-dynamic-list-param-name-value
       const paramName = this.paramNameValue || 'items[]'
       wrapper.innerHTML = `
-         <input type="text" name="${paramName}" value="${value}" class="form-control" placeholder="https://...">
-         <button type="button" class="btn btn-outline-danger" data-action="dynamic-list#remove">
+         <input type="text" name="${paramName}" value="${value}" class="ax-control" placeholder="https://...">
+         <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm ax-text-danger" data-action="dynamic-list#remove">
            <i class="bi bi-trash"></i>
          </button>
        `
@@ -44,7 +44,7 @@ export default class extends Controller {
 
   remove(event) {
     event.preventDefault()
-    const item = event.target.closest('.input-group')
+    const item = event.target.closest('.ax-dynamic-list__item, .input-group')
     if (item) item.remove()
   }
 }

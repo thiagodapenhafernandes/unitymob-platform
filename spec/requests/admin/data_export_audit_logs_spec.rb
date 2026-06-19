@@ -14,7 +14,9 @@ RSpec.describe "Admin::DataExportAuditLogs", type: :request do
     create(:habitation, codigo: "EXP-#{SecureRandom.hex(6)}", titulo_anuncio: "Exportável")
 
     expect {
-      get export_admin_habitations_path, params: { fields: %w[codigo categoria], data_format: "csv_semicolon" }
+      post export_admin_habitations_path(format: :json),
+           params: { fields: %w[codigo categoria], data_format: "csv_semicolon" },
+           headers: { "ACCEPT" => "application/json" }
     }.to change(DataExportAuditLog, :count).by(1)
 
     log = DataExportAuditLog.last

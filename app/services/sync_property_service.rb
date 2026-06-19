@@ -115,6 +115,12 @@ class SyncPropertyService
     proprietor = resolve_proprietor(hb, owner_data)
     broker_id = resolve_broker(hb)
     raw_imediacoes = hb['Imediacoes']
+    codigo_empreendimento = @detach_orphan_parent ? nil : hb['CodigoEmpreendimento'].to_s.strip.presence
+    nome_empreendimento = development_name_from_vista(
+      categoria,
+      codigo_empreendimento,
+      hb['Empreendimento'].to_s.strip.presence
+    )
 
     habitation_attrs = {
       titulo_anuncio: hb['TituloSite'],
@@ -141,8 +147,8 @@ class SyncPropertyService
       caracteristica_unica: normalize_csv_list(hb['CaracteristicaUnica']),
       caracteristicas: extract_characteristics(hb),
       infra_estrutura: extract_infrastructure(hb),
-      codigo_empreendimento: @detach_orphan_parent ? nil : hb['CodigoEmpreendimento'].to_s.strip.presence,
-      nome_empreendimento: hb['Empreendimento'].to_s.strip.presence,
+      codigo_empreendimento: codigo_empreendimento,
+      nome_empreendimento: nome_empreendimento,
       construtora: hb['Construtora'].to_s.strip.presence,
       constructor_id: constructor_id,
       admin_user_id: broker_id,
@@ -178,6 +184,14 @@ class SyncPropertyService
     }
 
     [habitation_attrs, address_attrs]
+  end
+
+  def development_name_from_vista(category, development_code, raw_name)
+    return nil if raw_name.blank?
+    return raw_name if development_code.present?
+    return nil if Habitation.standalone_category_without_development_name?(category)
+
+    raw_name
   end
 
   def parse_money(v)

@@ -1,66 +1,52 @@
-<div class="modal fade" id="leadAuditHistoryModal" tabindex="-1" aria-labelledby="leadAuditHistoryModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <div>
-          <h5 class="modal-title fw-bold" id="leadAuditHistoryModalLabel">Histórico do Lead</h5>
-          <div class="text-muted small"><%= lead.display_name %></div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
-      <div class="modal-body">
-        <% if audit_logs.present? %>
-          <div class="lead-audit-timeline">
-            <% audit_logs.each do |log| %>
-              <div class="lead-audit-item">
-                <div class="d-flex justify-content-between gap-3 mb-2">
-                  <div>
-                    <div class="fw-bold"><%= log.title %></div>
-                    <div class="small text-muted">
-                      <%= l(log.created_at, format: :short) %>
-                      <span class="mx-1">|</span>
-                      <%= log.source_label %>
-                      <% if log.ip.present? %>
-                        <span class="mx-1">|</span>
-                        IP <%= log.ip %>
-                      <% end %>
-                    </div>
+<%
+  lead_audit_modal_body = capture do %>
+    <% if audit_logs.present? %>
+      <div class="lead-audit-timeline">
+        <% audit_logs.each do |log| %>
+          <div class="ax-card lead-audit-item">
+            <div class="lead-audit-item__header">
+              <div class="tw-flex tw-items-start tw-justify-between tw-gap-2 tw-flex-wrap">
+                <div>
+                  <div class="ax-strong"><%= log.title %></div>
+                  <div class="ax-page-subtitle">
+                    <%= l(log.created_at, format: :short) %>
+                    <span class="tw-mx-1">|</span>
+                    <%= log.source_label %>
+                    <% if log.ip.present? %>
+                      <span class="tw-mx-1">|</span> IP <%= log.ip %>
+                    <% end %>
                   </div>
-                  <span class="badge bg-light text-dark align-self-start"><%= log.action_label %></span>
                 </div>
-
+                <span class="ax-badge ax-badge--gray"><%= log.action_label %></span>
+              </div>
+            </div>
+            <% if log.change_summaries.any? %>
+              <div class="tw-grid tw-gap-0">
                 <% log.change_summaries.each do |change| %>
-                  <div class="row g-2 small border-top py-2">
-                    <div class="col-md-3 fw-semibold"><%= change[:label] %></div>
-                    <div class="col-md-4 text-muted"><%= change[:before] %></div>
-                    <div class="col-md-1 text-center text-muted">→</div>
-                    <div class="col-md-4"><%= change[:after] %></div>
+                  <div class="lead-audit-change">
+                    <div class="lead-audit-change__label ax-page-subtitle"><%= change[:label] %></div>
+                    <div class="lead-audit-change__row">
+                      <span class="lead-audit-change__before"><%= change[:before] %></span>
+                      <span class="lead-audit-change__arrow">→</span>
+                      <span class="lead-audit-change__after"><%= change[:after] %></span>
+                    </div>
                   </div>
                 <% end %>
               </div>
             <% end %>
           </div>
-        <% else %>
-          <div class="text-center text-muted py-5">
-            Nenhuma alteração registrada para este lead.
-          </div>
         <% end %>
       </div>
-    </div>
-  </div>
-</div>
+    <% else %>
+      <div class="ax-empty tw-py-6 tw-text-center">
+        <p>Nenhuma alteração registrada para este lead.</p>
+      </div>
+    <% end %>
+  <% end %>
 
-<style>
-  .lead-audit-timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .lead-audit-item {
-    border: 1px solid #e7ebf2;
-    border-radius: 10px;
-    padding: 1rem;
-    background: #fff;
-  }
-</style>
+<%= ax_quick_modal(
+      id: "leadAuditHistoryModal",
+      title: "Histórico do Lead",
+      size: :lg,
+      body: lead_audit_modal_body
+    ) %>

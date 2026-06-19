@@ -1,74 +1,64 @@
 <%= form_with model: [:admin, @home_section], local: true do |f| %>
-  <% if @home_section.errors.any? %>
-    <div class="alert alert-danger">
-      <h5><%= pluralize(@home_section.errors.count, "erro") %>:</h5>
-      <ul class="mb-0">
-        <% @home_section.errors.full_messages.each do |msg| %>
-          <li><%= msg %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
+  <%= ax_error_summary(@home_section) %>
 
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <%= f.label :section_type, "Tipo de Seção", class: "form-label" %>
-          <%= f.select :section_type, 
+  <div class="ax-card">
+    <div class="ax-card__body">
+      <%= ax_field_grid do %>
+        <div class="ax-span-6 tw-mb-3">
+          <%= f.label :section_type, "Tipo de Seção", class: "ax-label" %>
+          <%= f.select :section_type,
               HomeSection.section_type_options,
-              {}, class: "form-select" %>
+              {}, class: "ax-control" %>
         </div>
 
-        <div class="col-md-6 mb-3">
-          <%= f.label :order_position, "Ordem de Exibição", class: "form-label" %>
-          <%= f.number_field :order_position, class: "form-control", value: @home_section.order_position || (@home_section.persisted? ? @home_section.order_position : HomeSection.maximum(:order_position).to_i + 1) %>
-          <small class="text-muted">A ordem define a posição da seção na página inicial</small>
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <%= f.label :title, "Título", class: "form-label" %>
-        <%= f.text_field :title, class: "form-control", required: true %>
-      </div>
-
-      <div class="mb-3">
-        <%= f.label :subtitle, "Subtítulo (opcional)", class: "form-label" %>
-        <%= f.text_area :subtitle, rows: 2, class: "form-control" %>
-      </div>
-
-      <div class="form-check form-switch mb-3">
-        <%= f.check_box :active, class: "form-check-input", role: "switch", checked: @home_section.persisted? ? @home_section.active : true %>
-        <%= f.label :active, "Seção Ativa", class: "form-check-label" %>
-        <small class="d-block text-muted">Seções inativas não aparecem na página inicial</small>
-      </div>
-
-      <% if @home_section.section_type.in?(%w[featured_properties opportunities developments rentals]) || !@home_section.persisted? %>
-        <div class="border rounded-3 p-3 mb-3">
-          <h6 class="fw-bold text-secondary mb-2">Filtros dos imóveis</h6>
-          <p class="text-muted small mb-3">
-            Estes filtros refinam a lista padrão deste tipo de seção. Deixe todos desmarcados para preservar o comportamento atual.
-          </p>
-
-          <div class="row g-2">
-            <% HomeSection::PROPERTY_FILTER_OPTIONS.each do |key, option| %>
-              <div class="col-md-6 col-lg-4">
-                <label class="border rounded-3 px-3 py-2 w-100 d-flex align-items-center gap-2 bg-light">
-                  <%= check_box_tag "home_section[property_filters][#{key}]",
-                                    "1",
-                                    @home_section.property_filter_enabled?(key),
-                                    class: "form-check-input m-0" %>
-                  <span class="fw-semibold"><%= option[:label] %></span>
-                </label>
-              </div>
-            <% end %>
-          </div>
+        <div class="ax-span-6 tw-mb-3">
+          <%= f.label :order_position, "Ordem de Exibição", class: "ax-label" %>
+          <%= f.number_field :order_position, class: "ax-control", value: @home_section.order_position || (@home_section.persisted? ? @home_section.order_position : HomeSection.maximum(:order_position).to_i + 1) %>
+          <small class="tw-text-ink-muted">A ordem define a posição da seção na página inicial</small>
         </div>
       <% end %>
 
-      <div class="d-flex gap-2">
-        <%= link_to "Cancelar", admin_home_sections_path, class: "btn btn-secondary" %>
-        <%= f.submit @home_section.persisted? ? "Atualizar Seção" : "Criar Seção", class: "btn btn-primary" %>
+      <div class="tw-mb-3">
+        <%= f.label :title, "Título", class: "ax-label" %>
+        <%= f.text_field :title, class: "ax-control", required: true %>
+      </div>
+
+      <div class="tw-mb-3">
+        <%= f.label :subtitle, "Subtítulo (opcional)", class: "ax-label" %>
+        <%= f.text_area :subtitle, rows: 2, class: "ax-control" %>
+      </div>
+
+      <div class="tw-mb-3">
+        <%= ax_switch_field(label: "Seção Ativa", form: f, method: :active, input_html: { role: "switch", checked: @home_section.persisted? ? @home_section.active : true }) %>
+        <small class="tw-text-ink-muted">Seções inativas não aparecem na página inicial</small>
+      </div>
+
+      <% if @home_section.section_type.in?(%w[featured_properties opportunities developments rentals]) || !@home_section.persisted? %>
+        <div class="border tw-rounded-lg tw-p-2 tw-mb-3">
+          <h6 class="tw-font-bold tw-text-ink-muted tw-mb-2">Filtros dos imóveis</h6>
+          <p class="ax-page-subtitle tw-mb-3">
+            Estes filtros refinam a lista padrão deste tipo de seção. Deixe todos desmarcados para preservar o comportamento atual.
+          </p>
+
+          <%= ax_field_grid do %>
+            <% HomeSection::PROPERTY_FILTER_OPTIONS.each do |key, option| %>
+              <div class="ax-span-4">
+                <label class="border tw-rounded-lg tw-py-2 tw-w-full tw-flex tw-items-center tw-gap-2" style="padding-left:0.75rem;padding-right:0.75rem;">
+                  <%= check_box_tag "home_section[property_filters][#{key}]",
+                                    "1",
+                                    @home_section.property_filter_enabled?(key),
+                                    class: "m-0" %>
+                  <span class="tw-font-semibold"><%= option[:label] %></span>
+                </label>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <div class="tw-flex tw-gap-2">
+        <%= link_to "Cancelar", admin_home_sections_path, class: "ax-btn ax-btn--ghost" %>
+        <%= f.submit @home_section.persisted? ? "Atualizar Seção" : "Criar Seção", class: "ax-btn ax-btn--primary" %>
       </div>
     </div>
   </div>

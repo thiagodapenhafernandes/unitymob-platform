@@ -1,198 +1,325 @@
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<% property_setting = @property_setting || PropertySetting.instance %>
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
   <div>
-    <h1 class="h4 mb-1"><%= @captacao.intake_display_title %></h1>
-    <div class="small text-muted">
+    <h1 class="ax-page-title"><%= @captacao.intake_display_title %></h1>
+    <div class="ax-page-subtitle">
       <%= @captacao.property_kind.humanize %> · <%= @captacao.modalidade.humanize %> ·
       <% if @captacao.submitted_at %>
         Finalizada em <%= l(@captacao.submitted_at, format: :short) %>
       <% end %>
     </div>
   </div>
-  <div class="d-flex gap-2">
-    <%= link_to admin_captacoes_path, class: "btn btn-outline-secondary btn-sm" do %>
-      <i class="bi bi-arrow-left me-1"></i>Voltar
+  <div class="tw-flex tw-gap-2">
+    <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost ax-btn--sm" do %>
+      <i class="bi bi-arrow-left"></i>Voltar
     <% end %>
+    <% intake_status_badge_class = case @captacao.intake_status
+         when "submitted_for_admin_review", "admin_approved"
+           "ax-badge ax-badge--amber"
+         when "returned_to_broker"
+           "ax-badge ax-badge--red"
+         when "published", "internal"
+           "ax-badge ax-badge--green"
+         else
+           "ax-badge ax-badge--gray"
+         end %>
+    <span class="<%= intake_status_badge_class %>"><%= @captacao.intake_status_label %></span>
     <% if can_broker_release_to_site?(@captacao) %>
       <%= button_to release_to_site_admin_captacao_path(@captacao), method: :post,
-                    class: "btn btn-sm btn-success fw-bold" do %>
-        <i class="bi bi-globe me-1"></i>Publicar Site
+                    class: "ax-btn ax-btn--primary ax-btn--sm" do %>
+        <i class="bi bi-globe"></i>Publicar Site
       <% end %>
     <% end %>
   </div>
 </div>
 
 <% if @captacao.published_on_site? %>
-  <div class="alert alert-success">
-    <i class="bi bi-check-circle-fill me-1"></i>
+  <%= ax_inline_notice(tone: :success, icon: "check-circle-fill") do %>
     <strong>Publicada no site</strong> — admin já aprovou para divulgação externa.
-  </div>
+  <% end %>
 <% end %>
 
 <% if can_broker_release_to_site?(@captacao) && !@captacao.broker_can_release_to_site? %>
-  <% missing_requirements = @captacao.intake_missing_requirements %>
-  <div class="alert alert-danger">
-    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+  <% missing_requirements = @captacao.intake_missing_requirements(required_checks: property_setting&.active_broker_capture_checks, require_owner_city: true) %>
+  <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle-fill") do %>
     <strong>Esta captação ainda não está pronta para liberar no site.</strong>
     <% if missing_requirements.any? %>
-      <div class="mt-2">Pendências:</div>
-      <ul class="mb-0 mt-1">
+      <div class="tw-mt-2">Pendências:</div>
+      <ul class="tw-mt-1">
         <% missing_requirements.each do |requirement| %>
           <li><%= requirement %></li>
         <% end %>
       </ul>
     <% end %>
+  <% end %>
+<% end %>
+
+<% if property_setting&.broker_capture_layer_enabled && can?(:review, :captacoes) && @captacao.broker_intake? %>
+  <% if @captacao.review_return_count_warning? %>
+    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
+      <strong>Esta captação já teve <%= @captacao.review_return_count %> devoluções.</strong>
+      <div class="tw-mt-2">Considere validar o checklist completo antes de aprovar novamente.</div>
+    <% end %>
+  <% end %>
+
+  <div class="ax-card tw-mb-3">
+    <div class="ax-card__body">
+      <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-clipboard-check"></i>Revisão administrativa</h6>
+
+      <% if @captacao.admin_reviewed_by.present? %>
+        <div class="tw-text-sm tw-text-ink-muted tw-mb-2">
+          Última revisão por <strong><%= @captacao.admin_reviewed_by.name %></strong> em
+          <%= l(@captacao.admin_reviewed_at, format: :short) if @captacao.admin_reviewed_at %>
+        </div>
+      <% end %>
+
+      <% if @captacao.admin_review_return_reason.present? %>
+        <p class="tw-text-sm tw-mb-2"><strong>Motivo da devolução:</strong> <%= @captacao.admin_review_return_reason %></p>
+      <% end %>
+
+      <% if @captacao.admin_review_notes.present? %>
+        <p class="tw-text-sm tw-mb-3"><strong>Observação administrativa:</strong> <%= @captacao.admin_review_notes %></p>
+      <% end %>
+
+      <% if @captacao.intake_status.in?(%w[submitted_for_admin_review admin_approved]) %>
+        <%= ax_field_grid do %>
+          <div class="ax-span-6">
+            <div class="ax-card">
+              <div class="ax-card__body">
+                <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3">Aprovar</h6>
+                <%= form_with url: approve_admin_captacao_path(@captacao), method: :post, local: true do |f| %>
+                  <div class="tw-mb-3">
+                    <%= f.label :admin_review_notes, "Nota interna", class: "ax-label" %>
+                    <%= text_area_tag :admin_review_notes, nil, rows: 4, class: "ax-control", placeholder: "Registre comentários (opcional)" %>
+                  </div>
+                  <%= f.submit "Aprovar", class: "ax-btn ax-btn--primary tw-w-full" %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <div class="ax-span-6">
+            <div class="ax-card">
+              <div class="ax-card__body">
+                <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3">Devolver ao corretor</h6>
+                <%= form_with url: return_to_broker_admin_captacao_path(@captacao), method: :post, local: true do |f| %>
+                  <div class="tw-mb-3">
+                    <%= f.label :admin_review_return_reason, "Motivo da devolução", class: "ax-label" %>
+                    <%= text_area_tag :admin_review_return_reason, nil, rows: 3, class: "ax-control", required: true, placeholder: "Explique por que este retorno foi enviado" %>
+                  </div>
+                  <div class="tw-mb-3">
+                    <%= f.label :admin_review_notes, "Nota interna", class: "ax-label" %>
+                    <%= text_area_tag :admin_review_notes, nil, rows: 3, class: "ax-control", required: true, placeholder: "Adicione observação interna para o corretor" %>
+                  </div>
+                  <%= f.submit "Devolver", class: "ax-btn ax-btn--danger tw-w-full" %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
   </div>
 <% end %>
 
-<div class="row g-3">
-  <div class="col-lg-8">
-    <div class="card shadow-sm border-0 mb-3">
-      <div class="card-body">
-        <h6 class="fw-bold text-uppercase small text-muted mb-3"><i class="bi bi-megaphone me-1"></i>Anúncio para publicação</h6>
-        <dl class="row small mb-0">
-          <dt class="col-sm-3">Categoria</dt>
-          <dd class="col-sm-9"><%= @captacao.categoria.presence || "—" %></dd>
-          <dt class="col-sm-3">Título do anúncio</dt>
-          <dd class="col-sm-9">
+<% if @review_timeline.present? %>
+  <div class="ax-card tw-mb-3">
+    <div class="ax-card__body">
+      <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-clock-history"></i>Histórico de revisão</h6>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th style="width: 90px">Versão</th>
+              <th>Data/hora</th>
+            <th>Responsável</th>
+            <th>Ação</th>
+            <th>Alterações</th>
+          </tr>
+        </thead>
+        <tbody>
+            <% @review_timeline.each do |entry| %>
+              <% log = entry[:log] %>
+              <% summaries = entry[:summaries] || log.change_summaries %>
+              <tr>
+                <td class="tw-text-ink-muted">v<%= entry[:version] %></td>
+                <td><%= l(log.created_at, format: "%d/%m/%Y %H:%M") %></td>
+                <td><%= log.actor_name %></td>
+                <td><%= log.title %></td>
+                <td>
+                  <% if summaries.present? %>
+                    <ul class="tw-text-sm list-unstyled">
+                      <% summaries.each do |change| %>
+                        <li>
+                          <strong><%= change[:label] %>:</strong>
+                          <%= change[:before].presence || "vazio" %>
+                          <i class="bi bi-arrow-right" style="margin-left:.25rem;margin-right:.25rem;"></i>
+                          <%= change[:after].presence || "vazio" %>
+                        </li>
+                      <% end %>
+                    </ul>
+                  <% else %>
+                    <span class="tw-text-ink-muted tw-text-sm">Sem detalhes estruturais.</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<%= ax_field_grid do %>
+  <div class="ax-span-8">
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-megaphone"></i>Anúncio para publicação</h6>
+        <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
+          <dt class="ax-span-3">Categoria</dt>
+          <dd class="ax-span-9"><%= @captacao.categoria.presence || "—" %></dd>
+          <dt class="ax-span-3">Título do anúncio</dt>
+          <dd class="ax-span-9">
             <%= @captacao.titulo_anuncio.presence || "—" %>
             <% if @captacao.title_category_inconsistent? %>
-              <span class="badge bg-danger-subtle text-danger-emphasis border ms-1">Incoerente com a categoria</span>
+              <span class="ax-badge ax-badge--red">Incoerente com a categoria</span>
             <% end %>
           </dd>
-          <dt class="col-sm-3">Descrição do imóvel</dt>
-          <dd class="col-sm-9">
+          <dt class="ax-span-3">Descrição do imóvel</dt>
+          <dd class="ax-span-9">
             <% if @captacao.display_description_plain_text.present? %>
-              <div class="text-muted"><%= formatted_habitation_description(@captacao.display_description) %></div>
+              <div class="tw-text-ink-muted"><%= formatted_habitation_description(@captacao.display_description) %></div>
             <% else %>
-              <span class="text-muted">—</span>
+              <span class="tw-text-ink-muted">—</span>
             <% end %>
           </dd>
         </dl>
       </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-3">
-      <div class="card-body">
-        <h6 class="fw-bold text-uppercase small text-muted mb-3"><i class="bi bi-geo-alt me-1"></i>Endereço</h6>
-        <dl class="row small mb-0">
-          <dt class="col-sm-3">Logradouro</dt>
-          <dd class="col-sm-9"><%= [@captacao.street, @captacao.street_number].compact_blank.join(", ") %></dd>
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-geo-alt"></i>Endereço</h6>
+        <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
+          <dt class="ax-span-3">Logradouro</dt>
+          <dd class="ax-span-9"><%= [@captacao.street, @captacao.street_number].compact_blank.join(", ") %></dd>
           <% if @captacao.edificio_nome.present? %>
-            <dt class="col-sm-3">Edifício</dt>
-            <dd class="col-sm-9"><%= @captacao.edificio_nome %><%= " · Unidade #{@captacao.unidade_numero}" if @captacao.unidade_numero.present? %></dd>
+            <dt class="ax-span-3">Edifício</dt>
+            <dd class="ax-span-9"><%= @captacao.edificio_nome %><%= " · Unidade #{@captacao.unidade_numero}" if @captacao.unidade_numero.present? %></dd>
           <% end %>
-          <dt class="col-sm-3">Bairro</dt>
-          <dd class="col-sm-9"><%= @captacao.neighborhood.presence || "—" %></dd>
-          <dt class="col-sm-3">Cidade/UF</dt>
-          <dd class="col-sm-9"><%= [@captacao.city, @captacao.state].compact_blank.join("/") %></dd>
+          <dt class="ax-span-3">Bairro</dt>
+          <dd class="ax-span-9"><%= @captacao.neighborhood.presence || "—" %></dd>
+          <dt class="ax-span-3">Cidade/UF</dt>
+          <dd class="ax-span-9"><%= [@captacao.city, @captacao.state].compact_blank.join("/") %></dd>
           <% if @captacao.zip_code.present? %>
-            <dt class="col-sm-3">CEP</dt>
-            <dd class="col-sm-9"><%= @captacao.zip_code %></dd>
+            <dt class="ax-span-3">CEP</dt>
+            <dd class="ax-span-9"><%= @captacao.zip_code %></dd>
           <% end %>
         </dl>
       </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-3">
-      <div class="card-body">
-        <h6 class="fw-bold text-uppercase small text-muted mb-3"><i class="bi bi-rulers me-1"></i>Características</h6>
-        <dl class="row small mb-0">
-          <dt class="col-sm-3">Área total</dt>
-          <dd class="col-sm-9"><%= @captacao.area_total %> m²<%= " · privativa #{@captacao.area_privativa} m²" if @captacao.area_privativa.present? %></dd>
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-rulers"></i>Características</h6>
+        <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
+          <dt class="ax-span-3">Área total</dt>
+          <dd class="ax-span-9"><%= @captacao.area_total %> m²<%= " · privativa #{@captacao.area_privativa} m²" if @captacao.area_privativa.present? %></dd>
           <% if @captacao.property_kind_residencial? %>
-            <dt class="col-sm-3">Dorms · Suítes · Banheiros</dt>
-            <dd class="col-sm-9"><%= [@captacao.dormitorios, @captacao.suites, @captacao.banheiros].join(" · ") %></dd>
-            <dt class="col-sm-3">Vagas</dt>
-            <dd class="col-sm-9"><%= @captacao.vagas_garagem.presence || "—" %></dd>
+            <dt class="ax-span-3">Dorms · Suítes · Banheiros</dt>
+            <dd class="ax-span-9"><%= [@captacao.dormitorios, @captacao.suites, @captacao.banheiros].join(" · ") %></dd>
+            <dt class="ax-span-3">Vagas</dt>
+            <dd class="ax-span-9"><%= @captacao.vagas_garagem.presence || "—" %></dd>
           <% end %>
           <% if @captacao.caracteristicas_imovel.any? %>
-            <dt class="col-sm-3">Imóvel</dt>
-            <dd class="col-sm-9"><%= @captacao.caracteristicas_imovel.join(" · ") %></dd>
+            <dt class="ax-span-3">Imóvel</dt>
+            <dd class="ax-span-9"><%= @captacao.caracteristicas_imovel.join(" · ") %></dd>
           <% end %>
           <% if @captacao.caracteristicas_predio.any? %>
-            <dt class="col-sm-3">Edifício</dt>
-            <dd class="col-sm-9"><%= @captacao.caracteristicas_predio.join(" · ") %></dd>
+            <dt class="ax-span-3">Edifício</dt>
+            <dd class="ax-span-9"><%= @captacao.caracteristicas_predio.join(" · ") %></dd>
           <% end %>
         </dl>
       </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-3">
-      <div class="card-body">
-        <h6 class="fw-bold text-uppercase small text-muted mb-3"><i class="bi bi-cash-stack me-1"></i>Negociação</h6>
-        <dl class="row small mb-0">
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-cash-stack"></i>Negociação</h6>
+        <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
           <% if @captacao.valor_venda.present? %>
-            <dt class="col-sm-3">Venda</dt>
-            <dd class="col-sm-9"><strong><%= number_to_currency(@captacao.valor_venda, unit: "R$ ") %></strong></dd>
+            <dt class="ax-span-3">Venda</dt>
+            <dd class="ax-span-9"><strong><%= number_to_currency(@captacao.valor_venda, unit: "R$ ") %></strong></dd>
           <% end %>
           <% if @captacao.valor_locacao.present? %>
-            <dt class="col-sm-3">Locação</dt>
-            <dd class="col-sm-9"><strong><%= number_to_currency(@captacao.valor_locacao, unit: "R$ ") %></strong> / mês</dd>
+            <dt class="ax-span-3">Locação</dt>
+            <dd class="ax-span-9"><strong><%= number_to_currency(@captacao.valor_locacao, unit: "R$ ") %></strong> / mês</dd>
           <% end %>
           <% if @captacao.valor_condominio.present? %>
-            <dt class="col-sm-3">Condomínio</dt>
-            <dd class="col-sm-9"><%= number_to_currency(@captacao.valor_condominio, unit: "R$ ") %></dd>
+            <dt class="ax-span-3">Condomínio</dt>
+            <dd class="ax-span-9"><%= number_to_currency(@captacao.valor_condominio, unit: "R$ ") %></dd>
           <% end %>
           <% if @captacao.valor_iptu.present? %>
-            <dt class="col-sm-3">IPTU</dt>
-            <dd class="col-sm-9"><%= number_to_currency(@captacao.valor_iptu, unit: "R$ ") %>/ano</dd>
+            <dt class="ax-span-3">IPTU</dt>
+            <dd class="ax-span-9"><%= number_to_currency(@captacao.valor_iptu, unit: "R$ ") %>/ano</dd>
           <% end %>
         </dl>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-4">
-    <div class="card shadow-sm border-0 mb-3">
-      <div class="card-body">
-        <h6 class="fw-bold text-uppercase small text-muted mb-3"><i class="bi bi-person me-1"></i>Proprietário</h6>
-        <div class="small"><strong><%= @captacao.proprietario_nome %></strong></div>
+  <div class="ax-span-4">
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-person"></i>Proprietário</h6>
+        <div class="tw-text-sm"><strong><%= @captacao.proprietario_nome %></strong></div>
         <% if @captacao.proprietario_telefone.present? %>
-          <div class="small mt-1"><i class="bi bi-telephone me-1"></i><%= @captacao.proprietario_telefone %></div>
+          <div class="tw-text-sm tw-mt-2 tw-flex tw-items-center tw-gap-2"><i class="bi bi-telephone"></i><%= @captacao.proprietario_telefone %></div>
         <% end %>
         <% if @captacao.proprietario_email.present? %>
-          <div class="small mt-1"><i class="bi bi-envelope me-1"></i><%= @captacao.proprietario_email %></div>
+          <div class="tw-text-sm tw-mt-2 tw-flex tw-items-center tw-gap-2"><i class="bi bi-envelope"></i><%= @captacao.proprietario_email %></div>
         <% end %>
       </div>
     </div>
 
-    <div class="card shadow-sm border-0 mb-3">
-      <div class="card-body">
-        <h6 class="fw-bold text-uppercase small text-muted mb-3"><i class="bi bi-person-badge me-1"></i>Corretor responsável</h6>
-        <div class="small"><strong><%= @captacao.corretor.name %></strong></div>
-        <div class="small text-muted"><%= @captacao.corretor.email %></div>
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-person-badge"></i>Corretor responsável</h6>
+        <div class="tw-text-sm"><strong><%= @captacao.corretor.name %></strong></div>
+        <div class="tw-text-sm tw-text-ink-muted"><%= @captacao.corretor.email %></div>
       </div>
     </div>
 
     <% authorization_attachments = @captacao.respond_to?(:autorizacoes_venda) ? @captacao.autorizacoes_venda : @captacao.autorizacao_pdf %>
     <% if authorization_attachments.attached? %>
-      <div class="card shadow-sm border-0 mb-3">
-        <div class="card-body">
-          <h6 class="fw-bold text-uppercase small text-muted mb-2"><i class="bi bi-file-earmark-pdf me-1"></i>Autorização</h6>
+      <div class="ax-card tw-mb-3">
+        <div class="ax-card__body">
+          <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-2 tw-flex tw-items-center tw-gap-2"><i class="bi bi-file-earmark-pdf"></i>Autorização</h6>
           <% first_authorization = authorization_attachments.respond_to?(:first) ? authorization_attachments.first : authorization_attachments %>
-          <%= link_to rails_blob_path(first_authorization, disposition: "inline"), target: "_blank", class: "btn btn-sm btn-outline-primary w-100" do %>
-            <i class="bi bi-download me-1"></i>Ver autorização
+          <%= link_to rails_blob_path(first_authorization, disposition: "inline"), target: "_blank", class: "ax-btn ax-btn--ghost ax-btn--sm tw-w-full" do %>
+            <i class="bi bi-download"></i>Ver autorização
           <% end %>
         </div>
       </div>
     <% end %>
   </div>
-</div>
+<% end %>
 
 <% photos_attachment = @captacao.respond_to?(:photos) ? @captacao.photos : @captacao.fotos %>
 <% if photos_attachment.attached? %>
-  <div class="card shadow-sm border-0 mb-3">
-    <div class="card-body">
-      <h6 class="fw-bold text-uppercase small text-muted mb-3"><i class="bi bi-images me-1"></i>Fotos (<%= photos_attachment.count %>)</h6>
-      <div class="row g-2">
+  <div class="ax-card tw-mb-3">
+    <div class="ax-card__body">
+      <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-images"></i>Fotos (<%= photos_attachment.count %>)</h6>
+      <%= ax_field_grid do %>
         <% photos_attachment.each do |photo| %>
-          <div class="col-6 col-md-3">
+          <div class="ax-span-3">
             <%= link_to rails_blob_path(photo, disposition: "inline"), target: "_blank" do %>
-              <%= image_tag photo.representation(resize_to_limit: [400, 400]), class: "w-100 rounded", style: "height: 160px; object-fit: cover;", loading: "lazy" %>
+              <%= image_tag photo.representation(resize_to_limit: [400, 400]), class: "tw-w-full tw-rounded-lg", style: "height: 160px; object-fit: cover;", loading: "lazy" %>
             <% end %>
           </div>
         <% end %>
-      </div>
+      <% end %>
     </div>
   </div>
 <% end %>

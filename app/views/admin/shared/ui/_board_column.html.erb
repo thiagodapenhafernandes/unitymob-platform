@@ -1,0 +1,23 @@
+<%
+  count = local_assigns[:count]
+  eyebrow = local_assigns[:eyebrow]
+  empty_text = local_assigns[:empty_text].presence || "Nada por aqui."
+%>
+<section class="ax-board__column <%= local_assigns[:class_name] %>">
+  <div class="ax-board__col-head">
+    <div class="ax-board__col-heading">
+      <% if eyebrow.present? %>
+        <span class="ax-board__col-eyebrow"><%= eyebrow %></span>
+      <% end %>
+      <h2 class="ax-board__col-title"><%= title %></h2>
+    </div>
+    <% unless count.nil? %>
+      <%= tag.span(count, class: "ax-board__col-count", data: (local_assigns[:count_data] || {})) %>
+    <% end %>
+  </div>
+
+  <%= tag.div(class: "ax-board__col-body", data: (local_assigns[:body_data] || {})) do %>
+    <%= body %>
+    <div class="ax-board__empty"><%= empty_text %></div>
+  <% end %>
+</section>

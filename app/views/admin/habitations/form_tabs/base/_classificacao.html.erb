@@ -1,0 +1,118 @@
+<%= ax_form_section(title: "Definições básicas", eyebrow: "Classificação") do %>
+  <%= ax_field_grid(columns: 12, gap: :compact) do %>
+    <div class="ax-span-6">
+      <%= ax_field_label(nil, nil, text: "Tipo de cadastro") %>
+      <%= select_tag :ui_cadastro_type,
+          options_for_select(cadastro_type_labels.map { |key, label| [label, key] }, inferred_cadastro_type),
+          class: "ax-control",
+          data: {
+            controller: "tom-select",
+            habitation_form_target: "cadastroType",
+            action: "change->habitation-form#cadastroTypeChanged"
+          } %>
+      <%= f.hidden_field :tipo, value: (f.object.tipo.presence || cadastro_tipo_by_type[inferred_cadastro_type]), data: { habitation_form_target: "tipo" } %>
+    </div>
+
+    <div class="ax-span-6">
+      <%= ax_select_field(
+            form: f,
+            method: :categoria,
+            label: "Categoria",
+            choices: (@categories.presence || Habitation::CATEGORIES),
+            select_options: { include_blank: true },
+            html_options: {
+              data: {
+                controller: "tom-select",
+                tom_select_create_value: true,
+                placeholder: "Selecione...",
+                habitation_form_target: "category",
+                habitation_duplicate_check_target: "category",
+                action: "change->habitation-duplicate-check#check"
+              }
+            }
+          ) %>
+    </div>
+
+    <div class="ax-span-2">
+      <%= ax_select_field(
+            form: f,
+            method: :status,
+            label: "Status comercial",
+            choices: (@status_options.presence || Habitation::STATUS_OPTIONS),
+            select_options: { include_blank: true },
+            html_options: {
+              data: {
+                controller: "tom-select",
+                placeholder: "Selecione...",
+                habitation_form_target: "statusSelect",
+                habitation_duplicate_check_target: "commercialStatus",
+                action: "change->habitation-form#statusChanged change->habitation-duplicate-check#check"
+              }
+            }
+          ) %>
+      <%= hidden_field_tag :duplicate_check_comparison,
+                           habitation.duplicate_identity_scope,
+                           data: { habitation_duplicate_check_target: "comparison" } %>
+    </div>
+
+    <div class="ax-span-4 <%= "tw-hidden" unless suspended_status %>" data-habitation-form-target="suspensionReasonField">
+      <%= ax_text_field(
+            form: f,
+            method: :motivo_suspensao,
+            label: "Motivo de suspensão",
+            disabled: !suspended_status,
+            data: { habitation_form_target: "suspensionReasonInput" },
+            placeholder: "Informe quando o status estiver Suspenso"
+          ) %>
+    </div>
+
+    <% if habitation.broker_intake? %>
+      <div class="ax-span-3">
+        <%= ax_select_field(
+              form: f,
+              method: :intake_status,
+              label: "Status da captação",
+              choices: Habitation::INTAKE_STATUSES.map { |value, label| [label, value] },
+              html_options: {
+                disabled: !can_manage_intake_status?(habitation),
+                data: { controller: "tom-select", placeholder: "Selecione..." }
+              },
+              tooltip: "Fluxo separado do status comercial."
+            ) %>
+      </div>
+    <% end %>
+
+    <div class="<%= habitation.broker_intake? ? "ax-span-1" : "ax-span-2" %>">
+      <%= ax_select_field(
+            form: f,
+            method: :situacao,
+            label: "Situação",
+            choices: Habitation::SITUATIONS,
+            select_options: { include_blank: true },
+            html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+          ) %>
+    </div>
+
+    <div class="<%= habitation.broker_intake? ? "ax-span-1" : "ax-span-2" %>">
+      <%= ax_select_field(
+            form: f,
+            method: :ocupacao_status,
+            label: "Ocupação",
+            choices: Habitation::OCUPACAO_STATUS,
+            select_options: { include_blank: true },
+            html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+          ) %>
+    </div>
+
+    <div class="<%= habitation.broker_intake? ? "ax-span-1" : "ax-span-2" %>">
+      <%= ax_select_field(
+            form: f,
+            method: :estado_conservacao,
+            label: "Estado",
+            choices: Habitation::ESTADO_CONSERVACAO,
+            select_options: { include_blank: true },
+            html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+          ) %>
+    </div>
+  <% end %>
+<% end %>

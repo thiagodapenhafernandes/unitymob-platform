@@ -18,11 +18,16 @@ class Lead < ApplicationRecord
   has_many :lead_audit_logs
   has_many :activities, class_name: "LeadActivity", dependent: :destroy
   has_many :seo_conversion_events, dependent: :nullify
+  has_many :tasks, dependent: :nullify
+  has_many :appointments, dependent: :nullify
+  has_many :proposals, dependent: :destroy
   
   after_create :record_audit_create
   after_update :record_audit_update
   after_destroy :record_audit_destroy
   after_create_commit :route_lead
+  after_create_commit :dispatch_automation_created
+  after_update_commit :dispatch_automation_stage_changed
 
   before_validation :normalize_status
 
@@ -81,12 +86,16 @@ class Lead < ApplicationRecord
   end
 
   def self.status_options
-    catalog_statuses = AttributeOption.where(context: "lead", category: "status").order(name: :asc).pluck(:name)
+    relation = AttributeOption.where(context: "lead", category: "status")
+    relation = if AttributeOption.column_names.include?("position")
+                 relation.order(Arel.sql("position ASC NULLS LAST")).order(name: :asc)
+               else
+                 relation.order(name: :asc)
+               end
+    catalog_statuses = relation.pluck(:name)
     return LEGACY_STATUSES if catalog_statuses.blank?
 
-    legacy_in_catalog = LEGACY_STATUSES.select { |status| catalog_statuses.include?(status) }
-    custom_statuses = catalog_statuses.reject { |status| LEGACY_STATUSES.include?(status) }.sort
-    legacy_in_catalog + custom_statuses
+    catalog_statuses
   end
 
   def self.status_value(value)
@@ -134,5 +143,14 @@ class Lead < ApplicationRecord
 
   def route_lead
     Leads::RoutingService.route!(self)
+  end
+
+  def dispatch_automation_created
+    Automation::Dispatcher.dispatch(:lead_created, self)
+  end
+
+  def dispatch_automation_stage_changed
+    return unless saved_change_to_status?
+    Automation::Dispatcher.dispatch(:lead_stage_changed, self)
   end
 end

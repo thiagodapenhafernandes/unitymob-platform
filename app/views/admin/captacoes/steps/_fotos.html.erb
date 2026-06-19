@@ -7,24 +7,24 @@
          data-captacao-photos-schedule-url-value="<%= schedule_url %>"
          data-captacao-photos-blocked-dates-value="<%= (@photography_blocked_dates || []).to_json %>"
          data-captacao-photos-booked-slots-value="<%= (@photography_booked_slots || []).to_json %>">
-  <h1 class="wizard-section-title"><i class="bi bi-camera-fill text-primary me-2"></i>Fotos e autorização</h1>
+  <h1 class="wizard-section-title"><i class="bi bi-camera-fill" style="color:#2563eb;"></i> Fotos e autorização</h1>
   <p class="wizard-section-subtitle">Escolha se vai enviar as fotos agora ou agendar um fotógrafo para o imóvel.</p>
 
   <div class="wizard-field-group">
-    <label class="form-label">Fotos ou agendamento com fotógrafo</label>
+    <label class="ax-label">Fotos ou agendamento com fotógrafo</label>
     <%= f.select :photo_flow_choice,
                  Habitation::PHOTO_FLOW_CHOICES.map { |key, label| [label, key] },
                  { include_blank: "Selecione" },
-                 class: field_state.call(:photo_flow_choice, "form-select"),
+                 class: field_state.call(:photo_flow_choice, "ax-control"),
                  data: { captacao_photos_target: "flowSelect", action: "change->captacao-photos#refreshFlow" } %>
     <% if field_invalid.call(:photo_flow_choice) %><div class="invalid-feedback d-block">Escolha se vai enviar fotos ou agendar fotógrafo.</div><% end %>
   </div>
 
-  <div class="wizard-field-group d-none" data-captacao-photos-target="uploadPanel">
-    <label class="form-label">Fotos do imóvel</label>
+  <div class="wizard-field-group" data-captacao-photos-target="uploadPanel" hidden>
+    <label class="ax-label">Fotos do imóvel</label>
     <div class="captacao-photo-picker-actions">
-      <label class="btn btn-primary captacao-photo-picker-button mb-0">
-        <i class="bi bi-images me-1"></i>
+      <label class="ax-btn ax-btn--primary captacao-photo-picker-button tw-mb-0">
+        <i class="bi bi-images"></i>
         Selecionar da galeria
         <%= f.file_field (@captacao.is_a?(Habitation) ? :photos : :fotos),
                          multiple: true,
@@ -33,8 +33,8 @@
                          direct_upload: true,
                          data: { captacao_photos_target: "input", action: "change->captacao-photos#filesChanged" } %>
       </label>
-      <label class="btn btn-outline-primary captacao-photo-picker-button mb-0">
-        <i class="bi bi-camera me-1"></i>
+      <label class="ax-btn ax-btn--ghost captacao-photo-picker-button tw-mb-0">
+        <i class="bi bi-camera"></i>
         Tirar foto
         <input type="file"
                accept="image/*"
@@ -45,13 +45,13 @@
       </label>
     </div>
     <% if field_invalid.call(:photos) %><div class="invalid-feedback d-block">Envie ao menos uma foto do imóvel.</div><% end %>
-    <small class="text-muted">Use a galeria para enviar 20 a 30 fotos de uma vez, ou tire uma foto por vez e vá acrescentando na lista.</small>
+    <small class="tw-text-ink-muted">Use a galeria para enviar 20 a 30 fotos de uma vez, ou tire uma foto por vez e vá acrescentando na lista.</small>
   </div>
 
-  <div class="captacao-photo-list mb-4 d-none" data-captacao-photos-target="newPhotosPanel">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-      <label class="form-label mb-0">Fotos selecionadas agora</label>
-      <span class="small text-muted">antes do envio</span>
+  <div class="captacao-photo-list tw-mb-4" data-captacao-photos-target="newPhotosPanel" hidden>
+    <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+      <label class="ax-label tw-mb-0">Fotos selecionadas agora</label>
+      <span class="tw-text-sm tw-text-ink-muted">antes do envio</span>
     </div>
     <div class="captacao-photo-empty" data-captacao-photos-target="emptyState">
       Nenhuma foto nova selecionada.
@@ -60,10 +60,10 @@
   </div>
 
   <% if photos_attachment.attached? %>
-    <div class="captacao-photo-list mb-4" data-captacao-photos-target="existingPhotosPanel">
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <label class="form-label mb-0">Fotos já anexadas</label>
-        <span class="small text-muted"><%= pluralize(photos_attachment.count, "foto", "fotos") %></span>
+    <div class="captacao-photo-list tw-mb-4" data-captacao-photos-target="existingPhotosPanel">
+      <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+        <label class="ax-label tw-mb-0">Fotos já anexadas</label>
+        <span class="tw-text-sm tw-text-ink-muted"><%= pluralize(photos_attachment.count, "foto", "fotos") %></span>
       </div>
       <%= f.hidden_field :ordered_photo_ids,
                          data: { captacao_photos_target: "orderInput" },
@@ -85,8 +85,8 @@
               </label>
             </div>
             <div class="captacao-photo-actions">
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="captacao-photos#moveExistingUp" aria-label="Subir foto"><i class="bi bi-arrow-up"></i></button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="captacao-photos#moveExistingDown" aria-label="Descer foto"><i class="bi bi-arrow-down"></i></button>
+              <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="captacao-photos#moveExistingUp" aria-label="Subir foto"><i class="bi bi-arrow-up"></i></button>
+              <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="captacao-photos#moveExistingDown" aria-label="Descer foto"><i class="bi bi-arrow-down"></i></button>
             </div>
           </div>
         <% end %>
@@ -98,70 +98,69 @@
 
   <hr class="my-3">
 
-  <div class="wizard-field-group d-none" data-captacao-photos-target="schedulePanel">
+  <div class="wizard-field-group" data-captacao-photos-target="schedulePanel" hidden>
     <div class="captacao-schedule-box">
       <div>
         <strong>Agendamento com fotógrafo</strong>
-        <p class="small text-muted mb-2">
+        <p class="tw-text-sm tw-text-ink-muted tw-mb-2">
           <%= schedule_url.present? ? "A agenda integrada será aberta em uma nova aba." : "Escolha um dia e horário disponível no agendador interno." %>
         </p>
       </div>
       <button type="button"
-              class="btn btn-outline-primary btn-sm d-none"
+              class="ax-btn ax-btn--ghost ax-btn--sm"
+              hidden
               data-captacao-photos-target="externalScheduleButton"
               data-action="captacao-photos#openScheduler">
-        <i class="bi bi-box-arrow-up-right me-1"></i>Abrir agenda de fotos
+        <i class="bi bi-box-arrow-up-right"></i>Abrir agenda de fotos
       </button>
       <button type="button"
-              class="btn btn-primary btn-sm d-none"
+              class="ax-btn ax-btn--primary ax-btn--sm"
+              hidden
               data-captacao-photos-target="internalScheduleButton"
               data-action="captacao-photos#openScheduler">
-        <i class="bi bi-calendar2-plus me-1"></i>Escolher horário
+        <i class="bi bi-calendar2-plus"></i>Escolher horário
       </button>
     </div>
   </div>
 
-  <div class="wizard-field-group d-none" data-captacao-photos-target="scheduledAtGroup">
-    <%= f.label :photo_session_requested_at, "Data/hora agendada com fotógrafo", class: "form-label" %>
+  <div class="wizard-field-group" data-captacao-photos-target="scheduledAtGroup" hidden>
+    <%= f.label :photo_session_requested_at, "Data/hora agendada com fotógrafo", class: "ax-label" %>
     <%= f.datetime_local_field :photo_session_requested_at,
                                class: field_state.call(:photo_session_requested_at),
                                data: { captacao_photos_target: "scheduledAtInput" } %>
     <% if field_invalid.call(:photo_session_requested_at) %><div class="invalid-feedback d-block">Informe a data/hora agendada.</div><% end %>
-    <small class="text-muted">Obrigatório quando a opção for agendar fotógrafo.</small>
+    <small class="tw-text-ink-muted">Obrigatório quando a opção for agendar fotógrafo.</small>
   </div>
 
   <div class="wizard-field-group">
-    <label class="form-label">Autorização do proprietário</label>
+    <label class="ax-label">Autorização do proprietário</label>
     <%= f.file_field (@captacao.is_a?(Habitation) ? :autorizacoes_venda : :autorizacao_pdf),
                      multiple: @captacao.is_a?(Habitation),
                      accept: "image/*,application/pdf",
                      class: field_state.call(:autorizacoes_venda),
                      direct_upload: true %>
     <% if field_invalid.call(:autorizacoes_venda) %><div class="invalid-feedback d-block">Anexe a autorização do proprietário.</div><% end %>
-    <small class="text-muted">Anexe o print ou PDF da autorização.</small>
+    <small class="tw-text-ink-muted">Anexe o print ou PDF da autorização.</small>
   </div>
 
   <% if authorization_attachments.attached? %>
-    <div class="alert alert-success small">
-      <i class="bi bi-file-earmark-check-fill me-1"></i>
+    <%= ax_inline_notice(tone: :success, icon: "file-earmark-check-fill") do %>
       Autorização anexada.
-    </div>
+    <% end %>
   <% end %>
 
-  <div class="modal fade" id="captacaoPhotoSchedulerModal" tabindex="-1" aria-labelledby="captacaoPhotoSchedulerLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <h5 class="modal-title" id="captacaoPhotoSchedulerLabel">Agendar fotografia</h5>
-            <small class="text-muted">Horários disponíveis para os próximos dias úteis.</small>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+  <div class="ax-quick-modal ax-quick-modal--md" id="captacaoPhotoSchedulerModal" tabindex="-1" role="presentation" hidden aria-hidden="true" data-controller="ax-modal" data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+    <div class="ax-quick-modal__panel" role="dialog" aria-modal="true">
+      <header class="ax-quick-modal__header">
+        <div>
+          <h5 class="ax-quick-modal__title" id="captacaoPhotoSchedulerLabel">Agendar fotografia</h5>
+          <small class="tw-text-ink-muted">Horários disponíveis para os próximos dias úteis.</small>
         </div>
-        <div class="modal-body">
-          <div class="captacao-calendar-grid mb-3" data-captacao-photos-target="calendarGrid"></div>
-          <div class="captacao-slot-list" data-captacao-photos-target="slotList"></div>
-        </div>
+        <button type="button" class="ax-icon-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+      </header>
+      <div class="ax-quick-modal__body">
+        <div class="captacao-calendar-grid tw-mb-3" data-captacao-photos-target="calendarGrid"></div>
+        <div class="captacao-slot-list" data-captacao-photos-target="slotList"></div>
       </div>
     </div>
   </div>

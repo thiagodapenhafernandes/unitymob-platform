@@ -1,0 +1,81 @@
+<%= turbo_frame_tag "admin_dashboard_operations" do %>
+  <div class="ax-dashboard-grid ax-dashboard-grid--operations">
+    <article class="ax-dashboard-panel ax-dashboard-panel--activity">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Auditoria</span>
+          <h2>Atividade recente</h2>
+        </div>
+        <%= link_to "Auditoria completa", admin_field_audit_logs_path, class: "ax-dashboard-panel__link" %>
+      </div>
+
+      <div class="ax-dashboard-list">
+        <% if @recent_audit_logs.any? %>
+          <% @recent_audit_logs.each do |log| %>
+            <% color = { "created" => "primary", "closed" => "secondary", "forced_closed" => "warning", "flagged_suspicious" => "danger", "manual_request_approved" => "success", "manual_request_rejected" => "dark" }[log.action] || "info" %>
+            <div class="ax-dashboard-list__row">
+              <%= ax_badge(log.action.humanize, tone: (@bs_to_ax[color] || "blue")) %>
+              <span class="ax-dashboard-list__main">
+                <strong><%= log.admin_user&.name || "—" %></strong>
+                <% if log.actor_admin_user && log.actor_admin_user != log.admin_user %>
+                  <em>por <%= log.actor_admin_user.name %></em>
+                <% end %>
+                <% if log.check_in %>
+                  <em>· <%= log.check_in.store.name %></em>
+                <% end %>
+              </span>
+              <span class="ax-dashboard-list__time"><%= time_ago_in_words(log.created_at) %></span>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="ax-dashboard-empty-row">Nenhuma atividade em campo ainda.</div>
+        <% end %>
+      </div>
+    </article>
+
+    <article class="ax-dashboard-panel">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Catálogo</span>
+          <h2>Últimos imóveis atualizados</h2>
+        </div>
+        <%= link_to "Ver todos", admin_habitations_path, class: "ax-dashboard-panel__link" %>
+      </div>
+
+      <div class="ax-dashboard-table-wrap">
+        <table class="ax-table ax-dashboard-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Endereço</th>
+              <th>Tipo</th>
+              <th class="ax-num">Atualizado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_habitations.each do |habitation| %>
+              <tr>
+                <td class="ax-strong"><%= link_to habitation.codigo, admin_habitation_internal_path(habitation) %></td>
+                <td>
+                  <div><%= [habitation.endereco, habitation.numero].compact_blank.join(", ").presence || "—" %></div>
+                  <small><%= [habitation.bairro, habitation.cidade].compact_blank.join(" · ") %></small>
+                </td>
+                <td>
+                  <% if habitation.categoria.present? %>
+                    <span class="ax-badge ax-badge--gray"><%= habitation.categoria %></span>
+                  <% else %>
+                    —
+                  <% end %>
+                </td>
+                <td class="ax-num"><%= habitation.data_atualizacao_crm ? time_ago_in_words(habitation.data_atualizacao_crm) : "—" %></td>
+              </tr>
+            <% end %>
+            <% if @recent_habitations.empty? %>
+              <tr><td colspan="4"><div class="ax-empty">Nenhum imóvel atualizado recentemente.</div></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+<% end %>

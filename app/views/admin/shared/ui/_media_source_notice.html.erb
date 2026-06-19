@@ -1,0 +1,14 @@
+<div class="ax-media-source-notice">
+  <div class="ax-media-source-notice__icon" aria-hidden="true">
+    <i class="bi bi-<%= icon %>"></i>
+  </div>
+  <div class="ax-media-source-notice__copy">
+    <strong><%= title %></strong>
+    <span><%= description %></span>
+  </div>
+  <% if action.present? %>
+    <div class="ax-media-source-notice__action">
+      <%= action %>
+    </div>
+  <% end %>
+</div>

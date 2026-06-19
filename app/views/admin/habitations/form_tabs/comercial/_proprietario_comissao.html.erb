@@ -1,0 +1,78 @@
+<%= ax_form_section(title: "Proprietário e comissões", eyebrow: "Relacionamento") do %>
+  <div class="ax-owner-commission-layout">
+    <% if can_view_proprietor_data?(habitation) %>
+      <div>
+        <%= ax_field_group(title: "Proprietário e contatos") do %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-8">
+              <%= ax_text_field(form: f, method: :proprietario, label: "Nome", readonly: !can_edit_protected_habitation_fields) %>
+            </div>
+            <div class="ax-span-4">
+              <%= ax_text_field(form: f, method: :proprietario_codigo, label: "Cód. Vista", readonly: !can_edit_protected_habitation_fields) %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_text_field(form: f, method: :proprietario_email, label: "E-mail", readonly: !can_edit_protected_habitation_fields) %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_text_field(
+                    form: f,
+                    method: :proprietario_celular,
+                    label: "Celular",
+                    value: habitation.proprietario_telefone,
+                    readonly: !can_edit_protected_habitation_fields,
+                    data: { controller: "mask", mask_type_value: "phone" }
+                  ) %>
+            </div>
+            <div class="ax-span-6">
+              <%= ax_text_field(
+                    form: f,
+                    method: :proprietario_telefone_comercial,
+                    label: "F. Comercial",
+                    value: habitation.proprietario_telefone_comercial_display,
+                    readonly: !can_edit_protected_habitation_fields,
+                    data: { controller: "mask", mask_type_value: "phone" }
+                  ) %>
+            </div>
+            <div class="ax-span-6">
+              <%= ax_text_field(
+                    form: f,
+                    method: :proprietario_telefone_residencial,
+                    label: "F. Residencial",
+                    value: habitation.proprietario_telefone_residencial_display,
+                    readonly: !can_edit_protected_habitation_fields,
+                    data: { controller: "mask", mask_type_value: "phone" }
+                  ) %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+    <div>
+      <%= ax_field_group(title: "Comissão e operação") do %>
+        <%= ax_field_grid do %>
+          <div class="ax-span-6">
+            <%= ax_currency_field(form: f, method: :valor_livre_proprietario_formatted, label: "Proprietário (livre)", data: { controller: "mask", mask_type_value: "currency" }) %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_currency_field(form: f, method: :valor_comissao_formatted, label: "Valor da comissão", data: { controller: "mask", mask_type_value: "currency" }) %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_number_field(form: f, method: :captador_commission_percentage, label: "Comissão captador (%)", min: 0, max: 100, step: 0.01, placeholder: "0,00") %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_number_field(form: f, method: :broker_commission_percentage, label: "Comissão corretor (%)", min: 0, max: 100, step: 0.01, placeholder: "0,00") %>
+          </div>
+          <div class="ax-span-12 ax-field-align-end">
+            <%= ax_toggle_chip(f, :salute_rental_management_flag, label: "Administração de locação", class_name: "ax-toggle-chip--full") %>
+          </div>
+          <div class="ax-span-8 ax-field-align-end">
+            <%= ax_toggle_chip(f, :home_corporate_flag, label: "Vitrine Corporate", class_name: "ax-toggle-chip--full") %>
+          </div>
+          <div class="ax-span-4">
+            <%= ax_number_field(form: f, method: :home_corporate_position, label: "Posição na Home", min: 1, max: 20, placeholder: "1, 2, 3...") %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

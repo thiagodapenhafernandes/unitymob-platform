@@ -206,7 +206,7 @@
   <%= raw({
     "@context" => "https://schema.org",
     "@type" => "ItemList",
-    "name" => @page_title.presence || "Empreendimentos Salute Imóveis",
+    "name" => @page_title.presence || "Empreendimentos #{@layout_setting&.site_name.presence || 'Unitymob'}",
     "numberOfItems" => @empreendimentos.size,
     "itemListElement" => @empreendimentos.each_with_index.map do |empreendimento, index|
       image = empreendimento.primary_image_url

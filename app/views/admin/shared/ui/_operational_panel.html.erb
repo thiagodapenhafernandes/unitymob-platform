@@ -1,0 +1,22 @@
+<section class="ax-operational-panel ax-dashboard-panel <%= local_assigns[:class_name] %>">
+  <% if local_assigns[:eyebrow].present? || local_assigns[:title].present? || local_assigns[:actions].present? %>
+    <header class="ax-operational-panel__header ax-dashboard-panel__header">
+      <div>
+        <% if local_assigns[:eyebrow].present? %>
+          <span class="ax-operational-panel__eyebrow ax-dashboard-panel__eyebrow"><%= eyebrow %></span>
+        <% end %>
+        <% if local_assigns[:title].present? %>
+          <h2><%= title %></h2>
+        <% end %>
+      </div>
+
+      <% if local_assigns[:actions].present? %>
+        <div class="ax-operational-panel__actions"><%= actions %></div>
+      <% end %>
+    </header>
+  <% end %>
+
+  <div class="ax-operational-panel__body">
+    <%= local_assigns[:body] %>
+  </div>
+</section>

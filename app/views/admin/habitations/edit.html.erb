@@ -1,182 +1,31 @@
 <% content_for :submit_text, "Atualizar Imóvel" %>
 
-<style>
-  .habitation-edit-header {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .habitation-edit-header .title { font-size: 1.3rem; font-weight: 700; color: #0f172a; line-height: 1.2; }
-  .habitation-edit-header .codigo { font-size: .8rem; color: #64748b; font-weight: 600; letter-spacing: .02em; }
-  .habitation-edit-header .subtitle { font-size: .85rem; color: #64748b; margin-top: .15rem; }
-  .habitation-edit-header .captador-card {
-    display: flex;
-    align-items: center;
-    gap: .65rem;
-    min-width: 190px;
-    max-width: 280px;
-  }
-  .habitation-edit-header .captador-avatar {
-    width: 46px;
-    height: 46px;
-    border-radius: 999px;
-    object-fit: cover;
-    flex: 0 0 46px;
-    border: 2px solid #e5e7eb;
-    background: #f8fafc;
-  }
-  .habitation-edit-header .captador-avatar-fallback {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    color: #2563eb;
-    background: #eff6ff;
-  }
-  .habitation-edit-header .captador-label { font-size: .7rem; color: #64748b; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-  .habitation-edit-header .captador-name { font-size: .9rem; color: #0f172a; font-weight: 700; line-height: 1.15; }
-  .habitation-edit-header .actions .btn { font-weight: 600; }
+<% return_path = @return_to_path || admin_habitations_path %>
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Imóveis", admin_habitations_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong><%= @habitation.codigo.presence || "Novo cadastro" %></strong>
+<% end %>
 
-  /* Tabs com scroll horizontal em mobile */
-  @media (max-width: 767.98px) {
-    .habitation-edit-header {
-      padding: .9rem 1rem;
-    }
-    .habitation-edit-header {
-      align-items: stretch !important;
-    }
-    .habitation-edit-header .habitation-summary {
-      order: 2;
-      width: 100%;
-    }
-    .habitation-edit-header .title { font-size: 1.1rem; }
-    .habitation-edit-header .captador-card {
-      order: 1;
-      width: 100%;
-      max-width: none;
-      padding: .65rem .75rem;
-      border: 1px solid #dbeafe;
-      border-radius: 12px;
-      background: #eff6ff;
-    }
-    .habitation-edit-header .captador-avatar {
-      width: 38px;
-      height: 38px;
-      flex-basis: 38px;
-    }
-    .habitation-edit-header .actions {
-      order: 3;
-      flex-wrap: wrap;
-      gap: .4rem !important;
-      width: 100%;
-    }
-    .habitation-edit-header .actions .btn {
-      flex: 1 1 auto;
-      font-size: .8rem;
-      padding: .45rem .7rem;
-    }
-    .habitation-edit-header .actions .btn span {
-      white-space: nowrap;
-    }
-
-    #habitationTabs {
-      flex-wrap: nowrap !important;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: .25rem;
-      scrollbar-width: none;
-    }
-    #habitationTabs::-webkit-scrollbar { display: none; }
-    #habitationTabs .nav-item { flex: 0 0 auto; }
-    #habitationTabs .nav-link {
-      white-space: nowrap;
-      font-size: .85rem !important;
-      padding-left: .5rem !important;
-      padding-right: .5rem !important;
-    }
-  }
-</style>
-
-<div class="habitation-form-page">
-  <div class="habitation-edit-header d-flex justify-content-between align-items-center gap-3 flex-wrap">
-    <div class="habitation-summary flex-grow-1" style="min-width: 0;">
-      <div class="codigo">
-        <i class="bi bi-hash"></i><%= @habitation.codigo %>
-        <% if @habitation.status.present? %>
-          · <span class="badge bg-light text-dark border fw-normal"><%= @habitation.status %></span>
-        <% end %>
-      </div>
-      <div class="title text-truncate">
-        <%= @habitation.titulo_anuncio.presence || @habitation.display_title || "Editar Imóvel" %>
-      </div>
-      <% if (@habitation.respond_to?(:endereco) && @habitation.endereco.present?) || @habitation.bairro.present? %>
-        <div class="subtitle text-truncate">
-          <i class="bi bi-geo-alt"></i>
-          <%= [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank.join(" · ") %>
-        </div>
-      <% end %>
-      <% if @habitation.broker_intake? && @habitation.intake_submitted_for_admin_review? %>
-        <div class="mt-2">
-          <span class="badge bg-primary-subtle text-primary border">Captação finalizada</span>
-          <span class="small text-muted ms-1">Complete o cadastro e envie para o captador responsável.</span>
-        </div>
-      <% elsif @habitation.broker_intake? && @habitation.intake_admin_approved? %>
-        <div class="mt-2">
-          <span class="badge bg-warning-subtle text-warning-emphasis border">Aguardando aceite do corretor</span>
-        </div>
-      <% elsif @habitation.broker_intake? && @habitation.intake_internal? %>
-        <div class="mt-2">
-          <span class="badge bg-info-subtle text-info-emphasis border">Disponível internamente</span>
-        </div>
-      <% end %>
-    </div>
-    <%
-      captador = @habitation.primary_captador
-      captador_name = @habitation.primary_captador_name
-    %>
-    <% if captador_name.present? %>
-      <div class="captador-card">
-        <% if captador&.avatar&.attached? %>
-          <%= image_tag captador.avatar,
-                        class: "captador-avatar shadow-sm",
-                        alt: "Foto de #{captador_name}" %>
-        <% else %>
-          <span class="captador-avatar captador-avatar-fallback shadow-sm" aria-hidden="true">
-            <%= captador_name.to_s.split.map { |part| part.first }.join.first(2).presence || "?" %>
-          </span>
-        <% end %>
-        <div style="min-width: 0;">
-          <div class="captador-label">Captador</div>
-          <div class="captador-name text-truncate"><%= captador_name %></div>
-        </div>
-      </div>
+<% content_for :admin_contextbar_actions do %>
+  <%= admin_contextbar_link("Voltar", return_path, icon: "arrow-left") %>
+  <%= admin_contextbar_link("Ver no site", habitation_path(@habitation), icon: "box-arrow-up-right", primary: true, target: "_blank", rel: "noopener") if @habitation.persisted? %>
+  <button type="button" class="ax-contextbar__button" data-ax-modal-open="#habitationHistoryModal">
+    <i class="bi bi-clock-history"></i><span>Timeline</span>
+  </button>
+  <% if current_admin_user&.admin? && @habitation.persisted? %>
+    <%= button_to admin_habitation_path(@habitation),
+        method: :delete,
+        class: "ax-contextbar__button ax-contextbar__button--danger",
+        form: { class: "tw-m-0" },
+        data: { turbo_confirm: "Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita." },
+        title: "Excluir imóvel" do %>
+      <i class="bi bi-trash"></i><span>Excluir</span>
     <% end %>
-    <div class="actions d-flex gap-2">
-      <%= link_to (@return_to_path || admin_habitations_path), class: "btn btn-outline-secondary btn-sm" do %>
-        <i class="bi bi-arrow-left"></i><span class="ms-1">Voltar</span>
-      <% end %>
-      <%= link_to habitation_path(@habitation), target: "_blank", rel: "noopener", class: "btn btn-primary btn-sm" do %>
-        <i class="bi bi-eye"></i><span class="ms-1">Ver no site</span>
-      <% end %>
-      <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#habitationHistoryModal">
-        <i class="bi bi-clock-history"></i><span class="ms-1">Timeline</span>
-      </button>
-      <% if current_admin_user&.admin? %>
-        <%= button_to admin_habitation_path(@habitation),
-            method: :delete,
-            class: "btn btn-outline-danger btn-sm",
-            form: { class: "d-inline" },
-            data: { turbo_confirm: "Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita." },
-            title: "Excluir imóvel" do %>
-          <i class="bi bi-trash"></i><span class="ms-1 d-none d-sm-inline">Excluir</span>
-        <% end %>
-      <% end %>
-    </div>
-  </div>
+  <% end %>
+<% end %>
 
-  <%= render 'form', habitation: @habitation %>
-  <%= render 'audit_history_modal', habitation: @habitation, logs: @habitation_audit_logs || [] %>
-</div>
+<%= render 'form', habitation: @habitation %>
+<%= render 'audit_history_modal', habitation: @habitation, logs: @habitation_audit_logs || [] %>

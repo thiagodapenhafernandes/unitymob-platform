@@ -1,0 +1,158 @@
+/* ===========================================================================
+   Toast compartilhado do sistema (ax-flash-toast)
+   Fonte única de verdade para feedback transitório em TODAS as superfícies:
+   admin, login, site público, field (PWA) e wizard.
+
+   - Servidor: app/views/shared/_flash_messages.html.erb (modo toast).
+   - Cliente:  app/javascript/controllers/ax_toast.js (window.axToast).
+
+   Linkado por todos os layouts via stylesheet_link_tag "ax_toast".
+   Usa fallbacks nas custom properties para funcionar fora do admin.
+   =========================================================================== */
+.ax-flash-toast-stack {
+  position: fixed;
+  top: calc(var(--ax-navbar-h, 12px) + 12px);
+  right: 14px;
+  z-index: 2600;
+  display: grid;
+  gap: 8px;
+  width: min(420px, calc(100vw - 28px));
+  pointer-events: none;
+}
+
+.ax-flash-toast {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 28px;
+  align-items: start;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid #d8dee8;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .98);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, .16), 0 2px 8px rgba(15, 23, 42, .08);
+  color: #263241;
+  pointer-events: auto;
+  animation: ax-flash-toast-enter 140ms ease-out both, ax-flash-toast-exit 180ms ease-in 6.5s forwards;
+}
+
+/* Toasts disparados via JS removem-se sozinhos; sem o auto-exit do CSS. */
+.ax-flash-toast--js {
+  animation: ax-flash-toast-enter 140ms ease-out both;
+}
+
+.ax-flash-toast--leaving {
+  animation: ax-flash-toast-exit 180ms ease-in forwards;
+}
+
+.ax-flash-toast--success { border-left-color: #16a34a; }
+.ax-flash-toast--danger { border-left-color: #dc2626; }
+.ax-flash-toast--warning { border-left-color: #d97706; }
+.ax-flash-toast--info { border-left-color: var(--admin-primary, #365f8f); }
+
+.ax-flash-toast__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--admin-primary, #365f8f);
+  font-size: 13px;
+}
+
+.ax-flash-toast--success .ax-flash-toast__icon { color: #15803d; background: #ecfdf3; }
+.ax-flash-toast--danger .ax-flash-toast__icon { color: #b42318; background: #fff1f0; }
+.ax-flash-toast--warning .ax-flash-toast__icon { color: #b45309; background: #fffbeb; }
+
+.ax-flash-toast__message {
+  min-width: 0;
+  color: #263241;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ax-flash-toast__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-top: -2px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+}
+
+.ax-flash-toast__close:hover {
+  border-color: #d8dee8;
+  background: #f6f8fb;
+  color: #263241;
+}
+
+@keyframes ax-flash-toast-enter {
+  from { opacity: 0; transform: translate3d(10px, -4px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes ax-flash-toast-exit {
+  to { opacity: 0; transform: translate3d(10px, -4px, 0); pointer-events: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-flash-toast,
+  .ax-flash-toast--js,
+  .ax-flash-toast--leaving {
+    animation: none;
+  }
+}
+
+/* ===========================================================================
+   Validação de formulário (compartilhado em todas as superfícies)
+   - .is-invalid: aplicado pelo field_error_proc a input/select/textarea com erro.
+   - .ax-field__error: mensagem por campo (partial _field_error).
+   Cobre controles do design system (.ax-control) e legados Bootstrap.
+   =========================================================================== */
+.ax-control.is-invalid,
+.ax-field input.is-invalid,
+.ax-field select.is-invalid,
+.ax-field textarea.is-invalid,
+input.is-invalid,
+select.is-invalid,
+textarea.is-invalid,
+.form-control.is-invalid,
+.form-select.is-invalid {
+  border-color: #dc2626 !important;
+}
+
+.ax-control.is-invalid:focus,
+input.is-invalid:focus,
+select.is-invalid:focus,
+textarea.is-invalid:focus,
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, .15) !important;
+  outline: 0;
+}
+
+.ax-field__error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  color: #b42318;
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.ax-field__error i {
+  font-size: 12px;
+  flex: 0 0 auto;
+}

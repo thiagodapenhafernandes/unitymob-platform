@@ -1,0 +1,76 @@
+<%= turbo_frame_tag "admin_dashboard_support" do %>
+  <div class="ax-dashboard-grid ax-dashboard-grid--support">
+    <article class="ax-dashboard-panel">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Captação</span>
+          <h2>Últimas captações</h2>
+        </div>
+        <%= link_to "Ver todas", admin_captacoes_path, class: "ax-dashboard-panel__link" %>
+      </div>
+
+      <div class="ax-dashboard-list">
+        <% if @recent_captacoes.any? %>
+          <% @recent_captacoes.each do |captacao| %>
+            <% captacao_link_content = capture do %>
+              <span class="ax-dashboard-list__main">
+                <strong><%= captacao.display_title %></strong>
+                <em><i class="bi bi-person-circle"></i> <%= captacao.corretor&.name || "Sem corretor" %> · <%= captacao.property_kind.humanize %> · <%= captacao.modalidade.humanize %></em>
+              </span>
+              <span class="ax-dashboard-list__right">
+                <% if captacao.published_on_site? %>
+                  <span class="ax-badge ax-badge--green">Publicada</span>
+                <% elsif captacao.completed? %>
+                  <span class="ax-badge ax-badge--blue">Finalizada</span>
+                <% else %>
+                  <span class="ax-badge ax-badge--amber">Rascunho</span>
+                <% end %>
+                <small><%= time_ago_in_words(captacao.updated_at) %></small>
+              </span>
+            <% end %>
+            <%= link_to captacao_link_content, (captacao.completed? ? admin_captacao_path(captacao) : edit_admin_captacao_path(captacao)), class: "ax-dashboard-list__row ax-dashboard-list__row--link" %>
+          <% end %>
+        <% else %>
+          <div class="ax-dashboard-empty-row">Nenhuma captação registrada ainda.</div>
+        <% end %>
+      </div>
+    </article>
+
+    <% if @habitations_by_category.any? %>
+      <article class="ax-dashboard-panel">
+        <div class="ax-dashboard-panel__header">
+          <div>
+            <span class="ax-dashboard-panel__eyebrow">Mix</span>
+            <h2>Distribuição por categoria</h2>
+          </div>
+          <%= link_to "Ver todos", admin_habitations_path, class: "ax-dashboard-panel__link" %>
+        </div>
+        <div class="ax-dashboard-category-grid">
+          <% max_cat = @habitations_by_category.map(&:last).max.to_f %>
+          <% @habitations_by_category.each do |category, count| %>
+            <div class="ax-dashboard-category">
+              <div>
+                <strong><%= category.presence || "Sem categoria" %></strong>
+                <span><%= count %></span>
+              </div>
+              <i style="width:<%= max_cat.positive? ? ((count.to_f / max_cat) * 100).to_i : 0 %>%"></i>
+            </div>
+          <% end %>
+        </div>
+      </article>
+    <% end %>
+  </div>
+
+  <div class="ax-dashboard-value-strip">
+    <article>
+      <span>Valor total do catálogo (venda)</span>
+      <strong><%= number_to_currency(@total_sale_value, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %></strong>
+      <em><i class="bi bi-tag-fill"></i> <%= @for_sale_count %> imóveis à venda</em>
+    </article>
+    <article>
+      <span>Ticket médio</span>
+      <strong><%= number_to_currency(@avg_sale_value, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %></strong>
+      <em><i class="bi bi-house-door"></i> Média dos imóveis à venda</em>
+    </article>
+  </div>
+<% end %>

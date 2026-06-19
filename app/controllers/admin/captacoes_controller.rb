@@ -5,7 +5,8 @@ module Admin
     DEFAULT_DASHBOARD_EYEBROW = "Palavra do Ano".freeze
     DEFAULT_DASHBOARD_TITLE = "Captação".freeze
 
-    before_action -> { check_permission!(:view, :captacoes) }
+    before_action -> { check_permission!(:view, :captacoes) }, except: [:dashboard]
+    before_action -> { check_permission!(:view, :captacao_dashboard) }, only: [:dashboard]
     before_action :set_captacao, only: [:edit, :update, :show, :destroy, :publish]
     before_action :authorize_access!, only: [:edit, :update, :show, :destroy, :publish]
 
@@ -21,7 +22,8 @@ module Admin
 
       scope = captacao_habitation_scope
       scope = scope.where("EXTRACT(MONTH FROM COALESCE(habitations.data_cadastro_crm, habitations.created_at)) = ?", @month_filter.to_i) if @month_filter.present?
-      scope = scope.where(admin_user_id: current_admin_user.id) unless owns_all_resource?(:captacoes)
+      captacao_owner_ids = visible_owner_ids(:captacoes)
+      scope = scope.where(admin_user_id: captacao_owner_ids) unless captacao_owner_ids.nil?
 
       venda_scope = scope.where("COALESCE(habitations.valor_venda_cents, 0) > 0")
       locacao_scope = scope.where("COALESCE(habitations.valor_locacao_cents, 0) > 0")
@@ -66,7 +68,10 @@ module Admin
 
       intake_scope = Habitation.broker_intakes.where(created_at: @period_start.beginning_of_day..@period_end.end_of_day)
       intake_scope = intake_scope.where("EXTRACT(MONTH FROM habitations.created_at) = ?", @month_filter.to_i) if @month_filter.present?
-      intake_scope = intake_scope.where(admin_user_id: current_admin_user.id) unless owns_all_resource?(:pre_cadastros) || can?(:review, :pre_cadastros)
+      unless owns_all_resource?(:pre_cadastros) || can?(:review, :pre_cadastros)
+        pre_cadastro_owner_ids = visible_owner_ids(:captacoes)
+        intake_scope = intake_scope.where(admin_user_id: pre_cadastro_owner_ids) unless pre_cadastro_owner_ids.nil?
+      end
 
       @pre_cadastro_total = intake_scope.count
       @pre_cadastro_draft = intake_scope.where(intake_status: [nil, "draft", "returned_to_broker"]).count
@@ -248,13 +253,13 @@ module Admin
     end
 
     def authorize_access!
-      return if owns_all_resource?(:captacoes)
-      return if @captacao.corretor_id == current_admin_user.id
+      return if owner_in_scope?(:captacoes, @captacao.corretor_id)
       redirect_to admin_captacoes_path, alert: "Você não tem acesso a esta captação."
     end
 
     def scoped_captacoes
-      owns_all_resource?(:captacoes) ? Captacao.all : Captacao.where(corretor: current_admin_user)
+      ids = visible_owner_ids(:captacoes)
+      ids.nil? ? Captacao.all : Captacao.where(corretor_id: ids)
     end
 
     def resolve_layout

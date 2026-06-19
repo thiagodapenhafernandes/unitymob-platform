@@ -1,0 +1,57 @@
+<%= turbo_frame_tag "admin_dashboard_rankings" do %>
+  <div class="ax-dashboard-grid ax-dashboard-grid--rankings">
+    <% if @is_admin_view %>
+      <article class="ax-dashboard-panel">
+        <div class="ax-dashboard-panel__header">
+          <div>
+            <span class="ax-dashboard-panel__eyebrow">Performance</span>
+            <h2>Top corretores por imóveis</h2>
+          </div>
+          <%= link_to "Ver todos", admin_admin_users_path, class: "ax-dashboard-panel__link" %>
+        </div>
+        <div class="ax-dashboard-rank">
+          <% if @top_brokers.any? %>
+            <% max_ct = @top_brokers.first.ct.to_f %>
+            <% @top_brokers.each do |broker| %>
+              <div class="ax-dashboard-rank__row">
+                <div>
+                  <strong><%= broker.name %></strong>
+                  <span><%= broker.ct %> imóveis</span>
+                </div>
+                <i style="width:<%= max_ct.positive? ? ((broker.ct.to_f / max_ct) * 100).to_i : 0 %>%"></i>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="ax-dashboard-empty-row">Nenhum imóvel vinculado a corretor ainda.</div>
+          <% end %>
+        </div>
+      </article>
+
+      <article class="ax-dashboard-panel">
+        <div class="ax-dashboard-panel__header">
+          <div>
+            <span class="ax-dashboard-panel__eyebrow">Campo</span>
+            <h2>Top lojas por check-ins</h2>
+          </div>
+          <%= link_to "Ver todas", admin_stores_path, class: "ax-dashboard-panel__link" %>
+        </div>
+        <div class="ax-dashboard-rank">
+          <% if @top_stores.any? %>
+            <% max_ct = @top_stores.first.ct.to_f %>
+            <% @top_stores.each do |store| %>
+              <div class="ax-dashboard-rank__row">
+                <div>
+                  <strong><i class="bi bi-geo-alt"></i> <%= store.name %></strong>
+                  <span><%= store.ct %> check-ins em 30d</span>
+                </div>
+                <i style="width:<%= max_ct.positive? ? ((store.ct.to_f / max_ct) * 100).to_i : 0 %>%"></i>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="ax-dashboard-empty-row">Sem check-ins nos últimos 30 dias.</div>
+          <% end %>
+        </div>
+      </article>
+    <% end %>
+  </div>
+<% end %>

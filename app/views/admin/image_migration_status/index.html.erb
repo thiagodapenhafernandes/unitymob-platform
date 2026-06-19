@@ -1,293 +1,123 @@
+<%# Migração de Imagens — compacto (.ax-*). Todos os data-targets do Stimulus preservados. Original em .bootstrap-bak %>
 <% worker = @status[:worker] %>
 <% execution = @status[:execution] || {} %>
 <% latest_attachment_at = @status[:latest_attachment_at] %>
 <% file_asset_counts = @status[:file_asset_counts] || {} %>
 
-<div class="container-fluid py-4"
-     data-controller="image-migration-status"
-     data-image-migration-status-url-value="<%= admin_image_migration_status_path(format: :json) %>">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+<div data-controller="image-migration-status" data-image-migration-status-url-value="<%= admin_image_migration_status_path(format: :json) %>">
+  <div class="tw-flex tw-flex-wrap tw-justify-between tw-items-center tw-gap-3 tw-mb-4">
     <div>
-      <h1 class="mb-1"><i class="bi bi-images me-2"></i>Migração de Imagens</h1>
-      <p class="text-muted mb-0">Materialize fotos da API Vista no Active Storage/DO Spaces, sem baixar novamente o que já está anexado.</p>
+      <h1 class="ax-page-title">Migração de Imagens</h1>
+      <p class="ax-page-subtitle">Materialize fotos da API Vista no Active Storage/DO Spaces, sem baixar novamente o que já está anexado.</p>
     </div>
-
-    <div class="d-flex gap-2">
-      <%= button_to admin_sync_image_migration_path,
-            method: :post,
-            class: "btn btn-primary",
-            disabled: worker[:running],
-            data: { image_migration_status_target: "syncButton" },
-            form: { class: "d-inline", data: { turbo_confirm: "Iniciar a materialização das fotos com as configurações salvas?" } } do %>
-        <i class="bi bi-play-fill me-2"></i>Iniciar
+    <div class="tw-flex tw-gap-2">
+      <%= button_to admin_sync_image_migration_path, method: :post, class: "ax-btn ax-btn--sm ax-btn--primary", disabled: worker[:running], data: { image_migration_status_target: "syncButton" }, form: { class: "tw-inline", data: { turbo_confirm: "Iniciar a materialização das fotos com as configurações salvas?" } } do %>
+        <i class="bi bi-play-fill ax-ico"></i>Iniciar
       <% end %>
-
-      <%= link_to admin_image_migration_status_path, class: "btn btn-outline-primary" do %>
-        <i class="bi bi-arrow-clockwise me-2"></i>Atualizar
-      <% end %>
+      <%= link_to admin_image_migration_status_path, class: "ax-btn ax-btn--sm" do %><i class="bi bi-arrow-clockwise ax-ico"></i>Atualizar<% end %>
     </div>
   </div>
 
-  <div class="row g-3 mb-4">
-    <div class="col-xl-3 col-md-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small text-uppercase fw-bold mb-2">Imóveis com fotos</div>
-          <div class="display-6 fw-bold mb-1" data-image-migration-status-target="propertyProgressValue"><%= number_to_percentage(@status[:property_progress], precision: 2) %></div>
-          <div class="text-muted small">
-            <strong data-image-migration-status-target="propertiesWithPhotos"><%= number_with_delimiter(@status[:properties_with_photos]) %></strong>
-            de
-            <strong data-image-migration-status-target="totalProperties"><%= number_with_delimiter(@status[:total_properties]) %></strong>
-          </div>
-        </div>
-      </div>
+  <div class="tw-grid tw-grid-cols-2 xl:tw-grid-cols-4 tw-gap-3 tw-mb-4">
+    <div class="ax-card ax-card--stat">
+      <div class="ax-stat-label">Imóveis com fotos</div>
+      <div class="ax-stat-value" data-image-migration-status-target="propertyProgressValue"><%= number_to_percentage(@status[:property_progress], precision: 2) %></div>
+      <div class="ax-page-subtitle"><strong data-image-migration-status-target="propertiesWithPhotos"><%= number_with_delimiter(@status[:properties_with_photos]) %></strong> de <strong data-image-migration-status-target="totalProperties"><%= number_with_delimiter(@status[:total_properties]) %></strong></div>
     </div>
-
-    <div class="col-xl-3 col-md-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small text-uppercase fw-bold mb-2">Pendentes</div>
-          <div class="display-6 fw-bold mb-1" data-image-migration-status-target="pendingProperties"><%= number_with_delimiter(@status[:pending_properties]) %></div>
-          <div class="text-muted small">Imóveis com galeria API/Vista e nenhuma foto anexada.</div>
-        </div>
-      </div>
+    <div class="ax-card ax-card--stat">
+      <div class="ax-stat-label">Pendentes</div>
+      <div class="ax-stat-value" data-image-migration-status-target="pendingProperties"><%= number_with_delimiter(@status[:pending_properties]) %></div>
+      <div class="ax-page-subtitle">Imóveis com galeria API/Vista e nenhuma foto anexada.</div>
     </div>
-
-    <div class="col-xl-3 col-md-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small text-uppercase fw-bold mb-2">Fotos anexadas</div>
-          <div class="display-6 fw-bold mb-1" data-image-migration-status-target="migratedImages"><%= number_with_delimiter(@status[:migrated_images]) %></div>
-          <div class="text-muted small">
-            <span data-image-migration-status-target="imageProgress"><%= number_to_percentage(@status[:image_progress], precision: 2) %></span>
-            do volume estimado de origem.
-          </div>
-        </div>
-      </div>
+    <div class="ax-card ax-card--stat">
+      <div class="ax-stat-label">Fotos anexadas</div>
+      <div class="ax-stat-value" data-image-migration-status-target="migratedImages"><%= number_with_delimiter(@status[:migrated_images]) %></div>
+      <div class="ax-page-subtitle"><span data-image-migration-status-target="imageProgress"><%= number_to_percentage(@status[:image_progress], precision: 2) %></span> do volume estimado de origem.</div>
     </div>
-
-    <div class="col-xl-3 col-md-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small text-uppercase fw-bold mb-2">Processo</div>
-          <div class="h3 fw-bold mb-1">
-            <span class="badge <%= worker[:running] ? "bg-success" : "bg-secondary" %>" data-image-migration-status-target="workerBadge">
-              <%= worker[:status] %>
-            </span>
-          </div>
-          <div class="text-muted small" data-image-migration-status-target="workerPid">
-            <% if worker[:pid].present? %>
-              PID <code><%= worker[:pid] %></code>
-            <% else %>
-              Sem execução ativa
-            <% end %>
-          </div>
-        </div>
-      </div>
+    <div class="ax-card ax-card--stat">
+      <div class="ax-stat-label">Processo</div>
+      <div class="tw-my-1"><span class="ax-badge <%= worker[:running] ? 'ax-badge--green' : 'ax-badge--gray' %>" data-image-migration-status-target="workerBadge"><%= worker[:status] %></span></div>
+      <div class="ax-page-subtitle" data-image-migration-status-target="workerPid"><% if worker[:pid].present? %>PID <code><%= worker[:pid] %></code><% else %>Sem execução ativa<% end %></div>
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body p-4">
-      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+  <div class="ax-card tw-mb-4">
+    <div class="ax-card__body">
+      <div class="tw-flex tw-flex-wrap tw-justify-between tw-items-start tw-gap-3 tw-mb-3">
         <div>
-          <h5 class="fw-bold mb-1"><i class="bi bi-sliders me-2 text-primary"></i>Próxima execução</h5>
-          <p class="text-muted small mb-0">O padrão processa somente imóveis pendentes. Fotos já anexadas são preservadas e reaproveitadas por nome de arquivo.</p>
+          <div class="ax-card__title"><i class="bi bi-sliders"></i> Próxima execução</div>
+          <p class="ax-page-subtitle tw-mb-0">O padrão processa somente imóveis pendentes. Fotos já anexadas são preservadas e reaproveitadas por nome de arquivo.</p>
         </div>
-
-        <%= button_to admin_retry_failed_image_migration_path,
-              method: :post,
-              class: "btn btn-outline-warning",
-              disabled: worker[:running] || @status[:failed_properties].zero?,
-              data: { image_migration_status_target: "retryButton" },
-              form: { class: "d-inline", data: { turbo_confirm: "Tentar novamente os imóveis com falhas de fotos API/Vista?" } } do %>
-          <i class="bi bi-arrow-repeat me-2"></i>Retry falhas
+        <%= button_to admin_retry_failed_image_migration_path, method: :post, class: "ax-btn ax-btn--sm", disabled: worker[:running] || @status[:failed_properties].zero?, data: { image_migration_status_target: "retryButton" }, form: { class: "tw-inline", data: { turbo_confirm: "Tentar novamente os imóveis com falhas de fotos API/Vista?" } } do %>
+          <i class="bi bi-arrow-repeat ax-ico"></i>Retry falhas
         <% end %>
       </div>
-
       <%= form_with url: admin_image_migration_configuration_path, method: :patch, scope: :image_migration, local: true do |f| %>
-        <div class="row g-3 align-items-end">
-          <div class="col-lg-4">
-            <%= f.label :mode, "Escopo", class: "form-label fw-semibold" %>
-            <%= f.select :mode,
-                  options_for_select(Admin::ImageMigrationStatusController::SYNC_MODES.map { |value, label| [label, value] }, @configuration["mode"]),
-                  {},
-                  class: "form-select" %>
-          </div>
-
-          <div class="col-sm-6 col-lg-2">
-            <%= f.label :batch_size, "Lote", class: "form-label fw-semibold" %>
-            <%= f.number_field :batch_size, value: @configuration["batch_size"], min: 1, max: 500, class: "form-control" %>
-          </div>
-
-          <div class="col-sm-6 col-lg-2">
-            <%= f.label :workers, "Workers", class: "form-label fw-semibold" %>
-            <%= f.number_field :workers, value: @configuration["workers"], min: 1, max: 8, class: "form-control" %>
-          </div>
-
-          <div class="col-sm-6 col-lg-2">
-            <div class="form-check form-switch">
-              <%= f.check_box :replace, { checked: @configuration["replace"] == "true", class: "form-check-input" }, "true", "false" %>
-              <%= f.label :replace, "Substituir ordem/anexos", class: "form-check-label fw-semibold" %>
-            </div>
-            <div class="form-text">Use com cuidado: remove fotos fora da galeria API/Vista.</div>
-          </div>
-
-          <div class="col-sm-6 col-lg-2">
-            <div class="form-check form-switch">
-              <%= f.check_box :dry_run, { checked: @configuration["dry_run"] == "true", class: "form-check-input" }, "true", "false" %>
-              <%= f.label :dry_run, "Simular", class: "form-check-label fw-semibold" %>
-            </div>
-          </div>
-
-          <div class="col-lg-3">
-            <%= f.submit "Salvar configurações", class: "btn btn-outline-primary w-100" %>
-          </div>
+        <div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-6 tw-gap-3 tw-items-end">
+          <div class="lg:tw-col-span-2"><%= f.label :mode, "Escopo", class: "ax-label" %><%= f.select :mode, options_for_select(Admin::ImageMigrationStatusController::SYNC_MODES.map { |v, l| [l, v] }, @configuration["mode"]), {}, class: "ax-select" %></div>
+          <div><%= f.label :batch_size, "Lote", class: "ax-label" %><%= f.number_field :batch_size, value: @configuration["batch_size"], min: 1, max: 500, class: "ax-input" %></div>
+          <div><%= f.label :workers, "Workers", class: "ax-label" %><%= f.number_field :workers, value: @configuration["workers"], min: 1, max: 8, class: "ax-input" %></div>
+          <label class="tw-inline-flex tw-items-center tw-gap-1.5 tw-text-2xs tw-text-ink-soft"><%= f.check_box :replace, { checked: @configuration["replace"] == "true" }, "true", "false" %> Substituir ordem/anexos</label>
+          <label class="tw-inline-flex tw-items-center tw-gap-1.5 tw-text-2xs tw-text-ink-soft"><%= f.check_box :dry_run, { checked: @configuration["dry_run"] == "true" }, "true", "false" %> Simular</label>
+          <div class="lg:tw-col-span-2"><%= f.submit "Salvar configurações", class: "ax-btn tw-w-full" %></div>
         </div>
       <% end %>
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm mb-4" data-image-migration-status-target="executionPanel">
-    <div class="card-body p-4">
-      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+  <div class="ax-card tw-mb-4" data-image-migration-status-target="executionPanel">
+    <div class="ax-card__body">
+      <div class="tw-flex tw-flex-wrap tw-justify-between tw-items-start tw-gap-3 tw-mb-3">
         <div>
-          <div class="text-muted small text-uppercase fw-bold mb-1">Execução atual</div>
-          <h5 class="fw-bold mb-1" data-image-migration-status-target="executionLabel"><%= execution[:label].presence || "Aguardando execução" %></h5>
-          <div class="text-muted small">
-            Status:
-            <strong data-image-migration-status-target="executionStatus"><%= execution[:running] ? "Rodando" : "Parado" %></strong>
-            · Última foto:
-            <strong data-image-migration-status-target="latestAttachmentAt"><%= latest_attachment_at.present? ? l(latest_attachment_at, format: :short) : "N/D" %></strong>
-          </div>
+          <div class="ax-stat-label">Execução atual</div>
+          <div class="ax-card__title" data-image-migration-status-target="executionLabel"><%= execution[:label].presence || "Aguardando execução" %></div>
+          <div class="ax-page-subtitle">Status: <strong data-image-migration-status-target="executionStatus"><%= execution[:running] ? "Rodando" : "Parado" %></strong> · Última foto: <strong data-image-migration-status-target="latestAttachmentAt"><%= latest_attachment_at.present? ? l(latest_attachment_at, format: :short) : "N/D" %></strong></div>
         </div>
-        <div class="text-end">
-          <div class="h4 fw-bold mb-0" data-image-migration-status-target="executionProgressPercent"><%= number_to_percentage(execution[:progress].to_f, precision: 2) %></div>
-          <div class="text-muted small" data-image-migration-status-target="executionDetail">
-            <%= number_with_delimiter(execution[:current].to_i) %> de <%= number_with_delimiter(execution[:total].to_i) %>
-          </div>
+        <div class="tw-text-right">
+          <div class="ax-stat-value" data-image-migration-status-target="executionProgressPercent"><%= number_to_percentage(execution[:progress].to_f, precision: 2) %></div>
+          <div class="ax-page-subtitle" data-image-migration-status-target="executionDetail"><%= number_with_delimiter(execution[:current].to_i) %> de <%= number_with_delimiter(execution[:total].to_i) %></div>
         </div>
       </div>
-
-      <div class="progress mb-3" style="height: 14px;">
-        <div class="progress-bar bg-primary <%= "progress-bar-striped progress-bar-animated" if execution[:running] %>"
-             role="progressbar"
-             style="width: <%= execution[:progress].to_f.clamp(0, 100) %>%"
-             aria-valuenow="<%= execution[:progress].to_f.clamp(0, 100) %>"
-             aria-valuemin="0"
-             aria-valuemax="100"
-             data-image-migration-status-target="executionProgressBar"></div>
+      <div class="tw-h-3.5 tw-rounded tw-bg-line tw-mb-3 tw-overflow-hidden">
+        <div class="tw-h-full tw-rounded" style="width:<%= execution[:progress].to_f.clamp(0, 100) %>%;background:var(--admin-primary)" data-image-migration-status-target="executionProgressBar"></div>
       </div>
-
-      <div class="row g-3 small">
-        <div class="col-6 col-lg-2">
-          <div class="text-muted">Imóveis novos</div>
-          <div class="fw-bold" data-image-migration-status-target="executionPropertiesAdded"><%= number_with_delimiter(execution[:properties_added].to_i) %></div>
-        </div>
-        <div class="col-6 col-lg-2">
-          <div class="text-muted">Fotos novas</div>
-          <div class="fw-bold" data-image-migration-status-target="executionImagesAdded"><%= number_with_delimiter(execution[:images_added].to_i) %></div>
-        </div>
-        <div class="col-6 col-lg-2">
-          <div class="text-muted">Restantes</div>
-          <div class="fw-bold" data-image-migration-status-target="executionRemaining"><%= number_with_delimiter(execution[:remaining].to_i) %></div>
-        </div>
-        <div class="col-6 col-lg-2">
-          <div class="text-muted">Falhas</div>
-          <div class="fw-bold" data-image-migration-status-target="executionFailed"><%= number_with_delimiter(execution[:failed].to_i) %></div>
-        </div>
-        <div class="col-6 col-lg-2">
-          <div class="text-muted">Assets baixados</div>
-          <div class="fw-bold" data-image-migration-status-target="downloadedFileAssets"><%= number_with_delimiter(@status[:downloaded_file_assets]) %></div>
-        </div>
-        <div class="col-6 col-lg-2">
-          <div class="text-muted">Assets pendentes</div>
-          <div class="fw-bold" data-image-migration-status-target="pendingFileAssets"><%= number_with_delimiter(@status[:pending_file_assets]) %></div>
-        </div>
+      <div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-6 tw-gap-3 tw-text-2xs">
+        <div><div class="tw-text-ink-muted">Imóveis novos</div><div class="ax-strong" data-image-migration-status-target="executionPropertiesAdded"><%= number_with_delimiter(execution[:properties_added].to_i) %></div></div>
+        <div><div class="tw-text-ink-muted">Fotos novas</div><div class="ax-strong" data-image-migration-status-target="executionImagesAdded"><%= number_with_delimiter(execution[:images_added].to_i) %></div></div>
+        <div><div class="tw-text-ink-muted">Restantes</div><div class="ax-strong" data-image-migration-status-target="executionRemaining"><%= number_with_delimiter(execution[:remaining].to_i) %></div></div>
+        <div><div class="tw-text-ink-muted">Falhas</div><div class="ax-strong" data-image-migration-status-target="executionFailed"><%= number_with_delimiter(execution[:failed].to_i) %></div></div>
+        <div><div class="tw-text-ink-muted">Assets baixados</div><div class="ax-strong" data-image-migration-status-target="downloadedFileAssets"><%= number_with_delimiter(@status[:downloaded_file_assets]) %></div></div>
+        <div><div class="tw-text-ink-muted">Assets pendentes</div><div class="ax-strong" data-image-migration-status-target="pendingFileAssets"><%= number_with_delimiter(@status[:pending_file_assets]) %></div></div>
       </div>
     </div>
   </div>
 
-  <div class="row g-3 mb-4">
-    <div class="col-lg-7">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body p-4">
-          <h6 class="fw-bold mb-3"><i class="bi bi-list-check me-2 text-primary"></i>Resumo da base</h6>
-          <ul class="list-unstyled small mb-0">
-            <li class="d-flex justify-content-between py-2 border-bottom">
-              <span>Total com galeria API/Vista</span>
-              <strong data-image-migration-status-target="summaryTotalProperties"><%= number_with_delimiter(@status[:total_properties]) %></strong>
-            </li>
-            <li class="d-flex justify-content-between py-2 border-bottom">
-              <span>Já com fotos na nossa base</span>
-              <strong data-image-migration-status-target="summaryPropertiesWithPhotos"><%= number_with_delimiter(@status[:properties_with_photos]) %></strong>
-            </li>
-            <li class="d-flex justify-content-between py-2 border-bottom">
-              <span>Pendentes</span>
-              <strong data-image-migration-status-target="summaryPendingProperties"><%= number_with_delimiter(@status[:pending_properties]) %></strong>
-            </li>
-            <li class="d-flex justify-content-between py-2 border-bottom">
-              <span>Pendentes públicos de venda/aluguel</span>
-              <strong data-image-migration-status-target="summaryPublicPendingProperties"><%= number_with_delimiter(@status[:public_pending_properties]) %></strong>
-            </li>
-            <li class="d-flex justify-content-between py-2">
-              <span>Total estimado de imagens de origem</span>
-              <strong data-image-migration-status-target="summaryTotalSourceImages"><%= number_with_delimiter(@status[:total_source_images]) %></strong>
-            </li>
-          </ul>
-        </div>
+  <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-3 tw-mb-4">
+    <div class="lg:tw-col-span-7 ax-card">
+      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-list-check"></i> Resumo da base</span></div>
+      <div class="ax-card__body tw-text-2xs">
+        <% [["Total com galeria API/Vista", @status[:total_properties], "summaryTotalProperties"], ["Já com fotos na nossa base", @status[:properties_with_photos], "summaryPropertiesWithPhotos"], ["Pendentes", @status[:pending_properties], "summaryPendingProperties"], ["Pendentes públicos de venda/aluguel", @status[:public_pending_properties], "summaryPublicPendingProperties"], ["Total estimado de imagens de origem", @status[:total_source_images], "summaryTotalSourceImages"]].each do |lbl, val, tgt| %>
+          <div class="tw-flex tw-justify-between tw-py-2 tw-border-b tw-border-line last:tw-border-0"><span><%= lbl %></span><strong data-image-migration-status-target="<%= tgt %>"><%= number_with_delimiter(val) %></strong></div>
+        <% end %>
       </div>
     </div>
-
-    <div class="col-lg-5">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body p-4">
-          <h6 class="fw-bold mb-3"><i class="bi bi-database-check me-2 text-success"></i>Índice API/Vista</h6>
-          <ul class="list-unstyled small mb-0">
-            <li class="d-flex justify-content-between py-2 border-bottom">
-              <span>Baixados/anexados</span>
-              <strong data-image-migration-status-target="summaryDownloadedFileAssets"><%= number_with_delimiter(file_asset_counts.fetch("downloaded", 0)) %></strong>
-            </li>
-            <li class="d-flex justify-content-between py-2 border-bottom">
-              <span>Pendentes no índice</span>
-              <strong data-image-migration-status-target="summaryPendingFileAssets"><%= number_with_delimiter(file_asset_counts.fetch("pending", 0)) %></strong>
-            </li>
-            <li class="d-flex justify-content-between py-2 border-bottom">
-              <span>Falhas</span>
-              <strong data-image-migration-status-target="failedProperties"><%= number_with_delimiter(@status[:failed_properties]) %></strong>
-            </li>
-            <li class="py-2">
-              <span class="text-muted d-block mb-1">Log da execução</span>
-              <code class="small"><%= @status[:paths][:log] %></code>
-            </li>
-          </ul>
-        </div>
+    <div class="lg:tw-col-span-5 ax-card">
+      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-database-check tw-text-green-600"></i> Índice API/Vista</span></div>
+      <div class="ax-card__body tw-text-2xs">
+        <div class="tw-flex tw-justify-between tw-py-2 tw-border-b tw-border-line"><span>Baixados/anexados</span><strong data-image-migration-status-target="summaryDownloadedFileAssets"><%= number_with_delimiter(file_asset_counts.fetch("downloaded", 0)) %></strong></div>
+        <div class="tw-flex tw-justify-between tw-py-2 tw-border-b tw-border-line"><span>Pendentes no índice</span><strong data-image-migration-status-target="summaryPendingFileAssets"><%= number_with_delimiter(file_asset_counts.fetch("pending", 0)) %></strong></div>
+        <div class="tw-flex tw-justify-between tw-py-2 tw-border-b tw-border-line"><span>Falhas</span><strong data-image-migration-status-target="failedProperties"><%= number_with_delimiter(@status[:failed_properties]) %></strong></div>
+        <div class="tw-py-2"><span class="tw-text-ink-muted tw-block tw-mb-1">Log da execução</span><code class="tw-text-2xs"><%= @status[:paths][:log] %></code></div>
       </div>
     </div>
   </div>
 
   <% if @status[:failed_properties].positive? %>
-    <div class="alert alert-warning">
-      <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-2"></i>Há imóveis com falha de materialização</div>
-      <div class="small">
-        Amostra de IDs:
-        <code><%= @status[:failed_sample].join(", ") %></code>.
-      </div>
-    </div>
+    <div class="ax-card tw-mb-3" style="border-left:3px solid #f59e0b"><div class="ax-card__body"><div class="ax-strong"><i class="bi bi-exclamation-triangle tw-text-amber-600"></i> Há imóveis com falha de materialização</div><div class="tw-text-2xs tw-mt-1">Amostra de IDs: <code><%= @status[:failed_sample].join(", ") %></code>.</div></div></div>
   <% end %>
-
   <% if @status[:public_vista_first_properties].positive? %>
-    <div class="alert alert-warning">
-      <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle me-2"></i>Há imóveis públicos usando Vista como fallback</div>
-      <div class="small">
-        Esses imóveis ainda não têm foto anexada na nossa base.
-        Amostra de IDs: <code><%= @status[:public_vista_first_sample].join(", ") %></code>.
-      </div>
-    </div>
+    <div class="ax-card tw-mb-3" style="border-left:3px solid #f59e0b"><div class="ax-card__body"><div class="ax-strong"><i class="bi bi-exclamation-triangle tw-text-amber-600"></i> Há imóveis públicos usando Vista como fallback</div><div class="tw-text-2xs tw-mt-1">Amostra de IDs: <code><%= @status[:public_vista_first_sample].join(", ") %></code>.</div></div></div>
   <% end %>
 
-  <div class="alert alert-info mb-0">
-    <i class="bi bi-info-circle me-2"></i>
-    A execução usa a galeria da API/Vista como origem, reaproveita fotos já anexadas por nome de arquivo e baixa apenas o que ainda falta no Active Storage/DO Spaces.
-  </div>
+  <div class="ax-card" style="border-left:3px solid var(--admin-primary)"><div class="ax-card__body tw-text-2xs"><i class="bi bi-info-circle tw-text-primary"></i> A execução usa a galeria da API/Vista como origem, reaproveita fotos já anexadas por nome de arquivo e baixa apenas o que ainda falta no Active Storage/DO Spaces.</div></div>
 </div>

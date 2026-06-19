@@ -1,3 +1,19 @@
+<%
+  capt_dashboard_chart_payload = {
+    totalVenda: @total_venda,
+    metaVenda: [@meta_venda, 1].max,
+    totalLocacao: @total_locacao,
+    metaLocacao: [@meta_locacao, 1].max,
+    publicadoVenda: @publicado_venda,
+    naoPublicadoVenda: @nao_publicado_venda,
+    publicadoLocacao: @publicado_locacao,
+    naoPublicadoLocacao: @nao_publicado_locacao,
+    regiaoFocoVenda: @regiao_foco_venda,
+    regiaoFocoLocacao: @regiao_foco_locacao,
+    captacaoAdmLocacao: @captacao_adm_locacao
+  }
+%>
+
 <style>
   .capt-dash-hero {
     background: linear-gradient(135deg, #0d253f 0%, #1b3a5b 100%);
@@ -63,8 +79,8 @@
     text-transform: none;
   }
   .capt-summary-card { height: 100%; }
-  .capt-summary-card > .row,
-  .capt-summary-card > .row > [class*="col-"] {
+  .capt-summary-card > .ax-field-grid,
+  .capt-summary-card > .ax-field-grid > [class*="ax-span-"] {
     height: 100%;
   }
   .capt-summary-card .summary-label {
@@ -86,8 +102,8 @@
   .capt-panel-secondary {
     height: 250px;
   }
-  .capt-panel-main .card-body,
-  .capt-panel-secondary .card-body {
+  .capt-panel-main .ax-card__body,
+  .capt-panel-secondary .ax-card__body {
     height: 100%;
   }
   .capt-panel-main .capt-gauge-wrapper {
@@ -133,7 +149,7 @@
   .capt-tv-tab-actions {
     margin-left: auto;
   }
-  .capt-ranking-card .card-body {
+  .capt-ranking-card .ax-card__body {
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -156,8 +172,8 @@
     border-radius: 0;
     background: #263f4e;
   }
-  .capt-tv-shell:fullscreen .card,
-  body.capt-dashboard-tv-active .capt-tv-shell .card {
+  .capt-tv-shell:fullscreen .ax-card,
+  body.capt-dashboard-tv-active .capt-tv-shell .ax-card {
     border-radius: 18px;
   }
   .capt-tv-shell:fullscreen .capt-gauge-wrapper,
@@ -198,7 +214,7 @@
     z-index: 20;
     margin: 0;
   }
-  body.capt-dashboard-tv-active .capt-dash-hero .btn {
+  body.capt-dashboard-tv-active .capt-dash-hero .ax-btn {
     display: none !important;
   }
   body.capt-dashboard-tv-active .capt-target-month {
@@ -239,166 +255,170 @@
   }
 </style>
 
-<div id="captDashboard" class="capt-tv-shell" data-capt-dashboard>
+<div id="captDashboard"
+     class="capt-tv-shell"
+     data-controller="captacoes-dashboard"
+     data-captacoes-dashboard-chart-url-value="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+     data-captacoes-dashboard-data-value="<%= capt_dashboard_chart_payload.to_json %>">
 <!-- Hero -->
-<div class="capt-dash-hero mb-3">
-  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+<div class="capt-dash-hero tw-mb-3">
+  <div class="tw-flex tw-justify-between tw-items-start flex-wrap tw-gap-2">
     <div>
-      <div class="opacity-75 small text-uppercase"><%= @dashboard_eyebrow %></div>
-      <h2 class="fw-bold mb-0"><%= @dashboard_title %></h2>
+      <div class="opacity-75 tw-text-sm text-uppercase"><%= @dashboard_eyebrow %></div>
+      <h2 class="tw-font-bold tw-mb-0"><%= @dashboard_title %></h2>
     </div>
-    <div class="d-flex gap-2">
+    <div class="tw-flex tw-gap-2">
       <% if current_admin_user.admin? %>
-        <button type="button" class="btn btn-sm btn-outline-light capt-hero-settings" data-bs-toggle="modal" data-bs-target="#dashboardTitleModal" aria-label="Editar título do dashboard">
+        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm capt-hero-settings" data-ax-modal-open="#dashboardTitleModal" aria-label="Editar título do dashboard">
           <i class="bi bi-gear"></i>
         </button>
       <% end %>
       <% if current_admin_user.admin? %>
-        <%= link_to admin_captacao_goals_path, class: "btn btn-sm btn-light" do %>
-          <i class="bi bi-bullseye me-1"></i>Metas
+        <%= link_to admin_captacao_goals_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
+          <i class="bi bi-bullseye"></i>Metas
         <% end %>
       <% end %>
-      <%= link_to admin_captacoes_path, class: "btn btn-sm btn-outline-light" do %>
-        <i class="bi bi-list me-1"></i>Ver lista
+      <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
+        <i class="bi bi-list"></i>Ver lista
       <% end %>
     </div>
   </div>
 </div>
 
 <% if current_admin_user.admin? %>
-  <div class="modal fade" id="dashboardTitleModal" tabindex="-1" aria-labelledby="dashboardTitleModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <%= form_with url: dashboard_title_admin_captacoes_path, method: :patch, local: true do %>
-          <div class="modal-header">
-            <h5 class="modal-title" id="dashboardTitleModalLabel">Editar título do dashboard</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+  <div class="ax-quick-modal ax-quick-modal--md" id="dashboardTitleModal" tabindex="-1" role="presentation" hidden aria-hidden="true" data-controller="ax-modal" data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+    <div class="ax-quick-modal__panel" role="dialog" aria-modal="true">
+      <%= form_with url: dashboard_title_admin_captacoes_path, method: :patch, local: true do %>
+        <header class="ax-quick-modal__header">
+          <h5 class="ax-quick-modal__title">Editar título do dashboard</h5>
+          <button type="button" class="ax-icon-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+        </header>
+        <div class="ax-quick-modal__body">
+          <div class="tw-mb-3">
+            <label class="ax-label">Texto superior</label>
+            <%= text_field_tag "dashboard[eyebrow]", @dashboard_eyebrow, class: "ax-control", maxlength: 80, placeholder: "Palavra do Ano" %>
           </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Texto superior</label>
-              <%= text_field_tag "dashboard[eyebrow]", @dashboard_eyebrow, class: "form-control", maxlength: 80, placeholder: "Palavra do Ano" %>
-            </div>
-            <div>
-              <label class="form-label">Título principal</label>
-              <%= text_field_tag "dashboard[title]", @dashboard_title, class: "form-control", maxlength: 80, placeholder: "Captação" %>
-            </div>
+          <div>
+            <label class="ax-label">Título principal</label>
+            <%= text_field_tag "dashboard[title]", @dashboard_title, class: "ax-control", maxlength: 80, placeholder: "Captação" %>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <%= submit_tag "Salvar", class: "btn btn-primary" %>
-          </div>
-        <% end %>
-      </div>
+        </div>
+        <footer class="ax-quick-modal__footer">
+          <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
+          <%= submit_tag "Salvar", class: "ax-btn ax-btn--primary" %>
+        </footer>
+      <% end %>
     </div>
   </div>
 <% end %>
 
 <div class="capt-tv-toolbar">
-  <button type="button" class="btn btn-sm btn-outline-secondary" data-capt-tv-tab="tab-geral">
-    <i class="bi bi-arrows-fullscreen me-1"></i>Tela cheia Geral
+      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-geral" data-action="captacoes-dashboard#enterTv">
+    <i class="bi bi-arrows-fullscreen"></i>Tela cheia Geral
   </button>
-  <button type="button" class="btn btn-sm btn-outline-secondary" data-capt-tv-tab="tab-venda">
-    <i class="bi bi-arrows-fullscreen me-1"></i>Tela cheia Venda
+      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-venda" data-action="captacoes-dashboard#enterTv">
+    <i class="bi bi-arrows-fullscreen"></i>Tela cheia Venda
   </button>
-  <button type="button" class="btn btn-sm btn-outline-secondary" data-capt-tv-tab="tab-locacao">
-    <i class="bi bi-arrows-fullscreen me-1"></i>Tela cheia Locação
+      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-locacao" data-action="captacoes-dashboard#enterTv">
+    <i class="bi bi-arrows-fullscreen"></i>Tela cheia Locação
   </button>
-  <button type="button" class="btn btn-sm btn-outline-secondary" data-capt-tv-tab="tab-leads">
-    <i class="bi bi-arrows-fullscreen me-1"></i>Tela cheia Leads
+      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-leads" data-action="captacoes-dashboard#enterTv">
+    <i class="bi bi-arrows-fullscreen"></i>Tela cheia Leads
   </button>
-  <button type="button" class="btn btn-sm btn-light border d-none" data-capt-tv-exit>
+  <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-exit data-action="captacoes-dashboard#exitTv" hidden>
     <i class="bi bi-x-lg"></i><span>Sair</span>
   </button>
 </div>
 
 <!-- Filtros -->
-<div class="card shadow-sm border-0 mb-3 capt-filter-card">
-  <div class="card-body py-3">
-    <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
-      <div class="col-6 col-md-3">
-        <label class="form-label small text-muted">Início</label>
-        <%= date_field_tag :start_date, @period_start, class: "form-control form-control-sm" %>
-      </div>
-      <div class="col-6 col-md-3">
-        <label class="form-label small text-muted">Fim</label>
-        <%= date_field_tag :end_date, @period_end, class: "form-control form-control-sm" %>
-      </div>
-      <div class="col-6 col-md-3">
-        <label class="form-label small text-muted">Mês</label>
-        <%= select_tag :month,
-                       options_for_select([["Todos", ""]] + (1..12).map { |m| [I18n.l(Date.new(2026, m), format: "%B").capitalize, m] }, @month_filter),
-                       class: "form-select form-select-sm" %>
-      </div>
-      <div class="col-6 col-md-3">
-        <%= submit_tag "Aplicar", class: "btn btn-primary btn-sm w-100" %>
-      </div>
+<div class="ax-card tw-mb-3 capt-filter-card">
+  <div class="ax-card__body">
+    <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true do %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-3">
+          <label class="ax-label">Início</label>
+          <%= date_field_tag :start_date, @period_start, class: "ax-control ax-control--sm" %>
+        </div>
+        <div class="ax-span-3">
+          <label class="ax-label">Fim</label>
+          <%= date_field_tag :end_date, @period_end, class: "ax-control ax-control--sm" %>
+        </div>
+        <div class="ax-span-3">
+          <label class="ax-label">Mês</label>
+          <%= select_tag :month,
+                         options_for_select([["Todos", ""]] + (1..12).map { |m| [I18n.l(Date.new(2026, m), format: "%B").capitalize, m] }, @month_filter),
+                         class: "ax-control ax-control--sm" %>
+        </div>
+        <div class="ax-span-3 ax-field-align-end">
+          <%= submit_tag "Aplicar", class: "ax-btn ax-btn--primary ax-btn--sm tw-w-full" %>
+        </div>
+      <% end %>
     <% end %>
   </div>
 </div>
 
-<div class="row g-3 mb-3">
-  <div class="col-md-3 col-6">
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <div class="small text-muted text-uppercase fw-semibold">Pré-cadastros</div>
-        <div class="display-6 fw-bold text-primary"><%= @pre_cadastro_total %></div>
+<%= ax_field_grid class_name: "tw-mb-3" do %>
+  <div class="ax-span-3">
+    <div class="ax-card">
+      <div class="ax-card__body">
+        <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Pré-cadastros</div>
+        <div class="display-6 tw-font-bold text-primary"><%= @pre_cadastro_total %></div>
       </div>
     </div>
   </div>
-  <div class="col-md-3 col-6">
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <div class="small text-muted text-uppercase fw-semibold">Rascunho/devolvido</div>
-        <div class="display-6 fw-bold text-warning"><%= @pre_cadastro_draft %></div>
+  <div class="ax-span-3">
+    <div class="ax-card">
+      <div class="ax-card__body">
+        <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Rascunho/devolvido</div>
+        <div class="display-6 tw-font-bold text-warning"><%= @pre_cadastro_draft %></div>
       </div>
     </div>
   </div>
-  <div class="col-md-3 col-6">
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <div class="small text-muted text-uppercase fw-semibold">Em aprovação</div>
-        <div class="display-6 fw-bold text-info"><%= @pre_cadastro_review %></div>
+  <div class="ax-span-3">
+    <div class="ax-card">
+      <div class="ax-card__body">
+        <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Em aprovação</div>
+        <div class="display-6 tw-font-bold text-info"><%= @pre_cadastro_review %></div>
       </div>
     </div>
   </div>
-  <div class="col-md-3 col-6">
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <div class="small text-muted text-uppercase fw-semibold">Liberados site</div>
-        <div class="display-6 fw-bold text-success"><%= @pre_cadastro_published %></div>
+  <div class="ax-span-3">
+    <div class="ax-card">
+      <div class="ax-card__body">
+        <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Liberados site</div>
+        <div class="display-6 tw-font-bold text-success"><%= @pre_cadastro_published %></div>
       </div>
     </div>
   </div>
-</div>
+<% end %>
 
 <!-- Tabs -->
-<div class="d-flex align-items-center gap-3 border-bottom mb-3">
-  <ul class="nav nav-tabs border-0 flex-grow-1 mb-0" id="captTabs" role="tablist">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-geral" type="button">Geral</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-venda" type="button">Venda</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-locacao" type="button">Locação</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-leads" type="button">Leads</button></li>
+<div class="tw-flex tw-items-center tw-gap-3 border-bottom tw-mb-3">
+  <ul class="ax-form-tabs tw-flex-1 tw-mb-0" id="captTabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#captTabContent">
+    <li><button class="ax-form-tabs__item active" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-geral" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Geral</button></li>
+    <li><button class="ax-form-tabs__item" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-venda" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Venda</button></li>
+    <li><button class="ax-form-tabs__item" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-locacao" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Locação</button></li>
+    <li><button class="ax-form-tabs__item" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-leads" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Leads</button></li>
   </ul>
   <div class="capt-target-month text-end text-nowrap">
     Mês alvo <strong class="d-block"><%= @target_month_label %></strong>
   </div>
-  <button class="btn btn-sm btn-outline-primary" type="button" data-capt-active-tv>
-    <i class="bi bi-display me-1"></i>TV da aba atual
+  <button class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" type="button" data-capt-active-tv data-action="captacoes-dashboard#enterActiveTv">
+    <i class="bi bi-display"></i>TV da aba atual
   </button>
 </div>
 
-<div class="tab-content">
+<div class="tab-content" id="captTabContent">
 
   <!-- GERAL -->
   <div class="tab-pane fade show active" id="tab-geral">
-    <div class="row g-3 mb-3">
-      <div class="col-md-6">
-        <div class="card shadow-sm border-0">
-          <div class="card-body">
-            <div class="d-flex justify-content-between mb-2">
-              <h6 class="fw-bold text-muted text-uppercase small mb-0">Captação Venda</h6>
-              <span class="badge bg-info-subtle text-info">Meta <%= @meta_venda %></span>
+    <%= ax_field_grid class_name: "tw-mb-3" do %>
+      <div class="ax-span-6">
+        <div class="ax-card">
+          <div class="ax-card__body">
+            <div class="tw-flex tw-justify-between tw-mb-2">
+              <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-0">Captação Venda</h6>
+              <%= ax_badge("Meta #{@meta_venda}", tone: :blue) %>
             </div>
             <div class="capt-gauge-wrapper">
               <canvas id="gaugeVenda"></canvas>
@@ -407,7 +427,7 @@
                 <div class="meta-label">de <%= @meta_venda %></div>
               </div>
             </div>
-            <div class="d-flex justify-content-between small text-muted mt-2">
+            <div class="tw-flex tw-justify-between tw-text-sm tw-text-ink-muted tw-mt-2">
               <span>0</span>
               <span><%= @meta_venda %></span>
             </div>
@@ -415,11 +435,11 @@
         </div>
 
       </div>
-      <div class="col-md-6">
-        <div class="card shadow-sm border-0">
-          <div class="card-body">
-            <div class="d-flex justify-content-between mb-2">
-              <h6 class="fw-bold text-muted text-uppercase small mb-0">Publicado no Site (Venda)</h6>
+      <div class="ax-span-6">
+        <div class="ax-card">
+          <div class="ax-card__body">
+            <div class="tw-flex tw-justify-between tw-mb-2">
+              <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-0">Publicado no Site (Venda)</h6>
             </div>
             <div class="capt-gauge-wrapper">
               <canvas id="pubVenda"></canvas>
@@ -429,12 +449,12 @@
 
       </div>
 
-      <div class="col-md-6">
-        <div class="card shadow-sm border-0">
-          <div class="card-body">
-            <div class="d-flex justify-content-between mb-2">
-              <h6 class="fw-bold text-muted text-uppercase small mb-0">Captação Locação</h6>
-              <span class="badge bg-warning-subtle text-warning">Meta <%= @meta_locacao %></span>
+      <div class="ax-span-6">
+        <div class="ax-card">
+          <div class="ax-card__body">
+            <div class="tw-flex tw-justify-between tw-mb-2">
+              <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-0">Captação Locação</h6>
+              <%= ax_badge("Meta #{@meta_locacao}", tone: :amber) %>
             </div>
             <div class="capt-gauge-wrapper">
               <canvas id="gaugeLocacao"></canvas>
@@ -443,7 +463,7 @@
                 <div class="meta-label">de <%= @meta_locacao %></div>
               </div>
             </div>
-            <div class="d-flex justify-content-between small text-muted mt-2">
+            <div class="tw-flex tw-justify-between tw-text-sm tw-text-ink-muted tw-mt-2">
               <span>0</span>
               <span><%= @meta_locacao %></span>
             </div>
@@ -451,11 +471,11 @@
         </div>
 
       </div>
-      <div class="col-md-6">
-        <div class="card shadow-sm border-0">
-          <div class="card-body">
-            <div class="d-flex justify-content-between mb-2">
-              <h6 class="fw-bold text-muted text-uppercase small mb-0">Publicado no Site (Locação)</h6>
+      <div class="ax-span-6">
+        <div class="ax-card">
+          <div class="ax-card__body">
+            <div class="tw-flex tw-justify-between tw-mb-2">
+              <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-0">Publicado no Site (Locação)</h6>
             </div>
             <div class="capt-gauge-wrapper">
               <canvas id="pubLocacao"></canvas>
@@ -464,66 +484,66 @@
         </div>
 
       </div>
-    </div>
+    <% end %>
 
-    <div class="row g-3">
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="small text-muted text-uppercase fw-semibold">Região foco Venda</div>
-            <div class="d-flex align-items-end justify-content-between mt-2">
-              <div class="display-6 fw-bold text-success"><%= @regiao_foco_venda %></div>
-              <div class="fs-5 fw-bold text-success"><%= @regiao_foco_venda_percent %>%</div>
+    <%= ax_field_grid do %>
+      <div class="ax-span-4">
+        <div class="ax-card tw-h-full">
+          <div class="ax-card__body">
+            <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Região foco Venda</div>
+            <div class="tw-flex tw-items-end tw-justify-between tw-mt-2">
+              <div class="display-6 tw-font-bold text-success"><%= @regiao_foco_venda %></div>
+              <div class="fs-5 tw-font-bold text-success"><%= @regiao_foco_venda_percent %>%</div>
             </div>
-            <div class="text-muted small">de <%= @total_venda %> captações de venda</div>
+            <div class="tw-text-ink-muted tw-text-sm">de <%= @total_venda %> captações de venda</div>
           </div>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="small text-muted text-uppercase fw-semibold">Região foco Locação</div>
-            <div class="d-flex align-items-end justify-content-between mt-2">
-              <div class="display-6 fw-bold text-success"><%= @regiao_foco_locacao %></div>
-              <div class="fs-5 fw-bold text-success"><%= @regiao_foco_locacao_percent %>%</div>
+      <div class="ax-span-4">
+        <div class="ax-card tw-h-full">
+          <div class="ax-card__body">
+            <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Região foco Locação</div>
+            <div class="tw-flex tw-items-end tw-justify-between tw-mt-2">
+              <div class="display-6 tw-font-bold text-success"><%= @regiao_foco_locacao %></div>
+              <div class="fs-5 tw-font-bold text-success"><%= @regiao_foco_locacao_percent %>%</div>
             </div>
-            <div class="text-muted small">de <%= @total_locacao %> captações de locação</div>
+            <div class="tw-text-ink-muted tw-text-sm">de <%= @total_locacao %> captações de locação</div>
           </div>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="small text-muted text-uppercase fw-semibold">Captação com Adm</div>
-            <div class="d-flex align-items-end justify-content-between mt-2">
-              <div class="display-6 fw-bold text-primary"><%= @captacao_adm_locacao %></div>
-              <div class="fs-5 fw-bold text-primary"><%= @captacao_adm_locacao_percent %>%</div>
+      <div class="ax-span-4">
+        <div class="ax-card tw-h-full">
+          <div class="ax-card__body">
+            <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Captação com Adm</div>
+            <div class="tw-flex tw-items-end tw-justify-between tw-mt-2">
+              <div class="display-6 tw-font-bold text-primary"><%= @captacao_adm_locacao %></div>
+              <div class="fs-5 tw-font-bold text-primary"><%= @captacao_adm_locacao_percent %>%</div>
             </div>
-            <div class="text-muted small">de <%= @total_locacao %> captações de locação</div>
+            <div class="tw-text-ink-muted tw-text-sm">de <%= @total_locacao %> captações de locação</div>
           </div>
         </div>
       </div>
-    </div>
+    <% end %>
   </div>
 
   <!-- VENDA -->
   <div class="tab-pane fade" id="tab-venda">
-    <div class="capt-foco-banner mb-3">
+    <div class="capt-foco-banner tw-mb-3">
       <div>
-        <div class="small text-uppercase opacity-75 fw-semibold">Região foco</div>
-        <div class="h4 fw-bold mb-0">Captação Venda</div>
+        <div class="tw-text-sm text-uppercase opacity-75 tw-font-semibold">Região foco</div>
+        <div class="h4 tw-font-bold tw-mb-0">Captação Venda</div>
       </div>
       <div class="capt-foco-stat">
-        <div class="h3 fw-bold mb-0"><%= @regiao_foco_venda %></div>
-        <div class="small opacity-75"><%= @regiao_foco_venda_percent %>% de <%= @total_venda %></div>
+        <div class="h3 tw-font-bold tw-mb-0"><%= @regiao_foco_venda %></div>
+        <div class="tw-text-sm opacity-75"><%= @regiao_foco_venda_percent %>% de <%= @total_venda %></div>
       </div>
     </div>
 
-    <div class="row g-3">
-      <div class="col-lg-5">
-        <div class="card shadow-sm border-0 capt-panel-main">
-          <div class="card-body">
-            <h6 class="fw-bold text-muted text-uppercase small mb-3">Acompanhamento de Meta</h6>
+    <%= ax_field_grid do %>
+      <div class="ax-span-5">
+        <div class="ax-card capt-panel-main">
+          <div class="ax-card__body">
+            <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-3">Acompanhamento de Meta</h6>
             <div class="capt-gauge-wrapper">
               <canvas id="gaugeVendaBig"></canvas>
               <div class="capt-gauge-center">
@@ -531,79 +551,79 @@
                 <div class="meta-label">de <%= @meta_venda %></div>
               </div>
             </div>
-            <div class="d-flex justify-content-between small text-muted mt-2">
+            <div class="tw-flex tw-justify-between tw-text-sm tw-text-ink-muted tw-mt-2">
               <span>0</span><span><%= @meta_venda %></span>
             </div>
           </div>
         </div>
 
-        <div class="card shadow-sm border-0 mt-3 capt-panel-secondary">
-          <div class="card-body">
-            <div class="row g-3 align-items-center">
-              <div class="col-md-6">
+        <div class="ax-card tw-mt-3 capt-panel-secondary">
+          <div class="ax-card__body">
+            <%= ax_field_grid class_name: "tw-items-center" do %>
+              <div class="ax-span-6">
                 <div class="capt-donut-title">Região Foco Captação</div>
                 <div class="capt-donut-wrapper">
                   <canvas id="focusVendaBig"></canvas>
                 </div>
               </div>
-              <div class="col-md-6">
+              <div class="ax-span-6">
                 <div class="capt-donut-title">Publicado no Site</div>
                 <div class="capt-donut-wrapper">
                   <canvas id="pubVendaBig"></canvas>
                 </div>
               </div>
-            </div>
+            <% end %>
           </div>
         </div>
       </div>
 
-      <div class="col-lg-7">
-        <div class="card shadow-sm border-0 capt-ranking-card capt-panel-main">
-          <div class="card-body">
-            <h6 class="fw-bold text-muted text-uppercase small mb-3">Ranking de corretores</h6>
+      <div class="ax-span-7">
+        <div class="ax-card capt-ranking-card capt-panel-main">
+          <div class="ax-card__body">
+            <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-3">Ranking de corretores</h6>
             <div class="capt-ranking-scroll">
               <%= render "ranking_table", rows: @ranking_venda, value_key: :total_value, value_label: "Total Venda" %>
             </div>
           </div>
         </div>
-        <div class="capt-summary-card mt-3 capt-panel-secondary">
-          <div class="row g-3 text-center h-100">
-            <div class="col-6">
-              <div class="capt-total-card h-100 d-flex flex-column align-items-center justify-content-center">
+        <div class="capt-summary-card tw-mt-3 capt-panel-secondary">
+          <%= ax_field_grid class_name: "text-center tw-h-full" do %>
+            <div class="ax-span-6">
+              <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Captação Venda</div>
-                <div class="fs-2 fw-bold"><%= @total_venda %></div>
+                <div class="fs-2 tw-font-bold"><%= @total_venda %></div>
               </div>
             </div>
-            <div class="col-6">
-              <div class="capt-total-card h-100 d-flex flex-column align-items-center justify-content-center">
+            <div class="ax-span-6">
+              <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Venda</div>
-                <div class="fs-2 fw-bold"><%= number_to_currency(@total_valor_venda, unit: "R$ ", precision: 0) %></div>
+                <div class="fs-2 tw-font-bold"><%= number_to_currency(@total_valor_venda, unit: "R$ ", precision: 0) %></div>
               </div>
             </div>
-          </div>
+          <% end %>
         </div>
       </div>
-    </div>
+    <% end %>
   </div>
 
   <!-- LOCAÇÃO -->
   <div class="tab-pane fade" id="tab-locacao">
-    <div class="capt-foco-banner mb-3">
+    <div class="capt-foco-banner tw-mb-3">
       <div>
-        <div class="small text-uppercase opacity-75 fw-semibold">Região foco</div>
-        <div class="h4 fw-bold mb-0">Captação Locação</div>
+        <div class="tw-text-sm text-uppercase opacity-75 tw-font-semibold">Região foco</div>
+        <div class="h4 tw-font-bold tw-mb-0">Captação Locação</div>
       </div>
       <div class="capt-foco-stat">
-        <div class="h3 fw-bold mb-0"><%= @regiao_foco_locacao %></div>
-        <div class="small opacity-75"><%= @regiao_foco_locacao_percent %>% de <%= @total_locacao %></div>
+        <div class="h3 tw-font-bold tw-mb-0"><%= @regiao_foco_locacao %></div>
+        <div class="tw-text-sm opacity-75"><%= @regiao_foco_locacao_percent %>% de <%= @total_locacao %></div>
       </div>
     </div>
 
-    <div class="row g-3">
-      <div class="col-lg-5">
-        <div class="card shadow-sm border-0 capt-panel-main">
-          <div class="card-body">
-            <h6 class="fw-bold text-muted text-uppercase small mb-3">Acompanhamento de Meta</h6>
+    <%= ax_field_grid do %>
+      <div class="ax-span-5">
+        <div class="ax-card capt-panel-main">
+          <div class="ax-card__body">
+            <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-3">Acompanhamento de Meta</h6>
             <div class="capt-gauge-wrapper">
               <canvas id="gaugeLocacaoBig"></canvas>
               <div class="capt-gauge-center">
@@ -611,65 +631,65 @@
                 <div class="meta-label">de <%= @meta_locacao %></div>
               </div>
             </div>
-            <div class="d-flex justify-content-between small text-muted mt-2">
+            <div class="tw-flex tw-justify-between tw-text-sm tw-text-ink-muted tw-mt-2">
               <span>0</span><span><%= @meta_locacao %></span>
             </div>
           </div>
         </div>
 
-        <div class="card shadow-sm border-0 mt-3 capt-panel-secondary">
-          <div class="card-body">
-            <div class="row g-3 align-items-center">
-              <div class="col-md-4">
+        <div class="ax-card tw-mt-3 capt-panel-secondary">
+          <div class="ax-card__body">
+            <%= ax_field_grid class_name: "tw-items-center" do %>
+              <div class="ax-span-4">
                 <div class="capt-donut-title">Região Foco Captação</div>
                 <div class="capt-donut-wrapper">
                   <canvas id="focusLocacaoBig"></canvas>
                 </div>
               </div>
-              <div class="col-md-4">
+              <div class="ax-span-4">
                 <div class="capt-donut-title">Publicado no Site</div>
                 <div class="capt-donut-wrapper">
                   <canvas id="pubLocacaoBig"></canvas>
                 </div>
               </div>
-              <div class="col-md-4">
+              <div class="ax-span-4">
                 <div class="capt-donut-title">Administração Salute</div>
                 <div class="capt-donut-wrapper">
                   <canvas id="admLocacaoBig"></canvas>
                 </div>
               </div>
-            </div>
+            <% end %>
           </div>
         </div>
       </div>
 
-      <div class="col-lg-7">
-        <div class="card shadow-sm border-0 capt-ranking-card capt-panel-main">
-          <div class="card-body">
-            <h6 class="fw-bold text-muted text-uppercase small mb-3">Ranking de corretores</h6>
+      <div class="ax-span-7">
+        <div class="ax-card capt-ranking-card capt-panel-main">
+          <div class="ax-card__body">
+            <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-3">Ranking de corretores</h6>
             <div class="capt-ranking-scroll">
               <%= render "ranking_table", rows: @ranking_locacao, value_key: :total_value, value_label: "Total Locação" %>
             </div>
           </div>
         </div>
-        <div class="capt-summary-card mt-3 capt-panel-secondary">
-          <div class="row g-3 text-center h-100">
-            <div class="col-6">
-              <div class="capt-total-card h-100 d-flex flex-column align-items-center justify-content-center">
+        <div class="capt-summary-card tw-mt-3 capt-panel-secondary">
+          <%= ax_field_grid class_name: "text-center tw-h-full" do %>
+            <div class="ax-span-6">
+              <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Captação Locação</div>
-                <div class="fs-2 fw-bold"><%= @total_locacao %></div>
+                <div class="fs-2 tw-font-bold"><%= @total_locacao %></div>
               </div>
             </div>
-            <div class="col-6">
-              <div class="capt-total-card h-100 d-flex flex-column align-items-center justify-content-center">
+            <div class="ax-span-6">
+              <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Locação</div>
-                <div class="fs-2 fw-bold"><%= number_to_currency(@total_valor_locacao, unit: "R$ ", precision: 0) %></div>
+                <div class="fs-2 tw-font-bold"><%= number_to_currency(@total_valor_locacao, unit: "R$ ", precision: 0) %></div>
               </div>
             </div>
-          </div>
+          <% end %>
         </div>
       </div>
-    </div>
+    <% end %>
   </div>
 
   <!-- LEADS HEATMAP -->
@@ -678,176 +698,3 @@
   </div>
 </div>
 </div>
-
-<script>
-  (() => {
-    window.__captDashCharts = window.__captDashCharts || {};
-    const chartUrl = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
-
-    function ensureChartJs() {
-      if (window.Chart) return Promise.resolve();
-      if (window.__captDashChartLoader) return window.__captDashChartLoader;
-
-      window.__captDashChartLoader = new Promise((resolve, reject) => {
-        let script = document.getElementById('capt-dashboard-chartjs');
-        if (!script) {
-          script = document.createElement('script');
-          script.id = 'capt-dashboard-chartjs';
-          script.src = chartUrl;
-          script.async = true;
-          script.dataset.turboTrack = 'reload';
-          document.head.appendChild(script);
-        }
-        script.addEventListener('load', resolve, { once: true });
-        script.addEventListener('error', reject, { once: true });
-      });
-
-      return window.__captDashChartLoader;
-    }
-
-    function gaugeConfig(atual, meta, color) {
-      return {
-        type: 'doughnut',
-        data: {
-          datasets: [{
-            data: [atual, Math.max(meta - atual, 0)],
-            backgroundColor: [color, '#e5e7eb'],
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          resizeDelay: 150,
-          rotation: 270,
-          circumference: 180,
-          cutout: '75%',
-          plugins: { legend: { display: false }, tooltip: { enabled: false } }
-        }
-      }
-    }
-
-    function donutConfig(sim, nao, color = '#f59e0b', labels = ['Sim', 'Não']) {
-      return {
-        type: 'doughnut',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: [sim, nao],
-            backgroundColor: [color, '#1f2937'],
-            borderWidth: 2,
-            borderColor: '#fff'
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false, resizeDelay: 150,
-          cutout: '55%',
-          plugins: {
-            legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 11 } } }
-          }
-        }
-      }
-    }
-
-    const chartConfigs = {
-      gaugeVenda: gaugeConfig(<%= @total_venda %>, <%= [@meta_venda, 1].max %>, '#f59e0b'),
-      gaugeLocacao: gaugeConfig(<%= @total_locacao %>, <%= [@meta_locacao, 1].max %>, '#f59e0b'),
-      gaugeVendaBig: gaugeConfig(<%= @total_venda %>, <%= [@meta_venda, 1].max %>, '#f59e0b'),
-      gaugeLocacaoBig: gaugeConfig(<%= @total_locacao %>, <%= [@meta_locacao, 1].max %>, '#f59e0b'),
-      pubVenda: donutConfig(<%= @publicado_venda %>, <%= @nao_publicado_venda %>, '#f59e0b'),
-      pubLocacao: donutConfig(<%= @publicado_locacao %>, <%= @nao_publicado_locacao %>, '#f59e0b'),
-      focusVendaBig: donutConfig(<%= @regiao_foco_venda %>, <%= [@total_venda - @regiao_foco_venda, 0].max %>, '#f59e0b'),
-      pubVendaBig: donutConfig(<%= @publicado_venda %>, <%= @nao_publicado_venda %>, '#f59e0b'),
-      focusLocacaoBig: donutConfig(<%= @regiao_foco_locacao %>, <%= [@total_locacao - @regiao_foco_locacao, 0].max %>, '#f59e0b'),
-      pubLocacaoBig: donutConfig(<%= @publicado_locacao %>, <%= @nao_publicado_locacao %>, '#f59e0b'),
-      admLocacaoBig: donutConfig(<%= @captacao_adm_locacao %>, <%= [@total_locacao - @captacao_adm_locacao, 0].max %>, '#f59e0b')
-    };
-
-    function renderOne(id, cfg, options = {}) {
-      const c = document.getElementById(id);
-      if (!c) return;
-      if (!options.force && !c.offsetParent) return;
-      if (window.__captDashCharts[id]) { window.__captDashCharts[id].destroy(); }
-      window.__captDashCharts[id] = new Chart(c, cfg);
-    }
-
-    function renderCaptCharts(options = {}) {
-      ensureChartJs().then(() => {
-        requestAnimationFrame(() => {
-          Object.entries(chartConfigs).forEach(([id, cfg]) => renderOne(id, cfg, options));
-        });
-      }).catch(() => {});
-    }
-
-    function destroyCaptCharts() {
-      Object.values(window.__captDashCharts || {}).forEach(c => { try { c.destroy(); } catch (e) {} });
-      window.__captDashCharts = {};
-    }
-
-    function activateTab(tabId) {
-      const trigger = document.querySelector(`[data-bs-target="#${tabId}"]`);
-      if (trigger && window.bootstrap) bootstrap.Tab.getOrCreateInstance(trigger).show();
-    }
-
-    function activeTabId() {
-      return document.querySelector('#captTabs .nav-link.active')?.dataset.bsTarget?.replace('#', '') || 'tab-geral';
-    }
-
-    function enterTvMode(tabId, requestFullscreen = true) {
-      const dashboard = document.getElementById('captDashboard');
-      if (!dashboard) return;
-      activateTab(tabId);
-      document.body.classList.add('capt-dashboard-tv-active');
-      document.querySelector('[data-capt-tv-exit]')?.classList.remove('d-none');
-
-      setTimeout(() => {
-        renderCaptCharts({ force: true });
-        if (requestFullscreen && dashboard.requestFullscreen && !document.fullscreenElement) {
-          dashboard.requestFullscreen().catch(() => {});
-        }
-      }, 220);
-    }
-
-    function exitTvMode() {
-      document.body.classList.remove('capt-dashboard-tv-active');
-      document.querySelector('[data-capt-tv-exit]')?.classList.add('d-none');
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      setTimeout(() => renderCaptCharts({ force: true }), 180);
-    }
-
-    function setupCaptDashboard() {
-      const dashboard = document.getElementById('captDashboard');
-      if (!dashboard) return;
-
-      renderCaptCharts();
-      if (!dashboard.dataset.captDashboardBound) {
-        dashboard.dataset.captDashboardBound = '1';
-        dashboard.querySelectorAll('[data-bs-toggle="tab"]').forEach((button) => {
-          button.addEventListener('shown.bs.tab', () => setTimeout(() => renderCaptCharts({ force: true }), 120));
-        });
-        dashboard.querySelectorAll('[data-capt-tv-tab]').forEach((button) => {
-          button.addEventListener('click', () => enterTvMode(button.dataset.captTvTab));
-        });
-        dashboard.querySelector('[data-capt-active-tv]')?.addEventListener('click', () => enterTvMode(activeTabId()));
-        dashboard.querySelector('[data-capt-tv-exit]')?.addEventListener('click', exitTvMode);
-      }
-
-      const params = new URLSearchParams(window.location.search);
-      const tvTab = params.get('tab');
-      if (params.get('tv') === '1') enterTvMode(tvTab || activeTabId(), false);
-    }
-
-    document.addEventListener('turbo:load', setupCaptDashboard);
-    document.addEventListener('turbo:before-cache', () => {
-      document.body.classList.remove('capt-dashboard-tv-active');
-      document.getElementById('captDashboard')?.removeAttribute('data-capt-dashboard-bound');
-      destroyCaptCharts();
-    });
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) document.body.classList.remove('capt-dashboard-tv-active');
-      setTimeout(() => renderCaptCharts({ force: true }), 180);
-    });
-    if (document.readyState === 'complete') setupCaptDashboard();
-    else window.addEventListener('load', setupCaptDashboard, { once: true });
-  })();
-</script>

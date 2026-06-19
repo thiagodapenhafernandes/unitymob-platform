@@ -1,337 +1,424 @@
 <%
   can_launch_signup = @diagnostics.all? { |item| item[:ok] || item[:fallback].present? }
   active_tab = params[:tab].presence || "whatsapp"
+  connected = @whatsapp_integration.connected?
 %>
 
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-  <div>
-    <h1 class="h3 mb-1 text-gray-800">
-      <i class="bi bi-whatsapp text-success me-2"></i>Integração WhatsApp
-    </h1>
-    <p class="text-muted small mb-0">Conecte o WhatsApp Business pela Meta e configure os telefones usados nos formulários do site.</p>
-  </div>
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <span>Integrações</span>
+  <i class="bi bi-chevron-right"></i>
+  <strong>WhatsApp</strong>
+<% end %>
 
-  <% if @whatsapp_integration.persisted? && @whatsapp_integration.connected? %>
-    <%= button_to disconnect_admin_whatsapp_integration_path, method: :delete, class: "btn btn-outline-danger", data: { turbo_confirm: "Remover a conexão atual do WhatsApp?" } do %>
-      <i class="bi bi-box-arrow-right me-1"></i> Desconectar WhatsApp
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_whatsapp_conversations_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-chat-dots"></i><span>Atendimento</span>
+  <% end %>
+  <% if @whatsapp_integration.persisted? && connected %>
+    <%= button_to disconnect_admin_whatsapp_integration_path, method: :delete,
+                  class: "ax-contextbar__button ax-contextbar__button--danger",
+                  data: { turbo_confirm: "Remover a conexão atual do WhatsApp?" } do %>
+      <i class="bi bi-box-arrow-right"></i><span>Desconectar</span>
     <% end %>
   <% end %>
-</div>
+<% end %>
 
-<ul class="nav nav-tabs mb-4">
-  <li class="nav-item">
-    <%= link_to admin_whatsapp_integration_path(tab: "whatsapp"), class: "nav-link #{'active' if active_tab == 'whatsapp'}" do %>
-      <i class="bi bi-whatsapp me-1"></i> WhatsApp Business API
+<div class="wa-workspace"
+     data-controller="whatsapp-integration"
+     data-whatsapp-integration-app-id-value="<%= ENV.fetch('FACEBOOK_APP_ID', '') %>"
+     data-whatsapp-integration-api-version-value="<%= ENV['WHATSAPP_EMBEDDED_SIGNUP_API_VERSIONS'].presence || ENV['WHATSAPP_GRAPH_API_VERSION'].presence || ENV['META_API_VERSION'].presence || 'v24.0' %>"
+     data-whatsapp-integration-config-id-value="<%= @embedded_signup_config_id %>"
+     data-whatsapp-integration-callback-url-value="<%= embedded_signup_callback_admin_whatsapp_integration_path %>"
+     data-whatsapp-integration-test-url-value="<%= test_connection_admin_whatsapp_integration_path %>"
+     data-whatsapp-integration-send-url-value="<%= send_test_admin_whatsapp_integration_path %>">
+  <header class="ax-dashboard-command ax-property-form-command wa-command">
+    <div class="ax-dashboard-command__main">
+      <span class="ax-dashboard-command__eyebrow">Integração</span>
+      <h1><i class="bi bi-whatsapp" style="color:#1da851"></i> Integração WhatsApp</h1>
+      <p>Conecte o WhatsApp Business pela Meta e configure os telefones usados nos formulários do site.</p>
+    </div>
+    <div class="ax-dashboard-command__status">
+      <% if connected %>
+        <%= ax_badge("Conectado", tone: :green, dot: true) %>
+      <% else %>
+        <%= ax_badge("Aguardando conexão", tone: :gray) %>
+      <% end %>
+    </div>
+  </header>
+
+  <nav class="wa-tabs" aria-label="Seções da integração">
+    <%= link_to admin_whatsapp_integration_path(tab: "whatsapp"),
+                class: "wa-tabs__item #{'is-active' if active_tab == 'whatsapp'}" do %>
+      <i class="bi bi-whatsapp"></i><span>WhatsApp Business API</span>
     <% end %>
-  </li>
-  <li class="nav-item">
-    <%= link_to admin_whatsapp_integration_path(tab: "site_phones"), class: "nav-link #{'active' if active_tab == 'site_phones'}" do %>
-      <i class="bi bi-telephone-outbound me-1"></i> Telefones do Site
+    <%= link_to admin_whatsapp_integration_path(tab: "site_phones"),
+                class: "wa-tabs__item #{'is-active' if active_tab == 'site_phones'}" do %>
+      <i class="bi bi-telephone-outbound"></i><span>Telefones do Site</span>
     <% end %>
-  </li>
-</ul>
+  </nav>
 
-<% if active_tab == "site_phones" %>
-  <div class="row g-4">
-    <div class="col-lg-8">
-      <div class="card shadow-sm border-0">
-        <div class="card-header bg-white py-3">
-          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-telephone-outbound text-success me-2"></i>Telefones dos formulários do site</h5>
-          <small class="text-muted">Defina o número de destino e se o visitante passa pelo formulário intermediário antes do WhatsApp.</small>
-        </div>
-        <div class="card-body p-4">
-          <% if @phone_settings_errors.present? %>
-            <div class="alert alert-warning">
-              <strong>Revise os campos:</strong>
-              <%= @phone_settings_errors.to_sentence %>
-            </div>
-          <% end %>
+  <% if active_tab == "site_phones" %>
+    <div class="wa-grid">
+      <div class="wa-main">
+        <%= ax_operational_panel(
+              eyebrow: "Formulários do site",
+              title: "Telefones dos formulários do site"
+            ) do %>
+          <div class="wa-panel-body">
+            <p class="wa-hint">Defina o número de destino e se o visitante passa pelo formulário intermediário antes do WhatsApp.</p>
 
-          <%= form_with model: @whatsapp_integration, url: phone_settings_admin_whatsapp_integration_path, method: :patch, local: true do |f| %>
-            <div class="mb-4">
-              <%= f.label :default_whatsapp_number, "Número padrão", class: "form-label fw-bold" %>
-              <div class="input-group input-group-lg">
-                <span class="input-group-text"><i class="bi bi-whatsapp text-success"></i></span>
-                <%= f.telephone_field :default_whatsapp_number,
-                                      class: "form-control",
-                                      placeholder: "5547999999999",
-                                      value: @whatsapp_integration.default_whatsapp_number.presence || ContactSetting.first&.whatsapp_primary %>
+            <% if @phone_settings_errors.present? %>
+              <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                <strong>Revise os campos:</strong> <%= @phone_settings_errors.to_sentence %>
+              <% end %>
+            <% end %>
+
+            <%= form_with model: @whatsapp_integration, url: phone_settings_admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
+              <div class="wa-field">
+                <%= ax_field_label(f, :default_whatsapp_number, text: "Número padrão",
+                      tooltip: "Usado quando o tipo de negociação não tiver número específico.") %>
+                <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp", style: "color:#1da851")) do %>
+                  <%= f.telephone_field :default_whatsapp_number,
+                        class: "ax-control",
+                        placeholder: "5547999999999",
+                        value: @whatsapp_integration.default_whatsapp_number.presence || ContactSetting.first&.whatsapp_primary %>
+                <% end %>
               </div>
-              <small class="text-muted">Usado quando o tipo de negociação não tiver número específico.</small>
-            </div>
 
-            <div class="row g-3">
-              <% WhatsappBusinessIntegration::NEGOTIATION_TYPES.each do |key, config| %>
-                <div class="col-md-4">
-                  <div class="border rounded-3 p-3 h-100">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                      <span class="rounded-circle bg-success-subtle text-success d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
-                        <i class="bi bi-whatsapp"></i>
-                      </span>
+              <div class="wa-negotiations">
+                <% WhatsappBusinessIntegration::NEGOTIATION_TYPES.each do |key, config| %>
+                  <section class="wa-negotiation">
+                    <header class="wa-negotiation__head">
+                      <span class="wa-negotiation__icon"><i class="bi bi-whatsapp"></i></span>
                       <div>
-                        <h6 class="fw-bold mb-0"><%= config[:label] %></h6>
-                        <small class="text-muted"><%= config[:default_message] %></small>
+                        <strong><%= config[:label] %></strong>
+                        <span><%= config[:default_message] %></span>
                       </div>
+                    </header>
+                    <div class="wa-field">
+                      <%= ax_field_label(f, config[:phone_attribute], text: "WhatsApp de destino") %>
+                      <%= f.telephone_field config[:phone_attribute], class: "ax-control", placeholder: "Usar número padrão" %>
                     </div>
+                    <%= ax_toggle_chip(f, config[:form_attribute],
+                          label: "Captar dados antes de redirecionar",
+                          checked_value: "1", unchecked_value: "0",
+                          class_name: "wa-negotiation__toggle") %>
+                  </section>
+                <% end %>
+              </div>
 
-                    <div class="mb-3">
-                      <%= f.label config[:phone_attribute], "WhatsApp de destino", class: "form-label small fw-bold text-muted text-uppercase" %>
-                      <%= f.telephone_field config[:phone_attribute],
-                                            class: "form-control",
-                                            placeholder: "Usar número padrão" %>
-                    </div>
+              <div class="ax-form-actions">
+                <%= f.submit "Salvar telefones do site", class: "ax-btn ax-btn--primary" %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
 
-                    <div class="form-check form-switch">
-                      <%= f.check_box config[:form_attribute], class: "form-check-input" %>
-                      <%= f.label config[:form_attribute], "Captar dados antes de redirecionar", class: "form-check-label" %>
-                    </div>
+      <aside class="wa-aside">
+        <%= ax_operational_panel(eyebrow: "Resumo", title: "Como o site usa") do %>
+          <div class="wa-panel-body">
+            <dl class="wa-state">
+              <% @site_phone_settings[:negotiations].each do |key, item| %>
+                <div class="wa-state__row">
+                  <dt>
+                    <strong><%= item[:label] %></strong>
+                    <span><%= item[:requires_form] ? "Com formulário intermediário" : "Direto para o WhatsApp" %></span>
+                  </dt>
+                  <dd><code><%= item[:phone].presence || @site_phone_settings[:default_phone] %></code></dd>
+                </div>
+              <% end %>
+            </dl>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Regra", title: "Regra padrão") do %>
+          <div class="wa-panel-body">
+            <p class="wa-hint">Se um número específico ficar em branco, o site usa o número padrão. Locação diária entra na regra de locação.</p>
+          </div>
+        <% end %>
+      </aside>
+    </div>
+  <% else %>
+    <div class="wa-grid">
+      <div class="wa-main">
+        <%= ax_operational_panel(
+              eyebrow: "Config WABA NotificaLead: #{@embedded_signup_config_id}",
+              title: "Embedded Signup v4",
+              actions: ax_badge(connected ? "Conectado" : "Aguardando conexão", tone: connected ? :green : :gray)
+            ) do %>
+          <div class="wa-panel-body">
+            <% if connected %>
+              <div class="wa-connected">
+                <% [
+                     ["WABA ID", @whatsapp_integration.waba_id],
+                     ["Phone Number ID", @whatsapp_integration.phone_number_id],
+                     ["Business ID", @whatsapp_integration.business_id.presence || "Não informado"],
+                     ["Token", @whatsapp_integration.token_preview || "Salvo"],
+                     ["Conectado por", @whatsapp_integration.connected_by_admin_user&.name || "Sistema"],
+                     ["Data", (@whatsapp_integration.connected_at ? l(@whatsapp_integration.connected_at, format: :short) : "—")]
+                   ].each do |label, value| %>
+                  <div class="wa-connected__cell">
+                    <span><%= label %></span>
+                    <strong><%= value %></strong>
                   </div>
-                </div>
-              <% end %>
-            </div>
-
-            <div class="d-flex justify-content-end mt-4">
-              <%= f.submit "Salvar telefones do site", class: "btn btn-success rounded-pill px-4 fw-bold" %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-4">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body p-4">
-          <h6 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-primary"></i>Como o site usa</h6>
-          <div class="vstack gap-3 small">
-            <% @site_phone_settings[:negotiations].each do |key, item| %>
-              <div class="d-flex justify-content-between gap-3 border-bottom pb-2">
-                <div>
-                  <strong><%= item[:label] %></strong>
-                  <div class="text-muted"><%= item[:requires_form] ? "Com formulário intermediário" : "Direto para o WhatsApp" %></div>
-                </div>
-                <code><%= item[:phone].presence || @site_phone_settings[:default_phone] %></code>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
-
-      <div class="card shadow-sm border-0">
-        <div class="card-body p-4">
-          <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-2 text-primary"></i>Regra padrão</h6>
-          <p class="small text-muted mb-0">
-            Se um número específico ficar em branco, o site usa o número padrão. Locação diária entra na regra de locação.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-<% else %>
-  <div class="row g-4">
-    <div class="col-lg-8">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-          <div>
-            <h5 class="card-title mb-0 fw-bold"><i class="bi bi-meta me-2 text-primary"></i>Embedded Signup v4</h5>
-            <small class="text-muted">Config WABA NotificaLead: <code><%= @embedded_signup_config_id %></code></small>
-          </div>
-          <% if @whatsapp_integration.connected? %>
-            <span class="badge bg-success-subtle text-success px-3 py-2">Conectado</span>
-          <% else %>
-            <span class="badge bg-secondary-subtle text-secondary px-3 py-2">Aguardando conexão</span>
-          <% end %>
-        </div>
-        <div class="card-body p-4">
-          <% if @whatsapp_integration.connected? %>
-            <div class="p-3 rounded-3 bg-light border border-success border-opacity-25 mb-4">
-              <div class="row g-3">
-                <div class="col-md-4">
-                  <small class="text-muted d-block">WABA ID</small>
-                  <strong><%= @whatsapp_integration.waba_id %></strong>
-                </div>
-                <div class="col-md-4">
-                  <small class="text-muted d-block">Phone Number ID</small>
-                  <strong><%= @whatsapp_integration.phone_number_id %></strong>
-                </div>
-                <div class="col-md-4">
-                  <small class="text-muted d-block">Business ID</small>
-                  <strong><%= @whatsapp_integration.business_id.presence || "Não informado" %></strong>
-                </div>
-                <div class="col-md-4">
-                  <small class="text-muted d-block">Token</small>
-                  <strong><%= @whatsapp_integration.token_preview || "Salvo" %></strong>
-                </div>
-                <div class="col-md-4">
-                  <small class="text-muted d-block">Conectado por</small>
-                  <strong><%= @whatsapp_integration.connected_by_admin_user&.name || "Sistema" %></strong>
-                </div>
-                <div class="col-md-4">
-                  <small class="text-muted d-block">Data</small>
-                  <strong><%= l(@whatsapp_integration.connected_at, format: :short) if @whatsapp_integration.connected_at %></strong>
-                </div>
-              </div>
-            </div>
-          <% elsif @whatsapp_integration.last_error_message.present? %>
-            <div class="alert alert-warning">
-              <strong>Último retorno da Meta:</strong>
-              <%= @whatsapp_integration.last_error_message %>
-              <% if @whatsapp_integration.last_error_code.present? %>
-                <span class="text-muted">(<%= @whatsapp_integration.last_error_code %>)</span>
-              <% end %>
-            </div>
-          <% end %>
-
-          <div id="whatsapp-signup-feedback" class="alert d-none" role="alert"></div>
-
-          <div class="d-flex flex-wrap gap-2 align-items-center">
-            <button type="button"
-                    id="whatsapp-embedded-signup-button"
-                    class="btn btn-success btn-lg rounded-pill px-5 fw-bold shadow-sm"
-                    <%= "disabled" unless can_launch_signup %>>
-              <i class="bi bi-whatsapp me-2"></i> Conectar WhatsApp pela Meta
-            </button>
-            <% unless can_launch_signup %>
-              <span class="small text-muted">Revise os itens de configuração antes de conectar.</span>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-4">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body p-4">
-          <h6 class="fw-bold mb-3"><i class="bi bi-clipboard-check me-2 text-primary"></i>Diagnóstico</h6>
-          <div class="list-group list-group-flush">
-            <% @diagnostics.each do |item| %>
-              <div class="list-group-item px-0 d-flex justify-content-between align-items-start gap-3">
-                <div>
-                  <div class="fw-semibold"><%= item[:label] %></div>
-                  <% if item[:fallback].present? && !item[:ok] %>
-                    <small class="text-muted">Usando padrão: <code><%= item[:fallback] %></code></small>
-                  <% elsif item[:detail].present? %>
-                    <small class="text-muted"><%= item[:detail] %></small>
-                  <% end %>
-                </div>
-                <% if item[:ok] || item[:fallback].present? %>
-                  <i class="bi bi-check-circle-fill text-success"></i>
-                <% else %>
-                  <i class="bi bi-exclamation-triangle-fill text-warning"></i>
                 <% end %>
               </div>
             <% end %>
+
+            <%# Webhook de mensagens (inbox) — agora editável %>
+            <section class="wa-webhook">
+              <header class="wa-webhook__head">
+                <div>
+                  <span class="ax-operational-panel__eyebrow">Inbox</span>
+                  <h3>Webhook de mensagens</h3>
+                </div>
+                <%= link_to "Abrir Atendimento", admin_whatsapp_conversations_path, class: "ax-btn ax-btn--sm" %>
+              </header>
+              <p class="wa-hint">Configure no painel da Meta (WhatsApp › Configuration › Webhook) para receber e responder mensagens dentro do CRM. Campo a assinar: <code>messages</code>.</p>
+
+              <% if @webhook_settings_errors.present? %>
+                <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                  <strong>Revise os campos:</strong> <%= @webhook_settings_errors.to_sentence %>
+                <% end %>
+              <% end %>
+
+              <%= form_with model: @whatsapp_integration, url: admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
+                <div class="wa-webhook__grid">
+                  <div class="wa-field">
+                    <%= ax_field_label(f, :webhook_callback_url, text: "Callback URL",
+                          tooltip: "Em produção, use o domínio público (HTTPS). Em branco, usa o padrão: #{@default_webhook_callback_url}") %>
+                    <%= f.url_field :webhook_callback_url, class: "ax-control", value: @webhook_callback_url, placeholder: @default_webhook_callback_url %>
+                  </div>
+                  <div class="wa-field">
+                    <%= ax_field_label(f, :webhook_verify_token, text: "Verify Token",
+                          tooltip: "Cole este valor no painel da Meta ao assinar o webhook.") %>
+                    <%= f.text_field :webhook_verify_token, class: "ax-control", value: @webhook_verify_token %>
+                  </div>
+                </div>
+                <div class="wa-webhook__actions">
+                  <%= f.submit "Salvar webhook", class: "ax-btn ax-btn--primary ax-btn--sm" %>
+                </div>
+              <% end %>
+            </section>
+
+            <% if !connected && @whatsapp_integration.last_error_message.present? %>
+              <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                <strong>Último retorno da Meta:</strong>
+                <%= @whatsapp_integration.last_error_message %>
+                <% if @whatsapp_integration.last_error_code.present? %>
+                  <span class="wa-hint">(<%= @whatsapp_integration.last_error_code %>)</span>
+                <% end %>
+              <% end %>
+            <% end %>
+
+            <div id="whatsapp-signup-feedback" class="ax-inline-notice" hidden role="alert" data-whatsapp-integration-target="signupFeedback"
+                 style="display:none;align-items:center;gap:7px;min-height:34px;padding:7px 9px;border:1px solid #d8e1ec;border-left-width:3px;border-radius:7px;background:#f8fafc;color:#475467;font-size:12px;font-weight:650;line-height:1.25;"></div>
+
+            <div class="wa-connect">
+              <button type="button"
+                      id="whatsapp-embedded-signup-button"
+                      class="ax-btn ax-btn--primary wa-connect__button"
+                      data-whatsapp-integration-target="signupButton"
+                      data-action="whatsapp-integration#launchSignup"
+                      <%= "disabled" unless can_launch_signup %>>
+                <i class="bi bi-whatsapp"></i> Conectar WhatsApp pela Meta
+              </button>
+              <% unless can_launch_signup %>
+                <span class="wa-hint">Revise os itens de configuração antes de conectar.</span>
+              <% end %>
+            </div>
           </div>
-        </div>
+        <% end %>
+
+        <%# Conexão manual (System User / Cloud API) — alternativa ao Embedded Signup %>
+        <%= ax_operational_panel(
+              eyebrow: "Alternativa sem Embedded Signup",
+              title: "Conexão manual (API do sistema)",
+              actions: ax_badge(@whatsapp_integration.messaging_ready? ? "Pronto p/ envio" : "Não configurado", tone: @whatsapp_integration.messaging_ready? ? :green : :gray)
+            ) do %>
+          <div class="wa-panel-body">
+            <% if @phone_info %>
+              <% quality_tone = { "GREEN" => :green, "YELLOW" => :amber, "RED" => :red }[@phone_info[:quality].to_s] || :gray %>
+              <div class="wa-phone-info">
+                <div class="wa-phone-info__cell">
+                  <span>Número</span>
+                  <strong><%= @phone_info[:number].presence || "—" %></strong>
+                </div>
+                <div class="wa-phone-info__cell">
+                  <span>Nome verificado</span>
+                  <strong><%= @phone_info[:name].presence || "—" %></strong>
+                </div>
+                <div class="wa-phone-info__cell">
+                  <span>Quality rating</span>
+                  <%= ax_badge(@phone_info[:quality].presence || "—", tone: quality_tone, dot: quality_tone != :gray) %>
+                </div>
+              </div>
+            <% end %>
+
+            <p class="wa-hint">Use credenciais de System User / Cloud API direto (Access Token + Phone Number ID + WABA), sem passar pelo fluxo de conexão de número. Indicado para apenas notificar/enviar mensagens.</p>
+
+            <% if @manual_connection_errors.present? %>
+              <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+                <strong>Revise os campos:</strong> <%= @manual_connection_errors.to_sentence %>
+              <% end %>
+            <% end %>
+
+            <%= form_with model: @whatsapp_integration, url: manual_connection_admin_whatsapp_integration_path, method: :patch, html: { class: "habitation-form-ui wa-form" } do |f| %>
+              <div class="wa-field">
+                <%= ax_field_label(f, :access_token, text: "Access Token (System User / permanente)",
+                      tooltip: "Salvo no backend, nunca exibido completo. Deixe em branco para manter o token atual.") %>
+                <%= f.password_field :access_token,
+                      class: "ax-control",
+                      value: "",
+                      autocomplete: "off",
+                      placeholder: @whatsapp_integration.access_token.present? ? "Token salvo (#{@whatsapp_integration.token_preview}) — preencha para substituir" : "Cole o token da Cloud API" %>
+              </div>
+
+              <div class="wa-webhook__grid">
+                <div class="wa-field">
+                  <%= ax_field_label(f, :phone_number_id, text: "Phone Number ID") %>
+                  <%= f.text_field :phone_number_id, class: "ax-control", value: @whatsapp_integration.phone_number_id, placeholder: "Ex.: 649374078254590" %>
+                </div>
+                <div class="wa-field">
+                  <%= ax_field_label(f, :waba_id, text: "WhatsApp Business Account ID (WABA)") %>
+                  <%= f.text_field :waba_id, class: "ax-control", value: @whatsapp_integration.waba_id, placeholder: "Ex.: 616242481017427" %>
+                </div>
+                <div class="wa-field">
+                  <%= ax_field_label(f, :business_id, text: "Business ID (opcional)") %>
+                  <%= f.text_field :business_id, class: "ax-control", value: @whatsapp_integration.business_id %>
+                </div>
+                <div class="wa-field">
+                  <%= ax_field_label(f, :app_secret, text: "App Secret (opcional, p/ webhook)",
+                        tooltip: "Valida a assinatura do webhook. Deixe em branco para manter o atual.") %>
+                  <%= f.password_field :app_secret, class: "ax-control", value: "", autocomplete: "off",
+                        placeholder: @whatsapp_integration.app_secret.present? ? "Salvo — preencha para substituir" : "Opcional" %>
+                </div>
+              </div>
+
+              <div class="wa-webhook__actions">
+                <%= f.submit "Salvar conexão manual", class: "ax-btn ax-btn--primary ax-btn--sm" %>
+              </div>
+            <% end %>
+
+            <div class="wa-test">
+              <div class="wa-test__bar">
+                <button type="button" class="ax-btn ax-btn--sm" data-action="whatsapp-integration#testConnection">
+                  <i class="bi bi-plug"></i> Testar conexão
+                </button>
+                <div class="wa-test__send">
+                  <input type="text" class="ax-control" data-whatsapp-integration-target="testTo" placeholder="Número p/ teste (5547...)" aria-label="Número para teste">
+                  <button type="button" class="ax-btn ax-btn--sm ax-btn--primary" data-action="whatsapp-integration#sendTest">
+                    <i class="bi bi-send"></i> Enviar teste
+                  </button>
+                </div>
+              </div>
+              <div data-whatsapp-integration-target="testResult" class="ax-inline-notice" hidden role="status"
+                   style="display:none;align-items:center;gap:7px;min-height:34px;padding:7px 9px;border:1px solid #d8e1ec;border-left-width:3px;border-radius:7px;background:#f8fafc;color:#475467;font-size:12px;font-weight:650;line-height:1.3;"></div>
+            </div>
+          </div>
+        <% end %>
       </div>
 
-      <div class="card shadow-sm border-0">
-        <div class="card-body p-4">
-          <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-success"></i>Segurança</h6>
-          <p class="small text-muted mb-0">
-            O token retornado pela Meta é salvo no backend e não é exibido completo na interface.
-          </p>
-        </div>
-      </div>
+      <aside class="wa-aside">
+        <%= ax_operational_panel(eyebrow: "Status", title: "Diagnóstico") do %>
+          <div class="wa-panel-body">
+            <dl class="wa-state">
+              <% @diagnostics.each do |item| %>
+                <div class="wa-state__row">
+                  <dt>
+                    <strong><%= item[:label] %></strong>
+                    <% if item[:fallback].present? && !item[:ok] %>
+                      <span>Usando padrão: <code><%= item[:fallback] %></code></span>
+                    <% elsif item[:detail].present? %>
+                      <span><%= item[:detail] %></span>
+                    <% end %>
+                  </dt>
+                  <dd>
+                    <% if item[:ok] || item[:fallback].present? %>
+                      <i class="bi bi-check-circle-fill" style="color:#0e9f6e"></i>
+                    <% else %>
+                      <i class="bi bi-exclamation-triangle-fill" style="color:#d9890a"></i>
+                    <% end %>
+                  </dd>
+                </div>
+              <% end %>
+            </dl>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Segurança", title: "Token e segredo") do %>
+          <div class="wa-panel-body">
+            <p class="wa-hint">O token retornado pela Meta é salvo no backend e não é exibido completo na interface.</p>
+          </div>
+        <% end %>
+      </aside>
     </div>
-  </div>
 
-  <script>
-    (function () {
-      const button = document.getElementById("whatsapp-embedded-signup-button");
-      const feedback = document.getElementById("whatsapp-signup-feedback");
-      if (!button) return;
+  <% end %>
+</div>
 
-      const appId = "<%= j ENV.fetch('FACEBOOK_APP_ID', '') %>";
-      const apiVersion = "<%= j(ENV['WHATSAPP_EMBEDDED_SIGNUP_API_VERSIONS'].presence || ENV['WHATSAPP_GRAPH_API_VERSION'].presence || ENV['META_API_VERSION'].presence || 'v24.0') %>";
-      const configId = "<%= j @embedded_signup_config_id %>";
-      const callbackUrl = "<%= embedded_signup_callback_admin_whatsapp_integration_path %>";
-      let latestSession = {};
+<style id="wa-integration-styles">
+  .wa-workspace { display: grid; gap: 8px; padding-top: 8px; }
+  .wa-command { margin-bottom: 0; }
 
-      function showFeedback(type, message) {
-        if (!feedback) return;
-        feedback.className = "alert alert-" + type;
-        feedback.textContent = message;
-      }
+  .wa-tabs { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid #d8dee8; border-radius: 8px; background: #eef2f7; }
+  .wa-tabs__item {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 12px;
+    border: 1px solid transparent; border-radius: 6px; color: #64748b;
+    font-size: 12px; font-weight: 800; text-decoration: none;
+  }
+  .wa-tabs__item:hover { background: #fff; color: #1f2937; }
+  .wa-tabs__item.is-active { background: #fff; color: var(--admin-primary, #365f8f); border-color: color-mix(in srgb, var(--admin-primary) 28%, #d8dee8); box-shadow: 0 1px 2px rgba(15,23,42,.06); }
 
-      window.addEventListener("message", function (event) {
-        if (!event.origin.endsWith("facebook.com")) return;
+  .wa-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
+  @media (min-width: 1080px) { .wa-grid { grid-template-columns: minmax(0, 1fr) 340px; } }
+  .wa-main { display: grid; gap: 8px; min-width: 0; }
+  .wa-aside { display: grid; gap: 8px; min-width: 0; }
+  @media (min-width: 1080px) { .wa-aside { position: sticky; top: calc(var(--ax-navbar-h, 48px) + var(--ax-contextbar-h, 40px) + 8px); } }
 
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === "WA_EMBEDDED_SIGNUP") {
-            latestSession = data;
-          }
-        } catch (_error) {
-          latestSession = {};
-        }
-      });
+  .wa-panel-body { padding: 12px; display: grid; gap: 14px; }
+  .wa-hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.45; }
+  .wa-form { gap: 14px; }
+  .wa-field { display: grid; gap: 5px; min-width: 0; }
 
-      window.fbAsyncInit = function () {
-        FB.init({
-          appId: appId,
-          cookie: true,
-          xfbml: false,
-          version: apiVersion
-        });
-      };
+  .wa-connected { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #f8fafc; }
+  .wa-connected__cell { display: grid; gap: 2px; min-width: 0; }
+  .wa-connected__cell span { color: #697586; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+  .wa-connected__cell strong { color: #1f2733; font-size: 13px; overflow-wrap: anywhere; }
 
-      if (!document.getElementById("facebook-jssdk")) {
-        const script = document.createElement("script");
-        script.id = "facebook-jssdk";
-        script.src = "https://connect.facebook.net/pt_BR/sdk.js";
-        document.body.appendChild(script);
-      }
+  .wa-webhook { border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
+  .wa-webhook__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .wa-webhook__head h3 { margin: 2px 0 0; font-size: 13px; font-weight: 800; color: #1f2733; }
+  .wa-webhook__grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; }
+  @media (max-width: 720px) { .wa-webhook__grid { grid-template-columns: minmax(0, 1fr); } }
+  .wa-webhook__actions { display: flex; justify-content: flex-end; }
 
-      function submitResult(response) {
-        const code = response && response.authResponse && response.authResponse.code;
-        const payload = {
-          code: code,
-          event: latestSession.event || (code ? "FINISH" : "ERROR"),
-          session_info: latestSession.data || {}
-        };
+  .wa-negotiations { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .wa-negotiation { border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; padding: 12px; display: grid; gap: 10px; }
+  .wa-negotiation__head { display: flex; align-items: flex-start; gap: 8px; }
+  .wa-negotiation__icon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: 0 0 auto; border-radius: 999px; background: #e6f6ec; color: #0e9f6e; }
+  .wa-negotiation__head strong { display: block; color: #1f2733; font-size: 12.5px; }
+  .wa-negotiation__head span { color: #8a93a3; font-size: 11px; line-height: 1.35; }
 
-        fetch(callbackUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
-          },
-          body: JSON.stringify(payload)
-        }).then(function (result) {
-          return result.json().then(function (body) {
-            if (!result.ok) throw new Error(body.message || "Não foi possível concluir a conexão.");
-            return body;
-          });
-        }).then(function (body) {
-          showFeedback("success", body.message || "WhatsApp conectado com sucesso.");
-          setTimeout(function () { window.location.reload(); }, 900);
-        }).catch(function (error) {
-          showFeedback("warning", error.message);
-        }).finally(function () {
-          button.disabled = false;
-        });
-      }
+  .wa-connect { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 
-      button.addEventListener("click", function () {
-        if (!window.FB) {
-          showFeedback("warning", "SDK da Meta ainda está carregando. Tente novamente em alguns segundos.");
-          return;
-        }
+  .wa-phone-info { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 10px 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #f8fafc; }
+  .wa-phone-info__cell { display: grid; gap: 2px; min-width: 0; }
+  .wa-phone-info__cell span { color: #697586; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+  .wa-phone-info__cell strong { color: #1f2733; font-size: 13.5px; }
 
-        button.disabled = true;
-        showFeedback("info", "Abrindo fluxo de conexão da Meta...");
-        latestSession = {};
+  .wa-test { display: grid; gap: 8px; padding-top: 4px; border-top: 1px dashed var(--ax-border-soft, #e7ebf2); }
+  .wa-test__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .wa-test__send { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .wa-test__send .ax-control { max-width: 220px; }
 
-        FB.login(submitResult, {
-          config_id: configId,
-          response_type: "code",
-          override_default_response_type: true,
-          extras: {
-            setup: {}
-          }
-        });
-      });
-    })();
-  </script>
-<% end %>
+  .wa-state { margin: 0; display: grid; gap: 10px; }
+  .wa-state__row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .wa-state__row dt { margin: 0; min-width: 0; }
+  .wa-state__row dt strong { display: block; color: #1f2733; font-size: 12.5px; font-weight: 700; }
+  .wa-state__row dt span { color: #8a93a3; font-size: 11px; }
+  .wa-state__row dd { margin: 0; flex: 0 0 auto; font-size: 12.5px; color: #1f2733; }
+</style>

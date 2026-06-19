@@ -84,13 +84,13 @@ export default class extends Controller {
 
     // Validation
     if (name.length < 3) {
-      alert("Por favor, informe seu nome completo.")
+      window.axToast({ message: "Por favor, informe seu nome completo.", type: "warning" })
       this.nameTarget.focus()
       return
     }
 
     if (phone.length < 10 || phone.length > 11) {
-      alert("Por favor, informe um número de WhatsApp válido com DDD.")
+      window.axToast({ message: "Por favor, informe um número de WhatsApp válido com DDD.", type: "warning" })
       this.phoneTarget.focus()
       return
     }

@@ -1,0 +1,29 @@
+<div class="ax-alert ax-alert--danger ax-form-error-summary" role="alert">
+  <div class="ax-alert__icon"><%= ax_icon("exclamation-triangle-fill") %></div>
+  <div>
+    <div class="ax-alert__title"><%= title %></div>
+    <% if grouped_errors.present? %>
+      <div class="ax-alert__groups">
+        <% Array(order.presence || grouped_errors.keys).each do |group_key| %>
+          <% messages = grouped_errors[group_key].to_a.compact_blank %>
+          <% next if messages.blank? %>
+
+          <section class="ax-alert__group">
+            <strong><%= labels[group_key] || group_key.to_s.humanize %></strong>
+            <ul class="ax-alert__list">
+              <% messages.each do |message| %>
+                <li><%= message %></li>
+              <% end %>
+            </ul>
+          </section>
+        <% end %>
+      </div>
+    <% else %>
+      <ul class="ax-alert__list">
+        <% record.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,63 @@
+<%
+  habitation = local_assigns.fetch(:habitation)
+  return_to_path = local_assigns[:return_to_path]
+  media_count = (habitation.photos.attached? ? habitation.photos.attachments.size : 0) + (habitation.pictures.is_a?(Array) ? habitation.pictures.size : 0)
+  upload_input_id = "habitation_media_modal_photos_#{habitation.id}"
+%>
+
+<header class="ax-media-modal__header">
+  <div class="ax-media-modal__title-group">
+    <span class="ax-media-modal__eyebrow">Organizador de mídia</span>
+    <h2><%= habitation.display_title %></h2>
+    <div class="ax-media-modal__meta">
+      <strong><%= habitation.codigo.present? ? "##{habitation.codigo}" : "Cadastro" %></strong>
+      <% if habitation.status.present? %>
+        <%= ax_badge(habitation.status, tone: :blue) %>
+      <% end %>
+      <% if habitation.categoria.present? %>
+        <%= ax_badge(habitation.categoria, tone: :neutral) %>
+      <% end %>
+      <span><i class="bi bi-images"></i> <%= media_count %> mídia(s)</span>
+    </div>
+  </div>
+
+  <div class="ax-media-modal__actions">
+    <%= link_to "Abrir página completa",
+                admin_habitation_media_path(habitation, return_to: return_to_path),
+                class: "ax-btn ax-btn--ghost ax-btn--sm" %>
+    <button type="button" class="ax-icon-btn" data-action="ax-modal#close" aria-label="Fechar">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+</header>
+
+<%= form_with model: [:admin, habitation],
+              url: admin_habitation_media_path(habitation),
+              method: :patch,
+              local: true,
+              html: {
+                id: "admin_habitation_media_modal_form_#{habitation.id}",
+                class: "habitation-form-ui habitation-media-module-form ax-media-modal__form",
+                multipart: true
+              },
+              data: { turbo: false } do |f| %>
+  <%= hidden_field_tag :return_to, return_to_path if return_to_path.present? %>
+
+  <div class="ax-media-modal__body">
+    <%= render "admin/habitations/media/manager",
+               f: f,
+               habitation: habitation,
+               upload_input_id: upload_input_id %>
+  </div>
+
+  <footer class="ax-media-modal__footer">
+    <div class="ax-media-modal__footer-meta">
+      <i class="bi bi-cloud-arrow-up"></i>
+      <span>Uploads, ordenação e visibilidade são salvos de forma assíncrona.</span>
+    </div>
+    <div class="ax-media-modal__footer-actions">
+      <button type="button" class="ax-btn" data-action="ax-modal#close">Fechar</button>
+      <%= f.submit "Salvar mídia", class: "ax-btn ax-btn--primary" %>
+    </div>
+  </footer>
+<% end %>

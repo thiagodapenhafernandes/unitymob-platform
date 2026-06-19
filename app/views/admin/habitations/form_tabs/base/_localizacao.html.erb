@@ -1,0 +1,185 @@
+<%= ax_form_section(title: "Endereço e localização", eyebrow: "Localização") do %>
+  <%= f.fields_for :address do |address_form| %>
+    <div data-controller="cep-search">
+      <%= ax_field_grid(columns: 12, gap: :compact) do %>
+        <div class="ax-span-2">
+          <%= ax_select_field(
+                form: address_form,
+                method: :tipo_endereco,
+                label: "Endereço",
+                choices: Habitation::STREET_TYPES,
+                select_options: { include_blank: true },
+                html_options: {
+                  disabled: !can_edit_protected_habitation_fields,
+                  data: { controller: "tom-select", placeholder: "Selecione...", cep_search_target: "tipo", habitation_form_target: "streetTypeSelect" }
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-4">
+          <%= ax_text_field(
+                form: address_form,
+                method: :logradouro,
+                label: "Logradouro",
+                placeholder: "Rua, Av...",
+                readonly: !can_edit_protected_habitation_fields,
+                data: {
+                  cep_search_target: "logradouro",
+                  habitation_form_target: "street",
+                  habitation_duplicate_check_target: "street",
+                  action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-1">
+          <%= ax_text_field(
+                form: address_form,
+                method: :numero,
+                label: "Nº",
+                readonly: !can_edit_protected_habitation_fields,
+                data: {
+                  cep_search_target: "numero",
+                  habitation_form_target: "streetNumber",
+                  habitation_duplicate_check_target: "number",
+                  action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-2">
+          <%= ax_text_field(
+                form: address_form,
+                method: :complemento,
+                label: "Compl.",
+                readonly: !can_edit_protected_habitation_fields,
+                data: {
+                  cep_search_target: "complemento",
+                  habitation_duplicate_check_target: "complement",
+                  action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-1">
+          <%= ax_select_field(
+                form: address_form,
+                method: :uf,
+                label: "UF",
+                choices: Habitation::UF_OPTIONS,
+                select_options: { include_blank: true },
+                html_options: {
+                  disabled: !can_edit_protected_habitation_fields,
+                  data: { controller: "tom-select", placeholder: "UF", cep_search_target: "uf", habitation_form_target: "stateSelect" }
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-2">
+          <%= ax_field_label(address_form, :cep, text: "CEP") %>
+          <% cep_action = capture do %>
+            <button class="ax-btn ax-btn--primary" type="button" data-action="cep-search#search" <%= "disabled" unless can_edit_protected_habitation_fields %>>
+              <i class="bi bi-search"></i>
+            </button>
+          <% end %>
+          <%= ax_input_group(action: cep_action) do %>
+            <%= address_form.text_field :cep,
+                class: "ax-control",
+                readonly: !can_edit_protected_habitation_fields,
+                data: {
+                  controller: "mask",
+                  mask_type_value: "cep",
+                  cep_search_target: "cep",
+                  habitation_form_target: "zipCode",
+                  action: "blur->cep-search#search"
+                } %>
+          <% end %>
+        </div>
+
+        <div class="ax-span-3">
+          <%= ax_select_field(
+                form: address_form,
+                method: :bairro,
+                label: "Bairro",
+                choices: @neighborhoods,
+                select_options: { include_blank: true, selected: address_form.object.bairro },
+                html_options: {
+                  disabled: !can_edit_protected_habitation_fields,
+                  data: { controller: "tom-select", tom_select_create_value: true, cep_search_target: "bairro", habitation_form_target: "neighborhoodSelect" }
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-2">
+          <%= ax_select_field(
+                form: address_form,
+                method: :bairro_comercial,
+                label: "Bairro comercial",
+                choices: (@commercial_neighborhoods || []),
+                select_options: { include_blank: true, selected: address_form.object.bairro_comercial },
+                html_options: {
+                  disabled: !can_edit_protected_habitation_fields,
+                  data: { controller: "tom-select", tom_select_create_value: true, habitation_form_target: "commercialNeighborhoodSelect" }
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-3">
+          <%= ax_select_field(
+                form: address_form,
+                method: :cidade,
+                label: "Cidade",
+                choices: @cities,
+                select_options: { include_blank: true, selected: address_form.object.cidade },
+                html_options: {
+                  disabled: !can_edit_protected_habitation_fields,
+                  data: { controller: "tom-select", tom_select_create_value: true, cep_search_target: "cidade", habitation_form_target: "citySelect" }
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-1">
+          <%= ax_text_field(
+                form: f,
+                method: :bloco,
+                label: "Bloco",
+                readonly: !can_edit_protected_habitation_fields,
+                data: {
+                  habitation_duplicate_check_target: "unit",
+                  action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-12">
+          <% selected_imediacoes = case address_form.object.imediacoes
+             when String then address_form.object.imediacoes.split(/[,\n;]+/)
+             else Array(address_form.object.imediacoes)
+             end.flatten.compact.map(&:to_s).map(&:strip).reject(&:blank?).uniq %>
+          <% imediacoes_options = (@imediacoes_options.to_a + selected_imediacoes).uniq %>
+          <%= ax_multiselect_field(
+                form: address_form,
+                method: :imediacoes,
+                label: "Imediações:",
+                choices: imediacoes_options,
+                selected: selected_imediacoes,
+                id: "address-imediacoes-tags",
+                disabled: !can_edit_protected_habitation_fields,
+                placeholder: "Selecione ou digite...",
+                manager: {
+                  title: "Gerenciar Imediações",
+                  aria_label: "Gerenciar Imediações",
+                  modal_title: "Gerenciar Imediações",
+                  context: "habitation",
+                  category: "imediacoes",
+                  field_name: "habitation[address_attributes][imediacoes][]",
+                  modal_id: "attributeManagerModal"
+                }
+              ) %>
+        </div>
+
+        <div class="ax-span-12" data-habitation-duplicate-check-target="status"></div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,144 +1,280 @@
-<div class="admin-header">
-  <div class="header-body">
-    <div class="row align-items-end">
-      <div class="col">
-        <h6 class="header-pretitle">
-          Administração
-        </h6>
-        <h1 class="header-title">
-          Layout do Site
-        </h1>
-      </div>
-    </div>
-  </div>
-</div>
+<%
+  admin_surface = @layout_setting.respond_to?(:admin_surface_color) ? @layout_setting.admin_surface_color.presence : nil
+  admin_header = @layout_setting.respond_to?(:admin_header_color) ? @layout_setting.admin_header_color.presence : nil
+  admin_ink = @layout_setting.respond_to?(:admin_ink_color) ? @layout_setting.admin_ink_color.presence : nil
+  admin_surface ||= LayoutSetting::ADMIN_SURFACE_DEFAULT
+  admin_header ||= LayoutSetting::ADMIN_HEADER_DEFAULT
+  admin_primary = @layout_setting.admin_primary_color.presence || LayoutSetting::ADMIN_PRIMARY_DEFAULT
+  admin_ink ||= LayoutSetting::ADMIN_INK_DEFAULT
+  public_primary = @layout_setting.primary_color.presence || "#022B3A"
+  public_secondary = @layout_setting.secondary_color.presence || "#053C5E"
+  public_accent = @layout_setting.accent_color.presence || "#BFAB25"
+  admin_theme_tokens = [
+    { attr: :admin_surface_color, token: "surface", label: "surface.DEFAULT", value: admin_surface, default: LayoutSetting::ADMIN_SURFACE_DEFAULT },
+    { attr: :admin_header_color, token: "header", label: "surface.header", value: admin_header, default: LayoutSetting::ADMIN_HEADER_DEFAULT },
+    { attr: :admin_primary_color, token: "primary", label: "primary", value: admin_primary, default: LayoutSetting::ADMIN_PRIMARY_DEFAULT },
+    { attr: :admin_ink_color, token: "ink", label: "ink", value: admin_ink, default: LayoutSetting::ADMIN_INK_DEFAULT }
+  ]
+%>
 
-  <%# Remove extra admin-content wrapper to avoid redundant margins %>
-  <div class="card card-luxury">
-    <div class="card-header">
-      <h4 class="card-header-title">Configurações de Cores e Logo</h4>
-    </div>
-    
-    <div class="card-body">
-      <%= form_with(model: [:admin, @layout_setting], local: true, class: "needs-validation") do |f| %>
-        <% if @layout_setting.errors.any? %>
-          <div class="alert alert-danger">
-            <h4><%= pluralize(@layout_setting.errors.count, "erro") %> impediram que as configurações fossem salvas:</h4>
-            <ul>
-              <% @layout_setting.errors.full_messages.each do |msg| %>
-                <li><%= msg %></li>
-              <% end %>
-            </ul>
-          </div>
-        <% end %>
-
-        <div class="row">
-          <div class="col-md-4">
-            <div class="mb-3">
-              <%= f.label :primary_color, "Cor Primária (Blue Three)", class: "form-label" %>
-              <div class="input-group">
-                <%= f.color_field :primary_color, class: "form-control form-control-color", title: "Escolha uma cor", oninput: "this.nextElementSibling.value = this.value" %>
-                <%= f.text_field :primary_color, class: "form-control", oninput: "this.previousElementSibling.value = this.value" %>
-              </div>
-              <div class="form-text small">Cor padrão: #022B3A.</div>
-            </div>
-          </div>
-          
-          <div class="col-md-4">
-            <div class="mb-3">
-              <%= f.label :secondary_color, "Cor Secundária (Blue One)", class: "form-label" %>
-              <div class="input-group">
-                <%= f.color_field :secondary_color, class: "form-control form-control-color", title: "Escolha uma cor", oninput: "this.nextElementSibling.value = this.value" %>
-                <%= f.text_field :secondary_color, class: "form-control", oninput: "this.previousElementSibling.value = this.value" %>
-              </div>
-              <div class="form-text small">Cor padrão: #053C5E.</div>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <div class="mb-3">
-              <%= f.label :accent_color, "Cor de Destaque (Gold/Ícones)", class: "form-label" %>
-              <div class="input-group">
-                <%= f.color_field :accent_color, class: "form-control form-control-color", title: "Escolha uma cor", oninput: "this.nextElementSibling.value = this.value" %>
-                <%= f.text_field :accent_color, class: "form-control", oninput: "this.previousElementSibling.value = this.value" %>
-              </div>
-              <div class="form-text small">Cor padrão: #BFAB25.</div>
-            </div>
-          </div>
+<div class="layout-settings-workspace"
+     data-controller="layout-theme-preview"
+     style="--theme-surface:<%= admin_surface %>; --theme-header:<%= admin_header %>; --theme-primary:<%= admin_primary %>; --theme-ink:<%= admin_ink %>;">
+  <%= form_with(model: [:admin, @layout_setting], local: true, html: { multipart: true }, class: "layout-settings-form") do |f| %>
+    <% if @layout_setting.errors.any? %>
+      <div class="ax-alert ax-alert--danger">
+        <i class="bi bi-exclamation-triangle ax-alert__icon"></i>
+        <div>
+          <div class="ax-alert__title"><%= pluralize(@layout_setting.errors.count, "erro") %> impediram o salvamento</div>
+          <ul class="ax-alert__list">
+            <% @layout_setting.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
         </div>
+      </div>
+    <% end %>
 
-        <div class="row">
-          <div class="col-md-12">
-            <div class="alert alert-info">
-              <h5 class="alert-heading text-blue-one"><i class="bi bi-info-circle-fill me-2"></i>Dicas para o Logo Perfeito</h5>
-              <p class="mb-0 small">
-                Para um visual profissional, recomendamos logos com <strong>fundo transparente</strong>. 
-                O sistema tentará ajustar a proporção automaticamente, mas para melhores resultados siga estas diretrizes:
-              </p>
-              <ul class="mt-2 small mb-0">
-                <li><strong>Logo Header:</strong> Formato retangular (proporção 3:1 ou 4:1). Ex: 300x80px.</li>
-                <li><strong>Favicon:</strong> Formato quadrado. Ex: 64x64px ou 128x128px.</li>
-                <li><strong>Formatos:</strong> Preferência para <strong>SVG</strong> (qualidade infinita) ou <strong>PNG</strong> transparente.</li>
+    <div class="layout-settings-grid">
+      <div class="layout-settings-main">
+        <section class="ax-panel">
+          <div class="ax-panel__header">
+            <div>
+              <h2 class="ax-panel__title">Tema do CRM</h2>
+              <p class="ax-panel__subtitle">Afeta somente o admin em <code>/admin</code>: botões, ativos, badges e estados de foco.</p>
+            </div>
+            <div class="layout-settings-panel-actions">
+              <button type="button"
+                      class="ax-btn ax-btn--sm"
+                      data-action="layout-theme-preview#resetDefaults">
+                <i class="bi bi-arrow-counterclockwise ax-ico"></i>
+                Restaurar defaults
+              </button>
+              <span class="ax-badge ax-badge--blue">Token do admin</span>
+            </div>
+          </div>
+          <div class="ax-panel__body">
+            <div class="layout-settings-two-col">
+              <div class="layout-settings-theme-grid">
+                <% admin_theme_tokens.each do |theme_token| %>
+                  <div class="ax-field">
+                    <%= f.label theme_token[:attr], theme_token[:label], class: "ax-field__label" %>
+                    <div class="ax-color-control">
+                      <%= f.color_field theme_token[:attr],
+                            value: theme_token[:value],
+                            class: "ax-color-control__swatch",
+                            title: "Escolha o token #{theme_token[:label]}",
+                            data: {
+                              action: "input->layout-theme-preview#update",
+                              theme_token: theme_token[:token],
+                              default_value: theme_token[:default]
+                            } %>
+                      <%= f.text_field theme_token[:attr],
+                            value: theme_token[:value],
+                            class: "ax-color-control__text",
+                            spellcheck: false,
+                            data: {
+                              action: "input->layout-theme-preview#update",
+                              theme_token: theme_token[:token],
+                              default_value: theme_token[:default]
+                            } %>
+                    </div>
+                    <p class="ax-field__hint">Padrão: <strong><%= theme_token[:default] %></strong>.</p>
+                  </div>
+                <% end %>
+              </div>
+
+              <div class="layout-settings-preview" data-layout-theme-preview-target="preview">
+                <div class="layout-settings-preview__bar">
+                  <span></span>
+                  <strong>Aplicação no admin</strong>
+                  <em data-theme-token-label="primary"><%= admin_primary.upcase %></em>
+                </div>
+                <div class="layout-settings-preview__samples">
+                  <div class="layout-settings-preview__sample">
+                    <small>Botão primário</small>
+                    <button type="button">Salvar</button>
+                  </div>
+                  <div class="layout-settings-preview__sample">
+                    <small>Menu ativo</small>
+                    <span class="layout-settings-preview__active"><i class="bi bi-house"></i> Imóveis</span>
+                  </div>
+                  <div class="layout-settings-preview__sample">
+                    <small>Badge</small>
+                    <span class="layout-settings-preview__badge">Ativo</span>
+                  </div>
+                  <div class="layout-settings-preview__sample">
+                    <small>Campo em foco</small>
+                    <span class="layout-settings-preview__field" data-theme-token-label="primary"><%= admin_primary.upcase %></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="ax-panel">
+          <div class="ax-panel__header">
+            <div>
+              <h2 class="ax-panel__title">Site público</h2>
+              <p class="ax-panel__subtitle">Campos de marca pública. Não alteram os tokens do CRM.</p>
+            </div>
+            <span class="ax-badge ax-badge--amber">impacto no site</span>
+          </div>
+          <div class="ax-panel__body">
+            <div class="layout-settings-color-grid">
+              <div class="ax-field">
+                <%= f.label :primary_color, "Primária do site", class: "ax-field__label" %>
+                <div class="ax-color-control">
+                  <%= f.color_field :primary_color, value: public_primary, class: "ax-color-control__swatch", title: "Escolha a cor primária do site público", oninput: "this.nextElementSibling.value = this.value" %>
+                  <%= f.text_field :primary_color, value: public_primary, class: "ax-color-control__text", spellcheck: false, oninput: "this.previousElementSibling.value = this.value" %>
+                </div>
+                <p class="ax-field__hint">Token publico: <code>--color-primary</code>.</p>
+              </div>
+
+              <div class="ax-field">
+                <%= f.label :secondary_color, "Secundária do site", class: "ax-field__label" %>
+                <div class="ax-color-control">
+                  <%= f.color_field :secondary_color, value: public_secondary, class: "ax-color-control__swatch", title: "Escolha a cor secundária do site público", oninput: "this.nextElementSibling.value = this.value" %>
+                  <%= f.text_field :secondary_color, value: public_secondary, class: "ax-color-control__text", spellcheck: false, oninput: "this.previousElementSibling.value = this.value" %>
+                </div>
+                <p class="ax-field__hint">Token publico: <code>--color-secondary</code>.</p>
+              </div>
+
+              <div class="ax-field">
+                <%= f.label :accent_color, "Destaque do site", class: "ax-field__label" %>
+                <div class="ax-color-control">
+                  <%= f.color_field :accent_color, value: public_accent, class: "ax-color-control__swatch", title: "Escolha a cor de destaque do site público", oninput: "this.nextElementSibling.value = this.value" %>
+                  <%= f.text_field :accent_color, value: public_accent, class: "ax-color-control__text", spellcheck: false, oninput: "this.previousElementSibling.value = this.value" %>
+                </div>
+                <p class="ax-field__hint">Token publico: <code>--color-accent</code>.</p>
+              </div>
+            </div>
+
+            <div class="layout-settings-site-row">
+              <div class="ax-field">
+                <%= f.label :site_name, "Nome exibido quando não houver logo", class: "ax-field__label" %>
+                <%= f.text_field :site_name, class: "ax-control", placeholder: "Ex.: Salute Imóveis" %>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="ax-panel">
+          <div class="ax-panel__header">
+            <div>
+              <h2 class="ax-panel__title">Marca e ícones</h2>
+              <p class="ax-panel__subtitle">Arquivos usados no header e na aba do navegador.</p>
+            </div>
+            <span class="ax-badge ax-badge--gray">assets</span>
+          </div>
+          <div class="ax-panel__body">
+            <div class="layout-settings-asset-grid">
+              <div class="layout-settings-asset">
+                <div class="ax-field">
+                  <%= f.label :logo, "Logo", class: "ax-field__label" %>
+                  <%= f.file_field :logo, class: "ax-control layout-settings-file" %>
+                  <p class="ax-field__hint">SVG ou PNG transparente. Proporção recomendada: 3:1 ou 4:1.</p>
+                </div>
+
+                <div class="layout-settings-current-asset">
+                  <% if @layout_setting.logo.attached? && @layout_setting.logo.persisted? %>
+                    <span>Logo atual</span>
+                    <% if @layout_setting.logo.content_type == "image/svg+xml" %>
+                      <%= image_tag @layout_setting.logo, class: "layout-settings-current-asset__logo" %>
+                    <% else %>
+                      <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 160]), class: "layout-settings-current-asset__logo" %>
+                    <% end %>
+                  <% else %>
+                    <span>Logo atual</span>
+                    <strong>Nenhum arquivo personalizado</strong>
+                  <% end %>
+                </div>
+              </div>
+
+              <div class="layout-settings-asset">
+                <div class="ax-field">
+                  <%= f.label :favicon, "Favicon", class: "ax-field__label" %>
+                  <%= f.file_field :favicon, class: "ax-control layout-settings-file" %>
+                  <p class="ax-field__hint">PNG ou ICO quadrado, 32x32 ou 64x64.</p>
+                </div>
+
+                <div class="layout-settings-current-asset">
+                  <% if @layout_setting.favicon.attached? && @layout_setting.favicon.persisted? %>
+                    <span>Favicon atual</span>
+                    <%= image_tag @layout_setting.favicon, class: "layout-settings-current-asset__favicon" %>
+                  <% else %>
+                    <span>Favicon atual</span>
+                    <strong>Padrão do sistema</strong>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="layout-settings-inspector">
+        <section class="ax-panel">
+          <div class="ax-panel__header">
+            <div>
+              <h2 class="ax-panel__title">Mapa de impacto</h2>
+              <p class="ax-panel__subtitle">Separação entre CRM e site público.</p>
+            </div>
+          </div>
+          <div class="ax-panel__body">
+            <div class="layout-settings-impact-list">
+              <div class="layout-settings-impact is-admin">
+                <span style="background:<%= admin_primary %>"></span>
+                <div>
+                  <strong>CRM admin</strong>
+                  <small><code>admin_primary_color</code> em <code>layouts/admin</code></small>
+                </div>
+              </div>
+              <div class="layout-settings-impact">
+                <span style="background:<%= public_primary %>"></span>
+                <div>
+                  <strong>Site público</strong>
+                  <small><code>primary_color</code>, <code>secondary_color</code> e <code>accent_color</code></small>
+                </div>
+              </div>
+            </div>
+
+            <div class="layout-settings-token-board">
+              <div>
+                <span class="layout-settings-token-board__swatch" style="background:var(--theme-surface)"></span>
+                <code>surface.DEFAULT</code>
+              </div>
+              <div>
+                <span class="layout-settings-token-board__swatch" style="background:var(--theme-header)"></span>
+                <code>surface.header</code>
+              </div>
+              <div>
+                <span class="layout-settings-token-board__swatch" style="background:var(--theme-primary)"></span>
+                <code>primary</code>
+              </div>
+              <div>
+                <span class="layout-settings-token-board__swatch" style="background:var(--theme-ink)"></span>
+                <code>ink</code>
+              </div>
+            </div>
+
+            <div class="layout-settings-guidelines">
+              <strong>Diretrizes</strong>
+              <ul>
+                <li>Use <code>#365F8F</code> como padrão do CRM migrado.</li>
+                <li>Altere as cores do site apenas quando a marca pública precisar mudar.</li>
+                <li>Prefira logo com fundo transparente.</li>
               </ul>
             </div>
           </div>
-        </div>
-
-        <div class="mb-4">
-          <%= f.label :site_name, "Nome do Site (aparece se não houver logo)", class: "form-label" %>
-          <%= f.text_field :site_name, class: "form-control", placeholder: "Ex: Salute Imóveis" %>
-        </div>
-
-        <div class="row">
-          <div class="col-md-6">
-            <div class="mb-4">
-              <%= f.label :logo, "Logo do Site", class: "form-label" %>
-              <%= f.file_field :logo, class: "form-control" %>
-              
-              <% if @layout_setting.logo.attached? && @layout_setting.logo.persisted? %>
-                <div class="mt-3 p-3 bg-light rounded text-center">
-                  <p class="text-muted mb-2">Logo atual:</p>
-                  <% if @layout_setting.logo.content_type == 'image/svg+xml' %>
-                    <%= image_tag @layout_setting.logo, style: "max-height: 80px; max-width: 100%;" %>
-                  <% else %>
-                    <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 160]), style: "max-height: 80px; max-width: 100%;" %>
-                  <% end %>
-                </div>
-              <% else %>
-                 <div class="mt-3 p-3 bg-light rounded text-center">
-                  <p class="text-muted mb-0">Nenhum logo personalizado carregado. Usando o padrão do sistema.</p>
-                </div>
-              <% end %>
-              <div class="form-text">Formato recomendado: SVG ou PNG (transparente).</div>
-            </div>
-          </div>
-
-          <div class="col-md-6">
-            <div class="mb-4">
-              <%= f.label :favicon, "Favicon (ícone da aba)", class: "form-label" %>
-              <%= f.file_field :favicon, class: "form-control" %>
-              
-              <% if @layout_setting.favicon.attached? && @layout_setting.favicon.persisted? %>
-                <div class="mt-3 p-3 bg-light rounded text-center">
-                  <p class="text-muted mb-2">Favicon atual:</p>
-                  <%= image_tag @layout_setting.favicon, style: "width: 32px; height: 32px;" %>
-                </div>
-              <% else %>
-                 <div class="mt-3 p-3 bg-light rounded text-center">
-                  <p class="text-muted mb-0">Usando favicon padrão.</p>
-                </div>
-              <% end %>
-              <div class="form-text">Formato recomendado: PNG ou ICO (32x32 ou 64x64).</div>
-            </div>
-          </div>
-        </div>
-
-        <hr>
-
-        <div class="d-flex justify-content-end">
-          <%= f.submit "Salvar Configurações", class: "btn btn-primary" %>
-        </div>
-      <% end %>
+        </section>
+      </aside>
     </div>
-  </div>
-<%# Closing tag removed as the wrapper was removed %>
+
+    <div class="ax-form-actions layout-settings-actions">
+      <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
+      <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
+    </div>
+  <% end %>
+</div>

@@ -1,105 +1,94 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
   <div>
-    <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-google me-2 text-primary"></i>Google</h1>
-    <p class="text-muted small mb-0">Configure integrações com produtos Google usadas pelos fluxos administrativos.</p>
+    <h1 class="ax-page-title"><i class="bi bi-google me-2 text-primary"></i>Google</h1>
+    <p class="ax-page-subtitle">Configure integrações com produtos Google usadas pelos fluxos administrativos.</p>
   </div>
 </div>
 
-<ul class="nav nav-tabs mb-4">
-  <li class="nav-item">
-    <a class="nav-link active" aria-current="page" href="#google-sheets">
+<ul class="ax-form-tabs tw-mb-4">
+  <li>
+    <a class="ax-form-tabs__item active" aria-current="page" href="#google-sheets">
       <i class="bi bi-table me-2"></i>Google Sheets
     </a>
   </li>
 </ul>
 
-<div id="google-sheets" class="row g-4">
-  <div class="col-lg-7">
-    <div class="card shadow-sm border-0">
-      <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-key me-2 text-primary"></i>Captações para planilha</h5>
+<div id="google-sheets">
+  <%= ax_field_grid do %>
+  <div class="ax-span-6">
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key me-2 text-primary"></i>Captações para planilha</h5>
       </div>
-      <div class="card-body p-4">
-        <% if @google_sheets_setting.errors.any? %>
-          <div class="alert alert-danger">
-            <div class="fw-semibold mb-1">Não foi possível salvar:</div>
-            <ul class="mb-0">
-              <% @google_sheets_setting.errors.full_messages.each do |message| %>
-                <li><%= message %></li>
-              <% end %>
-            </ul>
-          </div>
-        <% end %>
+      <div class="ax-card__body">
+        <%= ax_error_summary(@google_sheets_setting) %>
 
-        <div class="alert <%= @google_sheets_setting.connected? ? "alert-success" : "alert-warning" %> d-flex align-items-center gap-2 py-2">
-          <i class="bi <%= @google_sheets_setting.connected? ? "bi-check-circle" : "bi-exclamation-triangle" %>"></i>
+        <%= ax_inline_notice(tone: @google_sheets_setting.connected? ? :success : :warning, icon: @google_sheets_setting.connected? ? "check-circle" : "exclamation-triangle") do %>
           <span>
             Status:
             <strong><%= @google_sheets_setting.connected? ? "Credenciais configuradas" : "Aguardando configuração" %></strong>
           </span>
-        </div>
+        <% end %>
 
         <%= form_with url: admin_google_integration_path, method: :patch, scope: :google_sheets, local: true do |f| %>
-          <div class="form-check form-switch mb-3">
-            <%= f.check_box :enabled, { class: "form-check-input", checked: @google_sheets_setting.enabled? }, "true", "false" %>
-            <%= f.label :enabled, "Ativar sincronização de captações com Google Sheets", class: "form-check-label fw-semibold" %>
-          </div>
+          <%= ax_switch_field(label: tag.span("Ativar sincronização de captações com Google Sheets", class: "tw-font-semibold"), form: f, method: :enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @google_sheets_setting.enabled? }) %>
 
-          <div class="mb-3">
-            <%= f.label :web_app_url, "URL do Web App do Apps Script", class: "form-label fw-semibold" %>
+          <div class="tw-mb-3">
+            <%= f.label :web_app_url, "URL do Web App do Apps Script", class: "ax-label tw-font-semibold" %>
             <%= f.url_field :web_app_url,
-                class: "form-control",
+                class: "ax-control",
                 value: @google_sheets_setting.web_app_url,
                 placeholder: "https://script.google.com/macros/s/.../exec" %>
             <div class="form-text">URL publicada no Google Apps Script para receber e atualizar as captações.</div>
           </div>
 
-          <div class="mb-3">
-            <%= f.label :token, "Token de segurança", class: "form-label fw-semibold" %>
+          <div class="tw-mb-3">
+            <%= f.label :token, "Token de segurança", class: "ax-label tw-font-semibold" %>
             <%= f.password_field :token,
-                class: "form-control",
+                class: "ax-control",
                 autocomplete: "off",
                 placeholder: (@google_sheets_setting.token_configured? ? "Token já configurado. Preencha apenas para substituir." : "Crie um token simples para o Apps Script validar") %>
             <div class="form-text">Este valor será enviado junto do payload e validado pelo Apps Script.</div>
           </div>
 
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <%= f.label :worksheet_name, "Nome da aba", class: "form-label fw-semibold" %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <%= f.label :worksheet_name, "Nome da aba", class: "ax-label tw-font-semibold" %>
               <%= f.text_field :worksheet_name,
-                  class: "form-control",
+                  class: "ax-control",
                   value: @google_sheets_setting.worksheet_name,
                   placeholder: GoogleSheetsIntegrationSetting::DEFAULT_WORKSHEET_NAME %>
             </div>
-            <div class="col-md-6">
-              <%= f.label :key_column, "Coluna-chave para atualização", class: "form-label fw-semibold" %>
+            <div class="ax-span-6">
+              <%= f.label :key_column, "Coluna-chave para atualização", class: "ax-label tw-font-semibold" %>
               <%= f.text_field :key_column,
-                  class: "form-control",
+                  class: "ax-control",
                   value: @google_sheets_setting.key_column,
                   placeholder: GoogleSheetsIntegrationSetting::DEFAULT_KEY_COLUMN %>
               <div class="form-text">Padrão recomendado: <code>Cód. imóvel CRM</code>.</div>
             </div>
-          </div>
+          <% end %>
 
-          <%= f.submit "Salvar Configurações", class: "btn btn-primary" %>
+          <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
         <% end %>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-5">
-    <div class="card shadow-sm border-0">
-      <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-list-check me-2 text-success"></i>Como esta integração será usada</h5>
+  <div class="ax-span-6">
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-list-check me-2" style="color:#16a34a"></i>Como esta integração será usada</h5>
       </div>
-      <div class="card-body p-4">
-        <ul class="small text-muted mb-0">
-          <li class="mb-2">O sistema enviará os dados de captação para a URL do Apps Script.</li>
-          <li class="mb-2">O Apps Script localizará a linha pela coluna-chave configurada.</li>
-          <li class="mb-2">Se a chave existir, a linha será atualizada; se não existir, uma nova linha será criada.</li>
+      <div class="ax-card__body">
+        <ul class="tw-text-sm tw-text-ink-muted mb-0">
+          <li class="tw-mb-2">O sistema enviará os dados de captação para a URL do Apps Script.</li>
+          <li class="tw-mb-2">O Apps Script localizará a linha pela coluna-chave configurada.</li>
+          <li class="tw-mb-2">Se a chave existir, a linha será atualizada; se não existir, uma nova linha será criada.</li>
           <li>O token evita que a URL pública aceite envios sem autorização.</li>
         </ul>
       </div>
     </div>
   </div>
+  <% end %>
 </div>

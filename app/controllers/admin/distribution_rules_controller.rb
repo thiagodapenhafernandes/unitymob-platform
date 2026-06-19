@@ -105,7 +105,7 @@ class Admin::DistributionRulesController < Admin::BaseController
       }
     end
 
-    @all_users_options = AdminUser.all.order(:name).map { |u| [ u.name, u.id ] }
+    @all_users_options = AdminUser.account_members.order(:name).map { |u| [ u.name, u.id ] }
     @manager_options = managers.map { |m| [ m.name, m.id ] }
   end
 

@@ -2,83 +2,39 @@
   status = local_assigns[:status] || Vista::SyncStatusService.new(namespace: "brokers_backfill").snapshot
   stats = status[:stats] || {}
   show = status[:status] == "processing" || (status[:finished_at].present? && status[:finished_at] > 15.minutes.ago)
-  color = case status[:status]
-          when "processing" then "info"
-          when "completed"  then "success"
-          when "failed"     then "danger"
-          else "secondary"
-          end
+  tone = case status[:status]
+         when "processing" then :blue
+         when "completed"  then :green
+         when "failed"     then :red
+         else :gray
+         end
 %>
 
 <% if show %>
-  <div id="backfill-brokers-panel"
-       class="card border-0 shadow-sm mb-4"
-       data-controller="vista-sync-status"
-       data-vista-sync-status-url-value="<%= backfill_brokers_status_admin_admin_users_path %>"
-       data-vista-sync-status-status-value="<%= status[:status] %>">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-start mb-2">
-        <div>
-          <h6 class="fw-bold mb-1">
-            <i class="bi bi-link-45deg text-<%= color %> me-2 <%= 'spin' if status[:status] == 'processing' %>"></i>
-            Vínculo imóvel → corretor
-            <span class="badge bg-<%= color %>-subtle text-<%= color %> ms-1"><%= status[:status].humanize %></span>
-          </h6>
-          <div class="small text-muted"><%= status[:message].presence || "—" %></div>
-        </div>
-        <div class="text-end small text-muted">
-          <% if status[:started_at] %><div><i class="bi bi-play-circle me-1"></i>Início: <%= l(status[:started_at], format: :short) %></div><% end %>
-          <% if status[:finished_at] %><div><i class="bi bi-check2-circle me-1"></i>Fim: <%= l(status[:finished_at], format: :short) %></div><% end %>
-        </div>
+  <section id="backfill-brokers-panel"
+           class="ax-builder-card"
+           data-controller="vista-sync-status"
+           data-vista-sync-status-url-value="<%= backfill_brokers_status_admin_admin_users_path %>"
+           data-vista-sync-status-status-value="<%= status[:status] %>">
+    <div class="ax-builder-panel-head">
+      <strong class="tw-text-xs"><i class="bi bi-link-45deg <%= 'spin' if status[:status] == 'processing' %>"></i> Vínculo imóvel → corretor</strong>
+      <%= ax_badge(status[:status].to_s.humanize, tone:) %>
+    </div>
+    <div class="tw-grid tw-gap-3 tw-p-3">
+      <p class="tw-m-0 tw-text-xs tw-text-ink-muted"><%= status[:message].presence || "Sem atividade recente." %></p>
+      <div class="ax-progress tw-mt-0">
+        <i style="width:<%= status[:progress].to_i %>%"></i>
       </div>
-
-      <div class="progress mb-3" style="height: 18px;">
-        <div class="progress-bar bg-<%= color %> <%= 'progress-bar-striped progress-bar-animated' if status[:status] == 'processing' %>"
-             style="width: <%= status[:progress] %>%;">
-          <%= status[:progress] %>%
-        </div>
-      </div>
-
-      <div class="row g-2 text-center">
-        <div class="col">
-          <div class="border rounded p-2 bg-light">
-            <div class="fw-bold fs-5"><%= stats["processed"].to_i %></div>
-            <small class="text-muted text-uppercase"><i class="bi bi-buildings text-primary me-1"></i>Processados</small>
-          </div>
-        </div>
-        <div class="col">
-          <div class="border rounded p-2 bg-light">
-            <div class="fw-bold fs-5 text-success"><%= stats["linked"].to_i %></div>
-            <small class="text-muted text-uppercase"><i class="bi bi-link-45deg text-success me-1"></i>Vinculados</small>
-          </div>
-        </div>
-        <div class="col">
-          <div class="border rounded p-2 bg-light">
-            <div class="fw-bold fs-5 text-secondary"><%= stats["unchanged"].to_i %></div>
-            <small class="text-muted text-uppercase"><i class="bi bi-dash-circle text-secondary me-1"></i>Já OK</small>
-          </div>
-        </div>
-        <div class="col">
-          <div class="border rounded p-2 bg-light">
-            <div class="fw-bold fs-5 text-warning"><%= stats["missing_broker"].to_i %></div>
-            <small class="text-muted text-uppercase"><i class="bi bi-question-circle text-warning me-1"></i>Sem corretor</small>
-          </div>
-        </div>
-        <div class="col">
-          <div class="border rounded p-2 bg-light">
-            <div class="fw-bold fs-5 text-danger"><%= stats["not_found_codigo"].to_i %></div>
-            <small class="text-muted text-uppercase"><i class="bi bi-exclamation-triangle text-danger me-1"></i>Código órfão</small>
-          </div>
-        </div>
-        <div class="col">
-          <div class="border rounded p-2 bg-light">
-            <div class="fw-bold fs-5"><%= stats["page"].to_i %>/<%= stats["total_pages"].to_i %></div>
-            <small class="text-muted text-uppercase"><i class="bi bi-file-earmark-text text-secondary me-1"></i>Página</small>
-          </div>
-        </div>
+      <div class="tw-grid tw-grid-cols-6 tw-gap-2">
+        <div><b class="tw-block tw-font-mono tw-text-sm"><%= stats["processed"].to_i %></b><span class="tw-text-2xs tw-text-ink-muted">Processados</span></div>
+        <div><b class="tw-block tw-font-mono tw-text-sm tw-text-emerald-700"><%= stats["linked"].to_i %></b><span class="tw-text-2xs tw-text-ink-muted">Vinculados</span></div>
+        <div><b class="tw-block tw-font-mono tw-text-sm"><%= stats["unchanged"].to_i %></b><span class="tw-text-2xs tw-text-ink-muted">Já OK</span></div>
+        <div><b class="tw-block tw-font-mono tw-text-sm tw-text-amber-700"><%= stats["missing_broker"].to_i %></b><span class="tw-text-2xs tw-text-ink-muted">Sem corretor</span></div>
+        <div><b class="tw-block tw-font-mono tw-text-sm tw-text-red-700"><%= stats["not_found_codigo"].to_i %></b><span class="tw-text-2xs tw-text-ink-muted">Órfãos</span></div>
+        <div><b class="tw-block tw-font-mono tw-text-sm"><%= stats["page"].to_i %>/<%= stats["total_pages"].to_i %></b><span class="tw-text-2xs tw-text-ink-muted">Página</span></div>
       </div>
     </div>
-  </div>
+  </section>
 <% else %>
   <div id="backfill-brokers-panel"></div>
 <% end %>

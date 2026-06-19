@@ -1,0 +1,13 @@
+<%= ax_form_section(title: "Dados do edifício", eyebrow: "Infraestrutura") do %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-3">
+      <%= ax_text_field(form: f, method: :agenciador, label: "Administradora do condomínio", placeholder: "Ex: Administração XYZ") %>
+    </div>
+    <div class="ax-span-3">
+      <%= ax_text_field(form: f, method: :construtora, label: "Construtora") %>
+    </div>
+    <div class="ax-span-6">
+      <%= ax_text_field(form: f, method: :tipo_fachada, label: "Tipo de fachada") %>
+    </div>
+  <% end %>
+<% end %>

@@ -50,7 +50,10 @@ export default class extends Controller {
   }
 
   remove(event) {
-    const tag = event.target.closest(".badge").dataset.tagValue
+    const tagElement = event.target.closest("[data-tag-value]")
+    if (!tagElement) return
+
+    const tag = tagElement.dataset.tagValue
     this.deleteTag(tag)
     this.updateInput()
   }
@@ -60,21 +63,23 @@ export default class extends Controller {
 
     this.tags.add(tag)
 
-    const badge = document.createElement("span")
-    badge.className = "badge bg-light text-dark border me-1 mb-1 p-2 d-inline-flex align-items-center"
-    badge.dataset.tagValue = tag
-    badge.innerHTML = `
-      ${tag}
-      <i class="bi bi-x ms-2 cursor-pointer text-danger" data-action="click->tag-input#remove"></i>
+    const chip = document.createElement("span")
+    chip.className = "ax-tag-chip"
+    chip.dataset.tagValue = tag
+    chip.innerHTML = `
+      <span class="ax-tag-chip__label">${this.escapeHtml(tag)}</span>
+      <button type="button" class="ax-tag-chip__remove" data-action="click->tag-input#remove" aria-label="Remover ${this.escapeHtml(tag)}">
+        <i class="bi bi-x"></i>
+      </button>
     `
-    this.containerTarget.appendChild(badge)
+    this.containerTarget.appendChild(chip)
   }
 
   deleteTag(tag) {
     this.tags.delete(tag)
     // Remove element
-    const badge = this.containerTarget.querySelector(`[data-tag-value="${tag}"]`)
-    if (badge) badge.remove()
+    const chip = Array.from(this.containerTarget.querySelectorAll("[data-tag-value]")).find((element) => element.dataset.tagValue === tag)
+    if (chip) chip.remove()
   }
 
   updateInput() {
@@ -83,5 +88,15 @@ export default class extends Controller {
     // OR just an array if Rails handles casting seamlessly. 
     // Given the previous usage, it might be safer to store as Array and Rails casts to jsonb.
     this.inputTarget.value = JSON.stringify(Array.from(this.tags))
+  }
+
+  escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[char]))
   }
 }

@@ -59,6 +59,91 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     render json: { ok: false, message: e.message }, status: :unprocessable_content
   end
 
+  def update
+    integration = WhatsappBusinessIntegration.current
+
+    if integration.update(webhook_settings_params)
+      redirect_to admin_whatsapp_integration_path, notice: "Webhook do WhatsApp atualizado."
+    else
+      load_page_state
+      @webhook_settings_errors = integration.errors.full_messages
+      render :show, status: :unprocessable_content
+    end
+  end
+
+  # Conexão manual via credenciais de System User / Cloud API (sem Embedded Signup).
+  # Útil para apenas notificar/enviar mensagens, igual ao NotificaLead.
+  def manual_connection
+    integration = WhatsappBusinessIntegration.current
+    attrs = manual_connection_params
+    # Campos sensíveis em branco => mantém o atual (não sobrescreve credencial já salva).
+    attrs.delete(:access_token) if attrs[:access_token].blank?
+    attrs.delete(:app_secret) if attrs[:app_secret].blank?
+    integration.assign_attributes(attrs)
+
+    if integration.access_token.present? && integration.phone_number_id.present?
+      integration.status = "connected"
+      integration.last_event = "MANUAL"
+      integration.last_error_code = nil
+      integration.last_error_message = nil
+      integration.connected_by_admin_user = current_admin_user
+      integration.connected_at ||= Time.current
+    end
+
+    if integration.save
+      redirect_to admin_whatsapp_integration_path, notice: "Conexão manual do WhatsApp salva."
+    else
+      load_page_state
+      @manual_connection_errors = integration.errors.full_messages
+      render :show, status: :unprocessable_content
+    end
+  end
+
+  # Testa conexão real contra a Graph API: envio (consulta o número) e recebimento
+  # (apps inscritos no webhook da WABA). Não envia mensagem.
+  def test_connection
+    client = Whatsapp::CloudClient.new
+
+    unless client.configured?
+      return render json: { ok: false, message: "Configure Access Token e Phone Number ID antes de testar." }, status: :unprocessable_content
+    end
+
+    phone = client.phone_info
+    subs = client.subscribed_apps
+    subscribed = Array(subs.dig(:data, "data"))
+
+    render json: {
+      ok: phone[:ok],
+      send: {
+        ok: phone[:ok],
+        label: phone.dig(:data, "display_phone_number").presence || phone.dig(:data, "verified_name"),
+        error: phone[:error]
+      },
+      receive: {
+        ok: subs[:ok] && subscribed.any?,
+        error: subs[:error],
+        apps: subscribed.filter_map { |app| app.dig("whatsapp_business_api_data", "name") }
+      }
+    }
+  end
+
+  # Envia uma mensagem de texto de teste pelo número conectado.
+  def send_test
+    to = params[:to].to_s.strip
+    return render json: { ok: false, message: "Informe um número (ex.: 5547999999999)." }, status: :unprocessable_content if to.blank?
+
+    result = Whatsapp::CloudClient.new.send_text(
+      to: to,
+      body: params[:body].presence || "Teste de conexão do CRM ✅"
+    )
+
+    if result[:ok]
+      render json: { ok: true, message: "Mensagem enviada com sucesso (id #{result[:message_id]})." }
+    else
+      render json: { ok: false, message: result[:error].presence || "Falha ao enviar a mensagem." }, status: :unprocessable_content
+    end
+  end
+
   def disconnect
     WhatsappBusinessIntegration.current.update!(
       status: "disconnected",
@@ -91,6 +176,35 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @site_phone_settings = @whatsapp_integration.site_phone_settings
     @embedded_signup_config_id = embedded_signup_config_id
     @diagnostics = diagnostics
+    @default_webhook_callback_url = default_webhook_callback_url
+    @webhook_callback_url = @whatsapp_integration.webhook_callback_url.presence || @default_webhook_callback_url
+    @webhook_verify_token = @whatsapp_integration.webhook_verify_token!
+    @phone_info = whatsapp_phone_info
+  end
+
+  # Snapshot do número (display, nome verificado, quality) vindo da Cloud API.
+  # Cacheado por alguns minutos para não bater na Graph a cada carregamento.
+  def whatsapp_phone_info
+    return nil unless @whatsapp_integration.messaging_ready?
+
+    Rails.cache.fetch("whatsapp_phone_info/#{@whatsapp_integration.id}", expires_in: 10.minutes, skip_nil: true) do
+      result = Whatsapp::CloudClient.new(@whatsapp_integration).phone_info
+      next nil unless result[:ok]
+
+      {
+        number: result.dig(:data, "display_phone_number"),
+        name: result.dig(:data, "verified_name"),
+        quality: result.dig(:data, "quality_rating")
+      }
+    end
+  rescue StandardError
+    nil
+  end
+
+  def default_webhook_callback_url
+    webhooks_whatsapp_url(host: request.host_with_port, protocol: request.protocol.delete("://"))
+  rescue StandardError
+    "#{request.base_url}/webhooks/whatsapp"
   end
 
   def embedded_signup_config_id
@@ -131,6 +245,23 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     top_level = permitted.slice("code", "event", "session_info", "raw")
     wrapped = permitted.fetch("whatsapp_integration", {})
     top_level.merge(wrapped) { |_key, top_value, wrapped_value| wrapped_value.presence || top_value }.with_indifferent_access
+  end
+
+  def manual_connection_params
+    params.require(:whatsapp_business_integration).permit(
+      :access_token,
+      :phone_number_id,
+      :waba_id,
+      :business_id,
+      :app_secret
+    )
+  end
+
+  def webhook_settings_params
+    params.require(:whatsapp_business_integration).permit(
+      :webhook_callback_url,
+      :webhook_verify_token
+    )
   end
 
   def phone_settings_params

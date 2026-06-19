@@ -1,0 +1,129 @@
+<div class="ax-property-table-wrap">
+  <table class="ax-property-table" data-ax-table-columns-target="table">
+    <colgroup>
+      <% if bulk_actions_allowed %>
+        <col class="ax-property-table__col-select" data-column="select">
+      <% end %>
+      <col class="ax-property-table__col-property" data-column="property">
+      <col class="ax-property-table__col-location" data-column="location">
+      <col class="ax-property-table__col-price" data-column="price">
+      <col class="ax-property-table__col-costs" data-column="costs">
+      <col class="ax-property-table__col-updated" data-column="updated">
+      <col class="ax-property-table__col-actions" data-column="actions">
+    </colgroup>
+    <thead>
+      <tr>
+        <% if bulk_actions_allowed %>
+          <th class="ax-property-table__check" data-column="select">Sel.</th>
+        <% end %>
+        <th data-column="property">Imóvel</th>
+        <th data-column="location">Localização</th>
+        <th data-column="price">Valor</th>
+        <th data-column="costs">Custos</th>
+        <th data-column="updated">Atualização</th>
+        <th class="ax-property-table__actions" data-column="actions">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% habitations.each do |imovel| %>
+        <%
+          card_return_to_path = @return_to_path || request.fullpath
+          details_path = admin_habitation_path(imovel, return_to: card_return_to_path)
+          edit_path = edit_admin_habitation_path(imovel, return_to: card_return_to_path) if admin_can_edit_habitation?(imovel)
+          catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
+          image_source = imovel.primary_image_source || imovel.primary_image
+          image_url = image_source.present? ? public_image_url(image_source, resize_to_fill: [176, 132]) : nil
+          data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
+          price_label = if imovel.valor_venda_cents.to_i.positive?
+                          number_to_currency(imovel.valor_venda_cents / 100.0)
+                        elsif imovel.valor_locacao_cents.to_i.positive?
+                          "#{number_to_currency(imovel.valor_locacao_cents / 100.0)}/mes"
+                        else
+                          "Sob consulta"
+                        end
+        %>
+        <tr class="<%= 'is-muted' if imovel.inactive_for_admin_card? %>"
+            data-controller="clickable-card"
+            data-clickable-card-url-value="<%= catalog_card_path %>">
+          <% if bulk_actions_allowed %>
+            <td class="ax-property-table__check" data-column="select">
+              <input type="checkbox"
+                     data-bulk-publish-target="item"
+                     data-id="<%= imovel.id %>"
+                     data-action="change->bulk-publish#toggleOne"
+                     aria-label="Selecionar imóvel <%= imovel.codigo %>">
+            </td>
+          <% end %>
+          <td data-column="property">
+            <div class="ax-property-table__property">
+              <div class="ax-property-table__thumb">
+                <% if image_url.present? %>
+                  <%= image_tag image_url,
+                                alt: imovel.display_title,
+                                loading: "lazy",
+                                onerror: "this.hidden=true;this.closest('.ax-property-table__thumb')?.classList.add('is-image-missing')" %>
+                <% else %>
+                  <i class="bi bi-image"></i>
+                <% end %>
+              </div>
+              <div class="ax-property-table__main">
+                <%= link_to imovel.display_title,
+                            catalog_card_path,
+                            class: "ax-property-table__title" %>
+                <div class="ax-property-table__meta">
+                  <span>REF <strong><%= imovel.codigo %></strong></span>
+                  <% if imovel.dwv_property? %>
+                    <span class="ax-property-chip ax-property-chip--dark">DWV</span>
+                  <% end %>
+                  <span class="ax-property-chip"><%= imovel.status.presence || "Status" %></span>
+                  <span><%= imovel.categoria.presence || "Sem categoria" %></span>
+                </div>
+                <div class="ax-property-table__features ax-property-table__features--inline">
+                  <span title="Dormitórios"><i class="bi bi-door-closed"></i> <%= imovel.dormitorios_qtd.to_i %></span>
+                  <span title="Suítes"><i class="bi bi-key"></i> <%= imovel.suites_qtd.to_i %></span>
+                  <span title="Vagas"><i class="bi bi-car-front"></i> <%= imovel.vagas_qtd.to_i %></span>
+                  <span title="Área privativa"><i class="bi bi-arrows-angle-expand"></i> <%= number_with_precision(imovel.area_privativa_m2.to_f, precision: 1, separator: ",", delimiter: ".") %> m²</span>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td data-column="location">
+            <div class="ax-property-table__stack ax-property-table__location">
+              <strong><%= [imovel.endereco, imovel.numero].compact_blank.join(", ").presence || "Sem endereço" %></strong>
+              <span><%= [imovel.cidade, imovel.uf].compact_blank.join("/") %><%= " · Apto. #{imovel.complemento}" if imovel.complemento.present? %></span>
+              <% if imovel.primary_captador_name.present? %>
+                <span>Captador: <%= imovel.primary_captador_name %></span>
+              <% end %>
+            </div>
+          </td>
+          <td class="ax-property-table__money" data-column="price"><%= price_label %></td>
+          <td data-column="costs">
+            <div class="ax-property-table__cost-list">
+              <span>
+                <small>Cond.</small>
+                <strong><%= imovel.valor_condominio_cents.to_i.positive? ? number_to_currency(imovel.valor_condominio_cents / 100.0) : "R$ 0" %></strong>
+              </span>
+              <span>
+                <small>IPTU</small>
+                <strong><%= imovel.valor_iptu_cents.to_i.positive? ? number_to_currency(imovel.valor_iptu_cents / 100.0) : "R$ 0" %></strong>
+              </span>
+            </div>
+          </td>
+          <td data-column="updated">
+            <span class="ax-property-table__updated">
+              <i class="bi bi-clock-history"></i>
+              <%= time_ago_in_words(data_referencia) %>
+            </span>
+          </td>
+          <td class="ax-property-table__actions" data-column="actions">
+            <%= render "admin/habitations/property_catalog_actions",
+                       imovel: imovel,
+                       details_path: details_path,
+                       edit_path: edit_path,
+                       compact: true %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

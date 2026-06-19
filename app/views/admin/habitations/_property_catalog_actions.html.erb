@@ -1,0 +1,130 @@
+<% compact = local_assigns.fetch(:compact, false) %>
+
+<div class="admin-property-actions <%= compact ? 'admin-property-actions--compact' : '' %>" onclick="event.stopPropagation();">
+  <div class="admin-property-action-dropdown"
+       data-controller="broker-share ax-dropdown"
+       data-broker-share-generate-url-value="<%= current_admin_user.present? ? share_link_habitation_path(imovel) : '' %>"
+       data-broker-share-fallback-url-value="<%= habitation_url(imovel) %>"
+       data-broker-share-property-title-value="<%= imovel.display_title %>">
+    <button type="button"
+            class="admin-property-action-trigger"
+            title="Compartilhar imóvel"
+            aria-label="Compartilhar imóvel"
+            aria-expanded="false"
+            data-ax-dropdown-target="trigger"
+            data-action="click->ax-dropdown#toggle">
+      <i class="bi bi-share"></i>
+    </button>
+
+    <div class="ax-menu admin-property-menu admin-property-menu--share"
+         data-ax-dropdown-target="menu"
+         hidden
+         style="right: 0; left: auto;">
+      <div class="admin-property-menu__header">
+        <span>Compartilhar</span>
+      </div>
+
+      <button type="button"
+              class="admin-property-menu__item"
+              data-action="click->broker-share#whatsapp click->ax-dropdown#close">
+        <i class="bi bi-whatsapp"></i>
+        <span>WhatsApp</span>
+      </button>
+      <button type="button"
+              class="admin-property-menu__item"
+              data-action="click->broker-share#email click->ax-dropdown#close">
+        <i class="bi bi-envelope"></i>
+        <span>Email</span>
+      </button>
+      <button type="button"
+              class="admin-property-menu__item"
+              data-action="click->broker-share#copy">
+        <i class="bi bi-link-45deg"></i>
+        <span>Copiar link</span>
+      </button>
+
+      <div class="admin-property-menu__sep"></div>
+
+      <button type="button"
+              class="admin-property-menu__item"
+              data-action="click->broker-share#shareNative click->ax-dropdown#close">
+        <i class="bi bi-send"></i>
+        <span>Compartilhar nativo</span>
+      </button>
+      <button type="button"
+              class="admin-property-menu__item"
+              data-action="click->broker-share#facebook click->ax-dropdown#close">
+        <i class="bi bi-facebook"></i>
+        <span>Facebook</span>
+      </button>
+      <button type="button"
+              class="admin-property-menu__item"
+              data-action="click->broker-share#twitter click->ax-dropdown#close">
+        <i class="bi bi-twitter-x"></i>
+        <span>X/Twitter</span>
+      </button>
+
+      <p class="admin-property-menu__status hidden tw-hidden" data-broker-share-target="status"></p>
+    </div>
+  </div>
+
+  <div class="admin-property-action-dropdown" data-controller="ax-dropdown">
+    <button type="button"
+            class="admin-property-action-trigger"
+            title="Ações do imóvel"
+            aria-label="Ações do imóvel"
+            aria-expanded="false"
+            data-ax-dropdown-target="trigger"
+            data-action="click->ax-dropdown#toggle">
+      <i class="bi bi-three-dots"></i>
+    </button>
+
+    <div class="ax-menu admin-property-menu"
+         data-ax-dropdown-target="menu"
+         hidden
+         style="right: 0; left: auto;">
+      <div class="admin-property-menu__header">
+        <span>Ações</span>
+      </div>
+
+      <%= link_to details_path, class: "admin-property-menu__item" do %>
+        <i class="bi bi-card-text"></i>
+        <span>Visualizar cadastro</span>
+      <% end %>
+
+      <% if edit_path.present? %>
+        <%= link_to edit_path, class: "admin-property-menu__item" do %>
+          <i class="bi bi-pencil-square"></i>
+          <span>Editar</span>
+        <% end %>
+
+        <button type="button"
+                class="admin-property-menu__item"
+                data-media-modal-url="<%= modal_admin_habitation_media_path(imovel, return_to: request.fullpath) %>"
+                data-action="click->ax-dropdown#close">
+          <i class="bi bi-images"></i>
+          <span>Mídia e uploads</span>
+        </button>
+      <% end %>
+
+      <%= link_to habitation_path(imovel),
+                  target: "_blank",
+                  rel: "noopener",
+                  class: "admin-property-menu__item" do %>
+        <i class="bi bi-box-arrow-up-right"></i>
+        <span>Ver no site</span>
+      <% end %>
+
+      <% if current_admin_user&.admin? %>
+        <div class="admin-property-menu__sep"></div>
+        <%= button_to admin_habitation_path(imovel),
+                      method: :delete,
+                      class: "admin-property-menu__item admin-property-menu__item--danger",
+                      form: { data: { turbo_confirm: "Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita." } } do %>
+          <i class="bi bi-trash3"></i>
+          <span>Excluir</span>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

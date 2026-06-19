@@ -11,7 +11,9 @@ export default class extends Controller {
   connect() {
     this.sharedUrl = this.fallbackUrlValue
     this.onOutsideClick = this.handleOutsideClick.bind(this)
-    document.addEventListener("click", this.onOutsideClick)
+    if (this.hasMenuTarget) {
+      document.addEventListener("click", this.onOutsideClick)
+    }
   }
 
   disconnect() {
@@ -71,7 +73,7 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
     const url = await this.ensureSharedUrl()
-    const subject = encodeURIComponent(this.propertyTitleValue || "Imóvel Salute")
+    const subject = encodeURIComponent(this.propertyTitleValue || "Imóvel")
     const body = encodeURIComponent(`Confira este imóvel: ${url}`)
     window.location.href = `mailto:?subject=${subject}&body=${body}`
   }

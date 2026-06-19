@@ -3,6 +3,8 @@
 module Admin
   module Field
     class ManualCheckinRequestsController < Admin::BaseController
+      before_action -> { check_permission!(:view, :field_manual) }
+      before_action -> { check_permission!(:manage, :field_manual) }, only: %i[approve reject]
       before_action :set_request, only: [:show, :approve, :reject]
 
       def index

@@ -1,126 +1,125 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
   <div>
-    <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-bullseye me-2 text-primary"></i>Trackeamento</h1>
-    <p class="text-muted small mb-0">Configure tags de mensuração aplicadas no site público.</p>
+    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2"><i class="bi bi-bullseye" style="color: #2563eb;"></i>Trackeamento</h1>
+    <p class="ax-page-subtitle">Configure tags de mensuração aplicadas no site público.</p>
   </div>
 </div>
 
-<% if @tracking_setting.errors.any? %>
-  <div class="alert alert-danger">
-    <div class="fw-semibold mb-1">Não foi possível salvar:</div>
-    <ul class="mb-0">
-      <% @tracking_setting.errors.full_messages.each do |message| %>
-        <li><%= message %></li>
-      <% end %>
-    </ul>
-  </div>
-<% end %>
+<%= ax_error_summary(@tracking_setting) %>
 
-<ul class="nav nav-tabs mb-4" role="tablist">
-  <li class="nav-item" role="presentation">
-    <a class="nav-link <%= @active_tab == "google_tag_manager" ? "active" : "" %>"
+<ul class="ax-form-tabs tw-mb-4" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#trackingTabsContent">
+  <li role="presentation">
+    <a class="ax-form-tabs__item <%= @active_tab == "google_tag_manager" ? "active" : "" %>"
        href="#google-tag-manager"
-       data-bs-toggle="tab"
+       data-ax-tabs-target="tab"
+       data-ax-tabs-target-param="#google-tag-manager"
+       data-action="click->ax-tabs#select"
        role="tab"
        aria-controls="google-tag-manager"
        aria-selected="<%= @active_tab == "google_tag_manager" %>">
-      <i class="bi bi-google me-2"></i>Google Tag Manager
+      <i class="bi bi-google"></i>Google Tag Manager
     </a>
   </li>
-  <li class="nav-item" role="presentation">
-    <a class="nav-link <%= @active_tab == "meta_pixel" ? "active" : "" %>"
+  <li role="presentation">
+    <a class="ax-form-tabs__item <%= @active_tab == "meta_pixel" ? "active" : "" %>"
        href="#meta-pixel"
-       data-bs-toggle="tab"
+       data-ax-tabs-target="tab"
+       data-ax-tabs-target-param="#meta-pixel"
+       data-action="click->ax-tabs#select"
        role="tab"
        aria-controls="meta-pixel"
        aria-selected="<%= @active_tab == "meta_pixel" %>">
-      <i class="bi bi-meta me-2"></i>Pixel da Meta
+      <i class="bi bi-meta"></i>Pixel da Meta
     </a>
   </li>
 </ul>
 
-<div class="tab-content">
+<div class="tab-content" id="trackingTabsContent">
   <div class="tab-pane fade <%= @active_tab == "google_tag_manager" ? "show active" : "" %>" id="google-tag-manager" role="tabpanel">
-    <div class="row g-4">
-      <div class="col-lg-7">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-white py-3">
-            <h5 class="card-title mb-0 fw-bold"><i class="bi bi-tags me-2 text-primary"></i>Google Tag Manager</h5>
+    <%= ax_field_grid(columns: 12, gap: :compact) do %>
+      <div class="ax-span-7">
+        <div class="ax-card">
+          <div class="ax-card__header">
+            <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-tags" style="color: #2563eb;"></i>Google Tag Manager</h5>
           </div>
-          <div class="card-body p-4">
-            <div class="alert <%= TrackingIntegrationSetting.google_tag_manager_enabled? ? "alert-success" : "alert-warning" %> d-flex align-items-center gap-2 py-2">
-              <i class="bi <%= TrackingIntegrationSetting.google_tag_manager_enabled? ? "bi-check-circle" : "bi-exclamation-triangle" %>"></i>
+          <div class="ax-card__body">
+            <%= ax_inline_notice(tone: TrackingIntegrationSetting.google_tag_manager_enabled? ? :success : :warning, icon: TrackingIntegrationSetting.google_tag_manager_enabled? ? "check-circle" : "exclamation-triangle") do %>
               <span>Status: <strong><%= TrackingIntegrationSetting.google_tag_manager_enabled? ? "Ativo no site público" : "Inativo" %></strong></span>
-            </div>
+            <% end %>
 
             <%= form_with url: admin_tracking_integration_path(tab: "google_tag_manager"), method: :patch, scope: :tracking, local: true do |f| %>
               <%= hidden_field_tag "tracking[meta_pixel_enabled]", @tracking_setting.meta_pixel_enabled? ? "true" : "false" %>
               <%= hidden_field_tag "tracking[meta_pixel_id]", @tracking_setting.meta_pixel_id %>
 
-              <div class="form-check form-switch mb-3">
-                <%= f.check_box :google_tag_manager_enabled, { class: "form-check-input", checked: @tracking_setting.google_tag_manager_enabled? }, "true", "false" %>
-                <%= f.label :google_tag_manager_enabled, "Ativar Google Tag Manager no site público", class: "form-check-label fw-semibold" %>
+              <div class="tw-mb-3">
+                <%= ax_switch_field(form: f, method: :google_tag_manager_enabled,
+                      label: "Ativar Google Tag Manager no site público",
+                      checked: @tracking_setting.google_tag_manager_enabled?,
+                      checked_value: "true", unchecked_value: "false",
+                      input_html: { checked: @tracking_setting.google_tag_manager_enabled? }) %>
               </div>
 
-              <div class="mb-3">
-                <%= f.label :google_tag_manager_container_id, "ID do container", class: "form-label fw-semibold" %>
+              <div class="tw-mb-3">
+                <%= f.label :google_tag_manager_container_id, "ID do container", class: "ax-label" %>
                 <%= f.text_field :google_tag_manager_container_id,
-                    class: "form-control",
+                    class: "ax-control",
                     value: @tracking_setting.google_tag_manager_container_id,
                     placeholder: "GTM-XXXXXXX",
                     autocomplete: "off" %>
                 <div class="form-text">Informe somente o ID do container. O sistema gera os scripts padrão no site.</div>
               </div>
 
-              <%= f.submit "Salvar Google Tag Manager", class: "btn btn-primary" %>
+              <%= f.submit "Salvar Google Tag Manager", class: "ax-btn ax-btn--primary" %>
             <% end %>
           </div>
         </div>
       </div>
 
-      <div class="col-lg-5">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-white py-3">
-            <h5 class="card-title mb-0 fw-bold"><i class="bi bi-shield-check me-2 text-success"></i>Aplicação</h5>
+      <div class="ax-span-5">
+        <div class="ax-card">
+          <div class="ax-card__header">
+            <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-shield-check" style="color: #16a34a;"></i>Aplicação</h5>
           </div>
-          <div class="card-body p-4">
-            <ul class="small text-muted mb-0">
-              <li class="mb-2">O script padrão entra no <code>&lt;head&gt;</code> do site público.</li>
-              <li class="mb-2">O fallback <code>noscript</code> entra logo após a abertura do <code>&lt;body&gt;</code>.</li>
+          <div class="ax-card__body">
+            <ul class="tw-text-sm tw-text-ink-muted tw-mb-0">
+              <li class="tw-mb-2">O script padrão entra no <code>&lt;head&gt;</code> do site público.</li>
+              <li class="tw-mb-2">O fallback <code>noscript</code> entra logo após a abertura do <code>&lt;body&gt;</code>.</li>
               <li>O painel administrativo não recebe essas tags.</li>
             </ul>
           </div>
         </div>
       </div>
-    </div>
+    <% end %>
   </div>
 
   <div class="tab-pane fade <%= @active_tab == "meta_pixel" ? "show active" : "" %>" id="meta-pixel" role="tabpanel">
-    <div class="row g-4">
-      <div class="col-lg-7">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-white py-3">
-            <h5 class="card-title mb-0 fw-bold"><i class="bi bi-meta me-2 text-primary"></i>Pixel da Meta</h5>
+    <%= ax_field_grid(columns: 12, gap: :compact) do %>
+      <div class="ax-span-7">
+        <div class="ax-card">
+          <div class="ax-card__header">
+            <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-meta" style="color: #2563eb;"></i>Pixel da Meta</h5>
           </div>
-          <div class="card-body p-4">
-            <div class="alert <%= TrackingIntegrationSetting.meta_pixel_enabled? ? "alert-success" : "alert-warning" %> d-flex align-items-center gap-2 py-2">
-              <i class="bi <%= TrackingIntegrationSetting.meta_pixel_enabled? ? "bi-check-circle" : "bi-exclamation-triangle" %>"></i>
+          <div class="ax-card__body">
+            <%= ax_inline_notice(tone: TrackingIntegrationSetting.meta_pixel_enabled? ? :success : :warning, icon: TrackingIntegrationSetting.meta_pixel_enabled? ? "check-circle" : "exclamation-triangle") do %>
               <span>Status: <strong><%= TrackingIntegrationSetting.meta_pixel_enabled? ? "Ativo no site público" : "Inativo" %></strong></span>
-            </div>
+            <% end %>
 
             <%= form_with url: admin_tracking_integration_path(tab: "meta_pixel"), method: :patch, scope: :tracking, local: true do |f| %>
               <%= hidden_field_tag "tracking[google_tag_manager_enabled]", @tracking_setting.google_tag_manager_enabled? ? "true" : "false" %>
               <%= hidden_field_tag "tracking[google_tag_manager_container_id]", @tracking_setting.google_tag_manager_container_id %>
 
-              <div class="form-check form-switch mb-3">
-                <%= f.check_box :meta_pixel_enabled, { class: "form-check-input", checked: @tracking_setting.meta_pixel_enabled? }, "true", "false" %>
-                <%= f.label :meta_pixel_enabled, "Ativar Pixel da Meta no site público", class: "form-check-label fw-semibold" %>
+              <div class="tw-mb-3">
+                <%= ax_switch_field(form: f, method: :meta_pixel_enabled,
+                      label: "Ativar Pixel da Meta no site público",
+                      checked: @tracking_setting.meta_pixel_enabled?,
+                      checked_value: "true", unchecked_value: "false",
+                      input_html: { checked: @tracking_setting.meta_pixel_enabled? }) %>
               </div>
 
-              <div class="mb-3">
-                <%= f.label :meta_pixel_id, "ID do Pixel", class: "form-label fw-semibold" %>
+              <div class="tw-mb-3">
+                <%= f.label :meta_pixel_id, "ID do Pixel", class: "ax-label" %>
                 <%= f.text_field :meta_pixel_id,
-                    class: "form-control",
+                    class: "ax-control",
                     value: @tracking_setting.meta_pixel_id,
                     placeholder: "123456789012345",
                     inputmode: "numeric",
@@ -128,26 +127,26 @@
                 <div class="form-text">Informe somente o ID numérico do Pixel. O sistema dispara <code>PageView</code> automaticamente.</div>
               </div>
 
-              <%= f.submit "Salvar Pixel da Meta", class: "btn btn-primary" %>
+              <%= f.submit "Salvar Pixel da Meta", class: "ax-btn ax-btn--primary" %>
             <% end %>
           </div>
         </div>
       </div>
 
-      <div class="col-lg-5">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-white py-3">
-            <h5 class="card-title mb-0 fw-bold"><i class="bi bi-shield-check me-2 text-success"></i>Aplicação</h5>
+      <div class="ax-span-5">
+        <div class="ax-card">
+          <div class="ax-card__header">
+            <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-shield-check" style="color: #16a34a;"></i>Aplicação</h5>
           </div>
-          <div class="card-body p-4">
-            <ul class="small text-muted mb-0">
-              <li class="mb-2">O script padrão entra no <code>&lt;head&gt;</code> do site público.</li>
-              <li class="mb-2">O fallback <code>noscript</code> entra logo após a abertura do <code>&lt;body&gt;</code>.</li>
+          <div class="ax-card__body">
+            <ul class="tw-text-sm tw-text-ink-muted tw-mb-0">
+              <li class="tw-mb-2">O script padrão entra no <code>&lt;head&gt;</code> do site público.</li>
+              <li class="tw-mb-2">O fallback <code>noscript</code> entra logo após a abertura do <code>&lt;body&gt;</code>.</li>
               <li>O painel salva apenas o ID do Pixel, não scripts livres.</li>
             </ul>
           </div>
         </div>
       </div>
-    </div>
+    <% end %>
   </div>
 </div>

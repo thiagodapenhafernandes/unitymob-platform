@@ -1,41 +1,31 @@
-<div class="container-fluid py-4">
+<div class="container-fluid py-4" data-controller="home-settings-preview">
   <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
     <div>
-      <h1 class="mb-1"><i class="bi bi-house-gear-fill"></i> Configurações da Home</h1>
-      <p class="text-muted mb-0">Personalize a aparência e conteúdo da página inicial</p>
+      <h1 class="ax-page-title"><i class="bi bi-house-gear-fill"></i> Configurações da Home</h1>
+      <p class="ax-page-subtitle">Personalize a aparência e conteúdo da página inicial</p>
     </div>
-    <%= link_to 'Voltar', admin_root_path, class: 'btn btn-outline-secondary' %>
+    <%= link_to 'Voltar', admin_root_path, class: 'ax-btn ax-btn--ghost' %>
   </div>
 
   <%= form_with(model: @home_setting, url: admin_home_setting_path, local: true, html: { multipart: true }) do |f| %>
-    <% if @home_setting.errors.any? %>
-      <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i><%= pluralize(@home_setting.errors.count, "erro") %> encontrado:</h5>
-        <ul class="mb-0">
-          <% @home_setting.errors.full_messages.each do |message| %>
-            <li><%= message %></li>
-          <% end %>
-        </ul>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
-    <% end %>
+    <%= ax_error_summary(@home_setting) %>
 
     <!-- Tabs Navigation -->
-    <ul class="nav nav-tabs mb-4" id="homeSettingsTabs" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="hero-tab" data-bs-toggle="tab" data-bs-target="#hero" type="button" role="tab">
-          <i class="bi bi-image me-2"></i>Seção Hero
+    <ul class="ax-form-tabs tw-mb-4" id="homeSettingsTabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#homeSettingsTabsContent">
+      <li role="presentation">
+        <button class="ax-form-tabs__item active" id="hero-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#hero" data-action="click->ax-tabs#select" type="button" role="tab">
+          <i class="bi bi-image"></i>Seção Hero
         </button>
       </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="cta-tab" data-bs-toggle="tab" data-bs-target="#cta" type="button" role="tab">
-          <i class="bi bi-megaphone me-2"></i>Call to Action
+      <li role="presentation">
+        <button class="ax-form-tabs__item" id="cta-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#cta" data-action="click->ax-tabs#select" type="button" role="tab">
+          <i class="bi bi-megaphone"></i>Call to Action
         </button>
       </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="sections-tab" data-bs-toggle="tab" data-bs-target="#sections" type="button" role="tab">
-          <i class="bi bi-layout-three-columns me-2"></i>Gerenciar Seções
+      <li role="presentation">
+        <button class="ax-form-tabs__item" id="sections-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#sections" data-action="click->ax-tabs#select" type="button" role="tab">
+          <i class="bi bi-layout-three-columns"></i>Gerenciar Seções
         </button>
       </li>
     </ul>
@@ -45,99 +35,91 @@
       
       <!-- Hero Tab -->
       <div class="tab-pane fade show active" id="hero" role="tabpanel">
-        <div class="row g-4">
+        <%= ax_field_grid do %>
           <!-- Text Content -->
-          <div class="col-12">
-            <div class="card shadow-sm border-0">
-              <div class="card-header bg-primary bg-opacity-10 border-0">
-                <h5 class="mb-0 text-primary"><i class="bi bi-text-left me-2"></i>Conteúdo do Hero</h5>
+          <div class="ax-span-12">
+            <div class="ax-card">
+              <div class="ax-card__header">
+                <h5 class="ax-card__title"><i class="bi bi-text-left"></i>Conteúdo do Hero</h5>
               </div>
-              <div class="card-body">
-                <div class="mb-3">
-                  <%= f.label :hero_title, "Título Principal", class: "form-label fw-bold" %>
-                  <%= f.text_area :hero_title, rows: 2, class: "form-control", placeholder: "Compre ou alugue na imobiliária mais amada de Balneário Camboriú" %>
-                  <small class="text-muted">Texto principal que aparece no topo da home</small>
+              <div class="ax-card__body">
+                <div class="tw-mb-3">
+                  <%= f.label :hero_title, "Título Principal", class: "ax-label tw-font-bold" %>
+                  <%= f.text_area :hero_title, rows: 2, class: "ax-control", placeholder: "Compre ou alugue na imobiliária mais amada de Balneário Camboriú" %>
+                  <small class="tw-text-sm tw-text-ink-muted">Texto principal que aparece no topo da home</small>
                 </div>
 
-                <div class="row g-3 mb-3">
-                  <div class="col-md-6">
-                    <%= f.label :hero_title_font_size, "Tamanho do título", class: "form-label fw-bold" %>
-                    <div class="input-group">
-                      <%= f.number_field :hero_title_font_size, value: @home_setting.hero_title_font_size || 72, min: 24, max: 96, step: 1, class: "form-control" %>
-                      <span class="input-group-text">px</span>
-                    </div>
+                <%= ax_field_grid class_name: "tw-mb-3" do %>
+                  <div class="ax-span-6">
+                    <%= f.label :hero_title_font_size, "Tamanho do título", class: "ax-label tw-font-bold" %>
+                    <%= ax_input_group(suffix: "px") do %>
+                      <%= f.number_field :hero_title_font_size, value: @home_setting.hero_title_font_size || 72, min: 24, max: 96, step: 1, class: "ax-control" %>
+                    <% end %>
                   </div>
-                  <div class="col-md-6">
-                    <%= f.label :hero_subtitle_font_size, "Tamanho do subtítulo", class: "form-label fw-bold" %>
-                    <div class="input-group">
-                      <%= f.number_field :hero_subtitle_font_size, value: @home_setting.hero_subtitle_font_size || 20, min: 12, max: 36, step: 1, class: "form-control" %>
-                      <span class="input-group-text">px</span>
-                    </div>
+                  <div class="ax-span-6">
+                    <%= f.label :hero_subtitle_font_size, "Tamanho do subtítulo", class: "ax-label tw-font-bold" %>
+                    <%= ax_input_group(suffix: "px") do %>
+                      <%= f.number_field :hero_subtitle_font_size, value: @home_setting.hero_subtitle_font_size || 20, min: 12, max: 36, step: 1, class: "ax-control" %>
+                    <% end %>
                   </div>
-                </div>
+                <% end %>
 
                 <div class="mb-0">
-                  <%= f.label :hero_subtitle, "Subtítulo", class: "form-label fw-bold" %>
-                  <%= f.text_area :hero_subtitle, rows: 2, class: "form-control", placeholder: "Aqui o lar é o centro das grandes histórias da vida." %>
-                  <small class="text-muted">Texto secundário abaixo do título</small>
+                  <%= f.label :hero_subtitle, "Subtítulo", class: "ax-label tw-font-bold" %>
+                  <%= f.text_area :hero_subtitle, rows: 2, class: "ax-control", placeholder: "Aqui o lar é o centro das grandes histórias da vida." %>
+                  <small class="tw-text-sm tw-text-ink-muted">Texto secundário abaixo do título</small>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Background Images -->
-          <div class="col-md-6">
-            <div class="card shadow-sm border-0 h-100">
-              <div class="card-header bg-success bg-opacity-10 border-0">
-                <h5 class="mb-0 text-success"><i class="bi bi-laptop me-2"></i>Imagem Desktop</h5>
+          <div class="ax-span-6">
+            <div class="ax-card" style="height: 100%;">
+              <div class="ax-card__header">
+                <h5 class="ax-card__title"><i class="bi bi-laptop"></i>Imagem Desktop</h5>
               </div>
-              <div class="card-body">
-                <label class="form-label fw-bold">Slides do Hero (Desktop)</label>
+              <div class="ax-card__body">
+                <label class="ax-label tw-font-bold">Slides do Hero (Desktop)</label>
                 <%= file_field_tag "home_setting[hero_slide_images][]",
                                    multiple: true,
-                                   class: "form-control mb-2",
+                                   class: "ax-control tw-mb-2",
                                    accept: "image/*" %>
-                <small class="text-muted d-block mb-3">Você pode enviar uma ou mais imagens. Elas serão redimensionadas para até 1920x1080px e otimizadas para web no upload.</small>
+                <small class="tw-text-sm tw-text-ink-muted tw-block tw-mb-3">Você pode enviar uma ou mais imagens. Elas serão redimensionadas para até 1920x1080px e otimizadas para web no upload.</small>
 
                 <% if @home_setting.hero_slides.any? %>
-                  <div class="d-flex flex-column gap-2"
+                  <div class="tw-flex tw-flex-col tw-gap-2"
                        data-controller="sortable"
                        data-sortable-handle-value=".hero-slide-drag-handle">
                     <%= f.fields_for :hero_slides, @home_setting.hero_slides do |slide_f| %>
                       <% slide = slide_f.object %>
                       <div class="nested-form-wrapper">
                         <div class="border rounded-3 bg-white p-2">
-                          <div class="d-flex align-items-center gap-3">
-                            <button type="button" class="btn btn-sm btn-light border hero-slide-drag-handle flex-shrink-0" title="Arrastar para ordenar">
+                          <div class="tw-flex tw-items-center tw-gap-3">
+                            <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm border hero-slide-drag-handle flex-shrink-0" title="Arrastar para ordenar">
                               <i class="bi bi-arrows-move"></i>
                             </button>
 
-                            <span class="badge bg-dark flex-shrink-0">
+                            <span class="ax-badge ax-badge--gray flex-shrink-0">
                               #<span class="position-display"><%= slide.position %></span>
                             </span>
 
                             <div class="position-relative overflow-hidden rounded bg-light flex-shrink-0" style="width: 150px;">
                             <% if slide.image.attached? %>
-                              <%= image_tag slide.image.variant(resize_to_limit: [300, 170]), class: "img-fluid w-100", style: "aspect-ratio: 16 / 9; object-fit: cover;" %>
+                              <%= image_tag slide.image.variant(resize_to_limit: [300, 170]), class: "img-fluid tw-w-full", style: "aspect-ratio: 16 / 9; object-fit: cover;" %>
                             <% end %>
                             </div>
 
                             <%= slide_f.hidden_field :position, class: "position-field" %>
 
                             <div class="flex-grow-1">
-                              <%= slide_f.label :alt_text, "Texto alternativo", class: "form-label small fw-semibold mb-1" %>
-                              <%= slide_f.text_field :alt_text, class: "form-control form-control-sm" %>
+                              <%= slide_f.label :alt_text, "Texto alternativo", class: "ax-label tw-text-sm tw-font-semibold tw-mb-1" %>
+                              <%= slide_f.text_field :alt_text, class: "ax-control ax-control--sm" %>
                             </div>
 
-                            <div class="d-flex align-items-center gap-3 flex-shrink-0">
-                              <div class="form-check form-switch mb-0">
-                                <%= slide_f.check_box :active, class: "form-check-input" %>
-                                <%= slide_f.label :active, "Ativo", class: "form-check-label small" %>
-                              </div>
-                              <div class="form-check mb-0">
-                                <%= slide_f.check_box :_destroy, class: "form-check-input" %>
-                                <%= slide_f.label :_destroy, "Remover", class: "form-check-label small text-danger" %>
-                              </div>
+                            <div class="tw-flex tw-items-center tw-gap-3 flex-shrink-0">
+                              <%= ax_switch_field(form: slide_f, method: :active, label: "Ativo") %>
+                              <%= ax_check_field(form: slide_f, method: :_destroy, label: tag.span("Remover", class: "tw-text-sm", style: "color:#dc2626"), class_name: "mb-0") %>
                             </div>
                           </div>
                         </div>
@@ -146,48 +128,48 @@
                   </div>
                 <% elsif @home_setting.hero_background_desktop.attached? %>
                   <div class="position-relative overflow-hidden rounded shadow-sm">
-                    <%= image_tag @home_setting.hero_background_desktop.variant(resize_to_limit: [960, 540]), class: "img-fluid w-100", id: "hero-desktop-image" %>
-                    <div id="hero-overlay-preview"
+                    <%= image_tag @home_setting.hero_background_desktop.variant(resize_to_limit: [960, 540]), class: "img-fluid tw-w-full", id: "hero-desktop-image" %>
+                    <div id="hero-overlay-preview" data-home-settings-preview-target="overlayPreview"
                          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;
                                 background-color: <%= @home_setting.overlay_color || '#000000' %>;
                                 opacity: <%= @home_setting.overlay_opacity || 0.7 %>;
                                 pointer-events: none; transition: all 0.2s ease;">
                     </div>
-                    <span class="badge bg-secondary position-absolute top-0 start-0 m-2" style="z-index: 5;">
-                      <i class="bi bi-image me-1"></i>Imagem atual antiga
+                    <span class="ax-badge ax-badge--gray position-absolute top-0 start-0 m-2" style="z-index: 5;">
+                      <i class="bi bi-image"></i>Imagem atual antiga
                     </span>
                   </div>
                 <% else %>
-                  <div class="text-center p-4 bg-light rounded">
-                    <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
-                    <p class="text-muted mt-2 mb-0">Nenhuma imagem carregada</p>
+                  <div class="tw-text-center p-4 bg-light rounded">
+                    <i class="bi bi-image tw-text-ink-muted" style="font-size: 3rem;"></i>
+                    <p class="tw-text-ink-muted mt-2 mb-0">Nenhuma imagem carregada</p>
                   </div>
                 <% end %>
               </div>
             </div>
           </div>
 
-          <div class="col-md-6">
-            <div class="card shadow-sm border-0 h-100">
-              <div class="card-header bg-info bg-opacity-10 border-0">
-                <h5 class="mb-0 text-info"><i class="bi bi-phone me-2"></i>Imagem Mobile</h5>
+          <div class="ax-span-6">
+            <div class="ax-card" style="height: 100%;">
+              <div class="ax-card__header">
+                <h5 class="ax-card__title"><i class="bi bi-phone"></i>Imagem Mobile</h5>
               </div>
-              <div class="card-body">
-                <%= f.label :hero_background_mobile, "Imagem de Fundo (Mobile)", class: "form-label fw-bold" %>
-                <%= f.file_field :hero_background_mobile, class: "form-control mb-3", accept: "image/*" %>
-                <small class="text-muted d-block mb-3">Recomendado: 768x1024px (vertical)</small>
-                
+              <div class="ax-card__body">
+                <%= f.label :hero_background_mobile, "Imagem de Fundo (Mobile)", class: "ax-label tw-font-bold" %>
+                <%= f.file_field :hero_background_mobile, class: "ax-control tw-mb-3", accept: "image/*" %>
+                <small class="tw-text-sm tw-text-ink-muted tw-block tw-mb-3">Recomendado: 768x1024px (vertical)</small>
+
                 <% if @home_setting.hero_background_mobile.attached? %>
                   <div class="position-relative">
                     <%= image_tag @home_setting.hero_background_mobile, class: "img-fluid rounded shadow-sm" %>
-                    <span class="badge bg-info position-absolute top-0 start-0 m-2">
-                      <i class="bi bi-check-circle me-1"></i>Imagem Atual
+                    <span class="ax-badge ax-badge--blue position-absolute top-0 start-0 m-2">
+                      <i class="bi bi-check-circle"></i>Imagem Atual
                     </span>
                   </div>
                 <% else %>
-                  <div class="text-center p-4 bg-light rounded">
-                    <i class="bi bi-phone text-muted" style="font-size: 3rem;"></i>
-                    <p class="text-muted mt-2 mb-0">Nenhuma imagem carregada</p>
+                  <div class="tw-text-center p-4 bg-light rounded">
+                    <i class="bi bi-phone tw-text-ink-muted" style="font-size: 3rem;"></i>
+                    <p class="tw-text-ink-muted mt-2 mb-0">Nenhuma imagem carregada</p>
                   </div>
                 <% end %>
               </div>
@@ -195,260 +177,236 @@
           </div>
 
           <!-- CTA Button & Overlay -->
-          <div class="col-12">
-            <div class="card shadow-sm border-0">
-              <div class="card-header bg-warning bg-opacity-10 border-0">
-                <h5 class="mb-0 text-warning"><i class="bi bi-sliders me-2"></i>Personalização Visual</h5>
+          <div class="ax-span-12">
+            <div class="ax-card">
+              <div class="ax-card__header">
+                <h5 class="ax-card__title"><i class="bi bi-sliders"></i>Personalização Visual</h5>
               </div>
-              <div class="card-body">
-                <div class="row">
+              <div class="ax-card__body">
+                <div>
                   <!-- Overlay Settings Block -->
-                  <div class="col-12 mb-4">
-                    <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Configurações de Sobreposição (Overlay)</h6>
-                    <div class="row">
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :overlay_opacity, class: "form-label fw-bold" do %>
-                          Opacidade <span class="badge bg-secondary">0.0 - 1.0</span>
+                  <div class="tw-mb-4">
+                    <h6 class="text-uppercase tw-text-ink-muted tw-font-bold tw-text-sm tw-mb-3 border-bottom pb-2">Configurações de Sobreposição (Overlay)</h6>
+                    <%= ax_field_grid do %>
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :overlay_opacity, class: "ax-label tw-font-bold" do %>
+                          Opacidade <span class="ax-badge ax-badge--gray">0.0 - 1.0</span>
                         <% end %>
-                        <div class="input-group">
-                          <%= f.number_field :overlay_opacity, step: 0.1, min: 0, max: 1, class: "form-control", placeholder: "0.7", id: "input-overlay-opacity", oninput: "updateOverlayPreview()" %>
-                          <span class="input-group-text"><i class="bi bi-opacity"></i></span>
-                        </div>
+                        <%= ax_input_group(suffix: tag.i(class: "bi bi-opacity")) do %>
+                          <%= f.number_field :overlay_opacity, step: 0.1, min: 0, max: 1, class: "ax-control", placeholder: "0.7", id: "input-overlay-opacity", data: { home_settings_preview_target: "overlayOpacity", action: "input->home-settings-preview#updateOverlay" } %>
+                        <% end %>
                       </div>
 
-                      <div class="col-md-5 mb-3">
-                        <%= f.label :overlay_color, "Cor da Sobreposição", class: "form-label fw-bold" %>
-                        <div class="d-flex gap-2 align-items-center">
-                          <%= f.color_field :overlay_color, value: @home_setting.overlay_color || '#000000', class: "form-control form-control-color", id: "input-overlay-color-picker", style: "width: 80px; height: 48px;", oninput: "syncOverlayColor(this, 'picker')" %>
-                          <%= f.text_field :overlay_color, value: @home_setting.overlay_color || '#000000', class: "form-control", id: "input-overlay-color-text", oninput: "syncOverlayColor(this, 'text')" %>
+                      <div class="ax-span-5 tw-mb-3">
+                        <%= f.label :overlay_color, "Cor da Sobreposição", class: "ax-label tw-font-bold" %>
+                        <div class="tw-flex tw-gap-2 tw-items-center">
+                          <%= f.color_field :overlay_color, value: @home_setting.overlay_color || '#000000', class: "ax-control", id: "input-overlay-color-picker", style: "width: 80px; height: 48px;", data: { home_settings_preview_target: "overlayColorPicker", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "picker" } %>
+                          <%= f.text_field :overlay_color, value: @home_setting.overlay_color || '#000000', class: "ax-control", id: "input-overlay-color-text", data: { home_settings_preview_target: "overlayColorText", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "text" } %>
                         </div>
                       </div>
-                    </div>
+                    <% end %>
                   </div>
 
                   <!-- Search Button Block -->
-                  <div class="col-12">
-                    <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Personalização do Botão de Busca</h6>
-                    <div class="row">
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :hero_cta_text, "Texto do Botão de Busca", class: "form-label fw-bold" %>
-                        <%= f.text_field :hero_cta_text, class: "form-control", placeholder: "Buscar Imóveis" %>
+                  <div>
+                    <h6 class="text-uppercase tw-text-ink-muted tw-font-bold tw-text-sm tw-mb-3 border-bottom pb-2">Personalização do Botão de Busca</h6>
+                    <%= ax_field_grid do %>
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :hero_cta_text, "Texto do Botão de Busca", class: "ax-label tw-font-bold" %>
+                        <%= f.text_field :hero_cta_text, class: "ax-control", placeholder: "Buscar Imóveis" %>
                       </div>
 
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :hero_button_color, "Cor do Botão de Busca", class: "form-label fw-bold" %>
-                        <div class="d-flex gap-2 align-items-center">
-                          <%= f.color_field :hero_button_color, value: @home_setting.hero_button_color || '#BFAB25', class: "form-control form-control-color", style: "width: 80px; height: 48px;", oninput: "this.nextElementSibling.value = this.value" %>
-                          <%= f.text_field :hero_button_color, value: @home_setting.hero_button_color || '#BFAB25', class: "form-control", oninput: "this.previousElementSibling.value = this.value" %>
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :hero_button_color, "Cor do Botão de Busca", class: "ax-label tw-font-bold" %>
+                        <div class="tw-flex tw-gap-2 tw-items-center">
+                          <%= f.color_field :hero_button_color, value: @home_setting.hero_button_color || '#BFAB25', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "picker" } %>
+                          <%= f.text_field :hero_button_color, value: @home_setting.hero_button_color || '#BFAB25', class: "ax-control", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "text" } %>
                         </div>
                       </div>
 
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :hero_button_text_color, "Cor do Texto do Botão", class: "form-label fw-bold" %>
-                        <div class="d-flex gap-2 align-items-center">
-                          <%= f.color_field :hero_button_text_color, value: @home_setting.hero_button_text_color || '#FFFFFF', class: "form-control form-control-color", style: "width: 80px; height: 48px;", oninput: "this.nextElementSibling.value = this.value" %>
-                          <%= f.text_field :hero_button_text_color, value: @home_setting.hero_button_text_color || '#FFFFFF', class: "form-control", oninput: "this.previousElementSibling.value = this.value" %>
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :hero_button_text_color, "Cor do Texto do Botão", class: "ax-label tw-font-bold" %>
+                        <div class="tw-flex tw-gap-2 tw-items-center">
+                          <%= f.color_field :hero_button_text_color, value: @home_setting.hero_button_text_color || '#FFFFFF', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "picker" } %>
+                          <%= f.text_field :hero_button_text_color, value: @home_setting.hero_button_text_color || '#FFFFFF', class: "ax-control", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "text" } %>
                         </div>
                       </div>
 
                       <% if false %>
-                        <div class="col-md-12">
-                          <%= f.label :hero_cta_link, "Link do Botão (Opcional)", class: "form-label fw-bold" %>
-                          <%= f.text_field :hero_cta_link, class: "form-control", placeholder: "/imoveis" %>
+                        <div class="ax-span-12">
+                          <%= f.label :hero_cta_link, "Link do Botão (Opcional)", class: "ax-label tw-font-bold" %>
+                          <%= f.text_field :hero_cta_link, class: "ax-control", placeholder: "/imoveis" %>
                         </div>
                       <% end %>
-                    </div>
+                    <% end %>
                   </div>
 
                   <!-- Search Filter Block -->
-                  <div class="col-12 mt-4">
-                    <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Personalização do Filtro de Busca</h6>
-                    <div class="row">
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :search_filter_background_color, "Cor do Fundo do Filtro", class: "form-label fw-bold" %>
-                        <div class="d-flex gap-2 align-items-center">
-                          <%= f.color_field :search_filter_background_color, value: @home_setting.search_filter_background_color || '#FFFFFF', class: "form-control form-control-color", style: "width: 80px; height: 48px;", oninput: "syncColorField(this, 'search-filter-background')" %>
-                          <%= f.text_field :search_filter_background_color, value: @home_setting.search_filter_background_color || '#FFFFFF', class: "form-control", id: "search-filter-background-text", oninput: "syncColorText(this, 'search-filter-background')" %>
+                  <div class="tw-mt-4">
+                    <h6 class="text-uppercase tw-text-ink-muted tw-font-bold tw-text-sm tw-mb-3 border-bottom pb-2">Personalização do Filtro de Busca</h6>
+                    <%= ax_field_grid do %>
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :search_filter_background_color, "Cor do Fundo do Filtro", class: "ax-label tw-font-bold" %>
+                        <div class="tw-flex tw-gap-2 tw-items-center">
+                          <%= f.color_field :search_filter_background_color, value: @home_setting.search_filter_background_color || '#FFFFFF', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "picker" } %>
+                          <%= f.text_field :search_filter_background_color, value: @home_setting.search_filter_background_color || '#FFFFFF', class: "ax-control", id: "search-filter-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "text" } %>
                         </div>
                       </div>
 
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :search_filter_background_opacity, class: "form-label fw-bold" do %>
-                          Opacidade do Fundo <span class="badge bg-secondary">0.0 - 1.0</span>
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :search_filter_background_opacity, class: "ax-label tw-font-bold" do %>
+                          Opacidade do Fundo <span class="ax-badge ax-badge--gray">0.0 - 1.0</span>
                         <% end %>
-                        <div class="input-group">
-                          <%= f.number_field :search_filter_background_opacity, value: @home_setting.search_filter_background_opacity || 0.9, step: 0.05, min: 0, max: 1, class: "form-control", placeholder: "0.9" %>
-                          <span class="input-group-text"><i class="bi bi-opacity"></i></span>
-                        </div>
-                      </div>
-
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :search_filter_backdrop_blur, "Translucidez / Desfoque", class: "form-label fw-bold" %>
-                        <div class="input-group">
-                          <%= f.number_field :search_filter_backdrop_blur, value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, class: "form-control", placeholder: "16" %>
-                          <span class="input-group-text">px</span>
-                        </div>
-                        <small class="text-muted">Quanto maior, mais efeito de vidro.</small>
-                      </div>
-
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :search_filter_border_radius, "Radius do Filtro", class: "form-label fw-bold" %>
-                        <div class="input-group">
-                          <%= f.number_field :search_filter_border_radius, value: @home_setting.search_filter_border_radius || 22, min: 0, max: 40, step: 1, class: "form-control", placeholder: "22" %>
-                          <span class="input-group-text">px</span>
-                        </div>
-                      </div>
-
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :search_filter_field_background_color, "Cor dos Campos", class: "form-label fw-bold" %>
-                        <div class="d-flex gap-2 align-items-center">
-                          <%= f.color_field :search_filter_field_background_color, value: @home_setting.search_filter_field_background_color || '#FFFFFF', class: "form-control form-control-color", style: "width: 80px; height: 48px;", oninput: "syncColorField(this, 'search-filter-field-background')" %>
-                          <%= f.text_field :search_filter_field_background_color, value: @home_setting.search_filter_field_background_color || '#FFFFFF', class: "form-control", id: "search-filter-field-background-text", oninput: "syncColorText(this, 'search-filter-field-background')" %>
-                        </div>
-                      </div>
-
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :search_filter_field_background_opacity, class: "form-label fw-bold" do %>
-                          Opacidade dos Campos <span class="badge bg-secondary">0.0 - 1.0</span>
+                        <%= ax_input_group(suffix: tag.i(class: "bi bi-opacity")) do %>
+                          <%= f.number_field :search_filter_background_opacity, value: @home_setting.search_filter_background_opacity || 0.9, step: 0.05, min: 0, max: 1, class: "ax-control", placeholder: "0.9" %>
                         <% end %>
-                        <div class="input-group">
-                          <%= f.number_field :search_filter_field_background_opacity, value: @home_setting.search_filter_field_background_opacity || 0.85, step: 0.05, min: 0, max: 1, class: "form-control", placeholder: "0.85" %>
-                          <span class="input-group-text"><i class="bi bi-opacity"></i></span>
-                        </div>
                       </div>
 
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :search_filter_text_color, "Cor dos Textos/Links", class: "form-label fw-bold" %>
-                        <div class="d-flex gap-2 align-items-center">
-                          <%= f.color_field :search_filter_text_color, value: @home_setting.search_filter_text_color || '#022B3A', class: "form-control form-control-color", style: "width: 80px; height: 48px;", oninput: "syncColorField(this, 'search-filter-text')" %>
-                          <%= f.text_field :search_filter_text_color, value: @home_setting.search_filter_text_color || '#022B3A', class: "form-control", id: "search-filter-text-text", oninput: "syncColorText(this, 'search-filter-text')" %>
-                        </div>
-                      </div>
-
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :search_filter_border_enabled, "Borda do Filtro", class: "form-label fw-bold" %>
-                        <div class="form-check form-switch mt-2">
-                          <%= f.check_box :search_filter_border_enabled, class: "form-check-input", role: "switch" %>
-                          <%= f.label :search_filter_border_enabled, "Ativar borda", class: "form-check-label" %>
-                        </div>
-                      </div>
-
-                      <div class="col-md-4 mb-3">
-                        <%= f.label :search_filter_border_color, "Cor da Borda", class: "form-label fw-bold" %>
-                        <div class="d-flex gap-2 align-items-center">
-                          <%= f.color_field :search_filter_border_color, value: @home_setting.search_filter_border_color || '#FFFFFF', class: "form-control form-control-color", style: "width: 80px; height: 48px;", oninput: "syncColorField(this, 'search-filter-border')" %>
-                          <%= f.text_field :search_filter_border_color, value: @home_setting.search_filter_border_color || '#FFFFFF', class: "form-control", id: "search-filter-border-text", oninput: "syncColorText(this, 'search-filter-border')" %>
-                        </div>
-                      </div>
-
-                      <div class="col-md-4 mb-0">
-                        <%= f.label :search_filter_border_opacity, class: "form-label fw-bold" do %>
-                          Opacidade da Borda <span class="badge bg-secondary">0.0 - 1.0</span>
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :search_filter_backdrop_blur, "Translucidez / Desfoque", class: "ax-label tw-font-bold" %>
+                        <%= ax_input_group(suffix: "px") do %>
+                          <%= f.number_field :search_filter_backdrop_blur, value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, class: "ax-control", placeholder: "16" %>
                         <% end %>
-                        <div class="input-group">
-                          <%= f.number_field :search_filter_border_opacity, value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, class: "form-control", placeholder: "0.45" %>
-                          <span class="input-group-text"><i class="bi bi-opacity"></i></span>
+                        <small class="tw-text-sm tw-text-ink-muted">Quanto maior, mais efeito de vidro.</small>
+                      </div>
+
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :search_filter_border_radius, "Radius do Filtro", class: "ax-label tw-font-bold" %>
+                        <%= ax_input_group(suffix: "px") do %>
+                          <%= f.number_field :search_filter_border_radius, value: @home_setting.search_filter_border_radius || 22, min: 0, max: 40, step: 1, class: "ax-control", placeholder: "22" %>
+                        <% end %>
+                      </div>
+
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :search_filter_field_background_color, "Cor dos Campos", class: "ax-label tw-font-bold" %>
+                        <div class="tw-flex tw-gap-2 tw-items-center">
+                          <%= f.color_field :search_filter_field_background_color, value: @home_setting.search_filter_field_background_color || '#FFFFFF', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "picker" } %>
+                          <%= f.text_field :search_filter_field_background_color, value: @home_setting.search_filter_field_background_color || '#FFFFFF', class: "ax-control", id: "search-filter-field-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "text" } %>
                         </div>
                       </div>
-                    </div>
+
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :search_filter_field_background_opacity, class: "ax-label tw-font-bold" do %>
+                          Opacidade dos Campos <span class="ax-badge ax-badge--gray">0.0 - 1.0</span>
+                        <% end %>
+                        <%= ax_input_group(suffix: tag.i(class: "bi bi-opacity")) do %>
+                          <%= f.number_field :search_filter_field_background_opacity, value: @home_setting.search_filter_field_background_opacity || 0.85, step: 0.05, min: 0, max: 1, class: "ax-control", placeholder: "0.85" %>
+                        <% end %>
+                      </div>
+
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :search_filter_text_color, "Cor dos Textos/Links", class: "ax-label tw-font-bold" %>
+                        <div class="tw-flex tw-gap-2 tw-items-center">
+                          <%= f.color_field :search_filter_text_color, value: @home_setting.search_filter_text_color || '#022B3A', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "picker" } %>
+                          <%= f.text_field :search_filter_text_color, value: @home_setting.search_filter_text_color || '#022B3A', class: "ax-control", id: "search-filter-text-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "text" } %>
+                        </div>
+                      </div>
+
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :search_filter_border_enabled, "Borda do Filtro", class: "ax-label tw-font-bold" %>
+                        <div class="tw-mt-2">
+                          <%= ax_switch_field(form: f, method: :search_filter_border_enabled, label: "Ativar borda") %>
+                        </div>
+                      </div>
+
+                      <div class="ax-span-4 tw-mb-3">
+                        <%= f.label :search_filter_border_color, "Cor da Borda", class: "ax-label tw-font-bold" %>
+                        <div class="tw-flex tw-gap-2 tw-items-center">
+                          <%= f.color_field :search_filter_border_color, value: @home_setting.search_filter_border_color || '#FFFFFF', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "picker" } %>
+                          <%= f.text_field :search_filter_border_color, value: @home_setting.search_filter_border_color || '#FFFFFF', class: "ax-control", id: "search-filter-border-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "text" } %>
+                        </div>
+                      </div>
+
+                      <div class="ax-span-4 mb-0">
+                        <%= f.label :search_filter_border_opacity, class: "ax-label tw-font-bold" do %>
+                          Opacidade da Borda <span class="ax-badge ax-badge--gray">0.0 - 1.0</span>
+                        <% end %>
+                        <%= ax_input_group(suffix: tag.i(class: "bi bi-opacity")) do %>
+                          <%= f.number_field :search_filter_border_opacity, value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, class: "ax-control", placeholder: "0.45" %>
+                        <% end %>
+                      </div>
+                    <% end %>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        <% end %>
       </div>
 
       <!-- CTA Tab -->
       <div class="tab-pane fade" id="cta" role="tabpanel">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-primary bg-opacity-10 border-0">
-            <h5 class="mb-0 text-primary"><i class="bi bi-megaphone-fill me-2"></i>Seção Call to Action</h5>
+        <div class="ax-card">
+          <div class="ax-card__header">
+            <h5 class="ax-card__title"><i class="bi bi-megaphone-fill"></i>Seção Call to Action</h5>
           </div>
-          <div class="card-body">
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <%= f.label :cta_title, "Título", class: "form-label fw-bold" %>
-                <%= f.text_field :cta_title, class: "form-control", placeholder: "Pronto para Encontrar Seu Imóvel?" %>
-                <small class="text-muted">Título da seção de chamada para ação</small>
+          <div class="ax-card__body">
+            <%= ax_field_grid do %>
+              <div class="ax-span-6 tw-mb-3">
+                <%= f.label :cta_title, "Título", class: "ax-label tw-font-bold" %>
+                <%= f.text_field :cta_title, class: "ax-control", placeholder: "Pronto para Encontrar Seu Imóvel?" %>
+                <small class="tw-text-sm tw-text-ink-muted">Título da seção de chamada para ação</small>
               </div>
 
-              <div class="col-md-6 mb-3">
-                <%= f.label :cta_subtitle, "Subtítulo", class: "form-label fw-bold" %>
-                <%= f.text_field :cta_subtitle, class: "form-control", placeholder: "Entre em contato conosco e descubra as melhores oportunidades" %>
-                <small class="text-muted">Descrição complementar</small>
+              <div class="ax-span-6 tw-mb-3">
+                <%= f.label :cta_subtitle, "Subtítulo", class: "ax-label tw-font-bold" %>
+                <%= f.text_field :cta_subtitle, class: "ax-control", placeholder: "Entre em contato conosco e descubra as melhores oportunidades" %>
+                <small class="tw-text-sm tw-text-ink-muted">Descrição complementar</small>
               </div>
-            </div>
+            <% end %>
 
-            <div class="alert alert-info mt-3">
-              <i class="bi bi-info-circle me-2"></i>
+            <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
               <strong>Dica:</strong> Esta seção aparece no final da página inicial, incentivando os visitantes a entrarem em contato.
-            </div>
+            <% end %>
           </div>
         </div>
       </div>
 
       <!-- Sections Tab -->
       <div class="tab-pane fade" id="sections" role="tabpanel">
-        <div class="card shadow-sm border-0">
-          <div class="card-header bg-success bg-opacity-10 border-0">
-            <h5 class="mb-0 text-success"><i class="bi bi-toggles me-2"></i>Controle de Seções da Home</h5>
+        <div class="ax-card">
+          <div class="ax-card__header">
+            <h5 class="ax-card__title"><i class="bi bi-toggles"></i>Controle de Seções da Home</h5>
           </div>
-          <div class="card-body">
-            <p class="text-muted mb-4">
-              <i class="bi bi-info-circle me-2"></i>
+          <div class="ax-card__body">
+            <p class="tw-text-ink-muted tw-mb-4">
+              <i class="bi bi-info-circle"></i>
               Ative ou desative seções específicas da página inicial. Seções desativadas não aparecerão para os visitantes.
             </p>
 
-            <div class="row g-3">
-              <div class="col-md-4">
-                <div class="card h-100 shadow-sm">
-                  <div class="card-body">
-                    <div class="form-check form-switch">
-                      <%= f.check_box :services_active, class: "form-check-input", role: "switch", id: "services_active" %>
-                      <%= f.label :services_active, class: "form-check-label fw-bold" do %>
-                        <i class="bi bi-grid-3x3-gap me-2 text-primary"></i>Nossos Serviços
-                      <% end %>
-                    </div>
-                    <p class="text-muted small mt-2 mb-0">Exibe os serviços oferecidos pela imobiliária</p>
+            <%= ax_field_grid do %>
+              <div class="ax-span-4">
+                <div class="ax-card" style="height: 100%;">
+                  <div class="ax-card__body">
+                    <%= ax_switch_field(form: f, method: :services_active, id: "services_active", label: "<i class=\"bi bi-grid-3x3-gap\" style=\"color:#2563eb\"></i> Nossos Serviços".html_safe) %>
+                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2 mb-0">Exibe os serviços oferecidos pela imobiliária</p>
                   </div>
                 </div>
               </div>
 
-              <div class="col-md-4">
-                <div class="card h-100 shadow-sm">
-                  <div class="card-body">
-                    <div class="form-check form-switch">
-                      <%= f.check_box :why_choose_active, class: "form-check-input", role: "switch", id: "why_choose_active" %>
-                      <%= f.label :why_choose_active, class: "form-check-label fw-bold" do %>
-                        <i class="bi bi-star me-2 text-warning"></i>Por Que Escolher
-                      <% end %>
-                    </div>
-                    <p class="text-muted small mt-2 mb-0">Mostra os diferenciais da empresa</p>
+              <div class="ax-span-4">
+                <div class="ax-card" style="height: 100%;">
+                  <div class="ax-card__body">
+                    <%= ax_switch_field(form: f, method: :why_choose_active, id: "why_choose_active", label: "<i class=\"bi bi-star\" style=\"color:#d97706\"></i> Por Que Escolher".html_safe) %>
+                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2 mb-0">Mostra os diferenciais da empresa</p>
                   </div>
                 </div>
               </div>
 
-              <div class="col-md-4">
-                <div class="card h-100 shadow-sm">
-                  <div class="card-body">
-                    <div class="form-check form-switch">
-                      <%= f.check_box :cta_contact_active, class: "form-check-input", role: "switch", id: "cta_contact_active" %>
-                      <%= f.label :cta_contact_active, class: "form-check-label fw-bold" do %>
-                        <i class="bi bi-telephone me-2 text-success"></i>CTA de Contato
-                      <% end %>
-                    </div>
-                    <p class="text-muted small mt-2 mb-0">Seção de chamada para entrar em contato</p>
+              <div class="ax-span-4">
+                <div class="ax-card" style="height: 100%;">
+                  <div class="ax-card__body">
+                    <%= ax_switch_field(form: f, method: :cta_contact_active, id: "cta_contact_active", label: "<i class=\"bi bi-telephone\" style=\"color:#16a34a\"></i> CTA de Contato".html_safe) %>
+                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2 mb-0">Seção de chamada para entrar em contato</p>
                   </div>
                 </div>
               </div>
-            </div>
+            <% end %>
 
-            <div class="alert alert-warning mt-4">
-              <i class="bi bi-exclamation-triangle me-2"></i>
-              <strong>Atenção:</strong> As seções de imóveis (Destaques, Oportunidades, etc.) são gerenciadas em 
+            <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+              <strong>Atenção:</strong> As seções de imóveis (Destaques, Oportunidades, etc.) são gerenciadas em
               <%= link_to 'Seções Homepage', admin_home_sections_path, class: 'alert-link' %>.
-            </div>
+            <% end %>
           </div>
         </div>
       </div>
@@ -456,56 +414,12 @@
     </div>
 
     <!-- Save Button -->
-    <div class="d-flex justify-content-between align-items-center mt-4 p-4 bg-light rounded">
-      <div>
-        <i class="bi bi-info-circle text-primary me-2"></i>
-        <span class="text-muted">Não esqueça de salvar suas alterações</span>
+    <div class="tw-flex tw-justify-between tw-items-center tw-gap-2 tw-mt-4 p-4 bg-light rounded">
+      <div class="tw-flex tw-items-center tw-gap-2">
+        <i class="bi bi-info-circle" style="color:#2563eb"></i>
+        <span class="tw-text-ink-muted">Não esqueça de salvar suas alterações</span>
       </div>
-      <%= f.submit "Salvar Configurações", class: "btn btn-primary btn-lg px-5", data: { disable_with: "Salvando..." } %>
+      <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary", data: { disable_with: "Salvando..." } %>
     </div>
   <% end %>
 </div>
-
-<script>
-  function updateOverlayPreview() {
-    const color = document.getElementById('input-overlay-color-text').value;
-    const opacity = document.getElementById('input-overlay-opacity').value;
-    const preview = document.getElementById('hero-overlay-preview');
-    
-    if (preview) {
-      preview.style.backgroundColor = color;
-      preview.style.opacity = opacity;
-    }
-  }
-
-  function syncOverlayColor(input, type) {
-    const picker = document.getElementById('input-overlay-color-picker');
-    const text = document.getElementById('input-overlay-color-text');
-    
-    if (type === 'picker') {
-      text.value = input.value;
-    } else {
-      // Validate hex color before syncing to picker
-      if (/^#[0-9A-F]{6}$/i.test(input.value)) {
-        picker.value = input.value;
-      }
-    }
-    updateOverlayPreview();
-  }
-
-  function syncColorField(input, fieldId) {
-    const text = document.getElementById(`${fieldId}-text`);
-
-    if (text) {
-      text.value = input.value;
-    }
-  }
-
-  function syncColorText(input, fieldId) {
-    const picker = input.previousElementSibling;
-
-    if (picker && /^#[0-9A-F]{6}$/i.test(input.value)) {
-      picker.value = input.value;
-    }
-  }
-</script>

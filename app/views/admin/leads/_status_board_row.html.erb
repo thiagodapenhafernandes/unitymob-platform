@@ -1,0 +1,26 @@
+<div class="lead-status-row" data-id="<%= local_assigns[:id] %>">
+  <button type="button" class="lead-status-row__handle" aria-label="Reordenar" title="Arraste para reordenar" tabindex="-1">
+    <i class="bi bi-grip-vertical"></i>
+  </button>
+  <div class="lead-status-row__fields">
+    <input type="text"
+           class="ax-control ax-control--sm"
+           data-lead-status-field="name"
+           value="<%= local_assigns[:name] %>"
+           placeholder="Nome do status"
+           aria-label="Nome do status">
+    <input type="text"
+           class="ax-control ax-control--sm"
+           data-lead-status-field="description"
+           value="<%= local_assigns[:description] %>"
+           placeholder="Subtítulo (opcional)"
+           aria-label="Subtítulo do status">
+  </div>
+  <button type="button"
+          class="ax-icon-btn lead-status-row__remove"
+          data-action="lead-status-board#removeRow"
+          aria-label="Remover status"
+          title="Remover status">
+    <i class="bi bi-trash"></i>
+  </button>
+</div>

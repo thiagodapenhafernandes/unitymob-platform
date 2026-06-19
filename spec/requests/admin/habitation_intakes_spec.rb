@@ -28,7 +28,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     get admin_captacoes_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Exportar planilha")
+    expect(response.body).to include("Exportar")
 
     broker_profile = Profile.create!(
       name: "Corretor #{SecureRandom.hex(6)}",
@@ -40,7 +40,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     get admin_captacoes_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).not_to include("Exportar planilha")
+    expect(response.body).not_to include("Exportar")
   end
 
   it "exibe mini dashboard com totais das captações visíveis" do
@@ -60,7 +60,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Publicadas")
     expect(response.body).to include("Devolvidas")
     expect(response.body).to include("Residencial: 3")
-    expect(response.body).to include("Sala comercial: 1")
+    expect(response.body).to include("Comercial: 1")
     expect(response.body).to include("Terreno: 1")
   end
 
@@ -77,7 +77,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Sem fotos")
-    expect(response.body).to include(%(<div class="fw-bold">1 captações</div>))
+    expect(response.body).to include("1 sem fotos")
   end
 
   it "mantém rascunho de ficha de papel visível somente para quem começou" do
@@ -806,6 +806,119 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "negociacao"))
     expect(intake.reload.distancia_praia).to eq("250")
+  end
+
+  it "não exige infraestrutura de edifício para casa ou galpão" do
+    ["Casa", "Galpão"].each do |categoria|
+      intake = create(:habitation, :broker_intake, admin_user: admin, categoria: categoria, intake_step: "infraestrutura", infra_estrutura: [])
+
+      patch admin_captacao_path(intake), params: {
+        current_step: "infraestrutura",
+        direction: "forward",
+        habitation: {
+          distancia_praia: "100"
+        }
+      }
+
+      expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "negociacao"))
+      expect(intake.reload.distancia_praia).to eq("100")
+    end
+  end
+
+  it "exige empreendimento para casa em condomínio sem exigir unidade" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, categoria: "Casa em Condomínio", nome_empreendimento: nil, bloco: nil, intake_step: "endereco")
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco",
+      direction: "forward",
+      habitation: {
+        zip_code: "88330-000",
+        street: "Rua 3000",
+        street_number: "50",
+        neighborhood: "Centro",
+        city: "Balneário Camboriú",
+        state: "SC",
+        edificio_nome: "",
+        unidade_numero: ""
+      }
+    }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Informe o empreendimento/condomínio.")
+    expect(response.body).not_to include("Informe o número da unidade.")
+  end
+
+  it "exige ocupação, situação, chaves e dias de visita na captação" do
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      intake_step: "caracteristicas",
+      ocupacao_status: nil,
+      situacao: nil,
+      key_location: nil,
+      observacoes_visitas: "Cidade do proprietário: Balneário Camboriú"
+    )
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "caracteristicas",
+      direction: "forward",
+      habitation: {
+        area_privativa: "80",
+        dormitorios: "2",
+        banheiros: "1",
+        vagas_garagem: "1",
+        caracteristicas_imovel: ["Sacada"]
+      }
+    }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Informe a ocupação do imóvel.")
+    expect(response.body).to include("Informe a situação do imóvel.")
+
+    intake.update!(ocupacao_status: "Desocupado", situacao: "Usado", intake_step: "visitas")
+    patch admin_captacao_path(intake), params: {
+      current_step: "visitas",
+      direction: "forward",
+      habitation: {
+        chaves_com: "",
+        dias_visitas: []
+      }
+    }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Informe onde estão as chaves.")
+    expect(response.body).to include("Informe os melhores dias/horários para visita.")
+  end
+
+  it "exige meio de garantia locatícia para captação de aluguel" do
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      status: "Aluguel",
+      intake_modalidade: "locacao_anual",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 8_000_00,
+      salute_rental_management_answer: "sim",
+      rental_guarantee_method: nil,
+      intake_step: "negociacao"
+    )
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "negociacao",
+      direction: "forward",
+      habitation: {
+        valor_locacao: "8.000,00",
+        valor_condominio: "500,00",
+        valor_iptu: "100,00",
+        salute_rental_management_answer: "sim",
+        rental_guarantee_method: ""
+      }
+    }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Informe o meio de garantia locatícia.")
   end
 
   it "envia, aprova e libera para o site quando a ficha está completa" do

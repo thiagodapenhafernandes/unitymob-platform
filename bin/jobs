@@ -1,6 +1,22 @@
 #!/usr/bin/env ruby
 
+# O worker local precisa mostrar o que esta processando no terminal.
+# Em producao o logger ja aponta para STDOUT via config/environments/production.rb.
+ENV["JOB_RUNTIME_LOGS"] = "1" if ENV["JOB_RUNTIME_LOGS"].nil?
+if ENV["JOBS_LOG_TO_STDOUT"].nil? && ENV.fetch("RAILS_ENV", "development") == "development"
+  ENV["JOBS_LOG_TO_STDOUT"] = "1"
+end
+
+$stdout.sync = true
+
 require_relative "../config/environment"
 require "solid_queue/cli"
+
+if defined?(JobRuntimeLogging)
+  JobRuntimeLogging.emit(
+    :info,
+    "[jobs] solid_queue starting pid=#{Process.pid} env=#{Rails.env} adapter=#{Rails.application.config.active_job.queue_adapter}"
+  )
+end
 
 SolidQueue::Cli.start(ARGV)

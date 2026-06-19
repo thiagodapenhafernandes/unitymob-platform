@@ -1,0 +1,72 @@
+<%= ax_form_section(title: "Financeiro e valores", eyebrow: "Negociação", class_name: "ax-form-section--finance") do %>
+  <div data-controller="rent-calculator">
+    <div class="ax-finance-primary-grid">
+      <div>
+        <%= ax_currency_field(form: f, method: :valor_venda_formatted, label: "Venda", data: { controller: "mask", mask_type_value: "currency" }) %>
+      </div>
+      <div>
+        <%= ax_currency_field(
+              form: f,
+              method: :valor_locacao_formatted,
+              label: "Aluguel",
+              data: { controller: "mask", mask_type_value: "currency", rent_calculator_target: "rent", action: "input->rent-calculator#calculate keyup->rent-calculator#calculate" }
+            ) %>
+      </div>
+      <div>
+        <%= ax_currency_field(
+              form: f,
+              method: :valor_condominio_formatted,
+              label: "Condomínio",
+              data: { controller: "mask", mask_type_value: "currency", rent_calculator_target: "condo", action: "input->rent-calculator#calculate keyup->rent-calculator#calculate" }
+            ) %>
+      </div>
+      <div>
+        <%= ax_currency_field(
+              form: f,
+              method: :valor_iptu_formatted,
+              label: "IPTU",
+              data: { controller: "mask", mask_type_value: "currency", rent_calculator_target: "iptu", action: "input->rent-calculator#calculate keyup->rent-calculator#calculate" }
+            ) %>
+      </div>
+    </div>
+
+    <div class="ax-finance-secondary-grid">
+      <div>
+        <%= ax_currency_field(
+              form: f,
+              method: :valor_alugado_terceiros_formatted,
+              label: "Alugado por terceiros",
+              tooltip: "Use este valor quando o cadastro estiver como Alugado terceiros.",
+              data: { controller: "mask", mask_type_value: "currency" }
+            ) %>
+      </div>
+      <div>
+        <%= ax_currency_field(
+              form: f,
+              method: :valor_vendido_terceiros_formatted,
+              label: "Vendido por terceiros",
+              tooltip: "Use este valor quando o cadastro estiver como Vendido terceiros.",
+              data: { controller: "mask", mask_type_value: "currency" }
+            ) %>
+      </div>
+      <div>
+        <%= ax_field_label(nil, nil, text: "Venda anterior") %>
+        <%= ax_input_group(prefix: "R$") do %>
+          <input type="text" class="ax-control ax-readonly-input" value="<%= number_to_currency(f.object.valor_venda_anterior_cents.to_i / 100.0, unit: '') %>" readonly>
+        <% end %>
+      </div>
+      <div>
+        <%= ax_currency_field(form: f, method: :valor_por_m2_formatted, label: "Vlr M² - Venda", input_class: "ax-readonly-input", readonly: true) %>
+      </div>
+      <div>
+        <%= ax_field_label(f, :valor_total_aluguel_cents, text: "*Vlr total aluguel") %>
+        <%= ax_input_group(prefix: "R$") do %>
+          <input type="text" class="ax-control ax-readonly-input ax-readonly-input--success"
+                 value="<%= number_to_currency(f.object.valor_total_aluguel_cents.to_i / 100.0, unit: '', separator: ',', delimiter: '.') %>"
+                 readonly
+                 data-rent-calculator-target="total">
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

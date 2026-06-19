@@ -30,15 +30,22 @@ FactoryBot.define do
       nome_empreendimento { "Residencial Teste" }
       proprietario { "Proprietário Teste" }
       proprietario_celular { "(47) 99999-0000" }
-      observacoes_visitas { "Cidade do proprietário: Balneário Camboriú" }
       valor_venda_cents { 1_000_000_00 }
       valor_condominio_cents { 500_00 }
       valor_iptu_cents { 100_00 }
       area_privativa_m2 { 80 }
       dormitorios_qtd { 2 }
+      vagas_qtd { 1 }
+      ocupacao_status { "Desocupado" }
+      situacao { "Usado" }
       caracteristicas { ["Sacada"] }
       infra_estrutura { ["Piscina"] }
       aceita_permuta_answer { "nao" }
+      rental_guarantee_method { "Seguro fiança" }
+      key_location { "Proprietário" }
+      observacoes_visitas do
+        "Cidade do proprietário: Balneário Camboriú\nDias/horários para visita: Seg, Manhã"
+      end
       photo_flow_choice { "schedule" }
       photo_session_requested_at { 1.day.from_now }
     end

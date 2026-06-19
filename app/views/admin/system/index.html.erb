@@ -1,0 +1,62 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Sistema</strong>
+<% end %>
+
+<%
+  fmt = ->(v) { v.nil? ? "—" : number_with_delimiter(v) }
+%>
+
+<div class="ax-system">
+  <header class="ax-dashboard-command ax-property-form-command">
+    <div class="ax-dashboard-command__main">
+      <span class="ax-dashboard-command__eyebrow">Admin do Sistema</span>
+      <h1>Painel do sistema</h1>
+      <p>Métricas da aplicação e operadores com acesso de sistema. Este nível está acima do Admin da Conta.</p>
+    </div>
+    <div class="ax-dashboard-command__status">
+      <%= ax_badge("#{@system_admins.size} admins do sistema", tone: :blue) %>
+    </div>
+  </header>
+
+  <div class="ax-metric-grid">
+    <%= ax_metric_card(label: "Usuários", value: fmt.call(@metrics[:admin_users]),
+          badge: ax_badge("#{fmt.call(@metrics[:active_users])} ativos", tone: :green, dot: true)) %>
+    <%= ax_metric_card(label: "Admins do Sistema", value: fmt.call(@metrics[:system_admins]),
+          hint: "Acima da conta · podem impersonar qualquer um") %>
+    <%= ax_metric_card(label: "Perfis de acesso", value: fmt.call(@metrics[:profiles])) %>
+    <%= ax_metric_card(label: "Imóveis", value: fmt.call(@metrics[:habitations])) %>
+    <%= ax_metric_card(label: "Leads", value: fmt.call(@metrics[:leads])) %>
+    <%= ax_metric_card(label: "Proprietários", value: fmt.call(@metrics[:proprietors])) %>
+    <%= ax_metric_card(label: "Arquivos (storage)", value: fmt.call(@metrics[:storage_blobs])) %>
+    <%= ax_metric_card(label: "Jobs pendentes", value: fmt.call(@metrics[:jobs_pending]),
+          badge: (@metrics[:jobs_failed].to_i.positive? ? ax_badge("#{fmt.call(@metrics[:jobs_failed])} falhos", tone: :red, dot: true) : nil)) %>
+    <%= ax_metric_card(label: "Logins hoje", value: fmt.call(@metrics[:logins_today])) %>
+  </div>
+
+  <%= ax_operational_panel(eyebrow: "Operadores", title: "Admins do Sistema") do %>
+    <p class="ax-page-subtitle tw-mb-3">
+      Operadores da aplicação. Têm todos os poderes de admin, acesso a este painel e podem
+      acessar como (impersonar) qualquer usuário pela tela de <%= link_to "Usuários", admin_admin_users_path, class: "tw-text-primary" %>.
+    </p>
+    <% if @system_admins.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead><tr><th>Nome</th><th>E-mail</th><th style="width:120px">Status</th></tr></thead>
+          <tbody>
+            <% @system_admins.each do |u| %>
+              <tr>
+                <td class="ax-strong"><%= link_to u.name, edit_admin_admin_user_path(u) %></td>
+                <td><%= u.email %></td>
+                <td><%= ax_badge(u.active? ? "Ativo" : "Inativo", tone: u.active? ? :green : :gray, dot: true) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <%= ax_empty_state(title: "Nenhum admin do sistema", description: "Conceda o acesso de sistema no cadastro de um usuário.", icon: "shield-lock") %>
+    <% end %>
+  <% end %>
+</div>

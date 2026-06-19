@@ -31,7 +31,7 @@
     color: #3f2d00;
   }
   .heatmap-table tbody tr:hover td {
-    outline: 1px solid #0d6efd;
+    outline: 1px solid var(--admin-primary);
   }
   .heatmap-table tfoot td {
     font-weight: 700;
@@ -40,22 +40,22 @@
   }
 </style>
 
-<div class="card shadow-sm border-0">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-      <h6 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Leads por Corretor</h6>
-      <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "d-flex gap-2 flex-wrap align-items-center" do %>
+<div class="ax-card">
+  <div class="ax-card__body">
+    <div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
+      <h6 class="tw-font-bold tw-flex tw-items-center tw-gap-2"><i class="bi bi-grid-3x3-gap-fill tw-text-primary"></i>Leads por Corretor</h6>
+      <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "tw-flex tw-gap-2 tw-flex-wrap tw-items-center" do %>
         <%= hidden_field_tag :start_date, @period_start %>
         <%= hidden_field_tag :end_date,   @period_end %>
         <%= hidden_field_tag :month,      @month_filter %>
         <%= select_tag :lead_category,
                        options_for_select([["Categoria: Todos", ""]] + @lead_categories.map { |c| [c.to_s.humanize, c] }, params[:lead_category]),
-                       class: "form-select form-select-sm", onchange: "this.form.submit()" %>
+                       class: "ax-control ax-control--sm", onchange: "this.form.submit()" %>
         <%= select_tag :lead_source,
                        options_for_select([["Fonte: Todos", ""]] + @lead_sources.map { |s| [s.to_s, s] }, params[:lead_source]),
-                       class: "form-select form-select-sm", onchange: "this.form.submit()" %>
+                       class: "ax-control ax-control--sm", onchange: "this.form.submit()" %>
         <% if params[:lead_category].present? || params[:lead_source].present? %>
-          <%= link_to "Limpar", dashboard_admin_captacoes_path(start_date: @period_start, end_date: @period_end, month: @month_filter), class: "btn btn-sm btn-outline-secondary" %>
+          <%= link_to "Limpar", dashboard_admin_captacoes_path(start_date: @period_start, end_date: @period_end, month: @month_filter), class: "ax-btn ax-btn--ghost ax-btn--sm" %>
         <% end %>
       <% end %>
     </div>
@@ -80,7 +80,7 @@
                 <% @heatmap_dates.each do |d| %>
                   <% count = @heatmap_matrix[user.id][d] %>
                   <% if count.zero? %>
-                    <td class="text-muted">·</td>
+                    <td class="tw-text-ink-muted">·</td>
                   <% else %>
                     <% intensity = @heatmap_max.positive? ? (count.to_f / @heatmap_max) : 0 %>
                     <% alpha = 0.25 + (intensity * 0.75) %>
@@ -89,7 +89,7 @@
                     </td>
                   <% end %>
                 <% end %>
-                <td class="fw-bold"><%= user_total %></td>
+                <td class="tw-font-bold"><%= user_total %></td>
               </tr>
             <% end %>
           </tbody>
@@ -101,15 +101,15 @@
                 <td><%= col_total.zero? ? "·" : col_total %></td>
               <% end %>
               <% grand_total = @heatmap_corretores.sum { |u| @heatmap_matrix[u.id].values.sum } %>
-              <td class="text-primary"><%= grand_total %></td>
+              <td class="tw-text-primary"><%= grand_total %></td>
             </tr>
           </tfoot>
         </table>
       </div>
     <% else %>
-      <div class="text-center text-muted py-5">
+      <div class="tw-text-center tw-text-ink-muted" style="padding-top:3rem;padding-bottom:3rem;">
         <i class="bi bi-inbox" style="font-size: 2.5rem;"></i>
-        <p class="mt-2 mb-0">Nenhum lead atribuído a corretor no período.</p>
+        <p class="tw-mt-2">Nenhum lead atribuído a corretor no período.</p>
       </div>
     <% end %>
   </div>

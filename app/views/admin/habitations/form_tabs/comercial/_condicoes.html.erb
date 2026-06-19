@@ -1,0 +1,47 @@
+<%= ax_form_section(title: "Condições comerciais", eyebrow: "Contrato") do %>
+  <div class="ax-conditions-top-grid">
+    <div>
+      <%= ax_text_field(form: f, method: :matricula_imovel, label: "Nº de matrícula") %>
+    </div>
+    <div>
+      <%= ax_text_field(form: f, method: :zona, label: "Zona") %>
+    </div>
+    <div>
+      <%= ax_text_field(form: f, method: :inscricao_imobiliaria, label: "Inscrição imobiliária") %>
+    </div>
+  </div>
+
+  <div class="ax-conditions-chip-grid">
+    <%= ax_toggle_chip(f, :aceita_doacao_flag, label: "Aceita doação", class_name: "ax-toggle-chip--full") %>
+    <%= ax_toggle_chip(f, :aceita_financiamento_flag, label: "Financiamento", class_name: "ax-toggle-chip--full") %>
+  </div>
+
+  <%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
+    <div class="ax-span-6">
+      <%= ax_field_group(title: "Negociação") do %>
+        <%= ax_text_field(form: f, method: :condicoes_negociacao, label: "Condições de negociação", type: :textarea, rows: 3) %>
+      <% end %>
+    </div>
+    <div class="ax-span-6">
+      <%= ax_field_group(title: "Valores") do %>
+        <%= ax_field_grid do %>
+          <div class="ax-span-6">
+            <%= ax_currency_field(form: f, method: :valor_venda_anterior_formatted, label: "Venda anterior", data: { controller: "mask", mask_type_value: "currency" }) %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_currency_field(form: f, method: :valor_locacao_anterior_formatted, label: "Aluguel anterior", data: { controller: "mask", mask_type_value: "currency" }) %>
+          </div>
+          <div class="ax-span-12">
+            <%= ax_currency_field(form: f, method: :valor_promocional_formatted, label: "Valor promocional", data: { controller: "mask", mask_type_value: "currency" }) %>
+          </div>
+          <div class="ax-span-12 ax-field-align-end">
+            <label class="ax-toggle-chip ax-toggle-chip--full <%= 'is-checked' if f.object.valor_promocional_cents.to_i > 0 %>">
+              <%= check_box_tag :valor_promocional_indicador, "1", f.object.valor_promocional_cents.to_i > 0, class: "ax-toggle-chip__input", disabled: true %>
+              <span class="ax-toggle-chip__label">Valor promocional</span>
+            </label>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

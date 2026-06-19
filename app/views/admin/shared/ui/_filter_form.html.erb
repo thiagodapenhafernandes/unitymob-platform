@@ -1,0 +1,12 @@
+<section class="ax-filter-form <%= local_assigns[:class_name] %>">
+  <div class="ax-filter-form__fields">
+    <%= fields %>
+  </div>
+
+  <div class="ax-filter-form__actions">
+    <%= submit_tag submit_label, class: "ax-btn ax-btn--primary" %>
+    <% if reset_path.present? %>
+      <%= link_to reset_label, reset_path, class: "ax-btn" %>
+    <% end %>
+  </div>
+</section>

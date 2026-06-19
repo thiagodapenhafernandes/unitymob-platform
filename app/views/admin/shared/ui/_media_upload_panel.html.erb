@@ -1,0 +1,31 @@
+<% panel_classes = ["ax-media-upload-panel", class_name].compact_blank.join(" ") %>
+
+<div class="<%= panel_classes %>">
+  <% if controls.present? %>
+    <div class="ax-media-upload-panel__controls">
+      <%= controls %>
+    </div>
+  <% end %>
+
+  <div class="ax-media-upload-panel__drop">
+    <span class="ax-media-upload-panel__icon" aria-hidden="true">
+      <i class="bi bi-<%= icon %>"></i>
+    </span>
+    <div class="ax-media-upload-panel__copy">
+      <strong><%= title %></strong>
+      <span><%= description %></span>
+    </div>
+    <% if actions.present? %>
+      <div class="ax-media-upload-panel__actions">
+        <%= actions %>
+      </div>
+    <% end %>
+    <% if feedback.present? %>
+      <%= feedback %>
+    <% end %>
+  </div>
+
+  <% if hidden_fields.present? %>
+    <%= hidden_fields %>
+  <% end %>
+</div>

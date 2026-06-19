@@ -183,7 +183,7 @@
   <%= raw({
     "@context" => "https://schema.org",
     "@type" => "ItemList",
-    "name" => @page_title.presence || "Imóveis Salute Imóveis",
+    "name" => @page_title.presence || "Imóveis #{@layout_setting&.site_name.presence || 'Unitymob'}",
     "numberOfItems" => @habitations.size,
     "itemListElement" => @habitations.each_with_index.map do |property, index|
       item = {

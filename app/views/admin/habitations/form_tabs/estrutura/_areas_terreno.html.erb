@@ -1,0 +1,35 @@
+<%= ax_field_grid do %>
+  <div class="ax-span-2">
+    <%= ax_measure_field(form: f, method: :area_privativa_m2, label: "Área privativa", unit: "m²") %>
+  </div>
+  <div class="ax-span-2">
+    <%= ax_measure_field(form: f, method: :area_total_m2, label: "Área total", unit: "m²") %>
+  </div>
+  <div class="ax-span-2">
+    <%= ax_measure_field(form: f, method: :area_terreno_m2, label: "Área terreno", unit: "m²") %>
+  </div>
+  <div class="ax-span-2">
+    <%= ax_text_field(form: f, method: :dimensoes_terreno, label: "Dimensões terreno", placeholder: "Ex: 12x30") %>
+  </div>
+  <div class="ax-span-2">
+    <%= ax_select_field(
+          form: f,
+          method: :topografia,
+          label: "Topografia",
+          choices: Habitation::TOPOGRAFIA_OPTIONS,
+          select_options: { include_blank: true },
+          html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+        ) %>
+  </div>
+  <div class="ax-span-2">
+    <%= ax_select_field(
+          form: f,
+          method: :face,
+          label: "Face",
+          choices: Habitation::FACES,
+          select_options: { include_blank: true },
+          html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } },
+          tooltip: "Posição solar do imóvel."
+        ) %>
+  </div>
+<% end %>

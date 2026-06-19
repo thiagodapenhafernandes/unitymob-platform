@@ -1,0 +1,43 @@
+<%# locals: lead %>
+<% modal_id = "leadLogContactModal" %>
+<% form_id = "leadLogContactForm" %>
+
+<% lead_log_contact_body = capture do %>
+  <%= form_with url: log_contact_admin_lead_path(lead), method: :post, id: form_id, local: true do %>
+    <div class="tw-grid tw-gap-3">
+      <div>
+        <%= ax_field_label(nil, nil, text: "Tipo de contato") %>
+        <%= select_tag "contact_kind",
+              options_for_select([
+                ["Ligação", "ligacao"],
+                ["WhatsApp", "whatsapp"],
+                ["E-mail", "email"],
+                ["Visita", "visita"],
+                ["Nota interna", "nota"]
+              ], "ligacao"),
+              class: "ax-select" %>
+      </div>
+      <div>
+        <%= ax_field_label(nil, nil, text: "O que aconteceu?") %>
+        <%= text_area_tag "body", nil, class: "ax-textarea", rows: 3, required: true,
+              placeholder: "Resumo da conversa, próximos passos..." %>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<% lead_log_contact_footer = capture do %>
+  <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Cancelar</button>
+  <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary" form="<%= form_id %>">Registrar</button>
+<% end %>
+
+<button type="button" class="ax-btn ax-btn--sm" data-ax-modal-open="#<%= modal_id %>">
+  <i class="bi bi-pencil-square ax-ico"></i><span>Registrar contato</span>
+</button>
+
+<%= ax_quick_modal(
+      id: modal_id,
+      title: "Registrar contato",
+      body: lead_log_contact_body,
+      footer: lead_log_contact_footer
+    ) %>

@@ -1,102 +1,62 @@
-<div class="admin-header">
-  <div class="admin-header-title">
-    <h1><%= @page_title %></h1>
-    <p><%= @page_subtitle %></p>
+<%# Landing Pages — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak %>
+<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
+  <div>
+    <h1 class="ax-page-title"><%= @page_title %></h1>
+    <p class="ax-page-subtitle"><%= @page_subtitle %></p>
   </div>
-  <div class="admin-header-actions">
-    <%= link_to new_admin_landing_page_path, class: "btn-primary" do %>
-      <i class="bi bi-plus-lg me-1"></i> Nova Página
-    <% end %>
-  </div>
+  <%= link_to new_admin_landing_page_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+    <i class="bi bi-plus-lg ax-ico"></i><span>Nova página</span>
+  <% end %>
 </div>
 
-<div class="card-luxury">
-  <div class="card-header">
-    <h5 class="mb-0">Páginas Existentes</h5>
-  </div>
-  <div class="table-responsive">
-    <table class="table-premium">
-      <thead>
+<div class="ax-table-wrap">
+  <table class="ax-table">
+    <thead>
+      <tr>
+        <th>Título</th>
+        <th style="width:220px">URL (Slug)</th>
+        <th style="width:96px">Status</th>
+        <th>Filtros principais</th>
+        <th class="ax-num" style="width:90px">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @landing_pages.each do |page| %>
         <tr>
-          <th>Título</th>
-          <th>URL (Slug)</th>
-          <th>Status</th>
-          <th>Filtros Principais</th>
-          <th class="text-end">Ações</th>
+          <td class="ax-strong"><%= page.title %></td>
+          <td><code class="tw-text-primary">/<%= page.slug %></code></td>
+          <td>
+            <% if page.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativa</span>
+            <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Offline</span><% end %>
+          </td>
+          <td>
+            <% filters = page.filter_params || {} %>
+            <div class="tw-flex tw-flex-wrap tw-gap-1">
+              <% if (cats = Array.wrap(filters['category']).reject(&:blank?)).any? %><span class="ax-badge ax-badge--gray"><%= cats.size %> Cats</span><% end %>
+              <% if (cities = Array.wrap(filters['city']).reject(&:blank?)).any? %><span class="ax-badge ax-badge--gray"><%= cities.size %> Cidades</span><% end %>
+              <% if (neighborhoods = Array.wrap(filters['neighborhood']).reject(&:blank?)).any? %><span class="ax-badge ax-badge--gray"><%= neighborhoods.size %> Bairros</span><% end %>
+              <% if (chars = Array.wrap(filters['characteristics']).reject(&:blank?)).any? %><span class="ax-badge ax-badge--gray"><%= chars.size %> Caracs</span><% end %>
+              <% if filters.values.flatten.all?(&:blank?) %><span class="tw-text-ink-faint tw-text-2xs">Sem filtros</span><% end %>
+            </div>
+          </td>
+          <td class="ax-num">
+            <span class="tw-inline-flex tw-gap-0.5">
+              <% if page.slug.present? %><%= link_to public_landing_page_path(page.slug), target: "_blank", class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %><% end %>
+              <%= link_to edit_admin_landing_page_path(page), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+              <%= button_to admin_landing_page_path(page), method: :delete, form_class: "tw-inline", form: { data: { turbo_confirm: 'Tem certeza que deseja excluir esta página?' } }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
+            </span>
+          </td>
         </tr>
-      </thead>
-      <tbody>
-        <% if @landing_pages.any? %>
-          <% @landing_pages.each do |page| %>
-            <tr>
-              <td>
-                <div class="fw-bold text-dark"><%= page.title %></div>
-              </td>
-              <td>
-                <code class="text-primary">/<%= page.slug %></code>
-              </td>
-              <td>
-                <% if page.active? %>
-                  <span class="badge-pill badge-soft-success">Ativa</span>
-                <% else %>
-                  <span class="badge-pill badge-soft-secondary">Offline</span>
-                <% end %>
-              </td>
-              <td>
-                <% filters = page.filter_params || {} %>
-                <div class="d-flex flex-wrap gap-1">
-                  <% if (cats = Array.wrap(filters['category']).reject(&:blank?)).any? %>
-                    <span class="badge border text-dark extra-small"><%= cats.size %> Cats</span>
-                  <% end %>
-                  <% if (cities = Array.wrap(filters['city']).reject(&:blank?)).any? %>
-                    <span class="badge border text-dark extra-small"><%= cities.size %> Cidades</span>
-                  <% end %>
-                  <% if (neighborhoods = Array.wrap(filters['neighborhood']).reject(&:blank?)).any? %>
-                    <span class="badge border text-dark extra-small"><%= neighborhoods.size %> Bairros</span>
-                  <% end %>
-                  <% if (chars = Array.wrap(filters['characteristics']).reject(&:blank?)).any? %>
-                    <span class="badge border text-dark extra-small"><%= chars.size %> Caracs</span>
-                  <% end %>
-                  <% if filters.values.flatten.all?(&:blank?) %>
-                    <span class="text-muted small italic">Sem filtros</span>
-                  <% end %>
-                </div>
-              </td>
-              <td class="text-end">
-                <div class="btn-action-group">
-                  <% if page.slug.present? %>
-                    <%= link_to public_landing_page_path(page.slug), target: "_blank", class: "btn-action btn-action-view" do %>
-                      <i class="bi bi-eye"></i> Ver
-                    <% end %>
-                  <% end %>
-                  <%= link_to edit_admin_landing_page_path(page), class: "btn-action btn-action-edit" do %>
-                    <i class="bi bi-pencil"></i> Editar
-                  <% end %>
-                  <%= button_to admin_landing_page_path(page), 
-                              method: :delete, 
-                              form: { data: { turbo_confirm: 'Tem certeza que deseja excluir esta página?' } },
-                              class: "btn-action btn-action-delete" do %>
-                    <i class="bi bi-trash"></i>
-                  <% end %>
-                </div>
-              </td>
-            </tr>
-          <% end %>
-        <% else %>
-          <tr>
-            <td colspan="5" class="text-center py-5">
-              <div class="text-muted">
-                <i class="bi bi-file-earmark-plus text-4xl mb-3 d-block"></i>
-                Nenhuma página SEO criada ainda.
-              </div>
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  </div>
+      <% end %>
+      <% if @landing_pages.empty? %>
+        <tr><td colspan="5"><div class="ax-empty">
+          <i class="bi bi-file-earmark-plus tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>Nenhuma página SEO criada ainda.
+        </div></td></tr>
+      <% end %>
+    </tbody>
+  </table>
 </div>
 
-<div class="mt-4">
-  <%= will_paginate @landing_pages, renderer: WillPaginate::ActionView::BootstrapLinkRenderer %>
-</div>
+<% if @landing_pages.respond_to?(:total_pages) && @landing_pages.total_pages > 1 %>
+  <%= ax_pagination @landing_pages, params: request.query_parameters %>
+<% end %>

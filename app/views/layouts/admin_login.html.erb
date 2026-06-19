@@ -16,7 +16,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
+    <%= stylesheet_link_tag "ax_toast" %>
+
     <style>
       :root {
         --primary: #1e3a8a;
@@ -297,7 +298,7 @@
         </div>
         
         <div class="login-body">
-          <%= render 'shared/flash_messages' if flash.any? %>
+          <%= render 'shared/flash_messages', toast: true if flash.any? %>
           <%= yield %>
         </div>
       </div>

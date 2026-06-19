@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title><%= content_for?(:title) ? yield(:title) : "Proposta comercial" %></title>
+  <% brand = (@layout_setting.respond_to?(:admin_primary_color) && @layout_setting&.admin_primary_color.presence) || "#0F766E" %>
+  <style>
+    :root { --brand: <%= brand %>; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+           background: #0b1220; color: #1f2937; min-height: 100vh;
+           display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px 48px; }
+    .pp-wrap { width: 100%; max-width: 480px; }
+    .pp-brandbar { text-align: center; color: #cbd5e1; font-size: 13px; margin-bottom: 14px; letter-spacing: .03em; }
+    .pp-card { background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+    .pp-hero { background: linear-gradient(135deg, var(--brand), #0b3b36); color: #fff; padding: 22px 22px 18px; }
+    .pp-hero small { opacity: .85; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+    .pp-hero h1 { font-size: 20px; margin-top: 4px; font-weight: 700; }
+    .pp-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background:#e5e7eb; }
+    .pp-body { padding: 20px 22px; }
+    .pp-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+    .pp-row:last-child { border-bottom: 0; }
+    .pp-row .k { color: #6b7280; font-size: 14px; }
+    .pp-row .v { font-weight: 700; font-size: 16px; }
+    .pp-big { font-size: 26px; font-weight: 800; color: var(--brand); }
+    .pp-cond { margin-top: 14px; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: #374151; white-space: pre-wrap; }
+    .pp-meta { margin-top: 16px; font-size: 12.5px; color: #6b7280; }
+    .pp-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+    .pp-btn { display: block; text-align: center; padding: 13px; border-radius: 12px; font-weight: 700; font-size: 15px; border: 0; cursor: pointer; text-decoration: none; }
+    .pp-accept { background: var(--brand); color: #fff; }
+    .pp-refuse { background: #fff; color: #b91c1c; border: 1.5px solid #fecaca; }
+    .pp-status { margin-top: 18px; text-align: center; padding: 12px; border-radius: 12px; font-weight: 600; font-size: 14px; }
+    .pp-status.ok { background: #ecfdf5; color: #047857; }
+    .pp-status.no { background: #fef2f2; color: #b91c1c; }
+    .pp-status.exp { background: #fff7ed; color: #c2410c; }
+    .pp-viewed { text-align: center; font-size: 12px; color: #94a3b8; margin-top: 12px; }
+    .pp-footer { text-align: center; color: #64748b; font-size: 12px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="pp-wrap"><%= yield %></div>
+</body>
+</html>

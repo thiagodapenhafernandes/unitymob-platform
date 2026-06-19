@@ -21,6 +21,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
 
     <script>
@@ -145,12 +146,7 @@
     </style>
   </head>
   <body>
-    <% flash.each do |type, msg| %>
-      <% next if msg.blank? %>
-      <div class="alert alert-<%= type == 'notice' ? 'info' : 'warning' %> mb-0" style="border-radius: 0;">
-        <%= msg %>
-      </div>
-    <% end %>
+    <%= render 'shared/flash_messages', toast: true if flash.any? %>
 
     <div id="field-offline-banner" style="display: none; background: #fff3cd; color: #664d03; padding: .5rem 1rem; text-align: center; font-size: .875rem; border-bottom: 1px solid #ffe69c;">
       <i class="bi bi-wifi-off"></i> Você está offline — pings ficarão em fila.

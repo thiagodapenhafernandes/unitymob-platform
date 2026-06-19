@@ -1,0 +1,19 @@
+<%= turbo_frame_tag "admin_dashboard_charts" do %>
+  <article
+    class="ax-dashboard-panel ax-dashboard-panel--wide"
+    data-controller="dashboard-charts"
+    data-dashboard-charts-chart-url-value="<%= asset_path("chart.umd.min.js") %>"
+    data-dashboard-charts-leads-value="<%= json_escape(@leads_per_day.to_json) %>"
+    data-dashboard-charts-statuses-value="<%= json_escape(@leads_by_status.to_json) %>">
+    <div class="ax-dashboard-panel__header">
+      <div>
+        <span class="ax-dashboard-panel__eyebrow">Aquisição</span>
+        <h2><%= @is_admin_view ? "Leads — últimos 30 dias" : "Meus leads — últimos 30 dias" %></h2>
+      </div>
+      <%= ax_badge("#{@leads_last_30_days} total", tone: :blue) %>
+    </div>
+    <div class="ax-dashboard-chart ax-dashboard-chart--line">
+      <canvas id="leadsChart"></canvas>
+    </div>
+  </article>
+<% end %>

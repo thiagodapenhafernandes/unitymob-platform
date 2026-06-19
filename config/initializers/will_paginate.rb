@@ -31,5 +31,36 @@ module WillPaginate
         tag(:div, html, container_attributes)
       end
     end
+
+    class AxPaginationRenderer < LinkRenderer
+      protected
+
+      def html_container(html)
+        html
+      end
+
+      def page_number(page)
+        if page == current_page
+          tag(:em, page, class: "current", "aria-current" => "page")
+        else
+          link(page, page, rel: rel_value(page))
+        end
+      end
+
+      def gap
+        tag(:span, "...", class: "gap")
+      end
+
+      def previous_or_next_page(page, text, classname, aria_label = nil)
+        attributes = { class: classname }
+        attributes["aria-label"] = aria_label if aria_label.present?
+
+        if page
+          link(text, page, attributes)
+        else
+          tag(:span, text, class: "#{classname} disabled", "aria-disabled" => "true")
+        end
+      end
+    end
   end
 end

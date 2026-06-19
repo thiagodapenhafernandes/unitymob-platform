@@ -1,0 +1,33 @@
+<%
+  modal_classes = ["ax-quick-modal", "ax-quick-modal--#{size}", class_name].compact.join(" ")
+  label_id = "#{id}Label"
+  modal_data = data.to_h.deep_symbolize_keys
+  modal_data[:controller] = [modal_data[:controller], "ax-modal"].compact.join(" ")
+  modal_data[:ax_modal_target] = "overlay"
+  modal_data[:action] = [modal_data[:action], "click->ax-modal#backdropClose"].compact.join(" ")
+%>
+
+<%= tag.div class: modal_classes,
+            id:,
+            tabindex: "-1",
+            role: "presentation",
+            hidden: true,
+            aria: { labelledby: label_id, hidden: true },
+            data: modal_data do %>
+  <div class="ax-quick-modal__panel" role="dialog" aria-modal="true" aria-labelledby="<%= label_id %>">
+    <header class="ax-quick-modal__header">
+      <h5 class="ax-quick-modal__title" id="<%= label_id %>"><%= title %></h5>
+      <button type="button" class="ax-icon-btn" data-action="ax-modal#close" aria-label="Fechar">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </header>
+    <div class="ax-quick-modal__body">
+      <%= body %>
+    </div>
+    <% if footer.present? %>
+      <footer class="ax-quick-modal__footer">
+        <%= footer %>
+      </footer>
+    <% end %>
+  </div>
+<% end %>

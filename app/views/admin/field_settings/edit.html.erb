@@ -1,37 +1,34 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 mb-0"><i class="bi bi-toggles2 text-primary me-2"></i>Configurações de Campo (check-in)</h1>
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+  <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2"><i class="bi bi-toggles2 tw-text-primary"></i>Configurações de Campo (check-in)</h1>
 </div>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-body">
-    <h5 class="fw-bold mb-3">
-      <i class="bi bi-geo-alt-fill text-success me-2"></i>Feature check-in geolocalizado
+<div class="ax-card">
+  <div class="ax-card__body">
+    <h5 class="tw-font-bold tw-mb-3 tw-flex tw-items-center tw-gap-2">
+      <i class="bi bi-geo-alt-fill" style="color:#16a34a"></i>Feature check-in geolocalizado
     </h5>
 
-    <p class="text-muted small">
+    <p class="ax-page-subtitle">
       Quando <strong>ativada</strong>, o PWA <code>/field</code> aceita login dos corretores e as rotas <code>/field/*</code> respondem normalmente.
       Quando <strong>desativada</strong>, todas as rotas <code>/field/*</code> retornam 404 e o filtro de check-in
       em <code>/admin/distribution_rules</code> fica inoperante (regras funcionam como antes).
     </p>
 
     <%= form_with url: admin_field_settings_path, method: :patch, local: true do |f| %>
-      <div class="form-check form-switch fs-5 mb-4">
-        <%= check_box_tag :enabled, "1", @enabled, class: "form-check-input", id: "field_enabled" %>
-        <%= label_tag :field_enabled, "Check-in ativado", class: "form-check-label fw-bold" %>
-      </div>
+      <%= ax_switch_field(label: tag.span("Check-in ativado", class: "tw-font-bold"), name: :enabled, value: "1", checked: @enabled, id: "field_enabled", class_name: "tw-mb-4") %>
 
-      <div class="d-flex justify-content-end gap-2">
-        <%= link_to "Cancelar", admin_root_path, class: "btn btn-light border" %>
-        <%= f.submit "Salvar", class: "btn btn-primary px-4" %>
+      <div class="tw-flex tw-justify-end tw-gap-2">
+        <%= link_to "Cancelar", admin_root_path, class: "ax-btn ax-btn--ghost" %>
+        <%= f.submit "Salvar", class: "ax-btn ax-btn--primary" %>
       </div>
     <% end %>
   </div>
 </div>
 
-<div class="card border-0 shadow-sm mt-3">
-  <div class="card-body">
-    <h6 class="fw-bold"><i class="bi bi-info-circle-fill text-info me-2"></i>Checklist antes de ativar</h6>
-    <ul class="small mb-0">
+<div class="ax-card tw-mt-3">
+  <div class="ax-card__body">
+    <h6 class="tw-font-bold tw-flex tw-items-center tw-gap-2"><i class="bi bi-info-circle-fill" style="color:#2563eb"></i>Checklist antes de ativar</h6>
+    <ul class="tw-text-sm" style="margin-bottom:0">
       <li>Lojas cadastradas em <%= link_to "/admin/stores", admin_stores_path %> com coordenadas, raio e turnos.</li>
       <li>Corretores com <code>field_agent_enabled = true</code> + <code>default_store</code> + turnos vinculados.</li>
       <li>Worker <code>solid_queue</code> rodando com scheduler ativo (cron <code>recurring.yml</code>).</li>

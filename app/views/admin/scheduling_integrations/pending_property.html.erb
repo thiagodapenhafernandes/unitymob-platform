@@ -1,53 +1,63 @@
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="tw-flex tw-items-center tw-justify-between tw-mb-4">
   <div>
-    <%= link_to admin_scheduling_integration_path, class: "btn btn-sm btn-outline-secondary mb-3" do %>
-      <i class="bi bi-arrow-left me-1"></i>Voltar para agenda
+    <%= link_to admin_scheduling_integration_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-mb-3 tw-gap-2" do %>
+      <i class="bi bi-arrow-left"></i>Voltar para agenda
     <% end %>
-    <h1 class="h3 mb-1 text-gray-800"><%= @habitation.display_title %></h1>
-    <p class="text-muted mb-0"><%= [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank.join(" - ") %></p>
+    <h1 class="ax-page-title"><%= @habitation.display_title %></h1>
+    <p class="ax-page-subtitle"><%= [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank.join(" - ") %></p>
   </div>
 </div>
 
-<div class="row g-4">
-  <div class="col-lg-8">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white py-3">
-        <h5 class="fw-bold mb-0"><i class="bi bi-house me-2 text-primary"></i>Dados para fotografia</h5>
+<%= ax_field_grid do %>
+  <div class="ax-span-6">
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-house me-2 text-primary"></i>Dados para fotografia</h5>
       </div>
-      <div class="card-body p-4">
-        <dl class="row mb-0">
-          <dt class="col-sm-4">Código</dt>
-          <dd class="col-sm-8"><%= @habitation.codigo %></dd>
+      <div class="ax-card__body">
+        <dl class="mb-0">
+          <div class="tw-flex tw-gap-2 tw-mb-2">
+            <dt style="width:33%">Código</dt>
+            <dd class="tw-w-full mb-0"><%= @habitation.codigo %></dd>
+          </div>
 
-          <dt class="col-sm-4">Tipo</dt>
-          <dd class="col-sm-8"><%= [@habitation.categoria, @habitation.status].compact_blank.join(" · ") %></dd>
+          <div class="tw-flex tw-gap-2 tw-mb-2">
+            <dt style="width:33%">Tipo</dt>
+            <dd class="tw-w-full mb-0"><%= [@habitation.categoria, @habitation.status].compact_blank.join(" · ") %></dd>
+          </div>
 
-          <dt class="col-sm-4">Endereço</dt>
-          <dd class="col-sm-8"><%= [@habitation.endereco, @habitation.numero, @habitation.bairro, @habitation.cidade].compact_blank.join(" - ") %></dd>
+          <div class="tw-flex tw-gap-2 tw-mb-2">
+            <dt style="width:33%">Endereço</dt>
+            <dd class="tw-w-full mb-0"><%= [@habitation.endereco, @habitation.numero, @habitation.bairro, @habitation.cidade].compact_blank.join(" - ") %></dd>
+          </div>
 
-          <dt class="col-sm-4">Condomínio</dt>
-          <dd class="col-sm-8"><%= @habitation.nome_empreendimento.presence || "Não informado" %></dd>
+          <div class="tw-flex tw-gap-2 tw-mb-2">
+            <dt style="width:33%">Condomínio</dt>
+            <dd class="tw-w-full mb-0"><%= @habitation.nome_empreendimento.presence || "Não informado" %></dd>
+          </div>
 
-          <dt class="col-sm-4">Captador</dt>
-          <dd class="col-sm-8"><%= @habitation.admin_user&.name.presence || "Sem captador" %></dd>
+          <div class="tw-flex tw-gap-2">
+            <dt style="width:33%">Captador</dt>
+            <dd class="tw-w-full mb-0"><%= @habitation.admin_user&.name.presence || "Sem captador" %></dd>
+          </div>
         </dl>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-4">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white py-3">
-        <h5 class="fw-bold mb-0"><i class="bi bi-calendar2-check me-2 text-primary"></i>Agendamento</h5>
+  <div class="ax-span-4">
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-calendar2-check me-2 text-primary"></i>Agendamento</h5>
       </div>
-      <div class="card-body p-4">
+      <div class="ax-card__body">
         <% if @habitation.photo_session_requested_at.present? %>
-          <div class="h5 fw-bold mb-1"><%= l(@habitation.photo_session_requested_at, format: "%d/%m/%Y") %></div>
-          <div class="text-muted"><%= l(@habitation.photo_session_requested_at, format: "%H:%M") %></div>
+          <div class="h5 tw-font-bold tw-mb-1"><%= l(@habitation.photo_session_requested_at, format: "%d/%m/%Y") %></div>
+          <div class="tw-text-ink-muted"><%= l(@habitation.photo_session_requested_at, format: "%H:%M") %></div>
         <% else %>
-          <span class="badge bg-warning-subtle text-warning-emphasis">Sem horário definido</span>
+          <span class="ax-badge ax-badge--amber">Sem horário definido</span>
         <% end %>
       </div>
     </div>
   </div>
-</div>
+<% end %>

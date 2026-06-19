@@ -3,14 +3,10 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["template", "container", "modal", "typeSelect", "brokerSelect", "commissionTypeSelect", "commissionValueInput"]
 
-  connect() {
-    // We'll use getOrCreateInstance when needed to avoid dependency on global bootstrap at connect time
-  }
-
   showModal(event) {
-    // This method is now optional if using data-bs-toggle
     event.preventDefault()
     this.resetModal()
+    this.modalTarget.dispatchEvent(new CustomEvent("ax-modal:open", { bubbles: true }))
   }
 
   add(event) {
@@ -25,7 +21,7 @@ export default class extends Controller {
     const commissionValue = this.commissionValueInputTarget.value
 
     if (!roleValue || !brokerId) {
-      alert("Por favor, selecione o tipo e o corretor.")
+      window.axToast({ message: "Por favor, selecione o tipo e o corretor.", type: "warning" })
       return
     }
 
@@ -41,24 +37,13 @@ export default class extends Controller {
 
     this.containerTarget.insertAdjacentHTML('beforeend', content)
 
-    // Hide modal
-    const bootstrapElement = window.bootstrap || (typeof bootstrap !== 'undefined' ? bootstrap : null)
-    if (bootstrapElement && bootstrapElement.Modal) {
-      const modalInstance = bootstrapElement.Modal.getOrCreateInstance(this.modalTarget)
-      if (modalInstance) modalInstance.hide()
-    } else if (this.modalTarget) {
-      // Fallback if bootstrap is not directly accessible - this might happen in some ESM setups
-      // but usually the data attributes will handle it if we trigger a close button
-      const closeBtn = this.modalTarget.querySelector('[data-bs-dismiss="modal"]')
-      if (closeBtn) closeBtn.click()
-    }
-
+    this.modalTarget.dispatchEvent(new CustomEvent("ax-modal:close", { bubbles: true }))
     this.resetModal()
   }
 
   remove(event) {
     event.preventDefault()
-    const wrapper = event.currentTarget.closest(".nested-fields")
+    const wrapper = event.currentTarget.closest(".nested-fields, .ax-record-item")
     if (!wrapper) return
 
     if (wrapper.dataset.newRecord === "true") {
@@ -71,14 +56,13 @@ export default class extends Controller {
   }
 
   resetModal() {
-    this.typeSelectTarget.value = ""
-    this.brokerSelectTarget.value = ""
-    this.commissionTypeSelectTarget.value = ""
-    this.commissionValueInputTarget.value = ""
+    ;[this.typeSelectTarget, this.brokerSelectTarget, this.commissionTypeSelectTarget].forEach((select) => {
+      select.value = ""
 
-    // If using TomSelect, we might need to reset it
-    if (this.brokerSelectTarget.tomselect) {
-      this.brokerSelectTarget.tomselect.clear()
-    }
+      if (select.tomselect) {
+        select.tomselect.clear()
+      }
+    })
+    this.commissionValueInputTarget.value = ""
   }
 }

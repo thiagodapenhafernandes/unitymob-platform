@@ -3,7 +3,8 @@
 module Admin
   module Field
     class CheckInsController < Admin::BaseController
-      before_action :require_admin!, only: [:force_check_out]
+      before_action -> { check_permission!(:view, :field_checkins) }
+      before_action -> { check_permission!(:manage, :field_checkins) }, only: %i[force_check_out]
       before_action :set_check_in, only: [:show, :force_check_out]
 
       def index

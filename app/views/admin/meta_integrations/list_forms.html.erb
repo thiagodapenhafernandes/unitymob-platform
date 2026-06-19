@@ -1,21 +1,21 @@
 <turbo-frame id="<%= @frame_id %>">
   <% if @forms.any? %>
     <% if @page_number == 1 %>
-      <div class="d-flex justify-content-between align-items-center ms-4 mt-2 mb-1">
-        <span class="extra-small text-muted">
+      <div class="tw-flex tw-justify-between tw-items-center ms-4 tw-mt-2 mb-1">
+        <span class="extra-small tw-text-ink-muted">
           Exibindo <strong><%= [@forms_per_page, @forms_total_count].min %></strong> de <strong><%= @forms_total_count %></strong> formulários
         </span>
       </div>
     <% end %>
 
-    <ul class="list-unstyled mb-0 ms-4 mt-2">
+    <ul class="list-unstyled mb-0 ms-4 tw-mt-2">
       <% @forms.each do |form| %>
-        <li class="d-flex justify-content-between align-items-center extra-small py-1 border-bottom-dashed">
-          <span>
-             <i class="bi bi-file-earmark-text me-1 text-muted"></i>
+        <li class="tw-flex tw-justify-between tw-items-center extra-small py-1 border-bottom-dashed">
+          <span class="tw-inline-flex tw-items-center tw-gap-1">
+             <i class="bi bi-file-earmark-text tw-text-ink-muted"></i>
              <%= form.name %>
           </span>
-          <span class="text-muted">
+          <span class="tw-text-ink-muted">
             <%= form.facebook_created_at&.to_date&.strftime("%d/%m") %>, <%= form.facebook_created_at&.strftime("%H:%M") %>
           </span>
         </li>
@@ -27,14 +27,14 @@
       <turbo-frame id="<%= next_frame_id %>"
                    src="<%= list_forms_admin_meta_integrations_path(page_id: @page.id, page: @next_page, frame_id: next_frame_id) %>"
                    loading="lazy">
-        <div class="d-flex justify-content-center py-3">
-          <div class="spinner-border spinner-border-sm text-primary" role="status">
+        <div class="tw-flex tw-justify-center py-3">
+          <div class="spinner-border spinner-border-sm tw-text-primary" role="status">
             <span class="visually-hidden">Carregando mais formulários...</span>
           </div>
         </div>
       </turbo-frame>
     <% end %>
   <% else %>
-    <p class="text-muted extra-small ms-4 mt-2 mb-0">Nenhum formulário encontrado para esta página.</p>
+    <p class="tw-text-ink-muted extra-small ms-4 tw-mt-2">Nenhum formulário encontrado para esta página.</p>
   <% end %>
 </turbo-frame>

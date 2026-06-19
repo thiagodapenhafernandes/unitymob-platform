@@ -1,0 +1,13 @@
+<%
+  field_classes = ["ax-field", "ax-relationship-select", class_name].compact.join(" ")
+  select_html_options = (html_options || {}).dup
+  select_html_options[:class] = ["ax-control", select_html_options[:class]].compact.join(" ")
+%>
+
+<div class="<%= field_classes %>">
+  <%= ax_field_label(form, method, text: label, tooltip:) %>
+  <%= ax_input_group(action:) do %>
+    <%= form.collection_select method, collection, value_method, text_method, select_options || {}, select_html_options %>
+  <% end %>
+  <%= render "admin/shared/ui/field_error", form: form, method: method %>
+</div>

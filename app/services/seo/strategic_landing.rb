@@ -23,7 +23,7 @@ module Seo
         label: "Pronto para morar",
         title: "Imóveis prontos para morar",
         params: { characteristics: ["pronto"] },
-        description: "Imóveis prontos para morar com opções selecionadas pela Salute Imóveis."
+        description: "Imóveis prontos para morar com opções selecionadas com curadoria."
       },
       "centro" => {
         label: "Centro",
@@ -112,9 +112,15 @@ module Seo
       DEVELOPMENT_PAGES.map { |slug, data| data.merge(slug: slug, path: "/empreendimentos/#{slug}") }
     end
 
+    def self.site_name
+      LayoutSetting.instance.site_name.presence || "Unitymob"
+    rescue StandardError
+      "Unitymob"
+    end
+
     def self.property_intro(data)
       <<~TEXT.squish
-        #{data[:title]} reúnem oportunidades selecionadas para quem busca morar, investir ou comparar opções com localização estratégica em Balneário Camboriú, Praia Brava e região. Nesta página, a Salute Imóveis organiza imóveis com características relevantes para facilitar uma busca mais objetiva, reduzindo o tempo de análise e aproximando você das alternativas com maior aderência ao seu momento.
+        #{data[:title]} reúnem oportunidades selecionadas para quem busca morar, investir ou comparar opções com localização estratégica em Balneário Camboriú, Praia Brava e região. Nesta página, a #{site_name} organiza imóveis com características relevantes para facilitar uma busca mais objetiva, reduzindo o tempo de análise e aproximando você das alternativas com maior aderência ao seu momento.
 
         Use os filtros para refinar por tipo de imóvel, faixa de valor, dormitórios, suítes, vagas e diferenciais como frente mar, quadra mar, mobiliado, pronto para morar ou lançamento. Se a intenção for investir, observe também localização, liquidez, padrão do empreendimento e potencial de valorização. Para morar, avalie rotina, proximidade da praia, serviços, escolas, comércio e mobilidade.
       TEXT

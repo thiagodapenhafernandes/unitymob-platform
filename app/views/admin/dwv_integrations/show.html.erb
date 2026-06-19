@@ -1,228 +1,225 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
   <div>
-    <h1 class="h3 mb-1 text-gray-800">Integração DWV</h1>
-    <p class="text-muted small mb-0">Lançamentos e estoque de empreendimentos das principais incorporadoras parceiras.</p>
+    <h1 class="ax-page-title">Integração DWV</h1>
+    <p class="ax-page-subtitle">Lançamentos e estoque de empreendimentos das principais incorporadoras parceiras.</p>
   </div>
   <div>
-    <a href="https://api.dwvapp.com.br/" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-box-arrow-up-right me-1"></i>Documentação API DWV
+    <a href="https://api.dwvapp.com.br/" target="_blank" rel="noopener" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2">
+      <i class="bi bi-box-arrow-up-right"></i>Documentação API DWV
     </a>
   </div>
 </div>
 
 <!-- Card "Sobre o produto DWV" -->
-<div class="card border-0 shadow-sm mb-4 bg-gradient-info-soft" style="background: linear-gradient(135deg, #e7f5ff 0%, #f8f9fa 100%);">
-  <div class="card-body p-4">
-    <div class="row g-4 align-items-start">
-      <div class="col-md-7">
-        <h5 class="fw-bold mb-3"><i class="bi bi-stars text-info me-2"></i>Sobre a DWV</h5>
-        <p class="small mb-2">
+<div class="ax-card tw-mb-4" style="background: linear-gradient(135deg, #e7f5ff 0%, #f8f9fa 100%);">
+  <div class="ax-card__body">
+    <%= ax_field_grid do %>
+      <div class="ax-span-6">
+        <h5 class="tw-font-bold tw-mb-3"><i class="bi bi-stars text-info me-2"></i>Sobre a DWV</h5>
+        <p class="tw-text-sm tw-mb-2">
           A <strong>DWV</strong> é uma plataforma B2B de imobiliárias que centraliza o estoque
           de <strong>lançamentos imobiliários</strong> das principais incorporadoras do Brasil.
           Quando uma imobiliária parceira (como nós) seleciona empreendimentos no painel da DWV,
           essa integração traz os imóveis selecionados automaticamente para o nosso CRM e site.
         </p>
-        <p class="small text-muted mb-0">
+        <p class="tw-text-sm tw-text-ink-muted mb-0">
           Os imóveis trazidos pela DWV são identificados internamente com a flag
           <code>imovel_dwv = "Sim"</code> e código no formato <code>DWV-XXXXXX</code>.
         </p>
       </div>
 
-      <div class="col-md-5">
-        <h6 class="fw-semibold small text-uppercase text-muted mb-2"><i class="bi bi-clock-history me-1"></i>Frequência de atualização</h6>
-        <ul class="list-unstyled small mb-0">
-          <li class="mb-2 d-flex align-items-start">
-            <i class="bi bi-arrow-clockwise text-success me-2 mt-1"></i>
+      <div class="ax-span-6">
+        <h6 class="tw-font-semibold tw-text-sm text-uppercase tw-text-ink-muted tw-mb-2"><i class="bi bi-clock-history me-1"></i>Frequência de atualização</h6>
+        <ul class="list-unstyled tw-text-sm mb-0">
+          <li class="tw-mb-2 tw-flex tw-items-start tw-gap-2">
+            <i class="bi bi-arrow-clockwise mt-1" style="color:#16a34a"></i>
             <div>
               <strong>Sincronização diária — todo dia às 04:20</strong><br>
-              <span class="text-muted">Importa novos imóveis ativos e desativa imóveis removidos da DWV. Job: <code>DwvSyncJob</code> (modo full).</span>
+              <span class="tw-text-ink-muted">Importa novos imóveis ativos e desativa imóveis removidos da DWV. Job: <code>DwvSyncJob</code> (modo full).</span>
             </div>
           </li>
-          <li class="mb-2 d-flex align-items-start">
-            <i class="bi bi-hand-index text-primary me-2 mt-1"></i>
+          <li class="tw-mb-2 tw-flex tw-items-start tw-gap-2">
+            <i class="bi bi-hand-index text-primary mt-1"></i>
             <div>
               <strong>Sincronização manual sob demanda</strong><br>
-              <span class="text-muted">Use os controles abaixo para forçar atualização imediata (imóvel único, 1 página ou tudo).</span>
+              <span class="tw-text-ink-muted">Use os controles abaixo para forçar atualização imediata (imóvel único, 1 página ou tudo).</span>
             </div>
           </li>
-          <li class="d-flex align-items-start">
-            <i class="bi bi-shield-check text-warning me-2 mt-1"></i>
+          <li class="tw-flex tw-items-start tw-gap-2">
+            <i class="bi bi-shield-check mt-1" style="color:#d97706"></i>
             <div>
               <strong>Limite da API: 100 req/min</strong><br>
-              <span class="text-muted">Pausa entre requisições configurada para respeitar o rate limit.</span>
+              <span class="tw-text-ink-muted">Pausa entre requisições configurada para respeitar o rate limit.</span>
             </div>
           </li>
         </ul>
       </div>
-    </div>
+    <% end %>
 
     <hr class="my-4">
 
-    <div class="row g-3">
-      <div class="col-12">
-        <h6 class="fw-semibold small text-uppercase text-muted mb-3"><i class="bi bi-arrow-down-up me-1"></i>O que esta integração faz</h6>
+    <%= ax_field_grid do %>
+      <div class="ax-span-12">
+        <h6 class="tw-font-semibold tw-text-sm text-uppercase tw-text-ink-muted tw-mb-3"><i class="bi bi-arrow-down-up me-1"></i>O que esta integração faz</h6>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="d-flex align-items-start gap-2">
-          <i class="bi bi-cloud-download text-success fs-4"></i>
+      <div class="ax-span-3">
+        <div class="tw-flex tw-items-start tw-gap-2">
+          <i class="bi bi-cloud-download" style="color:#16a34a;font-size:1.5rem"></i>
           <div>
-            <div class="fw-semibold small">Importa imóveis</div>
-            <small class="text-muted">Empreendimentos selecionados na DWV viram imóveis no nosso CRM com fotos, plantas, valores e características.</small>
+            <div class="tw-font-semibold tw-text-sm">Importa imóveis</div>
+            <small class="tw-text-ink-muted">Empreendimentos selecionados na DWV viram imóveis no nosso CRM com fotos, plantas, valores e características.</small>
           </div>
         </div>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="d-flex align-items-start gap-2">
-          <i class="bi bi-arrow-repeat text-info fs-4"></i>
+      <div class="ax-span-3">
+        <div class="tw-flex tw-items-start tw-gap-2">
+          <i class="bi bi-arrow-repeat text-info" style="font-size:1.5rem"></i>
           <div>
-            <div class="fw-semibold small">Atualiza valores e disponibilidade</div>
-            <small class="text-muted">Em cada sync, valores de venda/locação e flags de exibição são atualizados sem sobrescrever edições manuais.</small>
+            <div class="tw-font-semibold tw-text-sm">Atualiza valores e disponibilidade</div>
+            <small class="tw-text-ink-muted">Em cada sync, valores de venda/locação e flags de exibição são atualizados sem sobrescrever edições manuais.</small>
           </div>
         </div>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="d-flex align-items-start gap-2">
-          <i class="bi bi-x-circle text-danger fs-4"></i>
+      <div class="ax-span-3">
+        <div class="tw-flex tw-items-start tw-gap-2">
+          <i class="bi bi-x-circle" style="color:#dc2626;font-size:1.5rem"></i>
           <div>
-            <div class="fw-semibold small">Desativa imóveis removidos</div>
-            <small class="text-muted">Quando a DWV marca <code>deleted=true</code> ou <code>status=inactive</code>, o imóvel vira <strong>Suspenso</strong> e some do site.</small>
+            <div class="tw-font-semibold tw-text-sm">Desativa imóveis removidos</div>
+            <small class="tw-text-ink-muted">Quando a DWV marca <code>deleted=true</code> ou <code>status=inactive</code>, o imóvel vira <strong>Suspenso</strong> e some do site.</small>
           </div>
         </div>
       </div>
-      <div class="col-md-6 col-lg-3">
-        <div class="d-flex align-items-start gap-2">
-          <i class="bi bi-bag-check text-warning fs-4"></i>
+      <div class="ax-span-3">
+        <div class="tw-flex tw-items-start tw-gap-2">
+          <i class="bi bi-bag-check" style="color:#d97706;font-size:1.5rem"></i>
           <div>
-            <div class="fw-semibold small">Detecta vendas</div>
-            <small class="text-muted">Quando a DWV marca <code>auto_inactive</code> (sistema confirmou venda), o imóvel vira <strong>Vendido terceiros</strong>.</small>
+            <div class="tw-font-semibold tw-text-sm">Detecta vendas</div>
+            <small class="tw-text-ink-muted">Quando a DWV marca <code>auto_inactive</code> (sistema confirmou venda), o imóvel vira <strong>Vendido terceiros</strong>.</small>
           </div>
         </div>
       </div>
-    </div>
+    <% end %>
 
     <hr class="my-4">
 
-    <div class="row g-3">
-      <div class="col-md-4">
-        <div class="text-center p-3 bg-white rounded border">
-          <div class="display-6 fw-bold text-info"><%= Habitation.where(imovel_dwv: "Sim").count %></div>
-          <small class="text-muted text-uppercase">Total importados</small>
+    <%= ax_field_grid do %>
+      <div class="ax-span-4">
+        <div class="tw-text-center p-3 bg-white rounded border">
+          <div class="display-6 tw-font-bold text-info"><%= Habitation.where(imovel_dwv: "Sim").count %></div>
+          <small class="tw-text-ink-muted text-uppercase">Total importados</small>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="text-center p-3 bg-white rounded border">
-          <div class="display-6 fw-bold text-success"><%= Habitation.where(imovel_dwv: "Sim", exibir_no_site_flag: true).count %></div>
-          <small class="text-muted text-uppercase">Ativos no site</small>
+      <div class="ax-span-4">
+        <div class="tw-text-center p-3 bg-white rounded border">
+          <div class="display-6 tw-font-bold" style="color:#16a34a"><%= Habitation.where(imovel_dwv: "Sim", exibir_no_site_flag: true).count %></div>
+          <small class="tw-text-ink-muted text-uppercase">Ativos no site</small>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="text-center p-3 bg-white rounded border">
-          <div class="display-6 fw-bold text-secondary"><%= Habitation.where(imovel_dwv: "Sim", exibir_no_site_flag: false).count %></div>
-          <small class="text-muted text-uppercase">Desativados</small>
+      <div class="ax-span-4">
+        <div class="tw-text-center p-3 bg-white rounded border">
+          <div class="display-6 tw-font-bold text-secondary"><%= Habitation.where(imovel_dwv: "Sim", exibir_no_site_flag: false).count %></div>
+          <small class="tw-text-ink-muted text-uppercase">Desativados</small>
         </div>
       </div>
-    </div>
+    <% end %>
   </div>
 </div>
 
-<div class="row g-4">
-  <div class="col-lg-7">
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-header bg-white py-3">
-        <div class="d-flex justify-content-between align-items-center">
-          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-key me-2 text-primary"></i>Configuração de Acesso</h5>
-          <span class="badge <%= @dwv_connected ? 'bg-success' : 'bg-secondary' %>">
+<%= ax_field_grid do %>
+  <div class="ax-span-6">
+    <div class="ax-card tw-mb-4">
+      <div class="ax-card__header">
+        <div class="tw-flex tw-justify-between tw-items-center">
+          <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key me-2 text-primary"></i>Configuração de Acesso</h5>
+          <span class="ax-badge <%= @dwv_connected ? 'ax-badge--green' : 'ax-badge--gray' %>">
             <%= @dwv_connected ? "Conectado" : "Desconectado" %>
           </span>
         </div>
       </div>
-      <div class="card-body p-4">
+      <div class="ax-card__body">
         <%= form_with url: admin_dwv_integrations_path, method: :patch, scope: :dwv, local: true do |f| %>
-          <div class="form-check form-switch mb-3">
-            <%= f.check_box :enabled, { class: "form-check-input", checked: @dwv_enabled }, "true", "false" %>
-            <%= f.label :enabled, "Ativar integração DWV", class: "form-check-label" %>
-          </div>
+          <%= ax_switch_field(label: "Ativar integração DWV", form: f, method: :enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @dwv_enabled }) %>
 
-          <div class="mb-3">
-            <%= f.label :base_url, "URL base da API", class: "form-label fw-semibold" %>
-            <%= f.text_field :base_url, class: "form-control", value: @dwv_base_url, placeholder: "https://agencies.dwvapp.com.br" %>
+          <div class="tw-mb-3">
+            <%= f.label :base_url, "URL base da API", class: "ax-label tw-font-semibold" %>
+            <%= f.text_field :base_url, class: "ax-control", value: @dwv_base_url, placeholder: "https://agencies.dwvapp.com.br" %>
             <div class="form-text">Use produção (`https://agencies.dwvapp.com.br`) ou sandbox (`https://apisandbox.dwvapp.com.br`).</div>
           </div>
 
-          <div class="mb-3">
-            <%= f.label :api_token, "Token da API DWV", class: "form-label fw-semibold" %>
-            <%= f.password_field :api_token, class: "form-control", autocomplete: "off", placeholder: (@dwv_api_token.present? ? "Token já configurado. Preencha apenas para substituir." : "Cole o token fornecido pela DWV") %>
+          <div class="tw-mb-3">
+            <%= f.label :api_token, "Token da API DWV", class: "ax-label tw-font-semibold" %>
+            <%= f.password_field :api_token, class: "ax-control", autocomplete: "off", placeholder: (@dwv_api_token.present? ? "Token já configurado. Preencha apenas para substituir." : "Cole o token fornecido pela DWV") %>
           </div>
 
-          <div class="row g-2 mb-3">
-            <div class="col-md-6">
-              <%= f.label :sync_limit, "Itens por página", class: "form-label fw-semibold" %>
-              <%= f.number_field :sync_limit, class: "form-control", min: 1, max: 50, value: @dwv_sync_limit %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <%= f.label :sync_limit, "Itens por página", class: "ax-label tw-font-semibold" %>
+              <%= f.number_field :sync_limit, class: "ax-control", min: 1, max: 50, value: @dwv_sync_limit %>
             </div>
-            <div class="col-md-6">
-              <%= f.label :sync_max_pages, "Máximo de páginas", class: "form-label fw-semibold" %>
-              <%= f.number_field :sync_max_pages, class: "form-control", min: 1, max: 100, value: @dwv_sync_max_pages %>
+            <div class="ax-span-6">
+              <%= f.label :sync_max_pages, "Máximo de páginas", class: "ax-label tw-font-semibold" %>
+              <%= f.number_field :sync_max_pages, class: "ax-control", min: 1, max: 100, value: @dwv_sync_max_pages %>
             </div>
-          </div>
+          <% end %>
 
-          <div class="row g-2 mb-3">
-            <div class="col-md-6">
-              <%= f.label :request_pause_seconds, "Pausa entre requisições (s)", class: "form-label fw-semibold" %>
-              <%= f.number_field :request_pause_seconds, class: "form-control", min: 0.2, max: 2.0, step: 0.05, value: @dwv_request_pause_seconds %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <%= f.label :request_pause_seconds, "Pausa entre requisições (s)", class: "ax-label tw-font-semibold" %>
+              <%= f.number_field :request_pause_seconds, class: "ax-control", min: 0.2, max: 2.0, step: 0.05, value: @dwv_request_pause_seconds %>
               <div class="form-text">Recomendado: 0.70 para alto desempenho com segurança no limite da API.</div>
             </div>
-          </div>
+          <% end %>
 
-          <div class="row g-2 mb-3">
-            <div class="col-md-4">
-              <%= f.label :poll_processing_interval_ms, "Polling processing (ms)", class: "form-label fw-semibold" %>
-              <%= f.number_field :poll_processing_interval_ms, class: "form-control", min: 1000, max: 30000, step: 500, value: @dwv_poll_processing_interval_ms %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-4">
+              <%= f.label :poll_processing_interval_ms, "Polling processing (ms)", class: "ax-label tw-font-semibold" %>
+              <%= f.number_field :poll_processing_interval_ms, class: "ax-control", min: 1000, max: 30000, step: 500, value: @dwv_poll_processing_interval_ms %>
             </div>
-            <div class="col-md-4">
-              <%= f.label :poll_idle_interval_ms, "Polling idle (ms)", class: "form-label fw-semibold" %>
-              <%= f.number_field :poll_idle_interval_ms, class: "form-control", min: 2000, max: 60000, step: 500, value: @dwv_poll_idle_interval_ms %>
+            <div class="ax-span-4">
+              <%= f.label :poll_idle_interval_ms, "Polling idle (ms)", class: "ax-label tw-font-semibold" %>
+              <%= f.number_field :poll_idle_interval_ms, class: "ax-control", min: 2000, max: 60000, step: 500, value: @dwv_poll_idle_interval_ms %>
             </div>
-            <div class="col-md-4">
-              <%= f.label :poll_slow_interval_ms, "Polling final (ms)", class: "form-label fw-semibold" %>
-              <%= f.number_field :poll_slow_interval_ms, class: "form-control", min: 5000, max: 120000, step: 1000, value: @dwv_poll_slow_interval_ms %>
+            <div class="ax-span-4">
+              <%= f.label :poll_slow_interval_ms, "Polling final (ms)", class: "ax-label tw-font-semibold" %>
+              <%= f.number_field :poll_slow_interval_ms, class: "ax-control", min: 5000, max: 120000, step: 1000, value: @dwv_poll_slow_interval_ms %>
             </div>
-          </div>
+          <% end %>
 
-          <div class="d-flex gap-2">
-            <%= f.submit "Salvar Configurações", class: "btn btn-primary" %>
+          <div class="tw-flex tw-gap-2">
+            <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
           </div>
         <% end %>
-        <div class="mt-2">
-          <%= button_to "Testar Conexão", test_connection_admin_dwv_integrations_path, method: :post, class: "btn btn-outline-primary" %>
+        <div class="tw-mt-2">
+          <%= button_to "Testar Conexão", test_connection_admin_dwv_integrations_path, method: :post, class: "ax-btn ax-btn--ghost" %>
         </div>
       </div>
     </div>
 
-    <div class="card shadow-sm border-0">
-      <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-arrow-repeat me-2 text-info"></i>Controles de Sincronização</h5>
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-arrow-repeat me-2 text-info"></i>Controles de Sincronização</h5>
       </div>
-      <div class="card-body p-4">
-        <%= form_with url: sync_property_admin_dwv_integrations_path, method: :post, local: true, class: "row g-2 align-items-end mb-4" do |f| %>
-          <div class="col-md-8">
-            <%= label_tag :property_id, "ID do imóvel na DWV", class: "form-label fw-semibold" %>
-            <%= text_field_tag :property_id, nil, class: "form-control", placeholder: "Ex: 12345" %>
+      <div class="ax-card__body">
+        <%= form_with url: sync_property_admin_dwv_integrations_path, method: :post, local: true, class: "tw-flex tw-items-center tw-gap-2 tw-mb-4" do |f| %>
+          <div class="tw-w-full">
+            <%= label_tag :property_id, "ID do imóvel na DWV", class: "ax-label tw-font-semibold" %>
+            <%= text_field_tag :property_id, nil, class: "ax-control", placeholder: "Ex: 12345" %>
           </div>
-          <div class="col-md-4">
-            <%= f.submit "Sincronizar Imóvel", class: "btn btn-primary w-100" %>
+          <div>
+            <%= f.submit "Sincronizar Imóvel", class: "ax-btn ax-btn--primary" %>
           </div>
         <% end %>
 
-        <div class="d-flex flex-wrap gap-2">
-          <%= button_to "Sincronizar Tudo Agora (Job)", sync_now_admin_dwv_integrations_path, method: :post, class: "btn btn-info text-white" %>
-          <%= button_to "Sincronizar Lote (1 página)", sync_recent_admin_dwv_integrations_path(limit: @dwv_sync_limit), method: :post, class: "btn btn-outline-info" %>
-          <%= button_to "Desativar Removidos DWV", deactivate_removed_admin_dwv_integrations_path, method: :post, class: "btn btn-outline-danger", data: { confirm: "Isso vai desativar no site imóveis marcados como removidos na DWV. Continuar?" } %>
+        <div class="tw-flex tw-flex-wrap tw-gap-2">
+          <%= button_to "Sincronizar Tudo Agora (Job)", sync_now_admin_dwv_integrations_path, method: :post, class: "ax-btn ax-btn--primary" %>
+          <%= button_to "Sincronizar Lote (1 página)", sync_recent_admin_dwv_integrations_path(limit: @dwv_sync_limit), method: :post, class: "ax-btn ax-btn--ghost" %>
+          <%= button_to "Desativar Removidos DWV", deactivate_removed_admin_dwv_integrations_path, method: :post, class: "ax-btn ax-btn--danger", data: { confirm: "Isso vai desativar no site imóveis marcados como removidos na DWV. Continuar?" } %>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-5">
+  <div class="ax-span-6">
     <%= turbo_frame_tag "dwv_status_panel",
                         src: status_admin_dwv_integrations_path,
                         loading: "eager",
@@ -235,4 +232,4 @@
       <%= render "status_panel" %>
     <% end %>
   </div>
-</div>
+<% end %>

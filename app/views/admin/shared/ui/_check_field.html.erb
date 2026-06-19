@@ -1,0 +1,21 @@
+<%
+  input_opts = { class: "ax-check__input" }
+  input_opts[:id] = id if id.present?
+  input_opts = input_opts.merge(input_html || {})
+%>
+<label class="ax-check tw-inline-flex tw-items-center tw-gap-2 <%= class_name %>">
+  <% if form && method %>
+    <% if type.to_sym == :radio %>
+      <%= form.radio_button method, value, input_opts %>
+    <% else %>
+      <%= form.check_box method, input_opts, value, "0" %>
+    <% end %>
+  <% else %>
+    <% if type.to_sym == :radio %>
+      <%= radio_button_tag name, value, checked, input_opts %>
+    <% else %>
+      <%= check_box_tag name, value, checked, input_opts %>
+    <% end %>
+  <% end %>
+  <% if label.present? %><span><%= label %></span><% end %>
+</label>

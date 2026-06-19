@@ -53,7 +53,6 @@ module Seo
       self.class.enabled? &&
         @controller.request.get? &&
         @controller.request.format.html? &&
-        @controller.response.successful? &&
         !admin_request? &&
         !internal_path? &&
         !AccessControl::TrackerExclusion.excluded?(@controller.request)
@@ -87,13 +86,13 @@ module Seo
         meta_description: existing_or_fallback(identity, :description_fallback, created),
         meta_keywords: existing_or_fallback(identity, :keywords_fallback, created),
         intro_text: existing_or_fallback(identity, :intro_fallback, created),
-        og_title: existing_or_fallback(identity, :title_fallback, created),
-        og_description: existing_or_fallback(identity, :description_fallback, created)
+        og_title: existing_or_fallback(identity, :og_title_fallback, created) || existing_or_fallback(identity, :title_fallback, created),
+        og_description: existing_or_fallback(identity, :og_description_fallback, created) || existing_or_fallback(identity, :description_fallback, created)
       }.compact
     end
 
     def existing_or_fallback(identity, key, created)
-      return nil unless created
+      return nil unless created || identity[:refresh_public_metadata]
 
       identity[key].to_s.presence
     end

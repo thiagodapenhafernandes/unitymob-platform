@@ -1,0 +1,28 @@
+<li class="ax-file-list__item ax-attachment-item">
+  <div class="ax-file-list__main">
+    <% if image_preview && attachment.image? %>
+      <%= image_tag attachment, class: "ax-attachment-item__thumb", alt: title %>
+    <% else %>
+      <span class="ax-attachment-item__icon" aria-hidden="true">
+        <i class="bi bi-<%= attachment.image? ? 'file-earmark-image' : 'paperclip' %>"></i>
+      </span>
+    <% end %>
+
+    <div class="ax-file-list__content">
+      <%= link_to title,
+                  url,
+                  target: "_blank",
+                  rel: "noopener",
+                  class: "ax-file-list__title" %>
+      <% if meta.present? %>
+        <div class="ax-file-list__meta"><%= meta %></div>
+      <% end %>
+    </div>
+  </div>
+
+  <% if actions.present? %>
+    <div class="ax-file-list__status">
+      <%= actions %>
+    </div>
+  <% end %>
+</li>

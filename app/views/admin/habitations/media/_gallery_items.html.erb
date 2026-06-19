@@ -1,0 +1,149 @@
+<%
+  habitation = local_assigns.fetch(:habitation)
+  linked_development = local_assigns[:linked_development]
+  attached_media_photos = local_assigns.fetch(:attached_media_photos)
+  api_media_pictures = local_assigns.fetch(:api_media_pictures)
+%>
+
+<% if attached_media_photos.any? %>
+  <% attached_media_photos.each_with_index do |photo, index| %>
+    <% photo_hidden_from_site = Array(habitation.site_hidden_photo_ids).map(&:to_i).include?(photo.id) %>
+    <% site_toggle = capture do %>
+      <button type="button"
+              class="media-photo-site-toggle ax-media-action <%= photo_hidden_from_site ? 'ax-media-action--neutral' : 'ax-media-action--published' %>"
+              title="<%= photo_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
+              aria-label="<%= photo_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
+              data-action="photo-upload#toggleSiteVisibility"
+              data-photo-id="<%= photo.id %>">
+        <i class="bi <%= photo_hidden_from_site ? 'bi-eye-slash' : 'bi-globe2' %>"></i>
+      </button>
+    <% end %>
+    <% featured_control = capture do %>
+      <span data-photo-featured-control>
+        <% if index.zero? %>
+          <span class="ax-media-action ax-media-action--featured is-active" title="Foto em destaque" aria-label="Foto em destaque">
+            <i class="bi bi-star-fill"></i>
+          </span>
+        <% else %>
+          <button type="button"
+                  class="media-photo-feature-button ax-media-action ax-media-action--featured"
+                  title="Definir como destaque"
+                  aria-label="Definir como destaque"
+                  data-action="photo-upload#setFeatured">
+            <i class="bi bi-star"></i>
+          </button>
+        <% end %>
+      </span>
+    <% end %>
+    <% photo_actions = capture do %>
+      <span class="ax-media-action-group">
+        <%= site_toggle %>
+        <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar">
+          <i class="bi bi-grip-vertical"></i>
+        </button>
+        <button type="button"
+                class="media-photo-action-button ax-media-action ax-media-action--danger"
+                title="Remover foto"
+                aria-label="Remover foto"
+                data-action="photo-upload#removeAttached">
+          <i class="bi bi-trash"></i>
+        </button>
+      </span>
+    <% end %>
+    <%= ax_media_tile(
+          link_url: url_for(photo),
+          image_source: photo,
+          caption: "Foto ativa #{index + 1} - #{photo.filename}",
+          position: index + 1,
+          root_class: "draggable-item attached-photo-item",
+          data: { id: photo.id },
+          hidden_from_site: photo_hidden_from_site,
+          bottom_left: featured_control,
+          bottom_right: photo_actions
+        ) %>
+  <% end %>
+<% end %>
+
+<% if api_media_pictures.any? %>
+  <% api_media_pictures.each_with_index do |(pic, original_index, pic_url), index| %>
+    <% display_index = attached_media_photos.size + index %>
+    <% picture_hidden_from_site = habitation.picture_hidden_from_site?(pic) %>
+    <% site_toggle = capture do %>
+      <button type="button"
+              class="media-photo-site-toggle ax-media-action <%= picture_hidden_from_site ? 'ax-media-action--neutral' : 'ax-media-action--published' %>"
+              title="<%= picture_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
+              aria-label="<%= picture_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
+              data-action="photo-upload#toggleSiteVisibility"
+              data-picture-url="<%= pic_url %>">
+        <i class="bi <%= picture_hidden_from_site ? 'bi-eye-slash' : 'bi-globe2' %>"></i>
+      </button>
+    <% end %>
+    <% featured_control = capture do %>
+      <span data-photo-featured-control>
+        <% if display_index.zero? %>
+          <span class="ax-media-action ax-media-action--featured is-active" title="Foto em destaque" aria-label="Foto em destaque">
+            <i class="bi bi-star-fill"></i>
+          </span>
+        <% else %>
+          <button type="button"
+                  class="media-photo-feature-button ax-media-action ax-media-action--featured"
+                  title="Definir como destaque"
+                  aria-label="Definir como destaque"
+                  data-action="photo-upload#setFeatured">
+            <i class="bi bi-star"></i>
+          </button>
+        <% end %>
+      </span>
+    <% end %>
+    <% picture_actions = capture do %>
+      <span class="ax-media-action-group">
+        <%= site_toggle %>
+        <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar">
+          <i class="bi bi-grip-vertical"></i>
+        </button>
+        <button type="button"
+                class="media-photo-action-button ax-media-action ax-media-action--danger"
+                title="Remover foto da API"
+                aria-label="Remover foto da API"
+                data-action="photo-upload#removeApiPicture">
+          <i class="bi bi-trash"></i>
+        </button>
+      </span>
+    <% end %>
+    <%= ax_media_tile(
+          link_url: pic_url,
+          image_source: pic_url,
+          caption: "Foto API/Vista #{display_index + 1}",
+          position: display_index + 1,
+          root_class: "draggable-item api-picture-item",
+          data: { api_index: original_index },
+          hidden_from_site: picture_hidden_from_site,
+          image_class: "opacity-75",
+          center: tag.span("API/Vista", class: "ax-media-tag ax-media-tag--source", title: "Vindo da Integração API"),
+          bottom_left: featured_control,
+          bottom_right: picture_actions
+        ) %>
+  <% end %>
+<% end %>
+
+<% if habitation.use_development_photos? && linked_development.present? && habitation.own_public_image_sources.blank? %>
+  <% linked_development.own_public_image_sources.first(12).each_with_index do |pic, index| %>
+    <% development_photo_url = public_image_url(pic) %>
+    <% development_featured = capture do %>
+      <% if index.zero? %>
+        <span class="ax-media-action ax-media-action--featured is-active" title="Foto em destaque" aria-label="Foto em destaque">
+          <i class="bi bi-star-fill"></i>
+        </span>
+      <% end %>
+    <% end %>
+    <%= ax_media_tile(
+          link_url: development_photo_url,
+          image_source: development_photo_url,
+          caption: "Foto do empreendimento #{index + 1}",
+          position: index + 1,
+          image_class: "opacity-75",
+          top_right: tag.span("Empreendimento", class: "ax-media-tag ax-media-tag--info", title: "Foto herdada do empreendimento"),
+          bottom_left: development_featured
+        ) %>
+  <% end %>
+<% end %>

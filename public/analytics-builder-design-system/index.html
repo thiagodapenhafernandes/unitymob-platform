@@ -1,0 +1,2216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics Builder Tailwind Design System</title>
+  <meta name="description" content="Design system responsivo em TailwindCSS para Analytics Builder com Explorer, Workspace e Inspector.">
+
+  <style>
+    :root {
+      --admin-primary: #365f8f;
+      --admin-primary-fg: #ffffff;
+      --admin-primary-hover: color-mix(in srgb, var(--admin-primary) 86%, #000);
+      --admin-primary-soft: color-mix(in srgb, var(--admin-primary) 12%, #fff);
+      --admin-primary-softer: color-mix(in srgb, var(--admin-primary) 7%, #fff);
+      --admin-primary-ring: color-mix(in srgb, var(--admin-primary) 35%, #fff);
+      --ab-page: #eef2f7;
+      --ab-panel: #fbfcfe;
+      --ab-panel-soft: #f4f7fb;
+      --ab-panel-header: #eef2f7;
+      --ab-line: #d8dee8;
+      --ab-line-soft: #e7ebf2;
+      --ab-ink: #202a37;
+      --ab-muted: #657386;
+      --ax-shell-gutter: 12px;
+      --ax-workspace-gutter: var(--ax-shell-gutter);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--ab-page);
+      color: var(--ab-ink);
+      font-size: 13px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    :where(button, input, select, textarea) {
+      font: inherit;
+    }
+
+    :where(button) {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      line-height: 1;
+    }
+
+    :where(input, select, textarea) {
+      appearance: none;
+      color: inherit;
+    }
+
+    :where(select) {
+      background-image:
+        linear-gradient(45deg, transparent 50%, #7b8797 50%),
+        linear-gradient(135deg, #7b8797 50%, transparent 50%);
+      background-position:
+        calc(100% - 14px) 50%,
+        calc(100% - 9px) 50%;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+      padding-right: 28px;
+    }
+
+    :where(button, a, input, select, textarea):focus-visible {
+      outline: 2px solid var(--admin-primary-ring);
+      outline-offset: 2px;
+    }
+
+    .ab-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: #c8ced8 transparent;
+    }
+
+    .ab-scrollbar::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    .ab-scrollbar::-webkit-scrollbar-thumb {
+      background: #c8ced8;
+      border: 3px solid transparent;
+      border-radius: 999px;
+      background-clip: content-box;
+    }
+
+    .ab-grid-bg {
+      background-image:
+        linear-gradient(rgba(104, 119, 141, .16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(104, 119, 141, .16) 1px, transparent 1px);
+      background-size: 24px 24px;
+      background-color: #f8fafc;
+    }
+
+    .ab-glass {
+      background: color-mix(in srgb, var(--ab-panel) 90%, transparent);
+      box-shadow: 0 10px 30px rgba(31, 42, 55, .08), 0 1px 2px rgba(31, 42, 55, .05);
+    }
+
+    .ab-selected {
+      box-shadow: inset 3px 0 0 var(--admin-primary), 0 8px 22px rgba(31, 42, 55, .08);
+      background: var(--admin-primary-soft) !important;
+    }
+
+    .ab-widget-selected {
+      outline: 2px solid color-mix(in srgb, var(--admin-primary) 58%, transparent);
+      outline-offset: -2px;
+      box-shadow: 0 14px 36px rgba(31, 42, 55, .12);
+    }
+
+    .ab-toast {
+      animation: ab-toast-in .18s ease-out;
+    }
+
+    @keyframes ab-toast-in {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+  <link rel="stylesheet" href="./tailwind.css">
+  <style>
+    :root {
+      --ab-field-border: #cfd8e5;
+      --ab-field-hover: #b8c5d6;
+      --ab-field-focus: #7f96b5;
+      --ab-control-bg: #ffffff;
+      --ab-control-hover: #f8fafc;
+    }
+
+    body :where(button:not(:disabled), summary, [data-selectable], [data-widget], [data-bottom-tab], [data-visual], select) {
+      cursor: pointer;
+    }
+
+    body :where(input, textarea, .ab-combobox-search) {
+      cursor: text;
+    }
+
+    body :where(input, select, textarea, .ab-combobox-control) {
+      width: 100%;
+      min-width: 0;
+      height: 32px;
+      border: 1px solid var(--ab-field-border);
+      border-radius: 7px;
+      background-color: #fff;
+      box-shadow: inset 0 1px 0 rgba(15, 23, 42, .03);
+      transition: border-color .14s ease, box-shadow .14s ease, background-color .14s ease;
+    }
+
+    body input,
+    body select,
+    body textarea,
+    body .ab-combobox-control {
+      border: 1px solid var(--ab-field-border) !important;
+      border-radius: 7px !important;
+      box-shadow: inset 0 1px 0 rgba(15, 23, 42, .03) !important;
+    }
+
+    body :where(input, select, textarea, .ab-combobox-control):hover {
+      border-color: var(--ab-field-hover);
+      background-color: var(--ab-control-hover);
+    }
+
+    body :where(input, select, textarea, .ab-combobox-control):focus,
+    body :where(input, select, textarea, .ab-combobox-control):focus-visible,
+    .ab-combobox.is-open .ab-combobox-control {
+      border-color: var(--ab-field-focus) !important;
+      box-shadow: 0 0 0 2px rgba(54, 95, 143, .12), inset 0 1px 0 rgba(15, 23, 42, .03) !important;
+      outline: 0 !important;
+    }
+
+    body :where(button):focus-visible,
+    body :where([data-selectable], [data-widget], summary):focus-visible {
+      outline: 0;
+      box-shadow: 0 0 0 2px rgba(54, 95, 143, .14);
+    }
+
+    body :where(label) {
+      min-width: 0;
+    }
+
+    .ab-field-grid {
+      gap: 10px !important;
+      align-items: end;
+    }
+
+    .ab-badge,
+    body span[class*="tw-rounded-full"] {
+      display: inline-flex;
+      min-height: 18px;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      vertical-align: middle;
+    }
+
+    header nav button:not(.tw-bg-primary),
+    [data-action="preview"],
+    [data-action="share"],
+    [data-action="collapse-explorer"],
+    [data-action="add-source"],
+    [data-action="focus-selection"],
+    [data-action="collapse-inspector"],
+    [data-bottom-tab],
+    [data-visual]:not(.tw-bg-primary) {
+      border: 1px solid var(--ab-line-soft);
+      background-color: rgba(255, 255, 255, .82);
+      box-shadow: 0 1px 0 rgba(15, 23, 42, .04);
+    }
+
+    header nav button:not(.tw-bg-primary):hover,
+    [data-action="preview"]:hover,
+    [data-action="share"]:hover,
+    [data-action="collapse-explorer"]:hover,
+    [data-action="add-source"]:hover,
+    [data-action="focus-selection"]:hover,
+    [data-action="collapse-inspector"]:hover,
+    [data-bottom-tab]:hover,
+    [data-visual]:not(.tw-bg-primary):hover {
+      border-color: var(--ab-field-hover);
+      background-color: #fff;
+      color: var(--ab-ink);
+    }
+
+    .ab-native-select-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      overflow: hidden !important;
+      clip: rect(0 0 0 0) !important;
+      white-space: nowrap !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    .ab-combobox {
+      position: relative;
+      min-width: 0;
+    }
+
+    .ab-combobox-control {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 16px;
+      align-items: center;
+      gap: 8px;
+      padding: 0 9px;
+      color: var(--ab-ink);
+      text-align: left;
+    }
+
+    .ab-combobox-control span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ab-combobox-values {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 4px;
+      overflow: hidden;
+    }
+
+    .ab-combobox-chip {
+      display: inline-flex;
+      min-width: 0;
+      max-width: 92px;
+      height: 20px;
+      align-items: center;
+      border-radius: 999px;
+      background: var(--admin-primary-soft);
+      padding: 0 7px;
+      color: var(--admin-primary);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .ab-combobox-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ab-combobox-placeholder {
+      color: var(--ab-muted);
+    }
+
+    .ab-combobox-control::after {
+      width: 0;
+      height: 0;
+      border-top: 5px solid #7b8797;
+      border-right: 5px solid transparent;
+      border-left: 5px solid transparent;
+      content: "";
+      justify-self: center;
+    }
+
+    .ab-combobox-panel {
+      position: fixed;
+      z-index: 80;
+      overflow: hidden;
+      min-width: 160px;
+      border: 1px solid var(--ab-field-border);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 14px 36px rgba(31, 42, 55, .16), 0 2px 6px rgba(31, 42, 55, .08);
+    }
+
+    .ab-combobox-search {
+      border-width: 0 0 1px 0 !important;
+      border-color: var(--ab-line-soft) !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      padding: 0 10px;
+    }
+
+    .ab-combobox-options {
+      max-height: 180px;
+      margin: 0;
+      padding: 4px;
+      list-style: none;
+      overflow: auto;
+    }
+
+    .ab-combobox-option {
+      display: flex;
+      min-height: 28px;
+      align-items: center;
+      gap: 8px;
+      border-radius: 6px;
+      padding: 0 8px;
+      color: var(--ab-ink);
+      cursor: pointer;
+    }
+
+    .ab-combobox-option::before {
+      display: none;
+      width: 14px;
+      height: 14px;
+      flex: 0 0 auto;
+      border: 1px solid var(--ab-field-border);
+      border-radius: 4px;
+      background: #fff;
+      color: #fff;
+      content: "";
+      font-size: 10px;
+      line-height: 12px;
+      text-align: center;
+    }
+
+    .ab-combobox-option.is-multiple::before {
+      display: block;
+    }
+
+    .ab-combobox-option.is-multiple[aria-selected="true"]::before {
+      border-color: var(--admin-primary);
+      background: var(--admin-primary);
+      content: "✓";
+    }
+
+    .ab-combobox-option:hover,
+    .ab-combobox-option[aria-selected="true"] {
+      background: var(--admin-primary-soft);
+      color: var(--admin-primary);
+      font-weight: 700;
+    }
+
+    .ab-canvas-variant {
+      border: 1px solid var(--ab-line-soft);
+      background: #fff;
+      color: var(--ab-muted);
+      box-shadow: 0 1px 0 rgba(15, 23, 42, .04);
+    }
+
+    .ab-canvas-variant[aria-pressed="true"] {
+      border-color: color-mix(in srgb, var(--admin-primary) 26%, #fff);
+      background: var(--admin-primary-soft);
+      color: var(--admin-primary);
+      font-weight: 800;
+    }
+
+    [data-panel="explorer"] {
+      --sidebar-active: #ecf2f8;
+      --sidebar-active-border: #d6e1ee;
+      --sidebar-active-field: #ffffff;
+      --sidebar-hover: #f7f9fc;
+      --sidebar-icon: #718096;
+    }
+
+    [data-panel="explorer"] details {
+      border-bottom: 1px solid var(--ab-line-soft);
+      padding: 6px 6px 8px;
+    }
+
+    [data-panel="explorer"] details:last-child {
+      border-bottom: 0;
+    }
+
+    [data-panel="explorer"] summary {
+      height: 30px;
+      border-radius: 6px;
+      padding-inline: 10px !important;
+      list-style: none;
+      transition: background-color .14s ease, color .14s ease;
+    }
+
+    [data-panel="explorer"] summary::-webkit-details-marker {
+      display: none;
+    }
+
+    [data-panel="explorer"] summary:hover {
+      background: var(--sidebar-hover);
+      color: var(--ab-ink);
+    }
+
+    [data-panel="explorer"] summary > span:last-child {
+      display: inline-grid;
+      width: 16px;
+      height: 16px;
+      place-items: center;
+      transition: transform .16s ease;
+    }
+
+    [data-panel="explorer"] details[open] > summary > span:last-child {
+      transform: rotate(180deg);
+    }
+
+    [data-panel="explorer"] ul {
+      padding-inline: 0 !important;
+    }
+
+    [data-panel="explorer"] [data-selectable] {
+      min-height: 32px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ab-muted);
+      transition: background-color .14s ease, border-color .14s ease, color .14s ease, box-shadow .14s ease;
+    }
+
+    [data-panel="explorer"] [data-selectable]:hover {
+      border-color: var(--ab-line-soft);
+      background: var(--sidebar-hover) !important;
+      color: var(--ab-ink);
+    }
+
+    [data-panel="explorer"] [data-selectable] > span:first-child,
+    [data-panel="explorer"] [data-selectable] > div > span:first-child {
+      display: inline-grid;
+      width: 18px;
+      height: 18px;
+      place-items: center;
+      color: var(--sidebar-icon);
+      font-size: 11px;
+    }
+
+    [data-panel="explorer"] [data-selectable].ab-selected {
+      border-color: var(--sidebar-active-border);
+      background: var(--sidebar-active) !important;
+      box-shadow: none;
+      color: var(--admin-primary);
+    }
+
+    [data-panel="explorer"] [data-selectable].tw-bg-primary-soft:not(.ab-selected) {
+      border-color: #e0e7f0;
+      background: #f2f5f9 !important;
+      color: #475569;
+    }
+
+    [data-panel="explorer"] [data-selectable].ab-selected > div,
+    [data-panel="explorer"] [data-selectable].ab-selected {
+      font-weight: 700;
+    }
+
+    [data-panel="explorer"] [data-selectable].ab-selected > span:first-child,
+    [data-panel="explorer"] [data-selectable].ab-selected > div > span:first-child {
+      color: var(--admin-primary);
+    }
+
+    [data-panel="explorer"] ul ul {
+      margin: 3px 0 0 23px !important;
+      border-left: 1px solid #dbe3ee;
+      padding-left: 6px !important;
+    }
+
+    [data-panel="explorer"] ul ul [data-selectable] {
+      margin-block: 2px;
+      min-height: 29px;
+      border-radius: 6px;
+      padding-inline: 8px !important;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    [data-panel="explorer"] ul ul [data-selectable].ab-selected {
+      border-color: #becbdd;
+      background: var(--sidebar-active-field) !important;
+      box-shadow: 0 1px 2px rgba(31, 42, 55, .06);
+      color: #334155;
+      font-weight: 700;
+    }
+
+    [data-panel="explorer"] .tw-font-mono {
+      color: #64748b;
+      font-weight: 600;
+      letter-spacing: .02em;
+    }
+
+    [data-panel="explorer"] [data-selectable].ab-selected .tw-font-mono {
+      color: var(--admin-primary);
+    }
+
+    #builder[data-explorer-collapsed="true"] [data-panel="explorer"] {
+      overflow: hidden;
+    }
+
+    @media (min-width: 1280px) {
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] strong,
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] summary,
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] [data-selectable] span:nth-child(2),
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] [data-selectable] span:nth-child(3),
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] details ul ul {
+        display: none !important;
+      }
+
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] [data-action="add-source"] {
+        display: none !important;
+      }
+
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] > div:first-child {
+        justify-content: center;
+        padding-inline: 6px;
+      }
+
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] [data-selectable] {
+        display: grid !important;
+        width: 40px;
+        height: 32px;
+        margin: 4px auto;
+        place-items: center;
+        padding: 0 !important;
+      }
+
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] [data-selectable] > div,
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] [data-selectable] {
+        grid-template-columns: 1fr !important;
+        justify-items: center;
+      }
+
+      #builder[data-explorer-collapsed="true"] [data-panel="explorer"] .ab-selected {
+        border-color: var(--sidebar-active-border);
+        box-shadow: none;
+      }
+
+      #builder[data-inspector-collapsed="true"] [data-panel="inspector"] strong,
+      #builder[data-inspector-collapsed="true"] [data-panel="inspector"] [data-action="focus-selection"],
+      #builder[data-inspector-collapsed="true"] [data-panel="inspector"] > div:nth-child(2) {
+        display: none !important;
+      }
+
+      #builder[data-inspector-collapsed="true"] [data-panel="inspector"] > div:first-child {
+        justify-content: center;
+        padding-inline: 6px;
+      }
+    }
+
+    .ab-admin-doc {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 40px 16px 48px;
+    }
+
+    .ab-admin-doc :where(h1, h2, h3, p) {
+      margin-top: 0;
+    }
+
+    .ab-admin-doc__hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .ab-admin-doc__panel,
+    .ab-admin-doc__card {
+      border: 1px solid var(--ab-line-soft);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .04);
+      overflow: hidden;
+    }
+
+    .ab-admin-doc__panel-header,
+    .ab-admin-doc__section-header {
+      display: flex;
+      min-height: 36px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--ab-line-soft);
+      background: var(--ab-panel-header);
+      padding: 8px 12px;
+    }
+
+    .ab-admin-doc__panel-header h2,
+    .ab-admin-doc__section-header h2,
+    .ab-admin-doc__section-header h3 {
+      margin: 0;
+      color: var(--ab-ink);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+
+    .ab-admin-doc__body {
+      padding: 14px;
+    }
+
+    .ab-admin-doc__eyebrow {
+      display: inline-flex;
+      min-height: 20px;
+      align-items: center;
+      border-radius: 999px;
+      background: var(--admin-primary-soft);
+      color: var(--admin-primary);
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .ab-admin-doc__title {
+      margin: 8px 0 8px;
+      color: var(--ab-ink);
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .ab-admin-doc__lead {
+      max-width: 780px;
+      color: var(--ab-muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .ab-admin-doc__grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .ab-admin-doc__grid--two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ab-admin-doc__grid--four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .ab-admin-doc__card {
+      padding: 14px;
+    }
+
+    .ab-admin-doc__card h3 {
+      margin-bottom: 6px;
+      color: var(--ab-ink);
+      font-size: 14px;
+    }
+
+    .ab-admin-doc__card p,
+    .ab-admin-doc__card li {
+      color: var(--ab-muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .ab-admin-doc__card ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .ab-admin-token {
+      display: grid;
+      gap: 8px;
+    }
+
+    .ab-admin-token__swatch {
+      height: 44px;
+      border: 1px solid var(--ab-line-soft);
+      border-radius: 8px;
+    }
+
+    .ab-admin-token code,
+    .ab-admin-code,
+    .ab-admin-path {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 6px;
+      background: var(--ab-panel-header);
+      color: #375986;
+      padding: 1px 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .ab-admin-shell-demo {
+      display: grid;
+      min-height: 330px;
+      grid-template-rows: 38px 34px minmax(0, 1fr);
+      overflow: hidden;
+      border: 1px solid var(--ab-line);
+      border-radius: 8px;
+      background: var(--ab-page);
+    }
+
+    .ab-admin-shell-demo__topbar,
+    .ab-admin-shell-demo__contextbar,
+    .ab-admin-shell-demo__sidebar-head,
+    .ab-admin-shell-demo__aside-head,
+    .ab-admin-section-demo__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--ab-line-soft);
+      background: #fff;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .ab-admin-shell-demo__contextbar {
+      grid-template-columns: 1fr auto;
+      background: var(--ab-panel);
+    }
+
+    .ab-admin-shell-demo__body {
+      display: grid;
+      min-height: 0;
+      grid-template-columns: 160px minmax(0, 1fr) 210px;
+    }
+
+    .ab-admin-shell-demo__sidebar,
+    .ab-admin-shell-demo__aside {
+      min-width: 0;
+      border-right: 1px solid var(--ab-line);
+      background: #fff;
+    }
+
+    .ab-admin-shell-demo__aside {
+      border-right: 0;
+      border-left: 1px solid var(--ab-line);
+    }
+
+    .ab-admin-shell-demo__main {
+      min-width: 0;
+      padding: 10px;
+      background: var(--ab-page);
+    }
+
+    .ab-admin-demo-list {
+      display: grid;
+      gap: 6px;
+      padding: 8px;
+    }
+
+    .ab-admin-demo-list span,
+    .ab-admin-demo-tab {
+      display: flex;
+      min-height: 28px;
+      align-items: center;
+      gap: 8px;
+      border-radius: 7px;
+      color: var(--ab-muted);
+      padding: 0 8px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .ab-admin-demo-list span.is-active,
+    .ab-admin-demo-tab.is-active {
+      background: var(--admin-primary-soft);
+      color: var(--admin-primary);
+      box-shadow: inset 3px 0 0 var(--admin-primary);
+    }
+
+    .ab-admin-section-demo {
+      overflow: hidden;
+      border: 1px solid var(--ab-line-soft);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .ab-admin-section-demo__body {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .ab-admin-field {
+      display: grid;
+      min-width: 0;
+      gap: 4px;
+    }
+
+    .ab-admin-field label {
+      color: var(--ab-muted);
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .ab-admin-field input,
+    .ab-admin-field select {
+      height: 32px;
+      min-width: 0;
+      border: 1px solid var(--ab-field-border);
+      border-radius: 7px;
+      background: #fff;
+      padding: 0 9px;
+      color: var(--ab-ink);
+      font-size: 13px;
+      box-shadow: inset 0 1px 0 rgba(15, 23, 42, .03);
+    }
+
+    .ab-admin-span-2 { grid-column: span 2; }
+    .ab-admin-span-3 { grid-column: span 3; }
+    .ab-admin-span-4 { grid-column: span 4; }
+    .ab-admin-span-5 { grid-column: span 5; }
+    .ab-admin-span-6 { grid-column: span 6; }
+    .ab-admin-span-8 { grid-column: span 8; }
+    .ab-admin-span-12 { grid-column: span 12; }
+
+    .ab-admin-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .ab-admin-chip {
+      display: inline-flex;
+      min-height: 28px;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--ab-field-border);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--ab-muted);
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .ab-admin-chip::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      border: 2px solid #8da0b8;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .ab-admin-chip.is-active {
+      border-color: #a6e4c0;
+      background: #ecfff4;
+      color: #087443;
+    }
+
+    .ab-admin-chip.is-active::before {
+      border-color: #06945a;
+      background: #06945a;
+      box-shadow: inset 0 0 0 3px #06945a;
+    }
+
+    .ab-admin-button-row,
+    .ab-admin-doc__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .ab-admin-btn {
+      display: inline-flex;
+      height: 32px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid var(--ab-field-border);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ab-ink);
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 850;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, .06);
+    }
+
+    .ab-admin-btn--primary {
+      border-color: var(--admin-primary);
+      background: var(--admin-primary);
+      color: var(--admin-primary-fg);
+    }
+
+    .ab-admin-btn--icon {
+      width: 32px;
+      padding: 0;
+    }
+
+    .ab-admin-code-block {
+      overflow: auto;
+      border: 1px solid var(--ab-line-soft);
+      border-radius: 8px;
+      background: #101827;
+      color: #dbe7ff;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .ab-admin-component-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .ab-admin-component-table th,
+    .ab-admin-component-table td {
+      border-bottom: 1px solid var(--ab-line-soft);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .ab-admin-component-table th {
+      background: var(--ab-panel-header);
+      color: var(--ab-muted);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 960px) {
+      .ab-admin-doc__hero,
+      .ab-admin-doc__grid,
+      .ab-admin-doc__grid--two,
+      .ab-admin-doc__grid--four,
+      .ab-admin-shell-demo__body {
+        grid-template-columns: 1fr;
+      }
+
+      .ab-admin-span-2,
+      .ab-admin-span-3,
+      .ab-admin-span-4,
+      .ab-admin-span-5,
+      .ab-admin-span-6,
+      .ab-admin-span-8 {
+        grid-column: span 12;
+      }
+    }
+  </style>
+</head>
+
+<body class="tw-min-h-screen tw-bg-[var(--ab-page)] tw-text-ink tw-font-sans">
+  <header class="tw-sticky tw-top-0 tw-z-30 tw-grid tw-grid-cols-1 tw-gap-2 tw-border-b tw-border-[var(--ab-line)] tw-bg-slate-50/95 tw-px-3 tw-py-2 tw-shadow-card tw-backdrop-blur lg:tw-h-12 lg:tw-grid-cols-[260px_minmax(0,1fr)_auto] lg:tw-items-center lg:tw-py-0">
+    <a href="#builder" class="tw-flex tw-min-w-0 tw-items-center tw-gap-2 tw-no-underline">
+    <span class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded-md tw-bg-slate-700 tw-text-xs tw-font-black tw-text-white">BI</span>
+      <span class="tw-truncate tw-text-sm tw-font-bold tw-tracking-[-0.01em] tw-text-ink">Analytics Builder</span>
+      <span class="tw-rounded-full tw-bg-primary-soft tw-px-2 tw-py-0.5 tw-text-2xs tw-font-semibold tw-text-primary">Tailwind DS</span>
+    </a>
+
+    <nav class="tw-flex tw-min-w-0 tw-items-center tw-gap-1 tw-overflow-x-auto ab-scrollbar" aria-label="Toolbar principal">
+      <div class="tw-flex tw-items-center tw-gap-1 tw-rounded-md tw-border tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-soft)] tw-p-1">
+        <button data-action="new-dashboard" class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded tw-text-ink-muted hover:tw-bg-white hover:tw-text-ink" title="Novo dashboard">＋</button>
+        <button data-action="save" class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded tw-text-ink-muted hover:tw-bg-white hover:tw-text-ink" title="Salvar">▣</button>
+        <button data-action="duplicate" class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded tw-text-ink-muted hover:tw-bg-white hover:tw-text-ink" title="Duplicar">⧉</button>
+        <button data-action="undo" class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded tw-text-ink-muted hover:tw-bg-white hover:tw-text-ink" title="Desfazer">↶</button>
+        <button data-action="redo" class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded tw-text-ink-muted hover:tw-bg-white hover:tw-text-ink" title="Refazer">↷</button>
+      </div>
+      <div class="tw-flex tw-items-center tw-gap-1 tw-rounded-md tw-border tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-soft)] tw-p-1">
+        <button data-action="insert-kpi" class="tw-h-7 tw-whitespace-nowrap tw-rounded tw-px-2 tw-text-xs tw-font-semibold tw-text-ink-soft hover:tw-bg-white">▦ KPI</button>
+        <button data-action="insert-chart" class="tw-h-7 tw-whitespace-nowrap tw-rounded tw-px-2 tw-text-xs tw-font-semibold tw-text-ink-soft hover:tw-bg-white">▥ Gráfico</button>
+        <button data-action="insert-table" class="tw-h-7 tw-whitespace-nowrap tw-rounded tw-px-2 tw-text-xs tw-font-semibold tw-text-ink-soft hover:tw-bg-white">☷ Tabela</button>
+        <button data-action="insert-filter" class="tw-h-7 tw-whitespace-nowrap tw-rounded tw-px-2 tw-text-xs tw-font-semibold tw-text-ink-soft hover:tw-bg-white">⫶ Filtro</button>
+      </div>
+      <div class="tw-flex tw-items-center tw-gap-1 tw-rounded-md tw-border tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-soft)] tw-p-1">
+        <button data-action="refresh" class="tw-h-7 tw-whitespace-nowrap tw-rounded tw-px-2 tw-text-xs tw-font-semibold tw-text-ink-soft hover:tw-bg-white">↻ Atualizar</button>
+        <button data-action="validate" class="tw-h-7 tw-whitespace-nowrap tw-rounded tw-px-2 tw-text-xs tw-font-semibold tw-text-ink-soft hover:tw-bg-white">✓ Validar</button>
+        <button data-action="publish" class="tw-h-7 tw-whitespace-nowrap tw-rounded tw-bg-primary tw-px-3 tw-text-xs tw-font-bold tw-text-primary-fg hover:tw-bg-[var(--admin-primary-hover)]">Publicar</button>
+      </div>
+      <a href="#ax-admin-system" class="tw-h-7 tw-whitespace-nowrap tw-rounded-md tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-px-3 tw-leading-7 tw-text-xs tw-font-bold tw-text-primary tw-no-underline hover:tw-bg-primary-soft">AX Admin</a>
+    </nav>
+
+    <div class="tw-flex tw-items-center tw-gap-2">
+      <input id="globalSearch" class="tw-h-8 tw-w-full tw-min-w-0 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-3 tw-text-xs tw-outline-none focus:tw-border-primary focus:tw-shadow-[0_0_0_3px_var(--admin-primary-ring)] lg:tw-w-72" placeholder="Buscar fonte, campo, widget...">
+      <span class="tw-hidden tw-h-2 tw-w-2 tw-rounded-full tw-bg-slate-500 tw-shadow-[0_0_0_4px_rgba(100,116,139,.14)] sm:tw-inline-block" title="Conectado"></span>
+      <span id="autosaveStatus" class="tw-hidden tw-whitespace-nowrap tw-rounded-full tw-bg-[var(--ab-panel-header)] tw-px-2 tw-py-1 tw-text-2xs tw-font-semibold tw-text-ink-muted sm:tw-inline-flex">Auto-save 14:32</span>
+    </div>
+  </header>
+
+  <p class="tw-border-b tw-border-amber-200 tw-bg-amber-50 tw-px-3 tw-py-2 tw-text-xs tw-text-amber-800 lg:tw-hidden">
+    O builder é otimizado para desktop. Em telas menores, os painéis empilham para manter todos os controles acessíveis.
+  </p>
+
+  <main id="builder" class="tw-grid tw-min-h-[calc(100vh-48px)] tw-grid-cols-1 tw-bg-[var(--ab-page)] xl:tw-h-[calc(100vh-48px)] xl:tw-grid-cols-[260px_minmax(0,1fr)_320px] xl:tw-grid-rows-[minmax(0,1fr)_190px] xl:tw-overflow-hidden">
+    <aside data-panel="explorer" class="tw-min-h-0 tw-overflow-hidden tw-border-b tw-border-[var(--ab-line)] tw-bg-white xl:tw-row-span-2 xl:tw-border-b-0 xl:tw-border-r">
+      <div class="tw-flex tw-h-9 tw-items-center tw-justify-between tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)] tw-px-3">
+        <strong class="tw-text-2xs tw-font-extrabold tw-uppercase tw-tracking-wide tw-text-ink-soft">▤ Explorer</strong>
+        <div class="tw-flex tw-gap-1">
+          <button data-action="collapse-explorer" class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded tw-text-ink-muted hover:tw-bg-white" title="Colapsar">⇤</button>
+          <button data-action="add-source" class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded tw-text-ink-muted hover:tw-bg-white" title="Adicionar fonte">＋</button>
+        </div>
+      </div>
+
+      <div class="tw-max-h-[58vh] tw-overflow-auto tw-py-1 xl:tw-h-[calc(100%-36px)] xl:tw-max-h-none ab-scrollbar">
+        <details class="tw-border-b tw-border-[var(--ab-line-soft)]" open>
+          <summary class="tw-flex tw-h-8 tw-cursor-pointer tw-items-center tw-justify-between tw-px-3 tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Fontes de dados <span>⌄</span></summary>
+          <ul class="tw-m-0 tw-list-none tw-p-1">
+            <li data-selectable="Fonte: Meta Ads Leads" data-kind="Fonte de dados" class="tw-rounded-md tw-bg-primary-soft tw-p-1 tw-text-primary ab-selected">
+              <div class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-px-2 tw-py-1">
+                <span>▾</span><span class="tw-truncate tw-font-semibold">Meta Ads Leads</span><span class="tw-font-mono tw-text-2xs">18 col</span>
+              </div>
+              <ul class="tw-ml-5 tw-mt-1 tw-list-none tw-p-0 tw-text-ink-muted">
+                <li data-selectable="Campo: campaign_name" data-kind="Dimensão" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded tw-px-2 tw-py-1 hover:tw-bg-white"><span>ƒ</span><span class="tw-truncate">campaign_name</span><span class="tw-font-mono tw-text-2xs">txt</span></li>
+                <li data-selectable="Campo: spend" data-kind="Métrica" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded tw-px-2 tw-py-1 hover:tw-bg-white"><span>#</span><span class="tw-truncate">spend</span><span class="tw-font-mono tw-text-2xs">num</span></li>
+                <li data-selectable="Campo: qualified_leads" data-kind="Métrica" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded tw-px-2 tw-py-1 hover:tw-bg-white"><span>#</span><span class="tw-truncate">qualified_leads</span><span class="tw-font-mono tw-text-2xs">num</span></li>
+              </ul>
+            </li>
+            <li data-selectable="Fonte: CRM Comercial" data-kind="Fonte de dados" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-px-3 tw-py-1.5 tw-text-ink-muted hover:tw-bg-[var(--ab-panel-soft)]"><span>▸</span><span class="tw-truncate">CRM Comercial</span><span class="tw-font-mono tw-text-2xs">42 col</span></li>
+            <li data-selectable="Fonte: Imóveis" data-kind="Fonte de dados" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-px-3 tw-py-1.5 tw-text-ink-muted hover:tw-bg-[var(--ab-panel-soft)]"><span>▸</span><span class="tw-truncate">Imóveis</span><span class="tw-font-mono tw-text-2xs">57 col</span></li>
+            <li data-selectable="Fonte: WhatsApp Inbox" data-kind="Fonte de dados" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-px-3 tw-py-1.5 tw-text-ink-muted hover:tw-bg-[var(--ab-panel-soft)]"><span>▸</span><span class="tw-truncate">WhatsApp Inbox</span><span class="tw-font-mono tw-text-2xs">25 col</span></li>
+          </ul>
+        </details>
+
+        <details class="tw-border-b tw-border-[var(--ab-line-soft)]" open>
+          <summary class="tw-flex tw-h-8 tw-cursor-pointer tw-items-center tw-justify-between tw-px-3 tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Dashboards <span>⌄</span></summary>
+          <ul class="tw-m-0 tw-list-none tw-p-1">
+            <li data-selectable="Dashboard: Performance Comercial" data-kind="Dashboard" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-bg-primary-soft tw-px-3 tw-py-1.5 tw-text-primary"><span>▦</span><span class="tw-truncate tw-font-semibold">Performance Comercial</span><span class="tw-rounded-full tw-bg-emerald-100 tw-px-2 tw-py-0.5 tw-text-2xs tw-font-bold tw-text-emerald-700">ativo</span></li>
+            <li data-selectable="Dashboard: Marketing e ROI" data-kind="Dashboard" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-px-3 tw-py-1.5 tw-text-ink-muted hover:tw-bg-[var(--ab-panel-soft)]"><span>▦</span><span class="tw-truncate">Marketing e ROI</span><span class="tw-rounded-full tw-bg-slate-100 tw-px-2 tw-py-0.5 tw-text-2xs">draft</span></li>
+            <li data-selectable="Dashboard: Captação e Carteira" data-kind="Dashboard" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-px-3 tw-py-1.5 tw-text-ink-muted hover:tw-bg-[var(--ab-panel-soft)]"><span>▦</span><span class="tw-truncate">Captação e Carteira</span><span class="tw-rounded-full tw-bg-slate-100 tw-px-2 tw-py-0.5 tw-text-2xs">v2</span></li>
+          </ul>
+        </details>
+
+        <details open>
+          <summary class="tw-flex tw-h-8 tw-cursor-pointer tw-items-center tw-justify-between tw-px-3 tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Widgets <span>⌄</span></summary>
+          <ul class="tw-m-0 tw-list-none tw-p-1">
+            <li data-selectable="Widget: KPI Card" data-kind="Widget" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-px-3 tw-py-1.5 tw-text-ink-muted hover:tw-bg-[var(--ab-panel-soft)]"><span>▣</span><span>KPI Card</span><span class="tw-font-mono tw-text-2xs">5</span></li>
+            <li data-selectable="Widget: Bar / Line" data-kind="Widget" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-px-3 tw-py-1.5 tw-text-ink-muted hover:tw-bg-[var(--ab-panel-soft)]"><span>▥</span><span>Bar / Line</span><span class="tw-font-mono tw-text-2xs">8</span></li>
+            <li data-selectable="Widget: Funnel" data-kind="Widget" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-px-3 tw-py-1.5 tw-text-ink-muted hover:tw-bg-[var(--ab-panel-soft)]"><span>▽</span><span>Funnel</span><span class="tw-font-mono tw-text-2xs">3</span></li>
+            <li data-selectable="Widget: Map Heat" data-kind="Widget" class="tw-grid tw-grid-cols-[20px_minmax(0,1fr)_auto] tw-items-center tw-gap-1 tw-rounded-md tw-px-3 tw-py-1.5 tw-text-ink-muted hover:tw-bg-[var(--ab-panel-soft)]"><span>⌖</span><span>Map Heat</span><span class="tw-font-mono tw-text-2xs">2</span></li>
+          </ul>
+        </details>
+      </div>
+    </aside>
+
+    <section class="tw-min-h-0 tw-border-b tw-border-[var(--ab-line)] tw-bg-[var(--ab-page)] xl:tw-col-start-2 xl:tw-row-start-1">
+      <div class="tw-flex tw-min-h-10 tw-flex-col tw-gap-2 tw-border-b tw-border-[var(--ab-line)] tw-bg-white tw-px-3 tw-py-2 md:tw-flex-row md:tw-items-center md:tw-justify-between">
+        <div class="tw-flex tw-min-w-0 tw-flex-wrap tw-items-center tw-gap-2 tw-text-xs tw-text-ink-muted">
+          <span>Analytics</span><span>/</span><span>Dashboards</span><span>/</span><strong class="tw-text-ink">Performance Comercial</strong>
+          <span class="tw-rounded-full tw-bg-emerald-100 tw-px-2 tw-py-0.5 tw-text-2xs tw-font-bold tw-text-emerald-700">Publicado</span>
+        </div>
+        <div class="tw-flex tw-flex-wrap tw-gap-1">
+          <button data-action="preview" class="tw-h-7 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-3 tw-text-xs tw-font-semibold tw-text-ink-soft hover:tw-bg-[var(--ab-panel-soft)]">Preview</button>
+          <button data-action="share" class="tw-h-7 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-3 tw-text-xs tw-font-semibold tw-text-ink-soft hover:tw-bg-[var(--ab-panel-soft)]">Compartilhar</button>
+          <button data-action="apply" class="tw-h-7 tw-rounded-md tw-bg-primary tw-px-3 tw-text-xs tw-font-bold tw-text-primary-fg">Aplicar</button>
+        </div>
+      </div>
+
+      <div class="tw-grid tw-gap-2 tw-p-2 xl:tw-h-[calc(100%-41px)] xl:tw-grid-rows-[112px_minmax(0,1fr)] xl:tw-overflow-hidden">
+        <div class="tw-grid tw-grid-cols-1 tw-gap-2 sm:tw-grid-cols-2 2xl:tw-grid-cols-5">
+          <article class="tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-p-3 tw-shadow-card"><small class="tw-flex tw-justify-between tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Leads qualificados <span>Hoje</span></small><b class="tw-mt-2 tw-block tw-text-2xl tw-leading-none tw-tracking-tight">384</b><span class="tw-text-2xs tw-font-bold tw-text-emerald-600">+12,4% vs. 7 dias</span><div class="tw-mt-2 tw-flex tw-h-5 tw-items-end tw-gap-0.5"><i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:36%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:52%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:48%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:82%"></i></div></article>
+          <article class="tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-p-3 tw-shadow-card"><small class="tw-flex tw-justify-between tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">CPL médio <span>Meta</span></small><b class="tw-mt-2 tw-block tw-text-2xl tw-leading-none tw-tracking-tight">R$ 34</b><span class="tw-text-2xs tw-font-bold tw-text-emerald-700">-8,1% melhor</span><div class="tw-mt-2 tw-flex tw-h-5 tw-items-end tw-gap-0.5"><i class="tw-flex-1 tw-rounded-t tw-bg-slate-400" style="height:72%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-slate-400" style="height:62%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-slate-400" style="height:54%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-slate-400" style="height:42%"></i></div></article>
+          <article class="tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-p-3 tw-shadow-card"><small class="tw-flex tw-justify-between tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Conversão visita <span>Funil</span></small><b class="tw-mt-2 tw-block tw-text-2xl tw-leading-none tw-tracking-tight">18,7%</b><span class="tw-text-2xs tw-font-bold tw-text-emerald-700">+2,2 p.p.</span><div class="tw-mt-2 tw-flex tw-h-5 tw-items-end tw-gap-0.5"><i class="tw-flex-1 tw-rounded-t tw-bg-slate-500" style="height:42%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-slate-500" style="height:58%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-slate-500" style="height:47%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-slate-500" style="height:70%"></i></div></article>
+          <article class="tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-p-3 tw-shadow-card"><small class="tw-flex tw-justify-between tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">ROI mídia <span>30d</span></small><b class="tw-mt-2 tw-block tw-text-2xl tw-leading-none tw-tracking-tight">4,8x</b><span class="tw-text-2xs tw-font-bold tw-text-emerald-700">acima da meta</span><div class="tw-mt-2 tw-flex tw-h-5 tw-items-end tw-gap-0.5"><i class="tw-flex-1 tw-rounded-t tw-bg-blue-500" style="height:38%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-blue-500" style="height:48%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-blue-500" style="height:66%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-blue-500" style="height:86%"></i></div></article>
+          <article class="tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-p-3 tw-shadow-card"><small class="tw-flex tw-justify-between tw-text-2xs tw-font-bold tw-uppercase tw-tracking-wide tw-text-ink-muted">Alertas <span>Agora</span></small><b class="tw-mt-2 tw-block tw-text-2xl tw-leading-none tw-tracking-tight">7</b><span class="tw-rounded-full tw-bg-amber-100 tw-px-2 tw-py-0.5 tw-text-2xs tw-font-bold tw-text-amber-800">2 críticos</span><div class="tw-mt-2 tw-flex tw-h-5 tw-items-end tw-gap-0.5"><i class="tw-flex-1 tw-rounded-t tw-bg-slate-300" style="height:22%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-slate-300" style="height:28%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-slate-300" style="height:40%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-slate-300" style="height:48%"></i></div></article>
+        </div>
+
+        <div class="tw-grid tw-min-h-0 tw-grid-cols-1 tw-gap-2 2xl:tw-grid-cols-[minmax(0,1fr)_330px]">
+          <article class="tw-min-h-[420px] tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-shadow-card 2xl:tw-row-span-2 2xl:tw-min-h-0">
+            <div class="tw-flex tw-h-9 tw-items-center tw-justify-between tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)] tw-px-3">
+              <strong class="tw-text-xs">Dashboard Canvas</strong>
+              <div class="tw-flex tw-items-center tw-gap-1">
+                <button data-canvas-variant="commercial" aria-pressed="true" class="ab-canvas-variant tw-h-6 tw-rounded tw-px-2 tw-text-2xs">Comercial</button>
+                <button data-canvas-variant="ops" aria-pressed="false" class="ab-canvas-variant tw-h-6 tw-rounded tw-px-2 tw-text-2xs">Operação</button>
+                <button data-canvas-variant="portfolio" aria-pressed="false" class="ab-canvas-variant tw-h-6 tw-rounded tw-px-2 tw-text-2xs">Carteira</button>
+                <span class="tw-rounded-full tw-bg-white tw-px-2 tw-py-0.5 tw-text-2xs tw-text-ink-muted">12 colunas</span>
+              </div>
+            </div>
+            <div class="ab-grid-bg tw-h-[calc(100%-36px)] tw-overflow-auto tw-p-3 ab-scrollbar">
+              <div id="dashboardCanvasGrid" class="tw-grid tw-min-w-[760px] tw-grid-cols-12 tw-auto-rows-[84px] tw-gap-2">
+                <div data-widget="Gráfico: Leads por campanha" data-kind="Gráfico combinado" class="tw-col-span-7 tw-row-span-2 tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-shadow-pop ab-widget-selected">
+                  <div class="tw-flex tw-h-8 tw-items-center tw-justify-between tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-text-xs tw-font-bold tw-text-ink-soft"><span>Leads + CPL por campanha</span><span>⋯</span></div>
+                  <div class="tw-relative tw-h-[calc(100%-32px)] tw-p-3">
+                    <div id="mainChart" class="tw-absolute tw-inset-x-3 tw-bottom-3 tw-top-8 tw-flex tw-items-end tw-gap-2"><i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:42%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:68%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:54%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:92%"></i><i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:61%"></i></div>
+                    <div class="tw-absolute tw-left-3 tw-right-3 tw-top-10 tw-flex tw-items-end tw-gap-2"><span class="tw-h-px tw-flex-1 tw-bg-amber-400"></span><span class="tw-h-px tw-flex-1 tw-bg-amber-400"></span><span class="tw-h-px tw-flex-1 tw-bg-amber-400"></span><span class="tw-h-px tw-flex-1 tw-bg-amber-400"></span></div>
+                    <span class="tw-absolute tw-right-3 tw-top-3 tw-rounded-full tw-bg-amber-100 tw-px-2 tw-py-0.5 tw-text-2xs tw-font-bold tw-text-amber-700">CPL R$ 34</span>
+                  </div>
+                </div>
+                <div data-widget="Meta de receita" data-kind="KPI de progresso" class="tw-col-span-5 tw-row-span-1 tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-3 tw-shadow-pop">
+                  <div class="tw-flex tw-items-start tw-justify-between tw-gap-3">
+                    <div class="tw-min-w-0"><div class="tw-text-xs tw-font-bold tw-text-ink-soft">Meta de receita</div><div class="tw-mt-1 tw-flex tw-items-baseline tw-gap-2"><b class="tw-text-xl tw-leading-none">R$ 1,84 mi</b><span class="tw-text-2xs tw-text-ink-muted">de R$ 2,55 mi</span></div></div>
+                    <span class="tw-rounded-full tw-bg-emerald-100 tw-px-2 tw-py-0.5 tw-text-2xs tw-font-bold tw-text-emerald-700">+18%</span>
+                  </div>
+                  <div class="tw-mt-2 tw-grid tw-grid-cols-[36px_minmax(0,1fr)] tw-items-center tw-gap-2"><b class="tw-text-xs">72%</b><span class="tw-h-2 tw-overflow-hidden tw-rounded-full tw-bg-slate-100"><i class="tw-block tw-h-full tw-w-[72%] tw-rounded-full tw-bg-primary"></i></span></div>
+                </div>
+                <div data-widget="Funil comercial" data-kind="Funil" class="tw-col-span-5 tw-row-span-1 tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-1.5 tw-shadow-pop">
+                  <div class="tw-mb-1 tw-flex tw-items-center tw-justify-between tw-text-[11px] tw-font-bold tw-leading-none tw-text-ink-soft"><span>Funil comercial</span><span class="tw-text-[10px]">284 prop.</span></div>
+                  <div class="tw-grid tw-gap-0.5 tw-text-[10px] tw-leading-none"><div class="tw-grid tw-grid-cols-[46px_minmax(0,1fr)_36px] tw-items-center tw-gap-2"><span class="tw-text-ink-muted">Leads</span><span class="tw-h-1 tw-rounded-full tw-bg-slate-700"></span><b class="tw-text-right">3.824</b></div><div class="tw-grid tw-grid-cols-[46px_minmax(0,1fr)_36px] tw-items-center tw-gap-2"><span class="tw-text-ink-muted">Qual.</span><span class="tw-h-1 tw-w-[74%] tw-rounded-full tw-bg-slate-500"></span><b class="tw-text-right">1.482</b></div><div class="tw-grid tw-grid-cols-[46px_minmax(0,1fr)_36px] tw-items-center tw-gap-2"><span class="tw-text-ink-muted">Visita</span><span class="tw-h-1 tw-w-[48%] tw-rounded-full tw-bg-slate-400"></span><b class="tw-text-right">712</b></div></div>
+                </div>
+                <div data-widget="Mapa de origem" data-kind="Mapa" class="tw-col-span-4 tw-row-span-2 tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-3 tw-shadow-pop">
+                  <div class="tw-mb-2 tw-flex tw-items-center tw-justify-between tw-text-xs tw-font-bold tw-text-ink-soft"><span>Mapa de origem</span><span>⌖</span></div>
+                  <div class="tw-relative tw-h-[118px] tw-rounded-md tw-border tw-border-[var(--ab-line-soft)] tw-bg-gradient-to-br tw-from-slate-100 tw-to-blue-50"><span class="tw-absolute tw-left-[25%] tw-top-[38%] tw-h-3 tw-w-3 tw-rounded-full tw-bg-slate-500"></span><span class="tw-absolute tw-left-[62%] tw-top-[32%] tw-h-4 tw-w-4 tw-rounded-full tw-bg-blue-600"></span><span class="tw-absolute tw-left-[54%] tw-top-[66%] tw-h-3 tw-w-3 tw-rounded-full tw-bg-amber-500"></span><span class="tw-absolute tw-left-[36%] tw-top-[72%] tw-h-2 tw-w-2 tw-rounded-full tw-bg-emerald-500"></span></div>
+                </div>
+                <div data-widget="Ranking de campanhas" data-kind="Tabela compacta" class="tw-col-span-8 tw-row-span-2 tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-shadow-pop">
+                  <div class="tw-flex tw-h-8 tw-items-center tw-justify-between tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-text-xs tw-font-bold tw-text-ink-soft"><span>Ranking de campanhas</span><span>5 linhas</span></div>
+                  <div class="tw-grid tw-text-xs"><div class="tw-grid tw-grid-cols-[1fr_64px_64px] tw-bg-[var(--ab-panel-header)] tw-px-3 tw-py-1 tw-text-2xs tw-font-bold tw-uppercase tw-text-ink-muted"><span>Campanha</span><span class="tw-text-right">Leads</span><span class="tw-text-right">CPL</span></div><div class="tw-grid tw-grid-cols-[1fr_64px_64px] tw-border-t tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2"><b>BC Alto Padrão</b><span class="tw-text-right">842</span><span class="tw-text-right">R$31</span></div><div class="tw-grid tw-grid-cols-[1fr_64px_64px] tw-border-t tw-border-[var(--ab-line-soft)] tw-bg-slate-50 tw-px-3 tw-py-2"><b>Itajaí Lançamentos</b><span class="tw-text-right">624</span><span class="tw-text-right">R$43</span></div><div class="tw-grid tw-grid-cols-[1fr_64px_64px] tw-border-t tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2"><b>Locação Centro</b><span class="tw-text-right">318</span><span class="tw-text-right">R$22</span></div></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="tw-min-h-[240px] tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-shadow-card">
+            <div class="tw-flex tw-h-9 tw-items-center tw-justify-between tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)] tw-px-3"><strong class="tw-text-xs">Preview de dados</strong><span class="tw-rounded-full tw-bg-white tw-px-2 tw-py-0.5 tw-text-2xs tw-text-ink-muted">2.418 linhas</span></div>
+            <div class="tw-h-[calc(100%-36px)] tw-overflow-auto ab-scrollbar">
+              <table class="tw-w-full tw-min-w-[520px] tw-border-separate tw-border-spacing-0 tw-text-xs">
+                <thead class="tw-sticky tw-top-0 tw-bg-[var(--ab-panel-header)]"><tr><th class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-left tw-text-2xs tw-uppercase tw-text-ink-muted">Campanha</th><th class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-left tw-text-2xs tw-uppercase tw-text-ink-muted">Canal</th><th class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-right tw-text-2xs tw-uppercase tw-text-ink-muted">Leads</th><th class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-right tw-text-2xs tw-uppercase tw-text-ink-muted">CPL</th></tr></thead>
+                <tbody>
+                  <tr class="hover:tw-bg-primary-soft"><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-font-semibold">BC Alto Padrão</td><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2">Meta</td><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-right">842</td><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-right">R$ 31</td></tr>
+                  <tr class="tw-bg-slate-50 hover:tw-bg-primary-soft"><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-font-semibold">Itajaí Lançamentos</td><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2">Google</td><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-right">624</td><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-right">R$ 43</td></tr>
+                  <tr class="hover:tw-bg-primary-soft"><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-font-semibold">Locação Centro</td><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2">Portal</td><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-right">318</td><td class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-right">R$ 22</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="tw-min-h-[190px] tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-shadow-card">
+            <div class="tw-flex tw-h-9 tw-items-center tw-justify-between tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)] tw-px-3"><strong class="tw-text-xs">Filtros ativos</strong><span class="tw-rounded-full tw-bg-amber-100 tw-px-2 tw-py-0.5 tw-text-2xs tw-font-bold tw-text-amber-700">4 filtros</span></div>
+            <div class="tw-grid tw-gap-2 tw-p-3">
+              <label class="tw-grid tw-gap-1"><span class="tw-text-2xs tw-font-bold tw-text-ink-muted">Período</span><select class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-2 tw-text-xs"><option>Últimos 30 dias</option></select></label>
+              <label class="tw-grid tw-gap-1"><span class="tw-text-2xs tw-font-bold tw-text-ink-muted">Canal</span><select id="channelFilter" multiple class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-2 tw-text-xs"><option selected>Meta</option><option selected>Google</option><option>Portal</option><option>WhatsApp</option><option>Orgânico</option></select></label>
+              <div class="tw-flex tw-flex-wrap tw-gap-1"><span class="tw-rounded-full tw-bg-[var(--ab-panel-header)] tw-px-2 tw-py-1 tw-text-2xs">cidade: BC</span><span class="tw-rounded-full tw-bg-[var(--ab-panel-header)] tw-px-2 tw-py-1 tw-text-2xs">ticket &gt; R$ 700k</span><span class="tw-rounded-full tw-bg-[var(--ab-panel-header)] tw-px-2 tw-py-1 tw-text-2xs">canal: 2 selecionados</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <aside data-panel="inspector" class="tw-min-h-0 tw-overflow-hidden tw-border-b tw-border-[var(--ab-line)] tw-bg-white xl:tw-col-start-3 xl:tw-row-span-2 xl:tw-border-b-0 xl:tw-border-l">
+      <div class="tw-flex tw-h-9 tw-items-center tw-justify-between tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)] tw-px-3">
+        <strong class="tw-text-2xs tw-font-extrabold tw-uppercase tw-tracking-wide tw-text-ink-soft">◫ Inspector</strong>
+        <div class="tw-flex tw-gap-1"><button data-action="focus-selection" class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded tw-text-ink-muted hover:tw-bg-white" title="Focar seleção">⌖</button><button data-action="collapse-inspector" class="tw-grid tw-h-7 tw-w-7 tw-place-items-center tw-rounded tw-text-ink-muted hover:tw-bg-white" title="Colapsar inspector">⇥</button></div>
+      </div>
+      <div class="tw-max-h-[70vh] tw-overflow-auto tw-p-2 xl:tw-h-[calc(100%-36px)] xl:tw-max-h-none ab-scrollbar">
+        <div class="tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-p-3 tw-shadow-card">
+          <span class="tw-rounded-full tw-bg-emerald-100 tw-px-2 tw-py-0.5 tw-text-2xs tw-font-bold tw-text-emerald-700">Selecionado</span>
+          <h2 id="selectionTitle" class="tw-mb-1 tw-mt-2 tw-text-base tw-font-bold tw-tracking-tight">Gráfico: Leads por campanha</h2>
+          <p id="selectionDescription" class="tw-m-0 tw-text-xs tw-leading-5 tw-text-ink-muted">Configure origem, métrica, dimensão, visual, filtros locais e permissões sem sair da tela.</p>
+        </div>
+
+        <section class="tw-mt-2 tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white">
+          <h3 class="tw-m-0 tw-flex tw-h-8 tw-items-center tw-justify-between tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)] tw-px-3 tw-text-2xs tw-font-black tw-uppercase tw-tracking-wide">Dados <span class="tw-rounded-full tw-bg-white tw-px-2 tw-py-0.5 tw-text-2xs tw-text-ink-muted">query_42</span></h3>
+          <div class="tw-grid tw-gap-2 tw-p-3">
+            <label class="tw-grid tw-gap-1"><span class="tw-text-2xs tw-font-bold tw-text-ink-muted">Fonte</span><select id="sourceSelect" class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-2 tw-text-xs"><option>Meta Ads Leads</option><option>CRM Comercial</option><option>Imóveis</option><option>WhatsApp Inbox</option></select></label>
+            <div class="ab-field-grid tw-grid tw-grid-cols-2 tw-gap-2"><label class="tw-grid tw-gap-1"><span class="tw-text-2xs tw-font-bold tw-text-ink-muted">Dimensão</span><select id="dimensionSelect" class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-2 tw-text-xs"><option>campaign_name</option><option>broker_name</option><option>city</option><option>source</option></select></label><label class="tw-grid tw-gap-1"><span class="tw-text-2xs tw-font-bold tw-text-ink-muted">Métrica</span><select id="metricSelect" class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-2 tw-text-xs"><option>qualified_leads</option><option>spend</option><option>visits</option><option>proposals</option></select></label></div>
+            <label class="tw-flex tw-items-center tw-justify-between tw-text-xs tw-text-ink-soft"><span>Atualização automática</span><button data-toggle="auto-refresh" class="tw-flex tw-h-5 tw-w-9 tw-items-center tw-rounded-full tw-bg-primary-soft tw-p-0.5" aria-pressed="true"><i class="tw-ml-auto tw-block tw-h-4 tw-w-4 tw-rounded-full tw-bg-primary"></i></button></label>
+          </div>
+        </section>
+
+        <section class="tw-mt-2 tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white">
+          <h3 class="tw-m-0 tw-flex tw-h-8 tw-items-center tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)] tw-px-3 tw-text-2xs tw-font-black tw-uppercase tw-tracking-wide">Visual</h3>
+          <div class="tw-grid tw-gap-2 tw-p-3">
+            <div data-segmented="visual" class="tw-grid tw-grid-cols-3 tw-gap-1 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-[var(--ab-panel-soft)] tw-p-1"><button data-visual="Barra" class="tw-h-7 tw-rounded tw-bg-primary tw-text-2xs tw-font-bold tw-text-white">Barra</button><button data-visual="Linha" class="tw-h-7 tw-rounded tw-text-2xs tw-font-bold tw-text-ink-muted">Linha</button><button data-visual="Tabela" class="tw-h-7 tw-rounded tw-text-2xs tw-font-bold tw-text-ink-muted">Tabela</button></div>
+            <div class="ab-field-grid tw-grid tw-grid-cols-2 tw-gap-2"><label class="tw-grid tw-gap-1"><span class="tw-text-2xs tw-font-bold tw-text-ink-muted">Altura</span><input id="heightInput" class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-2 tw-text-xs" value="300px"></label><label class="tw-grid tw-gap-1"><span class="tw-text-2xs tw-font-bold tw-text-ink-muted">Colunas</span><input id="columnsInput" class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-2 tw-text-xs" value="8"></label></div>
+            <label class="tw-grid tw-gap-1"><span class="tw-text-2xs tw-font-bold tw-text-ink-muted">Paleta</span><select id="paletteSelect" class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-2 tw-text-xs"><option>Operacional</option><option>Financeiro</option></select></label>
+          </div>
+        </section>
+
+        <section class="tw-mt-2 tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white">
+          <h3 class="tw-m-0 tw-flex tw-h-8 tw-items-center tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)] tw-px-3 tw-text-2xs tw-font-black tw-uppercase tw-tracking-wide">Regras</h3>
+          <div class="tw-grid tw-gap-2 tw-p-3">
+            <label class="tw-flex tw-items-center tw-justify-between tw-text-xs tw-text-ink-soft"><span>Mostrar variação %</span><button data-toggle="variation" class="tw-flex tw-h-5 tw-w-9 tw-items-center tw-rounded-full tw-bg-primary-soft tw-p-0.5" aria-pressed="true"><i class="tw-ml-auto tw-block tw-h-4 tw-w-4 tw-rounded-full tw-bg-primary"></i></button></label>
+            <label class="tw-flex tw-items-center tw-justify-between tw-text-xs tw-text-ink-soft"><span>Respeitar tenant atual</span><button data-toggle="tenant" class="tw-flex tw-h-5 tw-w-9 tw-items-center tw-rounded-full tw-bg-primary-soft tw-p-0.5" aria-pressed="true"><i class="tw-ml-auto tw-block tw-h-4 tw-w-4 tw-rounded-full tw-bg-primary"></i></button></label>
+            <label class="tw-flex tw-items-center tw-justify-between tw-text-xs tw-text-ink-soft"><span>Permitir exportação</span><button data-toggle="export" class="tw-flex tw-h-5 tw-w-9 tw-items-center tw-rounded-full tw-bg-slate-200 tw-p-0.5" aria-pressed="false"><i class="tw-block tw-h-4 tw-w-4 tw-rounded-full tw-bg-slate-400"></i></button></label>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <section class="tw-min-h-[240px] tw-border-b tw-border-[var(--ab-line)] tw-bg-white xl:tw-col-start-2 xl:tw-row-start-2 xl:tw-min-h-0 xl:tw-border-b-0 xl:tw-border-t">
+      <div class="tw-flex tw-h-9 tw-items-center tw-justify-between tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)]">
+        <div class="tw-flex tw-h-full tw-overflow-x-auto ab-scrollbar">
+          <button data-bottom-tab="sql" class="tw-h-full tw-border-r tw-border-[var(--ab-line-soft)] tw-bg-white tw-px-3 tw-text-xs tw-font-bold tw-text-primary tw-shadow-[inset_0_2px_0_var(--admin-primary)]">SQL</button>
+          <button data-bottom-tab="formulas" class="tw-h-full tw-border-r tw-border-[var(--ab-line-soft)] tw-px-3 tw-text-xs tw-font-bold tw-text-ink-muted">Fórmulas</button>
+          <button data-bottom-tab="filters" class="tw-h-full tw-border-r tw-border-[var(--ab-line-soft)] tw-px-3 tw-text-xs tw-font-bold tw-text-ink-muted">Filtros</button>
+          <button data-bottom-tab="history" class="tw-h-full tw-border-r tw-border-[var(--ab-line-soft)] tw-px-3 tw-text-xs tw-font-bold tw-text-ink-muted">Histórico</button>
+        </div>
+        <div class="tw-hidden tw-gap-1 tw-pr-2 sm:tw-flex"><span class="tw-rounded-full tw-bg-emerald-100 tw-px-2 tw-py-0.5 tw-text-2xs tw-font-bold tw-text-emerald-700">SQL válido</span><span class="tw-rounded-full tw-bg-white tw-px-2 tw-py-0.5 tw-text-2xs tw-text-ink-muted">124 ms</span></div>
+      </div>
+      <div class="tw-grid tw-h-[calc(100%-36px)] tw-grid-cols-1 lg:tw-grid-cols-[1.35fr_.8fr]">
+        <pre id="bottomCode" class="tw-m-0 tw-min-h-[180px] tw-overflow-auto tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-[#0f172a] tw-p-3 tw-font-mono tw-text-xs tw-leading-5 tw-text-slate-200 lg:tw-border-b-0 lg:tw-border-r ab-scrollbar"><span class="tw-text-sky-300">SELECT</span>
+  campaign_name,
+  <span class="tw-text-emerald-300">SUM</span>(qualified_leads) <span class="tw-text-sky-300">AS</span> leads,
+  <span class="tw-text-emerald-300">ROUND</span>(<span class="tw-text-emerald-300">SUM</span>(spend) / <span class="tw-text-emerald-300">NULLIF</span>(<span class="tw-text-emerald-300">SUM</span>(qualified_leads), 0), 2) <span class="tw-text-sky-300">AS</span> cpl
+<span class="tw-text-sky-300">FROM</span> <span class="tw-text-amber-200">meta_ads_leads</span>
+<span class="tw-text-sky-300">WHERE</span> created_at &gt;= <span class="tw-text-amber-200">'2026-06-01'</span>
+  <span class="tw-text-sky-300">AND</span> tenant_id = <span class="tw-text-amber-200">:current_tenant</span>
+<span class="tw-text-sky-300">GROUP BY</span> campaign_name
+<span class="tw-text-sky-300">ORDER BY</span> leads <span class="tw-text-sky-300">DESC</span>;</pre>
+        <ul id="activityLog" class="tw-m-0 tw-list-none tw-overflow-auto tw-p-2 tw-font-mono tw-text-2xs tw-text-ink-muted ab-scrollbar">
+          <li class="tw-grid tw-grid-cols-[72px_54px_1fr] tw-gap-2 tw-border-b tw-border-[var(--ab-line-soft)] tw-py-1"><span>14:32:08</span><strong class="tw-text-emerald-600">OK</strong><span>Preview atualizado em 124 ms</span></li>
+          <li class="tw-grid tw-grid-cols-[72px_54px_1fr] tw-gap-2 tw-border-b tw-border-[var(--ab-line-soft)] tw-py-1"><span>14:31:54</span><strong class="tw-text-blue-600">INFO</strong><span>Filtro tenant aplicado automaticamente</span></li>
+          <li class="tw-grid tw-grid-cols-[72px_54px_1fr] tw-gap-2 tw-border-b tw-border-[var(--ab-line-soft)] tw-py-1"><span>14:31:11</span><strong class="tw-text-amber-600">WARN</strong><span>Campo spend possui 3 valores nulos</span></li>
+          <li class="tw-grid tw-grid-cols-[72px_54px_1fr] tw-gap-2 tw-border-b tw-border-[var(--ab-line-soft)] tw-py-1"><span>14:30:49</span><strong class="tw-text-emerald-600">OK</strong><span>Dashboard salvo como rascunho</span></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="tw-flex tw-flex-col tw-gap-1 tw-border-t tw-border-[var(--ab-line)] tw-bg-white tw-px-3 tw-py-2 tw-font-mono tw-text-2xs tw-text-ink-faint sm:tw-flex-row sm:tw-items-center sm:tw-justify-between">
+    <span>workspace: Performance Comercial · tenant: Unitymob Demo · user: admin</span>
+    <span>Explorer + Workspace + Inspector · TailwindCSS tw-prefix · responsive</span>
+  </footer>
+
+  <section id="ax-admin-system" class="ab-admin-doc" aria-labelledby="axAdminSystemTitle">
+    <div class="ab-admin-doc__hero">
+      <article class="ab-admin-doc__panel">
+        <div class="ab-admin-doc__body">
+          <span class="ab-admin-doc__eyebrow">Unitymob Admin AX</span>
+          <h1 id="axAdminSystemTitle" class="ab-admin-doc__title">Analytics Builder aplicado ao admin Rails</h1>
+          <p class="ab-admin-doc__lead">
+            Este bloco documenta como usar o conceito Explorer + Workspace + Inspector no sistema.
+            A referência visual continua sendo este design system, mas a implementação Rails usa
+            helpers e partials <strong>ax-*</strong> em vez de copiar o mock ou manter Bootstrap por baixo.
+          </p>
+          <div class="ab-admin-doc__actions">
+            <a class="ab-admin-btn ab-admin-btn--primary" href="../../docs/admin_layout_contract.md">Contrato completo</a>
+            <a class="ab-admin-btn" href="#ax-admin-components">Componentes</a>
+            <a class="ab-admin-btn" href="#ax-admin-playbook">Playbook</a>
+          </div>
+        </div>
+      </article>
+
+      <aside class="ab-admin-doc__panel">
+        <div class="ab-admin-doc__panel-header">
+          <h2>Premissas</h2>
+          <span class="ab-admin-doc__eyebrow">sem skin legado</span>
+        </div>
+        <div class="ab-admin-doc__body">
+          <ul class="tw-m-0 tw-grid tw-gap-2 tw-pl-4 tw-text-xs tw-leading-5 tw-text-ink-muted">
+            <li>Preservar Rails CRUD, params, permissões, submits, uploads e auditoria.</li>
+            <li>Extrair padrões para <code class="ab-admin-code">app/views/admin/shared/ui</code>.</li>
+            <li>Remover Bootstrap quando o componente <code class="ab-admin-code">ax-*</code> já cobre o comportamento.</li>
+            <li>Não atingir o site público ao ajustar tokens ou layout do admin.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <div class="ab-admin-doc__grid ab-admin-doc__grid--four">
+      <article class="ab-admin-doc__card ab-admin-token">
+        <div class="ab-admin-token__swatch" style="background: var(--admin-primary);"></div>
+        <code>--admin-primary</code>
+        <strong>#365F8F</strong>
+      </article>
+      <article class="ab-admin-doc__card ab-admin-token">
+        <div class="ab-admin-token__swatch" style="background: var(--ab-page);"></div>
+        <code>--ab-page</code>
+        <strong>#EEF2F7</strong>
+      </article>
+      <article class="ab-admin-doc__card ab-admin-token">
+        <div class="ab-admin-token__swatch" style="background: var(--ab-panel-header);"></div>
+        <code>surface.header</code>
+        <strong>#EEF2F7</strong>
+      </article>
+      <article class="ab-admin-doc__card ab-admin-token">
+        <div class="ab-admin-token__swatch" style="background: var(--ab-ink);"></div>
+        <code>ink</code>
+        <strong>#202A37</strong>
+      </article>
+      <article class="ab-admin-doc__card ab-admin-token">
+        <div class="ab-admin-token__swatch" style="height: 12px; margin-block: 18px 12px; background: repeating-linear-gradient(90deg, var(--admin-primary) 0 12px, var(--ab-line-soft) 12px 24px);"></div>
+        <code>--ax-shell-gutter</code>
+        <strong>12px</strong>
+      </article>
+    </div>
+
+    <div class="ab-admin-doc__grid ab-admin-doc__grid--two">
+      <article class="ab-admin-doc__panel">
+        <div class="ab-admin-doc__panel-header">
+          <h2>Contrato estrutural</h2>
+          <span class="ab-admin-doc__eyebrow">5 peças</span>
+        </div>
+        <div class="ab-admin-doc__body">
+          <div class="ab-admin-shell-demo" aria-label="Demonstração do shell AX">
+            <div class="ab-admin-shell-demo__topbar">
+              <span>ax-topbar</span>
+              <span class="ab-admin-path">usuário / global</span>
+            </div>
+            <div class="ab-admin-shell-demo__contextbar">
+              <span>ax-contextbar · Admin / Imóveis / #8634</span>
+              <span class="ab-admin-path">ações do módulo</span>
+            </div>
+            <div class="ab-admin-shell-demo__body">
+              <aside class="ab-admin-shell-demo__sidebar">
+                <div class="ab-admin-shell-demo__sidebar-head">ax-sidebar</div>
+                <div class="ab-admin-demo-list">
+                  <span>Dashboard</span>
+                  <span class="is-active">Imóveis</span>
+                  <span>Leads</span>
+                  <span>Configurações</span>
+                </div>
+              </aside>
+              <main class="ab-admin-shell-demo__main">
+                <div class="ab-admin-section-demo">
+                  <div class="ab-admin-section-demo__header">
+                    <span>ax-main</span>
+                    <span class="ab-admin-doc__eyebrow">conteúdo</span>
+                  </div>
+                  <div class="ab-admin-section-demo__body">
+                    <div class="ab-admin-field ab-admin-span-6">
+                      <label>Tipo</label>
+                      <input value="Apartamentos">
+                    </div>
+                    <div class="ab-admin-field ab-admin-span-6">
+                      <label>Categoria</label>
+                      <input value="Apartamento">
+                    </div>
+                    <div class="ab-admin-field ab-admin-span-4">
+                      <label>Status</label>
+                      <input value="Venda">
+                    </div>
+                    <div class="ab-admin-field ab-admin-span-4">
+                      <label>Situação</label>
+                      <input value="Novo">
+                    </div>
+                    <div class="ab-admin-field ab-admin-span-4">
+                      <label>Ocupação</label>
+                      <input value="Desocupado">
+                    </div>
+                  </div>
+                </div>
+              </main>
+              <aside class="ab-admin-shell-demo__aside">
+                <div class="ab-admin-shell-demo__aside-head">ax-aside</div>
+                <div class="ab-admin-demo-list">
+                  <span class="is-active">Visão geral</span>
+                  <span>Características</span>
+                  <span>Mídia</span>
+                  <span>Documentos</span>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="ab-admin-doc__panel">
+        <div class="ab-admin-doc__panel-header">
+          <h2>Régua de espaçamento</h2>
+          <span class="ab-admin-doc__eyebrow">gutter único</span>
+        </div>
+        <div class="ab-admin-doc__body">
+          <pre class="ab-admin-code-block"><code>:root {
+  --ax-shell-gutter: 12px;
+}
+
+.ax-main,
+.ax-contextbar,
+.ax-sidebar-contextbar {
+  padding-inline: var(--ax-shell-gutter);
+}
+
+.ax-workspace-shell {
+  --ax-workspace-gutter: var(--ax-shell-gutter);
+}</code></pre>
+          <p class="tw-mb-0 tw-mt-3 tw-text-xs tw-leading-5 tw-text-ink-muted">
+            Dashboard, listagens e cadastros devem usar a mesma régua lateral.
+            Não criar padding local como <code class="ab-admin-code">18px</code>,
+            <code class="ab-admin-code">.75rem</code> ou <code class="ab-admin-code">0</code>
+            para compensar desalinhamento entre <code class="ab-admin-code">ax-contextbar</code>,
+            <code class="ab-admin-code">ax-main</code> e <code class="ab-admin-code">ax-aside</code>.
+          </p>
+        </div>
+      </article>
+
+      <article class="ab-admin-doc__panel">
+        <div class="ab-admin-doc__panel-header">
+          <h2>Rails helpers</h2>
+          <span class="ab-admin-doc__eyebrow">shared/ui</span>
+        </div>
+        <div class="ab-admin-doc__body">
+          <pre class="ab-admin-code-block"><code>app/helpers/admin/ui_helper.rb
+app/views/admin/shared/ui/
+app/assets/stylesheets/admin_tailwind.css
+app/javascript/controllers/ax_*.js</code></pre>
+          <p class="tw-mb-0 tw-mt-3 tw-text-xs tw-leading-5 tw-text-ink-muted">
+            Telas migradas devem chamar helpers <code class="ab-admin-code">ax_*</code>.
+            Se o helper não cobre o caso, evolua o componente antes de duplicar markup na tela.
+          </p>
+        </div>
+      </article>
+    </div>
+
+    <article class="ab-admin-doc__panel tw-mt-3">
+      <div class="ab-admin-doc__panel-header">
+        <h2>Aside direito</h2>
+        <span class="ab-admin-doc__eyebrow">ax_aside_panel</span>
+      </div>
+      <div class="ab-admin-doc__body">
+        <p class="tw-mb-3 tw-text-xs tw-leading-5 tw-text-ink-muted">
+          A coluna direita é estruturalmente a mesma em todas as telas, mas o comportamento
+          interno muda conforme o contexto. O shell mantém alinhamento, largura, colapso e
+          separação entre <code class="ab-admin-code">ax-main</code> e
+          <code class="ab-admin-code">ax-aside</code>.
+        </p>
+        <div class="ab-admin-grid ab-admin-grid--3">
+          <div class="ab-admin-doc__callout">
+            <strong>Inspector de filtros</strong>
+            <p>Usado em listagens. Contém campos, ações e grupos recolhíveis. Recolhido, não vira navegação por ícones.</p>
+          </div>
+          <div class="ab-admin-doc__callout">
+            <strong>Editor navegável</strong>
+            <p>Usado no cadastro de imóveis. Quando recolhido, usa <code class="ab-admin-code">rail_body</code> com ícones clicáveis para trocar de aba.</p>
+          </div>
+          <div class="ab-admin-doc__callout">
+            <strong>Painel informativo</strong>
+            <p>Usado em configurações e previews. Header e body são dinâmicos, sem obrigação de navegação.</p>
+          </div>
+        </div>
+        <pre class="ab-admin-code-block tw-mt-3"><code>ax-workspace-shell
+├── ax-main
+│   └── conteúdo da tela
+└── ax-aside
+    └── ax_aside_panel
+        ├── header dinâmico
+        ├── body dinâmico
+        └── rail_body opcional</code></pre>
+      </div>
+    </article>
+
+    <article class="ab-admin-doc__panel tw-mt-3">
+      <div class="ab-admin-doc__panel-header">
+        <h2>Componentes de formulário</h2>
+        <span class="ab-admin-doc__eyebrow">densidade operacional</span>
+      </div>
+      <div class="ab-admin-doc__body">
+        <div class="ab-admin-section-demo">
+          <div class="ab-admin-section-demo__header">
+            <strong>Identificação e sinalizadores</strong>
+            <span class="ab-admin-doc__eyebrow">ax_form_section</span>
+          </div>
+          <div class="ab-admin-section-demo__body">
+            <div class="ab-admin-field ab-admin-span-3">
+              <label>Referência</label>
+              <input value="8634">
+            </div>
+            <div class="ab-admin-field ab-admin-span-3">
+              <label>Cadastro</label>
+              <input value="Atualizado há 5 dias">
+            </div>
+            <div class="ab-admin-field ab-admin-span-6">
+              <label>Sinalizadores</label>
+              <div class="ab-admin-chip-row">
+                <span class="ab-admin-chip is-active">Site</span>
+                <span class="ab-admin-chip">Destaque</span>
+                <span class="ab-admin-chip">Super destaque</span>
+                <span class="ab-admin-chip">Lançamento</span>
+                <span class="ab-admin-chip">Exclusivo</span>
+              </div>
+            </div>
+            <div class="ab-admin-field ab-admin-span-6">
+              <label>Empreendimento</label>
+              <select><option>BRAVA CENTER</option></select>
+            </div>
+            <div class="ab-admin-field ab-admin-span-3">
+              <label>Data entrega</label>
+              <input value="01/02/2026">
+            </div>
+            <div class="ab-admin-field ab-admin-span-3">
+              <label>Perfil</label>
+              <select><option>Luxo</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <div id="ax-admin-components" class="ab-admin-doc__grid ab-admin-doc__grid--two">
+      <article class="ab-admin-doc__panel">
+        <div class="ab-admin-doc__section-header">
+          <h2>Componentes atuais</h2>
+          <span class="ab-admin-doc__eyebrow">usar antes de criar novo</span>
+        </div>
+        <div class="ab-admin-doc__body tw-p-0">
+          <table class="ab-admin-component-table">
+            <thead>
+              <tr><th>Categoria</th><th>Componentes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Shell</strong></td>
+                <td><code class="ab-admin-code">ax_workspace_shell</code>, <code class="ab-admin-code">ax_aside_panel</code>, <code class="ab-admin-code">ax_sticky_action_footer</code></td>
+              </tr>
+              <tr>
+                <td><strong>Campos</strong></td>
+                <td><code class="ab-admin-code">ax_field_grid</code>, <code class="ab-admin-code">ax_text_field</code>, <code class="ab-admin-code">ax_select_field</code>, <code class="ab-admin-code">ax_relationship_select</code>, <code class="ab-admin-code">ax_input_group</code></td>
+              </tr>
+              <tr>
+                <td><strong>Valores</strong></td>
+                <td><code class="ab-admin-code">ax_currency_field</code>, <code class="ab-admin-code">ax_number_field</code>, <code class="ab-admin-code">ax_date_field</code>, <code class="ab-admin-code">ax_measure_field</code></td>
+              </tr>
+              <tr>
+                <td><strong>Escolhas</strong></td>
+                <td><code class="ab-admin-code">ax_toggle_chip</code>, <code class="ab-admin-code">ax_radio_group</code>, <code class="ab-admin-code">ax_multiselect_field</code>, <code class="ab-admin-code">ax_chip_grid</code></td>
+              </tr>
+              <tr>
+                <td><strong>Mídia</strong></td>
+                <td><code class="ab-admin-code">ax_media_upload_panel</code>, <code class="ab-admin-code">ax_media_grid</code>, <code class="ab-admin-code">ax_media_tile</code>, <code class="ab-admin-code">ax_attachment_item</code></td>
+              </tr>
+              <tr>
+                <td><strong>Interação</strong></td>
+                <td><code class="ab-admin-code">ax_quick_modal</code>, <code class="ab-admin-code">ax-confirm-submit</code>, <code class="ab-admin-code">ax-tabs</code>, <code class="ab-admin-code">ax-disclosure</code>, <code class="ab-admin-code">ax-tooltip</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="ab-admin-doc__panel">
+        <div class="ab-admin-doc__section-header">
+          <h2>Exemplo Rails</h2>
+          <span class="ab-admin-doc__eyebrow">não duplicar markup</span>
+        </div>
+        <div class="ab-admin-doc__body">
+          <pre class="ab-admin-code-block"><code>&lt;%= ax_form_section(title: "Definições básicas", eyebrow: "Classificação") do %&gt;
+  &lt;%= ax_field_grid do %&gt;
+    &lt;div class="ax-span-6"&gt;
+      &lt;%= ax_select_field(
+            form: f,
+            method: :tipo,
+            label: "Tipo de cadastro",
+            choices: tipo_options
+          ) %&gt;
+    &lt;/div&gt;
+
+    &lt;div class="ax-span-6"&gt;
+      &lt;%= ax_select_field(
+            form: f,
+            method: :categoria,
+            label: "Categoria",
+            choices: categoria_options
+          ) %&gt;
+    &lt;/div&gt;
+  &lt;% end %&gt;
+&lt;% end %&gt;</code></pre>
+        </div>
+      </article>
+    </div>
+
+    <article class="ab-admin-doc__panel tw-mt-3">
+      <div class="ab-admin-doc__panel-header">
+        <h2>Cadastro de imóveis</h2>
+        <span class="ab-admin-doc__eyebrow">organização das abas</span>
+      </div>
+      <div class="ab-admin-doc__body">
+        <div class="ab-admin-grid ab-admin-grid--3">
+          <div class="ab-admin-doc__callout"><strong>Base</strong><p>Identificação, sinalizadores, classificação, empreendimento/proprietário e endereço.</p></div>
+          <div class="ab-admin-doc__callout"><strong>Estrutura</strong><p>Dimensões físicas, cômodos, vagas, áreas, face, topografia e atributos internos.</p></div>
+          <div class="ab-admin-doc__callout"><strong>Empreendimento</strong><p>Dados do edifício, descrição, capacidade e infraestrutura/lazer.</p></div>
+          <div class="ab-admin-doc__callout"><strong>Comercial</strong><p>Valores, matrícula, negociação, comissões, contatos, chaves, visitas, responsáveis e permuta.</p></div>
+          <div class="ab-admin-doc__callout"><strong>Publicação</strong><p>Destaques, título, descrição pública, portais e SEO.</p></div>
+          <div class="ab-admin-doc__callout"><strong>Mídia e Documentos</strong><p>Fotos, vídeos, tour, documentos do Vista, fichas e autorizações.</p></div>
+        </div>
+      </div>
+    </article>
+
+    <div class="ab-admin-doc__grid">
+      <article class="ab-admin-doc__card">
+        <h3>Botões</h3>
+        <div class="ab-admin-button-row">
+          <button class="ab-admin-btn ab-admin-btn--primary">Salvar</button>
+          <button class="ab-admin-btn">Cancelar</button>
+          <button class="ab-admin-btn ab-admin-btn--icon" title="Voltar">←</button>
+        </div>
+        <p>Use <code class="ab-admin-code">ax_button</code> e <code class="ab-admin-code">ax_icon_button</code>. Altura base: 32px; toolbar: 28px.</p>
+      </article>
+
+      <article class="ab-admin-doc__card">
+        <h3>Quick modal</h3>
+        <p>
+          Cadastros rápidos usam <code class="ab-admin-code">ax_quick_modal</code>,
+          <code class="ab-admin-code">ax-quick-create</code>, grid AX e aviso inline.
+          Não usar <code class="ab-admin-code">modal fade</code> ou <code class="ab-admin-code">alert</code> Bootstrap.
+        </p>
+      </article>
+
+      <article class="ab-admin-doc__card">
+        <h3>Confirmação destrutiva</h3>
+        <p>
+          Remover documento, foto ou vínculo deve usar
+          <code class="ab-admin-code">ax-confirm-submit</code>. Evite
+          <code class="ab-admin-code">window.confirm</code>, <code class="ab-admin-code">alert</code>
+          e scripts inline.
+        </p>
+      </article>
+    </div>
+
+    <article id="ax-admin-playbook" class="ab-admin-doc__panel tw-mt-3">
+      <div class="ab-admin-doc__panel-header">
+        <h2>Playbook de migração</h2>
+        <span class="ab-admin-doc__eyebrow">ordem segura</span>
+      </div>
+      <div class="ab-admin-doc__body">
+        <div class="ab-admin-doc__grid">
+          <div class="ab-admin-doc__card">
+            <h3>1. Preserve comportamento</h3>
+            <ul>
+              <li>Rota, controller, strong params e permissões.</li>
+              <li>Submits, hidden fields, retorno e auditoria.</li>
+              <li>Uploads, TomSelect, Sortable e Stimulus existente.</li>
+            </ul>
+          </div>
+          <div class="ab-admin-doc__card">
+            <h3>2. Substitua apresentação</h3>
+            <ul>
+              <li>Troque <code class="ab-admin-code">row/col</code> por <code class="ab-admin-code">ax_field_grid</code>.</li>
+              <li>Troque <code class="ab-admin-code">alert</code> por <code class="ab-admin-code">ax_inline_notice</code>.</li>
+              <li>Troque modais Bootstrap por <code class="ab-admin-code">ax_quick_modal</code>.</li>
+            </ul>
+          </div>
+          <div class="ab-admin-doc__card">
+            <h3>3. Valide e limpe</h3>
+            <ul>
+              <li>Uma aba/pane visível por vez.</li>
+              <li>Console sem erros no Atlas/in-app browser.</li>
+              <li><code class="ab-admin-code">assets:precompile</code> e <code class="ab-admin-code">zeitwerk:check</code> quando aplicável.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="ab-admin-doc__panel tw-mt-3">
+      <div class="ab-admin-doc__panel-header">
+        <h2>Anti-padrões</h2>
+        <span class="ab-admin-doc__eyebrow">não fazer</span>
+      </div>
+      <div class="ab-admin-doc__body">
+        <div class="ab-admin-doc__grid ab-admin-doc__grid--two">
+          <ul class="tw-m-0 tw-grid tw-gap-2 tw-pl-4 tw-text-xs tw-leading-5 tw-text-ink-muted">
+            <li>Não colocar <code class="ab-admin-code">ax-aside</code> dentro de <code class="ab-admin-code">ax-main</code>.</li>
+            <li>Não criar card dentro de card para resolver espaçamento.</li>
+            <li>Não usar legenda permanente quando tooltip resolve.</li>
+            <li>Não manter Bootstrap como base visual em área já migrada.</li>
+          </ul>
+          <ul class="tw-m-0 tw-grid tw-gap-2 tw-pl-4 tw-text-xs tw-leading-5 tw-text-ink-muted">
+            <li>Não usar cor primária legada como default do novo layout.</li>
+            <li>Não criar controller específico de tela quando um <code class="ab-admin-code">ax-*</code> genérico resolve.</li>
+            <li>Não usar código com vício de uma imobiliária específica.</li>
+            <li>Não afetar o site público ao ajustar o admin.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <div id="toastRegion" class="tw-fixed tw-right-3 tw-top-14 tw-z-50 tw-grid tw-w-[min(360px,calc(100vw-24px))] tw-gap-2" aria-live="polite"></div>
+
+  <section class="tw-mx-auto tw-max-w-6xl tw-px-4 tw-py-10">
+    <div class="tw-rounded-lg tw-border tw-border-primary/30 tw-bg-primary-soft tw-p-4 tw-text-sm tw-text-ink-soft">
+      <strong class="tw-text-ink">Ideia central:</strong> o usuário deve conseguir selecionar, configurar, validar e publicar sem trocar de tela. Explorer define contexto, Workspace mostra impacto, Inspector concentra propriedades e o painel inferior reduz incerteza com SQL, fórmulas, filtros e logs.
+    </div>
+
+    <div class="tw-mt-6 tw-grid tw-grid-cols-1 tw-gap-4 lg:tw-grid-cols-3">
+      <article class="tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-p-4 tw-shadow-card">
+        <h2 class="tw-m-0 tw-text-base tw-font-bold">Tokens</h2>
+        <div class="tw-mt-3 tw-grid tw-grid-cols-2 tw-gap-2">
+          <div><div class="tw-h-12 tw-rounded-md tw-border tw-border-[var(--ab-line-soft)] tw-bg-white"></div><code class="tw-text-2xs">surface.DEFAULT</code></div>
+          <div><div class="tw-h-12 tw-rounded-md tw-border tw-border-[var(--ab-line-soft)] tw-bg-[var(--ab-panel-header)]"></div><code class="tw-text-2xs">surface.header</code></div>
+          <div><div class="tw-h-12 tw-rounded-md tw-bg-primary"></div><code class="tw-text-2xs">primary</code></div>
+          <div><div class="tw-h-12 tw-rounded-md tw-bg-ink"></div><code class="tw-text-2xs">ink</code></div>
+        </div>
+      </article>
+
+      <article class="tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-p-4 tw-shadow-card">
+        <h2 class="tw-m-0 tw-text-base tw-font-bold">Componentes</h2>
+        <div class="tw-mt-3 tw-flex tw-flex-wrap tw-gap-2">
+          <button class="tw-h-8 tw-rounded-md tw-bg-primary tw-px-3 tw-text-xs tw-font-bold tw-text-primary-fg">Primário</button>
+          <button class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-bg-white tw-px-3 tw-text-xs tw-font-bold">Secundário</button>
+          <span class="tw-rounded-full tw-bg-emerald-100 tw-px-2 tw-py-1 tw-text-2xs tw-font-bold tw-text-emerald-700">ativo</span>
+          <span class="tw-rounded-full tw-bg-amber-100 tw-px-2 tw-py-1 tw-text-2xs tw-font-bold tw-text-amber-700">atenção</span>
+          <span class="tw-rounded-full tw-bg-rose-100 tw-px-2 tw-py-1 tw-text-2xs tw-font-bold tw-text-rose-700">erro</span>
+        </div>
+        <div class="tw-mt-3 tw-grid tw-gap-2"><input class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-px-2 tw-text-xs" value="Leads por campanha"><select class="tw-h-8 tw-rounded-md tw-border tw-border-[var(--ab-line)] tw-px-2 tw-text-xs"><option>Bar chart</option></select></div>
+      </article>
+
+      <article class="tw-rounded-lg tw-border tw-border-[var(--ab-line-soft)] tw-bg-white tw-p-4 tw-shadow-card">
+        <h2 class="tw-m-0 tw-text-base tw-font-bold">Checklist</h2>
+        <ul class="tw-mb-0 tw-mt-3 tw-grid tw-gap-2 tw-pl-4 tw-text-sm tw-text-ink-soft">
+          <li>Explorer persistente com seleção visível.</li>
+          <li>Workspace com preview, tabela e filtros próximos.</li>
+          <li>Inspector contextual sem modal para ajuste frequente.</li>
+          <li>Painel inferior para SQL, logs, fórmulas e histórico.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <script>
+    const state = {
+      selectedTitle: "Gráfico: Leads por campanha",
+      selectedKind: "Gráfico de barras",
+      saves: 0,
+      widgetCount: 4,
+      history: [],
+    };
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+    const actionMessages = {
+      "new-dashboard": "Novo dashboard criado como rascunho.",
+      save: "Dashboard salvo.",
+      duplicate: "Widget selecionado duplicado.",
+      undo: "Última alteração desfeita.",
+      redo: "Alteração refeita.",
+      "insert-kpi": "KPI inserido no canvas.",
+      "insert-chart": "Gráfico inserido no canvas.",
+      "insert-table": "Tabela inserida no canvas.",
+      "insert-filter": "Filtro inserido no canvas.",
+      refresh: "Preview atualizado com novos dados.",
+      validate: "SQL, filtros e permissões validados.",
+      publish: "Dashboard publicado.",
+      preview: "Preview aberto no estado atual.",
+      share: "Link de compartilhamento preparado.",
+      apply: "Mudanças aplicadas ao dashboard.",
+      "add-source": "Nova fonte adicionada ao Explorer.",
+      "collapse-explorer": "Explorer alternado.",
+      "collapse-inspector": "Inspector alternado.",
+      "focus-selection": "Seleção destacada no canvas.",
+    };
+
+    function now() {
+      return new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    function updateAutosave(label = "Auto-save") {
+      const autosave = $("#autosaveStatus");
+      if (!autosave) return;
+      autosave.textContent = `${label} ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    }
+
+    function toast(message, tone = "info") {
+      const region = $("#toastRegion");
+      if (!region) return;
+      const palette = {
+        info: "tw-border-[var(--ab-line)] tw-bg-white tw-text-ink",
+        success: "tw-border-emerald-200 tw-bg-emerald-50 tw-text-emerald-900",
+        warn: "tw-border-amber-200 tw-bg-amber-50 tw-text-amber-900",
+      };
+      const item = document.createElement("div");
+      item.className = `ab-toast tw-rounded-lg tw-border tw-px-3 tw-py-2 tw-text-sm tw-shadow-pop ${palette[tone] || palette.info}`;
+      item.innerHTML = `<strong class="tw-block tw-text-xs tw-uppercase tw-tracking-wide">Analytics Builder</strong><span>${message}</span>`;
+      region.prepend(item);
+      window.setTimeout(() => item.remove(), 3200);
+    }
+
+    function addLog(status, message) {
+      const log = $("#activityLog");
+      if (!log) return;
+      const color = status === "OK" ? "tw-text-emerald-600" : status === "WARN" ? "tw-text-amber-600" : "tw-text-blue-600";
+      const item = document.createElement("li");
+      item.className = "tw-grid tw-grid-cols-[72px_54px_1fr] tw-gap-2 tw-border-b tw-border-[var(--ab-line-soft)] tw-py-1";
+      item.innerHTML = `<span>${now()}</span><strong class="${color}">${status}</strong><span>${message}</span>`;
+      log.prepend(item);
+    }
+
+    function setSelection(title, kind, sourceElement) {
+      state.selectedTitle = title;
+      state.selectedKind = kind;
+      $("#selectionTitle").textContent = title;
+      $("#selectionDescription").textContent = `${kind}: propriedades, dados, visual e regras aparecem aqui sem abrir modal.`;
+
+      $$("[data-selectable]").forEach((node) => node.classList.remove("ab-selected"));
+      $$("[data-widget]").forEach((node) => node.classList.remove("ab-widget-selected"));
+
+      if (sourceElement?.hasAttribute("data-selectable")) sourceElement.classList.add("ab-selected");
+      if (sourceElement?.hasAttribute("data-widget")) sourceElement.classList.add("ab-widget-selected");
+
+      addLog("INFO", `Seleção alterada para ${title}`);
+    }
+
+    function randomizeChart() {
+      $$("#mainChart i").forEach((bar) => {
+        bar.style.height = `${35 + Math.round(Math.random() * 58)}%`;
+      });
+    }
+
+    function setBottomTab(tab) {
+      $$("[data-bottom-tab]").forEach((button) => {
+        const active = button.dataset.bottomTab === tab;
+        button.classList.toggle("tw-bg-white", active);
+        button.classList.toggle("tw-text-primary", active);
+        button.classList.toggle("tw-shadow-[inset_0_2px_0_var(--admin-primary)]", active);
+        button.classList.toggle("tw-text-ink-muted", !active);
+      });
+
+      const code = $("#bottomCode");
+      const snippets = {
+        sql: `<span class="tw-text-sky-300">SELECT</span>\n  campaign_name,\n  <span class="tw-text-emerald-300">SUM</span>(qualified_leads) <span class="tw-text-sky-300">AS</span> leads,\n  <span class="tw-text-emerald-300">ROUND</span>(<span class="tw-text-emerald-300">SUM</span>(spend) / <span class="tw-text-emerald-300">NULLIF</span>(<span class="tw-text-emerald-300">SUM</span>(qualified_leads), 0), 2) <span class="tw-text-sky-300">AS</span> cpl\n<span class="tw-text-sky-300">FROM</span> <span class="tw-text-amber-200">meta_ads_leads</span>\n<span class="tw-text-sky-300">WHERE</span> created_at >= <span class="tw-text-amber-200">'2026-06-01'</span>\n  <span class="tw-text-sky-300">AND</span> tenant_id = <span class="tw-text-amber-200">:current_tenant</span>\n<span class="tw-text-sky-300">GROUP BY</span> campaign_name\n<span class="tw-text-sky-300">ORDER BY</span> leads <span class="tw-text-sky-300">DESC</span>;`,
+        formulas: `<span class="tw-text-sky-300">metric</span> cpl = spend / nullif(qualified_leads, 0)\n<span class="tw-text-sky-300">metric</span> conversion_rate = visits / nullif(qualified_leads, 0)\n<span class="tw-text-sky-300">format</span> cpl as currency('BRL')\n<span class="tw-text-sky-300">format</span> conversion_rate as percent(1)`,
+        filters: `period = last_30_days\nchannel not in ('organic')\ncity = 'Balneário Camboriú'\nticket >= 700000\ntenant_id = :current_tenant`,
+        history: `${now()}  OK    ${state.selectedTitle} selecionado\n14:32:08 OK    Preview atualizado em 124 ms\n14:31:54 INFO  Filtro tenant aplicado automaticamente\n14:31:11 WARN  Campo spend possui 3 valores nulos`,
+      };
+      code.innerHTML = snippets[tab] || snippets.sql;
+      addLog("INFO", `Painel inferior alternado para ${tab}`);
+    }
+
+    function setBuilderColumns() {
+      const builder = $("#builder");
+      if (!builder) return;
+      const desktop = window.matchMedia("(min-width: 1280px)").matches;
+      if (!desktop) {
+        builder.style.gridTemplateColumns = "";
+        return;
+      }
+      const explorer = builder.dataset.explorerCollapsed === "true" ? "64px" : "260px";
+      const inspector = builder.dataset.inspectorCollapsed === "true" ? "64px" : "320px";
+      builder.style.gridTemplateColumns = `${explorer} minmax(0, 1fr) ${inspector}`;
+    }
+
+    function closeComboboxes(except) {
+      $$(".ab-combobox.is-open").forEach((combo) => {
+        if (combo === except) return;
+        const panel = getComboboxPanel(combo);
+        combo.classList.remove("is-open");
+        if (panel) panel.hidden = true;
+        combo.querySelector(".ab-combobox-control").setAttribute("aria-expanded", "false");
+      });
+    }
+
+    function getComboboxPanel(combo) {
+      return combo?.dataset.panelId ? document.getElementById(combo.dataset.panelId) : null;
+    }
+
+    function updateComboboxValue(combo) {
+      const select = combo.previousElementSibling;
+      const values = combo.querySelector(".ab-combobox-values");
+      if (!select || !values) return;
+      const selected = Array.from(select.selectedOptions);
+      if (select.multiple) {
+        const chips = selected.slice(0, 2).map((option) => `<span class="ab-combobox-chip"><span>${option.textContent}</span></span>`).join("");
+        const overflow = selected.length > 2 ? `<span class="ab-combobox-chip"><span>+${selected.length - 2}</span></span>` : "";
+        values.innerHTML = selected.length ? `${chips}${overflow}` : `<span class="ab-combobox-placeholder">Selecionar...</span>`;
+        return;
+      }
+      values.innerHTML = `<span>${select.options[select.selectedIndex]?.textContent || "Selecionar"}</span>`;
+    }
+
+    function renderComboboxOptions(combo, query = "") {
+      const select = combo.previousElementSibling;
+      const panel = getComboboxPanel(combo);
+      const list = panel?.querySelector(".ab-combobox-options");
+      if (!select || !list) return;
+      const options = Array.from(select.options).filter((option) => option.textContent.toLowerCase().includes(query.toLowerCase()));
+      list.innerHTML = "";
+      if (!options.length) {
+        const empty = document.createElement("li");
+        empty.className = "ab-combobox-option";
+        empty.textContent = "Nenhum resultado";
+        empty.setAttribute("aria-disabled", "true");
+        list.append(empty);
+        return;
+      }
+      options.forEach((option) => {
+        const item = document.createElement("li");
+        item.className = `ab-combobox-option${select.multiple ? " is-multiple" : ""}`;
+        item.setAttribute("role", "option");
+        item.setAttribute("aria-selected", String(option.selected));
+        item.textContent = option.textContent;
+        item.dataset.value = option.value;
+        list.append(item);
+      });
+    }
+
+    function positionComboboxPanel(combo) {
+      const panel = getComboboxPanel(combo);
+      const control = combo?.querySelector(".ab-combobox-control");
+      if (!panel || !control || panel.hidden) return;
+
+      const rect = control.getBoundingClientRect();
+      const margin = 8;
+      const desiredWidth = Math.max(rect.width, 180);
+      const width = Math.min(desiredWidth, window.innerWidth - margin * 2);
+      const left = Math.min(Math.max(rect.left, margin), window.innerWidth - width - margin);
+      const panelHeight = Math.min(panel.scrollHeight || 236, 260);
+      const availableBelow = window.innerHeight - rect.bottom - margin;
+      const availableAbove = rect.top - margin;
+      const openUp = availableBelow < Math.min(panelHeight, 210) && availableAbove > availableBelow;
+      const maxHeight = Math.max(140, Math.min(panelHeight, openUp ? availableAbove : availableBelow, 260));
+      const top = openUp
+        ? Math.max(margin, rect.top - maxHeight - 4)
+        : Math.min(rect.bottom + 4, window.innerHeight - maxHeight - margin);
+
+      panel.style.left = `${left}px`;
+      panel.style.top = `${top}px`;
+      panel.style.width = `${width}px`;
+      panel.style.maxHeight = `${maxHeight}px`;
+      const list = panel.querySelector(".ab-combobox-options");
+      if (list) list.style.maxHeight = `${Math.max(96, maxHeight - 37)}px`;
+    }
+
+    function positionOpenComboboxes() {
+      $$(".ab-combobox.is-open").forEach(positionComboboxPanel);
+    }
+
+    function openCombobox(combo) {
+      closeComboboxes(combo);
+      const panel = getComboboxPanel(combo);
+      if (!panel) return;
+      combo.classList.add("is-open");
+      panel.hidden = false;
+      combo.querySelector(".ab-combobox-control").setAttribute("aria-expanded", "true");
+      const search = panel.querySelector(".ab-combobox-search");
+      search.value = "";
+      renderComboboxOptions(combo);
+      positionComboboxPanel(combo);
+      search.focus();
+    }
+
+    function enhanceSelects() {
+      $$("select").forEach((select, index) => {
+        if (select.dataset.enhanced === "true") return;
+        select.dataset.enhanced = "true";
+        select.classList.add("ab-native-select-hidden");
+        const combo = document.createElement("div");
+        const panelId = `ab-combobox-panel-${index}`;
+        combo.className = "ab-combobox";
+        combo.dataset.panelId = panelId;
+        combo.innerHTML = `
+          <button type="button" class="ab-combobox-control" aria-haspopup="listbox" aria-expanded="false" aria-controls="${panelId}"><span class="ab-combobox-values"></span></button>`;
+        const panel = document.createElement("div");
+        panel.className = "ab-combobox-panel";
+        panel.id = panelId;
+        panel.hidden = true;
+        panel.innerHTML = `
+          <input class="ab-combobox-search" autocomplete="off" placeholder="Buscar opção...">
+          <ul class="ab-combobox-options ab-scrollbar" role="listbox" aria-multiselectable="${select.multiple ? "true" : "false"}" id="combo-${index}"></ul>`;
+        select.after(combo);
+        document.body.append(panel);
+        updateComboboxValue(combo);
+        renderComboboxOptions(combo);
+
+        combo.querySelector(".ab-combobox-control").addEventListener("click", () => {
+          const open = combo.classList.contains("is-open");
+          if (open) {
+            closeComboboxes();
+          } else {
+            openCombobox(combo);
+          }
+        });
+
+        panel.querySelector(".ab-combobox-search").addEventListener("input", (event) => {
+          renderComboboxOptions(combo, event.target.value);
+          positionComboboxPanel(combo);
+        });
+
+        panel.querySelector(".ab-combobox-options").addEventListener("click", (event) => {
+          const item = event.target.closest(".ab-combobox-option:not([aria-disabled='true'])");
+          if (!item) return;
+          const option = Array.from(select.options).find((entry) => entry.value === item.dataset.value);
+          if (!option) return;
+          if (select.multiple) {
+            option.selected = !option.selected;
+            updateComboboxValue(combo);
+            renderComboboxOptions(combo, panel.querySelector(".ab-combobox-search").value);
+            positionComboboxPanel(combo);
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            panel.querySelector(".ab-combobox-search").focus();
+            return;
+          }
+          select.value = item.dataset.value;
+          updateComboboxValue(combo);
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          closeComboboxes();
+        });
+
+        select.addEventListener("change", () => {
+          updateComboboxValue(combo);
+          renderComboboxOptions(combo);
+        });
+      });
+    }
+
+    const canvasTemplates = {
+      commercial: null,
+      ops: `
+        <div data-widget="SLA por corretor" data-kind="Linha temporal" class="tw-col-span-8 tw-row-span-2 tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-3 tw-shadow-pop">
+          <div class="tw-flex tw-items-center tw-justify-between tw-text-xs tw-font-bold tw-text-ink-soft"><span>SLA de atendimento por corretor</span><span>média 12m</span></div>
+          <div class="tw-mt-4 tw-grid tw-h-24 tw-grid-cols-7 tw-items-end tw-gap-2"><i class="tw-h-[35%] tw-rounded-t tw-bg-slate-300"></i><i class="tw-h-[46%] tw-rounded-t tw-bg-primary"></i><i class="tw-h-[62%] tw-rounded-t tw-bg-primary"></i><i class="tw-h-[52%] tw-rounded-t tw-bg-slate-400"></i><i class="tw-h-[74%] tw-rounded-t tw-bg-primary"></i><i class="tw-h-[41%] tw-rounded-t tw-bg-slate-300"></i><i class="tw-h-[68%] tw-rounded-t tw-bg-primary"></i></div>
+        </div>
+        <div data-widget="Fila de leads" data-kind="Kanban compacto" class="tw-col-span-4 tw-row-span-2 tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-3 tw-shadow-pop">
+          <div class="tw-mb-2 tw-text-xs tw-font-bold tw-text-ink-soft">Fila operacional</div>
+          <div class="tw-grid tw-gap-2"><div class="tw-rounded tw-bg-amber-50 tw-p-2 tw-text-xs"><b>17</b> aguardando 1o contato</div><div class="tw-rounded tw-bg-blue-50 tw-p-2 tw-text-xs"><b>42</b> em negociação</div><div class="tw-rounded tw-bg-emerald-50 tw-p-2 tw-text-xs"><b>9</b> visita marcada</div></div>
+        </div>
+        <div data-widget="Agenda do dia" data-kind="Timeline" class="tw-col-span-5 tw-row-span-2 tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-shadow-pop">
+          <div class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-xs tw-font-bold tw-text-ink-soft">Agenda do dia</div>
+          <div class="tw-grid tw-gap-0 tw-text-xs"><div class="tw-grid tw-grid-cols-[54px_1fr] tw-border-b tw-border-[var(--ab-line-soft)] tw-p-2"><b>09:30</b><span>Visita AP 204 Frente Mar</span></div><div class="tw-grid tw-grid-cols-[54px_1fr] tw-border-b tw-border-[var(--ab-line-soft)] tw-bg-slate-50 tw-p-2"><b>11:00</b><span>Retorno WhatsApp</span></div><div class="tw-grid tw-grid-cols-[54px_1fr] tw-p-2"><b>14:30</b><span>Assinatura proposta</span></div></div>
+        </div>
+        <div data-widget="Mapa de calor de horários" data-kind="Heatmap" class="tw-col-span-7 tw-row-span-2 tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-3 tw-shadow-pop">
+          <div class="tw-mb-2 tw-flex tw-items-center tw-justify-between tw-text-xs tw-font-bold tw-text-ink-soft"><span>Heatmap de resposta</span><span>7 dias</span></div>
+          <div class="tw-grid tw-grid-cols-8 tw-gap-1">${Array.from({ length: 32 }, (_, index) => `<i class="tw-h-5 tw-rounded ${index % 5 === 0 ? "tw-bg-primary" : index % 3 === 0 ? "tw-bg-slate-400" : "tw-bg-slate-200"}"></i>`).join("")}</div>
+        </div>`,
+      portfolio: `
+        <div data-widget="Carteira por cidade" data-kind="Mapa + lista" class="tw-col-span-6 tw-row-span-3 tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-3 tw-shadow-pop">
+          <div class="tw-mb-2 tw-text-xs tw-font-bold tw-text-ink-soft">Carteira por cidade</div>
+          <div class="tw-relative tw-h-52 tw-rounded-md tw-border tw-border-[var(--ab-line-soft)] tw-bg-gradient-to-br tw-from-slate-50 tw-to-blue-50"><span class="tw-absolute tw-left-[26%] tw-top-[28%] tw-h-5 tw-w-5 tw-rounded-full tw-bg-primary"></span><span class="tw-absolute tw-left-[58%] tw-top-[44%] tw-h-4 tw-w-4 tw-rounded-full tw-bg-amber-500"></span><span class="tw-absolute tw-left-[42%] tw-top-[68%] tw-h-3 tw-w-3 tw-rounded-full tw-bg-emerald-500"></span></div>
+        </div>
+        <div data-widget="Mix de imóveis" data-kind="Donut + KPI" class="tw-col-span-3 tw-row-span-2 tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-3 tw-shadow-pop">
+          <div class="tw-text-xs tw-font-bold tw-text-ink-soft">Mix de imóveis</div>
+          <div class="tw-mx-auto tw-mt-4 tw-grid tw-h-24 tw-w-24 tw-place-items-center tw-rounded-full tw-border-[18px] tw-border-primary tw-text-sm tw-font-black">312</div>
+        </div>
+        <div data-widget="Captação pendente" data-kind="Checklist" class="tw-col-span-3 tw-row-span-2 tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-3 tw-shadow-pop">
+          <div class="tw-mb-2 tw-text-xs tw-font-bold tw-text-ink-soft">Captação pendente</div>
+          <div class="tw-grid tw-gap-2 tw-text-xs"><span>☑ fotos profissionais</span><span>☐ matrícula</span><span>☐ preço validado</span><span>☑ descrição revisada</span></div>
+        </div>
+        <div data-widget="Tabela de oportunidades" data-kind="Tabela operacional" class="tw-col-span-6 tw-row-span-2 tw-overflow-hidden tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-shadow-pop">
+          <div class="tw-border-b tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2 tw-text-xs tw-font-bold tw-text-ink-soft">Oportunidades por imóvel</div>
+          <div class="tw-grid tw-text-xs"><div class="tw-grid tw-grid-cols-[1fr_70px_80px] tw-bg-[var(--ab-panel-header)] tw-px-3 tw-py-1 tw-text-2xs tw-font-bold tw-uppercase tw-text-ink-muted"><span>Imóvel</span><span>Leads</span><span>Ticket</span></div><div class="tw-grid tw-grid-cols-[1fr_70px_80px] tw-border-t tw-border-[var(--ab-line-soft)] tw-px-3 tw-py-2"><b>AP Frente Mar</b><span>58</span><span>R$2,4M</span></div><div class="tw-grid tw-grid-cols-[1fr_70px_80px] tw-border-t tw-border-[var(--ab-line-soft)] tw-bg-slate-50 tw-px-3 tw-py-2"><b>Casa Jardim Europa</b><span>41</span><span>R$1,8M</span></div></div>
+        </div>`,
+    };
+
+    function initCanvasTemplates() {
+      const grid = $("#dashboardCanvasGrid");
+      if (grid && !canvasTemplates.commercial) canvasTemplates.commercial = grid.innerHTML;
+    }
+
+    function setCanvasVariant(variant) {
+      initCanvasTemplates();
+      const grid = $("#dashboardCanvasGrid");
+      if (!grid || !canvasTemplates[variant]) return;
+      grid.innerHTML = canvasTemplates[variant];
+      $$("[data-canvas-variant]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.canvasVariant === variant));
+      });
+      const firstWidget = grid.querySelector("[data-widget]");
+      if (firstWidget) setSelection(firstWidget.dataset.widget, firstWidget.dataset.kind || "Widget", firstWidget);
+      addLog("INFO", `Canvas alternado para ${variant}`);
+    }
+
+    function insertWidget(type) {
+      const canvasGrid = $("[data-widget]")?.parentElement;
+      if (!canvasGrid) return;
+      state.widgetCount += 1;
+      const title = `${type} ${state.widgetCount}`;
+      const widget = document.createElement("div");
+      widget.dataset.widget = title;
+      widget.dataset.kind = type;
+      widget.className = "tw-rounded-lg tw-border tw-border-[var(--ab-line)] tw-bg-white tw-p-3 tw-shadow-pop";
+      widget.innerHTML = `
+        <div class="tw-mb-2 tw-flex tw-items-center tw-justify-between tw-text-xs tw-font-bold tw-text-ink-soft"><span>${title}</span><span>⋯</span></div>
+        <div class="tw-flex tw-h-[118px] tw-items-end tw-gap-2">
+          <i class="tw-flex-1 tw-rounded-t tw-bg-slate-500" style="height:46%"></i>
+          <i class="tw-flex-1 tw-rounded-t tw-bg-primary" style="height:72%"></i>
+          <i class="tw-flex-1 tw-rounded-t tw-bg-slate-400" style="height:58%"></i>
+        </div>`;
+      canvasGrid.append(widget);
+      setSelection(title, type, widget);
+      updateAutosave();
+      toast(`${type} inserido no canvas.`, "success");
+      addLog("OK", `${type} inserido no canvas`);
+    }
+
+    function runAction(action) {
+      const message = actionMessages[action] || "Ação executada.";
+      const insertTypes = {
+        "insert-kpi": "KPI",
+        "insert-chart": "Gráfico",
+        "insert-table": "Tabela",
+        "insert-filter": "Filtro",
+      };
+      if (insertTypes[action]) {
+        insertWidget(insertTypes[action]);
+        return;
+      }
+
+      if (action === "refresh") randomizeChart();
+      if (action === "validate") setBottomTab("sql");
+
+      if (action === "new-dashboard") setSelection("Dashboard: Novo rascunho", "Dashboard", null);
+      if (action === "collapse-explorer") {
+        const builder = $("#builder");
+        builder.dataset.explorerCollapsed = builder.dataset.explorerCollapsed === "true" ? "false" : "true";
+        setBuilderColumns();
+      }
+      if (action === "collapse-inspector") {
+        const builder = $("#builder");
+        builder.dataset.inspectorCollapsed = builder.dataset.inspectorCollapsed === "true" ? "false" : "true";
+        setBuilderColumns();
+      }
+      if (action === "focus-selection") {
+        const selected = $(".ab-widget-selected");
+        selected?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      }
+
+      updateAutosave(action === "publish" ? "Publicado" : "Auto-save");
+      toast(message, ["publish", "apply", "save", "validate", "refresh"].includes(action) ? "success" : "info");
+      addLog(["validate", "publish", "apply", "save", "refresh"].includes(action) ? "OK" : "INFO", message);
+    }
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".ab-combobox") && !event.target.closest(".ab-combobox-panel")) closeComboboxes();
+
+      const canvasVariant = event.target.closest("[data-canvas-variant]");
+      if (canvasVariant) {
+        setCanvasVariant(canvasVariant.dataset.canvasVariant);
+        return;
+      }
+
+      const actionButton = event.target.closest("[data-action]");
+      if (actionButton) {
+        runAction(actionButton.dataset.action);
+        return;
+      }
+
+      const selectable = event.target.closest("[data-selectable]");
+      if (selectable) {
+        setSelection(selectable.dataset.selectable, selectable.dataset.kind || "Item", selectable);
+        return;
+      }
+
+      const widget = event.target.closest("[data-widget]");
+      if (widget) {
+        setSelection(widget.dataset.widget, widget.dataset.kind || "Widget", widget);
+        return;
+      }
+
+      const tab = event.target.closest("[data-bottom-tab]");
+      if (tab) {
+        setBottomTab(tab.dataset.bottomTab);
+        return;
+      }
+
+      const visual = event.target.closest("[data-visual]");
+      if (visual) {
+        $$("[data-visual]").forEach((button) => {
+          const active = button === visual;
+          button.classList.toggle("tw-bg-primary", active);
+          button.classList.toggle("tw-text-white", active);
+          button.classList.toggle("tw-text-ink-muted", !active);
+        });
+        addLog("INFO", `Visual alterado para ${visual.dataset.visual}`);
+        toast(`Visual alterado para ${visual.dataset.visual}.`);
+        return;
+      }
+
+      const toggle = event.target.closest("[data-toggle]");
+      if (toggle) {
+        const pressed = toggle.getAttribute("aria-pressed") === "true";
+        toggle.setAttribute("aria-pressed", String(!pressed));
+        toggle.classList.toggle("tw-bg-primary-soft", !pressed);
+        toggle.classList.toggle("tw-bg-slate-200", pressed);
+        const knob = toggle.querySelector("i");
+        knob.classList.toggle("tw-ml-auto", !pressed);
+        knob.classList.toggle("tw-bg-primary", !pressed);
+        knob.classList.toggle("tw-bg-slate-400", pressed);
+        addLog("INFO", `Regra ${toggle.dataset.toggle} ${pressed ? "desativada" : "ativada"}`);
+      }
+    });
+
+    $("#globalSearch")?.addEventListener("input", (event) => {
+      const query = event.target.value.trim().toLowerCase();
+      $$("[data-selectable]").forEach((node) => {
+        node.style.display = node.textContent.toLowerCase().includes(query) ? "" : "none";
+      });
+      if (query) addLog("INFO", `Busca aplicada: ${query}`);
+    });
+
+    ["sourceSelect", "dimensionSelect", "metricSelect", "heightInput", "columnsInput", "paletteSelect", "channelFilter"].forEach((id) => {
+      const input = document.getElementById(id);
+      input?.addEventListener("change", () => {
+        updateAutosave();
+        const value = input.multiple ? Array.from(input.selectedOptions).map((option) => option.textContent).join(", ") : input.value;
+        addLog("INFO", `${id} alterado para ${value}`);
+      });
+    });
+
+    initCanvasTemplates();
+    enhanceSelects();
+    window.addEventListener("scroll", positionOpenComboboxes, true);
+    window.addEventListener("resize", setBuilderColumns);
+    window.addEventListener("resize", positionOpenComboboxes);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeComboboxes();
+    });
+  </script>
+</body>
+</html>

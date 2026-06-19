@@ -26,7 +26,18 @@ module Admin
     end
 
     def layout_setting_params
-      params.require(:layout_setting).permit(:primary_color, :secondary_color, :accent_color, :logo, :favicon, :site_name)
+      params.require(:layout_setting).permit(
+        :primary_color,
+        :secondary_color,
+        :accent_color,
+        :admin_surface_color,
+        :admin_header_color,
+        :admin_primary_color,
+        :admin_ink_color,
+        :logo,
+        :favicon,
+        :site_name
+      )
     end
   end
 end

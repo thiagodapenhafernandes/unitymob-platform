@@ -1,0 +1,48 @@
+<%
+  select_id = id.presence || "#{form.object_name.to_s.parameterize}-#{method}-multiselect"
+  select_data = {
+    controller: "tom-select",
+    tom_select_tags_value: true,
+    placeholder:
+  }.merge(data || {})
+  manager_config = manager || {}
+  multiselect_classes = [
+    "ax-multiselect",
+    "ax-multiselect--pending",
+    ("ax-multiselect--with-action" if manager_config.present?),
+    class_name
+  ].compact.join(" ")
+%>
+
+<div class="<%= multiselect_classes %>">
+  <%= ax_field_label(form, method, text: label, tooltip:) %>
+  <div class="ax-multiselect__frame" data-placeholder="<%= placeholder %>">
+    <%= form.select method,
+                    options_for_select(choices, selected),
+                    {},
+                    {
+                      id: select_id,
+                      multiple: true,
+                      disabled: disabled,
+                      class: "ax-control ax-multiselect__select",
+                      data: select_data
+                    } %>
+
+    <% if manager_config.present? %>
+      <button type="button"
+              class="ax-multiselect__action"
+              title="<%= manager_config.fetch(:title, "Gerenciar opções") %>"
+              aria-label="<%= manager_config.fetch(:aria_label, manager_config.fetch(:title, "Gerenciar opções")) %>"
+              data-attribute-manager-context-value="<%= manager_config.fetch(:context) %>"
+              data-attribute-manager-category-value="<%= manager_config.fetch(:category) %>"
+              data-attribute-manager-field-name-value="<%= manager_config.fetch(:field_name) %>"
+              data-attribute-manager-modal-id-value="<%= manager_config.fetch(:modal_id, "attributeManagerModal") %>"
+              data-action="click->attribute-manager#open"
+              data-title="<%= manager_config.fetch(:modal_title, manager_config.fetch(:title, "Gerenciar opções")) %>"
+              data-select-id="<%= select_id %>">
+        <i class="bi bi-gear"></i>
+      </button>
+    <% end %>
+  </div>
+  <%= render "admin/shared/ui/field_error", form: form, method: method %>
+</div>

@@ -14,7 +14,10 @@ RSpec.describe "Admin profile permissions", type: :request do
 
     sign_in manager
 
-    get export_admin_habitations_path
+    post export_admin_habitations_path
+    expect(response).to redirect_to(admin_habitations_path)
+
+    get exports_admin_habitations_path
     expect(response).to redirect_to(admin_habitations_path)
 
     get print_admin_habitations_path

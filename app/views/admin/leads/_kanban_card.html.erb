@@ -1,0 +1,52 @@
+<%
+  status_value = lead.status.presence || Lead.default_status
+  tone = status_tone.call(lead.status)
+  property = local_assigns[:property]
+%>
+<article class="ax-board__card lead-kanban-card"
+         data-update-url="<%= admin_lead_path(lead) %>"
+         data-current-status="<%= status_value %>">
+  <div class="ax-board__card-top">
+    <h3 class="ax-board__card-title"><%= lead.name %></h3>
+    <span class="ax-badge ax-badge--<%= tone %> ax-board__card-badge lead-kanban-status-badge"
+          data-lead-kanban-status-badge><%= status_value %></span>
+  </div>
+
+  <div class="ax-board__card-lines">
+    <% if lead.phone.present? %>
+      <div class="ax-board__card-line"><i class="bi bi-telephone"></i><span><%= lead.phone %></span></div>
+    <% end %>
+    <% if lead.email.present? %>
+      <div class="ax-board__card-line"><i class="bi bi-envelope"></i><span><%= lead.email %></span></div>
+    <% end %>
+    <div class="ax-board__card-line"><i class="bi bi-megaphone"></i><span><%= lead.origin.presence || "Origem não informada" %></span></div>
+    <div class="ax-board__card-line"><i class="bi bi-person-badge"></i><span><%= lead.admin_user&.name.presence || "Sem corretor atribuído" %></span></div>
+  </div>
+
+  <% if property.present? %>
+    <div class="ax-board__card-section">
+      <%= link_to property.display_title, admin_habitation_path(property), class: "ax-board__card-link" %>
+      <div class="ax-board__card-subtle"><%= property.codigo %></div>
+    </div>
+  <% elsif lead.property_id.present? %>
+    <div class="ax-board__card-section ax-board__card-section--muted">Imóvel indisponível</div>
+  <% else %>
+    <div class="ax-board__card-section ax-board__card-section--muted">Contato geral</div>
+  <% end %>
+
+  <div class="ax-board__card-footer">
+    <small class="ax-board__card-date"><%= l(lead.created_at, format: "%d/%m/%Y %H:%M") %></small>
+    <%= ax_icon_button label: "Ver detalhes", icon: "eye", url: admin_lead_path(lead) %>
+  </div>
+
+  <div class="ax-board__card-mobile">
+    <label class="ax-board__card-mobile-label">Mover para</label>
+    <select class="ax-control ax-control--sm"
+            data-action="change->lead-kanban#changeStatus"
+            data-lead-kanban-status-select>
+      <% @status_options.each do |option| %>
+        <option value="<%= option %>" <%= "selected" if option == Lead.status_value(lead.status) %>><%= option %></option>
+      <% end %>
+    </select>
+  </div>
+</article>

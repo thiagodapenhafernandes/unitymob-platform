@@ -1,8 +1,23 @@
-<div class="mb-4">
-  <%= link_to admin_admin_users_path, class: "text-muted text-decoration-none small" do %>
-    <i class="bi bi-arrow-left me-1"></i> Voltar para a lista
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Usuários", admin_admin_users_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Novo usuário</strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_admin_users_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left"></i><span>Lista</span>
   <% end %>
-  <h1 class="h3 mt-2 fw-bold text-gray-800">Novo Usuário Administrativo</h1>
-</div>
+<% end %>
+
+<header class="ax-dashboard-command ax-property-form-command">
+  <div class="ax-dashboard-command__main">
+    <span class="ax-dashboard-command__eyebrow">Equipe</span>
+    <h1>Novo usuário</h1>
+    <p>Cadastre um membro da equipe, defina perfil, atuação e gestor.</p>
+  </div>
+</header>
 
 <%= render 'form', admin_user: @admin_user %>

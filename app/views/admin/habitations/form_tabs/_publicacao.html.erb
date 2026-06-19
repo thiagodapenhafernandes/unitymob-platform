@@ -1,0 +1,119 @@
+    <!-- Tab: Publicação -->
+    <div class="tab-pane fade" id="seo" role="tabpanel" aria-labelledby="seo-tab">
+        <% unique_feature_actions = capture do %>
+          <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm"
+                  data-attribute-manager-context-value="habitation"
+                  data-attribute-manager-category-value="unique_feature"
+                  data-attribute-manager-field-name-value="habitation[caracteristica_unica][]"
+                  data-attribute-manager-modal-id-value="attributeManagerModal"
+                  data-action="click->attribute-manager#open"
+                  data-title="Gerenciar Destaques"
+                  data-select-id="habitation_caracteristica_unica">
+            <i class="bi bi-gear ax-ico"></i>Gerenciar
+          </button>
+        <% end %>
+        <%= ax_form_section(title: "Destaque e texto público", eyebrow: "Conteúdo", actions: unique_feature_actions) do %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-12">
+              <div class="ax-field-group">
+                <%= ax_multiselect_field(
+                      form: f,
+                      method: :caracteristica_unica,
+                      label: "Destaque / Característica única",
+                      choices: @badges,
+                      selected: f.object.caracteristica_unica,
+                      id: "habitation_caracteristica_unica",
+                      placeholder: "Selecione...",
+                      tooltip: "Selecione destaques principais para exibir nos cards do site.",
+                      data: { tom_select_create_value: "false", tom_select_tags_value: false }
+                    ) %>
+              </div>
+            </div>
+            <div class="ax-span-12">
+              <% if f.object.persisted? %>
+                <%= render "ai_content_preview",
+                    habitation: f.object,
+                    suggestion: @ai_property_suggestion,
+                    failed_suggestion: @ai_failed_suggestion %>
+              <% end %>
+
+              <div class="ax-field-group ax-field-group--spaced">
+                <%= ax_text_field(
+                      form: f,
+                      method: :titulo_anuncio,
+                      label: "Título do anúncio",
+                      tooltip: "Usado em sites e portais.",
+                      readonly: !can_edit_protected_habitation_fields
+                    ) %>
+              </div>
+              <div class="ax-field-group">
+                <%= ax_field_label(f, :descricao_web, text: "Descrição do imóvel para internet") %>
+                <%= f.rich_text_area :descricao_web,
+                    class: "ax-control ax-rich-text-control",
+                    style: "min-height: 250px;",
+                    disabled: !can_edit_protected_habitation_fields %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+
+          <%= ax_portal_publication_section(title: "Publicação em portais", collapse_id: "portalPublicationCollapse", class_name: "ax-portal-publication-section--spaced") do %>
+            <div class="ax-portal-publication-grid">
+              <div class="ax-portal-publication-column">
+                <%= ax_portal_publication_option(form: f, method: :publicar_imovelweb_2, label: "Publicar Imovelweb 2") do %>
+                  <%= ax_radio_group(form: f, method: :tipo_publicacao_imovelweb_2, label: "Tipo Publicação Imovelweb 2", choices: Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS) %>
+                  <%= ax_radio_group(form: f, method: :mostrar_mapa_imovelweb_2, label: "Mostrar Mapa", choices: Habitation::IMOVELWEB_MOSTRAR_MAPA_OPTIONS) %>
+                <% end %>
+                <%= ax_portal_publication_option(form: f, method: :publicar_lais_ai, label: "Publicar Lais Ai") %>
+                <%= ax_portal_publication_option(form: f, method: :publicar_netimoveis_2, label: "Publicar Netimóveis 2") %>
+                <%= ax_portal_publication_option(form: f, method: :publicar_chaves_na_mao, label: "Publicar Chaves Na Mao") do %>
+                  <%= ax_radio_group(form: f, method: :destaque_chaves_na_mao, label: "Destaque Chaves na Mao", choices: Habitation::CHAVES_NA_MAO_DESTAQUE_OPTIONS) %>
+                  <%= ax_radio_group(form: f, method: :periodo_locacao_chaves_na_mao, label: "Período Locação", choices: Habitation::CHAVES_NA_MAO_PERIODO_LOCACAO_OPTIONS) %>
+                <% end %>
+              </div>
+              <div class="ax-portal-publication-column">
+                <%= ax_portal_publication_option(form: f, method: :publicar_casa_mineira, label: "Publicar Casa Mineira") do %>
+                  <%= ax_radio_group(form: f, method: :modelo_casa_mineira, label: "Modelo Casa Mineira", choices: Habitation::CASA_MINEIRA_MODELO_OPTIONS) %>
+                <% end %>
+                <%= ax_portal_publication_option(form: f, method: :publicar_imovelweb, label: "Publicar Imovelweb") do %>
+                  <%= ax_radio_group(form: f, method: :tipo_publicacao_imovelweb, label: "Tipo Publicação Imovelweb", choices: Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS) %>
+                  <%= ax_radio_group(form: f, method: :mostrar_mapa_imovelweb, label: "Mostrar Mapa", choices: Habitation::IMOVELWEB_MOSTRAR_MAPA_OPTIONS) %>
+                <% end %>
+                <%= ax_portal_publication_option(form: f, method: :publicar_viva_real_vrsync, label: "Publicar Viva Real VRSync") do %>
+                  <%= ax_radio_group(form: f, method: :tipo_publicacao_viva_real, label: "Tipo Publicação Viva Real", choices: Habitation::VIVA_REAL_TIPO_PUBLICACAO_OPTIONS) %>
+                  <%= ax_radio_group(form: f, method: :divulgar_endereco_viva_real, label: "Divulgar Endereço Viva Real", choices: Habitation::VIVA_REAL_DIVULGAR_ENDERECO_OPTIONS) %>
+                <% end %>
+                <%= ax_portal_publication_option(form: f, method: :publicar_loft, label: "Publicar Loft") %>
+              </div>
+            </div>
+          <% end %>
+
+      <%= ax_form_section(
+            title: "Otimização para busca",
+            eyebrow: "SEO",
+            tooltip: "Os controles de exibição estão na seção Identificação e sinalizadores para evitar duplicidade."
+          ) do %>
+        <%= ax_field_grid(columns: 12, gap: :compact) do %>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :slug, label: "URL amigável (Slug)", class: "ax-readonly-input", readonly: true) %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :meta_title, label: "Meta Title") %>
+          </div>
+          <div class="ax-span-12">
+            <%= ax_field_label(f, :meta_description, text: "Meta Description (SEO)") %>
+            <%= f.rich_text_area :meta_description, class: "ax-control ax-rich-text-control", style: "min-height: 150px;" %>
+          </div>
+          <div class="ax-span-12">
+            <%= ax_text_field(
+                  form: f,
+                  method: :meta_keywords,
+                  label: "Palavras-chave (Tags)",
+                  placeholder: "Digite e Enter...",
+                  data: { controller: "tom-select", tom_select_tags_value: true }
+                ) %>
+          </div>
+        <% end %>
+
+      <% end %>
+    </div>

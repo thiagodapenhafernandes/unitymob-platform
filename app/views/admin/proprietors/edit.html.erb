@@ -1,24 +1,24 @@
-<div class="mb-4">
-  <%= link_to admin_proprietors_path, class: "btn btn-link text-decoration-none text-muted p-0 small mb-2" do %>
-    <i class="bi bi-arrow-left me-1"></i> Voltar para lista
+<div class="tw-mb-4">
+  <%= link_to admin_proprietors_path, class: "tw-flex tw-items-center tw-gap-1 tw-text-ink-muted p-0 tw-text-sm tw-mb-2" do %>
+    <i class="bi bi-arrow-left"></i> Voltar para lista
   <% end %>
-  <h1 class="h3 mb-1 text-gray-800 fw-bold" style="color: #bfa15f !important; font-family: 'Outfit', sans-serif;">Editar Proprietário</h1>
-  <p class="text-muted small">Atualize os dados cadastrais e imagem de perfil.</p>
+  <h1 class="ax-page-title tw-mb-1" style="color: #bfa15f !important; font-family: 'Outfit', sans-serif;">Editar Proprietário</h1>
+  <p class="ax-page-subtitle">Atualize os dados cadastrais e imagem de perfil.</p>
 </div>
 
-<div class="card border-0 shadow-sm rounded-4">
-  <div class="card-body p-4">
+<div class="ax-card">
+  <div class="ax-card__body p-4">
     <%= render "form", proprietor: @proprietor %>
   </div>
 </div>
 
-<div class="card border-0 shadow-sm rounded-4 mt-4">
-  <div class="card-header bg-white py-3 border-0">
-    <h5 class="card-title mb-0 fw-bold text-primary">
-      <i class="bi bi-houses me-2"></i>Imóveis vinculados
+<div class="ax-card tw-mt-4">
+  <div class="ax-card__header py-3">
+    <h5 class="ax-card__title tw-mb-0 tw-font-bold tw-text-primary tw-flex tw-items-center tw-gap-2">
+      <i class="bi bi-houses"></i>Imóveis vinculados
     </h5>
   </div>
-  <div class="card-body">
+  <div class="ax-card__body">
     <style>
       .proprietor-h-card-main { display: flex; }
       .proprietor-h-card-check { width: 40px; min-width: 40px; }
@@ -42,28 +42,28 @@
       }
     </style>
 
-    <%= form_with url: edit_admin_proprietor_path(@proprietor), method: :get, local: true, class: "row g-2 align-items-end mb-3" do |f| %>
-      <div class="col-md-8">
-        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Buscar imóvel</label>
-        <%= f.text_field :habitation_q, value: @habitation_q, class: "form-control", placeholder: "Código, título, bairro, cidade..." %>
+    <%= form_with url: edit_admin_proprietor_path(@proprietor), method: :get, local: true, class: "tw-grid tw-items-center tw-gap-2 tw-mb-3", style: "grid-template-columns: repeat(12, minmax(0, 1fr));" do |f| %>
+      <div class="ax-span-8">
+        <label class="ax-label tw-text-sm tw-font-bold tw-text-ink-muted tw-mb-1" style="text-transform: uppercase;">Buscar imóvel</label>
+        <%= f.text_field :habitation_q, value: @habitation_q, class: "ax-control", placeholder: "Código, título, bairro, cidade..." %>
       </div>
-      <div class="col-md-3">
-        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Status</label>
+      <div class="ax-span-3">
+        <label class="ax-label tw-text-sm tw-font-bold tw-text-ink-muted tw-mb-1" style="text-transform: uppercase;">Status</label>
         <%= f.select :habitation_status,
                      options_for_select(@habitation_status_options, @habitation_status),
                      { include_blank: "Todos" },
-                     class: "form-select" %>
+                     class: "ax-control" %>
       </div>
-      <div class="col-md-1 d-grid">
-        <%= f.submit "Filtrar", class: "btn btn-primary" %>
+      <div class="tw-grid ax-span-1">
+        <%= f.submit "Filtrar", class: "ax-btn ax-btn--primary" %>
       </div>
     <% end %>
 
     <% if @linked_habitations.any? %>
-      <div class="d-flex justify-content-end small text-muted mb-2">
+      <div class="tw-flex tw-justify-end tw-text-sm tw-text-ink-muted tw-mb-2">
         <%= @linked_habitations.total_entries %> encontrados
       </div>
-      <div class="d-flex flex-column gap-3">
+      <div class="tw-flex flex-column tw-gap-3">
         <% @linked_habitations.each do |habitation| %>
           <% title = habitation.titulo_anuncio.presence || habitation.nome_empreendimento.presence || "Imóvel sem título" %>
           <% city = habitation.address&.cidade.presence || habitation.cidade.presence || "-" %>
@@ -71,10 +71,10 @@
           <% address_line = [habitation.endereco.presence, habitation.numero.presence].compact.join(", ") %>
           <% image_url = habitation.primary_image_url %>
 
-          <div class="card border shadow-sm overflow-hidden">
+          <div class="ax-card overflow-hidden">
             <div class="proprietor-h-card-main">
-              <div class="proprietor-h-card-check d-flex align-items-center justify-content-center px-2 border-end bg-light">
-                <input type="checkbox" class="form-check-input m-0" aria-label="Selecionar imóvel <%= habitation.codigo %>" disabled>
+              <div class="proprietor-h-card-check tw-flex tw-items-center tw-justify-center px-2 border-end bg-light">
+                <input type="checkbox" class="m-0" aria-label="Selecionar imóvel <%= habitation.codigo %>" disabled>
               </div>
 
               <div class="proprietor-h-card-image border-end bg-light">
@@ -82,38 +82,38 @@
                   <%= image_tag image_url,
                       alt: title,
                       loading: "lazy",
-                      class: "w-100 h-100",
+                      class: "tw-w-full h-100",
                       style: "object-fit: cover;" %>
                 <% else %>
-                  <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center text-muted">
-                    <i class="bi bi-image fs-2"></i>
-                    <span class="small">Sem imagem</span>
+                  <div class="tw-w-full h-100 tw-flex flex-column tw-items-center tw-justify-center tw-text-ink-muted">
+                    <i class="bi bi-image" style="font-size: 2rem;"></i>
+                    <span class="tw-text-sm">Sem imagem</span>
                   </div>
                 <% end %>
               </div>
 
-              <div class="flex-grow-1 d-flex flex-column">
-                <div class="d-flex justify-content-between align-items-start p-3 pb-2">
+              <div class="flex-grow-1 tw-flex flex-column">
+                <div class="tw-flex tw-justify-between tw-items-start p-3 pb-2">
                   <div>
-                    <h6 class="fw-bold mb-1"><%= neighborhood %></h6>
-                    <div class="d-inline-flex align-items-center rounded border px-2 py-1 small text-muted mb-1">
+                    <h6 class="tw-font-bold tw-mb-1"><%= neighborhood %></h6>
+                    <div class="tw-inline-flex tw-items-center tw-rounded-lg border px-2 py-1 tw-text-sm tw-text-ink-muted tw-mb-1">
                       Referência <%= habitation.codigo %>
                     </div>
-                    <div class="small text-muted text-uppercase">
-                      <i class="bi bi-file-earmark-text me-1"></i><%= habitation.status.presence || "Sem status" %> - <%= title %>
+                    <div class="tw-text-sm tw-text-ink-muted" style="text-transform: uppercase;">
+                      <i class="bi bi-file-earmark-text" style="margin-right: 0.25rem;"></i><%= habitation.status.presence || "Sem status" %> - <%= title %>
                     </div>
                   </div>
-                  <div class="d-flex gap-2">
-                    <%= link_to admin_habitation_internal_path(habitation), class: "btn btn-sm btn-light border", title: admin_habitation_internal_action_label(habitation) do %>
+                  <div class="tw-flex tw-gap-2">
+                    <%= link_to admin_habitation_internal_path(habitation), class: "ax-btn ax-btn--ghost ax-btn--sm border", title: admin_habitation_internal_action_label(habitation) do %>
                       <i class="bi bi-pencil-square"></i>
                     <% end %>
-                    <%= link_to habitation_path(habitation), target: "_blank", class: "btn btn-sm btn-light border", title: "Ver no site" do %>
+                    <%= link_to habitation_path(habitation), target: "_blank", class: "ax-btn ax-btn--ghost ax-btn--sm border", title: "Ver no site" do %>
                       <i class="bi bi-box-arrow-up-right"></i>
                     <% end %>
                   </div>
                 </div>
 
-                <div class="px-3 pb-2 text-muted">
+                <div class="px-3 pb-2 tw-text-ink-muted">
                   <% if address_line.present? %>
                     <div><%= address_line %></div>
                   <% end %>
@@ -121,26 +121,26 @@
                 </div>
 
                 <div class="px-3 pb-3">
-                  <div class="small text-muted">Preço</div>
-                  <div class="fw-bold fs-5 text-dark"><%= habitation.preco_principal %></div>
+                  <div class="tw-text-sm tw-text-ink-muted">Preço</div>
+                  <div class="tw-font-bold text-dark" style="font-size: 1.25rem;"><%= habitation.preco_principal %></div>
                 </div>
 
-                <div class="mt-auto border-top px-3 py-2 bg-light">
-                  <div class="row g-2 text-center text-muted small">
-                    <div class="col-3">
-                      <div class="fw-semibold text-dark"><%= habitation.dormitorios_qtd.to_i %></div>
+                <div class="border-top px-3 tw-py-2 bg-light" style="margin-top: auto;">
+                  <div class="tw-grid tw-text-center tw-text-ink-muted tw-text-sm tw-gap-2" style="grid-template-columns: repeat(12, minmax(0, 1fr));">
+                    <div class="ax-span-3">
+                      <div class="tw-font-semibold text-dark"><%= habitation.dormitorios_qtd.to_i %></div>
                       <div>Dormitórios</div>
                     </div>
-                    <div class="col-3">
-                      <div class="fw-semibold text-dark"><%= habitation.suites_qtd.to_i %></div>
+                    <div class="ax-span-3">
+                      <div class="tw-font-semibold text-dark"><%= habitation.suites_qtd.to_i %></div>
                       <div>Suítes</div>
                     </div>
-                    <div class="col-3">
-                      <div class="fw-semibold text-dark"><%= habitation.vagas_qtd.to_i %></div>
+                    <div class="ax-span-3">
+                      <div class="tw-font-semibold text-dark"><%= habitation.vagas_qtd.to_i %></div>
                       <div>Vagas</div>
                     </div>
-                    <div class="col-3">
-                      <div class="fw-semibold text-dark"><%= number_with_precision(habitation.area_total_m2.to_f, precision: 0) %> m²</div>
+                    <div class="ax-span-3">
+                      <div class="tw-font-semibold text-dark"><%= number_with_precision(habitation.area_total_m2.to_f, precision: 0) %> m²</div>
                       <div>Total</div>
                     </div>
                   </div>
@@ -151,17 +151,13 @@
         <% end %>
       </div>
     <% else %>
-      <div class="text-center text-muted py-4">
+      <div class="tw-text-center tw-text-ink-muted py-4">
         Nenhum imóvel vinculado para os filtros informados.
       </div>
     <% end %>
 
-    <div class="d-flex justify-content-center mt-3">
-      <%= will_paginate @linked_habitations,
-                        param_name: :habitations_page,
-                        params: { habitation_q: @habitation_q, habitation_status: @habitation_status },
-                        renderer: WillPaginate::ActionView::BootstrapLinkRenderer,
-                        class: "shadow-sm" %>
-    </div>
+    <%= ax_pagination @linked_habitations,
+                      param_name: :habitations_page,
+                      params: { habitation_q: @habitation_q, habitation_status: @habitation_status } %>
   </div>
 </div>

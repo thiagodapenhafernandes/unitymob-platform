@@ -1,0 +1,17 @@
+<%
+  field_classes = ["ax-field", field_class].compact.join(" ")
+  options = (options || {}).dup
+  options[:autocomplete] = "off" unless options.key?(:autocomplete)
+  control_class = ["ax-control", options.delete(:class)].compact.join(" ")
+  html_options = options.merge(class: control_class)
+%>
+
+<div class="<%= field_classes %>">
+  <%= ax_field_label(form, method, text: label, tooltip:, class_name:, **(label_options || {})) %>
+  <% if type.to_sym == :textarea %>
+    <%= form.text_area method, html_options %>
+  <% else %>
+    <%= form.text_field method, html_options %>
+  <% end %>
+  <%= render "admin/shared/ui/field_error", form: form, method: method %>
+</div>

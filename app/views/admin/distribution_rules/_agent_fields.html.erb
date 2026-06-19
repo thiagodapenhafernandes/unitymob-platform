@@ -1,47 +1,36 @@
-<div class="nested-form-wrapper list-group-item d-flex align-items-center justify-content-between index-<%= f.index %>" data-team-rules-target="item">
+<div class="nested-form-wrapper dr-agent index-<%= f.index %>" data-team-rules-target="item">
   <%= f.hidden_field :id %>
   <%= f.hidden_field :admin_user_id %>
-  <%= f.hidden_field :position, class: 'position-field' %>
-  
-  <% 
-     user = AdminUser.find_by(id: f.object.admin_user_id)
-     user_name = user&.name || "Novo Corretor"
-     user_initial = user_name&.first&.upcase || "?"
-     user_email = user&.email || ""
+  <%= f.hidden_field :position, class: "position-field" %>
+
+  <%
+    user = AdminUser.find_by(id: f.object.admin_user_id)
+    user_name = user&.name || "Novo Corretor"
+    user_initial = user_name&.first&.upcase || "?"
+    user_email = user&.email || ""
   %>
-  <div class="d-flex align-items-center flex-grow-1">
-    <div class="me-3 text-muted drag-handle cursor-move">
-      <i class="bi bi-grip-vertical"></i>
-    </div>
-    <div class="variable-icon me-3">
-       <div class="bg-light rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-         <span class="fw-bold text-primary"><%= user_initial %></span>
-       </div>
-    </div>
-    <div>
-      <h6 class="mb-0 fw-bold"><%= user_name %></h6>
-      <span class="extra-small text-muted"><%= user_email %></span>
-    </div>
+  <span class="drag-handle dr-agent__handle" title="Arrastar para reordenar"><i class="bi bi-grip-vertical"></i></span>
+  <span class="dr-agent__avatar"><%= user_initial %></span>
+  <div class="dr-agent__main">
+    <strong><%= user_name %></strong>
+    <span><%= user_email %></span>
   </div>
 
-  <div class="d-flex align-items-center gap-3">
-    <!-- Cycles / Weight (Performance Mode) -->
-    <div class="performance-field d-none" data-distribution-rule-target="performanceField">
-      <div class="input-group input-group-sm" style="width: 120px;">
-        <span class="input-group-text bg-white text-muted">Ciclos</span>
-        <%= f.number_field :weight, class: "form-control text-center fw-bold", min: 1, placeholder: "1" %>
-      </div>
+  <div class="dr-agent__controls">
+    <div class="performance-field tw-hidden" data-distribution-rule-target="performanceField">
+      <%= ax_input_group(prefix: "Ciclos") do %>
+        <%= f.number_field :weight, class: "ax-control ax-control--sm dr-agent__weight", min: 1, placeholder: "1" %>
+      <% end %>
     </div>
 
-    <!-- Position / Order (Rotary Mode) -->
-    <div class="rotary-field d-none" data-distribution-rule-target="rotaryField">
-       <span class="badge bg-light text-dark border">#<span class="position-display"><%= f.object.position || '-' %></span></span>
+    <div class="rotary-field tw-hidden" data-distribution-rule-target="rotaryField">
+      <span class="ax-badge ax-badge--gray">#<span class="position-display"><%= f.object.position || "-" %></span></span>
     </div>
 
-    <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle p-2" data-action="click->team-rules#remove">
+    <button type="button" class="ax-ico-btn dr-agent__remove" data-action="click->team-rules#remove" title="Remover">
       <i class="bi bi-trash"></i>
     </button>
   </div>
-  
+
   <%= f.hidden_field :_destroy %>
 </div>

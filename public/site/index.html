@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unitymob | Plataforma Operacional Imobiliária</title>
+  <meta name="description" content="Unitymob centraliza imóveis, leads, atendimento, WhatsApp, automações, BI e gestão comercial em uma única plataforma operacional para imobiliárias." />
+
+  <style>
+    :root{
+      --bg:#050713;
+      --bg2:#080d1f;
+      --card:rgba(255,255,255,.075);
+      --card2:rgba(255,255,255,.105);
+      --line:rgba(255,255,255,.13);
+      --text:#f8fbff;
+      --muted:#aeb8d8;
+      --muted2:#7782a5;
+      --brand:#65f4c7;
+      --blue:#67a8ff;
+      --purple:#b983ff;
+      --yellow:#ffd166;
+      --red:#ff6688;
+      --green:#5cffb1;
+      --radius:28px;
+      --shadow:0 32px 110px rgba(0,0,0,.42);
+      --max:1200px;
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+      background:
+        radial-gradient(circle at 15% -5%,rgba(101,244,199,.20),transparent 32%),
+        radial-gradient(circle at 92% 6%,rgba(103,168,255,.18),transparent 34%),
+        radial-gradient(circle at 52% 38%,rgba(185,131,255,.10),transparent 34%),
+        linear-gradient(180deg,var(--bg),#070a17 42%,#050713);
+      color:var(--text);
+      overflow-x:hidden;
+    }
+
+    a{text-decoration:none;color:inherit}
+    button,input{font:inherit}
+    .container{width:min(var(--max),calc(100% - 40px));margin:0 auto}
+    .hide-mobile{display:inline-flex}
+
+    .noise{
+      pointer-events:none;
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      opacity:.08;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:9px 13px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:rgba(255,255,255,.065);
+      color:var(--muted);
+      backdrop-filter:blur(18px);
+      font-size:13px;
+      line-height:1;
+    }
+    .pill strong{color:var(--brand)}
+    .pill.hot{border-color:rgba(101,244,199,.32);background:rgba(101,244,199,.10);color:#dffef5}
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      min-height:48px;
+      padding:14px 19px;
+      border-radius:16px;
+      border:1px solid transparent;
+      cursor:pointer;
+      font-weight:850;
+      transition:.22s ease;
+      white-space:nowrap;
+    }
+    .btn-primary{
+      color:#06101a;
+      background:linear-gradient(135deg,var(--brand),var(--blue));
+      box-shadow:0 22px 64px rgba(101,244,199,.20);
+    }
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 26px 80px rgba(101,244,199,.30)}
+    .btn-ghost{
+      color:var(--text);
+      background:rgba(255,255,255,.065);
+      border-color:var(--line);
+    }
+    .btn-ghost:hover{background:rgba(255,255,255,.11);transform:translateY(-2px)}
+    .btn-dark{
+      color:var(--text);
+      background:#0c1227;
+      border-color:rgba(255,255,255,.10);
+    }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:50;
+      transition:.25s;
+      border-bottom:1px solid transparent;
+    }
+    header.scrolled{
+      background:rgba(5,7,19,.82);
+      backdrop-filter:blur(18px);
+      border-bottom-color:var(--line);
+    }
+    .nav{
+      height:76px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:20px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      font-weight:950;
+      font-size:24px;
+      letter-spacing:-.045em;
+    }
+    .logo{
+      width:42px;height:42px;border-radius:15px;
+      display:grid;place-items:center;
+      color:#06101a;
+      background:linear-gradient(135deg,var(--brand),var(--blue) 55%,var(--purple));
+      box-shadow:0 18px 60px rgba(101,244,199,.18);
+    }
+    .logo svg{width:25px;height:25px}
+    nav.menu{display:flex;align-items:center;gap:22px;color:var(--muted);font-size:14px}
+    nav.menu a:hover{color:var(--text)}
+    .nav-actions{display:flex;align-items:center;gap:10px}
+
+    .hero{
+      padding:88px 0 70px;
+      position:relative;
+    }
+    .hero-grid{
+      display:grid;
+      grid-template-columns:1fr .96fr;
+      gap:52px;
+      align-items:center;
+    }
+    .kicker{margin-bottom:22px}
+    h1{
+      margin:0;
+      font-size:clamp(46px,6.2vw,88px);
+      line-height:.92;
+      letter-spacing:-.075em;
+      max-width:820px;
+    }
+    .grad{
+      background:linear-gradient(135deg,#fff 5%,var(--brand) 38%,var(--blue) 72%,#fff);
+      -webkit-background-clip:text;
+      color:transparent;
+    }
+    .lead{
+      color:var(--muted);
+      font-size:20px;
+      line-height:1.65;
+      margin:28px 0 0;
+      max-width:690px;
+    }
+    .hero-actions{display:flex;gap:13px;flex-wrap:wrap;margin-top:34px}
+    .trust-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:26px;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .trust-row span{
+      padding:9px 12px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:rgba(255,255,255,.045);
+    }
+
+    .hero-visual{min-height:660px;position:relative}
+    .product-shell{
+      position:absolute;
+      right:0;top:14px;
+      width:560px;
+      min-height:610px;
+      border:1px solid var(--line);
+      border-radius:34px;
+      background:
+        linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.04)),
+        rgba(255,255,255,.04);
+      backdrop-filter:blur(20px);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      padding:16px;
+    }
+    .browser-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:10px 10px 18px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .dots{display:flex;gap:7px}
+    .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.24)}
+    .dot:nth-child(1){background:var(--red)}
+    .dot:nth-child(2){background:var(--yellow)}
+    .dot:nth-child(3){background:var(--brand)}
+    .app{
+      display:grid;
+      grid-template-columns:150px 1fr;
+      gap:12px;
+      min-height:544px;
+    }
+    .sidebar,.mainpanel,.right-floating,.mobile-card{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.18);
+      border-radius:24px;
+    }
+    .sidebar{padding:14px}
+    .side-title{font-weight:900;letter-spacing:-.03em;margin-bottom:14px}
+    .side-item{
+      display:flex;align-items:center;gap:9px;
+      padding:10px;
+      border-radius:13px;
+      color:var(--muted);
+      font-size:13px;
+      margin-bottom:7px;
+    }
+    .side-item.active{background:rgba(101,244,199,.12);color:#eafff8}
+    .mainpanel{padding:16px;position:relative;overflow:hidden}
+    .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .kpi{
+      padding:13px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(255,255,255,.055);
+    }
+    .kpi small{display:block;color:var(--muted);font-size:11px}
+    .kpi b{display:block;font-size:23px;margin-top:5px;letter-spacing:-.04em}
+    .pipeline{margin-top:13px;display:grid;gap:9px}
+    .lead-card{
+      display:grid;
+      grid-template-columns:34px 1fr auto;
+      gap:10px;
+      align-items:center;
+      padding:11px;
+      border:1px solid var(--line);
+      border-radius:17px;
+      background:rgba(255,255,255,.055);
+    }
+    .avatar{
+      width:34px;height:34px;border-radius:13px;
+      display:grid;place-items:center;
+      background:linear-gradient(135deg,rgba(101,244,199,.28),rgba(103,168,255,.20));
+    }
+    .lead-card strong{display:block;font-size:13px}
+    .lead-card span{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+    .tag{
+      font-size:11px;
+      color:var(--brand);
+      background:rgba(101,244,199,.10);
+      border:1px solid rgba(101,244,199,.22);
+      border-radius:999px;
+      padding:6px 8px;
+    }
+    .chart-mini{
+      height:126px;
+      border:1px solid var(--line);
+      border-radius:20px;
+      margin-top:13px;
+      background:
+        linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+      background-size:28px 28px;
+      display:flex;align-items:flex-end;gap:9px;padding:14px;
+    }
+    .chart-mini i{
+      flex:1;
+      border-radius:10px 10px 0 0;
+      background:linear-gradient(180deg,var(--brand),rgba(103,168,255,.52));
+      min-height:16px;
+      animation:grow 1.4s ease both;
+      transform-origin:bottom;
+    }
+    @keyframes grow{from{transform:scaleY(.12);opacity:.5}to{transform:scaleY(1);opacity:1}}
+    .float-chip{
+      position:absolute;
+      z-index:4;
+      display:flex;align-items:center;gap:10px;
+      padding:12px 14px;
+      border:1px solid var(--line);
+      border-radius:17px;
+      background:rgba(255,255,255,.10);
+      backdrop-filter:blur(18px);
+      box-shadow:0 24px 70px rgba(0,0,0,.24);
+      color:#edf7ff;
+      font-size:13px;
+      animation:float 5s ease-in-out infinite;
+    }
+    .float-chip b{color:var(--brand)}
+    .c1{right:420px;top:74px}
+    .c2{right:-20px;top:140px;animation-delay:.7s}
+    .c3{right:390px;top:365px;animation-delay:1.3s}
+    .c4{right:52px;top:602px;animation-delay:.3s}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+
+    .section{padding:92px 0;position:relative}
+    .section-header{max-width:820px;margin-bottom:42px}
+    .section-header.center{text-align:center;margin-inline:auto}
+    h2{
+      margin:14px 0 0;
+      font-size:clamp(34px,4.4vw,62px);
+      line-height:.98;
+      letter-spacing:-.06em;
+    }
+    .section-header p{
+      color:var(--muted);
+      font-size:18px;
+      line-height:1.7;
+      margin:18px 0 0;
+    }
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:center}
+    .card{
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,rgba(255,255,255,.082),rgba(255,255,255,.038));
+      border-radius:var(--radius);
+      padding:26px;
+      box-shadow:0 18px 80px rgba(0,0,0,.12);
+      position:relative;
+      overflow:hidden;
+    }
+    .card h3{font-size:24px;letter-spacing:-.04em;margin:16px 0 10px}
+    .card p,.card li{color:var(--muted);line-height:1.7;font-size:15px}
+    .card ul{padding-left:20px;margin-bottom:0}
+    .icon{
+      width:52px;height:52px;border-radius:18px;
+      display:grid;place-items:center;
+      font-size:24px;
+      background:linear-gradient(135deg,rgba(101,244,199,.17),rgba(103,168,255,.14));
+      border:1px solid rgba(255,255,255,.13);
+    }
+
+    .systems-strip{
+      border:1px solid var(--line);
+      border-radius:34px;
+      background:rgba(255,255,255,.055);
+      padding:24px;
+      overflow:hidden;
+    }
+    .systems-row{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:12px;
+      align-items:stretch;
+    }
+    .sys{
+      min-height:120px;
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.16);
+      border-radius:22px;
+      padding:18px 14px;
+      text-align:center;
+      color:var(--muted);
+      display:grid;
+      place-items:center;
+      gap:8px;
+    }
+    .sys strong{display:block;color:var(--text);font-size:15px}
+    .sys em{font-style:normal;font-size:28px}
+    .arrow-down{text-align:center;margin:26px 0;color:var(--brand);font-weight:900}
+    .one-platform{
+      border:1px solid rgba(101,244,199,.28);
+      background:linear-gradient(135deg,rgba(101,244,199,.14),rgba(103,168,255,.08));
+      border-radius:26px;
+      padding:24px;
+      text-align:center;
+      font-size:22px;
+      font-weight:900;
+      letter-spacing:-.03em;
+    }
+    .one-platform span{color:var(--brand)}
+
+    .module{
+      min-height:238px;
+      transition:.25s;
+    }
+    .module:hover{transform:translateY(-6px);background:rgba(255,255,255,.09)}
+    .module h3{font-size:19px}
+
+    .calc{
+      display:grid;
+      grid-template-columns:.9fr 1.1fr;
+      gap:24px;
+      align-items:stretch;
+    }
+    .calc-box{
+      border:1px solid var(--line);
+      border-radius:34px;
+      background:rgba(255,255,255,.06);
+      padding:28px;
+    }
+    .slider-row{margin:24px 0}
+    .slider-row label{display:flex;justify-content:space-between;color:var(--muted);margin-bottom:10px}
+    input[type=range]{width:100%;accent-color:var(--brand)}
+    .saving{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:14px;
+      margin-top:18px;
+    }
+    .saving-card{
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:rgba(0,0,0,.17);
+      padding:20px;
+    }
+    .saving-card small{color:var(--muted)}
+    .saving-card b{display:block;font-size:34px;letter-spacing:-.05em;margin-top:8px}
+    .saving-card.positive b{color:var(--brand)}
+
+    .pricing{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:18px;
+      align-items:stretch;
+    }
+    .price-card{
+      border:1px solid var(--line);
+      background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.04));
+      border-radius:32px;
+      padding:30px;
+      position:relative;
+      overflow:hidden;
+    }
+    .price-card.featured{
+      border-color:rgba(101,244,199,.42);
+      transform:scale(1.035);
+      box-shadow:0 28px 100px rgba(101,244,199,.12);
+    }
+    .price-card.featured:before{
+      content:"Oferta principal";
+      position:absolute;right:22px;top:22px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(101,244,199,.13);
+      border:1px solid rgba(101,244,199,.28);
+      color:#dffef5;
+      font-size:12px;
+      font-weight:900;
+    }
+    .price-name{font-size:24px;font-weight:950;letter-spacing:-.04em}
+    .price-desc{color:var(--muted);line-height:1.6;min-height:52px}
+    .price{
+      margin:22px 0 6px;
+      font-size:46px;
+      font-weight:950;
+      letter-spacing:-.07em;
+    }
+    .price small{font-size:15px;color:var(--muted);letter-spacing:0}
+    .setup{
+      margin-top:28px;
+      padding:22px;
+      border:1px solid rgba(255,255,255,.13);
+      border-radius:26px;
+      background:rgba(0,0,0,.16);
+      display:flex;
+      justify-content:space-between;
+      gap:20px;
+      align-items:center;
+    }
+    .setup p{margin:6px 0 0;color:var(--muted);line-height:1.6}
+
+    .compare-table{
+      overflow:hidden;
+      border:1px solid var(--line);
+      border-radius:30px;
+      background:rgba(255,255,255,.045);
+    }
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:18px 20px;border-bottom:1px solid var(--line);text-align:left;color:var(--muted)}
+    th{color:var(--text);background:rgba(255,255,255,.055)}
+    td strong{color:var(--text)}
+    tr:last-child td{border-bottom:0}
+    .yes{color:var(--brand);font-weight:900}
+    .no{color:var(--red);font-weight:900}
+
+    .faq{max-width:900px;margin:0 auto;display:grid;gap:12px}
+    .faq-item{
+      border:1px solid var(--line);
+      border-radius:22px;
+      background:rgba(255,255,255,.055);
+      overflow:hidden;
+    }
+    .faq-q{
+      width:100%;
+      border:0;
+      background:transparent;
+      color:var(--text);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      cursor:pointer;
+      padding:22px;
+      font-weight:900;
+      text-align:left;
+      font-size:17px;
+    }
+    .faq-a{
+      max-height:0;
+      overflow:hidden;
+      transition:.25s;
+      color:var(--muted);
+      line-height:1.7;
+      padding:0 22px;
+    }
+    .faq-item.open .faq-a{max-height:260px;padding-bottom:22px}
+
+    .cta-box{
+      border:1px solid rgba(101,244,199,.30);
+      border-radius:42px;
+      padding:74px;
+      text-align:center;
+      background:
+        radial-gradient(circle at 22% 18%,rgba(101,244,199,.22),transparent 30%),
+        radial-gradient(circle at 78% 0%,rgba(103,168,255,.16),transparent 32%),
+        rgba(255,255,255,.065);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .cta-box h2{font-size:clamp(38px,5vw,72px)}
+    .cta-box p{color:var(--muted);font-size:19px;line-height:1.7;max-width:760px;margin:20px auto 0}
+    .form{
+      margin:32px auto 0;
+      max-width:780px;
+      display:grid;
+      grid-template-columns:1fr 1fr auto;
+      gap:10px;
+    }
+    .form input{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,.20);
+      color:var(--text);
+      padding:16px 18px;
+      border-radius:16px;
+      outline:none;
+    }
+
+    footer{border-top:1px solid var(--line);padding:34px 0;color:var(--muted)}
+    .footer-row{display:flex;align-items:center;justify-content:space-between;gap:22px}
+
+    .reveal{opacity:0;transform:translateY(26px);transition:.7s ease}
+    .reveal.visible{opacity:1;transform:translateY(0)}
+
+    @media(max-width:1040px){
+      nav.menu{display:none}
+      .hero-grid,.grid-2,.calc{grid-template-columns:1fr}
+      .hero-visual{min-height:650px}
+      .product-shell{left:50%;right:auto;transform:translateX(-50%);width:min(560px,100%)}
+      .float-chip{display:none}
+      .grid-3,.pricing{grid-template-columns:1fr}
+      .price-card.featured{transform:none}
+      .grid-4,.systems-row{grid-template-columns:repeat(2,1fr)}
+      .form{grid-template-columns:1fr}
+      .setup{flex-direction:column;align-items:flex-start}
+    }
+    @media(max-width:640px){
+      .container{width:min(100% - 28px,var(--max))}
+      .hide-mobile{display:none}
+      .nav{height:68px}
+      .brand{font-size:20px}
+      .logo{width:38px;height:38px}
+      h1{font-size:47px}
+      .lead{font-size:18px}
+      .hero{padding:52px 0}
+      .app{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .product-shell{min-height:auto}
+      .hero-visual{min-height:520px}
+      .grid-4,.systems-row,.saving{grid-template-columns:1fr}
+      .section{padding:70px 0}
+      .cta-box{padding:42px 22px;border-radius:30px}
+      th,td{padding:14px;font-size:13px}
+      .footer-row{flex-direction:column;align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+  <div class="noise"></div>
+
+  <header id="header">
+    <div class="container nav">
+      <a class="brand" href="#">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M5 12.2 11.4 5l7.6 14H5z" stroke="#06101a" stroke-width="2.3" stroke-linejoin="round"/>
+            <path d="M9.4 15h5.4" stroke="#06101a" stroke-width="2.3" stroke-linecap="round"/>
+          </svg>
+        </span>
+        Unitymob
+      </a>
+
+      <nav class="menu">
+        <a href="#problema">Problema</a>
+        <a href="#plataforma">Plataforma</a>
+        <a href="#modulos">Módulos</a>
+        <a href="#economia">Economia</a>
+        <a href="#precos">Planos</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a class="btn btn-ghost hide-mobile" href="#economia">Calcular economia</a>
+        <a class="btn btn-primary" href="#demo">Solicitar demo</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="reveal">
+          <div class="kicker pill hot"><strong>Unitymob OS</strong> Plataforma operacional para imobiliárias modernas</div>
+          <h1>Centralize sua imobiliária em <span class="grad">uma plataforma operacional.</span></h1>
+          <p class="lead">
+            Imóveis, leads, atendimento, WhatsApp, automações, distribuição inteligente, BI e gestão comercial em uma única plataforma feita para imobiliárias em crescimento.
+          </p>
+
+          <div class="hero-actions">
+            <a href="#demo" class="btn btn-primary">Agendar demonstração</a>
+            <a href="#precos" class="btn btn-ghost">Ver planos</a>
+          </div>
+
+          <div class="trust-row">
+            <span>Imóveis + Leads + Atendimento</span>
+            <span>WhatsApp integrado</span>
+            <span>BI em tempo real</span>
+            <span>Distribuição inteligente</span>
+          </div>
+        </div>
+
+        <div class="hero-visual reveal">
+          <div class="float-chip c1">🏢 <b>1.284</b> imóveis ativos</div>
+          <div class="float-chip c2">💬 WhatsApp conectado</div>
+          <div class="float-chip c3">⚡ Lead distribuído em 2s</div>
+          <div class="float-chip c4">📊 ROI atualizado</div>
+
+          <div class="product-shell">
+            <div class="browser-top">
+              <div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+              <span>app.unitymob.com.br / operação</span>
+            </div>
+
+            <div class="app">
+              <aside class="sidebar">
+                <div class="side-title">Unitymob</div>
+                <div class="side-item active">📊 Painel</div>
+                <div class="side-item">🎯 Leads</div>
+                <div class="side-item">🏢 Imóveis</div>
+                <div class="side-item">💬 WhatsApp</div>
+                <div class="side-item">👥 Equipes</div>
+                <div class="side-item">⚡ Automação</div>
+                <div class="side-item">📱 Mobile</div>
+              </aside>
+
+              <section class="mainpanel">
+                <div class="kpi-grid">
+                  <div class="kpi"><small>Leads hoje</small><b>248</b></div>
+                  <div class="kpi"><small>Conversão</small><b>31,8%</b></div>
+                  <div class="kpi"><small>SLA médio</small><b>2m</b></div>
+                </div>
+
+                <div class="pipeline">
+                  <div class="lead-card"><div class="avatar">A</div><div><strong>Ana Souza</strong><span>Interessada em apartamento frente mar</span></div><div class="tag">quente</div></div>
+                  <div class="lead-card"><div class="avatar">R</div><div><strong>Rafael Lima</strong><span>Lead Meta Ads · Distribuído para equipe Sul</span></div><div class="tag">novo</div></div>
+                  <div class="lead-card"><div class="avatar">M</div><div><strong>Marina Costa</strong><span>Visita agendada · Funil atualizado</span></div><div class="tag">visita</div></div>
+                </div>
+
+                <div class="chart-mini">
+                  <i style="height:42%"></i><i style="height:63%"></i><i style="height:50%"></i><i style="height:82%"></i><i style="height:71%"></i><i style="height:92%"></i>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="problema" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">A dor real do mercado</div>
+          <h2>O problema não é falta de tecnologia. É excesso de sistemas desconectados.</h2>
+          <p>Imobiliárias médias crescem contratando ferramentas isoladas. Em pouco tempo, a operação fica cara, fragmentada e difícil de gerenciar.</p>
+        </div>
+
+        <div class="grid-3">
+          <div class="card reveal"><div class="icon">🧩</div><h3>Dados espalhados</h3><p>O lead está no Comercial, o imóvel em outro sistema, o atendimento no WhatsApp e os indicadores em planilhas.</p></div>
+          <div class="card reveal"><div class="icon">🔁</div><h3>Retrabalho diário</h3><p>A equipe digita, confere e atualiza as mesmas informações em vários lugares, aumentando falhas operacionais.</p></div>
+          <div class="card reveal"><div class="icon">📉</div><h3>Gestão sem visão 360°</h3><p>Diretores não enxergam a jornada completa: campanha, lead, corretor, imóvel, visita, proposta e venda.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="plataforma" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">7 sistemas → 1 plataforma</div>
+          <h2>A Unitymob conecta as áreas críticas da imobiliária.</h2>
+          <p>Uma única estrutura para conectar aquisição, atendimento, carteira, equipe, automação e gestão.</p>
+        </div>
+
+        <div class="systems-strip reveal">
+          <div class="systems-row">
+            <div class="sys"><em>🏢</em><strong>Gestão de imóveis</strong><span>Carteira</span></div>
+            <div class="sys"><em>🎯</em><strong>Comercial de leads</strong><span>Comercial</span></div>
+            <div class="sys"><em>💬</em><strong>WhatsApp</strong><span>Atendimento</span></div>
+            <div class="sys"><em>⚡</em><strong>Automação</strong><span>Fluxos</span></div>
+            <div class="sys"><em>📊</em><strong>BI</strong><span>Indicadores</span></div>
+            <div class="sys"><em>📅</em><strong>Agenda</strong><span>Visitas</span></div>
+            <div class="sys"><em>🔌</em><strong>Integrações</strong><span>APIs</span></div>
+          </div>
+          <div class="arrow-down">↓ tudo converge para ↓</div>
+          <div class="one-platform">Unitymob: <span>uma plataforma operacional imobiliária</span></div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section">
+      <div class="container grid-2">
+        <div class="section-header reveal">
+          <div class="pill">Posicionamento</div>
+          <h2>Não é “mais um CRM imobiliário”. É o sistema operacional da sua imobiliária.</h2>
+          <p>
+            CRM, WhatsApp, imóveis, automações e BI são peças da operação. A Unitymob organiza essas peças em uma única plataforma para reduzir retrabalho, integrações frágeis e decisões baseadas em planilhas.
+          </p>
+        </div>
+        <div class="card reveal">
+          <div class="icon">🧠</div>
+          <h3>A categoria certa muda a percepção de valor.</h3>
+          <p>
+            Quando o cliente compara com um CRM, ele pensa em licença barata. Quando entende como plataforma operacional, ele compara com o custo real de manter vários sistemas, equipes fazendo retrabalho e gestores sem visão completa.
+          </p>
+          <ul>
+            <li>Não vendemos apenas cadastro e funil.</li>
+            <li>Vendemos centralização da operação.</li>
+            <li>Vendemos controle, produtividade e previsibilidade.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="modulos" class="section">
+      <div class="container">
+        <div class="section-header reveal">
+          <div class="pill">Ecossistema operacional</div>
+          <h2>Uma plataforma que se adapta à sua operação.</h2>
+          <p>Você ativa os módulos conforme a maturidade da operação. A Unitymob se adapta ao processo da imobiliária, e não o contrário.</p>
+        </div>
+
+        <div class="grid-4">
+          <div class="card module reveal"><div class="icon">🏢</div><h3>Imóveis</h3><p>Cadastro, proprietários, fotos, documentos, exclusividades e histórico.</p></div>
+          <div class="card module reveal"><div class="icon">🎯</div><h3>Leads</h3><p>Meta Ads, Google, portais, site, WhatsApp, indicações e APIs.</p></div>
+          <div class="card module reveal"><div class="icon">👥</div><h3>Comercial</h3><p>Funis, etapas, tarefas, agenda, propostas e follow-up.</p></div>
+          <div class="card module reveal"><div class="icon">💬</div><h3>WhatsApp</h3><p>Atendimento, campanhas, templates, histórico e automações.</p></div>
+          <div class="card module reveal"><div class="icon">⚡</div><h3>Distribuição</h3><p>Round robin, equipes, filiais, SLA, elegibilidade e Shark Tank.</p></div>
+          <div class="card module reveal"><div class="icon">🤖</div><h3>Automação</h3><p>Fluxos condicionais, webhooks, nutrição e integrações.</p></div>
+          <div class="card module reveal"><div class="icon">📊</div><h3>BI</h3><p>Conversão, ROI, mídia, corretores, equipes e imóveis.</p></div>
+          <div class="card module reveal"><div class="icon">📱</div><h3>Mobile</h3><p>Leads, agenda, visitas, check-in, notificações e atendimento em campo.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="economia" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">Calculadora comercial</div>
+          <h2>Quanto custa manter vários sistemas?</h2>
+          <p>Use este simulador como argumento comercial: a Unitymob não entra como “mais um sistema”, mas como consolidação da operação.</p>
+        </div>
+
+        <div class="calc reveal">
+          <div class="calc-box">
+            <h3 style="font-size:28px;margin:0 0 12px;">Gasto mensal atual</h3>
+            <p style="color:var(--muted);line-height:1.7;">Ajuste os valores aproximados que uma imobiliária pode gastar hoje com ferramentas separadas.</p>
+
+            <div class="slider-row"><label>Comercial <strong id="crmLabel">R$ 1.200</strong></label><input id="crm" type="range" min="300" max="4000" step="100" value="1200"></div>
+            <div class="slider-row"><label>WhatsApp/API <strong id="zapLabel">R$ 800</strong></label><input id="zap" type="range" min="200" max="4000" step="100" value="800"></div>
+            <div class="slider-row"><label>BI/Relatórios <strong id="biLabel">R$ 500</strong></label><input id="biCost" type="range" min="0" max="3000" step="100" value="500"></div>
+            <div class="slider-row"><label>Automação <strong id="autoLabel">R$ 600</strong></label><input id="auto" type="range" min="0" max="3000" step="100" value="600"></div>
+            <div class="slider-row"><label>Integrações/Suporte <strong id="intLabel">R$ 400</strong></label><input id="int" type="range" min="0" max="3000" step="100" value="400"></div>
+          </div>
+
+          <div class="calc-box">
+            <div class="pill hot">Oferta âncora: Unitymob Professional</div>
+            <h3 style="font-size:34px;margin:18px 0 0;">Uma plataforma por R$ 2.997/mês</h3>
+            <p style="color:var(--muted);line-height:1.7;">Inclui gestão comercial, imóveis, leads, WhatsApp, distribuição inteligente, automações, BI operacional e mobile para até 30 usuários.</p>
+
+            <div class="saving">
+              <div class="saving-card"><small>Gasto atual estimado</small><b id="totalAtual">R$ 3.500</b></div>
+              <div class="saving-card"><small>Unitymob Professional</small><b>R$ 2.997</b></div>
+              <div class="saving-card positive"><small>Economia mensal</small><b id="economiaMensal">R$ 503</b></div>
+              <div class="saving-card positive"><small>Economia anual</small><b id="economiaAnual">R$ 6.036</b></div>
+            </div>
+
+            <div style="margin-top:22px;">
+              <a href="#demo" class="btn btn-primary">Quero avaliar minha operação</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="precos" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">Planos operacionais</div>
+          <h2>Investimento que acompanha sua operação.</h2>
+          <p>Os planos são apresentados por maturidade operacional, não como “licença de software”. Isso reforça valor e evita comparação direta com ferramentas simples.</p>
+        </div>
+
+        <div class="pricing">
+          <div class="price-card reveal">
+            <div class="price-name">Essential</div>
+            <p class="price-desc">Para imobiliárias em crescimento que querem organizar operação comercial e carteira.</p>
+            <div class="price">R$ 1.997<small>/mês</small></div>
+            <p style="color:var(--muted)">Operação até 10 usuários</p>
+            <ul>
+              <li>Gestão comercial</li>
+              <li>Gestão de imóveis</li>
+              <li>Gestão de leads</li>
+              <li>WhatsApp integrado</li>
+              <li>Funis e tarefas</li>
+              <li>Dashboards essenciais</li>
+            </ul>
+            <a href="#demo" class="btn btn-ghost" style="margin-top:24px;width:100%">Começar pelo Essential</a>
+          </div>
+
+          <div class="price-card featured reveal">
+            <div class="price-name">Professional</div>
+            <p class="price-desc">Para imobiliárias que querem centralizar a operação, reduzir sistemas e escalar gestão.</p>
+            <div class="price">R$ 2.997<small>/mês</small></div>
+            <p style="color:var(--muted)">Operação até 30 usuários</p>
+            <ul>
+              <li>Tudo do Essential</li>
+              <li>Distribuição inteligente de leads</li>
+              <li>Automações comerciais</li>
+              <li>BI operacional avançado</li>
+              <li>Aplicativo mobile</li>
+              <li>Regras por equipe e filial</li>
+              <li>Modelo Shark Tank</li>
+            </ul>
+            <a href="#demo" class="btn btn-primary" style="margin-top:24px;width:100%">Solicitar demonstração</a>
+          </div>
+
+          <div class="price-card reveal">
+            <div class="price-name">Enterprise</div>
+            <p class="price-desc">Para redes, incorporadoras e operações com múltiplas unidades ou regras avançadas.</p>
+            <div class="price">Sob consulta</div>
+            <p style="color:var(--muted)">Operação acima de 30 usuários</p>
+            <ul>
+              <li>Multi-filial</li>
+              <li>Multi-operação</li>
+              <li>APIs avançadas</li>
+              <li>Integrações dedicadas</li>
+              <li>Treinamento personalizado</li>
+              <li>Sucesso do Cliente</li>
+            </ul>
+            <a href="#demo" class="btn btn-ghost" style="margin-top:24px;width:100%">Falar com especialista</a>
+          </div>
+        </div>
+
+        <div class="setup reveal">
+          <div>
+            <h3 style="margin:0;font-size:24px;">Setup de implantação</h3>
+            <p>Migração, parametrização, treinamento, revisão de funis, configuração de equipes e ativação dos módulos.</p>
+          </div>
+          <div style="font-size:30px;font-weight:950;letter-spacing:-.05em;">A partir de R$ 2.500</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">Comparativo financeiro</div>
+          <h2>Você não está comprando mais um sistema. Está reduzindo complexidade.</h2>
+        </div>
+
+        <div class="compare-table reveal">
+          <table>
+            <thead>
+              <tr>
+                <th>Necessidade</th>
+                <th>Modelo tradicional</th>
+                <th>Unitymob Professional</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Gestão comercial</strong></td><td>Ferramenta separada</td><td class="yes">Incluso</td></tr>
+              <tr><td><strong>Gestão de imóveis</strong></td><td>Sistema separado</td><td class="yes">Incluso</td></tr>
+              <tr><td><strong>WhatsApp/API</strong></td><td>Contrato separado</td><td class="yes">Incluso na operação</td></tr>
+              <tr><td><strong>BI e relatórios</strong></td><td>Planilhas ou BI externo</td><td class="yes">Dashboards operacionais</td></tr>
+              <tr><td><strong>Automação</strong></td><td>Ferramenta externa</td><td class="yes">Fluxos nativos</td></tr>
+              <tr><td><strong>Integrações</strong></td><td>Manutenção constante</td><td class="yes">Ecossistema centralizado</td></tr>
+              <tr><td><strong>Custo percebido</strong></td><td class="no">R$ 3.500+ / mês</td><td class="yes">R$ 2.997 / mês</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="container">
+        <div class="section-header center reveal">
+          <div class="pill">FAQ</div>
+          <h2>Dúvidas comuns antes da demonstração.</h2>
+        </div>
+
+        <div class="faq reveal">
+          <div class="faq-item open">
+            <button class="faq-q">A Unitymob é apenas um CRM? <span>+</span></button>
+            <div class="faq-a">Não. CRM é apenas um módulo dentro da plataforma. O posicionamento principal da Unitymob é ser a plataforma operacional que conecta imóveis, leads, atendimento, WhatsApp, automações, distribuição e indicadores.</div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q">Por que não colocar um plano barato de entrada? <span>+</span></button>
+            <div class="faq-a">Porque isso posiciona o produto como commodity. A Unitymob deve ser vendida como consolidação operacional, com economia frente ao custo de várias ferramentas.</div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q">O cliente precisa trocar tudo de uma vez? <span>+</span></button>
+            <div class="faq-a">Não. A implantação pode ser modular: Comercial, leads, WhatsApp, imóveis, BI ou automação, conforme a prioridade da operação.</div>
+          </div>
+          <div class="faq-item">
+            <button class="faq-q">Como justificar R$ 2.997/mês sem parecer caro? <span>+</span></button>
+            <div class="faq-a">Comparando com o custo atual de Comercial, WhatsApp, BI, automação, suporte, integrações e retrabalho. A venda deve ser baseada em redução de complexidade, ganho operacional e consolidação tecnológica.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="section">
+      <div class="container">
+        <div class="cta-box reveal">
+          <div class="pill hot">Unitymob</div>
+          <h2>Uma plataforma que se adapta à sua operação.</h2>
+          <p>Pare de pagar por vários sistemas desconectados. Centralize sua operação imobiliária em uma plataforma feita para crescer com sua equipe.</p>
+
+          <form class="form" onsubmit="event.preventDefault();document.getElementById('success').style.display='block';">
+            <input required placeholder="Seu nome" />
+            <input required type="email" placeholder="Seu e-mail" />
+            <button class="btn btn-primary" type="submit">Solicitar demo</button>
+          </form>
+          <p id="success" style="display:none;color:var(--brand);font-weight:850;margin-top:18px;">Solicitação registrada. Em produção, conecte este formulário ao WhatsApp, Comercial ou webhook.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-row">
+      <a class="brand" href="#"><span class="logo">U</span>Unitymob</a>
+      <div>© 2026 Unitymob. Plataforma operacional para imobiliárias modernas.</div>
+    </div>
+  </footer>
+
+  <script>
+    const header=document.getElementById('header');
+    const reveals=document.querySelectorAll('.reveal');
+
+    function formatBRL(v){
+      return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(v);
+    }
+
+    function updateCalc(){
+      const crm=+document.getElementById('crm').value;
+      const zap=+document.getElementById('zap').value;
+      const bi=+document.getElementById('biCost').value;
+      const auto=+document.getElementById('auto').value;
+      const int=+document.getElementById('int').value;
+      const total=crm+zap+bi+auto+int;
+      const plano=2997;
+      const economia=Math.max(total-plano,0);
+
+      document.getElementById('crmLabel').textContent=formatBRL(crm);
+      document.getElementById('zapLabel').textContent=formatBRL(zap);
+      document.getElementById('biLabel').textContent=formatBRL(bi);
+      document.getElementById('autoLabel').textContent=formatBRL(auto);
+      document.getElementById('intLabel').textContent=formatBRL(int);
+      document.getElementById('totalAtual').textContent=formatBRL(total);
+      document.getElementById('economiaMensal').textContent=formatBRL(economia);
+      document.getElementById('economiaAnual').textContent=formatBRL(economia*12);
+    }
+
+    function onScroll(){
+      header.classList.toggle('scrolled',window.scrollY>20);
+      reveals.forEach(el=>{
+        if(el.getBoundingClientRect().top < window.innerHeight - 90) el.classList.add('visible');
+      });
+    }
+
+    document.querySelectorAll('.faq-q').forEach(btn=>{
+      btn.addEventListener('click',()=>btn.closest('.faq-item').classList.toggle('open'));
+    });
+
+    ['crm','zap','biCost','auto','int'].forEach(id=>document.getElementById(id).addEventListener('input',updateCalc));
+    window.addEventListener('load',()=>{onScroll();updateCalc();});
+    window.addEventListener('scroll',onScroll);
+  </script>
+</body>
+</html>

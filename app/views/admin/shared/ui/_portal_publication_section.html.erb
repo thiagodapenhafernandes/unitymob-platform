@@ -1,0 +1,22 @@
+<%
+  section_classes = ["ax-commercial-group", "portal-publication-section", class_name].compact.join(" ")
+%>
+
+<div class="<%= section_classes %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
+  <div class="ax-commercial-header ax-portal-publication-section__header">
+    <span><%= title %></span>
+    <button class="ax-btn ax-btn--ghost ax-btn--sm"
+            type="button"
+            data-action="click->ax-disclosure#toggle"
+            data-ax-disclosure-target="trigger"
+            aria-expanded="false"
+            aria-controls="<%= collapse_id %>">
+      Abrir/fechar <i class="bi bi-chevron-down ax-portal-publication-section__chevron"></i>
+    </button>
+  </div>
+  <div id="<%= collapse_id %>" data-ax-disclosure-target="content" hidden>
+    <div class="ax-portal-publication-section__body">
+      <%= body %>
+    </div>
+  </div>
+</div>

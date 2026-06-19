@@ -1,0 +1,685 @@
+# Admin Analytics Builder Design System
+
+Este documento é a fonte de verdade para implementar telas do admin no padrão
+Analytics Builder / Dense Enterprise Workspace.
+
+O arquivo visual de referência é:
+
+```text
+public/analytics-builder-design-system/
+```
+
+Use esse design system como referência de conceito, tokens e densidade. Não copie o
+mock literalmente para todos os módulos. A aplicação Rails deve usar componentes
+`ax-*` próprios, reutilizáveis, preservando comportamento, permissões, parâmetros,
+submits e auditoria existentes.
+
+## Objetivo
+
+O admin deve ser um workspace operacional denso:
+
+- muita informação útil visível;
+- baixa carga cognitiva;
+- controles compactos;
+- hierarquia visual previsível;
+- comportamento Rails preservado;
+- remoção gradual de Bootstrap e código visual legado.
+
+Não é skin sobre Bootstrap. Quando uma área já tiver equivalente `ax-*`, remova o
+markup/classe/controller legado que só sustentava a interface antiga.
+
+## Princípio De Componentização (Regra De Ouro)
+
+Toda migração de layout segue as diretrizes deste documento **e usa componentes
+reutilizáveis**. A missão é construir um design system robusto e consistente,
+padronizado em componentes — não telas com markup/CSS soltos.
+
+Regras inegociáveis:
+
+1. **Sempre usar o componente existente** (`ax_*` helper / partial em
+   `app/views/admin/shared/ui`). Antes de escrever markup, procurar o componente
+   equivalente no inventário abaixo.
+2. **Se o componente não existir, criar primeiro** o componente compartilhado
+   (partial em `shared/ui` + helper em `Admin::UiHelper` + CSS namespeado `.ax-*`)
+   e só então usar na tela. Não resolver com markup/CSS local "só nesta tela".
+3. **Se o padrão visual aparece em 2+ telas, promover** para `shared/ui` antes de
+   replicar.
+4. **Não recriar um card/painel/coluna na mão.** Cards de conteúdo =
+   `ax_operational_panel` (estilo dashboard: header `#f8fafc`, título 13px/800,
+   eyebrow 10px). KPIs = `ax_metric_card`. Colunas de kanban = `ax_board` +
+   `ax_board_column`. Painel genérico = `ax_panel`.
+5. **Não usar hack de CSS escopado para imitar um componente.** Dois antipadrões já
+   corrigidos no projeto: o token global `--ax-panel-header` (#eef2f7) é igual ao
+   fundo da página e some; e a regra global `.ax-app h2 { 1.3rem }` infla títulos
+   de classe única — ambos resolvidos nativamente por `ax_operational_panel` e pelo
+   header escopado do board. Se um título de componente vier inflado, é
+   especificidade contra `.ax-app h2/h1`: escopar com 2 classes, não baixar via
+   `!important`.
+6. **Ao corrigir um componente compartilhado, corrigir na origem** (partial/CSS do
+   componente), beneficiando todas as telas — não duplicar a correção por tela.
+7. **Sempre que puder, remover legado de Bootstrap.** A tendência é remover o
+   Bootstrap 100%; `admin_compat.css` é ponte temporária, não base. Ao
+   migrar/tocar numa área, trocar `row`/`col`/`card`/`form-group`/`alert`/`badge`/
+   `btn`/`form-control` e markup/controllers que só sustentam o visual antigo pelos
+   primitivos `ax-*`, e apagar o legado que ficou sem função — preservando
+   comportamento, params, permissões, uploads e submits.
+
+## Fonte De Tema
+
+Tokens base vêm de `public/analytics-builder-design-system/index.html` e
+`public/analytics-builder-design-system/tailwind.config.js`.
+
+### Tokens Obrigatórios
+
+```css
+:root {
+  --admin-primary: #365f8f;
+  --admin-primary-fg: #ffffff;
+  --admin-primary-hover: color-mix(in srgb, var(--admin-primary) 86%, #000);
+  --admin-primary-soft: color-mix(in srgb, var(--admin-primary) 12%, #fff);
+  --admin-primary-softer: color-mix(in srgb, var(--admin-primary) 7%, #fff);
+  --admin-primary-ring: color-mix(in srgb, var(--admin-primary) 35%, #fff);
+
+  --ab-page: #eef2f7;
+  --ab-panel: #fbfcfe;
+  --ab-panel-soft: #f4f7fb;
+  --ab-panel-header: #eef2f7;
+  --ab-line: #d8dee8;
+  --ab-line-soft: #e7ebf2;
+  --ab-ink: #202a37;
+  --ab-muted: #657386;
+
+  --ab-field-border: #cfd8e5;
+  --ab-field-hover: #b8c5d6;
+  --ab-field-focus: #7f96b5;
+  --ab-control-bg: #ffffff;
+  --ab-control-hover: #f8fafc;
+
+  --ax-shell-gutter: 12px;
+  --ax-shell-gutter-sm: 8px;
+  --ax-shell-gutter-lg: 12px;
+  --ax-workspace-gutter: var(--ax-shell-gutter);
+}
+```
+
+### Regras De Cor
+
+- `#365F8F` é o default do novo admin.
+- `#2563EB` é fallback legado; não usar como default em tela migrada.
+- `primary`, `surface.DEFAULT`, `surface.header` e `ink` são os tokens
+  principais do conceito.
+- Cores de site público continuam separadas. Não use tokens públicos para
+  inferir comportamento do admin nem vice-versa.
+- Customização em `/admin/layout_setting/edit` deve deixar claro o impacto:
+  tokens do CRM/admin afetam `/admin`; tokens do site afetam o site público.
+
+## Anatomia Global
+
+O admin migrado usa cinco componentes estruturais visíveis:
+
+```text
+ax-topbar
+ax-contextbar
+ax-sidebar
+ax-main
+ax-aside
+```
+
+Contrato completo:
+
+```text
+ax-admin-shell
+├── ax-topbar
+├── ax-contextbar
+└── ax-admin-body
+    ├── ax-sidebar
+    └── ax-workspace
+        ├── ax-main
+        │   └── conteúdo principal da tela
+        └── ax-aside [opcional]
+            └── conteúdo contextual da tela
+```
+
+Regras:
+
+- `ax-contextbar`, cabeçalho da `ax-sidebar` e cabeçalho da `ax-aside`
+  compartilham a mesma régua vertical abaixo da `ax-topbar`.
+- `ax-main` e `ax-aside` são irmãos dentro de `ax-workspace`.
+- `ax-aside` nunca fica dentro do fluxo do `ax-main`.
+- Conteúdo no `ax-main` não pode empurrar, deslocar ou alterar a altura inicial
+  do `ax-aside`.
+- A coluna direita pode existir ou não por tela, mas sua estrutura, largura,
+  colapso, sticky/top e overflow pertencem ao componente compartilhado.
+
+## Régua De Espaçamento
+
+O respiro lateral do admin migrado é contrato do shell, não decisão local da
+tela. O valor padrão é:
+
+```css
+:root {
+  --ax-shell-gutter: 12px;
+}
+
+.ax-workspace-shell {
+  --ax-workspace-gutter: var(--ax-shell-gutter);
+}
+```
+
+Regras:
+
+- `ax-navbar`, `ax-contextbar`, cabeçalho da `ax-sidebar`, `ax-main` e cabeçalho
+  da `ax-aside` devem usar a mesma régua lateral.
+- Em telas com master-detail, o body do `ax-main` e o body/header do `ax-aside`
+  devem herdar `--ax-workspace-gutter`.
+- Não criar compensações locais com `18px`, `.75rem`, `0` ou margens negativas
+  para alinhar uma tela específica.
+- Se uma tela precisar de densidade diferente, crie uma variação do shell com
+  token explícito; não sobrescreva padding em cards, seções ou componentes
+  internos.
+- Componentes internos (`ax_form_section`, `ax_field_grid`, cards de catálogo,
+  filtros do inspector) controlam o espaçamento dentro do seu próprio limite,
+  mas não definem a distância entre sidebar/contextbar/main/aside.
+
+## Quando Usar Cada Área
+
+| Área | Uso |
+| --- | --- |
+| `ax-topbar` | identidade, usuário, ações globais |
+| `ax-contextbar` | breadcrumb, estado da tela e ações do módulo |
+| `ax-sidebar` | navegação global do produto/admin |
+| `ax-main` | listagem, formulário, detalhe ou dashboard da tela |
+| `ax-aside` | filtros, editor, propriedades, preview, mapa de impacto |
+
+Exemplos:
+
+- Catálogo de imóveis: `ax-main` com lista/cards, `ax-aside` com filtros.
+- Cadastro de imóveis: `ax-main` com formulário, `ax-aside` com Editor do imóvel.
+- Configurações de aparência: `ax-main` com formulário, `ax-aside` com mapa de impacto.
+- Dashboard: `ax-main` com KPIs/gráficos, `ax-aside` opcional para filtros/contexto.
+
+## Componentes Rails
+
+Os componentes reutilizáveis vivem em:
+
+```text
+app/helpers/admin/ui_helper.rb
+app/views/admin/shared/ui/
+app/assets/stylesheets/admin_tailwind.css
+app/javascript/controllers/ax_*.js
+```
+
+Use helpers `ax_*` em views Rails. Se um padrão aparece em duas telas, promova
+para `app/views/admin/shared/ui` antes de replicar markup.
+
+## Componentes Estruturais
+
+| Helper/partial | Uso |
+| --- | --- |
+| `ax_workspace_shell` / `_workspace_shell.html.erb` | cria `ax-main` + `ax-aside` como irmãos |
+| `ax_aside_panel` / `_aside_panel.html.erb` | estrutura da coluna direita com header, token e rail recolhido |
+| `ax_sticky_action_footer` / `_sticky_action_footer.html.erb` | footer persistente de ações |
+
+Exemplo:
+
+```erb
+<%= render "admin/shared/ui/workspace_shell",
+           main_label: "Cadastro de imóvel",
+           main: form_main,
+           aside: editor_aside,
+           aside_label: "Editor do imóvel",
+           controller: "habitations-inspector",
+           storage_key: "admin-habitation-form-editor-collapsed" %>
+```
+
+## Componentes De Formulário
+
+| Helper | Quando usar |
+| --- | --- |
+| `ax_form_section` | seção compacta, com header funcional e colapso |
+| `ax_field_grid` | grid denso de campos em 12 colunas |
+| `ax_field_group` | subgrupo interno sem card dentro de card |
+| `ax_field_label` | label padronizado com tooltip por ícone de info |
+| `ax_text_field` | input simples |
+| `ax_select_field` | select simples |
+| `ax_relationship_select` | select relacional com ação acoplada `+` |
+| `ax_input_group` | prefixo/sufixo/ação acoplada sem borda duplicada |
+| `ax_currency_field` | valores monetários com prefixo `R$` |
+| `ax_number_field` | quantidades e números compactos |
+| `ax_date_field` | datas alinhadas ao padrão dos inputs |
+| `ax_measure_field` | valores com unidade (`m²`, `%`, etc.) |
+| `ax_multiselect_field` | TomSelect multi com manager opcional |
+| `ax_toggle_chip` | checkbox visual em pill |
+| `ax_radio_group` | escolhas exclusivas em pills |
+| `ax_dynamic_list_field` | listas de valores repetíveis |
+| `ax_file_upload_button` | acionador visual de upload |
+| `ax_attachment_item` | anexo compacto com ações |
+| `ax_inline_notice` | aviso curto no lugar de `alert` Bootstrap |
+| `ax_info_badge` | dado readonly/informativo |
+
+Exemplo:
+
+```erb
+<%= ax_form_section(title: "Definições básicas", eyebrow: "Classificação") do %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-6">
+      <%= ax_select_field(
+            form: f,
+            method: :tipo,
+            label: "Tipo de cadastro",
+            choices: tipo_options
+          ) %>
+    </div>
+
+    <div class="ax-span-6">
+      <%= ax_select_field(
+            form: f,
+            method: :categoria,
+            label: "Categoria",
+            choices: categoria_options
+          ) %>
+    </div>
+  <% end %>
+<% end %>
+```
+
+## Componentes De Mídia E Documentos
+
+| Helper | Uso |
+| --- | --- |
+| `ax_media_source_notice` | origem/vínculo de mídia |
+| `ax_media_upload_panel` | painel de upload, classificação, watermark e feedback |
+| `ax_media_grid` | container da galeria/preview |
+| `ax_media_tile` | tile de foto com posição, destaque, ações e estado |
+| `ax_attachment_item` | item de documento/anexo |
+| `ax_file_upload_button` | botão de upload conectado ao input real |
+
+Regras:
+
+- Preservar contratos de Stimulus/Sortable (`data-photo-upload-target`,
+  `draggable-item`, ids de inputs e hidden fields).
+- Não voltar a `row/col`, `ratio`, `badge` ou `btn` Bootstrap dentro dos tiles.
+- Remoção destrutiva deve usar confirmação inline, não `window.confirm`.
+
+## Componentes De Apoio
+
+| Helper/controller | Uso |
+| --- | --- |
+| `ax_button` | botão padrão do admin |
+| `ax_icon_button` | botão só com ícone e tooltip/title |
+| `ax_badge` | status compacto |
+| `ax_metric_card` | KPIs compactos |
+| `ax_panel` | painel genérico |
+| `ax_operational_panel` | painel operacional com header denso |
+| `ax_record_item` | item de lista interna/relacionamento |
+| `ax_quick_modal` | cadastro rápido sem Bootstrap modal |
+| `ax_empty_state` | vazio contextual |
+| `ax_error_summary` | resumo de validação |
+| `ax_filter_form` | formulário de filtro |
+| `ax-confirm-submit` | confirmação inline para submit destrutivo |
+
+Exemplo de confirmação inline:
+
+```erb
+<span data-controller="ax-confirm-submit"
+      data-ax-confirm-submit-form-id-value="purge_attachment_<%= attachment.id %>"
+      data-ax-confirm-submit-message-value="Remover este arquivo?"
+      data-ax-confirm-submit-confirm-label-value="Remover">
+  <%= button_tag type: "button",
+                 class: "ax-btn ax-btn--ghost ax-btn--sm text-danger",
+                 data: { action: "click->ax-confirm-submit#request" } do %>
+    <i class="bi bi-trash"></i>
+  <% end %>
+</span>
+```
+
+## Componentes De Dashboard, Listagem E Kanban
+
+| Helper | Quando usar |
+| --- | --- |
+| `ax_page_header` | cabeçalho simples de página (título, subtítulo, ações) |
+| `ax_workspace_heading` | cabeçalho operacional do `ax-main`: eyebrow + título com pills, subtítulo, métricas e ações (ex.: listagem de leads/imóveis) |
+| `ax_operational_panel` | **card padrão de conteúdo** (estilo dashboard): eyebrow + título (h2 13px/800) + ações + body. Header `#f8fafc`. Body sem padding por design — embrulhar em wrapper com `padding:12px`. É o card a usar em telas de configuração, seções e painéis informativos |
+| `ax_panel` | painel genérico com `title/subtitle/actions/body` quando não precisar do eyebrow do operational |
+| `ax_metric_card` | KPI compacto (label, value, badge, hint, progress) |
+| `ax_board` | container do kanban (grid de colunas com scroll horizontal); `data:` recebe o controller do consumidor |
+| `ax_board_column` | coluna do kanban: header (eyebrow + título 13px/800 + contador), body com hooks de drag/drop e empty state |
+| `ax_filter_form` | formulário de filtros de listagem (com reset/submit) |
+| `ax_filter_section` / `ax_filter_check` | seções e checks de filtro no inspector |
+| `ax_pagination` / `ax_pagination_summary` | paginação padronizada de listagens |
+| `ax_empty_state` | estado vazio contextual |
+
+Cards de conteúdo, colunas de kanban e KPIs **nunca** devem ser markup solto: usar
+sempre `ax_operational_panel`, `ax_board_column` e `ax_metric_card`. O header desses
+componentes já resolve fundo destacado (`#f8fafc`) e título compacto (13px/800)
+vencendo a regra global `.ax-app h2`.
+
+## Botões
+
+O design system de referência usa botões compactos:
+
+- botão de toolbar com altura visual próxima de `28px`;
+- botão de ação normal com altura próxima de `32px`;
+- raio `6px` a `8px`;
+- foco sutil com `--admin-primary-ring`;
+- primário sempre em `--admin-primary`.
+
+No admin Rails:
+
+```erb
+<%= ax_button "Salvar", nil, variant: :primary, type: "submit" %>
+<%= ax_button "Cancelar", admin_habitations_path %>
+<%= ax_icon_button label: "Voltar", icon: "arrow-left", url: admin_habitations_path %>
+```
+
+Não criar classes locais de botão quando `ax_button` ou `ax_icon_button` cobrir o
+caso. Evolua o helper antes de duplicar.
+
+## Inputs, Selects E Autocomplete
+
+Padrão visual:
+
+- altura base de `32px`;
+- borda `--ab-field-border`;
+- hover em `--ab-field-hover`;
+- foco em `--ab-field-focus` com ring sutil;
+- radius `7px`;
+- labels compactos;
+- tooltip por ícone de info quando o texto auxiliar for explicativo.
+
+Regras:
+
+- Use `ax_field_label` com `tooltip:` em vez de legenda permanente.
+- `TomSelect` deve herdar o tema mesmo quando o dropdown renderiza no `body`.
+- Multi-select deve quebrar linha quando os chips atingirem a extremidade.
+- Grupos com prefixo/sufixo devem usar `ax_input_group`.
+- Dados readonly devem virar `ax_info_badge` quando não precisam submeter.
+- Se o valor precisa persistir, mantenha hidden/input real e use badge apenas
+  como camada visual.
+
+## Cadastro De Imóveis
+
+O cadastro de imóveis é um Master-Detail dentro do workspace:
+
+```text
+ax-workspace
+├── ax-main
+│   ├── header operacional do imóvel
+│   ├── ax_form_section
+│   ├── ax_form_section
+│   └── ax_sticky_action_footer
+└── ax-aside
+    └── Editor do imóvel
+        ├── abrir por código
+        └── navegação por áreas/abas
+```
+
+Regras específicas:
+
+- Escopo atual: `/admin/habitations/:slug/edit` e `/admin/habitations/new`.
+- Preservar abas, submits, permissões, strong params, campos e auditoria.
+- Uma aba/pane visível por vez.
+- O `Editor do imóvel` é estrutura de `ax-aside`, não conteúdo dentro do `ax-main`.
+- Botão `+` de empreendimento deve ficar desabilitado em imóvel novo quando a
+  unidade ainda não existe para vínculo; explicar via tooltip.
+- Se criar empreendimento a partir de uma unidade, levar `source_habitation_id`
+  e vincular no backend após salvar.
+- `status comercial = Suspenso` controla a visibilidade do motivo de suspensão.
+- Organização das abas do cadastro:
+  `Base` concentra identificação, classificação, vínculo e endereço;
+  `Estrutura` concentra dimensões físicas, vagas, face/topografia e atributos;
+  `Empreendimento` concentra dados do edifício e infraestrutura/lazer;
+  `Comercial` concentra valores, negociação, comissão, chaves, visitas e contatos;
+  `Publicação` concentra texto público, portais e SEO;
+  `Mídia` e `Documentos` ficam isoladas por fluxo operacional.
+
+## Variações Do Aside Direito
+
+`ax-aside` é a estrutura compartilhada da coluna direita. O comportamento interno
+muda por tela, mas o alinhamento, colapso, largura, sticky e separação de `ax-main`
+pertencem ao shell.
+
+Variações aceitas:
+
+- `Inspector de filtros`: usado em listagens, com campos de filtro, botões e grupos
+  recolhíveis. Não usa navegação por ícones quando recolhido.
+- `Editor navegável`: usado no cadastro de imóveis, com `rail_body` e ícones
+  clicáveis para trocar de aba/área quando recolhido.
+- `Painel informativo`: usado em telas de configuração ou preview, com header/body
+  dinâmicos e sem obrigação de navegação.
+
+Regra prática: não duplicar a estrutura da coluna. Mude o body/header/comportamento
+passado para `ax_aside_panel`, mas mantenha `ax-main` e `ax-aside` como irmãos.
+
+## Quick Modals
+
+Cadastros rápidos devem usar:
+
+```text
+ax_quick_modal
+ax-quick-create
+ax_field_grid
+ax_text_field / ax_select_field
+ax_inline_notice
+```
+
+Não usar:
+
+```text
+modal fade
+modal-dialog
+modal-content
+alert alert-danger
+form-control como contrato público novo
+row / col como layout de formulário migrado
+```
+
+Compatibilidade temporária pode existir dentro do componente somente enquanto o
+comportamento legado ainda estiver sendo substituído. Ela não deve aparecer como
+contrato público da tela migrada.
+
+## Aside Reutilizável
+
+Todo painel direito deve reutilizar a mesma estrutura:
+
+```text
+ax_aside_panel
+├── header dinâmico
+│   ├── título
+│   ├── token/contador
+│   └── toggle
+└── body dinâmico
+```
+
+Conteúdos possíveis:
+
+- filtros do catálogo;
+- editor do imóvel;
+- mapa de impacto;
+- preview de configuração;
+- propriedades de seleção;
+- configurações contextuais.
+
+O conteúdo muda; a estrutura não.
+
+## Padrões De Interação
+
+- Use `ax-disclosure` para seções colapsáveis.
+- Use `ax-tabs` para abas do novo layout.
+- Use `ax-modal`/`ax_quick_modal` para modais migrados.
+- Use `ax-async-download` para downloads de arquivos acionados dentro do admin.
+- Use `ax-confirm-submit` para confirmação destrutiva.
+- Use `ax-tooltip` ou `ax_field_label(tooltip:)` para ajuda contextual.
+- Evite `window.alert`, `window.confirm`, scripts inline e dependência visual de
+  Bootstrap em áreas já migradas.
+
+## Downloads Assíncronos
+
+Downloads acionados dentro do admin devem usar o controller reutilizável:
+
+```text
+ax-async-download
+```
+
+Use para links ou botões que baixam CSV, PDF, ZIP, XLSX, relatórios ou anexos
+sem navegar a página, sem acionar Turbo e sem disparar o preloader global.
+
+Contrato mínimo:
+
+```erb
+<%= link_to arquivo_path,
+            class: "ax-icon-btn",
+            title: "Baixar",
+            download: filename,
+            data: {
+              controller: "ax-async-download",
+              action: "ax-async-download#download",
+              turbo: false,
+              admin_navigation_ignore: true
+            } do %>
+  <i class="bi bi-download"></i>
+<% end %>
+```
+
+Para links com texto, informe `loading_text`:
+
+```erb
+<%= link_to "Baixar relatório",
+            arquivo_path,
+            class: "ax-btn",
+            download: filename,
+            data: {
+              controller: "ax-async-download",
+              action: "ax-async-download#download",
+              ax_async_download_loading_text_value: "Baixando...",
+              turbo: false,
+              admin_navigation_ignore: true
+            } %>
+```
+
+Regras:
+
+- o endpoint deve responder com `Content-Disposition: attachment` quando possível;
+- o link deve manter `download` como fallback sem JS;
+- não duplicar lógica de `fetch`/blob em controllers de tela;
+- controllers específicos, como exportação assíncrona, apenas geram o link com
+  `ax-async-download`;
+- o controller emite `ax-async-download:start`, `ax-async-download:success`,
+  `ax-async-download:error` e `ax-async-download:finish` para telas que precisem
+  reagir.
+
+## Anti-Padrões
+
+Não fazer:
+
+- colocar `ax-aside` dentro do `ax-main`;
+- criar card dentro de card para resolver espaçamento;
+- usar texto auxiliar permanente quando tooltip resolve;
+- criar input group manual com bordas duplicadas;
+- usar `row`, `col`, `form-group`, `card`, `alert`, `badge`, `btn` Bootstrap em
+  área já migrada;
+- criar controller Stimulus específico de tela quando um controller `ax-*`
+  genérico resolve;
+- usar nomes de marca/imobiliária específica em código genérico do sistema;
+- mexer no site público ao ajustar tema do admin.
+
+## Playbook De Migração
+
+1. Identifique comportamento real: rota, controller, params, permissões, submits,
+   hidden fields, callbacks JS, uploads e auditoria.
+2. Separe comportamento de apresentação.
+3. Escolha o componente `ax-*` equivalente.
+4. Se o componente não cobre o caso, evolua o componente.
+5. Substitua o markup legado.
+6. Remova classes/scripts antigos que ficaram sem função.
+7. Valide no browser local.
+8. Rode checks proporcionais ao risco.
+
+## Checklist Antes De Entregar
+
+- A tela ainda executa o fluxo principal anterior?
+- Permissões e strong params foram preservados?
+- `ax-contextbar`, `ax-sidebar` e `ax-aside` continuam alinhados?
+- A tela usa `--ax-shell-gutter: 12px` sem compensações locais conflitantes?
+- `ax-main` e `ax-aside` continuam irmãos dentro de `ax-workspace`?
+- A tela usa `--admin-primary: #365f8f` como default?
+- Não houve impacto no site público?
+- Uma aba/pane aparece por vez?
+- Inputs, selects, TomSelect e input groups têm mesma altura/radius/foco?
+- Avisos explicativos viraram tooltips ou `ax_inline_notice`?
+- Confirmações destrutivas não usam `window.confirm`?
+- Uploads e documentos preservam ids, data attributes e submits?
+- `assets:precompile` foi executado quando CSS/JS mudou?
+- `zeitwerk:check` foi executado quando Ruby/helpers/views mudaram?
+- Smoke visual no Atlas/in-app browser foi feito quando houve mudança de layout.
+
+## Mapa Atual De Componentes
+
+```text
+app/views/admin/shared/ui
+├── _aside_panel.html.erb
+├── _attachment_item.html.erb
+├── _chip_grid.html.erb
+├── _currency_field.html.erb
+├── _date_field.html.erb
+├── _dynamic_list_field.html.erb
+├── _empty_state.html.erb
+├── _error_summary.html.erb
+├── _field.html.erb
+├── _field_grid.html.erb
+├── _field_group.html.erb
+├── _field_label.html.erb
+├── _file_upload_button.html.erb
+├── _filter_form.html.erb
+├── _form_actions.html.erb
+├── _form_section.html.erb
+├── _info_badge.html.erb
+├── _inline_notice.html.erb
+├── _input_group.html.erb
+├── _measure_field.html.erb
+├── _media_grid.html.erb
+├── _media_source_notice.html.erb
+├── _media_tile.html.erb
+├── _media_upload_panel.html.erb
+├── _metric_card.html.erb
+├── _multiselect_field.html.erb
+├── _number_field.html.erb
+├── _operational_panel.html.erb
+├── _page_header.html.erb
+├── _panel.html.erb
+├── _portal_publication_option.html.erb
+├── _portal_publication_section.html.erb
+├── _quick_modal.html.erb
+├── _radio_group.html.erb
+├── _record_item.html.erb
+├── _relationship_select.html.erb
+├── _select_field.html.erb
+├── _sticky_action_footer.html.erb
+├── _text_field.html.erb
+├── _toggle_chip.html.erb
+└── _workspace_shell.html.erb
+```
+
+```text
+app/javascript/controllers
+├── ax_async_download_controller.js
+├── ax_checkbox_chips_controller.js
+├── ax_confirm_submit_controller.js
+├── ax_disclosure_controller.js
+├── ax_drawer_controller.js
+├── ax_dropdown_controller.js
+├── ax_form_hints_controller.js
+├── ax_modal_controller.js
+├── ax_quick_create_controller.js
+├── ax_tabs_controller.js
+└── ax_tooltip_controller.js
+```
+
+## Próximas Extrações Recomendadas
+
+- Migrar quick modals restantes para `ax_quick_modal` completo.
+- Reduzir `form-control`, `row`, `col`, `alert` e `btn` remanescentes dentro do
+  cadastro de imóveis.
+- Consolidar selects relacionais e multiselects no mesmo contrato visual.
+- Criar exemplos pequenos de cada componente em uma página interna de referência
+  se a equipe precisar testar visualmente os primitives sem abrir telas reais.

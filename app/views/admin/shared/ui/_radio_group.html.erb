@@ -1,0 +1,17 @@
+<%
+  group_classes = ["ax-radio-group", class_name].compact.join(" ")
+  item_classes = ["ax-radio-group__item", item_class].compact.join(" ")
+%>
+
+<div class="<%= group_classes %>" role="radiogroup" aria-label="<%= label %>">
+  <div class="ax-radio-group__label"><%= label %></div>
+  <div class="ax-radio-group__options">
+    <% choices.each do |choice_label, choice_value| %>
+      <label class="<%= item_classes %>">
+        <%= form.radio_button method, choice_value, class: "ax-radio-group__input" %>
+        <span class="ax-radio-group__mark" aria-hidden="true"></span>
+        <span class="ax-radio-group__text"><%= choice_label %></span>
+      </label>
+    <% end %>
+  </div>
+</div>

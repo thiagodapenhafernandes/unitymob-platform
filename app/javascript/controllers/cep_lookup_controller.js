@@ -145,7 +145,9 @@ export default class extends Controller {
     if (isLoading) {
       this.buttonTarget.disabled = true
       this.buttonTarget.dataset.originalLabel ||= this.buttonTarget.innerHTML
-      this.buttonTarget.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`
+      this.buttonTarget.innerHTML = this.usesAxControls()
+        ? `<span class="ax-spinner" aria-hidden="true"></span>`
+        : `<span class="spinner-border spinner-border-sm"></span>`
     } else {
       this.buttonTarget.disabled = false
       if (this.buttonTarget.dataset.originalLabel) {
@@ -156,13 +158,22 @@ export default class extends Controller {
 
   setStatus(level, message) {
     if (!this.hasStatusTarget) return
-    const classes = {
-      info:    "text-info",
-      success: "text-success",
-      warn:    "text-warning",
-      error:   "text-danger"
+    if (this.statusTarget.classList.contains("ax-status-text")) {
+      this.statusTarget.className = `ax-status-text ax-status-text--${level || "info"}`
+    } else {
+      const classes = {
+        info:    "text-info",
+        success: "text-success",
+        warn:    "text-warning",
+        error:   "text-danger"
+      }
+      this.statusTarget.className = `form-text small ${classes[level] || "text-muted"}`
     }
-    this.statusTarget.className = `form-text small ${classes[level] || "text-muted"}`
     this.statusTarget.textContent = message
+  }
+
+  usesAxControls() {
+    return this.buttonTarget.classList.contains("ax-btn") ||
+      !!this.buttonTarget.closest(".ax-admin-shell, .habitation-form-ui, .ax-form")
   }
 }

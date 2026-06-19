@@ -1,0 +1,51 @@
+<%
+  statuses = AttributeOption.where(context: "lead", category: "status").ordered
+
+  modal_body = capture do %>
+    <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
+      A ordem e os nomes valem para todo o sistema (kanban, filtros e seleções).
+      Renomear ou remover um status ajusta automaticamente os leads existentes.
+    <% end %>
+
+    <div class="lead-status-board" data-lead-status-board-target="list">
+      <% statuses.each do |option| %>
+        <%= render "admin/leads/status_board_row",
+                   id: option.id, name: option.name, description: option.description %>
+      <% end %>
+    </div>
+
+    <button type="button" class="ax-btn ax-btn--sm lead-status-board__add" data-action="lead-status-board#addRow">
+      <i class="bi bi-plus-lg"></i> Adicionar status
+    </button>
+
+    <div class="ax-quick-modal__error" data-lead-status-board-target="error" hidden></div>
+
+    <template data-lead-status-board-target="template">
+      <%= render "admin/leads/status_board_row", id: nil, name: "", description: "" %>
+    </template>
+  <% end
+
+  modal_footer = capture do %>
+    <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
+    <button type="button"
+            class="ax-btn ax-btn--primary"
+            data-action="lead-status-board#save"
+            data-lead-status-board-target="submit">
+      Salvar
+    </button>
+  <% end
+%>
+
+<%# O controller fica na raiz do modal (mesclado com ax-modal pelo helper), para
+    que o botão Salvar do footer também esteja no escopo do Stimulus. %>
+<%= ax_quick_modal(
+      id: "leadStatusBoardModal",
+      title: "Configurar colunas do funil",
+      size: :md,
+      body: modal_body,
+      footer: modal_footer,
+      data: {
+        controller: "lead-status-board",
+        lead_status_board_url_value: bulk_update_admin_lead_statuses_path
+      }
+    ) %>

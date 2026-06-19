@@ -1,0 +1,194 @@
+<div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
+  <div class="ax-form-workspace">
+    <% if show_vista_document_assets %>
+      <% vista_documents_actions = ax_badge("#{vista_document_assets.size} arquivo(s)", tone: :gray) %>
+      <%= ax_form_section(title: "Documentos do Vista",
+                          eyebrow: "Integração",
+                          actions: vista_documents_actions,
+                          tooltip: "Arquivos identificados na integração. Estes itens são rastreáveis pela importação e não devem ser removidos manualmente por aqui.") do %>
+        <% if vista_document_assets.any? %>
+          <ul class="ax-file-list">
+            <% vista_document_assets.each do |asset| %>
+              <% attachment = asset.active_storage_attachment %>
+              <% link_target = attachment&.blob&.persisted? ? rails_blob_path(attachment, disposition: "attachment") : asset.source_url %>
+              <% status_label = vista_document_status_labels.fetch(asset.status.to_s, asset.status.to_s.presence || "Desconhecido") %>
+              <li class="ax-file-list__item">
+                <div class="ax-file-list__main">
+                  <i class="bi bi-file-earmark-arrow-down"></i>
+                  <div class="ax-file-list__content">
+                    <% if link_target.present? %>
+                      <%= link_to asset.filename,
+                                  link_target,
+                                  target: "_blank",
+                                  rel: "noopener",
+                                  class: "ax-file-list__title" %>
+                    <% else %>
+                      <span class="ax-file-list__title"><%= asset.filename %></span>
+                    <% end %>
+                    <div class="ax-file-list__meta">
+                      <%= asset.source_path %>
+                    </div>
+                    <% if asset.error_message.present? %>
+                      <div class="ax-file-list__error">
+                        <%= asset.error_message %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+                <div class="ax-file-list__status">
+                  <span class="ax-status-pill <%= asset.status == "downloaded" ? 'ax-status-pill--success' : 'ax-status-pill--muted' %>">
+                    <%= status_label %>
+                  </span>
+                  <% if asset.downloaded_at.present? %>
+                    <span><%= l(asset.downloaded_at, format: "%d/%m/%Y %H:%M") %></span>
+                  <% end %>
+                </div>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <%= ax_empty_state(title: "Nenhum documento do Vista vinculado",
+                             description: "A integração ainda não trouxe arquivos rastreáveis para este imóvel.",
+                             icon: "file-earmark") %>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <%= ax_form_section(
+          title: "Documentos internos",
+          eyebrow: "Anexos",
+          tooltip: "Administrador e Administrativo podem anexar/remover documentos. Captadores visualizam sem trocar nem apagar."
+        ) do %>
+      <%= ax_field_grid(columns: 12, gap: :compact, class_name: "ax-field-grid--spaced") do %>
+        <div class="ax-span-6">
+          <%= ax_field_group(
+                title: "Fichas de cadastro",
+                token: "#{habitation.fichas_cadastro.attachments.size} arquivo(s)",
+                class_name: "ax-field-group--panel",
+                tooltip: "PDFs ou imagens da ficha física de cadastro do imóvel."
+              ) do %>
+            <% if can_manage_internal_documents %>
+              <div class="ax-upload-control">
+                <% if habitation.persisted? %>
+                  <%= ax_file_upload_button(
+                        label: "Adicionar arquivos",
+                        input_id: "habitation_fichas_cadastro",
+                        label_data: { internal_document_upload_label: true }
+                      ) %>
+                <% else %>
+                  <%= ax_file_upload_button(
+                        form: f,
+                        method: :fichas_cadastro,
+                        label: "Adicionar arquivos",
+                        input_id: "habitation_fichas_cadastro"
+                      ) %>
+                <% end %>
+                <div class="ax-upload-status" hidden data-internal-document-upload-status="habitation_fichas_cadastro"></div>
+              </div>
+            <% end %>
+
+            <% if habitation.fichas_cadastro.attached? %>
+              <ul class="ax-file-list">
+                <% habitation.fichas_cadastro.attachments.each do |attachment| %>
+                  <% next unless attachment.persisted? && attachment.blob&.persisted? %>
+                  <% attachment_actions = capture do %>
+                    <% if habitation.persisted? && can_manage_internal_documents %>
+                      <span data-controller="ax-confirm-submit"
+                            data-ax-confirm-submit-form-id-value="purge_attachment_<%= attachment.id %>"
+                            data-ax-confirm-submit-message-value="Remover este arquivo?"
+                            data-ax-confirm-submit-confirm-label-value="Remover">
+                        <%= button_tag type: "button",
+                                       class: "ax-btn ax-btn--ghost ax-btn--sm ax-text-danger",
+                                       title: "Remover arquivo",
+                                       data: { action: "click->ax-confirm-submit#request" } do %>
+                          <i class="bi bi-trash"></i>
+                        <% end %>
+                      </span>
+                    <% end %>
+                  <% end %>
+                  <%= ax_attachment_item(
+                        attachment:,
+                        url: rails_blob_path(attachment, disposition: "attachment"),
+                        meta: number_to_human_size(attachment.byte_size),
+                        actions: attachment_actions
+                      ) %>
+                <% end %>
+              </ul>
+            <% else %>
+              <%= ax_empty_state(
+                    title: "Nenhuma ficha anexada",
+                    description: "Anexe PDFs ou imagens da ficha física quando houver.",
+                    icon: "file-earmark-text"
+                  ) %>
+            <% end %>
+          <% end %>
+        </div>
+
+        <div class="ax-span-6">
+          <%= ax_field_group(
+                title: "Autorizações de venda",
+                token: "#{habitation.autorizacoes_venda.attachments.size} arquivo(s)",
+                class_name: "ax-field-group--panel",
+                tooltip: "Imagens ou PDFs de autorizações assinadas pelo proprietário."
+              ) do %>
+            <% if can_manage_internal_documents %>
+              <div class="ax-upload-control">
+                <% if habitation.persisted? %>
+                  <%= ax_file_upload_button(
+                        label: "Adicionar arquivos",
+                        input_id: "habitation_autorizacoes_venda",
+                        label_data: { internal_document_upload_label: true }
+                      ) %>
+                <% else %>
+                  <%= ax_file_upload_button(
+                        form: f,
+                        method: :autorizacoes_venda,
+                        label: "Adicionar arquivos",
+                        input_id: "habitation_autorizacoes_venda"
+                      ) %>
+                <% end %>
+                <div class="ax-upload-status" hidden data-internal-document-upload-status="habitation_autorizacoes_venda"></div>
+              </div>
+            <% end %>
+
+            <% if habitation.autorizacoes_venda.attached? %>
+              <ul class="ax-file-list">
+                <% habitation.autorizacoes_venda.attachments.each do |attachment| %>
+                  <% next unless attachment.persisted? && attachment.blob&.persisted? %>
+                  <% attachment_actions = capture do %>
+                    <% if habitation.persisted? && can_manage_internal_documents %>
+                      <span data-controller="ax-confirm-submit"
+                            data-ax-confirm-submit-form-id-value="purge_attachment_<%= attachment.id %>"
+                            data-ax-confirm-submit-message-value="Remover este arquivo?"
+                            data-ax-confirm-submit-confirm-label-value="Remover">
+                        <%= button_tag type: "button",
+                                       class: "ax-btn ax-btn--ghost ax-btn--sm ax-text-danger",
+                                       title: "Remover arquivo",
+                                       data: { action: "click->ax-confirm-submit#request" } do %>
+                          <i class="bi bi-trash"></i>
+                        <% end %>
+                      </span>
+                    <% end %>
+                  <% end %>
+                  <%= ax_attachment_item(
+                        attachment:,
+                        url: rails_blob_path(attachment, disposition: "attachment"),
+                        meta: number_to_human_size(attachment.byte_size),
+                        image_preview: true,
+                        actions: attachment_actions
+                      ) %>
+                <% end %>
+              </ul>
+            <% else %>
+              <%= ax_empty_state(
+                    title: "Nenhuma autorização anexada",
+                    description: "Anexe autorizações assinadas quando houver.",
+                    icon: "shield-check"
+                  ) %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

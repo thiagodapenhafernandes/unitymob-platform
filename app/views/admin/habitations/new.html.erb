@@ -1,15 +1,17 @@
 <% content_for :submit_text, "Criar Imóvel" %>
+<% return_path = @return_to_path || admin_habitations_path %>
+<% new_habitation_label = @habitation.empreendimento? ? "Novo empreendimento" : "Novo imóvel" %>
 
-<div class="habitation-form-page">
-  <div class="mb-4">
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><%= link_to "Imóveis", admin_habitations_path %></li>
-        <li class="breadcrumb-item active" aria-current="page">Novo Imóvel</li>
-      </ol>
-    </nav>
-    <h1 class="h3 mb-0 text-gray-800">Novo Imóvel</h1>
-  </div>
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Imóveis", admin_habitations_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong><%= new_habitation_label %></strong>
+<% end %>
 
-  <%= render 'form', habitation: @habitation %>
-</div>
+<% content_for :admin_contextbar_actions do %>
+  <%= admin_contextbar_link("Voltar", return_path, icon: "arrow-left") %>
+<% end %>
+
+<%= render 'form', habitation: @habitation %>

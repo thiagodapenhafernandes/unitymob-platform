@@ -1,0 +1,15 @@
+<header class="report-header">
+  <div>
+    <p class="report-kicker">Relatório operacional</p>
+    <h1 class="report-title"><%= report_title %></h1>
+    <div class="report-meta">
+      <span>Gerado em <%= generated_label %></span>
+      <span><%= number_with_delimiter(records_count) %> registro(s)</span>
+    </div>
+  </div>
+
+  <div class="report-brand">
+    <strong><%= brand_name %></strong>
+    <span>Página <%= page_number %><%= total_pages.present? ? " / #{total_pages}" : "" %></span>
+  </div>
+</header>

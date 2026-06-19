@@ -1,35 +1,35 @@
-<div class="mb-3">
-  <%= link_to admin_field_audit_logs_path, class: "text-muted small text-decoration-none" do %>
-    <i class="bi bi-arrow-left me-1"></i>Voltar
+<div class="tw-mb-3">
+  <%= link_to admin_field_audit_logs_path, class: "tw-inline-flex tw-items-center tw-gap-2 tw-text-ink-muted tw-text-sm text-decoration-none" do %>
+    <i class="bi bi-arrow-left"></i>Voltar
   <% end %>
 </div>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-header bg-white">
-    <h4 class="fw-bold mb-0"><i class="bi bi-shield-lock-fill text-danger me-2"></i>Log #<%= @log.id %></h4>
+<div class="ax-card">
+  <div class="ax-card__header">
+    <h4 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-shield-lock-fill" style="color:#dc2626"></i>Log #<%= @log.id %></h4>
   </div>
-  <div class="card-body">
-    <dl class="row">
-      <dt class="col-sm-3">Quando</dt>
-      <dd class="col-sm-9"><%= l(@log.created_at, format: :long) %></dd>
-      <dt class="col-sm-3">Ação</dt>
-      <dd class="col-sm-9"><code><%= @log.action %></code></dd>
-      <dt class="col-sm-3">Corretor</dt>
-      <dd class="col-sm-9"><%= @log.admin_user&.name || "—" %></dd>
-      <dt class="col-sm-3">Ator</dt>
-      <dd class="col-sm-9"><%= @log.actor_admin_user&.name || "—" %></dd>
-      <dt class="col-sm-3">IP</dt>
-      <dd class="col-sm-9"><%= @log.ip %></dd>
-      <dt class="col-sm-3">Check-in</dt>
-      <dd class="col-sm-9">
+  <div class="ax-card__body">
+    <dl style="display:grid;grid-template-columns:25% 75%;gap:.25rem .75rem;margin-bottom:0">
+      <dt>Quando</dt>
+      <dd><%= l(@log.created_at, format: :long) %></dd>
+      <dt>Ação</dt>
+      <dd><code><%= @log.action %></code></dd>
+      <dt>Corretor</dt>
+      <dd><%= @log.admin_user&.name || "—" %></dd>
+      <dt>Ator</dt>
+      <dd><%= @log.actor_admin_user&.name || "—" %></dd>
+      <dt>IP</dt>
+      <dd><%= @log.ip %></dd>
+      <dt>Check-in</dt>
+      <dd>
         <% if @log.check_in_id %>
           <%= link_to "##{@log.check_in_id}", admin_field_check_in_path(@log.check_in_id), class: "text-decoration-none" %>
         <% else %>
           —
         <% end %>
       </dd>
-      <dt class="col-sm-3">Metadata</dt>
-      <dd class="col-sm-9"><pre class="small bg-light p-2 rounded"><%= JSON.pretty_generate(@log.metadata) %></pre></dd>
+      <dt>Metadata</dt>
+      <dd><pre class="tw-text-sm tw-p-2 tw-rounded-lg" style="background:#f8fafc;border:1px solid #e5e7eb"><%= JSON.pretty_generate(@log.metadata) %></pre></dd>
     </dl>
   </div>
 </div>

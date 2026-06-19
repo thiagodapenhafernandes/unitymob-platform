@@ -9,6 +9,14 @@ export default class extends Controller {
     this.saveOptionsConfirmed = false
     this.saveOptionsSubmitter = null
     this.defaultLabel = this.hasLabelTarget ? this.labelTarget.textContent : ""
+    this.toastTimeout = null
+    this.boundCloseOnEscape = this.closeOnEscape.bind(this)
+  }
+
+  disconnect() {
+    this.unlockScroll()
+    document.removeEventListener("keydown", this.boundCloseOnEscape)
+    if (this.toastTimeout) window.clearTimeout(this.toastTimeout)
   }
 
   confirm(event) {
@@ -41,6 +49,7 @@ export default class extends Controller {
     }
 
     if (this.hasSpinnerTarget) {
+      this.spinnerTarget.hidden = false
       this.spinnerTarget.classList.remove("d-none")
     }
 
@@ -72,6 +81,7 @@ export default class extends Controller {
     }
 
     if (this.hasSpinnerTarget) {
+      this.spinnerTarget.hidden = true
       this.spinnerTarget.classList.add("d-none")
     }
 
@@ -96,6 +106,18 @@ export default class extends Controller {
     this.showToast("Salvamento cancelado. Nenhuma alteração foi enviada.")
   }
 
+  closeToast(event) {
+    if (event) event.preventDefault()
+    this.hideToast()
+  }
+
+  backdropCancel(event) {
+    if (event.target !== this.modalTarget) return
+
+    event.preventDefault()
+    this.hideModal()
+  }
+
   submitWithChoice(choice, message) {
     this.choiceTarget.value = choice
     this.saveOptionsConfirmed = true
@@ -105,7 +127,11 @@ export default class extends Controller {
   }
 
   skipSaveOptionsFor(submitter) {
-    return submitter?.name === "release_to_broker_after_save"
+    return (
+      submitter?.name === "release_to_broker_after_save" ||
+      submitter?.name === "save_internal_after_save" ||
+      submitter?.dataset?.saveStateDirect === "true"
+    )
   }
 
   get hasSaveOptionsTargets() {
@@ -113,38 +139,43 @@ export default class extends Controller {
   }
 
   openModal() {
-    const bootstrapElement = window.bootstrap || (typeof bootstrap !== "undefined" ? bootstrap : null)
+    this.modalTarget.hidden = false
+    this.modalTarget.setAttribute("aria-hidden", "false")
+    this.modalTarget.classList.add("is-open")
+    this.lockScroll()
+    document.addEventListener("keydown", this.boundCloseOnEscape)
 
-    if (bootstrapElement?.Modal) {
-      bootstrapElement.Modal.getOrCreateInstance(this.modalTarget).show()
-      return
-    }
-
-    this.choiceTarget.value = "exit"
-    this.saveOptionsConfirmed = true
-    this.requestConfirmedSubmit()
+    const focusable = this.modalTarget.querySelector("[autofocus], button, input, select, textarea, [tabindex]:not([tabindex='-1'])")
+    if (focusable) focusable.focus()
   }
 
   hideModal() {
-    const bootstrapElement = window.bootstrap || (typeof bootstrap !== "undefined" ? bootstrap : null)
-    if (!bootstrapElement?.Modal || !this.hasModalTarget) return
+    if (!this.hasModalTarget) return
 
-    bootstrapElement.Modal.getOrCreateInstance(this.modalTarget).hide()
+    this.modalTarget.classList.remove("is-open")
+    this.modalTarget.setAttribute("aria-hidden", "true")
+    this.modalTarget.hidden = true
+    this.unlockScroll()
+    document.removeEventListener("keydown", this.boundCloseOnEscape)
   }
 
   showToast(message) {
     if (!this.hasToastTarget || !this.hasToastBodyTarget) return
 
     this.toastBodyTarget.textContent = message
-    const bootstrapElement = window.bootstrap || (typeof bootstrap !== "undefined" ? bootstrap : null)
+    this.toastTarget.hidden = false
+    this.toastTarget.classList.add("is-visible")
 
-    if (bootstrapElement?.Toast) {
-      bootstrapElement.Toast.getOrCreateInstance(this.toastTarget, { delay: 3500 }).show()
-      return
-    }
+    if (this.toastTimeout) window.clearTimeout(this.toastTimeout)
+    this.toastTimeout = window.setTimeout(() => this.hideToast(), 3500)
+  }
 
-    this.toastTarget.classList.add("show")
-    window.setTimeout(() => this.toastTarget.classList.remove("show"), 3500)
+  hideToast() {
+    if (!this.hasToastTarget) return
+
+    this.toastTarget.classList.remove("is-visible")
+    this.toastTarget.hidden = true
+    this.toastTimeout = null
   }
 
   requestConfirmedSubmit() {
@@ -153,5 +184,17 @@ export default class extends Controller {
     } else {
       this.element.requestSubmit()
     }
+  }
+
+  closeOnEscape(event) {
+    if (event.key === "Escape") this.hideModal()
+  }
+
+  lockScroll() {
+    document.documentElement.style.overflow = "hidden"
+  }
+
+  unlockScroll() {
+    document.documentElement.style.overflow = ""
   }
 }

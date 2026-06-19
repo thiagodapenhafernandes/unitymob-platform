@@ -1,0 +1,20 @@
+<section class="ax-panel <%= local_assigns[:class_name] %>">
+  <% if local_assigns[:title].present? || local_assigns[:actions].present? %>
+    <header class="ax-panel__header">
+      <div>
+        <% if local_assigns[:title].present? %>
+          <h2 class="ax-panel__title"><%= title %></h2>
+        <% end %>
+        <% if local_assigns[:subtitle].present? %>
+          <p class="ax-panel__subtitle"><%= subtitle %></p>
+        <% end %>
+      </div>
+      <% if local_assigns[:actions].present? %>
+        <div class="ax-panel__actions"><%= actions %></div>
+      <% end %>
+    </header>
+  <% end %>
+  <div class="ax-panel__body">
+    <%= local_assigns[:body] %>
+  </div>
+</section>

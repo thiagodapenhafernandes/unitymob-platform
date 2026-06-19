@@ -1,0 +1,14 @@
+<%
+  err_form = local_assigns[:form]
+  err_method = local_assigns[:method]
+  messages = []
+  if err_method.present? && err_form.respond_to?(:object) &&
+     err_form.object.respond_to?(:errors) && err_form.object.errors.respond_to?(:[])
+    messages = Array(err_form.object.errors[err_method])
+  end
+%>
+<% if messages.present? %>
+  <span class="ax-field__error">
+    <i class="bi bi-exclamation-circle" aria-hidden="true"></i><%= messages.first %>
+  </span>
+<% end %>

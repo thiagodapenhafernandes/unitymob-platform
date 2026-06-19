@@ -1,0 +1,4 @@
+<%= tag.div(class: ["ax-board", local_assigns[:class_name]].compact.join(" "),
+            data: (local_assigns[:data] || {})) do %>
+  <%= body %>
+<% end %>

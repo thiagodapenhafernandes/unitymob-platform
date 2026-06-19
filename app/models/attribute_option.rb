@@ -16,8 +16,26 @@ class AttributeOption < ApplicationRecord
   scope :for_context, ->(context) { where(context: context) if context.present? }
   scope :for_category, ->(category) { where(category: category) if category.present? }
   scope :search_name, ->(query) { where("name ILIKE ?", "%#{query}%") if query.present? }
+  scope :ordered, lambda {
+    if column_names.include?("position")
+      order(Arel.sql("position ASC NULLS LAST")).order(name: :asc)
+    else
+      order(name: :asc)
+    end
+  }
+
+  before_create :assign_default_position
 
   private
+
+  # Posiciona o novo registro no fim do seu grupo (context + category).
+  def assign_default_position
+    return unless self.class.column_names.include?("position")
+    return if position.present?
+
+    max = self.class.where(context: context, category: category).maximum(:position)
+    self.position = (max || -1) + 1
+  end
 
   def normalize_fields
     self.name = name.to_s.strip

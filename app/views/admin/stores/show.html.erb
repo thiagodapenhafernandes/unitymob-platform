@@ -1,65 +1,66 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
   <div>
-    <h1 class="h3 mb-1 text-gray-800">
-      <i class="bi bi-geo-alt-fill text-primary me-2"></i><%= @store.name %>
+    <h1 class="ax-page-title">
+      <i class="bi bi-geo-alt-fill tw-text-primary" style="margin-right:.5rem"></i><%= @store.name %>
       <% if @store.active? %>
-        <span class="badge bg-success-subtle text-success border fs-6 ms-2"><i class="bi bi-check-circle-fill me-1"></i>Ativa</span>
+        <span class="ax-badge ax-badge--green" style="margin-left:.5rem"><i class="bi bi-check-circle-fill" style="margin-right:.25rem"></i>Ativa</span>
       <% else %>
-        <span class="badge bg-secondary-subtle text-secondary border fs-6 ms-2"><i class="bi bi-pause-circle-fill me-1"></i>Inativa</span>
+        <span class="ax-badge ax-badge--gray" style="margin-left:.5rem"><i class="bi bi-pause-circle-fill" style="margin-right:.25rem"></i>Inativa</span>
       <% end %>
     </h1>
-    <p class="text-muted small mb-0">
+    <p class="ax-page-subtitle">
       <% if @store.address.present? %>
-        <i class="bi bi-pin-map me-1"></i><%= [@store.address, @store.city, @store.state].compact_blank.join(" • ") %>
+        <i class="bi bi-pin-map" style="margin-right:.25rem"></i><%= [@store.address, @store.city, @store.state].compact_blank.join(" • ") %>
       <% end %>
     </p>
   </div>
-  <div class="d-flex gap-2">
-    <%= link_to admin_stores_path, class: "btn btn-outline-secondary btn-sm" do %>
-      <i class="bi bi-arrow-left me-1"></i>Voltar
+  <div class="tw-flex tw-gap-2">
+    <%= link_to admin_stores_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
+      <i class="bi bi-arrow-left"></i>Voltar
     <% end %>
-    <%= link_to edit_admin_store_path(@store), class: "btn btn-primary btn-sm" do %>
-      <i class="bi bi-pencil me-1"></i>Editar
+    <%= link_to edit_admin_store_path(@store), class: "ax-btn ax-btn--primary ax-btn--sm tw-gap-2" do %>
+      <i class="bi bi-pencil"></i>Editar
     <% end %>
   </div>
 </div>
 
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body text-center">
-        <i class="bi bi-bullseye text-info" style="font-size: 2rem;"></i>
-        <div class="fw-bold fs-4 mt-2"><%= @store.geofence_radius_meters %>m</div>
-        <small class="text-muted text-uppercase">Raio de check-in</small>
+<%= ax_field_grid do %>
+  <div class="ax-span-4">
+    <div class="ax-card" style="height:100%">
+      <div class="ax-card__body tw-text-center">
+        <i class="bi bi-bullseye" style="font-size: 2rem; color:#2563eb"></i>
+        <div class="tw-font-bold tw-mt-2"><%= @store.geofence_radius_meters %>m</div>
+        <small class="tw-text-ink-muted text-uppercase">Raio de check-in</small>
       </div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body text-center">
-        <i class="bi bi-hourglass-split text-warning" style="font-size: 2rem;"></i>
-        <div class="fw-bold fs-4 mt-2"><%= @store.out_of_radius_tolerance_minutes %>min</div>
-        <small class="text-muted text-uppercase">Tolerância fora</small>
+  <div class="ax-span-4">
+    <div class="ax-card" style="height:100%">
+      <div class="ax-card__body tw-text-center">
+        <i class="bi bi-hourglass-split" style="font-size: 2rem; color:#d97706"></i>
+        <div class="tw-font-bold tw-mt-2"><%= @store.out_of_radius_tolerance_minutes %>min</div>
+        <small class="tw-text-ink-muted text-uppercase">Tolerância fora</small>
       </div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body text-center">
-        <i class="bi bi-moon text-primary" style="font-size: 2rem;"></i>
-        <div class="fw-bold fs-4 mt-2"><%= @store.auto_checkout_after_minutes %>min</div>
-        <small class="text-muted text-uppercase">Auto check-out</small>
+  <div class="ax-span-4">
+    <div class="ax-card" style="height:100%">
+      <div class="ax-card__body tw-text-center">
+        <i class="bi bi-moon tw-text-primary" style="font-size: 2rem;"></i>
+        <div class="tw-font-bold tw-mt-2"><%= @store.auto_checkout_after_minutes %>min</div>
+        <small class="tw-text-ink-muted text-uppercase">Auto check-out</small>
       </div>
     </div>
   </div>
-</div>
+<% end %>
 
-<div class="row g-3 mt-2">
-  <div class="col-lg-7">
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-body">
-        <h5 class="fw-bold mb-3">
-          <i class="bi bi-map text-danger me-2"></i>Localização
+<div class="tw-mt-3">
+<%= ax_field_grid do %>
+  <div class="ax-span-6">
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h5 class="tw-font-bold tw-mb-3">
+          <i class="bi bi-map" style="margin-right:.5rem; color:#dc2626"></i>Localização
         </h5>
         <% if @store.latitude.present? && @store.longitude.present? %>
           <div data-controller="store-map-picker"
@@ -69,59 +70,60 @@
                data-store-map-picker-readonly-value="true">
             <div data-store-map-picker-target="map" style="height: 350px; border-radius: 8px;" class="border"></div>
           </div>
-          <div class="small text-muted mt-2 font-monospace">
+          <div class="tw-text-sm tw-text-ink-muted tw-mt-2 font-monospace">
             <%= @store.latitude %>, <%= @store.longitude %>
           </div>
         <% else %>
-          <div class="text-center text-muted py-4">
+          <div class="tw-text-center tw-text-ink-muted py-4">
             <i class="bi bi-map" style="font-size: 2rem;"></i>
-            <p class="mb-0 mt-2">Sem localização definida.</p>
-            <%= link_to "Definir no mapa", edit_admin_store_path(@store), class: "btn btn-sm btn-outline-primary mt-2" %>
+            <p class="tw-mt-2" style="margin-bottom:0">Sem localização definida.</p>
+            <%= link_to "Definir no mapa", edit_admin_store_path(@store), class: "ax-btn ax-btn--sm ax-btn--ghost tw-mt-2" %>
           </div>
         <% end %>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-5">
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-body">
-        <h5 class="fw-bold mb-3">
-          <i class="bi bi-person-badge-fill text-primary me-2"></i>Diretor
+  <div class="ax-span-6">
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h5 class="tw-font-bold tw-mb-3">
+          <i class="bi bi-person-badge-fill tw-text-primary" style="margin-right:.5rem"></i>Diretor
         </h5>
         <% if @store.director %>
-          <div class="d-flex align-items-center gap-3">
-            <i class="bi bi-person-circle text-muted" style="font-size: 2.5rem;"></i>
+          <div class="tw-flex tw-items-center tw-gap-3">
+            <i class="bi bi-person-circle tw-text-ink-muted" style="font-size: 2.5rem;"></i>
             <div>
-              <div class="fw-semibold"><%= @store.director.name %></div>
-              <small class="text-muted"><%= @store.director.email %></small>
+              <div class="tw-font-semibold"><%= @store.director.name %></div>
+              <small class="tw-text-ink-muted"><%= @store.director.email %></small>
             </div>
           </div>
         <% else %>
-          <p class="text-muted mb-0"><i class="bi bi-dash-circle me-1"></i>Sem diretor atribuído.</p>
+          <p class="tw-text-ink-muted" style="margin-bottom:0"><i class="bi bi-dash-circle" style="margin-right:.25rem"></i>Sem diretor atribuído.</p>
         <% end %>
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-body">
-        <h5 class="fw-bold mb-3">
-          <i class="bi bi-info-circle-fill text-info me-2"></i>Informações
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h5 class="tw-font-bold tw-mb-3">
+          <i class="bi bi-info-circle-fill" style="margin-right:.5rem; color:#2563eb"></i>Informações
         </h5>
-        <ul class="list-unstyled small mb-0">
+        <ul class="list-unstyled tw-text-sm" style="margin-bottom:0">
           <% if @store.phone.present? %>
-            <li class="mb-2"><i class="bi bi-telephone text-muted me-2"></i><%= @store.phone %></li>
+            <li class="tw-mb-2"><i class="bi bi-telephone tw-text-ink-muted" style="margin-right:.5rem"></i><%= @store.phone %></li>
           <% end %>
           <% if @store.creci.present? %>
-            <li class="mb-2"><i class="bi bi-award text-muted me-2"></i>CRECI: <strong><%= @store.creci %></strong></li>
+            <li class="tw-mb-2"><i class="bi bi-award tw-text-ink-muted" style="margin-right:.5rem"></i>CRECI: <strong><%= @store.creci %></strong></li>
           <% end %>
           <% if @store.zip_code.present? %>
-            <li class="mb-2"><i class="bi bi-mailbox text-muted me-2"></i>CEP: <%= @store.zip_code %></li>
+            <li class="tw-mb-2"><i class="bi bi-mailbox tw-text-ink-muted" style="margin-right:.5rem"></i>CEP: <%= @store.zip_code %></li>
           <% end %>
-          <li class="mb-0"><i class="bi bi-clock text-muted me-2"></i>Fuso: <%= @store.timezone %></li>
+          <li style="margin-bottom:0"><i class="bi bi-clock tw-text-ink-muted" style="margin-right:.5rem"></i>Fuso: <%= @store.timezone %></li>
         </ul>
       </div>
     </div>
   </div>
+<% end %>
 </div>
 

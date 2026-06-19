@@ -6,6 +6,9 @@ Rails.application.routes.draw do
   
   # Admin Panel
   namespace :admin do
+    delete "context_items", to: "context_items#clear", as: :context_items
+    delete "context_items/:id", to: "context_items#destroy", as: :context_item, constraints: { id: /[^\/]+/ }
+
     get 'admin_users/index'
     get 'admin_users/new'
     get 'admin_users/edit'
@@ -17,7 +20,12 @@ Rails.application.routes.draw do
       end
       collection do
         get :print
-        get :export
+        post :export
+        get :exports
+        get "exports/:export_id", to: "habitations#export_status", as: :export_status
+        get "exports/:export_id/download", to: "habitations#download_export", as: :download_export
+        delete "exports/:export_id", to: "habitations#destroy_export", as: :destroy_export
+        get :filter_inspector
         get :search_by_code
         post :bulk_publish
         post :bulk_publish_eligibility
@@ -28,6 +36,9 @@ Rails.application.routes.draw do
     end
     
     resources :attribute_options, only: [:index, :create, :update, :destroy]
+    resources :lead_statuses, only: [:index] do
+      post :bulk_update, on: :collection
+    end
     resources :proprietors do
       collection do
         get :print
@@ -37,12 +48,18 @@ Rails.application.routes.draw do
     end
 
     root to: 'dashboard#index'
+    get "dashboard/:section", to: "dashboard#section", as: :dashboard_section
+
+    # Painel do Admin do Sistema (operador da aplicação) — acima da conta.
+    get "system", to: "system#index", as: :system
     
     resource :home_setting, only: [:edit, :update]
     resource :contact_setting, only: [:edit, :update]
     resource :layout_setting, only: [:show, :edit, :update]
     resource :footer_setting, only: [:edit, :update]
-    resource :property_setting, only: [:edit, :update]
+    resource :property_setting, only: [:edit, :update] do
+      get :review_workflow
+    end
     resources :webhook_settings do
       post :test, on: :member
       patch :share_tracking, on: :collection
@@ -84,11 +101,13 @@ Rails.application.routes.draw do
       end
       resources :home_section_items, only: [:new, :create, :edit, :update, :destroy]
     end
-    resources :admin_users, only: [:index, :new, :create, :edit, :update, :destroy] do
+    resources :admin_users, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member do
         post :impersonate
       end
       collection do
+        get   :hierarchy
+        patch :move_hierarchy
         post :sync_from_vista
         get  :vista_sync_status
         post :backfill_brokers
@@ -97,13 +116,54 @@ Rails.application.routes.draw do
     end
     resource :impersonation, only: [:destroy]
     resources :habitations do
+      resource :media, only: [:show, :update], controller: "habitation_media" do
+        get :modal
+        post :upload
+        patch :reorder
+        patch :visibility
+        delete :destroy_photo
+      end
       post :sync, on: :member
       post :generate_ai_preview, on: :member
       patch :format_ai_suggestion, on: :member
       patch :apply_ai_suggestion, on: :member
       delete "purge_attachment/:association/:attachment_id", on: :member, action: :purge_attachment, as: :purge_attachment
     end
-    resources :leads, only: [:index, :show, :update, :destroy]
+    resources :leads, only: [:index, :show, :update, :destroy] do
+      post :log_contact, on: :member
+      resources :proposals, only: [:new, :create]
+    end
+
+    # === Comercial (Tarefas, Agenda, Propostas) ===
+    resources :tasks, only: [:index, :create, :update, :destroy] do
+      patch :complete, on: :member
+    end
+    resources :appointments, only: [:index, :create, :update, :destroy]
+
+    # === Automação (regras Quando -> Então) ===
+    resources :automation_rules, path: "automacoes" do
+      patch :toggle_active, on: :member
+      post :create_example, on: :collection
+    end
+
+    # === Atendimento WhatsApp (inbox) ===
+    resources :whatsapp_conversations, only: [:index, :show], path: "atendimento/whatsapp", controller: "whatsapp_inbox" do
+      member do
+        post :send_message
+        post :assign_lead
+        get :messages
+      end
+      collection do
+        post :sync_templates
+      end
+    end
+    resources :proposals, only: [:edit, :update, :destroy] do
+      member do
+        patch :send_proposal
+        get :pdf
+      end
+    end
+
     resources :access_audit_logs, only: [:index]
     resources :data_export_audit_logs, only: [:index]
     resource :access_security, only: [:show, :update], controller: "access_security"
@@ -125,6 +185,9 @@ Rails.application.routes.draw do
       post :embedded_signup_callback
       delete :disconnect
       patch :phone_settings
+      patch :manual_connection
+      post :test_connection
+      post :send_test
     end
     resource :dwv_integrations, only: [:show, :update] do
       get :status
@@ -307,6 +370,10 @@ Rails.application.routes.draw do
     end
   end
 
+  # Propostas comerciais — página pública compartilhável
+  get "p/:token", to: "proposals#show", as: :public_proposal
+  post "p/:token/decidir", to: "proposals#decide", as: :decide_public_proposal
+
   # Mission Control for Jobs
   mount MissionControl::Jobs::Engine => "/jobs"
 
@@ -314,6 +381,8 @@ Rails.application.routes.draw do
   namespace :webhooks do
     post "meta", to: "meta#receive_leads"
     get "meta", to: "meta#receive_leads"
+    get "whatsapp", to: "whatsapp#verify"
+    post "whatsapp", to: "whatsapp#receive"
     post "portals/:portal/events", to: "portals#events", as: :portal_events
   end
 

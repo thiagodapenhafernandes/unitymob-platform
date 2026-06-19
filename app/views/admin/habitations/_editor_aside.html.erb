@@ -1,0 +1,75 @@
+<%
+  habitation = local_assigns.fetch(:habitation)
+  tab_nav_items = local_assigns.fetch(:tab_nav_items)
+  tab_titles = local_assigns.fetch(:tab_titles)
+  tab_error_badge = local_assigns.fetch(:tab_error_badge)
+
+  editor_rail_body = capture do
+%>
+  <nav class="ax-aside-rail-nav habitation-editor-rail-nav"
+       aria-label="Seções do cadastro recolhidas"
+       data-controller="ax-tabs"
+       data-ax-tabs-panel-selector-value="#habitationTabsContent">
+    <% tab_nav_items.each_with_index do |(tab_key, icon, description), index| %>
+      <% tab_dom_id = tab_key == :commercial ? "comercial" : tab_key.to_s %>
+      <button class="ax-aside-rail-nav__item habitation-editor-rail-nav__item <%= 'active' if index.zero? %>"
+              type="button"
+              data-ax-tabs-target="tab"
+              data-ax-tabs-target-param="#<%= tab_dom_id %>"
+              data-action="click->ax-tabs#select"
+              aria-label="<%= tab_titles[tab_key] %> - <%= description %>"
+              aria-selected="<%= index.zero? ? 'true' : 'false' %>"
+              title="<%= tab_titles[tab_key] %>">
+        <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+        <%= tab_error_badge.call(tab_key) %>
+      </button>
+    <% end %>
+  </nav>
+<% end %>
+
+<%= ax_aside_panel(
+      title: "Editor do imóvel",
+      token: "#{tab_nav_items.size} áreas",
+      rail_label: "Abrir Editor do imóvel",
+      rail_icon: "layout-sidebar-inset-reverse",
+      collapse_label: "Recolher Editor do imóvel",
+      rail_class: "habitation-editor-inspector-rail",
+      rail_body: editor_rail_body,
+      panel_class: "habitation-editor-inspector-panel",
+      header_class: "habitation-editor-panel-head",
+      actions_class: "habitation-editor-panel-head__actions",
+      toggle_class: "habitation-editor-panel-head__toggle"
+    ) do %>
+  <div class="habitation-editor-identity">
+    <%= render "admin/habitations/identity_card", habitation: habitation %>
+  </div>
+  <nav class="ax-form-tabs habitation-tabs-bar"
+       aria-label="Seções do cadastro"
+       data-controller="ax-tabs"
+       data-ax-tabs-panel-selector-value="#habitationTabsContent">
+    <ul class="ax-form-tabs__list" id="habitationTabs" role="tablist">
+      <% tab_nav_items.each_with_index do |(tab_key, icon, description), index| %>
+        <% active = index.zero? %>
+        <% tab_dom_id = tab_key == :commercial ? "comercial" : tab_key.to_s %>
+        <li class="nav-item" role="presentation">
+          <button class="ax-form-tabs__item <%= 'active' if active %>"
+                  id="<%= tab_dom_id %>-tab"
+                  data-ax-tabs-target="tab"
+                  data-ax-tabs-target-param="#<%= tab_dom_id %>"
+                  data-action="click->ax-tabs#select"
+                  type="button"
+                  role="tab"
+                  aria-controls="<%= tab_dom_id %>"
+                  aria-selected="<%= active ? 'true' : 'false' %>">
+            <span class="ax-form-tabs__icon"><i class="bi bi-<%= icon %>"></i></span>
+            <span class="ax-form-tabs__copy">
+              <strong><%= tab_titles[tab_key] %></strong>
+              <span class="ax-form-tabs__description"><%= description %></span>
+            </span>
+            <%= tab_error_badge.call(tab_key) %>
+          </button>
+        </li>
+      <% end %>
+    </ul>
+  </nav>
+<% end %>

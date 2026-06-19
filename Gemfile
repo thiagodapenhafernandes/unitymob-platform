@@ -28,7 +28,10 @@ gem "mission_control-jobs"
 
 # Pagination
 gem "will_paginate", "~> 4.0"
-gem "will_paginate-bootstrap-style"
+
+# PDF (propostas comerciais)
+gem "prawn"
+gem "prawn-table"
 
 # API & External Services
 gem "rest-client"

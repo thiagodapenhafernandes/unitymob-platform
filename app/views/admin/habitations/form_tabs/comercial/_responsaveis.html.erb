@@ -1,0 +1,106 @@
+<% broker_group_actions = capture do %>
+  <%= ax_button("Adicionar", variant: :ghost, size: :sm, icon: "person-plus", data: { ax_modal_open: "#addBrokerModal", action: "habitation-brokers#resetModal" }) %>
+<% end %>
+
+<%= ax_form_section(title: "Responsáveis e agenciamento", eyebrow: "Corretores", actions: broker_group_actions) do %>
+  <div class="ax-record-list" data-habitation-brokers-target="container">
+    <%
+      assigned_captador_ids = f.object.broker_assignments
+        .reject(&:marked_for_destruction?)
+        .select { |assignment| assignment.role == "captador" }
+        .map(&:admin_user_id)
+        .compact
+    %>
+    <% if f.object.admin_user.present? && !assigned_captador_ids.include?(f.object.admin_user_id) %>
+      <%= ax_record_item(
+            eyebrow: "Captador",
+            title: f.object.admin_user.name,
+            meta: "Captador responsável pelo cadastro do imóvel",
+            icon: "person-badge",
+            class_name: "ax-record-item--readonly"
+          ) %>
+    <% end %>
+
+    <%= f.fields_for :broker_assignments do |ba_form| %>
+      <% broker_actions = capture do %>
+        <button type="button" class="ax-btn ax-btn--danger ax-btn--sm" data-action="habitation-brokers#remove" title="Remover responsável">
+          <i class="bi bi-x-circle"></i>
+        </button>
+      <% end %>
+      <%= ax_record_item(
+            eyebrow: ba_form.object.role,
+            title: ba_form.object.admin_user&.name,
+            meta: "#{ba_form.object.commission_type == 'fixed' ? '$ - Preço' : '% - Porcentagem'}: #{ba_form.object.commission_value}",
+            icon: "person-check",
+            class_name: "nested-fields",
+            data: { new_record: ba_form.object.new_record? },
+            actions: broker_actions,
+            body: ba_form.hidden_field(:_destroy)
+          ) %>
+    <% end %>
+  </div>
+
+  <template data-habitation-brokers-target="template">
+    <% template_body = capture do %>
+      <input type="hidden" name="habitation[broker_assignments_attributes][NEW_RECORD][_destroy]" value="0">
+      <input type="hidden" name="habitation[broker_assignments_attributes][NEW_RECORD][role]" value="ROLE_VALUE">
+      <input type="hidden" name="habitation[broker_assignments_attributes][NEW_RECORD][admin_user_id]" value="BROKER_ID_VALUE">
+      <input type="hidden" name="habitation[broker_assignments_attributes][NEW_RECORD][commission_type]" value="COMMISSION_TYPE_VALUE">
+      <input type="hidden" name="habitation[broker_assignments_attributes][NEW_RECORD][commission_value]" value="COMMISSION_VALUE_VALUE">
+    <% end %>
+    <% template_actions = capture do %>
+      <button type="button" class="ax-btn ax-btn--danger ax-btn--sm" data-action="habitation-brokers#remove">
+        <i class="bi bi-x-circle"></i>
+      </button>
+    <% end %>
+    <%= ax_record_item(
+          eyebrow: "ROLE_LABEL",
+          title: "BROKER_NAME",
+          meta: "COMMISSION_VALUE_DISPLAY",
+          icon: "person-check",
+          class_name: "nested-fields animate__animated animate__fadeIn",
+          data: { new_record: true },
+          actions: template_actions,
+          body: template_body
+        ) %>
+  </template>
+
+  <% add_broker_footer = capture do %>
+    <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="ax-modal#close">Cancelar</button>
+    <button type="button" class="ax-btn ax-btn--primary ax-btn--sm" data-action="habitation-brokers#add">Adicionar</button>
+  <% end %>
+  <%= ax_quick_modal(
+        id: "addBrokerModal",
+        title: "Adicionar corretor",
+        size: :md,
+        footer: add_broker_footer,
+        data: { habitation_brokers_target: "modal" }
+      ) do %>
+    <%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
+      <div class="ax-span-4">
+        <%= ax_field_label(nil, nil, text: "Tipo") %>
+        <%= select_tag "broker_type",
+            options_for_select(HabitationBrokerAssignment.roles.map { |k, v| [v, k] }),
+            { prompt: "Escolha o tipo", class: "ax-control",
+              data: { controller: "tom-select", placeholder: "Escolha o tipo", habitation_brokers_target: "typeSelect" } } %>
+      </div>
+      <div class="ax-span-8">
+        <%= ax_field_label(nil, nil, text: "Selecione o corretor") %>
+        <%= select_tag :broker_id, options_from_collection_for_select(@brokers, :id, :name),
+            { include_blank: true, class: "ax-control",
+              data: { habitation_brokers_target: "brokerSelect", controller: "tom-select", placeholder: "Selecione..." } } %>
+      </div>
+      <div class="ax-span-6">
+        <%= ax_field_label(nil, nil, text: "Tipo de comissão") %>
+        <%= select_tag "commission_type",
+            options_for_select([["$ - Preço", "fixed"], ["% - Porcentagem", "percentage"]]),
+            { prompt: "Tipo...", class: "ax-control",
+              data: { controller: "tom-select", placeholder: "Tipo...", habitation_brokers_target: "commissionTypeSelect" } } %>
+      </div>
+      <div class="ax-span-6">
+        <%= ax_field_label(nil, nil, text: "Comissão") %>
+        <input type="text" class="ax-control" data-habitation-brokers-target="commissionValueInput" placeholder="0,00">
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

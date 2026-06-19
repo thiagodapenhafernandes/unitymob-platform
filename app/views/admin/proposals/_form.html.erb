@@ -1,0 +1,47 @@
+<%# locals: proposal, lead, url, method, habitations %>
+<%= form_with model: proposal, url: url, method: local_assigns.fetch(:method, :post), scope: :proposal do |f| %>
+  <% if proposal.errors.any? %>
+    <div class="ax-card tw-mb-3" style="border-left:3px solid #ef4444">
+      <div class="ax-card__body"><%= proposal.errors.full_messages.to_sentence %></div>
+    </div>
+  <% end %>
+
+  <div class="ax-card tw-mb-4">
+    <div class="ax-card__body tw-grid tw-gap-3">
+      <div>
+        <label class="ax-label">Imóvel</label>
+        <%= f.select :habitation_id,
+              options_for_select(habitations.map { |h| ["#{h.try(:codigo)} — #{h.try(:display_title)}", h.id] }, proposal.habitation_id),
+              { include_blank: "Sem imóvel específico" },
+              class: "ax-select", data: { controller: "tom-select" } %>
+      </div>
+      <div>
+        <label class="ax-label">Título (opcional)</label>
+        <%= f.text_field :title, class: "ax-input", placeholder: "Ex.: Proposta de compra — Ap. 302" %>
+      </div>
+      <div class="tw-grid tw-grid-cols-2 tw-gap-3">
+        <div>
+          <label class="ax-label">Valor da proposta (R$)</label>
+          <%= f.text_field :valor, value: (proposal.valor_cents.to_i.positive? ? number_with_precision(proposal.valor, precision: 2) : nil), class: "ax-input", inputmode: "decimal", placeholder: "450000,00" %>
+        </div>
+        <div>
+          <label class="ax-label">Entrada (R$)</label>
+          <%= f.text_field :entrada, value: (proposal.entrada_cents.to_i.positive? ? number_with_precision(proposal.entrada, precision: 2) : nil), class: "ax-input", inputmode: "decimal", placeholder: "90000,00" %>
+        </div>
+      </div>
+      <div>
+        <label class="ax-label">Condições</label>
+        <%= f.text_area :condicoes, rows: 4, class: "ax-textarea", placeholder: "Forma de pagamento, financiamento, prazos, observações..." %>
+      </div>
+      <div class="tw-w-full sm:tw-w-48">
+        <label class="ax-label">Validade</label>
+        <%= f.date_field :validade, class: "ax-input" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="tw-flex tw-justify-end tw-gap-2">
+    <%= link_to "Cancelar", admin_lead_path(lead), class: "ax-btn ax-btn--sm" %>
+    <%= f.submit "Salvar proposta", class: "ax-btn ax-btn--sm ax-btn--primary" %>
+  </div>
+<% end %>

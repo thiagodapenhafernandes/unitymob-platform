@@ -1,0 +1,20 @@
+<%= turbo_frame_tag "admin_dashboard_status" do %>
+  <article
+    class="ax-dashboard-panel ax-dashboard-panel--status"
+    data-controller="dashboard-charts"
+    data-dashboard-charts-chart-url-value="<%= asset_path("chart.umd.min.js") %>"
+    data-dashboard-charts-leads-value="[]"
+    data-dashboard-charts-statuses-value="<%= json_escape(@leads_by_status.to_json) %>">
+    <div class="ax-dashboard-panel__header">
+      <div>
+        <span class="ax-dashboard-panel__eyebrow">Status</span>
+        <h2>Leads por status</h2>
+      </div>
+      <%= ax_badge("30 dias", tone: :blue) %>
+    </div>
+
+    <div class="ax-dashboard-chart ax-dashboard-chart--donut ax-dashboard-chart--status">
+      <canvas id="leadsStatusChart"></canvas>
+    </div>
+  </article>
+<% end %>

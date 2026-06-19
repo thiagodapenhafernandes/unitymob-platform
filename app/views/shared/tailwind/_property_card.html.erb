@@ -1,3 +1,5 @@
+<% property_title = property.display_title %>
+
 <div class="group bg-white rounded-[16px] overflow-hidden shadow-[0_14px_34px_rgba(15,23,42,0.1)] hover:shadow-[0_20px_46px_rgba(15,23,42,0.16)] transition-all duration-300 border border-white/80 ring-1 ring-slate-900/5 flex flex-col relative cursor-pointer"
      data-controller="clickable-card"
      data-clickable-card-url-value="<%= habitation_path(property) %>"
@@ -54,7 +56,7 @@
               <% image_source = public_image_url(pic, resize_to_fill: [640, 480]) %>
               <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
               <%= image_tag(index.zero? ? image_source : placeholder,
-                    alt: property.titulo_anuncio,
+                    alt: property_title,
                     width: 640,
                     height: 480,
                     class: "w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700",
@@ -92,7 +94,7 @@
                   action: "click->marketing-tracker#track",
                   marketing_tracker_event_type_value: "property_card_click",
                   marketing_tracker_placement_value: "property_card_image",
-                  marketing_tracker_label_value: property.titulo_anuncio,
+                  marketing_tracker_label_value: property_title,
                   marketing_tracker_target_url_value: habitation_path(property),
                   marketing_tracker_habitation_id_value: property.id
                 } %>
@@ -110,7 +112,7 @@
     <!-- Title -->
     <div class="mb-3 min-h-[3rem]">
       <h3 class="text-base font-bold text-blue-three line-clamp-2 leading-tight group-hover:text-blue-one transition-colors">
-        <%= property.titulo_anuncio %>
+        <%= property_title %>
       </h3>
     </div>
 
@@ -150,14 +152,14 @@
                   data-controller="marketing-tracker"
                   data-marketing-tracker-event-type-value="whatsapp_click"
                   data-marketing-tracker-placement-value="property_card"
-                  data-marketing-tracker-label-value="<%= property.titulo_anuncio %>"
+                  data-marketing-tracker-label-value="<%= property_title %>"
                   data-marketing-tracker-target-url-value="<%= habitation_path(property) %>"
                   data-marketing-tracker-habitation-id-value="<%= property.id %>"
                   data-property-id="<%= property.id %>"
                   data-property-code="<%= property.codigo %>"
-                  data-property-title="<%= property.titulo_anuncio %>"
+                  data-property-title="<%= property_title %>"
                   data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
-                  data-whatsapp-message="Olá, vi o imóvel <%= property.titulo_anuncio %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
+                  data-whatsapp-message="Olá, vi o imóvel <%= property_title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
                   title="Falar no WhatsApp">
             <i class="bi bi-whatsapp text-lg"></i>
           </button>
@@ -174,14 +176,14 @@
                   data-controller="marketing-tracker"
                   data-marketing-tracker-event-type-value="whatsapp_click"
                   data-marketing-tracker-placement-value="property_card"
-                  data-marketing-tracker-label-value="<%= property.titulo_anuncio %>"
+                  data-marketing-tracker-label-value="<%= property_title %>"
                   data-marketing-tracker-target-url-value="<%= habitation_path(property) %>"
                   data-marketing-tracker-habitation-id-value="<%= property.id %>"
                   data-property-id="<%= property.id %>"
                   data-property-code="<%= property.codigo %>"
-                  data-property-title="<%= property.titulo_anuncio %>"
+                  data-property-title="<%= property_title %>"
                   data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
-                  data-whatsapp-message="Olá, vi o imóvel <%= property.titulo_anuncio %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
+                  data-whatsapp-message="Olá, vi o imóvel <%= property_title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
                   title="Falar no WhatsApp">
             <i class="bi bi-whatsapp text-lg"></i>
           </button>

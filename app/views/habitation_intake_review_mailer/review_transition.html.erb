@@ -1,0 +1,25 @@
+<h1>Atualização de revisão de captação</h1>
+
+<p>
+  A captação <strong><%= habitation_label %></strong> foi <strong><%= event_label %></strong>.
+</p>
+
+<p>
+  <strong>Evento:</strong> <%= event_label %><br>
+  <strong>Imóvel:</strong> <%= habitation_label %><br>
+  <strong>Responsável:</strong> <%= actor_name %><br>
+  <strong>Status atual:</strong> <%= @habitation.intake_status_label %>
+</p>
+
+<% if @return_reason.present? %>
+  <p><strong>Motivo da devolução:</strong><br><%= @return_reason %></p>
+<% end %>
+
+<% if @notes.present? %>
+  <p><strong>Nota interna:</strong><br><%= @notes %></p>
+<% end %>
+
+<p>
+  Acompanhe o fluxo em:
+  <a href="<%= "/admin/captacoes/#{@habitation.id}" %>">/admin/captacoes/<%= @habitation.id %></a>
+</p>

@@ -1,0 +1,58 @@
+<header class="ax-dashboard-command ax-property-form-command">
+  <div class="ax-dashboard-command__main">
+    <span class="ax-dashboard-command__eyebrow">Cadastro operacional</span>
+    <div class="ax-property-form-command__meta">
+      <strong><%= habitation.codigo.present? ? "##{habitation.codigo}" : "Novo cadastro" %></strong>
+      <% if habitation.status.present? %>
+        <%= ax_badge(habitation.status, tone: :blue) %>
+      <% end %>
+      <% if habitation.categoria.present? %>
+        <%= ax_badge(habitation.categoria, tone: :gray) %>
+      <% end %>
+    </div>
+    <h1 class="tw-truncate">
+      <%= habitation.titulo_anuncio.presence || habitation.display_title || (habitation.empreendimento? ? "Novo empreendimento" : "Novo imóvel") %>
+    </h1>
+    <% if (habitation.respond_to?(:endereco) && habitation.endereco.present?) || habitation.bairro.present? %>
+      <p class="tw-truncate">
+        <i class="bi bi-geo-alt"></i>
+        <%= [habitation.endereco, habitation.bairro, habitation.cidade].compact_blank.join(" · ") %>
+      </p>
+    <% end %>
+    <% if habitation.broker_intake? && habitation.intake_submitted_for_admin_review? %>
+      <div class="tw-mt-2 tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+        <%= ax_badge("Captação finalizada", tone: :blue) %>
+        <span class="tw-text-xs tw-text-ink-muted">Complete o cadastro e envie para o captador responsável.</span>
+      </div>
+    <% elsif habitation.broker_intake? && habitation.intake_admin_approved? %>
+      <div class="tw-mt-2">
+        <%= ax_badge("Aguardando aceite do corretor", tone: :amber) %>
+      </div>
+    <% elsif habitation.broker_intake? && habitation.intake_internal? %>
+      <div class="tw-mt-2">
+        <%= ax_badge("Disponível internamente", tone: :blue) %>
+      </div>
+    <% end %>
+  </div>
+  <%
+    captador = habitation.primary_captador
+    captador_name = habitation.primary_captador_name
+  %>
+  <% if captador_name.present? %>
+    <aside class="ax-dashboard-command__status ax-property-form-command__owner">
+      <% if captador&.avatar&.attached? %>
+        <%= image_tag captador.avatar,
+                      class: "ax-property-form-command__avatar",
+                      alt: "Foto de #{captador_name}" %>
+      <% else %>
+        <span class="ax-property-form-command__avatar ax-property-form-command__avatar--fallback" aria-hidden="true">
+          <%= captador_name.to_s.split.map { |part| part.first }.join.first(2).presence || "?" %>
+        </span>
+      <% end %>
+      <div class="tw-min-w-0">
+        <span>Captador</span>
+        <strong class="tw-block tw-truncate"><%= captador_name %></strong>
+      </div>
+    </aside>
+  <% end %>
+</header>

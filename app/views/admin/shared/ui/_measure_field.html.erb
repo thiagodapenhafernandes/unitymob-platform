@@ -1,0 +1,14 @@
+<%
+  field_classes = ["ax-field", "ax-measure-field", class_name].compact.join(" ")
+  input_options = (options || {}).dup
+  input_options[:step] = :any unless input_options.key?(:step)
+  input_options[:class] = ["ax-control", input_class, input_options[:class]].compact.join(" ")
+%>
+
+<div class="<%= field_classes %>">
+  <%= ax_field_label(form, method, text: label, tooltip:) %>
+  <%= ax_input_group(suffix: unit) do %>
+    <%= form.number_field method, input_options %>
+  <% end %>
+  <%= render "admin/shared/ui/field_error", form: form, method: method %>
+</div>

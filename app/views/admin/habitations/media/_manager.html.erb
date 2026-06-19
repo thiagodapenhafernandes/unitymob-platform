@@ -1,0 +1,163 @@
+<%
+  habitation = local_assigns.fetch(:habitation)
+  upload_input_id = local_assigns.fetch(:upload_input_id, "habitation_photos")
+  media_gallery = Habitations::MediaGallery.new(habitation)
+  linked_development = media_gallery.linked_development
+  attached_media_photos = media_gallery.attached_media_photos
+  api_media_pictures = media_gallery.api_media_pictures
+  media_gallery_count = media_gallery.media_gallery_count
+  media_controller_data = { controller: "photo-upload fancybox-gallery" }
+  if habitation.persisted?
+    media_controller_data.merge!(
+      photo_upload_async_value: true,
+      photo_upload_upload_url_value: upload_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_reorder_url_value: reorder_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_visibility_url_value: visibility_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_destroy_url_value: destroy_photo_admin_habitation_media_path(habitation, format: :json)
+    )
+  end
+%>
+
+<div class="ax-form-section ax-form-section--media">
+  <div class="ax-form-section__body">
+    <div class="ax-media-manager" <%= tag.attributes(data: media_controller_data) %>>
+      <div class="ax-media-toolbar">
+        <div class="ax-media-toolbar__title">
+          <h6>Fotos</h6>
+          <span><%= "#{media_gallery_count} #{media_gallery_count == 1 ? 'item vinculado' : 'itens vinculados'}" %></span>
+        </div>
+        <% if media_gallery_count.positive? %>
+          <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-gallery-open>
+            <i class="bi bi-images"></i>
+            Abrir galeria
+          </button>
+        <% end %>
+      </div>
+
+      <% if linked_development.present? %>
+        <% linked_development_name = linked_development.nome_empreendimento.presence || linked_development.codigo %>
+        <% development_photo_action = capture do %>
+          <%= ax_toggle_chip(f, :use_development_photos_flag, label: "Usar fotos do empreendimento") %>
+        <% end %>
+        <%= ax_media_source_notice(
+              title: "Fotos do empreendimento vinculado",
+              description: safe_join([
+                "Este imóvel está vinculado a ",
+                tag.strong(linked_development_name),
+                ". Se não houver fotos próprias, ele pode usar as fotos desse empreendimento."
+              ]),
+              action: development_photo_action
+            ) %>
+      <% end %>
+
+      <% media_controls = capture do %>
+        <% if can?(:manage, :imoveis) %>
+          <div class="ax-media-upload-panel__classification">
+            <%= ax_select_field(
+                  form: f,
+                  method: :foto_classificacao,
+                  label: "Classificação das fotos",
+                  choices: Habitation::FOTO_CLASSIFICACAO,
+                  select_options: { include_blank: "Selecione..." },
+                  html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+                ) %>
+          </div>
+        <% end %>
+      <% end %>
+
+      <% watermark_available = @property_setting&.watermark_configured? %>
+      <% media_actions = capture do %>
+        <div class="ax-media-upload-panel__watermark">
+          <label class="ax-toggle-chip <%= 'is-checked' if watermark_available %>">
+            <%= hidden_field_tag "habitation[apply_photo_watermark]", "0" %>
+            <%= check_box_tag "habitation[apply_photo_watermark]", "1", watermark_available, class: "ax-toggle-chip__input", disabled: !watermark_available, onchange: "this.closest('.ax-toggle-chip').classList.toggle('is-checked', this.checked)" %>
+            <span class="ax-toggle-chip__box" aria-hidden="true">
+              <i class="bi bi-check-lg"></i>
+            </span>
+            <span class="ax-toggle-chip__label">Aplicar marca d'água</span>
+          </label>
+          <% unless watermark_available %>
+            <span class="ax-media-upload-panel__hint">
+              Marca d'água não configurada.
+              <% if current_admin_user&.admin? %>
+                <%= link_to "Configurar", edit_admin_property_setting_path, class: "tw-font-semibold" %>
+              <% end %>
+            </span>
+          <% end %>
+        </div>
+        <%= ax_file_upload_button(
+              form: f,
+              method: :photos,
+              label: "Adicionar fotos",
+              input_id: upload_input_id,
+              direct_upload: true,
+              class_name: "ax-btn ax-btn--primary",
+              input_data: { action: "change->photo-upload#preview", photo_upload_target: "input" }
+            ) %>
+      <% end %>
+
+      <% media_feedback = tag.div("", class: "ax-media-upload-panel__feedback", hidden: true, data: { photo_upload_target: "uploadLimitFeedback" }) %>
+      <% media_hidden_fields = capture do %>
+        <%= f.hidden_field :ordered_photo_ids, data: { photo_upload_target: "orderInput" }, value: attached_media_photos.map(&:id).join(",") %>
+        <%= f.hidden_field :ordered_picture_indices,
+            data: { photo_upload_target: "apiOrderInput" },
+            value: api_media_pictures.map { |_pic, index, _url| index }.join(",") %>
+        <%= f.hidden_field :site_hidden_photo_ids,
+            data: { photo_upload_target: "hiddenPhotoIdsInput" },
+            value: Array(habitation.site_hidden_photo_ids).map(&:to_i).join(",") %>
+        <%= f.hidden_field :site_hidden_picture_urls,
+            data: { photo_upload_target: "hiddenPictureUrlsInput" },
+            value: api_media_pictures.select { |pic, _index, _url| habitation.picture_hidden_from_site?(pic) }.map { |_pic, _index, url| url }.join(",") %>
+        <%= hidden_field_tag "habitation[remove_photo_ids]", "", data: { photo_upload_target: "removePhotoIdsInput" } %>
+        <%= hidden_field_tag "habitation[remove_picture_indices]", "", data: { photo_upload_target: "removePictureIndicesInput" } %>
+      <% end %>
+
+      <%= ax_media_upload_panel(
+            title: media_gallery_count.positive? ? "Solte novas fotos aqui" : "Arraste fotos ou clique para selecionar",
+            description: media_gallery_count.positive? ? "Upload assíncrono. A ordem pode ser ajustada arrastando as imagens abaixo." : "As fotos adicionadas serão enviadas sem sair do cadastro.",
+            controls: media_controls,
+            actions: media_actions,
+            feedback: media_feedback,
+            hidden_fields: media_hidden_fields,
+            class_name: media_gallery_count.positive? ? "ax-media-upload-panel--compact" : nil
+          ) %>
+
+      <div class="ax-media-organizer">
+        <div class="ax-media-organizer__header">
+          <div>
+            <strong>Organização da galeria</strong>
+            <span>Arraste pelo ícone de ordenação. Use os controles abaixo da foto para publicar, destacar ou remover.</span>
+          </div>
+          <span class="ax-media-organizer__count"><%= media_gallery_count %> itens</span>
+        </div>
+
+        <div class="media-gallery-scroll">
+          <%= ax_media_grid(data: { photo_upload_target: "previewContainer" }) do %>
+            <%= render "admin/habitations/media/gallery_items",
+                  habitation: habitation,
+                  linked_development: linked_development,
+                  attached_media_photos: attached_media_photos,
+                  api_media_pictures: api_media_pictures %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ax-form-section ax-form-section--media">
+  <div class="ax-form-section__body">
+    <%= ax_dynamic_list_field(
+          label: "Vídeos e tour virtual",
+          values: f.object.videos || [],
+          input_name: "habitation[videos][]",
+          placeholder: "https://..."
+        ) %>
+    <div class="ax-media-link-field">
+      <%= ax_text_field(form: f, method: :tour_virtual, label: "Link Tour Virtual (360)", placeholder: "https://...") %>
+    </div>
+    <div class="ax-media-link-field">
+      <%= ax_text_field(form: f, method: :podcast_url, label: "Link do Podcast", placeholder: "https://...") %>
+    </div>
+  </div>
+</div>

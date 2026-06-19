@@ -7,7 +7,7 @@
   <div class="flex items-center gap-3">
     <div class="w-14 h-14 rounded-full overflow-hidden bg-white border border-blue-100 flex items-center justify-center">
       <% if shared_broker.avatar.attached? %>
-        <%= image_tag rails_blob_path(shared_broker.avatar, only_path: true), class: "w-full h-full object-cover", alt: shared_broker.name %>
+        <%= image_tag public_image_url(shared_broker.avatar), class: "w-full h-full object-cover", alt: shared_broker.name %>
       <% else %>
         <i class="bi bi-person text-blue-three text-2xl"></i>
       <% end %>

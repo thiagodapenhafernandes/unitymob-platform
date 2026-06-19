@@ -1,646 +1,172 @@
+<%# Dashboard operacional — shell leve com slices assíncronos via Turbo Frames. %>
 <%
   hour = Time.current.hour
-  greeting = if hour < 12 then "Bom dia"
-             elsif hour < 18 then "Boa tarde"
-             else "Boa noite"
-             end
+  greeting = hour < 12 ? "Bom dia" : (hour < 18 ? "Boa tarde" : "Boa noite")
+  first_name = current_admin_user.name.to_s.split.first.presence || current_admin_user.email
+
+  dashboard_subtitle =
+    if @is_admin_view && @field_feature_enabled
+      "Campo ativo: #{@active_checkins_count} check-ins agora, #{@leads_today} leads hoje."
+    elsif @is_admin_view
+      "Campo desativado para esta operação. Ative quando houver equipe externa em rota."
+    else
+      "Painel pessoal: #{@leads_today} leads hoje, #{@properties_count} imóveis atribuídos."
+    end
+
+  today_metrics = [
+    [@today_new_habitations, "building", "Imóveis atualizados"],
+    [@leads_today, "megaphone", "Leads recebidos"],
+    [@today_captacoes, "journal-plus", "Captações criadas"],
+    [@today_checkins_count, "geo-fill", "Check-ins"]
+  ]
+
+  pending_items = []
+  pending_items << [admin_captacoes_path(status: "draft"), "file-earmark-text", "amber", "Captações em rascunho", @drafts_count] if @drafts_count.to_i.positive?
+  pending_items << [admin_leads_path(status: "represado"), "hourglass-split", "red", "Leads represados", @holding_leads] if @holding_leads.to_i.positive?
+  pending_items << [admin_field_manual_checkin_requests_path, "hand-index-thumb", "amber", "Pedidos manuais pendentes", @pending_manual_requests] if @pending_manual_requests.to_i.positive?
+  pending_items << [admin_habitations_path(status: "error"), "exclamation-triangle-fill", "red", "Imóveis com erro de sync", @sync_errors_count] if @sync_errors_count.to_i.positive?
 %>
 
-<style>
-  .dash-hero {
-    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
-    color: white;
-    border-radius: 1rem;
-    padding: 1.75rem 2rem;
-  }
-  .dash-kpi {
-    border-radius: 1rem;
-    border: none;
-    transition: transform .15s ease;
-  }
-  .dash-kpi:hover { transform: translateY(-2px); }
-  .dash-kpi .kpi-icon {
-    width: 3rem; height: 3rem;
-    border-radius: .75rem;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.4rem;
-  }
-  .dash-kpi .kpi-delta {
-    font-size: .75rem;
-    font-weight: 600;
-  }
-  .dash-section-card {
-    border-radius: 1rem;
-    border: none;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-  }
-  .activity-item {
-    padding: .6rem 0;
-    border-bottom: 1px solid #f0f0f0;
-  }
-  .activity-item:last-child { border-bottom: none; }
-  .gradient-green { background: linear-gradient(135deg, #198754 0%, #146c43 100%); }
-  .gradient-orange { background: linear-gradient(135deg, #fd7e14 0%, #c9570c 100%); }
-  .gradient-purple { background: linear-gradient(135deg, #6f42c1 0%, #59359a 100%); }
-  .gradient-red { background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%); }
-  .dash-mini-chart { height: 60px; }
-</style>
-
-<div class="container-fluid py-4 admin-dashboard-page">
-  <!-- HERO -->
-  <div class="dash-hero mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
-    <div>
-      <div class="opacity-75 small"><i class="bi bi-calendar3 me-1"></i> <%= l(Date.current, format: :long) %></div>
-      <h2 class="fw-bold mb-1"><%= greeting %>, <%= current_admin_user.name.split.first %>!</h2>
-      <p class="opacity-75 mb-0">
-        <% if @is_admin_view %>
-          <% if @field_feature_enabled %>
-            <i class="bi bi-broadcast-pin me-1"></i>Módulo Campo ativo —
-            <strong><%= @active_checkins_count %></strong> check-ins agora,
-            <strong><%= @leads_today %></strong> leads hoje.
-          <% else %>
-            <i class="bi bi-pause-circle me-1"></i>Módulo Campo desativado.
-            <%= link_to "Ativar em Configurações de Campo", edit_admin_field_settings_path, class: "text-white text-decoration-underline" %>
-          <% end %>
-        <% else %>
-          <i class="bi bi-person-badge me-1"></i>Painel pessoal —
-          <strong><%= @leads_today %></strong> leads hoje,
-          <strong><%= @properties_count %></strong> imóveis atribuídos.
-        <% end %>
-      </p>
+<section class="ax-dashboard" aria-label="Dashboard operacional">
+  <header class="ax-dashboard-command">
+    <div class="ax-dashboard-command__main">
+      <span class="ax-dashboard-command__eyebrow">Cockpit operacional</span>
+      <div class="ax-dashboard-command__title-row">
+        <h1><%= greeting %>, <%= first_name %></h1>
+        <%= ax_badge(@is_admin_view ? "Admin" : "Meu painel", tone: :blue) %>
+      </div>
+      <p><%= l(Date.current, format: :long) %> · <%= dashboard_subtitle %></p>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
-      <% if @is_admin_view %>
-        <%= link_to admin_stores_path, class: "btn btn-light btn-sm fw-bold" do %>
-          <i class="bi bi-shop me-1"></i>Lojas
-        <% end %>
-        <%= link_to admin_distribution_rules_path, class: "btn btn-light btn-sm fw-bold" do %>
-          <i class="bi bi-diagram-3 me-1"></i>Regras
-        <% end %>
-        <%= link_to admin_field_check_ins_path, class: "btn btn-warning btn-sm fw-bold" do %>
-          <i class="bi bi-geo-fill me-1"></i>Check-ins
-        <% end %>
+
+    <div class="ax-dashboard-command__status">
+      <span><i class="bi bi-hdd-network"></i> Operação</span>
+      <% if @field_feature_enabled %>
+        <%= ax_badge("Campo ativo", tone: :green, dot: true) %>
       <% else %>
-        <%= link_to new_admin_captacao_path, class: "btn btn-warning btn-sm fw-bold" do %>
-          <i class="bi bi-journal-plus me-1"></i>Nova captação
-        <% end %>
-        <%= link_to admin_leads_path, class: "btn btn-light btn-sm fw-bold" do %>
-          <i class="bi bi-megaphone me-1"></i>Meus leads
-        <% end %>
-        <%= link_to field_root_path, class: "btn btn-light btn-sm fw-bold" do %>
-          <i class="bi bi-phone me-1"></i>Ir para PWA
-        <% end %>
+        <%= ax_badge("Campo pausado", tone: :amber) %>
       <% end %>
     </div>
-  </div>
+  </header>
 
-  <!-- KPI CARDS -->
-  <div class="row g-3 mb-4">
-    <div class="col-xl-3 col-md-6">
-      <div class="card dash-kpi shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div class="kpi-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-building"></i></div>
-            <span class="kpi-delta text-success"><i class="bi bi-check-circle-fill"></i> Ativos</span>
-          </div>
-          <h3 class="fw-bold mb-0"><%= number_with_delimiter(@properties_count) %></h3>
-          <div class="text-muted small">Imóveis no catálogo</div>
-          <div class="small text-muted mt-2 border-top pt-2">
-            <i class="bi bi-star-fill text-warning"></i> <%= @featured_count %> destaques ·
-            <i class="bi bi-tags text-secondary"></i> <%= @developments_count %> empreendimentos
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="ax-dashboard-kpis">
+    <%= ax_metric_card(
+          label: "Imóveis no catálogo",
+          value: number_with_delimiter(@properties_count),
+          badge: ax_badge("Ativos", tone: :green, dot: true),
+          hint: "#{@featured_count} destaques · #{@developments_count} empreendimentos",
+          class_name: "ax-dashboard-kpi"
+        ) %>
 
-    <div class="col-xl-3 col-md-6">
-      <div class="card dash-kpi shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div class="kpi-icon bg-success bg-opacity-10 text-success"><i class="bi bi-megaphone-fill"></i></div>
-            <span class="kpi-delta text-primary"><i class="bi bi-graph-up"></i> <%= @leads_last_7_days %> em 7 dias</span>
-          </div>
-          <h3 class="fw-bold mb-0"><%= number_with_delimiter(@leads_today) %></h3>
-          <div class="text-muted small">Leads hoje</div>
-          <div class="small text-muted mt-2 border-top pt-2">
-            <i class="bi bi-hourglass-split text-warning"></i> <%= @holding_leads %> represados ·
-            <i class="bi bi-inbox text-info"></i> <%= @new_leads %> novos
-          </div>
-        </div>
-      </div>
-    </div>
+    <%= ax_metric_card(
+          label: "Leads hoje",
+          value: number_with_delimiter(@leads_today),
+          badge: ax_badge("#{@leads_last_7_days} em 7d", tone: :gray),
+          hint: "#{@holding_leads} represados · #{@new_leads} novos",
+          class_name: "ax-dashboard-kpi"
+        ) %>
 
     <% if @is_admin_view %>
-    <div class="col-xl-3 col-md-6">
-      <div class="card dash-kpi shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div class="kpi-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-geo-alt-fill"></i></div>
-            <% if @active_checkins_count > 0 %>
-              <span class="kpi-delta text-success"><i class="bi bi-record-circle-fill"></i> ao vivo</span>
-            <% end %>
-          </div>
-          <h3 class="fw-bold mb-0"><%= @active_checkins_count %></h3>
-          <div class="text-muted small">Check-ins ativos</div>
-          <div class="small text-muted mt-2 border-top pt-2">
-            <i class="bi bi-calendar-check text-primary"></i> <%= @today_checkins_count %> hoje ·
-            <% if @suspicious_checkins > 0 %>
-              <i class="bi bi-exclamation-triangle-fill text-danger"></i> <%= @suspicious_checkins %> suspeitos
-            <% else %>
-              <i class="bi bi-shield-check text-success"></i> 0 suspeitos
-            <% end %>
-          </div>
-        </div>
-      </div>
-    </div>
+      <%= ax_metric_card(
+            label: "Check-ins ativos",
+            value: @active_checkins_count,
+            badge: @active_checkins_count.positive? ? ax_badge("Ao vivo", tone: :green, dot: true) : ax_badge("Sem ativos", tone: :gray),
+            hint: "#{@today_checkins_count} hoje · #{@suspicious_checkins} suspeitos",
+            class_name: "ax-dashboard-kpi"
+          ) %>
 
-    <div class="col-xl-3 col-md-6">
-      <div class="card dash-kpi shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div class="kpi-icon bg-info bg-opacity-10 text-info"><i class="bi bi-diagram-3-fill"></i></div>
-            <span class="kpi-delta text-secondary"><i class="bi bi-toggle-on"></i> <%= @rules_with_checkin %> c/ check-in</span>
-          </div>
-          <h3 class="fw-bold mb-0"><%= @distribution_rules_active %>/<%= @distribution_rules_total %></h3>
-          <div class="text-muted small">Regras de distribuição ativas</div>
-          <div class="small text-muted mt-2 border-top pt-2">
-            <i class="bi bi-people-fill text-primary"></i> <%= @brokers_active %> corretores ativos ·
-            <i class="bi bi-shop text-success"></i> <%= @stores_active_count %> lojas
-          </div>
-        </div>
-      </div>
-    </div>
+      <%= ax_metric_card(
+            label: "Regras de distribuição",
+            value: "#{@distribution_rules_active}/#{@distribution_rules_total}",
+            badge: ax_badge("#{@rules_with_checkin} c/ check-in", tone: :blue),
+            hint: "#{@brokers_active} corretores · #{@stores_active_count} lojas",
+            progress: @distribution_rules_total.to_i.positive? ? ((@distribution_rules_active.to_f / @distribution_rules_total) * 100) : 0,
+            class_name: "ax-dashboard-kpi"
+          ) %>
     <% end %>
   </div>
 
-  <!-- OPERAÇÃO FIELD -->
-  <div class="row g-3 mb-4">
-    <div class="col-lg-8">
-      <div class="card dash-section-card h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow text-primary me-2"></i><%= @is_admin_view ? "Leads — últimos 30 dias" : "Meus leads — últimos 30 dias" %></h5>
-            <span class="badge bg-primary-subtle text-primary"><%= @leads_last_30_days %> total</span>
-          </div>
-          <div class="chart-container" style="position: relative; height: 280px; width: 100%;">
-            <canvas id="leadsChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="ax-dashboard-grid ax-dashboard-grid--insights">
+    <%= turbo_frame_tag "admin_dashboard_charts", src: admin_dashboard_section_path("charts") do %>
+      <%= render "admin/dashboard/sections/loading_panel",
+                 title: "Leads - últimos 30 dias",
+                 eyebrow: "Aquisição",
+                 chart: true %>
+    <% end %>
 
-    <div class="col-lg-4">
-      <div class="card dash-section-card h-100">
-        <div class="card-body">
-          <h5 class="fw-bold mb-3"><i class="bi bi-pie-chart-fill text-success me-2"></i>Leads por status</h5>
-          <div class="chart-container" style="position: relative; height: 280px; width: 100%;">
-            <canvas id="leadsStatusChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
+    <%= turbo_frame_tag "admin_dashboard_funnel", src: admin_dashboard_section_path("funnel") do %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Conversão comercial", eyebrow: "Funil", chart: true, compact: true %>
+    <% end %>
+
+    <%= turbo_frame_tag "admin_dashboard_status", src: admin_dashboard_section_path("status") do %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Leads por status", eyebrow: "Status", chart: true, compact: true %>
+    <% end %>
   </div>
 
-  <!-- TOP LISTAS -->
-  <% if @is_admin_view %>
-  <div class="row g-3 mb-4">
-    <div class="col-lg-6">
-      <div class="card dash-section-card h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-trophy-fill text-warning me-2"></i>Top corretores por imóveis</h5>
-            <%= link_to "Ver todos", admin_admin_users_path, class: "small text-decoration-none" %>
-          </div>
-          <% if @top_brokers.any? %>
-            <% max_ct = @top_brokers.first.ct %>
-            <% @top_brokers.each do |b| %>
-              <div class="mb-3">
-                <div class="d-flex justify-content-between small mb-1">
-                  <strong><%= b.name %></strong>
-                  <span class="text-muted"><%= b.ct %> imóveis</span>
-                </div>
-                <div class="progress" style="height: 8px;">
-                  <div class="progress-bar bg-primary" style="width: <%= ((b.ct.to_f / max_ct) * 100).to_i %>%"></div>
-                </div>
-              </div>
-            <% end %>
-          <% else %>
-            <p class="text-muted small mb-0">Nenhum imóvel vinculado a corretor ainda. Use o botão "Vincular imóveis" em Corretores.</p>
-          <% end %>
-        </div>
+  <% if @is_admin_view && !@field_feature_enabled %>
+    <div class="ax-dashboard-alert ax-dashboard-alert--compact">
+      <div>
+        <i class="bi bi-pause-circle"></i>
+        <strong>Módulo Campo desativado</strong>
+        <span>Ative somente quando a operação externa estiver em uso.</span>
       </div>
-    </div>
-
-    <div class="col-lg-6">
-      <div class="card dash-section-card h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-shop-window text-success me-2"></i>Top lojas por check-ins (30d)</h5>
-            <%= link_to "Ver todas", admin_stores_path, class: "small text-decoration-none" %>
-          </div>
-          <% if @top_stores.any? %>
-            <% max_ct = @top_stores.first.ct %>
-            <% @top_stores.each do |s| %>
-              <div class="mb-3">
-                <div class="d-flex justify-content-between small mb-1">
-                  <strong><i class="bi bi-geo-alt text-success me-1"></i><%= s.name %></strong>
-                  <span class="text-muted"><%= s.ct %> check-ins</span>
-                </div>
-                <div class="progress" style="height: 8px;">
-                  <div class="progress-bar bg-success" style="width: <%= ((s.ct.to_f / max_ct) * 100).to_i %>%"></div>
-                </div>
-              </div>
-            <% end %>
-          <% else %>
-            <p class="text-muted small mb-0">Sem check-ins nos últimos 30 dias.</p>
-          <% end %>
-        </div>
-      </div>
-    </div>
-  </div>
-  <% end %>
-
-  <!-- ATIVIDADE RECENTE + SAÚDE DO SISTEMA -->
-  <div class="row g-3 mb-4">
-    <div class="col-lg-7">
-      <div class="card dash-section-card h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-clock-history text-info me-2"></i>Atividade recente</h5>
-            <%= link_to "Auditoria completa", admin_field_audit_logs_path, class: "small text-decoration-none" %>
-          </div>
-          <% if @recent_audit_logs.any? %>
-            <% @recent_audit_logs.each do |log| %>
-              <% color = case log.action
-                         when "created" then "primary"
-                         when "closed" then "secondary"
-                         when "forced_closed" then "warning"
-                         when "flagged_suspicious" then "danger"
-                         when "manual_request_approved" then "success"
-                         when "manual_request_rejected" then "dark"
-                         else "info"
-                         end %>
-              <div class="activity-item d-flex gap-3 align-items-start">
-                <span class="badge bg-<%= color %>-subtle text-<%= color %> flex-shrink-0"><%= log.action.humanize %></span>
-                <div class="flex-grow-1 small">
-                  <strong><%= log.admin_user&.name || "—" %></strong>
-                  <% if log.actor_admin_user && log.actor_admin_user != log.admin_user %>
-                    <span class="text-muted">por <%= log.actor_admin_user.name %></span>
-                  <% end %>
-                  <% if log.check_in %>
-                    <span class="text-muted">· <%= log.check_in.store.name %></span>
-                  <% end %>
-                </div>
-                <div class="text-muted small flex-shrink-0">
-                  <%= time_ago_in_words(log.created_at) %>
-                </div>
-              </div>
-            <% end %>
-          <% else %>
-            <p class="text-muted small mb-0">Nenhuma atividade em campo ainda.</p>
-          <% end %>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-5">
-      <div class="card dash-section-card h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-lightning-fill text-warning me-2"></i>Hoje</h5>
-            <small class="text-muted"><%= l(Date.current, format: :short) %></small>
-          </div>
-
-          <div class="row g-2 text-center mb-3">
-            <div class="col-6">
-              <div class="border rounded p-3">
-                <div class="fw-bold fs-3 text-primary"><%= @today_new_habitations %></div>
-                <small class="text-muted text-uppercase"><i class="bi bi-building me-1"></i>Imóveis atualizados</small>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="border rounded p-3">
-                <div class="fw-bold fs-3 text-success"><%= @leads_today %></div>
-                <small class="text-muted text-uppercase"><i class="bi bi-megaphone me-1"></i>Leads recebidos</small>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="border rounded p-3">
-                <div class="fw-bold fs-3 text-info"><%= @today_captacoes %></div>
-                <small class="text-muted text-uppercase"><i class="bi bi-journal-plus me-1"></i>Captações criadas</small>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="border rounded p-3">
-                <div class="fw-bold fs-3 text-warning"><%= @today_checkins_count %></div>
-                <small class="text-muted text-uppercase"><i class="bi bi-geo-fill me-1"></i>Check-ins</small>
-              </div>
-            </div>
-          </div>
-
-          <hr>
-
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="fw-bold mb-0 small text-uppercase text-muted"><i class="bi bi-kanban me-1"></i>Pendências</h6>
-          </div>
-          <div class="list-group list-group-flush small">
-            <% if @drafts_count > 0 %>
-              <%= link_to admin_captacoes_path(status: "draft"), class: "list-group-item list-group-item-action d-flex justify-content-between" do %>
-                <span><i class="bi bi-file-earmark-text text-warning me-2"></i>Captações em rascunho</span>
-                <span class="badge bg-warning text-dark"><%= @drafts_count %></span>
-              <% end %>
-            <% end %>
-            <% if @holding_leads > 0 %>
-              <%= link_to admin_leads_path(status: "represado"), class: "list-group-item list-group-item-action d-flex justify-content-between" do %>
-                <span><i class="bi bi-hourglass-split text-danger me-2"></i>Leads represados</span>
-                <span class="badge bg-danger"><%= @holding_leads %></span>
-              <% end %>
-            <% end %>
-            <% if @pending_manual_requests > 0 %>
-              <%= link_to admin_field_manual_checkin_requests_path, class: "list-group-item list-group-item-action d-flex justify-content-between" do %>
-                <span><i class="bi bi-hand-index-thumb text-warning me-2"></i>Pedidos manuais pendentes</span>
-                <span class="badge bg-warning text-dark"><%= @pending_manual_requests %></span>
-              <% end %>
-            <% end %>
-            <% if @sync_errors_count > 0 %>
-              <%= link_to admin_habitations_path(status: "error"), class: "list-group-item list-group-item-action d-flex justify-content-between" do %>
-                <span><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Imóveis com erro de sync</span>
-                <span class="badge bg-danger"><%= @sync_errors_count %></span>
-              <% end %>
-            <% end %>
-            <% if @drafts_count.zero? && @holding_leads.zero? && @pending_manual_requests.zero? && @sync_errors_count.zero? %>
-              <div class="text-center text-muted py-3">
-                <i class="bi bi-check-circle-fill text-success"></i>
-                Nenhuma pendência no momento.
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Últimos imóveis + últimas captações -->
-  <div class="row g-3 mb-4">
-    <div class="col-lg-7">
-      <div class="card dash-section-card h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-buildings text-primary me-2"></i>Últimos imóveis atualizados</h5>
-            <%= link_to "Ver todos", admin_habitations_path, class: "small text-decoration-none" %>
-          </div>
-          <% if @recent_habitations.any? %>
-            <div class="table-responsive">
-              <table class="table table-sm table-hover align-middle mb-0">
-                <thead class="small text-uppercase text-muted">
-                  <tr>
-                    <th>Código</th>
-                    <th>Endereço</th>
-                    <th>Tipo</th>
-                    <th class="text-end">Atualizado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @recent_habitations.each do |h| %>
-                    <tr>
-                      <td class="fw-bold small">
-                        <%= link_to h.codigo, admin_habitation_internal_path(h), class: "text-decoration-none" %>
-                      </td>
-                      <td class="small">
-                        <div><%= [h.endereco, h.numero].compact_blank.join(", ").presence || "—" %></div>
-                        <div class="text-muted"><%= [h.bairro, h.cidade].compact_blank.join(" · ") %></div>
-                      </td>
-                      <td class="small">
-                        <% if h.categoria.present? %>
-                          <span class="badge bg-light text-dark border"><%= h.categoria %></span>
-                        <% else %>
-                          <span class="text-muted">—</span>
-                        <% end %>
-                      </td>
-                      <td class="small text-muted text-end text-nowrap">
-                        <% if h.data_atualizacao_crm %>
-                          <%= time_ago_in_words(h.data_atualizacao_crm) %> atrás
-                        <% else %>
-                          —
-                        <% end %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="text-muted small mb-0">Nenhum imóvel atualizado recentemente.</p>
-          <% end %>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-5">
-      <div class="card dash-section-card h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0"><i class="bi bi-journal-plus text-success me-2"></i>Últimas captações</h5>
-            <%= link_to "Ver todas", admin_captacoes_path, class: "small text-decoration-none" %>
-          </div>
-          <% if @recent_captacoes.any? %>
-            <div class="list-group list-group-flush small">
-              <% @recent_captacoes.each do |c| %>
-                <%= link_to (c.completed? ? admin_captacao_path(c) : edit_admin_captacao_path(c)), class: "list-group-item list-group-item-action px-0" do %>
-                  <div class="d-flex justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                      <div class="fw-semibold text-dark"><%= c.display_title %></div>
-                      <div class="text-muted small">
-                        <i class="bi bi-person-circle me-1"></i><%= c.corretor.name %>
-                        · <%= c.property_kind.humanize %>
-                        · <%= c.modalidade.humanize %>
-                      </div>
-                    </div>
-                    <div class="text-end">
-                      <% if c.published_on_site? %>
-                        <span class="badge bg-success">Publicada</span>
-                      <% elsif c.completed? %>
-                        <span class="badge bg-primary">Finalizada</span>
-                      <% else %>
-                        <span class="badge bg-warning text-dark">Rascunho</span>
-                      <% end %>
-                      <div class="text-muted small mt-1"><%= time_ago_in_words(c.updated_at) %></div>
-                    </div>
-                  </div>
-                <% end %>
-              <% end %>
-            </div>
-          <% else %>
-            <p class="text-muted small mb-0">Nenhuma captação registrada ainda.</p>
-          <% end %>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Distribuição do catálogo por categoria -->
-  <% if @habitations_by_category.any? %>
-    <div class="row g-3 mb-4">
-      <div class="col-12">
-        <div class="card dash-section-card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="fw-bold mb-0"><i class="bi bi-bar-chart-fill text-info me-2"></i>Distribuição do catálogo por categoria</h5>
-              <%= link_to "Ver todos", admin_habitations_path, class: "small text-decoration-none" %>
-            </div>
-            <% max_cat = @habitations_by_category.map(&:last).max %>
-            <div class="row g-3">
-              <% @habitations_by_category.each do |cat, count| %>
-                <div class="col-md-4 col-sm-6">
-                  <div class="small fw-semibold mb-1 d-flex justify-content-between">
-                    <span><%= cat.presence || "Sem categoria" %></span>
-                    <span class="text-muted"><%= count %></span>
-                  </div>
-                  <div class="progress" style="height: 10px;">
-                    <div class="progress-bar bg-info" style="width: <%= ((count.to_f / max_cat) * 100).to_i %>%"></div>
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        </div>
-      </div>
+      <%= ax_button("Ativar campo", edit_admin_field_settings_path, size: :sm, icon: "toggles2") %>
     </div>
   <% end %>
 
-  <!-- VALOR CATÁLOGO -->
-  <div class="row g-3 mb-4">
-    <div class="col-md-6">
-      <div class="card dash-section-card text-white gradient-green h-100">
-        <div class="card-body">
-          <div class="small opacity-75 text-uppercase">Valor total do catálogo (venda)</div>
-          <h2 class="fw-bold mt-2 mb-0">
-            <%= number_to_currency(@total_sale_value, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
-          </h2>
-          <div class="opacity-75 small mt-2">
-            <i class="bi bi-tag-fill me-1"></i><%= @for_sale_count %> imóveis à venda
-          </div>
+  <div class="ax-dashboard-grid ax-dashboard-grid--monitoring">
+    <aside class="ax-dashboard-panel ax-dashboard-panel--today">
+      <div class="ax-dashboard-panel__header">
+        <div>
+          <span class="ax-dashboard-panel__eyebrow">Hoje</span>
+          <h2><%= l(Date.current, format: :short) %></h2>
         </div>
+        <%= ax_badge("#{pending_items.size} pend.", tone: pending_items.any? ? :amber : :green) %>
       </div>
-    </div>
 
-    <div class="col-md-6">
-      <div class="card dash-section-card text-white gradient-purple h-100">
-        <div class="card-body">
-          <div class="small opacity-75 text-uppercase">Ticket médio</div>
-          <h2 class="fw-bold mt-2 mb-0">
-            <%= number_to_currency(@avg_sale_value, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
-          </h2>
-          <div class="opacity-75 small mt-2">
-            <i class="bi bi-house-door me-1"></i>Média dos imóveis à venda
+      <div class="ax-dashboard-today-grid">
+        <% today_metrics.each do |value, icon, label| %>
+          <div class="ax-dashboard-today-cell">
+            <strong><%= number_with_delimiter(value) %></strong>
+            <span><i class="bi bi-<%= icon %>"></i> <%= label %></span>
           </div>
-        </div>
+        <% end %>
       </div>
-    </div>
+
+      <div class="ax-dashboard-list ax-dashboard-list--compact">
+        <div class="ax-dashboard-list__title"><i class="bi bi-kanban"></i> Pendências</div>
+        <% if pending_items.any? %>
+          <% pending_items.each do |path, icon, color, label, count| %>
+            <% pending_link_content = capture do %>
+              <span><i class="bi bi-<%= icon %>"></i> <%= label %></span>
+              <span class="ax-badge ax-badge--<%= color == 'red' ? 'red' : 'amber' %>"><%= count %></span>
+            <% end %>
+            <%= link_to pending_link_content, path, class: "ax-dashboard-list__row ax-dashboard-list__row--link" %>
+          <% end %>
+        <% else %>
+          <div class="ax-dashboard-empty-row"><i class="bi bi-check-circle-fill"></i> Nenhuma pendência no momento.</div>
+        <% end %>
+      </div>
+    </aside>
+
+    <%= turbo_frame_tag "admin_dashboard_rankings", src: admin_dashboard_section_path("rankings"), loading: "lazy" do %>
+      <div class="ax-dashboard-grid ax-dashboard-grid--rankings">
+        <%= render "admin/dashboard/sections/loading_panel", title: "Top corretores", eyebrow: "Performance", rows: 5, compact: true %>
+        <%= render "admin/dashboard/sections/loading_panel", title: "Top lojas", eyebrow: "Campo", rows: 5, compact: true %>
+      </div>
+    <% end %>
   </div>
-</div>
 
-<!-- Chart.js via CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
-  // Guarda referências das instâncias na janela para destruir antes de recriar
-  // em navegação Turbo (senão cada visita duplica listeners de resize e o
-  // chart cresce sem parar).
-  window.__dashCharts = window.__dashCharts || {};
+  <%= turbo_frame_tag "admin_dashboard_operations", src: admin_dashboard_section_path("operations"), loading: "lazy" do %>
+    <div class="ax-dashboard-grid ax-dashboard-grid--operations">
+      <%= render "admin/dashboard/sections/loading_panel", title: "Atividade recente", eyebrow: "Auditoria", rows: 6 %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Últimos imóveis atualizados", eyebrow: "Catálogo", table: true, rows: 6 %>
+    </div>
+  <% end %>
 
-  function renderDashCharts() {
-    if (!window.Chart) return;
-
-    // === Leads por dia ===
-    const leadsPerDay = <%= raw @leads_per_day.to_json %>;
-    const labels = leadsPerDay.map(([d, _]) => {
-      const date = new Date(d);
-      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth()+1).padStart(2, '0')}`;
-    });
-    const values = leadsPerDay.map(([_, c]) => c);
-
-    const ctx = document.getElementById('leadsChart');
-    if (ctx) {
-      if (window.__dashCharts.leads) { window.__dashCharts.leads.destroy(); }
-      window.__dashCharts.leads = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            label: 'Leads',
-            data: values,
-            borderColor: '#0d6efd',
-            backgroundColor: 'rgba(13,110,253,0.1)',
-            borderWidth: 2,
-            tension: 0.35,
-            fill: true,
-            pointBackgroundColor: '#0d6efd',
-            pointRadius: 3,
-            pointHoverRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          resizeDelay: 150,
-          animation: { duration: 300 },
-          plugins: {
-            legend: { display: false },
-            tooltip: { mode: 'index', intersect: false }
-          },
-          scales: {
-            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: 'rgba(0,0,0,0.04)' } },
-            x: { grid: { display: false } }
-          }
-        }
-      });
-    }
-
-    // === Leads por status ===
-    const leadsByStatus = <%= raw @leads_by_status.to_json %>;
-    const statusLabels = Object.keys(leadsByStatus).map(s => (s || 'sem status').toString().replace(/_/g, ' '));
-    const statusValues = Object.values(leadsByStatus);
-    const palette = ['#0d6efd', '#198754', '#ffc107', '#fd7e14', '#6f42c1', '#dc3545', '#6c757d', '#20c997'];
-
-    const ctx2 = document.getElementById('leadsStatusChart');
-    if (ctx2) {
-      if (window.__dashCharts.status) { window.__dashCharts.status.destroy(); }
-      window.__dashCharts.status = new Chart(ctx2, {
-        type: 'doughnut',
-        data: {
-          labels: statusLabels,
-          datasets: [{
-            data: statusValues,
-            backgroundColor: palette.slice(0, statusLabels.length),
-            borderWidth: 2,
-            borderColor: '#fff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          resizeDelay: 150,
-          animation: { duration: 300 },
-          cutout: '60%',
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: { boxWidth: 12, padding: 12, font: { size: 11 } }
-            }
-          }
-        }
-      });
-    }
-  }
-
-  function destroyDashCharts() {
-    Object.values(window.__dashCharts).forEach(c => { try { c.destroy(); } catch (e) {} });
-    window.__dashCharts = {};
-  }
-
-  document.addEventListener('turbo:load', renderDashCharts);
-  document.addEventListener('turbo:before-cache', destroyDashCharts);
-  // Fallback caso Turbo não esteja ativo na rota:
-  if (document.readyState === 'complete') { renderDashCharts(); }
-  else { window.addEventListener('load', renderDashCharts, { once: true }); }
-</script>
+  <%= turbo_frame_tag "admin_dashboard_support", src: admin_dashboard_section_path("support"), loading: "lazy" do %>
+    <div class="ax-dashboard-grid ax-dashboard-grid--support">
+      <%= render "admin/dashboard/sections/loading_panel", title: "Últimas captações", eyebrow: "Captação", rows: 5 %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Distribuição por categoria", eyebrow: "Mix", rows: 6 %>
+    </div>
+  <% end %>
+</section>

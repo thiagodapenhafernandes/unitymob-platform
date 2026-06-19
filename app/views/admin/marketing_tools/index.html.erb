@@ -1,62 +1,44 @@
-<div class="container-fluid py-3">
-  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div>
-      <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-link-45deg me-2 text-primary"></i>UTM Builder</h1>
-      <p class="text-muted small mb-0">Monte links rastreáveis para Google, Meta, Instagram, WhatsApp, rodapé e home.</p>
-    </div>
-    <%= link_to new_admin_marketing_campaign_path, class: "btn btn-sm btn-primary" do %>
-      <i class="bi bi-plus-circle me-1"></i>Nova campanha
-    <% end %>
+<%# UTM Builder — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
+<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
+  <div>
+    <h1 class="ax-page-title">UTM Builder</h1>
+    <p class="ax-page-subtitle">Monte links rastreáveis para Google, Meta, Instagram, WhatsApp, rodapé e home.</p>
   </div>
+  <%= link_to new_admin_marketing_campaign_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+    <i class="bi bi-plus-lg ax-ico"></i><span>Nova campanha</span>
+  <% end %>
+</div>
 
-  <div class="row g-3">
-    <div class="col-xl-5">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <h2 class="h5 fw-bold mb-3">Gerar link rápido</h2>
-          <%= form_with url: admin_marketing_tools_path, method: :get, local: true do |f| %>
-            <div class="mb-3">
-              <%= label_tag :target_url, "URL alvo", class: "form-label fw-semibold" %>
-              <%= text_field_tag :target_url, @campaign.target_url, class: "form-control", placeholder: "/imoveis/frente-mar" %>
-            </div>
-            <div class="row g-2">
-              <div class="col-md-6">
-                <%= label_tag :utm_source, "Origem", class: "form-label small fw-semibold" %>
-                <%= text_field_tag :utm_source, @campaign.utm_source, class: "form-control", placeholder: "instagram" %>
-              </div>
-              <div class="col-md-6">
-                <%= label_tag :utm_medium, "Mídia", class: "form-label small fw-semibold" %>
-                <%= text_field_tag :utm_medium, @campaign.utm_medium, class: "form-control", placeholder: "social" %>
-              </div>
-              <div class="col-12">
-                <%= label_tag :utm_campaign, "Campanha", class: "form-label small fw-semibold" %>
-                <%= text_field_tag :utm_campaign, @campaign.utm_campaign, class: "form-control", placeholder: "frente-mar-maio" %>
-              </div>
-              <div class="col-md-6">
-                <%= label_tag :utm_term, "Termo", class: "form-label small fw-semibold" %>
-                <%= text_field_tag :utm_term, @campaign.utm_term, class: "form-control" %>
-              </div>
-              <div class="col-md-6">
-                <%= label_tag :utm_content, "Conteúdo", class: "form-label small fw-semibold" %>
-                <%= text_field_tag :utm_content, @campaign.utm_content, class: "form-control" %>
-              </div>
-            </div>
-            <div class="mt-3 text-end">
-              <%= f.submit "Gerar", class: "btn btn-primary" %>
-            </div>
-          <% end %>
-        </div>
+<div class="tw-grid tw-grid-cols-1 xl:tw-grid-cols-12 tw-gap-4">
+  <div class="xl:tw-col-span-5">
+    <div class="ax-card">
+      <div class="ax-card__header"><span class="ax-card__title">Gerar link rápido</span></div>
+      <div class="ax-card__body">
+        <%= form_with url: admin_marketing_tools_path, method: :get, local: true do |f| %>
+          <div class="tw-mb-3">
+            <%= label_tag :target_url, "URL alvo", class: "ax-label" %>
+            <%= text_field_tag :target_url, @campaign.target_url, class: "ax-input", placeholder: "/imoveis/frente-mar" %>
+          </div>
+          <div class="tw-grid tw-grid-cols-2 tw-gap-2">
+            <div><%= label_tag :utm_source, "Origem", class: "ax-label" %><%= text_field_tag :utm_source, @campaign.utm_source, class: "ax-input", placeholder: "instagram" %></div>
+            <div><%= label_tag :utm_medium, "Mídia", class: "ax-label" %><%= text_field_tag :utm_medium, @campaign.utm_medium, class: "ax-input", placeholder: "social" %></div>
+            <div class="tw-col-span-2"><%= label_tag :utm_campaign, "Campanha", class: "ax-label" %><%= text_field_tag :utm_campaign, @campaign.utm_campaign, class: "ax-input", placeholder: "frente-mar-maio" %></div>
+            <div><%= label_tag :utm_term, "Termo", class: "ax-label" %><%= text_field_tag :utm_term, @campaign.utm_term, class: "ax-input" %></div>
+            <div><%= label_tag :utm_content, "Conteúdo", class: "ax-label" %><%= text_field_tag :utm_content, @campaign.utm_content, class: "ax-input" %></div>
+          </div>
+          <div class="tw-mt-3 tw-text-right"><%= f.submit "Gerar", class: "ax-btn ax-btn--primary" %></div>
+        <% end %>
       </div>
     </div>
+  </div>
 
-    <div class="col-xl-7">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <h2 class="h5 fw-bold mb-3">Link gerado</h2>
-          <input type="text" class="form-control form-control-lg mb-3" readonly value="<%= @campaign.generated_url(request.base_url) %>">
-          <div class="alert alert-info small mb-0">
-            Use este link nos anúncios e publicações. Quando ele gerar clique, lead ou agendamento, o dashboard tenta associar automaticamente pelo parâmetro <code>utm_campaign</code>.
-          </div>
+  <div class="xl:tw-col-span-7">
+    <div class="ax-card">
+      <div class="ax-card__header"><span class="ax-card__title">Link gerado</span></div>
+      <div class="ax-card__body">
+        <input type="text" class="ax-input tw-mb-3" readonly value="<%= @campaign.generated_url(request.base_url) %>">
+        <div class="tw-rounded tw-bg-surface-soft tw-border tw-border-line tw-p-3 tw-text-2xs tw-text-ink-muted">
+          Use este link nos anúncios e publicações. Quando ele gerar clique, lead ou agendamento, o dashboard tenta associar automaticamente pelo parâmetro <code>utm_campaign</code>.
         </div>
       </div>
     </div>

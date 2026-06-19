@@ -1,117 +1,421 @@
+<%
+  paginated_report = %w[property_list property_list_with_m2 property_list_by_broker].include?(@report_type)
+  full_print_mode = @full_print_mode != false
+  landscape_report = %w[property_list property_list_with_m2 property_list_by_broker sale_rent_total_values property_count_by_broker].include?(@report_type)
+  brand_name = @layout_setting&.site_name.presence || "Salute Imóveis"
+  generated_label = l(@report_generated_at, format: :short)
+  total_entries_label = if @report_type == "sale_rent_total_values"
+                          @summary_totals[:units]
+                        elsif @report_type == "property_count_by_broker"
+                          @broker_rows.values.sum
+                        else
+                          @report_total_entries || @habitations&.size || 0
+                        end
+%>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <title><%= @report_title %></title>
   <style>
-    @page { size: A4 portrait; margin: 10mm; }
-    body { margin: 0; background: #e5e7eb; font-family: Arial, Helvetica, sans-serif; color: #111; }
-    .toolbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: #f5f5f5; border-bottom: 1px solid #d3d3d3; }
-    .toolbar h1 { margin: 0; font-size: 34px; font-weight: 700; }
-    .toolbar .meta { font-size: 18px; color: #444; }
-    .pager { display: flex; align-items: center; gap: 10px; }
-    .pager a, .pager span { text-decoration: none; color: #111; border: 1px solid #c8c8c8; background: white; padding: 6px 10px; border-radius: 4px; font-size: 13px; }
-    .pager .disabled { opacity: .4; pointer-events: none; }
-    .pager .page-label { border: none; background: transparent; padding: 0; }
-    .print-btn { border: 1px solid #c8c8c8; background: #fff; color: #111; border-radius: 4px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
-    .print-btn:hover { background: #f0f0f0; }
-    .notice { margin: 14px auto; max-width: 1100px; background: #d9f1fb; border: 1px solid #9ecfe6; color: #2c5870; padding: 10px 14px; font-size: 14px; }
+    @page {
+      size: A4 <%= landscape_report ? "landscape" : "portrait" %>;
+      margin: 0;
+    }
 
-    .paper-wrap { max-width: 1100px; margin: 0 auto 20px; }
-    .paper { background: white; border: 1px solid #bdbdbd; padding: 22px 24px; }
-    .paper + .paper { margin-top: 12px; }
-    .page-break { page-break-after: always; break-after: page; }
-    .report-header { display: flex; justify-content: space-between; margin-bottom: 14px; }
-    .report-header .title { font-size: 36px; font-weight: 700; margin: 0; }
-    .report-header .brand { font-size: 16px; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
-    .report-header .sub { font-size: 12px; color: #555; }
+    * {
+      box-sizing: border-box;
+    }
 
-    table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
-    thead th { text-align: left; font-weight: 700; border-bottom: 1px solid #444; padding: 4px 3px; line-height: 1.2; }
-    tbody td { border-bottom: 1px solid #ddd; padding: 3px; vertical-align: top; line-height: 1.2; }
-    tfoot td { border-top: 1px solid #444; padding: 6px 4px; font-weight: 700; background: #f6f6f6; }
+    html {
+      background: #d9dee6;
+    }
 
-    .right { text-align: right; }
-    .center { text-align: center; }
-    .broker-group { margin-bottom: 16px; }
-    .broker-name { font-weight: 700; margin: 8px 0 4px; }
-    .footer-url { margin-top: 16px; font-size: 12px; color: #666; text-align: center; }
+    body {
+      margin: 0;
+      background: #d9dee6;
+      color: #111827;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .print-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 10px 18px;
+      border-bottom: 1px solid #cbd5e1;
+      background: #f8fafc;
+      box-shadow: 0 1px 3px rgb(15 23 42 / .08);
+    }
+
+    .print-toolbar__title {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      margin: 0;
+      color: #111827;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .print-toolbar__title span {
+      min-width: 0;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .print-toolbar__meta {
+      margin-top: 2px;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .print-toolbar__actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .print-toolbar__hint {
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .print-btn {
+      min-height: 30px;
+      padding: 0 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      color: #334155;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .print-btn:hover {
+      border-color: #94a3b8;
+      background: #f1f5f9;
+    }
+
+    .notice {
+      max-width: <%= landscape_report ? "278mm" : "190mm" %>;
+      margin: 12px auto 0;
+      padding: 8px 10px;
+      border: 1px solid #b6d6ea;
+      border-radius: 4px;
+      background: #e8f6fd;
+      color: #2c5870;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .paper-wrap {
+      max-width: <%= landscape_report ? "278mm" : "190mm" %>;
+      margin: 14px auto 22px;
+    }
+
+    .paper {
+      min-height: <%= landscape_report ? "190mm" : "277mm" %>;
+      padding: <%= landscape_report ? "8mm 9mm" : "9mm 10mm" %>;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      box-shadow: 0 12px 28px rgb(15 23 42 / .16);
+    }
+
+    .paper + .paper {
+      margin-top: 12px;
+    }
+
+    .page-break {
+      break-after: page;
+      page-break-after: always;
+    }
+
+    .report-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 7px;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid #111827;
+    }
+
+    .report-kicker {
+      margin: 0 0 2px;
+      color: #64748b;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .report-title {
+      margin: 0;
+      color: #030712;
+      font-size: <%= landscape_report ? "22px" : "24px" %>;
+      font-weight: 900;
+      letter-spacing: -.01em;
+      line-height: 1.05;
+      text-transform: uppercase;
+    }
+
+    .report-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 5px;
+      color: #475569;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .report-meta span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 17px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #eef2f7;
+      white-space: nowrap;
+    }
+
+    .report-brand {
+      min-width: 118px;
+      text-align: right;
+    }
+
+    .report-brand strong {
+      display: block;
+      color: #111827;
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.05;
+      text-transform: uppercase;
+    }
+
+    .report-brand span {
+      display: block;
+      margin-top: 2px;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: <%= landscape_report ? "9.8px" : "10.4px" %>;
+    }
+
+    .report-table thead {
+      display: table-header-group;
+    }
+
+    .report-table th {
+      padding: 3px 4px;
+      border-bottom: 1.2px solid #111827;
+      color: #1f2937;
+      font-size: 9.4px;
+      font-weight: 900;
+      line-height: 1.1;
+      text-align: left;
+      vertical-align: bottom;
+      white-space: normal;
+    }
+
+    .report-table td {
+      padding: 3px 4px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #111827;
+      line-height: 1.16;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    .report-table tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .report-table tfoot td {
+      border-top: 1.2px solid #111827;
+      background: #f8fafc;
+      font-weight: 900;
+    }
+
+    .right {
+      text-align: right !important;
+    }
+
+    .center {
+      text-align: center !important;
+    }
+
+    .nowrap {
+      white-space: nowrap;
+    }
+
+    .money {
+      white-space: nowrap;
+    }
+
+    .broker-group + .broker-group {
+      margin-top: 8px;
+    }
+
+    .broker-name {
+      margin: 0 0 4px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      background: #eef2f7;
+      color: #334155;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .report-table--property-list col.ref { width: 7%; }
+    .report-table--property-list col.category { width: 10%; }
+    .report-table--property-list col.address { width: 18%; }
+    .report-table--property-list col.district { width: 11%; }
+    .report-table--property-list col.area { width: 7.5%; }
+    .report-table--property-list col.qty { width: 5.5%; }
+    .report-table--property-list col.money { width: 10.5%; }
+
+    .report-table--m2 col.ref { width: 7%; }
+    .report-table--m2 col.category { width: 11%; }
+    .report-table--m2 col.location { width: 13%; }
+    .report-table--m2 col.area { width: 8%; }
+    .report-table--m2 col.money { width: 11%; }
+
+    .report-table--broker col.ref { width: 6%; }
+    .report-table--broker col.project { width: 20%; }
+    .report-table--broker col.owner { width: 18%; }
+    .report-table--broker col.contact { width: 14%; }
+    .report-table--broker col.area { width: 8%; }
+    .report-table--broker col.money { width: 10%; }
 
     @media print {
-      body { background: white; }
-      .toolbar, .notice { display: none; }
-      .paper-wrap { max-width: 100%; margin: 0; }
-      .paper { border: none; padding: 0; }
-      .paper, .broker-group, table, tr, td, th { break-inside: avoid; page-break-inside: avoid; }
-      .page-break { display: block; height: 0; page-break-after: always; break-after: page; }
-      .footer-url { display: none; }
+      html,
+      body {
+        margin: 0 !important;
+        background: #fff !important;
+      }
+
+      .screen-only {
+        display: none !important;
+      }
+
+      .paper-wrap {
+        max-width: none;
+        margin: 0;
+      }
+
+      .paper {
+        min-height: auto;
+        margin: 0;
+        padding: <%= landscape_report ? "6mm 7mm" : "7mm 8mm" %>;
+        border: 0;
+        box-shadow: none;
+      }
+
+      .paper + .paper {
+        margin-top: 0;
+      }
+
+      .report-header {
+        margin-bottom: 5px;
+      }
+
+      .report-table {
+        page-break-inside: auto;
+        break-inside: auto;
+      }
+
+      .report-table tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      a[href]::after {
+        content: "" !important;
+      }
     }
   </style>
 </head>
 <body>
-  <% paginated_report = %w[property_list property_list_with_m2 property_list_by_broker].include?(@report_type) %>
-  <% full_print_mode = @full_print_mode != false %>
-
-  <div class="toolbar">
+  <div class="print-toolbar screen-only">
     <div>
-      <h1>Imprimir: <span class="meta"><%= @report_title %></span></h1>
-      <div class="meta">Gerado em <%= l(@report_generated_at, format: :short) %></div>
+      <h1 class="print-toolbar__title">Imprimir <span><%= @report_title %></span></h1>
+      <div class="print-toolbar__meta">
+        Gerado em <%= generated_label %> · <%= number_with_delimiter(total_entries_label) %> registro(s)
+      </div>
     </div>
 
-    <div class="pager">
-      <button type="button" class="print-btn" onclick="window.print()">
-        🖨 Imprimir
-      </button>
+    <div class="print-toolbar__actions">
+      <span class="print-toolbar__hint">No Chrome, desative "Cabeçalhos e rodapés" se a URL aparecer no rodapé.</span>
+      <button type="button" class="print-btn" onclick="window.print()">Imprimir</button>
     </div>
 
     <% if paginated_report && !full_print_mode %>
-      <div class="pager">
+      <div class="print-toolbar__actions">
         <% previous_page = @report_page.to_i - 1 %>
         <% next_page = @report_page.to_i + 1 %>
         <% base_params = request.query_parameters.except("page") %>
 
         <% if previous_page >= 1 %>
-          <%= link_to "←", url_for(params: base_params.merge(page: previous_page)), class: "" %>
-        <% else %>
-          <span class="disabled">←</span>
+          <%= link_to "Anterior", url_for(params: base_params.merge(page: previous_page)), class: "print-btn" %>
         <% end %>
 
-        <span class="page-label"><%= @report_page %> de <%= @report_total_pages %></span>
+        <span class="print-toolbar__meta"><%= @report_page %> / <%= @report_total_pages %></span>
 
         <% if next_page <= @report_total_pages.to_i %>
-          <%= link_to "→", url_for(params: base_params.merge(page: next_page)), class: "" %>
-        <% else %>
-          <span class="disabled">→</span>
+          <%= link_to "Próxima", url_for(params: base_params.merge(page: next_page)), class: "print-btn" %>
         <% end %>
       </div>
     <% end %>
   </div>
 
   <% if @report_limited_to_max_pages %>
-    <div class="notice">
+    <div class="notice screen-only">
       Exibição limitada a <strong><%= Admin::HabitationsController::REPORT_MAX_PAGES %> páginas</strong>.
       Para listagem completa, aplique filtros adicionais ou exporte os dados.
     </div>
   <% end %>
 
   <div class="paper-wrap">
-    <div class="paper">
-      <div class="report-header">
-        <div>
-          <p class="title"><%= @report_title.upcase %></p>
-        </div>
-        <div>
-          <div class="brand"><%= (@layout_setting&.site_name.presence || "Salute Imoveis").upcase %></div>
-          <div class="sub">Página <%= @report_page || 1 %></div>
-        </div>
-      </div>
-
-      <% if @report_type == "sale_rent_total_values" %>
-        <table>
+    <% if @report_type == "sale_rent_total_values" %>
+      <section class="paper">
+        <%= render "admin/habitations/print_report_header",
+                   brand_name: brand_name,
+                   generated_label: generated_label,
+                   records_count: @summary_totals[:units],
+                   report_title: @report_title,
+                   page_number: 1,
+                   total_pages: 1 %>
+        <table class="report-table">
           <thead>
             <tr>
               <th>Tipo</th>
-              <th class="center">Unid</th>
+              <th class="center nowrap">Unid</th>
               <th class="right">Venda (R$)</th>
               <th class="right">Aluguel (R$)</th>
             </tr>
@@ -121,8 +425,8 @@
               <tr>
                 <td><%= row[:category] %></td>
                 <td class="center"><%= row[:total_units] %></td>
-                <td class="right"><%= number_to_currency(row[:sale_total], unit: "", separator: ",", delimiter: ".") %></td>
-                <td class="right"><%= number_to_currency(row[:rent_total], unit: "", separator: ",", delimiter: ".") %></td>
+                <td class="right money"><%= number_to_currency(row[:sale_total], unit: "", separator: ",", delimiter: ".") %></td>
+                <td class="right money"><%= number_to_currency(row[:rent_total], unit: "", separator: ",", delimiter: ".") %></td>
               </tr>
             <% end %>
           </tbody>
@@ -130,27 +434,42 @@
             <tr>
               <td>Total de imóveis</td>
               <td class="center"><%= @summary_totals[:units] %></td>
-              <td class="right"><%= number_to_currency(@summary_totals[:sale_total], unit: "", separator: ",", delimiter: ".") %></td>
-              <td class="right"><%= number_to_currency(@summary_totals[:rent_total], unit: "", separator: ",", delimiter: ".") %></td>
+              <td class="right money"><%= number_to_currency(@summary_totals[:sale_total], unit: "", separator: ",", delimiter: ".") %></td>
+              <td class="right money"><%= number_to_currency(@summary_totals[:rent_total], unit: "", separator: ",", delimiter: ".") %></td>
             </tr>
           </tfoot>
         </table>
+      </section>
 
-      <% elsif @report_type == "property_list" %>
-        <% pages = @report_pages_data.presence || [@habitations] %>
-        <% pages.each_with_index do |records, page_index| %>
-          <table>
+    <% elsif @report_type == "property_list" %>
+      <% pages = @report_pages_data.presence || [@habitations] %>
+      <% pages.each_with_index do |records, page_index| %>
+        <% page_number = full_print_mode ? page_index + 1 : @report_page %>
+        <section class="paper <%= 'page-break' if page_index < pages.size - 1 %>">
+          <%= render "admin/habitations/print_report_header",
+                     brand_name: brand_name,
+                     generated_label: generated_label,
+                     records_count: records.size,
+                     report_title: @report_title,
+                     page_number: page_number,
+                     total_pages: @report_total_pages %>
+          <table class="report-table report-table--property-list">
+            <colgroup>
+              <col class="ref"><col class="category"><col class="address"><col class="district">
+              <col class="area"><col class="area"><col class="qty"><col class="qty"><col class="qty">
+              <col class="money"><col class="money">
+            </colgroup>
             <thead>
               <tr>
-                <th>Referência</th>
+                <th>Ref.</th>
                 <th>Categoria</th>
                 <th>Endereço</th>
                 <th>Bairro</th>
                 <th class="right">Área total</th>
-                <th class="right">Área Priv.</th>
-                <th class="center">Dorm(s)</th>
-                <th class="center">Suíte(s)</th>
-                <th class="center">Vaga(s)</th>
+                <th class="right">Área priv.</th>
+                <th class="center">Dorm.</th>
+                <th class="center">Suíte</th>
+                <th class="center">Vaga</th>
                 <th class="right">Venda</th>
                 <th class="right">Aluguel</th>
               </tr>
@@ -158,40 +477,53 @@
             <tbody>
               <% records.each do |habitation| %>
                 <tr>
-                  <td><%= habitation.codigo %></td>
+                  <td class="nowrap"><%= habitation.codigo %></td>
                   <td><%= habitation.categoria %></td>
                   <td><%= [habitation.logradouro || habitation.endereco, habitation.numero].compact.join(" nº ") %></td>
                   <td><%= habitation.bairro %></td>
-                  <td class="right"><%= number_with_precision(habitation.area_total_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
-                  <td class="right"><%= number_with_precision(habitation.area_privativa_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
+                  <td class="right nowrap"><%= number_with_precision(habitation.area_total_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
+                  <td class="right nowrap"><%= number_with_precision(habitation.area_privativa_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
                   <td class="center"><%= habitation.dormitorios_qtd.to_i %></td>
                   <td class="center"><%= habitation.suites_qtd.to_i %></td>
                   <td class="center"><%= habitation.vagas_qtd.to_i %></td>
-                  <td class="right"><%= habitation.valor_venda_formatted %></td>
-                  <td class="right"><%= habitation.valor_locacao_formatted %></td>
+                  <td class="right money"><%= habitation.valor_venda_formatted %></td>
+                  <td class="right money"><%= habitation.valor_locacao_formatted %></td>
                 </tr>
               <% end %>
             </tbody>
           </table>
-          <% if page_index < pages.size - 1 %><div class="page-break"></div><% end %>
-        <% end %>
+        </section>
+      <% end %>
 
-      <% elsif @report_type == "property_list_with_m2" %>
-        <% pages = @report_pages_data.presence || [@habitations] %>
-        <% pages.each_with_index do |records, page_index| %>
-          <table>
+    <% elsif @report_type == "property_list_with_m2" %>
+      <% pages = @report_pages_data.presence || [@habitations] %>
+      <% pages.each_with_index do |records, page_index| %>
+        <% page_number = full_print_mode ? page_index + 1 : @report_page %>
+        <section class="paper <%= 'page-break' if page_index < pages.size - 1 %>">
+          <%= render "admin/habitations/print_report_header",
+                     brand_name: brand_name,
+                     generated_label: generated_label,
+                     records_count: records.size,
+                     report_title: @report_title,
+                     page_number: page_number,
+                     total_pages: @report_total_pages %>
+          <table class="report-table report-table--m2">
+            <colgroup>
+              <col class="ref"><col class="category"><col class="location"><col class="location">
+              <col class="area"><col class="area"><col class="money"><col class="money"><col class="money"><col class="money">
+            </colgroup>
             <thead>
               <tr>
-                <th>Referência</th>
+                <th>Ref.</th>
                 <th>Categoria</th>
                 <th>Cidade</th>
                 <th>Bairro</th>
                 <th class="right">Área total</th>
-                <th class="right">Área Priv.</th>
+                <th class="right">Área priv.</th>
                 <th class="right">Venda</th>
-                <th class="right">R$ m² Venda</th>
+                <th class="right">R$ m² venda</th>
                 <th class="right">Aluguel</th>
-                <th class="right">R$ m² Aluguel</th>
+                <th class="right">R$ m² aluguel</th>
               </tr>
             </thead>
             <tbody>
@@ -200,39 +532,52 @@
                 <% sale_m2 = area_for_calc.positive? ? (habitation.valor_venda_cents.to_i / 100.0) / area_for_calc : 0 %>
                 <% rent_m2 = area_for_calc.positive? ? (habitation.valor_locacao_cents.to_i / 100.0) / area_for_calc : 0 %>
                 <tr>
-                  <td><%= habitation.codigo %></td>
+                  <td class="nowrap"><%= habitation.codigo %></td>
                   <td><%= habitation.categoria %></td>
                   <td><%= habitation.cidade %></td>
                   <td><%= habitation.bairro %></td>
-                  <td class="right"><%= number_with_precision(habitation.area_total_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
-                  <td class="right"><%= number_with_precision(habitation.area_privativa_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
-                  <td class="right"><%= habitation.valor_venda_formatted %></td>
-                  <td class="right"><%= number_to_currency(sale_m2, unit: "", separator: ",", delimiter: ".") %></td>
-                  <td class="right"><%= habitation.valor_locacao_formatted %></td>
-                  <td class="right"><%= number_to_currency(rent_m2, unit: "", separator: ",", delimiter: ".") %></td>
+                  <td class="right nowrap"><%= number_with_precision(habitation.area_total_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
+                  <td class="right nowrap"><%= number_with_precision(habitation.area_privativa_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
+                  <td class="right money"><%= habitation.valor_venda_formatted %></td>
+                  <td class="right money"><%= number_to_currency(sale_m2, unit: "", separator: ",", delimiter: ".") %></td>
+                  <td class="right money"><%= habitation.valor_locacao_formatted %></td>
+                  <td class="right money"><%= number_to_currency(rent_m2, unit: "", separator: ",", delimiter: ".") %></td>
                 </tr>
               <% end %>
             </tbody>
           </table>
-          <% if page_index < pages.size - 1 %><div class="page-break"></div><% end %>
-        <% end %>
+        </section>
+      <% end %>
 
-      <% elsif @report_type == "property_list_by_broker" %>
-        <% pages = @report_pages_data.presence || [@habitations] %>
-        <% pages.each_with_index do |records, page_index| %>
+    <% elsif @report_type == "property_list_by_broker" %>
+      <% pages = @report_pages_data.presence || [@habitations] %>
+      <% pages.each_with_index do |records, page_index| %>
+        <% page_number = full_print_mode ? page_index + 1 : @report_page %>
+        <section class="paper <%= 'page-break' if page_index < pages.size - 1 %>">
+          <%= render "admin/habitations/print_report_header",
+                     brand_name: brand_name,
+                     generated_label: generated_label,
+                     records_count: records.size,
+                     report_title: @report_title,
+                     page_number: page_number,
+                     total_pages: @report_total_pages %>
           <% grouped = records.group_by { |h| h.corretor_nome.to_s.strip.presence || "Sem corretor" } %>
           <% grouped.each do |broker_name, broker_habitations| %>
             <div class="broker-group">
-              <div class="broker-name">Nome: <%= broker_name %></div>
-              <table>
+              <div class="broker-name">Corretor: <%= broker_name %></div>
+              <table class="report-table report-table--broker">
+                <colgroup>
+                  <col class="ref"><col class="project"><col class="owner"><col class="contact"><col class="contact">
+                  <col class="area"><col class="money"><col class="money">
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Ref.</th>
                     <th>Empreendimento</th>
-                    <th>Nome Proprietário</th>
+                    <th>Proprietário</th>
                     <th>Telefone</th>
                     <th>E-mail</th>
-                    <th class="right">Área Priv.</th>
+                    <th class="right">Área priv.</th>
                     <th class="right">Venda</th>
                     <th class="right">Aluguel</th>
                   </tr>
@@ -241,25 +586,33 @@
                   <% broker_habitations.each do |habitation| %>
                     <% proprietor_visible = can_view_proprietor_data?(habitation) %>
                     <tr>
-                      <td><%= habitation.codigo %></td>
+                      <td class="nowrap"><%= habitation.codigo %></td>
                       <td><%= habitation.nome_empreendimento.presence || habitation.display_title %></td>
                       <td><%= proprietor_visible ? (habitation.proprietor&.name.presence || habitation.proprietario) : "Captador: #{habitation.admin_user&.name || habitation.corretor_nome}" %></td>
                       <td><%= proprietor_visible ? (habitation.proprietor&.mobile_phone.presence || habitation.proprietor&.business_phone.presence || habitation.proprietor&.residential_phone.presence || habitation.proprietario_celular) : "Restrito" %></td>
                       <td><%= proprietor_visible ? (habitation.proprietor&.email.presence || habitation.proprietario_email) : "Restrito" %></td>
-                      <td class="right"><%= number_with_precision(habitation.area_privativa_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
-                      <td class="right"><%= habitation.valor_venda_formatted %></td>
-                      <td class="right"><%= habitation.valor_locacao_formatted %></td>
+                      <td class="right nowrap"><%= number_with_precision(habitation.area_privativa_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
+                      <td class="right money"><%= habitation.valor_venda_formatted %></td>
+                      <td class="right money"><%= habitation.valor_locacao_formatted %></td>
                     </tr>
                   <% end %>
                 </tbody>
               </table>
             </div>
           <% end %>
-          <% if page_index < pages.size - 1 %><div class="page-break"></div><% end %>
-        <% end %>
+        </section>
+      <% end %>
 
-      <% elsif @report_type == "property_count_by_broker" %>
-        <table>
+    <% elsif @report_type == "property_count_by_broker" %>
+      <section class="paper">
+        <%= render "admin/habitations/print_report_header",
+                   brand_name: brand_name,
+                   generated_label: generated_label,
+                   records_count: @broker_rows.values.sum,
+                   report_title: @report_title,
+                   page_number: 1,
+                   total_pages: 1 %>
+        <table class="report-table">
           <thead>
             <tr>
               <th>Nome</th>
@@ -276,16 +629,26 @@
           </tbody>
           <tfoot>
             <tr>
-              <td>Total geral de imóveis:</td>
+              <td>Total geral de imóveis</td>
               <td class="right"><%= @broker_rows.values.sum %></td>
             </tr>
           </tfoot>
         </table>
+      </section>
 
-      <% else %>
-        <% pages = @report_pages_data.presence || [@habitations] %>
-        <% pages.each_with_index do |records, page_index| %>
-          <table>
+    <% else %>
+      <% pages = @report_pages_data.presence || [@habitations] %>
+      <% pages.each_with_index do |records, page_index| %>
+        <% page_number = full_print_mode ? page_index + 1 : @report_page %>
+        <section class="paper <%= 'page-break' if page_index < pages.size - 1 %>">
+          <%= render "admin/habitations/print_report_header",
+                     brand_name: brand_name,
+                     generated_label: generated_label,
+                     records_count: records.size,
+                     report_title: @report_title,
+                     page_number: page_number,
+                     total_pages: @report_total_pages %>
+          <table class="report-table">
             <thead>
               <tr>
                 <th>Referência</th>
@@ -300,23 +663,20 @@
             <tbody>
               <% records.each do |habitation| %>
                 <tr>
-                  <td><%= habitation.codigo %></td>
+                  <td class="nowrap"><%= habitation.codigo %></td>
                   <td><%= habitation.display_title %></td>
                   <td><%= habitation.status %></td>
                   <td><%= habitation.categoria %></td>
                   <td><%= [habitation.cidade, habitation.bairro].compact.join(" - ") %></td>
-                  <td class="right"><%= habitation.valor_venda_formatted %></td>
-                  <td class="right"><%= habitation.valor_locacao_formatted %></td>
+                  <td class="right money"><%= habitation.valor_venda_formatted %></td>
+                  <td class="right money"><%= habitation.valor_locacao_formatted %></td>
                 </tr>
               <% end %>
             </tbody>
           </table>
-          <% if page_index < pages.size - 1 %><div class="page-break"></div><% end %>
-        <% end %>
+        </section>
       <% end %>
-
-      <div class="footer-url">https://saluteimoveis.com</div>
-    </div>
+    <% end %>
   </div>
 </body>
 </html>

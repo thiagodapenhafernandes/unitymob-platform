@@ -1,70 +1,70 @@
 <%= turbo_frame_tag dom_id(habitation, :ai_content_preview) do %>
-  <div class="border rounded p-3 mb-3 bg-light" data-controller="ai-preview">
-    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
-      <div>
-        <h6 class="fw-bold mb-1"><i class="bi bi-stars text-primary me-1"></i>IA para título e descrição</h6>
-      </div>
+  <div class="ax-ai-preview" data-controller="ai-preview">
+    <div class="ax-ai-preview__header">
+      <h6 class="ax-ai-preview__title">
+        <i class="bi bi-stars ax-ai-preview__title-icon" aria-hidden="true"></i>
+        <span>IA para título e descrição</span>
+      </h6>
       <%= link_to generate_ai_preview_admin_habitation_path(habitation),
-          class: "btn btn-sm btn-outline-primary",
+          class: "ax-btn ax-btn--ghost ax-btn--sm",
           data: {
             turbo_method: :post,
             turbo_frame: dom_id(habitation, :ai_content_preview),
             action: "click->ai-preview#loading",
             ai_preview_loading_text: "Gerando..."
           } do %>
-        <i class="bi bi-magic me-1"></i>Gerar prévia
+        <i class="bi bi-magic" aria-hidden="true"></i>
+        <span>Gerar prévia</span>
       <% end %>
     </div>
 
     <% if local_assigns[:message].present? %>
-      <div class="alert alert-<%= local_assigns[:message_type].presence || "info" %> small py-2 mb-3">
-        <%= message %>
-      </div>
+      <% message_tone = { "success" => :success, "warning" => :warning, "danger" => :danger, "info" => :neutral }.fetch(local_assigns[:message_type].to_s, :neutral) %>
+      <%= ax_inline_notice(tone: message_tone, icon: "info-circle", body: message) %>
     <% end %>
 
     <% if local_assigns[:failed_suggestion]&.error_message.present? %>
-      <div class="alert alert-warning small py-2 mb-3">
-        Última falha da IA: <%= failed_suggestion.error_message %>
-      </div>
+      <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", body: "Última falha da IA: #{failed_suggestion.error_message}") %>
     <% end %>
 
     <% if suggestion.present? %>
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-3">
-          <div class="mb-3">
-            <div class="small text-muted fw-semibold text-uppercase mb-1">Título sugerido</div>
-            <div class="fw-bold text-dark"><%= suggestion.generated_title %></div>
+      <div class="ax-ai-preview__result">
+        <div class="ax-ai-preview__content">
+          <div class="ax-ai-preview__block">
+            <div class="ax-ai-preview__label">Título sugerido</div>
+            <div class="ax-ai-preview__text ax-ai-preview__text--strong"><%= suggestion.generated_title %></div>
           </div>
 
-          <div class="mb-3">
-            <div class="small text-muted fw-semibold text-uppercase mb-1">Descrição sugerida</div>
-            <div class="small text-dark" style="white-space: pre-line;"><%= suggestion.generated_description %></div>
+          <div class="ax-ai-preview__block">
+            <div class="ax-ai-preview__label">Descrição sugerida</div>
+            <div class="ax-ai-preview__description"><%= suggestion.generated_description %></div>
           </div>
 
           <% if suggestion.seo_keywords_list.any? %>
-            <div class="mb-3">
-              <div class="small text-muted fw-semibold text-uppercase mb-1">Palavras-chave SEO sugeridas</div>
-              <div class="d-flex flex-wrap gap-1">
+            <div class="ax-ai-preview__block">
+              <div class="ax-ai-preview__label">Palavras-chave SEO sugeridas</div>
+              <div class="ax-ai-preview__keywords">
                 <% suggestion.seo_keywords_list.each do |keyword| %>
-                  <span class="badge bg-primary bg-opacity-10 text-primary border"><%= keyword %></span>
+                  <span class="ax-ai-preview__keyword"><%= keyword %></span>
                 <% end %>
               </div>
             </div>
           <% end %>
 
-          <div class="d-flex justify-content-end gap-2 flex-wrap">
+          <div class="ax-ai-preview__actions">
             <%= link_to format_ai_suggestion_admin_habitation_path(habitation, suggestion_id: suggestion.id),
-                class: "btn btn-sm btn-outline-secondary",
+                class: "ax-btn ax-btn--ghost ax-btn--sm",
                 data: {
                   turbo_method: :patch,
                   turbo_frame: dom_id(habitation, :ai_content_preview),
                   action: "click->ai-preview#loading",
                   ai_preview_loading_text: "Formatando..."
                 } do %>
-              <i class="bi bi-text-paragraph me-1"></i>Formatar texto
+              <i class="bi bi-text-paragraph" aria-hidden="true"></i>
+              <span>Formatar texto</span>
             <% end %>
             <%= link_to apply_ai_suggestion_admin_habitation_path(habitation, suggestion_id: suggestion.id),
-                class: "btn btn-sm btn-success",
+                class: "ax-btn ax-btn--primary ax-btn--sm",
                 data: {
                   turbo_method: :patch,
                   turbo_frame: dom_id(habitation, :ai_content_preview),
@@ -72,15 +72,16 @@
                   action: "click->ai-preview#loading",
                   ai_preview_loading_text: "Aplicando..."
                 } do %>
-              <i class="bi bi-check2-circle me-1"></i>Aplicar sugestão
+              <i class="bi bi-check2-circle" aria-hidden="true"></i>
+              <span>Aplicar sugestão</span>
             <% end %>
           </div>
         </div>
       </div>
     <% else %>
-      <div class="alert alert-info small mb-0">
-        Nenhuma prévia pendente para este imóvel. Clique em <strong>Gerar prévia</strong> para revisar antes de aplicar.
-      </div>
+      <%= ax_inline_notice(tone: :neutral,
+                           icon: "info-circle",
+                           body: "Nenhuma prévia pendente para este imóvel. Clique em Gerar prévia para revisar antes de aplicar.") %>
     <% end %>
   </div>
 <% end %>

@@ -1,0 +1,47 @@
+<%
+  eyebrow = local_assigns[:eyebrow]
+  icon = local_assigns[:icon]
+  subtitle = local_assigns[:subtitle]
+  pills = Array(local_assigns[:pills]).compact
+  metrics = Array(local_assigns[:metrics]).compact
+  actions = local_assigns[:actions]
+%>
+<header class="ax-workspace-heading <%= local_assigns[:class_name] %>">
+  <div class="ax-workspace-heading__main">
+    <% if eyebrow.present? %>
+      <div class="ax-workspace-heading__eyebrow">
+        <% if icon.present? %><i class="bi bi-<%= icon %>"></i><% end %>
+        <span><%= eyebrow %></span>
+      </div>
+    <% end %>
+
+    <div class="ax-workspace-heading__title-row">
+      <h1><%= title %></h1>
+      <% pills.each do |pill| %>
+        <span class="ax-workspace-heading__scope"><%= pill %></span>
+      <% end %>
+    </div>
+
+    <% if subtitle.present? %>
+      <p><%= subtitle %></p>
+    <% end %>
+  </div>
+
+  <% if metrics.any? || actions.present? %>
+    <div class="ax-workspace-heading__side">
+      <% if metrics.any? %>
+        <div class="ax-workspace-heading__meta" aria-label="Resumo">
+          <% metrics.each do |metric| %>
+            <span><strong><%= metric[:value] %></strong> <%= metric[:label] %></span>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if actions.present? %>
+        <div class="ax-workspace-heading__toolbar" aria-label="Ações">
+          <%= actions %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</header>

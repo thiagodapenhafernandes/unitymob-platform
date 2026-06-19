@@ -1,9 +1,10 @@
 class HabitationIntakeSplitter
   SPLIT_RENT_MODALITY = "locacao_anual".freeze
 
-  def initialize(habitation, submitted_at: Time.current)
+  def initialize(habitation, submitted_at: Time.current, target_intake_status: "submitted_for_admin_review")
     @habitation = habitation
     @submitted_at = submitted_at
+    @target_intake_status = target_intake_status
   end
 
   def call!
@@ -16,7 +17,7 @@ class HabitationIntakeSplitter
 
   def submit_single!
     @habitation.update!(
-      intake_status: "submitted_for_admin_review",
+      intake_status: @target_intake_status,
       submitted_for_review_at: @submitted_at,
       intake_step: "review"
     )
@@ -36,7 +37,7 @@ class HabitationIntakeSplitter
         status: "Venda",
         valor_venda_cents: sale_price_cents,
         valor_locacao_cents: 0,
-        intake_status: "submitted_for_admin_review",
+        intake_status: @target_intake_status,
         submitted_for_review_at: @submitted_at,
         intake_step: "review"
       )
@@ -60,7 +61,7 @@ class HabitationIntakeSplitter
       copy.intake_group_uuid = group_uuid
       copy.valor_venda_cents = 0
       copy.valor_locacao_cents = rent_price_cents
-      copy.intake_status = "submitted_for_admin_review"
+      copy.intake_status = @target_intake_status
       copy.submitted_for_review_at = @submitted_at
       copy.intake_step = "review"
       copy.exibir_no_site_flag = false

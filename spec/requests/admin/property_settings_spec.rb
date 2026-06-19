@@ -51,6 +51,38 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("Remover imagem atual")
   end
 
+  it "requires fallback admin user when disabling broker capture review layer" do
+    admin = create(:admin_user, :admin)
+    administrativo = Profile.find_or_initialize_by(name: "Administrativo")
+    administrativo.permissions = Profile.default_permissions_for("Administrativo")
+    administrativo.save!
+    fallback = create(:admin_user, profile: administrativo)
+    other_admin = create(:admin_user, :admin, name: "Outro admin")
+    intake = create(:habitation, :broker_intake, admin_user: other_admin, intake_status: "draft")
+    intake.update_column(:admin_user_id, other_admin.id)
+
+    sign_in admin
+
+    patch admin_property_setting_path, params: {
+      property_setting: {
+        broker_capture_layer_enabled: "false"
+      }
+    }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("deve ser informado")
+
+    patch admin_property_setting_path, params: {
+      property_setting: {
+        broker_capture_layer_enabled: "false",
+        broker_capture_fallback_admin_user_id: fallback.id
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_property_setting_path)
+    expect(intake.reload.admin_user_id).to eq(fallback.id)
+  end
+
   it "blocks non-admin users" do
     user = create(:admin_user)
     sign_in user

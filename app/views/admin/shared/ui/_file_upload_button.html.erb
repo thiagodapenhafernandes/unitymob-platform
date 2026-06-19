@@ -1,0 +1,18 @@
+<%
+  label_options = {
+    class: class_name,
+    data: label_data
+  }
+%>
+
+<% if form.present? && method.present? %>
+  <%= form.label method, label, label_options.merge(for: input_id) %>
+  <%= form.file_field method,
+                      multiple:,
+                      direct_upload:,
+                      class: "ax-file-upload__input",
+                      id: input_id,
+                      data: input_data %>
+<% else %>
+  <%= label_tag input_id, label, label_options %>
+<% end %>

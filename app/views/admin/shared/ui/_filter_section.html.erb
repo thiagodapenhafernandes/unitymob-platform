@@ -1,0 +1,19 @@
+<%
+  section_classes = ["ax-filter-section", class_name].compact_blank.join(" ")
+%>
+
+<details class="<%= section_classes %>" <%= "open" if open %>>
+  <summary class="ax-filter-section__summary">
+    <% if icon.present? %>
+      <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+    <% end %>
+    <span><%= title %></span>
+    <% if count.to_i.positive? %>
+      <span class="ax-filter-section__count"><%= count %></span>
+    <% end %>
+  </summary>
+
+  <div class="ax-filter-section__body">
+    <%= body %>
+  </div>
+</details>

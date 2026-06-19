@@ -2,6 +2,7 @@ class HabitationsController < ApplicationController
   include HabitationCaching
   include ActionView::Helpers::NumberHelper
   before_action :set_habitation, only: [:show, :schedule_visit, :share_link]
+  before_action :redirect_to_canonical_habitation_url, only: [:show]
   before_action :authenticate_admin_user!, only: [:share_link]
   
   # GET /habitations
@@ -41,9 +42,9 @@ class HabitationsController < ApplicationController
     @page_description = build_index_description
     @page_keywords = build_index_keywords
     if @strategic_landing.present?
-      @page_title = "#{@strategic_landing[:title]} | Salute Imóveis"
+      @page_title = "#{@strategic_landing[:title]} | #{public_site_name}"
       @page_description = @strategic_landing[:description]
-      @page_keywords = [@strategic_landing[:label], "imóveis", "Balneário Camboriú", "Salute Imóveis"].join(", ")
+      @page_keywords = [@strategic_landing[:label], "imóveis", "Balneário Camboriú", public_site_name].join(", ")
     end
     
     # Cache da página
@@ -153,7 +154,7 @@ class HabitationsController < ApplicationController
     render json: []
   end
   
-  # GET /imovel/:id
+  # GET /imoveis/:id
   def show
     unless @habitation
       redirect_to habitations_path, alert: 'Imóvel não encontrado ou indisponível no momento.'
@@ -165,10 +166,12 @@ class HabitationsController < ApplicationController
     # Incrementar contador de visualizações (em background)
     # increment_view_count(@habitation.id)
     
-    # Meta tags dinâmicas
-    @page_title = @habitation.seo_title
-    @page_description = @habitation.seo_description.presence || default_property_description(@habitation)
-    @page_keywords = @habitation.seo_keywords
+    property_metadata = Seo::PropertyMetadataBuilder.new(@habitation).attributes
+    @page_title = property_metadata[:meta_title]
+    @page_description = property_metadata[:meta_description].presence || default_property_description(@habitation)
+    @page_keywords = property_metadata[:meta_keywords]
+    @page_name = property_metadata[:page_name]
+    @canonical_url = habitation_url(@habitation)
     
     # Image for social sharing (Open Graph)
     @page_image = share_image_url_for(@habitation)
@@ -491,7 +494,7 @@ class HabitationsController < ApplicationController
     selected_title = templates[seed % templates.length]
     
     # Append minimal suffix
-    "#{selected_title} (#{count}) | Salute"
+    "#{selected_title} (#{count}) | #{public_site_name}"
   end
   
   def build_index_description
@@ -502,7 +505,7 @@ class HabitationsController < ApplicationController
     intros = [
       "Procurando por #{category.downcase} em #{city}?",
       "Descubra as melhores opções de #{category.downcase} em #{city}.",
-      "A Salute Imóveis selecionou #{category.downcase} incríveis em #{city} para você.",
+      "#{public_site_name} selecionou #{category.downcase} incríveis em #{city} para você.",
       "Não feche negócio antes de ver estes #{category.downcase} em #{city}.",
       "Seu sonho de morar em #{city} comece aqui com estes #{category.downcase}."
     ]
@@ -533,7 +536,7 @@ class HabitationsController < ApplicationController
   end
   
   def build_index_keywords
-    keywords = Set.new(['imóveis', 'imobiliária', 'balneário camboriú', 'salute imóveis'])
+    keywords = Set.new(["imóveis", "imobiliária", "balneário camboriú", public_site_name.downcase])
     
     # Transaction
     keywords << 'venda' if params[:transaction_type] == 'venda'
@@ -560,6 +563,24 @@ class HabitationsController < ApplicationController
     end
     
     keywords.to_a.join(', ')
+  end
+
+  def redirect_to_canonical_habitation_url
+    return unless @habitation&.publicly_viewable?
+    return unless request.get? && request.format.html?
+    return unless request.path.start_with?("/imovel/", "/empreendimento/")
+
+    canonical_path = habitation_path(@habitation)
+    return if request.path == canonical_path
+
+    target = request.query_string.present? ? "#{canonical_path}?#{request.query_string}" : canonical_path
+    redirect_to target, status: :moved_permanently
+  end
+
+  def public_site_name
+    @layout_setting&.site_name.presence || LayoutSetting.instance.site_name.presence || "Unitymob"
+  rescue StandardError
+    "Unitymob"
   end
 
   def selected_categories

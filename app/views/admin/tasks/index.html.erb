@@ -1,0 +1,87 @@
+<%# Minhas Tarefas — lista comercial (.ax-*) %>
+<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
+  <div>
+    <h1 class="ax-page-title">Minhas Tarefas</h1>
+    <p class="ax-page-subtitle">Acompanhe o que precisa ser feito e nunca perca um follow-up.</p>
+  </div>
+  <% if can?(:manage, :comercial) %>
+    <%= render "admin/tasks/form_modal", modal_id: "newTaskTop", trigger_label: "Nova tarefa" %>
+  <% end %>
+</div>
+
+<%= render "admin/shared/hint", key: "tasks", icon: "bi-check2-square",
+      text: "Crie tarefas a partir de um lead (botão <strong>Tarefa</strong> na ficha) ou aqui. Os filtros mostram o que é prioridade <strong>hoje</strong> e o que está <strong>atrasado</strong>." %>
+
+<%# Filtros rápidos com contadores — "bate o olho e entende" %>
+<div class="tw-flex tw-flex-wrap tw-gap-2 tw-mb-4">
+  <% [
+       ["pendentes", "Pendentes", @counts[:pendentes], "gray"],
+       ["hoje", "Hoje", @counts[:hoje], "blue"],
+       ["atrasadas", "Atrasadas", @counts[:atrasadas], "red"],
+       ["semana", "Próx. 7 dias", @counts[:semana], "amber"],
+       ["concluidas", "Concluídas", nil, "green"],
+       ["todas", "Todas", nil, "gray"]
+     ].each do |key, label, count, color| %>
+    <%= link_to admin_tasks_path(filter: key),
+          class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @filter == key}" do %>
+      <span><%= label %></span>
+      <% if count && count > 0 %><span class="ax-badge ax-badge--<%= color %> tw-ml-1"><%= count %></span><% end %>
+    <% end %>
+  <% end %>
+  <%= ax_team_toggle(:comercial, class_name: "tw-ml-auto") %>
+</div>
+
+<% if @tasks.any? %>
+  <div class="ax-table-wrap">
+    <table class="ax-table">
+      <thead>
+        <tr>
+          <th style="width:40px"></th>
+          <th>Tarefa</th>
+          <th style="width:120px">Tipo</th>
+          <th style="width:170px">Prazo</th>
+          <th style="width:200px">Lead</th>
+          <th class="ax-num" style="width:90px">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @tasks.each do |task| %>
+          <% badge = task_badge(task) %>
+          <tr class="<%= 'tw-opacity-60' if task.concluida? %>">
+            <td>
+              <% if task.pendente? %>
+                <%= button_to complete_admin_task_path(task), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir" do %>
+                  <i class="bi bi-circle"></i>
+                <% end %>
+              <% else %>
+                <i class="bi bi-check-circle-fill tw-text-green-500"></i>
+              <% end %>
+            </td>
+            <td>
+              <div class="ax-strong"><%= task.title %></div>
+              <% if task.description.present? %><div class="ax-page-subtitle tw-truncate" style="max-width:420px"><%= task.description %></div><% end %>
+            </td>
+            <td><span class="ax-badge ax-badge--gray"><%= task.kind_label %></span></td>
+            <td><span class="ax-badge ax-badge--<%= badge[:color] %>"><%= badge[:label] %></span></td>
+            <td>
+              <% if task.lead %><%= link_to task.lead.display_name, admin_lead_path(task.lead), class: "tw-text-primary" %><% else %><span class="ax-page-subtitle">—</span><% end %>
+            </td>
+            <td class="ax-num">
+              <% if can?(:manage, :comercial) %>
+                <%= button_to admin_task_path(task), method: :delete, form_class: "tw-inline", class: "ax-ico-btn", title: "Remover", data: { turbo_confirm: "Remover esta tarefa?" } do %>
+                  <i class="bi bi-trash"></i>
+                <% end %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% else %>
+  <div class="ax-empty">
+    <i class="bi bi-check2-circle tw-text-3xl tw-text-ink-faint"></i>
+    <p class="tw-mt-2">Nenhuma tarefa <%= @filter == "pendentes" ? "pendente" : "neste filtro" %>.</p>
+    <p class="ax-page-subtitle">Crie tarefas a partir de um lead ou aqui no botão "Nova tarefa" para organizar seus follow-ups.</p>
+  </div>
+<% end %>

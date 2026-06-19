@@ -1,190 +1,159 @@
-<%= form_with(model: [:admin, admin_user], local: true) do |f| %>
-  <% if admin_user.errors.any? %>
-    <div class="alert alert-danger shadow-sm border-0 mb-4">
-      <h6 class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Ops! Verifique os erros abaixo:</h6>
-      <ul class="mb-0 small">
-        <% admin_user.errors.full_messages.each do |message| %>
-          <li><%= message %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
+<%= form_with(model: [:admin, admin_user], local: true, html: { class: "au-form" }) do |f| %>
+  <%= ax_error_summary(admin_user) %>
 
-  <div class="row g-4">
-    <!-- Main Column -->
-    <div class="col-lg-8">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white py-3">
-          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-person-fill me-2 text-primary"></i>Dados Pessoais</h5>
-        </div>
-        <div class="card-body p-4">
-          
-          <!-- Avatar Upload -->
-          <div class="d-flex align-items-center mb-4 pb-4 border-bottom">
-            <div class="me-4 position-relative">
+  <div class="au-form-grid">
+    <div class="au-form-main">
+      <%= ax_operational_panel(eyebrow: "Identificação", title: "Dados pessoais") do %>
+        <div class="au-body">
+          <div class="au-avatar-row">
+            <div class="au-avatar">
               <% if admin_user.avatar.attached? %>
-                <%= image_tag admin_user.avatar, class: "rounded-circle shadow-sm object-fit-cover", style: "width: 100px; height: 100px;" %>
+                <%= image_tag admin_user.avatar, class: "au-avatar__img" %>
               <% else %>
-                <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-muted shadow-sm" style="width: 100px; height: 100px;">
-                  <i class="bi bi-person-fill fs-1"></i>
-                </div>
+                <span class="au-avatar__placeholder"><i class="bi bi-person-fill"></i></span>
               <% end %>
             </div>
-            <div class="flex-grow-1">
-              <%= f.label :avatar, "Foto de Perfil", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.file_field :avatar, class: "form-control form-control-sm" %>
-              <div class="form-text mt-1 extra-small">Formatos aceitos: JPG, PNG.</div>
+            <div class="au-field">
+              <%= ax_field_label(f, :avatar, text: "Foto de perfil", tooltip: "Formatos aceitos: JPG, PNG.") %>
+              <%= f.file_field :avatar, class: "ax-control" %>
             </div>
           </div>
 
-          <div class="row g-3">
-            <div class="col-md-6">
-              <%= f.label :name, "Nome Completo", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.text_field :name, class: "form-control", placeholder: "Ex: João Silva" %>
+          <div class="au-row au-row--2">
+            <div class="au-field">
+              <%= ax_field_label(f, :name, text: "Nome completo") %>
+              <%= f.text_field :name, class: "ax-control", placeholder: "Ex: João Silva" %>
             </div>
-            
-            <div class="col-md-6">
-              <%= f.label :email, "E-mail de Acesso", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.email_field :email, class: "form-control", placeholder: "joao@saluteimoveis.com" %>
-            </div>
-
-            <div class="col-md-6">
-              <%= f.label :phone, "Celular / WhatsApp", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.text_field :phone, class: "form-control", placeholder: "(47) 99999-9999", data: { controller: "mask", mask_type_value: "phone" } %>
-            </div>
-
-            <div class="col-md-6">
-              <%= f.label :creci, "CRECI", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.text_field :creci, class: "form-control", placeholder: "Ex: 12345SC" %>
-            </div>
-
-            <div class="col-md-6">
-              <%= f.label :birth_date, "Data de Nascimento", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.date_field :birth_date, class: "form-control" %>
-            </div>
-
-            <div class="col-md-6">
-              <%= f.label :city, "Cidade", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.text_field :city, class: "form-control", placeholder: "Ex: Balneário Camboriú" %>
-            </div>
-
-            <div class="col-12">
-              <%= f.label :biography, "Biografia / Observações", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.text_area :biography, rows: 4, class: "form-control", placeholder: "Breve descrição sobre o corretor..." %>
-            </div>
-
-            <div class="col-12">
-              <hr class="my-2">
-            </div>
-
-            <div class="col-md-6">
-              <%= f.label :password, "Senha #{'(deixe em branco para não alterar)' if admin_user.persisted?}", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.password_field :password, class: "form-control" %>
-            </div>
-            <div class="col-md-6">
-              <%= f.label :password_confirmation, "Confirmar Senha", class: "form-label fw-bold small text-muted text-uppercase" %>
-              <%= f.password_field :password_confirmation, class: "form-control" %>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Side Column -->
-    <div class="col-lg-4">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white py-3">
-          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-shield-lock me-2 text-warning"></i>Acesso e Equipe</h5>
-        </div>
-        <div class="card-body p-4">
-          <div class="mb-4">
-            <%= f.label :profile_id, "Perfil de Acesso", class: "form-label fw-bold small text-muted text-uppercase" %>
-            <%= f.collection_select :profile_id, Profile.where(active: true).where.not(name: "Fotógrafo").order(:name), :id, :name, { prompt: "Selecione um perfil..." }, { class: "form-select" } %>
-            <div class="form-text mt-2 extra-small">Define o que o usuário pode ver e fazer no painel.</div>
-          </div>
-
-          <div class="mb-4">
-            <label class="form-label fw-bold small text-muted text-uppercase">Status</label>
-            <div class="form-check form-switch fs-5">
-              <%= f.check_box :active, class: "form-check-input", id: "admin_user_active" %>
-              <%= f.label :active, class: "form-check-label" do %>
-                <span class="badge bg-success-subtle text-success" data-active-badge>Ativo</span>
-                <span class="badge bg-secondary-subtle text-secondary d-none" data-inactive-badge>Inativo</span>
-              <% end %>
-            </div>
-            <div class="form-text mt-2 extra-small">
-              Corretores inativos não recebem leads e são excluídos dos filtros de distribuição.
-              O toggle é sincronizado automaticamente a cada importação do Vista.
+            <div class="au-field">
+              <%= ax_field_label(f, :email, text: "E-mail de acesso") %>
+              <%= f.email_field :email, class: "ax-control", placeholder: "joao@empresa.com" %>
             </div>
           </div>
 
-          <div class="mb-4">
-            <label class="form-label fw-bold small text-muted text-uppercase">Site</label>
-            <div class="form-check form-switch fs-5">
-              <%= f.check_box :display_on_site, class: "form-check-input", id: "admin_user_display_on_site" %>
-              <%= f.label :display_on_site, "Exibir perfil do corretor no site", class: "form-check-label", for: "admin_user_display_on_site" %>
+          <div class="au-row au-row--2">
+            <div class="au-field">
+              <%= ax_field_label(f, :phone, text: "Celular / WhatsApp") %>
+              <%= f.text_field :phone, class: "ax-control", placeholder: "(47) 99999-9999", data: { controller: "mask", mask_type_value: "phone" } %>
             </div>
-            <div class="form-text mt-2 extra-small">
-              Desative para corretores que não devem aparecer na página pública, por exemplo sem CRECI.
+            <div class="au-field">
+              <%= ax_field_label(f, :creci, text: "CRECI") %>
+              <%= f.text_field :creci, class: "ax-control", placeholder: "Ex: 12345SC" %>
             </div>
           </div>
 
-          <div class="mb-4">
-            <%= f.label :acting_type, "Área de Atuação", class: "form-label fw-bold small text-muted text-uppercase" %>
-            <%= f.select :acting_type, AdminUser.acting_types.keys.map { |k| [I18n.t("enums.admin_user.acting_type.#{k}", default: k.humanize), k] }, { prompt: "Selecione..." }, { class: "form-select" } %>
-            <div class="form-text mt-2 extra-small">Define se o corretor atua em Venda, Locação ou Ambos.</div>
+          <div class="au-row au-row--2">
+            <div class="au-field">
+              <%= ax_field_label(f, :birth_date, text: "Data de nascimento") %>
+              <%= f.date_field :birth_date, class: "ax-control" %>
+            </div>
+            <div class="au-field">
+              <%= ax_field_label(f, :city, text: "Cidade") %>
+              <%= f.text_field :city, class: "ax-control", placeholder: "Ex: Balneário Camboriú" %>
+            </div>
           </div>
 
-          <div class="mb-4">
-            <%= f.label :manager_id, "Gestor Imediato", class: "form-label fw-bold small text-muted text-uppercase" %>
-            <%= f.collection_select :manager_id, AdminUser.where.not(id: admin_user.id), :id, :name, { prompt: "Nenhum (Topo da Hierarquia)" }, { class: "form-select" } %>
-            <div class="form-text mt-2 extra-small">Usado para organizar equipes e regras de distribuição.</div>
+          <div class="au-field">
+            <%= ax_field_label(f, :biography, text: "Biografia / observações") %>
+            <%= f.text_area :biography, rows: 4, class: "ax-control", placeholder: "Breve descrição sobre o usuário..." %>
           </div>
 
-          <div class="mb-4 border-top pt-3">
-            <label class="form-label fw-bold small text-muted text-uppercase">Segurança de login</label>
-            <div class="form-check form-switch mb-2">
-              <%= f.check_box :require_ip_allowlist, class: "form-check-input", id: "admin_user_require_ip_allowlist" %>
-              <%= f.label :require_ip_allowlist, "Exigir IP permitido", class: "form-check-label", for: "admin_user_require_ip_allowlist" %>
+          <div class="au-divider"></div>
+
+          <div class="au-row au-row--2">
+            <div class="au-field">
+              <%= ax_field_label(f, :password, text: admin_user.persisted? ? "Senha (em branco = não alterar)" : "Senha") %>
+              <%= f.password_field :password, class: "ax-control", autocomplete: "new-password" %>
             </div>
-            <div class="form-check form-switch">
-              <%= f.check_box :require_trusted_device, class: "form-check-input", id: "admin_user_require_trusted_device" %>
-              <%= f.label :require_trusted_device, "Exigir aparelho confiável", class: "form-check-label", for: "admin_user_require_trusted_device" %>
+            <div class="au-field">
+              <%= ax_field_label(f, :password_confirmation, text: "Confirmar senha") %>
+              <%= f.password_field :password_confirmation, class: "ax-control", autocomplete: "new-password" %>
             </div>
-            <div class="form-text mt-2 extra-small">
-              Regras específicas deste usuário. A configuração geral dos corretores fica em Segurança de Acesso.
-            </div>
-          </div>
-          
-          <% if admin_user.vista_id.present? %>
-            <div class="mb-0">
-              <label class="form-label fw-bold small text-muted text-uppercase">Integração Vista</label>
-              <div class="input-group">
-                <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-link-45deg"></i></span>
-                <input type="text" class="form-control bg-light text-muted border-start-0" value="<%= admin_user.vista_id %>" readonly disabled>
-              </div>
-              <div class="form-text mt-2 extra-small text-success"><i class="bi bi-check-circle-fill me-1"></i> Conectado ao Vista</div>
-            </div>
-          <% end %>
-        </div>
-      </div>
-      
-      <% if admin_user.new_record? %>
-        <div class="card shadow-sm border-0 bg-light">
-          <div class="card-body p-3">
-            <p class="small text-muted mb-0">
-              <i class="bi bi-info-circle me-1"></i> Usuários criados aqui poderão acessar o painel administrativo imediatamente após salvarem.
-            </p>
           </div>
         </div>
       <% end %>
     </div>
-  </div>
 
-  <div class="card shadow-sm border-0 mt-2">
-    <div class="card-body d-flex justify-content-end gap-2 py-3">
-      <%= link_to "Cancelar", admin_admin_users_path, class: "btn btn-light border-0" %>
-      <%= f.submit (admin_user.persisted? ? "Salvar Alterações" : "Criar Usuário"), class: "btn btn-primary px-5 fw-bold" %>
+    <div class="au-form-side">
+      <%= ax_operational_panel(eyebrow: "Acesso", title: "Acesso e equipe") do %>
+        <div class="au-body">
+          <div class="au-field">
+            <%= ax_field_label(f, :profile_id, text: "Perfil de acesso", tooltip: "Define o que o usuário pode ver e fazer no painel.") %>
+            <%= f.collection_select :profile_id, Profile.where(active: true).where.not(name: "Fotógrafo").order(:name), :id, :name, { prompt: "Selecione um perfil..." }, { class: "ax-control" } %>
+          </div>
+
+          <div class="au-switches">
+            <%= ax_toggle_chip(f, :active, label: "Ativo no sistema", id: "admin_user_active") %>
+            <%= ax_toggle_chip(f, :display_on_site, label: "Exibir perfil no site", id: "admin_user_display_on_site") %>
+            <% if current_admin_user&.system_admin? %>
+              <%= ax_toggle_chip(f, :super_admin, label: "Admin do Sistema", id: "admin_user_super_admin") %>
+            <% end %>
+          </div>
+          <p class="au-hint">Usuários inativos não recebem leads e ficam fora da distribuição. O status é sincronizado a cada importação do Vista.</p>
+          <% if current_admin_user&.system_admin? %>
+            <p class="au-hint"><i class="bi bi-hdd-stack"></i> <strong>Admin do Sistema</strong> está acima da conta: acessa o painel do sistema e pode impersonar qualquer usuário. Conceda com cautela.</p>
+          <% end %>
+
+          <div class="au-field">
+            <%= ax_field_label(f, :acting_type, text: "Área de atuação", tooltip: "Venda, Locação ou Ambos.") %>
+            <%= f.select :acting_type, AdminUser.acting_types.keys.map { |k| [I18n.t("enums.admin_user.acting_type.#{k}", default: k.humanize), k] }, { prompt: "Selecione..." }, { class: "ax-control" } %>
+          </div>
+
+          <div class="au-field">
+            <%= ax_field_label(f, :manager_id, text: "Gestor imediato", tooltip: "Organiza equipes e regras de distribuição.") %>
+            <%= f.collection_select :manager_id, AdminUser.where.not(id: admin_user.id).order(:name), :id, :name, { prompt: "Nenhum (topo da hierarquia)" }, { class: "ax-control" } %>
+          </div>
+
+          <div class="au-field">
+            <span class="au-field__label">Segurança de login</span>
+            <div class="au-switches">
+              <%= ax_toggle_chip(f, :require_ip_allowlist, label: "Exigir IP permitido", id: "admin_user_require_ip_allowlist") %>
+              <%= ax_toggle_chip(f, :require_trusted_device, label: "Exigir aparelho confiável", id: "admin_user_require_trusted_device") %>
+            </div>
+          </div>
+
+          <% if admin_user.vista_id.present? %>
+            <div class="au-field">
+              <span class="au-field__label">Integração Vista</span>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-link-45deg")) do %>
+                <input type="text" class="ax-control" value="<%= admin_user.vista_id %>" readonly disabled>
+              <% end %>
+              <p class="au-hint" style="color:#15803d"><i class="bi bi-check-circle-fill"></i> Conectado ao Vista</p>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if admin_user.new_record? %>
+        <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+          Usuários criados aqui acessam o painel imediatamente após salvar.
+        <% end %>
+      <% end %>
     </div>
   </div>
+
+  <%= ax_sticky_action_footer do %>
+    <%= link_to "Cancelar", admin_admin_users_path, class: "ax-btn" %>
+    <%= f.submit (admin_user.persisted? ? "Salvar alterações" : "Criar usuário"), class: "ax-btn ax-btn--primary" %>
+  <% end %>
 <% end %>
+
+<style id="admin-users-form-styles">
+  .au-form { display: grid; gap: 8px; padding-top: 8px; }
+  .au-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
+  @media (min-width: 1080px) { .au-form-grid { grid-template-columns: minmax(0, 1fr) 360px; } }
+  .au-form-main, .au-form-side { display: grid; gap: 8px; min-width: 0; }
+  .au-body { padding: 12px; display: grid; gap: 14px; }
+  .au-field { display: grid; gap: 5px; min-width: 0; }
+  .au-field__label { color: #1f2733; font-size: 12px; font-weight: 700; }
+  .au-row { display: grid; gap: 10px; }
+  .au-row--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 560px) { .au-row--2 { grid-template-columns: minmax(0, 1fr); } }
+  .au-hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.45; }
+  .au-divider { height: 1px; background: var(--ax-border-soft, #e7ebf2); }
+  .au-switches { display: grid; gap: 6px; }
+
+  .au-avatar-row { display: flex; align-items: center; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--ax-border-soft, #e7ebf2); }
+  .au-avatar__img { width: 76px; height: 76px; border-radius: 999px; object-fit: cover; }
+  .au-avatar__placeholder { display: inline-flex; align-items: center; justify-content: center; width: 76px; height: 76px; border-radius: 999px; background: #eef2f7; color: #9aa3b2; font-size: 28px; }
+  .au-avatar-row .au-field { flex: 1; }
+</style>

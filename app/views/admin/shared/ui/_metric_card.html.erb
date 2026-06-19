@@ -1,0 +1,17 @@
+<article class="ax-metric-card <%= local_assigns[:class_name] %>">
+  <div class="ax-metric-card__header">
+    <span class="ax-metric-card__label"><%= label %></span>
+    <% if local_assigns[:badge].present? %>
+      <%= badge %>
+    <% end %>
+  </div>
+  <div class="ax-metric-card__value"><%= value %></div>
+  <% if local_assigns[:hint].present? %>
+    <div class="ax-metric-card__hint"><%= hint %></div>
+  <% end %>
+  <% if local_assigns[:progress].present? %>
+    <div class="ax-progress">
+      <i style="width:<%= [[progress.to_f, 0].max, 100].min %>%"></i>
+    </div>
+  <% end %>
+</article>

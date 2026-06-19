@@ -1,5 +1,6 @@
 import "@hotwired/turbo-rails"
 import { application } from "controllers/application"
+import "ax_toast"
 
 import AdvancedFiltersController from "controllers/advanced_filters_controller"
 import AutocompleteController from "controllers/autocomplete_controller"

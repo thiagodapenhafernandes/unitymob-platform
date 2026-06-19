@@ -1,0 +1,22 @@
+<%# locals: appt, expanded (optional) %>
+<% kind_color = { "visita" => "blue", "reuniao" => "amber", "ligacao" => "green", "outro" => "gray" }[appt.kind] || "gray" %>
+<div class="tw-rounded-lg tw-p-2 tw-text-xs" style="background:#f7f8fa;border:1px solid #e6e8eb;<%= 'opacity:.55' if appt.cancelado? %>">
+  <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
+    <span class="ax-badge ax-badge--<%= kind_color %>"><%= appt.kind_label %></span>
+    <span class="ax-strong"><%= appt.starts_at.strftime("%H:%M") %></span>
+  </div>
+  <div class="ax-strong tw-mt-1"><%= appt.title %></div>
+  <% if local_assigns[:expanded] %>
+    <div class="ax-page-subtitle"><%= l(appt.starts_at, format: :long) %></div>
+  <% end %>
+  <% if appt.lead %>
+    <div class="tw-mt-1"><%= link_to appt.lead.display_name, admin_lead_path(appt.lead), class: "tw-text-primary" %></div>
+  <% end %>
+  <% if appt.location.present? %><div class="ax-page-subtitle tw-truncate"><i class="bi bi-geo-alt"></i> <%= appt.location %></div><% end %>
+  <% if can?(:manage, :comercial) && appt.agendado? %>
+    <div class="tw-flex tw-gap-1 tw-mt-2">
+      <%= button_to admin_appointment_path(appt, appointment: { status: "realizado" }), method: :patch, form_class: "tw-inline", class: "ax-btn ax-btn--sm", title: "Marcar realizado" do %><i class="bi bi-check2"></i><% end %>
+      <%= button_to admin_appointment_path(appt), method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm", data: { turbo_confirm: "Remover compromisso?" }, title: "Remover" do %><i class="bi bi-trash"></i><% end %>
+    </div>
+  <% end %>
+</div>

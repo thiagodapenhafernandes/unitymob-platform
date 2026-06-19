@@ -1,70 +1,70 @@
 <div class="container-fluid py-4">
-  <%= link_to admin_home_sections_path, class: "btn btn-secondary mb-4" do %>
+  <%= link_to admin_home_sections_path, class: "ax-btn ax-btn--ghost tw-mb-4" do %>
     <i class="bi bi-arrow-left"></i> Voltar
   <% end %>
 
-  <div class="card shadow-sm">
-    <div class="card-header bg-primary text-white">
-      <h3 class="mb-0"><%= @home_section.title %></h3>
+  <div class="ax-card">
+    <div class="ax-card__header">
+      <h3 class="ax-card__title"><%= @home_section.title %></h3>
     </div>
-    <div class="card-body">
-      <div class="row mb-3">
-        <div class="col-md-6">
+    <div class="ax-card__body">
+      <%= ax_field_grid do %>
+        <div class="ax-span-6">
           <strong>Tipo:</strong>
-          <span class="badge bg-info ms-2"><%= @home_section.section_type_label %></span>
+          <span class="ax-badge ax-badge--blue"><%= @home_section.section_type_label %></span>
         </div>
-        <div class="col-md-6">
+        <div class="ax-span-6">
           <strong>Status:</strong>
-          <span class="badge <%= @home_section.active ? 'bg-success' : 'bg-secondary' %> ms-2">
+          <span class="ax-badge <%= @home_section.active ? 'ax-badge--green' : 'ax-badge--gray' %>">
             <%= @home_section.active ? 'Ativo' : 'Inativo' %>
           </span>
         </div>
-      </div>
+      <% end %>
 
       <% if @home_section.subtitle.present? %>
-        <div class="mb-3">
+        <div class="tw-mb-3">
           <strong>Subtítulo:</strong>
           <p><%= @home_section.subtitle %></p>
         </div>
       <% end %>
 
-      <div class="mb-3">
+      <div class="tw-mb-3">
         <strong>Ordem de Exibição:</strong>
-        <span class="badge bg-secondary"><%= @home_section.order_position || @home_section.display_order || '-' %></span>
+        <span class="ax-badge ax-badge--gray"><%= @home_section.order_position || @home_section.display_order || '-' %></span>
       </div>
 
-      <div class="mb-3">
+      <div class="tw-mb-3">
         <strong>Filtros dos imóveis:</strong>
         <% if @home_section.property_filter_labels.any? %>
-          <div class="d-flex flex-wrap gap-1 mt-2">
+          <div class="tw-flex tw-flex-wrap tw-gap-1 tw-mt-2">
             <% @home_section.property_filter_labels.each do |label| %>
-              <span class="badge text-bg-light border"><%= label %></span>
+              <span class="ax-badge ax-badge--gray"><%= label %></span>
             <% end %>
           </div>
         <% else %>
-          <span class="text-muted ms-2">Nenhum filtro adicional.</span>
+          <span class="tw-text-ink-muted">Nenhum filtro adicional.</span>
         <% end %>
       </div>
 
       <% if @home_section.home_section_items.any? %>
         <hr>
         <h5>Itens desta Seção</h5>
-        <ul class="list-group">
+        <ul style="list-style:none;margin:0;padding:0">
           <% @home_section.home_section_items.each do |item| %>
-            <li class="list-group-item">
+            <li class="tw-flex tw-items-center tw-justify-between tw-gap-2 tw-py-2" style="border-bottom:1px solid #e7ebf2">
               <strong><%= item.title %></strong>
               <% if item.description.present? %>
-                <p class="mb-0 text-muted"><%= item.description %></p>
+                <p class="tw-mb-1 tw-text-ink-muted"><%= item.description %></p>
               <% end %>
             </li>
           <% end %>
         </ul>
       <% end %>
 
-      <div class="mt-4">
-        <%= link_to "Editar", edit_admin_home_section_path(@home_section), class: "btn btn-warning" %>
+      <div class="tw-mt-3">
+        <%= link_to "Editar", edit_admin_home_section_path(@home_section), class: "ax-btn ax-btn--primary" %>
         <%= link_to "Excluir", admin_home_section_path(@home_section), method: :delete,
-            data: { confirm: "Tem certeza?" }, class: "btn btn-danger" %>
+            data: { confirm: "Tem certeza?" }, class: "ax-btn ax-btn--danger" %>
       </div>
     </div>
   </div>

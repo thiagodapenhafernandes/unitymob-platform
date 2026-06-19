@@ -53,6 +53,21 @@ class WhatsappBusinessIntegration < ApplicationRecord
     status == "connected" && waba_id.present? && phone_number_id.present?
   end
 
+  # Pode enviar/receber mensagens via Cloud API?
+  def messaging_ready?
+    access_token.present? && phone_number_id.present?
+  end
+
+  # Token de verificação do webhook (gerado sob demanda; cole no painel da Meta).
+  def webhook_verify_token!
+    return webhook_verify_token if webhook_verify_token.present?
+
+    token = SecureRandom.hex(16)
+    update_column(:webhook_verify_token, token) if persisted?
+    self.webhook_verify_token = token
+    token
+  end
+
   def token_preview
     return nil if access_token.blank?
 

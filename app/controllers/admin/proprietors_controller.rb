@@ -1,8 +1,8 @@
 module Admin
   class ProprietorsController < BaseController
     require "csv"
-    before_action :require_admin!, except: [:quick_create]
-    before_action :require_admin_or_administrative!, only: [:quick_create]
+    before_action -> { check_permission!(:view, :proprietarios) }
+    before_action -> { check_permission!(:manage, :proprietarios) }, only: %i[new create edit update destroy quick_create]
 
     EXPORT_FIELDS = {
       "name" => "Nome/Denominação",
@@ -161,10 +161,19 @@ module Admin
     end
 
     def quick_create
-      @proprietor = Proprietor.new(quick_proprietor_params.merge(role: :owner))
+      permitted = quick_proprietor_params
+      phone = permitted[:mobile_phone].presence || permitted[:phone_primary].presence
+      @proprietor = Proprietor.find_by_phone(phone) if phone.present?
+      @proprietor ||= Proprietor.new(role: :owner)
+
+      @proprietor.name = permitted[:name] if permitted[:name].present?
+      @proprietor.email = permitted[:email] if permitted[:email].present?
+      @proprietor.phone_primary = permitted[:phone_primary] if permitted[:phone_primary].present?
+      @proprietor.mobile_phone = permitted[:mobile_phone] if permitted[:mobile_phone].present?
+      @proprietor.cpf_cnpj = permitted[:cpf_cnpj] if permitted[:cpf_cnpj].present?
 
       if @proprietor.save
-        render json: { id: @proprietor.id, name: @proprietor.name }, status: :created
+        render json: { id: @proprietor.id, name: @proprietor.select_label }, status: :created
       else
         render json: { errors: @proprietor.errors.full_messages }, status: :unprocessable_entity
       end
@@ -203,7 +212,7 @@ module Admin
     end
 
     def require_admin_or_administrative!
-      return if current_admin_user&.admin? || current_admin_user&.profile&.name == "Administrativo"
+      return if current_admin_user&.admin? || current_admin_user&.profile&.administrativo?
 
       redirect_to admin_root_path, alert: "Acesso negado. Apenas administradores."
     end

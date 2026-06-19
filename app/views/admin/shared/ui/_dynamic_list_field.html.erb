@@ -1,0 +1,28 @@
+<%
+  field_classes = ["ax-dynamic-list", class_name].compact.join(" ")
+%>
+
+<div class="<%= field_classes %>"
+     data-controller="dynamic-list"
+     data-dynamic-list-param-name-value="<%= input_name %>">
+  <div class="ax-dynamic-list__header">
+    <h6 class="ax-dynamic-list__title"><%= label %></h6>
+    <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="dynamic-list#add">
+      <i class="bi bi-plus-lg ax-ico"></i><%= add_label %>
+    </button>
+  </div>
+  <div class="ax-dynamic-list__items" data-dynamic-list-target="container">
+    <% Array(values).each do |value| %>
+      <%= ax_input_group(size: nil, class_name: "ax-dynamic-list__item") do %>
+        <input type="text"
+               name="<%= input_name %>"
+               value="<%= value %>"
+               class="ax-control"
+               placeholder="<%= placeholder %>">
+        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm ax-text-danger" data-action="dynamic-list#remove">
+          <i class="bi bi-trash"></i>
+        </button>
+      <% end %>
+    <% end %>
+  </div>
+</div>

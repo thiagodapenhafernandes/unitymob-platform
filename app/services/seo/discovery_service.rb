@@ -69,7 +69,7 @@ module Seo
           normalized_params: data[:params],
           title: data[:title],
           description: data[:description],
-          keywords: [data[:label], "imóveis", "Balneário Camboriú", "Salute Imóveis"].join(", "),
+          keywords: [data[:label], "imóveis", "Balneário Camboriú", site_name].join(", "),
           intro_text: Seo::StrategicLanding.property_intro(data),
           count: count_properties(data[:params])
         )
@@ -86,7 +86,7 @@ module Seo
           normalized_params: data[:params],
           title: data[:title],
           description: data[:description],
-          keywords: [data[:label], "empreendimentos", "Balneário Camboriú", "Salute Imóveis"].join(", "),
+          keywords: [data[:label], "empreendimentos", "Balneário Camboriú", site_name].join(", "),
           intro_text: Seo::StrategicLanding.development_intro(data),
           count: count_developments(data[:params])
         )
@@ -104,8 +104,8 @@ module Seo
           canonical_path: "/imoveis?city=#{CGI.escape(city.to_s)}",
           normalized_params: params,
           title: "Imóveis em #{city}",
-          description: "Imóveis em #{city} selecionados pela Salute Imóveis para compra, locação e investimento.",
-          keywords: ["imóveis em #{city}", "imobiliária", "Salute Imóveis"].join(", "),
+          description: "Imóveis em #{city} selecionados pela #{site_name} para compra, locação e investimento.",
+          keywords: ["imóveis em #{city}", "imobiliária", site_name].join(", "),
           intro_text: "",
           count: count_properties(params)
         )
@@ -123,8 +123,8 @@ module Seo
           canonical_path: "/imoveis?city=#{CGI.escape(bairro.to_s)}",
           normalized_params: params,
           title: "Imóveis em #{bairro}",
-          description: "Imóveis em #{bairro} com curadoria da Salute Imóveis para quem busca localização e boas oportunidades.",
-          keywords: ["imóveis em #{bairro}", "Balneário Camboriú", "Salute Imóveis"].join(", "),
+          description: "Imóveis em #{bairro} com curadoria da #{site_name} para quem busca localização e boas oportunidades.",
+          keywords: ["imóveis em #{bairro}", "Balneário Camboriú", site_name].join(", "),
           intro_text: "",
           count: count
         )
@@ -143,7 +143,7 @@ module Seo
           normalized_params: { city: [city] },
           title: "Empreendimentos em #{city}",
           description: "Empreendimentos em #{city} para morar, investir ou acompanhar novos projetos imobiliários.",
-          keywords: ["empreendimentos em #{city}", "lançamentos", "Salute Imóveis"].join(", "),
+          keywords: ["empreendimentos em #{city}", "lançamentos", site_name].join(", "),
           intro_text: "",
           count: count
         )
@@ -159,6 +159,12 @@ module Seo
         apply_to_public: true,
         auto_discovered: true
       )
+    end
+
+    def site_name
+      LayoutSetting.instance.site_name.presence || "Unitymob"
+    rescue StandardError
+      "Unitymob"
     end
 
     def process(opportunity)

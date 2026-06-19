@@ -1,124 +1,7 @@
-<style>
-  .habitation-show-page {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .habitation-show-header,
-  .habitation-show-card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-  }
-
-  .habitation-show-header {
-    padding: 1rem 1.25rem;
-  }
-
-  .habitation-show-title {
-    color: #0f172a;
-    font-size: 1.3rem;
-    font-weight: 700;
-    line-height: 1.2;
-  }
-
-  .habitation-show-meta {
-    color: #64748b;
-    font-size: .85rem;
-    font-weight: 600;
-  }
-
-  .habitation-show-card {
-    padding: 1.25rem;
-  }
-
-  .habitation-show-section-title {
-    color: #64748b;
-    font-size: .75rem;
-    font-weight: 800;
-    letter-spacing: .08em;
-    margin-bottom: .75rem;
-    text-transform: uppercase;
-  }
-
-  .habitation-show-field {
-    border-bottom: 1px solid #eef2f7;
-    padding: .55rem 0;
-  }
-
-  .habitation-show-label {
-    color: #64748b;
-    font-size: .74rem;
-    font-weight: 800;
-    margin-bottom: .1rem;
-    text-transform: uppercase;
-  }
-
-  .habitation-show-value {
-    color: #111827;
-    font-size: .96rem;
-    font-weight: 600;
-    overflow-wrap: anywhere;
-  }
-
-  .habitation-show-muted {
-    color: #64748b;
-    font-size: .9rem;
-    font-weight: 500;
-  }
-
-  .habitation-show-photo {
-    aspect-ratio: 16 / 10;
-    background: #f8fafc;
-    border-radius: 12px;
-    object-fit: cover;
-    width: 100%;
-  }
-
-  .habitation-show-gallery-thumb {
-    aspect-ratio: 1 / 1;
-    background: #f8fafc;
-    border-radius: 10px;
-    object-fit: cover;
-    width: 100%;
-  }
-
-  .habitation-show-badge-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .5rem;
-  }
-
-  .habitation-show-document {
-    border: 1px solid #eef2f7;
-    border-radius: 10px;
-    padding: .75rem;
-  }
-
-  @media (max-width: 767.98px) {
-    .habitation-show-header,
-    .habitation-show-card {
-      border-radius: 10px;
-      padding: 1rem;
-    }
-
-    .habitation-show-title {
-      font-size: 1.08rem;
-    }
-
-    .habitation-show-actions {
-      width: 100%;
-    }
-
-    .habitation-show-actions .btn {
-      flex: 1 1 auto;
-    }
-  }
-</style>
-
 <%
   linked_development = @habitation.empreendimento if @habitation.codigo_empreendimento.present?
+  title = @habitation.titulo_anuncio.presence || @habitation.display_title || "Detalhes do imóvel"
+  return_path = @return_to_path.presence || admin_habitations_path
   address_parts = [@habitation.endereco, @habitation.numero, @habitation.complemento.presence && "Apto. #{@habitation.complemento}", @habitation.bairro, @habitation.cidade, @habitation.uf].compact_blank
   description = @habitation.display_description
 
@@ -145,6 +28,11 @@
     end.presence || "Não informado"
   end
 
+  array_value = lambda do |value|
+    rendered = show_value.call(value)
+    rendered == "Não informado" ? [] : rendered.split(", ").compact_blank
+  end
+
   external_link = lambda do |url|
     normalized_url = url.to_s.strip
     next if normalized_url.blank?
@@ -152,14 +40,25 @@
     normalized_url.match?(/\Ahttps?:\/\//i) ? normalized_url : "https://#{normalized_url}"
   end
 
-  feature_names = show_value.call(@habitation.caracteristicas) == "Não informado" ? [] : show_value.call(@habitation.caracteristicas).split(", ")
-  infrastructure_names = show_value.call(@habitation.infra_estrutura) == "Não informado" ? [] : show_value.call(@habitation.infra_estrutura).split(", ")
-  unique_feature_names = show_value.call(@habitation.caracteristica_unica) == "Não informado" ? [] : show_value.call(@habitation.caracteristica_unica).split(", ")
+  status_badge_class = case @habitation.status.to_s.parameterize
+                       when /venda/
+                         "ax-badge--blue"
+                       when /aluguel|alugado|locacao/
+                         "ax-badge--green"
+                       when /pendente|revisao|suspenso/
+                         "ax-badge--amber"
+                       else
+                         "ax-badge--gray"
+                       end
+
+  feature_names = array_value.call(@habitation.caracteristicas)
+  infrastructure_names = array_value.call(@habitation.infra_estrutura)
+  unique_feature_names = array_value.call(@habitation.caracteristica_unica)
 
   attached_photo_sources = @habitation.photos.attached? ? @habitation.ordered_photos.select { |photo| photo.persisted? && photo.blob&.persisted? }.map.with_index { |photo, index|
     {
       url: url_for(photo),
-      thumb: url_for(photo),
+      thumb: public_image_url({ attachment: photo }, resize_to_fill: [520, 360]) || url_for(photo),
       caption: "Foto #{index + 1} - #{photo.filename}",
       badge: "Ativo"
     }
@@ -179,11 +78,11 @@
 
   development_photo_sources = if @habitation.use_development_photos? && linked_development.present? && attached_photo_sources.blank? && api_photo_sources.blank?
     linked_development.own_public_image_sources.first(24).filter_map.with_index do |source, index|
-      photo_url = public_image_url(source)
+      photo_url = public_image_url(source, resize_to_fill: [520, 360]) || public_image_url(source)
       next if photo_url.blank?
 
       {
-        url: photo_url,
+        url: public_image_url(source) || photo_url,
         thumb: photo_url,
         caption: "Foto do empreendimento #{index + 1}",
         badge: "Empreendimento"
@@ -196,14 +95,41 @@
   photo_sources = attached_photo_sources + api_photo_sources + development_photo_sources
   primary_photo = photo_sources.first
 
+  sale_price = money.call(@habitation.valor_venda_cents)
+  rent_price = money.call(@habitation.valor_locacao_cents)
+  total_rent_price = money.call(@habitation.valor_total_aluguel_cents)
+  main_price = sale_price || total_rent_price || (rent_price.present? ? "#{rent_price}/mês" : nil) || "Sob consulta"
+  price_context = if sale_price.present?
+                    "Venda"
+                  elsif total_rent_price.present?
+                    "Pacote locação"
+                  elsif rent_price.present?
+                    "Locação"
+                  else
+                    "Valor sob consulta"
+                  end
+
+  last_update_at = [@habitation.data_atualizacao_crm, @habitation.updated_at].compact.max
+  updated_label = last_update_at.present? ? "Atualizado #{time_ago_in_words(last_update_at)} atrás" : "Atualização não informada"
+
+  quick_stats = [
+    ["Dorm.", @habitation.dormitorios_qtd, "bi-door-open"],
+    ["Suítes", @habitation.suites_qtd, "bi-key"],
+    ["Banheiros", @habitation.banheiros_qtd, "bi-droplet"],
+    ["Vagas", @habitation.vagas_qtd, "bi-car-front"],
+    ["Área priv.", @habitation.area_privativa_m2.present? ? "#{@habitation.area_privativa_m2} m²" : nil, "bi-arrows-angle-expand"],
+    ["Área total", @habitation.area_total_m2.present? ? "#{@habitation.area_total_m2} m²" : nil, "bi-aspect-ratio"]
+  ].select { |_label, value, _icon| value.present? }
+
   summary_fields = [
     ["Referência", @habitation.codigo],
     ["Tipo", @habitation.tipo],
     ["Categoria", @habitation.categoria],
     ["Modalidade", @habitation.status],
+    ["Captador", @habitation.primary_captador_name],
     ["Empreendimento", @habitation.nome_empreendimento],
     ["Ocupação", @habitation.ocupacao_status]
-  ]
+  ].select { |_label, value| value.present? }
 
   address_fields = [
     ["Logradouro", @habitation.endereco],
@@ -213,7 +139,7 @@
     ["Cidade", @habitation.cidade],
     ["UF", @habitation.uf],
     ["CEP", @habitation.cep]
-  ]
+  ].select { |_label, value| value.present? }
 
   feature_fields = [
     ["Dormitórios", @habitation.dormitorios_qtd],
@@ -223,17 +149,17 @@
     ["Área privativa", @habitation.area_privativa_m2.present? ? "#{@habitation.area_privativa_m2} m²" : nil],
     ["Área total", @habitation.area_total_m2.present? ? "#{@habitation.area_total_m2} m²" : nil],
     ["Face", @habitation.face]
-  ]
+  ].select { |_label, value| value.present? }
 
   value_fields = [
-    ["Venda", money.call(@habitation.valor_venda_cents)],
-    ["Locação", money.call(@habitation.valor_locacao_cents)],
-    ["Total aluguel", money.call(@habitation.valor_total_aluguel_cents)],
+    ["Venda", sale_price],
+    ["Locação", rent_price],
+    ["Total aluguel", total_rent_price],
     ["Condomínio", money.call(@habitation.valor_condominio_cents)],
     ["IPTU", money.call(@habitation.valor_iptu_cents)],
     ["Aceita financiamento", yes_no.call(@habitation.aceita_financiamento_flag)],
     ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)]
-  ]
+  ].select { |_label, value| value.present? }
 
   public_flags = [
     ["Mobiliado", @habitation.mobiliado_flag],
@@ -246,197 +172,242 @@
   ].select { |_label, value| value.present? && value != false }
 
   media_links = [
-    ["Tour virtual", @habitation.tour_virtual],
-    ["Podcast", @habitation.podcast_url],
-    *@habitation.videos.to_a.compact_blank.map.with_index { |url, index| ["Vídeo #{index + 1}", url] },
-    *@habitation.plantas.to_a.compact_blank.map.with_index { |url, index| ["Planta #{index + 1}", url] }
-  ].filter_map do |label, url|
+    ["Tour virtual", @habitation.tour_virtual, "bi-badge-vr"],
+    ["Podcast", @habitation.podcast_url, "bi-soundwave"],
+    *@habitation.videos.to_a.compact_blank.map.with_index { |url, index| ["Vídeo #{index + 1}", url, "bi-play-circle"] },
+    *@habitation.plantas.to_a.compact_blank.map.with_index { |url, index| ["Planta #{index + 1}", url, "bi-file-earmark-image"] }
+  ].filter_map do |label, url, icon|
     link = external_link.call(url)
-    [label, link] if link.present?
+    [label, link, icon] if link.present?
   end
 
-  summary_fields = summary_fields.select { |_label, value| value.present? }
-  address_fields = address_fields.select { |_label, value| value.present? }
-  feature_fields = feature_fields.select { |_label, value| value.present? }
-  value_fields = value_fields.select { |_label, value| value.present? }
+  item_names = (feature_names + infrastructure_names + unique_feature_names).compact_blank.uniq
 %>
 
-<div class="habitation-show-page">
-  <div class="habitation-show-header d-flex justify-content-between align-items-start gap-3 flex-wrap">
-    <div class="flex-grow-1" style="min-width: 0;">
-      <div class="habitation-show-meta">
-        <i class="bi bi-hash"></i><%= @habitation.codigo %>
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Imóveis", return_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>REF <%= @habitation.codigo %></strong>
+<% end %>
+
+<div class="ax-property-show">
+  <section class="ax-property-hero-panel ax-property-show-hero">
+    <div class="ax-property-hero-panel__content">
+      <div class="ax-property-show-hero__meta">
+        <span><i class="bi bi-hash"></i><%= @habitation.codigo %></span>
         <% if @habitation.status.present? %>
-          · <span class="badge bg-light text-dark border fw-normal"><%= @habitation.status %></span>
+          <span class="ax-badge <%= status_badge_class %>"><%= @habitation.status %></span>
         <% end %>
         <% if @habitation.categoria.present? %>
-          · <span><%= @habitation.categoria %></span>
+          <span><%= @habitation.categoria %></span>
         <% end %>
       </div>
-      <div class="habitation-show-title mt-1">
-        <%= @habitation.titulo_anuncio.presence || @habitation.display_title || "Detalhes do imóvel" %>
-      </div>
-      <% if address_parts.any? %>
-        <div class="habitation-show-meta mt-2">
-          <i class="bi bi-geo-alt"></i>
-          <%= address_parts.join(" · ") %>
-        </div>
-      <% end %>
-    </div>
 
-    <div class="habitation-show-actions d-flex gap-2 flex-wrap">
-      <%= link_to (@return_to_path || admin_habitations_path), class: "btn btn-outline-secondary btn-sm" do %>
-        <i class="bi bi-arrow-left"></i><span class="ms-1">Voltar</span>
-      <% end %>
-      <% if can_edit_habitation?(@habitation) %>
-        <%= link_to edit_admin_habitation_path(@habitation, return_to: @return_to_path), class: "btn btn-primary btn-sm" do %>
-          <i class="bi bi-pencil-square"></i><span class="ms-1">Editar cadastro</span>
-        <% end %>
-      <% end %>
-      <%= link_to habitation_path(@habitation), target: "_blank", rel: "noopener", class: "btn btn-outline-primary btn-sm" do %>
-        <i class="bi bi-box-arrow-up-right"></i><span class="ms-1">Ver no site</span>
-      <% end %>
-    </div>
-  </div>
-
-  <div class="row g-3">
-    <div class="col-12 col-xl-5">
-      <div class="habitation-show-card h-100" data-controller="fancybox-gallery">
-        <% if primary_photo.present? %>
-          <%= link_to primary_photo[:url], data: { fancybox: "admin-habitation-show-gallery", caption: primary_photo[:caption] } do %>
-            <%= image_tag primary_photo[:thumb], class: "habitation-show-photo mb-3", alt: primary_photo[:caption] %>
-          <% end %>
-        <% else %>
-          <div class="habitation-show-photo mb-3 d-flex align-items-center justify-content-center text-muted">
-            <i class="bi bi-image display-4 opacity-25"></i>
-          </div>
-        <% end %>
-
-        <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
-          <div class="habitation-show-section-title mb-0">Fotos</div>
-          <% if photo_sources.any? %>
-            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" data-gallery-open>
-              <i class="bi bi-images me-1"></i>Abrir galeria
-            </button>
+      <div class="ax-property-show-hero__row">
+        <div class="ax-property-show-hero__title">
+          <h1><%= title %></h1>
+          <% if address_parts.any? %>
+            <p><i class="bi bi-geo-alt"></i><%= address_parts.join(" · ") %></p>
           <% end %>
         </div>
 
+        <div class="ax-property-show-actions">
+          <%= link_to safe_join([tag.i(class: "bi bi-arrow-left ax-ico"), tag.span("Voltar")]), return_path, class: "ax-btn ax-btn--sm" %>
+          <% if can_edit_habitation?(@habitation) %>
+            <%= link_to safe_join([tag.i(class: "bi bi-pencil-square ax-ico"), tag.span("Editar")]), edit_admin_habitation_path(@habitation, return_to: @return_to_path), class: "ax-btn ax-btn--primary ax-btn--sm" %>
+          <% end %>
+          <%= link_to safe_join([tag.i(class: "bi bi-box-arrow-up-right ax-ico"), tag.span("Ver no site")]), habitation_path(@habitation), target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm" %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ax-property-show-grid">
+    <div class="ax-card ax-property-gallery" data-controller="fancybox-gallery">
+      <% if primary_photo.present? %>
+        <%= link_to safe_join([
+              image_tag(primary_photo[:thumb], class: "ax-property-gallery__hero", alt: primary_photo[:caption]),
+              tag.span(safe_join([tag.i(class: "bi bi-clock"), updated_label]), class: "ax-property-gallery__status")
+            ]), primary_photo[:url], class: "ax-property-gallery__hero-link", data: { fancybox: "admin-habitation-show-gallery", caption: primary_photo[:caption] } %>
+      <% else %>
+        <div class="ax-property-gallery__hero ax-property-gallery__empty">
+          <i class="bi bi-image"></i>
+          <span>Sem foto principal</span>
+        </div>
+      <% end %>
+
+      <div class="ax-property-gallery__head">
+        <div>
+          <strong>Galeria</strong>
+          <span><%= pluralize(photo_sources.size, "foto", "fotos") %></span>
+        </div>
         <% if photo_sources.any? %>
-          <div class="row g-2">
+          <button type="button" class="ax-btn ax-btn--sm" data-gallery-open>
+            <i class="bi bi-images ax-ico"></i><span>Abrir galeria</span>
+          </button>
+        <% end %>
+      </div>
+
+      <% if photo_sources.any? %>
+        <% if photo_sources.many? %>
+          <div class="ax-property-gallery__hidden-links" aria-hidden="true">
             <% photo_sources.drop(1).each do |photo| %>
-              <div class="col-4">
-                <%= link_to photo[:url], class: "d-block position-relative", data: { fancybox: "admin-habitation-show-gallery", caption: photo[:caption] } do %>
-                  <%= image_tag photo[:thumb], class: "habitation-show-gallery-thumb", alt: photo[:caption] %>
-                  <span class="position-absolute top-0 start-0 badge bg-dark bg-opacity-75 m-1"><%= photo[:badge] %></span>
-                <% end %>
-              </div>
+              <%= link_to photo[:url], photo[:caption], data: { fancybox: "admin-habitation-show-gallery", caption: photo[:caption] }, tabindex: "-1" %>
             <% end %>
           </div>
-        <% else %>
-          <p class="habitation-show-muted mb-0">Nenhuma foto cadastrada.</p>
         <% end %>
-      </div>
+      <% else %>
+        <div class="ax-property-gallery__notice">Nenhuma foto cadastrada para este imóvel.</div>
+      <% end %>
     </div>
 
-    <div class="col-12 col-xl-7">
-      <div class="habitation-show-card h-100">
-        <div class="habitation-show-section-title">Informações principais</div>
-        <div class="row">
-          <% summary_fields.each do |label, value| %>
-            <div class="col-sm-6 habitation-show-field">
-              <div class="habitation-show-label"><%= label %></div>
-              <div class="habitation-show-value"><%= show_value.call(value) %></div>
+    <div class="ax-property-show-stack">
+      <% summary_panel_body = capture do %>
+        <div class="ax-property-record-panel__body">
+          <div class="ax-property-show-price">
+            <span>Valor do imóvel</span>
+            <strong><%= main_price %></strong>
+            <% if sale_price.present? && total_rent_price.present? %>
+              <small>Locação: <%= total_rent_price %></small>
+            <% elsif sale_price.present? && rent_price.present? %>
+              <small>Locação: <%= rent_price %>/mês</small>
+            <% end %>
+          </div>
+
+          <% if quick_stats.any? %>
+            <div class="ax-property-stat-row">
+              <% quick_stats.each do |label, value, icon| %>
+                <div class="ax-property-stat">
+                  <i class="bi <%= icon %>"></i>
+                  <strong><%= show_value.call(value) %></strong>
+                  <span><%= label %></span>
+                </div>
+              <% end %>
             </div>
           <% end %>
         </div>
-      </div>
-    </div>
 
-    <div class="col-12">
-      <div class="habitation-show-card">
-        <div class="habitation-show-section-title">Valores</div>
-        <div class="row">
-          <% value_fields.each do |label, value| %>
-            <div class="col-sm-6 col-lg-3 habitation-show-field">
-              <div class="habitation-show-label"><%= label %></div>
-              <div class="habitation-show-value"><%= show_value.call(value) %></div>
+        <div class="ax-property-record-sections">
+          <section class="ax-property-record-section">
+            <div class="ax-property-record-section__head">
+              <span>Dados principais</span>
+              <strong>Ficha operacional</strong>
             </div>
+            <div class="ax-property-data-grid ax-property-data-grid--compact">
+              <% summary_fields.each do |label, value| %>
+                <div class="ax-property-data-cell">
+                  <span><%= label %></span>
+                  <strong><%= show_value.call(value) %></strong>
+                </div>
+              <% end %>
+            </div>
+          </section>
+
+          <% if value_fields.any? %>
+            <section class="ax-property-record-section">
+              <div class="ax-property-record-section__head">
+                <span>Valores</span>
+                <strong>Negociação</strong>
+              </div>
+              <div class="ax-property-data-grid ax-property-data-grid--compact">
+                <% value_fields.each do |label, value| %>
+                  <div class="ax-property-data-cell">
+                    <span><%= label %></span>
+                    <strong><%= show_value.call(value) %></strong>
+                  </div>
+                <% end %>
+              </div>
+            </section>
           <% end %>
         </div>
-      </div>
+      <% end %>
+      <%= ax_operational_panel(
+            eyebrow: "Registro operacional",
+            title: "Resumo do imóvel",
+            class_name: "ax-property-summary ax-property-record-panel",
+            actions: safe_join([
+              tag.span(@habitation.tipo.presence || "Unitário", class: "ax-badge ax-badge--gray"),
+              tag.span(price_context, class: "ax-badge #{status_badge_class}")
+            ]),
+            body: summary_panel_body
+          ) %>
     </div>
+  </section>
 
-    <div class="col-12">
-      <div class="habitation-show-card">
-        <div class="habitation-show-section-title">Endereço</div>
-        <div class="row">
+  <section class="ax-property-show-bottom__body">
+    <% if address_fields.any? %>
+      <% address_panel_body = capture do %>
+        <div class="ax-property-data-grid">
           <% address_fields.each do |label, value| %>
-            <div class="col-sm-6 col-lg-3 habitation-show-field">
-              <div class="habitation-show-label"><%= label %></div>
-              <div class="habitation-show-value"><%= show_value.call(value) %></div>
+            <div class="ax-property-data-cell">
+              <span><%= label %></span>
+              <strong><%= show_value.call(value) %></strong>
             </div>
           <% end %>
         </div>
-      </div>
-    </div>
+      <% end %>
+      <%= ax_operational_panel(eyebrow: "Endereço", title: "Localização", class_name: "ax-property-detail-panel", body: address_panel_body) %>
+    <% end %>
 
-    <div class="col-12">
-      <div class="habitation-show-card">
-        <div class="habitation-show-section-title">Características</div>
-        <div class="row">
+    <% if feature_fields.any? %>
+      <% features_panel_body = capture do %>
+        <div class="ax-property-data-grid">
           <% feature_fields.each do |label, value| %>
-            <div class="col-sm-6 col-lg-3 habitation-show-field">
-              <div class="habitation-show-label"><%= label %></div>
-              <div class="habitation-show-value"><%= show_value.call(value) %></div>
+            <div class="ax-property-data-cell">
+              <span><%= label %></span>
+              <strong><%= show_value.call(value) %></strong>
             </div>
           <% end %>
         </div>
-      </div>
-    </div>
+      <% end %>
+      <%= ax_operational_panel(eyebrow: "Características", title: "Estrutura", class_name: "ax-property-detail-panel", body: features_panel_body) %>
+    <% end %>
+  </section>
+
+  <section class="ax-property-show-bottom__body ax-property-show-bottom__body--wide">
+    <% if description.present? %>
+      <% description_panel_body = capture do %>
+        <div class="ax-property-description"><%= formatted_habitation_description(description) %></div>
+      <% end %>
+      <%= ax_operational_panel(eyebrow: "Descrição", title: "Texto público", class_name: "ax-property-show-description-card", body: description_panel_body) %>
+    <% end %>
 
     <% if media_links.any? %>
-      <div class="col-12">
-      <div class="habitation-show-card">
-        <div class="habitation-show-section-title">Mídia complementar</div>
-          <div class="row g-2">
-            <% media_links.each do |label, url| %>
-              <div class="col-md-6 col-xl-4">
-                <%= link_to url, target: "_blank", rel: "noopener", class: "habitation-show-document text-decoration-none d-flex align-items-center justify-content-between gap-2" do %>
-                  <span class="fw-semibold text-dark text-truncate"><i class="bi bi-play-circle me-1 text-primary"></i><%= label %></span>
-                  <i class="bi bi-box-arrow-up-right text-muted"></i>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
-      </div>
-      </div>
-    <% end %>
-
-    <% if description.present? %>
-      <div class="col-12">
-        <div class="habitation-show-card">
-          <div class="habitation-show-section-title">Descrição</div>
-          <div class="text-muted"><%= formatted_habitation_description(description) %></div>
+      <% media_panel_body = capture do %>
+        <div class="ax-property-link-list">
+          <% media_links.each do |label, url, icon| %>
+            <%= link_to safe_join([
+                  tag.span(safe_join([tag.i(class: "bi #{icon}"), label])),
+                  tag.i(class: "bi bi-box-arrow-up-right")
+                ]), url, target: "_blank", rel: "noopener", class: "ax-property-link-row" %>
+          <% end %>
         </div>
-      </div>
+      <% end %>
+      <%= ax_operational_panel(eyebrow: "Mídia complementar", title: "Links", class_name: "ax-property-detail-panel", body: media_panel_body) %>
     <% end %>
+  </section>
 
-    <% if feature_names.any? || infrastructure_names.any? || unique_feature_names.any? || public_flags.any? %>
-      <div class="col-12">
-        <div class="habitation-show-card">
-          <div class="habitation-show-section-title">Itens do imóvel</div>
-          <div class="habitation-show-badge-list">
-            <% (feature_names + infrastructure_names + unique_feature_names).compact_blank.uniq.each do |name| %>
-              <span class="badge rounded-pill bg-light text-dark border px-3 py-2"><%= name %></span>
-            <% end %>
-            <% public_flags.each do |label, value| %>
-              <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
-                <%= label %><%= value.is_a?(Integer) ? ": #{value}" : "" %>
-              </span>
-            <% end %>
-          </div>
-        </div>
+  <% if item_names.any? || public_flags.any? %>
+    <% items_panel_body = capture do %>
+      <div class="ax-property-chip-list">
+        <% item_names.each do |name| %>
+          <span class="ax-badge ax-badge--gray"><%= name %></span>
+        <% end %>
+        <% public_flags.each do |label, value| %>
+          <span class="ax-badge ax-badge--blue">
+            <%= label %><%= value.is_a?(Integer) ? ": #{value}" : "" %>
+          </span>
+        <% end %>
       </div>
     <% end %>
-  </div>
+    <%= ax_operational_panel(
+          eyebrow: "Itens do imóvel",
+          title: "Diferenciais e infraestrutura",
+          class_name: "ax-property-detail-panel",
+          actions: tag.span("#{item_names.size + public_flags.size} itens", class: "ax-badge ax-badge--gray"),
+          body: items_panel_body
+        ) %>
+  <% end %>
 </div>

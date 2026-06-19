@@ -1,0 +1,36 @@
+<%= turbo_frame_tag "admin_dashboard_funnel" do %>
+  <article class="ax-dashboard-panel ax-dashboard-panel--funnel">
+    <div class="ax-dashboard-panel__header">
+      <div>
+        <span class="ax-dashboard-panel__eyebrow">Funil</span>
+        <h2>Conversão comercial</h2>
+      </div>
+      <%= ax_badge("30 dias", tone: :blue) %>
+    </div>
+
+    <div class="ax-dashboard-funnel">
+      <div class="ax-dashboard-funnel__visual" aria-label="Funil comercial dos últimos 30 dias">
+        <% @commercial_funnel_rows.each_with_index do |row, index| %>
+          <div class="ax-dashboard-funnel__stage ax-dashboard-funnel__stage--<%= row[:tone] %>"
+               style="--stage-width:<%= row[:width] %>%; --stage-index:<%= index %>;">
+            <span class="ax-dashboard-funnel__stage-label"><%= row[:label] %></span>
+            <strong><%= number_with_delimiter(row[:value]) %></strong>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="ax-dashboard-funnel__rates" aria-label="Faixas de conversão de referência">
+        <% @commercial_funnel_rows.each_cons(2) do |from, to| %>
+          <div class="ax-dashboard-funnel__rate">
+            <span><%= from[:label].split.first %> -> <%= to[:label].split.first %></span>
+            <strong><%= from[:benchmark] %></strong>
+          </div>
+        <% end %>
+        <div class="ax-dashboard-funnel__rate ax-dashboard-funnel__rate--overall">
+          <span>Impacto -> venda</span>
+          <strong><%= @commercial_funnel_rows.last[:benchmark] %></strong>
+        </div>
+      </div>
+    </div>
+  </article>
+<% end %>

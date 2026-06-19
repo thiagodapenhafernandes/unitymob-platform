@@ -1,0 +1,86 @@
+<%# Automação — regras "Quando -> Então" + nutrição (.ax-*) %>
+<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
+  <div>
+    <h1 class="ax-page-title">Automação</h1>
+    <p class="ax-page-subtitle">Crie regras simples: <strong>quando</strong> algo acontece, <strong>então</strong> o sistema age por você.</p>
+  </div>
+  <%= link_to new_admin_automation_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+    <i class="bi bi-plus-lg ax-ico"></i><span>Nova regra</span>
+  <% end %>
+</div>
+
+<%= render "admin/shared/hint", key: "automacao", icon: "bi-lightning-charge",
+      text: "Monte regras simples: <strong>QUANDO</strong> algo acontece → <strong>ENTÃO</strong> o sistema age. Use a ação <strong>Esperar X dias</strong> para criar nutrição (sequências ao longo do tempo)." %>
+
+<% if @rules.any? %>
+  <div class="tw-grid tw-gap-3 tw-mb-6">
+    <% @rules.each do |rule| %>
+      <div class="ax-card" style="<%= 'opacity:.62' unless rule.active? %>">
+        <div class="ax-card__body tw-flex tw-flex-wrap tw-items-start tw-justify-between tw-gap-3">
+          <div class="tw-min-w-0 tw-flex-1">
+            <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
+              <i class="bi bi-lightning-charge-fill" style="color:var(--admin-primary)"></i>
+              <span class="ax-strong"><%= rule.name %></span>
+              <span class="ax-badge ax-badge--<%= rule.active? ? 'green' : 'gray' %>"><%= rule.active? ? 'Ativa' : 'Pausada' %></span>
+              <% if rule.runs_count.to_i > 0 %><span class="ax-page-subtitle"><%= rule.runs_count %> execuções</span><% end %>
+            </div>
+            <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-text-sm">
+              <span class="ax-badge ax-badge--blue">QUANDO</span>
+              <span><%= rule.trigger_label.downcase %></span>
+              <% if rule.conditions_hash[:stage].present? %><span class="ax-badge ax-badge--gray">etapa: <%= rule.conditions_hash[:stage] %></span><% end %>
+              <% if rule.conditions_hash[:source].present? %><span class="ax-badge ax-badge--gray">origem: <%= rule.conditions_hash[:source] %></span><% end %>
+              <% if rule.idle_hours > 0 %><span class="ax-badge ax-badge--amber">+ <%= rule.idle_hours %>h parado</span><% end %>
+            </div>
+            <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-mt-2 tw-text-sm">
+              <span class="ax-badge ax-badge--green">ENTÃO</span>
+              <% rule.actions_summary.each do |label| %>
+                <span class="tw-inline-flex tw-items-center tw-gap-1"><i class="bi bi-arrow-right-short"></i><%= label %></span>
+              <% end %>
+              <% if rule.actions_summary.empty? %><span class="ax-page-subtitle">sem ações</span><% end %>
+            </div>
+          </div>
+          <div class="tw-flex tw-items-center tw-gap-1">
+            <%= button_to toggle_active_admin_automation_rule_path(rule), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: rule.active? ? "Pausar" : "Ativar" do %>
+              <i class="bi <%= rule.active? ? 'bi-pause-circle' : 'bi-play-circle' %>"></i>
+            <% end %>
+            <%= link_to edit_admin_automation_rule_path(rule), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+            <%= button_to admin_automation_rule_path(rule), method: :delete, form_class: "tw-inline", class: "ax-ico-btn", title: "Remover", data: { turbo_confirm: "Remover esta regra?" } do %><i class="bi bi-trash"></i><% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="ax-empty tw-mb-6">
+    <i class="bi bi-lightning-charge tw-text-3xl tw-text-ink-faint"></i>
+    <p class="tw-mt-2 ax-strong">Nenhuma automação ainda</p>
+    <p class="ax-page-subtitle">Ex.: “quando um lead fica 48h parado em Atendimento, criar tarefa + enviar WhatsApp + mover para Represado”.</p>
+    <div class="tw-flex tw-gap-2 tw-justify-center tw-mt-3">
+      <%= link_to "Criar regra", new_admin_automation_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary" %>
+      <%= button_to "Criar regra de exemplo", create_example_admin_automation_rules_path, method: :post, class: "ax-btn ax-btn--sm" %>
+    </div>
+  </div>
+<% end %>
+
+<%# Histórico de execuções %>
+<% if @recent_runs.any? %>
+  <h2 class="ax-page-title tw-text-base tw-mb-2">Execuções recentes</h2>
+  <div class="ax-table-wrap">
+    <table class="ax-table">
+      <thead><tr><th>Quando</th><th>Regra</th><th>Lead</th><th style="width:120px">Status</th></tr></thead>
+      <tbody>
+        <% @recent_runs.each do |run| %>
+          <tr>
+            <td><%= run.created_at.strftime("%d/%m %H:%M") %></td>
+            <td><%= run.automation_rule&.name %></td>
+            <td><% if run.lead %><%= link_to run.lead.display_name, admin_lead_path(run.lead), class: "tw-text-primary" %><% else %>—<% end %></td>
+            <td>
+              <% color = { "executed" => "green", "scheduled" => "blue", "skipped" => "gray", "error" => "red" }[run.status] %>
+              <span class="ax-badge ax-badge--<%= color %>"><%= run.status_label %></span>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

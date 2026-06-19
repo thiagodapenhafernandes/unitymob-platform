@@ -72,7 +72,7 @@ export default class extends Controller {
     const count = this.effectiveCount()
     if (this.hasCountTarget) this.countTarget.textContent = count
     if (this.hasToolbarTarget) {
-      this.toolbarTarget.classList.toggle("d-none", count === 0)
+      this.toolbarTarget.hidden = count === 0
     }
   }
 
@@ -89,7 +89,7 @@ export default class extends Controller {
   openModal() {
     const count = this.effectiveCount()
     if (count === 0) {
-      alert("Selecione ao menos um imóvel.")
+      window.axToast({ message: "Selecione ao menos um imóvel.", type: "warning" })
       return
     }
 
@@ -102,8 +102,7 @@ export default class extends Controller {
 
     const modalEl = document.getElementById("bulkPublishModal")
     if (!modalEl) return
-    const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl)
-    modal.show()
+    modalEl.dispatchEvent(new CustomEvent("ax-modal:open"))
   }
 
   resetForm() {
@@ -139,11 +138,11 @@ export default class extends Controller {
     const action = this.currentActionType()
     const shouldShow = action === "publicar" && CHANNELS_WITH_OPTIONS.has(channel)
 
-    this.channelOptionsWrapperTarget.classList.toggle("d-none", !shouldShow)
+    this.channelOptionsWrapperTarget.hidden = !shouldShow
 
     const blocks = this.channelOptionsWrapperTarget.querySelectorAll(".channel-options-block")
     blocks.forEach((block) => {
-      block.classList.toggle("d-none", block.dataset.channel !== channel)
+      block.hidden = block.dataset.channel !== channel
     })
   }
 
@@ -213,13 +212,13 @@ export default class extends Controller {
 
     const count = this.effectiveCount()
     if (count === 0) {
-      alert("Selecione ao menos um imóvel.")
+      window.axToast({ message: "Selecione ao menos um imóvel.", type: "warning" })
       return
     }
 
     const channel = this.currentChannel()
     if (!channel) {
-      alert("Selecione um canal de divulgação.")
+      window.axToast({ message: "Selecione um canal de divulgação.", type: "warning" })
       return
     }
 
@@ -251,17 +250,16 @@ export default class extends Controller {
 
       if (response.ok) {
         const modalEl = document.getElementById("bulkPublishModal")
-        const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl)
-        modal.hide()
-        alert(`${data.updated || count} imóvel(is) atualizado(s) com sucesso.`)
-        window.location.reload()
+        modalEl.dispatchEvent(new CustomEvent("ax-modal:close"))
+        window.axToast({ message: `${data.updated || count} imóvel(is) atualizado(s) com sucesso.`, type: "success" })
+        setTimeout(() => window.location.reload(), 1200)
       } else {
-        alert(`Erro: ${data.error || "Falha na requisição."}`)
+        window.axToast({ message: `Erro: ${data.error || "Falha na requisição."}`, type: "danger" })
         button.disabled = false
         button.innerHTML = originalHTML
       }
     } catch (err) {
-      alert(`Erro de conexão: ${err.message}`)
+      window.axToast({ message: `Erro de conexão: ${err.message}`, type: "danger" })
       button.disabled = false
       button.innerHTML = originalHTML
     }

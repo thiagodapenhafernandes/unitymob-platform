@@ -5,17 +5,26 @@ export default class extends Controller {
     "cadastroType",
     "category",
     "tipo",
+    "statusSelect",
+    "suspensionReasonField",
+    "suspensionReasonInput",
     "unitOnly",
     "developmentSelect",
     "developmentName",
     "developmentNameLabel",
     "developmentEditLink",
-    "constructorSelect",
-    "missingConstructorAlert",
-    "constructorName",
-    "constructorWebsite",
-    "constructorSubmit",
-    "constructorFeedback"
+    "proprietorSelect",
+    "captadorSelect",
+    "deliveryDate",
+    "constructionProfileSelect",
+    "streetTypeSelect",
+    "street",
+    "streetNumber",
+    "stateSelect",
+    "zipCode",
+    "neighborhoodSelect",
+    "commercialNeighborhoodSelect",
+    "citySelect"
   ]
 
   static values = {
@@ -26,58 +35,30 @@ export default class extends Controller {
   }
 
   connect() {
-    this.tabClickHandler = (event) => this.activateClickedTab(event)
-    this.element.addEventListener("click", this.tabClickHandler)
     this.activateTabFromHash()
     this.applyCadastroType()
+    this.applySuspensionReasonVisibility()
     this.syncFromDevelopmentSelection()
     this.applyServerValidationErrors()
-  }
-
-  disconnect() {
-    if (this.tabClickHandler) {
-      this.element.removeEventListener("click", this.tabClickHandler)
-    }
   }
 
   activateTabFromHash() {
     const tabId = window.location.hash?.replace("#", "")
     if (!tabId) return
 
-    const trigger = document.querySelector(`[data-bs-target="#${CSS.escape(tabId)}"]`)
-    if (trigger && window.bootstrap?.Tab) {
-      window.bootstrap.Tab.getOrCreateInstance(trigger).show()
-    } else if (trigger) {
-      this.showTab(trigger)
-    }
-  }
-
-  activateClickedTab(event) {
-    const trigger = event.target.closest('[data-bs-toggle="tab"][data-bs-target]')
-    if (!trigger || !this.element.contains(trigger)) return
-
-    requestAnimationFrame(() => this.ensureTabPaneVisible(trigger))
-  }
-
-  ensureTabPaneVisible(trigger) {
-    const targetSelector = trigger.getAttribute("data-bs-target")
-    if (!targetSelector) return
-
-    const pane = this.element.querySelector(targetSelector)
-    if (pane?.classList.contains("show") && pane.classList.contains("active")) return
-
-    this.showTab(trigger)
+    const trigger = this.tabTriggerForId(tabId)
+    if (trigger) this.showTab(trigger)
   }
 
   showTab(trigger) {
-    const targetSelector = trigger.getAttribute("data-bs-target")
+    const targetSelector = this.targetSelectorForTab(trigger)
     if (!targetSelector) return
 
     const pane = this.element.querySelector(targetSelector)
     if (!pane) return
 
     const tabList = trigger.closest('[role="tablist"]')
-    tabList?.querySelectorAll('[data-bs-toggle="tab"][data-bs-target]').forEach((tab) => {
+    tabList?.querySelectorAll("[data-ax-tabs-target-param], [data-bs-target]").forEach((tab) => {
       const isCurrent = tab === trigger
       tab.classList.toggle("active", isCurrent)
       tab.setAttribute("aria-selected", isCurrent ? "true" : "false")
@@ -89,6 +70,20 @@ export default class extends Controller {
       tabPane.classList.toggle("active", isCurrent)
       tabPane.classList.toggle("show", isCurrent)
     })
+
+    pane.dispatchEvent(new CustomEvent("ax:tab-shown", {
+      bubbles: true,
+      detail: { trigger, target: pane }
+    }))
+  }
+
+  targetSelectorForTab(trigger) {
+    return trigger?.dataset?.axTabsTargetParam || trigger?.dataset?.bsTarget || null
+  }
+
+  tabTriggerForId(tabId) {
+    const escapedId = CSS.escape(tabId)
+    return this.element.querySelector(`[data-ax-tabs-target-param="#${escapedId}"], [data-bs-target="#${escapedId}"]`)
   }
 
   applyServerValidationErrors() {
@@ -167,21 +162,24 @@ export default class extends Controller {
       return
     }
 
-    const tabButton = this.element.querySelector(`[data-bs-target="#${tabPane.id}"]`)
+    const tabButton = this.tabTriggerForId(tabPane.id)
     if (!tabButton) {
       callback()
       return
     }
 
     const onShown = () => {
+      tabButton.removeEventListener("ax:tab-shown", onShown)
       tabButton.removeEventListener("shown.bs.tab", onShown)
       requestAnimationFrame(callback)
     }
 
+    tabButton.addEventListener("ax:tab-shown", onShown)
     tabButton.addEventListener("shown.bs.tab", onShown)
 
-    if (window.bootstrap?.Tab?.getOrCreateInstance) {
-      window.bootstrap.Tab.getOrCreateInstance(tabButton).show()
+    // Ativa a aba via ax-tabs (clique no gatilho) ou fallback interno.
+    if (tabButton.dataset.axTabsTargetParam) {
+      tabButton.click()
       return
     }
 
@@ -209,6 +207,33 @@ export default class extends Controller {
 
   cadastroTypeChanged() {
     this.applyCadastroType(true)
+  }
+
+  statusChanged() {
+    this.applySuspensionReasonVisibility(true)
+  }
+
+  applySuspensionReasonVisibility(fromUser = false) {
+    if (!this.hasSuspensionReasonFieldTarget || !this.hasSuspensionReasonInputTarget || !this.hasStatusSelectTarget) return
+
+    const visible = this.normalizedStatusValue() === "suspenso"
+    this.suspensionReasonFieldTarget.classList.toggle("d-none", !visible)
+    this.suspensionReasonInputTarget.disabled = !visible
+
+    if (!visible && fromUser) {
+      this.suspensionReasonInputTarget.value = ""
+      this.suspensionReasonInputTarget.dispatchEvent(new Event("input", { bubbles: true }))
+      this.suspensionReasonInputTarget.dispatchEvent(new Event("change", { bubbles: true }))
+    }
+  }
+
+  normalizedStatusValue() {
+    return this.statusSelectTarget.value
+      .toString()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase()
   }
 
   applyCadastroType(fromUser = false) {
@@ -286,7 +311,6 @@ export default class extends Controller {
     const developmentData = this.developmentsValue?.[developmentCode]
 
     this.toggleDevelopmentNameReadonly(Boolean(developmentCode))
-    this.toggleMissingConstructorAlert(false)
 
     if (!developmentCode || !developmentData) return
 
@@ -295,14 +319,58 @@ export default class extends Controller {
     }
 
     this.syncDevelopmentEditLink(developmentData.edit_url)
-    this.toggleMissingConstructorAlert(!developmentData.constructor_id)
+    this.syncDevelopmentRelationshipFields(developmentData)
+    this.syncDevelopmentAddressFields(developmentData.address)
+  }
 
-    // Só sobrescreve a construtora se o empreendimento tiver construtora definida.
-    if (developmentData.constructor_id && this.hasConstructorSelectTarget) {
-      this.setSelectValue(this.constructorSelectTarget, developmentData.constructor_id)
-    } else if (fromUser) {
-      // Não limpa uma seleção manual existente quando o empreendimento não tiver construtora.
-    }
+  syncDevelopmentRelationshipFields(developmentData) {
+    this.setSelectTargetValue("proprietorSelect", developmentData.proprietor_id)
+    this.setSelectTargetValue("captadorSelect", developmentData.admin_user_id)
+    this.setInputTargetValue("deliveryDate", developmentData.data_entrega)
+    this.setSelectTargetValue("constructionProfileSelect", developmentData.perfil_construcao)
+  }
+
+  syncDevelopmentAddressFields(address = {}) {
+    if (!address) return
+
+    this.setSelectTargetValue("streetTypeSelect", address.tipo_endereco, { onlyWhenBlank: true })
+    this.setInputTargetValue("street", address.logradouro, { onlyWhenBlank: true })
+    this.setInputTargetValue("streetNumber", address.numero, { onlyWhenBlank: true })
+    this.setSelectTargetValue("stateSelect", address.uf, { onlyWhenBlank: true })
+    this.setInputTargetValue("zipCode", address.cep, { onlyWhenBlank: true })
+    this.setSelectTargetValue("neighborhoodSelect", address.bairro, { onlyWhenBlank: true, createOption: true })
+    this.setSelectTargetValue("commercialNeighborhoodSelect", address.bairro_comercial, { onlyWhenBlank: true, createOption: true })
+    this.setSelectTargetValue("citySelect", address.cidade, { onlyWhenBlank: true, createOption: true })
+  }
+
+  setInputTargetValue(targetName, value, options = {}) {
+    const input = this.optionalTarget(targetName)
+    if (!this.canWriteField(input, value, options)) return
+
+    input.value = String(value)
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+    input.dispatchEvent(new Event("change", { bubbles: true }))
+  }
+
+  setSelectTargetValue(targetName, value, options = {}) {
+    const select = this.optionalTarget(targetName)
+    if (!this.canWriteField(select, value, options)) return
+
+    this.setSelectValue(select, value, { createOption: options.createOption })
+  }
+
+  optionalTarget(targetName) {
+    const predicateName = `has${targetName.charAt(0).toUpperCase()}${targetName.slice(1)}Target`
+    if (!this[predicateName]) return null
+
+    return this[`${targetName}Target`]
+  }
+
+  canWriteField(field, value, options = {}) {
+    if (!field || value === undefined || value === null || String(value).trim() === "") return false
+    if (field.disabled || field.readOnly) return false
+    if (options.onlyWhenBlank && String(field.value || "").trim() !== "") return false
+    return true
   }
 
   toggleDevelopmentNameReadonly(shouldBeReadonly) {
@@ -323,102 +391,21 @@ export default class extends Controller {
     this.developmentEditLinkTarget.classList.add("d-none")
   }
 
-  setSelectValue(select, value) {
+  setSelectValue(select, value, options = {}) {
     const finalValue = String(value)
     if (select.tomselect) {
-      select.tomselect.setValue(finalValue, true)
-      return
-    }
-
-    select.value = finalValue
-  }
-
-  toggleMissingConstructorAlert(visible) {
-    if (!this.hasMissingConstructorAlertTarget) return
-    this.missingConstructorAlertTarget.classList.toggle("d-none", !visible)
-    if (!visible) this.syncDevelopmentEditLink(null)
-  }
-
-  async createConstructor(event) {
-    event.preventDefault()
-    if (!this.hasConstructorSelectTarget || !this.hasConstructorNameTarget) return
-
-    const name = this.constructorNameTarget.value.trim()
-    const websiteUrl = this.hasConstructorWebsiteTarget ? this.constructorWebsiteTarget.value.trim() : ""
-
-    if (!name) {
-      this.showConstructorFeedback("Informe o nome da construtora.", "danger")
-      return
-    }
-
-    this.setConstructorSubmitting(true)
-
-    try {
-      const response = await fetch("/admin/constructors.json", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "X-Requested-With": "XMLHttpRequest",
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
-        },
-        credentials: "same-origin",
-        body: JSON.stringify({
-          constructor: { name: name, website_url: websiteUrl }
-        })
-      })
-
-      const payload = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        const msg = payload?.errors?.join(", ") || `Erro ao salvar construtora (HTTP ${response.status}).`
-        this.showConstructorFeedback(msg, "danger")
-        return
+      if (options.createOption && !select.tomselect.options[finalValue]) {
+        select.tomselect.addOption({ value: finalValue, text: finalValue })
       }
-
-      this.appendConstructorOption(payload)
-      this.showConstructorFeedback("Construtora cadastrada e selecionada.", "success")
-      this.constructorNameTarget.value = ""
-      if (this.hasConstructorWebsiteTarget) this.constructorWebsiteTarget.value = ""
-      this.closeConstructorModal()
-    } catch (_error) {
-      this.showConstructorFeedback("Falha de conexão ao cadastrar construtora.", "danger")
-    } finally {
-      this.setConstructorSubmitting(false)
+      select.tomselect.setValue(finalValue, true)
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+      return
     }
-  }
 
-  appendConstructorOption(constructor) {
-    const select = this.constructorSelectTarget
-    if (select.tomselect) {
-      select.tomselect.addOption({ value: String(constructor.id), text: constructor.name })
-      select.tomselect.addItem(String(constructor.id), true)
-    } else {
-      const option = new Option(constructor.name, constructor.id, true, true)
-      select.add(option)
-      select.value = String(constructor.id)
+    if (options.createOption && !Array.from(select.options).some((option) => option.value === finalValue)) {
+      select.add(new Option(finalValue, finalValue))
     }
-  }
-
-  setConstructorSubmitting(isSubmitting) {
-    if (!this.hasConstructorSubmitTarget) return
-    this.constructorSubmitTarget.disabled = isSubmitting
-    this.constructorSubmitTarget.innerHTML = isSubmitting
-      ? '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Salvando...'
-      : '<i class="bi bi-check2 me-1"></i>Salvar construtora'
-  }
-
-  showConstructorFeedback(message, type) {
-    if (!this.hasConstructorFeedbackTarget) return
-    this.constructorFeedbackTarget.className = `alert alert-${type} py-2 px-3 small mb-0`
-    this.constructorFeedbackTarget.textContent = message
-    this.constructorFeedbackTarget.classList.remove("d-none")
-  }
-
-  closeConstructorModal() {
-    const modalElement = document.getElementById("quickAddConstructorModal")
-    if (!modalElement || typeof bootstrap === "undefined" || !bootstrap.Modal) return
-    const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement)
-    modal.hide()
+    select.value = finalValue
+    select.dispatchEvent(new Event("change", { bubbles: true }))
   }
 }

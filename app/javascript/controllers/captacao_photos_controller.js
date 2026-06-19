@@ -119,8 +119,8 @@ export default class extends Controller {
     }
 
     const modalElement = document.getElementById("captacaoPhotoSchedulerModal")
-    if (!modalElement || !window.bootstrap) return
-    window.bootstrap.Modal.getOrCreateInstance(modalElement).show()
+    if (!modalElement) return
+    modalElement.dispatchEvent(new CustomEvent("ax-modal:open"))
   }
 
   selectDate(event) {
@@ -138,8 +138,8 @@ export default class extends Controller {
     this.scheduledAtInputTarget.value = `${this.selectedDate}T${slot}`
 
     const modalElement = document.getElementById("captacaoPhotoSchedulerModal")
-    if (modalElement && window.bootstrap) {
-      window.bootstrap.Modal.getOrCreateInstance(modalElement).hide()
+    if (modalElement) {
+      modalElement.dispatchEvent(new CustomEvent("ax-modal:close"))
     }
   }
 
@@ -186,16 +186,16 @@ export default class extends Controller {
         <div class="captacao-photo-preview"></div>
         <div class="captacao-photo-meta">
           <strong>${this.escapeHtml(file.name)}</strong>
-          <small>${this.formatSize(file.size)}</small>
+          <span class="captacao-photo-size">${this.formatSize(file.size)}</span>
           <label class="captacao-highlight-choice">
             <input type="radio" name="new_photo_highlight" value="${index}" ${index === 0 ? "checked" : ""} data-action="change->captacao-photos#highlightNew">
             Destaque
           </label>
         </div>
         <div class="captacao-photo-actions">
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-index="${index}" data-action="captacao-photos#moveNewUp" aria-label="Subir foto"><i class="bi bi-arrow-up"></i></button>
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-index="${index}" data-action="captacao-photos#moveNewDown" aria-label="Descer foto"><i class="bi bi-arrow-down"></i></button>
-          <button type="button" class="btn btn-sm btn-outline-danger" data-index="${index}" data-action="captacao-photos#removeNew" aria-label="Remover foto"><i class="bi bi-trash"></i></button>
+          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewUp" aria-label="Subir foto"><i class="bi bi-arrow-up"></i></button>
+          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewDown" aria-label="Descer foto"><i class="bi bi-arrow-down"></i></button>
+          <button type="button" class="captacao-photo-action captacao-photo-action--danger" data-index="${index}" data-action="captacao-photos#removeNew" aria-label="Remover foto"><i class="bi bi-trash"></i></button>
         </div>
       `
       row.querySelector(".captacao-photo-preview").appendChild(preview)
@@ -257,18 +257,18 @@ export default class extends Controller {
     const availableSlots = slots.filter((slot) => !this.bookedSlotsValue.includes(`${this.selectedDate}T${slot}`))
 
     if (availableSlots.length === 0) {
-      this.slotListTarget.innerHTML = '<div class="alert alert-warning mb-0">Não há horários disponíveis para este dia.</div>'
+      this.slotListTarget.innerHTML = '<div class="captacao-slot-empty">Não há horários disponíveis para este dia.</div>'
       return
     }
 
     this.slotListTarget.innerHTML = availableSlots.map((slot) => (
-      `<button type="button" class="btn btn-outline-primary captacao-time-slot" data-slot="${slot}" data-action="captacao-photos#selectSlot">${slot}</button>`
+      `<button type="button" class="captacao-time-slot" data-slot="${slot}" data-action="captacao-photos#selectSlot">${slot}</button>`
     )).join("")
   }
 
   toggle(element, visible) {
     if (!element) return
-    element.classList.toggle("d-none", !visible)
+    element.hidden = !visible
   }
 
   formatSize(bytes) {

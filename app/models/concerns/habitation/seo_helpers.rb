@@ -50,7 +50,7 @@ module Habitation::SeoHelpers
   
   # URL canônica para SEO
   def canonical_url
-    "#{ENV.fetch('APP_HOST', 'https://saluteimoveis.com')}/imovel/#{slug}"
+    "#{seo_app_host}#{Rails.application.routes.url_helpers.habitation_path(self)}"
   end
   
   # Open Graph tags
@@ -61,7 +61,7 @@ module Habitation::SeoHelpers
       'og:description' => seo_description,
       'og:url' => canonical_url,
       'og:image' => primary_image_url,
-      'og:site_name' => 'Salute Imóveis',
+      'og:site_name' => seo_site_name,
       'og:locale' => 'pt_BR'
     }.compact
   end
@@ -143,10 +143,10 @@ module Habitation::SeoHelpers
        parts << "em #{location_term}"
     end
     
-    # Sufixo de Preço ou Salute
+    # Sufixo de marca
     title = parts.join(' ')
     if title.length < 50
-       title += " | Salute Imóveis"
+       title += " | #{seo_site_name}"
     end
     
     title
@@ -195,7 +195,7 @@ module Habitation::SeoHelpers
     # CTA
     ctas = [
       "Agende sua visita hoje mesmo e surpreenda-se!",
-      "Entre em contato com a Salute Imóveis para mais detalhes.",
+      "Entre em contato com a #{seo_site_name} para mais detalhes.",
       "Não perca essa chance, fale conosco agora.",
       "Veja mais fotos e informações exclusivas."
     ]
@@ -242,7 +242,7 @@ module Habitation::SeoHelpers
     keywords << "#{vagas_qtd} vagas" if vagas_qtd.to_i > 0
     
     # Marca
-    keywords << "Salute Imóveis"
+    keywords << seo_site_name
     keywords << "Imobiliária"
     
     keywords.join(', ')
@@ -259,6 +259,17 @@ module Habitation::SeoHelpers
       addressCountry: 'BR',
       postalCode: cep
     }.compact
+  end
+
+  def seo_site_name
+    LayoutSetting.instance.site_name.presence || "Unitymob"
+  rescue StandardError
+    "Unitymob"
+  end
+
+  def seo_app_host
+    host = ENV["APP_HOST"].presence || Rails.application.routes.default_url_options[:host].presence || "http://localhost:3000"
+    host.to_s.delete_suffix("/")
   end
   
   def geo_structured_data

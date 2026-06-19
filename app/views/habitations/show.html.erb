@@ -1,6 +1,6 @@
 <% images = @habitation.public_image_sources %>
 <% image_url = ->(photo) { public_image_url(photo) } %>
-<% title = @habitation.titulo_anuncio.presence || "#{@habitation.categoria} em #{@habitation.bairro}" %>
+<% title = @habitation.display_title %>
 <% address_parts = [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank %>
 <% address_text = address_parts.join(" - ") %>
 <% area_text = (@habitation.area_total_m2.presence || @habitation.area_privativa_m2.presence) %>
@@ -34,9 +34,9 @@
              data-fancybox="property-gallery"
              data-caption="<%= title %> - Foto 1"
              class="relative block h-full overflow-hidden bg-gray-100">
-            <%= image_tag public_image_url(images.first, resize_to_fill: [960, 720]),
+            <%= image_tag public_image_url(images.first, resize_to_limit: [1200, 900]),
                 alt: "#{title} - Foto 1",
-                class: "h-full w-full object-cover transition-transform duration-700 hover:scale-105",
+                class: "h-full w-full object-contain transition-transform duration-700 hover:scale-105",
                 fetchpriority: "high",
                 loading: "eager",
                 decoding: "async",
@@ -51,9 +51,9 @@
                  data-fancybox="property-gallery"
                  data-caption="<%= title %> - Foto <%= index + 2 %>"
                  class="relative block overflow-hidden bg-gray-100">
-                <%= image_tag public_image_url(photo, resize_to_fill: [520, 360]),
+                <%= image_tag public_image_url(photo, resize_to_limit: [720, 520]),
                     alt: "#{title} - Foto #{index + 2}",
-                    class: "h-full w-full object-cover transition-transform duration-700 hover:scale-105",
+                    class: "h-full w-full object-contain transition-transform duration-700 hover:scale-105",
                     loading: "lazy",
                     decoding: "async",
                     width: 520,

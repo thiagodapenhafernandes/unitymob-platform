@@ -1,0 +1,330 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Config de imóveis", edit_admin_property_setting_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Fluxo de revisão</strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to edit_admin_property_setting_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-gear"></i><span>Config Imóveis</span>
+  <% end %>
+  <button type="submit" form="review_workflow_form" class="ax-contextbar__button ax-contextbar__button--primary">
+    <i class="bi bi-check2"></i><span>Salvar fluxo</span>
+  </button>
+<% end %>
+
+<%
+  intake_check_choices = PropertySetting::BROKER_INTAKE_CHECK_OPTIONS.map { |key, label| [label, key] }
+  selected_intake_checks = @property_setting.active_broker_capture_checks
+  layer_on = @property_setting.broker_capture_layer_enabled?
+%>
+
+<div class="review-workflow-workspace">
+  <%= form_with model: @property_setting, url: admin_property_setting_path, method: :patch, html: { id: "review_workflow_form", class: "review-workflow-form" } do |f| %>
+    <%= hidden_field_tag :return_to, review_workflow_admin_property_setting_path %>
+
+    <% if @property_setting.errors.any? %>
+      <%= ax_error_summary(@property_setting) %>
+    <% end %>
+
+    <header class="ax-dashboard-command ax-property-form-command review-workflow-command">
+      <div class="ax-dashboard-command__main">
+        <span class="ax-dashboard-command__eyebrow">Configuração operacional</span>
+        <h1>Fluxo de revisão de captações</h1>
+        <p>Mapa dinâmico: muda conforme as regras de captação, revisão e publicação desta conta.</p>
+      </div>
+      <div class="ax-dashboard-command__status">
+        <i class="bi bi-broadcast"></i>
+        <%= ax_badge("Aplicado em tempo real", tone: :green, dot: true) %>
+      </div>
+    </header>
+
+    <div class="review-workflow-grid">
+      <div class="review-workflow-main">
+        <%# Etapa 1 — Submissão / validações %>
+        <%= ax_operational_panel(
+              eyebrow: "Etapa 1 · Submissão",
+              title: "Validações de submissão",
+              actions: ax_badge("#{selected_intake_checks.size} ativas", tone: :blue)
+            ) do %>
+          <div class="review-panel-body">
+            <p class="review-hint">O corretor cria a captação e, ao enviar para revisão, o sistema valida os itens selecionados abaixo.</p>
+            <div class="review-field habitation-form-ui">
+              <%= hidden_field_tag "property_setting[required_broker_intake_checks][]", "" %>
+              <%= ax_multiselect_field(
+                    form: f,
+                    method: :required_broker_intake_checks,
+                    label: "Validações obrigatórias antes de enviar para revisão",
+                    tooltip: "Cada item é checado quando a captação é submetida. Tudo vem pré-selecionado para manter o comportamento atual; remova o que não for exigido nesta conta.",
+                    choices: intake_check_choices,
+                    selected: selected_intake_checks,
+                    id: "property_setting_required_broker_intake_checks",
+                    placeholder: "Selecione as validações exigidas...",
+                    data: { tom_select_tags_value: false }
+                  ) %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Etapa 2 — Revisão administrativa %>
+        <%= ax_operational_panel(
+              eyebrow: "Etapa 2 · Revisão",
+              title: "Revisão administrativa",
+              actions: ax_badge(layer_on ? "Ativada" : "Desativada", tone: layer_on ? :green : :gray)
+            ) do %>
+          <div class="review-panel-body review-config">
+            <div class="habitation-form-ui">
+              <%= ax_toggle_chip(f, :broker_capture_layer_enabled,
+                    label: "Ativar revisão com administrador",
+                    checked_value: "true",
+                    unchecked_value: "false",
+                    class_name: "review-config__switch") %>
+            </div>
+
+            <div class="review-field">
+              <%= ax_select_field(
+                    form: f,
+                    method: :broker_capture_fallback_admin_user_id,
+                    label: "Conta que assume imóveis anteriores do captador quando desativado",
+                    tooltip: "Usado ao desativar a camada; obrigatório para evitar imóveis sem responsável.",
+                    choices: @broker_capture_fallback_users.map { |user| [user.name, user.id] },
+                    select_options: { include_blank: "Selecione um usuário administrativo" }
+                  ) %>
+            </div>
+
+            <div class="review-field">
+              <span class="review-field__label">Blocos editáveis na devolução do retorno</span>
+              <p class="review-hint">Ao devolver ao corretor, apenas essas seções permanecem liberadas para edição.</p>
+              <%= hidden_field_tag "property_setting[returnable_intake_edit_sections][]", "" %>
+              <%= ax_chip_grid do %>
+                <% PropertySetting::RETURNABLE_INTAKE_EDIT_SECTION_OPTIONS.each do |key, label| %>
+                  <% section_id = "property_setting_returnable_intake_edit_sections_#{key}" %>
+                  <% section_checked = Array(@property_setting.returnable_intake_edit_sections).include?(key) %>
+                  <label class="ax-toggle-chip <%= "is-checked" if section_checked %>">
+                    <%= check_box_tag "property_setting[returnable_intake_edit_sections][]", key, section_checked,
+                          id: section_id,
+                          class: "ax-toggle-chip__input",
+                          onchange: "this.closest('.ax-toggle-chip').classList.toggle('is-checked', this.checked)" %>
+                    <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+                    <span class="ax-toggle-chip__label"><%= label %></span>
+                  </label>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Notificações %>
+        <%= ax_operational_panel(
+              eyebrow: "Trilha",
+              title: "Notificações de revisão",
+              actions: ax_badge(@property_setting&.notify_email_review_events ? "E-mail on" : "Só interno", tone: @property_setting&.notify_email_review_events ? :blue : :gray)
+            ) do %>
+          <div class="review-panel-body review-config">
+            <div class="habitation-form-ui review-config__switches">
+              <%= ax_toggle_chip(f, :notify_internal_review_events,
+                    label: "Notificar internamente em cada etapa",
+                    checked_value: "true",
+                    unchecked_value: "false",
+                    class_name: "review-config__switch") %>
+              <%= ax_toggle_chip(f, :notify_email_review_events,
+                    label: "Notificar por e-mail em cada etapa",
+                    checked_value: "true",
+                    unchecked_value: "false",
+                    class_name: "review-config__switch") %>
+            </div>
+
+            <div class="review-field">
+              <%= ax_field_label(f, :review_notification_emails, text: "E-mails para notificação (separados por vírgula, ; ou linha)") %>
+              <%= f.text_area :review_notification_emails,
+                    rows: 3,
+                    class: "ax-control",
+                    placeholder: "admin1@empresa.com, admin2@empresa.com" %>
+              <p class="review-hint">Use essa lista para alertas externos (ex.: gerência comercial). Ative o e-mail acima para disparar para estes endereços.</p>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <aside class="review-workflow-inspector" aria-label="Mapa e estado do fluxo">
+        <%= ax_operational_panel(eyebrow: "Fluxo", title: "Mapa do fluxo") do %>
+          <div class="review-panel-body">
+            <ol class="review-steps">
+              <li class="review-steps__item">
+                <span class="review-steps__badge">1</span>
+                <div class="review-steps__body">
+                  <strong>Captador / Corretor</strong>
+                  <span>Captação e submissão · valida <%= selected_intake_checks.size %> itens</span>
+                </div>
+              </li>
+              <% if layer_on %>
+                <li class="review-steps__item">
+                  <span class="review-steps__badge review-steps__badge--amber">2</span>
+                  <div class="review-steps__body">
+                    <strong>Revisão administrativa</strong>
+                    <span>Aprova ou devolve · <%= @returnable_section_labels.count %> blocos editáveis no retorno</span>
+                  </div>
+                </li>
+              <% else %>
+                <li class="review-steps__item">
+                  <span class="review-steps__badge review-steps__badge--muted">2</span>
+                  <div class="review-steps__body">
+                    <strong>Sem revisão administrativa</strong>
+                    <span>Publicação direta após as validações</span>
+                  </div>
+                </li>
+              <% end %>
+              <li class="review-steps__item">
+                <span class="review-steps__badge review-steps__badge--green">3</span>
+                <div class="review-steps__body">
+                  <strong>Publicação</strong>
+                  <span>Vai ao site e entra no ciclo de consulta pública</span>
+                </div>
+              </li>
+            </ol>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Status", title: "Estado da configuração") do %>
+          <div class="review-panel-body">
+            <dl class="review-state">
+              <div class="review-state__row">
+                <dt>Camada de revisão</dt>
+                <dd><%= ax_badge(layer_on ? "Ativada" : "Desativada", tone: layer_on ? :green : :gray) %></dd>
+              </div>
+              <div class="review-state__row">
+                <dt>Notificação interna</dt>
+                <dd><%= ax_badge(@property_setting&.notify_internal_review_events ? "Ligada" : "Desligada", tone: @property_setting&.notify_internal_review_events ? :blue : :gray) %></dd>
+              </div>
+              <div class="review-state__row">
+                <dt>Notificação por e-mail</dt>
+                <dd><%= ax_badge(@property_setting&.notify_email_review_events ? "Ligada" : "Desligada", tone: @property_setting&.notify_email_review_events ? :blue : :gray) %></dd>
+              </div>
+              <div class="review-state__row">
+                <dt>Camada ativa no cadastro</dt>
+                <dd><%= ax_badge("Obrigatório antes de publicar", tone: :amber) %></dd>
+              </div>
+            </dl>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Resumo", title: "Resumo da regra ativa") do %>
+          <div class="review-panel-body">
+            <dl class="review-state">
+              <div class="review-state__row">
+                <dt>Validações obrigatórias no envio</dt>
+                <dd><strong><%= @required_check_labels.count %></strong></dd>
+              </div>
+              <div class="review-state__row">
+                <dt>Blocos editáveis no retorno</dt>
+                <dd><strong><%= @returnable_section_labels.count %></strong></dd>
+              </div>
+              <div class="review-state__row">
+                <dt>Estado público atual</dt>
+                <dd><strong><%= layer_on ? "Com revisão" : "Publicação direta" %></strong></dd>
+              </div>
+            </dl>
+          </div>
+        <% end %>
+      </aside>
+    </div>
+
+    <div class="ax-form-actions review-workflow-actions">
+      <%= link_to "Voltar para Config Imóveis", edit_admin_property_setting_path, class: "ax-btn" %>
+      <%= f.submit "Salvar fluxo de revisão", class: "ax-btn ax-btn--primary" %>
+    </div>
+  <% end %>
+</div>
+
+<style id="review-workflow-styles">
+  .review-workflow-workspace { display: grid; gap: 8px; padding-top: 8px; }
+  .review-workflow-form { min-width: 0; display: grid; gap: 8px; }
+  .review-workflow-command { margin-bottom: 0; }
+
+  .review-workflow-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+
+  @media (min-width: 1080px) {
+    .review-workflow-grid { grid-template-columns: minmax(0, 1fr) 340px; }
+  }
+
+  .review-workflow-main { display: grid; min-width: 0; gap: 8px; }
+
+  /* Corpo padronizado dos cards reutilizáveis (ax_operational_panel não traz padding). */
+  .review-panel-body { padding: 12px; display: grid; gap: 12px; }
+
+  .review-workflow-inspector {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    align-self: start;
+  }
+
+  @media (min-width: 1080px) {
+    .review-workflow-inspector {
+      position: sticky;
+      top: calc(var(--ax-navbar-h, 48px) + var(--ax-contextbar-h, 40px) + 8px);
+    }
+  }
+
+  /* Campos e textos auxiliares */
+  .review-config { display: grid; gap: 14px; }
+  .review-field { display: grid; gap: 5px; min-width: 0; }
+  .review-field__label { color: #1f2733; font-size: 12px; font-weight: 700; }
+  .review-config__switches { display: grid; gap: 8px; }
+  .review-hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.4; }
+
+  /* Stepper compacto do inspector */
+  .review-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+  .review-steps__item {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding-bottom: 14px;
+  }
+  .review-steps__item:last-child { padding-bottom: 0; }
+  .review-steps__item:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 11px;
+    top: 24px;
+    bottom: 2px;
+    width: 2px;
+    background: var(--ax-border-soft, #e4e9f0);
+  }
+  .review-steps__badge {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--admin-primary, #365f8f);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    z-index: 1;
+  }
+  .review-steps__badge--amber { background: #d9890a; }
+  .review-steps__badge--green { background: #0e9f6e; }
+  .review-steps__badge--muted { background: #8a93a3; }
+  .review-steps__body { display: grid; gap: 1px; min-width: 0; padding-top: 2px; }
+  .review-steps__body strong { color: #1f2733; font-size: 12.5px; font-weight: 700; }
+  .review-steps__body span { color: #697586; font-size: 11.5px; line-height: 1.35; }
+
+  /* Linhas de estado/resumo */
+  .review-state { margin: 0; display: grid; gap: 8px; }
+  .review-state__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .review-state__row dt { margin: 0; color: #697586; font-size: 12px; }
+  .review-state__row dd { margin: 0; font-size: 12.5px; font-weight: 600; color: #1f2733; }
+
+  .review-workflow-actions { margin-top: 0; }
+</style>

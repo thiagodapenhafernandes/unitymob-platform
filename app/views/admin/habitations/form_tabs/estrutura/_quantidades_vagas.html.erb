@@ -1,0 +1,42 @@
+<%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
+  <div class="ax-span-1">
+    <%= ax_number_field(form: f, method: :andar, label: "Andar") %>
+  </div>
+  <div class="ax-span-1">
+    <%= ax_number_field(form: f, method: :dormitorios_qtd, label: "Dorm.") %>
+  </div>
+  <div class="ax-span-1">
+    <%= ax_number_field(form: f, method: :suites_qtd, label: "Suítes") %>
+  </div>
+  <div class="ax-span-1">
+    <%= ax_number_field(form: f, method: :demi_suites_qtd, label: "Demi") %>
+  </div>
+  <div class="ax-span-1">
+    <%= ax_number_field(form: f, method: :salas_qtd, label: "Salas") %>
+  </div>
+  <div class="ax-span-1">
+    <%= ax_number_field(form: f, method: :varandas_qtd, label: "Varanda") %>
+  </div>
+  <div class="ax-span-1">
+    <%= ax_number_field(form: f, method: :banheiros_qtd, label: "Banh.") %>
+  </div>
+  <div class="ax-span-1">
+    <%= ax_number_field(form: f, method: :hidromassagem_qtd, label: "Hidro") %>
+  </div>
+  <div class="ax-span-2">
+    <%= ax_select_field(
+          form: f,
+          method: :tipo_vaga,
+          label: "Tipo vaga",
+          choices: Habitation::VAGA_TYPES,
+          select_options: { include_blank: true },
+          html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+        ) %>
+  </div>
+  <div class="ax-span-1">
+    <%= ax_number_field(form: f, method: :vagas_qtd, label: "Vagas") %>
+  </div>
+  <div class="ax-span-1">
+    <%= ax_text_field(form: f, method: :numero_box, label: "Box") %>
+  </div>
+<% end %>

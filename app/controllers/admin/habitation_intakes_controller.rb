@@ -1,8 +1,11 @@
 module Admin
   class HabitationIntakesController < Admin::BaseController
+    include RentalGuaranteeParamNormalizer
+
     before_action -> { check_permission!(:view, :captacoes) }
     before_action -> { check_permission!(:manage, :captacoes) }, only: %i[new create edit update destroy submit_for_review release_to_site publish]
     before_action :authorize_export!, only: %i[export]
+    before_action :set_property_setting, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish]
     before_action :set_habitation, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site]
     before_action :authorize_access!, only: %i[show edit update destroy submit_for_review release_to_site]
     before_action :authorize_intake_edit!, only: %i[edit update]
@@ -49,6 +52,7 @@ module Admin
 
     def show
       @captacao = @habitation
+      @review_timeline = HabitationReviewTimeline.new(habitation: @habitation).call
       render "admin/captacoes/show"
     end
 
@@ -96,15 +100,24 @@ module Admin
         end
 
         if current_step == "review"
-          unless @habitation.intake_ready_for_admin_review?
-            @habitation.intake_missing_requirements.each { |message| @habitation.errors.add(:base, message) }
+          required_checks = active_broker_capture_checks
+          missing_requirements = @habitation.intake_missing_requirements(
+            required_checks: required_checks,
+            require_owner_city: true
+          )
+          if missing_requirements.present?
+            missing_requirements.each { |message| @habitation.errors.add(:base, message) }
             @step = current_step
             render "admin/captacoes/edit", status: :unprocessable_entity
             return
           end
 
-          submitted_records = HabitationIntakeSplitter.new(@habitation).call!
-          redirect_to admin_captacao_path(@habitation), notice: submission_notice(submitted_records)
+          submitted_records = HabitationIntakeSplitter.new(
+            @habitation,
+            target_intake_status: target_broker_capture_status
+          ).call!
+          redirect_to admin_captacao_path(@habitation),
+                      notice: submission_notice(submitted_records, target_broker_capture_status)
         else
           next_step = @habitation.next_step
           next_step = @habitation.next_step if next_step == "visitas" && @habitation.skip_visitas?
@@ -130,8 +143,13 @@ module Admin
       habitation.data_atualizacao_crm = Time.current if habitation.changed?
     end
 
+    def link_proprietor_from_intake_fields
+      Habitations::ProprietorLinker.new(@habitation).call
+    end
+
     def submit_for_review
       @habitation.assign_attributes(captacao_style_params) if intake_param_key.present?
+      link_proprietor_from_intake_fields
       touch_manual_habitation_update!(@habitation)
 
       if duplicate_address_blocks_intake?("review")
@@ -144,12 +162,21 @@ module Admin
         return
       end
 
-      if @habitation.intake_ready_for_admin_review? && @habitation.save
-        submitted_records = HabitationIntakeSplitter.new(@habitation).call!
-        redirect_to admin_captacao_path(@habitation), notice: submission_notice(submitted_records)
+      required_checks = active_broker_capture_checks
+      if @habitation.intake_ready_for_admin_review?(required_checks: required_checks, require_owner_city: true) && @habitation.save
+        submitted_records = HabitationIntakeSplitter.new(
+          @habitation,
+          target_intake_status: target_broker_capture_status
+        ).call!
+        notify_review_events(submitted_records, event: "submit_for_review")
+        redirect_to admin_captacao_path(@habitation),
+                    notice: submission_notice(submitted_records, target_broker_capture_status)
       else
         load_form_options
-        @missing_requirements = @habitation.intake_missing_requirements
+        @missing_requirements = @habitation.intake_missing_requirements(
+          required_checks: required_checks,
+          require_owner_city: true
+        )
         flash.now[:alert] = "Complete os campos obrigatórios antes de enviar."
         @captacao = @habitation
         @step = "review"
@@ -158,8 +185,20 @@ module Admin
     end
 
     def approve
-      unless @habitation.intake_ready_for_admin_review?
-        missing = @habitation.intake_missing_requirements.to_sentence
+      link_proprietor_from_intake_fields
+
+      unless @habitation.intake_status.in?(%w[submitted_for_admin_review admin_approved])
+        redirect_to admin_captacao_path(@habitation),
+                    alert: "Esta captação não está em fase de revisão administrativa."
+        return
+      end
+
+      required_checks = active_broker_capture_checks
+      unless @habitation.intake_ready_for_admin_review?(required_checks: required_checks, require_owner_city: true)
+        missing = @habitation.intake_missing_requirements(
+          required_checks: required_checks,
+          require_owner_city: true
+        ).to_sentence
         redirect_to admin_captacao_path(@habitation),
                     alert: "Complete os campos obrigatórios antes de aprovar: #{missing}."
         return
@@ -169,18 +208,33 @@ module Admin
         intake_status: "admin_approved",
         admin_reviewed_by: current_admin_user,
         admin_reviewed_at: Time.current,
-        admin_review_notes: params[:admin_review_notes]
+        admin_review_notes: admin_review_notes
       )
+      notify_review_events([@habitation], event: "approve", notes: admin_review_notes)
       redirect_to admin_captacao_path(@habitation), notice: "Captação liberada pelo administrativo."
     end
 
     def return_to_broker
+      unless @habitation.intake_status.in?(%w[submitted_for_admin_review admin_approved])
+        redirect_to admin_captacao_path(@habitation),
+                    alert: "Esta captação não pode ser devolvida nesta etapa."
+        return
+      end
+
+      if admin_review_return_reason.blank? || admin_review_notes.blank?
+        redirect_to admin_captacao_path(@habitation),
+                    alert: "Informe o motivo da devolução e a nota interna para devolver ao corretor."
+        return
+      end
+
       @habitation.update!(
         intake_status: "returned_to_broker",
         admin_reviewed_by: current_admin_user,
         admin_reviewed_at: Time.current,
-        admin_review_notes: params[:admin_review_notes]
+        admin_review_notes: admin_review_notes,
+        admin_review_return_reason: admin_review_return_reason
       )
+      notify_review_events([@habitation], event: "return_to_broker", notes: admin_review_notes, return_reason: admin_review_return_reason)
       redirect_to admin_captacao_path(@habitation), notice: "Captação devolvida ao corretor."
     end
 
@@ -190,8 +244,11 @@ module Admin
         return
       end
 
-      unless @habitation.broker_can_release_to_site?
-        missing = @habitation.intake_missing_requirements.to_sentence
+      unless @habitation.broker_can_release_to_site?(required_checks: active_broker_capture_checks)
+        missing = @habitation.intake_missing_requirements(
+          required_checks: active_broker_capture_checks,
+          require_owner_city: true
+        ).to_sentence
         alert = "Esta captação ainda não está pronta para liberar no site."
         alert = "#{alert} Pendências: #{missing}." if missing.present?
         redirect_to admin_captacao_path(@habitation), alert: alert
@@ -205,6 +262,7 @@ module Admin
         exibir_no_site_flag: true,
         foto_classificacao: @habitation.foto_classificacao.presence || "Boas"
       )
+      notify_review_events([@habitation], event: "release_to_site")
       redirect_to admin_captacao_path(@habitation), notice: "Imóvel liberado para o site."
     end
 
@@ -253,8 +311,30 @@ module Admin
       attrs
     end
 
+    def admin_review_return_reason
+      params[:admin_review_return_reason].to_s.strip.presence
+    end
+
+    def admin_review_notes
+      params[:admin_review_notes].to_s.strip.presence
+    end
+
     def set_habitation
       @habitation = Habitation.broker_intakes.friendly.find(params[:id])
+    end
+
+    def set_property_setting
+      @property_setting = PropertySetting.instance
+    end
+
+    def target_broker_capture_status
+      return "admin_approved" unless @property_setting&.broker_capture_layer_enabled
+
+      "submitted_for_admin_review"
+    end
+
+    def active_broker_capture_checks
+      @property_setting&.active_broker_capture_checks
     end
 
     def authorize_export!
@@ -264,7 +344,7 @@ module Admin
     end
 
     def can_export_captacoes?
-      current_admin_user&.admin? || current_admin_user&.profile&.name == "Administrativo"
+      current_admin_user&.admin? || current_admin_user&.profile&.administrativo?
     end
 
     def can_broker_release_to_site?(habitation)
@@ -284,7 +364,7 @@ module Admin
         )
       end
 
-      scope.where(admin_user_id: current_admin_user.id)
+      scope.where(admin_user_id: visible_owner_ids(:captacoes) || [current_admin_user.id])
     end
 
     def filtered_intakes_scope
@@ -396,25 +476,22 @@ module Admin
     def authorize_intake_edit!
       return unless @habitation.intake_submitted_for_admin_review?
       return if current_admin_user&.admin? || administrative_profile?
-      return if manager_profile? && manager_can_access_intake?(@habitation)
+      return if current_admin_user&.can_view_team?(:captacoes) && manager_can_access_intake?(@habitation)
 
       redirect_to admin_captacoes_path, alert: "Captações pendentes de revisão só podem ser alteradas pelo Administrativo ou Gerente responsável."
     end
 
     def administrative_profile?
-      current_admin_user&.profile&.name == "Administrativo"
-    end
-
-    def manager_profile?
-      current_admin_user&.profile&.manager?
+      current_admin_user&.profile&.administrativo?
     end
 
     def manager_team_user_ids
       return [] unless current_admin_user
 
-      users = AdminUser.where(manager_id: current_admin_user.id)
-      users = users.where(acting_type: manager_allowed_acting_types) unless current_admin_user.both?
-      users.pluck(:id)
+      ids = current_admin_user.team_scope_ids
+      return ids if current_admin_user.both?
+
+      AdminUser.where(id: ids, acting_type: manager_allowed_acting_types).pluck(:id)
     end
 
     def manager_allowed_acting_types
@@ -448,7 +525,7 @@ module Admin
     end
 
     def load_form_options
-      @brokers = AdminUser.order(:name)
+      @brokers = AdminUser.account_members.order(:name)
       @proprietors = Proprietor.order(:name).limit(300)
       @internal_features = (
         AttributeOption.where(context: "habitation", category: "feature").order(:name).pluck(:name) +
@@ -497,6 +574,7 @@ module Admin
         missing << "Informe o bairro." if @habitation.bairro.blank?
         missing << "Informe a cidade." if @habitation.cidade.blank?
         missing << "Informe a UF." if @habitation.uf.blank?
+        missing << "Informe o empreendimento/condomínio." if @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
         missing << "Informe o número da unidade." if @habitation.requires_unit_number? && @habitation.bloco.blank?
         missing
       when "caracteristicas"
@@ -512,6 +590,9 @@ module Admin
         if @habitation.property_kind_residencial? && @habitation.banheiros_qtd.to_i <= 0
           missing << "Informe a quantidade de banheiros."
         end
+        missing << "Informe a quantidade de vagas de garagem." if @habitation.vagas_qtd.nil?
+        missing << "Informe a ocupação do imóvel." if @habitation.ocupacao_status.blank?
+        missing << "Informe a situação do imóvel." if @habitation.situacao.blank?
         missing << "Marque ao menos uma característica do imóvel." if @habitation.caracteristicas.blank?
         missing
       when "infraestrutura"
@@ -529,8 +610,9 @@ module Admin
         missing << "Informe ao menos condomínio ou IPTU." if @habitation.valor_condominio_cents.blank? && @habitation.valor_iptu_cents.blank?
         missing << "Informe se aceita permuta." if @habitation.sale_intake? && @habitation.aceita_permuta_answer.blank?
         if @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
-          missing << "Informe se a administração da locação será feita pela Salute."
+          missing << "Informe se a administração da locação será feita internamente."
         end
+        missing << "Informe o meio de garantia locatícia." if @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
         missing << "Informe em quantas vezes aceita parcelamento." if @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.blank?
         missing
       when "fotos"
@@ -540,8 +622,25 @@ module Admin
         missing << "Informe a data/hora agendada com fotógrafo." if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
         missing << "Anexe a autorização do proprietário." unless @habitation.autorizacoes_venda.attached?
         missing
+      when "visitas"
+        missing = []
+        missing << "Informe onde estão as chaves." if @habitation.key_location.blank?
+        missing << "Informe os melhores dias/horários para visita." if !@habitation.skip_visitas? && !@habitation.intake_visit_days_present?
+        missing
       else
         []
+      end
+    end
+
+    def notify_review_events(records, event:, notes: nil, return_reason: nil)
+      Array(records).each do |habitation|
+        HabitationIntakeReviewNotifier.new(
+          habitation: habitation,
+          actor: current_admin_user,
+          event: event,
+          notes: notes,
+          return_reason: return_reason
+        ).call
       end
     end
 
@@ -559,6 +658,7 @@ module Admin
         fields[:neighborhood] = true if @habitation.bairro.blank?
         fields[:city] = true if @habitation.cidade.blank?
         fields[:state] = true if @habitation.uf.blank?
+        fields[:edificio_nome] = true if @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
         fields[:unidade_numero] = true if @habitation.requires_unit_number? && @habitation.bloco.blank?
       when "caracteristicas"
         if @habitation.property_kind_terreno? && !@habitation.has_required_intake_area?
@@ -568,6 +668,9 @@ module Admin
         end
         fields[:dormitorios] = true if @habitation.property_kind_residencial? && @habitation.dormitorios_qtd.to_i <= 0
         fields[:banheiros] = true if @habitation.property_kind_residencial? && @habitation.banheiros_qtd.to_i <= 0
+        fields[:vagas_garagem] = true if @habitation.vagas_qtd.nil?
+        fields[:ocupacao] = true if @habitation.ocupacao_status.blank?
+        fields[:situacao_imovel] = true if @habitation.situacao.blank?
         fields[:caracteristicas_imovel] = true if @habitation.caracteristicas.blank?
       when "infraestrutura"
         fields[:caracteristicas_predio] = true if @habitation.uses_building_infrastructure? && @habitation.infra_estrutura.blank?
@@ -580,12 +683,16 @@ module Admin
         end
         fields[:aceita_permuta_answer] = true if @habitation.sale_intake? && @habitation.aceita_permuta_answer.blank?
         fields[:salute_rental_management_answer] = true if @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
+        fields[:rental_guarantee_method] = true if @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
         fields[:numero_prestacoes] = true if @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.blank?
       when "fotos"
         fields[:photo_flow_choice] = true if @habitation.photo_flow_choice.blank?
         fields[:photos] = true if @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
         fields[:photo_session_requested_at] = true if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
         fields[:autorizacoes_venda] = true unless @habitation.autorizacoes_venda.attached?
+      when "visitas"
+        fields[:chaves_com] = true if @habitation.key_location.blank?
+        fields[:dias_visitas] = true if !@habitation.skip_visitas? && !@habitation.intake_visit_days_present?
       end
       fields
     end
@@ -658,6 +765,9 @@ module Admin
     end
 
     def captacao_style_params
+      normalize_rental_guarantee_method_param!(:habitation)
+      normalize_rental_guarantee_method_param!(:captacao)
+
       permitted_keys = [
         :categoria, :status, :situacao, :tipo, :nome_empreendimento, :titulo_anuncio,
         :property_kind, :modalidade, :step,
@@ -685,7 +795,8 @@ module Admin
         :corretor_nome, :corretor_telefone, :corretor_email, :ordered_photo_ids,
         :zip_code, :street, :street_number, :neighborhood, :city, :state, :edificio_nome, :unidade_numero,
         :chaves_com, :senha_imovel, :senha_portaria,
-        { caracteristicas: [], infra_estrutura: [], caracteristica_unica: [],
+        { rental_guarantee_method: [],
+          caracteristicas: [], infra_estrutura: [], caracteristica_unica: [],
           caracteristicas_imovel: [], caracteristicas_predio: [], aceita_permuta: [], outras_taxas: [], dias_visitas: [],
           photos: [], fotos: [], autorizacoes_venda: [], fichas_cadastro: [], autorizacao_pdf: [],
           extras: {},
@@ -700,6 +811,7 @@ module Admin
 
     def normalize_captacao_params(raw)
       attrs = raw.to_h
+      attrs = filter_returnable_intake_params(attrs)
       normalize_attachment_params!(attrs)
       attrs["intake_step"] = attrs.delete("step") if attrs["step"].present?
       cadastro_type = attrs.delete("cadastro_type")
@@ -760,6 +872,14 @@ module Admin
         attrs["address_attributes"]["id"] = @habitation.address.id if @habitation.address.present?
       end
       attrs.except("salas", "sacada", "terraco", "dependencia_empregada", "precisa_reforma", "distancia_praia", "cidade_permuta", "outras_taxas", "dias_visitas", "extras", "proprietario_cidade")
+    end
+
+    def filter_returnable_intake_params(attrs)
+      return attrs unless @habitation&.intake_returned_to_broker?
+      return attrs if can?(:review, :captacoes)
+
+      allowed_fields = @property_setting&.available_returnable_field_names || []
+      attrs.slice(*allowed_fields)
     end
 
     def normalize_intake_feature_fields!(attrs)
@@ -874,7 +994,8 @@ module Admin
       end
     end
 
-    def submission_notice(submitted_records)
+    def submission_notice(submitted_records, target_intake_status = "submitted_for_admin_review")
+      return "Captação aprovada para publicação." if target_intake_status == "admin_approved"
       return "Captação enviada para aprovação administrativa." if submitted_records.size == 1
 
       "Captação enviada para aprovação administrativa. Foram gerados cadastros separados para venda e locação."

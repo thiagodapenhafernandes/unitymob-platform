@@ -73,6 +73,12 @@ Rails.application.configure do
   # Suppress logger output for asset requests.
   config.assets.quiet = true
 
+  # Compila assets dinamicamente em dev (evita servir digests obsoletos do manifest/public/assets).
+  config.assets.compile = true
+  config.assets.check_precompiled_asset = false
+  # Dev: não cachear assets estáticos no navegador (mudanças aparecem na hora, sem precisar de anônimo).
+  config.public_file_server.headers = { "Cache-Control" => "no-cache, no-store, must-revalidate" }
+
   # Raises error for missing translations.
   # config.i18n.raise_on_missing_translations = true
 

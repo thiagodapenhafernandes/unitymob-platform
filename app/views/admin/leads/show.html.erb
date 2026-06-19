@@ -1,138 +1,288 @@
 <div data-controller="attribute-manager" data-attribute-manager-modal-id-value="attributeManagerModalLead">
-<div class="mb-4">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><%= link_to "Leads", admin_leads_path %></li>
-      <li class="breadcrumb-item active" aria-current="page">Detalhes do Lead</li>
-    </ol>
-  </nav>
-  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
-    <h1 class="h3 mb-0 text-gray-800">Detalhes do Lead: <%= @lead.name %></h1>
-    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#leadAuditHistoryModal">
-      <i class="bi bi-clock-history me-1"></i> Histórico
+
+<%# ===== Cabeçalho ===== %>
+<% sla = lead_sla(@lead) %>
+
+<% @lead_heading_actions = capture do %>
+    <% if @lead.direct_whatsapp_url %>
+      <%= ax_icon_button(label: "WhatsApp", icon: "whatsapp", url: @lead.direct_whatsapp_url, target: "_blank", size: :sm) %>
+    <% end %>
+    <button type="button" class="ax-btn ax-btn--sm" data-ax-modal-open="#leadAuditHistoryModal">
+      <i class="bi bi-clock-history ax-ico"></i><span>Histórico</span>
     </button>
+  <% end %>
+
+<%
+  lead_heading_subtitle = [
+    @lead.origin.presence || "Origem não informada",
+    @lead.created_at.strftime("%d/%m/%Y %H:%M")
+  ]
+  lead_heading_subtitle << @lead.admin_user.name if @lead.admin_user
+  lead_heading_subtitle = lead_heading_subtitle.join(" · ")
+%>
+
+<%= ax_workspace_heading(
+      title: @lead.display_name,
+      eyebrow: "Lead",
+      icon: "person",
+      subtitle: lead_heading_subtitle,
+      pills: [sla[:label], @lead.status.presence || Lead.default_status],
+      actions: @lead_heading_actions
+    ) %>
+
+<%# ===== Barra de funil (bate o olho e entende a etapa) ===== %>
+<div class="ax-card tw-mb-3">
+  <div class="ax-card__body">
+    <div class="tw-flex tw-items-center tw-gap-1 tw-overflow-x-auto tw-pb-1 tw-whitespace-nowrap">
+      <% funnel_progress(@lead, @funnel_statuses).each_with_index do |step, i| %>
+        <% if i > 0 %>
+          <span class="lead-funnel-step-separator lead-funnel-step-separator--<%= step[:state] %>"></span>
+        <% end %>
+        <%= button_to admin_lead_path(@lead, lead: { status: step[:status] }), method: :patch,
+              form_class: "tw-inline-flex", class: "lead-funnel-step lead-funnel-step--#{step[:state]}" do %>
+          <i class="bi <%= step[:state] == :done ? 'bi-check-circle-fill' : (step[:state] == :current ? 'bi-record-circle-fill' : 'bi-circle') %>"></i>
+          <%= step[:status] %>
+        <% end %>
+      <% end %>
+    </div>
   </div>
 </div>
 
-<div class="row g-4">
-  <div class="col-lg-8">
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-person me-2 text-primary"></i>Informações de Contato</h5>
-      </div>
-      <div class="card-body">
-        <div class="row mb-4">
-          <div class="col-sm-3 text-muted">Nome Completo:</div>
-          <div class="col-sm-9 fw-bold"><%= @lead.name %></div>
-        </div>
-        <div class="row mb-4">
-          <div class="col-sm-3 text-muted">E-mail:</div>
-          <div class="col-sm-9"><%= @lead.email %></div>
-        </div>
-        <div class="row mb-4">
-          <div class="col-sm-3 text-muted">Telefone:</div>
-          <div class="col-sm-9">
-            <%= @lead.phone %>
-            <a href="https://wa.me/55<%= @lead.phone.gsub(/\D/, '') %>" target="_blank" class="btn btn-sm btn-success ms-2">
-              <i class="bi bi-whatsapp"></i> Chamar no WhatsApp
-            </a>
+<%= render "admin/shared/hint", key: "lead_workspace", icon: "bi-stars",
+      text: "Esta é a central do lead: a <strong>barra acima</strong> mostra a etapa do funil (clique para avançar). Tudo que você fizer — tarefa, visita, proposta, WhatsApp — aparece na <strong>linha do tempo</strong> abaixo." %>
+
+<%# ===== Próxima ação + ações rápidas ===== %>
+<div class="ax-card tw-mb-4">
+  <div class="ax-card__body tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
+    <div class="tw-flex tw-items-center tw-gap-2">
+    <i class="bi bi-flag-fill tw-text-lg lead-next-action-icon"></i>
+      <div>
+        <div class="ax-stat-label">Próxima ação</div>
+        <% if @next_task %>
+          <div class="ax-strong"><%= @next_task.title %>
+            <% b = task_badge(@next_task) %><span class="ax-badge ax-badge--<%= b[:color] %> tw-ml-1"><%= b[:label] %></span>
           </div>
+        <% else %>
+          <div class="ax-page-subtitle">Nenhuma tarefa pendente. Defina o próximo passo →</div>
+        <% end %>
+      </div>
+    </div>
+    <% if can?(:manage, :comercial) %>
+      <div class="tw-flex tw-flex-wrap tw-gap-2">
+        <%= render "admin/tasks/form_modal", modal_id: "newTaskLead", lead: @lead, trigger_label: "Tarefa", trigger_class: "ax-btn ax-btn--sm" %>
+        <%= render "admin/appointments/form_modal", lead: @lead, trigger_label: "Agendar visita", trigger_class: "ax-btn ax-btn--sm" %>
+        <%= render "admin/leads/log_contact_modal", lead: @lead %>
+        <%= link_to new_admin_lead_proposal_path(@lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+          <i class="bi bi-file-earmark-text ax-ico"></i><span>Nova proposta</span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-[minmax(0,1fr)_380px] tw-gap-4">
+  <%# ===== Coluna esquerda ===== %>
+  <div>
+    <%# Contato + status/notas (form original preservado) %>
+    <div class="ax-card tw-mb-4">
+      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-person ax-ico"></i> Contato & Atendimento</span></div>
+      <div class="ax-card__body">
+        <div class="tw-grid tw-grid-cols-[120px_minmax(0,1fr)] tw-gap-2 tw-mb-3">
+          <div class="ax-page-subtitle">E-mail</div>
+          <div><%= @lead.display_email.presence || "—" %></div>
         </div>
-        <div class="row mb-4">
-          <div class="col-sm-3 text-muted">Data do Contato:</div>
-          <div class="col-sm-9"><%= @lead.created_at.strftime("%d/%m/%Y às %H:%M") %></div>
+        <div class="tw-grid tw-grid-cols-[120px_minmax(0,1fr)] tw-gap-2 tw-mb-3">
+          <div class="ax-page-subtitle">Telefone</div>
+          <div><%= @lead.display_phone.presence || "—" %></div>
         </div>
-        <div class="row">
-          <div class="col-sm-3 text-muted">URL de Origem:</div>
-          <div class="col-sm-9 small"><%= link_to @lead.source_url, @lead.source_url, target: "_blank", class: "text-break" if @lead.source_url.present? %></div>
-        </div>
+        <% if @lead.source_url.present? %>
+          <div class="tw-grid tw-grid-cols-[120px_minmax(0,1fr)] tw-gap-2 tw-mb-3">
+            <div class="ax-page-subtitle">URL de origem</div>
+            <div><%= link_to @lead.source_url, @lead.source_url, target: "_blank", class: "tw-text-primary" %></div>
+          </div>
+        <% end %>
+
+        <div class="lead-view-divider"></div>
+
+        <%= form_with(model: [:admin, @lead], local: true) do |f| %>
+          <div class="mb-3">
+            <%= f.label :notes, "Observações internas", class: "ax-label" %>
+            <%= f.text_area :notes, rows: 4, class: "ax-textarea", placeholder: "Histórico de conversas, preferências do cliente..." %>
+          </div>
+          <div class="tw-flex tw-flex-wrap tw-items-end tw-gap-3 tw-justify-between">
+            <div class="tw-flex tw-flex-wrap tw-items-end tw-gap-3">
+              <div class="tw-min-w-[160px]">
+                <label class="ax-label">Status</label>
+                <div class="tw-flex tw-items-center tw-gap-2">
+                  <%= f.select :status, @status_options, {}, class: "ax-select tw-flex-1", id: "lead_status" %>
+                  <% if can?(:manage, :catalogos) %>
+                    <button type="button" class="ax-btn ax-btn--sm"
+                            data-attribute-manager-context-value="lead"
+                            data-attribute-manager-category-value="status"
+                            data-attribute-manager-field-name-value="lead[status]"
+                            data-attribute-manager-modal-id-value="attributeManagerModalLead"
+                            data-action="click->attribute-manager#open"
+                            title="Gerenciar status">
+                      <i class="bi bi-gear"></i>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+              <div class="tw-min-w-[160px]">
+                <label class="ax-label">Origem</label>
+                <div class="tw-flex tw-items-center tw-gap-2">
+                  <%= f.select :origin, @origin_options, { include_blank: "Selecione..." }, class: "ax-select tw-flex-1", id: "lead_origin", data: { controller: "tom-select", tom_select_create_value: true } %>
+                  <% if can?(:manage, :catalogos) %>
+                    <button type="button" class="ax-btn ax-btn--sm"
+                            data-attribute-manager-context-value="lead"
+                            data-attribute-manager-category-value="source"
+                            data-attribute-manager-field-name-value="lead[origin]"
+                            data-attribute-manager-modal-id-value="attributeManagerModalLead"
+                            data-action="click->attribute-manager#open"
+                            title="Gerenciar origens">
+                      <i class="bi bi-gear"></i>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+              <% if can?(:manage, :leads) || owns_all_resource?(:leads) %>
+                <div class="tw-min-w-[200px]">
+                  <label class="ax-label">Corretor</label>
+                  <%= f.select :admin_user_id, @broker_options, { include_blank: "Sem corretor" }, class: "ax-select" %>
+                </div>
+              <% end %>
+            </div>
+            <%= f.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %>
+          </div>
+        <% end %>
       </div>
     </div>
 
-    <div class="card shadow-sm border-0">
-      <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0 fw-bold"><i class="bi bi-sticky me-2 text-primary"></i>Notas de Atendimento</h5>
-      </div>
-      <div class="card-body">
-        <%= form_with(model: [:admin, @lead], local: true) do |f| %>
-          <div class="mb-3">
-            <%= f.label :notes, "Observações internas", class: "form-label" %>
-            <%= f.text_area :notes, rows: 6, class: "form-control", placeholder: "Histórico de conversas, preferências do cliente..." %>
+    <%# Timeline unificada %>
+    <div class="ax-card">
+      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-activity ax-ico"></i> Linha do tempo</span></div>
+      <div class="ax-card__body">
+        <% if @timeline.any? %>
+          <div class="tw-grid tw-gap-0">
+            <% @timeline.each_with_index do |act, i| %>
+              <% e = timeline_entry(act) %>
+              <div class="tw-flex tw-gap-3">
+                <div class="tw-flex tw-flex-col tw-items-center">
+                  <span class="lead-timeline-marker">
+                    <i class="bi <%= e[:icon] %>"></i>
+                  </span>
+                  <% unless i == @timeline.size - 1 %><span class="lead-timeline-rail"></span><% end %>
+                </div>
+                <div class="tw-pb-4 tw-flex-1">
+                  <div class="tw-flex tw-items-center tw-gap-2">
+                    <span class="ax-strong"><%= e[:label] %></span>
+                    <span class="ax-page-subtitle"><%= time_ago_in_words(act.created_at) %> atrás</span>
+                  </div>
+                  <% if e[:detail].present? %><div class="ax-page-subtitle"><%= e[:detail] %></div><% end %>
+                </div>
+              </div>
+            <% end %>
           </div>
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <%= f.label :status, "Status:", class: "mb-0" %>
-              <%= f.select :status, @status_options, {}, class: "form-select form-select-sm", style: "width: auto;", id: "lead_status" %>
-              <% if defined?(can?) && can?(:manage, :catalogos) %>
-                <button type="button" class="btn btn-sm btn-outline-primary"
-                        data-attribute-manager-context-value="lead"
-                        data-attribute-manager-category-value="status"
-                        data-attribute-manager-field-name-value="lead[status]"
-                        data-attribute-manager-modal-id-value="attributeManagerModalLead"
-                        data-action="click->attribute-manager#open"
-                        data-title="Gerenciar Status de Lead"
-                        data-select-id="lead_status">
-                  <i class="bi bi-sliders me-1"></i>Status
-                </button>
-              <% end %>
-              <%= f.label :origin, "Origem:", class: "mb-0 ms-2" %>
-              <%= f.select :origin, @origin_options, { include_blank: "Selecione..." }, class: "form-select form-select-sm", style: "width: auto; min-width: 180px;", data: { controller: "tom-select", tom_select_create_value: true }, id: "lead_origin" %>
-              <% if can?(:manage, :leads) || owns_all_resource?(:leads) %>
-                <%= f.label :admin_user_id, "Corretor:", class: "mb-0 ms-2" %>
-                <%= f.select :admin_user_id, @broker_options, { include_blank: "Sem corretor" }, class: "form-select form-select-sm", style: "width: auto; min-width: 220px;" %>
-              <% else %>
-                <span class="small text-muted ms-2">
-                  <i class="bi bi-person-badge me-1"></i><%= @lead.admin_user&.name.presence || "Sem corretor atribuído" %>
-                </span>
-              <% end %>
-              <button type="button" class="btn btn-sm btn-outline-primary"
-                      data-attribute-manager-context-value="lead"
-                      data-attribute-manager-category-value="source"
-                      data-attribute-manager-field-name-value="lead[origin]"
-                      data-attribute-manager-modal-id-value="attributeManagerModalLead"
-                      data-action="click->attribute-manager#open"
-                      data-title="Gerenciar Origens de Lead"
-                      data-select-id="lead_origin">
-                <i class="bi bi-gear me-1"></i>Gerenciar
-              </button>
-            </div>
-            <%= f.submit "Salvar Alterações", class: "btn btn-primary" %>
+        <% else %>
+          <div class="ax-empty tw-py-6">
+            <i class="bi bi-activity tw-text-2xl tw-text-ink-faint"></i>
+            <p class="tw-mt-1">Sem atividades ainda.</p>
+            <p class="ax-page-subtitle">Registre um contato, crie uma tarefa ou envie uma proposta — tudo aparece aqui.</p>
           </div>
         <% end %>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-4">
+  <%# ===== Coluna direita ===== %>
+  <div>
     <% if @property %>
-      <div class="card shadow-sm border-0">
-        <div class="card-header bg-white py-3">
-          <h5 class="card-title mb-0 fw-bold"><i class="bi bi-house me-2 text-primary"></i>Imóvel de Interesse</h5>
-        </div>
-        <div class="card-body">
+      <div class="ax-card tw-mb-4">
+        <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-house ax-ico"></i> Imóvel de interesse</span></div>
+        <div class="ax-card__body">
           <% if @property.primary_image.present? %>
-            <img src="<%= @property.primary_image['url'] %>" class="img-fluid rounded mb-3" alt="">
+          <img src="<%= @property.primary_image['url'] %>" class="lead-property-image" alt="Imagem principal do imóvel">
           <% end %>
-          <h6 class="fw-bold mb-1"><%= @property.display_title %></h6>
-          <p class="text-muted small mb-3"><%= @property.bairro %>, <%= @property.cidade %></p>
-          
-          <div class="d-grid gap-2">
-            <%= link_to admin_habitation_path(@property), class: "btn btn-outline-primary btn-sm" do %>
-              <i class="bi bi-pencil me-1"></i> Gerenciar Imóvel
-            <% end %>
-            <%= link_to habitation_path(@property), target: "_blank", class: "btn btn-outline-secondary btn-sm" do %>
-              <i class="bi bi-eye me-1"></i> Ver no Site
-            <% end %>
+          <div class="ax-strong"><%= @property.display_title %></div>
+          <div class="ax-page-subtitle tw-mb-2"><%= @property.bairro %>, <%= @property.cidade %></div>
+          <div class="tw-grid tw-gap-2">
+            <%= link_to "Gerenciar imóvel", admin_habitation_path(@property), class: "ax-btn ax-btn--sm" %>
+            <%= link_to "Ver no site", habitation_path(@property), target: "_blank", class: "ax-btn ax-btn--sm" %>
           </div>
         </div>
       </div>
-    <% else %>
-      <div class="alert alert-light border shadow-none">
-        <i class="bi bi-info-circle me-1"></i> Este lead foi gerado através de um contato geral, sem imóvel específico vinculado.
-      </div>
     <% end %>
+
+    <%# Propostas %>
+    <div class="ax-card tw-mb-4">
+      <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
+        <span class="ax-card__title"><i class="bi bi-file-earmark-text ax-ico"></i> Propostas</span>
+        <% if @proposals.any? && can?(:manage, :comercial) %>
+          <%= link_to new_admin_lead_proposal_path(@lead), class: "ax-ico-btn", title: "Nova proposta" do %><i class="bi bi-plus-lg"></i><% end %>
+        <% end %>
+      </div>
+      <div class="ax-card__body tw-grid tw-gap-2">
+        <% if @proposals.any? %>
+          <% @proposals.each do |p| %>
+            <div class="lead-proposal-item">
+              <div class="tw-min-w-0">
+                <div class="ax-strong tw-truncate">R$ <%= number_with_precision(p.valor, precision: 2, delimiter: ".", separator: ",") %></div>
+                <div><span class="ax-badge ax-badge--<%= proposal_badge_color(p) %>"><%= p.status_label %></span></div>
+              </div>
+              <div class="tw-flex tw-gap-1">
+                <%= link_to public_proposal_path(p.public_token), target: "_blank", class: "ax-ico-btn", title: "Abrir link" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
+                <%= link_to pdf_admin_proposal_path(p), target: "_blank", class: "ax-ico-btn", title: "PDF" do %><i class="bi bi-filetype-pdf"></i><% end %>
+                <% if can?(:manage, :comercial) && p.status == "rascunho" %>
+                  <%= button_to send_proposal_admin_proposal_path(p), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Marcar enviada" do %><i class="bi bi-send"></i><% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="ax-page-subtitle">Nenhuma proposta. <%= link_to "Criar a primeira", new_admin_lead_proposal_path(@lead), class: "tw-text-primary" if can?(:manage, :comercial) %></p>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Tarefas %>
+    <div class="ax-card tw-mb-4">
+      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-check2-square ax-ico"></i> Tarefas</span></div>
+      <div class="ax-card__body tw-grid tw-gap-2">
+        <% open_tasks = @tasks.reject(&:concluida?) %>
+        <% if open_tasks.any? %>
+          <% open_tasks.first(6).each do |t| %>
+            <% b = task_badge(t) %>
+            <div class="tw-flex tw-items-center tw-gap-2">
+              <%= button_to complete_admin_task_path(t), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir" do %><i class="bi bi-circle"></i><% end %>
+              <span class="tw-flex-1 tw-truncate"><%= t.title %></span>
+              <span class="ax-badge ax-badge--<%= b[:color] %>"><%= b[:label] %></span>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="ax-page-subtitle">Nenhuma tarefa pendente.</p>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Compromissos %>
+    <div class="ax-card">
+      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-calendar-event ax-ico"></i> Próximos compromissos</span></div>
+      <div class="ax-card__body tw-grid tw-gap-2">
+        <% if @appointments.any? %>
+          <% @appointments.first(6).each do |a| %>
+            <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
+              <span class="tw-truncate"><%= a.title %></span>
+              <span class="ax-page-subtitle tw-whitespace-nowrap"><%= a.starts_at.strftime("%d/%m %H:%M") %></span>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="ax-page-subtitle">Nada agendado.</p>
+        <% end %>
+      </div>
+    </div>
   </div>
 </div>
+
 <%= render "admin/shared/attribute_manager_modal", modal_id: "attributeManagerModalLead" %>
 <%= render "admin/leads/audit_history_modal", lead: @lead, audit_logs: @lead_audit_logs %>
 </div>

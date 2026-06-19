@@ -1,44 +1,36 @@
 <%= form_with model: [:admin, store], local: true do |f| %>
-  <% if store.errors.any? %>
-    <div class="alert alert-danger">
-      <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Corrija os seguintes erros:</strong>
-      <ul class="mb-0 mt-2">
-        <% store.errors.full_messages.each do |msg| %><li><%= msg %></li><% end %>
-      </ul>
-    </div>
-  <% end %>
+  <%= ax_error_summary(store) %>
 
   <!-- Card 1: Identificação -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
-      <h5 class="fw-bold mb-3">
-        <i class="bi bi-tag-fill text-primary me-2"></i>Identificação
+  <div class="ax-card tw-mb-4">
+    <div class="ax-card__body">
+      <h5 class="tw-font-bold tw-mb-3">
+        <i class="bi bi-tag-fill tw-text-primary" style="margin-right:.5rem"></i>Identificação
       </h5>
-      <div class="row g-3">
-        <div class="col-md-8">
-          <%= f.label :name, "Nome da loja", class: "form-label fw-semibold" %>
-          <span class="badge bg-danger-subtle text-danger ms-1">obrigatório</span>
-          <%= f.text_field :name, class: "form-control", placeholder: "Ex: Loja Centro" %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-6">
+          <%= f.label :name, "Nome da loja", class: "ax-label tw-font-semibold" %>
+          <span class="ax-badge ax-badge--red" style="margin-left:.25rem">obrigatório</span>
+          <%= f.text_field :name, class: "ax-control", placeholder: "Ex: Loja Centro" %>
         </div>
-        <div class="col-md-4">
-          <%= f.label :active, "Status", class: "form-label fw-semibold" %>
-          <div class="form-check form-switch form-switch-lg mt-2">
-            <%= f.check_box :active, class: "form-check-input" %>
-            <%= f.label :active, (store.active? ? "Ativa" : "Inativa"), class: "form-check-label" %>
+        <div class="ax-span-4">
+          <%= f.label :active, "Status", class: "ax-label tw-font-semibold" %>
+          <div class="tw-mt-2">
+            <%= ax_switch_field(label: store.active? ? "Ativa" : "Inativa", form: f, method: :active) %>
           </div>
         </div>
 
-        <div class="col-md-6">
-          <%= f.label :director_admin_user_id, "Diretor da loja", class: "form-label fw-semibold" %>
+        <div class="ax-span-6">
+          <%= f.label :director_admin_user_id, "Diretor da loja", class: "ax-label tw-font-semibold" %>
           <%= f.select :director_admin_user_id,
                        options_for_select(AdminUser.active.order(:name).map { |u| [u.name, u.id] }, store.director_admin_user_id),
                        { include_blank: "— Sem diretor —" },
-                       class: "form-select",
+                       class: "ax-control",
                        data: { controller: "tom-select", placeholder: "Buscar corretor…" } %>
-          <small class="text-muted">Admin responsável por esta unidade.</small>
+          <small class="tw-text-ink-muted">Admin responsável por esta unidade.</small>
         </div>
-        <div class="col-md-6">
-          <%= f.label :timezone, "Fuso horário", class: "form-label fw-semibold" %>
+        <div class="ax-span-6">
+          <%= f.label :timezone, "Fuso horário", class: "ax-label tw-font-semibold" %>
           <%
             brazil_zones = [
               ["Brasília / São Paulo (GMT-03:00)", "America/Sao_Paulo"],
@@ -58,77 +50,77 @@
                          store.timezone
                        ),
                        {},
-                       class: "form-select",
+                       class: "ax-control",
                        data: { controller: "tom-select", placeholder: "Buscar fuso…" } %>
         </div>
 
-        <div class="col-md-6">
-          <%= f.label :phone, "Telefone", class: "form-label fw-semibold" %>
-          <div class="input-group">
-            <span class="input-group-text bg-white"><i class="bi bi-telephone text-muted"></i></span>
+        <div class="ax-span-6">
+          <%= f.label :phone, "Telefone", class: "ax-label tw-font-semibold" %>
+          <div class="tw-flex tw-items-center tw-gap-2">
+            <span><i class="bi bi-telephone tw-text-ink-muted"></i></span>
             <%= f.text_field :phone,
-                             class: "form-control",
+                             class: "ax-control",
                              placeholder: "(47) 3311-1067",
                              autocomplete: "tel",
                              data: { controller: "mask", mask_type_value: "phone" } %>
           </div>
         </div>
-        <div class="col-md-6">
-          <%= f.label :creci, "CRECI da loja", class: "form-label fw-semibold" %>
-          <div class="input-group">
-            <span class="input-group-text bg-white"><i class="bi bi-award text-muted"></i></span>
-            <%= f.text_field :creci, class: "form-control" %>
+        <div class="ax-span-6">
+          <%= f.label :creci, "CRECI da loja", class: "ax-label tw-font-semibold" %>
+          <div class="tw-flex tw-items-center tw-gap-2">
+            <span><i class="bi bi-award tw-text-ink-muted"></i></span>
+            <%= f.text_field :creci, class: "ax-control" %>
           </div>
         </div>
-      </div>
+      <% end %>
     </div>
   </div>
 
   <!-- Card 2: Localização e geofence -->
-  <div class="card border-0 shadow-sm mb-4"
+  <div class="ax-card tw-mb-4"
        data-controller="store-map-picker"
        data-store-map-picker-latitude-value="<%= store.latitude %>"
        data-store-map-picker-longitude-value="<%= store.longitude %>"
        data-store-map-picker-radius-value="<%= store.geofence_radius_meters %>">
-    <div class="card-body">
-      <h5 class="fw-bold mb-3">
-        <i class="bi bi-geo-alt-fill text-danger me-2"></i>Localização e geofence
+    <div class="ax-card__body">
+      <h5 class="tw-font-bold tw-mb-3">
+        <i class="bi bi-geo-alt-fill" style="margin-right:.5rem; color:#dc2626"></i>Localização e geofence
       </h5>
-      <p class="small text-muted mb-3">Clique no mapa para definir o centro da loja. Arraste o slider de raio para ajustar.</p>
+      <p class="tw-text-sm tw-text-ink-muted tw-mb-3">Clique no mapa para definir o centro da loja. Arraste o slider de raio para ajustar.</p>
 
       <div data-controller="cep-lookup">
-        <div class="row g-3">
-          <div class="col-md-5">
-            <%= f.label :zip_code, "CEP", class: "form-label fw-semibold" %>
-            <div class="input-group">
-              <span class="input-group-text bg-white"><i class="bi bi-mailbox text-muted"></i></span>
+        <%= ax_field_grid do %>
+          <div class="ax-span-6">
+            <%= f.label :zip_code, "CEP", class: "ax-label tw-font-semibold" %>
+            <div class="tw-flex tw-items-center tw-gap-2">
+              <span><i class="bi bi-mailbox tw-text-ink-muted"></i></span>
               <%= f.text_field :zip_code,
-                               class: "form-control",
+                               class: "ax-control",
                                placeholder: "88330-030",
                                maxlength: 9,
                                data: { cep_lookup_target: "cep", action: "blur->cep-lookup#lookup" } %>
               <button type="button"
-                      class="btn btn-outline-primary"
+                      class="ax-btn ax-btn--ghost tw-gap-2"
                       data-cep-lookup-target="button"
                       data-action="cep-lookup#lookup">
-                <i class="bi bi-search me-1"></i>Buscar
+                <i class="bi bi-search"></i>Buscar
               </button>
             </div>
-            <small data-cep-lookup-target="status" class="form-text small text-muted">
+            <small data-cep-lookup-target="status" class="form-text tw-text-sm tw-text-ink-muted">
               Digite o CEP e clique Buscar — preenchemos endereço + mapa automaticamente.
             </small>
           </div>
-          <div class="col-md-5">
-            <%= f.label :address, "Endereço", class: "form-label fw-semibold" %>
+          <div class="ax-span-6">
+            <%= f.label :address, "Endereço", class: "ax-label tw-font-semibold" %>
             <%= f.text_field :address,
-                             class: "form-control",
+                             class: "ax-control",
                              placeholder: "Av. Atlântica",
                              data: { cep_lookup_target: "address" } %>
           </div>
-          <div class="col-md-2">
-            <%= f.label :number, "Número", class: "form-label fw-semibold" %>
+          <div class="ax-span-2">
+            <%= f.label :number, "Número", class: "ax-label tw-font-semibold" %>
             <%= f.text_field :number,
-                             class: "form-control",
+                             class: "ax-control",
                              placeholder: "3750",
                              data: {
                                cep_lookup_target: "number",
@@ -136,26 +128,26 @@
                              } %>
           </div>
 
-          <div class="col-md-5">
-            <%= f.label :neighborhood, "Bairro", class: "form-label fw-semibold" %>
+          <div class="ax-span-6">
+            <%= f.label :neighborhood, "Bairro", class: "ax-label tw-font-semibold" %>
             <%= f.text_field :neighborhood,
-                             class: "form-control",
+                             class: "ax-control",
                              data: { cep_lookup_target: "neighborhood" } %>
           </div>
-          <div class="col-md-5">
-            <%= f.label :city, "Cidade", class: "form-label fw-semibold" %>
+          <div class="ax-span-6">
+            <%= f.label :city, "Cidade", class: "ax-label tw-font-semibold" %>
             <%= f.text_field :city,
-                             class: "form-control",
+                             class: "ax-control",
                              data: { cep_lookup_target: "city" } %>
           </div>
-          <div class="col-md-2">
-            <%= f.label :state, "UF", class: "form-label fw-semibold" %>
+          <div class="ax-span-2">
+            <%= f.label :state, "UF", class: "ax-label tw-font-semibold" %>
             <%= f.text_field :state,
-                             class: "form-control text-uppercase",
+                             class: "ax-control text-uppercase",
                              maxlength: 2,
                              data: { cep_lookup_target: "uf" } %>
           </div>
-        </div>
+        <% end %>
       </div>
 
       <hr class="my-4">
@@ -165,68 +157,70 @@
            style="height: 400px; border-radius: 8px;"
            class="border"></div>
 
-      <div class="row g-3 mt-3">
-        <div class="col-md-4">
-          <%= f.label :latitude, "Latitude", class: "form-label fw-semibold small" %>
+      <div class="tw-mt-3">
+      <%= ax_field_grid do %>
+        <div class="ax-span-4">
+          <%= f.label :latitude, "Latitude", class: "ax-label tw-font-semibold tw-text-sm" %>
           <%= f.text_field :latitude,
-                           class: "form-control form-control-sm font-monospace",
+                           class: "ax-control ax-control--sm font-monospace",
                            data: { store_map_picker_target: "latitudeInput", action: "change->store-map-picker#updateFromInputs" },
                            readonly: true %>
         </div>
-        <div class="col-md-4">
-          <%= f.label :longitude, "Longitude", class: "form-label fw-semibold small" %>
+        <div class="ax-span-4">
+          <%= f.label :longitude, "Longitude", class: "ax-label tw-font-semibold tw-text-sm" %>
           <%= f.text_field :longitude,
-                           class: "form-control form-control-sm font-monospace",
+                           class: "ax-control ax-control--sm font-monospace",
                            data: { store_map_picker_target: "longitudeInput", action: "change->store-map-picker#updateFromInputs" },
                            readonly: true %>
         </div>
-        <div class="col-md-4">
-          <%= f.label :geofence_radius_meters, "Raio de check-in (m)", class: "form-label fw-semibold small" %>
-          <div class="d-flex align-items-center gap-2">
+        <div class="ax-span-4">
+          <%= f.label :geofence_radius_meters, "Raio de check-in (m)", class: "ax-label tw-font-semibold tw-text-sm" %>
+          <div class="tw-flex tw-items-center tw-gap-2">
             <%= f.number_field :geofence_radius_meters,
                                min: 25, max: 2000, step: 25,
-                               class: "form-control form-control-sm",
+                               class: "ax-control ax-control--sm",
                                data: { store_map_picker_target: "radiusInput", action: "input->store-map-picker#updateRadius" } %>
-            <span class="badge bg-info-subtle text-info border" data-store-map-picker-target="radiusLabel"><%= store.geofence_radius_meters %>m</span>
+            <span class="ax-badge ax-badge--blue" data-store-map-picker-target="radiusLabel"><%= store.geofence_radius_meters %>m</span>
           </div>
         </div>
+      <% end %>
       </div>
     </div>
   </div>
 
   <!-- Card 3: Tolerâncias -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
-      <h5 class="fw-bold mb-3">
-        <i class="bi bi-stopwatch-fill text-warning me-2"></i>Regras de check-out automático
+  <div class="ax-card tw-mb-4">
+    <div class="ax-card__body">
+      <h5 class="tw-font-bold tw-mb-3">
+        <i class="bi bi-stopwatch-fill" style="margin-right:.5rem; color:#d97706"></i>Regras de check-out automático
       </h5>
-      <div class="row g-3">
-        <div class="col-md-6">
-          <%= f.label :out_of_radius_tolerance_minutes, "Tolerância fora do raio (minutos)", class: "form-label fw-semibold" %>
-          <div class="input-group">
-            <span class="input-group-text bg-white"><i class="bi bi-hourglass-split text-warning"></i></span>
-            <%= f.number_field :out_of_radius_tolerance_minutes, min: 1, max: 120, class: "form-control" %>
-            <span class="input-group-text">min</span>
+      <%= ax_field_grid do %>
+        <div class="ax-span-6">
+          <%= f.label :out_of_radius_tolerance_minutes, "Tolerância fora do raio (minutos)", class: "ax-label tw-font-semibold" %>
+          <div class="tw-flex tw-items-center tw-gap-2">
+            <span><i class="bi bi-hourglass-split" style="color:#d97706"></i></span>
+            <%= f.number_field :out_of_radius_tolerance_minutes, min: 1, max: 120, class: "ax-control" %>
+            <span>min</span>
           </div>
-          <small class="text-muted">Se corretor sair do raio, é avisado e tem esse tempo pra voltar antes de check-out automático.</small>
+          <small class="tw-text-ink-muted">Se corretor sair do raio, é avisado e tem esse tempo pra voltar antes de check-out automático.</small>
         </div>
-        <div class="col-md-6">
-          <%= f.label :auto_checkout_after_minutes, "Check-out automático após fim do turno", class: "form-label fw-semibold" %>
-          <div class="input-group">
-            <span class="input-group-text bg-white"><i class="bi bi-moon text-info"></i></span>
-            <%= f.number_field :auto_checkout_after_minutes, min: 0, max: 240, class: "form-control" %>
-            <span class="input-group-text">min</span>
+        <div class="ax-span-6">
+          <%= f.label :auto_checkout_after_minutes, "Check-out automático após fim do turno", class: "ax-label tw-font-semibold" %>
+          <div class="tw-flex tw-items-center tw-gap-2">
+            <span><i class="bi bi-moon" style="color:#2563eb"></i></span>
+            <%= f.number_field :auto_checkout_after_minutes, min: 0, max: 240, class: "ax-control" %>
+            <span>min</span>
           </div>
-          <small class="text-muted">Se esqueceu de fechar, sistema fecha automaticamente após esse tempo do fim do turno.</small>
+          <small class="tw-text-ink-muted">Se esqueceu de fechar, sistema fecha automaticamente após esse tempo do fim do turno.</small>
         </div>
-      </div>
+      <% end %>
     </div>
   </div>
 
-  <div class="d-flex justify-content-end gap-2 mb-5">
-    <%= link_to "Cancelar", admin_stores_path, class: "btn btn-outline-secondary" %>
-    <%= f.submit class: "btn btn-primary" do %>
-      <i class="bi bi-check-lg me-1"></i>Salvar loja
+  <div class="tw-flex tw-justify-end tw-gap-2" style="margin-bottom:3rem">
+    <%= link_to "Cancelar", admin_stores_path, class: "ax-btn ax-btn--ghost" %>
+    <%= f.submit class: "ax-btn ax-btn--primary" do %>
+      <i class="bi bi-check-lg" style="margin-right:.25rem"></i>Salvar loja
     <% end %>
   </div>
 <% end %>

@@ -1,0 +1,34 @@
+<% items = admin_context_items %>
+<% if items.any? %>
+  <div class="ax-context-pins" aria-label="Acessos rápidos da sessão">
+    <% items.each do |item| %>
+      <div class="ax-context-pin ax-context-pin--<%= item[:tone] %>">
+        <%= link_to item[:path], class: "ax-context-pin__link", title: item[:label] do %>
+          <i class="bi <%= item[:icon] %>"></i>
+          <span><%= item[:label] %></span>
+        <% end %>
+        <%= button_to admin_context_item_path(item[:key]),
+              method: :delete,
+              form_class: "ax-context-pin__remove-form",
+              form: { data: { turbo: false } },
+              class: "ax-context-pin__remove",
+              title: "Remover atalho",
+              aria: { label: "Remover #{item[:label]} dos acessos rápidos" } do %>
+          <i class="bi bi-x-lg"></i>
+        <% end %>
+      </div>
+    <% end %>
+
+    <% if items.size > 1 %>
+      <%= button_to admin_context_items_path,
+            method: :delete,
+            form_class: "ax-context-pins__clear-form",
+            form: { data: { turbo: false } },
+            class: "ax-context-pins__clear",
+            title: "Limpar acessos rápidos",
+            aria: { label: "Limpar acessos rápidos da sessão" } do %>
+        <i class="bi bi-x-circle"></i>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

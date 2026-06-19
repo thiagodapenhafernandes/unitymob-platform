@@ -35,96 +35,76 @@
 %>
 
 <%= form_with(model: [:admin, webhook_setting]) do |f| %>
-  <% if webhook_setting.errors.any? %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-      <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i><%= pluralize(webhook_setting.errors.count, "erro") %> encontrado:</h5>
-      <ul class="mb-0">
-        <% webhook_setting.errors.full_messages.each do |message| %>
-          <li><%= message %></li>
-        <% end %>
-      </ul>
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  <% end %>
+  <%= ax_error_summary(webhook_setting) %>
 
-  <div class="row g-4">
+  <%= ax_field_grid do %>
     <!-- Configuration -->
-    <div class="col-md-8">
-      <div class="card shadow-sm border-0">
-        <div class="card-header bg-primary bg-opacity-10 border-0">
-          <h5 class="mb-0 text-primary">
-            <i class="bi bi-gear-fill me-2"></i>Detalhes da Integração
+    <div class="ax-span-8">
+      <div class="ax-card">
+        <div class="ax-card__header" style="background:rgba(37,99,235,.1)">
+          <h5 class="ax-card__title tw-text-primary tw-inline-flex tw-items-center tw-gap-2">
+            <i class="bi bi-gear-fill"></i>Detalhes da Integração
           </h5>
         </div>
-        <div class="card-body">
+        <div class="ax-card__body">
           <!-- Webhook URL -->
-          <div class="mb-4">
-            <%= f.label :webhook_url, class: "form-label fw-bold" do %>
-              <i class="bi bi-link-45deg text-primary me-2"></i>URL do Webhook (Padrão)
+          <div class="tw-mb-4">
+            <%= f.label :webhook_url, class: "ax-label tw-inline-flex tw-items-center tw-gap-2" do %>
+              <i class="bi bi-link-45deg tw-text-primary"></i>URL do Webhook (Padrão)
             <% end %>
-            <div class="input-group">
-              <span class="input-group-text bg-primary bg-opacity-10">
-                <i class="bi bi-globe text-primary"></i>
+            <div class="tw-flex tw-items-center tw-gap-2">
+              <span class="tw-inline-flex tw-items-center" style="background:rgba(37,99,235,.1); padding:.375rem .5rem; border-radius:.375rem">
+                <i class="bi bi-globe tw-text-primary"></i>
               </span>
-              <%= f.text_field :webhook_url, class: "form-control", placeholder: "https://seu-servidor.com/webhook" %>
+              <%= f.text_field :webhook_url, class: "ax-control", placeholder: "https://seu-servidor.com/webhook" %>
             </div>
-            <small class="text-muted">URL principal para envio de dados (POST).</small>
+            <small class="tw-text-ink-muted">URL principal para envio de dados (POST).</small>
           </div>
 
           <!-- WhatsApp Webhook URL -->
-          <div class="mb-4">
-            <%= f.label :whatsapp_webhook_url, class: "form-label fw-bold" do %>
-              <i class="fab fa-whatsapp text-success me-2"></i>URL do Webhook (Específico WhatsApp/Leads)
+          <div class="tw-mb-4">
+            <%= f.label :whatsapp_webhook_url, class: "ax-label tw-inline-flex tw-items-center tw-gap-2" do %>
+              <i class="fab fa-whatsapp" style="color:#16a34a"></i>URL do Webhook (Específico WhatsApp/Leads)
             <% end %>
-            <div class="input-group">
-              <span class="input-group-text bg-success bg-opacity-10">
-                <i class="bi bi-link-45deg text-success"></i>
+            <div class="tw-flex tw-items-center tw-gap-2">
+              <span class="tw-inline-flex tw-items-center" style="background:rgba(22,163,74,.1); padding:.375rem .5rem; border-radius:.375rem">
+                <i class="bi bi-link-45deg" style="color:#16a34a"></i>
               </span>
-              <%= f.text_field :whatsapp_webhook_url, class: "form-control", placeholder: "https://n8n.seu-servidor.com/webhook/leads" %>
+              <%= f.text_field :whatsapp_webhook_url, class: "ax-control", placeholder: "https://n8n.seu-servidor.com/webhook/leads" %>
             </div>
-            <small class="text-muted">Opcional. Se preenchido, leads de WhatsApp serão enviados para esta URL prioritariamente.</small>
+            <small class="tw-text-ink-muted">Opcional. Se preenchido, leads de WhatsApp serão enviados para esta URL prioritariamente.</small>
           </div>
 
           <!-- Enabled Toggles -->
-          <div class="row mb-4">
-            <div class="col-md-6">
-              <div class="form-check form-switch">
-                <%= f.check_box :enabled, class: "form-check-input", role: "switch", id: "webhook_enabled" %>
-                <%= f.label :enabled, class: "form-check-label fw-bold" do %>
-                  <i class="bi bi-power text-success me-2"></i>Habilitar Webhook
-                <% end %>
-              </div>
+          <%= ax_field_grid(class_name: "tw-mb-4") do %>
+            <div class="ax-span-6">
+              <%= ax_switch_field(label: tag.span(safe_join([tag.i(class: "bi bi-power", style: "color:#16a34a"), "Habilitar Webhook"]), class: "tw-inline-flex tw-items-center tw-gap-2"), form: f, method: :enabled, id: "webhook_enabled", input_html: { role: "switch" }) %>
             </div>
-            <div class="col-md-6">
-              <div class="form-check form-switch">
-                <%= f.check_box :lead_capture_enabled, class: "form-check-input", role: "switch", id: "lead_capture_enabled" %>
-                <%= f.label :lead_capture_enabled, class: "form-check-label fw-bold" do %>
-                  <i class="bi bi-person-badge text-primary me-2"></i>Captura de Leads (Modal)
-                <% end %>
-              </div>
+            <div class="ax-span-6">
+              <%= ax_switch_field(label: tag.span(safe_join([tag.i(class: "bi bi-person-badge tw-text-primary"), "Captura de Leads (Modal)"]), class: "tw-inline-flex tw-items-center tw-gap-2"), form: f, method: :lead_capture_enabled, id: "lead_capture_enabled", input_html: { role: "switch" }) %>
             </div>
-          </div>
+          <% end %>
 
           <!-- Description -->
-          <div class="mb-0">
-            <%= f.label :description, "Descrição / Identificação", class: "form-label fw-bold" %>
-            <%= f.text_field :description, class: "form-control", placeholder: "Ex: Integração CRM PipeDrive" %>
+          <div>
+            <%= f.label :description, "Descrição / Identificação", class: "ax-label" %>
+            <%= f.text_field :description, class: "ax-control", placeholder: "Ex: Integração CRM PipeDrive" %>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Payload Info (Simplified) -->
-    <div class="col-md-4">
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-info bg-opacity-10 border-0">
-          <h5 class="mb-0 text-info"><i class="bi bi-info-circle me-2"></i>Informações</h5>
+    <div class="ax-span-4">
+      <div class="ax-card tw-mb-4">
+        <div class="ax-card__header" style="background:rgba(37,99,235,.1)">
+          <h5 class="ax-card__title tw-inline-flex tw-items-center tw-gap-2" style="color:#2563eb"><i class="bi bi-info-circle"></i>Informações</h5>
         </div>
-        <div class="card-body">
-          <p class="text-muted small">Este webhook disparará sempre que um formulário for preenchido no site.</p>
+        <div class="ax-card__body">
+          <p class="tw-text-ink-muted tw-text-sm">Este webhook disparará sempre que um formulário for preenchido no site.</p>
           <hr>
           <h6>Formulários Monitorados:</h6>
-          <ul class="small text-muted ps-3 mb-0">
+          <ul class="tw-text-sm tw-text-ink-muted" style="padding-left:1rem; margin-bottom:0">
             <li>Contato Geral</li>
             <li>Agendamento de Visita</li>
             <li>Trabalhe Conosco</li>
@@ -134,20 +114,20 @@
         </div>
       </div>
 
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-secondary bg-opacity-10 border-0">
-          <h5 class="mb-0 text-secondary"><i class="bi bi-braces me-2"></i>Exemplo de Payload</h5>
+      <div class="ax-card tw-mb-4">
+        <div class="ax-card__header" style="background:rgba(108,117,125,.1)">
+          <h5 class="ax-card__title tw-inline-flex tw-items-center tw-gap-2 tw-text-ink-muted"><i class="bi bi-braces"></i>Exemplo de Payload</h5>
         </div>
-        <div class="card-body">
-          <p class="text-muted small mb-3">Envio via <strong>POST</strong> com <code>Content-Type: application/json</code>.</p>
-          <pre class="bg-light border rounded p-3 small mb-0 overflow-auto" style="max-height: 420px;"><code><%= JSON.pretty_generate(sample_webhook_payload) %></code></pre>
+        <div class="ax-card__body">
+          <p class="tw-text-ink-muted tw-text-sm tw-mb-3">Envio via <strong>POST</strong> com <code>Content-Type: application/json</code>.</p>
+          <pre class="border rounded tw-text-sm overflow-auto" style="max-height: 420px; background:#f8f9fa; padding:1rem; margin-bottom:0"><code><%= JSON.pretty_generate(sample_webhook_payload) %></code></pre>
         </div>
       </div>
-      
-      <div class="d-grid gap-2">
-         <%= f.submit "Salvar Webhook", class: "btn btn-primary btn-lg" %>
-         <%= link_to "Cancelar", admin_webhook_settings_path, class: "btn btn-outline-secondary" %>
+
+      <div class="tw-grid tw-gap-2">
+         <%= f.submit "Salvar Webhook", class: "ax-btn ax-btn--primary" %>
+         <%= link_to "Cancelar", admin_webhook_settings_path, class: "ax-btn ax-btn--ghost" %>
       </div>
     </div>
-  </div>
+  <% end %>
 <% end %>

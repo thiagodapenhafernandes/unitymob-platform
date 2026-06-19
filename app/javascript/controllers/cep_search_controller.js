@@ -5,36 +5,36 @@ export default class extends Controller {
 
   connect() {
     this.lastSearchedCep = ""
+    this.loading = false
   }
 
   async search(event) {
+    if (event) event.preventDefault()
+    if (this.loading) return
+
     // If triggered by blur and value hasn't changed or is empty, ignore
-    if (event.type === 'blur') {
-      if (this.cepTarget.value === this.lastSearchedCep || this.cepTarget.value === "") return
-    } else {
-      // If click, prevent default form submission
-      event.preventDefault()
+    if (event?.type === 'blur') {
+      const currentCep = this.normalizedCep()
+      if (currentCep === this.lastSearchedCep || currentCep === "") return
     }
 
-    const rawCep = this.cepTarget.value
-    const cep = rawCep.replace(/\D/g, '')
+    const cep = this.normalizedCep()
 
     if (cep.length !== 8) return
 
-    this.lastSearchedCep = rawCep
-
     // UI Feedback
     const btn = this.element.querySelector('button[data-action*="cep-search#search"]')
-    let originalIcon = ""
 
     if (btn) {
-      originalIcon = btn.innerHTML
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
+      btn.dataset.originalLabel ||= btn.innerHTML
+      btn.innerHTML = '<span class="ax-spinner" aria-hidden="true"></span>'
       btn.disabled = true
+      btn.setAttribute("aria-busy", "true")
     }
 
     // Add loading class to input
-    this.cepTarget.classList.add('opacity-50')
+    this.loading = true
+    this.cepTarget.classList.add("ax-control--loading")
 
     try {
       const response = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep}`)
@@ -44,22 +44,25 @@ export default class extends Controller {
       const data = await response.json()
 
       this.populateForm(data)
+      this.lastSearchedCep = cep
 
       // Visual success feedback
-      this.cepTarget.classList.remove('is-invalid')
-      this.cepTarget.classList.add('is-valid')
-      setTimeout(() => this.cepTarget.classList.remove('is-valid'), 2000)
+      this.cepTarget.classList.remove("is-invalid", "ax-control--invalid")
+      this.cepTarget.classList.add("ax-control--valid")
+      setTimeout(() => this.cepTarget.classList.remove("ax-control--valid"), 2000)
 
     } catch (error) {
       console.error(error)
-      this.cepTarget.classList.add('is-invalid')
+      this.cepTarget.classList.add("ax-control--invalid")
       // Optional: Clean invalid class on input change
     } finally {
       if (btn) {
-        btn.innerHTML = originalIcon
+        btn.innerHTML = btn.dataset.originalLabel || btn.innerHTML
         btn.disabled = false
+        btn.removeAttribute("aria-busy")
       }
-      this.cepTarget.classList.remove('opacity-50')
+      this.loading = false
+      this.cepTarget.classList.remove("ax-control--loading")
     }
   }
 
@@ -68,7 +71,7 @@ export default class extends Controller {
 
     // 1. UF
     if (this.hasUfTarget) {
-      this.ufTarget.value = data.state
+      this.setTomSelectValue(this.ufTarget, data.state)
       this.triggerChange(this.ufTarget)
     }
 
@@ -105,6 +108,10 @@ export default class extends Controller {
     }
   }
 
+  normalizedCep() {
+    return this.cepTarget.value.replace(/\D/g, "")
+  }
+
   setTomSelectValue(element, value) {
     if (!value) return
 
@@ -123,7 +130,7 @@ export default class extends Controller {
       // Let's try to find an existing option by text to get its value
       let existingValue = null
       Object.values(ts.options).forEach(opt => {
-        if (opt.text.toLowerCase() === value.toLowerCase()) {
+        if (opt.value.toLowerCase() === value.toLowerCase() || opt.text.toLowerCase() === value.toLowerCase()) {
           existingValue = opt.value
         }
       })

@@ -1,0 +1,19 @@
+<%
+  group_classes = ["ax-input-group", class_name].compact.join(" ")
+%>
+
+<div class="<%= group_classes %>">
+  <% if prefix.present? %>
+    <span class="ax-input-group__addon"><%= prefix %></span>
+  <% end %>
+
+  <%= content %>
+
+  <% if suffix.present? %>
+    <span class="ax-input-group__addon"><%= suffix %></span>
+  <% end %>
+
+  <% if action.present? %>
+    <%= action %>
+  <% end %>
+</div>

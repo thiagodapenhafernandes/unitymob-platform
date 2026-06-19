@@ -1,0 +1,34 @@
+<%= ax_form_section(title: "Descrição e capacidade", eyebrow: "Empreendimento") do %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-7">
+      <div class="ax-field-group">
+        <%= ax_field_label(f, :descricao_empreendimento, text: "Descrição do empreendimento") %>
+        <%# Trix standalone ligado à coluna (sem ActionText) para não afetar imports/IA. %>
+        <%= f.hidden_field :descricao_empreendimento %>
+        <trix-editor input="habitation_descricao_empreendimento"
+                     class="ax-control ax-rich-text-control"
+                     style="min-height: 150px;"
+                     aria-label="Descrição do empreendimento"></trix-editor>
+      </div>
+    </div>
+    <div class="ax-span-5">
+      <%= ax_field_grid(class_name: "ax-field-grid--nested") do %>
+        <div class="ax-span-4">
+          <%= ax_number_field(form: f, method: :andares_qtd, label: "Nº andares", min: 0) %>
+        </div>
+        <div class="ax-span-4">
+          <%= ax_number_field(form: f, method: :ano_construcao, label: "Ano constr.") %>
+        </div>
+        <div class="ax-span-4">
+          <%= ax_number_field(form: f, method: :elevadores_qtd, label: "Elevadores") %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_number_field(form: f, method: :aptos_andar, label: "Imóveis / andar") %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_number_field(form: f, method: :aptos_edificio, label: "Total imóveis") %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

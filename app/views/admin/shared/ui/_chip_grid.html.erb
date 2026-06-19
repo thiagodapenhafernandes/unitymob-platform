@@ -1,0 +1,5 @@
+<% grid_classes = ["ax-chip-grid", class_name].compact_blank.join(" ") %>
+
+<%= tag.div(id:, class: grid_classes, data:, style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 6px;") do %>
+  <%= body %>
+<% end %>

@@ -1,0 +1,48 @@
+<%# locals: lead (optional), trigger_label (optional), trigger_class (optional) %>
+<div data-controller="ax-modal" class="tw-inline-block">
+  <button type="button" class="<%= local_assigns.fetch(:trigger_class, "ax-btn ax-btn--sm") %>" data-action="ax-modal#open">
+    <i class="bi bi-calendar-plus ax-ico"></i><span><%= local_assigns.fetch(:trigger_label, "Agendar") %></span>
+  </button>
+  <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+    <div class="ax-modal-panel" role="dialog" aria-modal="true">
+      <div class="tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3" style="border-bottom:1px solid #e6e8eb">
+        <strong><i class="bi bi-calendar-event ax-ico tw-text-primary"></i> Agendar compromisso</strong>
+        <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <%= form_with url: admin_appointments_path, method: :post do %>
+        <div class="tw-px-4 tw-py-4 tw-grid tw-gap-3">
+          <% if local_assigns[:lead] %>
+            <%= hidden_field_tag "appointment[lead_id]", lead.id %>
+            <% if lead.property_id.present? %><%= hidden_field_tag "appointment[habitation_id]", lead.property_id %><% end %>
+          <% end %>
+          <div>
+            <label class="ax-label">Título</label>
+            <%= text_field_tag "appointment[title]", (local_assigns[:lead] ? "Visita — #{lead.display_name}" : nil), class: "ax-input", required: true, placeholder: "Visita ao imóvel" %>
+          </div>
+          <div class="tw-grid tw-grid-cols-2 tw-gap-3">
+            <div>
+              <label class="ax-label">Tipo</label>
+              <%= select_tag "appointment[kind]", options_for_select(Appointment::KINDS.map { |k, v| [v, k] }, "visita"), class: "ax-select" %>
+            </div>
+            <div>
+              <label class="ax-label">Início</label>
+              <input type="datetime-local" name="appointment[starts_at]" class="ax-input" required>
+            </div>
+          </div>
+          <div>
+            <label class="ax-label">Local</label>
+            <%= text_field_tag "appointment[location]", nil, class: "ax-input", placeholder: "Endereço do imóvel / link da reunião" %>
+          </div>
+          <div>
+            <label class="ax-label">Observações</label>
+            <%= text_area_tag "appointment[notes]", nil, class: "ax-textarea", rows: 2 %>
+          </div>
+        </div>
+        <div class="tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3" style="border-top:1px solid #e6e8eb">
+          <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Cancelar</button>
+          <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Agendar</button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

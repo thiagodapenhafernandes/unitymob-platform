@@ -76,14 +76,21 @@ module Vista
     # A Vista permite acumular cargos (ex: Gerente + Corretor); escolhemos
     # o de maior autoridade segundo a ordem abaixo. Profile é criado on-demand
     # com permissions vazias — o admin ajusta em /admin/profiles depois.
-    PROFILE_PRIORITY = %w[Diretor Gerente Administrativo Corretor].freeze
+    # Flag booleana da Vista -> key estável do Profile, em ordem de autoridade.
+    PROFILE_PRIORITY = [
+      ["Diretor", "diretor"],
+      ["Gerente", "gerente"],
+      ["Administrativo", "administrativo"],
+      ["Corretor", "corretor"]
+    ].freeze
 
     def resolve_profile(data)
-      name = PROFILE_PRIORITY.find { |flag| data[flag].to_s.casecmp("sim").zero? } || "Corretor"
-      Profile.where("LOWER(name) = ?", name.downcase).first ||
-        Profile.create!(name: name, permissions: {}, active: true)
+      key = PROFILE_PRIORITY.find { |flag, _key| data[flag].to_s.casecmp("sim").zero? }&.last || "corretor"
+      name = Profile::ROLE_KEY_NAMES[key] || key.humanize
+      Profile.where(key: key).first ||
+        Profile.create!(key: key, name: name, permissions: {}, active: true)
     rescue ActiveRecord::RecordInvalid => e
-      Rails.logger.warn("[Vista Import] Falha ao criar Profile '#{name}': #{e.message}")
+      Rails.logger.warn("[Vista Import] Falha ao criar Profile '#{key}': #{e.message}")
       nil
     end
 

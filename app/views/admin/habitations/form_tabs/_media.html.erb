@@ -1,0 +1,41 @@
+<!-- Tab: Mídia -->
+<div class="tab-pane fade" id="media" role="tabpanel" aria-labelledby="media-tab">
+  <% media_count = (habitation.photos.attached? ? habitation.photos.attachments.size : 0) + (habitation.pictures.is_a?(Array) ? habitation.pictures.size : 0) %>
+
+  <section class="ax-form-section ax-media-entry-card">
+    <header class="ax-form-section__header">
+      <div>
+        <h3 class="ax-form-section__title">Mídia e uploads</h3>
+        <p class="ax-media-entry-card__description">
+          Organize fotos, vídeos, destaque, ordem e visibilidade no site em um módulo dedicado.
+        </p>
+      </div>
+      <span class="ax-form-section__pill">Mídia</span>
+    </header>
+
+    <div class="ax-form-section__body">
+      <div class="ax-media-entry-card__content">
+        <div class="ax-media-entry-card__metric">
+          <i class="bi bi-images"></i>
+          <strong><%= media_count %></strong>
+          <span>mídia(s) vinculada(s)</span>
+        </div>
+
+        <% if habitation.persisted? %>
+          <button type="button"
+                  class="ax-btn ax-btn--primary"
+                  data-media-modal-url="<%= modal_admin_habitation_media_path(habitation, return_to: request.fullpath) %>">
+            <i class="bi bi-arrows-fullscreen"></i>
+            Abrir organizador de mídia
+          </button>
+        <% else %>
+          <%= ax_inline_notice(
+                tone: :neutral,
+                icon: "info-circle",
+                body: "Salve o imóvel antes de enviar e organizar mídia."
+              ) %>
+        <% end %>
+      </div>
+    </div>
+  </section>
+</div>

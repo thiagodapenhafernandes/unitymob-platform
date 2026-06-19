@@ -14,14 +14,14 @@
   features_imovel = captacao_feature_options(@internal_features, fallback_features_imovel, @captacao.caracteristicas_imovel)
 %>
 
-<h1 class="wizard-section-title"><i class="bi bi-rulers text-primary me-2"></i>Características do imóvel</h1>
+<h1 class="wizard-section-title"><i class="bi bi-rulers tw-text-primary" style="margin-right:.5rem;"></i>Características do imóvel</h1>
 <p class="wizard-section-subtitle">Campos variam por tipo de imóvel (<strong><%= kind.humanize %></strong>).</p>
 
 <!-- Áreas (comum a todos) -->
-<div class="row g-2">
-  <div class="col-6">
+<%= ax_field_grid do %>
+  <div class="ax-span-6">
     <div class="wizard-field-group">
-      <%= f.label :area_total, "Área total (m²)", class: "form-label" %>
+      <%= f.label :area_total, "Área total (m²)", class: "ax-label" %>
       <% if @captacao.property_kind_terreno? %>
         <span class="required-star">*</span>
       <% end %>
@@ -32,149 +32,158 @@
     </div>
   </div>
   <% unless @captacao.property_kind_terreno? %>
-    <div class="col-6">
+    <div class="ax-span-6">
       <div class="wizard-field-group">
-        <%= f.label :area_privativa, "Área privativa (m²)", class: "form-label" %>
+        <%= f.label :area_privativa, "Área privativa (m²)", class: "ax-label" %>
         <span class="required-star">*</span>
         <%= f.number_field :area_privativa, step: 0.01, inputmode: "decimal", class: field_state.call(:area_privativa) %>
         <% if field_invalid.call(:area_privativa) %><div class="invalid-feedback d-block">Informe a área privativa maior que zero.</div><% end %>
       </div>
     </div>
   <% end %>
-</div>
+<% end %>
 
 <% if @captacao.property_kind_residencial? %>
-  <div class="row g-2">
+  <%= ax_field_grid do %>
     <% [[:dormitorios, "Dormitórios", true], [:suites, "Suítes"], [:demi_suites, "Demi-suítes"]].each do |field, label, req| %>
-      <div class="col-4">
+      <div class="ax-span-4">
         <div class="wizard-field-group">
-          <%= f.label field, label, class: "form-label" %>
+          <%= f.label field, label, class: "ax-label" %>
           <% if req %><span class="required-star">*</span><% end %>
           <%= f.number_field field, min: 0, inputmode: "numeric", class: field_state.call(field) %>
           <% if field_invalid.call(field) %><div class="invalid-feedback d-block">Campo obrigatório.</div><% end %>
         </div>
       </div>
     <% end %>
-  </div>
+  <% end %>
 
-  <div class="row g-2">
-    <div class="col-4">
+  <%= ax_field_grid do %>
+    <div class="ax-span-4">
       <div class="wizard-field-group">
-        <%= f.label :banheiros, "Banheiros", class: "form-label" %>
+        <%= f.label :banheiros, "Banheiros", class: "ax-label" %>
         <span class="required-star">*</span>
         <%= f.number_field :banheiros, min: 0, inputmode: "numeric", class: field_state.call(:banheiros) %>
         <% if field_invalid.call(:banheiros) %><div class="invalid-feedback d-block">Informe a quantidade de banheiros.</div><% end %>
       </div>
     </div>
-    <div class="col-4">
+    <div class="ax-span-4">
       <div class="wizard-field-group">
-        <%= f.label :vagas_garagem, "Vagas", class: "form-label" %>
-        <%= f.number_field :vagas_garagem, min: 0, inputmode: "numeric", class: "form-control" %>
+        <%= f.label :vagas_garagem, "Vagas", class: "ax-label" %>
+        <span class="required-star">*</span>
+        <%= f.number_field :vagas_garagem, min: 0, inputmode: "numeric", class: field_state.call(:vagas_garagem) %>
+        <% if field_invalid.call(:vagas_garagem) %><div class="invalid-feedback d-block">Informe a quantidade de vagas.</div><% end %>
       </div>
     </div>
-    <div class="col-4">
+    <div class="ax-span-4">
       <div class="wizard-field-group">
-        <%= f.label :salas, "Salas", class: "form-label" %>
+        <%= f.label :salas, "Salas", class: "ax-label" %>
         <%= f.number_field :salas, min: 0, inputmode: "numeric", class: field_state.call(:salas) %>
         <% if field_invalid.call(:salas) %><div class="invalid-feedback d-block">Informe a quantidade de salas/ambientes.</div><% end %>
       </div>
     </div>
-  </div>
+  <% end %>
 
-  <div class="row g-2">
-    <div class="col-md-4">
+  <%= ax_field_grid do %>
+    <div class="ax-span-4">
       <div class="wizard-field-group">
-        <%= f.label :ocupacao, "Ocupação", class: "form-label" %>
-        <%= f.select :ocupacao, [["Desocupado", "desocupado"], ["Inquilino", "inquilino"], ["Proprietário", "proprietario"]], { include_blank: "—" }, class: "form-select" %>
+        <%= f.label :ocupacao, "Ocupação", class: "ax-label" %>
+        <span class="required-star">*</span>
+        <%= f.select :ocupacao, [["Desocupado", "Desocupado"], ["Inquilino", "Inquilino"], ["Proprietário", "Proprietário"]], { include_blank: "—" }, class: field_state.call(:ocupacao, "ax-control") %>
+        <% if field_invalid.call(:ocupacao) %><div class="invalid-feedback d-block">Informe a ocupação.</div><% end %>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="ax-span-4">
       <div class="wizard-field-group">
-        <%= f.label :estado_imovel, "Estado", class: "form-label" %>
-        <%= f.select :estado_imovel, [["Ótimo", "otimo"], ["Bom", "bom"], ["Regular", "regular"]], { include_blank: "—" }, class: "form-select" %>
+        <%= f.label :estado_imovel, "Estado", class: "ax-label" %>
+        <%= f.select :estado_imovel, [["Ótimo", "otimo"], ["Bom", "bom"], ["Regular", "regular"]], { include_blank: "—" }, class: "ax-control" %>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="ax-span-4">
       <div class="wizard-field-group">
-        <%= f.label :situacao_imovel, "Situação", class: "form-label" %>
-        <%= f.select :situacao_imovel, [["Em construção", "construcao"], ["Novo", "novo"], ["Usado", "usado"]], { include_blank: "—" }, class: "form-select" %>
+        <%= f.label :situacao_imovel, "Situação", class: "ax-label" %>
+        <span class="required-star">*</span>
+        <%= f.select :situacao_imovel, [["Em construção", "Em construção"], ["Novo", "Novo"], ["Usado", "Usado"]], { include_blank: "—" }, class: field_state.call(:situacao_imovel, "ax-control") %>
+        <% if field_invalid.call(:situacao_imovel) %><div class="invalid-feedback d-block">Informe a situação.</div><% end %>
       </div>
     </div>
-  </div>
+  <% end %>
 
-  <div class="row g-2">
+  <%= ax_field_grid do %>
     <% [[:sacada, "Sacada"], [:terraco, "Terraço"], [:dependencia_empregada, "Dep. empregada"], [:precisa_reforma, "Precisa reforma"]].each do |field, label| %>
-      <div class="col-6 col-md-3">
-        <div class="form-check form-switch py-2">
-          <%= f.check_box field, class: "form-check-input" %>
-          <%= f.label field, label, class: "form-check-label small" %>
-        </div>
+      <div class="ax-span-3">
+        <%= ax_switch_field(label: label, form: f, method: field, class_name: "tw-py-2") %>
       </div>
     <% end %>
-  </div>
+  <% end %>
 
 <% elsif @captacao.property_kind_sala_comercial? %>
-  <div class="row g-2">
-    <div class="col-4">
+  <%= ax_field_grid do %>
+    <div class="ax-span-4">
       <div class="wizard-field-group">
-        <%= f.label :salas, "Salas/Ambientes", class: "form-label" %>
-        <%= f.number_field :salas, min: 0, inputmode: "numeric", class: "form-control" %>
+        <%= f.label :salas, "Salas/Ambientes", class: "ax-label" %>
+        <%= f.number_field :salas, min: 0, inputmode: "numeric", class: "ax-control" %>
       </div>
     </div>
-    <div class="col-4">
+    <div class="ax-span-4">
       <div class="wizard-field-group">
-        <%= f.label :banheiros, "Banheiros", class: "form-label" %>
-        <%= f.number_field :banheiros, min: 0, inputmode: "numeric", class: "form-control" %>
+        <%= f.label :banheiros, "Banheiros", class: "ax-label" %>
+        <%= f.number_field :banheiros, min: 0, inputmode: "numeric", class: "ax-control" %>
       </div>
     </div>
-    <div class="col-4">
+    <div class="ax-span-4">
       <div class="wizard-field-group">
-        <%= f.label :vagas_garagem, "Vagas", class: "form-label" %>
-        <%= f.number_field :vagas_garagem, min: 0, inputmode: "numeric", class: "form-control" %>
+        <%= f.label :vagas_garagem, "Vagas", class: "ax-label" %>
+        <span class="required-star">*</span>
+        <%= f.number_field :vagas_garagem, min: 0, inputmode: "numeric", class: field_state.call(:vagas_garagem) %>
+        <% if field_invalid.call(:vagas_garagem) %><div class="invalid-feedback d-block">Informe a quantidade de vagas.</div><% end %>
       </div>
     </div>
-  </div>
+  <% end %>
 
-  <div class="row g-2">
-    <div class="col-md-6">
+  <%= ax_field_grid do %>
+    <div class="ax-span-6">
       <div class="wizard-field-group">
-        <%= f.label :ocupacao, "Ocupação", class: "form-label" %>
-        <%= f.select :ocupacao, [["Desocupado", "desocupado"], ["Inquilino", "inquilino"], ["Proprietário", "proprietario"]], { include_blank: "—" }, class: "form-select" %>
+        <%= f.label :ocupacao, "Ocupação", class: "ax-label" %>
+        <span class="required-star">*</span>
+        <%= f.select :ocupacao, [["Desocupado", "Desocupado"], ["Inquilino", "Inquilino"], ["Proprietário", "Proprietário"]], { include_blank: "—" }, class: field_state.call(:ocupacao, "ax-control") %>
+        <% if field_invalid.call(:ocupacao) %><div class="invalid-feedback d-block">Informe a ocupação.</div><% end %>
       </div>
     </div>
-    <div class="col-md-6">
+    <div class="ax-span-6">
       <div class="wizard-field-group">
-        <%= f.label :situacao_imovel, "Situação", class: "form-label" %>
-        <%= f.select :situacao_imovel, [["Novo", "novo"], ["Usado", "usado"], ["Em construção", "construcao"]], { include_blank: "—" }, class: "form-select" %>
+        <%= f.label :situacao_imovel, "Situação", class: "ax-label" %>
+        <span class="required-star">*</span>
+        <%= f.select :situacao_imovel, [["Novo", "Novo"], ["Usado", "Usado"], ["Em construção", "Em construção"]], { include_blank: "—" }, class: field_state.call(:situacao_imovel, "ax-control") %>
+        <% if field_invalid.call(:situacao_imovel) %><div class="invalid-feedback d-block">Informe a situação.</div><% end %>
       </div>
     </div>
-  </div>
+  <% end %>
 
 <% else  # terreno %>
-  <div class="row g-2">
-    <div class="col-md-6">
+  <%= ax_field_grid do %>
+    <div class="ax-span-6">
       <div class="wizard-field-group">
-        <%= f.label "extras[frente_metros]", "Frente (m)", class: "form-label" %>
-        <%= number_field_tag "captacao[extras][frente_metros]", @captacao.extras["frente_metros"], step: 0.1, inputmode: "decimal", class: "form-control" %>
+        <%= f.label "extras[frente_metros]", "Frente (m)", class: "ax-label" %>
+        <%= number_field_tag "captacao[extras][frente_metros]", @captacao.extras["frente_metros"], step: 0.1, inputmode: "decimal", class: "ax-control" %>
       </div>
     </div>
-    <div class="col-md-6">
+    <div class="ax-span-6">
       <div class="wizard-field-group">
-        <%= f.label "extras[topografia]", "Topografia", class: "form-label" %>
-        <%= select_tag "captacao[extras][topografia]", options_for_select([["Plano", "plano"], ["Aclive", "aclive"], ["Declive", "declive"], ["Irregular", "irregular"]], @captacao.extras["topografia"]), include_blank: "—", class: "form-select" %>
+        <%= f.label "extras[topografia]", "Topografia", class: "ax-label" %>
+        <%= select_tag "captacao[extras][topografia]", options_for_select([["Plano", "plano"], ["Aclive", "aclive"], ["Declive", "declive"], ["Irregular", "irregular"]], @captacao.extras["topografia"]), include_blank: "—", class: "ax-control" %>
       </div>
     </div>
-  </div>
+  <% end %>
   <div class="wizard-field-group">
-    <%= f.label "extras[face]", "Face predominante", class: "form-label" %>
-    <%= select_tag "captacao[extras][face]", options_for_select(%w[Norte Sul Leste Oeste Nordeste Noroeste Sudeste Sudoeste], @captacao.extras["face"]), include_blank: "—", class: "form-select" %>
+    <%= f.label "extras[face]", "Face predominante", class: "ax-label" %>
+    <%= select_tag "captacao[extras][face]", options_for_select(%w[Norte Sul Leste Oeste Nordeste Noroeste Sudeste Sudoeste], @captacao.extras["face"]), include_blank: "—", class: "ax-control" %>
   </div>
 <% end %>
 
 <% if features_imovel.any? %>
   <hr class="my-3">
   <div class="wizard-field-group">
-    <label class="form-label">Características do imóvel</label>
+    <label class="ax-label">Características do imóvel</label>
     <div class="<%= 'wizard-invalid-choice' if field_invalid.call(:caracteristicas_imovel) %>">
       <% features_imovel.each do |feat| %>
         <% selected = captacao_feature_selected?(@captacao.caracteristicas_imovel, feat) %>

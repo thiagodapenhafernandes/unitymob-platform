@@ -1,0 +1,46 @@
+<%
+  title ||= "Carregando"
+  eyebrow ||= "Atualizando"
+  rows ||= 4
+  chart ||= false
+  table ||= false
+  compact ||= false
+%>
+
+<article class="ax-dashboard-panel ax-dashboard-skeleton <%= 'ax-dashboard-skeleton--compact' if compact %>" aria-label="<%= title %>">
+  <div class="ax-dashboard-panel__header">
+    <div>
+      <span class="ax-dashboard-panel__eyebrow"><%= eyebrow %></span>
+      <h2><%= title %></h2>
+    </div>
+    <span class="ax-skeleton-pill"></span>
+  </div>
+
+  <% if chart %>
+    <div class="ax-skeleton-chart">
+      <span style="height: 42%"></span>
+      <span style="height: 66%"></span>
+      <span style="height: 50%"></span>
+      <span style="height: 78%"></span>
+      <span style="height: 58%"></span>
+      <span style="height: 72%"></span>
+      <span style="height: 46%"></span>
+    </div>
+  <% elsif table %>
+    <div class="ax-skeleton-table">
+      <% rows.times do %>
+        <span></span>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="ax-skeleton-list">
+      <% rows.times do |index| %>
+        <span class="ax-skeleton-row">
+          <i></i>
+          <b style="width:<%= [78, 62, 70, 54, 66][index % 5] %>%"></b>
+          <em></em>
+        </span>
+      <% end %>
+    </div>
+  <% end %>
+</article>

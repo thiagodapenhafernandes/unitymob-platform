@@ -1,311 +1,109 @@
-<div class="captacoes-header d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-  <div>
-    <h1 class="h3 mb-1"><i class="bi bi-journal-plus text-primary me-2"></i>Captações</h1>
-    <p class="text-muted small mb-0">
-      <% if current_admin_user.admin? %>
-        Todas as captações da equipe.
-      <% else %>
-        Suas captações.
-      <% end %>
-    </p>
-  </div>
-  <div class="d-flex gap-2 flex-wrap">
-    <% if can_export_captacoes? %>
-      <%= link_to export_admin_captacoes_path(request.query_parameters), class: "btn btn-outline-success d-flex align-items-center" do %>
-        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Exportar planilha
-      <% end %>
-    <% end %>
-    <%= link_to new_admin_captacao_path, class: "btn btn-primary d-flex align-items-center" do %>
-      <i class="bi bi-plus-lg me-1"></i>Nova captação
-    <% end %>
-  </div>
-</div>
-
+<%# Captações — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
+<% modalidade_map = { "venda" => ["blue", "Venda"], "locacao_anual" => ["amber", "Locação"], "ambos" => ["green", "Ambos"], "locacao_diaria" => ["blue", "Temporada"] } %>
 <% dashboard = @captacoes_dashboard || {} %>
-<div class="row g-3 mb-3">
-  <div class="col-6 col-lg-2">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body py-3">
-        <div class="small text-muted fw-semibold text-uppercase">Total</div>
-        <div class="h3 mb-0"><%= dashboard[:total].to_i %></div>
-      </div>
-    </div>
+
+<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
+  <div>
+    <h1 class="ax-page-title">Captações</h1>
+    <p class="ax-page-subtitle"><%= current_admin_user.admin? ? "Todas as captações da equipe." : "Suas captações." %></p>
   </div>
-  <div class="col-6 col-lg-2">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body py-3">
-        <div class="small text-muted fw-semibold text-uppercase">Rascunhos</div>
-        <div class="h3 mb-0 text-warning"><%= dashboard[:draft].to_i %></div>
-      </div>
-    </div>
+  <div class="tw-flex tw-flex-wrap tw-gap-2">
+    <% if can_export_captacoes? %>
+      <%= link_to export_admin_captacoes_path(request.query_parameters), class: "ax-btn ax-btn--sm" do %><i class="bi bi-file-earmark-spreadsheet ax-ico"></i><span>Exportar</span><% end %>
+    <% end %>
+    <%= link_to new_admin_captacao_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %><i class="bi bi-plus-lg ax-ico"></i><span>Nova captação</span><% end %>
   </div>
-  <div class="col-6 col-lg-2">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body py-3">
-        <div class="small text-muted fw-semibold text-uppercase">Em revisão</div>
-        <div class="h3 mb-0 text-primary"><%= dashboard[:submitted_for_admin_review].to_i %></div>
-      </div>
+</div>
+
+<div class="tw-grid tw-grid-cols-3 lg:tw-grid-cols-6 tw-gap-3 tw-mb-3">
+  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Total</div><div class="ax-stat-value"><%= dashboard[:total].to_i %></div></div>
+  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Rascunhos</div><div class="ax-stat-value tw-text-amber-600"><%= dashboard[:draft].to_i %></div></div>
+  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Em revisão</div><div class="ax-stat-value tw-text-blue-600"><%= dashboard[:submitted_for_admin_review].to_i %></div></div>
+  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Aprovadas</div><div class="ax-stat-value tw-text-cyan-600"><%= dashboard[:admin_approved].to_i %></div></div>
+  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Publicadas</div><div class="ax-stat-value tw-text-green-600"><%= dashboard[:published].to_i %></div></div>
+  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Devolvidas</div><div class="ax-stat-value tw-text-red-600"><%= dashboard[:returned_to_broker].to_i %></div></div>
+</div>
+
+<div class="ax-card tw-mb-3">
+  <div class="ax-card__body tw-grid tw-grid-cols-1 md:tw-grid-cols-4 tw-gap-3 tw-text-2xs">
+    <div>
+      <div class="ax-stat-label tw-mb-1">Tipos</div>
+      <div class="tw-flex tw-flex-wrap tw-gap-1"><span class="ax-badge ax-badge--gray">Residencial: <%= dashboard.dig(:property_kinds, :residencial).to_i %></span><span class="ax-badge ax-badge--gray">Comercial: <%= dashboard.dig(:property_kinds, :sala_comercial).to_i %></span><span class="ax-badge ax-badge--gray">Terreno: <%= dashboard.dig(:property_kinds, :terreno).to_i %></span></div>
     </div>
-  </div>
-  <div class="col-6 col-lg-2">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body py-3">
-        <div class="small text-muted fw-semibold text-uppercase">Aprovadas</div>
-        <div class="h3 mb-0 text-info"><%= dashboard[:admin_approved].to_i %></div>
-      </div>
+    <div class="md:tw-col-span-2">
+      <div class="ax-stat-label tw-mb-1">Modalidades</div>
+      <div class="tw-flex tw-flex-wrap tw-gap-1"><span class="ax-badge ax-badge--blue">Venda: <%= dashboard.dig(:modalities, :venda).to_i %></span><span class="ax-badge ax-badge--amber">Locação: <%= dashboard.dig(:modalities, :locacao_anual).to_i %></span><span class="ax-badge ax-badge--green">Ambos: <%= dashboard.dig(:modalities, :ambos).to_i %></span><span class="ax-badge ax-badge--blue">Temporada: <%= dashboard.dig(:modalities, :locacao_diaria).to_i %></span></div>
     </div>
-  </div>
-  <div class="col-6 col-lg-2">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body py-3">
-        <div class="small text-muted fw-semibold text-uppercase">Publicadas</div>
-        <div class="h3 mb-0 text-success"><%= dashboard[:published].to_i %></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-lg-2">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body py-3">
-        <div class="small text-muted fw-semibold text-uppercase">Devolvidas</div>
-        <div class="h3 mb-0 text-danger"><%= dashboard[:returned_to_broker].to_i %></div>
-      </div>
+    <div>
+      <div class="ax-stat-label tw-mb-1">Últimos 7 dias / Sem fotos</div>
+      <div class="ax-strong"><%= dashboard[:last_7_days].to_i %> · <%= dashboard[:missing_photos].to_i %> sem fotos</div>
     </div>
   </div>
 </div>
 
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-body py-3">
-    <div class="row g-3 small">
-      <div class="col-md-3">
-        <div class="text-muted fw-semibold text-uppercase mb-1">Tipos</div>
-        <div class="d-flex flex-wrap gap-2">
-          <span class="badge bg-light text-dark border">Residencial: <%= dashboard.dig(:property_kinds, :residencial).to_i %></span>
-          <span class="badge bg-light text-dark border">Sala comercial: <%= dashboard.dig(:property_kinds, :sala_comercial).to_i %></span>
-          <span class="badge bg-light text-dark border">Terreno: <%= dashboard.dig(:property_kinds, :terreno).to_i %></span>
-        </div>
-      </div>
-      <div class="col-md-5">
-        <div class="text-muted fw-semibold text-uppercase mb-1">Modalidades</div>
-        <div class="d-flex flex-wrap gap-2">
-          <span class="badge bg-info-subtle text-info border">Venda: <%= dashboard.dig(:modalities, :venda).to_i %></span>
-          <span class="badge bg-warning-subtle text-warning border">Locação: <%= dashboard.dig(:modalities, :locacao_anual).to_i %></span>
-          <span class="badge bg-success-subtle text-success border">Ambos: <%= dashboard.dig(:modalities, :ambos).to_i %></span>
-          <span class="badge bg-primary-subtle text-primary border">Temporada: <%= dashboard.dig(:modalities, :locacao_diaria).to_i %></span>
-          <% if dashboard.dig(:modalities, :blank).to_i.positive? %>
-            <span class="badge bg-light text-dark border">Sem modalidade: <%= dashboard.dig(:modalities, :blank).to_i %></span>
-          <% end %>
-        </div>
-      </div>
-      <div class="col-md-2">
-        <div class="text-muted fw-semibold text-uppercase mb-1">Últimos 7 dias</div>
-        <div class="fw-bold"><%= dashboard[:last_7_days].to_i %> captações</div>
-      </div>
-      <div class="col-md-2">
-        <div class="text-muted fw-semibold text-uppercase mb-1">Sem fotos</div>
-        <div class="fw-bold"><%= dashboard[:missing_photos].to_i %> captações</div>
-      </div>
+<%= form_with url: admin_captacoes_path, method: :get, local: true do %>
+  <div class="ax-card tw-mb-3">
+    <div class="ax-card__body tw-flex tw-flex-wrap tw-items-end tw-gap-3">
+      <div class="tw-w-52"><label class="ax-label">Tipo</label><%= select_tag :property_kind, options_for_select([["Todos os tipos", ""], ["Residencial", "residencial"], ["Sala comercial", "sala_comercial"], ["Terreno", "terreno"]], params[:property_kind]), class: "ax-select" %></div>
+      <div class="tw-w-52"><label class="ax-label">Status</label><%= select_tag :status, options_for_select([["Todos status", ""], ["Rascunhos", "draft"], ["Finalizadas", "completed"], ["Publicadas no site", "published"]], params[:status]), class: "ax-select" %></div>
+      <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-funnel ax-ico"></i>Filtrar</button>
+      <% if params[:property_kind].present? || params[:status].present? %><%= link_to "Limpar", admin_captacoes_path, class: "ax-btn ax-btn--ghost" %><% end %>
+      <%= ax_team_toggle(:captacoes, class_name: "tw-ml-auto") %>
     </div>
   </div>
-</div>
+<% end %>
 
-<!-- Filtros -->
-<div class="card shadow-sm border-0 mb-3">
-  <div class="card-body py-3">
-    <%= form_with url: admin_captacoes_path, method: :get, local: true, class: "row g-2 align-items-center" do %>
-      <div class="col-md-3">
-        <%= select_tag :property_kind,
-                       options_for_select([["Todos os tipos", ""], ["Residencial", "residencial"], ["Sala comercial", "sala_comercial"], ["Terreno", "terreno"]], params[:property_kind]),
-                       class: "form-select form-select-sm", onchange: "this.form.submit()" %>
-      </div>
-      <div class="col-md-3">
-        <%= select_tag :status,
-                       options_for_select([["Todos status", ""], ["Rascunhos", "draft"], ["Finalizadas", "completed"], ["Publicadas no site", "published"]], params[:status]),
-                       class: "form-select form-select-sm", onchange: "this.form.submit()" %>
-      </div>
-      <% if params[:property_kind].present? || params[:status].present? %>
-        <div class="col-md-2">
-          <%= link_to "Limpar", admin_captacoes_path, class: "btn btn-sm btn-outline-secondary" %>
-        </div>
+<div class="ax-table-wrap">
+  <table class="ax-table">
+    <thead>
+      <tr>
+        <th>Imóvel</th>
+        <th style="width:90px">Código</th>
+        <th style="width:120px">Tipo</th>
+        <th style="width:110px">Modalidade</th>
+        <% if current_admin_user.admin? %><th style="width:150px">Corretor</th><% end %>
+        <th class="ax-num" style="width:130px">Valor</th>
+        <th style="width:110px">Status</th>
+        <th style="width:96px">Atualizada</th>
+        <th class="ax-num" style="width:96px">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @captacoes.each do |c| %>
+        <% mod_color, mod_label = modalidade_map[c.modalidade] || ["gray", "—"] %>
+        <tr>
+          <td>
+            <div class="ax-strong"><%= c.display_title %></div>
+            <% if c.city.present? %><div class="tw-text-2xs tw-text-ink-faint"><i class="bi bi-geo-alt"></i> <%= c.city %></div><% end %>
+          </td>
+          <td><% if c.codigo.present? %><%= link_to c.codigo, admin_habitations_path(q: c.codigo) %><% else %>—<% end %></td>
+          <td><span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span></td>
+          <td><span class="ax-badge ax-badge--<%= mod_color %>"><%= mod_label %></span></td>
+          <% if current_admin_user.admin? %><td><%= c.corretor.name %></td><% end %>
+          <td class="ax-num"><% if c.valor_venda.present? %><%= number_to_currency(c.valor_venda, unit: "R$ ", precision: 0) %><% elsif c.valor_locacao.present? %><%= number_to_currency(c.valor_locacao, unit: "R$ ", precision: 0) %>/mês<% else %>—<% end %></td>
+          <td>
+            <% if c.published_on_site? %><span class="ax-badge ax-badge--green ax-badge--dot">Publicada</span><% elsif c.completed? %><span class="ax-badge ax-badge--blue ax-badge--dot">Finalizada</span><% else %><span class="ax-badge ax-badge--amber ax-badge--dot">Rascunho</span><% end %>
+          </td>
+          <td class="tw-text-2xs tw-text-ink-muted"><%= time_ago_in_words(c.updated_at) %></td>
+          <td class="ax-num">
+            <% if c.completed? %>
+              <%= link_to admin_captacao_path(c), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
+            <% else %>
+              <%= link_to edit_admin_captacao_path(c), class: "ax-btn ax-btn--sm", title: "Continuar" do %><i class="bi bi-pencil ax-ico"></i><% end %>
+            <% end %>
+          </td>
+        </tr>
       <% end %>
-    <% end %>
-  </div>
+      <% if @captacoes.empty? %>
+        <tr><td colspan="<%= current_admin_user.admin? ? 9 : 8 %>"><div class="ax-empty">
+          <i class="bi bi-inbox tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>
+          Você ainda não tem captações. <%= link_to "Criar primeira", new_admin_captacao_path, class: "tw-text-primary" %>.
+        </div></td></tr>
+      <% end %>
+    </tbody>
+  </table>
 </div>
 
-<% if @captacoes.any? %>
-  <div class="captacao-mobile-list d-md-none">
-    <% @captacoes.each do |c| %>
-      <div class="captacao-mobile-card">
-        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-          <div class="min-w-0">
-            <div class="fw-bold captacao-mobile-title"><%= c.display_title %></div>
-            <div class="small text-muted">
-              <% if c.city.present? %><i class="bi bi-geo-alt me-1"></i><%= c.city %><% else %>Sem cidade<% end %>
-            </div>
-          </div>
-          <% if c.published_on_site? %>
-            <span class="badge bg-success flex-shrink-0"><i class="bi bi-globe me-1"></i>Publicada</span>
-          <% elsif c.completed? %>
-            <span class="badge bg-primary flex-shrink-0">Finalizada</span>
-          <% else %>
-            <span class="badge bg-warning text-dark flex-shrink-0">Rascunho</span>
-          <% end %>
-        </div>
-
-        <div class="captacao-mobile-grid mb-3">
-          <div>
-            <span>Código</span>
-            <strong>
-              <% if c.codigo.present? %>
-                <%= link_to c.codigo, admin_habitations_path(q: c.codigo), class: "text-decoration-none" %>
-              <% else %>
-                —
-              <% end %>
-            </strong>
-          </div>
-          <div>
-            <span>Tipo</span>
-            <strong><%= c.property_kind.humanize %></strong>
-          </div>
-          <div>
-            <span>Modalidade</span>
-            <strong>
-              <% case c.modalidade
-                 when "venda" %>Venda
-              <% when "locacao_anual" %>Locação
-              <% when "ambos" %>Ambos
-              <% when "locacao_diaria" %>Temporada
-              <% else %>—
-              <% end %>
-            </strong>
-          </div>
-          <div>
-            <span>Valor</span>
-            <strong>
-              <% if c.valor_venda.present? %>
-                <%= number_to_currency(c.valor_venda, unit: "R$ ", precision: 0) %>
-              <% elsif c.valor_locacao.present? %>
-                <%= number_to_currency(c.valor_locacao, unit: "R$ ", precision: 0) %>/mês
-              <% else %>—
-              <% end %>
-            </strong>
-          </div>
-          <div>
-            <span>Atualizada</span>
-            <strong><%= time_ago_in_words(c.updated_at) %> atrás</strong>
-          </div>
-          <% if current_admin_user.admin? %>
-            <div class="captacao-mobile-grid-full">
-              <span>Corretor</span>
-              <strong><%= c.corretor.name %></strong>
-            </div>
-          <% end %>
-        </div>
-
-        <% if c.completed? %>
-          <%= link_to admin_captacao_path(c), class: "btn btn-outline-primary w-100 fw-semibold" do %>
-            <i class="bi bi-eye me-1"></i>Ver captação
-          <% end %>
-        <% else %>
-          <%= link_to edit_admin_captacao_path(c), class: "btn btn-primary w-100 fw-semibold" do %>
-            <i class="bi bi-pencil me-1"></i>Continuar cadastro
-          <% end %>
-        <% end %>
-      </div>
-    <% end %>
-
-    <div class="d-flex justify-content-center mt-3">
-      <%= will_paginate @captacoes, renderer: WillPaginate::ActionView::BootstrapLinkRenderer %>
-    </div>
-  </div>
-
-  <div class="card shadow-sm border-0 d-none d-md-block">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="bg-light text-muted small text-uppercase fw-bold">
-          <tr>
-            <th class="px-3">Imóvel</th>
-            <th>Código</th>
-            <th>Tipo</th>
-            <th>Modalidade</th>
-            <% if current_admin_user.admin? %><th>Corretor</th><% end %>
-            <th>Valor</th>
-            <th>Status</th>
-            <th>Atualizada</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @captacoes.each do |c| %>
-            <tr>
-              <td class="px-3">
-                <div class="fw-semibold"><%= c.display_title %></div>
-                <div class="small text-muted">
-                  <% if c.city.present? %><i class="bi bi-geo-alt me-1"></i><%= c.city %><% end %>
-                </div>
-              </td>
-              <td class="small">
-                <% if c.codigo.present? %>
-                  <%= link_to c.codigo, admin_habitations_path(q: c.codigo), class: "badge bg-light text-dark border text-decoration-none" %>
-                <% else %>
-                  —
-                <% end %>
-              </td>
-              <td><span class="badge bg-light text-dark border"><%= c.property_kind.humanize %></span></td>
-              <td>
-                <% case c.modalidade
-                   when "venda" %><span class="badge bg-info-subtle text-info border">Venda</span>
-                <% when "locacao_anual" %><span class="badge bg-warning-subtle text-warning border">Locação</span>
-                <% when "ambos" %><span class="badge bg-success-subtle text-success border">Ambos</span>
-                <% when "locacao_diaria" %><span class="badge bg-primary-subtle text-primary border">Temporada</span>
-                <% else %>—
-                <% end %>
-              </td>
-              <% if current_admin_user.admin? %>
-                <td class="small"><%= c.corretor.name %></td>
-              <% end %>
-              <td class="small">
-                <% if c.valor_venda.present? %>
-                  <%= number_to_currency(c.valor_venda, unit: "R$ ", precision: 0) %>
-                <% elsif c.valor_locacao.present? %>
-                  <%= number_to_currency(c.valor_locacao, unit: "R$ ", precision: 0) %>/mês
-                <% else %>—
-                <% end %>
-              </td>
-              <td>
-                <% if c.published_on_site? %>
-                  <span class="badge bg-success"><i class="bi bi-globe me-1"></i>Publicada</span>
-                <% elsif c.completed? %>
-                  <span class="badge bg-primary">Finalizada</span>
-                <% else %>
-                  <span class="badge bg-warning text-dark">Rascunho</span>
-                <% end %>
-              </td>
-              <td class="small text-muted"><%= time_ago_in_words(c.updated_at) %> atrás</td>
-              <td class="text-end pe-3">
-                <% if c.completed? %>
-                  <%= link_to admin_captacao_path(c), class: "btn btn-sm btn-outline-primary border-0" do %>
-                    <i class="bi bi-eye"></i>
-                  <% end %>
-                <% else %>
-                  <%= link_to edit_admin_captacao_path(c), class: "btn btn-sm btn-outline-primary border-0" do %>
-                    <i class="bi bi-pencil"></i>Continuar
-                  <% end %>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-    <div class="card-footer bg-white py-3">
-      <div class="d-flex justify-content-center">
-        <%= will_paginate @captacoes, renderer: WillPaginate::ActionView::BootstrapLinkRenderer %>
-      </div>
-    </div>
-  </div>
-<% else %>
-  <div class="text-center py-5 text-muted">
-    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
-    <p class="mt-2">Você ainda não tem captações. <%= link_to "Criar primeira", new_admin_captacao_path %>.</p>
-  </div>
+<% if @captacoes.respond_to?(:total_pages) && @captacoes.total_pages > 1 %>
+  <%= ax_pagination @captacoes, params: request.query_parameters %>
 <% end %>

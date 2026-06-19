@@ -1,0 +1,72 @@
+<%
+  wrapper_classes = ["ax-aside-panel-shell", class_name].compact.join(" ")
+  rail_classes = ["ax-aside-rail", ("ax-aside-rail--nav" if rail_body.present?), rail_class].compact.join(" ")
+  panel_classes = ["ax-aside-panel", panel_class].compact.join(" ")
+  header_classes = ["ax-aside-panel__header", header_class].compact.join(" ")
+  actions_classes = ["ax-aside-panel__actions", actions_class].compact.join(" ")
+  toggle_classes = ["ax-aside-panel__toggle", toggle_class].compact.join(" ")
+  controller_name = local_assigns[:controller].presence || "ax-aside"
+  rail_body = local_assigns[:rail_body]
+  toggle_action = "click->#{controller_name}#toggle"
+  toggle_target_attribute = "data-#{controller_name}-target"
+%>
+
+<div class="<%= wrapper_classes %>">
+  <% if rail_body.present? %>
+    <div class="<%= rail_classes %>" aria-label="<%= rail_label %>">
+      <button type="button"
+              class="ax-aside-rail__toggle"
+              data-action="<%= toggle_action %>"
+              <%= toggle_target_attribute %>="toggle"
+              aria-expanded="true"
+              aria-label="<%= rail_label %>"
+              title="<%= rail_label %>">
+        <i class="bi bi-<%= rail_icon %>" aria-hidden="true"></i>
+      </button>
+      <%= rail_body %>
+      <% if token.present? %>
+        <span class="ax-aside-rail__token"><%= token %></span>
+      <% end %>
+    </div>
+  <% else %>
+    <button type="button"
+            class="<%= rail_classes %>"
+            data-action="<%= toggle_action %>"
+            <%= toggle_target_attribute %>="toggle"
+            aria-expanded="true"
+            aria-label="<%= rail_label %>"
+            title="<%= rail_label %>">
+      <span class="ax-aside-rail__content">
+        <i class="bi bi-<%= rail_icon %>" aria-hidden="true"></i>
+        <span><%= title %></span>
+        <% if token.present? %>
+          <span class="ax-aside-rail__token"><%= token %></span>
+        <% end %>
+      </span>
+    </button>
+  <% end %>
+
+  <div class="<%= panel_classes %>">
+    <header class="<%= header_classes %>">
+      <strong><%= title %></strong>
+      <div class="<%= actions_classes %>">
+        <% if token.present? %>
+          <span><%= token %></span>
+        <% end %>
+        <button type="button"
+                class="<%= toggle_classes %>"
+                data-action="<%= toggle_action %>"
+                <%= toggle_target_attribute %>="toggle"
+                aria-expanded="true"
+                aria-label="<%= collapse_label %>"
+                title="<%= collapse_label %>">
+          <i class="bi bi-arrow-bar-right" aria-hidden="true"></i>
+        </button>
+      </div>
+    </header>
+
+    <div class="ax-aside-panel__body">
+      <%= body %>
+    </div>
+  </div>
+</div>

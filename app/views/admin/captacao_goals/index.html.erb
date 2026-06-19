@@ -1,64 +1,53 @@
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+<%# Metas de Captação — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak %>
+<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
   <div>
-    <h1 class="h3 mb-1"><i class="bi bi-bullseye text-primary me-2"></i>Metas de captação</h1>
-    <p class="text-muted small mb-0">Metas por período e tipo. Os indicadores de região foco e administração vêm do cadastro dos imóveis.</p>
+    <h1 class="ax-page-title">Metas de captação</h1>
+    <p class="ax-page-subtitle">Metas por período e tipo. Indicadores de região foco e administração vêm do cadastro dos imóveis.</p>
   </div>
-  <%= link_to new_admin_captacao_goal_path, class: "btn btn-primary btn-sm" do %>
-    <i class="bi bi-plus-lg me-1"></i>Nova meta
+  <%= link_to new_admin_captacao_goal_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+    <i class="bi bi-plus-lg ax-ico"></i><span>Nova meta</span>
   <% end %>
 </div>
 
-<div class="card shadow-sm border-0">
-  <div class="table-responsive">
-    <table class="table align-middle mb-0">
-      <thead class="bg-light small text-uppercase fw-bold text-muted">
+<div class="ax-table-wrap">
+  <table class="ax-table">
+    <thead>
+      <tr>
+        <th>Período</th>
+        <th style="width:110px">Tipo</th>
+        <th class="ax-num" style="width:90px">Meta</th>
+        <th>Observação</th>
+        <th style="width:200px">Faixa de valor</th>
+        <th class="ax-num" style="width:90px">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @goals.each do |g| %>
         <tr>
-          <th class="px-3">Período</th>
-          <th>Tipo</th>
-          <th>Meta</th>
-          <th>Observação</th>
-          <th>Faixa de valor</th>
-          <th></th>
+          <td class="ax-strong"><%= g.period_label %></td>
+          <td>
+            <% if g.kind_venda? %><span class="ax-badge ax-badge--blue">Venda</span>
+            <% else %><span class="ax-badge ax-badge--amber">Locação</span><% end %>
+          </td>
+          <td class="ax-num ax-strong"><%= g.target %></td>
+          <td><%= g.foco_regiao.presence || "—" %></td>
+          <td>
+            <% if g.foco_valor_min || g.foco_valor_max %>
+              <%= number_to_currency(g.foco_valor_min, unit: "R$ ", precision: 0) if g.foco_valor_min %> — <%= number_to_currency(g.foco_valor_max, unit: "R$ ", precision: 0) if g.foco_valor_max %>
+            <% else %>—<% end %>
+          </td>
+          <td class="ax-num">
+            <span class="tw-inline-flex tw-gap-0.5">
+              <%= link_to edit_admin_captacao_goal_path(g), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+              <%= button_to admin_captacao_goal_path(g), method: :delete, form_class: "tw-inline", class: "ax-ico-btn", data: { turbo_confirm: "Remover esta meta?" }, title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
+            </span>
+          </td>
         </tr>
-      </thead>
-      <tbody>
-        <% @goals.each do |g| %>
-          <tr>
-            <td class="px-3 fw-bold"><%= g.period_label %></td>
-            <td>
-              <% if g.kind_venda? %>
-                <span class="badge bg-info-subtle text-info border">Venda</span>
-              <% else %>
-                <span class="badge bg-warning-subtle text-warning border">Locação</span>
-              <% end %>
-            </td>
-            <td><%= g.target %></td>
-            <td class="small"><%= g.foco_regiao.presence || "—" %></td>
-            <td class="small">
-              <% if g.foco_valor_min || g.foco_valor_max %>
-                <%= number_to_currency(g.foco_valor_min, unit: "R$ ", precision: 0) if g.foco_valor_min %>
-                —
-                <%= number_to_currency(g.foco_valor_max, unit: "R$ ", precision: 0) if g.foco_valor_max %>
-              <% else %>
-                —
-              <% end %>
-            </td>
-            <td class="text-end pe-3">
-              <%= link_to edit_admin_captacao_goal_path(g), class: "btn btn-sm btn-outline-secondary border-0" do %>
-                <i class="bi bi-pencil"></i>
-              <% end %>
-              <%= button_to admin_captacao_goal_path(g), method: :delete,
-                            class: "btn btn-sm btn-outline-danger border-0",
-                            data: { turbo_confirm: "Remover esta meta?" } do %>
-                <i class="bi bi-trash"></i>
-              <% end %>
-            </td>
-          </tr>
-        <% end %>
-        <% if @goals.empty? %>
-          <tr><td colspan="6" class="text-center text-muted py-4"><i class="bi bi-inbox me-1"></i>Nenhuma meta cadastrada.</td></tr>
-        <% end %>
-      </tbody>
-    </table>
-  </div>
+      <% end %>
+
+      <% if @goals.empty? %>
+        <tr><td colspan="6"><div class="ax-empty">Nenhuma meta cadastrada.</div></td></tr>
+      <% end %>
+    </tbody>
+  </table>
 </div>

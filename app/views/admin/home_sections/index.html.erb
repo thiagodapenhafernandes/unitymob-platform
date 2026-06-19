@@ -1,121 +1,65 @@
-<div class="container-fluid py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0"><i class="bi bi-layout-text-sidebar"></i> Seções da Página Inicial</h1>
-    <%= link_to new_admin_home_section_path, class: "btn btn-primary" do %>
-      <i class="bi bi-plus-circle"></i> Nova Seção
-    <% end %>
+<%# Seções da Home — compacto (.ax-*) com reordenação SortableJS. Original em index.html.erb.bootstrap-bak %>
+<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
+  <div>
+    <h1 class="ax-page-title">Seções da Página Inicial</h1>
+    <p class="ax-page-subtitle">Arraste as linhas para reordenar. Use o status para ativar/desativar sem remover.</p>
   </div>
-
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <% if @home_sections.any? %>
-        <div class="table-responsive">
-          <table class="table table-hover align-middle">
-            <thead class="table-light">
-              <tr>
-                <th width="50">Ordem</th>
-                <th>Tipo</th>
-                <th>Título</th>
-                <th width="100" class="text-center">Status</th>
-                <th width="150" class="text-center">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="sortable-sections">
-              <% @home_sections.each do |section| %>
-                <tr data-id="<%= section.id %>" style="cursor: move;">
-                  <td class="text-center">
-                    <i class="bi bi-grip-vertical text-muted"></i>
-                    <span class="badge bg-secondary ms-2"><%= section.order_position || '-' %></span>
-                  </td>
-                  <td>
-                    <span class="badge bg-info">
-                      <%= section.section_type_label %>
-                    </span>
-                    <% if section.property_filter_labels.any? %>
-                      <div class="d-flex flex-wrap gap-1 mt-2">
-                        <% section.property_filter_labels.each do |label| %>
-                          <span class="badge text-bg-light border"><%= label %></span>
-                        <% end %>
-                      </div>
-                    <% end %>
-                  </td>
-                  <td>
-                    <strong><%= section.title %></strong>
-                    <% if section.subtitle.present? %>
-                      <br>
-                      <small class="text-muted"><%= truncate(section.subtitle, length: 60) %></small>
-                    <% end %>
-                  </td>
-                  <td class="text-center">
-                    <%= button_to toggle_active_admin_home_section_path(section), method: :patch, 
-                        class: "btn btn-sm #{section.active ? 'btn-success' : 'btn-secondary'} border-0",
-                        form: { style: 'display: inline-block;' } do %>
-                      <% if section.active %>
-                        <i class="bi bi-toggle-on"></i> Ativo
-                      <% else %>
-                        <i class="bi bi-toggle-off"></i> Inativo
-                      <% end %>
-                    <% end %>
-                  </td>
-                  <td class="text-center">
-                    <%= link_to admin_home_section_path(section), class: "btn btn-sm btn-info" do %>
-                      <i class="bi bi-eye"></i>
-                    <% end %>
-                    <%= link_to edit_admin_home_section_path(section), class: "btn btn-sm btn-warning" do %>
-                      <i class="bi bi-pencil"></i>
-                    <% end %>
-                    <%= link_to admin_home_section_path(section), method: :delete, 
-                        data: { confirm: "Tem certeza que deseja remover esta seção?" }, 
-                        class: "btn btn-sm btn-danger" do %>
-                      <i class="bi bi-trash"></i>
-                    <% end %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% else %>
-        <div class="text-center py-5">
-          <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
-          <p class="text-muted mt-3">Nenhuma seção cadastrada.</p>
-          <%= link_to "Criar primeira seção", new_admin_home_section_path, class: "btn btn-primary" %>
-        </div>
-      <% end %>
-    </div>
-  </div>
-
-  <!-- Info Box -->
-  <div class="alert alert-info mt-4">
-    <i class="bi bi-info-circle"></i>
-    <strong>Dica:</strong> As seções são exibidas na página inicial na ordem definida.
-    Use o botão de status para ativar/desativar seções sem removê-las. 
-    Arraste as linhas para reordenar!
-  </div>
+  <%= link_to new_admin_home_section_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+    <i class="bi bi-plus-lg ax-ico"></i><span>Nova seção</span>
+  <% end %>
 </div>
 
-<!-- SortableJS -->
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const el = document.getElementById('sortable-sections');
-  if (el) {
-    Sortable.create(el, {
-      animation: 150,
-      handle: 'tr',
-      onEnd: function(evt) {
-        const order = Array.from(el.querySelectorAll('tr')).map(tr => tr.dataset.id);
-        
-        fetch('<%= update_order_admin_home_sections_path %>', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
-          },
-          body: JSON.stringify({ order: order })
-        });
-      }
-    });
-  }
-});
-</script>
+<div class="ax-table-wrap">
+  <table class="ax-table">
+    <thead>
+      <tr>
+        <th style="width:80px">Ordem</th>
+        <th style="width:220px">Tipo</th>
+        <th>Título</th>
+        <th style="width:120px">Status</th>
+        <th class="ax-num" style="width:110px">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="sortable-sections" data-controller="home-sections-sort" data-home-sections-sort-url-value="<%= update_order_admin_home_sections_path %>">
+      <% @home_sections.each do |section| %>
+        <tr data-id="<%= section.id %>" style="cursor:move;">
+          <td>
+            <i class="bi bi-grip-vertical tw-text-ink-faint"></i>
+            <span class="ax-badge ax-badge--gray tw-ml-1"><%= section.order_position || '-' %></span>
+          </td>
+          <td>
+            <span class="ax-badge ax-badge--blue"><%= section.section_type_label %></span>
+            <% if section.property_filter_labels.any? %>
+              <div class="tw-flex tw-flex-wrap tw-gap-1 tw-mt-1">
+                <% section.property_filter_labels.each do |label| %><span class="ax-badge ax-badge--gray"><%= label %></span><% end %>
+              </div>
+            <% end %>
+          </td>
+          <td>
+            <span class="ax-strong"><%= section.title %></span>
+            <% if section.subtitle.present? %><div class="tw-text-2xs tw-text-ink-faint"><%= truncate(section.subtitle, length: 60) %></div><% end %>
+          </td>
+          <td>
+            <%= button_to toggle_active_admin_home_section_path(section), method: :patch, form_class: "tw-inline",
+                  class: "ax-badge #{section.active ? 'ax-badge--green' : 'ax-badge--gray'} tw-border-0 tw-cursor-pointer", form: { style: 'display:inline-block;' } do %>
+              <i class="bi bi-toggle-<%= section.active ? 'on' : 'off' %>"></i> <%= section.active ? 'Ativo' : 'Inativo' %>
+            <% end %>
+          </td>
+          <td class="ax-num">
+            <span class="tw-inline-flex tw-gap-0.5">
+              <%= link_to admin_home_section_path(section), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
+              <%= link_to edit_admin_home_section_path(section), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+              <%= link_to admin_home_section_path(section), data: { turbo_method: :delete, turbo_confirm: "Tem certeza que deseja remover esta seção?" }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
+            </span>
+          </td>
+        </tr>
+      <% end %>
+
+      <% if @home_sections.empty? %>
+        <tr><td colspan="5"><div class="ax-empty">
+          <i class="bi bi-inbox tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>Nenhuma seção cadastrada.
+        </div></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

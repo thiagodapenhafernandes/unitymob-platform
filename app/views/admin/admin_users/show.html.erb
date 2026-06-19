@@ -1,4 +1,154 @@
-<div>
-  <h1 class="font-bold text-4xl">Admin::AdminUsers#show</h1>
-  <p>Find me in app/views/admin/admin_users/show.html.erb</p>
+<%
+  u = @admin_user
+  acting = { "sales" => ["Venda", :blue], "rentals" => ["Locação", :amber], "both" => ["Ambos", :green] }[u.acting_type.to_s]
+%>
+
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Admin", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Usuários", admin_admin_users_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong><%= u.name %></strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <% if current_admin_user.admin? && u != current_admin_user %>
+    <%= button_to impersonate_admin_admin_user_path(u), method: :post,
+          class: "ax-contextbar__button", form: { class: "tw-inline" },
+          data: { turbo_confirm: "Acessar o sistema como #{u.name}?" } do %>
+      <i class="bi bi-person-check"></i><span>Acessar como</span>
+    <% end %>
+  <% end %>
+  <%= link_to admin_admin_users_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left"></i><span>Lista</span>
+  <% end %>
+  <%= link_to edit_admin_admin_user_path(u), class: "ax-contextbar__button ax-contextbar__button--primary" do %>
+    <i class="bi bi-pencil"></i><span>Editar</span>
+  <% end %>
+<% end %>
+
+<div class="aus">
+  <header class="ax-dashboard-command ax-property-form-command aus__head">
+    <span class="aus__avatar">
+      <% if u.avatar.attached? %>
+        <%= image_tag u.avatar, class: "aus__avatar-img" %>
+      <% else %>
+        <span class="aus__avatar-initial"><%= u.name.to_s.first&.upcase || "?" %></span>
+      <% end %>
+    </span>
+    <div class="ax-dashboard-command__main">
+      <span class="ax-dashboard-command__eyebrow">Usuário</span>
+      <div class="ax-dashboard-command__title-row">
+        <h1><%= u.name %></h1>
+        <%= ax_badge(u.active ? "Ativo" : "Inativo", tone: u.active ? :green : :red, dot: true) %>
+        <% if u.profile %><%= ax_badge(u.profile.name, tone: :blue) %><% end %>
+        <% if acting %><%= ax_badge(acting[0], tone: acting[1]) %><% end %>
+      </div>
+      <p><%= u.email %><%= " · CRECI #{u.creci}" if u.creci.present? %></p>
+    </div>
+  </header>
+
+  <div class="aus__kpis">
+    <%= ax_metric_card(label: "Imóveis", value: number_with_delimiter(@habitations_count)) %>
+    <%= ax_metric_card(label: "Subordinados diretos", value: @subordinates.size) %>
+    <%= ax_metric_card(label: "Total na árvore", value: @total_descendants) %>
+    <%= ax_metric_card(label: "Gestor", value: u.manager&.name.presence || "—") %>
+  </div>
+
+  <div class="aus__grid">
+    <div class="aus__col">
+      <%= ax_operational_panel(eyebrow: "Contato", title: "Dados pessoais") do %>
+        <div class="aus__body">
+          <dl class="aus__defs">
+            <div class="aus__def"><dt>E-mail</dt><dd><%= u.email %></dd></div>
+            <div class="aus__def"><dt>Telefone</dt><dd><%= u.phone.presence || "—" %></dd></div>
+            <div class="aus__def"><dt>CRECI</dt><dd><%= u.creci.presence || "—" %></dd></div>
+            <div class="aus__def"><dt>Cidade</dt><dd><%= u.city.presence || "—" %></dd></div>
+            <div class="aus__def"><dt>Nascimento</dt><dd><%= u.birth_date.present? ? l(u.birth_date) : "—" %></dd></div>
+            <div class="aus__def"><dt>Vista ID</dt><dd><%= u.vista_id.present? ? u.vista_id : "—" %></dd></div>
+          </dl>
+          <% if u.biography.present? %>
+            <div class="aus__bio"><span class="aus__def-label">Biografia</span><p><%= u.biography %></p></div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Acesso", title: "Acesso e segurança") do %>
+        <div class="aus__body">
+          <dl class="aus__defs">
+            <div class="aus__def"><dt>Perfil</dt><dd><%= u.profile&.name.presence || u.role.humanize %></dd></div>
+            <div class="aus__def"><dt>Atuação</dt><dd><%= acting ? acting[0] : "—" %></dd></div>
+            <div class="aus__def"><dt>Exibe no site</dt><dd><%= ax_badge(u.display_on_site ? "Sim" : "Não", tone: u.display_on_site ? :green : :gray) %></dd></div>
+            <div class="aus__def"><dt>Exige IP permitido</dt><dd><%= ax_badge(u.require_ip_allowlist ? "Sim" : "Não", tone: u.require_ip_allowlist ? :amber : :gray) %></dd></div>
+            <div class="aus__def"><dt>Exige aparelho confiável</dt><dd><%= ax_badge(u.require_trusted_device ? "Sim" : "Não", tone: u.require_trusted_device ? :amber : :gray) %></dd></div>
+          </dl>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="aus__col">
+      <%= ax_operational_panel(
+            eyebrow: "Equipe",
+            title: "Subordinados diretos",
+            actions: ax_badge(@subordinates.size.to_s, tone: :gray)
+          ) do %>
+        <div class="aus__body">
+          <% if @subordinates.any? %>
+            <div class="aus__team">
+              <% @subordinates.each do |sub| %>
+                <%= link_to admin_admin_user_path(sub), class: "aus__member" do %>
+                  <span class="aus__member-avatar">
+                    <% if sub.avatar.attached? %>
+                      <%= image_tag sub.avatar, class: "aus__member-img" %>
+                    <% else %>
+                      <span class="aus__member-initial"><%= sub.name.to_s.first&.upcase || "?" %></span>
+                    <% end %>
+                  </span>
+                  <span class="aus__member-main">
+                    <strong><%= sub.name %></strong>
+                    <span><%= sub.profile&.name.presence || sub.email %></span>
+                  </span>
+                  <%= ax_badge(sub.active ? "Ativo" : "Inativo", tone: sub.active ? :green : :red, dot: true) %>
+                <% end %>
+              <% end %>
+            </div>
+            <%= link_to "Ver na hierarquia", hierarchy_admin_admin_users_path, class: "ax-dashboard-panel__link", style: "margin-top:8px;display:inline-block" %>
+          <% else %>
+            <%= ax_empty_state(title: "Sem subordinados", description: "Este usuário não é gestor de ninguém.", icon: "people") %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
 </div>
+
+<style id="admin-users-show-styles">
+  .aus { display: grid; gap: 8px; padding-top: 8px; }
+  .aus__head { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+  .aus__avatar { flex: 0 0 auto; }
+  .aus__avatar-img { width: 54px; height: 54px; border-radius: 999px; object-fit: cover; }
+  .aus__avatar-initial { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 999px; background: var(--admin-primary, #365f8f); color: #fff; font-weight: 800; font-size: 18px; }
+
+  .aus__kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  @media (max-width: 760px) { .aus__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .aus__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
+  @media (min-width: 1000px) { .aus__grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); } }
+  .aus__col { display: grid; gap: 8px; min-width: 0; }
+  .aus__body { padding: 12px; display: grid; gap: 12px; }
+
+  .aus__defs { margin: 0; display: grid; gap: 8px; }
+  .aus__def { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .aus__def dt { margin: 0; color: #697586; font-size: 12px; }
+  .aus__def dd { margin: 0; color: #1f2733; font-size: 12.5px; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+  .aus__bio p { margin: 4px 0 0; color: #41506a; font-size: 12.5px; line-height: 1.5; }
+  .aus__def-label { color: #697586; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 800; }
+
+  .aus__team { display: grid; gap: 6px; }
+  .aus__member { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; text-decoration: none; }
+  .aus__member:hover { background: #f8fafc; }
+  .aus__member-img { width: 30px; height: 30px; border-radius: 999px; object-fit: cover; }
+  .aus__member-initial { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 999px; background: #eef2f7; color: var(--admin-primary, #365f8f); font-weight: 800; font-size: 11px; }
+  .aus__member-main { display: grid; gap: 1px; min-width: 0; flex: 1; }
+  .aus__member-main strong { color: #1f2733; font-size: 12.5px; }
+  .aus__member-main span { color: #8a93a3; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>

@@ -1,7 +1,7 @@
 class Admin::LeadsController < Admin::BaseController
   before_action -> { check_permission!(:view, :leads) }
-  before_action :set_lead, only: [:show, :update, :destroy]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy]
+  before_action :set_lead, only: [:show, :update, :destroy, :log_contact]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :log_contact]
   before_action :load_origin_options, only: [:index, :show, :update]
 
   def index
@@ -18,6 +18,15 @@ class Admin::LeadsController < Admin::BaseController
     
     lead_scope = lead_scope.where(status: Lead.status_value(@status)) if @status.present?
     lead_scope = lead_scope.by_origin(@origin)
+
+    stats_scope = lead_scope.reorder(nil)
+    @total_leads = stats_scope.count
+    @new_leads = stats_scope.where(status: Lead.status_value("Novo")).count
+    @in_service_leads = stats_scope.where(status: Lead.status_value("Em Atendimento")).count
+    @unassigned_leads = stats_scope.where(admin_user_id: nil).count
+    @status_counts = stats_scope.group(:status).count
+    @origin_counts = lead_scope_for_current_user.reorder(nil).where.not(origin: [nil, ""]).group(:origin).count
+
     lead_scope = lead_scope.includes(:admin_user).order(created_at: :desc)
 
     @lead_statuses = if @status.present?
@@ -32,8 +41,10 @@ class Admin::LeadsController < Admin::BaseController
       @leads_by_status[Lead.status_value(lead.status)] << lead
     end
     @lead_counts_by_status = @leads_by_status.transform_values(&:size)
-    @properties_by_id = Habitation.where(id: @kanban_leads.filter_map(&:property_id).uniq).index_by(&:id)
     @leads = lead_scope.paginate(page: params[:page], per_page: 20)
+    property_ids = (@kanban_leads + @leads.to_a).filter_map(&:property_id).uniq
+    @properties_by_id = Habitation.where(id: property_ids).index_by(&:id)
+    @selected_lead = @kanban_leads.first || @leads.first
     @page_title = "Gerenciar Leads"
   end
 
@@ -41,10 +52,30 @@ class Admin::LeadsController < Admin::BaseController
     @page_title = "Lead: #{@lead.name}"
     @property = Habitation.find_by(id: @lead.property_id)
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
+
+    # Workspace comercial: timeline unificada + tarefas + propostas + próxima ação
+    @timeline = @lead.activities.recent.limit(60)
+    @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
+    @next_task = @lead.tasks.pendentes.where.not(due_at: nil).order(:due_at).first ||
+                 @lead.tasks.pendentes.order(:created_at).first
+    @appointments = @lead.appointments.upcoming.limit(20)
+    @proposals = @lead.proposals.ordered.limit(20)
+    @funnel_statuses = Lead.status_options
+  end
+
+  def log_contact
+    kind = params[:contact_kind].presence || "note"
+    body = params[:body].to_s.strip
+    LeadActivity.log!(lead: @lead, kind: "note", metadata: { contact_kind: kind, body: body, by: current_admin_user&.name }.compact)
+    redirect_to admin_lead_path(@lead), notice: "Contato registrado."
   end
 
   def update
+    previous_status = @lead.status
     if @lead.update(lead_params)
+      if @lead.saved_change_to_status?
+        LeadActivity.log!(lead: @lead, kind: "status_change", metadata: { from: previous_status, to: @lead.status, by: current_admin_user&.name })
+      end
       respond_to do |format|
         format.html { redirect_to admin_lead_path(@lead), notice: "Lead atualizado com sucesso." }
         format.json { render json: { id: @lead.id, status: @lead.status, badge_class: Lead.status_badge_class(@lead.status) } }
@@ -93,41 +124,48 @@ class Admin::LeadsController < Admin::BaseController
 
   def lead_scope_for_current_user
     return Lead.none unless current_admin_user
-    return Lead.all if current_admin_user.admin?
-    return manager_lead_scope if current_admin_user.profile&.manager? && owns_all_resource?(:leads)
-    return Lead.all if owns_all_resource?(:leads)
 
-    Lead.where(admin_user_id: current_admin_user.id)
+    owner_ids = visible_owner_ids(:leads)
+    return Lead.all if owner_ids.nil? # escopo "all"/admin: sem filtro de dono
+
+    scope = Lead.where(admin_user_id: owner_ids)
+    # Ao ver a equipe, mantém o recorte por tipo de atuação (venda/locação) do gestor.
+    scope = filter_leads_by_acting_type(scope) if include_team?(:leads)
+    scope
   end
 
-  def manager_lead_scope
+  # Recorte adicional por acting_type — preservado por cima do escopo de equipe.
+  def filter_leads_by_acting_type(scope)
     case current_admin_user.acting_type
     when "sales"
-      Lead.joins(:admin_user).where(admin_users: { acting_type: %i[sales both] })
+      scope.joins(:admin_user).where(admin_users: { acting_type: %i[sales both] })
     when "rentals"
-      Lead.joins(:admin_user).where(admin_users: { acting_type: %i[rentals both] })
+      scope.joins(:admin_user).where(admin_users: { acting_type: %i[rentals both] })
     else
-      Lead.all
+      scope
     end
   end
 
   def permitted_admin_users_for_leads
     return AdminUser.none unless current_admin_user
-    return AdminUser.active if current_admin_user.admin?
-    return manager_team_users if current_admin_user.profile&.manager? && owns_all_resource?(:leads)
     return AdminUser.active if owns_all_resource?(:leads)
+
+    if current_admin_user.can_view_team?(:leads)
+      scope = AdminUser.active.where(id: current_admin_user.team_scope_ids)
+      return filter_users_by_acting_type(scope)
+    end
 
     AdminUser.active.where(id: current_admin_user.id)
   end
 
-  def manager_team_users
+  def filter_users_by_acting_type(scope)
     case current_admin_user.acting_type
     when "sales"
-      AdminUser.active.where(acting_type: %i[sales both])
+      scope.where(acting_type: %i[sales both])
     when "rentals"
-      AdminUser.active.where(acting_type: %i[rentals both])
+      scope.where(acting_type: %i[rentals both])
     else
-      AdminUser.active
+      scope
     end
   end
 

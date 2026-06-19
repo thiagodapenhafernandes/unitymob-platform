@@ -5,3 +5,6 @@
 //= link_tree ../../javascript/controllers .js
 //= link application.css
 //= link admin.css
+//= link admin_compat.css
+//= link admin_tailwind.css
+//= link ax_toast.css

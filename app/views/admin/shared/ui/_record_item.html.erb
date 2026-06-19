@@ -1,0 +1,28 @@
+<%
+  item_classes = ["ax-record-item", class_name].compact.join(" ")
+%>
+
+<%= tag.div class: item_classes, data: data do %>
+  <%= body %>
+  <div class="ax-record-item__main">
+    <% if icon.present? %>
+      <span class="ax-record-item__icon" aria-hidden="true">
+        <i class="bi bi-<%= icon %>"></i>
+      </span>
+    <% end %>
+    <div class="ax-record-item__copy">
+      <% if eyebrow.present? %>
+        <span class="ax-record-item__eyebrow"><%= eyebrow %></span>
+      <% end %>
+      <strong class="ax-record-item__title"><%= title %></strong>
+      <% if meta.present? %>
+        <span class="ax-record-item__meta"><%= meta %></span>
+      <% end %>
+    </div>
+  </div>
+  <% if actions.present? %>
+    <div class="ax-record-item__actions">
+      <%= actions %>
+    </div>
+  <% end %>
+<% end %>

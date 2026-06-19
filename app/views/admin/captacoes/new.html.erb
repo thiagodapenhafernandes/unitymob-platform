@@ -1,13 +1,13 @@
 <div class="wizard-top-bar">
   <div class="wizard-shell wizard-start-shell">
-    <div class="d-flex align-items-center gap-2 mb-2">
-      <%= link_to admin_captacoes_path, class: "btn btn-sm btn-link text-muted p-0 text-decoration-none" do %>
+    <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
+      <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost ax-btn--sm text-decoration-none", style: "padding:0;" do %>
         <i class="bi bi-arrow-left"></i>
       <% end %>
-      <div class="small text-muted flex-grow-1">
+      <div class="tw-text-sm tw-text-ink-muted" style="flex-grow:1;">
         Nova captação · <strong class="text-dark">Definição inicial</strong>
       </div>
-      <span class="badge bg-light text-dark border">Sem rascunho criado</span>
+      <span class="ax-badge ax-badge--gray">Sem rascunho criado</span>
     </div>
     <div class="wizard-progress">
       <div class="wizard-progress-bar" style="width: 0%;"></div>
@@ -16,10 +16,9 @@
 </div>
 
 <main class="wizard-shell wizard-content wizard-start-page">
-  <div class="alert alert-info border-0 shadow-sm small">
-    <i class="bi bi-info-circle-fill me-1"></i>
+  <%= ax_inline_notice(tone: :info, icon: "info-circle-fill") do %>
     O rascunho e o código do imóvel só serão criados quando você clicar em <strong>Iniciar captação</strong>.
-  </div>
+  <% end %>
 
   <%= form_with model: @captacao,
                 url: admin_captacoes_path,
@@ -29,12 +28,12 @@
     <%= render "admin/captacoes/steps/intro", f: f %>
 
     <div class="wizard-bottom-nav">
-      <div class="wizard-shell wizard-start-shell d-flex gap-2">
-        <%= link_to admin_captacoes_path, class: "btn btn-outline-secondary flex-fill" do %>
+      <div class="wizard-shell wizard-start-shell tw-flex tw-gap-2">
+        <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost", style: "flex:1 1 0;" do %>
           Cancelar
         <% end %>
-        <%= button_tag type: :submit, class: "btn btn-primary flex-fill" do %>
-          Iniciar captação<i class="bi bi-arrow-right ms-1"></i>
+        <%= button_tag type: :submit, class: "ax-btn ax-btn--primary", style: "flex:1 1 0;" do %>
+          Iniciar captação<i class="bi bi-arrow-right"></i>
         <% end %>
       </div>
     </div>

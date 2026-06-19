@@ -1,51 +1,51 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
   <div>
-    <h1 class="h3 mb-1 text-gray-800">
-      <i class="bi bi-person-vcard-fill text-primary me-2"></i>Check-in #<%= @check_in.id %>
+    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+      <i class="bi bi-person-vcard-fill tw-text-primary"></i>Check-in #<%= @check_in.id %>
     </h1>
-    <p class="text-muted small mb-0"><%= @check_in.admin_user.name %> • <%= @check_in.store.name %></p>
+    <p class="ax-page-subtitle"><%= @check_in.admin_user.name %> • <%= @check_in.store.name %></p>
   </div>
-  <%= link_to admin_field_check_ins_path, class: "btn btn-sm btn-outline-secondary" do %>
-    <i class="bi bi-arrow-left me-1"></i>Voltar
+  <%= link_to admin_field_check_ins_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-inline-flex tw-items-center tw-gap-2" do %>
+    <i class="bi bi-arrow-left"></i>Voltar
   <% end %>
 </div>
 
-<div class="row g-3">
-  <div class="col-md-6">
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-body">
-        <h5 class="fw-bold mb-3"><i class="bi bi-info-circle text-info me-2"></i>Detalhes</h5>
-        <dl class="row small mb-0">
-          <dt class="col-5">Status</dt>
-          <dd class="col-7"><%= @check_in.status.humanize %></dd>
-          <dt class="col-5">Entrou</dt>
-          <dd class="col-7"><%= l(@check_in.checked_in_at, format: :long) %></dd>
+<%= ax_field_grid do %>
+  <div class="ax-span-6">
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h5 class="tw-font-bold tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-info-circle" style="color:#2563eb"></i>Detalhes</h5>
+        <dl class="tw-text-sm" style="display:grid;grid-template-columns:42% 58%;gap:.25rem .5rem;margin-bottom:0">
+          <dt>Status</dt>
+          <dd><%= @check_in.status.humanize %></dd>
+          <dt>Entrou</dt>
+          <dd><%= l(@check_in.checked_in_at, format: :long) %></dd>
           <% if @check_in.checked_out_at %>
-            <dt class="col-5">Saiu</dt>
-            <dd class="col-7"><%= l(@check_in.checked_out_at, format: :long) %></dd>
+            <dt>Saiu</dt>
+            <dd><%= l(@check_in.checked_out_at, format: :long) %></dd>
           <% end %>
-          <dt class="col-5">Duração</dt>
-          <dd class="col-7"><%= distance_of_time_in_words(@check_in.checked_in_at, @check_in.checked_out_at || Time.current) %></dd>
-          <dt class="col-5">Accuracy entrada</dt>
-          <dd class="col-7"><%= @check_in.checkin_accuracy_meters %>m</dd>
-          <dt class="col-5">IP entrada</dt>
-          <dd class="col-7 font-monospace"><%= @check_in.checkin_ip %></dd>
+          <dt>Duração</dt>
+          <dd><%= distance_of_time_in_words(@check_in.checked_in_at, @check_in.checked_out_at || Time.current) %></dd>
+          <dt>Accuracy entrada</dt>
+          <dd><%= @check_in.checkin_accuracy_meters %>m</dd>
+          <dt>IP entrada</dt>
+          <dd class="font-monospace"><%= @check_in.checkin_ip %></dd>
         </dl>
       </div>
     </div>
   </div>
-  <div class="col-md-6">
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-body">
-        <h5 class="fw-bold mb-3"><i class="bi bi-geo text-danger me-2"></i>Localização</h5>
-        <dl class="row small mb-0">
-          <dt class="col-5">Entrada</dt>
-          <dd class="col-7 font-monospace">
+  <div class="ax-span-6">
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h5 class="tw-font-bold tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-geo" style="color:#dc2626"></i>Localização</h5>
+        <dl class="tw-text-sm" style="display:grid;grid-template-columns:42% 58%;gap:.25rem .5rem;margin-bottom:0">
+          <dt>Entrada</dt>
+          <dd class="font-monospace">
             <%= @check_in.checkin_latitude&.round(5) %>, <%= @check_in.checkin_longitude&.round(5) %>
           </dd>
           <% if @check_in.checkout_latitude %>
-            <dt class="col-5">Saída</dt>
-            <dd class="col-7 font-monospace">
+            <dt>Saída</dt>
+            <dd class="font-monospace">
               <%= @check_in.checkout_latitude&.round(5) %>, <%= @check_in.checkout_longitude&.round(5) %>
             </dd>
           <% end %>
@@ -53,4 +53,4 @@
       </div>
     </div>
   </div>
-</div>
+<% end %>

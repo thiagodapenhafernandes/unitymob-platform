@@ -1,0 +1,14 @@
+<header class="ax-page-head">
+  <div class="ax-page-head__text">
+    <h1 class="ax-page-title"><%= title %></h1>
+    <% if subtitle.present? %>
+      <p class="ax-page-subtitle"><%= subtitle %></p>
+    <% end %>
+  </div>
+
+  <% if actions.present? %>
+    <div class="ax-page-head__actions">
+      <%= actions %>
+    </div>
+  <% end %>
+</header>

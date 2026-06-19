@@ -1,15 +1,42 @@
 <% if flash.any? %>
-  <% flash.each do |type, message| %>
-    <% alert_type = case type.to_sym
-      when :notice then 'success'
-      when :alert then 'danger'
-      when :error then 'danger'
-      else 'info'
-    end %>
-    
-    <div class="alert alert-<%= alert_type %> alert-dismissible fade show" role="alert">
-      <%= message %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  <% toast_mode = local_assigns[:toast] %>
+  <% if toast_mode %>
+    <div class="ax-flash-toast-stack" aria-live="polite" aria-atomic="true">
+      <% flash.each do |type, message| %>
+        <% alert_type = case type.to_sym
+          when :notice then 'success'
+          when :alert then 'danger'
+          when :error then 'danger'
+          else 'info'
+        end %>
+        <% toast_icon = case alert_type
+          when "success" then "bi-check-circle-fill"
+          when "danger" then "bi-exclamation-triangle-fill"
+          when "warning" then "bi-exclamation-circle-fill"
+          else "bi-info-circle-fill"
+        end %>
+
+        <div class="ax-flash-toast ax-flash-toast--<%= alert_type %>" role="<%= alert_type == 'danger' ? 'alert' : 'status' %>">
+          <span class="ax-flash-toast__icon"><i class="bi <%= toast_icon %>"></i></span>
+          <span class="ax-flash-toast__message"><%= message %></span>
+          <button type="button" class="ax-flash-toast__close" aria-label="Fechar aviso" onclick="this.closest('.ax-flash-toast')?.remove()">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      <% end %>
     </div>
+  <% else %>
+    <% flash.each do |type, message| %>
+      <% alert_type = case type.to_sym
+        when :notice then 'success'
+        when :alert then 'danger'
+        when :error then 'danger'
+        else 'info'
+      end %>
+      <div class="alert alert-<%= alert_type %> alert-dismissible fade show" role="alert">
+        <%= message %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    <% end %>
   <% end %>
 <% end %>

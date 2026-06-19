@@ -143,20 +143,19 @@ module Seo
 
     def property_show_identity
       habitation = controller.instance_variable_get(:@habitation)
-      key = habitation.codigo.presence || habitation.id
+      metadata = Seo::PropertyMetadataBuilder.new(habitation).attributes
 
-      {
-        canonical_key: "property:#{key}",
-        page_name: "imovel:#{key}",
-        page_type: habitation.empreendimento? ? "development_show" : "property_show",
-        canonical_path: request.path,
+      metadata.merge(
         normalized_params: {},
         robots_index: true,
         robots_follow: true,
-        title_fallback: controller.instance_variable_get(:@page_title),
-        description_fallback: controller.instance_variable_get(:@page_description),
-        keywords_fallback: controller.instance_variable_get(:@page_keywords)
-      }
+        title_fallback: metadata[:meta_title],
+        description_fallback: metadata[:meta_description],
+        keywords_fallback: metadata[:meta_keywords],
+        og_title_fallback: metadata[:og_title],
+        og_description_fallback: metadata[:og_description],
+        refresh_public_metadata: true
+      )
     end
 
     def generic_identity

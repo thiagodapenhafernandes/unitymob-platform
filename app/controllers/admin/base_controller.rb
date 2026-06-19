@@ -1,10 +1,15 @@
 class Admin::BaseController < ApplicationController
+  include Admin::ContextItems
+
   before_action :authenticate_admin_user!
   before_action :set_current_admin_user
   before_action :enforce_access_control_policy!
   before_action :prevent_search_indexing
+  around_action :measure_admin_page_render
   after_action :record_allowed_admin_access
   layout 'admin'
+
+  helper_method :admin_page_render_metrics
   
   private
   
@@ -16,6 +21,39 @@ class Admin::BaseController < ApplicationController
 
   def prevent_search_indexing
     response.set_header("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet")
+  end
+
+  def measure_admin_page_render
+    @admin_render_started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    yield
+  ensure
+    if @admin_render_started_at
+      duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - @admin_render_started_at) * 1000).round(1)
+      @admin_render_duration_ms = duration_ms
+
+      unless response.committed?
+        response.set_header("X-Admin-Render-Duration-Ms", duration_ms.to_s)
+        response.set_header("X-Admin-Page", "#{controller_path}##{action_name}")
+        response.set_header("Server-Timing", "admin_render;dur=#{duration_ms}")
+      end
+
+      Rails.logger.info(
+        "[admin_render] page=#{controller_path}##{action_name} status=#{response.status} duration_ms=#{duration_ms} " \
+        "method=#{request.request_method} path=#{request.fullpath}"
+      )
+    end
+  end
+
+  def admin_page_render_metrics
+    started_at = @admin_render_started_at
+    return {} unless started_at
+
+    duration_ms = @admin_render_duration_ms || ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round(1)
+    {
+      duration_ms: duration_ms,
+      page: "#{controller_path}##{action_name}",
+      status: response.status
+    }
   end
 
   def set_current_admin_user
@@ -46,6 +84,17 @@ class Admin::BaseController < ApplicationController
   def require_admin!
     unless current_admin_user&.admin?
       redirect_to admin_root_path, alert: 'Acesso negado. Apenas administradores.'
+    end
+  end
+
+  def system_admin?
+    current_admin_user&.system_admin?
+  end
+  helper_method :system_admin?
+
+  def require_system_admin!
+    unless system_admin?
+      redirect_to admin_root_path, alert: 'Acesso restrito ao Admin do Sistema.'
     end
   end
 
@@ -86,7 +135,7 @@ class Admin::BaseController < ApplicationController
     )
   end
 
-  # Retorna scope do usuário para o recurso ("own" ou "all").
+  # Retorna scope do usuário para o recurso ("own", "team" ou "all").
   def scope_for_resource(resource)
     current_admin_user&.scope_for(resource) || "own"
   end
@@ -95,7 +144,50 @@ class Admin::BaseController < ApplicationController
     current_admin_user&.owns_all?(resource)
   end
 
-  helper_method :can?, :scope_for_resource, :owns_all_resource?, :impersonating_admin_user?, :impersonation_admin_user
+  # IDs do próprio usuário + subárvore (equipe).
+  def team_scope_ids
+    current_admin_user&.team_scope_ids || []
+  end
+
+  # Mostra o toggle "+ equipe"? Só quando o perfil tem escopo "team" para o recurso
+  # E o usuário tem subordinados na árvore de gestão.
+  def team_available?(resource)
+    return false unless current_admin_user
+    current_admin_user.can_view_team?(resource) && current_admin_user.descendant_ids.any?
+  end
+
+  # Estado efetivo do toggle. Opt-out: ligado por padrão quando disponível;
+  # só desliga quando o usuário envia explicitamente team=0.
+  def include_team?(resource)
+    return false unless team_available?(resource)
+    params[:team].to_s != "0"
+  end
+
+  # IDs dos donos visíveis para o recurso. nil = sem filtro (vê tudo, escopo "all"/admin).
+  def visible_owner_ids(resource)
+    return nil if owns_all_resource?(resource)
+    return team_scope_ids if include_team?(resource)
+    [current_admin_user&.id].compact
+  end
+
+  # Conjunto de owner-ids que o usuário pode ACESSAR (nível de registro), ignorando o
+  # toggle "+ equipe" (que é só recorte de listagem). nil = sem restrição (escopo total).
+  def accessible_owner_ids(resource)
+    return nil if owns_all_resource?(resource)
+    current_admin_user&.can_view_team?(resource) ? team_scope_ids : [current_admin_user&.id].compact
+  end
+
+  # O usuário pode acessar um registro cujo dono é um dos owner_ids?
+  def owner_in_scope?(resource, *owner_ids)
+    allowed = accessible_owner_ids(resource)
+    return true if allowed.nil?
+    ids = owner_ids.flatten.compact.map(&:to_i)
+    ids.intersect?(allowed)
+  end
+
+  helper_method :can?, :scope_for_resource, :owns_all_resource?,
+                :team_scope_ids, :team_available?, :include_team?,
+                :impersonating_admin_user?, :impersonation_admin_user
 
   def can?(action, resource)
     current_admin_user&.can?(action, resource)

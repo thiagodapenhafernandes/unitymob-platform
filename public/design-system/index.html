@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unitymob Design System</title>
+  <meta name="description" content="Design system operacional da Unitymob com tokens, componentes e exemplos de telas para a aplicação.">
+
+  <style>
+    :root {
+      --um-bg: #050713;
+      --um-bg-2: #080d1f;
+      --um-surface: rgba(255, 255, 255, .072);
+      --um-surface-2: rgba(255, 255, 255, .105);
+      --um-surface-3: rgba(0, 0, 0, .18);
+      --um-line: rgba(255, 255, 255, .13);
+      --um-line-strong: rgba(255, 255, 255, .22);
+      --um-text: #f8fbff;
+      --um-muted: #aeb8d8;
+      --um-muted-2: #7782a5;
+      --um-brand: #65f4c7;
+      --um-blue: #67a8ff;
+      --um-purple: #b983ff;
+      --um-yellow: #ffd166;
+      --um-red: #ff6688;
+      --um-green: #5cffb1;
+      --um-radius-xs: 10px;
+      --um-radius-sm: 14px;
+      --um-radius-md: 18px;
+      --um-radius-lg: 24px;
+      --um-radius-xl: 30px;
+      --um-shadow: 0 32px 110px rgba(0, 0, 0, .42);
+      --um-shadow-soft: 0 18px 70px rgba(0, 0, 0, .24);
+      --um-max: 1120px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 14% -4%, rgba(101, 244, 199, .20), transparent 31%),
+        radial-gradient(circle at 91% 4%, rgba(103, 168, 255, .18), transparent 31%),
+        radial-gradient(circle at 50% 44%, rgba(185, 131, 255, .08), transparent 34%),
+        linear-gradient(180deg, var(--um-bg), #070a17 42%, #050713);
+      color: var(--um-text);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      opacity: .07;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .um-page {
+      width: min(var(--um-max), calc(100% - 48px));
+      margin: 0 auto;
+    }
+
+    .um-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid var(--um-line);
+      background: rgba(5, 7, 19, .82);
+      backdrop-filter: blur(18px);
+    }
+
+    .um-topbar__inner {
+      width: min(var(--um-max), calc(100% - 48px));
+      min-height: 62px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .um-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 17px;
+      font-weight: 950;
+      letter-spacing: -.04em;
+    }
+
+    .um-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: #06101a;
+      font-weight: 950;
+      background: linear-gradient(135deg, var(--um-brand), var(--um-blue) 55%, var(--um-purple));
+      box-shadow: 0 18px 60px rgba(101, 244, 199, .18);
+    }
+
+    .um-topbar__links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--um-muted);
+      font-size: 12px;
+    }
+
+    .um-topbar__links a:hover {
+      color: var(--um-text);
+    }
+
+    .um-section {
+      padding: 74px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, .06);
+    }
+
+    .um-hero {
+      padding: 86px 0 76px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.06fr) minmax(360px, .74fr);
+      align-items: start;
+      gap: 72px;
+    }
+
+    .um-kicker,
+    .um-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 13px;
+      border: 1px solid var(--um-line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .065);
+      color: var(--um-muted);
+      font-size: 13px;
+      line-height: 1;
+      backdrop-filter: blur(18px);
+    }
+
+    .um-kicker {
+      border-color: rgba(101, 244, 199, .32);
+      background: rgba(101, 244, 199, .10);
+      color: #dffef5;
+      margin-bottom: 20px;
+    }
+
+    .um-kicker strong,
+    .um-pill strong {
+      color: var(--um-brand);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin-bottom: 24px;
+      font-size: clamp(44px, 5.4vw, 78px);
+      line-height: .94;
+      letter-spacing: -.062em;
+    }
+
+    h2 {
+      margin-bottom: 16px;
+      font-size: clamp(32px, 3.8vw, 52px);
+      line-height: 1;
+      letter-spacing: -.052em;
+    }
+
+    h3 {
+      margin-bottom: 10px;
+      font-size: 22px;
+      line-height: 1.08;
+      letter-spacing: -.04em;
+    }
+
+    .um-gradient-text {
+      background: linear-gradient(135deg, #fff 5%, var(--um-brand) 38%, var(--um-blue) 72%, #fff);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .um-lead {
+      max-width: 680px;
+      color: var(--um-muted);
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    .um-section-head {
+      max-width: 780px;
+      margin-bottom: 30px;
+    }
+
+    .um-section-head.center {
+      margin-inline: auto;
+      text-align: center;
+    }
+
+    .um-section-head p,
+    .um-card p,
+    .um-card li {
+      color: var(--um-muted);
+      line-height: 1.7;
+    }
+
+    .um-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .um-btn {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 13px 18px;
+      border: 1px solid transparent;
+      border-radius: 16px;
+      color: inherit;
+      cursor: pointer;
+      font-weight: 850;
+      line-height: 1;
+      transition: .22s ease;
+      white-space: nowrap;
+    }
+
+    .um-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .um-btn--primary {
+      color: #06101a;
+      background: linear-gradient(135deg, var(--um-brand), var(--um-blue));
+      box-shadow: 0 22px 64px rgba(101, 244, 199, .20);
+    }
+
+    .um-btn--primary:hover {
+      box-shadow: 0 26px 80px rgba(101, 244, 199, .30);
+    }
+
+    .um-btn--ghost {
+      border-color: var(--um-line);
+      background: rgba(255, 255, 255, .065);
+      color: var(--um-text);
+    }
+
+    .um-btn--ghost:hover {
+      background: rgba(255, 255, 255, .11);
+    }
+
+    .um-btn--dark {
+      border-color: rgba(255, 255, 255, .10);
+      background: #0c1227;
+      color: var(--um-text);
+    }
+
+    .um-btn--danger {
+      border-color: rgba(255, 102, 136, .28);
+      background: rgba(255, 102, 136, .12);
+      color: #ffdce5;
+    }
+
+    .um-btn--sm {
+      min-height: 36px;
+      padding: 10px 13px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
+    .um-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .um-grid--2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .um-grid--3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .um-grid--4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .um-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--um-line);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .082), rgba(255, 255, 255, .038));
+      box-shadow: var(--um-shadow-soft);
+      padding: 22px;
+    }
+
+    .um-card--flat {
+      box-shadow: none;
+      background: rgba(255, 255, 255, .055);
+    }
+
+    .um-card--accent {
+      border-color: rgba(101, 244, 199, .34);
+      background:
+        radial-gradient(circle at 18% 12%, rgba(101, 244, 199, .18), transparent 36%),
+        linear-gradient(180deg, rgba(255, 255, 255, .095), rgba(255, 255, 255, .045));
+    }
+
+    .um-icon {
+      width: 50px;
+      height: 50px;
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      font-size: 23px;
+      background: linear-gradient(135deg, rgba(101, 244, 199, .17), rgba(103, 168, 255, .14));
+    }
+
+    .um-muted {
+      color: var(--um-muted);
+    }
+
+    .um-small {
+      color: var(--um-muted-2);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .um-token {
+      min-height: 118px;
+      display: grid;
+      align-content: end;
+      gap: 10px;
+      padding: 16px;
+      border: 1px solid var(--um-line);
+      border-radius: 20px;
+      background: var(--token-color);
+    }
+
+    .um-token b {
+      display: block;
+      color: var(--um-text);
+    }
+
+    .um-code {
+      display: inline-flex;
+      width: max-content;
+      max-width: 100%;
+      padding: 7px 9px;
+      border: 1px solid var(--um-line);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, .20);
+      color: #dfe8ff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .um-swatch {
+      height: 76px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, .16);
+      background: var(--swatch);
+    }
+
+    .um-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .um-field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .um-label {
+      color: #eaf1ff;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .um-input,
+    .um-select,
+    .um-textarea {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid var(--um-line);
+      border-radius: 16px;
+      outline: none;
+      background: rgba(0, 0, 0, .20);
+      color: var(--um-text);
+      padding: 13px 15px;
+    }
+
+    .um-textarea {
+      min-height: 112px;
+      resize: vertical;
+    }
+
+    .um-input:focus,
+    .um-select:focus,
+    .um-textarea:focus {
+      border-color: rgba(101, 244, 199, .52);
+      box-shadow: 0 0 0 4px rgba(101, 244, 199, .10);
+    }
+
+    .um-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: var(--um-muted);
+      line-height: 1.55;
+    }
+
+    .um-check input {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--um-brand);
+    }
+
+    .um-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 7px;
+      border: 1px solid var(--um-line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .045);
+    }
+
+    .um-tab {
+      min-height: 38px;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      color: var(--um-muted);
+      background: transparent;
+      cursor: pointer;
+      font-weight: 850;
+    }
+
+    .um-tab.is-active {
+      color: #06101a;
+      background: linear-gradient(135deg, var(--um-brand), var(--um-blue));
+    }
+
+    .um-badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .um-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border: 1px solid var(--um-line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .055);
+      color: var(--um-muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .um-badge--success {
+      border-color: rgba(101, 244, 199, .28);
+      background: rgba(101, 244, 199, .10);
+      color: #dffef5;
+    }
+
+    .um-badge--warning {
+      border-color: rgba(255, 209, 102, .32);
+      background: rgba(255, 209, 102, .12);
+      color: #fff1c6;
+    }
+
+    .um-badge--danger {
+      border-color: rgba(255, 102, 136, .32);
+      background: rgba(255, 102, 136, .12);
+      color: #ffdbe4;
+    }
+
+    .um-kpi {
+      border: 1px solid var(--um-line);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, .055);
+      padding: 18px;
+    }
+
+    .um-kpi small {
+      display: block;
+      color: var(--um-muted);
+      font-size: 12px;
+    }
+
+    .um-kpi b {
+      display: block;
+      margin-top: 6px;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: -.055em;
+    }
+
+    .um-kpi span {
+      display: block;
+      margin-top: 9px;
+      color: var(--um-brand);
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .um-table-wrap {
+      overflow: auto;
+      border: 1px solid var(--um-line);
+      border-radius: 24px;
+      background: rgba(255, 255, 255, .045);
+    }
+
+    .um-table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+    }
+
+    .um-table th,
+    .um-table td {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--um-line);
+      color: var(--um-muted);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .um-table th {
+      color: var(--um-text);
+      background: rgba(255, 255, 255, .055);
+      font-size: 13px;
+    }
+
+    .um-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .um-table strong {
+      color: var(--um-text);
+    }
+
+    .um-progress {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .10);
+    }
+
+    .um-progress i {
+      display: block;
+      height: 100%;
+      width: var(--value);
+      border-radius: inherit;
+      background: linear-gradient(135deg, var(--um-brand), var(--um-blue));
+    }
+
+    .um-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .um-list-item {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--um-line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .055);
+    }
+
+    .um-avatar {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      color: #06101a;
+      font-weight: 950;
+      background: linear-gradient(135deg, rgba(101, 244, 199, .92), rgba(103, 168, 255, .82));
+    }
+
+    .um-chart {
+      height: 220px;
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      padding: 20px 18px 18px;
+      border: 1px solid var(--um-line);
+      border-radius: 22px;
+      background:
+        linear-gradient(rgba(255, 255, 255, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .035) 1px, transparent 1px);
+      background-size: 30px 30px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+    }
+
+    .um-chart i {
+      flex: 1;
+      min-height: 18px;
+      border-radius: 10px 10px 0 0;
+      background: linear-gradient(180deg, var(--um-brand), rgba(103, 168, 255, .52));
+      box-shadow: 0 10px 24px rgba(101, 244, 199, .14);
+    }
+
+    .um-mini-panel {
+      margin-top: 20px;
+      border: 1px solid var(--um-line);
+      border-radius: 20px;
+      background: rgba(0, 0, 0, .18);
+      overflow: hidden;
+    }
+
+    .um-mini-panel__bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--um-line);
+      color: var(--um-muted);
+      font-size: 12px;
+    }
+
+    .um-mini-panel__dots {
+      display: inline-flex;
+      gap: 6px;
+    }
+
+    .um-mini-panel__dots i {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--um-brand);
+      opacity: .9;
+    }
+
+    .um-mini-panel__dots i:nth-child(2) {
+      background: var(--um-yellow);
+    }
+
+    .um-mini-panel__dots i:nth-child(3) {
+      background: var(--um-red);
+    }
+
+    .um-mini-panel__body {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .um-mini-kpis {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .um-mini-kpi {
+      border: 1px solid var(--um-line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .055);
+      padding: 10px;
+    }
+
+    .um-mini-kpi small {
+      display: block;
+      color: var(--um-muted-2);
+      font-size: 10px;
+    }
+
+    .um-mini-kpi b {
+      display: block;
+      margin-top: 4px;
+      font-size: 20px;
+      letter-spacing: -.045em;
+    }
+
+    .um-mini-row {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--um-line);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, .048);
+    }
+
+    .um-mini-row span:first-child {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      color: #06101a;
+      font-size: 12px;
+      font-weight: 950;
+      background: linear-gradient(135deg, var(--um-brand), var(--um-blue));
+    }
+
+    .um-mini-row strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .um-mini-row em {
+      display: block;
+      color: var(--um-muted-2);
+      font-size: 11px;
+      font-style: normal;
+    }
+
+    .um-shell {
+      display: grid;
+      grid-template-columns: 246px minmax(0, 1fr);
+      min-height: 640px;
+      overflow: hidden;
+      border: 1px solid var(--um-line);
+      border-radius: 30px;
+      background: rgba(255, 255, 255, .052);
+      box-shadow: var(--um-shadow);
+    }
+
+    .um-sidebar {
+      border-right: 1px solid var(--um-line);
+      background: rgba(0, 0, 0, .18);
+      padding: 18px;
+    }
+
+    .um-sidebar__title {
+      margin-bottom: 18px;
+      font-weight: 950;
+      letter-spacing: -.035em;
+    }
+
+    .um-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      margin-bottom: 7px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      color: var(--um-muted);
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .um-nav-item.is-active {
+      color: #eafff8;
+      background: rgba(101, 244, 199, .12);
+    }
+
+    .um-workspace {
+      padding: 20px;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .um-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid var(--um-line);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, .052);
+    }
+
+    .um-alert {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      border: 1px solid rgba(101, 244, 199, .28);
+      border-radius: 20px;
+      background: rgba(101, 244, 199, .10);
+    }
+
+    .um-empty {
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 36px;
+      border: 1px dashed var(--um-line-strong);
+      border-radius: 24px;
+      background: rgba(255, 255, 255, .035);
+    }
+
+    .um-modal-demo {
+      position: relative;
+      min-height: 380px;
+      overflow: hidden;
+      border: 1px solid var(--um-line);
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at 22% 10%, rgba(101, 244, 199, .12), transparent 34%),
+        rgba(0, 0, 0, .16);
+    }
+
+    .um-modal-demo::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(5, 7, 19, .58);
+      backdrop-filter: blur(2px);
+    }
+
+    .um-modal {
+      position: absolute;
+      inset: 42px;
+      z-index: 1;
+      max-width: 560px;
+      margin: auto;
+      height: max-content;
+      border: 1px solid var(--um-line);
+      border-radius: 24px;
+      background: #11172a;
+      box-shadow: var(--um-shadow);
+      padding: 22px;
+    }
+
+    .um-drawer-demo {
+      overflow: hidden;
+      border: 1px solid var(--um-line);
+      border-radius: 28px;
+      background: rgba(255, 255, 255, .045);
+      min-height: 390px;
+      position: relative;
+    }
+
+    .um-drawer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(430px, 86%);
+      border-left: 1px solid var(--um-line);
+      background: #11172a;
+      padding: 22px;
+      box-shadow: -30px 0 90px rgba(0, 0, 0, .32);
+    }
+
+    .um-mobile-frame {
+      width: min(100%, 360px);
+      min-height: 650px;
+      margin: 0 auto;
+      border: 1px solid var(--um-line);
+      border-radius: 34px;
+      background: rgba(255, 255, 255, .06);
+      padding: 16px;
+      box-shadow: var(--um-shadow);
+    }
+
+    .um-mobile-screen {
+      min-height: 618px;
+      border-radius: 24px;
+      background: #070b19;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .um-footer {
+      padding: 34px 0;
+      color: var(--um-muted);
+    }
+
+    .um-footer__inner {
+      width: min(var(--um-max), calc(100% - 48px));
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    @media (max-width: 1080px) {
+      .um-hero,
+      .um-grid--2,
+      .um-grid--3,
+      .um-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .um-hero {
+        gap: 30px;
+      }
+
+      .um-grid--4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .um-sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--um-line);
+      }
+
+      .um-topbar__links {
+        display: none;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .um-page,
+      .um-topbar__inner,
+      .um-footer__inner {
+        width: min(100% - 28px, var(--um-max));
+      }
+
+      .um-section {
+        padding: 58px 0;
+      }
+
+      .um-hero {
+        padding: 48px 0;
+      }
+
+      h1 {
+        font-size: 46px;
+      }
+
+      .um-grid--4 {
+        grid-template-columns: 1fr;
+      }
+
+      .um-toolbar,
+      .um-alert,
+      .um-list-item,
+      .um-footer__inner {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .um-topbar__inner {
+        min-height: 66px;
+      }
+
+      .um-brand {
+        font-size: 16px;
+      }
+
+      .um-logo {
+        width: 28px;
+        height: 28px;
+      }
+
+      .um-mini-kpis {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="um-topbar">
+    <div class="um-topbar__inner">
+      <a class="um-brand" href="#intro" aria-label="Unitymob Design System">
+        <span class="um-logo">U</span>
+        Unitymob DS
+      </a>
+      <nav class="um-topbar__links" aria-label="Seções do design system">
+        <a href="#fundamentos">Fundamentos</a>
+        <a href="#componentes">Componentes</a>
+        <a href="#operacional">Operacional</a>
+        <a href="#formularios">Formulários</a>
+        <a href="#telas">Telas</a>
+      </nav>
+      <a class="um-btn um-btn--primary um-btn--sm" href="../site/index.html">Ver landing</a>
+    </div>
+  </header>
+
+  <main>
+    <section id="intro" class="um-page um-hero">
+      <div>
+        <div class="um-kicker"><strong>Unitymob OS</strong> Design system operacional</div>
+        <h1>Uma base visual para produtos imobiliários <span class="um-gradient-text">densos, claros e escaláveis.</span></h1>
+        <p class="um-lead">Este guia traduz o layout de <code class="um-code">public/site/index.html</code> em tokens, componentes e padrões prontos para a aplicação Rails. A intenção é manter a experiência premium da landing sem sacrificar leitura, produtividade e consistência operacional.</p>
+        <div class="um-actions">
+          <a class="um-btn um-btn--primary" href="#componentes">Explorar componentes</a>
+          <a class="um-btn um-btn--ghost" href="#telas">Ver exemplos de telas</a>
+        </div>
+      </div>
+
+      <aside class="um-card um-card--accent">
+        <div class="um-pill"><strong>Princípio</strong> interface de operação</div>
+        <h3 style="margin-top:18px;">Produto primeiro, documentação depois.</h3>
+        <p>O design system precisa parecer uma tela real da Unitymob: operacional, escaneável e pronto para orientar CRUD, funil, WhatsApp e BI.</p>
+
+        <div class="um-mini-panel" aria-label="Preview visual da aplicação Unitymob">
+          <div class="um-mini-panel__bar">
+            <span class="um-mini-panel__dots"><i></i><i></i><i></i></span>
+            <span>app.unitymob.com.br / operação</span>
+          </div>
+          <div class="um-mini-panel__body">
+            <div class="um-mini-kpis">
+              <div class="um-mini-kpi"><small>Leads</small><b>248</b></div>
+              <div class="um-mini-kpi"><small>Conversão</small><b>31%</b></div>
+              <div class="um-mini-kpi"><small>SLA</small><b>2m</b></div>
+            </div>
+            <div class="um-mini-row">
+              <span>A</span>
+              <div><strong>Ana Souza</strong><em>Lead quente · equipe Sul</em></div>
+              <span class="um-badge um-badge--success">novo</span>
+            </div>
+            <div class="um-mini-row">
+              <span>M</span>
+              <div><strong>Marina Costa</strong><em>Visita agendada · hoje</em></div>
+              <span class="um-badge">agenda</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section id="fundamentos" class="um-section">
+      <div class="um-page">
+        <div class="um-section-head">
+          <div class="um-pill">Fundamentos</div>
+          <h2>Tokens visuais</h2>
+          <p>Os tokens abaixo vêm da landing e devem ser a base para telas administrativas, módulos comerciais, WhatsApp, BI e fluxos de captação.</p>
+        </div>
+
+        <div class="um-grid um-grid--4">
+          <div class="um-card um-card--flat">
+            <div class="um-swatch" style="--swatch:#050713"></div>
+            <h3>Background</h3>
+            <span class="um-code">--um-bg #050713</span>
+          </div>
+          <div class="um-card um-card--flat">
+            <div class="um-swatch" style="--swatch:linear-gradient(135deg,#65f4c7,#67a8ff)"></div>
+            <h3>Brand</h3>
+            <span class="um-code">--um-brand / --um-blue</span>
+          </div>
+          <div class="um-card um-card--flat">
+            <div class="um-swatch" style="--swatch:rgba(255,255,255,.075)"></div>
+            <h3>Surface</h3>
+            <span class="um-code">rgba(255,255,255,.075)</span>
+          </div>
+          <div class="um-card um-card--flat">
+            <div class="um-swatch" style="--swatch:rgba(255,255,255,.13)"></div>
+            <h3>Border</h3>
+            <span class="um-code">rgba(255,255,255,.13)</span>
+          </div>
+        </div>
+
+        <div class="um-grid um-grid--2" style="margin-top:18px;">
+          <div class="um-card">
+            <h3>Tipografia</h3>
+            <p class="um-small">Escala para telas de produto. Evite usar tamanho de hero dentro de cards, drawers e tabelas.</p>
+            <div style="margin-top:20px;">
+              <h1 style="font-size:54px;margin-bottom:14px;">Título H1</h1>
+              <h2 style="font-size:38px;margin-bottom:14px;">Título H2</h2>
+              <h3>Subtítulo H3</h3>
+              <p class="um-lead" style="font-size:18px;">Texto de apoio para explicar contexto, impacto e próxima ação.</p>
+              <p class="um-small">Texto auxiliar, observações, metadados e mensagens de estado.</p>
+            </div>
+          </div>
+
+          <div class="um-card">
+            <h3>Raios, sombras e espaçamento</h3>
+            <div class="um-grid um-grid--2">
+              <div class="um-token" style="--token-color:rgba(255,255,255,.055)"><b>10px</b><span class="um-code">radius-xs</span></div>
+              <div class="um-token" style="--token-color:rgba(255,255,255,.065);border-radius:18px"><b>18px</b><span class="um-code">radius-md</span></div>
+              <div class="um-token" style="--token-color:rgba(255,255,255,.075);border-radius:24px"><b>24px</b><span class="um-code">radius-lg</span></div>
+              <div class="um-token" style="--token-color:rgba(255,255,255,.085);border-radius:30px;box-shadow:var(--um-shadow)"><b>Shadow</b><span class="um-code">var(--um-shadow)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="componentes" class="um-section">
+      <div class="um-page">
+        <div class="um-section-head">
+          <div class="um-pill">Componentes</div>
+          <h2>Elementos de interface</h2>
+          <p>Componentes pequenos devem ser previsíveis e reutilizáveis. A ação primária sempre precisa ficar evidente.</p>
+        </div>
+
+        <div class="um-grid um-grid--3">
+          <div class="um-card">
+            <h3>Botões</h3>
+            <div class="um-stack">
+              <button class="um-btn um-btn--primary">Solicitar demo</button>
+              <button class="um-btn um-btn--ghost">Ver detalhes</button>
+              <button class="um-btn um-btn--dark">Salvar rascunho</button>
+              <button class="um-btn um-btn--danger">Cancelar automação</button>
+              <div class="um-actions">
+                <button class="um-btn um-btn--primary um-btn--sm">Novo lead</button>
+                <button class="um-btn um-btn--ghost um-btn--sm">Filtrar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="um-card">
+            <h3>Badges e status</h3>
+            <div class="um-badge-row">
+              <span class="um-badge um-badge--success">Ativo</span>
+              <span class="um-badge um-badge--warning">SLA em atenção</span>
+              <span class="um-badge um-badge--danger">Falha no webhook</span>
+              <span class="um-badge">Rascunho</span>
+              <span class="um-badge">Visita agendada</span>
+              <span class="um-badge um-badge--success">WhatsApp conectado</span>
+            </div>
+          </div>
+
+          <div class="um-card">
+            <h3>Tabs</h3>
+            <div class="um-tabs" role="tablist" aria-label="Exemplo de abas">
+              <button class="um-tab is-active" type="button">Resumo</button>
+              <button class="um-tab" type="button">Funil</button>
+              <button class="um-tab" type="button">WhatsApp</button>
+              <button class="um-tab" type="button">Histórico</button>
+            </div>
+            <p style="margin-top:18px;">Use tabs para alternar visões da mesma entidade. Não use para esconder ações críticas.</p>
+          </div>
+        </div>
+
+        <div class="um-grid um-grid--3" style="margin-top:18px;">
+          <div class="um-card">
+            <div class="um-icon">🏢</div>
+            <h3 style="margin-top:16px;">Card de módulo</h3>
+            <p>Para imóveis, leads, comercial, WhatsApp, automação, BI e mobile. O card explica uma área da operação.</p>
+          </div>
+          <div class="um-card">
+            <div class="um-icon">⚡</div>
+            <h3 style="margin-top:16px;">Card de regra</h3>
+            <p>Bom para automações, distribuição, permissões e políticas de atendimento.</p>
+          </div>
+          <div class="um-card um-card--accent">
+            <div class="um-icon">📊</div>
+            <h3 style="margin-top:16px;">Card em destaque</h3>
+            <p>Use com moderação para plano recomendado, insight principal ou alerta de valor comercial.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="operacional" class="um-section">
+      <div class="um-page">
+        <div class="um-section-head">
+          <div class="um-pill">Operacional</div>
+          <h2>Padrões para dashboard</h2>
+          <p>A aplicação precisa ser mais densa que a landing, sem perder contraste, ritmo e hierarquia.</p>
+        </div>
+
+        <div class="um-grid um-grid--4">
+          <div class="um-kpi"><small>Leads hoje</small><b>248</b><span>+18% vs. ontem</span></div>
+          <div class="um-kpi"><small>Conversão</small><b>31,8%</b><span>Meta 28%</span></div>
+          <div class="um-kpi"><small>SLA médio</small><b>2m</b><span>Dentro do alvo</span></div>
+          <div class="um-kpi"><small>ROI mídia</small><b>4,7x</b><span>Meta Ads</span></div>
+        </div>
+
+        <div class="um-grid um-grid--2" style="margin-top:18px;">
+          <div class="um-card">
+            <h3>Fila comercial</h3>
+            <ul class="um-list">
+              <li class="um-list-item">
+                <span class="um-avatar">A</span>
+                <span><strong>Ana Souza</strong><br><span class="um-small">Apartamento frente mar · lead quente</span></span>
+                <span class="um-badge um-badge--success">quente</span>
+              </li>
+              <li class="um-list-item">
+                <span class="um-avatar">R</span>
+                <span><strong>Rafael Lima</strong><br><span class="um-small">Meta Ads · distribuído para equipe Sul</span></span>
+                <span class="um-badge">novo</span>
+              </li>
+              <li class="um-list-item">
+                <span class="um-avatar">M</span>
+                <span><strong>Marina Costa</strong><br><span class="um-small">Visita agendada · funil atualizado</span></span>
+                <span class="um-badge um-badge--warning">visita</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="um-card">
+            <h3>Performance semanal</h3>
+            <div class="um-chart" aria-label="Gráfico ilustrativo de barras">
+              <i style="height:42%"></i>
+              <i style="height:63%"></i>
+              <i style="height:50%"></i>
+              <i style="height:82%"></i>
+              <i style="height:71%"></i>
+              <i style="height:92%"></i>
+              <i style="height:78%"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="formularios" class="um-section">
+      <div class="um-page">
+        <div class="um-section-head">
+          <div class="um-pill">Formulários</div>
+          <h2>Inputs, filtros e feedback</h2>
+          <p>Formulários operacionais precisam de labels visíveis, estados de foco fortes e mensagens claras em pt-BR.</p>
+        </div>
+
+        <div class="um-grid um-grid--2">
+          <form class="um-card um-stack">
+            <div class="um-grid um-grid--2">
+              <label class="um-field">
+                <span class="um-label">Nome do lead</span>
+                <input class="um-input" placeholder="Ex.: Camila Fernandes">
+              </label>
+              <label class="um-field">
+                <span class="um-label">Origem</span>
+                <select class="um-select">
+                  <option>Meta Ads</option>
+                  <option>Google Ads</option>
+                  <option>WhatsApp</option>
+                  <option>Portal imobiliário</option>
+                </select>
+              </label>
+            </div>
+            <label class="um-field">
+              <span class="um-label">Resumo do atendimento</span>
+              <textarea class="um-textarea" placeholder="Registre intenção, prazo, faixa de valor e próximos passos."></textarea>
+            </label>
+            <label class="um-check">
+              <input type="checkbox" checked>
+              <span>Distribuir automaticamente conforme equipe, região e elegibilidade.</span>
+            </label>
+            <div class="um-actions">
+              <button class="um-btn um-btn--primary" type="button">Salvar lead</button>
+              <button class="um-btn um-btn--ghost" type="button">Cancelar</button>
+            </div>
+          </form>
+
+          <div class="um-stack">
+            <div class="um-alert">
+              <span class="um-icon" style="width:40px;height:40px;border-radius:14px;font-size:18px;">✓</span>
+              <span><strong>Lead distribuído com sucesso</strong><br><span class="um-small">Rafael Lima foi encaminhado para a equipe Sul por regra de região.</span></span>
+              <button class="um-btn um-btn--ghost um-btn--sm" type="button">Ver</button>
+            </div>
+
+            <div class="um-card">
+              <h3>Filtros de listagem</h3>
+              <div class="um-grid um-grid--2">
+                <label class="um-field">
+                  <span class="um-label">Status</span>
+                  <select class="um-select"><option>Todos</option><option>Novos</option><option>Em atendimento</option></select>
+                </label>
+                <label class="um-field">
+                  <span class="um-label">Responsável</span>
+                  <input class="um-input" placeholder="Buscar corretor">
+                </label>
+              </div>
+              <div class="um-actions" style="margin-top:14px;">
+                <button class="um-btn um-btn--primary um-btn--sm">Aplicar filtros</button>
+                <button class="um-btn um-btn--ghost um-btn--sm">Limpar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="um-section">
+      <div class="um-page">
+        <div class="um-section-head">
+          <div class="um-pill">Dados</div>
+          <h2>Tabelas e listas</h2>
+          <p>Tabelas devem permanecer legíveis em telas densas. Use badges, barras e ações curtas.</p>
+        </div>
+
+        <div class="um-table-wrap">
+          <table class="um-table">
+            <thead>
+              <tr>
+                <th>Imóvel</th>
+                <th>Status</th>
+                <th>Captação</th>
+                <th>Performance</th>
+                <th>Responsável</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>AP 204 Frente Mar</strong><br><span class="um-small">Balneário Camboriú · R$ 1.480.000</span></td>
+                <td><span class="um-badge um-badge--success">Publicado</span></td>
+                <td>Exclusivo</td>
+                <td><div class="um-progress" style="--value:82%"><i></i></div></td>
+                <td>Ana Souza</td>
+                <td><button class="um-btn um-btn--ghost um-btn--sm">Abrir</button></td>
+              </tr>
+              <tr>
+                <td><strong>Casa Jardim Europa</strong><br><span class="um-small">Itajaí · R$ 980.000</span></td>
+                <td><span class="um-badge um-badge--warning">Revisão</span></td>
+                <td>Avulso</td>
+                <td><div class="um-progress" style="--value:54%"><i></i></div></td>
+                <td>Rafael Lima</td>
+                <td><button class="um-btn um-btn--ghost um-btn--sm">Abrir</button></td>
+              </tr>
+              <tr>
+                <td><strong>Studio Centro</strong><br><span class="um-small">Florianópolis · R$ 520.000</span></td>
+                <td><span class="um-badge">Rascunho</span></td>
+                <td>Permuta</td>
+                <td><div class="um-progress" style="--value:31%"><i></i></div></td>
+                <td>Marina Costa</td>
+                <td><button class="um-btn um-btn--ghost um-btn--sm">Abrir</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="telas" class="um-section">
+      <div class="um-page">
+        <div class="um-section-head">
+          <div class="um-pill">Telas</div>
+          <h2>Exemplo completo de aplicação</h2>
+          <p>Um shell operacional baseado na identidade da landing, mas estruturado para rotinas de gestão.</p>
+        </div>
+
+        <div class="um-shell">
+          <aside class="um-sidebar">
+            <div class="um-sidebar__title">Unitymob</div>
+            <a class="um-nav-item is-active" href="#">📊 Painel</a>
+            <a class="um-nav-item" href="#">🎯 Leads</a>
+            <a class="um-nav-item" href="#">🏢 Imóveis</a>
+            <a class="um-nav-item" href="#">💬 WhatsApp</a>
+            <a class="um-nav-item" href="#">👥 Equipes</a>
+            <a class="um-nav-item" href="#">⚡ Automação</a>
+            <a class="um-nav-item" href="#">📱 Mobile</a>
+          </aside>
+
+          <section class="um-workspace">
+            <div class="um-toolbar">
+              <div>
+                <h3 style="margin-bottom:4px;">Painel comercial</h3>
+                <p class="um-small" style="margin-bottom:0;">Resumo de leads, SLA, visitas e funil da operação.</p>
+              </div>
+              <div class="um-actions">
+                <button class="um-btn um-btn--ghost um-btn--sm">Exportar</button>
+                <button class="um-btn um-btn--primary um-btn--sm">Novo lead</button>
+              </div>
+            </div>
+
+            <div class="um-grid um-grid--3">
+              <div class="um-kpi"><small>Novos leads</small><b>58</b><span>12 sem responsável</span></div>
+              <div class="um-kpi"><small>Visitas hoje</small><b>17</b><span>4 reagendamentos</span></div>
+              <div class="um-kpi"><small>Propostas abertas</small><b>9</b><span>R$ 8,4 mi em negociação</span></div>
+            </div>
+
+            <div class="um-grid um-grid--2">
+              <div class="um-card">
+                <h3>Próximas ações</h3>
+                <ul class="um-list">
+                  <li class="um-list-item"><span class="um-avatar">1</span><span><strong>Retornar WhatsApp</strong><br><span class="um-small">Lead Ana Souza · SLA vence em 8 min</span></span><span class="um-badge um-badge--warning">SLA</span></li>
+                  <li class="um-list-item"><span class="um-avatar">2</span><span><strong>Confirmar visita</strong><br><span class="um-small">Marina Costa · hoje às 16h</span></span><span class="um-badge">agenda</span></li>
+                </ul>
+              </div>
+              <div class="um-card">
+                <h3>Distribuição por canal</h3>
+                <div class="um-chart">
+                  <i style="height:74%"></i>
+                  <i style="height:49%"></i>
+                  <i style="height:68%"></i>
+                  <i style="height:36%"></i>
+                  <i style="height:88%"></i>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="um-section">
+      <div class="um-page">
+        <div class="um-section-head">
+          <div class="um-pill">Estados avançados</div>
+          <h2>Modal, drawer, vazio e mobile</h2>
+          <p>Esses padrões cobrem interações comuns em CRUD, atendimento, proposta e automação.</p>
+        </div>
+
+        <div class="um-grid um-grid--2">
+          <div class="um-modal-demo">
+            <div class="um-modal">
+              <div class="um-badge-row"><span class="um-badge um-badge--success">Modal</span></div>
+              <h3 style="margin-top:14px;">Confirmar distribuição</h3>
+              <p>Este lead será enviado para a equipe Sul com base em cidade, ticket e disponibilidade do corretor.</p>
+              <div class="um-actions">
+                <button class="um-btn um-btn--primary">Confirmar</button>
+                <button class="um-btn um-btn--ghost">Cancelar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="um-drawer-demo">
+            <div style="padding:22px;">
+              <h3>Listagem ao fundo</h3>
+              <p class="um-small">Use drawer para editar informações sem perder o contexto da lista.</p>
+            </div>
+            <aside class="um-drawer">
+              <div class="um-badge-row"><span class="um-badge">Drawer</span></div>
+              <h3 style="margin-top:14px;">Detalhes do lead</h3>
+              <div class="um-stack">
+                <label class="um-field"><span class="um-label">Etapa</span><select class="um-select"><option>Em atendimento</option><option>Visita agendada</option></select></label>
+                <label class="um-field"><span class="um-label">Próxima tarefa</span><input class="um-input" value="Enviar opções de imóveis"></label>
+                <button class="um-btn um-btn--primary" type="button">Atualizar</button>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <div class="um-grid um-grid--2" style="margin-top:18px;">
+          <div class="um-empty">
+            <div>
+              <div class="um-icon" style="margin:0 auto 16px;">🔎</div>
+              <h3>Nenhum resultado encontrado</h3>
+              <p>Mostre o motivo provável e ofereça uma ação concreta para limpar filtros, criar registro ou revisar permissões.</p>
+              <button class="um-btn um-btn--ghost">Limpar filtros</button>
+            </div>
+          </div>
+
+          <div class="um-mobile-frame">
+            <div class="um-mobile-screen">
+              <div class="um-toolbar" style="padding:12px;">
+                <div>
+                  <strong>Mobile</strong>
+                  <p class="um-small" style="margin:4px 0 0;">Agenda de campo</p>
+                </div>
+              </div>
+              <div class="um-stack" style="margin-top:14px;">
+                <div class="um-kpi"><small>Visitas hoje</small><b>6</b><span>2 check-ins pendentes</span></div>
+                <div class="um-card">
+                  <h3>Próxima visita</h3>
+                  <p>AP 204 Frente Mar<br><span class="um-small">16h · Balneário Camboriú</span></p>
+                  <button class="um-btn um-btn--primary" style="width:100%;">Fazer check-in</button>
+                </div>
+                <button class="um-btn um-btn--ghost">Abrir WhatsApp</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="um-footer">
+    <div class="um-footer__inner">
+      <a class="um-brand" href="#intro"><span class="um-logo">U</span>Unitymob DS</a>
+      <span>Baseado em <code class="um-code">public/site/index.html</code>. Criado para evoluir a aplicação Rails sem quebrar o visual da landing.</span>
+    </div>
+  </footer>
+</body>
+</html>

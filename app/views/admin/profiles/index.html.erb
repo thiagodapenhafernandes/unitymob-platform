@@ -1,66 +1,50 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h1 class="h3 mb-1 text-gray-800">Perfis de Acesso</h1>
-    <p class="text-muted small mb-0">Gerencie os níveis de acesso e permissões do sistema.</p>
+<%# Perfis de Acesso — listagem. A ação "Novo perfil" vem da contextbar global. %>
+<header class="ax-dashboard-command ax-property-form-command">
+  <div class="ax-dashboard-command__main">
+    <span class="ax-dashboard-command__eyebrow">Administração</span>
+    <h1>Perfis de acesso</h1>
+    <p>Gerencie níveis de acesso, permissões e escopos operacionais.</p>
   </div>
-  <%= link_to new_admin_profile_path, class: "btn btn-primary d-flex align-items-center" do %>
-    <i class="bi bi-plus-lg me-2"></i> Novo Perfil
-  <% end %>
-</div>
+  <div class="ax-dashboard-command__status">
+    <%= ax_badge("#{@profiles.size} perfis", tone: :gray) %>
+  </div>
+</header>
 
-<div class="card shadow-sm border-0">
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="bg-light text-muted small text-uppercase fw-bold">
-          <tr>
-            <th class="px-4 py-3 border-0">Nome do Perfil</th>
-            <th class="py-3 border-0">Usuários</th>
-            <th class="py-3 border-0">Status</th>
-            <th class="px-4 py-3 border-0 text-end">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% if @profiles.any? %>
-            <% @profiles.each do |profile| %>
-              <tr>
-                <td class="px-4 py-3 border-0">
-                  <div class="fw-bold text-dark"><%= profile.name %></div>
-                </td>
-                <td class="py-3 border-0">
-                   <span class="badge bg-light text-dark border-1 px-2 py-1"><%= profile.admin_users.count %></span>
-                </td>
-                <td class="py-3 border-0">
-                  <% if profile.active? %>
-                    <span class="badge bg-success-subtle text-success border-0 px-2 py-1 rounded-pill" style="font-size: 0.7rem;">Ativo</span>
-                  <% else %>
-                    <span class="badge bg-secondary-subtle text-secondary border-0 px-2 py-1 rounded-pill" style="font-size: 0.7rem;">Inativo</span>
-                  <% end %>
-                </td>
-                <td class="px-4 py-3 border-0 text-end">
-                  <div class="btn-group">
-                    <%= link_to edit_admin_profile_path(profile), class: "btn btn-sm btn-outline-secondary border-0", title: "Editar" do %>
-                      <i class="bi bi-pencil"></i>
-                    <% end %>
-                    <%= button_to admin_profile_path(profile), method: :delete, class: "btn btn-sm btn-outline-danger border-0", data: { confirm: "Tem certeza? Isso pode afetar o acesso dos usuários vinculados." }, title: "Excluir" do %>
-                      <i class="bi bi-trash"></i>
-                    <% end %>
-                  </div>
-                </td>
-              </tr>
-            <% end %>
-          <% else %>
-            <tr>
-              <td colspan="4" class="text-center py-5">
-                <div class="mb-3">
-                  <i class="bi bi-shield-lock text-muted opacity-25" style="font-size: 3rem;"></i>
-                </div>
-                <p class="text-muted mb-0">Nenhum perfil cadastrado.</p>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
+<div class="ax-table-wrap" style="margin-top:8px">
+  <table class="ax-table">
+    <thead>
+      <tr>
+        <th>Nome do Perfil</th>
+        <th class="ax-num" style="width:110px">Usuários</th>
+        <th style="width:96px">Status</th>
+        <th class="ax-num" style="width:90px">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @profiles.each do |profile| %>
+        <tr>
+          <td class="ax-strong"><%= profile.name %></td>
+          <td class="ax-num"><span class="ax-badge ax-badge--gray"><%= profile.admin_users.count %></span></td>
+          <td>
+            <% if profile.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativo</span>
+            <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativo</span><% end %>
+          </td>
+          <td class="ax-num">
+            <span class="tw-inline-flex tw-gap-0.5">
+              <%= link_to edit_admin_profile_path(profile), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+              <%= button_to admin_profile_path(profile), method: :delete, form_class: "tw-inline", data: { turbo_confirm: "Tem certeza? Isso pode afetar o acesso dos usuários vinculados." }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
+            </span>
+          </td>
+        </tr>
+      <% end %>
+
+      <% if @profiles.empty? %>
+        <tr>
+          <td colspan="4">
+            <%= ax_empty_state(title: "Nenhum perfil cadastrado.", icon: "shield-lock") %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
 </div>

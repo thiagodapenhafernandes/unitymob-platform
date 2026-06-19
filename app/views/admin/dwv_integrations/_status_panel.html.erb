@@ -1,104 +1,95 @@
-<span class="d-none" data-dwv-sync-status-state data-sync-status="<%= @dwv_sync_status.presence || "idle" %>"></span>
+<span class="tw-hidden" data-dwv-sync-status-state data-sync-status="<%= @dwv_sync_status.presence || "idle" %>"></span>
 
-<div class="card shadow-sm border-0 mb-4 bg-light">
-  <div class="card-body p-4">
-    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2 text-primary"></i>Status Atual</h6>
-    <ul class="small mb-0 ps-3">
-      <li class="mb-2">Integração ativa: <strong><%= @dwv_enabled ? "Sim" : "Não" %></strong></li>
-      <li class="mb-2">Conexão: <strong><%= @dwv_connected ? "Conectado" : "Desconectado" %></strong></li>
-      <li class="mb-2">
+<div class="ax-card tw-mb-4 bg-light">
+  <div class="ax-card__body p-4">
+    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-info-circle" style="color:#2563eb;"></i> Status Atual</h6>
+    <ul class="tw-text-sm tw-mb-0 tw-pl-4">
+      <li class="tw-mb-2">Integração ativa: <strong><%= @dwv_enabled ? "Sim" : "Não" %></strong></li>
+      <li class="tw-mb-2">Conexão: <strong><%= @dwv_connected ? "Conectado" : "Desconectado" %></strong></li>
+      <li class="tw-mb-2">
         Processamento automático:
-        <strong class="<%= @dwv_worker_health[:online] ? "text-success" : "text-danger" %>">
+        <strong style="color: <%= @dwv_worker_health[:online] ? "#16a34a" : "#dc2626" %>;">
           <%= @dwv_worker_health[:online] ? "Disponível" : "Indisponível" %>
         </strong>
       </li>
-      <li class="mb-2">Token configurado: <strong><%= @dwv_api_token.present? ? "Sim" : "Não" %></strong></li>
-      <li class="mb-2">Status atual: <strong><%= @dwv_sync_status.present? ? @dwv_sync_status : "idle" %></strong></li>
-      <li class="mb-2">Progresso atual: <strong><%= @dwv_sync_progress %>%</strong></li>
-      <li class="mb-2">Última execução: <strong><%= @dwv_last_sync_time.present? ? l(@dwv_last_sync_time, format: :short) : "N/D" %></strong></li>
+      <li class="tw-mb-2">Token configurado: <strong><%= @dwv_api_token.present? ? "Sim" : "Não" %></strong></li>
+      <li class="tw-mb-2">Status atual: <strong><%= @dwv_sync_status.present? ? @dwv_sync_status : "idle" %></strong></li>
+      <li class="tw-mb-2">Progresso atual: <strong><%= @dwv_sync_progress %>%</strong></li>
+      <li class="tw-mb-2">Última execução: <strong><%= @dwv_last_sync_time.present? ? l(@dwv_last_sync_time, format: :short) : "N/D" %></strong></li>
       <li>Resumo: <%= @dwv_last_sync_message.presence || "Sem execuções registradas." %></li>
     </ul>
 
     <% unless @dwv_worker_health[:online] %>
-      <div class="alert alert-danger py-2 px-3 small mt-3 mb-0" role="alert">
+      <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle") do %>
         <strong>Serviço de sincronização indisponível:</strong> <%= @dwv_worker_health[:message] %>
-      </div>
+      <% end %>
     <% end %>
 
-    <div class="mt-3">
-      <div class="d-flex justify-content-between small mb-1">
+    <div class="tw-mt-3">
+      <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1">
         <span>Andamento</span>
         <span><%= @dwv_sync_progress %>%</span>
       </div>
-      <div class="progress" style="height: 10px;">
-        <div class="progress-bar <%= @dwv_sync_status == 'failed' ? 'bg-danger' : (@dwv_sync_status == 'completed' ? 'bg-success' : 'bg-info') %>"
-             role="progressbar"
-             style="width: <%= @dwv_sync_progress %>%"
-             aria-valuenow="<%= @dwv_sync_progress %>"
-             aria-valuemin="0"
-             aria-valuemax="100"></div>
-      </div>
+      <%= ax_progress(value: @dwv_sync_progress, tone: (@dwv_sync_status == 'failed' ? :red : (@dwv_sync_status == 'completed' ? :green : :blue))) %>
     </div>
 
-    <div class="mt-3">
-      <h6 class="fw-semibold small mb-2">Resumo de Erros (última execução)</h6>
+    <div class="tw-mt-3">
+      <h6 class="tw-font-semibold tw-text-sm tw-mb-2">Resumo de Erros (última execução)</h6>
       <% if @dwv_last_error_summary.present? %>
-        <ul class="small mb-0 ps-3">
+        <ul class="tw-text-sm tw-mb-0 tw-pl-4">
           <% @dwv_last_error_summary.first(5).each do |error_message, error_count| %>
-            <li class="mb-1"><strong><%= error_count %>x</strong> <%= error_message %></li>
+            <li class="tw-mb-1"><strong><%= error_count %>x</strong> <%= error_message %></li>
           <% end %>
         </ul>
         <% if @dwv_last_error_summary.size > 5 %>
-          <button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-bs-toggle="modal" data-bs-target="#dwvErrorSummaryModal">
+          <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost tw-mt-2" data-ax-modal-open="#dwvErrorSummaryModal">
             Ver todos os erros da última execução
           </button>
         <% end %>
       <% else %>
-        <p class="small text-muted mb-0">Sem erros registrados na última sincronização.</p>
+        <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Sem erros registrados na última sincronização.</p>
       <% end %>
     </div>
   </div>
 </div>
 
 <% if @dwv_last_error_summary.present? && @dwv_last_error_summary.size > 5 %>
-  <div class="modal fade" id="dwvErrorSummaryModal" tabindex="-1" aria-labelledby="dwvErrorSummaryModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="dwvErrorSummaryModalLabel">Todos os erros da última execução DWV</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-        </div>
-        <div class="modal-body">
-          <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-              <thead>
+  <div class="ax-quick-modal ax-quick-modal--lg" id="dwvErrorSummaryModal" tabindex="-1" role="presentation" hidden aria-hidden="true" data-controller="ax-modal" data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+    <div class="ax-quick-modal__panel" role="dialog" aria-modal="true">
+      <header class="ax-quick-modal__header">
+        <h5 class="ax-quick-modal__title">Todos os erros da última execução DWV</h5>
+        <button type="button" class="ax-icon-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+      </header>
+      <div class="ax-quick-modal__body">
+        <div class="ax-table-wrap">
+          <table class="ax-table">
+            <thead>
+              <tr>
+                <th style="width: 120px;">Ocorrências</th>
+                <th>Mensagem do erro</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @dwv_last_error_summary.each do |error_message, error_count| %>
                 <tr>
-                  <th style="width: 120px;">Ocorrências</th>
-                  <th>Mensagem do erro</th>
+                  <td><span class="ax-badge ax-badge--red"><%= error_count %>x</span></td>
+                  <td class="tw-text-sm"><%= error_message %></td>
                 </tr>
-              </thead>
-              <tbody>
-                <% @dwv_last_error_summary.each do |error_message, error_count| %>
-                  <tr>
-                    <td><span class="badge bg-danger"><%= error_count %>x</span></td>
-                    <td class="small"><%= error_message %></td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+              <% end %>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
 <% end %>
 
-<div class="card shadow-sm border-0 mb-4">
-  <div class="card-body p-4">
-    <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-info"></i>Últimas 5 Atualizações</h6>
+<div class="ax-card tw-mb-4">
+  <div class="ax-card__body p-4">
+    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-clock-history" style="color:#2563eb;"></i> Últimas 5 Atualizações</h6>
     <% if @dwv_sync_history.present? %>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
+      <div class="ax-table-wrap">
+        <table class="ax-table">
           <thead>
             <tr>
               <th>Data/Hora</th>
@@ -112,30 +103,30 @@
               <% item_time = (Time.zone.parse(item["at"].to_s) rescue nil) %>
               <% status = item["status"].to_s %>
               <tr>
-                <td class="small text-nowrap"><%= item_time ? l(item_time, format: :short) : "N/D" %></td>
+                <td class="tw-text-sm" style="white-space:nowrap"><%= item_time ? l(item_time, format: :short) : "N/D" %></td>
                 <td>
-                  <span class="badge <%= status == 'completed' ? 'bg-success' : (status == 'failed' ? 'bg-danger' : (status == 'processing' ? 'bg-info' : 'bg-secondary')) %>">
+                  <span class="ax-badge <%= status == 'completed' ? 'ax-badge--green' : (status == 'failed' ? 'ax-badge--red' : (status == 'processing' ? 'ax-badge--blue' : 'ax-badge--gray')) %>">
                     <%= status.presence || "N/D" %>
                   </span>
                 </td>
-                <td class="small"><%= item["mode"].presence || "-" %></td>
-                <td class="small"><%= item["message"].to_s %></td>
+                <td class="tw-text-sm"><%= item["mode"].presence || "-" %></td>
+                <td class="tw-text-sm"><%= item["message"].to_s %></td>
               </tr>
             <% end %>
           </tbody>
         </table>
       </div>
     <% else %>
-      <p class="small text-muted mb-0">Ainda não há histórico de sincronizações.</p>
+      <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Ainda não há histórico de sincronizações.</p>
     <% end %>
   </div>
 </div>
 
-<div class="card shadow-sm border-0">
-  <div class="card-body p-4">
-    <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-success"></i>Observações Importantes</h6>
-    <p class="small text-muted mb-2">Esta integração busca os dados na DWV e atualiza o cadastro de imóveis neste sistema.</p>
-    <p class="small text-muted mb-2">Os dados do imóvel dentro da DWV não são alterados por esta tela.</p>
-    <p class="small text-muted mb-0">A remoção de imóveis continua sendo uma ação manual.</p>
+<div class="ax-card">
+  <div class="ax-card__body p-4">
+    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-shield-check" style="color:#16a34a;"></i> Observações Importantes</h6>
+    <p class="tw-text-sm tw-text-ink-muted tw-mb-2">Esta integração busca os dados na DWV e atualiza o cadastro de imóveis neste sistema.</p>
+    <p class="tw-text-sm tw-text-ink-muted tw-mb-2">Os dados do imóvel dentro da DWV não são alterados por esta tela.</p>
+    <p class="tw-text-sm tw-text-ink-muted tw-mb-0">A remoção de imóveis continua sendo uma ação manual.</p>
   </div>
 </div>

@@ -50,6 +50,8 @@ class HabitationAuditLog < ApplicationRecord
     "proprietor_id" => "Cadastro do proprietário",
     "corretor_nome" => "Corretor",
     "admin_user_id" => "Captador responsável",
+    "admin_review_notes" => "Nota interna",
+    "admin_review_return_reason" => "Motivo da devolução",
     "caracteristicas" => "Características",
     "caracteristica_unica" => "Características únicas",
     "infra_estrutura" => "Infraestrutura",
@@ -251,7 +253,7 @@ class HabitationAuditLog < ApplicationRecord
   end
 
   def self.intake_fields
-    %w[intake_status intake_origin intake_modalidade submitted_for_review_at admin_reviewed_at published_at admin_reviewed_by_id]
+    %w[intake_status intake_origin intake_modalidade submitted_for_review_at admin_reviewed_at admin_reviewed_by_id admin_review_notes admin_review_return_reason]
   end
 
   private

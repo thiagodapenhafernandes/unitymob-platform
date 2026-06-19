@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
     <%= stylesheet_link_tag "admin", media: "all" %>
+    <%= stylesheet_link_tag "ax_toast", media: "all" %>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -208,7 +209,7 @@
         min-width: 0;
       }
       .captacao-photo-meta strong,
-      .captacao-photo-meta small {
+      .captacao-photo-size {
         display: block;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -218,7 +219,7 @@
         color: #111827;
         font-size: .9rem;
       }
-      .captacao-photo-meta small {
+      .captacao-photo-size {
         color: #64748b;
         font-size: .78rem;
       }
@@ -236,8 +237,29 @@
         display: flex;
         gap: .4rem;
       }
-      .captacao-photo-actions .btn {
+      .captacao-photo-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         min-width: 40px;
+        min-height: 34px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+        color: #475569;
+        font-weight: 700;
+      }
+      .captacao-photo-action--danger {
+        border-color: #fecdd3;
+        color: #be123c;
+      }
+      .captacao-photo-action:hover {
+        background: #f8fafc;
+        border-color: #94a3b8;
+      }
+      .captacao-photo-action--danger:hover {
+        background: #fff1f2;
+        border-color: #fb7185;
       }
       .captacao-schedule-box {
         display: flex;
@@ -274,7 +296,25 @@
       }
       .captacao-time-slot {
         min-height: 46px;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        background: #fff;
+        color: #0d6efd;
         font-weight: 700;
+      }
+      .captacao-time-slot:hover {
+        background: rgba(13, 110, 253, .06);
+        border-color: #0d6efd;
+      }
+      .captacao-slot-empty {
+        min-height: 42px;
+        padding: .7rem .8rem;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: .9rem;
+        font-weight: 650;
       }
 
       @media (min-width: 768px) {
@@ -424,14 +464,7 @@
     </aside>
 
     <div class="wizard-admin-content">
-    <% if flash.any? %>
-      <div class="wizard-shell">
-        <% flash.each do |type, msg| %>
-          <% next if msg.blank? %>
-          <div class="alert alert-<%= type == 'notice' ? 'info' : 'warning' %> mb-0 rounded-0"><%= msg %></div>
-        <% end %>
-      </div>
-    <% end %>
+    <%= render 'shared/flash_messages', toast: true if flash.any? %>
 
     <%= yield %>
     </div>

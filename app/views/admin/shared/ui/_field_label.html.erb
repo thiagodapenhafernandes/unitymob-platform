@@ -1,0 +1,28 @@
+<%
+  label_class = ["ax-field-label", class_name].compact.join(" ")
+  label_options = (options || {}).dup
+  label_options[:class] = [label_class, label_options[:class]].compact.join(" ")
+%>
+
+<% label_markup = capture do %>
+  <span class="ax-field-label__text"><%= text %></span>
+  <% if tooltip.present? %>
+    <button type="button"
+            class="ax-field-label__info"
+            aria-label="Ajuda: <%= text %>"
+            data-controller="ax-tooltip"
+            data-ax-tooltip-text-value="<%= tooltip %>">
+      <i class="bi bi-info-circle" aria-hidden="true"></i>
+    </button>
+  <% end %>
+<% end %>
+
+<% if form.present? && method.present? %>
+  <%= form.label method, label_options do %>
+    <%= label_markup %>
+  <% end %>
+<% else %>
+  <%= tag.label(**label_options) do %>
+    <%= label_markup %>
+  <% end %>
+<% end %>

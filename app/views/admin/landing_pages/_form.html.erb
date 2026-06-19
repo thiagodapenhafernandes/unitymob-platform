@@ -1,103 +1,104 @@
-<%= form_with(model: [:admin, @landing_page], local: true, class: "row g-4", data: { controller: "property-page-preview", property_page_preview_url_value: "/admin/landing_pages/preview" }) do |f| %>
-  <div class="col-lg-8">
-    <div class="card-luxury mb-4">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Conteúdo e SEO</h5>
+<%= form_with(model: [:admin, @landing_page], local: true, class: "ax-field-grid", data: { controller: "property-page-preview", property_page_preview_url_value: "/admin/landing_pages/preview" }) do |f| %>
+  <div class="ax-span-8">
+    <div class="ax-card tw-mb-4">
+      <div class="ax-card__header">
+        <h5 class="mb-0 tw-gap-2"><i class="bi bi-file-earmark-text"></i>Conteúdo e SEO</h5>
       </div>
-      <div class="p-4">
-        <div class="mb-3">
-          <%= f.label :title, "Título da Página (H1)", class: "form-label fw-bold" %>
-          <%= f.text_field :title, class: "form-control form-control-lg", placeholder: "Ex: Apartamentos na Planta em Balneário Camboriú", required: true %>
+      <div class="ax-card__body tw-p-4">
+        <div class="tw-mb-3">
+          <%= f.label :title, "Título da Página (H1)", class: "ax-label tw-font-bold" %>
+          <%= f.text_field :title, class: "ax-control", placeholder: "Ex: Apartamentos na Planta em Balneário Camboriú", required: true %>
         </div>
 
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <%= f.label :slug, "URL Amigável (Slug)", class: "form-label fw-bold" %>
-            <div class="input-group">
-              <span class="input-group-text bg-light text-muted">/</span>
-              <%= f.text_field :slug, class: "form-control", placeholder: "apartamentos-na-planta-bc" %>
+        <%= ax_field_grid do %>
+          <div class="ax-span-6">
+            <%= f.label :slug, "URL Amigável (Slug)", class: "ax-label tw-font-bold" %>
+            <div class="tw-flex tw-items-center">
+              <span class="tw-text-ink-muted" style="background:#f8f9fa">/</span>
+              <%= f.text_field :slug, class: "ax-control", placeholder: "apartamentos-na-planta-bc" %>
             </div>
-            <small class="text-muted">Deixe em branco para gerar do título.</small>
+            <small class="tw-text-ink-muted">Deixe em branco para gerar do título.</small>
           </div>
-          <div class="col-md-6">
-            <%= f.label :meta_title, "Título SEO (Meta Title)", class: "form-label fw-bold" %>
-            <%= f.text_field :meta_title, class: "form-control", placeholder: "Título para o Google" %>
+          <div class="ax-span-6">
+            <%= f.label :meta_title, "Título SEO (Meta Title)", class: "ax-label tw-font-bold" %>
+            <%= f.text_field :meta_title, class: "ax-control", placeholder: "Título para o Google" %>
           </div>
+        <% end %>
+        <div class="tw-mb-3"></div>
+
+        <div class="tw-mb-3">
+          <%= f.label :meta_description, "Descrição SEO (Meta Description)", class: "ax-label tw-font-bold" %>
+          <%= f.text_area :meta_description, rows: 2, class: "ax-control", placeholder: "Breve resumo para o Google..." %>
         </div>
 
-        <div class="mb-3">
-          <%= f.label :meta_description, "Descrição SEO (Meta Description)", class: "form-label fw-bold" %>
-          <%= f.text_area :meta_description, rows: 2, class: "form-control", placeholder: "Breve resumo para o Google..." %>
+        <div class="tw-mb-3">
+          <%= f.label :description, "Descrição de Topo (Introdução)", class: "ax-label tw-font-bold" %>
+          <%= f.text_area :description, rows: 3, class: "ax-control", placeholder: "Texto que aparece logo abaixo do título na página pública..." %>
         </div>
 
-        <div class="mb-3">
-          <%= f.label :description, "Descrição de Topo (Introdução)", class: "form-label fw-bold" %>
-          <%= f.text_area :description, rows: 3, class: "form-control", placeholder: "Texto que aparece logo abaixo do título na página pública..." %>
-        </div>
-
-        <div class="mb-0">
-          <%= f.label :content, "Texto SEO (Rodapé)", class: "form-label fw-bold" %>
-          <%= f.text_area :content, rows: 6, class: "form-control", placeholder: "Conteúdo rico para SEO que aparece após a listagem de imóveis..." %>
+        <div>
+          <%= f.label :content, "Texto SEO (Rodapé)", class: "ax-label tw-font-bold" %>
+          <%= f.text_area :content, rows: 6, class: "ax-control", placeholder: "Conteúdo rico para SEO que aparece após a listagem de imóveis..." %>
         </div>
       </div>
     </div>
 
-    <div class="card-luxury mb-4">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Atributos (Filtros de Imóveis)</h5>
+    <div class="ax-card tw-mb-4">
+      <div class="ax-card__header">
+        <h5 class="mb-0 tw-gap-2"><i class="bi bi-funnel"></i>Atributos (Filtros de Imóveis)</h5>
       </div>
-      <div class="p-4">
+      <div class="ax-card__body tw-p-4">
         <%= f.fields_for :filter_params do |fp| %>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <%= fp.label :category, "Categoria(s)", class: "form-label fw-bold" %>
-              <%= fp.select :category, Habitation.active.distinct.pluck(:categoria).compact.sort, { }, { multiple: true, class: "form-select", data: { controller: "tom-select", action: "change->property-page-preview#refresh", tom_select_options_value: { placeholder: "Selecione categorias" } } } %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <%= fp.label :category, "Categoria(s)", class: "ax-label tw-font-bold" %>
+              <%= fp.select :category, Habitation.active.distinct.pluck(:categoria).compact.sort, { }, { multiple: true, class: "ax-control", data: { controller: "tom-select", action: "change->property-page-preview#refresh", tom_select_options_value: { placeholder: "Selecione categorias" } } } %>
             </div>
-            <div class="col-md-6">
-              <%= fp.label :city, "Cidade(s)", class: "form-label fw-bold" %>
-              <%= fp.select :city, Habitation.active.left_outer_joins(:address).distinct.pluck(Arel.sql("COALESCE(addresses.cidade, habitations.cidade)")).compact.sort, { }, { multiple: true, class: "form-select", data: { controller: "tom-select", action: "change->property-page-preview#refresh", tom_select_options_value: { placeholder: "Selecione cidades" } } } %>
+            <div class="ax-span-6">
+              <%= fp.label :city, "Cidade(s)", class: "ax-label tw-font-bold" %>
+              <%= fp.select :city, Habitation.active.left_outer_joins(:address).distinct.pluck(Arel.sql("COALESCE(addresses.cidade, habitations.cidade)")).compact.sort, { }, { multiple: true, class: "ax-control", data: { controller: "tom-select", action: "change->property-page-preview#refresh", tom_select_options_value: { placeholder: "Selecione cidades" } } } %>
             </div>
-            <div class="col-md-6">
-              <%= fp.label :neighborhood, "Bairro(s)", class: "form-label fw-bold" %>
-              <%= fp.select :neighborhood, Habitation.active.left_outer_joins(:address).distinct.pluck(Arel.sql("COALESCE(addresses.bairro, habitations.bairro)")).compact.uniq.sort, { }, { multiple: true, class: "form-select", data: { controller: "tom-select", action: "change->property-page-preview#refresh", tom_select_options_value: { placeholder: "Selecione bairros" } } } %>
+            <div class="ax-span-6">
+              <%= fp.label :neighborhood, "Bairro(s)", class: "ax-label tw-font-bold" %>
+              <%= fp.select :neighborhood, Habitation.active.left_outer_joins(:address).distinct.pluck(Arel.sql("COALESCE(addresses.bairro, habitations.bairro)")).compact.uniq.sort, { }, { multiple: true, class: "ax-control", data: { controller: "tom-select", action: "change->property-page-preview#refresh", tom_select_options_value: { placeholder: "Selecione bairros" } } } %>
             </div>
-            <div class="col-md-6">
-              <%= fp.label :transaction_type, "Transação", class: "form-label fw-bold" %>
-              <%= fp.select :transaction_type, [['Venda', 'venda'], ['Aluguel', 'aluguel']], { include_blank: "Todas" }, { class: "form-select", data: { action: "change->property-page-preview#refresh" } } %>
-            </div>
-            
-            <div class="col-md-6">
-              <%= fp.label :caracteristica_unica, "Característica Única (Tag/Badge)", class: "form-label fw-bold" %>
-              <%= fp.text_field :caracteristica_unica, class: "form-control", placeholder: "Ex: Festival Salute 2026", data: { action: "input->property-page-preview#refresh" } %>
+            <div class="ax-span-6">
+              <%= fp.label :transaction_type, "Transação", class: "ax-label tw-font-bold" %>
+              <%= fp.select :transaction_type, [['Venda', 'venda'], ['Aluguel', 'aluguel']], { include_blank: "Todas" }, { class: "ax-control", data: { action: "change->property-page-preview#refresh" } } %>
             </div>
 
-            <div class="col-md-6">
-              <%= fp.label :target_price, "Preço Sugerido (Range +/- 20%)", class: "form-label fw-bold" %>
-              <%= fp.number_field :target_price, class: "form-control", placeholder: "Ex: 1500000", data: { action: "input->property-page-preview#refresh" } %>
+            <div class="ax-span-6">
+              <%= fp.label :caracteristica_unica, "Característica Única (Tag/Badge)", class: "ax-label tw-font-bold" %>
+              <%= fp.text_field :caracteristica_unica, class: "ax-control", placeholder: "Ex: Festival Salute 2026", data: { action: "input->property-page-preview#refresh" } %>
             </div>
 
-            <div class="col-md-4">
-              <%= fp.label :min_area, "Área Mínima (m²)", class: "form-label fw-bold" %>
-              <%= fp.number_field :min_area, class: "form-control", min: 0, data: { action: "input->property-page-preview#refresh" } %>
+            <div class="ax-span-6">
+              <%= fp.label :target_price, "Preço Sugerido (Range +/- 20%)", class: "ax-label tw-font-bold" %>
+              <%= fp.number_field :target_price, class: "ax-control", placeholder: "Ex: 1500000", data: { action: "input->property-page-preview#refresh" } %>
             </div>
 
-            <div class="col-md-4">
-              <%= fp.label :min_bedrooms, "Mín. Dormitórios", class: "form-label fw-bold" %>
-              <%= fp.number_field :min_bedrooms, class: "form-control", min: 0, data: { action: "input->property-page-preview#refresh" } %>
+            <div class="ax-span-4">
+              <%= fp.label :min_area, "Área Mínima (m²)", class: "ax-label tw-font-bold" %>
+              <%= fp.number_field :min_area, class: "ax-control", min: 0, data: { action: "input->property-page-preview#refresh" } %>
             </div>
-            <div class="col-md-4">
-              <%= fp.label :min_suites, "Mín. Suítes", class: "form-label fw-bold" %>
-              <%= fp.number_field :min_suites, class: "form-control", min: 0, data: { action: "input->property-page-preview#refresh" } %>
-            </div>
-            <div class="col-md-4">
-              <%= fp.label :min_parking, "Mín. Vagas", class: "form-label fw-bold" %>
-              <%= fp.number_field :min_parking, class: "form-control", min: 0, data: { action: "input->property-page-preview#refresh" } %>
-            </div>
-          </div>
 
-          <div class="mt-4">
-            <label class="form-label fw-bold mb-3 d-block border-bottom pb-2">Características e Flags</label>
-            <div class="row g-3">
+            <div class="ax-span-4">
+              <%= fp.label :min_bedrooms, "Mín. Dormitórios", class: "ax-label tw-font-bold" %>
+              <%= fp.number_field :min_bedrooms, class: "ax-control", min: 0, data: { action: "input->property-page-preview#refresh" } %>
+            </div>
+            <div class="ax-span-4">
+              <%= fp.label :min_suites, "Mín. Suítes", class: "ax-label tw-font-bold" %>
+              <%= fp.number_field :min_suites, class: "ax-control", min: 0, data: { action: "input->property-page-preview#refresh" } %>
+            </div>
+            <div class="ax-span-4">
+              <%= fp.label :min_parking, "Mín. Vagas", class: "ax-label tw-font-bold" %>
+              <%= fp.number_field :min_parking, class: "ax-control", min: 0, data: { action: "input->property-page-preview#refresh" } %>
+            </div>
+          <% end %>
+
+          <div style="margin-top:1.5rem">
+            <label class="ax-label tw-font-bold tw-mb-3" style="display:block; border-bottom:1px solid var(--ax-border, #e5e7eb); padding-bottom:.5rem">Características e Flags</label>
+            <%= ax_field_grid do %>
               <% [
                 ['frente_mar', 'Frente Mar'],
                 ['quadra_mar', 'Quadra Mar'],
@@ -120,7 +121,7 @@
                 ['exibir_no_site_salute_flag', 'Exibir no Site Salute'],
                 ['opportunity', 'Oportunidade (Preço Reduzido)']
               ].each do |value, label| %>
-                <div class="col-md-4">
+                <div class="ax-span-4">
                   <div class="form-check custom-checkbox-card">
                     <%= check_box_tag "landing_page[filter_params][characteristics][]", value, (f.object.filter_params['characteristics'] || []).include?(value), class: "form-check-input", id: "char_#{value}", data: { action: "change->property-page-preview#refresh" } %>
                     <label class="form-check-label w-100 py-1" for="char_<%= value %>">
@@ -129,39 +130,36 @@
                   </div>
                 </div>
               <% end %>
-            </div>
+            <% end %>
           </div>
         <% end %>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-4">
-    <div class="card-luxury mb-4 sticky-top" style="top: 80px;">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Resumo do Conjunto</h5>
+  <div class="ax-span-4">
+    <div class="ax-card tw-mb-4 sticky-top" style="top: 80px;">
+      <div class="ax-card__header">
+        <h5 class="mb-0 tw-gap-2"><i class="bi bi-speedometer2"></i>Resumo do Conjunto</h5>
       </div>
-      <div class="p-4">
-        <div class="mb-4">
-          <div class="badge badge-soft-info w-100 py-2 mb-3" data-property-page-preview-target="count" style="font-size: 0.9rem;">0 imóveis encontrados</div>
+      <div class="ax-card__body tw-p-4">
+        <div class="tw-mb-4">
+          <div class="ax-badge ax-badge--blue tw-w-full tw-mb-3" data-property-page-preview-target="count" style="font-size: 0.9rem; padding-top:.5rem; padding-bottom:.5rem">0 imóveis encontrados</div>
           <div id="preview-results" data-property-page-preview-target="results">
-           <div class="text-center py-5 text-muted">
-              <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+           <div class="tw-text-center tw-text-ink-muted" style="padding-top:3rem; padding-bottom:3rem">
+              <div class="spinner-border spinner-border-sm tw-text-primary tw-mb-2" role="status"></div>
               <div>Analisando dados...</div>
            </div>
         </div>
 
         <div class="preview-footer-actions">
-          <div class="mb-4">
-            <div class="form-check form-switch custom-switch-lg">
-               <%= f.check_box :active, class: "form-check-input", id: "activeSwitch" %>
-               <%= f.label :active, "Página Ativa para Indexação", class: "form-check-label fw-bold", for: "activeSwitch" %>
-            </div>
+          <div class="tw-mb-4">
+            <%= ax_switch_field(form: f, method: :active, label: tag.span("Página Ativa para Indexação", class: "tw-font-bold"), id: "activeSwitch") %>
           </div>
 
-          <div class="d-grid gap-3">
-            <%= f.submit "Salvar Página SEO", class: "btn-primary btn-lg w-100" %>
-            <%= link_to "Cancelar", admin_landing_pages_path, class: "btn btn-light w-100 text-muted" %>
+          <div class="tw-gap-3" style="display:grid">
+            <%= f.submit "Salvar Página SEO", class: "ax-btn ax-btn--primary tw-w-full" %>
+            <%= link_to "Cancelar", admin_landing_pages_path, class: "ax-btn ax-btn--ghost tw-w-full tw-text-ink-muted" %>
           </div>
         </div>
       </div>

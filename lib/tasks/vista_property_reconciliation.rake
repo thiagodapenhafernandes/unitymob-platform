@@ -31,7 +31,7 @@ namespace :vista do
                   .pluck(Arel.sql("COALESCE(NULLIF(vista_codigo, ''), codigo)"))
               end
 
-    replace_photos = ActiveModel::Type::Boolean.new.cast(ENV.fetch("REPLACE_PHOTOS", "true"))
+    replace_photos = ActiveModel::Type::Boolean.new.cast(ENV.fetch("REPLACE_PHOTOS", "false"))
     replace_documents = ActiveModel::Type::Boolean.new.cast(ENV.fetch("REPLACE_DOCUMENTS", "true"))
     download_files = ActiveModel::Type::Boolean.new.cast(ENV.fetch("DOWNLOAD_FILES", "true"))
     progress_every = [ENV.fetch("PROGRESS_EVERY", "10").to_i, 1].max

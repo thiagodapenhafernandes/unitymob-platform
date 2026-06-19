@@ -2,199 +2,289 @@
 // Run that command whenever you add a new controller or create them with
 // ./bin/rails generate stimulus controllerName
 
-import { application } from "controllers/application"
+import { application } from "./application"
 
-import AdvancedFiltersController from "controllers/advanced_filters_controller"
+import AdvancedFiltersController from "./advanced_filters_controller"
 application.register("advanced-filters", AdvancedFiltersController)
 
-import AiPreviewController from "controllers/ai_preview_controller"
+import AiPreviewController from "./ai_preview_controller"
 application.register("ai-preview", AiPreviewController)
 
-import AttributeManagerController from "controllers/attribute_manager_controller"
+import AdminNavigationController from "./admin_navigation_controller"
+application.register("admin-navigation", AdminNavigationController)
+
+import AttributeManagerController from "./attribute_manager_controller"
 application.register("attribute-manager", AttributeManagerController)
 
-import AutocompleteController from "controllers/autocomplete_controller"
+import AutocompleteController from "./autocomplete_controller"
 application.register("autocomplete", AutocompleteController)
 
-import CardSwiperController from "controllers/card_swiper_controller"
-application.register("card-swiper", CardSwiperController)
+import AutomationBuilderController from "./automation_builder_controller"
+application.register("automation-builder", AutomationBuilderController)
 
-import BrokerShareController from "controllers/broker_share_controller"
+import AxDisclosureController from "./ax_disclosure_controller"
+application.register("ax-disclosure", AxDisclosureController)
+
+import AxDrawerController from "./ax_drawer_controller"
+application.register("ax-drawer", AxDrawerController)
+
+import AxDropdownController from "./ax_dropdown_controller"
+application.register("ax-dropdown", AxDropdownController)
+
+import AxAsideController from "./ax_aside_controller"
+application.register("ax-aside", AxAsideController)
+
+import AxAsyncDownloadController from "./ax_async_download_controller"
+application.register("ax-async-download", AxAsyncDownloadController)
+
+import AxCheckboxChipsController from "./ax_checkbox_chips_controller"
+application.register("ax-checkbox-chips", AxCheckboxChipsController)
+
+import AxTableColumnsController from "./ax_table_columns_controller"
+application.register("ax-table-columns", AxTableColumnsController)
+
+import AxConfirmSubmitController from "./ax_confirm_submit_controller"
+application.register("ax-confirm-submit", AxConfirmSubmitController)
+
+import AxFormHintsController from "./ax_form_hints_controller"
+application.register("ax-form-hints", AxFormHintsController)
+
+import AxModalController from "./ax_modal_controller"
+application.register("ax-modal", AxModalController)
+
+import AxQuickCreateController from "./ax_quick_create_controller"
+application.register("ax-quick-create", AxQuickCreateController)
+
+import AxTabsController from "./ax_tabs_controller"
+application.register("ax-tabs", AxTabsController)
+
+import AxTooltipController from "./ax_tooltip_controller"
+application.register("ax-tooltip", AxTooltipController)
+
+import BrokerShareController from "./broker_share_controller"
 application.register("broker-share", BrokerShareController)
 
-import BulkPublishController from "controllers/bulk_publish_controller"
+import BulkPublishController from "./bulk_publish_controller"
 application.register("bulk-publish", BulkPublishController)
 
-import CategoryFilterController from "controllers/category_filter_controller"
-application.register("category-filter", CategoryFilterController)
+import HabitationExportController from "./habitation_export_controller"
+application.register("habitation-export", HabitationExportController)
 
-import CaptacaoPhotosController from "controllers/captacao_photos_controller"
+import CaptacaoPhotosController from "./captacao_photos_controller"
 application.register("captacao-photos", CaptacaoPhotosController)
 
-import CepLookupController from "controllers/cep_lookup_controller"
+import CaptacoesDashboardController from "./captacoes_dashboard_controller"
+application.register("captacoes-dashboard", CaptacoesDashboardController)
+
+import CardSwiperController from "./card_swiper_controller"
+application.register("card-swiper", CardSwiperController)
+
+import CategoryFilterController from "./category_filter_controller"
+application.register("category-filter", CategoryFilterController)
+
+import CepLookupController from "./cep_lookup_controller"
 application.register("cep-lookup", CepLookupController)
 
-import CepSearchController from "controllers/cep_search_controller"
+import CepSearchController from "./cep_search_controller"
 application.register("cep-search", CepSearchController)
 
-import ClickableCardController from "controllers/clickable_card_controller"
+import ClickableCardController from "./clickable_card_controller"
 application.register("clickable-card", ClickableCardController)
 
-import ClipboardController from "controllers/clipboard_controller"
+import ClipboardController from "./clipboard_controller"
 application.register("clipboard", ClipboardController)
 
-import CodeSearchController from "controllers/code_search_controller"
+import CodeSearchController from "./code_search_controller"
 application.register("code-search", CodeSearchController)
 
-import CollapseController from "controllers/collapse_controller"
+import CollapseController from "./collapse_controller"
 application.register("collapse", CollapseController)
 
-import CurrencyMaskController from "controllers/currency_mask_controller"
-application.register("currency-mask", CurrencyMaskController)
-
-import DistributionRuleController from "controllers/distribution_rule_controller"
-application.register("distribution-rule", DistributionRuleController)
-
-import DropdownController from "controllers/dropdown_controller"
-application.register("dropdown", DropdownController)
-
-import DwvSyncStatusController from "controllers/dwv_sync_status_controller"
-application.register("dwv-sync-status", DwvSyncStatusController)
-
-import DynamicListController from "controllers/dynamic_list_controller"
-application.register("dynamic-list", DynamicListController)
-
-import FavoritesController from "controllers/favorites_controller"
-application.register("favorites", FavoritesController)
-
-import FancyboxGalleryController from "controllers/fancybox_gallery_controller"
-application.register("fancybox-gallery", FancyboxGalleryController)
-
-import FiltersController from "controllers/filters_controller"
-application.register("filters", FiltersController)
-
-import HabitationBrokersController from "controllers/habitation_brokers_controller"
-application.register("habitation-brokers", HabitationBrokersController)
-
-import HabitationFormController from "controllers/habitation_form_controller"
-application.register("habitation-form", HabitationFormController)
-
-import HabitationDuplicateCheckController from "controllers/habitation_duplicate_check_controller"
-application.register("habitation-duplicate-check", HabitationDuplicateCheckController)
-
-import HelloController from "controllers/hello_controller"
-application.register("hello", HelloController)
-
-import HeroSliderController from "controllers/hero_slider_controller"
-application.register("hero-slider", HeroSliderController)
-
-import ImagePreviewController from "controllers/image_preview_controller"
-application.register("image-preview", ImagePreviewController)
-
-import ImageMigrationStatusController from "controllers/image_migration_status_controller"
-application.register("image-migration-status", ImageMigrationStatusController)
-
-import LeadCaptureController from "controllers/lead_capture_controller"
-application.register("lead-capture", LeadCaptureController)
-
-import LgpdConsentController from "controllers/lgpd_consent_controller"
-application.register("lgpd-consent", LgpdConsentController)
-
-import LeadKanbanController from "controllers/lead_kanban_controller"
-application.register("lead-kanban", LeadKanbanController)
-
-import LocationFilterController from "controllers/location_filter_controller"
-application.register("location-filter", LocationFilterController)
-
-import MaskController from "controllers/mask_controller"
-application.register("mask", MaskController)
-
-import MarketingTrackerController from "controllers/marketing_tracker_controller"
-application.register("marketing-tracker", MarketingTrackerController)
-
-import MetaRulesController from "controllers/meta_rules_controller"
-application.register("meta-rules", MetaRulesController)
-
-import NavbarController from "controllers/navbar_controller"
-application.register("navbar", NavbarController)
-
-import NestedFormController from "controllers/nested_form_controller"
-application.register("nested-form", NestedFormController)
-
-import PhotoCarouselController from "controllers/photo_carousel_controller"
-application.register("photo-carousel", PhotoCarouselController)
-
-import PhotoGalleryController from "controllers/photo_gallery_controller"
-application.register("photo-gallery", PhotoGalleryController)
-
-import PhotoUploadController from "controllers/photo_upload_controller"
-application.register("photo-upload", PhotoUploadController)
-
-import PropertyCarouselController from "controllers/property_carousel_controller"
-application.register("property-carousel", PropertyCarouselController)
-
-import PropertyPagePreviewController from "controllers/property_page_preview_controller"
-application.register("property-page-preview", PropertyPagePreviewController)
-
-import WatermarkPreviewController from "controllers/watermark_preview_controller"
-application.register("watermark-preview", WatermarkPreviewController)
-
-import ProprietorTableController from "controllers/proprietor_table_controller"
-application.register("proprietor-table", ProprietorTableController)
-
-import RentCalculatorController from "controllers/rent_calculator_controller"
-application.register("rent-calculator", RentCalculatorController)
-
-import ScrollVisibilityController from "controllers/scroll_visibility_controller"
-application.register("scroll-visibility", ScrollVisibilityController)
-
-import SearchFormController from "controllers/search_form_controller"
-application.register("search-form", SearchFormController)
-
-import SearchTabsController from "controllers/search_tabs_controller"
-application.register("search-tabs", SearchTabsController)
-
-import ShareController from "controllers/share_controller"
-application.register("share", ShareController)
-
-import SidebarController from "controllers/sidebar_controller"
-application.register("sidebar", SidebarController)
-
-import SaveStateController from "controllers/save_state_controller"
-application.register("save-state", SaveStateController)
-
-import SortableController from "controllers/sortable_controller"
-application.register("sortable", SortableController)
-
-import StoreMapPickerController from "controllers/store_map_picker_controller"
-application.register("store-map-picker", StoreMapPickerController)
-
-import FieldGeolocationController from "controllers/field/geolocation_controller"
-application.register("field-geolocation", FieldGeolocationController)
-
-import FieldCheckinController from "controllers/field/checkin_controller"
-application.register("field-checkin", FieldCheckinController)
-
-import FieldPingSenderController from "controllers/field/ping_sender_controller"
-application.register("field-ping-sender", FieldPingSenderController)
-
-import VistaSyncStatusController from "controllers/vista_sync_status_controller"
-application.register("vista-sync-status", VistaSyncStatusController)
-
-import OptionPickerController from "controllers/option_picker_controller"
-application.register("option-picker", OptionPickerController)
-
-import CollapsibleCountController from "controllers/collapsible_count_controller"
+import CollapsibleCountController from "./collapsible_count_controller"
 application.register("collapsible-count", CollapsibleCountController)
 
-import TagInputController from "controllers/tag_input_controller"
+import CurrencyMaskController from "./currency_mask_controller"
+application.register("currency-mask", CurrencyMaskController)
+
+import DashboardChartsController from "./dashboard_charts_controller"
+application.register("dashboard-charts", DashboardChartsController)
+
+import DismissibleController from "./dismissible_controller"
+application.register("dismissible", DismissibleController)
+
+import DistributionRuleController from "./distribution_rule_controller"
+application.register("distribution-rule", DistributionRuleController)
+
+import DropdownController from "./dropdown_controller"
+application.register("dropdown", DropdownController)
+
+import DwvSyncStatusController from "./dwv_sync_status_controller"
+application.register("dwv-sync-status", DwvSyncStatusController)
+
+import DynamicListController from "./dynamic_list_controller"
+application.register("dynamic-list", DynamicListController)
+
+import FancyboxGalleryController from "./fancybox_gallery_controller"
+application.register("fancybox-gallery", FancyboxGalleryController)
+
+import FavoritesController from "./favorites_controller"
+application.register("favorites", FavoritesController)
+
+import Field__CheckinController from "./field/checkin_controller"
+application.register("field--checkin", Field__CheckinController)
+
+import Field__GeolocationController from "./field/geolocation_controller"
+application.register("field--geolocation", Field__GeolocationController)
+
+import Field__PingSenderController from "./field/ping_sender_controller"
+application.register("field--ping-sender", Field__PingSenderController)
+
+import FiltersController from "./filters_controller"
+application.register("filters", FiltersController)
+
+import HabitationBrokersController from "./habitation_brokers_controller"
+application.register("habitation-brokers", HabitationBrokersController)
+
+import HabitationDuplicateCheckController from "./habitation_duplicate_check_controller"
+application.register("habitation-duplicate-check", HabitationDuplicateCheckController)
+
+import HabitationFormController from "./habitation_form_controller"
+application.register("habitation-form", HabitationFormController)
+
+import HabitationsInspectorController from "./habitations_inspector_controller"
+application.register("habitations-inspector", HabitationsInspectorController)
+
+import HelloController from "./hello_controller"
+application.register("hello", HelloController)
+
+import HeroSliderController from "./hero_slider_controller"
+application.register("hero-slider", HeroSliderController)
+
+import HomeSectionsSortController from "./home_sections_sort_controller"
+application.register("home-sections-sort", HomeSectionsSortController)
+
+import HomeSettingsPreviewController from "./home_settings_preview_controller"
+application.register("home-settings-preview", HomeSettingsPreviewController)
+
+import HierarchySortableController from "./hierarchy_sortable_controller"
+application.register("hierarchy-sortable", HierarchySortableController)
+
+import ImageMigrationStatusController from "./image_migration_status_controller"
+application.register("image-migration-status", ImageMigrationStatusController)
+
+import ImagePreviewController from "./image_preview_controller"
+application.register("image-preview", ImagePreviewController)
+
+import InternalDocumentUploadController from "./internal_document_upload_controller"
+application.register("internal-document-upload", InternalDocumentUploadController)
+
+import LeadCaptureController from "./lead_capture_controller"
+application.register("lead-capture", LeadCaptureController)
+
+import LeadKanbanController from "./lead_kanban_controller"
+application.register("lead-kanban", LeadKanbanController)
+
+import LeadStatusBoardController from "./lead_status_board_controller"
+application.register("lead-status-board", LeadStatusBoardController)
+
+import LayoutThemePreviewController from "./layout_theme_preview_controller"
+application.register("layout-theme-preview", LayoutThemePreviewController)
+
+import LgpdConsentController from "./lgpd_consent_controller"
+application.register("lgpd-consent", LgpdConsentController)
+
+import LocationFilterController from "./location_filter_controller"
+application.register("location-filter", LocationFilterController)
+
+import MarketingTrackerController from "./marketing_tracker_controller"
+application.register("marketing-tracker", MarketingTrackerController)
+
+import MaskController from "./mask_controller"
+application.register("mask", MaskController)
+
+import MetaRulesController from "./meta_rules_controller"
+application.register("meta-rules", MetaRulesController)
+
+import MediaModalController from "./media_modal_controller"
+application.register("media-modal", MediaModalController)
+
+import NavbarController from "./navbar_controller"
+application.register("navbar", NavbarController)
+
+import NestedFormController from "./nested_form_controller"
+application.register("nested-form", NestedFormController)
+
+import OptionPickerController from "./option_picker_controller"
+application.register("option-picker", OptionPickerController)
+
+import PhotoCarouselController from "./photo_carousel_controller"
+application.register("photo-carousel", PhotoCarouselController)
+
+import PhotoGalleryController from "./photo_gallery_controller"
+application.register("photo-gallery", PhotoGalleryController)
+
+import PhotoUploadController from "./photo_upload_controller"
+application.register("photo-upload", PhotoUploadController)
+
+import PropertyCarouselController from "./property_carousel_controller"
+application.register("property-carousel", PropertyCarouselController)
+
+import PropertyPagePreviewController from "./property_page_preview_controller"
+application.register("property-page-preview", PropertyPagePreviewController)
+
+import ProprietorTableController from "./proprietor_table_controller"
+application.register("proprietor-table", ProprietorTableController)
+
+import RentCalculatorController from "./rent_calculator_controller"
+application.register("rent-calculator", RentCalculatorController)
+
+import SaveStateController from "./save_state_controller"
+application.register("save-state", SaveStateController)
+
+import ScrollVisibilityController from "./scroll_visibility_controller"
+application.register("scroll-visibility", ScrollVisibilityController)
+
+import SearchFormController from "./search_form_controller"
+application.register("search-form", SearchFormController)
+
+import SearchTabsController from "./search_tabs_controller"
+application.register("search-tabs", SearchTabsController)
+
+import SeoEditorController from "./seo_editor_controller"
+application.register("seo-editor", SeoEditorController)
+
+import ShareController from "./share_controller"
+application.register("share", ShareController)
+
+import SidebarController from "./sidebar_controller"
+application.register("sidebar", SidebarController)
+
+import SortableController from "./sortable_controller"
+application.register("sortable", SortableController)
+
+import StoreMapPickerController from "./store_map_picker_controller"
+application.register("store-map-picker", StoreMapPickerController)
+
+import TagInputController from "./tag_input_controller"
 application.register("tag-input", TagInputController)
 
-import TeamRulesController from "controllers/team_rules_controller"
+import TeamRulesController from "./team_rules_controller"
 application.register("team-rules", TeamRulesController)
 
-import TomSelectController from "controllers/tom_select_controller"
+import TomSelectController from "./tom_select_controller"
 application.register("tom-select", TomSelectController)
 
-import TransactionToggleController from "controllers/transaction_toggle_controller"
+import TransactionToggleController from "./transaction_toggle_controller"
 application.register("transaction-toggle", TransactionToggleController)
+
+import VistaSyncStatusController from "./vista_sync_status_controller"
+application.register("vista-sync-status", VistaSyncStatusController)
+
+import WaThreadController from "./wa_thread_controller"
+application.register("wa-thread", WaThreadController)
+
+import WhatsappIntegrationController from "./whatsapp_integration_controller"
+application.register("whatsapp-integration", WhatsappIntegrationController)
+
+import WatermarkPreviewController from "./watermark_preview_controller"
+application.register("watermark-preview", WatermarkPreviewController)

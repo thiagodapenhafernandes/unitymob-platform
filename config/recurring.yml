@@ -40,3 +40,7 @@ production:
     class: CheckIns::StaleActiveCheckinJob
     queue: checkin
     schedule: every 5 minutes
+  automation_tick:
+    class: Automation::TickJob
+    queue: default
+    schedule: every 15 minutes

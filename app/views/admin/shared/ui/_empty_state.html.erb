@@ -1,0 +1,10 @@
+<div class="ax-empty-state">
+  <div class="ax-empty-state__icon"><%= ax_icon(icon) %></div>
+  <h2 class="ax-empty-state__title"><%= title %></h2>
+  <% if description.present? %>
+    <p class="ax-empty-state__description"><%= description %></p>
+  <% end %>
+  <% if action.present? %>
+    <div class="ax-empty-state__action"><%= action %></div>
+  <% end %>
+</div>

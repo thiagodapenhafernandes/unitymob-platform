@@ -1,91 +1,58 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<%# Solicitações manuais de check-in — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
+<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
   <div>
-    <h1 class="h3 mb-1 text-gray-800">
-      <i class="bi bi-hand-index-thumb-fill text-warning me-2"></i>Solicitações manuais de check-in
-    </h1>
-    <p class="text-muted small mb-0">Pedidos de corretores cuja GPS falhou — revise com cuidado.</p>
+    <h1 class="ax-page-title">Solicitações manuais de check-in</h1>
+    <p class="ax-page-subtitle">Pedidos de corretores cuja GPS falhou — revise com cuidado.</p>
   </div>
-  <%= link_to admin_field_check_ins_path, class: "btn btn-sm btn-outline-secondary" do %>
-    <i class="bi bi-arrow-left me-1"></i>Voltar para check-ins
+  <%= link_to admin_field_check_ins_path, class: "ax-btn ax-btn--sm" do %>
+    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar para check-ins</span>
   <% end %>
 </div>
 
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-white">
-    <h5 class="fw-bold mb-0">
-      <i class="bi bi-hourglass-split text-warning me-2"></i>Pendentes
-      <span class="badge bg-warning text-dark ms-2"><%= @pending.size %></span>
-    </h5>
-  </div>
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light small text-uppercase">
-        <tr>
-          <th>Corretor</th>
-          <th>Loja</th>
-          <th>Justificativa</th>
-          <th>Criado</th>
-          <th class="text-end">Ações</th>
-        </tr>
-      </thead>
+<div class="ax-card tw-mb-4">
+  <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-hourglass-split"></i> Pendentes</span><span class="ax-badge ax-badge--amber"><%= @pending.size %></span></div>
+  <div class="ax-table-wrap" style="border:0;border-radius:0">
+    <table class="ax-table">
+      <thead><tr><th>Corretor</th><th style="width:180px">Loja</th><th>Justificativa</th><th style="width:120px">Criado</th><th class="ax-num" style="width:190px">Ações</th></tr></thead>
       <tbody>
         <% @pending.each do |req| %>
           <tr>
-            <td class="fw-bold"><i class="bi bi-person-circle text-primary me-1"></i><%= req.admin_user.name %></td>
-            <td><i class="bi bi-shop text-success me-1"></i><%= req.store.name %></td>
-            <td class="text-muted small" style="max-width: 400px;"><%= truncate(req.justification, length: 140) %></td>
-            <td class="small text-muted"><%= time_ago_in_words(req.created_at) %> atrás</td>
-            <td class="text-end">
-              <%= button_to approve_admin_field_manual_checkin_request_path(req), method: :post,
-                    class: "btn btn-sm btn-success me-1", data: { turbo_confirm: "Aprovar esta solicitação?" } do %>
-                <i class="bi bi-check-circle-fill me-1"></i>Aprovar
-              <% end %>
-              <%= button_to reject_admin_field_manual_checkin_request_path(req), method: :post,
-                    class: "btn btn-sm btn-outline-danger", data: { turbo_confirm: "Rejeitar?" } do %>
-                <i class="bi bi-x-circle-fill me-1"></i>Rejeitar
-              <% end %>
+            <td class="ax-strong"><i class="bi bi-person-circle tw-text-ink-faint"></i> <%= req.admin_user.name %></td>
+            <td><i class="bi bi-shop tw-text-ink-faint"></i> <%= req.store.name %></td>
+            <td class="tw-text-ink-muted"><%= truncate(req.justification, length: 140) %></td>
+            <td class="tw-text-2xs tw-text-ink-muted"><%= time_ago_in_words(req.created_at) %> atrás</td>
+            <td class="ax-num">
+              <span class="tw-inline-flex tw-gap-1">
+                <%= button_to approve_admin_field_manual_checkin_request_path(req), method: :post, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--primary", data: { turbo_confirm: "Aprovar esta solicitação?" } do %><i class="bi bi-check-circle ax-ico"></i>Aprovar<% end %>
+                <%= button_to reject_admin_field_manual_checkin_request_path(req), method: :post, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Rejeitar?" } do %><i class="bi bi-x-circle ax-ico"></i>Rejeitar<% end %>
+              </span>
             </td>
           </tr>
         <% end %>
-        <% if @pending.empty? %>
-          <tr><td colspan="5" class="text-center text-muted py-4"><i class="bi bi-inbox me-1"></i>Nenhum pedido pendente</td></tr>
-        <% end %>
+        <% if @pending.empty? %><tr><td colspan="5"><div class="ax-empty">Nenhum pedido pendente.</div></td></tr><% end %>
       </tbody>
     </table>
   </div>
 </div>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-header bg-white">
-    <h5 class="fw-bold mb-0">
-      <i class="bi bi-archive text-muted me-2"></i>Últimas revisadas
-    </h5>
-  </div>
-  <div class="table-responsive">
-    <table class="table table-sm mb-0">
-      <thead class="table-light small text-uppercase">
-        <tr>
-          <th>Corretor</th>
-          <th>Loja</th>
-          <th>Status</th>
-          <th>Revisada</th>
-        </tr>
-      </thead>
+<div class="ax-card">
+  <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-archive"></i> Últimas revisadas</span></div>
+  <div class="ax-table-wrap" style="border:0;border-radius:0">
+    <table class="ax-table">
+      <thead><tr><th>Corretor</th><th style="width:180px">Loja</th><th style="width:130px">Status</th><th style="width:140px">Revisada</th></tr></thead>
       <tbody>
         <% @resolved.each do |req| %>
           <tr>
-            <td><%= req.admin_user.name %></td>
+            <td class="ax-strong"><%= req.admin_user.name %></td>
             <td><%= req.store.name %></td>
             <td>
-              <% if req.approved? %>
-                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Aprovada</span>
-              <% else %>
-                <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rejeitada</span>
-              <% end %>
+              <% if req.approved? %><span class="ax-badge ax-badge--green ax-badge--dot">Aprovada</span>
+              <% else %><span class="ax-badge ax-badge--red ax-badge--dot">Rejeitada</span><% end %>
             </td>
-            <td class="small text-muted"><%= l(req.reviewed_at, format: :short) if req.reviewed_at %></td>
+            <td class="tw-text-2xs tw-text-ink-muted"><%= l(req.reviewed_at, format: :short) if req.reviewed_at %></td>
           </tr>
         <% end %>
+        <% if @resolved.empty? %><tr><td colspan="4"><div class="ax-empty">Nada revisado ainda.</div></td></tr><% end %>
       </tbody>
     </table>
   </div>

@@ -26,9 +26,9 @@ class EmpreendimentosController < ApplicationController
                              .count
 
     if @strategic_landing.present?
-      @page_title = "#{@strategic_landing[:title]} | Salute Imóveis"
+      @page_title = "#{@strategic_landing[:title]} | #{public_site_name}"
       @page_description = @strategic_landing[:description]
-      @page_keywords = [@strategic_landing[:label], "empreendimentos", "Balneário Camboriú", "Salute Imóveis"].join(", ")
+      @page_keywords = [@strategic_landing[:label], "empreendimentos", "Balneário Camboriú", public_site_name].join(", ")
     end
   end
 
@@ -79,5 +79,11 @@ class EmpreendimentosController < ApplicationController
   def parse_location(value)
     parts = value.to_s.split(" - ", 2).map(&:strip)
     parts.size == 2 ? parts : [nil, value]
+  end
+
+  def public_site_name
+    @layout_setting&.site_name.presence || LayoutSetting.instance.site_name.presence || "Unitymob"
+  rescue StandardError
+    "Unitymob"
   end
 end

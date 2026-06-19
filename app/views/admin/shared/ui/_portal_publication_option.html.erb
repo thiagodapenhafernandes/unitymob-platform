@@ -1,0 +1,22 @@
+<%
+  option_classes = ["portal-option-group", class_name].compact.join(" ")
+  current_value = form.object.public_send(method) if form.object.respond_to?(method)
+  chip_classes = ["ax-toggle-chip", "ax-toggle-chip--full", ("is-checked" if current_value == true || current_value.to_s == "1")].compact.join(" ")
+%>
+
+<div class="<%= option_classes %>">
+  <label class="<%= chip_classes %>">
+    <%= form.check_box method,
+                       class: "ax-toggle-chip__input",
+                       onchange: "this.closest('.ax-toggle-chip').classList.toggle('is-checked', this.checked)" %>
+    <span class="ax-toggle-chip__box" aria-hidden="true">
+      <i class="bi bi-check-lg"></i>
+    </span>
+    <span class="ax-toggle-chip__label"><%= label %></span>
+  </label>
+  <% if body.present? %>
+    <div class="portal-sub-options">
+      <%= body %>
+    </div>
+  <% end %>
+</div>

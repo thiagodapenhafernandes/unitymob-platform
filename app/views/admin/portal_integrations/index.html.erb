@@ -4,67 +4,70 @@
 <% current_status = current_readiness[:status] %>
 <% current_checklist = current_readiness[:checklist] || [] %>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
   <div>
-    <h1 class="h3 mb-1 text-gray-800">Integrações de Portais</h1>
-    <p class="text-muted small mb-0">
+    <h1 class="ax-page-title">Integrações de Portais</h1>
+    <p class="ax-page-subtitle">
       Envie automaticamente seus imóveis para os principais portais imobiliários do Brasil.
     </p>
   </div>
 </div>
 
-<div class="row g-3">
+<%= ax_field_grid(columns: 12, gap: :compact) do %>
   <!-- Sidebar de portais com status visual -->
-  <div class="col-lg-3">
-    <div class="card border-0 shadow-sm">
-      <div class="list-group list-group-flush">
+  <div class="ax-span-3">
+    <div class="ax-card">
+      <ul style="list-style:none;margin:0;padding:0">
         <% PortalIntegration::PORTALS.each do |portal_key| %>
           <% integration = @integrations[portal_key] %>
           <% portal_status = @readiness.dig(portal_key, :status) || :disabled %>
           <% portal_color = integration.readiness_color(portal_status) %>
           <% portal_label = integration.readiness_label(portal_status) %>
           <% portal_eligible = @previews.dig(portal_key, :eligible_count).to_i %>
+          <li class="tw-flex tw-items-center tw-justify-between tw-gap-2 tw-py-2" style="border-bottom:1px solid #e7ebf2">
           <a href="<%= admin_portal_integrations_path(portal: portal_key) %>"
-             class="list-group-item list-group-item-action <%= 'active' if @active_portal == portal_key %> py-3">
-            <div class="d-flex justify-content-between align-items-start">
+             class="<%= 'active' if @active_portal == portal_key %> py-3">
+            <div class="tw-flex tw-justify-between tw-items-start tw-gap-2">
               <div>
-                <div class="fw-semibold"><%= integration.title %></div>
-                <small class="<%= @active_portal == portal_key ? 'text-white-50' : 'text-muted' %>">
+                <div class="tw-font-semibold"><%= integration.title %></div>
+                <small class="<%= @active_portal == portal_key ? 'text-white-50' : 'tw-text-ink-muted' %>">
                   <%= portal_eligible %> imóveis elegíveis
                 </small>
               </div>
-              <span class="badge bg-<%= portal_color %>-subtle text-<%= portal_color %> border ms-2">
+              <span class="ax-badge ax-badge--<%= portal_color == 'success' ? 'green' : portal_color == 'danger' ? 'red' : portal_color == 'warning' ? 'amber' : portal_color == 'primary' ? 'blue' : 'gray' %>">
                 <%= portal_label %>
               </span>
             </div>
           </a>
+          </li>
         <% end %>
-      </div>
+      </ul>
     </div>
   </div>
 
   <!-- Painel principal -->
-  <div class="col-lg-9">
+  <div class="ax-span-9">
     <!-- Banner de status agregado -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start">
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <div class="tw-flex tw-justify-between tw-items-start tw-gap-2">
           <div>
-            <h4 class="fw-bold mb-1"><%= current_integration.title %></h4>
-            <p class="text-muted small mb-0">
+            <h4 class="tw-font-bold tw-mb-1"><%= current_integration.title %></h4>
+            <p class="tw-text-ink-muted tw-text-sm tw-mb-0">
               <%= current_integration.summary || "Configure o envio automático dos imóveis para este portal." %>
             </p>
           </div>
-          <span class="badge bg-<%= current_integration.readiness_color(current_status) %>-subtle text-<%= current_integration.readiness_color(current_status) %> border fs-6 px-3 py-2">
-            <i class="bi bi-circle-fill me-1" style="font-size: 0.6rem;"></i>
+          <% banner_color = current_integration.readiness_color(current_status) %>
+          <span class="ax-badge ax-badge--<%= banner_color == 'success' ? 'green' : banner_color == 'danger' ? 'red' : banner_color == 'warning' ? 'amber' : banner_color == 'primary' ? 'blue' : 'gray' %> tw-gap-1">
+            <i class="bi bi-circle-fill" style="font-size: 0.6rem;"></i>
             <%= current_integration.readiness_label(current_status) %>
           </span>
         </div>
 
         <% if current_integration.docs_url.present? %>
-          <div class="mt-3">
-            <a href="<%= current_integration.docs_url %>" target="_blank" rel="noopener" class="text-decoration-none small">
-              <i class="bi bi-box-arrow-up-right me-1"></i>
+          <div class="tw-mt-3">
+            <a href="<%= current_integration.docs_url %>" target="_blank" rel="noopener" class="text-decoration-none tw-text-sm tw-flex tw-items-center tw-gap-1">
+              <i class="bi bi-box-arrow-up-right"></i>
               Documentação oficial do <%= current_integration.title %>
             </a>
           </div>
@@ -74,20 +77,20 @@
 
     <!-- Como ativar (passo a passo expansível) -->
     <% if current_integration.setup_steps.any? %>
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white">
-          <button class="btn btn-link p-0 text-decoration-none fw-semibold w-100 text-start d-flex justify-content-between align-items-center"
-                  type="button" data-bs-toggle="collapse" data-bs-target="#setupSteps"
+      <div class="ax-card tw-mb-3" data-controller="ax-disclosure">
+        <div class="ax-card__header">
+          <button class="ax-btn ax-btn--ghost p-0 text-decoration-none tw-font-semibold tw-w-full text-start tw-flex tw-justify-between tw-items-center"
+                  type="button" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger"
                   aria-expanded="false" aria-controls="setupSteps">
-            <span><i class="bi bi-lightbulb me-2"></i>Como ativar este portal</span>
+            <span class="tw-flex tw-items-center tw-gap-2"><i class="bi bi-lightbulb"></i>Como ativar este portal</span>
             <i class="bi bi-chevron-down"></i>
           </button>
         </div>
-        <div class="collapse" id="setupSteps">
-          <div class="card-body">
-            <ol class="mb-0">
+        <div id="setupSteps" data-ax-disclosure-target="content" hidden>
+          <div class="ax-card__body">
+            <ol class="tw-mb-0">
               <% current_integration.setup_steps.each do |step| %>
-                <li class="mb-2"><%= step %></li>
+                <li class="tw-mb-2"><%= step %></li>
               <% end %>
             </ol>
           </div>
@@ -96,25 +99,25 @@
     <% end %>
 
     <!-- Checklist de pré-requisitos -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white">
-        <h6 class="fw-semibold mb-0"><i class="bi bi-check2-square me-2"></i>Checklist de configuração</h6>
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__header">
+        <h6 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-check2-square"></i>Checklist de configuração</h6>
       </div>
-      <div class="card-body">
-        <ul class="list-unstyled mb-0">
+      <div class="ax-card__body">
+        <ul class="list-unstyled tw-mb-0">
           <% current_checklist.each do |item| %>
-            <li class="mb-2 d-flex align-items-start">
+            <li class="tw-mb-2 tw-flex tw-items-start tw-gap-2">
               <% if item[:ok] %>
-                <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                <i class="bi bi-check-circle-fill tw-mt-1" style="color: #16a34a;"></i>
               <% else %>
-                <i class="bi bi-exclamation-circle-fill text-warning me-2 mt-1"></i>
+                <i class="bi bi-exclamation-circle-fill tw-mt-1" style="color: #d97706;"></i>
               <% end %>
-              <div class="flex-grow-1">
-                <div class="<%= 'text-decoration-line-through text-muted' if item[:ok] %>">
+              <div class="tw-flex-1">
+                <div class="<%= 'text-decoration-line-through tw-text-ink-muted' if item[:ok] %>">
                   <%= item[:label] %>
                 </div>
                 <% if item[:hint] %>
-                  <small class="text-muted d-block"><%= item[:hint] %></small>
+                  <small class="tw-text-ink-muted tw-block"><%= item[:hint] %></small>
                 <% end %>
               </div>
             </li>
@@ -124,97 +127,93 @@
     </div>
 
     <!-- Configuração -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white">
-        <h6 class="fw-semibold mb-0"><i class="bi bi-gear me-2"></i>Configuração</h6>
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__header">
+        <h6 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-gear"></i>Configuração</h6>
       </div>
-      <div class="card-body">
+      <div class="ax-card__body">
         <%= form_with model: current_integration,
                       url: admin_portal_integration_path(@active_portal),
                       method: :patch,
                       local: true do |f| %>
-          <div class="form-check form-switch form-switch-lg mb-4">
-            <%= f.check_box :enabled, class: "form-check-input" %>
-            <%= f.label :enabled, "Integração ativa", class: "form-check-label fw-semibold" %>
-            <small class="d-block text-muted">Quando ativa, o feed começa a ser disponibilizado para o portal.</small>
+          <div class="tw-mb-4">
+            <%= ax_switch_field(form: f, method: :enabled, label: "Integração ativa") %>
+            <small class="tw-block tw-text-ink-muted">Quando ativa, o feed começa a ser disponibilizado para o portal.</small>
           </div>
 
-          <div class="row g-3">
+          <%= ax_field_grid(columns: 12, gap: :compact) do %>
             <% if current_integration.requires_account_id? %>
-              <div class="col-md-6">
-                <%= f.label :account_id, "Account ID", class: "form-label fw-semibold" %>
-                <span class="badge bg-danger-subtle text-danger ms-1">obrigatório</span>
-                <%= f.text_field :account_id, class: "form-control", placeholder: "Ex: 12345" %>
-                <small class="text-muted">ID da sua conta no portal. Solicite ao gerente comercial.</small>
+              <div class="ax-span-6">
+                <%= f.label :account_id, "Account ID", class: "ax-label" %>
+                <span class="ax-badge ax-badge--red tw-ml-1">obrigatório</span>
+                <%= f.text_field :account_id, class: "ax-control", placeholder: "Ex: 12345" %>
+                <small class="tw-text-ink-muted">ID da sua conta no portal. Solicite ao gerente comercial.</small>
               </div>
-              <div class="col-md-6">
-                <%= f.label :publisher_id, "Publisher ID", class: "form-label fw-semibold" %>
-                <span class="badge bg-danger-subtle text-danger ms-1">obrigatório</span>
-                <%= f.text_field :publisher_id, class: "form-control", placeholder: "Ex: 67890" %>
-                <small class="text-muted">ID do publicador (geralmente igual ao Account ID).</small>
+              <div class="ax-span-6">
+                <%= f.label :publisher_id, "Publisher ID", class: "ax-label" %>
+                <span class="ax-badge ax-badge--red tw-ml-1">obrigatório</span>
+                <%= f.text_field :publisher_id, class: "ax-control", placeholder: "Ex: 67890" %>
+                <small class="tw-text-ink-muted">ID do publicador (geralmente igual ao Account ID).</small>
               </div>
             <% else %>
-              <div class="col-md-6">
-                <%= f.label :account_id, "Account ID", class: "form-label fw-semibold" %>
-                <small class="text-muted ms-1">(opcional)</small>
-                <%= f.text_field :account_id, class: "form-control" %>
+              <div class="ax-span-6">
+                <%= f.label :account_id, "Account ID", class: "ax-label" %>
+                <small class="tw-text-ink-muted tw-ml-1">(opcional)</small>
+                <%= f.text_field :account_id, class: "ax-control" %>
               </div>
-              <div class="col-md-6">
-                <%= f.label :publisher_id, "Publisher ID", class: "form-label fw-semibold" %>
-                <small class="text-muted ms-1">(opcional)</small>
-                <%= f.text_field :publisher_id, class: "form-control" %>
+              <div class="ax-span-6">
+                <%= f.label :publisher_id, "Publisher ID", class: "ax-label" %>
+                <small class="tw-text-ink-muted tw-ml-1">(opcional)</small>
+                <%= f.text_field :publisher_id, class: "ax-control" %>
               </div>
             <% end %>
 
-            <div class="col-md-6">
-              <%= f.label :feed_token, "Token do Feed", class: "form-label fw-semibold" %>
-              <%= f.password_field :feed_token, class: "form-control",
+            <div class="ax-span-6">
+              <%= f.label :feed_token, "Token do Feed", class: "ax-label" %>
+              <%= f.password_field :feed_token, class: "ax-control",
                                    autocomplete: "off",
                                    placeholder: (current_integration.feed_token.present? ? "Já configurado. Preencha para substituir." : "Gerado automaticamente ao salvar") %>
-              <small class="text-muted">Senha que protege a URL do feed. Deixe em branco para gerar automaticamente.</small>
+              <small class="tw-text-ink-muted">Senha que protege a URL do feed. Deixe em branco para gerar automaticamente.</small>
             </div>
-            <div class="col-md-6">
-              <%= f.label :webhook_secret, "Webhook Secret", class: "form-label fw-semibold" %>
-              <small class="text-muted ms-1">(opcional)</small>
-              <%= f.password_field :webhook_secret, class: "form-control",
+            <div class="ax-span-6">
+              <%= f.label :webhook_secret, "Webhook Secret", class: "ax-label" %>
+              <small class="tw-text-ink-muted tw-ml-1">(opcional)</small>
+              <%= f.password_field :webhook_secret, class: "ax-control",
                                    autocomplete: "off",
                                    placeholder: (current_integration.webhook_secret.present? ? "Já configurado. Preencha para substituir." : "Defina se for usar webhook do portal") %>
-              <small class="text-muted">Usado para validar eventos enviados pelo portal de volta para nós.</small>
+              <small class="tw-text-ink-muted">Usado para validar eventos enviados pelo portal de volta para nós.</small>
             </div>
 
-            <div class="col-md-6">
-              <%= f.label :allowed_business_types, "Tipos de negócio", class: "form-label fw-semibold" %>
+            <div class="ax-span-6">
+              <%= f.label :allowed_business_types, "Tipos de negócio", class: "ax-label" %>
               <%= f.select :allowed_business_types,
                            options_for_select(@business_type_options, current_integration.allowed_business_types),
                            {},
                            multiple: true,
-                           class: "form-select",
+                           class: "ax-control",
                            data: { controller: "tom-select", tom_select_tags_value: true } %>
-              <small class="text-muted">Quais tipos de transação serão enviados.</small>
+              <small class="tw-text-ink-muted">Quais tipos de transação serão enviados.</small>
             </div>
 
-            <div class="col-md-6">
-              <%= f.label :allowed_statuses, "Status permitidos", class: "form-label fw-semibold" %>
+            <div class="ax-span-6">
+              <%= f.label :allowed_statuses, "Status permitidos", class: "ax-label" %>
               <%= f.select :allowed_statuses,
                            options_for_select(@status_options, current_integration.allowed_statuses),
                            {},
                            multiple: true,
-                           class: "form-select",
+                           class: "ax-control",
                            data: { controller: "tom-select", tom_select_tags_value: true } %>
-              <small class="text-muted">Apenas imóveis nestes status entram no feed.</small>
+              <small class="tw-text-ink-muted">Apenas imóveis nestes status entram no feed.</small>
             </div>
 
-            <div class="col-12">
-              <div class="form-check">
-                <%= f.check_box :require_exibir_no_site, class: "form-check-input" %>
-                <%= f.label :require_exibir_no_site, "Enviar apenas imóveis exibidos no site", class: "form-check-label" %>
-                <small class="d-block text-muted">Recomendado. Evita publicar imóveis ocultos do site público.</small>
-              </div>
+            <div class="ax-span-12">
+              <%= ax_switch_field(form: f, method: :require_exibir_no_site, label: "Enviar apenas imóveis exibidos no site") %>
+              <small class="tw-block tw-text-ink-muted">Recomendado. Evita publicar imóveis ocultos do site público.</small>
             </div>
-          </div>
+          <% end %>
 
-          <div class="d-flex justify-content-end gap-2 mt-4">
-            <%= f.submit "Salvar Configuração", class: "btn btn-primary" %>
+          <div class="tw-flex tw-justify-end tw-gap-2 tw-mt-4">
+            <%= f.submit "Salvar Configuração", class: "ax-btn ax-btn--primary" %>
           </div>
         <% end %>
       </div>
@@ -222,99 +221,100 @@
 
     <!-- URL do Feed em destaque (ação principal) -->
     <% feed_url = integrations_portals_feed_token_url(portal: @active_portal, token: current_integration.feed_token, format: current_integration.feed_format) %>
-    <div class="card border-primary shadow-sm mb-3" data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
-      <div class="card-body">
-        <div class="d-flex align-items-center mb-2">
-          <i class="bi bi-link-45deg text-primary me-2 fs-4"></i>
-          <h5 class="fw-bold mb-0">URL do Feed para o portal</h5>
+    <div class="ax-card tw-mb-3" style="border-color: var(--ax-accent, #2563eb);" data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
+      <div class="ax-card__body">
+        <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
+          <i class="bi bi-link-45deg fs-4" style="color: #2563eb;"></i>
+          <h5 class="tw-font-bold tw-mb-0">URL do Feed para o portal</h5>
         </div>
-        <p class="small text-muted mb-3">
+        <p class="tw-text-sm tw-text-ink-muted tw-mb-3">
           <strong>Esta é a URL que você deve enviar ao <%= current_integration.title %>.</strong>
           O portal vai ler seus imóveis automaticamente a partir dela.
         </p>
-        <div class="input-group input-group-lg">
-          <input type="text" class="form-control font-monospace small" readonly
+        <%= ax_input_group(action: capture { %>
+          <button type="button" class="ax-btn ax-btn--primary tw-gap-1"
+                  data-action="clipboard#copy"
+                  data-clipboard-target="button">
+            <i class="bi bi-clipboard"></i>
+            <span data-clipboard-target="content">Copiar</span>
+          </button>
+        <% }) do %>
+          <input type="text" class="ax-control font-monospace tw-text-sm" readonly
                  value="<%= feed_url %>"
                  data-clipboard-target="source"
                  onclick="this.select()">
-          <button type="button" class="btn btn-primary"
-                  data-action="clipboard#copy"
-                  data-clipboard-target="button">
-            <i class="bi bi-clipboard me-1"></i>
-            <span data-clipboard-target="content">Copiar</span>
-          </button>
-        </div>
-        <div class="d-flex flex-wrap gap-2 mt-3">
+        <% end %>
+        <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-3">
           <%= link_to preview_feed_admin_portal_integration_path(@active_portal),
                       target: "_blank", rel: "noopener",
-                      class: "btn btn-sm btn-outline-primary" do %>
-            <i class="bi bi-eye me-1"></i> Visualizar amostra (3 imóveis)
+                      class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-1" do %>
+            <i class="bi bi-eye"></i> Visualizar amostra (3 imóveis)
           <% end %>
           <%= button_to test_feed_admin_portal_integration_path(@active_portal),
-                        method: :post, class: "btn btn-sm btn-outline-secondary" do %>
-            <i class="bi bi-arrow-clockwise me-1"></i> Testar feed completo
+                        method: :post, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-1" do %>
+            <i class="bi bi-arrow-clockwise"></i> Testar feed completo
           <% end %>
         </div>
       </div>
     </div>
 
     <!-- Webhook (secundário) -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white">
-        <button class="btn btn-link p-0 text-decoration-none fw-semibold w-100 text-start d-flex justify-content-between align-items-center"
-                type="button" data-bs-toggle="collapse" data-bs-target="#webhookSection"
+    <div class="ax-card tw-mb-3" data-controller="ax-disclosure">
+      <div class="ax-card__header">
+        <button class="ax-btn ax-btn--ghost p-0 text-decoration-none tw-font-semibold tw-w-full text-start tw-flex tw-justify-between tw-items-center"
+                type="button" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger"
                 aria-expanded="false" aria-controls="webhookSection">
-          <span><i class="bi bi-arrow-down-circle me-2"></i>Webhook (opcional — eventos do portal)</span>
+          <span class="tw-flex tw-items-center tw-gap-2"><i class="bi bi-arrow-down-circle"></i>Webhook (opcional — eventos do portal)</span>
           <i class="bi bi-chevron-down"></i>
         </button>
       </div>
-      <div class="collapse" id="webhookSection">
-        <div class="card-body">
-          <p class="small text-muted mb-2">
+      <div id="webhookSection" data-ax-disclosure-target="content" hidden>
+        <div class="ax-card__body">
+          <p class="tw-text-sm tw-text-ink-muted tw-mb-2">
             Alguns portais conseguem nos enviar de volta avisos de aprovação, rejeição ou alterações.
             Configure essa URL no painel do portal se ele suportar webhooks.
           </p>
-          <div class="border rounded p-2 bg-light small text-break" style="word-break: break-all;">
+          <div class="border rounded p-2 bg-light tw-text-sm text-break" style="word-break: break-all;">
             <%= webhooks_portal_events_url(portal: @active_portal) %>
           </div>
-          <small class="text-muted d-block mt-2">Use o Webhook Secret configurado acima para assinatura HMAC-SHA256.</small>
+          <small class="tw-text-ink-muted tw-block tw-mt-2">Use o Webhook Secret configurado acima para assinatura HMAC-SHA256.</small>
         </div>
       </div>
     </div>
 
     <!-- Resumo do Feed -->
-    <div class="card border-0 shadow-sm mb-3">
-      <div class="card-header bg-white">
-        <h6 class="fw-semibold mb-0"><i class="bi bi-bar-chart me-2"></i>Resumo do Feed</h6>
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__header">
+        <h6 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-bar-chart"></i>Resumo do Feed</h6>
       </div>
-      <div class="card-body">
-        <div class="row g-3 text-center mb-3">
-          <div class="col-md-4">
+      <div class="ax-card__body">
+        <%= ax_field_grid(columns: 12, gap: :compact, class_name: "text-center tw-mb-3") do %>
+          <div class="ax-span-4">
             <div class="border rounded p-3">
-              <div class="display-6 fw-bold text-success"><%= current_preview[:eligible_count].to_i %></div>
-              <small class="text-muted text-uppercase">Imóveis elegíveis</small>
+              <div class="display-6 tw-font-bold" style="color: #16a34a;"><%= current_preview[:eligible_count].to_i %></div>
+              <small class="tw-text-ink-muted text-uppercase">Imóveis elegíveis</small>
             </div>
           </div>
-          <div class="col-md-4">
+          <div class="ax-span-4">
             <div class="border rounded p-3">
-              <div class="display-6 fw-bold text-warning"><%= current_preview[:rejected_count].to_i %></div>
-              <small class="text-muted text-uppercase">Rejeitados</small>
+              <div class="display-6 tw-font-bold" style="color: #d97706;"><%= current_preview[:rejected_count].to_i %></div>
+              <small class="tw-text-ink-muted text-uppercase">Rejeitados</small>
             </div>
           </div>
-          <div class="col-md-4">
+          <div class="ax-span-4">
             <div class="border rounded p-3">
-              <div class="fw-bold mt-3">
+              <div class="tw-font-bold tw-mt-3">
                 <%= current_integration.last_feed_at.present? ? l(current_integration.last_feed_at, format: :short) : "—" %>
               </div>
-              <small class="text-muted text-uppercase">Último acesso</small>
+              <small class="tw-text-ink-muted text-uppercase">Último acesso</small>
             </div>
           </div>
-        </div>
+        <% end %>
 
         <% if current_preview[:top_reasons].present? %>
           <div class="border-top pt-3">
-            <small class="text-muted d-block mb-2 fw-semibold">Principais motivos de rejeição</small>
-            <ul class="small mb-0">
+            <small class="tw-text-ink-muted tw-block tw-mb-2 tw-font-semibold">Principais motivos de rejeição</small>
+            <ul class="tw-text-sm tw-mb-0">
               <% current_preview[:top_reasons].each do |reason, count| %>
                 <li><%= reason.humanize %>: <strong><%= count %></strong> imóveis</li>
               <% end %>
@@ -325,12 +325,12 @@
     </div>
 
     <!-- Tabela de retornos -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white">
-        <h6 class="fw-semibold mb-0"><i class="bi bi-clock-history me-2"></i>Últimos retornos do portal</h6>
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <h6 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-clock-history"></i>Últimos retornos do portal</h6>
       </div>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
+      <div class="ax-table-wrap">
+        <table class="ax-table">
           <thead>
             <tr>
               <th>Código</th>
@@ -353,7 +353,7 @@
               <% end %>
             <% else %>
               <tr>
-                <td colspan="5" class="text-center text-muted py-4">
+                <td colspan="5" class="text-center tw-text-ink-muted py-4">
                   Sem eventos recebidos ainda. Eles aparecem aqui após o portal começar a sincronizar.
                 </td>
               </tr>
@@ -363,4 +363,4 @@
       </div>
     </div>
   </div>
-</div>
+<% end %>

@@ -1,4 +1,4 @@
-<div class="container-fluid py-3 seo-dashboard-page">
+<div class="seo-dashboard-page" style="padding-top:1rem; padding-bottom:1rem">
   <% summary = @dashboard[:summary] %>
   <% score_buckets = @dashboard[:score_buckets] %>
   <% current_base_url = request.base_url %>
@@ -6,96 +6,96 @@
   <% percentage = ->(value, total) { total.to_i.positive? ? ((value.to_f / total.to_i) * 100).round : 0 } %>
   <% max_daily_visits = @dashboard[:daily_trend].map { |day| day[:visits] }.max.to_i %>
 
-  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
     <div>
-      <h1 class="h3 mb-1 text-gray-800"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Dashboard SEO</h1>
-      <p class="text-muted small mb-0">Visão de tráfego, oportunidades de campanha e gargalos de SEO.</p>
+      <h1 class="ax-page-title"><i class="bi bi-graph-up-arrow tw-text-primary"></i> Dashboard SEO</h1>
+      <p class="ax-page-subtitle">Visão de tráfego, oportunidades de campanha e gargalos de SEO.</p>
     </div>
-    <div class="d-flex gap-2 flex-wrap justify-content-end">
-      <div class="btn-group btn-group-sm" role="group" aria-label="Período do dashboard">
+    <div class="tw-flex tw-gap-2 tw-flex-wrap tw-justify-end">
+      <div class="tw-flex tw-gap-1" role="group" aria-label="Período do dashboard">
         <% [["7", "7d"], ["30", "30d"], ["90", "90d"], ["all", "Tudo"]].each do |value, label| %>
-          <%= link_to label, admin_seo_dashboard_path(period: value), class: "btn #{value == @dashboard[:period] ? "btn-primary" : "btn-outline-primary"}" %>
+          <%= link_to label, admin_seo_dashboard_path(period: value), class: "ax-btn ax-btn--sm #{value == @dashboard[:period] ? "ax-btn--primary" : "ax-btn--ghost"}" %>
         <% end %>
       </div>
-      <%= link_to admin_marketing_opportunities_path, class: "btn btn-sm btn-outline-warning" do %>
-        <i class="bi bi-lightbulb me-1"></i>Oportunidades
+      <%= link_to admin_marketing_opportunities_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
+        <i class="bi bi-lightbulb"></i>Oportunidades
       <% end %>
-      <%= link_to admin_marketing_alerts_path, class: "btn btn-sm btn-outline-danger" do %>
-        <i class="bi bi-exclamation-triangle me-1"></i>Alertas
+      <%= link_to admin_marketing_alerts_path, class: "ax-btn ax-btn--danger ax-btn--sm tw-gap-2" do %>
+        <i class="bi bi-exclamation-triangle"></i>Alertas
       <% end %>
-      <%= link_to admin_marketing_campaigns_path, class: "btn btn-sm btn-outline-success" do %>
-        <i class="bi bi-bullseye me-1"></i>Campanhas
+      <%= link_to admin_marketing_campaigns_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
+        <i class="bi bi-bullseye"></i>Campanhas
       <% end %>
-      <%= link_to admin_seo_settings_path, class: "btn btn-sm btn-outline-primary" do %>
-        <i class="bi bi-list-check me-1"></i>Páginas SEO
+      <%= link_to admin_seo_settings_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
+        <i class="bi bi-list-check"></i>Páginas SEO
       <% end %>
-      <%= link_to admin_landing_pages_path, class: "btn btn-sm btn-outline-secondary" do %>
-        <i class="bi bi-file-earmark-post me-1"></i>Landing Pages
+      <%= link_to admin_landing_pages_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
+        <i class="bi bi-file-earmark-post"></i>Landing Pages
       <% end %>
     </div>
   </div>
 
-  <div class="alert alert-info border-0 shadow-sm small mb-3">
-    <i class="bi bi-info-circle me-1"></i>
+  <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
     Visitantes únicos são calculados por hash anônimo diário de IP, sessão e navegador. Nenhum IP puro é armazenado.
-  </div>
+  <% end %>
 
-  <div class="row g-3 mb-3">
-    <div class="col-6 col-xl-3">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small">Acessos no período</div>
-          <div class="display-6 fw-bold"><%= number_with_delimiter(summary[:period_visits]) %></div>
-          <div class="small text-muted"><%= period_label %> · <%= number_with_delimiter(summary[:total_accesses]) %> no total</div>
+  <%= ax_field_grid do %>
+    <div class="ax-span-3">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <div class="tw-text-ink-muted tw-text-sm">Acessos no período</div>
+          <div class="tw-font-bold" style="font-size:2.5rem"><%= number_with_delimiter(summary[:period_visits]) %></div>
+          <div class="tw-text-sm tw-text-ink-muted"><%= period_label %> · <%= number_with_delimiter(summary[:total_accesses]) %> no total</div>
         </div>
       </div>
     </div>
-    <div class="col-6 col-xl-3">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small">Visitantes únicos</div>
-          <div class="display-6 fw-bold"><%= number_with_delimiter(summary[:period_unique_visitors]) %></div>
-          <div class="small text-muted"><%= period_label %> · <%= number_with_delimiter(summary[:unique_visitors]) %> no total</div>
+    <div class="ax-span-3">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <div class="tw-text-ink-muted tw-text-sm">Visitantes únicos</div>
+          <div class="tw-font-bold" style="font-size:2.5rem"><%= number_with_delimiter(summary[:period_unique_visitors]) %></div>
+          <div class="tw-text-sm tw-text-ink-muted"><%= period_label %> · <%= number_with_delimiter(summary[:unique_visitors]) %> no total</div>
         </div>
       </div>
     </div>
-    <div class="col-6 col-xl-3">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small">SEO fraco</div>
-          <div class="display-6 fw-bold text-danger"><%= number_with_delimiter(summary[:weak_pages]) %></div>
-          <div class="small text-muted">score abaixo de 60</div>
+    <div class="ax-span-3">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <div class="tw-text-ink-muted tw-text-sm">SEO fraco</div>
+          <div class="tw-font-bold" style="font-size:2.5rem; color:#dc2626"><%= number_with_delimiter(summary[:weak_pages]) %></div>
+          <div class="tw-text-sm tw-text-ink-muted">score abaixo de 60</div>
         </div>
       </div>
     </div>
-    <div class="col-6 col-xl-3">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small">Conversões</div>
-          <div class="display-6 fw-bold text-success"><%= number_with_delimiter(summary[:period_conversions]) %></div>
-          <div class="small text-muted"><%= summary[:active_campaigns] %> campanhas ativas</div>
+    <div class="ax-span-3">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <div class="tw-text-ink-muted tw-text-sm">Conversões</div>
+          <div class="tw-font-bold" style="font-size:2.5rem; color:#16a34a"><%= number_with_delimiter(summary[:period_conversions]) %></div>
+          <div class="tw-text-sm tw-text-ink-muted"><%= summary[:active_campaigns] %> campanhas ativas</div>
         </div>
       </div>
     </div>
-  </div>
+  <% end %>
+  <div class="tw-mb-3"></div>
 
-  <div class="row g-3 mb-3">
-    <div class="col-xl-8">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h5 fw-bold mb-0"><i class="bi bi-trophy text-warning me-1"></i>Top 10 páginas mais acessadas</h2>
-            <span class="badge bg-primary">ordenado por únicos</span>
+  <div class="ax-field-grid tw-mb-3">
+    <div class="ax-span-8">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
+            <h2 class="h5 tw-font-bold tw-gap-2" style="margin-bottom:0"><i class="bi bi-trophy" style="color:#d97706"></i>Top 10 páginas mais acessadas</h2>
+            <span class="ax-badge ax-badge--blue">ordenado por únicos</span>
           </div>
-          <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-              <thead class="table-light">
+          <div class="ax-table-wrap">
+            <table class="ax-table">
+              <thead>
                 <tr>
                   <th>Página</th>
-                  <th class="text-center">Únicos</th>
-                  <th class="text-center">Acessos período</th>
-                  <th class="text-center">Acessos total</th>
-                  <th class="text-center">Score</th>
+                  <th class="tw-text-center">Únicos</th>
+                  <th class="tw-text-center">Acessos período</th>
+                  <th class="tw-text-center">Acessos total</th>
+                  <th class="tw-text-center">Score</th>
                   <th>Último acesso</th>
                 </tr>
               </thead>
@@ -103,20 +103,20 @@
                 <% @dashboard[:top_pages].each do |seo| %>
                   <tr>
                     <td>
-                      <div class="fw-semibold"><%= truncate(seo.display_name, length: 58) %></div>
-                      <%= link_to seo.sanitized_canonical_path, seo.public_url(current_base_url), target: "_blank", rel: "noopener", class: "small text-muted" %>
+                      <div class="tw-font-semibold"><%= truncate(seo.display_name, length: 58) %></div>
+                      <%= link_to seo.sanitized_canonical_path, seo.public_url(current_base_url), target: "_blank", rel: "noopener", class: "tw-text-sm tw-text-ink-muted" %>
                     </td>
-                    <td class="text-center fw-bold"><%= number_with_delimiter(seo.read_attribute(:unique_visitors_count).to_i) %></td>
-                    <td class="text-center fw-bold"><%= number_with_delimiter(seo.read_attribute(:period_visits_count).to_i) %></td>
-                    <td class="text-center fw-bold"><%= number_with_delimiter(seo.access_count) %></td>
-                    <td class="text-center">
-                      <span class="badge <%= seo.seo_score.to_i >= 80 ? "bg-success" : seo.seo_score.to_i >= 60 ? "bg-warning text-dark" : "bg-danger" %>"><%= seo.seo_score %></span>
+                    <td class="tw-text-center tw-font-bold"><%= number_with_delimiter(seo.read_attribute(:unique_visitors_count).to_i) %></td>
+                    <td class="tw-text-center tw-font-bold"><%= number_with_delimiter(seo.read_attribute(:period_visits_count).to_i) %></td>
+                    <td class="tw-text-center tw-font-bold"><%= number_with_delimiter(seo.access_count) %></td>
+                    <td class="tw-text-center">
+                      <span class="ax-badge <%= seo.seo_score.to_i >= 80 ? "ax-badge--green" : seo.seo_score.to_i >= 60 ? "ax-badge--amber" : "ax-badge--red" %>"><%= seo.seo_score %></span>
                     </td>
-                    <td class="small text-muted"><%= seo.last_accessed_at ? l(seo.last_accessed_at, format: :short) : "-" %></td>
+                    <td class="tw-text-sm tw-text-ink-muted"><%= seo.last_accessed_at ? l(seo.last_accessed_at, format: :short) : "-" %></td>
                   </tr>
                 <% end %>
                 <% if @dashboard[:top_pages].blank? %>
-                  <tr><td colspan="6" class="text-center text-muted py-4">Ainda não há páginas com acessos rastreados.</td></tr>
+                  <tr><td colspan="6" class="tw-text-center tw-text-ink-muted tw-py-4">Ainda não há páginas com acessos rastreados.</td></tr>
                 <% end %>
               </tbody>
             </table>
@@ -125,27 +125,27 @@
       </div>
     </div>
 
-    <div class="col-xl-4">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <h2 class="h5 fw-bold mb-3"><i class="bi bi-speedometer2 text-primary me-1"></i>Saúde do inventário</h2>
-          <div class="mb-3">
-            <div class="d-flex justify-content-between small mb-1"><span>Bom</span><strong><%= score_buckets[:strong] %></strong></div>
-            <div class="progress" style="height: 8px;"><div class="progress-bar bg-success" style="width: <%= percentage.call(score_buckets[:strong], summary[:total_pages]) %>%"></div></div>
+    <div class="ax-span-4">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <h2 class="h5 tw-font-bold tw-mb-3 tw-gap-2"><i class="bi bi-speedometer2 tw-text-primary"></i>Saúde do inventário</h2>
+          <div class="tw-mb-3">
+            <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1"><span>Bom</span><strong><%= score_buckets[:strong] %></strong></div>
+            <%= ax_progress(value: percentage.call(score_buckets[:strong], summary[:total_pages]), tone: :green) %>
           </div>
-          <div class="mb-3">
-            <div class="d-flex justify-content-between small mb-1"><span>Atenção</span><strong><%= score_buckets[:attention] %></strong></div>
-            <div class="progress" style="height: 8px;"><div class="progress-bar bg-warning" style="width: <%= percentage.call(score_buckets[:attention], summary[:total_pages]) %>%"></div></div>
+          <div class="tw-mb-3">
+            <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1"><span>Atenção</span><strong><%= score_buckets[:attention] %></strong></div>
+            <%= ax_progress(value: percentage.call(score_buckets[:attention], summary[:total_pages]), tone: :amber) %>
           </div>
-          <div class="mb-4">
-            <div class="d-flex justify-content-between small mb-1"><span>Fraco</span><strong><%= score_buckets[:weak] %></strong></div>
-            <div class="progress" style="height: 8px;"><div class="progress-bar bg-danger" style="width: <%= percentage.call(score_buckets[:weak], summary[:total_pages]) %>%"></div></div>
+          <div class="tw-mb-4">
+            <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1"><span>Fraco</span><strong><%= score_buckets[:weak] %></strong></div>
+            <%= ax_progress(value: percentage.call(score_buckets[:weak], summary[:total_pages]), tone: :red) %>
           </div>
 
-          <h3 class="h6 fw-bold text-muted mb-2">Tipos de página</h3>
-          <div class="d-flex flex-wrap gap-2">
+          <h3 class="h6 tw-font-bold tw-text-ink-muted tw-mb-2">Tipos de página</h3>
+          <div class="tw-flex tw-flex-wrap tw-gap-2">
             <% @dashboard[:page_type_counts].each do |type, count| %>
-              <span class="badge bg-light text-dark border"><%= type.presence || "sem tipo" %>: <%= count %></span>
+              <span class="ax-badge ax-badge--gray"><%= type.presence || "sem tipo" %>: <%= count %></span>
             <% end %>
           </div>
         </div>
@@ -153,23 +153,23 @@
     </div>
   </div>
 
-  <div class="row g-3 mb-3">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <h2 class="h5 fw-bold mb-0"><i class="bi bi-activity text-primary me-1"></i>Tendência diária</h2>
-            <span class="badge bg-light text-dark border"><%= @dashboard[:period] == "all" ? "últimos 30 dias" : period_label %></span>
+  <div class="ax-field-grid tw-mb-3">
+    <div class="ax-span-12">
+      <div class="ax-card">
+        <div class="ax-card__body">
+          <div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
+            <h2 class="h5 tw-font-bold tw-gap-2" style="margin-bottom:0"><i class="bi bi-activity tw-text-primary"></i>Tendência diária</h2>
+            <span class="ax-badge ax-badge--gray"><%= @dashboard[:period] == "all" ? "últimos 30 dias" : period_label %></span>
           </div>
-          <div class="row g-2">
+          <div class="ax-field-grid">
             <% @dashboard[:daily_trend].last(14).each do |day| %>
-              <div class="col-6 col-md-3 col-xl-1">
-                <div class="small text-muted mb-1"><%= l(day[:date], format: "%d/%m") %></div>
-                <div class="progress bg-light" style="height: 72px; align-items: end;">
-                  <div class="progress-bar bg-primary" role="progressbar" style="height: <%= percentage.call(day[:visits], [max_daily_visits, 1].max) %>%; width: 100%;" aria-label="Acessos"></div>
+              <div class="ax-span-1">
+                <div class="tw-text-sm tw-text-ink-muted tw-mb-1"><%= l(day[:date], format: "%d/%m") %></div>
+                <div style="height: 72px; display:flex; align-items: end; background:#f8f9fa; border-radius:.25rem; overflow:hidden">
+                  <div role="progressbar" style="height: <%= percentage.call(day[:visits], [max_daily_visits, 1].max) %>%; width: 100%; background:var(--ax-primary, #2563eb)" aria-label="Acessos"></div>
                 </div>
-                <div class="small fw-semibold mt-1"><%= number_with_delimiter(day[:visits]) %></div>
-                <div class="small text-muted"><%= number_with_delimiter(day[:unique_visitors]) %> únicos</div>
+                <div class="tw-text-sm tw-font-semibold tw-mt-1"><%= number_with_delimiter(day[:visits]) %></div>
+                <div class="tw-text-sm tw-text-ink-muted"><%= number_with_delimiter(day[:unique_visitors]) %> únicos</div>
               </div>
             <% end %>
           </div>
@@ -178,83 +178,84 @@
     </div>
   </div>
 
-  <div class="row g-3">
-    <div class="col-xl-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <h2 class="h5 fw-bold mb-3"><i class="bi bi-bullseye text-success me-1"></i>Potenciais para campanhas</h2>
-          <div class="list-group list-group-flush">
+  <div class="ax-field-grid">
+    <div class="ax-span-6">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <h2 class="h5 tw-font-bold tw-mb-3 tw-gap-2"><i class="bi bi-bullseye" style="color:#16a34a"></i>Potenciais para campanhas</h2>
+          <ul style="list-style:none;margin:0;padding:0">
             <% @dashboard[:campaign_opportunities].each do |item| %>
               <% seo = item.seo %>
-              <div class="list-group-item px-0">
-                <div class="d-flex justify-content-between gap-3">
+              <li class="tw-py-2" style="border-bottom:1px solid #e7ebf2">
+                <div class="tw-flex tw-justify-between tw-gap-3">
                   <div>
-                    <div class="fw-semibold"><%= truncate(seo.display_name, length: 60) %></div>
-                    <%= link_to seo.sanitized_canonical_path, seo.public_url(current_base_url), target: "_blank", rel: "noopener", class: "small text-muted" %>
-                    <div class="mt-2 d-flex flex-wrap gap-1">
+                    <div class="tw-font-semibold"><%= truncate(seo.display_name, length: 60) %></div>
+                    <%= link_to seo.sanitized_canonical_path, seo.public_url(current_base_url), target: "_blank", rel: "noopener", class: "tw-text-sm tw-text-ink-muted" %>
+                    <div class="tw-mt-2 tw-flex tw-flex-wrap tw-gap-1">
                       <% item.reasons.each do |reason| %>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle"><%= reason %></span>
+                        <span class="ax-badge ax-badge--green"><%= reason %></span>
                       <% end %>
                     </div>
                   </div>
-                  <div class="text-end flex-shrink-0">
-                    <span class="badge bg-success">potencial <%= item.score %></span>
-                    <div class="small text-muted mt-1"><%= item.action_label %></div>
-                    <%= link_to new_admin_marketing_campaign_path(seo_setting_id: seo.id), class: "btn btn-sm btn-outline-success mt-2" do %>
+                  <div class="tw-text-right" style="flex-shrink:0">
+                    <span class="ax-badge ax-badge--green">potencial <%= item.score %></span>
+                    <div class="tw-text-sm tw-text-ink-muted tw-mt-1"><%= item.action_label %></div>
+                    <%= link_to new_admin_marketing_campaign_path(seo_setting_id: seo.id), class: "ax-btn ax-btn--ghost ax-btn--sm tw-mt-2" do %>
                       Criar campanha
                     <% end %>
                   </div>
                 </div>
-              </div>
+              </li>
             <% end %>
             <% if @dashboard[:campaign_opportunities].blank? %>
-              <div class="text-muted text-center py-4">Sem oportunidades suficientes por enquanto.</div>
+              <div class="tw-text-ink-muted tw-text-center tw-py-4">Sem oportunidades suficientes por enquanto.</div>
             <% end %>
-          </div>
+          </ul>
         </div>
       </div>
     </div>
 
-    <div class="col-xl-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h5 fw-bold mb-0"><i class="bi bi-megaphone text-primary me-1"></i>Campanhas em andamento</h2>
-            <%= link_to "Ver todas", admin_marketing_campaigns_path, class: "btn btn-sm btn-outline-primary" %>
+    <div class="ax-span-6">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
+            <h2 class="h5 tw-font-bold tw-gap-2" style="margin-bottom:0"><i class="bi bi-megaphone tw-text-primary"></i>Campanhas em andamento</h2>
+            <%= link_to "Ver todas", admin_marketing_campaigns_path, class: "ax-btn ax-btn--ghost ax-btn--sm" %>
           </div>
-          <div class="list-group list-group-flush">
+          <ul style="list-style:none;margin:0;padding:0">
             <% @dashboard[:active_campaigns].each do |campaign| %>
-              <div class="list-group-item px-0">
-                <div class="d-flex justify-content-between gap-3">
+              <li class="tw-py-2" style="border-bottom:1px solid #e7ebf2">
+                <div class="tw-flex tw-justify-between tw-gap-3">
                   <div>
-                    <div class="fw-semibold"><%= campaign.name %></div>
-                    <div class="small text-muted"><%= campaign.channel_label %> · prioridade <%= campaign.priority %></div>
+                    <div class="tw-font-semibold"><%= campaign.name %></div>
+                    <div class="tw-text-sm tw-text-ink-muted"><%= campaign.channel_label %> · prioridade <%= campaign.priority %></div>
                     <% if campaign.target_url.present? %>
-                      <%= link_to campaign.target_url, campaign.target_url, target: "_blank", rel: "noopener", class: "small text-muted" %>
+                      <%= link_to campaign.target_url, campaign.target_url, target: "_blank", rel: "noopener", class: "tw-text-sm tw-text-ink-muted" %>
                     <% end %>
                   </div>
-                  <div class="text-end">
-                    <span class="badge bg-<%= campaign.status_badge_class %>"><%= campaign.status_label %></span>
-                    <div class="small text-muted mt-1"><%= campaign.seo_conversion_events.count %> conversões</div>
+                  <div class="tw-text-right">
+                    <% campaign_tone = { "success" => "green", "primary" => "blue", "info" => "blue", "warning" => "amber", "secondary" => "gray" }[campaign.status_badge_class] || "gray" %>
+                    <span class="ax-badge ax-badge--<%= campaign_tone %>"><%= campaign.status_label %></span>
+                    <div class="tw-text-sm tw-text-ink-muted tw-mt-1"><%= campaign.seo_conversion_events.count %> conversões</div>
                   </div>
                 </div>
-              </div>
+              </li>
             <% end %>
             <% if @dashboard[:active_campaigns].blank? %>
-              <div class="text-muted text-center py-4">Nenhuma campanha planejada ou ativa.</div>
+              <div class="tw-text-ink-muted tw-text-center tw-py-4">Nenhuma campanha planejada ou ativa.</div>
             <% end %>
-          </div>
+          </ul>
         </div>
       </div>
     </div>
 
-    <div class="col-xl-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <h2 class="h5 fw-bold mb-3"><i class="bi bi-lightning-charge text-warning me-1"></i>Conversões recentes</h2>
-          <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-              <thead class="table-light">
+    <div class="ax-span-6">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <h2 class="h5 tw-font-bold tw-mb-3 tw-gap-2"><i class="bi bi-lightning-charge" style="color:#d97706"></i>Conversões recentes</h2>
+          <div class="ax-table-wrap">
+            <table class="ax-table">
+              <thead>
                 <tr>
                   <th>Evento</th>
                   <th>Página</th>
@@ -266,16 +267,16 @@
                 <% @dashboard[:recent_conversions].each do |event| %>
                   <tr>
                     <td>
-                      <div class="fw-semibold"><%= event.event_label %></div>
-                      <div class="small text-muted"><%= event.habitation&.codigo.presence && "Imóvel #{event.habitation.codigo}" %></div>
+                      <div class="tw-font-semibold"><%= event.event_label %></div>
+                      <div class="tw-text-sm tw-text-ink-muted"><%= event.habitation&.codigo.presence && "Imóvel #{event.habitation.codigo}" %></div>
                     </td>
-                    <td class="small text-muted"><%= truncate(event.seo_setting&.display_name || event.source_path, length: 36) %></td>
-                    <td class="small text-muted"><%= event.marketing_campaign&.name || "-" %></td>
-                    <td class="small text-muted"><%= l(event.occurred_at, format: :short) %></td>
+                    <td class="tw-text-sm tw-text-ink-muted"><%= truncate(event.seo_setting&.display_name || event.source_path, length: 36) %></td>
+                    <td class="tw-text-sm tw-text-ink-muted"><%= event.marketing_campaign&.name || "-" %></td>
+                    <td class="tw-text-sm tw-text-ink-muted"><%= l(event.occurred_at, format: :short) %></td>
                   </tr>
                 <% end %>
                 <% if @dashboard[:recent_conversions].blank? %>
-                  <tr><td colspan="4" class="text-center text-muted py-4">Nenhuma conversão registrada ainda.</td></tr>
+                  <tr><td colspan="4" class="tw-text-center tw-text-ink-muted tw-py-4">Nenhuma conversão registrada ainda.</td></tr>
                 <% end %>
               </tbody>
             </table>
@@ -284,17 +285,17 @@
       </div>
     </div>
 
-    <div class="col-xl-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <h2 class="h5 fw-bold mb-3"><i class="bi bi-tools text-danger me-1"></i>Correções com impacto</h2>
-          <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
-              <thead class="table-light">
+    <div class="ax-span-6">
+      <div class="ax-card tw-h-full">
+        <div class="ax-card__body">
+          <h2 class="h5 tw-font-bold tw-mb-3 tw-gap-2"><i class="bi bi-tools" style="color:#dc2626"></i>Correções com impacto</h2>
+          <div class="ax-table-wrap">
+            <table class="ax-table">
+              <thead>
                 <tr>
                   <th>Página</th>
-                  <th class="text-center">Acessos</th>
-                  <th class="text-center">Score</th>
+                  <th class="tw-text-center">Acessos</th>
+                  <th class="tw-text-center">Score</th>
                   <th></th>
                 </tr>
               </thead>
@@ -302,20 +303,20 @@
                 <% @dashboard[:seo_issues].each do |seo| %>
                   <tr>
                     <td>
-                      <div class="fw-semibold"><%= truncate(seo.display_name, length: 48) %></div>
-                      <div class="small text-muted"><%= seo.meta_description.present? ? "Descrição ok" : "Sem meta description" %></div>
+                      <div class="tw-font-semibold"><%= truncate(seo.display_name, length: 48) %></div>
+                      <div class="tw-text-sm tw-text-ink-muted"><%= seo.meta_description.present? ? "Descrição ok" : "Sem meta description" %></div>
                     </td>
-                    <td class="text-center"><%= number_with_delimiter(seo.access_count) %></td>
-                    <td class="text-center"><span class="badge bg-danger"><%= seo.seo_score %></span></td>
-                    <td class="text-end">
-                      <%= link_to edit_admin_seo_setting_path(seo), class: "btn btn-sm btn-outline-primary" do %>
+                    <td class="tw-text-center"><%= number_with_delimiter(seo.access_count) %></td>
+                    <td class="tw-text-center"><span class="ax-badge ax-badge--red"><%= seo.seo_score %></span></td>
+                    <td class="tw-text-right">
+                      <%= link_to edit_admin_seo_setting_path(seo), class: "ax-btn ax-btn--ghost ax-btn--sm" do %>
                         Editar
                       <% end %>
                     </td>
                   </tr>
                 <% end %>
                 <% if @dashboard[:seo_issues].blank? %>
-                  <tr><td colspan="4" class="text-center text-muted py-4">Nenhum gargalo relevante agora.</td></tr>
+                  <tr><td colspan="4" class="tw-text-center tw-text-ink-muted tw-py-4">Nenhum gargalo relevante agora.</td></tr>
                 <% end %>
               </tbody>
             </table>

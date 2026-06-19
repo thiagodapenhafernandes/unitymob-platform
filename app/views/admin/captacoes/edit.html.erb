@@ -14,29 +14,29 @@
   total_steps = @captacao.skip_visitas? ? Captacao::STEPS.size - 1 : Captacao::STEPS.size
   shown_idx   = @captacao.skip_visitas? && current_idx >= Captacao::STEPS.index("visitas") ? current_idx : current_idx
   invalid_fields = @invalid_fields || {}
-  field_state = ->(field, base = "form-control") { [base, ("is-invalid" if invalid_fields[field.to_sym])].compact.join(" ") }
+  field_state = ->(field, base = "ax-control") { [base, ("is-invalid" if invalid_fields[field.to_sym])].compact.join(" ") }
   field_invalid = ->(field) { invalid_fields[field.to_sym] }
 %>
 
 <!-- Top bar com progress -->
 <div class="wizard-top-bar">
   <div class="wizard-shell">
-    <div class="d-flex align-items-center gap-2 mb-2">
-      <%= link_to admin_captacoes_path, class: "btn btn-sm btn-link text-muted p-0 text-decoration-none" do %>
+    <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
+      <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost ax-btn--sm text-decoration-none", style: "padding:0;" do %>
         <i class="bi bi-arrow-left"></i>
       <% end %>
-      <div class="small text-muted flex-grow-1">
+      <div class="tw-text-sm tw-text-ink-muted" style="flex-grow:1;">
         Etapa <%= shown_idx + 1 %> de <%= total_steps %> · <strong class="text-dark"><%= step_titles[@step] %></strong>
       </div>
       <% unless @captacao.completed? %>
-        <span class="badge bg-warning-subtle text-warning">Rascunho</span>
+        <span class="ax-badge ax-badge--amber">Rascunho</span>
       <% end %>
       <% unless @captacao.intake_published? %>
         <%= button_to admin_captacao_path(@captacao),
                       method: :delete,
-                      class: "btn btn-sm btn-outline-danger",
+                      class: "ax-btn ax-btn--danger ax-btn--sm",
                       form: { data: { turbo_confirm: "Descartar esta captação?" } } do %>
-          <i class="bi bi-trash me-1"></i>Descartar
+          <i class="bi bi-trash"></i>Descartar
         <% end %>
       <% end %>
     </div>
@@ -47,29 +47,22 @@
 </div>
 
 <main class="wizard-shell wizard-content">
-  <% if @captacao.errors.any? %>
-    <div class="alert alert-danger border-0 shadow-sm">
-      <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Corrija antes de continuar:</strong>
-      <ul class="mb-0 mt-1 small">
-        <% @captacao.errors.full_messages.each do |msg| %><li><%= msg %></li><% end %>
-      </ul>
-    </div>
-  <% end %>
+  <%= ax_error_summary(@captacao) %>
 
   <% if @missing_requirements.present? %>
-    <div class="alert alert-danger border-0 shadow-sm">
-      <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Complete antes de finalizar:</strong>
-      <ul class="mb-0 mt-1 small">
+    <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle-fill") do %>
+      <strong>Complete antes de finalizar:</strong>
+      <ul class="tw-mt-1 tw-text-sm">
         <% @missing_requirements.each do |requirement| %><li><%= requirement %></li><% end %>
       </ul>
-    </div>
+    <% end %>
   <% end %>
 
   <% if @captacao.intake_published? && !can?(:manage, :imoveis) %>
-    <div class="alert alert-warning border-0 shadow-sm">
-      <strong><i class="bi bi-lock-fill me-1"></i>Imóvel publicado no site.</strong>
+    <%= ax_inline_notice(tone: :warning, icon: "lock-fill") do %>
+      <strong>Imóvel publicado no site.</strong>
       Nome do empreendimento, endereço, dados do proprietário, título e descrição ficam bloqueados para corretores.
-    </div>
+    <% end %>
   <% end %>
 
   <%= form_with model: @captacao,
@@ -96,19 +89,19 @@
     <%= render "admin/captacoes/steps/#{@step}", f: f, field_state: field_state, field_invalid: field_invalid %>
 
     <div class="wizard-bottom-nav">
-      <div class="wizard-shell d-flex gap-2">
+      <div class="wizard-shell tw-flex tw-gap-2">
         <% if @captacao.previous_step %>
-          <%= button_tag type: :submit, name: :direction, value: "back", class: "btn btn-outline-secondary flex-fill" do %>
-            <i class="bi bi-arrow-left me-1"></i>Voltar
+          <%= button_tag type: :submit, name: :direction, value: "back", class: "ax-btn ax-btn--ghost", style: "flex:1 1 0;" do %>
+            <i class="bi bi-arrow-left"></i>Voltar
           <% end %>
         <% end %>
         <% if @step == "review" %>
-          <%= button_tag type: :submit, name: :direction, value: "forward", class: "btn btn-success flex-fill", data: { habitation_duplicate_check_target: "submit" } do %>
-            <i class="bi bi-send-check me-1"></i>Mandar Análise
+          <%= button_tag type: :submit, name: :direction, value: "forward", class: "ax-btn ax-btn--primary", style: "flex:1 1 0;", data: { habitation_duplicate_check_target: "submit" } do %>
+            <i class="bi bi-send-check"></i>Mandar Análise
           <% end %>
         <% else %>
-          <%= button_tag type: :submit, name: :direction, value: "forward", class: "btn btn-primary flex-fill", data: { habitation_duplicate_check_target: "submit" } do %>
-            Avançar<i class="bi bi-arrow-right ms-1"></i>
+          <%= button_tag type: :submit, name: :direction, value: "forward", class: "ax-btn ax-btn--primary", style: "flex:1 1 0;", data: { habitation_duplicate_check_target: "submit" } do %>
+            Avançar<i class="bi bi-arrow-right"></i>
           <% end %>
         <% end %>
       </div>

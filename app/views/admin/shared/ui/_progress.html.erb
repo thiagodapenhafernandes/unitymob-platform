@@ -1,0 +1,8 @@
+<%
+  pct = [[value.to_f, 0].max, 100].min
+  colors = { green: "#16a34a", red: "#dc2626", amber: "#d97706", blue: "#2563eb" }
+  bar_color = colors[tone&.to_sym]
+%>
+<div class="ax-progress <%= class_name %>"<%= label.present? ? " title=\"#{label}\"".html_safe : "" %>>
+  <i style="width:<%= pct %>%<%= "; background:#{bar_color}" if bar_color %>"></i>
+</div>

@@ -21,7 +21,7 @@
 <div class="bg-gray-50 min-h-screen">
   
   <!-- Hero Section with Background Image -->
-  <% hero_image = @habitation.all_images.first&.dig('url') %>
+  <% hero_image = public_image_url(@habitation.all_images.first) %>
   <div class="relative h-[60vh] min-h-[500px] bg-cover bg-center mt-[72px] <%= 'bg-gradient-to-br from-blue-three to-blue-one' unless hero_image %>" 
        <% if hero_image %>
          style="background-image: linear-gradient(rgba(2, 43, 58, 0.7), rgba(2, 43, 58, 0.7)), url('<%= hero_image %>');"
@@ -214,11 +214,12 @@
             
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
               <% @habitation.all_images.each_with_index do |photo, index| %>
-                <a href="<%= photo['url'] %>" 
+                <% photo_url = public_image_url(photo) %>
+                <a href="<%= photo_url %>"
                    data-fancybox="development-gallery" 
                    data-caption="<%= @habitation.nome_empreendimento %> - Foto <%= index + 1 %>"
                    class="group relative aspect-video bg-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all">
-                  <%= image_tag photo['url'], 
+                  <%= image_tag photo_url,
                       alt: "#{@habitation.nome_empreendimento} - Foto #{index + 1}",
                       class: "w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" %>
                   <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">

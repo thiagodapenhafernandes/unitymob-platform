@@ -1,0 +1,25 @@
+<%= ax_aside_panel(
+      title: "Filtros do catálogo",
+      token: (active_extra_filters_count.to_i.positive? ? "#{active_extra_filters_count} filtros" : nil),
+      rail_label: "Abrir filtros do catálogo",
+      rail_icon: "funnel",
+      collapse_label: "Recolher filtros do catálogo",
+      class_name: "habitations-inspector-shell",
+      rail_class: "habitations-inspector-rail",
+      panel_class: "habitations-inspector",
+      header_class: "habitations-inspector__header"
+    ) do %>
+  <div class="habitations-inspector-skeleton" aria-label="Carregando filtros">
+    <div class="habitations-inspector-skeleton__actions">
+      <span></span>
+      <span></span>
+    </div>
+    <% 6.times do %>
+      <section class="habitations-inspector-skeleton__section">
+        <span class="habitations-inspector-skeleton__title"></span>
+        <span class="habitations-inspector-skeleton__field"></span>
+        <span class="habitations-inspector-skeleton__field"></span>
+      </section>
+    <% end %>
+  </div>
+<% end %>

@@ -66,7 +66,7 @@ export default class extends Controller {
       .catch(() => {
         if (select) select.value = previousStatus
         this.returnToPreviousColumn(card, previousStatus)
-        window.alert("Não foi possível atualizar o status do lead.")
+        window.axToast({ message: "Não foi possível atualizar o status do lead.", type: "danger" })
       })
       .finally(() => {
         card.classList.remove("lead-kanban-card--saving")
@@ -77,8 +77,25 @@ export default class extends Controller {
     const badge = card.querySelector("[data-lead-kanban-status-badge]")
     if (!badge) return
 
-    badge.className = `badge bg-${badgeClass || "dark"}`
+    if (badge.classList.contains("ax-badge")) {
+      badge.className = `ax-badge ax-badge--${this.axToneFor(badgeClass)} lead-kanban-status-badge`
+    } else {
+      badge.className = `badge bg-${badgeClass || "dark"}`
+    }
     badge.textContent = status
+  }
+
+  axToneFor(badgeClass) {
+    return {
+      success: "green",
+      danger: "red",
+      warning: "amber",
+      info: "blue",
+      primary: "blue",
+      secondary: "gray",
+      light: "gray",
+      dark: "gray"
+    }[badgeClass] || "gray"
   }
 
   updateCounters(previousStatus, nextStatus) {

@@ -172,7 +172,7 @@ class SeoSetting < ApplicationRecord
   def attached_og_image_path
     return unless og_image_file.attached?
 
-    Rails.application.routes.url_helpers.rails_blob_path(og_image_file, only_path: true)
+    Rails.application.routes.url_helpers.rails_storage_proxy_path(og_image_file, only_path: true)
   end
 
   def related_habitation_image_url

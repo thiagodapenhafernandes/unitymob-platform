@@ -2,7 +2,8 @@
 
 module Admin
   class StoresController < Admin::BaseController
-    before_action :require_admin!, only: [:destroy]
+    before_action -> { check_permission!(:view, :lojas) }
+    before_action -> { check_permission!(:manage, :lojas) }, only: %i[new create edit update destroy]
     before_action :set_store, only: [:show, :edit, :update, :destroy]
 
     def index

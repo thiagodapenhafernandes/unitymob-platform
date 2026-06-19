@@ -1,136 +1,136 @@
 class Admin::DashboardController < Admin::BaseController
+  DASHBOARD_SECTIONS = %w[charts funnel status rankings operations support].freeze
+
+  before_action :require_dashboard_admin!
+  before_action :set_dashboard_context
+
   def index
-    unless current_admin_user.admin?
-      redirect_to field_root_path
-      return
-    end
+    load_overview_slice
+  end
 
-    @is_admin_view = current_admin_user.admin?
+  def section
+    section_name = params[:section].to_s
+    raise ActiveRecord::RecordNotFound unless DASHBOARD_SECTIONS.include?(section_name)
 
-    # Scopes: admin vê tudo, corretor vê só o que é dele.
-    habitation_scope = @is_admin_view ? Habitation : Habitation.where(admin_user_id: current_admin_user.id)
-    lead_scope       = @is_admin_view ? Lead       : Lead.where(admin_user_id: current_admin_user.id)
-    captacao_scope   = @is_admin_view ? Captacao   : Captacao.where(corretor_id: current_admin_user.id)
-
-    # ================= Imóveis =================
-    @properties_count    = habitation_scope.active.count
-    @featured_count      = habitation_scope.featured.count
-    @for_sale_count      = habitation_scope.active.where(status: ['Venda']).count
-    @for_rent_count      = habitation_scope.active.where(status: ['Locação', 'Locacao', 'Aluguel']).count
-    @developments_count  = habitation_scope.empreendimentos.count
-    @proprietors_count   = @is_admin_view ? Proprietor.count : 0
-    @total_sale_value    = habitation_scope.active.where("valor_venda_cents > 0").sum(:valor_venda_cents).to_f / 100.0
-    @avg_sale_value      = habitation_scope.active.where("valor_venda_cents > 0").average(:valor_venda_cents).to_f / 100.0
-    @recent_properties   = habitation_scope.newest_first.limit(6)
-
-    # ================= Equipe (só admin) =================
-    if @is_admin_view
-      @brokers_active     = AdminUser.active.count
-      @brokers_inactive   = AdminUser.inactive.count
-      @brokers_with_vista = AdminUser.where.not(vista_id: nil).count
-      @field_agents_count = AdminUser.where(field_agent_enabled: true).count
-
-      @top_brokers = AdminUser
-        .joins(:habitations)
-        .where(habitations: { status: [nil, "Venda", "Locação", "Locacao", "Aluguel"] })
-        .group("admin_users.id", "admin_users.name")
-        .select("admin_users.id, admin_users.name, COUNT(habitations.id) AS ct")
-        .order("ct DESC")
-        .limit(6)
-    else
-      @brokers_active = @brokers_inactive = @brokers_with_vista = @field_agents_count = 0
-      @top_brokers = []
-    end
-
-    # ================= Lojas / Field (só admin) =================
-    if @is_admin_view
-      @stores_count             = Store.count
-      @stores_active_count      = Store.active.count
-      @active_checkins_count    = CheckIn.where(status: :active).count
-      @today_checkins_count     = CheckIn.today.count
-      @suspicious_checkins      = CheckIn.where(suspicious: true).count
-      @pending_manual_requests  = ManualCheckinRequest.pending.count
-      @top_stores = CheckIn
-        .where("checked_in_at >= ?", 30.days.ago)
-        .joins(:store)
-        .group("stores.id", "stores.name")
-        .select("stores.id, stores.name, COUNT(check_ins.id) AS ct")
-        .order("ct DESC")
-        .limit(5)
-    else
-      @stores_count = @stores_active_count = 0
-      @active_checkins_count = current_admin_user.active_check_in.present? ? 1 : 0
-      @today_checkins_count = CheckIn.where(admin_user_id: current_admin_user.id).today.count
-      @suspicious_checkins = 0
-      @pending_manual_requests = 0
-      @top_stores = []
-    end
-    @field_feature_enabled = Setting.get("field_checkin_enabled", "false").to_s == "true"
-
-    # ================= Leads =================
-    @total_leads          = lead_scope.count
-    @new_leads            = lead_scope.where(status: [Lead.default_status, nil]).count
-    @leads_today          = lead_scope.where("created_at >= ?", Date.current.beginning_of_day).count
-    @leads_last_7_days    = lead_scope.where("created_at >= ?", 7.days.ago).count
-    @leads_last_30_days   = lead_scope.where("created_at >= ?", 30.days.ago).count
-    @holding_leads        = @is_admin_view ? Lead.holding.count : 0
-    @leads_by_status      = lead_scope.group(:status).count
-    @leads_per_day        = leads_time_series(30, lead_scope)
-
-    # ================= Regras de distribuição (só admin) =================
-    if @is_admin_view
-      @distribution_rules_total  = DistributionRule.count
-      @distribution_rules_active = DistributionRule.active.count
-      @rules_with_checkin        = DistributionRule.where(require_active_checkin: true).count
-    else
-      @distribution_rules_total = @distribution_rules_active = @rules_with_checkin = 0
-    end
-
-    # ================= Sync Vista (só admin) =================
-    if @is_admin_view
-      @sync_errors_count   = Habitation.where(last_sync_status: 'error').count
-      @total_synced_count  = Habitation.where.not(last_sync_at: nil).count
-      @last_syncs          = Habitation.where.not(last_sync_at: nil).order(last_sync_at: :desc).limit(5)
-    else
-      @sync_errors_count = @total_synced_count = 0
-      @last_syncs = []
-    end
-
-    # ================= Hoje =================
-    beginning = Date.current.beginning_of_day
-    @today_captacoes       = captacao_scope.where(created_at: beginning..).count
-    @today_new_habitations = habitation_scope.where("COALESCE(data_atualizacao_crm, created_at) >= ?", beginning).count
-    @today_audit_events    = @is_admin_view ? CheckinAuditLog.where(created_at: beginning..).count : 0
-
-    # ================= Listas recentes =================
-    @recent_habitations = habitation_scope
-      .where.not(data_atualizacao_crm: nil)
-      .order(data_atualizacao_crm: :desc)
-      .limit(6)
-
-    @recent_captacoes = captacao_scope
-      .includes(:corretor)
-      .order(updated_at: :desc)
-      .limit(5)
-
-    @drafts_count = captacao_scope.draft.count
-
-    # ================= Distribuição por categoria =================
-    @habitations_by_category = habitation_scope.active.group(:categoria).count.sort_by { |_, v| -v }.first(6)
-
-    # ================= Atividade recente =================
-    @recent_audit_logs = if @is_admin_view
-                          CheckinAuditLog.includes(:admin_user, :actor_admin_user).order(created_at: :desc).limit(6)
-                        else
-                          CheckinAuditLog.where(admin_user_id: current_admin_user.id).order(created_at: :desc).limit(6)
-                        end
-    @recent_leads = lead_scope.order(created_at: :desc).limit(6)
+    send("load_#{section_name}_slice")
+    render partial: "admin/dashboard/sections/#{section_name}", layout: false
   end
 
   private
 
+  def require_dashboard_admin!
+    return if current_admin_user.admin?
+
+    redirect_to field_root_path
+  end
+
+  def set_dashboard_context
+    @is_admin_view = current_admin_user.admin?
+    @habitation_scope = @is_admin_view ? Habitation : Habitation.where(admin_user_id: current_admin_user.id)
+    @lead_scope = @is_admin_view ? Lead : Lead.where(admin_user_id: current_admin_user.id)
+    @captacao_scope = @is_admin_view ? Captacao : Captacao.where(corretor_id: current_admin_user.id)
+    @field_feature_enabled = Setting.get("field_checkin_enabled", "false").to_s == "true"
+  end
+
+  def load_overview_slice
+    active_habitations = @habitation_scope.active
+    beginning = Date.current.beginning_of_day
+
+    @properties_count = active_habitations.count
+    @featured_count = @habitation_scope.featured.count
+    @developments_count = @habitation_scope.empreendimentos.count
+
+    @brokers_active = @is_admin_view ? AdminUser.active.count : 0
+    @stores_active_count = @is_admin_view ? Store.active.count : 0
+    @active_checkins_count = @is_admin_view ? CheckIn.where(status: :active).count : (current_admin_user.active_check_in.present? ? 1 : 0)
+    @today_checkins_count = @is_admin_view ? CheckIn.today.count : CheckIn.where(admin_user_id: current_admin_user.id).today.count
+    @suspicious_checkins = @is_admin_view ? CheckIn.where(suspicious: true).count : 0
+    @pending_manual_requests = @is_admin_view ? ManualCheckinRequest.pending.count : 0
+
+    @new_leads = @lead_scope.where(status: [Lead.default_status, nil]).count
+    @leads_today = @lead_scope.where("created_at >= ?", beginning).count
+    @leads_last_7_days = @lead_scope.where("created_at >= ?", 7.days.ago).count
+    @holding_leads = @is_admin_view ? Lead.holding.count : 0
+
+    @distribution_rules_total = @is_admin_view ? DistributionRule.count : 0
+    @distribution_rules_active = @is_admin_view ? DistributionRule.active.count : 0
+    @rules_with_checkin = @is_admin_view ? DistributionRule.where(require_active_checkin: true).count : 0
+
+    @sync_errors_count = @is_admin_view ? Habitation.where(last_sync_status: "error").count : 0
+    @today_captacoes = @captacao_scope.where(created_at: beginning..).count
+    @today_new_habitations = @habitation_scope.where("COALESCE(data_atualizacao_crm, created_at) >= ?", beginning).count
+    @drafts_count = @captacao_scope.draft.count
+  end
+
+  def load_charts_slice
+    @leads_last_30_days = @lead_scope.where("created_at >= ?", dashboard_window_start).count
+    @leads_by_status = @lead_scope.group(:status).count
+    @leads_per_day = leads_time_series(30, @lead_scope)
+  end
+
+  def load_funnel_slice
+    @commercial_funnel_rows = commercial_funnel_rows
+  end
+
+  def load_status_slice
+    @leads_by_status = @lead_scope.where("created_at >= ?", dashboard_window_start).group(:status).count
+  end
+
+  def load_rankings_slice
+    @top_brokers = if @is_admin_view
+                     AdminUser
+                       .joins(:habitations)
+                       .where(habitations: { status: [nil, "Venda", "Locação", "Locacao", "Aluguel"] })
+                       .group("admin_users.id", "admin_users.name")
+                       .select("admin_users.id, admin_users.name, COUNT(habitations.id) AS ct")
+                       .order("ct DESC")
+                       .limit(6)
+                   else
+                     []
+                   end
+
+    @top_stores = if @is_admin_view
+                    CheckIn
+                      .where("checked_in_at >= ?", 30.days.ago)
+                      .joins(:store)
+                      .group("stores.id", "stores.name")
+                      .select("stores.id, stores.name, COUNT(check_ins.id) AS ct")
+                      .order("ct DESC")
+                      .limit(5)
+                  else
+                    []
+                  end
+  end
+
+  def load_operations_slice
+    @bs_to_ax = { "success" => "green", "danger" => "red", "warning" => "amber", "info" => "blue", "primary" => "blue", "secondary" => "gray", "dark" => "gray" }
+    @recent_audit_logs = if @is_admin_view
+                           CheckinAuditLog.includes(:admin_user, :actor_admin_user, check_in: :store).order(created_at: :desc).limit(6)
+                         else
+                           CheckinAuditLog.includes(:actor_admin_user, check_in: :store).where(admin_user_id: current_admin_user.id).order(created_at: :desc).limit(6)
+                         end
+    @recent_habitations = @habitation_scope
+      .includes(:address)
+      .where.not(data_atualizacao_crm: nil)
+      .order(data_atualizacao_crm: :desc)
+      .limit(6)
+  end
+
+  def load_support_slice
+    active_habitations = @habitation_scope.active
+
+    @recent_captacoes = @captacao_scope
+      .includes(:corretor)
+      .order(updated_at: :desc)
+      .limit(5)
+    @habitations_by_category = active_habitations.group(:categoria).count.sort_by { |_, v| -v }.first(6)
+    @for_sale_count = active_habitations.where(status: ["Venda"]).count
+    @total_sale_value = active_habitations.where("valor_venda_cents > 0").sum(:valor_venda_cents).to_f / 100.0
+    @avg_sale_value = active_habitations.where("valor_venda_cents > 0").average(:valor_venda_cents).to_f / 100.0
+  end
+
   def leads_time_series(days, scope = Lead)
-    start_date = days.days.ago.to_date
+    start_date = (days - 1).days.ago.to_date
     rows = scope
       .where("created_at >= ?", start_date.beginning_of_day)
       .group("DATE(created_at)")
@@ -139,5 +139,32 @@ class Admin::DashboardController < Admin::BaseController
       d = start_date + i
       [d, rows[d] || 0]
     end
+  end
+
+  def dashboard_window_start
+    29.days.ago.to_date.beginning_of_day
+  end
+
+  def commercial_funnel_rows
+    recent_scope = @lead_scope.where("created_at >= ?", dashboard_window_start)
+    status_counts = recent_scope.group(:status).count
+    total_leads = status_counts.values.sum
+
+    discarded_status = Lead.status_value(:descartado)
+    holding_status = Lead.status_value(:represado)
+    in_service_status = Lead.status_value(:em_atendimento)
+    waiting_status = Lead.status_value(:waiting_acceptance)
+    closed_status = Lead.status_value(:concluido)
+
+    interested_count = status_counts.reject { |status, _count| [discarded_status, holding_status].include?(Lead.status_value(status)) }.values.sum
+    opportunity_count = status_counts.select { |status, _count| [in_service_status, waiting_status, closed_status].include?(Lead.status_value(status)) }.values.sum
+    closed_count = status_counts[closed_status].to_i
+
+    [
+      { label: "Clientes impactados", value: total_leads, benchmark: "10% a 20%", tone: "red", width: 100 },
+      { label: "Leads interessados", value: interested_count, benchmark: "5% a 15%", tone: "orange", width: 82 },
+      { label: "Oportunidades", value: opportunity_count, benchmark: "20% a 40%", tone: "amber", width: 64 },
+      { label: "Vendas", value: closed_count, benchmark: "0,1% a 1,2%", tone: "blue", width: 46 }
+    ]
   end
 end

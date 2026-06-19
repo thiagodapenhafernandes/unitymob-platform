@@ -1,0 +1,78 @@
+<%
+  # kids já vêm ordenados por hierarchy_position/name (ordenação feita no controller).
+  kids = children_by_manager[user.id] || []
+  total_desc = descendant_count[user.id] || 0
+  acting = { "sales" => ["Venda", :blue], "rentals" => ["Locação", :amber], "both" => ["Ambos", :green] }[user.acting_type.to_s]
+  has_kids = kids.any?
+  can_reorg = local_assigns.fetch(:can_reorganize, false)
+%>
+<li class="hier-node" data-hierarchy-node data-user-id="<%= user.id %>">
+  <div class="hier-row<%= ' is-root' if depth.zero? %>">
+    <% if can_reorg %>
+      <span class="hier-row__handle" title="Arraste para mover de gestor ou reordenar"><i class="bi bi-grip-vertical"></i></span>
+    <% end %>
+
+    <button type="button" class="hier-row__toggle" data-hier-toggle
+            aria-expanded="<%= depth.zero? %>" <%= "data-hier-leaf" unless has_kids %>
+            aria-label="<%= has_kids ? 'Expandir/recolher' : '' %>">
+      <% if has_kids %><i class="bi bi-chevron-right"></i><% end %>
+    </button>
+
+    <span class="hier-row__avatar">
+      <% if user.avatar.attached? %>
+        <%= image_tag user.avatar, class: "hier-row__img" %>
+      <% else %>
+        <span class="hier-row__initial"><%= user.name.to_s.first&.upcase || "?" %></span>
+      <% end %>
+    </span>
+
+    <div class="hier-row__main">
+      <strong><%= user.name %></strong>
+      <span><%= user.email %></span>
+    </div>
+
+    <div class="hier-row__tags">
+      <% if user.profile %><%= ax_badge(user.profile.name, tone: :blue) %><% else %><%= ax_badge(user.role.humanize, tone: :gray) %><% end %>
+      <%= ax_badge(user.active ? "Ativo" : "Inativo", tone: user.active ? :green : :red, dot: true) %>
+      <% if acting %><%= ax_badge(acting[0], tone: acting[1]) %><% end %>
+    </div>
+
+    <div class="hier-row__counts">
+      <% if has_kids %>
+        <span title="Subordinados diretos"><i class="bi bi-person"></i> <strong><%= kids.size %></strong></span>
+        <span title="Total na árvore"><i class="bi bi-diagram-3"></i> <strong><%= total_desc %></strong></span>
+      <% end %>
+      <span title="Imóveis"><i class="bi bi-house-door"></i> <strong><%= habitations_count[user.id] %></strong></span>
+    </div>
+
+    <div class="hier-row__actions">
+      <% if current_admin_user.admin? && user != current_admin_user %>
+        <%= button_to impersonate_admin_admin_user_path(user), method: :post,
+              class: "ax-ico-btn", form_class: "tw-inline", title: "Acessar como #{user.name}",
+              data: { turbo_confirm: "Acessar o sistema como #{user.name}?" } do %>
+          <i class="bi bi-person-check"></i>
+        <% end %>
+      <% end %>
+      <%= link_to admin_admin_user_path(user), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
+      <%= link_to edit_admin_admin_user_path(user), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+    </div>
+  </div>
+
+  <%# Nós com filhos: lista normal. %>
+  <% if has_kids %>
+    <ul class="hier-list hier-children" data-hierarchy-list data-manager-id="<%= user.id %>"<%= " hidden" unless depth.zero? %>>
+      <% kids.each do |kid| %>
+        <%= render "hierarchy_node",
+              user: kid,
+              children_by_manager: children_by_manager,
+              descendant_count: descendant_count,
+              habitations_count: habitations_count,
+              depth: depth + 1,
+              can_reorganize: can_reorg %>
+      <% end %>
+    </ul>
+  <% elsif can_reorg %>
+    <%# Folha: placeholder vazio (alvo de "soltar dentro"). SEM espaço interno para que :empty case e colapse a 0 fora do arraste. %>
+    <ul class="hier-list hier-children" data-hierarchy-list data-manager-id="<%= user.id %>"></ul>
+  <% end %>
+</li>

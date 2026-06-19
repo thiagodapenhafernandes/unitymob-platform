@@ -5,10 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
     <%
-      seo = current_public_seo_setting || SeoSetting.for_page(@page_name || 'home')
+      site_name = @layout_setting&.site_name.presence || "Unitymob"
+      social_property = defined?(@habitation) ? @habitation : nil
+      property_page = social_property.present?
+      property_seo_key = "property:#{social_property.codigo.presence || social_property.id}" if property_page
+      property_seo = SeoSetting.for_canonical_key(property_seo_key) if property_seo_key.present?
+      seo = current_public_seo_setting
+      seo ||= property_seo if property_seo&.public_applicable? && property_seo.manual_mode?
+      seo ||= SeoSetting.for_page(@page_name || 'home') unless property_page
       seo_public = seo&.public_applicable?
-      effective_title = (seo_public ? seo.meta_title.presence : nil) || @page_title || "#{@layout_setting&.site_name.presence || 'Salute Imóveis'} - Encontre seu Imóvel Ideal"
-      effective_description = (seo_public ? seo.meta_description.presence : nil) || @page_description || "Os melhores imóveis para venda e locação. Encontre seu imóvel ideal com a #{@layout_setting&.site_name.presence || 'Salute Imóveis'}."
+      effective_title = (seo_public ? seo.meta_title.presence : nil) || @page_title || "#{site_name} - Encontre seu Imóvel Ideal"
+      effective_description = (seo_public ? seo.meta_description.presence : nil) || @page_description || "Os melhores imóveis para venda e locação. Encontre seu imóvel ideal com a #{site_name}."
       effective_keywords = (seo_public ? seo.meta_keywords.presence : nil) || @page_keywords
       effective_robots = seo_public ? seo.robots_content : "index, follow"
       effective_robots = "noindex, follow" if params[:page].to_i >= 3
@@ -20,7 +27,7 @@
     <% if effective_keywords.present? %>
       <meta name="keywords" content="<%= effective_keywords %>">
     <% end %>
-    <meta name="author" content="<%= @layout_setting&.site_name.presence || 'Salute Imóveis' %>">
+    <meta name="author" content="<%= site_name %>">
     <meta name="robots" content="<%= effective_robots %>">
     
     <%# Resource Hints %>
@@ -42,12 +49,11 @@
     <% 
       sanitize_utf8 = ->(value) { value.to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "").scrub }
       final_image = seo&.social_image_url(base_url: request.base_url, page_image: @page_image) || "#{request.base_url}/icon.png"
-      canonical_url = sanitize_utf8.call(seo_public ? seo.public_url(request.base_url) : request.original_url)
+      canonical_url = sanitize_utf8.call(@canonical_url.presence || (seo_public ? seo.public_url(request.base_url) : request.original_url))
       og_title = sanitize_utf8.call((seo_public ? seo.og_title.presence : nil) || effective_title)
       og_description = strip_tags((seo_public ? seo.og_description.presence : nil) || effective_description)
-      social_property = defined?(@habitation) ? @habitation : nil
       og_type = social_property.present? ? "product" : "website"
-      image_alt = sanitize_utf8.call([og_title, @layout_setting&.site_name.presence || "Salute Imóveis"].reject(&:blank?).join(" | "))
+      image_alt = sanitize_utf8.call([og_title, site_name].reject(&:blank?).join(" | "))
       social_price_cents = if social_property.present?
         social_property.valor_venda_cents.to_i.positive? ? social_property.valor_venda_cents : social_property.valor_locacao_cents
       end
@@ -61,7 +67,7 @@
     <meta property="og:url" content="<%= canonical_url %>">
     <meta property="og:title" content="<%= og_title %>">
     <meta property="og:description" content="<%= og_description %>">
-    <meta property="og:site_name" content="<%= @layout_setting&.site_name.presence || 'Salute Imóveis' %>">
+    <meta property="og:site_name" content="<%= site_name %>">
     <meta property="og:locale" content="pt_BR">
     <meta property="og:image" content="<%= final_image %>">
     <meta property="og:image:secure_url" content="<%= final_image.to_s.sub('http://', 'https://') %>">
@@ -85,9 +91,9 @@
     
     <link rel="canonical" href="<%= canonical_url %>">
     <% if @layout_setting&.favicon&.attached? %>
-      <link rel="icon" href="<%= rails_blob_path(@layout_setting.favicon) %>">
+      <link rel="icon" href="<%= public_image_url(@layout_setting.favicon) %>">
     <% else %>
-      <link rel="icon" href="<%= asset_path "salute.icon.svg" %>">
+      <link rel="icon" href="/icon.png">
     <% end %>
     
     <%= csrf_meta_tags %>
@@ -117,6 +123,7 @@
     <%# Theme Styles %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload" %>
     
     <%# JS with Defer %>
     <%= javascript_importmap_tags "public" %>
@@ -131,20 +138,8 @@
     <%= render 'layouts/header' %>
     
     <main role="main">
-      <% if flash[:notice] %>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-          <%= flash[:notice] %>
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-      <% end %>
-      
-      <% if flash[:alert] %>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-          <%= flash[:alert] %>
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-      <% end %>
-      
+      <%= render 'shared/flash_messages', toast: true if flash.any? %>
+
       <%= yield %>
     </main>
     
