@@ -80,19 +80,12 @@ class Admin::HabitationsController < Admin::BaseController
     @sort_column = sort_column
     @sort_direction = sort_direction
     filtered_scope = filtered_habitations_scope
-    @filtered_count = filtered_scope.reorder(nil).count
-    stats_scope = filtered_scope.reorder(nil)
-    @site_visible_count = stats_scope.where(exibir_no_site_flag: true).count
-    @sale_count = stats_scope.where(status: "Venda").count
-    @rent_count = stats_scope.where(status: ["Aluguel", "Locação", "Locacao"]).count
-    @status_counts = stats_scope.group(:status).count
-    @category_counts = stats_scope.group(:categoria).count
     @habitations = filtered_scope
       .includes(:address, :admin_user, :empreendimento, { broker_assignments: :admin_user }, { photos_attachments: :blob })
       .order(Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST"))
 
     @habitations = @habitations.paginate(page: params[:page], per_page: 20)
-    @selected_habitation = @habitations.first
+    @filtered_count = @habitations.total_entries
     @page_title = "Gerenciar Imóveis"
     @report_types = REPORT_TYPES
     @export_fields = EXPORT_FIELDS
