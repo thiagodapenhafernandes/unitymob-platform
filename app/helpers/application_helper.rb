@@ -199,26 +199,33 @@ module ApplicationHelper
   def active_storage_public_path(image)
     return if image.blank?
 
-    if image.respond_to?(:attached?)
+    if defined?(ActiveStorage::VariantWithRecord) && image.is_a?(ActiveStorage::VariantWithRecord)
+      proxy_active_storage_redirect_path(active_storage_route(:rails_representation_path, image, only_path: true))
+    elsif defined?(ActiveStorage::Variant) && image.is_a?(ActiveStorage::Variant)
+      proxy_active_storage_redirect_path(active_storage_route(:rails_representation_path, image, only_path: true))
+    elsif image.respond_to?(:attached?)
       return unless image.attached?
 
-      rails_storage_proxy_path(image.attachment, only_path: true)
-    elsif defined?(ActiveStorage::VariantWithRecord) && image.is_a?(ActiveStorage::VariantWithRecord)
-      rails_representation_proxy_path(image, only_path: true)
-    elsif defined?(ActiveStorage::Variant) && image.is_a?(ActiveStorage::Variant)
-      rails_representation_proxy_path(image, only_path: true)
+      active_storage_route(:rails_storage_proxy_path, image.attachment, only_path: true)
     elsif defined?(ActiveStorage::Attachment) && image.is_a?(ActiveStorage::Attachment)
-      rails_storage_proxy_path(image, only_path: true)
+      active_storage_route(:rails_storage_proxy_path, image, only_path: true)
     elsif defined?(ActiveStorage::Blob) && image.is_a?(ActiveStorage::Blob)
-      rails_storage_proxy_path(image, only_path: true)
+      active_storage_route(:rails_storage_proxy_path, image, only_path: true)
     end
   rescue StandardError
     nil
   end
 
+  def active_storage_route(name, *args, **options)
+    return public_send(name, *args, **options) if respond_to?(name)
+
+    Rails.application.routes.url_helpers.public_send(name, *args, **options)
+  end
+
   def normalize_public_image_url(image)
     value = image.to_s
     return value if value.blank?
+    return if value.start_with?("#<")
     return proxy_active_storage_redirect_path(value) if value.start_with?(INTERNAL_ACTIVE_STORAGE_PATH)
     return value if value.start_with?("/", "data:", "blob:")
 

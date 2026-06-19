@@ -2149,7 +2149,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 
 .ax-property-table {
   width: 100%;
-  min-width: 1610px;
+  min-width: 1280px;
   border-collapse: separate;
   border-spacing: 0;
   color: #334155;
@@ -2160,15 +2160,15 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   table-layout: auto;
 }
 
-.ax-property-table__col-select { width: 52px; }
+.ax-property-table__col-select { width: 44px; }
 /* Larguras explícitas: evita que percentuais 50%/50% consumam o espaço das
    colunas operacionais e comprimam custos/valores até quebrar caractere a caractere. */
-.ax-property-table__col-property { width: 520px; }
-.ax-property-table__col-location { width: 420px; }
-.ax-property-table__col-price { width: 180px; }
-.ax-property-table__col-costs { width: 180px; }
-.ax-property-table__col-updated { width: 170px; }
-.ax-property-table__col-actions { width: 108px; }
+.ax-property-table__col-property { width: 390px; }
+.ax-property-table__col-location { width: 300px; }
+.ax-property-table__col-price { width: 150px; }
+.ax-property-table__col-costs { width: 136px; }
+.ax-property-table__col-updated { width: 132px; }
+.ax-property-table__col-actions { width: 82px; }
 
 /* Colunas ocultadas pelo seletor (controller ax-table-columns escreve data-hidden
    na tabela com as chaves separadas por espaço). Zera-se a largura do <col>
@@ -2225,7 +2225,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 }
 
 .ax-property-table tbody td {
-  padding: 12px 14px;
+  padding: 10px 10px;
   border-bottom: 1px solid #edf1f6;
   vertical-align: middle;
 }
@@ -2244,7 +2244,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 }
 
 .ax-property-table__check {
-  width: 52px;
+  width: 44px;
   text-align: center !important;
 }
 
@@ -2257,16 +2257,16 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 
 .ax-property-table__property {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 76px minmax(0, 1fr);
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 
 .ax-property-table__thumb {
   display: grid;
-  width: 92px;
-  height: 68px;
+  width: 76px;
+  height: 56px;
   place-items: center;
   overflow: hidden;
   border: 1px solid #dfe6ef;
@@ -2293,7 +2293,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   display: -webkit-box;
   overflow: hidden;
   color: #1f2937;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 850;
   line-height: 1.25;
   text-decoration: none;
@@ -2327,7 +2327,9 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 
 .ax-property-table__location strong,
 .ax-property-table__location span {
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ax-property-table__stack--right {
@@ -2375,7 +2377,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 
 .ax-property-table__money {
   color: #243246;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 900;
   line-height: 1.2;
   white-space: nowrap;
@@ -2383,13 +2385,13 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 
 .ax-property-table__cost-list {
   display: grid;
-  gap: 6px;
-  min-width: 150px;
+  gap: 5px;
+  min-width: 0;
 }
 
 .ax-property-table__cost-list span {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: 34px minmax(0, 1fr);
   align-items: baseline;
   gap: 5px;
   min-width: 0;
@@ -2397,7 +2399,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 
 .ax-property-table__cost-list small {
   color: #64748b;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   line-height: 1.1;
 }
@@ -2405,7 +2407,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 .ax-property-table__cost-list strong {
   min-width: max-content;
   color: #1f2937;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 850;
   line-height: 1.15;
   overflow-wrap: normal;
@@ -2417,29 +2419,29 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   align-items: center;
   gap: 4px;
   color: #64748b;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 750;
   line-height: 1.25;
   white-space: nowrap;
 }
 
 .ax-property-table__actions {
-  width: 110px;
+  width: 82px;
   text-align: right;
 }
 
 .admin-property-actions {
-  --admin-action-size: 30px;
+  --admin-action-size: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 5px;
+  gap: 4px;
   position: relative;
   z-index: 4;
 }
 
 .admin-property-actions--compact {
-  --admin-action-size: 28px;
+  --admin-action-size: 26px;
 }
 
 .admin-property-action-dropdown {
