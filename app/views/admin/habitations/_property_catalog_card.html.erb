@@ -9,7 +9,20 @@
   has_photo = imovel.has_any_photo?
   captador_name = imovel.primary_captador_name
   data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
-  days_since_update = ((Time.current - data_referencia) / 1.day).to_i
+  seconds_since_update = [Time.current - data_referencia, 0].max
+  days_since_update = (seconds_since_update / 1.day).to_i
+  compact_update_label = if seconds_since_update < 1.hour
+                           "#{[(seconds_since_update / 1.minute).floor, 1].max}min"
+                         elsif seconds_since_update < 1.day
+                           "#{(seconds_since_update / 1.hour).floor}h"
+                         elsif days_since_update < 30
+                           "#{days_since_update}d"
+                         elsif days_since_update < 365
+                           "#{(days_since_update / 30).floor}m"
+                         else
+                           "#{(days_since_update / 365).floor}a"
+                         end
+  full_update_label = "Atualizado há #{time_ago_in_words(data_referencia)}"
   update_state = if days_since_update <= 30
                    "is-fresh"
                  elsif days_since_update <= 60
@@ -72,9 +85,9 @@
     </div>
 
     <div class="ax-property-card__media-badges">
-      <span class="ax-property-update <%= update_state %>">
+      <span class="ax-property-update <%= update_state %>" title="<%= full_update_label %>">
         <i class="bi bi-clock-history"></i>
-        Atualizado há <%= time_ago_in_words(data_referencia) %>
+        <%= compact_update_label %>
       </span>
     </div>
   </div>
