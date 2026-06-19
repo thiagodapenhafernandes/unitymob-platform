@@ -2,7 +2,7 @@
 
 <div class="ax-card tw-mb-4 bg-light">
   <div class="ax-card__body p-4">
-    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-info-circle" style="color:#2563eb;"></i> Status Atual</h6>
+    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-info-circle" style="color:var(--admin-primary);"></i> Status Atual</h6>
     <ul class="tw-text-sm tw-mb-0 tw-pl-4">
       <li class="tw-mb-2">Integração ativa: <strong><%= @dwv_enabled ? "Sim" : "Não" %></strong></li>
       <li class="tw-mb-2">Conexão: <strong><%= @dwv_connected ? "Conectado" : "Desconectado" %></strong></li>
@@ -86,7 +86,7 @@
 
 <div class="ax-card tw-mb-4">
   <div class="ax-card__body p-4">
-    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-clock-history" style="color:#2563eb;"></i> Últimas 5 Atualizações</h6>
+    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-clock-history" style="color:var(--admin-primary);"></i> Últimas 5 Atualizações</h6>
     <% if @dwv_sync_history.present? %>
       <div class="ax-table-wrap">
         <table class="ax-table">

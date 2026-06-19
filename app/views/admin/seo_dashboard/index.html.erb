@@ -166,7 +166,7 @@
               <div class="ax-span-1">
                 <div class="tw-text-sm tw-text-ink-muted tw-mb-1"><%= l(day[:date], format: "%d/%m") %></div>
                 <div style="height: 72px; display:flex; align-items: end; background:#f8f9fa; border-radius:.25rem; overflow:hidden">
-                  <div role="progressbar" style="height: <%= percentage.call(day[:visits], [max_daily_visits, 1].max) %>%; width: 100%; background:var(--ax-primary, #2563eb)" aria-label="Acessos"></div>
+                  <div role="progressbar" style="height: <%= percentage.call(day[:visits], [max_daily_visits, 1].max) %>%; width: 100%; background:var(--ax-primary, var(--admin-primary))" aria-label="Acessos"></div>
                 </div>
                 <div class="tw-text-sm tw-font-semibold tw-mt-1"><%= number_with_delimiter(day[:visits]) %></div>
                 <div class="tw-text-sm tw-text-ink-muted"><%= number_with_delimiter(day[:unique_visitors]) %> únicos</div>

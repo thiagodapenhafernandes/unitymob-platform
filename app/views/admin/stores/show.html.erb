@@ -28,7 +28,7 @@
   <div class="ax-span-4">
     <div class="ax-card" style="height:100%">
       <div class="ax-card__body tw-text-center">
-        <i class="bi bi-bullseye" style="font-size: 2rem; color:#2563eb"></i>
+        <i class="bi bi-bullseye" style="font-size: 2rem; color:var(--admin-primary)"></i>
         <div class="tw-font-bold tw-mt-2"><%= @store.geofence_radius_meters %>m</div>
         <small class="tw-text-ink-muted text-uppercase">Raio de check-in</small>
       </div>
@@ -107,7 +107,7 @@
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
         <h5 class="tw-font-bold tw-mb-3">
-          <i class="bi bi-info-circle-fill" style="margin-right:.5rem; color:#2563eb"></i>Informações
+          <i class="bi bi-info-circle-fill" style="margin-right:.5rem; color:var(--admin-primary)"></i>Informações
         </h5>
         <ul class="list-unstyled tw-text-sm" style="margin-bottom:0">
           <% if @store.phone.present? %>

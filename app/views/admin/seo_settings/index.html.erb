@@ -71,7 +71,7 @@
     <div class="ax-card__body">
       <div class="tw-flex tw-justify-between tw-items-center tw-flex-wrap tw-gap-2 tw-mb-2">
         <div>
-          <h2 class="h6 tw-font-bold tw-mb-0"><i class="bi bi-diagram-3" style="color:#2563eb;"></i>Sitemap para buscadores</h2>
+          <h2 class="h6 tw-font-bold tw-mb-0"><i class="bi bi-diagram-3" style="color:var(--admin-primary);"></i>Sitemap para buscadores</h2>
           <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Use estes links no Google Search Console e em outras ferramentas de busca.</p>
         </div>
         <%= link_to "#{current_base_url}/sitemap.xml", target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm ax-btn--ghost" do %>
@@ -183,7 +183,7 @@
 <div class="ax-quick-modal ax-quick-modal--lg" id="seoStrategyModal" tabindex="-1" role="presentation" hidden aria-hidden="true" data-controller="ax-modal" data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
   <div class="ax-quick-modal__panel" role="dialog" aria-modal="true">
     <header class="ax-quick-modal__header">
-      <h5 class="ax-quick-modal__title"><i class="bi bi-stars" style="color:#2563eb;"></i> Estratégia da IA para SEO</h5>
+      <h5 class="ax-quick-modal__title"><i class="bi bi-stars" style="color:var(--admin-primary);"></i> Estratégia da IA para SEO</h5>
       <button type="button" class="ax-icon-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
     </header>
     <%= form_with url: update_strategy_admin_seo_settings_path, method: :patch, local: true do %>

@@ -106,7 +106,7 @@
                       </div>
                       <div class="ax-span-6 tw-mb-3">
                         <%= f.label :email, "E-mail de Contato", class: "ax-label" %>
-                        <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope", style: "color: #2563eb;")) do %>
+                        <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope", style: "color: var(--admin-primary);")) do %>
                           <%= f.email_field :email, class: "ax-control", placeholder: "exemplo@email.com" %>
                         <% end %>
                       </div>

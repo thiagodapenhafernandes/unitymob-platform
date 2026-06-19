@@ -113,6 +113,26 @@ Tokens base vêm de `public/analytics-builder-design-system/index.html` e
 - Customização em `/admin/layout_setting/edit` deve deixar claro o impacto:
   tokens do CRM/admin afetam `/admin`; tokens do site afetam o site público.
 
+### Checkpoint De Migração — 2026-06-19
+
+Estado confirmado no filesystem deste checkout:
+
+- O arquivo compat carregado pelo admin é `app/assets/stylesheets/admin_compat.css`.
+  Não existe `app/assets/stylesheets/admin_bootstrap_compat.css` no estado atual.
+- `admin_compat.css` continua sendo ponte temporária real, carregada junto com
+  `admin.css` e `admin_tailwind.css`; não remover até zerar dependências de
+  classes/estados legados nas views e controllers.
+- `app/views/admin` tem 261 arquivos; `app/views/admin/shared/ui` tem 51
+  partials; existem 13 controllers Stimulus `ax_*`.
+- Backups dentro de `app` estão zerados. Backups em `tmp` continuam fora do
+  versionamento.
+- O azul legado `#2563EB` foi removido das views admin. Resíduos fora das views
+  admin, como `property_card.css`, `sidebar.css`, `application.scss` e
+  `store_map_picker_controller.js`, devem ser tratados em lote próprio após
+  confirmar impacto no front público.
+- Próximo lote recomendado: migrar JS inline/handlers soltos e remover
+  dependências de `d-none` nos controllers que ainda controlam estado visual.
+
 ## Anatomia Global
 
 O admin migrado usa cinco componentes estruturais visíveis:

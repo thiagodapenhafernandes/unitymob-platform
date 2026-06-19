@@ -207,7 +207,7 @@
         <div class="ax-span-6">
           <%= f.label :auto_checkout_after_minutes, "Check-out automático após fim do turno", class: "ax-label tw-font-semibold" %>
           <div class="tw-flex tw-items-center tw-gap-2">
-            <span><i class="bi bi-moon" style="color:#2563eb"></i></span>
+            <span><i class="bi bi-moon" style="color:var(--admin-primary)"></i></span>
             <%= f.number_field :auto_checkout_after_minutes, min: 0, max: 240, class: "ax-control" %>
             <span>min</span>
           </div>

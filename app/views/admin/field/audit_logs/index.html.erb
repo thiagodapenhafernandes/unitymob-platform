@@ -9,7 +9,7 @@
     "manual_request_approved" => { label: "Pedido manual aprovado",   icon: "bi-check-circle-fill",     color: "success" },
     "manual_request_rejected" => { label: "Pedido manual rejeitado",  icon: "bi-x-circle-fill",         color: "dark" }
   }
-  dot_hex = { "primary" => "var(--admin-primary)", "danger" => "#b42318", "warning" => "#b45309", "success" => "#08875d", "info" => "#2563eb", "secondary" => "#98a2b3", "dark" => "#475467" }
+  dot_hex = { "primary" => "var(--admin-primary)", "danger" => "#b42318", "warning" => "#b45309", "success" => "#08875d", "info" => "var(--admin-primary)", "secondary" => "#98a2b3", "dark" => "#475467" }
   bs_to_ax = { "primary" => "blue", "danger" => "red", "warning" => "amber", "success" => "green", "info" => "blue", "secondary" => "gray", "dark" => "gray" }
   grouped = @logs.group_by { |l| l.created_at.to_date }
 %>

@@ -378,7 +378,7 @@
               <div class="ax-span-4">
                 <div class="ax-card" style="height: 100%;">
                   <div class="ax-card__body">
-                    <%= ax_switch_field(form: f, method: :services_active, id: "services_active", label: "<i class=\"bi bi-grid-3x3-gap\" style=\"color:#2563eb\"></i> Nossos Serviços".html_safe) %>
+                    <%= ax_switch_field(form: f, method: :services_active, id: "services_active", label: "<i class=\"bi bi-grid-3x3-gap\" style=\"color:var(--admin-primary)\"></i> Nossos Serviços".html_safe) %>
                     <p class="tw-text-ink-muted tw-text-sm tw-mt-2 mb-0">Exibe os serviços oferecidos pela imobiliária</p>
                   </div>
                 </div>
@@ -416,7 +416,7 @@
     <!-- Save Button -->
     <div class="tw-flex tw-justify-between tw-items-center tw-gap-2 tw-mt-4 p-4 bg-light rounded">
       <div class="tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-info-circle" style="color:#2563eb"></i>
+        <i class="bi bi-info-circle" style="color:var(--admin-primary)"></i>
         <span class="tw-text-ink-muted">Não esqueça de salvar suas alterações</span>
       </div>
       <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary", data: { disable_with: "Salvando..." } %>

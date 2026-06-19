@@ -1,6 +1,6 @@
 <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
   <div>
-    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2"><i class="bi bi-bullseye" style="color: #2563eb;"></i>Trackeamento</h1>
+    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2"><i class="bi bi-bullseye" style="color: var(--admin-primary);"></i>Trackeamento</h1>
     <p class="ax-page-subtitle">Configure tags de mensuração aplicadas no site público.</p>
   </div>
 </div>
@@ -40,7 +40,7 @@
       <div class="ax-span-7">
         <div class="ax-card">
           <div class="ax-card__header">
-            <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-tags" style="color: #2563eb;"></i>Google Tag Manager</h5>
+            <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-tags" style="color: var(--admin-primary);"></i>Google Tag Manager</h5>
           </div>
           <div class="ax-card__body">
             <%= ax_inline_notice(tone: TrackingIntegrationSetting.google_tag_manager_enabled? ? :success : :warning, icon: TrackingIntegrationSetting.google_tag_manager_enabled? ? "check-circle" : "exclamation-triangle") do %>
@@ -97,7 +97,7 @@
       <div class="ax-span-7">
         <div class="ax-card">
           <div class="ax-card__header">
-            <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-meta" style="color: #2563eb;"></i>Pixel da Meta</h5>
+            <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-meta" style="color: var(--admin-primary);"></i>Pixel da Meta</h5>
           </div>
           <div class="ax-card__body">
             <%= ax_inline_notice(tone: TrackingIntegrationSetting.meta_pixel_enabled? ? :success : :warning, icon: TrackingIntegrationSetting.meta_pixel_enabled? ? "check-circle" : "exclamation-triangle") do %>

@@ -221,10 +221,10 @@
 
     <!-- URL do Feed em destaque (ação principal) -->
     <% feed_url = integrations_portals_feed_token_url(portal: @active_portal, token: current_integration.feed_token, format: current_integration.feed_format) %>
-    <div class="ax-card tw-mb-3" style="border-color: var(--ax-accent, #2563eb);" data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
+    <div class="ax-card tw-mb-3" style="border-color: var(--ax-accent, var(--admin-primary));" data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
       <div class="ax-card__body">
         <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
-          <i class="bi bi-link-45deg fs-4" style="color: #2563eb;"></i>
+          <i class="bi bi-link-45deg fs-4" style="color: var(--admin-primary);"></i>
           <h5 class="tw-font-bold tw-mb-0">URL do Feed para o portal</h5>
         </div>
         <p class="tw-text-sm tw-text-ink-muted tw-mb-3">
