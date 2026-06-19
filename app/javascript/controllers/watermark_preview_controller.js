@@ -36,10 +36,12 @@ export default class extends Controller {
     this.revokePreviewUrl()
     this.previewUrl = URL.createObjectURL(file)
     this.logoTarget.src = this.previewUrl
-    this.logoTarget.classList.remove("d-none")
+    this.logoTarget.hidden = false
+    this.logoTarget.classList.remove("tw-hidden")
 
     if (this.hasPlaceholderTarget) {
-      this.placeholderTarget.classList.add("d-none")
+      this.placeholderTarget.hidden = true
+      this.placeholderTarget.classList.add("tw-hidden")
     }
 
     this.update()

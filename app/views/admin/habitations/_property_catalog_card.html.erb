@@ -35,7 +35,11 @@
       <%= image_tag image_url,
                     alt: imovel.display_title,
                     loading: "lazy",
-                    onerror: "this.hidden=true;this.closest('.ax-property-card__media')?.classList.add('is-image-missing')" %>
+                    data: {
+                      controller: "image-fallback",
+                      action: "error->image-fallback#hide",
+                      image_fallback_container_selector_value: ".ax-property-card__media"
+                    } %>
     <% else %>
       <div class="ax-property-card__empty-media">
         <i class="bi bi-image"></i>
@@ -43,7 +47,7 @@
     <% end %>
 
     <% if bulk_actions_allowed %>
-      <label class="ax-property-select" onclick="event.stopPropagation();" title="Selecionar imóvel">
+      <label class="ax-property-select" title="Selecionar imóvel" data-controller="stop-propagation" data-action="click->stop-propagation#stop">
         <input type="checkbox"
                data-bulk-publish-target="item"
                data-id="<%= imovel.id %>"

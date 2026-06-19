@@ -17,8 +17,8 @@
   <div class="<%= 'wizard-invalid-choice' if field_invalid.call(:dias_visitas) %>">
     <% %w[Seg Ter Qua Qui Sex Sáb Dom Manhã Tarde Noite].each do |opt| %>
       <% selected = Array(@captacao.dias_visitas).include?(opt) %>
-      <label class="wizard-feature-chip <%= 'selected' if selected %>">
-        <%= check_box_tag "captacao[dias_visitas][]", opt, selected, onchange: "this.closest('label').classList.toggle('selected', this.checked)" %>
+      <label class="wizard-feature-chip <%= 'selected' if selected %>" data-controller="selectable-chip">
+        <%= check_box_tag "captacao[dias_visitas][]", opt, selected, data: { action: "change->selectable-chip#sync" } %>
         <%= opt %>
       </label>
     <% end %>

@@ -68,9 +68,9 @@
       <% watermark_available = @property_setting&.watermark_configured? %>
       <% media_actions = capture do %>
         <div class="ax-media-upload-panel__watermark">
-          <label class="ax-toggle-chip <%= 'is-checked' if watermark_available %>">
+          <label class="ax-toggle-chip <%= 'is-checked' if watermark_available %>" data-controller="ax-checkbox-chips">
             <%= hidden_field_tag "habitation[apply_photo_watermark]", "0" %>
-            <%= check_box_tag "habitation[apply_photo_watermark]", "1", watermark_available, class: "ax-toggle-chip__input", disabled: !watermark_available, onchange: "this.closest('.ax-toggle-chip').classList.toggle('is-checked', this.checked)" %>
+            <%= check_box_tag "habitation[apply_photo_watermark]", "1", watermark_available, class: "ax-toggle-chip__input", disabled: !watermark_available, data: { action: "change->ax-checkbox-chips#sync" } %>
             <span class="ax-toggle-chip__box" aria-hidden="true">
               <i class="bi bi-check-lg"></i>
             </span>

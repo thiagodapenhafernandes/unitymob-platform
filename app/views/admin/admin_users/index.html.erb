@@ -36,23 +36,23 @@
   <%= render "vista_sync_panel" %>
   <%= render "backfill_brokers_panel" %>
 
-  <%= form_with url: admin_admin_users_path, method: :get, class: "au-filters" do |f| %>
+  <%= form_with url: admin_admin_users_path, method: :get, class: "au-filters", data: { controller: "auto-submit" } do |f| %>
     <div class="au-filters__search">
       <i class="bi bi-search"></i>
       <%= f.text_field :query, value: params[:query], class: "ax-control", placeholder: "Buscar por nome, e-mail, CRECI ou ID..." %>
     </div>
     <%= f.collection_select :profile_id, @available_profiles, :id, :name,
           { selected: params[:profile_id], prompt: "Todos os perfis" },
-          { class: "ax-control", onchange: "this.form.requestSubmit()" } %>
+          { class: "ax-control", data: { action: "change->auto-submit#submit" } } %>
     <%= f.select :acting_type, acting_options,
           { selected: params[:acting_type], prompt: "Todas as atuações" },
-          { class: "ax-control", onchange: "this.form.requestSubmit()" } %>
+          { class: "ax-control", data: { action: "change->auto-submit#submit" } } %>
     <%= f.collection_select :manager_id, @manager_options, :id, :name,
           { selected: params[:manager_id], prompt: "Todos os gestores" },
-          { class: "ax-control", onchange: "this.form.requestSubmit()" } %>
+          { class: "ax-control", data: { action: "change->auto-submit#submit" } } %>
     <%= f.select :status, [["Todos status", ""], ["Apenas ativos", "active"], ["Apenas inativos", "inactive"]],
           { selected: params[:status] },
-          { class: "ax-control", onchange: "this.form.requestSubmit()" } %>
+          { class: "ax-control", data: { action: "change->auto-submit#submit" } } %>
     <div class="au-filters__actions">
       <%= f.submit "Filtrar", class: "ax-btn ax-btn--primary ax-btn--sm" %>
       <% if filters_active %>
@@ -135,8 +135,10 @@
                   <%= link_to edit_admin_admin_user_path(user), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
                   <% if user != current_admin_user %>
                     <button type="button" class="ax-ico-btn" title="Excluir"
+                            data-controller="reassign-delete"
                             data-ax-modal-open="#reassignDeleteModal"
                             data-reassign-delete-trigger
+                            data-action="click->reassign-delete#prepare"
                             data-url="<%= admin_admin_user_path(user) %>"
                             data-user-id="<%= user.id %>"
                             data-user-name="<%= user.name %>">
@@ -160,15 +162,15 @@
 </div>
 
 <%= ax_quick_modal(id: "reassignDeleteModal", title: "Excluir usuário", size: :md, footer: nil) do %>
-  <div data-reassign-delete-root>
+  <div data-controller="reassign-delete">
     <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
-      <span>Você está excluindo <strong data-reassign-delete-name>este usuário</strong>. Esta ação é irreversível.</span>
+      <span>Você está excluindo <strong data-reassign-delete-target="name">este usuário</strong>. Esta ação é irreversível.</span>
     <% end %>
 
-    <%= form_tag("", method: :delete, data: { reassign_delete_form: true }, class: "reassign-delete__form") do %>
+    <%= form_tag("", method: :delete, data: { reassign_delete_target: "form" }, class: "reassign-delete__form") do %>
       <p class="reassign-delete__hint">Os dados do usuário (leads, imóveis, captações, tarefas, propostas e carteira) serão <strong>reatribuídos</strong> para o admin escolhido. Auditorias permanecem imutáveis com o id histórico.</p>
       <label class="ax-field-label" for="reassign_to_id"><span class="ax-field-label__text">Reatribuir para</span></label>
-      <select name="reassign_to_id" id="reassign_to_id" class="ax-control" data-reassign-delete-select required>
+      <select name="reassign_to_id" id="reassign_to_id" class="ax-control" data-reassign-delete-target="select" required>
         <% AdminUser.account_members.order(:name).each do |a| %>
           <option value="<%= a.id %>" data-user-id="<%= a.id %>"<%= " selected" if a == current_admin_user %>><%= a.name %><%= " (você)" if a == current_admin_user %></option>
         <% end %>
@@ -212,32 +214,3 @@
   .reassign-delete__hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.45; }
   .reassign-delete__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 </style>
-
-<script>
-  (function () {
-    const form = document.querySelector("[data-reassign-delete-form]");
-    const nameEl = document.querySelector("[data-reassign-delete-name]");
-    const select = document.querySelector("[data-reassign-delete-select]");
-    if (!form || !select) return;
-
-    document.addEventListener("click", function (event) {
-      const trigger = event.target.closest("[data-reassign-delete-trigger]");
-      if (!trigger) return;
-
-      form.setAttribute("action", trigger.dataset.url);
-      if (nameEl) nameEl.textContent = trigger.dataset.userName || "este usuário";
-
-      const deletingId = trigger.dataset.userId;
-      let firstEnabled = null;
-      Array.from(select.options).forEach(function (opt) {
-        const same = opt.dataset.userId === deletingId;
-        opt.disabled = same;
-        opt.hidden = same;
-        if (!same && !firstEnabled) firstEnabled = opt;
-      });
-      if (select.selectedOptions[0] && select.selectedOptions[0].disabled && firstEnabled) {
-        firstEnabled.selected = true;
-      }
-    });
-  })();
-</script>

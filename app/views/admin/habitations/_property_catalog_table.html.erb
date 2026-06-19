@@ -61,7 +61,11 @@
                   <%= image_tag image_url,
                                 alt: imovel.display_title,
                                 loading: "lazy",
-                                onerror: "this.hidden=true;this.closest('.ax-property-table__thumb')?.classList.add('is-image-missing')" %>
+                                data: {
+                                  controller: "image-fallback",
+                                  action: "error->image-fallback#hide",
+                                  image_fallback_container_selector_value: ".ax-property-table__thumb"
+                                } %>
                 <% else %>
                   <i class="bi bi-image"></i>
                 <% end %>

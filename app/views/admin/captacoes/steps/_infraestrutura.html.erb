@@ -56,8 +56,8 @@
       <div class="<%= 'wizard-invalid-choice' if field_invalid.call(:caracteristicas_predio) %>">
         <% features_predio.each do |feat| %>
           <% selected = captacao_feature_selected?(@captacao.caracteristicas_predio, feat) %>
-          <label class="wizard-feature-chip <%= 'selected' if selected %>">
-            <%= check_box_tag "captacao[caracteristicas_predio][]", feat, selected, onchange: "this.closest('label').classList.toggle('selected', this.checked)" %>
+          <label class="wizard-feature-chip <%= 'selected' if selected %>" data-controller="selectable-chip">
+            <%= check_box_tag "captacao[caracteristicas_predio][]", feat, selected, data: { action: "change->selectable-chip#sync" } %>
             <%= feat %>
           </label>
         <% end %>

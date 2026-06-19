@@ -19,6 +19,9 @@ application.register("attribute-manager", AttributeManagerController)
 import AutocompleteController from "./autocomplete_controller"
 application.register("autocomplete", AutocompleteController)
 
+import AutoSubmitController from "./auto_submit_controller"
+application.register("auto-submit", AutoSubmitController)
+
 import AutomationBuilderController from "./automation_builder_controller"
 application.register("automation-builder", AutomationBuilderController)
 
@@ -169,8 +172,14 @@ application.register("home-settings-preview", HomeSettingsPreviewController)
 import HierarchySortableController from "./hierarchy_sortable_controller"
 application.register("hierarchy-sortable", HierarchySortableController)
 
+import HierarchyTreeController from "./hierarchy_tree_controller"
+application.register("hierarchy-tree", HierarchyTreeController)
+
 import ImageMigrationStatusController from "./image_migration_status_controller"
 application.register("image-migration-status", ImageMigrationStatusController)
+
+import ImageFallbackController from "./image_fallback_controller"
+application.register("image-fallback", ImageFallbackController)
 
 import ImagePreviewController from "./image_preview_controller"
 application.register("image-preview", ImagePreviewController)
@@ -238,6 +247,9 @@ application.register("proprietor-table", ProprietorTableController)
 import RentCalculatorController from "./rent_calculator_controller"
 application.register("rent-calculator", RentCalculatorController)
 
+import ReassignDeleteController from "./reassign_delete_controller"
+application.register("reassign-delete", ReassignDeleteController)
+
 import SaveStateController from "./save_state_controller"
 application.register("save-state", SaveStateController)
 
@@ -253,6 +265,9 @@ application.register("search-tabs", SearchTabsController)
 import SeoEditorController from "./seo_editor_controller"
 application.register("seo-editor", SeoEditorController)
 
+import SelectableChipController from "./selectable_chip_controller"
+application.register("selectable-chip", SelectableChipController)
+
 import ShareController from "./share_controller"
 application.register("share", ShareController)
 
@@ -261,6 +276,9 @@ application.register("sidebar", SidebarController)
 
 import SortableController from "./sortable_controller"
 application.register("sortable", SortableController)
+
+import StopPropagationController from "./stop_propagation_controller"
+application.register("stop-propagation", StopPropagationController)
 
 import StoreMapPickerController from "./store_map_picker_controller"
 application.register("store-map-picker", StoreMapPickerController)

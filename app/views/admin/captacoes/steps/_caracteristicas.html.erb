@@ -187,8 +187,8 @@
     <div class="<%= 'wizard-invalid-choice' if field_invalid.call(:caracteristicas_imovel) %>">
       <% features_imovel.each do |feat| %>
         <% selected = captacao_feature_selected?(@captacao.caracteristicas_imovel, feat) %>
-        <label class="wizard-feature-chip <%= 'selected' if selected %>">
-          <%= check_box_tag "captacao[caracteristicas_imovel][]", feat, selected, onchange: "this.closest('label').classList.toggle('selected', this.checked)" %>
+        <label class="wizard-feature-chip <%= 'selected' if selected %>" data-controller="selectable-chip">
+          <%= check_box_tag "captacao[caracteristicas_imovel][]", feat, selected, data: { action: "change->selectable-chip#sync" } %>
           <%= feat %>
         </label>
       <% end %>

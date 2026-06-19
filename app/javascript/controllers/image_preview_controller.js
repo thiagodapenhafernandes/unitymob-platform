@@ -132,10 +132,12 @@ export default class extends Controller {
     reader.onload = (e) => {
       if (this.hasPreviewTarget) {
         this.previewTarget.src = e.target.result
-        this.previewTarget.classList.remove("d-none")
+        this.previewTarget.hidden = false
+        this.previewTarget.classList.remove("tw-hidden")
       }
       if (this.hasPlaceholderTarget) {
-        this.placeholderTarget.classList.add("d-none")
+        this.placeholderTarget.hidden = true
+        this.placeholderTarget.classList.add("tw-hidden")
       }
     }
     reader.readAsDataURL(file)

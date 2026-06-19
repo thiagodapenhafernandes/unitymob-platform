@@ -81,15 +81,19 @@
       <%= ax_field_grid do %>
         <div class="ax-span-6">
           <label class="ax-label tw-text-sm tw-font-semibold tw-mb-1">Sitemap XML</label>
-          <%= ax_input_group(action: link_to("Copiar", "#", class: "ax-btn ax-btn--sm ax-btn--ghost", onclick: "navigator.clipboard.writeText('#{j("#{current_base_url}/sitemap.xml")}'); return false;")) do %>
-            <input type="text" readonly class="ax-control ax-control--sm" value="<%= "#{current_base_url}/sitemap.xml" %>">
-          <% end %>
+          <div data-controller="clipboard">
+            <%= ax_input_group(action: button_tag("Copiar", type: "button", class: "ax-btn ax-btn--sm ax-btn--ghost", data: { action: "clipboard#copy", clipboard_target: "button" })) do %>
+              <input type="text" readonly class="ax-control ax-control--sm" value="<%= "#{current_base_url}/sitemap.xml" %>" data-clipboard-target="source">
+            <% end %>
+          </div>
         </div>
         <div class="ax-span-6">
           <label class="ax-label tw-text-sm tw-font-semibold tw-mb-1">Robots.txt</label>
-          <%= ax_input_group(action: link_to("Copiar", "#", class: "ax-btn ax-btn--sm ax-btn--ghost", onclick: "navigator.clipboard.writeText('#{j("#{current_base_url}/robots.txt")}'); return false;")) do %>
-            <input type="text" readonly class="ax-control ax-control--sm" value="<%= "#{current_base_url}/robots.txt" %>">
-          <% end %>
+          <div data-controller="clipboard">
+            <%= ax_input_group(action: button_tag("Copiar", type: "button", class: "ax-btn ax-btn--sm ax-btn--ghost", data: { action: "clipboard#copy", clipboard_target: "button" })) do %>
+              <input type="text" readonly class="ax-control ax-control--sm" value="<%= "#{current_base_url}/robots.txt" %>" data-clipboard-target="source">
+            <% end %>
+          </div>
         </div>
       <% end %>
     </div>

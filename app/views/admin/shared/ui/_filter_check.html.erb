@@ -3,12 +3,12 @@
   chip_classes = ["ax-toggle-chip", "ax-filter-check", ("is-checked" if checked), class_name].compact_blank.join(" ")
 %>
 
-<label class="<%= chip_classes %>" for="<%= input_id %>">
+<label class="<%= chip_classes %>" for="<%= input_id %>" data-controller="ax-checkbox-chips">
   <%= check_box_tag name,
                     value,
                     checked,
                     id: input_id,
                     class: "ax-toggle-chip__input",
-                    onchange: "this.closest('.ax-toggle-chip').classList.toggle('is-checked', this.checked)" %>
+                    data: { action: "change->ax-checkbox-chips#sync" } %>
   <span class="ax-toggle-chip__label"><%= label %></span>
 </label>

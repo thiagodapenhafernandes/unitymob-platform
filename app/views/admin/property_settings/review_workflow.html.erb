@@ -102,11 +102,11 @@
                 <% PropertySetting::RETURNABLE_INTAKE_EDIT_SECTION_OPTIONS.each do |key, label| %>
                   <% section_id = "property_setting_returnable_intake_edit_sections_#{key}" %>
                   <% section_checked = Array(@property_setting.returnable_intake_edit_sections).include?(key) %>
-                  <label class="ax-toggle-chip <%= "is-checked" if section_checked %>">
+                  <label class="ax-toggle-chip <%= "is-checked" if section_checked %>" data-controller="ax-checkbox-chips">
                     <%= check_box_tag "property_setting[returnable_intake_edit_sections][]", key, section_checked,
                           id: section_id,
                           class: "ax-toggle-chip__input",
-                          onchange: "this.closest('.ax-toggle-chip').classList.toggle('is-checked', this.checked)" %>
+                          data: { action: "change->ax-checkbox-chips#sync" } %>
                     <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
                     <span class="ax-toggle-chip__label"><%= label %></span>
                   </label>

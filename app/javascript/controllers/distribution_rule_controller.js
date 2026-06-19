@@ -22,28 +22,28 @@ export default class extends Controller {
   toggleRepresamento(event) {
     const checkbox = event ? event.target : this.findCheckbox('#checkRepresamento')
     if (this.hasRepresamentoSectionTarget && checkbox) {
-      this.represamentoSectionTarget.classList.toggle("d-none", !checkbox.checked)
+      this.setVisible(this.represamentoSectionTarget, checkbox.checked)
     }
   }
 
   togglePocket(event) {
     const checkbox = event ? event.target : this.findCheckbox('#checkPocket')
     if (this.hasPocketSectionTarget && checkbox) {
-      this.pocketSectionTarget.classList.toggle("d-none", !checkbox.checked)
+      this.setVisible(this.pocketSectionTarget, checkbox.checked)
     }
   }
 
   toggleMeta(event) {
     const checkbox = event ? event.target : this.findCheckbox('[name="distribution_rule[source_meta]"]')
     if (this.hasMetaSectionTarget && checkbox) {
-      this.metaSectionTarget.classList.toggle("d-none", !checkbox.checked)
+      this.setVisible(this.metaSectionTarget, checkbox.checked)
     }
   }
 
   toggleWebhook(event) {
     const checkbox = event ? event.target : this.findCheckbox('[name="distribution_rule[source_webhook]"]')
     if (this.hasWebhookSectionTarget && checkbox) {
-      this.webhookSectionTarget.classList.toggle("d-none", !checkbox.checked)
+      this.setVisible(this.webhookSectionTarget, checkbox.checked)
     }
   }
 
@@ -53,7 +53,12 @@ export default class extends Controller {
     const performanceFields = document.querySelectorAll('.performance-field')
     const rotaryFields = document.querySelectorAll('.rotary-field')
 
-    performanceFields.forEach(el => el.classList.toggle('d-none', selectedMode !== 'performance'))
-    rotaryFields.forEach(el => el.classList.toggle('d-none', selectedMode !== 'rotary'))
+    performanceFields.forEach(el => this.setVisible(el, selectedMode === 'performance'))
+    rotaryFields.forEach(el => this.setVisible(el, selectedMode === 'rotary'))
+  }
+
+  setVisible(element, visible) {
+    element.hidden = !visible
+    element.classList.toggle("tw-hidden", !visible)
   }
 }

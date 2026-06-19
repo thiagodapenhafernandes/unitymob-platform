@@ -242,7 +242,7 @@
           <input type="text" class="ax-control font-monospace tw-text-sm" readonly
                  value="<%= feed_url %>"
                  data-clipboard-target="source"
-                 onclick="this.select()">
+                 data-action="focus->clipboard#select click->clipboard#select">
         <% end %>
         <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mt-3">
           <%= link_to preview_feed_admin_portal_integration_path(@active_portal),

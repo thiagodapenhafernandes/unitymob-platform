@@ -74,38 +74,36 @@
 
 <div class="ax-card tw-mb-3">
   <div class="ax-card__body">
-    <%= form_with url: admin_access_audit_logs_path, method: :get, local: true, class: "ax-field-grid ax-field-grid--12 tw-items-end" do %>
+    <%= form_with url: admin_access_audit_logs_path, method: :get, local: true, class: "ax-field-grid ax-field-grid--12 tw-items-end", data: { controller: "auto-submit" } do %>
       <div class="ax-span-2">
         <label class="ax-label">Evento</label>
         <%= select_tag :event_type,
-                       options_for_select([["Todos", ""]] + AccessAuditLog::EVENT_TYPES.map { |type| [AccessAuditLog::EVENT_LABELS[type], type] }, params[:event_type]),
-                       class: "ax-control ax-control--sm",
-                       onchange: "this.form.submit()" %>
+	                       options_for_select([["Todos", ""]] + AccessAuditLog::EVENT_TYPES.map { |type| [AccessAuditLog::EVENT_LABELS[type], type] }, params[:event_type]),
+	                       class: "ax-control ax-control--sm",
+	                       data: { action: "change->auto-submit#submit" } %>
       </div>
       <div class="ax-span-2">
         <label class="ax-label">Resultado</label>
         <%= select_tag :result,
-                       options_for_select([["Todos", ""]] + AccessAuditLog::RESULTS.map { |result| [AccessAuditLog::RESULT_LABELS[result], result] }, params[:result]),
-                       class: "ax-control ax-control--sm",
-                       onchange: "this.form.submit()" %>
+	                       options_for_select([["Todos", ""]] + AccessAuditLog::RESULTS.map { |result| [AccessAuditLog::RESULT_LABELS[result], result] }, params[:result]),
+	                       class: "ax-control ax-control--sm",
+	                       data: { action: "change->auto-submit#submit" } %>
       </div>
       <div class="ax-span-3">
         <label class="ax-label">Usuário</label>
         <%= select_tag :admin_user_id,
                        options_from_collection_for_select(@available_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:admin_user_id]),
-                       include_blank: "Todos",
-                       class: "ax-control ax-control--sm",
-                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." } },
-                       onchange: "this.form.submit()" %>
+	                       include_blank: "Todos",
+	                       class: "ax-control ax-control--sm",
+	                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." }, action: "change->auto-submit#submit" } %>
       </div>
       <div class="ax-span-2">
         <label class="ax-label">Perfil</label>
         <%= select_tag :profile_id,
                        options_from_collection_for_select(@available_profiles, :id, :name, params[:profile_id]),
-                       include_blank: "Todos",
-                       class: "ax-control ax-control--sm",
-                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." } },
-                       onchange: "this.form.submit()" %>
+	                       include_blank: "Todos",
+	                       class: "ax-control ax-control--sm",
+	                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." }, action: "change->auto-submit#submit" } %>
       </div>
       <div class="ax-span-2">
         <label class="ax-label">IP</label>
@@ -114,34 +112,30 @@
       <div class="ax-span-2">
         <label class="ax-label">Dispositivo</label>
         <%= select_tag :device_type,
-                       options_for_select([["Todos", ""]] + @available_device_types.map { |value| [value, value] }, params[:device_type]),
-                       class: "ax-control ax-control--sm",
-                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar dispositivo..." } },
-                       onchange: "this.form.submit()" %>
+	                       options_for_select([["Todos", ""]] + @available_device_types.map { |value| [value, value] }, params[:device_type]),
+	                       class: "ax-control ax-control--sm",
+	                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar dispositivo..." }, action: "change->auto-submit#submit" } %>
       </div>
       <div class="ax-span-2">
         <label class="ax-label">Navegador</label>
         <%= select_tag :browser,
-                       options_for_select([["Todos", ""]] + @available_browsers.map { |value| [value, value] }, params[:browser]),
-                       class: "ax-control ax-control--sm",
-                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar navegador..." } },
-                       onchange: "this.form.submit()" %>
+	                       options_for_select([["Todos", ""]] + @available_browsers.map { |value| [value, value] }, params[:browser]),
+	                       class: "ax-control ax-control--sm",
+	                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar navegador..." }, action: "change->auto-submit#submit" } %>
       </div>
       <div class="ax-span-3">
         <label class="ax-label">Controller</label>
         <%= select_tag :access_controller,
-                       options_for_select([["Todos", ""]] + @available_controllers.map { |value| [value, value] }, params[:access_controller]),
-                       class: "ax-control ax-control--sm",
-                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar controller..." } },
-                       onchange: "this.form.submit()" %>
+	                       options_for_select([["Todos", ""]] + @available_controllers.map { |value| [value, value] }, params[:access_controller]),
+	                       class: "ax-control ax-control--sm",
+	                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar controller..." }, action: "change->auto-submit#submit" } %>
       </div>
       <div class="ax-span-2">
         <label class="ax-label">Ação</label>
         <%= select_tag :access_action,
-                       options_for_select([["Todas", ""]] + @available_actions.map { |value| [value, value] }, params[:access_action]),
-                       class: "ax-control ax-control--sm",
-                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar ação..." } },
-                       onchange: "this.form.submit()" %>
+	                       options_for_select([["Todas", ""]] + @available_actions.map { |value| [value, value] }, params[:access_action]),
+	                       class: "ax-control ax-control--sm",
+	                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar ação..." }, action: "change->auto-submit#submit" } %>
       </div>
       <div class="ax-span-3">
         <label class="ax-label">Rota contém</label>

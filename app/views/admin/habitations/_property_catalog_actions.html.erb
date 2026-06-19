@@ -1,6 +1,6 @@
 <% compact = local_assigns.fetch(:compact, false) %>
 
-<div class="admin-property-actions <%= compact ? 'admin-property-actions--compact' : '' %>" onclick="event.stopPropagation();">
+<div class="admin-property-actions <%= compact ? 'admin-property-actions--compact' : '' %>" data-controller="stop-propagation" data-action="click->stop-propagation#stop">
   <div class="admin-property-action-dropdown"
        data-controller="broker-share ax-dropdown"
        data-broker-share-generate-url-value="<%= current_admin_user.present? ? share_link_habitation_path(imovel) : '' %>"

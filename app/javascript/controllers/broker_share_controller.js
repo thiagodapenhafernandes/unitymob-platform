@@ -132,10 +132,10 @@ export default class extends Controller {
     if (!this.hasStatusTarget) return
 
     this.statusTarget.textContent = message
-    this.statusTarget.classList.remove("hidden", "d-none")
+    this.showElement(this.statusTarget)
     clearTimeout(this._statusTimer)
     this._statusTimer = setTimeout(() => {
-      this.statusTarget.classList.add("hidden", "d-none")
+      this.hideElement(this.statusTarget)
     }, 1600)
   }
 
@@ -147,16 +147,26 @@ export default class extends Controller {
 
   menuVisible() {
     if (!this.hasMenuTarget) return false
-    return !this.menuTarget.classList.contains("hidden") && !this.menuTarget.classList.contains("d-none")
+    return !this.menuTarget.hidden && !this.menuTarget.classList.contains("hidden") && !this.menuTarget.classList.contains("tw-hidden")
   }
 
   showMenu() {
     if (!this.hasMenuTarget) return
-    this.menuTarget.classList.remove("hidden", "d-none")
+    this.showElement(this.menuTarget)
   }
 
   hideMenu() {
     if (!this.hasMenuTarget) return
-    this.menuTarget.classList.add("hidden", "d-none")
+    this.hideElement(this.menuTarget)
+  }
+
+  showElement(element) {
+    element.hidden = false
+    element.classList.remove("hidden", "tw-hidden", "d-none")
+  }
+
+  hideElement(element) {
+    element.hidden = true
+    element.classList.add("hidden", "tw-hidden")
   }
 }

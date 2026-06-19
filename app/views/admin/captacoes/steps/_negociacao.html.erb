@@ -132,8 +132,8 @@
   <label class="ax-label">Outras taxas / contribuições</label>
   <% ["Fundo de reserva", "Taxa extra", "Lazer", "Água", "Gás", "Taxa de lixo"].each do |opt| %>
     <% selected = Array(@captacao.outras_taxas).include?(opt) %>
-    <label class="wizard-feature-chip <%= 'selected' if selected %>">
-      <%= check_box_tag "captacao[outras_taxas][]", opt, selected, onchange: "this.closest('label').classList.toggle('selected', this.checked)" %>
+    <label class="wizard-feature-chip <%= 'selected' if selected %>" data-controller="selectable-chip">
+      <%= check_box_tag "captacao[outras_taxas][]", opt, selected, data: { action: "change->selectable-chip#sync" } %>
       <%= opt %>
     </label>
   <% end %>

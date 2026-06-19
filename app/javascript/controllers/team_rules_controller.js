@@ -152,8 +152,13 @@ export default class extends Controller {
     const performanceField = row.querySelector('.performance-field')
     const rotaryField = row.querySelector('.rotary-field')
 
-    if (performanceField) performanceField.classList.toggle('d-none', currentMode !== 'performance')
-    if (rotaryField) rotaryField.classList.toggle('d-none', currentMode !== 'rotary')
+    if (performanceField) this.setVisible(performanceField, currentMode === 'performance')
+    if (rotaryField) this.setVisible(rotaryField, currentMode === 'rotary')
+  }
+
+  setVisible(element, visible) {
+    element.hidden = !visible
+    element.classList.toggle('tw-hidden', !visible)
   }
 
   filterAgents(event) {

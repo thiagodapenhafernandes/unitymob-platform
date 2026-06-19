@@ -45,6 +45,16 @@ export default class extends Controller {
     }
   }
 
+  select(event) {
+    const input = event.currentTarget
+    if (typeof input.select !== "function") return
+
+    input.select()
+    if (typeof input.setSelectionRange === "function") {
+      input.setSelectionRange(0, input.value?.length || 0)
+    }
+  }
+
   fallback(text, onSuccess) {
     this.sourceTarget.select()
     this.sourceTarget.setSelectionRange(0, 99999)

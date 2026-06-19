@@ -44,16 +44,16 @@
   <div class="ax-card__body">
     <div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
       <h6 class="tw-font-bold tw-flex tw-items-center tw-gap-2"><i class="bi bi-grid-3x3-gap-fill tw-text-primary"></i>Leads por Corretor</h6>
-      <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "tw-flex tw-gap-2 tw-flex-wrap tw-items-center" do %>
+      <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "tw-flex tw-gap-2 tw-flex-wrap tw-items-center", data: { controller: "auto-submit" } do %>
         <%= hidden_field_tag :start_date, @period_start %>
         <%= hidden_field_tag :end_date,   @period_end %>
         <%= hidden_field_tag :month,      @month_filter %>
         <%= select_tag :lead_category,
                        options_for_select([["Categoria: Todos", ""]] + @lead_categories.map { |c| [c.to_s.humanize, c] }, params[:lead_category]),
-                       class: "ax-control ax-control--sm", onchange: "this.form.submit()" %>
+                       class: "ax-control ax-control--sm", data: { action: "change->auto-submit#submit" } %>
         <%= select_tag :lead_source,
                        options_for_select([["Fonte: Todos", ""]] + @lead_sources.map { |s| [s.to_s, s] }, params[:lead_source]),
-                       class: "ax-control ax-control--sm", onchange: "this.form.submit()" %>
+                       class: "ax-control ax-control--sm", data: { action: "change->auto-submit#submit" } %>
         <% if params[:lead_category].present? || params[:lead_source].present? %>
           <%= link_to "Limpar", dashboard_admin_captacoes_path(start_date: @period_start, end_date: @period_end, month: @month_filter), class: "ax-btn ax-btn--ghost ax-btn--sm" %>
         <% end %>

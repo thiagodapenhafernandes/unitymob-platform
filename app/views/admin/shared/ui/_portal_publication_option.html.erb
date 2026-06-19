@@ -5,10 +5,10 @@
 %>
 
 <div class="<%= option_classes %>">
-  <label class="<%= chip_classes %>">
+  <label class="<%= chip_classes %>" data-controller="ax-checkbox-chips">
     <%= form.check_box method,
                        class: "ax-toggle-chip__input",
-                       onchange: "this.closest('.ax-toggle-chip').classList.toggle('is-checked', this.checked)" %>
+                       data: { action: "change->ax-checkbox-chips#sync" } %>
     <span class="ax-toggle-chip__box" aria-hidden="true">
       <i class="bi bi-check-lg"></i>
     </span>

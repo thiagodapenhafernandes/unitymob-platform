@@ -15,7 +15,7 @@
   <% end %>
 <% end %>
 
-<div class="hier">
+<div class="hier" data-controller="hierarchy-tree">
   <header class="ax-dashboard-command ax-property-form-command">
     <div class="ax-dashboard-command__main">
       <span class="ax-dashboard-command__eyebrow">Organização</span>
@@ -29,8 +29,8 @@
   </header>
 
   <div class="hier__toolbar">
-    <button type="button" class="ax-btn ax-btn--sm" data-hier-expand-all><i class="bi bi-arrows-expand"></i> Expandir tudo</button>
-    <button type="button" class="ax-btn ax-btn--sm" data-hier-collapse-all><i class="bi bi-arrows-collapse"></i> Recolher tudo</button>
+    <button type="button" class="ax-btn ax-btn--sm" data-hier-expand-all data-action="hierarchy-tree#expandAll"><i class="bi bi-arrows-expand"></i> Expandir tudo</button>
+    <button type="button" class="ax-btn ax-btn--sm" data-hier-collapse-all data-action="hierarchy-tree#collapseAll"><i class="bi bi-arrows-collapse"></i> Recolher tudo</button>
     <% if @can_reorganize %>
       <span class="hier__hint"><i class="bi bi-grip-vertical"></i> Arraste pelo punho para mover de gestor, soltar dentro de outro usuário ou reordenar. Solte no topo para tirar da hierarquia.</span>
     <% end %>
@@ -38,6 +38,7 @@
 
   <div class="ax-panel">
     <div class="hier__tree<%= ' is-editable' if @can_reorganize %>"
+         data-action="click->hierarchy-tree#toggle"
          <% if @can_reorganize %>data-controller="hierarchy-sortable" data-hierarchy-sortable-url-value="<%= move_hierarchy_admin_admin_users_path %>"<% end %>>
       <% if @roots.any? %>
         <ul class="hier-list hier-root-list" data-hierarchy-list data-manager-id="">
@@ -123,35 +124,3 @@
     .hier-row__counts, .hier-row__tags { width: 100%; }
   }
 </style>
-
-<script>
-  (function () {
-    const tree = document.querySelector(".hier__tree");
-    if (!tree) return;
-
-    tree.addEventListener("click", function (event) {
-      const toggle = event.target.closest("[data-hier-toggle]");
-      if (!toggle || toggle.hasAttribute("data-hier-leaf")) return;
-      const node = toggle.closest(".hier-node");
-      const children = node && node.querySelector(":scope > .hier-children");
-      if (!children) return;
-      const open = children.hidden;
-      children.hidden = !open;
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    });
-
-    function setAll(open) {
-      tree.querySelectorAll(".hier-children").forEach(function (c) {
-        if (c.children.length === 0) return; // mantém dropzones vazias visíveis
-        c.hidden = !open;
-      });
-      tree.querySelectorAll("[data-hier-toggle]:not([data-hier-leaf])").forEach(function (t) {
-        t.setAttribute("aria-expanded", open ? "true" : "false");
-      });
-    }
-    const expandBtn = document.querySelector("[data-hier-expand-all]");
-    const collapseBtn = document.querySelector("[data-hier-collapse-all]");
-    if (expandBtn) expandBtn.addEventListener("click", function () { setAll(true); });
-    if (collapseBtn) collapseBtn.addEventListener("click", function () { setAll(false); });
-  })();
-</script>

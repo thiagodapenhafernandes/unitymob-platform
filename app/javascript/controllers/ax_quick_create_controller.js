@@ -92,14 +92,12 @@ export default class extends Controller {
     if (!this.hasErrorTarget) return
     this.errorTarget.textContent = message
     this.errorTarget.hidden = false
-    this.errorTarget.classList.remove("d-none")
   }
 
   clearError() {
     if (!this.hasErrorTarget) return
     this.errorTarget.textContent = ""
     this.errorTarget.hidden = true
-    this.errorTarget.classList.add("d-none")
   }
 
   setSubmitting(submitting) {

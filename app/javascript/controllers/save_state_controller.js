@@ -50,7 +50,6 @@ export default class extends Controller {
 
     if (this.hasSpinnerTarget) {
       this.spinnerTarget.hidden = false
-      this.spinnerTarget.classList.remove("d-none")
     }
 
     if (this.hasLabelTarget) {
@@ -82,7 +81,6 @@ export default class extends Controller {
 
     if (this.hasSpinnerTarget) {
       this.spinnerTarget.hidden = true
-      this.spinnerTarget.classList.add("d-none")
     }
 
     if (this.hasLabelTarget) {
