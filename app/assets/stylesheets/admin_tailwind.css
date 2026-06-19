@@ -2149,7 +2149,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 
 .ax-property-table {
   width: 100%;
-  min-width: 1360px;
+  min-width: 1610px;
   border-collapse: separate;
   border-spacing: 0;
   color: #334155;
@@ -2161,16 +2161,14 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 }
 
 .ax-property-table__col-select { width: 52px; }
-/* Imóvel e Localização dividem o espaço flexível igualmente: ambas a 50% (em
-   table-layout:auto as duas porcentagens iguais repartem a sobra em partes iguais,
-   depois que as colunas fixas pegam suas larguras). Localização (endereços longos)
-   ganha bem mais espaço do que os 235px antigos. */
-.ax-property-table__col-property { width: 50%; }
-.ax-property-table__col-location { width: 50%; }
-.ax-property-table__col-price { width: 170px; }
-.ax-property-table__col-costs { width: 150px; }
-.ax-property-table__col-updated { width: 185px; }
-.ax-property-table__col-actions { width: 110px; }
+/* Larguras explícitas: evita que percentuais 50%/50% consumam o espaço das
+   colunas operacionais e comprimam custos/valores até quebrar caractere a caractere. */
+.ax-property-table__col-property { width: 520px; }
+.ax-property-table__col-location { width: 420px; }
+.ax-property-table__col-price { width: 180px; }
+.ax-property-table__col-costs { width: 180px; }
+.ax-property-table__col-updated { width: 170px; }
+.ax-property-table__col-actions { width: 108px; }
 
 /* Colunas ocultadas pelo seletor (controller ax-table-columns escreve data-hidden
    na tabela com as chaves separadas por espaço). Zera-se a largura do <col>
@@ -2386,7 +2384,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 .ax-property-table__cost-list {
   display: grid;
   gap: 6px;
-  min-width: 0;
+  min-width: 150px;
 }
 
 .ax-property-table__cost-list span {
@@ -2405,12 +2403,13 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 }
 
 .ax-property-table__cost-list strong {
-  min-width: 0;
+  min-width: max-content;
   color: #1f2937;
   font-size: 12px;
   font-weight: 850;
   line-height: 1.15;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 .ax-property-table__updated {
@@ -2421,6 +2420,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   font-size: 11.5px;
   font-weight: 750;
   line-height: 1.25;
+  white-space: nowrap;
 }
 
 .ax-property-table__actions {
