@@ -94,6 +94,12 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def filter_inspector
+    unless turbo_frame_request?
+      redirect_to admin_habitations_path(request.query_parameters.except("controller", "action")), status: :see_other
+      return
+    end
+
+    expires_now
     load_index_filters
     load_filter_data
 
