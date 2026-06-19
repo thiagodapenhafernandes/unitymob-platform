@@ -26,6 +26,7 @@ Rails.application.routes.draw do
         get "exports/:export_id/download", to: "habitations#download_export", as: :download_export
         delete "exports/:export_id", to: "habitations#destroy_export", as: :destroy_export
         get :filter_inspector
+        get :proprietor_options
         get :search_by_code
         post :bulk_publish
         post :bulk_publish_eligibility

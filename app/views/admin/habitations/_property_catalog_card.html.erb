@@ -3,8 +3,11 @@
   details_path = admin_habitation_path(imovel, return_to: card_return_to_path)
   edit_path = edit_admin_habitation_path(imovel, return_to: card_return_to_path) if admin_can_edit_habitation?(imovel)
   catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
-  image_source = imovel.primary_image_source || imovel.primary_image
+  image_source = imovel.primary_image_source
   image_url = image_source.present? ? public_image_url(image_source) : nil
+  display_title = imovel.display_title
+  has_photo = imovel.has_any_photo?
+  captador_name = imovel.primary_captador_name
   data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
   days_since_update = ((Time.current - data_referencia) / 1.day).to_i
   update_state = if days_since_update <= 30
@@ -33,7 +36,7 @@
   <div class="ax-property-card__media">
     <% if image_url.present? %>
       <%= image_tag image_url,
-                    alt: imovel.display_title,
+                    alt: display_title,
                     loading: "lazy",
                     data: {
                       controller: "image-fallback",
@@ -61,9 +64,9 @@
       <% if imovel.destaque_web_flag %>
         <span class="ax-property-badge ax-property-badge--warning" title="Destaque Web"><i class="bi bi-star-fill"></i></span>
       <% end %>
-      <% if !imovel.has_any_photo? %>
+      <% if !has_photo %>
         <span class="ax-property-badge ax-property-badge--danger">Sem fotos</span>
-      <% elsif imovel.hidden_from_site_with_photos? %>
+      <% elsif !imovel.exibir_no_site_flag? %>
         <span class="ax-property-badge ax-property-badge--danger">Fora site</span>
       <% end %>
     </div>
@@ -79,7 +82,7 @@
   <div class="ax-property-card__body">
     <header class="ax-property-card__head">
       <div class="ax-property-card__title-stack">
-        <%= link_to "#{imovel.bairro.presence || 'Sem bairro'} · #{imovel.display_title}",
+        <%= link_to "#{imovel.bairro.presence || 'Sem bairro'} · #{display_title}",
                     catalog_card_path,
                     class: "ax-property-card__title" %>
         <div class="ax-property-card__identity">
@@ -110,8 +113,8 @@
         <% end %>
         <%= " - #{[imovel.cidade, imovel.uf].compact_blank.join('/')}" if imovel.cidade.present? || imovel.uf.present? %>
       </span>
-      <% if imovel.primary_captador_name.present? %>
-        <span><i class="bi bi-person-badge"></i> Captador: <strong><%= imovel.primary_captador_name %></strong></span>
+      <% if captador_name.present? %>
+        <span><i class="bi bi-person-badge"></i> Captador: <strong><%= captador_name %></strong></span>
       <% end %>
     </div>
 

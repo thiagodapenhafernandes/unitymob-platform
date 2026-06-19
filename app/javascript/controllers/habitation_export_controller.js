@@ -11,7 +11,6 @@ export default class extends Controller {
     this.trackedExportId = null
     this.onOpen = () => this.loadList()
     this.element.addEventListener("ax-modal:opened", this.onOpen)
-    this.loadList()
   }
 
   disconnect() {

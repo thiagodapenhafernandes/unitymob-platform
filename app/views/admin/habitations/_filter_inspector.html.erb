@@ -222,7 +222,13 @@
                                   data: {
                                     controller: "tom-select",
                                     tom_select_create_value: false,
-                                    tom_select_options_value: { placeholder: "Selecione proprietário" }
+                                    tom_select_url_value: proprietor_options_admin_habitations_path,
+                                    tom_select_search_param_value: "q",
+                                    tom_select_min_length_value: 2,
+                                    tom_select_options_value: {
+                                      placeholder: "Digite nome, telefone ou CPF",
+                                      maxOptions: 20
+                                    }
                                   }
                                 }) %>
           </div>

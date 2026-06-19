@@ -106,6 +106,32 @@ class Admin::HabitationsController < Admin::BaseController
     render :filter_inspector, layout: false
   end
 
+  def proprietor_options
+    return head :forbidden unless can_filter_by_proprietor?
+
+    query = params[:q].to_s.strip
+    selected_ids = Array(params[:ids]).flat_map { |value| value.to_s.split(",") }.filter_map do |value|
+      Integer(value, exception: false)
+    end.uniq
+
+    scope = Proprietor.select(:id, :name, :phone_primary, :mobile_phone, :residential_phone, :business_phone, :email)
+
+    proprietors =
+      if query.present?
+        term = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
+        scope.where(
+          "proprietors.name ILIKE :term OR proprietors.phone_primary ILIKE :term OR proprietors.mobile_phone ILIKE :term OR proprietors.cpf_cnpj ILIKE :term OR proprietors.email ILIKE :term",
+          term:
+        ).order(:name).limit(20)
+      elsif selected_ids.any?
+        scope.where(id: selected_ids).order(:name).limit(20)
+      else
+        Proprietor.none
+      end
+
+    render json: proprietors.map { |proprietor| { value: proprietor.id, text: proprietor.select_label } }
+  end
+
   def search_by_code
     code = params[:codigo].to_s.strip
     if code.blank?
@@ -756,7 +782,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def load_filter_data
-    cached = Rails.cache.fetch("admin/habitations/filter_data/v3", expires_in: 2.minutes) do
+    cached = Rails.cache.fetch("admin/habitations/filter_data/v4", expires_in: 2.minutes) do
       city_sql = "COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), ''))"
       neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), ''))"
       commercial_neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro_comercial), ''), NULLIF(TRIM(habitations.bairro_comercial), ''))"
@@ -789,7 +815,6 @@ class Admin::HabitationsController < Admin::BaseController
         key_locations: (Habitation::KEY_LOCATION_OPTIONS + existing_key_locations).uniq,
         empreendimentos: filter_empreendimento_options,
         brokers: AdminUser.account_members.order(name: :asc).pluck(:name, :id),
-        proprietors: Proprietor.order(name: :asc).pluck(:name, :id),
         situacoes: (Habitation::SITUATIONS + Habitation.where("NULLIF(TRIM(situacao), '') IS NOT NULL AND situacao != '.'")
                                                        .distinct
                                                        .pluck(:situacao)).uniq.sort,
@@ -813,12 +838,27 @@ class Admin::HabitationsController < Admin::BaseController
     @filter_key_locations = cached[:key_locations]
     @filter_empreendimentos = cached[:empreendimentos]
     @filter_brokers = cached[:brokers]
-    @filter_proprietors = cached[:proprietors]
+    @filter_proprietors = selected_filter_proprietors
     @filter_situacoes = cached[:situacoes]
     @filter_faces = cached[:faces]
     @filter_ocupacao_statuses = cached[:ocupacao_statuses]
     @filter_estado_conservacoes = cached[:estado_conservacoes]
     @filter_regioes_foco = Habitation::REGIAO_FOCO_OPTIONS
+  end
+
+  def selected_filter_proprietors
+    return [] unless can_filter_by_proprietor?
+
+    selected_ids = Array(params[:proprietor_id]).flat_map { |value| value.to_s.split(",") }.filter_map do |value|
+      Integer(value, exception: false)
+    end.uniq
+    return [] if selected_ids.blank?
+
+    Proprietor
+      .select(:id, :name, :phone_primary, :mobile_phone, :residential_phone, :business_phone, :email)
+      .where(id: selected_ids)
+      .order(:name)
+      .map { |proprietor| [proprietor.select_label, proprietor.id] }
   end
 
   def extra_filter_keys

@@ -6,7 +6,10 @@ export default class extends Controller {
   static values = {
     options: Object,
     create: Boolean,
-    tags: Boolean // New value to enable tagging behavior clearly
+    tags: Boolean, // New value to enable tagging behavior clearly
+    url: String,
+    searchParam: String,
+    minLength: Number
   }
 
   connect() {
@@ -94,6 +97,32 @@ export default class extends Controller {
         this.element.closest('.ts-wrapper')?.classList.remove('is-invalid')
       },
       ...this.optionsValue
+    }
+
+    if (this.hasUrlValue) {
+      const minLength = this.hasMinLengthValue ? this.minLengthValue : 2
+      const searchParam = this.hasSearchParamValue ? this.searchParamValue : "q"
+
+      config.valueField = config.valueField || "value"
+      config.labelField = config.labelField || "text"
+      config.searchField = config.searchField || "text"
+      config.loadThrottle = config.loadThrottle || 250
+      config.shouldLoad = config.shouldLoad || ((query) => query.trim().length >= minLength)
+      config.load = config.load || ((query, callback) => {
+        const term = query.trim()
+        if (term.length < minLength) {
+          callback()
+          return
+        }
+
+        const url = new URL(this.urlValue, window.location.origin)
+        url.searchParams.set(searchParam, term)
+
+        fetch(url.toString(), { headers: { Accept: "application/json" } })
+          .then((response) => response.ok ? response.json() : [])
+          .then((items) => callback(items))
+          .catch(() => callback())
+      })
     }
 
     // If it's a tag input (jsonb array), we want to behave like one

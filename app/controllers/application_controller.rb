@@ -55,6 +55,8 @@ class ApplicationController < ActionController::Base
 
   def load_layout_settings
     @layout_setting = LayoutSetting.instance
+    return if request.path.start_with?("/admin")
+
     @home_setting = HomeSetting.instance
     @footer_setting = FooterSetting.instance
     @footer_links = Footer::QuickLinksService.call

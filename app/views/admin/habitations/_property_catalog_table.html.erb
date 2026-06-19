@@ -31,8 +31,10 @@
           details_path = admin_habitation_path(imovel, return_to: card_return_to_path)
           edit_path = edit_admin_habitation_path(imovel, return_to: card_return_to_path) if admin_can_edit_habitation?(imovel)
           catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
-          image_source = imovel.primary_image_source || imovel.primary_image
+          image_source = imovel.primary_image_source
           image_url = image_source.present? ? public_image_url(image_source) : nil
+          display_title = imovel.display_title
+          captador_name = imovel.primary_captador_name
           data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
           price_label = if imovel.valor_venda_cents.to_i.positive?
                           number_to_currency(imovel.valor_venda_cents / 100.0)
@@ -59,7 +61,7 @@
               <div class="ax-property-table__thumb">
                 <% if image_url.present? %>
                   <%= image_tag image_url,
-                                alt: imovel.display_title,
+                                alt: display_title,
                                 loading: "lazy",
                                 data: {
                                   controller: "image-fallback",
@@ -71,7 +73,7 @@
                 <% end %>
               </div>
               <div class="ax-property-table__main">
-                <%= link_to imovel.display_title,
+                <%= link_to display_title,
                             catalog_card_path,
                             class: "ax-property-table__title" %>
                 <div class="ax-property-table__meta">
@@ -95,8 +97,8 @@
             <div class="ax-property-table__stack ax-property-table__location">
               <strong><%= [imovel.endereco, imovel.numero].compact_blank.join(", ").presence || "Sem endereço" %></strong>
               <span><%= [imovel.cidade, imovel.uf].compact_blank.join("/") %><%= " · Apto. #{imovel.complemento}" if imovel.complemento.present? %></span>
-              <% if imovel.primary_captador_name.present? %>
-                <span>Captador: <%= imovel.primary_captador_name %></span>
+              <% if captador_name.present? %>
+                <span>Captador: <%= captador_name %></span>
               <% end %>
             </div>
           </td>
