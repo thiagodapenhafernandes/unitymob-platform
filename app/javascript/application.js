@@ -24,7 +24,7 @@ const maybeLoadActionText = () => {
 
 document.addEventListener("DOMContentLoaded", maybeLoadActionText)
 document.addEventListener("turbo:load", maybeLoadActionText)
-maybeLoadActionText()
+maybeLoadActionText();
 
 // ============================================================
 //  Compat de data-* legados — handlers leves para os data-bs-*

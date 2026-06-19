@@ -32,7 +32,7 @@
           edit_path = edit_admin_habitation_path(imovel, return_to: card_return_to_path) if admin_can_edit_habitation?(imovel)
           catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
           image_source = imovel.primary_image_source || imovel.primary_image
-          image_url = image_source.present? ? public_image_url(image_source, resize_to_fill: [176, 132], saver: { quality: 72 }, force_variant: true) : nil
+          image_url = image_source.present? ? public_image_url(image_source) : nil
           data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
           price_label = if imovel.valor_venda_cents.to_i.positive?
                           number_to_currency(imovel.valor_venda_cents / 100.0)
