@@ -217,7 +217,7 @@ export default class extends Controller {
     if (!this.hasSuspensionReasonFieldTarget || !this.hasSuspensionReasonInputTarget || !this.hasStatusSelectTarget) return
 
     const visible = this.normalizedStatusValue() === "suspenso"
-    this.suspensionReasonFieldTarget.classList.toggle("d-none", !visible)
+    this.setVisible(this.suspensionReasonFieldTarget, visible)
     this.suspensionReasonInputTarget.disabled = !visible
 
     if (!visible && fromUser) {
@@ -256,7 +256,7 @@ export default class extends Controller {
 
   toggleUnitOnly(visible) {
     this.unitOnlyTargets.forEach((element) => {
-      element.classList.toggle("d-none", !visible)
+      this.setVisible(element, visible)
     })
   }
 
@@ -383,12 +383,17 @@ export default class extends Controller {
 
     if (url) {
       this.developmentEditLinkTarget.href = url
-      this.developmentEditLinkTarget.classList.remove("d-none")
+      this.setVisible(this.developmentEditLinkTarget, true)
       return
     }
 
     this.developmentEditLinkTarget.href = "#"
-    this.developmentEditLinkTarget.classList.add("d-none")
+    this.setVisible(this.developmentEditLinkTarget, false)
+  }
+
+  setVisible(element, visible) {
+    element.hidden = !visible
+    element.classList.toggle("tw-hidden", !visible)
   }
 
   setSelectValue(select, value, options = {}) {

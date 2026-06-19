@@ -131,7 +131,7 @@ export default class extends Controller {
 
     // Hide the legacy count badge if it exists
     if (this.hasCountTarget) {
-      this.countTarget.classList.add('d-none')
+      this.countTarget.hidden = true
     }
   }
 }

@@ -110,7 +110,7 @@ export default class extends Controller {
     const wrapper = this.formSelectInstance.wrapper
 
     wrapper.classList.toggle("meta-auto-summary-mode", enabled)
-    control.querySelectorAll(".item").forEach((item) => item.classList.toggle("d-none", enabled))
+    control.querySelectorAll(".item").forEach((item) => { item.hidden = enabled })
 
     let summary = control.querySelector(".meta-auto-summary")
     if (enabled) {
