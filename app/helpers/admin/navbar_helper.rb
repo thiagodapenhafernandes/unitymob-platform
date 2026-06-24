@@ -21,7 +21,10 @@ module Admin::NavbarHelper
     "profiles" => "Perfis",
     "access_audit_logs" => "Auditoria",
     "data_export_audit_logs" => "Exportações",
-    "layout_settings" => "Aparência do Admin",
+    "layout_settings" => "Identidade e Marca",
+    "lead_settings" => "Configurações de Leads",
+    "email_settings" => "E-mail (SMTP)",
+    "push_settings" => "Push no PWA",
     "webhook_settings" => "Webhooks",
     "landing_pages" => "Landing pages",
     "banners" => "Banners"
@@ -109,11 +112,17 @@ module Admin::NavbarHelper
 
     safe_join(
       [
-        link_to("Admin", current_admin_user&.admin? ? admin_root_path : field_root_path),
+        link_to(admin_contextbar_root_label, current_admin_user&.admin? ? admin_root_path : field_root_path),
         tag.i(class: "bi bi-chevron-right"),
         tag.strong(admin_contextbar_title)
       ]
     )
+  end
+
+  def admin_contextbar_root_label
+    return "Plataforma" if current_admin_user&.system_admin?
+
+    @layout_setting&.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : "Plataforma"
   end
 
   # Contadores leves exibidos na navbar (rodam em toda página admin — sempre resilientes).

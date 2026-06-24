@@ -19,7 +19,33 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Organizador de mídia")
     expect(response.body).to include("photo-upload")
+    expect(response.body).to include("data-photo-upload-async-submit=\"true\"")
     expect(response.body).to include(upload_admin_habitation_media_path(habitation, format: :json))
+  end
+
+  it "salva mídia por JSON e devolve payload para manter o modal na tela" do
+    habitation = create(:habitation, codigo: "MEDIA-SAVE-#{SecureRandom.hex(6)}")
+    habitation.photos.attach(io: StringIO.new("foto existente"), filename: "existente.jpg", content_type: "image/jpeg")
+    attachment = habitation.photos.attachments.first
+
+    patch admin_habitation_media_path(habitation), params: {
+      habitation: {
+        foto_classificacao: "Boas",
+        ordered_photo_ids: attachment.id.to_s,
+        tour_virtual: "https://example.com/tour-360",
+        videos: ["https://example.com/video"]
+      }
+    }, headers: { "Accept" => "application/json", "X-Requested-With" => "XMLHttpRequest" }
+
+    expect(response).to have_http_status(:ok)
+    payload = JSON.parse(response.body)
+    habitation.reload
+
+    expect(payload["ok"]).to eq(true)
+    expect(payload["gallery_html"]).to include("attached-photo-item")
+    expect(payload.dig("counts", "total")).to eq(1)
+    expect(payload.dig("inputs", "ordered_photo_ids")).to eq(attachment.id.to_s)
+    expect(habitation.tour_virtual).to eq("https://example.com/tour-360")
   end
 
   it "expõe o gatilho do modal dentro da aba de mídia da edição" do

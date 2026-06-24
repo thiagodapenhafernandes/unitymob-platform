@@ -23,9 +23,25 @@ class LeadMailer < ApplicationMailer
     admin_contact = ContactSetting.instance
 
     mail(
-      to: @lead.email, 
+      to: @lead.email,
       subject: "Recebemos seu contato! - Salute Imóveis",
       reply_to: admin_contact.email_primary
+    )
+  end
+
+  # Aviso ao corretor recém-atribuído a um lead (disparado pela distribuição).
+  def lead_assigned
+    @lead = params[:lead]
+    @corretor = params[:corretor]
+    return if @corretor&.email.blank?
+
+    @property = Habitation.find_by(id: @lead.property_id)
+    # Motor único: mascara telefone/e-mail atrás de /s/:token quando ligado.
+    @contact = Leads::ContactLinks.new(@lead, @corretor)
+
+    mail(
+      to: @corretor.email,
+      subject: "Novo lead atribuído a você: #{@lead.display_name}"
     )
   end
 end

@@ -1,10 +1,38 @@
 <%
   html_options = (html_options || {}).dup
+  clearable = local_assigns.fetch(:clearable, false)
+  existing_data = (html_options[:data] || html_options["data"] || {}).dup
+  html_options.delete(:data)
+  html_options.delete("data")
   html_options[:class] = ["ax-control", html_options[:class]].compact.join(" ")
+  if clearable
+    existing_action = existing_data[:action] || existing_data["action"]
+    clear_action = "change->ax-clear-field#update input->ax-clear-field#update"
+    existing_data[:action] = [existing_action, clear_action].compact_blank.join(" ")
+    existing_data[:ax_clear_field_target] = "control"
+    html_options[:data] = existing_data
+  elsif existing_data.present?
+    html_options[:data] = existing_data
+  end
 %>
 
 <div class="ax-field <%= class_name %>">
   <%= ax_field_label(form, method, text: label, tooltip:) %>
-  <%= form.select method, choices, select_options || {}, html_options %>
+  <% if clearable %>
+    <div class="ax-clearable-control ax-clearable-control--select" data-controller="ax-clear-field">
+      <%= form.select method, choices, select_options || {}, html_options %>
+      <button class="ax-clearable-control__button"
+              type="button"
+              title="Limpar campo"
+              aria-label="Limpar <%= label %>"
+              data-ax-clear-field-target="button"
+              data-action="click->ax-clear-field#clear"
+              hidden>
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+  <% else %>
+    <%= form.select method, choices, select_options || {}, html_options %>
+  <% end %>
   <%= render "admin/shared/ui/field_error", form: form, method: method %>
 </div>

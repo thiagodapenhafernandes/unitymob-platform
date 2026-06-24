@@ -9,8 +9,6 @@ class Admin::BaseController < ApplicationController
   after_action :record_allowed_admin_access
   layout 'admin'
 
-  helper_method :admin_page_render_metrics
-  
   private
   
   def authenticate_admin_user!
@@ -42,18 +40,6 @@ class Admin::BaseController < ApplicationController
         "method=#{request.request_method} path=#{request.fullpath}"
       )
     end
-  end
-
-  def admin_page_render_metrics
-    started_at = @admin_render_started_at
-    return {} unless started_at
-
-    duration_ms = @admin_render_duration_ms || ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round(1)
-    {
-      duration_ms: duration_ms,
-      page: "#{controller_path}##{action_name}",
-      status: response.status
-    }
   end
 
   def set_current_admin_user

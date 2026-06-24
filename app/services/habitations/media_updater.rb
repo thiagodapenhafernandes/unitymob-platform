@@ -36,15 +36,65 @@ module Habitations
       return if valid_uploads.blank?
 
       existing_attachment_ids = habitation.photos.attachments.ids
-      habitation.photos.attach(valid_uploads)
+      blobs = valid_uploads.map.with_index do |upload, index|
+        Storage::BlobFactory.create_from_upload!(
+          upload,
+          service_name: Storage::Routing.service_name_for(record: habitation, name: "photos"),
+          key_prefix: ["habitations", habitation.codigo.presence || habitation.id, "photos"].join("/"),
+          metadata: {
+            "identified" => true,
+            "source" => "admin_upload",
+            "position" => index + 1
+          }
+        )
+      end
+      habitation.photos.attach(blobs)
       habitation.reload
-
-      return unless apply_watermark && property_setting&.watermark_configured?
 
       new_attachment_ids = habitation.photos.attachments.ids - existing_attachment_ids
       return if new_attachment_ids.blank?
 
+      habitation.photos.attachments.includes(:blob).where(id: new_attachment_ids).find_each do |attachment|
+        Storage::PublicPropertyPhoto.publish_attachment!(attachment)
+      end
+
+      return unless apply_watermark && property_setting&.watermark_configured?
+
       HabitationPhotoWatermarkJob.perform_later(habitation.id, new_attachment_ids, property_setting.id)
+    end
+
+    def extract_document_uploads!(attributes)
+      %i[fichas_cadastro autorizacoes_venda].each_with_object({}) do |key, result|
+        next unless attributes.key?(key)
+
+        uploads = Array(attributes.delete(key)).reject do |upload|
+          self.class.blank_upload?(upload)
+        end
+        result[key] = uploads if uploads.any?
+      end
+    end
+
+    def attach_new_documents(document_uploads)
+      document_uploads.each do |name, uploads|
+        valid_uploads = Array(uploads).reject do |upload|
+          self.class.blank_upload?(upload)
+        end
+        next if valid_uploads.blank?
+
+        blobs = valid_uploads.map do |upload|
+          Storage::BlobFactory.create_from_upload!(
+            upload,
+            service_name: Storage::Routing.service_name_for(record: habitation, name: name),
+            key_prefix: ["habitations", habitation.codigo.presence || habitation.id, name].join("/"),
+            metadata: {
+              "identified" => true,
+              "source" => "admin_upload",
+              "privacy" => "private"
+            }
+          )
+        end
+        habitation.public_send(name).attach(blobs)
+      end
     end
 
     def apply_picture_removals_to_memory(indices = selected_picture_indices_for_removal)

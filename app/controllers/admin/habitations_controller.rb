@@ -26,6 +26,8 @@ class Admin::HabitationsController < Admin::BaseController
     "property_list_with_m2" => 24,
     "property_list_by_broker" => 14
   }.freeze
+  INDEX_PAGE_SIZE_OPTIONS = [10, 20].freeze
+  DEFAULT_INDEX_PAGE_SIZE = 10
   REPORT_MAX_PAGES = 100
   CUSTOM_FEATURE_OPTIONS = [
     "Cozinha gourmet com churrasqueira",
@@ -79,12 +81,14 @@ class Admin::HabitationsController < Admin::BaseController
     @return_to_path = safe_admin_habitations_return_path(request.fullpath)
     @sort_column = sort_column
     @sort_direction = sort_direction
+    @per_page = index_per_page
+    @page_size_options = INDEX_PAGE_SIZE_OPTIONS
     filtered_scope = filtered_habitations_scope
     @habitations = filtered_scope
       .includes(:address, :admin_user, { empreendimento: { photos_attachments: :blob } }, { broker_assignments: :admin_user }, { photos_attachments: :blob })
       .order(Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST"))
 
-    @habitations = @habitations.paginate(page: params[:page], per_page: 20)
+    @habitations = @habitations.paginate(page: params[:page], per_page: @per_page)
     @filtered_count = @habitations.total_entries
     @page_title = "Gerenciar Imóveis"
     @report_types = REPORT_TYPES
@@ -402,7 +406,7 @@ class Admin::HabitationsController < Admin::BaseController
     source_habitation
     permitted_attributes = habitation_params
     new_photo_uploads = extract_photo_uploads!(permitted_attributes)
-    normalize_document_uploads!(permitted_attributes)
+    new_document_uploads = extract_document_uploads!(permitted_attributes)
     @habitation = Habitation.new(permitted_attributes)
     @habitation.skip_auto_audit = true
     prepare_admin_paper_intake(@habitation) if admin_paper_intake_form?
@@ -444,6 +448,7 @@ class Admin::HabitationsController < Admin::BaseController
     if @habitation.save
       link_source_habitation_to_development!(@habitation)
       attach_new_photos(@habitation, new_photo_uploads, apply_watermark: apply_photo_watermark_requested?)
+      attach_new_documents(@habitation, new_document_uploads)
       record_habitation_created(@habitation)
       apply_saved_photo_removals(@habitation)
       notice = if releasing_to_broker
@@ -473,9 +478,9 @@ class Admin::HabitationsController < Admin::BaseController
     @habitation.skip_auto_audit = true
     permitted_attributes = habitation_params
     new_photo_uploads = extract_photo_uploads!(permitted_attributes)
-    normalize_document_uploads!(permitted_attributes)
+    new_document_uploads = extract_document_uploads!(permitted_attributes)
     @habitation.assign_attributes(permitted_attributes)
-    touch_manual_habitation_update!(@habitation, force: new_photo_uploads.present?)
+    touch_manual_habitation_update!(@habitation, force: new_photo_uploads.present? || new_document_uploads.present?)
     apply_picture_removals_to_memory(@habitation)
     keep_admin_review_intake_hidden
 
@@ -513,6 +518,7 @@ class Admin::HabitationsController < Admin::BaseController
     apply_intake_status_transition_metadata(@habitation)
     if @habitation.save
       attach_new_photos(@habitation, new_photo_uploads, apply_watermark: apply_photo_watermark_requested?)
+      attach_new_documents(@habitation, new_document_uploads)
       record_habitation_updated(@habitation, before_snapshot: audit_snapshot_before)
       apply_saved_photo_removals(@habitation)
       notice = if releasing_to_broker
@@ -1159,6 +1165,11 @@ class Admin::HabitationsController < Admin::BaseController
     scope = apply_quick_scope_filter(scope, @scope)
 
     scope
+  end
+
+  def index_per_page
+    requested = params[:per_page].to_i
+    INDEX_PAGE_SIZE_OPTIONS.include?(requested) ? requested : DEFAULT_INDEX_PAGE_SIZE
   end
 
   def apply_ownership_scope(scope)
@@ -1886,22 +1897,16 @@ class Admin::HabitationsController < Admin::BaseController
     habitation_media_updater.extract_photo_uploads!(permitted)
   end
 
-  def normalize_document_uploads!(permitted)
-    %i[fichas_cadastro autorizacoes_venda].each do |key|
-      next unless permitted.key?(key)
-
-      uploads = Array(permitted[key]).reject do |upload|
-        upload.blank? || (upload.respond_to?(:size) && upload.size.to_i.zero?)
-      end
-
-      uploads.any? ? permitted[key] = uploads : permitted.delete(key)
-    end
-
-    permitted
+  def extract_document_uploads!(permitted)
+    habitation_media_updater.extract_document_uploads!(permitted)
   end
 
   def attach_new_photos(habitation, uploads, apply_watermark: false)
     habitation_media_updater(habitation).attach_new_photos(uploads, apply_watermark: apply_watermark)
+  end
+
+  def attach_new_documents(habitation, document_uploads)
+    habitation_media_updater(habitation).attach_new_documents(document_uploads)
   end
 
   def apply_picture_removals_to_memory(habitation)

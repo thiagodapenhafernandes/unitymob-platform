@@ -1,0 +1,14 @@
+<% if settings.enabled? && settings.enabled_value?("requires_public_tracking_consent") %>
+  <div class="interest-tracking-consent"
+       data-public-interest-tracker-target="consentBanner"
+       hidden>
+    <div>
+      <strong>Experiência personalizada</strong>
+      <p>Usamos sua navegação no site para entender melhor seu interesse em imóveis e melhorar o atendimento quando você solicitar contato.</p>
+    </div>
+    <div class="interest-tracking-consent__actions">
+      <button type="button" data-action="public-interest-tracker#rejectConsent">Agora não</button>
+      <button type="button" class="interest-tracking-consent__primary" data-action="public-interest-tracker#acceptConsent">Permitir</button>
+    </div>
+  </div>
+<% end %>

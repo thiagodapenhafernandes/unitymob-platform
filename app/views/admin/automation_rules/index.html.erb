@@ -1,16 +1,54 @@
-<%# Automação — regras "Quando -> Então" + nutrição (.ax-*) %>
+<%# Automação — intervenções horizontais de acompanhamento (.ax-*) %>
 <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
   <div>
-    <h1 class="ax-page-title">Automação</h1>
-    <p class="ax-page-subtitle">Crie regras simples: <strong>quando</strong> algo acontece, <strong>então</strong> o sistema age por você.</p>
+    <h1 class="ax-page-title">Automação de acompanhamento</h1>
+    <p class="ax-page-subtitle">Crie intervenções horizontais para apoiar o andamento dos leads sem substituir a Distribuição de Leads.</p>
   </div>
-  <%= link_to new_admin_automation_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-    <i class="bi bi-plus-lg ax-ico"></i><span>Nova regra</span>
-  <% end %>
+  <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+    <%= link_to admin_automation_events_path, class: "ax-btn ax-btn--sm" do %>
+      <i class="bi bi-activity ax-ico"></i><span>Eventos recentes</span>
+    <% end %>
+    <%= link_to new_admin_automation_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+      <i class="bi bi-diagram-3 ax-ico"></i><span>Nova intervenção</span>
+    <% end %>
+  </div>
 </div>
 
-<%= render "admin/shared/hint", key: "automacao", icon: "bi-lightning-charge",
-      text: "Monte regras simples: <strong>QUANDO</strong> algo acontece → <strong>ENTÃO</strong> o sistema age. Use a ação <strong>Esperar X dias</strong> para criar nutrição (sequências ao longo do tempo)." %>
+<%= render "admin/shared/module_objective_notice",
+      icon: "intersect",
+      eyebrow: "Automação horizontal",
+      description: "Use este módulo para criar intervenções que atravessam a jornada do lead sem assumir a distribuição primária: tarefas, lembretes, avisos, mensagens, notas, integrações e acompanhamentos quando alguma condição acontecer." %>
+
+<%= render "admin/shared/hint", key: "automacao", icon: "bi-diagram-3",
+      text: "A Distribuição de Leads continua dona de origem, destino, fila, corretor, aceite, represamento e horários. A automação observa estados e faz pequenas intervenções de apoio." %>
+
+<% if @workflows.any? %>
+  <div class="tw-grid tw-gap-3 tw-mb-6">
+    <% @workflows.each do |workflow| %>
+      <div class="ax-card">
+        <div class="ax-card__body tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
+          <div class="tw-min-w-0">
+            <div class="tw-flex tw-items-center tw-gap-2">
+              <i class="bi bi-diagram-3" style="color:var(--admin-primary)"></i>
+              <span class="ax-strong"><%= workflow.name %></span>
+              <span class="ax-badge ax-badge--<%= workflow.status == 'active' ? 'green' : 'gray' %>"><%= workflow.status_label %></span>
+            </div>
+            <p class="ax-page-subtitle tw-mb-0 tw-mt-1">
+              <% if workflow.active_version %>
+                Versao publicada #<%= workflow.active_version.version_number %>
+              <% else %>
+                Rascunho ainda nao publicado
+              <% end %>
+            </p>
+          </div>
+          <%= link_to builder_admin_automation_workflow_path(workflow), class: "ax-btn ax-btn--sm" do %>
+            <i class="bi bi-pencil-square ax-ico"></i><span>Abrir builder</span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
 
 <% if @rules.any? %>
   <div class="tw-grid tw-gap-3 tw-mb-6">
@@ -32,7 +70,7 @@
               <% if rule.idle_hours > 0 %><span class="ax-badge ax-badge--amber">+ <%= rule.idle_hours %>h parado</span><% end %>
             </div>
             <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-mt-2 tw-text-sm">
-              <span class="ax-badge ax-badge--green">ENTÃO</span>
+              <span class="ax-badge ax-badge--green">INTERVENÇÃO</span>
               <% rule.actions_summary.each do |label| %>
                 <span class="tw-inline-flex tw-items-center tw-gap-1"><i class="bi bi-arrow-right-short"></i><%= label %></span>
               <% end %>
@@ -53,10 +91,10 @@
 <% else %>
   <div class="ax-empty tw-mb-6">
     <i class="bi bi-lightning-charge tw-text-3xl tw-text-ink-faint"></i>
-    <p class="tw-mt-2 ax-strong">Nenhuma automação ainda</p>
-    <p class="ax-page-subtitle">Ex.: “quando um lead fica 48h parado em Atendimento, criar tarefa + enviar WhatsApp + mover para Represado”.</p>
+    <p class="tw-mt-2 ax-strong">Nenhuma intervenção automatizada ainda</p>
+    <p class="ax-page-subtitle">Ex.: “quando um lead fica 2h parado em Atendimento, criar tarefa e avisar o responsável”.</p>
     <div class="tw-flex tw-gap-2 tw-justify-center tw-mt-3">
-      <%= link_to "Criar regra", new_admin_automation_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary" %>
+      <%= link_to "Criar intervenção", new_admin_automation_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary" %>
       <%= button_to "Criar regra de exemplo", create_example_admin_automation_rules_path, method: :post, class: "ax-btn ax-btn--sm" %>
     </div>
   </div>

@@ -1,0 +1,183 @@
+<style>
+  /* Espaçamento vertical entre os painéis da coluna principal. */
+  .lead-settings-form { display: flex; flex-direction: column; gap: 16px; }
+  .lead-settings-form .ax-form-actions { margin-top: 4px; }
+  .lead-settings-nested {
+    margin-top: 14px;
+    padding: 14px 0 2px 16px;
+    border-left: 2px solid var(--admin-primary, #365f8f);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .lead-settings-nested .ax-radio-group__options { gap: 8px; }
+</style>
+
+<div class="layout-settings-workspace">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+    <div>
+      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+        <i class="bi bi-people" style="color: var(--admin-primary);"></i>Configurações de Leads
+      </h1>
+      <p class="ax-page-subtitle">Regras globais da conta para o tratamento de leads: fidelização ao corretor e privacidade na notificação.</p>
+    </div>
+  </div>
+
+  <div class="layout-settings-grid">
+    <div class="layout-settings-main">
+      <%= form_with(model: [:admin, @lead_setting], url: admin_lead_setting_path, method: :patch, local: true,
+            data: { controller: "lead-settings" }, class: "layout-settings-form lead-settings-form") do |f| %>
+        <%= ax_error_summary(@lead_setting) %>
+
+        <%# ===== Fidelização ===== %>
+        <%= ax_operational_panel(eyebrow: "Fidelização", title: "Lead sempre com o mesmo corretor") do %>
+          <div class="ax-panel-body">
+            <%= ax_toggle_chip(f, :stickiness_enabled,
+                  label: raw("<i class='bi bi-person-check'></i> Ativar fidelização"),
+                  input_data: { action: "change->lead-settings#toggleStickiness" }) %>
+            <p class="ax-field__hint">Quando um lead chega de uma pessoa já atendida antes, ele é atribuído ao mesmo corretor, em vez de entrar na rotação.</p>
+
+            <div class="section-toggle-container lead-settings-nested<%= ' tw-hidden' unless @lead_setting.stickiness_enabled? %>"
+                 data-lead-settings-target="stickinessSection">
+              <%= ax_field_group(title: "Como reconhecer a mesma pessoa", token: "Identidade") do %>
+                <%= ax_radio_group(form: f, method: :stickiness_match, label: "Casar leads pelo:",
+                      choices: [
+                        ["Telefone", "phone"],
+                        ["Telefone ou e-mail", "phone_or_email"],
+                        ["Telefone e e-mail (ambos)", "phone_and_email"]
+                      ]) %>
+                <p class="ax-field__hint">Telefone é o mais confiável no mercado imobiliário (comparado só pelos dígitos, ignora formatação).</p>
+              <% end %>
+
+              <%= ax_field_group(title: "Quem conta como corretor da pessoa", token: "Dono anterior") do %>
+                <%= ax_radio_group(form: f, method: :stickiness_owner, label: "Considerar como dono:",
+                      choices: [
+                        ["Só quem atendeu de fato (aceitou / em atendimento)", "attended"],
+                        ["Qualquer corretor a quem já foi atribuído", "any_assignment"]
+                      ]) %>
+                <p class="ax-field__hint">"Atendeu de fato" ignora leads que foram só atribuídos e expiraram no pocket sem atendimento.</p>
+              <% end %>
+
+              <%= ax_field_group(title: "Se o corretor anterior não estiver disponível", token: "Elegibilidade") do %>
+                <%= ax_radio_group(form: f, method: :stickiness_fallback, label: "Aplicar fidelização:",
+                      choices: [
+                        ["Só se o corretor estiver ativo e na regra que casou", "active_in_rule"],
+                        ["Se o corretor estiver ativo, mesmo fora da regra", "active_any"]
+                      ]) %>
+                <p class="ax-field__hint">Quando não elegível, o lead cai na distribuição normal da regra.</p>
+              <% end %>
+
+              <%= ax_field_group(title: "Por quanto tempo a fidelização vale", token: "Janela") do %>
+                <%= ax_number_field(form: f, method: :stickiness_window_days, label: "Janela em dias",
+                      placeholder: "vazio = para sempre", min: 0,
+                      hint: "Vazio (ou 0) = para sempre. Ex.: 90 = só volta para o mesmo corretor se o atendimento foi nos últimos 90 dias.") %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# ===== Notificações por evento ===== %>
+        <%= ax_operational_panel(eyebrow: "Notificações", title: "Quando avisar o corretor") do %>
+          <div class="ax-panel-body">
+            <p class="ax-field__hint tw-mb-2">Cada evento usa os canais ligados na regra (push/WhatsApp/e-mail/webhook). Desligue aqui os que não quiser.</p>
+
+            <strong class="ax-field-caption">Distribuição</strong>
+            <div class="ax-option-stack tw-mb-3">
+              <%= ax_toggle_chip(f, :notify_on_distribution, label: raw("<i class='bi bi-diagram-3'></i> Lead novo distribuído (rotativo/performance)")) %>
+              <%= ax_toggle_chip(f, :notify_on_sticky, label: raw("<i class='bi bi-person-check'></i> Lead fidelizado (volta pro mesmo corretor)")) %>
+              <%= ax_toggle_chip(f, :notify_on_redistribution, label: raw("<i class='bi bi-arrow-repeat'></i> Reenvio após pocket expirar (novo corretor)")) %>
+              <%= ax_toggle_chip(f, :notify_on_shark_tank, label: raw("<i class='bi bi-lightning'></i> Shark Tank: avisar todos (1º que aceitar vira dono)")) %>
+            </div>
+
+            <strong class="ax-field-caption">Outros eventos</strong>
+            <div class="ax-option-stack">
+              <%= ax_toggle_chip(f, :notify_on_direct_assignment, label: raw("<i class='bi bi-person-plus'></i> Lead que já chega com corretor (share link / atribuição na criação)")) %>
+              <%= ax_toggle_chip(f, :notify_on_reassignment, label: raw("<i class='bi bi-arrow-left-right'></i> Reatribuição manual pelo admin")) %>
+              <%= ax_toggle_chip(f, :notify_on_lost_turn, label: raw("<i class='bi bi-hourglass-bottom'></i> Avisar quem perdeu a vez (pocket expirou)")) %>
+            </div>
+
+            <p class="ax-field__hint tw-mt-2">Lembre: push é por aparelho — cada corretor precisa ativar no <code>/field</code> dele.</p>
+          </div>
+        <% end %>
+
+        <%# ===== Privacidade / Link seguro ===== %>
+        <%= ax_operational_panel(eyebrow: "Privacidade", title: "Mascarar contato na notificação") do %>
+          <div class="ax-panel-body">
+            <%= ax_toggle_chip(f, :secure_links_enabled,
+                  label: raw("<i class='bi bi-shield-lock'></i> Esconder telefone/e-mail atrás de link seguro"),
+                  input_data: { action: "change->lead-settings#toggleSecure" }) %>
+            <p class="ax-field__hint">
+              Telefone e e-mail viram links <code>/s/&lt;token&gt;</code> (só o nome fica visível).
+              O clique passa pelo mesmo motor — abre o contato do lead e <strong>marca como atendido</strong> dentro do prazo —, mantendo o sistema no meio e medindo o SLA em todos os canais.
+            </p>
+
+            <div class="section-toggle-container lead-settings-nested<%= ' tw-hidden' unless @lead_setting.secure_links_enabled? %>"
+                 data-lead-settings-target="secureSection">
+              <%= ax_field_group(title: "Validade do link", token: "Expiração") do %>
+                <%= ax_number_field(form: f, method: :secure_link_expiry_days, label: "Validade em dias",
+                      min: 0, placeholder: "7",
+                      hint: "Dias até o link expirar. 0 = nunca expira.") %>
+              <% end %>
+
+              <%= ax_field_group(title: "Canais com link seguro", token: "Operação") do %>
+                <p class="ax-field__hint tw-mb-2">Escolha quais notificações roteiam o contato pelo link seguro. O que ficar desligado envia o dado direto (sem mascarar e sem registrar atendimento).</p>
+                <%= ax_toggle_chip(f, :secure_link_whatsapp, label: raw("<i class='bi bi-whatsapp'></i> WhatsApp")) %>
+                <%= ax_toggle_chip(f, :secure_link_email, label: raw("<i class='bi bi-envelope'></i> E-mail")) %>
+                <%= ax_toggle_chip(f, :secure_link_push, label: raw("<i class='bi bi-bell'></i> Push (clique = aceite no prazo)")) %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="ax-form-actions layout-settings-actions">
+          <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
+          <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
+        </div>
+      <% end %>
+    </div>
+
+    <aside class="layout-settings-inspector">
+      <%= ax_operational_panel(eyebrow: "Status", title: "Resumo") do %>
+        <div class="ax-panel-body">
+          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+            <span>Fidelização</span>
+            <%= ax_badge(@lead_setting.stickiness_enabled? ? "Ativa" : "Desligada", tone: @lead_setting.stickiness_enabled? ? :green : :gray, dot: true) %>
+          </div>
+          <% if @lead_setting.stickiness_enabled? %>
+            <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+              <span>Janela</span>
+              <%= ax_badge(@lead_setting.window_forever? ? "Para sempre" : "#{@lead_setting.stickiness_window_days} dias", tone: :blue) %>
+            </div>
+          <% end %>
+          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+            <span>Link seguro</span>
+            <%= ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true) %>
+          </div>
+          <% if @lead_setting.secure_links_enabled? %>
+            <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+              <span>Validade do link</span>
+              <%= ax_badge(@lead_setting.secure_link_expiry_days.to_i.zero? ? "Nunca expira" : "#{@lead_setting.secure_link_expiry_days} dias", tone: :blue) %>
+            </div>
+            <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+              <span>Canais</span>
+              <span>
+                <%= ax_badge("WhatsApp", tone: @lead_setting.secure_link_whatsapp? ? :green : :gray, dot: true) %>
+                <%= ax_badge("E-mail", tone: @lead_setting.secure_link_email? ? :green : :gray, dot: true) %>
+                <%= ax_badge("Push", tone: @lead_setting.secure_link_push? ? :green : :gray, dot: true) %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Como funciona", title: "Fluxo") do %>
+        <div class="ax-panel-body">
+          <ol class="ax-field__hint" style="padding-left:18px;margin:0;line-height:1.6;">
+            <li><strong>Fidelização</strong>: na distribuição, se a pessoa já tem corretor (pela chave escolhida) e ele está elegível → vai direto pra ele; senão, rotação normal.</li>
+            <li><strong>Link seguro</strong>: nos canais ligados (WhatsApp, e-mail, push), a notificação esconde o contato atrás de um link <code>/s/&lt;token&gt;</code>; o clique valida a expiração, abre o contato/lead e marca o atendimento dentro do prazo (mede o SLA). No push, o clique vale como aceite.</li>
+          </ol>
+        </div>
+      <% end %>
+    </aside>
+  </div>
+</div>

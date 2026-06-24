@@ -40,7 +40,7 @@
                 class: "habitation-form-ui habitation-media-module-form ax-media-modal__form",
                 multipart: true
               },
-              data: { turbo: false } do |f| %>
+              data: { turbo: false, photo_upload_async_submit: true, admin_navigation_ignore: true } do |f| %>
   <%= hidden_field_tag :return_to, return_to_path if return_to_path.present? %>
 
   <div class="ax-media-modal__body">

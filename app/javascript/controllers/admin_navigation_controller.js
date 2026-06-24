@@ -160,6 +160,7 @@ export default class extends Controller {
   shouldShowForForm(form) {
     if (form.closest("[data-admin-navigation-ignore]")) return false
     if (form.dataset.adminNavigationIgnore === "true") return false
+    if (form.dataset.photoUploadAsyncSubmit === "true") return false
     if (form.dataset.remote === "true") return false
     if (form.dataset.internalDocumentUploadForm) return false
     if (form.target && form.target !== "_self") return false

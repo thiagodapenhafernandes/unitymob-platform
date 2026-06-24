@@ -1,0 +1,111 @@
+<%
+  profile = (profile || {}).with_indifferent_access
+  criteria = (profile[:criteria] || {}).with_indifferent_access
+  signals = (profile[:signals] || {}).with_indifferent_access
+  enabled = settings&.enabled?
+%>
+
+<div class="ax-card tw-mb-4 lead-interest-card">
+  <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
+    <span class="ax-card__title"><i class="bi bi-stars ax-ico"></i> Inteligência de Interesse</span>
+    <% if enabled %>
+      <span class="ax-badge ax-badge--blue"><%= profile[:confidence].to_i %>% confiança</span>
+    <% else %>
+      <span class="ax-badge ax-badge--gray">Desativada</span>
+    <% end %>
+  </div>
+
+  <div class="ax-card__body tw-grid tw-gap-3">
+    <% if simulation %>
+      <div class="lead-interest-notice">
+        <i class="bi bi-beaker"></i>
+        <span>Simulação calculada agora. Nenhum evento foi disparado e nenhuma tarefa foi criada.</span>
+      </div>
+    <% end %>
+
+    <% unless enabled %>
+      <p class="ax-page-subtitle">A leitura de interesse está desativada em Identidade e Marca.</p>
+    <% else %>
+      <div class="lead-interest-metrics">
+        <span><strong><%= signals[:property_views].to_i %></strong><small>imóveis vistos</small></span>
+        <span><strong><%= signals[:searches].to_i %></strong><small>buscas/páginas</small></span>
+        <span><strong><%= signals[:explicit_interests].to_i %></strong><small>sinais salvos</small></span>
+      </div>
+
+      <% if profile_incomplete %>
+        <div class="lead-interest-empty">
+          <i class="bi bi-search"></i>
+          <div>
+            <strong>Perfil ainda incompleto</strong>
+            <p>Faltam sinais suficientes de navegação, filtros ou imóveis vistos para sugerir opções com segurança.</p>
+          </div>
+        </div>
+      <% else %>
+        <div class="lead-interest-criteria">
+          <% interest_criteria_summary(profile).each do |item| %>
+            <span><%= item %></span>
+          <% end %>
+        </div>
+      <% end %>
+
+      <div class="tw-flex tw-flex-wrap tw-gap-2">
+        <%= button_to reprocess_interest_admin_lead_path(lead),
+              method: :post,
+              form_class: "tw-inline",
+              class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+          <i class="bi bi-arrow-repeat ax-ico"></i><span>Reprocessar</span>
+        <% end %>
+
+        <%= button_to simulate_interest_admin_lead_path(lead),
+              method: :post,
+              form_class: "tw-inline",
+              class: "ax-btn ax-btn--sm" do %>
+          <i class="bi bi-beaker ax-ico"></i><span>Simular</span>
+        <% end %>
+      </div>
+
+      <% if matches.any? %>
+        <div class="lead-interest-section">
+          <strong>Imóveis compatíveis</strong>
+          <div class="tw-grid tw-gap-2">
+            <% matches.first(settings["max_suggestions"].to_i).each do |match| %>
+              <% habitation = match.habitation %>
+              <div class="lead-interest-match">
+                <div>
+                  <div class="tw-flex tw-items-center tw-gap-2">
+                    <span class="ax-strong tw-truncate"><%= habitation.display_title %></span>
+                    <span class="ax-badge ax-badge--blue"><%= match.score %>%</span>
+                  </div>
+                  <small><%= [habitation.bairro, habitation.cidade].compact_blank.join(", ") %></small>
+                  <% if match.reasons.any? %>
+                    <em><%= match.reasons.join(" · ") %></em>
+                  <% end %>
+                </div>
+                <%= link_to admin_habitation_path(habitation), class: "ax-ico-btn", title: "Abrir imóvel" do %>
+                  <i class="bi bi-box-arrow-up-right"></i>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if navigation_events.any? %>
+        <div class="lead-interest-section">
+          <strong>Sinais recentes</strong>
+          <div class="tw-grid tw-gap-2">
+            <% navigation_events.first(5).each do |event| %>
+              <div class="lead-interest-signal">
+                <i class="bi <%= event.property_signal? ? 'bi-house-heart' : 'bi-compass' %>"></i>
+                <div>
+                  <span><%= interest_event_label(event.name) %></span>
+                  <small><%= [event.habitation&.codigo, event.path].compact_blank.join(" · ") %></small>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>

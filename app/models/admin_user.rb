@@ -12,6 +12,7 @@ class AdminUser < ApplicationRecord
   has_many :habitations
   has_many :habitation_exports, dependent: :destroy
   has_many :habitation_share_links, dependent: :destroy
+  has_one :inbound_webhook_token, dependent: :destroy
   has_many :habitation_audit_logs
   has_many :access_audit_logs
   has_many :data_export_audit_logs

@@ -31,6 +31,30 @@ RSpec.describe Leads::DistributorService do
     end
   end
 
+  describe "webhook_tags" do
+    it "distribui lead de webhook quando a tag da regra confere" do
+      rule = create(:distribution_rule, source_site: false, source_webhook: true, webhook_tags: ["elite"])
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
+
+      lead = build_lead(origin: "webhook", other_information: { "webhook_tags" => ["elite"] })
+      described_class.find_and_distribute(lead)
+
+      expect(lead.reload.admin_user_id).to eq(agent_without_checkin.id)
+      expect(lead.distribution_rule_id).to eq(rule.id)
+    end
+
+    it "ignora regra de webhook quando as tags não conferem" do
+      rule = create(:distribution_rule, source_site: false, source_webhook: true, webhook_tags: ["elite"])
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
+
+      lead = build_lead(origin: "webhook", other_information: { "webhook_tags" => ["popular"] })
+      described_class.find_and_distribute(lead)
+
+      expect(lead.reload.admin_user_id).to be_nil
+      expect(lead.distribution_rule_id).to be_nil
+    end
+  end
+
   describe "require_active_checkin=true" do
     it "entrega lead apenas para corretor com check-in ativo" do
       rule = create(:distribution_rule, require_active_checkin: true)

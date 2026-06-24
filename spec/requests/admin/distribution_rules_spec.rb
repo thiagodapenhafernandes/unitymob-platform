@@ -10,6 +10,47 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "renderiza o formulario com objetivo em modal, aside e dados de equipe em cascata" do
+    manager = create(:admin_user, :admin, name: "Gestor Praia")
+    create(:admin_user, name: "Corretor Cascata", manager: manager)
+
+    get new_admin_distribution_rule_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("distribution-rule-workspace")
+    expect(response.body).to include("Configuração da regra")
+    expect(response.body).to include("Distribuição vertical")
+    expect(response.body).to include("Gestor Praia")
+    expect(response.body).to include("Corretor Cascata")
+  end
+
+  it "mantem formularios da Meta em cascata pelas paginas selecionadas" do
+    page_a = create(:meta_facebook_page, name: "Página A", page_id: "page-a")
+    page_b = create(:meta_facebook_page, name: "Página B", page_id: "page-b")
+    form_a = create(:meta_lead_form, meta_facebook_page: page_a, name: "Form Página A", form_id: "form-a")
+    form_b = create(:meta_lead_form, meta_facebook_page: page_b, name: "Form Página B", form_id: "form-b")
+
+    get new_admin_distribution_rule_path
+
+    doc = Nokogiri::HTML(response.body)
+    new_form_options = doc.css("select[name='distribution_rule[meta_forms][]'] option").map { |option| option["value"] }
+    expect(new_form_options).to be_empty
+
+    rule = create(
+      :distribution_rule,
+      source_meta: true,
+      meta_page_ids: [page_a.page_id],
+      meta_forms: [form_a.form_id]
+    )
+
+    get edit_admin_distribution_rule_path(rule)
+
+    doc = Nokogiri::HTML(response.body)
+    edit_form_options = doc.css("select[name='distribution_rule[meta_forms][]'] option").map { |option| option["value"] }
+    expect(edit_form_options).to include(form_a.form_id)
+    expect(edit_form_options).not_to include(form_b.form_id)
+  end
+
   it "salva a fila de distribuicao a partir do select de corretores ao criar" do
     receiver = create(:admin_user, :admin, name: "Administrador")
 

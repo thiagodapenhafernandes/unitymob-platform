@@ -94,4 +94,44 @@ module Admin::DistributionRulesHelper
       [label, config["active"] == "true", config["start"].presence || "09:00", config["end"].presence || "18:00"]
     end
   end
+
+  # Estado de cada canal de notificação de saída usado pelo gate do formulário.
+  # `configured` decide se o canal pode ser marcado; quando false, o front abre
+  # um modal com instruções + link para a tela de configuração correspondente e
+  # reverte o toggle. O Webhook externo é tratado à parte (configuração inline,
+  # validação de URL no submit).
+  def notification_channel_states
+    {
+      whatsapp: {
+        label: "WhatsApp",
+        configured: WhatsappBusinessIntegration.current.connected?,
+        path: admin_whatsapp_integration_path,
+        instructions: "Conecte uma conta WhatsApp Business (Cloud API) para enviar avisos de novos leads ao corretor."
+      },
+      email: {
+        label: "E-mail ao corretor",
+        configured: EmailSetting.instance.configured?,
+        path: edit_admin_email_setting_path,
+        instructions: "Configure e ative o servidor SMTP (remetente, host, usuário e senha) para enviar e-mails de novos leads."
+      },
+      push: {
+        label: "Push no PWA",
+        configured: PushSetting.instance.configured?,
+        path: edit_admin_push_setting_path,
+        instructions: "Gere as chaves VAPID, informe o e-mail de contato e ative o Web Push para notificar o app dos corretores."
+      }
+    }
+  end
+
+  # data-* aplicados ao checkbox do canal para o controller Stimulus distribution-rule.
+  def notify_channel_guard_data(key, state)
+    {
+      action: "change->distribution-rule#guardChannel",
+      channel: key.to_s,
+      configured: state[:configured].to_s,
+      channel_label: state[:label],
+      config_path: state[:path],
+      config_instructions: state[:instructions]
+    }
+  end
 end

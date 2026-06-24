@@ -34,7 +34,7 @@ module Field
 
     # GET /field/push_subscriptions/vapid_key
     def vapid_key
-      render json: { public_key: ENV["VAPID_PUBLIC_KEY"] }
+      render json: { public_key: PushSetting.public_key }
     end
   end
 end

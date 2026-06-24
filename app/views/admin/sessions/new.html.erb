@@ -1,26 +1,38 @@
 <h2 class="login-title">Entrar no painel</h2>
 
-<%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
-  <div class="form-group">
-    <%= f.label :email, "E-mail", class: "ax-label" %>
-    <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope")) do %>
-      <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "ax-control", placeholder: "nome@salute.com.br" %>
-    <% end %>
+<%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "login-form" }) do |f| %>
+  <div class="login-field">
+    <%= f.label :email, "E-mail", class: "login-label" %>
+    <div class="login-control">
+      <i class="bi bi-envelope" aria-hidden="true"></i>
+      <%= f.email_field :email,
+                        autofocus: true,
+                        autocomplete: "email",
+                        class: "login-input",
+                        placeholder: "nome@salute.com.br" %>
+    </div>
   </div>
 
-  <div class="form-group">
-    <%= f.label :password, "Senha", class: "ax-label" %>
-    <%= ax_input_group(prefix: tag.i(class: "bi bi-key")) do %>
-      <%= f.password_field :password, autocomplete: "current-password", class: "ax-control", placeholder: "Digite sua senha" %>
-    <% end %>
+  <div class="login-field">
+    <%= f.label :password, "Senha", class: "login-label" %>
+    <div class="login-control">
+      <i class="bi bi-key" aria-hidden="true"></i>
+      <%= f.password_field :password,
+                           autocomplete: "current-password",
+                           class: "login-input",
+                           placeholder: "Digite sua senha" %>
+    </div>
   </div>
 
   <% if devise_mapping.rememberable? %>
-    <%= ax_check_field(label: "Manter conectado", form: f, method: :remember_me) %>
+    <label class="login-check">
+      <%= f.check_box :remember_me, class: "login-check__input" %>
+      <span>Manter conectado</span>
+    </label>
   <% end %>
 
-  <div class="form-group mb-0">
-    <%= f.button type: :submit, class: "btn-login" do %>
+  <div class="login-actions">
+    <%= f.button type: :submit, class: "login-submit" do %>
       <span>Entrar</span>
       <i class="bi bi-arrow-right"></i>
     <% end %>

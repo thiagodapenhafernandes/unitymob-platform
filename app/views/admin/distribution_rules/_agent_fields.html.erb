@@ -1,4 +1,4 @@
-<div class="nested-form-wrapper dr-agent index-<%= f.index %>" data-team-rules-target="item">
+<div class="nested-form-wrapper ax-record-item distribution-rule-agent index-<%= f.index %>" data-team-rules-target="item" data-new-record="<%= f.object.new_record? %>">
   <%= f.hidden_field :id %>
   <%= f.hidden_field :admin_user_id %>
   <%= f.hidden_field :position, class: "position-field" %>
@@ -9,17 +9,17 @@
     user_initial = user_name&.first&.upcase || "?"
     user_email = user&.email || ""
   %>
-  <span class="drag-handle dr-agent__handle" title="Arrastar para reordenar"><i class="bi bi-grip-vertical"></i></span>
-  <span class="dr-agent__avatar"><%= user_initial %></span>
-  <div class="dr-agent__main">
+  <span class="drag-handle distribution-rule-agent__handle" title="Arrastar para reordenar"><i class="bi bi-grip-vertical"></i></span>
+  <span class="ax-record-item__icon distribution-rule-agent__avatar"><%= user_initial %></span>
+  <div class="ax-record-item__copy distribution-rule-agent__main">
     <strong><%= user_name %></strong>
     <span><%= user_email %></span>
   </div>
 
-  <div class="dr-agent__controls">
+  <div class="ax-record-item__actions distribution-rule-agent__actions">
     <div class="performance-field tw-hidden" data-distribution-rule-target="performanceField">
       <%= ax_input_group(prefix: "Ciclos") do %>
-        <%= f.number_field :weight, class: "ax-control ax-control--sm dr-agent__weight", min: 1, placeholder: "1" %>
+        <%= f.number_field :weight, class: "ax-control ax-control--sm distribution-rule-agent__weight", min: 1, placeholder: "1" %>
       <% end %>
     </div>
 
@@ -27,7 +27,7 @@
       <span class="ax-badge ax-badge--gray">#<span class="position-display"><%= f.object.position || "-" %></span></span>
     </div>
 
-    <button type="button" class="ax-ico-btn dr-agent__remove" data-action="click->team-rules#remove" title="Remover">
+    <button type="button" class="ax-ico-btn distribution-rule-agent__remove" data-action="click->team-rules#remove" title="Remover">
       <i class="bi bi-trash"></i>
     </button>
   </div>

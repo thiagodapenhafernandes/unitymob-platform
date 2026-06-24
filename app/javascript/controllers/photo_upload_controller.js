@@ -31,7 +31,7 @@ export default class extends Controller {
     this.boundHandleDragOver = this.handleDragOver.bind(this)
     this.boundHandleDrop = this.handleDrop.bind(this)
     this.boundHandleDragLeave = this.handleDragLeave.bind(this)
-    this.boundValidateSubmit = this.validateSubmit.bind(this)
+    this.boundHandleFormSubmit = this.handleFormSubmit.bind(this)
     this.boundHandleSortableAutoScrollPointer = this.handleSortableAutoScrollPointer.bind(this)
     this.form = this.element.closest('form')
 
@@ -41,7 +41,7 @@ export default class extends Controller {
     this.element.addEventListener('dragover', this.boundHandleDragOver)
     this.element.addEventListener('drop', this.boundHandleDrop)
     this.element.addEventListener('dragleave', this.boundHandleDragLeave)
-    if (this.form) this.form.addEventListener('submit', this.boundValidateSubmit, true)
+    if (this.form) this.form.addEventListener('submit', this.boundHandleFormSubmit, true)
   }
 
   disconnect() {
@@ -50,7 +50,7 @@ export default class extends Controller {
     this.element.removeEventListener('dragover', this.boundHandleDragOver)
     this.element.removeEventListener('drop', this.boundHandleDrop)
     this.element.removeEventListener('dragleave', this.boundHandleDragLeave)
-    if (this.form) this.form.removeEventListener('submit', this.boundValidateSubmit, true)
+    if (this.form) this.form.removeEventListener('submit', this.boundHandleFormSubmit, true)
   }
 
   handleDragOver(e) {
@@ -94,14 +94,18 @@ export default class extends Controller {
       forceFallback: true,
       fallbackOnBody: true,
       fallbackTolerance: 3,
-      fallbackClass: 'sortable-fallback ax-media-sortable-fallback',
+      fallbackClass: 'ax-media-sortable-fallback',
       scroll: true,
       bubbleScroll: true,
       scrollSensitivity: 148,
       scrollSpeed: 28,
-      swapThreshold: 0.5,
-      invertSwap: false,
-      emptyInsertThreshold: 48,
+      swapThreshold: 0.72,
+      invertSwap: true,
+      invertedSwapThreshold: 0.28,
+      emptyInsertThreshold: 88,
+      onClone: (evt) => {
+        this.prepareSortableFallback(evt)
+      },
       onStart: (evt) => {
         this.startSortableAutoScroll(evt?.originalEvent)
       },
@@ -120,6 +124,20 @@ export default class extends Controller {
         this.stopSortableAutoScroll()
       }
     })
+  }
+
+  prepareSortableFallback(event) {
+    const item = event?.item
+    const clone = event?.clone
+    if (!item || !clone) return
+
+    const rect = item.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+
+    clone.style.width = `${Math.round(rect.width)}px`
+    clone.style.maxWidth = `${Math.round(rect.width)}px`
+    clone.style.height = `${Math.round(rect.height)}px`
+    clone.style.boxSizing = "border-box"
   }
 
   resolveSortableDirection(_event, target, dragEl) {
@@ -469,13 +487,20 @@ export default class extends Controller {
     this.uploadNewFiles(newFileEntries)
   }
 
-  validateSubmit(event) {
+  handleFormSubmit(event) {
     const uploadBytes = this.uploadBytesFor(this.selectedNewFiles)
-    if (uploadBytes <= this.constructor.maxUploadBytes) return
+    if (uploadBytes > this.constructor.maxUploadBytes) {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      this.showUploadLimitFeedback(uploadBytes)
+      return
+    }
+
+    if (!this.shouldSubmitFormAsync(event)) return
 
     event.preventDefault()
     event.stopImmediatePropagation()
-    this.showUploadLimitFeedback(uploadBytes)
+    this.submitMediaForm()
   }
 
   syncNewFilesFromDom() {
@@ -587,7 +612,7 @@ export default class extends Controller {
 
     feedback.textContent = ""
     feedback.hidden = true
-    feedback.classList.remove("is-error")
+    feedback.classList.remove("is-error", "is-success")
   }
 
   async uploadNewFiles(fileEntries) {
@@ -595,7 +620,8 @@ export default class extends Controller {
     if (this.uploadInProgress) return
 
     this.uploadInProgress = true
-    this.showTransientFeedback("Enviando fotos...")
+    this.setBusyState(true)
+    this.showProgressFeedback("Preparando envio das fotos...", 1)
 
     const formData = new FormData()
     fileEntries.forEach(entry => formData.append("habitation[photos][]", entry.file))
@@ -606,19 +632,61 @@ export default class extends Controller {
     }
 
     try {
-      const response = await this.requestJson(this.uploadUrlValue, {
+      const response = await this.requestJsonWithProgress(this.uploadUrlValue, {
         method: "POST",
-        body: formData
+        body: formData,
+        onProgress: (percent) => {
+          this.showProgressFeedback(`Enviando fotos... ${percent}%`, percent)
+        }
+      })
+
+      this.selectedNewFiles = []
+      if (this.hasInputTarget) this.inputTarget.value = ""
+      this.applyMediaPayload(response, { scrollToEnd: true })
+      this.showProgressFeedback(response.message || "Fotos enviadas com sucesso.", 100, "success")
+      this.hideProgressLater()
+    } catch (error) {
+      this.showProgressFeedback(error.message || "Não foi possível enviar as fotos agora.", 100, "error")
+    } finally {
+      this.uploadInProgress = false
+      this.setBusyState(false)
+    }
+  }
+
+  async submitMediaForm() {
+    if (!this.form || this.formSubmitInProgress) return
+
+    if (this.uploadInProgress) {
+      this.showTransientFeedback("Aguarde o envio das fotos terminar antes de salvar.", true)
+      return
+    }
+
+    this.syncNewFilesFromDom()
+    this.updateOrder()
+
+    this.formSubmitInProgress = true
+    this.setBusyState(true)
+    this.showProgressFeedback("Salvando mídia...", 8)
+
+    try {
+      const response = await this.requestJsonWithProgress(this.form.action, {
+        method: this.resolvedFormMethod(),
+        body: new FormData(this.form),
+        onProgress: (percent) => {
+          this.showProgressFeedback(`Salvando mídia... ${percent}%`, percent)
+        }
       })
 
       this.selectedNewFiles = []
       if (this.hasInputTarget) this.inputTarget.value = ""
       this.applyMediaPayload(response)
-      this.showTransientFeedback(response.message || "Fotos enviadas com sucesso.")
+      this.showProgressFeedback(response.message || "Mídia salva com sucesso.", 100, "success")
+      this.hideProgressLater()
     } catch (error) {
-      this.showTransientFeedback(error.message || "Não foi possível enviar as fotos agora.", true)
+      this.showProgressFeedback(error.message || "Não foi possível salvar a mídia agora.", 100, "error")
     } finally {
-      this.uploadInProgress = false
+      this.formSubmitInProgress = false
+      this.setBusyState(false)
     }
   }
 
@@ -707,6 +775,55 @@ export default class extends Controller {
     return payload
   }
 
+  requestJsonWithProgress(url, options = {}) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open(options.method || "GET", url, true)
+      xhr.setRequestHeader("Accept", "application/json")
+      xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
+
+      const csrfToken = this.csrfToken()
+      if (csrfToken) xhr.setRequestHeader("X-CSRF-Token", csrfToken)
+      if (options.json) xhr.setRequestHeader("Content-Type", "application/json")
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable || typeof options.onProgress !== "function") return
+
+        const percent = Math.max(1, Math.min(95, Math.round((event.loaded / event.total) * 95)))
+        options.onProgress(percent)
+      }
+
+      xhr.onload = () => {
+        const payload = this.parseJsonResponse(xhr.responseText)
+
+        if (xhr.status < 200 || xhr.status >= 300 || payload.ok === false) {
+          const message = payload.error || (Array.isArray(payload.errors) ? payload.errors.join(", ") : null)
+          reject(new Error(message || "A operação de mídia não pôde ser concluída."))
+          return
+        }
+
+        if (typeof options.onProgress === "function") options.onProgress(100)
+        resolve(payload)
+      }
+
+      xhr.onerror = () => reject(new Error("Não foi possível conectar ao servidor."))
+      xhr.ontimeout = () => reject(new Error("Tempo limite ao salvar mídia."))
+      xhr.timeout = options.timeout || 120000
+
+      xhr.send(options.json ? JSON.stringify(options.json) : options.body)
+    })
+  }
+
+  parseJsonResponse(value) {
+    if (!value) return {}
+
+    try {
+      return JSON.parse(value)
+    } catch (_error) {
+      return {}
+    }
+  }
+
   csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content
   }
@@ -725,6 +842,19 @@ export default class extends Controller {
 
   canSyncDestroy() {
     return this.asyncValue && this.hasDestroyUrlValue
+  }
+
+  shouldSubmitFormAsync(event) {
+    return Boolean(
+      this.asyncValue &&
+      this.form &&
+      event.target === this.form &&
+      this.form.dataset.photoUploadAsyncSubmit === "true"
+    )
+  }
+
+  resolvedFormMethod() {
+    return (this.form?.method || "POST").toUpperCase()
   }
 
   applyMediaPayload(payload, options = {}) {
@@ -754,6 +884,8 @@ export default class extends Controller {
 
     this.updateOrder()
     this.refreshPhotoBadges()
+    this.updateMediaCounts(payload.counts)
+    if (options.scrollToEnd) this.scrollGalleryToEnd()
   }
 
   showTransientFeedback(message, isError = false) {
@@ -768,6 +900,83 @@ export default class extends Controller {
       feedback.hidden = true
       feedback.classList.remove("is-error")
     }, isError ? 6000 : 2500)
+  }
+
+  showProgressFeedback(message, percent = 0, state = "active") {
+    const feedback = this.hasUploadLimitFeedbackTarget ? this.uploadLimitFeedbackTarget : this.ensureUploadLimitFeedback()
+    const safePercent = Math.max(0, Math.min(100, Math.round(percent || 0)))
+    const isError = state === "error"
+    const isSuccess = state === "success"
+
+    window.clearTimeout(this.feedbackTimeout)
+    feedback.hidden = false
+    feedback.classList.toggle("is-error", isError)
+    feedback.classList.toggle("is-success", isSuccess)
+    feedback.innerHTML = `
+      <div class="ax-media-upload-progress" role="status" aria-live="polite">
+        <div class="ax-upload-progress__header">
+          <span>${this.escapeHtml(message)}</span>
+          <strong>${safePercent}%</strong>
+        </div>
+        <div class="ax-progress ax-upload-progress__bar">
+          <i class="${isError ? "ax-upload-progress__fill--danger" : isSuccess ? "ax-upload-progress__fill--success" : ""}" style="width:${safePercent}%"></i>
+        </div>
+      </div>
+    `
+  }
+
+  hideProgressLater(delay = 3000) {
+    const feedback = this.hasUploadLimitFeedbackTarget ? this.uploadLimitFeedbackTarget : this.fallbackUploadLimitFeedback
+    if (!feedback) return
+
+    window.clearTimeout(this.feedbackTimeout)
+    this.feedbackTimeout = window.setTimeout(() => {
+      feedback.textContent = ""
+      feedback.hidden = true
+      feedback.classList.remove("is-error", "is-success")
+    }, delay)
+  }
+
+  setBusyState(isBusy) {
+    this.element.classList.toggle("is-saving-media", isBusy)
+
+    if (!this.form) return
+
+    this.form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach((button) => {
+      button.disabled = isBusy
+      button.classList.toggle("is-loading", isBusy)
+    })
+  }
+
+  updateMediaCounts(counts) {
+    if (!counts || counts.total === undefined || counts.total === null) return
+
+    const total = Number(counts.total)
+    if (!Number.isFinite(total)) return
+
+    const label = `${total} ${total === 1 ? "item" : "itens"}`
+    const linkedLabel = `${total} ${total === 1 ? "item vinculado" : "itens vinculados"}`
+
+    this.element.querySelectorAll(".ax-media-organizer__count").forEach((element) => {
+      element.textContent = label
+    })
+
+    this.element.querySelectorAll(".ax-media-toolbar__title span").forEach((element) => {
+      element.textContent = linkedLabel
+    })
+
+    this.form?.querySelectorAll(".ax-media-modal__footer-meta span").forEach((element) => {
+      element.textContent = `${total} mídia(s) vinculada(s)`
+    })
+  }
+
+  scrollGalleryToEnd() {
+    const scroller = this.previewContainerTarget?.closest(".media-gallery-scroll")
+    if (!scroller) return
+
+    window.requestAnimationFrame(() => {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" })
+    })
   }
 
   ensureUploadLimitFeedback() {

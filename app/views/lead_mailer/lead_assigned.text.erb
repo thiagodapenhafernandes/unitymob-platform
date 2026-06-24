@@ -1,0 +1,16 @@
+Você recebeu um novo lead!
+
+Olá <%= @corretor.name %>, um novo lead foi atribuído a você:
+
+Nome: <%= @lead.display_name %>
+<% if @contact&.secure?(:email) %>Contato: protegido — use os links abaixo
+WhatsApp do lead: <%= @contact.url(:phone) %>
+E-mail do lead: <%= @contact.url(:email) %>
+Ver dados do lead: <%= @contact.url(:view) %><% else %>Telefone: <%= @lead.display_phone %>
+E-mail: <%= @lead.display_email %><% end %>
+Origem: <%= @lead.origin %>
+<% if @property %>Imóvel: <%= @property.try(:title) || @property.try(:reference) || "##{@property.id}" %><% end %>
+<% unless @contact&.secure?(:email) %>
+Abrir o lead: <%= "#{ENV['APP_HOST']}/admin/leads/#{@lead.id}" %><% end %>
+
+Atenda rápido para aumentar suas chances de conversão.

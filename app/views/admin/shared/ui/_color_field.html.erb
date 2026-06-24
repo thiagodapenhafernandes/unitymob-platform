@@ -1,0 +1,46 @@
+<%
+  field_classes = ["ax-field", "ax-color-field", field_class].compact.join(" ")
+  color_options = (local_assigns[:color_options] || {}).dup
+  text_options = (local_assigns[:text_options] || {}).dup
+  color_data = (color_options.delete(:data) || {}).dup
+  text_data = (text_options.delete(:data) || {}).dup
+  token_data = {}
+
+  if local_assigns[:token].present?
+    token_data[:action] = "input->layout-theme-preview#update"
+    token_data[:theme_token] = token
+    token_data[:default_value] = default_value if local_assigns[:default_value].present?
+  else
+    color_options[:oninput] ||= "this.nextElementSibling.value = this.value"
+    text_options[:oninput] ||= "this.previousElementSibling.value = this.value"
+  end
+
+  color_data = token_data.merge(color_data)
+  text_data = token_data.merge(text_data)
+  color_class = ["ax-color-control__swatch", color_options.delete(:class)].compact.join(" ")
+  text_class = ["ax-color-control__text", text_options.delete(:class)].compact.join(" ")
+%>
+
+<div class="<%= field_classes %>">
+  <%= ax_field_label(form, method, text: label, tooltip:, class_name:) %>
+  <div class="ax-color-control">
+    <%= form.color_field method,
+          color_options.merge(
+            value: value,
+            class: color_class,
+            title: swatch_title.presence || "Escolha a cor de #{label}",
+            data: color_data
+          ) %>
+    <%= form.text_field method,
+          text_options.merge(
+            value: value,
+            class: text_class,
+            spellcheck: false,
+            data: text_data
+          ) %>
+  </div>
+  <%= render "admin/shared/ui/field_error", form: form, method: method %>
+  <% if local_assigns[:hint].present? && form.object.errors[method].blank? %>
+    <p class="ax-field__hint"><%= hint %></p>
+  <% end %>
+</div>

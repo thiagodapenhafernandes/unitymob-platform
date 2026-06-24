@@ -6,6 +6,9 @@
 
 <%
   fmt = ->(v) { v.nil? ? "—" : number_with_delimiter(v) }
+  job_failure_badge = @metrics[:jobs_failed].to_i.positive? ? ax_badge("#{fmt.call(@metrics[:jobs_failed])} falhos", tone: :red, dot: true) : ax_badge("sem falhas", tone: :green, dot: true)
+  system_admins_active = @system_admins.count(&:active?)
+  system_admins_inactive = @system_admins.size - system_admins_active
 %>
 
 <div class="ax-system">
@@ -30,26 +33,121 @@
     <%= ax_metric_card(label: "Leads", value: fmt.call(@metrics[:leads])) %>
     <%= ax_metric_card(label: "Proprietários", value: fmt.call(@metrics[:proprietors])) %>
     <%= ax_metric_card(label: "Arquivos (storage)", value: fmt.call(@metrics[:storage_blobs])) %>
-    <%= ax_metric_card(label: "Jobs pendentes", value: fmt.call(@metrics[:jobs_pending]),
-          badge: (@metrics[:jobs_failed].to_i.positive? ? ax_badge("#{fmt.call(@metrics[:jobs_failed])} falhos", tone: :red, dot: true) : nil)) %>
+    <%= ax_metric_card(label: "Jobs prontos", value: fmt.call(@metrics[:jobs_ready]),
+          badge: job_failure_badge,
+          hint: "Aguardando worker para executar") %>
+    <%= ax_metric_card(label: "Workers", value: fmt.call(@metrics[:jobs_processes]),
+          hint: "#{fmt.call(@metrics[:jobs_claimed])} executando · #{fmt.call(@metrics[:jobs_scheduled])} agendados") %>
     <%= ax_metric_card(label: "Logins hoje", value: fmt.call(@metrics[:logins_today])) %>
   </div>
 
-  <%= ax_operational_panel(eyebrow: "Operadores", title: "Admins do Sistema") do %>
-    <p class="ax-page-subtitle tw-mb-3">
-      Operadores da aplicação. Têm todos os poderes de admin, acesso a este painel e podem
-      acessar como (impersonar) qualquer usuário pela tela de <%= link_to "Usuários", admin_admin_users_path, class: "tw-text-primary" %>.
+  <%= ax_operational_panel(
+        eyebrow: "Fila",
+        title: "Solid Queue",
+        actions: link_to("Abrir Mission Control", "/jobs", class: "ax-dashboard-panel__link", data: { turbo: false })
+      ) do %>
+    <div class="ax-system-job-strip">
+      <div class="ax-system-job-strip__item">
+        <span>Prontos</span>
+        <strong><%= fmt.call(@metrics[:jobs_ready]) %></strong>
+      </div>
+      <div class="ax-system-job-strip__item">
+        <span>Agendados</span>
+        <strong><%= fmt.call(@metrics[:jobs_scheduled]) %></strong>
+      </div>
+      <div class="ax-system-job-strip__item">
+        <span>Executando</span>
+        <strong><%= fmt.call(@metrics[:jobs_claimed]) %></strong>
+      </div>
+      <div class="ax-system-job-strip__item">
+        <span>Bloqueados</span>
+        <strong><%= fmt.call(@metrics[:jobs_blocked]) %></strong>
+      </div>
+      <div class="ax-system-job-strip__item ax-system-job-strip__item--danger">
+        <span>Falhos</span>
+        <strong><%= fmt.call(@metrics[:jobs_failed]) %></strong>
+      </div>
+    </div>
+    <p class="ax-system-note">
+      Jobs falhos não são uma fila saudável aguardando processamento. Eles continuam sem
+      <code>finished_at</code>, por isso antes apareciam como pendentes; devem ser analisados,
+      reexecutados ou descartados pelo Mission Control.
     </p>
+    <% if @failed_job_groups.present? %>
+      <div class="ax-system-failures">
+        <span class="ax-system-failures__eyebrow">Principais falhas recentes</span>
+        <% @failed_job_groups.each do |failure| %>
+          <div class="ax-system-failure-row">
+            <strong><%= failure[:count] %>x</strong>
+            <span><%= failure[:job_class] %></span>
+            <em><%= failure[:error_class] %></em>
+            <small><%= truncate(failure[:message], length: 150) %></small>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= ax_operational_panel(
+        eyebrow: "Operadores",
+        title: "Admins do Sistema",
+        actions: link_to("Gerenciar usuários", admin_admin_users_path, class: "ax-dashboard-panel__link")
+      ) do %>
+    <div class="ax-system-admin-summary">
+      <div>
+        <p class="ax-page-subtitle">
+          Operadores da aplicação, acima do Admin da Conta. Têm acesso a este painel e podem
+          impersonar usuários pela tela de <%= link_to "Usuários", admin_admin_users_path, class: "tw-text-primary" %>.
+        </p>
+      </div>
+      <div class="ax-system-admin-summary__badges">
+        <%= ax_badge("#{system_admins_active} ativos", tone: :green, dot: true) %>
+        <% if system_admins_inactive.positive? %>
+          <%= ax_badge("#{system_admins_inactive} inativos", tone: :gray, dot: true) %>
+        <% end %>
+      </div>
+    </div>
+
     <% if @system_admins.any? %>
       <div class="ax-table-wrap">
         <table class="ax-table">
-          <thead><tr><th>Nome</th><th>E-mail</th><th style="width:120px">Status</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Operador</th>
+              <th>E-mail</th>
+              <th>Perfil</th>
+              <th>Último login</th>
+              <th>Segurança</th>
+              <th style="width:120px">Status</th>
+              <th class="ax-num" style="width:96px">Ações</th>
+            </tr>
+          </thead>
           <tbody>
             <% @system_admins.each do |u| %>
+              <% last_login = @last_login_by_admin_id[u.id] %>
               <tr>
-                <td class="ax-strong"><%= link_to u.name, edit_admin_admin_user_path(u) %></td>
+                <td class="ax-strong">
+                  <%= link_to u.name, edit_admin_admin_user_path(u) %>
+                  <span class="ax-system-admin-role">Sistema</span>
+                </td>
                 <td><%= u.email %></td>
+                <td><%= u.profile&.name.presence || "Sem perfil" %></td>
+                <td>
+                  <% if last_login.present? %>
+                    <%= time_ago_in_words(last_login) %> atrás
+                  <% else %>
+                    Sem registro
+                  <% end %>
+                </td>
+                <td>
+                  <div class="ax-system-admin-flags">
+                    <% if u.require_ip_allowlist? %><%= ax_badge("IP", tone: :blue) %><% end %>
+                    <% if u.require_trusted_device? %><%= ax_badge("Dispositivo", tone: :blue) %><% end %>
+                    <% unless u.require_ip_allowlist? || u.require_trusted_device? %><span class="ax-system-muted">Padrão</span><% end %>
+                  </div>
+                </td>
                 <td><%= ax_badge(u.active? ? "Ativo" : "Inativo", tone: u.active? ? :green : :gray, dot: true) %></td>
+                <td class="ax-num"><%= link_to "Editar", edit_admin_admin_user_path(u), class: "ax-dashboard-panel__link" %></td>
               </tr>
             <% end %>
           </tbody>

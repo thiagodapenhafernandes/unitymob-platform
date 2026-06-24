@@ -1,0 +1,133 @@
+<div class="layout-settings-workspace">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+    <div>
+      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+        <i class="bi bi-envelope-at" style="color: var(--admin-primary);"></i>E-mail (SMTP)
+      </h1>
+      <p class="ax-page-subtitle">Servidor de envio usado para avisar corretores sobre novos leads e demais notificações por e-mail.</p>
+    </div>
+  </div>
+
+  <div class="layout-settings-grid">
+    <div class="layout-settings-main">
+      <% unless @email_setting.encryption_ready? %>
+        <%= ax_inline_notice(tone: :warning, icon: "shield-lock") do %>
+          Criptografia indisponível: defina <code>AR_ENCRYPTION_PRIMARY_KEY</code>, <code>AR_ENCRYPTION_DETERMINISTIC_KEY</code>
+          e <code>AR_ENCRYPTION_KEY_DERIVATION_SALT</code> no ambiente para guardar a senha SMTP com segurança.
+        <% end %>
+      <% end %>
+
+      <%= form_with(model: [:admin, @email_setting], url: admin_email_setting_path, method: :patch, local: true, class: "layout-settings-form") do |f| %>
+        <%= ax_error_summary(@email_setting) %>
+
+        <%= ax_operational_panel(eyebrow: "Ativação", title: "Canal de e-mail") do %>
+          <div class="ax-panel-body">
+            <%= ax_toggle_chip(f, :enabled, label: raw("<i class='bi bi-power'></i> Ativar envio de e-mails")) %>
+            <p class="ax-field__hint">Quando desativado, nenhuma notificação por e-mail é enviada — mesmo que a regra de distribuição marque o canal.</p>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Remetente", title: "Identidade do e-mail") do %>
+          <div class="ax-panel-body">
+            <%= ax_field_grid do %>
+              <div class="ax-span-6">
+                <%= ax_text_field(form: f, method: :from_name, label: "Nome do remetente", placeholder: "Ex.: Salute Imóveis") %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_text_field(form: f, method: :from_email, label: "E-mail do remetente", type: :email, placeholder: "leads@suaimobiliaria.com.br") %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_text_field(form: f, method: :reply_to, label: "Responder para (reply-to)", type: :email, placeholder: "opcional") %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Servidor", title: "Conexão SMTP") do %>
+          <div class="ax-panel-body">
+            <%= ax_field_grid do %>
+              <div class="ax-span-8">
+                <%= ax_text_field(form: f, method: :smtp_address, label: "Host SMTP", placeholder: "smtp.seuprovedor.com") %>
+              </div>
+              <div class="ax-span-4">
+                <%= ax_number_field(form: f, method: :smtp_port, label: "Porta", placeholder: "587") %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_text_field(form: f, method: :smtp_user_name, label: "Usuário", placeholder: "leads@suaimobiliaria.com.br") %>
+              </div>
+              <div class="ax-span-6">
+                <div class="ax-field">
+                  <%= ax_field_label(f, :smtp_password, text: "Senha") %>
+                  <%# password_field nunca renderiza o valor (a senha fica só no banco, criptografada). %>
+                  <% password_set = @email_setting.encryption_ready? && @email_setting.smtp_password.present? rescue false %>
+                  <%= f.password_field :smtp_password, value: nil, class: "ax-control",
+                        autocomplete: "new-password",
+                        placeholder: password_set ? "•••••••• (preenchida)" : "" %>
+                  <p class="ax-field__hint">Deixe em branco para manter a senha atual.</p>
+                </div>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_select_field(form: f, method: :smtp_authentication, label: "Autenticação",
+                      choices: EmailSetting::AUTHENTICATIONS.map { |a| [a, a] }) %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_text_field(form: f, method: :smtp_domain, label: "Domínio (HELO)", placeholder: "opcional") %>
+              </div>
+            <% end %>
+            <div class="tw-mt-2">
+              <%= ax_toggle_chip(f, :smtp_enable_starttls_auto, label: raw("<i class='bi bi-lock'></i> STARTTLS automático")) %>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="ax-form-actions layout-settings-actions">
+          <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
+          <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
+        </div>
+      <% end %>
+    </div>
+
+    <aside class="layout-settings-inspector">
+      <%= ax_operational_panel(eyebrow: "Status", title: "Diagnóstico") do %>
+        <div class="ax-panel-body">
+          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+            <span>Canal pronto para enviar</span>
+            <% if @email_setting.configured? %>
+              <%= ax_badge("Pronto", tone: :green, dot: true) %>
+            <% else %>
+              <%= ax_badge("Incompleto", tone: :gray, dot: true) %>
+            <% end %>
+          </div>
+          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+            <span>Criptografia de credenciais</span>
+            <% if @email_setting.encryption_ready? %>
+              <%= ax_badge("Ativa", tone: :green) %>
+            <% else %>
+              <%= ax_badge("Indisponível", tone: :amber) %>
+            <% end %>
+          </div>
+          <p class="ax-field__hint tw-mt-2">
+            O canal só dispara quando estiver <strong>ativado</strong> e com host, usuário, senha e remetente preenchidos.
+          </p>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Validação", title: "Enviar e-mail de teste") do %>
+        <div class="ax-panel-body">
+          <%= form_with(url: test_admin_email_setting_path, method: :post, local: true) do %>
+            <div class="ax-field">
+              <%= email_field_tag :to, @email_setting.from_email, class: "ax-control", placeholder: "destino@exemplo.com" %>
+              <p class="ax-field__hint">Em branco usa o e-mail do remetente.</p>
+            </div>
+            <%= submit_tag "Enviar teste", class: "ax-btn ax-btn--sm",
+                  disabled: !@email_setting.configured?,
+                  data: { turbo: false } %>
+          <% end %>
+          <% unless @email_setting.configured? %>
+            <p class="ax-field__hint tw-mt-2">Salve uma configuração válida e ativa para habilitar o teste.</p>
+          <% end %>
+        </div>
+      <% end %>
+    </aside>
+  </div>
+</div>

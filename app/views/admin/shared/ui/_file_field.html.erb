@@ -1,0 +1,33 @@
+<%
+  input_id ||= "#{form.object_name}_#{method}"
+  field_classes = ["ax-field", "ax-file-field", field_class].compact.join(" ")
+  options = (local_assigns[:options] || {}).dup
+  input_data = (options.delete(:data) || {}).dup
+  input_data[:ax_file_field_target] = "input"
+  input_data[:action] = [input_data[:action], "change->ax-file-field#sync"].compact_blank.join(" ")
+  input_class = ["ax-file-field__input", options.delete(:class)].compact.join(" ")
+%>
+
+<div class="<%= field_classes %>"
+     data-controller="ax-file-field"
+     data-ax-file-field-empty-label-value="<%= empty_label %>">
+  <%= ax_field_label(form, method, text: label, tooltip:, class_name:) %>
+  <div class="ax-file-field__control">
+    <%= form.file_field method,
+          options.merge(
+            id: input_id,
+            accept: accept,
+            class: input_class,
+            data: input_data
+          ) %>
+    <%= label_tag input_id, class: "ax-file-field__button" do %>
+      <i class="bi bi-upload" aria-hidden="true"></i>
+      <span><%= button_label %></span>
+    <% end %>
+    <span class="ax-file-field__filename" data-ax-file-field-target="filename"><%= empty_label %></span>
+  </div>
+  <%= render "admin/shared/ui/field_error", form: form, method: method %>
+  <% if local_assigns[:hint].present? && form.object.errors[method].blank? %>
+    <p class="ax-field__hint"><%= hint %></p>
+  <% end %>
+</div>

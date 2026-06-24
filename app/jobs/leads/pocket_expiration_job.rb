@@ -12,9 +12,14 @@ module Leads
       
       Rails.logger.info "[PocketExpirationJob] Lead #{lead_id} expirou no pocket. Redistribuindo..."
       
+      previous_corretor = lead.admin_user
+
       lead.update!(status: Lead.default_status, admin_user_id: nil)
       lead.activities.create!(kind: "pocket_expired", metadata: { previous_admin_user_id: lead.admin_user_id_was })
-      
+
+      # Avisa quem perdeu a vez (se ligado em LeadSetting).
+      Leads::NotificationDispatcher.notify_lost_turn(lead, previous_corretor)
+
       # Forçamos uma nova rodada de distribuição
       Leads::RoutingService.new(lead).route!
     end

@@ -1,0 +1,15 @@
+<h2>SMTP configurado com sucesso 🎉</h2>
+
+<p>Este é um e-mail de teste enviado pela tela de configuração de e-mail.</p>
+
+<p>
+  Se você recebeu esta mensagem, o envio de notificações por e-mail aos corretores
+  está funcionando com as credenciais informadas.
+</p>
+
+<hr>
+
+<p style="color:#6b7280;font-size:13px;">
+  Remetente: <%= @setting.from_address %><br>
+  Servidor: <%= @setting.smtp_address %>:<%= @setting.smtp_port %>
+</p>

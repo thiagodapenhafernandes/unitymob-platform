@@ -1,0 +1,24 @@
+<div class="automation-workflow-new">
+  <div class="automation-workflow-new__panel">
+    <div class="automation-workflow-new__eyebrow">Automação de acompanhamento</div>
+    <h1 class="automation-workflow-new__title">Nome da intervenção</h1>
+    <p class="automation-workflow-new__copy">Use um nome curto e operacional. Esta automação apoia o andamento do lead sem substituir distribuição, fila, aceite ou responsável inicial.</p>
+
+    <%= form_with model: @workflow, url: admin_automation_workflows_path, scope: :automation_workflow, class: "automation-workflow-new__form" do |f| %>
+      <% if @workflow.errors.any? %>
+        <div class="ax-inline-notice ax-inline-notice--danger">
+          <i class="bi bi-exclamation-triangle"></i>
+          <span><%= @workflow.errors.full_messages.to_sentence %></span>
+        </div>
+      <% end %>
+
+      <label class="ax-label" for="automation_workflow_name">Nome da intervenção</label>
+      <%= f.text_field :name, class: "ax-input", autofocus: true, placeholder: "Ex.: Alerta de lead parado" %>
+
+      <div class="automation-workflow-new__actions">
+        <%= link_to "Cancelar", admin_automation_rules_path, class: "ax-btn ax-btn--sm" %>
+        <%= f.submit "Continuar", class: "ax-btn ax-btn--sm ax-btn--primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>

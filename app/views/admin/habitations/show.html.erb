@@ -55,17 +55,21 @@
   infrastructure_names = array_value.call(@habitation.infra_estrutura)
   unique_feature_names = array_value.call(@habitation.caracteristica_unica)
 
-  attached_photo_sources = @habitation.photos.attached? ? @habitation.ordered_photos.select { |photo| photo.persisted? && photo.blob&.persisted? }.map.with_index { |photo, index|
+  attached_photo_sources = @habitation.photos.attached? ? @habitation.ordered_photos.select { |photo| photo.persisted? && photo.blob&.persisted? }.filter_map.with_index { |photo, index|
+    photo_url = public_image_url({ attachment: photo })
+    next if photo_url.blank?
+
     {
-      url: url_for(photo),
-      thumb: public_image_url({ attachment: photo }, resize_to_fill: [520, 360]) || url_for(photo),
+      url: photo_url,
+      thumb: photo_url,
       caption: "Foto #{index + 1} - #{photo.filename}",
       badge: "Ativo"
     }
   } : []
 
   api_photo_sources = @habitation.pictures.is_a?(Array) ? @habitation.pictures.each_with_index.filter_map { |pic, index|
-    pic_url = pic.is_a?(String) ? pic : (pic.try(:[], "url") || pic.try(:[], "src") || pic.try(:[], "link") || pic.try(:[], "url_pequena"))
+    source = pic.is_a?(Hash) ? pic.merge("_habitation_id" => @habitation.id, "_habitation_codigo" => @habitation.codigo) : pic
+    pic_url = public_image_url(source)
     next if pic_url.blank?
 
     {
@@ -78,11 +82,11 @@
 
   development_photo_sources = if @habitation.use_development_photos? && linked_development.present? && attached_photo_sources.blank? && api_photo_sources.blank?
     linked_development.own_public_image_sources.first(24).filter_map.with_index do |source, index|
-      photo_url = public_image_url(source, resize_to_fill: [520, 360]) || public_image_url(source)
+      photo_url = public_image_url(source)
       next if photo_url.blank?
 
       {
-        url: public_image_url(source) || photo_url,
+        url: photo_url,
         thumb: photo_url,
         caption: "Foto do empreendimento #{index + 1}",
         badge: "Empreendimento"

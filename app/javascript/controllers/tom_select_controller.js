@@ -9,7 +9,8 @@ export default class extends Controller {
     tags: Boolean, // New value to enable tagging behavior clearly
     url: String,
     searchParam: String,
-    minLength: Number
+    minLength: Number,
+    optionDescriptions: Object
   }
 
   connect() {
@@ -99,6 +100,8 @@ export default class extends Controller {
       ...this.optionsValue
     }
 
+    this.applyOptionDescriptions(config)
+
     if (this.hasUrlValue) {
       const minLength = this.hasMinLengthValue ? this.minLengthValue : 2
       const searchParam = this.hasSearchParamValue ? this.searchParamValue : "q"
@@ -133,6 +136,9 @@ export default class extends Controller {
     }
 
     this.tomSelect = new TomSelect(this.element, config)
+    if (!isMultiple) {
+      this.tomSelect.wrapper.classList.add("ax-ts-single-search")
+    }
 
     if (this.element.closest('.habitation-form-ui')) {
       this.tomSelect.wrapper.classList.remove('form-select', 'form-control', 'form-select-sm', 'form-control-sm')
@@ -146,6 +152,28 @@ export default class extends Controller {
 
     this.element.closest('.ax-multiselect')?.classList.remove('ax-multiselect--pending')
     this.unbindDeferredInitialization()
+  }
+
+  applyOptionDescriptions(config) {
+    const descriptions = this.hasOptionDescriptionsValue ? this.optionDescriptionsValue : {}
+    if (!descriptions || Object.keys(descriptions).length === 0) return
+
+    const existingRender = config.render || {}
+    config.render = {
+      ...existingRender,
+      option: existingRender.option || ((data, escape) => {
+        const description = data.description || descriptions[data.value] || ""
+        return `
+          <div class="ax-select-option">
+            <div class="ax-select-option__label">${escape(data.text || "")}</div>
+            ${description ? `<div class="ax-select-option__description">${escape(description)}</div>` : ""}
+          </div>
+        `
+      }),
+      item: existingRender.item || ((data, escape) => {
+        return `<div class="ax-select-item">${escape(data.text || "")}</div>`
+      })
+    }
   }
 
   unbindDeferredInitialization() {

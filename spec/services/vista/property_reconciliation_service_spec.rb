@@ -65,6 +65,39 @@ RSpec.describe Vista::PropertyReconciliationService do
     end
   end
 
+  describe "development link mapping" do
+    let(:service) { described_class.new(codigos: ["6173"], dry_run: true) }
+
+    it "clears stale development code when Vista sends an empty development code" do
+      attrs = service.send(
+        :clearable_property_attrs,
+        {
+          "Codigo" => "6173",
+          "CodigoEmpreendimento" => "",
+          "Empreendimento" => "",
+          "TituloSite" => ""
+        }
+      )
+
+      expect(attrs[:codigo_empreendimento]).to be_nil
+      expect(attrs[:nome_empreendimento]).to be_nil
+      expect(attrs[:titulo_anuncio]).to be_nil
+    end
+
+    it "does not touch development code when Vista omits the development code field" do
+      attrs = service.send(
+        :clearable_property_attrs,
+        {
+          "Codigo" => "6173",
+          "Empreendimento" => ""
+        }
+      )
+
+      expect(attrs).not_to have_key(:codigo_empreendimento)
+      expect(attrs[:nome_empreendimento]).to be_nil
+    end
+  end
+
   describe "commission and rental management mapping" do
     let(:service) { described_class.new(codigos: ["8573"], dry_run: true) }
 

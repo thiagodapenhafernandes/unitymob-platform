@@ -106,8 +106,13 @@ Tokens base vêm de `public/analytics-builder-design-system/index.html` e
 
 - `#365F8F` é o default do novo admin.
 - `#2563EB` é fallback legado; não usar como default em tela migrada.
-- `primary`, `surface.DEFAULT`, `surface.header` e `ink` são os tokens
-  principais do conceito.
+- `primary`, `surface.DEFAULT`, `surface.header`, `workspace.background`,
+  `sidebar.background` e `ink` são os tokens principais do conceito.
+- `surface.header` controla cabeçalhos e superfícies de topo; não deve ser usado
+  como background da `ax-main` nem da `ax-sidebar`.
+- `workspace.background` controla o fundo do workspace principal e do `ax-main`.
+- `sidebar.background` controla exclusivamente o fundo da navegação lateral
+  `ax-sidebar`.
 - Cores de site público continuam separadas. Não use tokens públicos para
   inferir comportamento do admin nem vice-versa.
 - Customização em `/admin/layout_setting/edit` deve deixar claro o impacto:
@@ -132,6 +137,83 @@ Estado confirmado no filesystem deste checkout:
   confirmar impacto no front público.
 - Próximo lote recomendado: migrar JS inline/handlers soltos e remover
   dependências de `d-none` nos controllers que ainda controlam estado visual.
+
+## Performance Do Admin
+
+Performance faz parte do contrato visual e operacional do admin. Uma tela densa
+só é aceitável se continuar interativa rapidamente; densidade não justifica
+carregar JS, HTML, imagens ou queries que a tela não usa no primeiro momento.
+
+### Diagnóstico Antes De Otimizar
+
+Antes de alterar código por sensação de lentidão, coletar evidência:
+
+- Lighthouse ou DevTools Performance/Network da rota real.
+- Logs Rails do request principal e de `turbo-frame`/fetches adjacentes.
+- Separar: TBT/long tasks de JS, tempo de backend, tamanho do HTML, quantidade
+  de scripts, peso de CSS, payload de imagens e requests assíncronos.
+- Não concluir que "é JS bloqueando" sem TBT/long task ou stack de main thread.
+
+Evidência que fundamentou a diretriz em `/admin/habitations?ownership=all`:
+
+- Lighthouse apontou `total-blocking-time: 0 ms`, sem long tasks relevantes.
+- Main thread ficou abaixo de 1s, então o travamento percebido não era CPU JS
+  clássica.
+- A tela carregava 147 scripts separados por importmap/controllers.
+- O inspector do catálogo entrava via `/admin/habitations/filter_inspector` com
+  aproximadamente 132 KB de HTML e várias queries `DISTINCT` para opções.
+- O `turbo-frame` do inspector estava lazy; para filtro lateral importante, isso
+  atrasava a tela ficar utilizável.
+- Imagens dos cards vieram como gargalo de rede separado, com blobs grandes
+  levando segundos; tratar thumbnails/variants em passo próprio para não trocar
+  rede por processamento pesado no primeiro acesso.
+
+### Regras De Evolução
+
+- O manifest Stimulus do admin deve favorecer lazy loading de controllers. Não
+  voltar a importar e registrar todos os controllers em `controllers/index.js`
+  se a tela usa só uma fração deles.
+- Controllers Stimulus compartilhados devem continuar pequenos e conectados ao
+  DOM real por `data-controller`; evite controllers globais que varrem a página
+  inteira no `connect`.
+- `turbo-frame` essencial para a primeira interação da tela deve carregar
+  `eager`; use `lazy` apenas para conteúdo realmente secundário ou abaixo da
+  dobra.
+- HTML assíncrono pesado deve ser medido. Se um frame passa a carregar muitas
+  opções, muitos partials ou muitos selects com TomSelect, considere reduzir
+  payload, paginar/buscar remoto, cachear dados ou renderizar apenas seções
+  abertas/ativas.
+- Consultas de opção de filtro devem ser cacheadas, escopadas e revisadas com
+  logs reais. Várias consultas `DISTINCT` em cada navegação do catálogo viram
+  custo perceptível mesmo quando cada uma parece barata isoladamente.
+- TomSelect e multiselects devem inicializar sob demanda quando estiverem
+  ocultos ou em seções fechadas. Não force inicialização de todos os selects se
+  o usuário ainda não abriu a seção.
+- Imagens de catálogo devem usar fontes pequenas/thumbnail quando disponíveis.
+  Antes de forçar Active Storage variants, medir impacto de processamento,
+  cache e storage para não piorar o primeiro acesso.
+- Resolução de imagem pública de imóvel deve ser CDN-only e barata por item.
+  Não registrar/recriar serviços do Active Storage por foto. A API/payload Vista
+  não é fonte de verdade para catálogo/site público; a fonte pública é o anexo
+  local em `Habitation.photos` ou uma URL já no CDN configurado. Recuperações
+  pontuais de Vista devem ficar em telas/serviços específicos da integração, não
+  no caminho de renderização do catálogo.
+- Toda otimização de performance precisa preservar params, permissões,
+  comportamento Rails/Turbo, acessibilidade básica e fallback sem JS quando
+  existir.
+
+### Quality Gate De Performance
+
+Ao mexer em listagens densas, inspector, catálogo de imóveis, dashboards ou
+formulários com muitos campos:
+
+1. Rodar `assets:precompile` quando alterar JS/CSS/importmap.
+2. Rodar `zeitwerk:check` quando alterar Rails.
+3. Conferir no diff se não houve reintrodução de imports globais pesados.
+4. Se houver Lighthouse/DevTools disponível, comparar pelo menos TBT, número de
+   scripts, peso do documento, requests assíncronos e imagens mais lentas.
+5. Registrar no resumo se a causa era backend, rede, HTML, CSS/layout, JS
+   main-thread ou inicialização de componentes.
 
 ## Anatomia Global
 

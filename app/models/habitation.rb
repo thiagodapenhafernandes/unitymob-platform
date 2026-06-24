@@ -300,6 +300,7 @@ class Habitation < ApplicationRecord
   after_destroy :clear_cache
   after_create_commit :record_auto_audit_create, unless: :skip_auto_audit?
   after_update_commit :record_auto_audit_update, unless: :skip_auto_audit?
+  after_update_commit :dispatch_interest_price_drop
   before_destroy :capture_auto_audit_destroy_snapshot, unless: :skip_auto_audit?
   after_destroy_commit :record_auto_audit_destroy, unless: :skip_auto_audit?
 
@@ -902,9 +903,7 @@ class Habitation < ApplicationRecord
   
   # Retorna a URL da imagem principal
   def primary_image_url
-    img = primary_image
-    return nil unless img
-    img.is_a?(Hash) ? img['url'] : img
+    Storage::PublicCdnImageUrl.resolve(primary_image)
   end
 
   def primary_image_source
@@ -917,9 +916,7 @@ class Habitation < ApplicationRecord
 
   # Retorna lista de URLs de todas as imagens
   def image_urls
-    all_images.map do |img|
-      img.is_a?(Hash) ? img['url'] : img
-    end.compact
+    all_images.filter_map { |img| Storage::PublicCdnImageUrl.resolve(img) }
   end
   
   # Retorna a primeira imagem do imóvel (Hash format)
@@ -930,6 +927,7 @@ class Habitation < ApplicationRecord
   def public_image_sources
     own_sources = own_public_image_sources
     return own_sources if empreendimento? || codigo_empreendimento.blank?
+    return own_sources if own_sources.present? || !use_development_photos?
 
     (own_sources + linked_development_public_image_sources).uniq do |source|
       public_image_source_key(source)
@@ -937,7 +935,7 @@ class Habitation < ApplicationRecord
   end
 
   def own_public_image_sources
-    attached_images = public_ordered_photos.map { |photo| { "attachment" => photo, "url" => blob_path_for(photo) } }
+    attached_images = public_ordered_photos.map { |photo| { "attachment" => photo } }
     api_images = image_payload_sources
 
     attached_images.presence || api_images
@@ -967,8 +965,10 @@ class Habitation < ApplicationRecord
 
     if images.is_a?(Array)
       images.filter_map do |pic|
-        payload = pic.is_a?(Hash) ? pic : { "url" => pic }
-        payload unless picture_hidden_from_site?(payload)
+        payload = pic.is_a?(Hash) ? pic.deep_dup : { "url" => pic }
+        payload["_habitation_id"] = id
+        payload["_habitation_codigo"] = codigo
+        payload if !picture_hidden_from_site?(payload) && Storage::PublicCdnImageUrl.resolve(payload).present?
       end
     else
       []
@@ -979,8 +979,10 @@ class Habitation < ApplicationRecord
     return [] unless fotos_empreendimento.is_a?(Array)
 
     fotos_empreendimento.filter_map do |pic|
-      payload = pic.is_a?(Hash) ? pic : { "url" => pic }
-      payload unless picture_hidden_from_site?(payload)
+      payload = pic.is_a?(Hash) ? pic.deep_dup : { "url" => pic }
+      payload["_habitation_id"] = id
+      payload["_habitation_codigo"] = codigo
+      payload if !picture_hidden_from_site?(payload) && Storage::PublicCdnImageUrl.resolve(payload).present?
     end
   end
 
@@ -989,12 +991,6 @@ class Habitation < ApplicationRecord
     return "attachment:#{attachment.id}" if attachment&.id
 
     source.try(:[], "url") || source.try(:[], :url) || source.object_id
-  end
-
-  def blob_path_for(attachment)
-    Rails.application.routes.url_helpers.rails_storage_proxy_path(attachment, only_path: true)
-  rescue StandardError
-    nil
   end
 
   # Photo Sorting Logic
@@ -1581,6 +1577,12 @@ class Habitation < ApplicationRecord
 
   def record_auto_audit_update
     build_auto_audit_recorder.record_update!
+  end
+
+  def dispatch_interest_price_drop
+    return unless saved_change_to_valor_venda_cents? || saved_change_to_valor_locacao_cents?
+
+    InterestIntelligence::PropertyChangeDispatcher.price_drop(self)
   end
 
   def capture_auto_audit_destroy_snapshot

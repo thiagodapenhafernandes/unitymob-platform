@@ -129,11 +129,22 @@
     <%= javascript_importmap_tags "public" %>
   </head>
 
+  <% interest_settings = InterestIntelligence::Settings.current %>
   <body class="antialiased"
-        data-controller="lead-capture"
+        data-controller="lead-capture public-interest-tracker"
         data-lead-capture-enabled-value="<%= WebhookSetting.active.where(lead_capture_enabled: true).exists? %>"
         data-lead-capture-phone-settings-value="<%= json_escape(WhatsappBusinessIntegration.site_phone_settings.to_json) %>"
-        data-lead-capture-share-token-value="<%= @lead_share_token %>">
+        data-lead-capture-share-token-value="<%= @lead_share_token %>"
+        data-public-interest-tracker-enabled-value="<%= interest_settings.enabled? %>"
+        data-public-interest-tracker-consent-required-value="<%= interest_settings.enabled_value?("requires_public_tracking_consent") %>"
+        data-public-interest-tracker-property-id-value="<%= @habitation&.id %>"
+        data-public-interest-tracker-property-code-value="<%= @habitation&.codigo %>"
+        data-public-interest-tracker-property-category-value="<%= @habitation&.categoria %>"
+        data-public-interest-tracker-property-city-value="<%= @habitation&.cidade.presence || @habitation&.read_attribute(:cidade) %>"
+        data-public-interest-tracker-property-neighborhood-value="<%= @habitation&.bairro.presence || @habitation&.read_attribute(:bairro) %>"
+        data-public-interest-tracker-property-bedrooms-value="<%= @habitation&.dormitorios_qtd %>"
+        data-public-interest-tracker-property-parking-spaces-value="<%= @habitation&.vagas_qtd %>"
+        data-public-interest-tracker-property-price-cents-value="<%= @habitation&.valor_venda_cents.presence || @habitation&.valor_locacao_cents %>">
     <%= render "layouts/tracking_body" %>
     <%= render 'layouts/header' %>
     
@@ -144,6 +155,7 @@
     </main>
     
     <%= render 'layouts/footer' %>
+    <%= render "layouts/interest_tracking_consent", settings: interest_settings %>
     
     <%# Performance: Defer non-critical external libraries %>
     <script>

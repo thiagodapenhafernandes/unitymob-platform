@@ -4,7 +4,17 @@ class AutomationRule < ApplicationRecord
     "lead_created"       => "Quando um lead é criado",
     "lead_stage_changed" => "Quando o lead muda de etapa",
     "lead_idle"          => "Quando o lead fica parado (sem ação)",
-    "proposal_viewed"    => "Quando o cliente visualiza a proposta"
+    "proposal_viewed"    => "Quando o cliente visualiza a proposta",
+    "proposal_accepted"  => "Quando o cliente aceita a proposta",
+    "proposal_rejected"  => "Quando o cliente recusa a proposta",
+    "whatsapp_received"  => "Quando o lead responde no WhatsApp",
+    "scheduled_routine"  => "Rotina agendada",
+    "interest_profile_detected" => "Quando interesse em imóveis é detectado",
+    "matching_property_found" => "Quando surgir imóvel compatível",
+    "lead_without_matching_property" => "Quando não houver imóvel compatível",
+    "interest_profile_incomplete" => "Quando o perfil de interesse estiver incompleto",
+    "interested_property_price_dropped" => "Quando imóvel de interesse baixar preço",
+    "lead_repeated_similar_property_views" => "Quando lead visitar imóveis parecidos"
   }.freeze
 
   # Tipos de ação (ENTÃO)
@@ -13,10 +23,19 @@ class AutomationRule < ApplicationRecord
     "send_whatsapp"           => "Enviar WhatsApp (texto)",
     "send_whatsapp_template"  => "Enviar modelo WhatsApp",
     "move_stage"              => "Mover para etapa",
-    "assign_agent"            => "Atribuir corretor",
+    "assign_agent"            => "Ação vertical legada",
     "add_note"                => "Registrar nota",
+    "create_interest_curation_task" => "Criar tarefa de curadoria",
+    "add_interest_note"       => "Registrar interesse detectado",
+    "suggest_matching_properties" => "Sugerir imóveis compatíveis",
+    "notify_broker_interest_opportunity" => "Criar alerta para responsável do lead",
+    "prepare_matching_properties_whatsapp" => "Preparar WhatsApp com imóveis sugeridos",
+    "generate_interest_ai_summary" => "Gerar resumo inteligente",
     "wait"                    => "Esperar (nutrição)"
   }.freeze
+
+  VERTICAL_DISTRIBUTION_ACTION_TYPES = %w[assign_agent].freeze
+  INTERVENTION_ACTION_TYPES = ACTION_TYPES.except(*VERTICAL_DISTRIBUTION_ACTION_TYPES).freeze
 
   TIME_BASED_TRIGGERS = %w[lead_idle].freeze
 
@@ -55,15 +74,6 @@ class AutomationRule < ApplicationRecord
   end
 
   def action_label(action)
-    case action[:type]
-    when "create_task"            then "criar tarefa “#{action[:title]}”"
-    when "send_whatsapp"          then "enviar WhatsApp"
-    when "send_whatsapp_template" then "enviar modelo “#{action[:template]}”"
-    when "move_stage"             then "mover para “#{action[:to]}”"
-    when "assign_agent"           then "atribuir corretor"
-    when "add_note"               then "registrar nota"
-    when "wait"                   then "esperar #{action[:days]} dia(s)"
-    else action[:type].to_s
-    end
+    Automation::ActionExecutor.label(action)
   end
 end

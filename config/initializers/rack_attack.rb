@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "ipaddr"
+
 # Rate limiting com rack-attack — escopo restrito às rotas do field.
 # Outras rotas ficam sem throttle para não introduzir efeito colateral agora.
 #
@@ -15,6 +17,37 @@ class Rack::Attack
     else
       Rails.cache
     end
+
+  def self.env_ip_list(key)
+    ENV.fetch(key, "")
+      .split(/[,\s]+/)
+      .map(&:strip)
+      .reject(&:blank?)
+  end
+
+  def self.ip_matches?(request_ip, entries)
+    entries.any? do |entry|
+      if entry.include?("/")
+        IPAddr.new(entry).include?(IPAddr.new(request_ip))
+      else
+        entry == request_ip
+      end
+    rescue IPAddr::InvalidAddressError
+      false
+    end
+  end
+
+  if Rails.env.development?
+    blocklist("development/blocked_ips") do |req|
+      blocked_ips = Rack::Attack.env_ip_list("DEV_BLOCKED_IPS")
+      blocked_ips.present? && Rack::Attack.ip_matches?(req.ip, blocked_ips)
+    end
+
+    blocklist("development/not_allowed_ips") do |req|
+      allowed_ips = Rack::Attack.env_ip_list("DEV_ALLOWED_IPS")
+      allowed_ips.present? && !Rack::Attack.ip_matches?(req.ip, allowed_ips)
+    end
+  end
 
   # --- /field/check_ins (POST) — 5 tentativas por minuto por usuário logado ---
   throttle("field/check_ins/create", limit: 5, period: 60) do |req|
@@ -41,6 +74,20 @@ class Rack::Attack
   throttle("field/manual_checkin_requests/create", limit: 3, period: 1.hour) do |req|
     if req.post? && req.path == "/field/manual_checkin_requests"
       req.env["warden"]&.user(:admin_user)&.id || req.ip
+    end
+  end
+
+  # --- /webhooks/inbound/* — entrada pública tokenizada por usuário ---
+  throttle("webhooks/inbound", limit: 60, period: 1.minute) do |req|
+    if req.post? && req.path.start_with?("/webhooks/inbound/")
+      authorization = req.get_header("HTTP_AUTHORIZATION").to_s
+      bearer_token = authorization[/\ABearer\s+(.+)\z/i, 1].to_s.strip.presence
+      token = bearer_token ||
+        req.get_header("HTTP_X_WEBHOOK_TOKEN").presence ||
+        req.get_header("HTTP_X_INBOUND_WEBHOOK_TOKEN").presence ||
+        req.params["token"].presence ||
+        "missing"
+      "#{req.ip}:#{token}"
     end
   end
 

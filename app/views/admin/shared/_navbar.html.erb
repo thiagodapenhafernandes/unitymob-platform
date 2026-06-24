@@ -1,7 +1,11 @@
 <%# LEGADO não-renderizado — candidato a remoção. %>
+<%
+  legacy_navbar_site_name = @layout_setting&.site_name.presence || "Salute Imóveis"
+  legacy_navbar_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : "Plataforma"
+%>
 <nav class="admin-navbar">
   <div class="navbar-brand">
-    <h4 class="tw-flex tw-items-center tw-gap-2"><i class="bi bi-building"></i> Salute Imóveis Admin</h4>
+    <h4 class="tw-flex tw-items-center tw-gap-2"><i class="bi bi-building"></i> <%= legacy_navbar_site_name %> <%= legacy_navbar_area_name %></h4>
   </div>
 
   <div class="navbar-actions">

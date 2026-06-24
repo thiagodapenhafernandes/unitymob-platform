@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Lead — <%= @lead.display_name %></title>
+  <style>
+    :root { --p:#365f8f; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#f1f5f9; color:var(--ink); }
+    .wrap { max-width:480px; margin:0 auto; padding:24px 16px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px; box-shadow:0 8px 30px rgba(2,6,23,.06); }
+    .eyebrow { font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+    h1 { font-size:22px; margin:4px 0 16px; }
+    .row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid var(--line); font-size:15px; }
+    .row .k { color:var(--muted); }
+    .row .v { font-weight:600; text-align:right; word-break:break-word; }
+    .actions { display:flex; flex-direction:column; gap:10px; margin-top:18px; }
+    .btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:13px 16px; border-radius:12px; font-weight:700; font-size:15px; text-decoration:none; border:1px solid var(--line); color:var(--ink); }
+    .btn--wa { background:#22c55e; color:#04210f; border-color:#22c55e; }
+    .btn--mail { background:var(--p); color:#fff; border-color:var(--p); }
+    .foot { text-align:center; color:var(--muted); font-size:12px; margin-top:14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <span class="eyebrow">Lead recebido</span>
+      <h1><%= @lead.display_name %></h1>
+
+      <div class="row"><span class="k">Telefone</span><span class="v"><%= @lead.display_phone.presence || "—" %></span></div>
+      <div class="row"><span class="k">E-mail</span><span class="v"><%= @lead.display_email.presence || "—" %></span></div>
+      <div class="row"><span class="k">Origem</span><span class="v"><%= @lead.origin.presence || "—" %></span></div>
+      <% if @lead.product.present? %>
+        <div class="row"><span class="k">Interesse</span><span class="v"><%= @lead.product %></span></div>
+      <% end %>
+
+      <div class="actions">
+        <% if @lead.direct_whatsapp_url.present? %>
+          <a class="btn btn--wa" href="<%= @lead.direct_whatsapp_url %>">Abrir WhatsApp do lead</a>
+        <% end %>
+        <% if @lead.display_email.present? %>
+          <a class="btn btn--mail" href="mailto:<%= @lead.display_email %>">Enviar e-mail</a>
+        <% end %>
+      </div>
+    </div>
+    <p class="foot">Acesso seguro — link exclusivo deste lead.</p>
+  </div>
+</body>
+</html>

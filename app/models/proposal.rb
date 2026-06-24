@@ -44,13 +44,26 @@ class Proposal < ApplicationRecord
     new_status = status == "enviada" ? "visualizada" : status
     update_columns(viewed_at: Time.current, status: new_status, updated_at: Time.current)
     LeadActivity.log!(lead: lead, kind: "proposal_viewed", metadata: { proposal_id: id })
-    Automation::Dispatcher.dispatch(:proposal_viewed, lead)
+    Automation::Dispatcher.dispatch(
+      :proposal_viewed,
+      lead,
+      source: "proposal",
+      payload: { proposal_id: id },
+      idempotency_key: "proposal_viewed:#{id}"
+    )
   end
 
   def decide!(decision)
     new_status = decision.to_s == "aceita" ? "aceita" : "recusada"
     update!(status: new_status, responded_at: Time.current)
     LeadActivity.log!(lead: lead, kind: "proposal_#{new_status}", metadata: { proposal_id: id })
+    Automation::Dispatcher.dispatch(
+      new_status == "aceita" ? :proposal_accepted : :proposal_rejected,
+      lead,
+      source: "proposal",
+      payload: { proposal_id: id, status: new_status },
+      idempotency_key: "proposal_decision:#{id}:#{new_status}"
+    )
   end
 
   private

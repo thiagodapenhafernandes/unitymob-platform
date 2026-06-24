@@ -340,7 +340,9 @@ module Vista
     end
 
     def existing_attachment_by_filename(habitation, filename)
-      habitation.photos.attachments.includes(:blob).detect { |attachment| attachment.filename.to_s == filename.to_s }
+      habitation.photos.attachments.includes(:blob).detect do |attachment|
+        attachment.filename.to_s == filename.to_s && blob_available?(attachment.blob)
+      end
     end
 
     def find_reusable_blob(filename)
@@ -349,21 +351,28 @@ module Vista
         .where(active_storage_attachments: { record_type: "Habitation", name: "photos" })
         .where(filename: filename)
         .order(:id)
-        .first
+        .detect { |blob| blob_available?(blob) }
     end
 
     def attach_blob_once!(habitation, blob)
       existing = ActiveStorage::Attachment.find_by(record: habitation, name: "photos", blob: blob)
-      return existing if existing
+      if existing && blob_available?(existing.blob)
+        Storage::PublicPropertyPhoto.publish_attachment!(existing)
+        return existing
+      end
 
       habitation.photos.attach(blob)
-      ActiveStorage::Attachment.find_by!(record: habitation, name: "photos", blob: blob)
+      attachment = ActiveStorage::Attachment.find_by!(record: habitation, name: "photos", blob: blob)
+      Storage::PublicPropertyPhoto.publish_attachment!(attachment)
+      attachment
     end
 
     def create_blob_from_url(habitation, url, filename)
       io = download(url)
       body = io.string
       io.rewind
+      service_name = StorageIntegrationSetting.current.photo_service_name
+      Storage::ActiveStorageRegistry.fetch!(service_name) unless service_name == :local
 
       ActiveStorage::Blob.create_and_upload!(
         key: storage_key_for(habitation, filename),
@@ -375,7 +384,8 @@ module Vista
           "identified" => true,
           "vista_source_url" => url,
           "vista_codigo" => habitation.codigo
-        }
+        },
+        service_name: service_name
       )
     rescue ActiveRecord::RecordNotUnique
       ActiveStorage::Blob.find_by!(key: storage_key_for(habitation, filename))
@@ -383,6 +393,12 @@ module Vista
 
     def storage_key_for(habitation, filename)
       ["vista", "property_photo", habitation.codigo.presence || habitation.id, filename].join("/")
+    end
+
+    def blob_available?(blob)
+      blob.present? && blob.service.exist?(blob.key)
+    rescue StandardError
+      false
     end
 
     def download(url, read_timeout: 30, open_timeout: 10, max_redirects: 5)

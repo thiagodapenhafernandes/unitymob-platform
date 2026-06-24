@@ -13,6 +13,7 @@ module Notifications
     def deliver(title:, body:, url:, icon:)
       return 0 unless vapid_configured?
 
+      vapid = vapid_credentials
       subs = PushSubscription.active.where(admin_user_id: @admin_user_id)
       return 0 if subs.empty?
 
@@ -27,9 +28,9 @@ module Notifications
             p256dh:        sub.p256dh,
             auth:          sub.auth,
             vapid: {
-              subject:     "mailto:#{ENV['VAPID_SUBJECT_EMAIL']}",
-              public_key:  ENV["VAPID_PUBLIC_KEY"],
-              private_key: ENV["VAPID_PRIVATE_KEY"]
+              subject:     vapid_subject(vapid[:subject]),
+              public_key:  vapid[:public_key],
+              private_key: vapid[:private_key]
             },
             ttl: 86_400
           )
@@ -47,8 +48,21 @@ module Notifications
 
     private
 
+    # Credenciais VAPID da conta (PushSetting), com fallback para ENV legado.
+    def vapid_credentials
+      @vapid_credentials ||= PushSetting.instance.vapid_credentials
+    rescue ActiveRecord::StatementInvalid
+      { subject: ENV["VAPID_SUBJECT_EMAIL"], public_key: ENV["VAPID_PUBLIC_KEY"], private_key: ENV["VAPID_PRIVATE_KEY"] }
+    end
+
     def vapid_configured?
-      ENV["VAPID_PUBLIC_KEY"].present? && ENV["VAPID_PRIVATE_KEY"].present? && ENV["VAPID_SUBJECT_EMAIL"].present?
+      creds = vapid_credentials
+      creds[:public_key].present? && creds[:private_key].present? && creds[:subject].present?
+    end
+
+    # Garante o prefixo mailto: exigido pelo protocolo Web Push.
+    def vapid_subject(subject)
+      subject.to_s.start_with?("mailto:", "http") ? subject : "mailto:#{subject}"
     end
   end
 end

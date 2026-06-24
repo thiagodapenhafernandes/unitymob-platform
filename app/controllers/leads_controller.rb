@@ -14,6 +14,11 @@ class LeadsController < ApplicationController
     apply_share_attribution(@lead)
     
     if @lead.save
+      InterestIntelligence::SessionLinker.call(
+        lead: @lead,
+        token: cookies.signed[PublicNavigationSession::COOKIE_KEY]
+      )
+
       habitation = Habitation.find_by(id: @lead.property_id)
       business_type = lead_business_type(habitation)
 

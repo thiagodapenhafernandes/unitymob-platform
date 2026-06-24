@@ -16,6 +16,7 @@ module Leads
           admin_user_id: @lead.admin_user_id,
           reason: @lead.share_token.present? ? "share_link" : "manual_assignment"
         })
+        Leads::NotificationDispatcher.notify_direct_assignment(@lead)
       else
         Leads::DistributorService.find_and_distribute(@lead)
       end

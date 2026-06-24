@@ -1,119 +1,187 @@
-<%= form_with(model: [:admin, distribution_rule], local: true, data: { controller: "distribution-rule" }, html: { class: "dr-form" }) do |f| %>
-  <%= ax_error_summary(distribution_rule) %>
+<%= form_with(model: [:admin, distribution_rule], local: true, data: { controller: "distribution-rule", action: "submit->distribution-rule#validateBeforeSubmit" }, html: { class: "distribution-rule-form distribution-rule-form--workspace" }) do |f| %>
+  <%
+    form_title = local_assigns.fetch(:form_title) do
+      distribution_rule.persisted? ? "Editar regra: #{distribution_rule.name}" : "Nova regra de distribuição"
+    end
+    form_description = local_assigns.fetch(:form_description) do
+      distribution_rule.persisted? ? "Ajuste origem, destino, fila, equipe, modo de distribuição, aceite e regras de horário." : "Defina origem, destino, fila, equipe, modo de distribuição, aceite e regras de horário."
+    end
+    form_eyebrow = local_assigns.fetch(:form_eyebrow, "Distribuição de leads")
+  %>
 
-  <div class="dr-form-grid">
+  <% form_main = capture do %>
     <%# ===== Coluna principal ===== %>
-    <div class="dr-form-main">
+    <div class="distribution-rule-form__main">
+      <header class="ax-dashboard-command ax-property-form-command distribution-rule-command">
+        <div class="ax-dashboard-command__main">
+          <span class="ax-dashboard-command__eyebrow"><%= form_eyebrow %></span>
+          <h1><%= form_title %></h1>
+          <p><%= form_description %></p>
+        </div>
+      </header>
+
       <%# Dados Gerais %>
       <%= ax_operational_panel(eyebrow: "Identificação", title: "Dados gerais") do %>
-        <div class="dr-body">
-          <div class="dr-field">
-            <%= ax_field_label(f, :name, text: "Nome da regra") %>
-            <%= f.text_field :name, class: "ax-control", placeholder: "Ex: Vendas Zona Sul - Facebook" %>
-          </div>
-          <div class="dr-row dr-row--2 dr-row--end">
-            <div class="dr-field">
-              <%= ax_field_label(f, :business_type, text: "Tipo de negócio") %>
-              <%= f.select :business_type, DistributionRule.business_types.keys.map { |k| [k.humanize, k] }, {}, class: "ax-control" %>
+        <div class="ax-panel-body">
+          <%= ax_text_field(form: f, method: :name, label: "Nome da regra", placeholder: "Ex: Vendas Zona Sul - Facebook") %>
+
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <%= ax_select_field(
+                    form: f,
+                    method: :business_type,
+                    label: "Tipo de negócio",
+                    choices: DistributionRule.business_types.keys.map { |k| [k.humanize, k] }
+                  ) %>
             </div>
-            <div class="dr-field">
+            <div class="ax-span-6 ax-field-align-end">
               <%= ax_toggle_chip(f, :active, label: "Regra ativa", id: "flexSwitchCheckActive") %>
             </div>
-          </div>
+          <% end %>
         </div>
       <% end %>
 
       <%# Fontes dos leads %>
       <div data-controller="meta-rules" data-meta-rules-structure-value="<%= @meta_structure.to_json %>">
         <%= ax_operational_panel(eyebrow: "Origem", title: "Fontes dos leads") do %>
-          <div class="dr-body">
+          <div class="ax-panel-body distribution-rule-source-panel">
             <%# Meta Ads %>
-            <section class="dr-source">
-              <div class="dr-source__head">
-                <%= ax_toggle_chip(f, :source_meta,
-                      label: raw("<i class='bi bi-facebook' style='color:#1877f2'></i> Meta Ads (Facebook/Instagram)"),
-                      input_data: { action: "change->distribution-rule#toggleMeta" }) %>
-                <span class="ax-badge ax-badge--green tw-hidden" data-distribution-rule-target="metaStatusBadge">Conectado</span>
+            <section class="distribution-rule-source-card distribution-rule-source-card--primary">
+              <div class="distribution-rule-source__head">
+                <span class="distribution-rule-source__icon distribution-rule-source__icon--meta"><i class="bi bi-facebook"></i></span>
+                <div class="distribution-rule-source__copy">
+                  <strong>Meta Ads</strong>
+                  <span>Leads capturados por formulários do Facebook e Instagram.</span>
+                </div>
+                <div class="distribution-rule-source__actions">
+                  <span class="ax-badge ax-badge--green tw-hidden" data-distribution-rule-target="metaStatusBadge">Conectado</span>
+                  <%= ax_toggle_chip(f, :source_meta,
+                        label: "Ativar",
+                        class_name: "distribution-rule-source__toggle",
+                        input_data: { action: "change->distribution-rule#toggleMeta" }) %>
+                </div>
               </div>
-              <div class="section-toggle-container dr-source__body<%= ' tw-hidden' unless distribution_rule.source_meta? %>" data-distribution-rule-target="metaSection">
-                <div class="dr-field">
-                  <%= ax_field_label(f, :meta_page_ids, text: "Páginas do Facebook") %>
-                  <%= f.select :meta_page_ids, MetaFacebookPage.all.map { |p| [p.name, p.page_id] }, {},
-                        { multiple: true, class: "ax-control", data: { action: "change->meta-rules#updateForms", controller: "tom-select", tom_select_create_value: "false" } } %>
-                </div>
 
+              <div class="section-toggle-container distribution-rule-source__body<%= ' tw-hidden' unless distribution_rule.source_meta? %>" data-distribution-rule-target="metaSection">
                 <% selected_forms_count = Array(distribution_rule.meta_forms).compact_blank.size %>
-                <div class="dr-field" data-controller="collapsible-count">
-                  <%= ax_field_label(f, :meta_forms, text: "Formulários específicos") %>
-                  <details class="dr-details" <%= "open" if distribution_rule.new_record? && selected_forms_count.zero? %> data-collapsible-count-target="details">
-                    <summary class="dr-details__summary">
-                      <span data-collapsible-count-target="label" data-meta-rules-target="formCountLabel">
-                        <% if selected_forms_count.zero? %>
-                          Nenhum formulário selecionado
-                        <% else %>
-                          <strong><%= selected_forms_count %></strong> formulário<%= "s" if selected_forms_count != 1 %> selecionado<%= "s" if selected_forms_count != 1 %>
-                        <% end %>
-                      </span>
-                      <i class="bi bi-chevron-down dr-details__chevron"></i>
-                    </summary>
-                    <div class="dr-details__body">
-                      <%= f.select :meta_forms, options_for_select(@all_form_options || [], distribution_rule.meta_forms), {},
-                            { multiple: true, class: "ax-control",
-                              data: { controller: "tom-select", meta_rules_target: "formSelect",
-                                      action: "change->collapsible-count#recount change->meta-rules#syncAutoSummary" } } %>
-                      <p class="dr-hint">Use a busca para filtrar — o resumo acima atualiza conforme marca/desmarca.</p>
-                    </div>
-                  </details>
-                </div>
-
-                <div class="dr-subcard">
-                  <div class="dr-subcard__main">
-                    <%= ax_toggle_chip(f, :auto_add_forms, label: "Sincronização automática",
-                          id: "autoSyncForms",
-                          input_data: { meta_rules_target: "autoSync", action: "change->meta-rules#toggleAutoSync" }) %>
-                    <p class="dr-hint">Novos formulários nestas páginas entram automaticamente nesta regra.</p>
+                <%
+                  selected_meta_page_ids = Array(distribution_rule.meta_page_ids).compact_blank.map(&:to_s)
+                  selected_meta_form_options = selected_meta_page_ids.flat_map { |page_id| Array(@meta_form_options_by_page&.[](page_id)) }
+                %>
+                <%= ax_field_grid do %>
+                  <div class="ax-span-6">
+                    <%= ax_field_group(title: "Páginas do Facebook", token: "Conta Meta", class_name: "distribution-rule-source-config") do %>
+                      <div class="ax-field">
+                        <%= f.select :meta_page_ids, @all_page_options || [], {},
+                              { multiple: true, class: "ax-control", data: { meta_rules_target: "pageSelect", action: "change->meta-rules#updateForms", controller: "tom-select", tom_select_create_value: "false" } } %>
+                      </div>
+                    <% end %>
                   </div>
+
+                  <div class="ax-span-6">
+                    <%= ax_field_group(title: "Formulários específicos", token: "Filtros", class_name: "distribution-rule-source-config") do %>
+                      <div class="ax-field">
+                        <%= f.select :meta_forms, options_for_select(selected_meta_form_options, distribution_rule.meta_forms), {},
+                              { multiple: true, class: "ax-control",
+                                data: { controller: "tom-select", meta_rules_target: "formSelect",
+                                        action: "change->meta-rules#syncAutoSummary" } } %>
+                        <p class="ax-field__hint" data-meta-rules-target="formCountLabel">
+                          <% if selected_forms_count.zero? %>
+                            Nenhum formulário selecionado
+                          <% else %>
+                            <strong><%= selected_forms_count %></strong> formulário<%= "s" if selected_forms_count != 1 %> selecionado<%= "s" if selected_forms_count != 1 %>
+                          <% end %>
+                        </p>
+                        <p class="ax-field__hint">Selecione uma página primeiro. Depois use a busca para filtrar apenas os formulários dessa página.</p>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <div class="distribution-rule-source-sync">
+                  <%= ax_toggle_chip(f, :auto_add_forms, label: "Sincronização automática",
+                        id: "autoSyncForms",
+                        class_name: "distribution-rule-source-sync__toggle",
+                        input_data: { meta_rules_target: "autoSync", action: "change->meta-rules#toggleAutoSync" }) %>
+                  <p>Novos formulários destas páginas entram automaticamente nesta regra.</p>
                   <button type="button" class="ax-btn ax-btn--sm" data-action="click->meta-rules#syncNow">
-                    <i class="bi bi-arrow-repeat"></i> Sincronizar agora
+                    <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar agora</span>
                   </button>
                 </div>
               </div>
             </section>
 
             <%# Webhooks %>
-            <section class="dr-source">
-              <div class="dr-source__head">
-                <%= ax_toggle_chip(f, :source_webhook,
-                      label: raw("<i class='bi bi-share'></i> Webhooks personalizados"),
-                      input_data: { action: "change->distribution-rule#toggleWebhook" }) %>
-              </div>
-              <div class="section-toggle-container dr-source__body<%= ' tw-hidden' unless distribution_rule.source_webhook? %>" data-distribution-rule-target="webhookSection">
-                <div class="dr-field">
-                  <%= ax_field_label(f, :webhook_tags, text: "Tags de filtragem") %>
-                  <%= f.select :webhook_tags, options_for_select(distribution_rule.webhook_tags || [], distribution_rule.webhook_tags), {},
-                        { multiple: true, class: "ax-control", data: { controller: "tom-select", tom_select_create_value: "true" } } %>
-                  <p class="dr-hint">Leads que chegarem via webhook com estas tags serão processados por esta regra.</p>
+            <section class="distribution-rule-source-card">
+              <div class="distribution-rule-source__head">
+                <span class="distribution-rule-source__icon"><i class="bi bi-share"></i></span>
+                <div class="distribution-rule-source__copy">
+                  <strong>Webhooks personalizados</strong>
+                  <span>Receba leads enviados por integrações externas com tags de roteamento.</span>
                 </div>
-                <div class="dr-code">
-                  <div class="dr-code__title">Payload do webhook (POST):</div>
-                  <pre><code>{
+                <div class="distribution-rule-source__actions">
+                  <%= ax_toggle_chip(f, :source_webhook,
+                        label: "Ativar",
+                        class_name: "distribution-rule-source__toggle",
+                        input_data: { action: "change->distribution-rule#toggleWebhook" }) %>
+                </div>
+              </div>
+
+              <div class="section-toggle-container distribution-rule-source__body<%= ' tw-hidden' unless distribution_rule.source_webhook? %>" data-distribution-rule-target="webhookSection">
+                <%= ax_field_group(title: "Tags de filtragem", token: "Webhook", class_name: "distribution-rule-source-config") do %>
+                  <div class="ax-field">
+                    <%= f.select :webhook_tags, options_for_select(distribution_rule.webhook_tags || [], distribution_rule.webhook_tags), {},
+                          { multiple: true, class: "ax-control", data: { controller: "tom-select", tom_select_create_value: "true" } } %>
+                    <p class="ax-field__hint">Leads que chegarem via webhook com estas tags serão processados por esta regra.</p>
+                  </div>
+                <% end %>
+
+                <details class="ax-disclosure-card distribution-rule-webhook-example">
+                  <summary class="ax-disclosure-card__summary">
+                    <span>Exemplo de payload do webhook</span>
+                    <i class="bi bi-chevron-down ax-disclosure-card__chevron"></i>
+                  </summary>
+                  <div class="ax-disclosure-card__body">
+                    <div class="ax-code-snippet">
+                      <div class="ax-code-snippet__title">POST JSON</div>
+                      <pre><code>{
   "name": "Nome do Lead",
   "email": "lead@email.com",
   "phone": "47999999999",
   "keywords": ["<%= distribution_rule.webhook_tags&.first || 'tag-exemplo' %>"]
 }</code></pre>
-                </div>
+                    </div>
+                  </div>
+                </details>
               </div>
             </section>
 
-            <div class="dr-row dr-row--2">
-              <div class="dr-subcard dr-subcard--inline">
-                <%= ax_toggle_chip(f, :source_site, label: "Site (WhatsApp/Forms)") %>
-              </div>
-              <div class="dr-subcard dr-subcard--inline">
-                <%= ax_toggle_chip(f, :source_portal, label: "Portais imobiliários") %>
-                <span class="dr-hint">ZAP, VivaReal...</span>
-              </div>
+            <div class="distribution-rule-source-grid">
+              <section class="distribution-rule-source-card distribution-rule-source-card--compact">
+                <div class="distribution-rule-source__head">
+                  <span class="distribution-rule-source__icon"><i class="bi bi-globe2"></i></span>
+                  <div class="distribution-rule-source__copy">
+                    <strong>Site</strong>
+                    <span>WhatsApp, formulários e conversões do site público.</span>
+                  </div>
+                  <div class="distribution-rule-source__actions">
+                    <%= ax_toggle_chip(f, :source_site, label: "Ativar", class_name: "distribution-rule-source__toggle") %>
+                  </div>
+                </div>
+              </section>
+
+              <section class="distribution-rule-source-card distribution-rule-source-card--compact">
+                <div class="distribution-rule-source__head">
+                  <span class="distribution-rule-source__icon"><i class="bi bi-buildings"></i></span>
+                  <div class="distribution-rule-source__copy">
+                    <strong>Portais imobiliários</strong>
+                    <span>ZAP, VivaReal e integrações de portais cadastrados.</span>
+                  </div>
+                  <div class="distribution-rule-source__actions">
+                    <%= ax_toggle_chip(f, :source_portal, label: "Ativar", class_name: "distribution-rule-source__toggle") %>
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
         <% end %>
@@ -121,37 +189,40 @@
 
       <%# Equipe %>
       <div id="team" data-controller="team-rules"
-           data-team-rules-structure-value="<%= AdminUser.where(role: :admin).includes(:subordinates).map { |u| [u.id, { agents: u.subordinates.map { |s| { id: s.id, name: s.name } } }] }.to_h.to_json %>">
+           data-team-rules-structure-value="<%= (@team_structure || {}).to_json %>"
+           data-team-rules-all-agents-value="<%= (@all_agents || []).to_json %>">
         <%= ax_operational_panel(eyebrow: "Equipe", title: "Corretores e fila") do %>
-          <div class="dr-body">
-            <div class="dr-field">
+          <div class="ax-panel-body">
+            <div class="ax-field">
               <%= ax_field_label(nil, nil, text: "Filtrar por gestor", for: "manager_id") %>
               <%= select_tag :manager_id,
-                    options_from_collection_for_select(AdminUser.where(id: AdminUser.pluck(:manager_id).compact.uniq), :id, :name),
+                    options_for_select(@manager_options || []),
                     include_blank: "Todos os corretores", class: "ax-control", data: { action: "change->team-rules#filterAgents" } %>
             </div>
 
-            <div class="dr-field">
+            <div class="ax-field">
               <%= ax_field_label(nil, nil, text: "Corretores na regra", for: "agent_select") %>
               <%
                 preselected_agent_ids = Array(distribution_rule.distribution_rule_agents)
                                           .reject { |a| a.marked_for_destruction? }
                                           .map(&:admin_user_id).compact
               %>
+              <%# hidden garante que agent_select sempre chegue ao controller (inclusive vazio = fila zerada) %>
+              <%= hidden_field_tag "agent_select[]", "" %>
               <%= select_tag :agent_select,
-                    options_from_collection_for_select(AdminUser.active.order(:name), :id, :name, preselected_agent_ids),
+                    options_for_select(@all_users_options || [], preselected_agent_ids),
                     multiple: true, class: "ax-control", data: { team_rules_target: "agentSelect" } %>
-              <p class="dr-hint">Selecione corretores — eles aparecem na fila abaixo. Remova o chip para tirar da regra.</p>
+              <p class="ax-field__hint">Selecione qualquer corretor. Ao escolher um gestor, a busca passa a listar apenas a equipe dele, preservando quem já estiver na fila.</p>
             </div>
 
-            <div class="dr-field">
+            <div class="ax-field">
               <%= ax_field_label(nil, nil, text: "Fila de distribuição") %>
-              <div class="dr-agents" data-team-rules-target="list" data-controller="sortable" data-sortable-handle-value=".drag-handle">
+              <div class="ax-record-list distribution-rule-agent-list" data-team-rules-target="list" data-controller="sortable" data-sortable-handle-value=".drag-handle">
                 <%= f.fields_for :distribution_rule_agents do |agent_fields| %>
                   <%= render "agent_fields", f: agent_fields %>
                 <% end %>
               </div>
-              <p class="dr-hint">Arraste pelo ícone para reordenar. No modo <strong>Performance</strong> defina os ciclos (peso); no <strong>Rotativo</strong> a ordem define a fila.</p>
+              <p class="ax-field__hint">Arraste pelo ícone para reordenar. No modo <strong>Performance</strong> defina os ciclos (peso); no <strong>Rotativo</strong> a ordem define a fila.</p>
             </div>
 
             <template data-team-rules-target="template">
@@ -163,174 +234,73 @@
         <% end %>
       </div>
 
-      <%# Horários e Bolsão %>
-      <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e bolsão") do %>
-        <div class="dr-body">
-          <%= ax_toggle_chip(f, :represamento_active,
-                label: "Ativar bolsão (represamento fora do horário)",
-                id: "checkRepresamento",
-                input_data: { action: "change->distribution-rule#toggleRepresamento" }) %>
-
-          <div class="section-toggle-container<%= ' tw-hidden' unless distribution_rule.represamento_active? %>" data-distribution-rule-target="represamentoSection">
-            <table class="ax-table dr-schedule">
-              <thead>
-                <tr><th>Dia</th><th class="ax-num">Ativo</th><th>Início</th><th>Fim</th></tr>
-              </thead>
-              <tbody>
-                <% day_labels = { "mon" => "Segunda", "tue" => "Terça", "wed" => "Quarta", "thu" => "Quinta", "fri" => "Sexta", "sat" => "Sábado", "sun" => "Domingo" } %>
-                <% %w[mon tue wed thu fri sat sun].each do |day| %>
-                  <% config = distribution_rule.represamento_schedule[day] || {} %>
-                  <tr>
-                    <td class="ax-strong"><%= day_labels[day] %></td>
-                    <td class="ax-num">
-                      <%= hidden_field_tag "distribution_rule[represamento_schedule][#{day}][active]", "false" %>
-                      <%= check_box_tag "distribution_rule[represamento_schedule][#{day}][active]", "true", config["active"] == "true" %>
-                    </td>
-                    <td><%= time_field_tag "distribution_rule[represamento_schedule][#{day}][start]", config["start"] || "09:00", class: "ax-control ax-control--sm" %></td>
-                    <td><%= time_field_tag "distribution_rule[represamento_schedule][#{day}][end]", config["end"] || "18:00", class: "ax-control ax-control--sm" %></td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
+      <%# Notificações %>
+      <% channel_states = notification_channel_states %>
+      <%= ax_operational_panel(eyebrow: "Avisos", title: "Notificações") do %>
+        <div class="ax-panel-body">
+          <div class="ax-option-stack">
+            <%= ax_toggle_chip(f, :notify_whatsapp, label: raw("<i class='bi bi-whatsapp' style='color:#1da851'></i> WhatsApp"),
+                  input_data: notify_channel_guard_data(:whatsapp, channel_states[:whatsapp])) %>
+            <%= ax_toggle_chip(f, :notify_email, label: raw("<i class='bi bi-envelope'></i> E-mail ao corretor"),
+                  input_data: notify_channel_guard_data(:email, channel_states[:email])) %>
+            <%= ax_toggle_chip(f, :notify_push, label: raw("<i class='bi bi-phone-vibrate'></i> Push no PWA"),
+                  input_data: notify_channel_guard_data(:push, channel_states[:push])) %>
+            <%= ax_toggle_chip(f, :notify_webhook, label: raw("<i class='bi bi-broadcast'></i> Webhook externo"),
+                  input_data: { action: "change->distribution-rule#toggleNotifyWebhook" }) %>
           </div>
 
-          <%= ax_toggle_chip(f, :pocket_active,
-                label: "Ativar tempo limite (Pocket)",
-                id: "checkPocket",
-                input_data: { action: "change->distribution-rule#togglePocket" }) %>
-          <div class="section-toggle-container<%= ' tw-hidden' unless distribution_rule.pocket_active? %>" data-distribution-rule-target="pocketSection">
-            <div class="dr-field">
-              <%= ax_input_group(suffix: "minutos") do %>
-                <%= f.number_field :pocket_time, class: "ax-control", placeholder: "30" %>
-              <% end %>
-              <p class="dr-hint">Tempo que o corretor tem para aceitar o lead antes de ser repassado.</p>
-            </div>
-          </div>
-        </div>
-      <% end %>
-    </div>
-
-    <%# ===== Coluna lateral ===== %>
-    <div class="dr-form-side">
-      <%= ax_operational_panel(eyebrow: "Lógica", title: "Modo de distribuição") do %>
-        <div class="dr-body">
-          <div class="dr-modes">
-            <% [[:rotary, "arrow-repeat", "Rotativo", "Fila sequencial"],
-                [:performance, "graph-up", "Performance", "Baseado em peso"],
-                [:shark_tank, "lightning-charge", "Shark Tank", "Primeiro a aceitar"]].each do |mode, icon, label, sub| %>
-              <%= f.radio_button :distribution_mode, mode, class: "dr-mode__input", id: "mode_#{mode}", data: { action: "change->distribution-rule#toggleMode" } %>
-              <%= f.label "mode_#{mode}", class: "dr-mode", for: "mode_#{mode}" do %>
-                <i class="bi bi-<%= icon %>"></i>
-                <span><strong><%= label %></strong><small><%= sub %></small></span>
-              <% end %>
+          <div class="section-toggle-container<%= ' tw-hidden' unless distribution_rule.notify_webhook? %>" data-distribution-rule-target="notifyWebhookSection">
+            <%= ax_field_group(title: "URLs de disparo", token: "Webhook externo", class_name: "distribution-rule-source-config") do %>
+              <div class="ax-field">
+                <%= f.select :notify_webhook_urls,
+                      options_for_select(distribution_rule.notify_webhook_url_list, distribution_rule.notify_webhook_url_list), {},
+                      { multiple: true, class: "ax-control", data: { controller: "tom-select", tom_select_create_value: "true", distribution_rule_target: "notifyWebhookSelect" } } %>
+                <p class="ax-field__hint">Cada lead distribuído por esta regra é enviado (POST JSON completo — lead, histórico, corretor e gestor) para todas estas URLs, além de cair na fila do corretor. Digite a URL e tecle Enter para adicionar.</p>
+                <p class="tw-hidden" data-distribution-rule-target="notifyWebhookError" style="color:#b42318;font-size:12px;font-weight:650;margin-top:6px;">
+                  <i class="bi bi-exclamation-triangle"></i> Adicione ao menos uma URL de disparo ou desative o Webhook externo.
+                </p>
+              </div>
             <% end %>
           </div>
-
-          <div class="dr-field">
-            <%= ax_field_label(nil, nil, text: "Preço (R$)") %>
-            <div class="dr-row dr-row--2">
-              <%= f.number_field :min_price, class: "ax-control ax-control--sm", placeholder: "Mínimo" %>
-              <%= f.number_field :max_price, class: "ax-control ax-control--sm", placeholder: "Máximo" %>
-            </div>
-          </div>
         </div>
       <% end %>
 
-      <%= ax_operational_panel(eyebrow: "Campo", title: "Check-in geolocalizado", actions: ax_badge("Opcional", tone: :gray)) do %>
-        <div class="dr-body">
-          <p class="dr-hint">Quando ativo, a regra só distribui para corretores com <strong>check-in ativo</strong>. Tudo desligado por padrão.</p>
-          <div class="dr-switches">
-            <%= ax_toggle_chip(f, :require_active_checkin, label: "Exigir check-in ativo") %>
-            <%= ax_toggle_chip(f, :require_inside_radius, label: "Exigir corretor dentro do raio da loja agora") %>
-            <%= ax_toggle_chip(f, :require_active_shift, label: "Exigir turno ativo no momento") %>
-            <%= ax_toggle_chip(f, :exclude_suspicious_checkins, label: "Excluir check-ins suspeitos") %>
-          </div>
-          <div class="dr-field">
-            <%= ax_field_label(f, :checkin_store_ids, text: "Limitar a uma ou mais lojas") %>
-            <%= f.collection_select :checkin_store_ids, Store.active.order(:name), :id, :name, {},
-                  multiple: true, class: "ax-control",
-                  data: { controller: "tom-select", placeholder: "Selecione lojas (vazio = todas)" } %>
-            <p class="dr-hint">Vazio = qualquer loja conta. Selecione 1 ou mais para restringir.</p>
-          </div>
-        </div>
-      <% end %>
-
-      <%= ax_operational_panel(eyebrow: "Avisos", title: "Notificações") do %>
-        <div class="dr-body">
-          <div class="dr-switches">
-            <%= ax_toggle_chip(f, :notify_whatsapp, label: raw("<i class='bi bi-whatsapp' style='color:#1da851'></i> WhatsApp")) %>
-            <%= ax_toggle_chip(f, :notify_email, label: raw("<i class='bi bi-envelope'></i> E-mail ao corretor")) %>
-            <%= ax_toggle_chip(f, :notify_push, label: raw("<i class='bi bi-phone-vibrate'></i> Push no PWA")) %>
-            <%= ax_toggle_chip(f, :notify_webhook, label: raw("<i class='bi bi-broadcast'></i> Webhook externo")) %>
-          </div>
-        </div>
+      <%# Modal de canal não configurado (preenchido pelo controller distribution-rule) %>
+      <%= ax_quick_modal(
+            id: "notifyChannelModal",
+            title: "Configure a conexão primeiro",
+            size: :sm,
+            data: { distribution_rule_target: "channelModal" },
+            footer: capture do %>
+              <button type="button" class="ax-btn" data-action="ax-modal#close">Agora não</button>
+              <%= link_to "#", class: "ax-btn ax-btn--primary", target: "_blank", rel: "noopener",
+                    data: { distribution_rule_target: "channelModalLink" } do %>
+                <i class="bi bi-box-arrow-up-right ax-ico"></i> Ir para configuração
+              <% end %>
+            <% end) do %>
+        <p>O canal <strong data-distribution-rule-target="channelModalName">—</strong> ainda não está configurado e não pode ser ativado.</p>
+        <p class="ax-field__hint" data-distribution-rule-target="channelModalInstructions"></p>
       <% end %>
     </div>
-  </div>
-
-  <%= ax_sticky_action_footer do %>
-    <%= link_to "Cancelar", admin_distribution_rules_path, class: "ax-btn" %>
-    <%= f.submit (distribution_rule.persisted? ? "Salvar alterações" : "Criar regra"), class: "ax-btn ax-btn--primary" %>
   <% end %>
+
+  <% form_aside = render("admin/distribution_rules/form_aside", f: f) %>
+
+  <div class="distribution-rule-form__content">
+    <%= ax_error_summary(distribution_rule) %>
+
+    <%= render "admin/shared/ui/workspace_shell",
+          class_name: "distribution-rule-workspace",
+          main_class: "distribution-rule-main-pane",
+          main_label: "Regra de distribuição",
+          main_body_class: "distribution-rule-main-body",
+          main: form_main,
+          aside: form_aside,
+          aside_class: "distribution-rule-aside",
+          aside_label: "Configurações da regra",
+          contextbar_class: "distribution-rule-middle-contextbar",
+          controller: "ax-aside",
+          storage_key: "admin-distribution-rule-form-aside-collapsed",
+          preload_class: "ax-distribution-rule-aside-collapsed-preload" %>
+  </div>
 <% end %>
-
-<style id="dr-form-styles">
-  .dr-form { display: grid; gap: 8px; padding-top: 8px; }
-  .dr-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
-  @media (min-width: 1100px) { .dr-form-grid { grid-template-columns: minmax(0, 1fr) 360px; } }
-  .dr-form-main, .dr-form-side { display: grid; gap: 8px; min-width: 0; }
-
-  .dr-body { padding: 12px; display: grid; gap: 14px; }
-  .dr-field { display: grid; gap: 5px; min-width: 0; }
-  .dr-row { display: grid; gap: 10px; }
-  .dr-row--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dr-row--end { align-items: end; }
-  .dr-hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.4; }
-
-  .dr-source { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fbfcfe; }
-  .dr-source__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .dr-source__body { display: grid; gap: 12px; padding-left: 12px; border-left: 3px solid var(--admin-primary-soft, #dbe6f2); }
-
-  .dr-subcard { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; }
-  .dr-subcard__main { display: grid; gap: 4px; min-width: 0; }
-  .dr-subcard--inline { background: #fbfcfe; }
-
-  .dr-details { border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; }
-  .dr-details__summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; cursor: pointer; list-style: none; font-size: 12.5px; }
-  .dr-details__summary::-webkit-details-marker { display: none; }
-  .dr-details__chevron { transition: transform .18s ease; color: #8a93a3; }
-  .dr-details[open] .dr-details__chevron { transform: rotate(180deg); }
-  .dr-details__body { padding: 0 12px 12px; border-top: 1px solid var(--ax-border-soft, #e7ebf2); display: grid; gap: 8px; }
-
-  .dr-code { padding: 12px; border-radius: 8px; background: #0f1b2d; color: #cbd5e1; font-size: 11.5px; }
-  .dr-code__title { color: #fbbf24; font-weight: 700; margin-bottom: 6px; }
-  .dr-code pre { margin: 0; white-space: pre-wrap; }
-
-  .dr-agents { display: grid; gap: 6px; }
-  .dr-switches { display: grid; gap: 6px; }
-
-  .dr-agent { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; }
-  .dr-agent__handle { color: #9aa3b2; cursor: grab; flex: 0 0 auto; }
-  .dr-agent__avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: 0 0 auto; border-radius: 999px; background: var(--admin-primary-soft, #eef2f7); color: var(--admin-primary, #365f8f); font-weight: 800; font-size: 12px; }
-  .dr-agent__main { display: grid; gap: 1px; min-width: 0; flex: 1; }
-  .dr-agent__main strong { color: #1f2733; font-size: 13px; }
-  .dr-agent__main span { color: #8a93a3; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dr-agent__controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-  .dr-agent__weight { max-width: 64px; text-align: center; font-weight: 700; }
-  .dr-agent__remove { color: #b42318; }
-
-  .dr-schedule td, .dr-schedule th { vertical-align: middle; }
-  .dr-schedule .ax-control--sm { max-width: 130px; }
-  .ax-control--sm { min-height: 30px; padding: 4px 8px; font-size: 12px; }
-
-  .dr-modes { display: grid; gap: 6px; }
-  .dr-mode__input { position: absolute; opacity: 0; pointer-events: none; }
-  .dr-mode { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-form-border, #d6dee9); border-radius: 8px; cursor: pointer; transition: border-color .15s, background .15s; }
-  .dr-mode i { font-size: 18px; color: #64748b; }
-  .dr-mode span { display: grid; gap: 1px; }
-  .dr-mode strong { color: #1f2733; font-size: 13px; }
-  .dr-mode small { color: #8a93a3; font-size: 11px; }
-  .dr-mode:hover { border-color: #b8c5d6; }
-  .dr-mode__input:checked + .dr-mode { border-color: var(--admin-primary, #365f8f); background: var(--admin-primary-soft, #eef2f7); }
-  .dr-mode__input:checked + .dr-mode i { color: var(--admin-primary, #365f8f); }
-</style>

@@ -1,0 +1,130 @@
+<div class="webhook-settings-stack">
+  <%= ax_inline_notice(tone: :info, icon: "shield-lock") do %>
+    Cada usuário possui um token próprio. Use o mesmo token para todos os tipos de entrada; o endpoint muda conforme o tipo, por exemplo <code>/webhooks/inbound/leads</code>.
+  <% end %>
+
+  <% if (token = inbound_webhook_tokens.first) %>
+    <%
+      endpoint_url = webhooks_inbound_leads_url
+      legacy_endpoint_url = webhooks_inbound_leads_url(token: token.token)
+      authorization_header = "Authorization: Bearer #{token.token}"
+      token_preview = "#{token.token.first(10)}...#{token.token.last(8)}"
+    %>
+    <% token_actions = capture do %>
+        <div class="webhook-token-actions">
+          <%= form_with model: token,
+                url: inbound_token_admin_webhook_settings_path(token),
+                method: :patch,
+                local: true,
+                class: "webhook-token-actions__switch",
+                data: { controller: "auto-submit" } do |f| %>
+            <span>Recebimento</span>
+            <%= ax_switch_field(form: f,
+                  method: :enabled,
+                  id: "inbound_webhook_token_#{token.id}_enabled",
+                  input_html: { data: { action: "change->auto-submit#submit" } }) %>
+          <% end %>
+
+          <%= button_to regenerate_inbound_token_admin_webhook_settings_path(token),
+                method: :post,
+                form_class: "tw-inline",
+                class: "ax-btn ax-btn--danger ax-btn--sm",
+                data: { turbo_confirm: "Gerar um novo token? A credencial atual deixará de funcionar." } do %>
+            <i class="bi bi-arrow-clockwise ax-ico"></i><span>Gerar novo token</span>
+          <% end %>
+        </div>
+      <% end %>
+    <%= ax_operational_panel(eyebrow: "Credencial", title: "Webhook de entrada pessoal", actions: token_actions, class_name: "webhook-token-panel") do %>
+      <div class="webhook-token-console">
+        <section class="webhook-token-console__hero">
+          <div class="webhook-token-console__identity">
+            <span class="webhook-token-console__icon"><i class="bi bi-key"></i></span>
+            <div>
+              <span class="webhook-token-console__eyebrow">Token ativo deste usuário</span>
+              <strong><%= token.admin_user.name %></strong>
+              <small><%= token.admin_user.email %></small>
+            </div>
+          </div>
+
+          <div class="webhook-token-console__status">
+            <% if token.enabled? %>
+              <%= ax_badge("Ativo", tone: :green, dot: true) %>
+            <% else %>
+              <%= ax_badge("Inativo", tone: :gray, dot: true) %>
+            <% end %>
+            <span><i class="bi bi-clock-history"></i> <%= token.last_received_at ? l(token.last_received_at, format: :short) : "Nunca recebido" %></span>
+          </div>
+        </section>
+
+        <section class="webhook-token-secret" data-controller="clipboard" data-clipboard-success-content-value="Copiado">
+          <div class="webhook-token-secret__header">
+            <div>
+              <span>Token pessoal</span>
+              <strong><%= token_preview %></strong>
+            </div>
+            <button type="button"
+                    class="ax-btn ax-btn--sm"
+                    data-clipboard-target="button"
+                    data-action="clipboard#copy">
+              <i class="bi bi-clipboard ax-ico"></i><span data-clipboard-target="content">Copiar token</span>
+            </button>
+          </div>
+          <code data-clipboard-target="source"><%= token.token %></code>
+        </section>
+
+        <div class="webhook-token-grid">
+          <section class="webhook-token-info" data-controller="clipboard" data-clipboard-success-content-value="Copiado">
+            <div class="webhook-token-info__label">
+              <i class="bi bi-link-45deg"></i>
+              <span>Endpoint base</span>
+            </div>
+            <code data-clipboard-target="source"><%= endpoint_url %></code>
+            <button type="button"
+                    class="webhook-token-info__copy"
+                    title="Copiar endpoint"
+                    data-clipboard-target="button"
+                    data-action="clipboard#copy">
+              <i class="bi bi-clipboard"></i><span data-clipboard-target="content">Copiar</span>
+            </button>
+          </section>
+
+          <section class="webhook-token-info webhook-token-info--primary" data-controller="clipboard" data-clipboard-success-content-value="Copiado">
+            <div class="webhook-token-info__label">
+              <i class="bi bi-shield-lock"></i>
+              <span>Header recomendado</span>
+            </div>
+            <code data-clipboard-target="source"><%= authorization_header %></code>
+            <button type="button"
+                    class="webhook-token-info__copy"
+                    title="Copiar header"
+                    data-clipboard-target="button"
+                    data-action="clipboard#copy">
+              <i class="bi bi-clipboard"></i><span data-clipboard-target="content">Copiar</span>
+            </button>
+          </section>
+
+          <section class="webhook-token-info webhook-token-info--muted" data-controller="clipboard" data-clipboard-success-content-value="Copiado">
+            <div class="webhook-token-info__label">
+              <i class="bi bi-braces-asterisk"></i>
+              <span>URL com token</span>
+            </div>
+            <code data-clipboard-target="source"><%= legacy_endpoint_url %></code>
+            <button type="button"
+                    class="webhook-token-info__copy"
+                    title="Copiar URL com token"
+                    data-clipboard-target="button"
+                    data-action="clipboard#copy">
+              <i class="bi bi-clipboard"></i><span data-clipboard-target="content">Copiar</span>
+            </button>
+          </section>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <%= ax_empty_state(
+          title: "Nenhum token disponível",
+          description: "Não foi possível carregar a credencial de entrada para o usuário atual.",
+          icon: "person-lock"
+        ) %>
+  <% end %>
+</div>

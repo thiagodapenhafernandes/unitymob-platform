@@ -1,0 +1,131 @@
+<%
+  primary_token = inbound_webhook_tokens.first
+  example_endpoint_url = webhooks_inbound_leads_url
+  example_token = primary_token&.token.presence || "SEU_TOKEN"
+  sample_payload = {
+    name: "Nome do Lead",
+    email: "lead@email.com",
+    phone: "47999999999",
+    keywords: ["elite", "praia"],
+    source_url: "https://landing.exemplo.com/campanha",
+    property_id: 123,
+    product: "Apartamento Frente Mar",
+    bairro: "Centro",
+    budget: "2000000",
+    campanha: "LP Alto Padrão"
+  }
+  sample_payload_json = JSON.pretty_generate(sample_payload)
+  compact_payload_json = JSON.generate(sample_payload)
+  curl_example = <<~CURL.strip
+    curl -X POST "#{example_endpoint_url}" \\
+      -H "Content-Type: application/json" \\
+      -H "Authorization: Bearer #{example_token}" \\
+      -d '#{compact_payload_json}'
+  CURL
+  js_example = <<~JS.strip
+    const endpoint = "#{example_endpoint_url}";
+
+    const payload = #{sample_payload_json};
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer #{example_token}"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    const result = await response.json();
+    console.log(result);
+  JS
+  ruby_example = <<~RUBY.strip
+    require "json"
+    require "net/http"
+
+    uri = URI("#{example_endpoint_url}")
+
+    payload = #{sample_payload_json}
+
+    request = Net::HTTP::Post.new(uri)
+    request["Content-Type"] = "application/json"
+    request["Authorization"] = "Bearer #{example_token}"
+    request.body = payload.to_json
+
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == "https") do |http|
+      http.request(request)
+    end
+
+    raise response.body unless response.is_a?(Net::HTTPSuccess)
+
+    puts JSON.parse(response.body)
+  RUBY
+
+  code_card = lambda do |title:, label:, code:, tone:|
+    capture do %>
+      <div class="webhook-code-card webhook-code-card--<%= tone %>"
+           data-controller="clipboard"
+           data-clipboard-success-content-value="Copiado">
+        <div class="webhook-code-card__header">
+          <div class="webhook-code-card__title">
+            <span></span>
+            <strong><%= title %></strong>
+            <small><%= label %></small>
+          </div>
+          <button type="button"
+                  class="webhook-code-card__copy"
+                  title="Copiar código"
+                  data-clipboard-target="button"
+                  data-action="clipboard#copy">
+            <i class="bi bi-clipboard"></i>
+            <span data-clipboard-target="content">Copiar</span>
+          </button>
+        </div>
+        <textarea class="webhook-code-card__copy-source" readonly data-clipboard-target="source"><%= code %></textarea>
+        <pre><code><%= code %></code></pre>
+      </div>
+    <% end
+  end
+%>
+
+<%= ax_aside_panel(
+      title: "Referência de entrada",
+      token: "POST JSON",
+      rail_label: "Referência do webhook de entrada",
+      rail_icon: "box-arrow-in-down",
+      collapse_label: "Recolher referência",
+      panel_class: "webhook-settings-aside-panel"
+    ) do %>
+  <div class="webhook-settings-aside-body">
+    <%= ax_operational_panel(eyebrow: "Payload", title: "Exemplo completo") do %>
+      <div class="webhook-settings-panel-body">
+        <p class="webhook-settings-help-text">
+          Envie JSON via <strong>POST</strong>. As tags em <code>keywords</code> participam do match das regras de distribuição de origem Webhook; campos extras ficam disponíveis como parâmetros customizados. O token pode ir no header <code>Authorization: Bearer</code>, em <code>X-Webhook-Token</code> ou, por compatibilidade, em <code>?token=</code>.
+        </p>
+        <%= code_card.call(title: "POST JSON", label: "Payload", code: sample_payload_json, tone: "json") %>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Integração", title: "cURL") do %>
+      <div class="webhook-settings-panel-body">
+        <%= code_card.call(title: "cURL", label: "Terminal", code: curl_example, tone: "curl") %>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Integração", title: "JavaScript") do %>
+      <div class="webhook-settings-panel-body">
+        <%= code_card.call(title: "fetch", label: "JavaScript", code: js_example, tone: "js") %>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Integração", title: "Ruby") do %>
+      <div class="webhook-settings-panel-body">
+        <%= code_card.call(title: "Net::HTTP", label: "Ruby", code: ruby_example, tone: "ruby") %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

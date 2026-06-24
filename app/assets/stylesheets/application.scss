@@ -16,6 +16,77 @@
   --golden-two: #E1C340;
 }
 
+.interest-tracking-consent {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1100;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  width: min(560px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid rgba(2, 43, 58, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--blue-three);
+  box-shadow: 0 18px 42px rgba(2, 43, 58, 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.interest-tracking-consent[hidden] {
+  display: none;
+}
+
+.interest-tracking-consent strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.interest-tracking-consent p {
+  margin: 0;
+  color: rgba(2, 43, 58, 0.72);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.interest-tracking-consent__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.interest-tracking-consent button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(2, 43, 58, 0.12);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--blue-three);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.interest-tracking-consent__primary {
+  border-color: var(--blue-three) !important;
+  background: var(--blue-three) !important;
+  color: #fff !important;
+}
+
+@media (max-width: 640px) {
+  .interest-tracking-consent {
+    grid-template-columns: 1fr;
+  }
+
+  .interest-tracking-consent__actions {
+    justify-content: flex-end;
+  }
+}
+
 
 /* Import admin styles - removed from here as it is linked separately in admin layout */
 /* @import "admin"; */

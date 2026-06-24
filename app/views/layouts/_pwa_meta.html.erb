@@ -1,9 +1,13 @@
 <%# Meta tags + ícones que tornam um layout admin/PWA instalável (Add to Home Screen). %>
 <%# Site público (application.html.erb) NÃO inclui este partial. %>
+<%
+  pwa_site_name = @layout_setting&.site_name.presence || "Unitymob"
+  pwa_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : "Plataforma"
+%>
 <meta name="theme-color" content="#022B3A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Salute Admin">
+<meta name="apple-mobile-web-app-title" content="<%= pwa_site_name %> <%= pwa_area_name %>">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon.png">

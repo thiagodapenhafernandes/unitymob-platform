@@ -30,35 +30,83 @@
           navigator.serviceWorker.register("/field-service-worker.js", { scope: "/field/" })
             .then(function (reg) {
               console.log("[field SW] registered, scope:", reg.scope);
-              // Tenta assinar push notifications automaticamente se permissão concedida
-              subscribeToPush(reg);
+              window.__fieldSWReg = reg;
+              // IMPORTANTE: nunca pedir permissão no load — o iOS só mostra o prompt
+              // a partir de um gesto do usuário. No load apenas renovamos se já concedido.
+              if (pushSupported() && Notification.permission === "granted") {
+                subscribeToPush(reg);
+              } else {
+                maybePromptForPush();
+              }
             })
             .catch(function (err) { console.warn("[field SW] registration failed:", err); });
         });
       }
 
-      // Web Push subscription. Só dispara prompt de permissão uma vez; nas
-      // próximas visitas, se já aceito, revalida/renova subscription silenciosamente.
+      function pushSupported() {
+        return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+      }
+
+      // iOS só entrega Web Push em PWA instalado na tela inicial (standalone).
+      function isStandalone() {
+        return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+      }
+
+      // Mostra um banner com botão "Ativar notificações" quando a permissão ainda
+      // não foi decidida. O clique no botão é o gesto exigido pelo iOS.
+      function maybePromptForPush() {
+        if (!pushSupported() || Notification.permission !== "default") return;
+        if (document.getElementById("field-push-banner")) return;
+
+        const banner = document.createElement("div");
+        banner.id = "field-push-banner";
+        banner.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#0f172a;color:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.25);font-size:14px;";
+        banner.innerHTML =
+          '<span style="flex:1;line-height:1.3;">Ative as notificações para receber novos leads na hora.</span>' +
+          '<button type="button" id="field-push-enable" style="background:#22c55e;color:#04210f;border:0;border-radius:8px;padding:8px 12px;font-weight:700;">Ativar</button>' +
+          '<button type="button" id="field-push-dismiss" aria-label="Dispensar" style="background:transparent;color:#94a3b8;border:0;font-size:18px;line-height:1;padding:4px;">&times;</button>';
+        document.body.appendChild(banner);
+
+        document.getElementById("field-push-enable").addEventListener("click", enablePush);
+        document.getElementById("field-push-dismiss").addEventListener("click", function () { banner.remove(); });
+      }
+
+      // Pede permissão a partir do toque do usuário e assina (fluxo válido no iOS).
+      async function enablePush() {
+        if (!pushSupported()) return;
+        try {
+          const permission = await Notification.requestPermission();
+          const banner = document.getElementById("field-push-banner");
+          if (banner) banner.remove();
+          if (permission !== "granted") {
+            if (permission === "denied") {
+              alert("Notificações bloqueadas. Ative em Ajustes do iPhone › Notificações para este app.");
+            }
+            return;
+          }
+          const reg = window.__fieldSWReg || await navigator.serviceWorker.ready;
+          await subscribeToPush(reg);
+        } catch (e) {
+          console.warn("[push] enable failed:", e);
+        }
+      }
+
+      // Assina o push (reutiliza a subscription existente). Só age com permissão concedida.
       async function subscribeToPush(registration) {
-        if (!("PushManager" in window)) return;
-        const alreadyAsked = localStorage.getItem("field_push_asked");
-        if (Notification.permission === "default" && alreadyAsked) return;
+        if (!pushSupported() || Notification.permission !== "granted") return;
 
         try {
-          let permission = Notification.permission;
-          if (permission === "default") {
-            localStorage.setItem("field_push_asked", "1");
-            permission = await Notification.requestPermission();
-          }
-          if (permission !== "granted") return;
-
           // Busca a VAPID public key do servidor
           const keyResp = await fetch("/field/push_subscriptions/vapid_key", { credentials: "same-origin" });
           if (!keyResp.ok) return;
           const { public_key } = await keyResp.json();
-          if (!public_key) return;
+          if (!public_key) {
+            console.warn("[push] VAPID public key ausente no servidor (reinicie a app com VAPID_PUBLIC_KEY).");
+            return;
+          }
 
-          const sub = await registration.pushManager.subscribe({
+          const existing = await registration.pushManager.getSubscription();
+          const sub = existing || await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(public_key)
           });

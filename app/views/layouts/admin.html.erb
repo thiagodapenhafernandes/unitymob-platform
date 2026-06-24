@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
-    <title><%= current_admin_user&.system_admin? ? 'Unitymob Plataforma' : "#{@layout_setting&.site_name.presence || 'Salute Imóveis'} - Admin" %></title>
+    <%
+      account_site_name = @layout_setting&.site_name.presence || 'Salute Imóveis'
+      account_admin_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : 'Plataforma'
+    %>
+    <title><%= current_admin_user&.system_admin? ? 'Unitymob Plataforma' : "#{account_site_name} - #{account_admin_area_name}" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
     <%= csrf_meta_tags %>
@@ -35,28 +39,32 @@
     <%= stylesheet_link_tag "admin", media: "all" %>
     <%# Camada de compatibilidade de classes legadas (telas ainda não 100% migradas, no visual novo) %>
     <%= stylesheet_link_tag "admin_compat", media: "all" %>
-    <%# Novo design system do CRM (Tailwind, prefixo tw-, namespaced .ax-*) %>
+    <%# Novo design system da plataforma interna (Tailwind, prefixo tw-, namespaced .ax-*) %>
     <%= stylesheet_link_tag "admin_tailwind", media: "all" %>
     <%# Toast compartilhado (mesma identidade em todo o sistema) %>
     <%= stylesheet_link_tag "ax_toast", media: "all" %>
-    <%# Tema white-label do CRM, independente dos tokens do site público. %>
+    <%# Tema white-label da plataforma interna, independente dos tokens do site público. %>
     <%
       admin_surface_color = @layout_setting&.respond_to?(:admin_surface_color) ? @layout_setting.admin_surface_color.presence : nil
       admin_header_color = @layout_setting&.respond_to?(:admin_header_color) ? @layout_setting.admin_header_color.presence : nil
+      admin_workspace_color = @layout_setting&.respond_to?(:admin_workspace_color) ? @layout_setting.admin_workspace_color.presence : nil
+      admin_sidebar_color = @layout_setting&.respond_to?(:admin_sidebar_color) ? @layout_setting.admin_sidebar_color.presence : nil
       admin_ink_color = @layout_setting&.respond_to?(:admin_ink_color) ? @layout_setting.admin_ink_color.presence : nil
     %>
     <style>
       :root {
         --admin-surface: <%= admin_surface_color || LayoutSetting::ADMIN_SURFACE_DEFAULT %>;
         --admin-surface-header: <%= admin_header_color || LayoutSetting::ADMIN_HEADER_DEFAULT %>;
+        --admin-workspace-bg: <%= admin_workspace_color || LayoutSetting::ADMIN_WORKSPACE_DEFAULT %>;
+        --admin-sidebar-bg: <%= admin_sidebar_color || LayoutSetting::ADMIN_SIDEBAR_DEFAULT %>;
         --admin-primary: <%= @layout_setting&.admin_primary_color.presence || LayoutSetting::ADMIN_PRIMARY_DEFAULT %>;
         --admin-ink: <%= admin_ink_color || LayoutSetting::ADMIN_INK_DEFAULT %>;
         --admin-primary-fg: #ffffff;
       }
 
       .fancybox__container {
-        --fancybox-zIndex: 2400;
-        z-index: 2400 !important;
+        --fancybox-zIndex: 5000;
+        z-index: 5000 !important;
       }
 
       .habitation-media-page-body {
@@ -212,6 +220,9 @@
         if (window.localStorage.getItem("admin-habitation-form-editor-collapsed") === "1") {
           document.documentElement.classList.add("ax-habitation-editor-collapsed-preload");
         }
+        if (window.localStorage.getItem("admin-webhook-settings-aside-collapsed") === "1") {
+          document.documentElement.classList.add("ax-webhook-settings-aside-collapsed-preload");
+        }
       } catch (_) {}
     </script>
     <meta name="theme-color" content="#ffffff">
@@ -227,8 +238,10 @@
   <% builder_layout = false %>
   <% habitations_workspace = (controller_name == 'habitations' && %w[index edit new].include?(action_name)) || controller_name == 'habitation_media' %>
   <% habitation_editor_workspace = (controller_name == 'habitations' && %w[edit new].include?(action_name)) || controller_name == 'habitation_media' %>
+  <% distribution_rule_editor_workspace = controller_name == 'distribution_rules' && %w[new edit].include?(action_name) %>
+  <% webhook_settings_workspace = controller_name == 'webhook_settings' && action_name == 'index' %>
   <% admin_metrics = admin_page_render_metrics %>
-  <body class="ax-app admin-layout <%= 'ax-builder-layout' if builder_layout %> <%= 'ax-habitations-workspace' if habitations_workspace %> <%= 'ax-habitation-editor-workspace' if habitation_editor_workspace %>"
+  <body class="ax-app admin-layout <%= 'ax-builder-layout' if builder_layout %> <%= 'ax-habitations-workspace' if habitations_workspace %> <%= 'ax-habitation-editor-workspace' if habitation_editor_workspace %> <%= 'ax-distribution-rule-editor-workspace' if distribution_rule_editor_workspace %> <%= 'ax-webhook-settings-workspace' if webhook_settings_workspace %>"
         data-controller="ax-drawer admin-navigation"
         data-admin-render-ms="<%= admin_metrics[:duration_ms] %>"
         data-admin-render-page="<%= admin_metrics[:page] %>">
@@ -239,7 +252,7 @@
       </button>
       <%= link_to((current_admin_user&.admin? ? admin_root_path : field_root_path), class: "ax-navbar__brand") do %>
         <span class="ax-navbar__brand-mark"><i class="bi bi-buildings"></i></span>
-        <span class="ax-navbar__brand-text"><% if current_admin_user&.system_admin? %>Unitymob <span>Plataforma</span><% else %><%= @layout_setting&.site_name.presence || 'Salute' %> <span>Admin</span><% end %></span>
+        <span class="ax-navbar__brand-text"><% if current_admin_user&.system_admin? %>Unitymob <span>Plataforma</span><% else %><%= account_site_name %> <span><%= account_admin_area_name %></span><% end %></span>
       <% end %>
 
       <%= render "admin/shared/context_items" %>
@@ -271,7 +284,7 @@
       </div>
     </div>
 
-    <% unless habitations_workspace %>
+    <% unless habitations_workspace || distribution_rule_editor_workspace || webhook_settings_workspace %>
       <div class="ax-contextbar">
         <div class="ax-contextbar__main">
           <nav class="ax-breadcrumb" aria-label="Contexto atual">

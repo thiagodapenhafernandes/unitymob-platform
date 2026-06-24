@@ -821,6 +821,7 @@
   .habitations-workspace-heading__meta {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-end;
     gap: .38rem;
     margin: 0;
@@ -1092,6 +1093,37 @@
     font-size: .82rem;
     font-weight: 900;
     line-height: 1;
+  }
+  .habitations-page-size {
+    display: inline-flex;
+    align-items: center;
+    gap: .24rem;
+    position: relative;
+  }
+  .habitations-page-size__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid #d8dee8;
+    border-radius: 7px;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    transition:
+      background var(--ax-motion-fast, 120ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1)),
+      border-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1)),
+      color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1));
+  }
+  .habitations-page-size__button:hover {
+    border-color: #b8c5d6;
+    background: #f8fafc;
+    color: #1f2937;
+  }
+  .habitations-command-menu--page-size {
+    width: min(230px, calc(100vw - 32px));
   }
   .habitations-workspace-heading__scope {
     display: inline-flex;
@@ -1521,6 +1553,9 @@
   printable_params = request.query_parameters.except("report_type", "page")
   property_view_mode = params[:visualizacao].to_s == "tabela" ? "tabela" : "cards"
   property_view_params = request.query_parameters.except("page", "visualizacao")
+  page_size_params = request.query_parameters.except("page")
+  current_per_page = @per_page.to_i.positive? ? @per_page.to_i : @habitations.per_page.to_i
+  page_size_options = @page_size_options.presence || [10, 20]
   filtering_active = params[:codigo].present? ||
                      params[:q].present? ||
                      params[:status].present? ||
@@ -1537,7 +1572,7 @@
         render("admin/habitations/filter_inspector_loading", active_extra_filters_count: active_extra_filters_count),
         id: "admin_habitations_filter_inspector",
         src: filter_inspector_admin_habitations_path(request.query_parameters.except("page")),
-        loading: "lazy",
+        loading: "eager",
         target: "_top"
       ) %>
 <% end %>
@@ -1568,7 +1603,39 @@
     <div class="habitations-workspace-heading__meta" aria-label="Resumo do catálogo">
       <span><strong><%= number_with_delimiter(@filtered_count) %></strong> filtrados</span>
       <span><strong><%= number_with_delimiter(total_habitations_count) %></strong> total</span>
-      <span><strong><%= @habitations.size %></strong> nesta página</span>
+      <div class="habitations-page-size dropdown" data-controller="ax-dropdown">
+        <span><strong><%= @habitations.size %></strong> nesta página</span>
+        <button class="habitations-page-size__button"
+                type="button"
+                data-ax-dropdown-target="trigger"
+                data-action="click->ax-dropdown#toggle"
+                aria-expanded="false"
+                title="Itens por página"
+                aria-label="Selecionar itens por página">
+          <i class="bi bi-gear"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end habitations-command-menu habitations-command-menu--page-size"
+            data-ax-dropdown-target="menu"
+            hidden
+            style="right: 0; left: auto;">
+          <li class="habitations-command-menu__header">
+            <span>Itens por página</span>
+            <small><%= current_per_page %> atual</small>
+          </li>
+          <% page_size_options.each do |option| %>
+            <li>
+              <%= link_to admin_habitations_path(page_size_params.merge(per_page: option)),
+                          class: "habitations-command-menu__item #{current_per_page == option ? 'is-active' : ''}" do %>
+                <span class="habitations-command-menu__item-icon"><i class="bi bi-list-ol"></i></span>
+                <span class="habitations-command-menu__item-label"><%= option %> imóveis</span>
+                <% if current_per_page == option %>
+                  <span class="habitations-command-menu__item-status"><i class="bi bi-check2"></i></span>
+                <% end %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
     </div>
 
     <div class="habitations-workspace-heading__toolbar" aria-label="Ações do catálogo">
@@ -1680,15 +1747,18 @@
   pending_review_active = @intake_review == "pending"
 %>
 <div class="habitations-workspace-scopebar">
-  <div class="habitations-workspace-tabs ownership-toggle" role="group" aria-label="Escopo dos imóveis">
-    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "mine")), class: "habitations-workspace-tab #{mine_active ? 'is-active' : ''}" do %>
-      <i class="bi bi-person-check me-1"></i> Meus imóveis
+  <div class="habitations-view-toggle habitations-view-toggle--scope" role="group" aria-label="Escopo dos imóveis">
+    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "mine")), class: "habitations-view-toggle__item #{mine_active ? 'is-active' : ''}" do %>
+      <i class="bi bi-person-check"></i>
+      <span>Meus imóveis</span>
     <% end %>
-    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all")), class: "habitations-workspace-tab #{all_active ? 'is-active' : ''}" do %>
-      <i class="bi bi-collection me-1"></i> Todos
+    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all")), class: "habitations-view-toggle__item #{all_active ? 'is-active' : ''}" do %>
+      <i class="bi bi-collection"></i>
+      <span>Todos</span>
     <% end %>
-    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "pending")), class: "habitations-workspace-tab #{pending_review_active ? 'is-active' : ''}" do %>
-      <i class="bi bi-clipboard-check me-1"></i> Pendente de revisão
+    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "pending")), class: "habitations-view-toggle__item #{pending_review_active ? 'is-active' : ''}" do %>
+      <i class="bi bi-clipboard-check"></i>
+      <span>Pendente de revisão</span>
     <% end %>
   </div>
 

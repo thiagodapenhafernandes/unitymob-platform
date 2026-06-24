@@ -54,6 +54,13 @@ module Whatsapp
 
       if conversation.lead_id
         LeadActivity.log!(lead: conversation.lead, kind: "whatsapp_in", metadata: { body: message.preview, phone: wa_id })
+        Automation::Dispatcher.dispatch(
+          :whatsapp_received,
+          conversation.lead,
+          source: "whatsapp",
+          payload: { whatsapp_message_id: message.id, wa_message_id: message.wa_message_id, phone: wa_id },
+          idempotency_key: "whatsapp_received:#{message.id}"
+        )
       end
     end
 

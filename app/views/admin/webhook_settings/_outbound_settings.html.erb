@@ -1,0 +1,69 @@
+<div class="webhook-settings-stack">
+  <%= ax_operational_panel(eyebrow: "Atribuição", title: "Compartilhamento de corretores") do %>
+    <div class="webhook-settings-panel-body">
+    <%= form_with url: share_tracking_admin_webhook_settings_path, method: :patch, local: true do %>
+      <div class="webhook-share-form">
+        <div class="tw-w-56">
+          <%= label_tag :lead_share_tracking_days, "Validade do cookie/link (dias)", class: "ax-label" %>
+          <%= number_field_tag :lead_share_tracking_days, lead_share_tracking_days, min: HabitationShareLink::MIN_EXPIRATION_DAYS, max: HabitationShareLink::MAX_EXPIRATION_DAYS, class: "ax-input" %>
+        </div>
+        <p class="ax-page-subtitle tw-flex-1 tw-min-w-[220px]">Quando um visitante abre um link compartilhado por corretor, o site mantém a atribuição por este período.</p>
+        <%= submit_tag "Salvar validade", class: "ax-btn ax-btn--primary" %>
+      </div>
+    <% end %>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Saída", title: "Webhooks configurados") do %>
+    <div class="webhook-settings-panel-body">
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>URL do Webhook</th>
+            <th style="width:120px">Captura Leads?</th>
+            <th style="width:96px">Status</th>
+            <th class="ax-num" style="width:110px">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% webhook_settings.each do |webhook| %>
+            <tr>
+              <td>
+                <div class="ax-strong"><%= webhook.description.presence || "Sem descrição" %></div>
+                <div class="tw-text-2xs tw-text-ink-faint">ID: <%= webhook.id %></div>
+              </td>
+              <td>
+                <code class="tw-text-primary"><%= truncate(webhook.webhook_url, length: 50) %></code>
+                <% if webhook.whatsapp_webhook_url.present? %><div class="tw-text-2xs tw-text-green-600"><i class="bi bi-whatsapp"></i> <%= truncate(webhook.whatsapp_webhook_url, length: 50) %></div><% end %>
+              </td>
+              <td>
+                <% if webhook.lead_capture_enabled? %><span class="ax-badge ax-badge--blue ax-badge--dot">Ativa</span>
+                <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativa</span><% end %>
+              </td>
+              <td>
+                <% if webhook.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativo</span>
+                <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativo</span><% end %>
+              </td>
+              <td class="ax-num">
+                <span class="tw-inline-flex tw-gap-0.5">
+                  <%= button_to test_admin_webhook_setting_path(webhook), method: :post, form_class: "tw-inline", class: "ax-ico-btn", title: "Testar envio", data: { turbo_confirm: "Enviar payload de teste?" } do %><i class="bi bi-send"></i><% end %>
+                  <%= link_to edit_admin_webhook_setting_path(webhook), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+                  <%= button_to admin_webhook_setting_path(webhook), method: :delete, form_class: "tw-inline", class: "ax-ico-btn", title: "Excluir", data: { turbo_confirm: "Tem certeza que deseja excluir este webhook?" } do %><i class="bi bi-trash"></i><% end %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
+
+          <% if webhook_settings.empty? %>
+            <tr><td colspan="5"><div class="ax-empty">
+              <i class="bi bi-broadcast tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>Nenhum webhook configurado.
+            </div></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    </div>
+  <% end %>
+</div>

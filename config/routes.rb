@@ -3,6 +3,8 @@ Rails.application.routes.draw do
     sessions: 'admin/sessions',
     omniauth_callbacks: 'admin/omniauth_callbacks'
   }
+
+  resources :navigation_events, only: [:create], controller: "public_navigation_events"
   
   # Admin Panel
   namespace :admin do
@@ -57,20 +59,41 @@ Rails.application.routes.draw do
     resource :home_setting, only: [:edit, :update]
     resource :contact_setting, only: [:edit, :update]
     resource :layout_setting, only: [:show, :edit, :update]
+    resource :lead_setting, only: [:edit, :update]
     resource :footer_setting, only: [:edit, :update]
     resource :property_setting, only: [:edit, :update] do
       get :review_workflow
     end
     resources :webhook_settings do
       post :test, on: :member
-      patch :share_tracking, on: :collection
+      collection do
+        patch :share_tracking
+        patch "inbound_tokens/:token_id", to: "webhook_settings#update_inbound_token", as: :inbound_token
+        post "inbound_tokens/:token_id/regenerate", to: "webhook_settings#regenerate_inbound_token", as: :regenerate_inbound_token
+      end
     end
     resource :whatsapp_integration, only: [:show, :update]
+    resource :email_setting, only: [:edit, :update] do
+      post :test
+    end
+    resource :push_setting, only: [:edit, :update] do
+      post :generate_keys
+      post :use_env_keys
+    end
     resource :ai_integration, only: [:show, :update] do
       post :generate_batch
     end
     resource :google_integration, only: [:show, :update]
     resource :tracking_integration, only: [:show, :update]
+    resource :storage_integration, only: [:show, :update] do
+      post :test_connection
+      post :publish_public_photos
+      post :publish_needed_public_photos
+      get :public_photo_publish_status
+      post :publish_attachment
+      post :publish_habitation_photos
+      post :publish_blob
+    end
     get :seo_dashboard, to: "seo_dashboard#index"
     get :marketing_opportunities, to: "marketing_opportunities#index"
     get :marketing_properties, to: "marketing_properties#index"
@@ -131,7 +154,10 @@ Rails.application.routes.draw do
       delete "purge_attachment/:association/:attachment_id", on: :member, action: :purge_attachment, as: :purge_attachment
     end
     resources :leads, only: [:index, :show, :update, :destroy] do
+      get :attend, on: :member
       post :log_contact, on: :member
+      post :reprocess_interest, on: :member
+      post :simulate_interest, on: :member
       resources :proposals, only: [:new, :create]
     end
 
@@ -141,10 +167,29 @@ Rails.application.routes.draw do
     end
     resources :appointments, only: [:index, :create, :update, :destroy]
 
-    # === Automação (regras Quando -> Então) ===
+    # === Automação (workflow builder + regras legadas Quando -> Então) ===
+    get "automacoes/new", to: "automation_workflows#new", as: :new_automation_workflow_entry
+    resources :automation_events, path: "automacoes/eventos", only: [:index] do
+      member do
+        post :reprocess
+        patch :ignore
+      end
+    end
+    resources :automation_workflows, path: "automacoes/fluxos", only: [:index, :create, :show, :destroy] do
+      member do
+        get :builder
+        patch :save_draft
+        patch :publish
+        post :simulate
+      end
+    end
     resources :automation_rules, path: "automacoes" do
       patch :toggle_active, on: :member
-      post :create_example, on: :collection
+      post :simulate, on: :member
+      collection do
+        post :create_example
+        post :simulate
+      end
     end
 
     # === Atendimento WhatsApp (inbox) ===
@@ -375,11 +420,15 @@ Rails.application.routes.draw do
   get "p/:token", to: "proposals#show", as: :public_proposal
   post "p/:token/decidir", to: "proposals#decide", as: :decide_public_proposal
 
+  # Links seguros de lead (notificação WhatsApp): token é a credencial.
+  get "s/:token", to: "secure_links#show", as: :secure_link
+
   # Mission Control for Jobs
   mount MissionControl::Jobs::Engine => "/jobs"
 
   # Webhooks
   namespace :webhooks do
+    post "inbound/leads", to: "inbound#leads", as: :inbound_leads
     post "meta", to: "meta#receive_leads"
     get "meta", to: "meta#receive_leads"
     get "whatsapp", to: "whatsapp#verify"
@@ -396,6 +445,8 @@ Rails.application.routes.draw do
 
   # Catch-all route for SEO redirects
   get "/*path", to: "seo_redirects#show", constraints: lambda { |req|
+    next false if req.path.start_with?("/admin", "/rails/active_storage", "/assets", "/packs")
+
     lookup = "/#{req.params[:path]}"
     query_lookup = req.query_string.present? ? "#{lookup}?#{req.query_string}" : lookup
     SeoRedirect.active.exists?(from_path: query_lookup) || SeoRedirect.active.exists?(from_path: lookup)

@@ -1,6 +1,7 @@
 class ClientPropertyInterest < ApplicationRecord
   belongs_to :vista_import_batch, optional: true
   belongs_to :crm_contact, optional: true
+  belongs_to :matched_lead, class_name: "Lead", foreign_key: :lead_id, optional: true
   belongs_to :proprietor, optional: true
   belongs_to :habitation, optional: true
   belongs_to :admin_user, optional: true

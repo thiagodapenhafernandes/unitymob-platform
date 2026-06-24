@@ -1,0 +1,58 @@
+<%
+  configured_count = webhook_settings.size
+  active_count = webhook_settings.to_a.count(&:active?)
+  capture_count = webhook_settings.to_a.count(&:lead_capture_enabled?)
+%>
+
+<%= ax_aside_panel(
+      title: "Referência de saída",
+      token: "#{configured_count} itens",
+      rail_label: "Referência do webhook de saída",
+      rail_icon: "send",
+      collapse_label: "Recolher referência",
+      panel_class: "webhook-settings-aside-panel"
+    ) do %>
+  <div class="webhook-settings-aside-body">
+    <%= ax_operational_panel(eyebrow: "Resumo", title: "Operação") do %>
+      <div class="webhook-settings-panel-body">
+      <div class="webhook-settings-kpi-list">
+        <div>
+          <span>Configurados</span>
+          <strong><%= number_with_delimiter(configured_count) %></strong>
+        </div>
+        <div>
+          <span>Ativos</span>
+          <strong><%= number_with_delimiter(active_count) %></strong>
+        </div>
+        <div>
+          <span>Capturam leads</span>
+          <strong><%= number_with_delimiter(capture_count) %></strong>
+        </div>
+      </div>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Fluxo", title: "Como funciona") do %>
+      <div class="webhook-settings-panel-body">
+      <div class="webhook-settings-reference-list">
+        <div>
+          <i class="bi bi-send"></i>
+          <span>O sistema envia eventos para todos os webhooks ativos simultaneamente.</span>
+        </div>
+        <div>
+          <i class="bi bi-toggle-on"></i>
+          <span>A opção de captura define se o webhook participa do recebimento/repasse de dados de leads.</span>
+        </div>
+        <div>
+          <i class="bi bi-person-lines-fill"></i>
+          <span>A validade do compartilhamento mantém a atribuição do corretor em links enviados ao visitante.</span>
+        </div>
+      </div>
+      </div>
+    <% end %>
+
+    <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>
+      Webhook de saída é configuração administrativa. Webhook de entrada é token pessoal por usuário.
+    <% end %>
+  </div>
+<% end %>

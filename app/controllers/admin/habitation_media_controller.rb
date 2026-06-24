@@ -45,11 +45,8 @@ class Admin::HabitationMediaController < Admin::BaseController
                       notice: "Mídia atualizada com sucesso."
         end
         format.json do
-          render json: {
-            ok: true,
-            message: "Mídia atualizada com sucesso.",
-            media_url: admin_habitation_media_path(@habitation)
-          }
+          @habitation.reload
+          render json: media_response_payload(message: "Mídia atualizada com sucesso.")
         end
       end
     else

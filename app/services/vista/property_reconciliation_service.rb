@@ -628,7 +628,7 @@ module Vista
           next
         else
           begin
-            blob = create_blob_from_url(url, asset.filename, nil)
+            blob = create_blob_from_url(url, asset.filename, nil, service_name: StorageIntegrationSetting.current.photo_service_name)
             counters[:photos_downloaded] += 1
           rescue StandardError => e
             failures << { source: url, error: e.message }
@@ -846,14 +846,14 @@ module Vista
       status = :reused
 
       unless blob
-        blob = create_blob_from_url(asset.source_url, asset.filename, asset.storage_content_type)
+        blob = create_blob_from_url(asset.source_url, asset.filename, asset.storage_content_type, service_name: StorageIntegrationSetting.current.document_service_name)
         status = :downloaded
       end
     rescue StandardError
       fallback_url = backup_url_for(asset)
       raise if fallback_url.blank?
 
-      blob = create_blob_from_url(fallback_url, asset.filename, asset.storage_content_type)
+      blob = create_blob_from_url(fallback_url, asset.filename, asset.storage_content_type, service_name: StorageIntegrationSetting.current.document_service_name)
       status = :downloaded
     ensure
       if blob
@@ -913,10 +913,15 @@ module Vista
 
     def attach_blob_once!(record, name, blob)
       existing = ActiveStorage::Attachment.find_by(record: record, name: name, blob: blob)
-      return existing if existing
+      if existing
+        Storage::PublicPropertyPhoto.publish_attachment!(existing)
+        return existing
+      end
 
       record.public_send(name).attach(blob)
-      ActiveStorage::Attachment.find_by!(record: record, name: name, blob: blob)
+      attachment = ActiveStorage::Attachment.find_by!(record: record, name: name, blob: blob)
+      Storage::PublicPropertyPhoto.publish_attachment!(attachment)
+      attachment
     end
 
     def existing_attachment_by_filename(record, name, filename)
@@ -926,13 +931,14 @@ module Vista
         .find_by(active_storage_blobs: { filename: filename })
     end
 
-    def create_blob_from_url(url, filename, content_type)
+    def create_blob_from_url(url, filename, content_type, service_name:)
+      Storage::ActiveStorageRegistry.fetch!(service_name) unless service_name.to_sym == :local
       io = URI.open(url)
       ActiveStorage::Blob.create_and_upload!(
         io: io,
         filename: filename,
         content_type: io.content_type.presence || content_type.presence || Marcel::MimeType.for(name: filename),
-        service_name: Rails.configuration.active_storage.service
+        service_name: service_name
       )
     end
 
@@ -1364,7 +1370,9 @@ module Vista
       {
         pais: clearable_value(api, "Pais"),
         complemento: clearable_value(api, "Complemento"),
+        codigo_empreendimento: clearable_development_code(api),
         nome_empreendimento: clearable_development_name(api),
+        titulo_anuncio: clearable_value(api, "TituloSite"),
         agenciador: clearable_value(api, "AdministradoraCondominio"),
         data_entrega: clearable_datetime(api, "DataEntrega"),
         andar: clearable_integer(api, "AndarDoApto"),
@@ -1418,6 +1426,12 @@ module Vista
       code = value(api["CodigoEmpreendimento"]) || value(api["CodigoEmp"])
       valid_code = code.present? && code != value(api["Codigo"]) && Habitation.empreendimentos.exists?(codigo: code)
       development_name_from_vista(api, valid_code ? code : nil)
+    end
+
+    def clearable_development_code(api)
+      return :__not_available__ unless api.key?("CodigoEmpreendimento") || api.key?("CodigoEmp")
+
+      codigo_empreendimento_from_api(api, nil)
     end
 
     def clearable_integer(api, field)

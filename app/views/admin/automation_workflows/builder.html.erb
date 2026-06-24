@@ -1,0 +1,166 @@
+<%
+  definition_json = JSON.pretty_generate(@version.definition_hash)
+  publish_warnings = @version.validation_messages(mode: :publish)
+  execution_badge_color = {
+    "pending" => "gray",
+    "running" => "blue",
+    "waiting" => "amber",
+    "completed" => "green",
+    "failed" => "red",
+    "canceled" => "gray"
+  }
+%>
+
+<%= form_with model: @workflow,
+      url: save_draft_admin_automation_workflow_path(@workflow),
+      method: :patch,
+      scope: :automation_workflow,
+      data: { controller: "automation-workflow-builder" },
+      class: "automation-workflow-builder" do |f| %>
+  <%= hidden_field_tag "automation_workflow[definition_json]",
+        definition_json,
+        data: { automation_workflow_builder_target: "definition" } %>
+
+  <div class="automation-workflow-builder__topbar">
+    <div class="automation-workflow-builder__tabs">
+      <span class="automation-workflow-builder__tab active">Editor</span>
+      <%= link_to "Configuracoes", edit_admin_layout_setting_path(anchor: "interest-intelligence-settings"), class: "automation-workflow-builder__tab" %>
+      <%= link_to "Eventos", admin_automation_events_path, class: "automation-workflow-builder__tab" %>
+      <%= link_to "Saida", admin_automation_rules_path, class: "automation-workflow-builder__tab" %>
+      <button type="button"
+              class="automation-workflow-builder__tab automation-workflow-builder__help"
+              data-ax-modal-open="#automationWorkflowObjectiveModal">
+        <i class="bi bi-info-circle ax-ico"></i><span>Objetivo</span>
+      </button>
+      <button type="button"
+              class="automation-workflow-builder__tab automation-workflow-builder__help"
+              data-ax-modal-open="#automationWorkflowMonitorModal">
+        <i class="bi bi-activity ax-ico"></i><span>Monitoramento</span>
+        <% if @execution_counts.fetch("failed", 0).positive? %>
+          <em class="automation-workflow-builder__help-badge"><%= @execution_counts.fetch("failed", 0) %></em>
+        <% end %>
+      </button>
+    </div>
+
+    <div class="automation-workflow-builder__commands">
+      <%= link_to admin_automation_workflows_path,
+            class: "ax-btn ax-btn--sm automation-workflow-builder__exit",
+            aria: { label: "Sair para a listagem de automações" } do %>
+        <i class="bi bi-box-arrow-left ax-ico"></i><span>Sair para listagem</span>
+      <% end %>
+      <%= f.text_field :name, class: "automation-workflow-builder__name", aria: { label: "Nome da intervenção" } %>
+      <%= button_tag type: "submit", class: "ax-btn ax-btn--sm" do %>
+        <i class="bi bi-save ax-ico"></i><span>Salvar</span>
+      <% end %>
+      <%= button_tag type: "submit",
+            formaction: simulate_admin_automation_workflow_path(@workflow),
+            formmethod: :post,
+            class: "ax-btn ax-btn--sm" do %>
+        <i class="bi bi-search ax-ico"></i><span>Simular</span>
+      <% end %>
+      <%= button_tag type: "submit",
+            formaction: publish_admin_automation_workflow_path(@workflow),
+            class: "ax-btn ax-btn--sm ax-btn--primary",
+            data: { turbo_confirm: "Publicar e ativar esta intervenção?" } do %>
+        <i class="bi bi-play-fill ax-ico"></i><span>Salvar e Ativar</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%= ax_quick_modal(id: "automationWorkflowObjectiveModal",
+        title: "Qual é o objetivo e para que serve",
+        size: :md,
+        class_name: "automation-workflow-objective-modal") do %>
+    <div class="automation-workflow-objective">
+      <div class="automation-workflow-objective__intro">
+        <span class="automation-workflow-objective__icon"><i class="bi bi-intersect"></i></span>
+        <div>
+          <div class="automation-workflow-objective__eyebrow">Automação horizontal</div>
+          <p>
+            Este builder cria intervenções de acompanhamento depois que o lead já existe.
+            Ele observa eventos, espera prazos, avalia condições e executa ações de apoio.
+          </p>
+        </div>
+      </div>
+
+      <div class="automation-workflow-objective__section">
+        <h3>Quando usar</h3>
+        <ul>
+          <li>Lead parado por um prazo definido.</li>
+          <li>Proposta visualizada, aceita ou recusada.</li>
+          <li>Resposta recebida no WhatsApp.</li>
+          <li>Alerta, tarefa, nota, etapa operacional ou webhook de apoio.</li>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+
+  <%= ax_quick_modal(id: "automationWorkflowMonitorModal",
+        title: "Histórico do acompanhamento",
+        size: :lg,
+        class_name: "automation-workflow-monitor-modal") do %>
+    <%= render "monitor",
+          execution_counts: @execution_counts,
+          execution_badge_color: execution_badge_color,
+          publish_warnings: publish_warnings,
+          simulation_result: @simulation_result,
+          recent_executions: @recent_executions,
+          waiting_steps: @waiting_steps,
+          failed_executions: @failed_executions %>
+  <% end %>
+
+  <div class="automation-workflow-builder__workspace">
+    <main class="automation-workflow-builder__canvas">
+      <% if @version.errors.any? || @workflow.errors.any? %>
+        <div class="automation-workflow-builder__errors">
+          <i class="bi bi-exclamation-triangle"></i>
+          <span><%= (@workflow.errors.full_messages + @version.errors.full_messages).uniq.to_sentence %></span>
+        </div>
+      <% end %>
+
+      <div class="automation-workflow-builder__rail" data-automation-workflow-builder-target="canvas"></div>
+
+      <div class="automation-workflow-builder__zoom">
+        <button type="button"
+                class="automation-workflow-builder__zoom-btn"
+                data-action="automation-workflow-builder#zoomOut"
+                data-automation-workflow-builder-zoom="out"
+                aria-label="Reduzir zoom do workflow">-</button>
+        <button type="button"
+                class="automation-workflow-builder__zoom-btn"
+                data-action="automation-workflow-builder#zoomIn"
+                data-automation-workflow-builder-zoom="in"
+                aria-label="Aumentar zoom do workflow">+</button>
+      </div>
+    </main>
+
+    <aside class="automation-workflow-builder__aside" data-automation-workflow-builder-target="aside">
+      <div class="automation-workflow-builder__aside-header">
+        <div>
+          <div class="automation-workflow-builder__aside-eyebrow">Inspector</div>
+          <h2 data-automation-workflow-builder-target="inspectorTitle">Quando observar</h2>
+        </div>
+        <div class="automation-workflow-builder__aside-actions">
+          <span class="ax-badge ax-badge--<%= @workflow.status == 'active' ? 'green' : 'gray' %>"><%= @workflow.status_label %></span>
+          <button type="button" class="automation-workflow-builder__aside-close" data-action="automation-workflow-builder#closeDrawer" title="Fechar inspector">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="automation-workflow-builder__aside-body" data-automation-workflow-builder-target="inspector"></div>
+
+      <script type="application/json" data-automation-workflow-builder-target="catalog">
+        <%= raw({
+          triggers: @trigger_options,
+          actions: @action_options,
+          statuses: @status_options.to_h { |label| [label, label] },
+          automation_stages: @automation_stage_options.to_h { |label| [label, label] },
+          sources: @source_options.to_h { |label| [label, label] },
+          brokers: @broker_options.to_h { |label, value| [value, label] },
+          templates: @template_options.to_h { |label, value| [value, label] }
+        }.to_json) %>
+      </script>
+    </aside>
+  </div>
+<% end %>

@@ -1,11 +1,38 @@
 <%
   field_classes = ["ax-field", "ax-date-field", class_name].compact.join(" ")
+  clearable = local_assigns.fetch(:clearable, false)
   input_options = (options || {}).dup
+  existing_data = (input_options[:data] || input_options["data"] || {}).dup
+  input_options.delete(:data)
+  input_options.delete("data")
   input_options[:class] = ["ax-control", input_class, input_options[:class]].compact.join(" ")
+  if clearable
+    existing_action = existing_data[:action] || existing_data["action"]
+    existing_data[:action] = [existing_action, "input->ax-clear-field#update change->ax-clear-field#update"].compact_blank.join(" ")
+    existing_data[:ax_clear_field_target] = "control"
+    input_options[:data] = existing_data
+  elsif existing_data.present?
+    input_options[:data] = existing_data
+  end
 %>
 
 <div class="<%= field_classes %>">
   <%= ax_field_label(form, method, text: label, tooltip:) %>
-  <%= form.date_field method, input_options %>
+  <% if clearable %>
+    <div class="ax-clearable-control" data-controller="ax-clear-field">
+      <%= form.date_field method, input_options %>
+      <button class="ax-clearable-control__button"
+              type="button"
+              title="Limpar campo"
+              aria-label="Limpar <%= label %>"
+              data-ax-clear-field-target="button"
+              data-action="click->ax-clear-field#clear"
+              hidden>
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+  <% else %>
+    <%= form.date_field method, input_options %>
+  <% end %>
   <%= render "admin/shared/ui/field_error", form: form, method: method %>
 </div>

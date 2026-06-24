@@ -1,0 +1,113 @@
+<section class="automation-workflow-monitor automation-workflow-monitor--modal">
+  <div class="automation-workflow-monitor__header">
+    <div>
+      <div class="automation-workflow-monitor__eyebrow">Monitoramento</div>
+      <h2>Histórico do acompanhamento</h2>
+    </div>
+    <div class="automation-workflow-monitor__stats">
+      <span><strong><%= execution_counts.values.sum %></strong> execuções</span>
+      <span><strong><%= execution_counts.fetch("completed", 0) %></strong> concluídas</span>
+      <span><strong><%= execution_counts.fetch("waiting", 0) %></strong> aguardando</span>
+      <span><strong><%= execution_counts.fetch("failed", 0) %></strong> erros</span>
+    </div>
+  </div>
+
+  <% if publish_warnings.any? %>
+    <div class="automation-workflow-monitor__notice">
+      <i class="bi bi-exclamation-triangle"></i>
+      <div>
+        <strong>Pendências antes de ativar</strong>
+        <p><%= publish_warnings.first(4).to_sentence %><%= "..." if publish_warnings.size > 4 %></p>
+      </div>
+    </div>
+  <% end %>
+
+  <% if simulation_result %>
+    <div class="automation-workflow-monitor__notice automation-workflow-monitor__notice--simulation">
+      <i class="bi bi-search"></i>
+      <div>
+        <strong><%= simulation_result.title %></strong>
+        <p><%= simulation_result.summary %></p>
+        <% if simulation_result.actions.any? %>
+          <p><strong>Intervenções:</strong> <%= simulation_result.actions.to_sentence %></p>
+        <% end %>
+        <% if simulation_result.sample_leads.any? %>
+          <p><strong>Amostra:</strong> <%= simulation_result.sample_leads.map(&:display_name).to_sentence %></p>
+        <% end %>
+        <% if simulation_result.warnings.any? %>
+          <p><strong>Avisos:</strong> <%= simulation_result.warnings.to_sentence %></p>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="automation-workflow-monitor__grid">
+    <div class="automation-workflow-monitor__panel">
+      <div class="automation-workflow-monitor__panel-title">Execuções recentes</div>
+      <% if recent_executions.any? %>
+        <div class="automation-workflow-monitor__list">
+          <% recent_executions.each do |execution| %>
+            <div class="automation-workflow-monitor__item">
+              <div>
+                <strong><%= execution.lead&.display_name || "Lead removido" %></strong>
+                <span>
+                  <%= execution.created_at.strftime("%d/%m %H:%M") %>
+                  · versão #<%= execution.automation_workflow_version.version_number %>
+                  <% if execution.automation_event %>
+                    · <%= execution.automation_event.name_label %>
+                  <% end %>
+                </span>
+              </div>
+              <span class="ax-badge ax-badge--<%= execution_badge_color[execution.status] || 'gray' %>"><%= execution.status_label %></span>
+            </div>
+            <% if execution.steps.any? %>
+              <div class="automation-workflow-monitor__steps">
+                <% execution.steps.order(:id).last(4).each do |step| %>
+                  <span><i class="bi bi-dot"></i><%= step.node_type %>: <%= step.status_label %></span>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="automation-workflow-monitor__empty">Nenhuma execução registrada ainda.</div>
+      <% end %>
+    </div>
+
+    <div class="automation-workflow-monitor__panel">
+      <div class="automation-workflow-monitor__panel-title">Próximas esperas</div>
+      <% if waiting_steps.any? %>
+        <div class="automation-workflow-monitor__list">
+          <% waiting_steps.each do |step| %>
+            <div class="automation-workflow-monitor__item">
+              <div>
+                <strong><%= step.automation_execution.lead&.display_name || "Lead removido" %></strong>
+                <span><%= step.node_id %> · retoma em <%= step.scheduled_for.strftime("%d/%m %H:%M") %></span>
+              </div>
+              <span class="ax-badge ax-badge--amber">Aguardando</span>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="automation-workflow-monitor__empty">Nenhuma espera agendada.</div>
+      <% end %>
+
+      <div class="automation-workflow-monitor__panel-title automation-workflow-monitor__panel-title--spaced">Falhas recentes</div>
+      <% if failed_executions.any? %>
+        <div class="automation-workflow-monitor__list">
+          <% failed_executions.each do |execution| %>
+            <div class="automation-workflow-monitor__item">
+              <div>
+                <strong><%= execution.lead&.display_name || "Lead removido" %></strong>
+                <span><%= execution.error_message.presence || "Falha sem detalhe registrado" %></span>
+              </div>
+              <span class="ax-badge ax-badge--red">Erro</span>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="automation-workflow-monitor__empty">Nenhuma falha registrada.</div>
+      <% end %>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,139 @@
+<div class="layout-settings-workspace">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+    <div>
+      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+        <i class="bi bi-phone-vibrate" style="color: var(--admin-primary);"></i>Push no PWA
+      </h1>
+      <p class="ax-page-subtitle">Notificações Web Push (VAPID) enviadas ao aplicativo dos corretores quando recebem um novo lead.</p>
+    </div>
+  </div>
+
+  <div class="layout-settings-grid">
+    <div class="layout-settings-main">
+      <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+        Funciona no <strong>Android (Chrome)</strong> e no <strong>iPhone (iOS 16.4+)</strong> — neste caso o corretor precisa
+        <strong>instalar o app na tela inicial</strong> (Compartilhar → "Adicionar à Tela de Início") e permitir notificações.
+        Cada dispositivo se inscreve sozinho ao abrir o app de campo (<code>/field</code>).
+      <% end %>
+
+      <%= form_with(model: [:admin, @push_setting], url: admin_push_setting_path, method: :patch, local: true, class: "layout-settings-form") do |f| %>
+        <%= ax_error_summary(@push_setting) %>
+
+        <%= ax_operational_panel(eyebrow: "Ativação", title: "Canal de push") do %>
+          <div class="ax-panel-body">
+            <%= ax_toggle_chip(f, :enabled, label: raw("<i class='bi bi-power'></i> Ativar Web Push")) %>
+            <p class="ax-field__hint">Quando desativado, nenhuma notificação push é enviada — mesmo que a regra de distribuição marque o canal.</p>
+
+            <div class="tw-mt-3">
+              <% if @push_setting.subject_email.blank? && ENV["VAPID_SUBJECT_EMAIL"].present? %>
+                <%= ax_text_field(form: f, method: :subject_email, label: "E-mail de contato (VAPID subject)",
+                      type: :email, placeholder: ENV["VAPID_SUBJECT_EMAIL"],
+                      hint: "Usando do ambiente: #{ENV['VAPID_SUBJECT_EMAIL']}. Preencha apenas para sobrescrever.") %>
+              <% else %>
+                <%= ax_text_field(form: f, method: :subject_email, label: "E-mail de contato (VAPID subject)",
+                      type: :email, placeholder: "suporte@suaimobiliaria.com.br",
+                      hint: "Exigido pelo protocolo Web Push como canal de contato do remetente.") %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Comportamento", title: "Ao clicar na notificação de novo lead") do %>
+          <div class="ax-panel-body">
+            <%= ax_radio_group(form: f, method: :lead_click_action,
+                  label: "Dentro do prazo de atendimento, o clique deve:",
+                  choices: [
+                    ["Abrir o lead no sistema", "system"],
+                    ["Abrir o WhatsApp do lead", "whatsapp"]
+                  ]) %>
+            <p class="ax-field__hint">
+              O clique também <strong>aceita o lead</strong> (passa para "Em Atendimento" e trava o prazo do pocket).
+              Se o prazo já tiver estourado e o lead foi redistribuído, o clique mostra um aviso de tempo esgotado.
+            </p>
+          </div>
+        <% end %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Credenciais", title: "Chaves VAPID",
+            actions: (@push_setting.keys_source == :custom ? ax_badge("Personalizadas", tone: :amber) : (@push_setting.keys_source == :env ? ax_badge("Do ambiente (ENV)", tone: :blue) : ax_badge("Ausentes", tone: :gray)))) do %>
+        <div class="ax-panel-body">
+          <% if @push_setting.keys_present? %>
+            <div class="ax-field">
+              <%= ax_field_label(nil, nil, text: "Chave pública (em uso)") %>
+              <textarea class="ax-control" rows="2" readonly><%= @push_setting.effective_public_key %></textarea>
+              <p class="ax-field__hint">
+                <% if @push_setting.keys_source == :env %>
+                  Vindas da configuração do servidor (<code>VAPID_*</code>). É o recomendado — os dispositivos já inscritos continuam funcionando.
+                <% else %>
+                  Geradas nesta tela e guardadas criptografadas. A chave privada nunca é exibida.
+                <% end %>
+              </p>
+            </div>
+          <% else %>
+            <%= ax_inline_notice(tone: :warning, icon: "key") do %>
+              Nenhuma chave VAPID disponível. Defina <code>VAPID_PUBLIC_KEY</code> / <code>VAPID_PRIVATE_KEY</code> no ambiente
+              <% if @push_setting.encryption_ready? %>ou gere um par abaixo<% end %>.
+            <% end %>
+          <% end %>
+
+          <div class="tw-flex tw-items-center tw-gap-2 tw-mt-3">
+            <% if @push_setting.keys_source == :custom && @push_setting.env_keys_available? %>
+              <%= form_with(url: use_env_keys_admin_push_setting_path, method: :post, local: true) do %>
+                <%= submit_tag "Usar chaves do ambiente", class: "ax-btn ax-btn--sm ax-btn--primary", data: { turbo: false } %>
+              <% end %>
+            <% end %>
+
+            <%= form_with(url: generate_keys_admin_push_setting_path, method: :post, local: true) do %>
+              <%= submit_tag(@push_setting.keys_source == :custom ? "Gerar outro par" : "Gerar par personalizado",
+                    class: "ax-btn ax-btn--sm ax-btn--ghost",
+                    disabled: !@push_setting.encryption_ready?,
+                    data: { turbo: false, confirm: "Gerar novas chaves invalida TODAS as assinaturas push atuais; cada dispositivo precisará reativar. Use apenas se você não tem chaves VAPID no servidor. Continuar?" }) %>
+            <% end %>
+          </div>
+          <p class="ax-field__hint tw-mt-2">
+            Se o servidor já tem <code>VAPID_*</code> que funcionam, <strong>não gere novas chaves</strong> — use as do ambiente.
+          </p>
+        </div>
+      <% end %>
+    </div>
+
+    <aside class="layout-settings-inspector">
+      <%= ax_operational_panel(eyebrow: "Status", title: "Diagnóstico") do %>
+        <div class="ax-panel-body">
+          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+            <span>Canal pronto para enviar</span>
+            <%= ax_badge(@push_setting.configured? ? "Pronto" : "Incompleto", tone: @push_setting.configured? ? :green : :gray, dot: true) %>
+          </div>
+          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+            <span>Chaves VAPID</span>
+            <% if @push_setting.keys_source == :env %>
+              <%= ax_badge("Do ambiente", tone: :blue) %>
+            <% elsif @push_setting.keys_source == :custom %>
+              <%= ax_badge("Personalizadas", tone: :amber) %>
+            <% else %>
+              <%= ax_badge("Ausentes", tone: :gray) %>
+            <% end %>
+          </div>
+          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+            <span>E-mail de contato</span>
+            <%= ax_badge(@push_setting.effective_subject.present? ? "OK" : "Faltando", tone: @push_setting.effective_subject.present? ? :green : :gray) %>
+          </div>
+          <p class="ax-field__hint tw-mt-2">
+            O canal só dispara quando estiver <strong>ativado</strong>, com chaves VAPID disponíveis e e-mail de contato preenchido.
+          </p>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Como funciona", title: "Fluxo do push") do %>
+        <div class="ax-panel-body">
+          <ol class="ax-field__hint" style="padding-left:18px;margin:0;line-height:1.6;">
+            <li>Corretor abre <code>/field</code> no celular e (no iPhone) instala na tela inicial.</li>
+            <li>O app pede permissão e inscreve o dispositivo com a <strong>chave pública</strong>.</li>
+            <li>Ao distribuir um lead, o servidor assina com a <strong>chave privada</strong> e envia o push.</li>
+            <li>Apple/Google entregam a notificação no aparelho.</li>
+          </ol>
+        </div>
+      <% end %>
+    </aside>
+  </div>
+</div>

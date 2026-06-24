@@ -17,6 +17,20 @@ class Lead < ApplicationRecord
   belongs_to :distribution_rule, optional: true
   has_many :lead_audit_logs
   has_many :activities, class_name: "LeadActivity", dependent: :destroy
+  has_many :secure_links, dependent: :destroy
+
+  # Reivindicação atômica (Shark Tank): o 1º corretor a aceitar vira dono.
+  # Retorna true se ESTE corretor pegou o lead; false se já estava com alguém.
+  def self.claim!(lead_id, corretor_id)
+    return false if corretor_id.blank?
+
+    where(id: lead_id, admin_user_id: nil, status: status_value(:waiting_acceptance))
+      .update_all(admin_user_id: corretor_id, status: status_value(:em_atendimento), updated_at: Time.current) == 1
+  end
+  has_many :public_navigation_sessions, dependent: :nullify
+  has_many :public_navigation_events, dependent: :nullify
+  has_many :client_property_interests, foreign_key: :lead_id, dependent: :nullify
+  has_many :automation_events, dependent: :nullify
   has_many :seo_conversion_events, dependent: :nullify
   has_many :tasks, dependent: :nullify
   has_many :appointments, dependent: :nullify
@@ -82,7 +96,16 @@ class Lead < ApplicationRecord
   end
 
   def self.origin_options
-    AttributeOption.where(context: "lead", category: "source").order(name: :asc).pluck(:name)
+    catalog_options = AttributeOption.where(context: "lead", category: "source").order(name: :asc).pluck(:name)
+    recorded_origins = where.not(origin: [nil, ""])
+      .distinct
+      .pluck(:origin)
+
+    (catalog_options + recorded_origins)
+      .map { |origin| origin.to_s.strip }
+      .reject(&:blank?)
+      .uniq
+      .sort_by(&:downcase)
   end
 
   def self.status_options
@@ -146,11 +169,25 @@ class Lead < ApplicationRecord
   end
 
   def dispatch_automation_created
-    Automation::Dispatcher.dispatch(:lead_created, self)
+    Automation::Dispatcher.dispatch(
+      :lead_created,
+      self,
+      source: "lead",
+      idempotency_key: "lead_created:#{id}"
+    )
   end
 
   def dispatch_automation_stage_changed
     return unless saved_change_to_status?
-    Automation::Dispatcher.dispatch(:lead_stage_changed, self)
+
+    Automation::Dispatcher.dispatch(
+      :lead_stage_changed,
+      self,
+      source: "lead",
+      payload: {
+        from: saved_change_to_status.first,
+        to: saved_change_to_status.last
+      }
+    )
   end
 end

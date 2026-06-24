@@ -9,6 +9,7 @@ export default class extends Controller {
 
   connect() {
     this.initFormSelect()
+    queueMicrotask(() => this.refreshFormsFromSelectedPages({ preserveSelections: true }))
   }
 
   disconnect() {
@@ -38,13 +39,17 @@ export default class extends Controller {
   }
 
   updateForms(event) {
-    const selectedPages = Array.from(event.target.selectedOptions).map(opt => opt.value)
+    this.refreshFormsFromSelectedPages({ preserveSelections: true })
+  }
+
+  refreshFormsFromSelectedPages({ preserveSelections = true } = {}) {
+    const selectedPages = this.selectedPageIds()
     if (!this.formSelectInstance) this.initFormSelect()
     if (!this.formSelectInstance) return
 
-    // Save existing selections to re-apply them if they still exist in new options
-    const currentSelections = Array.from(this.formSelectTarget.selectedOptions).map(o => o.value)
+    const currentSelections = preserveSelections ? this.selectedFormIds() : []
 
+    this.formSelectInstance.clear(true)
     this.formSelectInstance.clearOptions()
 
     selectedPages.forEach(pageId => {
@@ -57,17 +62,36 @@ export default class extends Controller {
           })
 
           if (currentSelections.includes(form.id)) {
-            this.formSelectInstance.addItem(form.id)
+            this.formSelectInstance.addItem(form.id, true)
           }
         })
       }
     })
 
     this.formSelectInstance.refreshOptions(false)
+    this.formSelectInstance.refreshItems()
     if (this.autoSyncEnabled()) {
       this.selectAllForms()
     }
     this.syncAutoSummary()
+  }
+
+  selectedPageIds() {
+    if (!this.hasPageSelectTarget) return []
+
+    if (this.pageSelectTarget.tomselect) {
+      return Array.from(this.pageSelectTarget.tomselect.items).filter(Boolean)
+    }
+
+    return Array.from(this.pageSelectTarget.selectedOptions).map((option) => option.value).filter(Boolean)
+  }
+
+  selectedFormIds() {
+    if (this.formSelectInstance) {
+      return Array.from(this.formSelectInstance.items).filter(Boolean)
+    }
+
+    return Array.from(this.formSelectTarget.selectedOptions).map((option) => option.value).filter(Boolean)
   }
 
   syncNow(event) {

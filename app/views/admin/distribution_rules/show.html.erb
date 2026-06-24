@@ -15,15 +15,15 @@
 <% end %>
 
 <% content_for :admin_contextbar_actions do %>
-  <%= link_to admin_distribution_rules_path, class: "ax-contextbar__button" do %>
-    <i class="bi bi-arrow-left"></i><span>Voltar</span>
+  <%= link_to admin_distribution_rules_path, class: "ax-btn ax-btn--sm" do %>
+    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
   <% end %>
-  <%= link_to edit_admin_distribution_rule_path(@rule), class: "ax-contextbar__button ax-contextbar__button--primary" do %>
-    <i class="bi bi-pencil"></i><span>Editar regra</span>
+  <%= link_to edit_admin_distribution_rule_path(@rule), class: "ax-btn ax-btn--primary ax-btn--sm" do %>
+    <i class="bi bi-pencil ax-ico"></i><span>Editar regra</span>
   <% end %>
 <% end %>
 
-<div class="dr-show">
+<div class="distribution-rule-show">
   <header class="ax-dashboard-command ax-property-form-command">
     <div class="ax-dashboard-command__main">
       <span class="ax-dashboard-command__eyebrow">Regra de distribuição</span>
@@ -35,116 +35,130 @@
     </div>
   </header>
 
-  <div class="dr-kpis">
+  <div class="distribution-rule-show__kpis">
     <%= ax_metric_card(label: "Tipo", value: distribution_rule_business_label(@rule)) %>
     <%= ax_metric_card(label: "Distribuição", value: distribution_rule_mode_label(@rule)) %>
     <%= ax_metric_card(label: "Corretores", value: "#{@agents_queue.size} na fila") %>
     <%= ax_metric_card(label: "Preço", value: distribution_rule_price_range(@rule)) %>
   </div>
 
-  <div class="dr-grid">
-    <div class="dr-col">
+  <div class="distribution-rule-show__kpis">
+    <%= ax_metric_card(label: "Leads (total)", value: number_with_delimiter(@leads_total), hint: "recebidos por esta regra") %>
+    <%= ax_metric_card(label: "Distribuídos", value: number_with_delimiter(@leads_distributed), hint: "atribuídos a um corretor") %>
+    <%= ax_metric_card(label: "Entraram hoje", value: number_with_delimiter(@leads_today)) %>
+    <%= ax_metric_card(label: "Último lead", value: @last_lead_at ? l(@last_lead_at, format: :short) : "--") %>
+  </div>
+
+  <div class="distribution-rule-show__grid">
+    <div class="distribution-rule-show__col">
       <%= ax_operational_panel(eyebrow: "Configuração", title: "Configuração da regra") do %>
-        <div class="dr-body">
-          <div class="dr-block">
-            <span class="dr-block__label">Fontes habilitadas</span>
+        <div class="distribution-rule-show__body">
+          <div class="distribution-rule-show__block">
+            <span class="distribution-rule-show__block-label">Fontes habilitadas</span>
             <% if enabled_sources.any? %>
-              <div class="dr-chips">
+              <div class="distribution-rule-show__chips">
                 <% enabled_sources.each do |source| %><%= ax_badge(source, tone: :blue) %><% end %>
               </div>
             <% else %>
-              <p class="dr-muted">Nenhuma fonte habilitada.</p>
+              <p class="distribution-rule-show__muted">Nenhuma fonte habilitada.</p>
             <% end %>
           </div>
 
-          <div class="dr-block">
-            <span class="dr-block__label">Meta Ads</span>
+          <div class="distribution-rule-show__block">
+            <span class="distribution-rule-show__block-label">Meta Ads</span>
             <% if @rule.source_meta? %>
-              <p class="dr-line"><strong>Páginas:</strong> <%= meta_pages.any? ? meta_pages.map(&:name).to_sentence : "nenhuma página encontrada." %></p>
-              <p class="dr-line"><strong>Formulários:</strong> <%= distribution_rule_meta_forms_summary(@rule) %></p>
+              <p class="distribution-rule-show__line"><strong>Páginas:</strong> <%= meta_pages.any? ? meta_pages.map(&:name).to_sentence : "nenhuma página encontrada." %></p>
+              <p class="distribution-rule-show__line"><strong>Formulários:</strong> <%= distribution_rule_meta_forms_summary(@rule) %></p>
               <% if meta_forms.any? && !@rule.auto_add_forms? %>
-                <div class="dr-chips">
+                <div class="distribution-rule-show__chips">
                   <% meta_forms.each do |form| %>
                     <%= ax_badge("#{form.name}#{" · #{form.meta_facebook_page.name}" if form.meta_facebook_page.present?}", tone: :gray) %>
                   <% end %>
                 </div>
               <% end %>
             <% else %>
-              <p class="dr-muted">Meta Ads desligado nesta regra.</p>
+              <p class="distribution-rule-show__muted">Meta Ads desligado nesta regra.</p>
             <% end %>
           </div>
 
-          <div class="dr-block">
-            <span class="dr-block__label">Webhook personalizado</span>
+          <div class="distribution-rule-show__block">
+            <span class="distribution-rule-show__block-label">Webhook personalizado</span>
             <% if @rule.source_webhook? %>
-              <p class="dr-line"><strong>URL:</strong> <span style="word-break:break-all"><%= @rule.webhook_url.presence || "Não configurada" %></span></p>
-              <p class="dr-line"><strong>Tags:</strong> <%= Array(@rule.webhook_tags).compact_blank.any? ? Array(@rule.webhook_tags).compact_blank.to_sentence : "sem tags específicas." %></p>
+              <p class="distribution-rule-show__line"><strong>URL:</strong> <span class="distribution-rule-show__break"><%= @rule.webhook_url.presence || "Não configurada" %></span></p>
+              <p class="distribution-rule-show__line"><strong>Tags:</strong> <%= Array(@rule.webhook_tags).compact_blank.any? ? Array(@rule.webhook_tags).compact_blank.to_sentence : "sem tags específicas." %></p>
             <% else %>
-              <p class="dr-muted">Webhook desligado nesta regra.</p>
+              <p class="distribution-rule-show__muted">Webhook desligado nesta regra.</p>
             <% end %>
           </div>
 
-          <div class="dr-block">
-            <span class="dr-block__label">Filtros adicionais</span>
+          <div class="distribution-rule-show__block">
+            <span class="distribution-rule-show__block-label">Filtros adicionais</span>
             <% if Array(@rule.neighborhoods).compact_blank.any? || Array(@rule.custom_filters).compact_blank.any? %>
               <% if Array(@rule.neighborhoods).compact_blank.any? %>
-                <p class="dr-line"><strong>Bairros:</strong> <%= Array(@rule.neighborhoods).compact_blank.to_sentence %></p>
+                <p class="distribution-rule-show__line"><strong>Bairros:</strong> <%= Array(@rule.neighborhoods).compact_blank.to_sentence %></p>
               <% end %>
               <% if Array(@rule.custom_filters).compact_blank.any? %>
-                <p class="dr-line"><strong>Filtros:</strong> <%= Array(@rule.custom_filters).compact_blank.to_sentence %></p>
+                <p class="distribution-rule-show__line"><strong>Filtros:</strong> <%= Array(@rule.custom_filters).compact_blank.to_sentence %></p>
               <% end %>
             <% else %>
-              <p class="dr-muted">Sem filtros adicionais configurados.</p>
+              <p class="distribution-rule-show__muted">Sem filtros adicionais configurados.</p>
             <% end %>
           </div>
         </div>
       <% end %>
 
       <%= ax_operational_panel(eyebrow: "Campo", title: "Check-in geolocalizado") do %>
-        <div class="dr-body">
-          <dl class="dr-state">
+        <div class="distribution-rule-show__body">
+          <dl class="distribution-rule-show__state">
             <% distribution_rule_checkin_rows(@rule).each do |label, enabled| %>
-              <div class="dr-state__row">
+              <div class="distribution-rule-show__state-row">
                 <dt><%= label %></dt>
                 <dd><%= ax_badge(enabled ? "Ativo" : "Desligado", tone: enabled ? :green : :gray) %></dd>
               </div>
             <% end %>
           </dl>
-          <div class="dr-block" style="margin-top:12px">
-            <span class="dr-block__label">Lojas consideradas</span>
+          <div class="distribution-rule-show__block distribution-rule-show__block--spaced">
+            <span class="distribution-rule-show__block-label">Lojas consideradas</span>
             <% if checkin_store_names.any? %>
-              <div class="dr-chips">
+              <div class="distribution-rule-show__chips">
                 <% checkin_store_names.each do |store_name| %><%= ax_badge(store_name, tone: :gray) %><% end %>
               </div>
             <% else %>
-              <p class="dr-muted">Todas as lojas contam para esta regra.</p>
+              <p class="distribution-rule-show__muted">Todas as lojas contam para esta regra.</p>
             <% end %>
           </div>
         </div>
       <% end %>
     </div>
 
-    <div class="dr-col">
+    <div class="distribution-rule-show__col">
       <%= ax_operational_panel(
             eyebrow: "Fila",
             title: "Fila de distribuição",
             actions: link_to(edit_admin_distribution_rule_path(@rule, anchor: "team"), class: "ax-btn ax-btn--sm") { safe_join([tag.i(class: "bi bi-people"), " Alterar corretores"]) }
           ) do %>
-        <div class="dr-body">
-          <p class="dr-muted" style="margin-top:-4px">Arraste pelo ícone para mudar a ordem e salve somente a fila.</p>
+        <div class="distribution-rule-show__body">
+          <p class="distribution-rule-show__muted distribution-rule-show__queue-note">Arraste pelo ícone para mudar a ordem e salve somente a fila.</p>
           <% if @agents_queue.any? %>
             <%= form_with url: reorder_agents_admin_distribution_rule_path(@rule), method: :patch do %>
-              <div class="dr-queue" data-controller="sortable" data-sortable-handle-value=".drag-handle">
+              <div class="distribution-rule-show__queue" data-controller="sortable" data-sortable-handle-value=".drag-handle">
                 <% @agents_queue.each do |dra| %>
-                  <div class="dr-queue__item">
-                    <span class="drag-handle dr-queue__handle" title="Arrastar para reordenar"><i class="bi bi-grip-vertical"></i></span>
+                  <div class="ax-record-item distribution-rule-show__queue-item">
+                    <span class="drag-handle distribution-rule-show__queue-handle" title="Arrastar para reordenar"><i class="bi bi-grip-vertical"></i></span>
                     <%= hidden_field_tag "agent_ids[]", dra.id %>
-                    <span class="dr-queue__pos position-display"><%= dra.position %></span>
-                    <div class="dr-queue__main">
-                      <strong><%= dra.admin_user&.name %></strong>
+                    <span class="distribution-rule-show__queue-pos position-display"><%= dra.position %></span>
+                    <div class="ax-record-item__copy distribution-rule-show__queue-main">
+                      <div class="distribution-rule-show__queue-name">
+                        <strong><%= dra.admin_user&.name %></strong>
+                        <% if @next_agent_user_id == dra.admin_user_id %><%= ax_badge("Próximo", tone: :green, dot: true) %><% end %>
+                      </div>
                       <span><%= dra.admin_user&.email %></span>
                     </div>
-                    <div class="dr-queue__meta">
+                    <div class="distribution-rule-show__queue-meta">
+                      <span>Leads recebidos</span>
+                      <strong><%= number_with_delimiter(@leads_per_agent[dra.admin_user_id] || 0) %></strong>
+                    </div>
+                    <div class="distribution-rule-show__queue-meta">
                       <span>Último lead</span>
                       <strong><%= dra.last_lead_received_at.present? ? l(dra.last_lead_received_at, format: :short) : "--" %></strong>
                     </div>
@@ -162,15 +176,15 @@
         </div>
       <% end %>
 
-      <div class="dr-grid dr-grid--half">
+      <div class="distribution-rule-show__grid distribution-rule-show__grid--half">
         <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e bolsão") do %>
-          <div class="dr-body">
-            <div class="dr-state__row">
+          <div class="distribution-rule-show__body">
+            <div class="distribution-rule-show__state-row">
               <dt>Bolsão fora do horário</dt>
               <dd><%= ax_badge(@rule.represamento_active? ? "Ativo" : "Desligado", tone: @rule.represamento_active? ? :amber : :gray) %></dd>
             </div>
             <% if @rule.represamento_active? %>
-              <table class="ax-table" style="margin-top:8px">
+              <table class="ax-table distribution-rule-show__table">
                 <thead><tr><th>Dia</th><th>Status</th><th>Horário</th></tr></thead>
                 <tbody>
                   <% distribution_rule_schedule_rows(@rule).each do |label, active, start_time, end_time| %>
@@ -183,9 +197,9 @@
                 </tbody>
               </table>
             <% else %>
-              <p class="dr-muted">Leads não ficam represados por horário nesta regra.</p>
+              <p class="distribution-rule-show__muted">Leads não ficam represados por horário nesta regra.</p>
             <% end %>
-            <div class="dr-state__row" style="margin-top:10px;border-top:1px solid var(--ax-border-soft,#e7ebf2);padding-top:10px">
+            <div class="distribution-rule-show__state-row distribution-rule-show__state-row--separated">
               <dt>Tempo limite para aceite</dt>
               <dd><%= ax_badge(@rule.pocket_active? ? "#{@rule.pocket_time} min" : "Desligado", tone: @rule.pocket_active? ? :blue : :gray) %></dd>
             </div>
@@ -193,51 +207,29 @@
         <% end %>
 
         <%= ax_operational_panel(eyebrow: "Notificações", title: "Notificações") do %>
-          <div class="dr-body">
+          <div class="distribution-rule-show__body">
             <% if enabled_notifications.any? %>
-              <div class="dr-chips">
+              <div class="distribution-rule-show__chips">
                 <% enabled_notifications.each do |notification| %><%= ax_badge(notification, tone: :red) %><% end %>
               </div>
             <% else %>
-              <p class="dr-muted">Nenhum canal de notificação ativo.</p>
+              <p class="distribution-rule-show__muted">Nenhum canal de notificação ativo.</p>
             <% end %>
-            <p class="dr-muted" style="margin-top:10px">Canais ativos são usados quando um lead passa por esta regra. Para mudar destinatários, ordem ou peso, use a fila acima ou a edição completa.</p>
+
+            <% webhook_urls = @rule.notify_webhook_url_list %>
+            <% if @rule.notify_webhook? && webhook_urls.any? %>
+              <div class="distribution-rule-show__block distribution-rule-show__block--spaced">
+                <span class="distribution-rule-show__block-label">URLs do webhook externo</span>
+                <% webhook_urls.each do |url| %>
+                  <p class="distribution-rule-show__line distribution-rule-show__break"><i class="bi bi-link-45deg"></i> <%= url %></p>
+                <% end %>
+              </div>
+            <% end %>
+
+            <p class="distribution-rule-show__muted distribution-rule-show__block--spaced">Canais ativos são usados quando um lead passa por esta regra. Para mudar destinatários, ordem ou peso, use a fila acima ou a edição completa.</p>
           </div>
         <% end %>
       </div>
     </div>
   </div>
 </div>
-
-<style id="dr-show-styles">
-  .dr-show { display: grid; gap: 8px; padding-top: 8px; }
-  .dr-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-  @media (max-width: 760px) { .dr-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .dr-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
-  @media (min-width: 1100px) { .dr-grid:not(.dr-grid--half) { grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr); } }
-  .dr-grid--half { grid-template-columns: minmax(0, 1fr); }
-  @media (min-width: 620px) { .dr-grid--half { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  .dr-col { display: grid; gap: 8px; min-width: 0; }
-  .dr-body { padding: 12px; display: grid; gap: 14px; }
-  .dr-block { display: grid; gap: 6px; min-width: 0; }
-  .dr-block__label { color: #697586; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; font-weight: 800; }
-  .dr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .dr-line { margin: 0; font-size: 12.5px; color: #41506a; }
-  .dr-line strong { color: #1f2733; }
-  .dr-muted { margin: 0; color: #8a93a3; font-size: 12px; }
-  .dr-state { margin: 0; display: grid; gap: 8px; }
-  .dr-state__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .dr-state__row dt { margin: 0; color: #41506a; font-size: 12.5px; }
-  .dr-state__row dd { margin: 0; }
-
-  .dr-queue { display: grid; gap: 6px; }
-  .dr-queue__item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; }
-  .dr-queue__handle { color: #9aa3b2; cursor: grab; }
-  .dr-queue__pos { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex: 0 0 auto; border-radius: 999px; background: var(--admin-primary-soft, #eef2f7); color: var(--admin-primary, #365f8f); font-weight: 800; font-size: 12px; }
-  .dr-queue__main { display: grid; gap: 1px; min-width: 0; flex: 1; }
-  .dr-queue__main strong { color: #1f2733; font-size: 13px; }
-  .dr-queue__main span { color: #8a93a3; font-size: 11px; }
-  .dr-queue__meta { text-align: right; display: grid; gap: 1px; }
-  .dr-queue__meta span { color: #8a93a3; font-size: 10.5px; text-transform: uppercase; }
-  .dr-queue__meta strong { color: #41506a; font-size: 12px; }
-</style>

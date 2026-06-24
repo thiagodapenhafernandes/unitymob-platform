@@ -1,5 +1,6 @@
 <%
   field_classes = ["ax-field", field_class].compact.join(" ")
+  clearable = local_assigns.fetch(:clearable, false)
   options = (options || {}).dup
   options[:autocomplete] = "off" unless options.key?(:autocomplete)
   control_class = ["ax-control", options.delete(:class)].compact.join(" ")
@@ -8,10 +9,31 @@
 
 <div class="<%= field_classes %>">
   <%= ax_field_label(form, method, text: label, tooltip:, class_name:, **(label_options || {})) %>
-  <% if type.to_sym == :textarea %>
+  <% if clearable %>
+    <div class="ax-clearable-control" data-controller="ax-clear-field">
+      <% clear_data = (html_options[:data] || {}).merge(ax_clear_field_target: "control", action: [html_options.dig(:data, :action), "input->ax-clear-field#update change->ax-clear-field#update"].compact_blank.join(" ")) %>
+      <% if type.to_sym == :textarea %>
+        <%= form.text_area method, html_options.merge(data: clear_data) %>
+      <% else %>
+        <%= form.text_field method, html_options.merge(data: clear_data) %>
+      <% end %>
+      <button class="ax-clearable-control__button"
+              type="button"
+              title="Limpar campo"
+              aria-label="Limpar <%= label %>"
+              data-ax-clear-field-target="button"
+              data-action="click->ax-clear-field#clear"
+              hidden>
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+  <% elsif type.to_sym == :textarea %>
     <%= form.text_area method, html_options %>
   <% else %>
     <%= form.text_field method, html_options %>
   <% end %>
   <%= render "admin/shared/ui/field_error", form: form, method: method %>
+  <% if local_assigns[:hint].present? && form.object.errors[method].blank? %>
+    <p class="ax-field__hint"><%= hint %></p>
+  <% end %>
 </div>

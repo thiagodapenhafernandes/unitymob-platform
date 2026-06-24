@@ -8,7 +8,7 @@ class LeadActivity < ApplicationRecord
   #                   appointment_done, proposal_created, proposal_sent,
   #                   proposal_viewed, proposal_aceita, proposal_recusada
   # kinds atendimento (fase 2): whatsapp_in, whatsapp_out
-  # kinds automação (fase 3): automation
+  # kinds automação (fase 3): automation, automation_event
 
   scope :recent, -> { order(created_at: :desc) }
   scope :chronological, -> { order(created_at: :asc) }

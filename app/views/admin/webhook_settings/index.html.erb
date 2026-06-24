@@ -1,75 +1,106 @@
-<%# Webhooks — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Webhooks</h1>
-    <p class="ax-page-subtitle">Gerencie as integrações de envio automático. O sistema envia para todos os webhooks ativos simultaneamente.</p>
-  </div>
-  <%= link_to new_admin_webhook_setting_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-    <i class="bi bi-plus-lg ax-ico"></i><span>Novo webhook</span>
-  <% end %>
-</div>
+<% active_tab = @active_tab || "outbound" %>
+<%
+  active_outbound_count = @can_manage_outbound_webhooks ? @webhook_settings.to_a.count(&:active?) : 0
+  capture_leads_count = @can_manage_outbound_webhooks ? @webhook_settings.to_a.count(&:lead_capture_enabled?) : 0
+  inbound_token = @inbound_webhook_token
+%>
 
-<div class="ax-card tw-mb-4">
-  <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-share-fill"></i> Compartilhamento de corretores</span></div>
-  <div class="ax-card__body">
-    <%= form_with url: share_tracking_admin_webhook_settings_path, method: :patch, local: true do %>
-      <div class="tw-flex tw-flex-wrap tw-items-end tw-gap-3">
-        <div class="tw-w-56">
-          <%= label_tag :lead_share_tracking_days, "Validade do cookie/link (dias)", class: "ax-label" %>
-          <%= number_field_tag :lead_share_tracking_days, @lead_share_tracking_days, min: HabitationShareLink::MIN_EXPIRATION_DAYS, max: HabitationShareLink::MAX_EXPIRATION_DAYS, class: "ax-input" %>
-        </div>
-        <p class="ax-page-subtitle tw-flex-1 tw-min-w-[220px]">Quando um visitante abre um link compartilhado por corretor, o site mantém a atribuição por este período.</p>
-        <%= submit_tag "Salvar validade", class: "ax-btn ax-btn--primary" %>
-      </div>
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Webhooks</strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <% if active_tab == "outbound" && @can_manage_outbound_webhooks %>
+    <%= link_to new_admin_webhook_setting_path, class: "ax-contextbar__button ax-contextbar__button--primary" do %>
+      <i class="bi bi-plus-lg"></i><span>Novo webhook</span>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% tabs_markup = capture do %>
+  <nav class="webhook-settings-tabs <%= 'webhook-settings-tabs--single' unless @can_manage_outbound_webhooks %>" aria-label="Tipos de webhook">
+    <% if @can_manage_outbound_webhooks %>
+      <%= link_to admin_webhook_settings_path(tab: "outbound"),
+            class: "webhook-settings-tabs__item #{'is-active' if active_tab == 'outbound'}" do %>
+        <i class="bi bi-send"></i>
+        <span>
+          <strong>Webhook de saída</strong>
+          <small>Envio automático para sistemas externos.</small>
+        </span>
+      <% end %>
+    <% end %>
+
+    <%= link_to admin_webhook_settings_path(tab: "inbound"),
+          class: "webhook-settings-tabs__item #{'is-active' if active_tab == 'inbound'}" do %>
+      <i class="bi bi-box-arrow-in-down"></i>
+      <span>
+        <strong>Webhook de entrada</strong>
+        <small>Recebimento de leads por token de usuário.</small>
+      </span>
+    <% end %>
+  </nav>
+<% end %>
+
+<%
+  heading_metrics =
+    if active_tab == "inbound"
+      [
+        { value: inbound_token&.enabled? ? "Ativo" : "Inativo", label: "status" },
+        { value: inbound_token&.last_received_at ? l(inbound_token.last_received_at, format: :short) : "Nunca", label: "recebimento" }
+      ]
+    elsif @can_manage_outbound_webhooks
+      [
+        { value: number_with_delimiter(@webhook_settings.size), label: "configurados" },
+        { value: number_with_delimiter(active_outbound_count), label: "ativos" },
+        { value: number_with_delimiter(capture_leads_count), label: "capturam leads" }
+      ]
+    else
+      []
+    end
+%>
+
+<% main_content = capture do %>
+  <div class="webhook-settings-main-stack">
+    <%= ax_workspace_heading(
+          eyebrow: "Integrações",
+          icon: "diagram-3",
+          title: active_tab == "inbound" ? "Webhook de entrada" : "Webhook de saída",
+          pills: [active_tab == "inbound" ? "Token por usuário" : "Envio externo"],
+          subtitle: active_tab == "inbound" ? "Receba leads externos em um endpoint público tokenizado e aplique as regras de distribuição." : "Envie eventos e leads para sistemas externos com controle de captura e status.",
+          metrics: heading_metrics
+        ) %>
+
+    <%= tabs_markup %>
+
+    <% if active_tab == "inbound" %>
+      <%= render "admin/webhook_settings/inbound_tokens", inbound_webhook_tokens: [@inbound_webhook_token] %>
+    <% else %>
+      <%= render "admin/webhook_settings/outbound_settings", webhook_settings: @webhook_settings, lead_share_tracking_days: @lead_share_tracking_days %>
     <% end %>
   </div>
-</div>
+<% end %>
 
-<div class="ax-table-wrap">
-  <table class="ax-table">
-    <thead>
-      <tr>
-        <th>Descrição</th>
-        <th>URL do Webhook</th>
-        <th style="width:120px">Captura Leads?</th>
-        <th style="width:96px">Status</th>
-        <th class="ax-num" style="width:110px">Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @webhook_settings.each do |webhook| %>
-        <tr>
-          <td>
-            <div class="ax-strong"><%= webhook.description.presence || "Sem descrição" %></div>
-            <div class="tw-text-2xs tw-text-ink-faint">ID: <%= webhook.id %></div>
-          </td>
-          <td>
-            <code class="tw-text-primary"><%= truncate(webhook.webhook_url, length: 50) %></code>
-            <% if webhook.whatsapp_webhook_url.present? %><div class="tw-text-2xs tw-text-green-600"><i class="bi bi-whatsapp"></i> <%= truncate(webhook.whatsapp_webhook_url, length: 50) %></div><% end %>
-          </td>
-          <td>
-            <% if webhook.lead_capture_enabled? %><span class="ax-badge ax-badge--blue ax-badge--dot">Ativa</span>
-            <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativa</span><% end %>
-          </td>
-          <td>
-            <% if webhook.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativo</span>
-            <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativo</span><% end %>
-          </td>
-          <td class="ax-num">
-            <span class="tw-inline-flex tw-gap-0.5">
-              <%= button_to test_admin_webhook_setting_path(webhook), method: :post, form_class: "tw-inline", class: "ax-ico-btn", title: "Testar envio", data: { turbo_confirm: "Enviar payload de teste?" } do %><i class="bi bi-send"></i><% end %>
-              <%= link_to edit_admin_webhook_setting_path(webhook), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
-              <%= button_to admin_webhook_setting_path(webhook), method: :delete, form_class: "tw-inline", class: "ax-ico-btn", title: "Excluir", data: { turbo_confirm: "Tem certeza que deseja excluir este webhook?" } do %><i class="bi bi-trash"></i><% end %>
-            </span>
-          </td>
-        </tr>
-      <% end %>
+<%
+  aside_content =
+    if active_tab == "inbound"
+      render("admin/webhook_settings/inbound_examples", inbound_webhook_tokens: [@inbound_webhook_token])
+    else
+      render("admin/webhook_settings/outbound_aside", webhook_settings: @webhook_settings, lead_share_tracking_days: @lead_share_tracking_days)
+    end
+%>
 
-      <% if @webhook_settings.empty? %>
-        <tr><td colspan="5"><div class="ax-empty">
-          <i class="bi bi-broadcast tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>Nenhum webhook configurado.
-        </div></td></tr>
-      <% end %>
-    </tbody>
-  </table>
-</div>
+<%= render "admin/shared/ui/workspace_shell",
+      class_name: "webhook-settings-workspace",
+      main_class: "webhook-settings-main-pane",
+      main_label: "Configurações de webhooks",
+      main_body_class: "webhook-settings-main-body",
+      main: main_content,
+      aside: aside_content,
+      aside_class: "webhook-settings-aside",
+      aside_label: "Referência do webhook",
+      contextbar_class: "webhook-settings-middle-contextbar",
+      controller: "ax-aside",
+      storage_key: "admin-webhook-settings-aside-collapsed",
+      preload_class: "ax-webhook-settings-aside-collapsed-preload" %>

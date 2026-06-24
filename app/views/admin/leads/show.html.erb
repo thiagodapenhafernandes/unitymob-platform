@@ -196,6 +196,16 @@
 
   <%# ===== Coluna direita ===== %>
   <div>
+    <%= render "admin/leads/interest_intelligence",
+          lead: @lead,
+          profile: @interest_profile,
+          profile_incomplete: @interest_profile_incomplete,
+          matches: @interest_matches,
+          navigation_events: @interest_navigation_events,
+          property_interests: @interest_property_interests,
+          settings: @interest_settings,
+          simulation: @interest_simulation %>
+
     <% if @property %>
       <div class="ax-card tw-mb-4">
         <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-house ax-ico"></i> Imóvel de interesse</span></div>

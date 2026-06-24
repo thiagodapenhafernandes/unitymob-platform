@@ -1,4 +1,25 @@
 module HabitationsHelper
+  def catalog_property_image_urls(property, limit: 8)
+    attached_sources = property.card_image_sources(6)
+    urls = catalog_image_urls_from(attached_sources, limit:)
+    return urls if urls.size >= limit
+
+    payload_sources = property.image_payload_sources.first(6)
+    if attached_sources.blank? && payload_sources.blank? && property.respond_to?(:use_development_photos?) && property.use_development_photos?
+      payload_sources += property.development_image_payload_sources.first(6)
+    end
+
+    (urls + catalog_image_urls_from(payload_sources, limit: limit - urls.size)).uniq.first(limit)
+  end
+
+  def catalog_property_image_url(source)
+    Storage::PublicCdnImageUrl.resolve(source)
+  end
+
+  def catalog_image_urls_from(sources, limit:)
+    Array(sources).filter_map { |source| catalog_property_image_url(source) }.uniq.first(limit)
+  end
+
   # Características disponíveis para filtros
   CHARACTERISTICS = {
     'lancamento' => { label: 'Lançamento', icon: 'bi-stars' },

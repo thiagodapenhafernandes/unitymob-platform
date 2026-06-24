@@ -3,33 +3,57 @@
   <div class="ax-dashboard-command__main">
     <span class="ax-dashboard-command__eyebrow">Distribuição de leads</span>
     <h1>Regras de Distribuição</h1>
-    <p>Gerencie como os leads são roteados para sua equipe.</p>
+    <p>Gerencie o fluxo vertical de entrada, fila, responsável, aceite e entrega dos leads à equipe.</p>
   </div>
   <div class="ax-dashboard-command__status">
+    <%= ax_button("Objetivo",
+          nil,
+          size: :sm,
+          icon: "info-circle",
+          data: { ax_modal_open: "#distributionObjectiveModal" }) %>
     <i class="bi bi-diagram-3"></i>
     <%= ax_badge("#{@distribution_rules.size} regra#{'s' if @distribution_rules.size != 1}", tone: :gray) %>
   </div>
 </header>
 
+<%= ax_quick_modal(id: "distributionObjectiveModal",
+      title: "Qual é o objetivo e para que serve",
+      size: :md,
+      class_name: "distribution-objective-modal") do %>
+  <div class="automation-workflow-objective">
+    <div class="automation-workflow-objective__intro">
+      <span class="automation-workflow-objective__icon"><i class="bi bi-diagram-3"></i></span>
+      <div>
+        <div class="automation-workflow-objective__eyebrow">Distribuição vertical</div>
+        <p>
+          Use este módulo para controlar de onde o lead entra e para onde ele vai:
+          origem, regra, fila, corretor, disponibilidade, represamento, próximo horário,
+          aceite, check-in e notificações de distribuição.
+        </p>
+      </div>
+    </div>
+  </div>
+<% end %>
+
 <% if @holding_leads_count.to_i.positive? %>
-  <div style="margin: 10px 0;">
+  <div class="distribution-rules-index__notice">
     <%= ax_inline_notice(tone: :warning, icon: "pause-circle-fill") do %>
       <strong>Leads represados:</strong> <%= @holding_leads_count %> aguardando distribuição no bolsão.
-      <%= link_to "Ver leads", admin_leads_path(status: Lead.status_value(:represado)), class: "ax-dashboard-panel__link", style: "margin-left:6px" %>
+      <%= link_to "Ver leads", admin_leads_path(status: Lead.status_value(:represado)), class: "ax-dashboard-panel__link distribution-rules-index__notice-link" %>
     <% end %>
   </div>
 <% end %>
 
-<div class="ax-table-wrap" style="margin-top: 10px;">
+<div class="ax-table-wrap distribution-rules-index__table">
   <table class="ax-table">
     <thead>
       <tr>
         <th>Nome</th>
-        <th style="width:120px">Tipo</th>
-        <th style="width:120px">Fontes</th>
-        <th style="width:160px">Modo</th>
-        <th style="width:96px">Status</th>
-        <th class="ax-num" style="width:120px">Ações</th>
+        <th class="distribution-rules-index__col-type">Tipo</th>
+        <th class="distribution-rules-index__col-sources">Fontes</th>
+        <th class="distribution-rules-index__col-mode">Modo</th>
+        <th class="distribution-rules-index__col-status">Status</th>
+        <th class="ax-num distribution-rules-index__col-actions">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -76,7 +100,13 @@
         <tr><td colspan="6"><div class="ax-empty">
           <i class="bi bi-diagram-3 tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>
           Nenhuma regra definida ainda.
-          <div class="tw-mt-3"><%= link_to "Criar primeira regra", new_admin_distribution_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary tw-inline-flex" %></div>
+          <div class="tw-mt-3">
+            <%= ax_button("Criar primeira regra",
+                  new_admin_distribution_rule_path,
+                  variant: :primary,
+                  size: :sm,
+                  icon: "plus-lg") %>
+          </div>
         </div></td></tr>
       <% end %>
     </tbody>

@@ -79,7 +79,8 @@ pt-BR:
         primary_color: "Cor Primária"
         secondary_color: "Cor Secundária"
         accent_color: "Cor de Destaque"
-        site_name: "Nome do Site"
+        site_name: "Nome da Conta"
+        admin_area_name: "Nome da Plataforma"
         logo: "Logo"
         favicon: "Favicon"
     models:

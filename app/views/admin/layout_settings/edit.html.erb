@@ -1,274 +1,509 @@
 <%
   admin_surface = @layout_setting.respond_to?(:admin_surface_color) ? @layout_setting.admin_surface_color.presence : nil
   admin_header = @layout_setting.respond_to?(:admin_header_color) ? @layout_setting.admin_header_color.presence : nil
+  admin_workspace = @layout_setting.respond_to?(:admin_workspace_color) ? @layout_setting.admin_workspace_color.presence : nil
+  admin_sidebar = @layout_setting.respond_to?(:admin_sidebar_color) ? @layout_setting.admin_sidebar_color.presence : nil
   admin_ink = @layout_setting.respond_to?(:admin_ink_color) ? @layout_setting.admin_ink_color.presence : nil
   admin_surface ||= LayoutSetting::ADMIN_SURFACE_DEFAULT
   admin_header ||= LayoutSetting::ADMIN_HEADER_DEFAULT
+  admin_workspace ||= LayoutSetting::ADMIN_WORKSPACE_DEFAULT
+  admin_sidebar ||= LayoutSetting::ADMIN_SIDEBAR_DEFAULT
   admin_primary = @layout_setting.admin_primary_color.presence || LayoutSetting::ADMIN_PRIMARY_DEFAULT
   admin_ink ||= LayoutSetting::ADMIN_INK_DEFAULT
   public_primary = @layout_setting.primary_color.presence || "#022B3A"
   public_secondary = @layout_setting.secondary_color.presence || "#053C5E"
   public_accent = @layout_setting.accent_color.presence || "#BFAB25"
+  account_brand_name = @layout_setting.site_name.presence || "Salute Imóveis"
+  account_admin_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : "Plataforma"
   admin_theme_tokens = [
     { attr: :admin_surface_color, token: "surface", label: "surface.DEFAULT", value: admin_surface, default: LayoutSetting::ADMIN_SURFACE_DEFAULT },
     { attr: :admin_header_color, token: "header", label: "surface.header", value: admin_header, default: LayoutSetting::ADMIN_HEADER_DEFAULT },
+    { attr: :admin_workspace_color, token: "workspace", label: "workspace.background", value: admin_workspace, default: LayoutSetting::ADMIN_WORKSPACE_DEFAULT },
+    { attr: :admin_sidebar_color, token: "sidebar", label: "sidebar.background", value: admin_sidebar, default: LayoutSetting::ADMIN_SIDEBAR_DEFAULT },
     { attr: :admin_primary_color, token: "primary", label: "primary", value: admin_primary, default: LayoutSetting::ADMIN_PRIMARY_DEFAULT },
     { attr: :admin_ink_color, token: "ink", label: "ink", value: admin_ink, default: LayoutSetting::ADMIN_INK_DEFAULT }
   ]
+  admin_token_contract = {
+    "surface.DEFAULT" => {
+      value: admin_surface,
+      theme_var: "--theme-surface",
+      description: "Superfície base de painéis, cards, inputs, menus e áreas de conteúdo.",
+      aliases: %w[--admin-surface --ab-panel --ab-control-bg --ax-panel-bg --ax-control-bg]
+    },
+    "surface.header" => {
+      value: admin_header,
+      theme_var: "--theme-header",
+      description: "Cabeçalhos de painel, barras internas e superfícies de topo.",
+      aliases: %w[--admin-surface-header --ab-panel-header --ax-panel-header]
+    },
+    "workspace.background" => {
+      value: admin_workspace,
+      theme_var: "--theme-workspace",
+      description: "Fundo do workspace principal, incluindo a área do ax-main.",
+      aliases: %w[--admin-workspace-bg --ab-page --ax-page-bg .ax-main]
+    },
+    "sidebar.background" => {
+      value: admin_sidebar,
+      theme_var: "--theme-sidebar",
+      description: "Fundo exclusivo da navegação lateral. Não altera cabeçalhos nem painéis.",
+      aliases: %w[--admin-sidebar-bg .ax-sidebar]
+    },
+    "primary" => {
+      value: admin_primary,
+      theme_var: "--theme-primary",
+      description: "Ações principais, menu ativo, foco, badges e estados de destaque.",
+      aliases: %w[--admin-primary --admin-primary-soft --admin-primary-ring --ax-field-focus]
+    },
+    "ink" => {
+      value: admin_ink,
+      theme_var: "--theme-ink",
+      description: "Texto forte, títulos, linhas derivadas e contraste dos componentes internos.",
+      aliases: %w[--admin-ink --ab-ink --ab-muted --ab-line --ax-border]
+    }
+  }
 %>
 
 <div class="layout-settings-workspace"
      data-controller="layout-theme-preview"
-     style="--theme-surface:<%= admin_surface %>; --theme-header:<%= admin_header %>; --theme-primary:<%= admin_primary %>; --theme-ink:<%= admin_ink %>;">
+     style="--theme-surface:<%= admin_surface %>; --theme-header:<%= admin_header %>; --theme-workspace:<%= admin_workspace %>; --theme-sidebar:<%= admin_sidebar %>; --theme-primary:<%= admin_primary %>; --theme-ink:<%= admin_ink %>;">
   <%= form_with(model: [:admin, @layout_setting], local: true, html: { multipart: true }, class: "layout-settings-form") do |f| %>
-    <% if @layout_setting.errors.any? %>
-      <div class="ax-alert ax-alert--danger">
-        <i class="bi bi-exclamation-triangle ax-alert__icon"></i>
-        <div>
-          <div class="ax-alert__title"><%= pluralize(@layout_setting.errors.count, "erro") %> impediram o salvamento</div>
-          <ul class="ax-alert__list">
-            <% @layout_setting.errors.full_messages.each do |msg| %>
-              <li><%= msg %></li>
-            <% end %>
-          </ul>
-        </div>
-      </div>
-    <% end %>
+    <%= ax_error_summary(@layout_setting) %>
 
     <div class="layout-settings-grid">
       <div class="layout-settings-main">
-        <section class="ax-panel">
-          <div class="ax-panel__header">
-            <div>
-              <h2 class="ax-panel__title">Tema do CRM</h2>
-              <p class="ax-panel__subtitle">Afeta somente o admin em <code>/admin</code>: botões, ativos, badges e estados de foco.</p>
-            </div>
-            <div class="layout-settings-panel-actions">
-              <button type="button"
-                      class="ax-btn ax-btn--sm"
-                      data-action="layout-theme-preview#resetDefaults">
-                <i class="bi bi-arrow-counterclockwise ax-ico"></i>
-                Restaurar defaults
-              </button>
-              <span class="ax-badge ax-badge--blue">Token do admin</span>
-            </div>
-          </div>
-          <div class="ax-panel__body">
-            <div class="layout-settings-two-col">
-              <div class="layout-settings-theme-grid">
-                <% admin_theme_tokens.each do |theme_token| %>
-                  <div class="ax-field">
-                    <%= f.label theme_token[:attr], theme_token[:label], class: "ax-field__label" %>
-                    <div class="ax-color-control">
-                      <%= f.color_field theme_token[:attr],
-                            value: theme_token[:value],
-                            class: "ax-color-control__swatch",
-                            title: "Escolha o token #{theme_token[:label]}",
-                            data: {
-                              action: "input->layout-theme-preview#update",
-                              theme_token: theme_token[:token],
-                              default_value: theme_token[:default]
-                            } %>
-                      <%= f.text_field theme_token[:attr],
-                            value: theme_token[:value],
-                            class: "ax-color-control__text",
-                            spellcheck: false,
-                            data: {
-                              action: "input->layout-theme-preview#update",
-                              theme_token: theme_token[:token],
-                              default_value: theme_token[:default]
-                            } %>
-                    </div>
-                    <p class="ax-field__hint">Padrão: <strong><%= theme_token[:default] %></strong>.</p>
-                  </div>
-                <% end %>
-              </div>
+        <%= ax_panel(
+              title: "Marca da conta",
+              subtitle: "Identidade do dono da conta. Aparece no login, no topo da plataforma e no site público quando não houver logo específico.",
+              actions: tag.span("conta", class: "ax-badge ax-badge--blue")
+            ) do %>
+          <div class="layout-settings-brand-grid">
+            <div class="layout-settings-brand-fields">
+              <%= ax_text_field(
+                    form: f,
+                    method: :site_name,
+                    label: "Nome da conta/marca",
+                    placeholder: "Ex.: Salute Imóveis",
+                    hint: "Marca principal da conta. Use o nome que o cliente reconhece no atendimento e no site.",
+                    clearable: true
+                  ) %>
 
-              <div class="layout-settings-preview" data-layout-theme-preview-target="preview">
-                <div class="layout-settings-preview__bar">
-                  <span></span>
-                  <strong>Aplicação no admin</strong>
-                  <em data-theme-token-label="primary"><%= admin_primary.upcase %></em>
-                </div>
-                <div class="layout-settings-preview__samples">
-                  <div class="layout-settings-preview__sample">
-                    <small>Botão primário</small>
-                    <button type="button">Salvar</button>
-                  </div>
-                  <div class="layout-settings-preview__sample">
-                    <small>Menu ativo</small>
-                    <span class="layout-settings-preview__active"><i class="bi bi-house"></i> Imóveis</span>
-                  </div>
-                  <div class="layout-settings-preview__sample">
-                    <small>Badge</small>
-                    <span class="layout-settings-preview__badge">Ativo</span>
-                  </div>
-                  <div class="layout-settings-preview__sample">
-                    <small>Campo em foco</small>
-                    <span class="layout-settings-preview__field" data-theme-token-label="primary"><%= admin_primary.upcase %></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+              <div class="layout-settings-asset-grid">
+                <div class="layout-settings-asset">
+                  <%= ax_file_field(
+                        form: f,
+                        method: :logo,
+                        label: "Logo",
+                        accept: "image/svg+xml,image/png",
+                        hint: "SVG ou PNG transparente. Proporção recomendada: 3:1 ou 4:1."
+                      ) %>
 
-        <section class="ax-panel">
-          <div class="ax-panel__header">
-            <div>
-              <h2 class="ax-panel__title">Site público</h2>
-              <p class="ax-panel__subtitle">Campos de marca pública. Não alteram os tokens do CRM.</p>
-            </div>
-            <span class="ax-badge ax-badge--amber">impacto no site</span>
-          </div>
-          <div class="ax-panel__body">
-            <div class="layout-settings-color-grid">
-              <div class="ax-field">
-                <%= f.label :primary_color, "Primária do site", class: "ax-field__label" %>
-                <div class="ax-color-control">
-                  <%= f.color_field :primary_color, value: public_primary, class: "ax-color-control__swatch", title: "Escolha a cor primária do site público", oninput: "this.nextElementSibling.value = this.value" %>
-                  <%= f.text_field :primary_color, value: public_primary, class: "ax-color-control__text", spellcheck: false, oninput: "this.previousElementSibling.value = this.value" %>
-                </div>
-                <p class="ax-field__hint">Token publico: <code>--color-primary</code>.</p>
-              </div>
-
-              <div class="ax-field">
-                <%= f.label :secondary_color, "Secundária do site", class: "ax-field__label" %>
-                <div class="ax-color-control">
-                  <%= f.color_field :secondary_color, value: public_secondary, class: "ax-color-control__swatch", title: "Escolha a cor secundária do site público", oninput: "this.nextElementSibling.value = this.value" %>
-                  <%= f.text_field :secondary_color, value: public_secondary, class: "ax-color-control__text", spellcheck: false, oninput: "this.previousElementSibling.value = this.value" %>
-                </div>
-                <p class="ax-field__hint">Token publico: <code>--color-secondary</code>.</p>
-              </div>
-
-              <div class="ax-field">
-                <%= f.label :accent_color, "Destaque do site", class: "ax-field__label" %>
-                <div class="ax-color-control">
-                  <%= f.color_field :accent_color, value: public_accent, class: "ax-color-control__swatch", title: "Escolha a cor de destaque do site público", oninput: "this.nextElementSibling.value = this.value" %>
-                  <%= f.text_field :accent_color, value: public_accent, class: "ax-color-control__text", spellcheck: false, oninput: "this.previousElementSibling.value = this.value" %>
-                </div>
-                <p class="ax-field__hint">Token publico: <code>--color-accent</code>.</p>
-              </div>
-            </div>
-
-            <div class="layout-settings-site-row">
-              <div class="ax-field">
-                <%= f.label :site_name, "Nome exibido quando não houver logo", class: "ax-field__label" %>
-                <%= f.text_field :site_name, class: "ax-control", placeholder: "Ex.: Salute Imóveis" %>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="ax-panel">
-          <div class="ax-panel__header">
-            <div>
-              <h2 class="ax-panel__title">Marca e ícones</h2>
-              <p class="ax-panel__subtitle">Arquivos usados no header e na aba do navegador.</p>
-            </div>
-            <span class="ax-badge ax-badge--gray">assets</span>
-          </div>
-          <div class="ax-panel__body">
-            <div class="layout-settings-asset-grid">
-              <div class="layout-settings-asset">
-                <div class="ax-field">
-                  <%= f.label :logo, "Logo", class: "ax-field__label" %>
-                  <%= f.file_field :logo, class: "ax-control layout-settings-file" %>
-                  <p class="ax-field__hint">SVG ou PNG transparente. Proporção recomendada: 3:1 ou 4:1.</p>
-                </div>
-
-                <div class="layout-settings-current-asset">
-                  <% if @layout_setting.logo.attached? && @layout_setting.logo.persisted? %>
-                    <span>Logo atual</span>
-                    <% if @layout_setting.logo.content_type == "image/svg+xml" %>
-                      <%= image_tag @layout_setting.logo, class: "layout-settings-current-asset__logo" %>
+                  <div class="layout-settings-current-asset">
+                    <% if @layout_setting.logo.attached? && @layout_setting.logo.persisted? %>
+                      <span>Logo atual</span>
+                      <% if @layout_setting.logo.content_type == "image/svg+xml" %>
+                        <%= image_tag @layout_setting.logo, class: "layout-settings-current-asset__logo" %>
+                      <% else %>
+                        <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 160]), class: "layout-settings-current-asset__logo" %>
+                      <% end %>
                     <% else %>
-                      <%= image_tag @layout_setting.logo.variant(resize_to_limit: [400, 160]), class: "layout-settings-current-asset__logo" %>
+                      <span>Logo atual</span>
+                      <strong>Nenhum arquivo personalizado</strong>
                     <% end %>
-                  <% else %>
-                    <span>Logo atual</span>
-                    <strong>Nenhum arquivo personalizado</strong>
-                  <% end %>
+                  </div>
+                </div>
+
+                <div class="layout-settings-asset">
+                  <%= ax_file_field(
+                        form: f,
+                        method: :favicon,
+                        label: "Favicon",
+                        accept: "image/png,image/x-icon,image/vnd.microsoft.icon",
+                        hint: "PNG ou ICO quadrado, 32x32 ou 64x64."
+                      ) %>
+
+                  <div class="layout-settings-current-asset">
+                    <% if @layout_setting.favicon.attached? && @layout_setting.favicon.persisted? %>
+                      <span>Favicon atual</span>
+                      <%= image_tag @layout_setting.favicon, class: "layout-settings-current-asset__favicon" %>
+                    <% else %>
+                      <span>Favicon atual</span>
+                      <strong>Padrão do sistema</strong>
+                    <% end %>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div class="layout-settings-asset">
-                <div class="ax-field">
-                  <%= f.label :favicon, "Favicon", class: "ax-field__label" %>
-                  <%= f.file_field :favicon, class: "ax-control layout-settings-file" %>
-                  <p class="ax-field__hint">PNG ou ICO quadrado, 32x32 ou 64x64.</p>
+            <div class="layout-settings-brand-preview">
+              <span>Prévia de identidade</span>
+              <strong><%= account_brand_name %></strong>
+              <small>Base usada no login, plataforma e site público.</small>
+            </div>
+          </div>
+        <% end %>
+
+        <%= ax_panel(
+              title: "Plataforma",
+              subtitle: "Nome do produto operacional usado pela equipe dentro da conta. Não altera a marca pública.",
+              actions: tag.span("operação", class: "ax-badge ax-badge--gray")
+            ) do %>
+          <div class="layout-settings-site-row">
+            <%= ax_text_field(
+                  form: f,
+                  method: :admin_area_name,
+                  label: "Nome da plataforma",
+                  placeholder: "Ex.: Plataforma, Operação, Painel",
+                  hint: safe_join(["Sufixo exibido no topo interno. Ex.: ", tag.strong("#{account_brand_name} #{account_admin_area_name}")]),
+                  clearable: true
+                ) %>
+
+            <div class="layout-settings-internal-preview">
+              <small>Prévia do topo</small>
+              <strong><%= account_brand_name %> <span><%= account_admin_area_name %></span></strong>
+              <em>Contexto operacional para corretores, gestores e operadores.</em>
+            </div>
+          </div>
+        <% end %>
+
+        <%= ax_panel(
+              title: "Inteligência de Interesse",
+              subtitle: "Diretrizes para interpretar navegação, sinais do lead e compatibilidade com imóveis sem criar atrito na operação.",
+              actions: tag.span("automação", class: "ax-badge ax-badge--blue")
+            ) do %>
+          <span id="interest-intelligence-settings" class="layout-settings-anchor"></span>
+          <% interest_settings = InterestIntelligence::Settings::DEFAULTS.merge(@layout_setting.interest_intelligence_settings.to_h) %>
+          <div class="layout-settings-interest">
+            <label class="layout-settings-interest__toggle">
+              <%= f.check_box :interest_intelligence_enabled %>
+              <span>
+                <strong>Ativar leitura de interesse lead-imóvel</strong>
+                <small>Usa navegação pública, imóveis vistos, filtros e dados reais do lead para gerar eventos no builder de automação.</small>
+              </span>
+            </label>
+
+            <label class="layout-settings-interest__instructions">
+              <span>Instruções para a plataforma/AI</span>
+              <%= f.text_area :interest_intelligence_instructions,
+                    value: @layout_setting.interest_intelligence_instructions.presence || InterestIntelligence::SystemInstructions::DEFAULT_TEXT,
+                    rows: 7,
+                    class: "ax-input layout-settings-interest__textarea" %>
+              <small>
+                Se o campo ficar vazio, a plataforma usa a diretriz padrão do sistema.
+                Personalize apenas quando a conta tiver uma estratégia própria de recomendação e curadoria.
+              </small>
+            </label>
+
+            <div class="layout-settings-interest__controls">
+              <label>
+                <span>Score mínimo</span>
+                <%= number_field_tag "layout_setting[interest_intelligence_settings][minimum_match_score]",
+                      interest_settings["minimum_match_score"],
+                      class: "ax-input",
+                      min: 0,
+                      max: 100,
+                      step: 1 %>
+                <small>Compatibilidade mínima para sugerir um imóvel ao lead.</small>
+              </label>
+
+              <label>
+                <span>Tolerância de preço (%)</span>
+                <%= number_field_tag "layout_setting[interest_intelligence_settings][price_tolerance_percent]",
+                      interest_settings["price_tolerance_percent"],
+                      class: "ax-input",
+                      min: 0,
+                      max: 100,
+                      step: 1 %>
+                <small>Margem aceita acima ou abaixo da faixa inferida.</small>
+              </label>
+
+              <label>
+                <span>Visualizações fortes</span>
+                <%= number_field_tag "layout_setting[interest_intelligence_settings][strong_interest_views]",
+                      interest_settings["strong_interest_views"],
+                      class: "ax-input",
+                      min: 1,
+                      max: 20,
+                      step: 1 %>
+                <small>Visitas ao mesmo tipo de imóvel para reforçar o sinal.</small>
+              </label>
+
+              <label>
+                <span>Máximo de sugestões</span>
+                <%= number_field_tag "layout_setting[interest_intelligence_settings][max_suggestions]",
+                      interest_settings["max_suggestions"],
+                      class: "ax-input",
+                      min: 1,
+                      max: 20,
+                      step: 1 %>
+                <small>Limite exibido na ficha do lead e usado nas ações.</small>
+              </label>
+
+              <label>
+                <span>Lead parado sem match (h)</span>
+                <%= number_field_tag "layout_setting[interest_intelligence_settings][idle_without_match_hours]",
+                      interest_settings["idle_without_match_hours"],
+                      class: "ax-input",
+                      min: 1,
+                      max: 720,
+                      step: 1 %>
+                <small>Janela usada em jornadas de recuperação quando não há imóvel aderente.</small>
+              </label>
+            </div>
+
+            <div class="layout-settings-interest__weights">
+              <% {
+                city_weight: "Cidade",
+                neighborhood_weight: "Bairro",
+                category_weight: "Tipo",
+                bedrooms_weight: "Dormitórios",
+                parking_weight: "Vagas",
+                price_weight: "Preço"
+              }.each do |key, label| %>
+                <label>
+                  <span><%= label %></span>
+                  <%= number_field_tag "layout_setting[interest_intelligence_settings][#{key}]",
+                        interest_settings[key.to_s],
+                        class: "ax-input",
+                        min: 0,
+                        max: 100,
+                        step: 1 %>
+                </label>
+              <% end %>
+            </div>
+
+            <label class="layout-settings-interest__toggle">
+              <%= hidden_field_tag "layout_setting[interest_intelligence_settings][broker_review_required]", "0" %>
+              <%= check_box_tag "layout_setting[interest_intelligence_settings][broker_review_required]",
+                    "1",
+                    ActiveModel::Type::Boolean.new.cast(interest_settings["broker_review_required"]) %>
+              <span>
+                <strong>Exigir revisão humana antes de comunicação ativa</strong>
+                <small>Mantém a inteligência como apoio de curadoria; mensagens para o lead devem passar pelo corretor ou gestor.</small>
+              </span>
+            </label>
+
+            <label class="layout-settings-interest__toggle">
+              <%= hidden_field_tag "layout_setting[interest_intelligence_settings][requires_public_tracking_consent]", "0" %>
+              <%= check_box_tag "layout_setting[interest_intelligence_settings][requires_public_tracking_consent]",
+                    "1",
+                    ActiveModel::Type::Boolean.new.cast(interest_settings["requires_public_tracking_consent"]) %>
+              <span>
+                <strong>Exigir consentimento no site público</strong>
+                <small>Mostra um aviso discreto antes de rastrear navegação anônima para personalização de atendimento.</small>
+              </span>
+            </label>
+
+            <label class="layout-settings-interest__toggle">
+              <%= hidden_field_tag "layout_setting[interest_intelligence_settings][allow_direct_lead_message]", "0" %>
+              <%= check_box_tag "layout_setting[interest_intelligence_settings][allow_direct_lead_message]",
+                    "1",
+                    ActiveModel::Type::Boolean.new.cast(interest_settings["allow_direct_lead_message"]) %>
+              <span>
+                <strong>Permitir envio direto ao lead quando não exigir revisão</strong>
+                <small>Use com cuidado. Com revisão humana ativa, a plataforma sempre cria rascunho/nota para o corretor.</small>
+              </span>
+            </label>
+          </div>
+        <% end %>
+
+        <%= ax_panel(
+              title: "Tema da plataforma",
+              subtitle: safe_join(["Afeta somente o ambiente interno em ", tag.code("/admin"), ": botões, menu ativo, badges, superfícies e estados de foco."]),
+              actions: capture do %>
+                <button type="button"
+                        class="ax-btn ax-btn--sm"
+                        data-action="layout-theme-preview#resetDefaults">
+                  <i class="bi bi-arrow-counterclockwise ax-ico"></i>
+                  Restaurar defaults
+                </button>
+                <span class="ax-badge ax-badge--blue">tokens internos</span>
+              <% end
+            ) do %>
+          <div class="layout-settings-two-col">
+            <div class="layout-settings-theme-grid">
+              <% admin_theme_tokens.each do |theme_token| %>
+                <%= ax_color_field(
+                      form: f,
+                      method: theme_token[:attr],
+                      label: theme_token[:label],
+                      value: theme_token[:value],
+                      token: theme_token[:token],
+                      default_value: theme_token[:default],
+                      swatch_title: "Escolha o token #{theme_token[:label]}",
+                      hint: safe_join(["Padrão: ", tag.strong(theme_token[:default])])
+                    ) %>
+              <% end %>
+            </div>
+
+            <div class="layout-settings-preview" data-layout-theme-preview-target="preview">
+              <div class="layout-settings-preview__bar">
+                <span></span>
+                <strong>Aplicação interna</strong>
+                <em data-theme-token-label="primary"><%= admin_primary.upcase %></em>
+              </div>
+              <div class="layout-settings-preview__samples">
+                <div class="layout-settings-preview__sample">
+                  <small>Botão primário</small>
+                  <button type="button">Salvar</button>
                 </div>
-
-                <div class="layout-settings-current-asset">
-                  <% if @layout_setting.favicon.attached? && @layout_setting.favicon.persisted? %>
-                    <span>Favicon atual</span>
-                    <%= image_tag @layout_setting.favicon, class: "layout-settings-current-asset__favicon" %>
-                  <% else %>
-                    <span>Favicon atual</span>
-                    <strong>Padrão do sistema</strong>
-                  <% end %>
+                <div class="layout-settings-preview__sample">
+                  <small>Menu ativo</small>
+                  <span class="layout-settings-preview__active"><i class="bi bi-house"></i> Imóveis</span>
+                </div>
+                <div class="layout-settings-preview__sample">
+                  <small>Workspace</small>
+                  <span class="layout-settings-preview__workspace" data-theme-token-label="workspace"><%= admin_workspace.upcase %></span>
+                </div>
+                <div class="layout-settings-preview__sample">
+                  <small>Sidebar</small>
+                  <span class="layout-settings-preview__sidebar" data-theme-token-label="sidebar"><%= admin_sidebar.upcase %></span>
+                </div>
+                <div class="layout-settings-preview__sample">
+                  <small>Badge</small>
+                  <span class="layout-settings-preview__badge">Ativo</span>
+                </div>
+                <div class="layout-settings-preview__sample">
+                  <small>Campo em foco</small>
+                  <span class="layout-settings-preview__field" data-theme-token-label="primary"><%= admin_primary.upcase %></span>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+
+          <div class="layout-settings-token-contract">
+            <% admin_token_contract.each do |token_label, token_contract| %>
+              <div class="layout-settings-token-contract__item">
+                <span class="layout-settings-token-contract__swatch" style="background:var(<%= token_contract[:theme_var] %>)"></span>
+                <div class="layout-settings-token-contract__content">
+                  <strong><%= token_label %></strong>
+                  <small><%= token_contract[:description] %></small>
+                  <div class="layout-settings-token-contract__aliases">
+                    <% token_contract[:aliases].each do |token_alias| %>
+                      <code><%= token_alias %></code>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%= ax_panel(
+              title: "Tema do site público",
+              subtitle: "Cores usadas no site, páginas públicas e materiais que visitantes enxergam. Não alteram os tokens da plataforma interna.",
+              actions: tag.span("impacto no site", class: "ax-badge ax-badge--amber")
+            ) do %>
+          <div class="layout-settings-color-grid">
+            <%= ax_color_field(
+                  form: f,
+                  method: :primary_color,
+                  label: "Primária do site",
+                  value: public_primary,
+                  swatch_title: "Escolha a cor primária do site público",
+                  hint: safe_join(["Token público: ", tag.code("--color-primary"), "."])
+                ) %>
+
+            <%= ax_color_field(
+                  form: f,
+                  method: :secondary_color,
+                  label: "Secundária do site",
+                  value: public_secondary,
+                  swatch_title: "Escolha a cor secundária do site público",
+                  hint: safe_join(["Token público: ", tag.code("--color-secondary"), "."])
+                ) %>
+
+            <%= ax_color_field(
+                  form: f,
+                  method: :accent_color,
+                  label: "Destaque do site",
+                  value: public_accent,
+                  swatch_title: "Escolha a cor de destaque do site público",
+                  hint: safe_join(["Token público: ", tag.code("--color-accent"), "."])
+                ) %>
+          </div>
+        <% end %>
       </div>
 
       <aside class="layout-settings-inspector">
-        <section class="ax-panel">
-          <div class="ax-panel__header">
+        <%= ax_panel(
+              title: "Mapa de impacto",
+              subtitle: "Separação entre Unitymob, conta, plataforma interna e site público."
+            ) do %>
+          <div class="layout-settings-impact-list">
+            <div class="layout-settings-impact is-platform">
+              <span style="background:#111827"></span>
+              <div>
+                <strong>Plataforma</strong>
+                <small><code>Unitymob Plataforma</code> aparece apenas para operadores globais do sistema.</small>
+              </div>
+            </div>
+            <div class="layout-settings-impact is-brand">
+              <span style="background:<%= public_primary %>"></span>
+              <div>
+                <strong>Conta / marca</strong>
+                <small><code>site_name</code> identifica o dono da conta: <%= account_brand_name %>.</small>
+              </div>
+            </div>
+            <div class="layout-settings-impact is-internal">
+              <span style="background:<%= admin_primary %>"></span>
+              <div>
+                <strong>Plataforma da conta</strong>
+                <small><code>admin_area_name</code> nomeia o ambiente operacional: <%= account_admin_area_name %>.</small>
+              </div>
+            </div>
+            <div class="layout-settings-impact is-admin">
+              <span style="background:<%= admin_primary %>"></span>
+              <div>
+                <strong>Tema da plataforma</strong>
+                <small><code>admin_primary_color</code> em <code>layouts/admin</code></small>
+              </div>
+            </div>
+            <div class="layout-settings-impact">
+              <span style="background:<%= public_primary %>"></span>
+              <div>
+                <strong>Tema do site público</strong>
+                <small><code>primary_color</code>, <code>secondary_color</code> e <code>accent_color</code></small>
+              </div>
+            </div>
+          </div>
+
+          <div class="layout-settings-token-board">
             <div>
-              <h2 class="ax-panel__title">Mapa de impacto</h2>
-              <p class="ax-panel__subtitle">Separação entre CRM e site público.</p>
+              <span class="layout-settings-token-board__swatch" style="background:var(--theme-surface)"></span>
+              <code>surface.DEFAULT</code>
+            </div>
+            <div>
+              <span class="layout-settings-token-board__swatch" style="background:var(--theme-header)"></span>
+              <code>surface.header</code>
+            </div>
+            <div>
+              <span class="layout-settings-token-board__swatch" style="background:var(--theme-workspace)"></span>
+              <code>workspace.background</code>
+            </div>
+            <div>
+              <span class="layout-settings-token-board__swatch" style="background:var(--theme-sidebar)"></span>
+              <code>sidebar.background</code>
+            </div>
+            <div>
+              <span class="layout-settings-token-board__swatch" style="background:var(--theme-primary)"></span>
+              <code>primary</code>
+            </div>
+            <div>
+              <span class="layout-settings-token-board__swatch" style="background:var(--theme-ink)"></span>
+              <code>ink</code>
             </div>
           </div>
-          <div class="ax-panel__body">
-            <div class="layout-settings-impact-list">
-              <div class="layout-settings-impact is-admin">
-                <span style="background:<%= admin_primary %>"></span>
-                <div>
-                  <strong>CRM admin</strong>
-                  <small><code>admin_primary_color</code> em <code>layouts/admin</code></small>
-                </div>
-              </div>
-              <div class="layout-settings-impact">
-                <span style="background:<%= public_primary %>"></span>
-                <div>
-                  <strong>Site público</strong>
-                  <small><code>primary_color</code>, <code>secondary_color</code> e <code>accent_color</code></small>
-                </div>
-              </div>
-            </div>
 
-            <div class="layout-settings-token-board">
-              <div>
-                <span class="layout-settings-token-board__swatch" style="background:var(--theme-surface)"></span>
-                <code>surface.DEFAULT</code>
-              </div>
-              <div>
-                <span class="layout-settings-token-board__swatch" style="background:var(--theme-header)"></span>
-                <code>surface.header</code>
-              </div>
-              <div>
-                <span class="layout-settings-token-board__swatch" style="background:var(--theme-primary)"></span>
-                <code>primary</code>
-              </div>
-              <div>
-                <span class="layout-settings-token-board__swatch" style="background:var(--theme-ink)"></span>
-                <code>ink</code>
-              </div>
-            </div>
-
-            <div class="layout-settings-guidelines">
-              <strong>Diretrizes</strong>
-              <ul>
-                <li>Use <code>#365F8F</code> como padrão do CRM migrado.</li>
-                <li>Altere as cores do site apenas quando a marca pública precisar mudar.</li>
-                <li>Prefira logo com fundo transparente.</li>
-              </ul>
-            </div>
+          <div class="layout-settings-guidelines">
+            <strong>Diretrizes</strong>
+            <ul>
+              <li>Use <code>#365F8F</code> como padrão da plataforma interna.</li>
+              <li>Use a marca da conta para nomes vistos por cliente e equipe.</li>
+              <li>Altere cores do site apenas quando a identidade pública mudar.</li>
+              <li>Não use <code>Admin</code> como nome de produto; use <code>Plataforma</code> ou um nome operacional claro.</li>
+            </ul>
           </div>
-        </section>
+        <% end %>
       </aside>
     </div>
 

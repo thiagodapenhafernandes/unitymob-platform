@@ -4,20 +4,21 @@ class Admin::AutomationRulesController < Admin::BaseController
 
   def index
     @rules = AutomationRule.ordered
+    @workflows = AutomationWorkflow.includes(:active_version).recent.limit(12)
     @recent_runs = AutomationRun.includes(:automation_rule, :lead).recent.limit(20)
-    @page_title = "Automação"
+    @page_title = "Automação de acompanhamento"
   end
 
   def new
     @rule = AutomationRule.new(active: true, trigger_event: "lead_idle")
     load_options
-    @page_title = "Nova regra de automação"
+    @page_title = "Nova intervenção automatizada"
   end
 
   def create
     @rule = AutomationRule.new(rule_params)
     if @rule.save
-      redirect_to admin_automation_rules_path, notice: "Regra criada."
+      redirect_to admin_automation_rules_path, notice: "Intervenção criada."
     else
       load_options
       render :new, status: :unprocessable_entity
@@ -26,29 +27,43 @@ class Admin::AutomationRulesController < Admin::BaseController
 
   def edit
     load_options
-    @page_title = "Editar regra"
+    @page_title = "Editar intervenção automatizada"
   end
 
   def update
     if @rule.update(rule_params)
-      redirect_to admin_automation_rules_path, notice: "Regra atualizada."
+      redirect_to admin_automation_rules_path, notice: "Intervenção atualizada."
     else
       load_options
       render :edit, status: :unprocessable_entity
     end
   end
 
+  def simulate
+    @rule = params[:id].present? ? AutomationRule.find(params[:id]) : AutomationRule.new(active: true)
+    @rule.assign_attributes(rule_params)
+    load_options
+    @simulation_result = Automation::Simulator.rule(
+      trigger_event: @rule.trigger_event,
+      conditions: @rule.conditions_hash,
+      actions: @rule.action_list
+    )
+    @page_title = @rule.persisted? ? "Editar intervenção automatizada" : "Nova intervenção automatizada"
+    flash.now[:notice] = "Simulação gerada sem salvar nem executar intervenções."
+    render @rule.persisted? ? :edit : :new, status: :ok
+  end
+
   def destroy
     @rule.destroy
-    redirect_to admin_automation_rules_path, notice: "Regra removida."
+    redirect_to admin_automation_rules_path, notice: "Intervenção removida."
   end
 
   def toggle_active
     @rule.update(active: !@rule.active)
-    redirect_to admin_automation_rules_path, notice: "Regra #{@rule.active? ? 'ativada' : 'pausada'}."
+    redirect_to admin_automation_rules_path, notice: "Intervenção #{@rule.active? ? 'ativada' : 'pausada'}."
   end
 
-  # Cria uma regra de exemplo (didática) para o usuário entender o fluxo.
+  # Cria uma intervenção de exemplo para mostrar acompanhamento horizontal.
   def create_example
     AutomationRule.create!(
       name: "Resgate de lead frio",
@@ -61,7 +76,7 @@ class Admin::AutomationRulesController < Admin::BaseController
         { type: "move_stage", to: "Represado" }
       ]
     )
-    redirect_to admin_automation_rules_path, notice: "Regra de exemplo criada (pausada). Revise e ative quando quiser."
+    redirect_to admin_automation_rules_path, notice: "Intervenção de exemplo criada (pausada). Revise e ative quando quiser."
   end
 
   private
@@ -72,6 +87,7 @@ class Admin::AutomationRulesController < Admin::BaseController
 
   def load_options
     @status_options = Lead.status_options
+    @automation_stage_options = Automation::StagePolicy.allowed_transition_stages
     @source_options = Lead.origin_options
     @broker_options = AdminUser.active.order(:name).pluck(:name, :id)
     @templates = WhatsappTemplate.approved.ordered
@@ -98,7 +114,10 @@ class Admin::AutomationRulesController < Admin::BaseController
     return [] if json.blank?
 
     parsed = JSON.parse(json)
-    Array(parsed).map { |a| a.is_a?(Hash) ? a.slice("type", "title", "due_in_hours", "message", "template", "to", "admin_user_id", "body", "days") : nil }.compact
+    actions = Array(parsed).map { |a| a.is_a?(Hash) ? a.slice("type", "title", "due_in_hours", "message", "template", "to", "admin_user_id", "body", "days") : nil }.compact
+      .reject { |action| AutomationRule::VERTICAL_DISTRIBUTION_ACTION_TYPES.include?(action["type"].to_s) }
+      .reject { |action| action["type"].to_s == "move_stage" && !Automation::StagePolicy.allowed_transition?(action["to"]) }
+    actions
   rescue JSON::ParserError
     []
   end

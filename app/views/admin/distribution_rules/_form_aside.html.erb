@@ -1,0 +1,102 @@
+<%= ax_aside_panel(
+      title: "Configuração da regra",
+      token: "Distribuição",
+      rail_label: "Abrir configurações da regra",
+      rail_icon: "sliders",
+      collapse_label: "Recolher configurações da regra",
+      panel_class: "distribution-rule-aside-panel",
+      header_class: "distribution-rule-aside-panel__header"
+    ) do %>
+  <div class="distribution-rule-aside__body">
+    <%= ax_operational_panel(eyebrow: "Lógica", title: "Modo de distribuição") do %>
+      <div class="ax-panel-body">
+        <div class="ax-option-stack distribution-rule-modes">
+          <% [[:rotary, "arrow-repeat", "Rotativo", "Fila sequencial"],
+              [:performance, "graph-up", "Performance", "Baseado em peso"],
+              [:shark_tank, "lightning-charge", "Shark Tank", "Primeiro a aceitar"]].each do |mode, icon, label, sub| %>
+            <%= f.radio_button :distribution_mode, mode, class: "ax-option-card__input", id: "mode_#{mode}", data: { action: "change->distribution-rule#toggleMode" } %>
+            <%= f.label "mode_#{mode}", class: "ax-option-card distribution-rule-mode", for: "mode_#{mode}" do %>
+              <i class="bi bi-<%= icon %>"></i>
+              <span><strong><%= label %></strong><small><%= sub %></small></span>
+            <% end %>
+          <% end %>
+        </div>
+
+        <div class="ax-field">
+          <%= ax_field_label(nil, nil, text: "Preço (R$)") %>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6"><%= f.number_field :min_price, class: "ax-control ax-control--sm", placeholder: "Mínimo" %></div>
+            <div class="ax-span-6"><%= f.number_field :max_price, class: "ax-control ax-control--sm", placeholder: "Máximo" %></div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Campo", title: "Check-in geolocalizado", actions: ax_badge("Opcional", tone: :gray)) do %>
+      <div class="ax-panel-body">
+        <%= ax_inline_notice(tone: :neutral, icon: "geo-alt") do %>
+          Quando ativo, a regra só distribui para corretores com <strong>check-in ativo</strong>. Tudo desligado por padrão.
+        <% end %>
+        <div class="ax-option-stack">
+          <%= ax_toggle_chip(f, :require_active_checkin, label: "Exigir check-in ativo") %>
+          <%= ax_toggle_chip(f, :require_inside_radius, label: "Exigir corretor dentro do raio da loja agora") %>
+          <%= ax_toggle_chip(f, :require_active_shift, label: "Exigir turno ativo no momento") %>
+          <%= ax_toggle_chip(f, :exclude_suspicious_checkins, label: "Excluir check-ins suspeitos") %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :checkin_store_ids, text: "Limitar a uma ou mais lojas") %>
+          <%= f.collection_select :checkin_store_ids, Store.active.order(:name), :id, :name, {},
+                multiple: true, class: "ax-control",
+                data: { controller: "tom-select", placeholder: "Selecione lojas (vazio = todas)" } %>
+          <p class="ax-field__hint">Vazio = qualquer loja conta. Selecione 1 ou mais para restringir.</p>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Horários e Bolsão %>
+    <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e bolsão") do %>
+      <div class="ax-panel-body">
+        <%= ax_toggle_chip(f, :represamento_active,
+              label: "Ativar bolsão (represamento fora do horário)",
+              id: "checkRepresamento",
+              input_data: { action: "change->distribution-rule#toggleRepresamento" }) %>
+
+        <div class="section-toggle-container<%= ' tw-hidden' unless f.object.represamento_active? %>" data-distribution-rule-target="represamentoSection">
+          <table class="ax-table distribution-rule-schedule">
+            <thead>
+              <tr><th>Dia</th><th class="ax-num">Ativo</th><th>Início</th><th>Fim</th></tr>
+            </thead>
+            <tbody>
+              <% day_labels = { "mon" => "Segunda", "tue" => "Terça", "wed" => "Quarta", "thu" => "Quinta", "fri" => "Sexta", "sat" => "Sábado", "sun" => "Domingo" } %>
+              <% %w[mon tue wed thu fri sat sun].each do |day| %>
+                <% config = f.object.represamento_schedule[day] || {} %>
+                <tr>
+                  <td class="ax-strong"><%= day_labels[day] %></td>
+                  <td class="ax-num">
+                    <%= hidden_field_tag "distribution_rule[represamento_schedule][#{day}][active]", "false" %>
+                    <%= check_box_tag "distribution_rule[represamento_schedule][#{day}][active]", "true", config["active"] == "true" %>
+                  </td>
+                  <td><%= time_field_tag "distribution_rule[represamento_schedule][#{day}][start]", config["start"] || "09:00", class: "ax-control ax-control--sm" %></td>
+                  <td><%= time_field_tag "distribution_rule[represamento_schedule][#{day}][end]", config["end"] || "18:00", class: "ax-control ax-control--sm" %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <%= ax_toggle_chip(f, :pocket_active,
+              label: "Ativar tempo limite (Pocket)",
+              id: "checkPocket",
+              input_data: { action: "change->distribution-rule#togglePocket" }) %>
+        <div class="section-toggle-container<%= ' tw-hidden' unless f.object.pocket_active? %>" data-distribution-rule-target="pocketSection">
+          <div class="ax-field">
+            <%= ax_input_group(suffix: "minutos") do %>
+              <%= f.number_field :pocket_time, class: "ax-control", placeholder: "30" %>
+            <% end %>
+            <p class="ax-field__hint">Tempo que o corretor tem para aceitar o lead antes de ser repassado.</p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

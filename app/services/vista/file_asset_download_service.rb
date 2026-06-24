@@ -131,7 +131,7 @@ module Vista
     end
 
     def reusable_storage_object?(asset)
-      service.exist?(storage_key_for(asset))
+      service(asset).exist?(storage_key_for(asset))
     end
 
     def attach_reused_asset(asset)
@@ -175,11 +175,13 @@ module Vista
     end
 
     def attach_blob(asset, blob)
-      ActiveStorage::Attachment.find_or_create_by!(
+      attachment = ActiveStorage::Attachment.find_or_create_by!(
         record: asset.habitation,
         name: asset.active_storage_name,
         blob: blob
       )
+      Storage::PublicPropertyPhoto.publish_attachment!(attachment)
+      attachment
     end
 
     def upload_or_reuse_blob(asset, io, content_type)
@@ -194,7 +196,7 @@ module Vista
         content_type: content_type,
         identify: false,
         metadata: storage_metadata_for(asset),
-        service_name: service_name
+        service_name: service_name(asset)
       )
     rescue ActiveRecord::RecordNotUnique
       sync_existing_blob(asset, ActiveStorage::Blob.find_by!(key: key), io, content_type)
@@ -205,10 +207,10 @@ module Vista
       checksum = checksum_for(body)
       byte_size = body.bytesize
 
-      unless service.exist?(blob.key)
+      unless service(asset).exist?(blob.key)
         upload_io = StringIO.new(body)
         upload_io.set_encoding(Encoding::BINARY)
-        service.upload(blob.key, upload_io, checksum: checksum)
+        service(asset).upload(blob.key, upload_io, checksum: checksum)
       end
 
       blob.update!(
@@ -217,7 +219,7 @@ module Vista
         checksum: checksum,
         content_type: content_type,
         metadata: storage_metadata_for(asset),
-        service_name: service_name
+        service_name: service_name(asset)
       )
 
       blob
@@ -234,7 +236,7 @@ module Vista
           checksum: checksum,
           content_type: asset.storage_content_type || content_type_for(asset),
           metadata: storage_metadata_for(asset),
-          service_name: asset.storage_service_name || service_name
+          service_name: asset.storage_service_name || service_name(asset)
         )
       end
     end
@@ -242,7 +244,7 @@ module Vista
     def reusable_object_metadata(asset)
       return [asset.storage_checksum, asset.storage_byte_size] if asset.storage_checksum.present? && asset.storage_byte_size.present?
 
-      body = service.download(storage_key_for(asset))
+      body = service(asset).download(storage_key_for(asset))
       [checksum_for(body), body.bytesize]
     end
 
@@ -295,12 +297,12 @@ module Vista
       }
     end
 
-    def service
-      ActiveStorage::Blob.service
+    def service(asset)
+      Storage::ActiveStorageRegistry.fetch!(service_name(asset))
     end
 
-    def service_name
-      ActiveStorage::Blob.service.name
+    def service_name(asset)
+      Storage::Routing.service_name_for_vista_asset(asset).to_sym
     end
 
     def content_type_for(asset, io = nil)

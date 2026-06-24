@@ -25,6 +25,8 @@ module Leads
           distribution_rule_id: rule.id
         )
         @lead.activities.create(kind: "shark_tank_ready", metadata: { rule_id: rule.id, rule_name: rule.name })
+        # Notifica TODOS os corretores da regra; o 1º que aceitar vira dono.
+        Leads::NotificationDispatcher.notify_shark_tank(@lead.reload, rule)
         return rule
       end
 
@@ -34,29 +36,19 @@ module Leads
         return nil
       end
 
+      # Fidelização: pessoa já atendida volta para o mesmo corretor (config global
+      # em LeadSetting). Só quando elegível; senão segue a distribuição normal.
+      sticky_user = Leads::StickyAssignment.corretor_for(@lead, rule, candidates: candidates)
+      if sticky_user
+        finalize_assignment(rule, admin_user_id: sticky_user.id, admin_user_name: sticky_user.name, sticky: true)
+        return rule
+      end
+
       agent = rule.next_available_agent(candidates)
       return nil unless agent
 
-      @lead.update(admin_user_id: agent.admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
-      @lead.activities.create(kind: "distributed", metadata: {
-        rule_id: rule.id,
-        rule_name: rule.name,
-        admin_user_id: agent.admin_user_id,
-        admin_user_name: agent.admin_user&.name
-      })
-
-      if rule.pocket_active? && rule.pocket_time.to_i > 0
-        Leads::PocketExpirationJob.set(wait: rule.pocket_time.to_i.minutes).perform_later(@lead.id)
-      end
-
+      finalize_assignment(rule, admin_user_id: agent.admin_user_id, admin_user_name: agent.admin_user&.name)
       rule.rotate_queue!(agent.admin_user_id)
-
-      # Dispara notificações conforme as flags da regra (push/whatsapp/email/webhook)
-      begin
-        Leads::NotificationDispatcher.deliver(@lead.reload)
-      rescue => e
-        Rails.logger.warn("[DistributorService] notificação falhou pro lead #{@lead.id}: #{e.message}")
-      end
 
       rule
     rescue => e
@@ -65,6 +57,32 @@ module Leads
     end
 
     private
+
+    # Atribui o lead ao corretor, registra a atividade, agenda o pocket e dispara
+    # as notificações. Reutilizado pela fidelização e pela distribuição normal.
+    def finalize_assignment(rule, admin_user_id:, admin_user_name:, sticky: false)
+      @lead.update(admin_user_id: admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
+
+      metadata = {
+        rule_id: rule.id,
+        rule_name: rule.name,
+        admin_user_id: admin_user_id,
+        admin_user_name: admin_user_name
+      }
+      metadata[:sticky] = true if sticky
+      @lead.activities.create(kind: "distributed", metadata: metadata)
+
+      if rule.pocket_active? && rule.pocket_time.to_i > 0
+        Leads::PocketExpirationJob.set(wait: rule.pocket_time.to_i.minutes).perform_later(@lead.id)
+      end
+
+      # Dispara notificações conforme as flags da regra (push/whatsapp/email/webhook)
+      begin
+        Leads::NotificationDispatcher.deliver(@lead.reload, sticky: sticky)
+      rescue => e
+        Rails.logger.warn("[DistributorService] notificação falhou pro lead #{@lead.id}: #{e.message}")
+      end
+    end
 
     def dammed_no_eligible_checkin(rule)
       @lead.update(admin_user_id: nil, status: :represado, distribution_rule_id: rule.id)
@@ -91,6 +109,8 @@ module Leads
     end
 
     def matches_filters?(rule)
+      return false unless matches_webhook_tags?(rule)
+
       if rule.min_price.present?
          lead_value = @lead.respond_to?(:value) ? @lead.value.to_f : 0.0
          return false if lead_value < rule.min_price
@@ -111,6 +131,36 @@ module Leads
         end
       end
       true
+    end
+
+    def matches_webhook_tags?(rule)
+      return true unless rule.source_webhook? && @lead.origin.to_s.downcase == "webhook"
+
+      expected_tags = Array(rule.webhook_tags).map { |tag| normalize_tag(tag) }.reject(&:blank?)
+      return true if expected_tags.blank?
+
+      lead_tags = webhook_tags_for_lead
+      (expected_tags & lead_tags).any?
+    end
+
+    def webhook_tags_for_lead
+      info = @lead.other_information.is_a?(Hash) ? @lead.other_information : {}
+      values = [
+        info["webhook_tags"],
+        info["keywords"],
+        info["tags"]
+      ]
+
+      values
+        .flat_map { |value| Array.wrap(value) }
+        .flat_map { |value| value.to_s.split(",") }
+        .map { |tag| normalize_tag(tag) }
+        .reject(&:blank?)
+        .uniq
+    end
+
+    def normalize_tag(tag)
+      tag.to_s.strip.downcase
     end
 
     def get_lead_value(key)

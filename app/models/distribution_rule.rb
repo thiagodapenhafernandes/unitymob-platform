@@ -64,6 +64,14 @@ class DistributionRule < ApplicationRecord
     distribution_rule_agents.where(admin_user_id: eligible_user_ids)
   end
 
+  # URLs de webhook externo desta regra (config no form, multi-valor).
+  # Mantém retrocompat com o campo legado de URL única (webhook_url).
+  def notify_webhook_url_list
+    urls = Array(notify_webhook_urls).map { |u| u.to_s.strip }
+    urls << webhook_url.to_s.strip if webhook_url.present?
+    urls.reject(&:blank?).uniq
+  end
+
   def rotate_queue!(just_served_admin_user_id)
     return unless rotary?
 
@@ -88,6 +96,7 @@ class DistributionRule < ApplicationRecord
   def set_defaults
     self.custom_filters ||= []
     self.meta_forms ||= []
+    self.notify_webhook_urls ||= []
     ensure_full_schedule
   end
 

@@ -7,10 +7,12 @@ import TomSelect from "tom-select"
 export default class extends Controller {
   static targets = ["agentSelect", "list", "template"]
   static values = {
-    structure: Object
+    structure: Object,
+    allAgents: Array
   }
 
   connect() {
+    this.initialAgents = this.readInitialAgents()
     this.initAgentSelect()
   }
 
@@ -19,6 +21,19 @@ export default class extends Controller {
       try { this.agentSelectInstance.destroy() } catch (e) {}
     }
     this.agentSelectInstance = null
+  }
+
+  readInitialAgents() {
+    if (this.hasAllAgentsValue && Array.isArray(this.allAgentsValue) && this.allAgentsValue.length > 0) {
+      return this.allAgentsValue.map((agent) => ({ id: String(agent.id), name: agent.name }))
+    }
+
+    if (!this.hasAgentSelectTarget) return []
+
+    return Array.from(this.agentSelectTarget.options).map((option) => ({
+      id: String(option.value),
+      name: option.text
+    })).filter((agent) => agent.id)
   }
 
   initAgentSelect() {
@@ -84,13 +99,13 @@ export default class extends Controller {
     const idInput = newRow.querySelector('input[name*="[admin_user_id]"]')
     if (idInput) idInput.value = id
 
-    const nameEl = newRow.querySelector('h6')
+    const nameEl = newRow.querySelector('.distribution-rule-agent__main strong')
     if (nameEl) nameEl.textContent = agentName
 
-    const subtitle = newRow.querySelector('.text-muted.extra-small')
+    const subtitle = newRow.querySelector('.distribution-rule-agent__main span')
     if (subtitle) subtitle.textContent = ''
 
-    const avatar = newRow.querySelector('.rounded-circle span')
+    const avatar = newRow.querySelector('.distribution-rule-agent__avatar')
     if (avatar) avatar.textContent = agentName.substring(0, 2).toUpperCase()
 
     this.updateVisibility(newRow)
@@ -176,13 +191,13 @@ export default class extends Controller {
     const currentlySelected = this.agentSelectInstance.getValue()
     this.agentSelectInstance.clearOptions()
     team.agents.forEach(agent => {
-      this.agentSelectInstance.addOption({ value: agent.id, text: agent.name })
+      this.agentSelectInstance.addOption({ value: String(agent.id), text: agent.name })
     })
     // Preserva chips já selecionados mesmo que não estejam na nova lista
     Array.from(currentlySelected).forEach((id) => {
       if (!this.agentSelectInstance.options[id]) {
         const row = this.findInputForId(id)?.closest(".nested-form-wrapper")
-        const name = row?.querySelector("h6")?.textContent || "Corretor"
+        const name = row?.querySelector(".distribution-rule-agent__main strong")?.textContent || "Corretor"
         this.agentSelectInstance.addOption({ value: id, text: name })
       }
     })
@@ -194,19 +209,14 @@ export default class extends Controller {
     const currentlySelected = this.agentSelectInstance.getValue()
     this.agentSelectInstance.clearOptions()
 
-    const seen = new Set()
-    Object.values(this.structureValue).forEach(team => {
-      team.agents.forEach(agent => {
-        if (!seen.has(String(agent.id))) {
-          seen.add(String(agent.id))
-          this.agentSelectInstance.addOption({ value: agent.id, text: agent.name })
-        }
-      })
+    this.initialAgents.forEach(agent => {
+      this.agentSelectInstance.addOption({ value: String(agent.id), text: agent.name })
     })
+
     Array.from(currentlySelected).forEach((id) => {
       if (!this.agentSelectInstance.options[id]) {
         const row = this.findInputForId(id)?.closest(".nested-form-wrapper")
-        const name = row?.querySelector("h6")?.textContent || "Corretor"
+        const name = row?.querySelector(".distribution-rule-agent__main strong")?.textContent || "Corretor"
         this.agentSelectInstance.addOption({ value: id, text: name })
       }
     })

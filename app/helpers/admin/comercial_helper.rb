@@ -3,7 +3,12 @@ module Admin::ComercialHelper
   # Mapeia um LeadActivity em ícone + cor + texto para o feed cronológico.
   TIMELINE_MAP = {
     "created"            => { icon: "bi-stars",            color: "blue",  label: "Lead criado" },
+    "received"           => { icon: "bi-inbox",            color: "gray",  label: "Lead recebido" },
+    "assigned_directly"  => { icon: "bi-person-check",     color: "blue",  label: "Atribuído diretamente" },
     "distributed"        => { icon: "bi-diagram-3",        color: "blue",  label: "Distribuído" },
+    "dammed"             => { icon: "bi-pause-circle",     color: "amber", label: "Represado" },
+    "shark_tank_ready"   => { icon: "bi-lightning",        color: "amber", label: "Liberado para Shark Tank" },
+    "pocket_expired"     => { icon: "bi-hourglass-bottom", color: "red",   label: "Tempo de posse expirou" },
     "accepted"           => { icon: "bi-check2-circle",    color: "green", label: "Aceito pelo corretor" },
     "rejected"           => { icon: "bi-x-circle",         color: "red",   label: "Recusado" },
     "status_change"      => { icon: "bi-arrow-left-right", color: "gray",  label: "Etapa alterada" },
@@ -20,7 +25,9 @@ module Admin::ComercialHelper
     "proposal_recusada"  => { icon: "bi-hand-thumbs-down", color: "red",   label: "Proposta recusada" },
     "whatsapp_in"        => { icon: "bi-whatsapp",         color: "green", label: "Mensagem recebida" },
     "whatsapp_out"       => { icon: "bi-whatsapp",         color: "blue",  label: "Mensagem enviada" },
-    "automation"         => { icon: "bi-lightning-charge", color: "amber", label: "Automação" }
+    "automation"         => { icon: "bi-lightning-charge", color: "amber", label: "Automação" },
+    "automation_event"   => { icon: "bi-lightning-charge", color: "amber", label: "Evento observado" },
+    "interest_reprocessed" => { icon: "bi-stars",          color: "blue",  label: "Interesse reprocessado" }
   }.freeze
 
   def timeline_entry(activity)
@@ -35,6 +42,8 @@ module Admin::ComercialHelper
     when "note"        then meta["body"].presence
     when "task_created", "task_completed", "appointment_created", "appointment_done" then meta["title"].presence
     when "status_change" then [meta["from"], meta["to"]].compact.join(" → ").presence
+    when "automation_event" then meta["label"].presence
+    when "interest_reprocessed" then "#{meta['matches_count'].to_i} imóvel(is) compatível(is), #{meta['confidence'].to_i}% de confiança"
     else nil
     end
   end
@@ -83,5 +92,30 @@ module Admin::ComercialHelper
 
   def brl(value)
     number_to_currency(value.to_f, unit: "R$ ", separator: ",", delimiter: ".", format: "%u%n")
+  end
+
+  def interest_criteria_summary(profile)
+    criteria = profile.with_indifferent_access[:criteria].to_h.with_indifferent_access
+    items = []
+    items << "Cidade: #{criteria[:cities].first(2).join(', ')}" if criteria[:cities].present?
+    items << "Bairro: #{criteria[:neighborhoods].first(2).join(', ')}" if criteria[:neighborhoods].present?
+    items << "Tipo: #{criteria[:categories].first(2).join(', ')}" if criteria[:categories].present?
+    items << "#{criteria[:bedrooms]} dormitório(s)" if criteria[:bedrooms].present?
+    if criteria[:min_price_cents].present? || criteria[:max_price_cents].present?
+      min = criteria[:min_price_cents].to_i.positive? ? brl(criteria[:min_price_cents].to_i / 100.0) : nil
+      max = criteria[:max_price_cents].to_i.positive? ? brl(criteria[:max_price_cents].to_i / 100.0) : nil
+      items << "Faixa: #{[min, max].compact.join(' a ')}"
+    end
+    items.presence || ["Sem critérios suficientes"]
+  end
+
+  def interest_event_label(name)
+    {
+      "page_view" => "Página visitada",
+      "property_view" => "Imóvel visualizado",
+      "property_whatsapp_click" => "Clique de WhatsApp",
+      "property_share" => "Compartilhamento",
+      "property_search" => "Busca de imóveis"
+    }[name.to_s] || name.to_s.humanize
   end
 end

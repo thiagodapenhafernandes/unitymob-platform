@@ -1,37 +1,4 @@
 module ApplicationHelper
-  INTERNAL_ACTIVE_STORAGE_PATH = "/rails/active_storage/".freeze
-  ACTIVE_STORAGE_REDIRECT_SEGMENTS = {
-    "/rails/active_storage/blobs/redirect/" => "/rails/active_storage/blobs/proxy/",
-    "/rails/active_storage/representations/redirect/" => "/rails/active_storage/representations/proxy/"
-  }.freeze
-
-  def optimized_image_source(source, resize_to_limit: nil, resize_to_fill: nil, saver: { quality: 82 }, force_variant: false)
-    return if source.blank?
-
-    image = if source.is_a?(Hash)
-      source["attachment"] || source[:attachment] ||
-        source["url_pequena"] || source[:url_pequena] ||
-        source["url_small"] || source[:url_small] ||
-        source["thumbnail_url"] || source[:thumbnail_url] ||
-        source["url"] || source[:url]
-    else
-      source
-    end
-    return image unless image.respond_to?(:variant)
-    return image unless active_storage_variants_enabled?(force: force_variant)
-
-    transformations = {}
-    transformations[:resize_to_limit] = resize_to_limit if resize_to_limit.present?
-    transformations[:resize_to_fill] = resize_to_fill if resize_to_fill.present?
-    transformations[:saver] = saver if saver.present?
-
-    transformations.present? ? image.variant(transformations) : image
-  end
-
-  def active_storage_variants_enabled?(force: false)
-    force || ENV["ACTIVE_STORAGE_VARIANTS_ENABLED"] == "true"
-  end
-
   def public_price_range_options(transaction_type = nil)
     if transaction_type.to_s.downcase.in?(%w[aluguel locacao locação alugar])
       [
@@ -56,16 +23,15 @@ module ApplicationHelper
     end
   end
 
-  def public_image_url(source, resize_to_limit: nil, resize_to_fill: nil, saver: { quality: 82 }, force_variant: false)
-    return if source.blank?
-
-    image = if resize_to_limit.present? || resize_to_fill.present?
-              optimized_image_source(source, resize_to_limit: resize_to_limit, resize_to_fill: resize_to_fill, saver: saver, force_variant: force_variant)
-            else
-              image_source_from(source)
-            end
-
-    active_storage_public_path(image) || normalize_public_image_url(image)
+  def public_image_url(source, resize_to_limit: nil, resize_to_fill: nil, saver: { quality: 82 }, force_variant: false, proxy: true)
+    Storage::PublicCdnImageUrl.resolve(
+      source,
+      resize_to_limit:,
+      resize_to_fill:,
+      saver:,
+      force_variant:,
+      proxy:
+    )
   end
 
   def json_ld_tag(payload)
@@ -180,70 +146,6 @@ module ApplicationHelper
   end
 
   private
-
-  def image_source_from(source)
-    if source.respond_to?(:attached?)
-      return source.attachment if source.attached?
-      return
-    end
-
-    return source unless source.is_a?(Hash)
-
-    source["attachment"] || source[:attachment] ||
-      source["url"] || source[:url] ||
-      source["url_pequena"] || source[:url_pequena] ||
-      source["url_small"] || source[:url_small] ||
-      source["thumbnail_url"] || source[:thumbnail_url]
-  end
-
-  def active_storage_public_path(image)
-    return if image.blank?
-
-    if defined?(ActiveStorage::VariantWithRecord) && image.is_a?(ActiveStorage::VariantWithRecord)
-      proxy_active_storage_redirect_path(active_storage_route(:rails_representation_path, image, only_path: true))
-    elsif defined?(ActiveStorage::Variant) && image.is_a?(ActiveStorage::Variant)
-      proxy_active_storage_redirect_path(active_storage_route(:rails_representation_path, image, only_path: true))
-    elsif image.respond_to?(:attached?)
-      return unless image.attached?
-
-      active_storage_route(:rails_storage_proxy_path, image.attachment, only_path: true)
-    elsif defined?(ActiveStorage::Attachment) && image.is_a?(ActiveStorage::Attachment)
-      active_storage_route(:rails_storage_proxy_path, image, only_path: true)
-    elsif defined?(ActiveStorage::Blob) && image.is_a?(ActiveStorage::Blob)
-      active_storage_route(:rails_storage_proxy_path, image, only_path: true)
-    end
-  rescue StandardError
-    nil
-  end
-
-  def active_storage_route(name, *args, **options)
-    return public_send(name, *args, **options) if respond_to?(name)
-
-    Rails.application.routes.url_helpers.public_send(name, *args, **options)
-  end
-
-  def normalize_public_image_url(image)
-    value = image.to_s
-    return value if value.blank?
-    return if value.start_with?("#<")
-    return proxy_active_storage_redirect_path(value) if value.start_with?(INTERNAL_ACTIVE_STORAGE_PATH)
-    return value if value.start_with?("/", "data:", "blob:")
-
-    uri = URI.parse(value)
-    return value unless uri.path.start_with?(INTERNAL_ACTIVE_STORAGE_PATH)
-
-    proxy_active_storage_redirect_path([uri.path, uri.query.presence && "?#{uri.query}"].compact.join)
-  rescue URI::InvalidURIError
-    value
-  end
-
-  def proxy_active_storage_redirect_path(value)
-    ACTIVE_STORAGE_REDIRECT_SEGMENTS.each do |redirect_segment, proxy_segment|
-      return value.sub(redirect_segment, proxy_segment) if value.include?(redirect_segment)
-    end
-
-    value
-  end
 
   def absolute_url_for_asset(asset_name)
     asset_url(asset_name)

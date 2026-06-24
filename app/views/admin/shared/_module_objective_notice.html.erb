@@ -1,0 +1,15 @@
+<%
+  icon = local_assigns.fetch(:icon, "info-circle")
+  eyebrow = local_assigns.fetch(:eyebrow, "Objetivo do modulo")
+  title = local_assigns.fetch(:title, "Qual e o objetivo e para que serve")
+  description = local_assigns.fetch(:description)
+%>
+
+<div class="ax-module-objective">
+  <span class="ax-module-objective__icon"><i class="bi bi-<%= icon %>"></i></span>
+  <span class="ax-module-objective__copy">
+    <small><%= eyebrow %></small>
+    <strong><%= title %></strong>
+    <span><%= description %></span>
+  </span>
+</div>

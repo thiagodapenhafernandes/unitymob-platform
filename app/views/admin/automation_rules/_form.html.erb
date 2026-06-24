@@ -7,6 +7,11 @@
     </div>
   <% end %>
 
+  <%= render "admin/shared/module_objective_notice",
+        icon: "intersect",
+        eyebrow: "Automação horizontal",
+        description: "Configure pequenas intervenções de acompanhamento. A distribuição primária do lead, filas, responsáveis, aceite, represamento e horários continuam sendo configurados apenas em Distribuição de Leads." %>
+
   <%# Identificação + QUANDO %>
   <div class="ax-card tw-mb-4">
     <div class="ax-card__body tw-grid tw-gap-3">
@@ -53,8 +58,8 @@
   <div class="ax-card tw-mb-4">
     <div class="ax-card__body">
       <div class="tw-flex tw-items-center tw-justify-between tw-mb-3">
-        <span class="ax-badge ax-badge--green">ENTÃO faça</span>
-        <button type="button" class="ax-btn ax-btn--sm" data-action="automation-builder#addRow"><i class="bi bi-plus-lg ax-ico"></i><span>Adicionar ação</span></button>
+          <span class="ax-badge ax-badge--green">INTERVENÇÃO</span>
+        <button type="button" class="ax-btn ax-btn--sm" data-action="automation-builder#addRow"><i class="bi bi-plus-lg ax-ico"></i><span>Adicionar intervenção</span></button>
       </div>
 
       <div data-automation-builder-target="rows">
@@ -65,12 +70,43 @@
 
       <template data-automation-builder-target="template"><%= render "action_row", action: {} %></template>
       <%= hidden_field_tag "automation_rule[actions_json]", rule.actions.to_json, data: { automation_builder_target: "json" } %>
-      <p class="ax-page-subtitle tw-mt-2"><i class="bi bi-info-circle"></i> Use <strong>Esperar (nutrição)</strong> entre ações para criar sequências ao longo de dias.</p>
+      <p class="ax-page-subtitle tw-mt-2"><i class="bi bi-info-circle"></i> Use <strong>Esperar (nutrição)</strong> entre intervenções para acompanhar o lead ao longo de dias.</p>
     </div>
   </div>
 
+  <% if @simulation_result %>
+    <div class="ax-card tw-mb-4">
+      <div class="ax-card__body">
+        <div class="tw-flex tw-items-start tw-gap-3">
+          <i class="bi bi-search" style="color:var(--admin-primary)"></i>
+          <div>
+            <h2 class="ax-page-title tw-text-base tw-mb-1"><%= @simulation_result.title %></h2>
+            <p class="ax-page-subtitle tw-mb-2"><%= @simulation_result.summary %></p>
+            <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mb-2">
+              <% @simulation_result.actions.each do |label| %>
+                <span class="ax-badge ax-badge--green"><%= label %></span>
+              <% end %>
+            </div>
+            <% if @simulation_result.sample_leads.any? %>
+              <p class="ax-page-subtitle tw-mb-2"><strong>Amostra:</strong> <%= @simulation_result.sample_leads.map(&:display_name).to_sentence %></p>
+            <% end %>
+            <% @simulation_result.warnings.each do |warning| %>
+              <%= ax_inline_notice(tone: :warning, icon: "info-circle", class_name: "tw-mb-1") { warning } %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
   <div class="tw-flex tw-justify-end tw-gap-2">
     <%= link_to "Cancelar", admin_automation_rules_path, class: "ax-btn ax-btn--sm" %>
+    <%= button_tag type: "submit",
+          formaction: (rule.persisted? ? simulate_admin_automation_rule_path(rule) : simulate_admin_automation_rules_path),
+          formmethod: :post,
+          class: "ax-btn ax-btn--sm" do %>
+      <i class="bi bi-search ax-ico"></i><span>Simular</span>
+    <% end %>
     <%= f.submit "Salvar regra", class: "ax-btn ax-btn--sm ax-btn--primary" %>
   </div>
 <% end %>

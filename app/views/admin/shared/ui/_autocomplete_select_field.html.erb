@@ -1,0 +1,43 @@
+<%
+  html_options = (html_options || {}).deep_dup
+  existing_data = (html_options[:data] || html_options["data"] || {}).deep_dup
+  html_options.delete(:data)
+  html_options.delete("data")
+  html_options[:multiple] = true if multiple
+  html_options[:class] = [
+    "ax-autocomplete-select",
+    ("ax-autocomplete-select--multi" if multiple),
+    html_options[:class]
+  ].compact_blank.join(" ")
+
+  existing_controller = existing_data.delete(:controller) || existing_data.delete("controller")
+  controllers = existing_controller.to_s.split(/\s+/)
+  controllers << "tom-select"
+
+  options_payload = (tom_select_options || {}).deep_dup
+  options_payload[:placeholder] = placeholder if placeholder.present? && !options_payload.key?(:placeholder) && !options_payload.key?("placeholder")
+
+  tom_select_data = existing_data.merge(controller: controllers.reject(&:blank?).uniq.join(" "))
+  tom_select_data[:tom_select_create_value] = create unless create.nil?
+  tom_select_data[:tom_select_tags_value] = tags if tags
+  tom_select_data[:tom_select_options_value] = options_payload if options_payload.present?
+  tom_select_data[:tom_select_option_descriptions_value] = option_descriptions if local_assigns[:option_descriptions].present?
+  tom_select_data[:tom_select_url_value] = url if url.present?
+  tom_select_data[:tom_select_search_param_value] = search_param if search_param.present?
+  tom_select_data[:tom_select_min_length_value] = min_length if min_length.present?
+
+  html_options[:data] = tom_select_data
+%>
+
+<%= render(
+      "admin/shared/ui/select_field",
+      form:,
+      method:,
+      label:,
+      choices:,
+      select_options:,
+      html_options:,
+      tooltip:,
+      class_name:,
+      clearable:
+    ) %>

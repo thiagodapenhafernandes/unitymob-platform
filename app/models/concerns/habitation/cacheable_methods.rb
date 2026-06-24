@@ -59,17 +59,14 @@ module Habitation::CacheableMethods
   # Retorna URL da imagem principal com cache
   def primary_image_url
     Rails.cache.fetch([cache_key, 'primary_image_url'], expires_in: CACHE_EXPIRATION) do
-      img = primary_image
-      img.is_a?(Hash) ? img['url'] || img[:url] : img
+      Storage::PublicCdnImageUrl.resolve(primary_image)
     end
   end
   
   # Retorna todas as URLs de imagens com cache
   def image_urls
     Rails.cache.fetch([cache_key, 'image_urls'], expires_in: CACHE_EXPIRATION) do
-      all_images.map do |img|
-        img.is_a?(Hash) ? (img['url'] || img[:url]) : img
-      end.compact
+      all_images.filter_map { |img| Storage::PublicCdnImageUrl.resolve(img) }
     end
   end
   

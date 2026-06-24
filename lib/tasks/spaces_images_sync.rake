@@ -5,6 +5,7 @@ require "set"
 require "openssl"
 require "net/http"
 require "stringio"
+require "csv"
 
 module SpacesImageSync
   module_function
@@ -88,18 +89,18 @@ module SpacesImageSync
 
       begin
         io = SpacesImageSync.download_image(url)
-        if SpacesImageSync.skip_analysis?
-          # Cria blob já marcado como analyzed=true para evitar AnalyzeJob
-          # (que tenta baixar o blob de volta e falha SSL/CRL no servidor atual).
-          blob = ActiveStorage::Blob.create_and_upload!(
-            io: io,
-            filename: filename,
-            metadata: { "analyzed" => true, "identified" => true }
-          )
-          habitation.photos.attach(blob)
-        else
-          habitation.photos.attach(io: io, filename: filename)
-        end
+        existing_attachment_ids = habitation.photos.attachments.ids
+        metadata = SpacesImageSync.skip_analysis? ? { "analyzed" => true, "identified" => true } : { "identified" => true }
+        service_name = StorageIntegrationSetting.current.photo_service_name
+        Storage::ActiveStorageRegistry.fetch!(service_name) unless service_name == :local
+        blob = ActiveStorage::Blob.create_and_upload!(
+          io: io,
+          filename: filename,
+          metadata: metadata,
+          service_name: service_name
+        )
+        habitation.photos.attach(blob)
+        SpacesImageSync.publish_new_photo_attachments(habitation, existing_attachment_ids)
         synced += 1
         existing_filenames << filename
       rescue => e
@@ -110,6 +111,12 @@ module SpacesImageSync
     end
 
     { synced: synced, skipped: skipped, failed: failed, habitation_failed: habitation_failed }
+  end
+
+  def publish_new_photo_attachments(habitation, existing_attachment_ids)
+    habitation.photos.attachments.includes(:blob).where.not(id: existing_attachment_ids).find_each do |attachment|
+      Storage::PublicPropertyPhoto.publish_attachment!(attachment)
+    end
   end
 
   # Baixa uma imagem HTTP(S) com VERIFY_PEER mas sem checagem de CRL.
@@ -150,6 +157,39 @@ module SpacesImageSync
         raise "Download falhou (#{response.code} #{response.message}) para #{url}"
       end
     end
+  end
+
+  def repair_source_url_for(blob, habitation = nil)
+    metadata_source_url = blob.metadata.to_h["vista_source_url"].presence
+    return metadata_source_url if metadata_source_url.present?
+    return unless habitation&.pictures.is_a?(Array)
+
+    filename = blob.filename.to_s
+    habitation.pictures.find do |picture|
+      url = extract_picture_url(picture)
+      url.present? && picture_filename(url, nil).to_s == filename
+    end.then { |picture| extract_picture_url(picture) if picture }
+  end
+
+  def repair_missing_blob(blob, source_url)
+    io = download_image(source_url, read_timeout: 30, open_timeout: 10)
+    upload_options = { content_type: blob.content_type }
+    upload_options[:checksum] = blob.checksum if blob.checksum.present?
+
+    blob.service.upload(blob.key, io, **upload_options.compact)
+  end
+
+  def source_label(url)
+    uri = URI.parse(url.to_s)
+    [uri.host, File.basename(uri.path.to_s)].compact_blank.join("/")
+  rescue URI::InvalidURIError
+    "invalid-url"
+  end
+
+  def missing_storage_object_error?(error)
+    error.class.name.end_with?("NoSuchKey", "NotFound") ||
+      error.message.to_s.include?("NoSuchKey") ||
+      error.message.to_s.include?("NotFound")
   end
 end
 
@@ -267,5 +307,164 @@ namespace :images do
     end
 
     puts "[images:retry_failed_habitations_to_spaces] synced=#{synced} skipped=#{skipped} failed=#{failed}"
+  end
+
+  desc "Restaura objetos ActiveStorage ausentes no Spaces usando a origem de migração salva no metadata"
+  task repair_missing_habitation_photo_blobs: :environment do
+    apply = SpacesImageSync.truthy_env?(ENV.fetch("APPLY", "false"))
+    limit = ENV.fetch("LIMIT", "100").to_i
+    limit = 100 if limit <= 0
+    codigo = ENV["CODIGO"].presence
+    blob_id = ENV["BLOB_ID"].presence
+
+    attachments = ActiveStorage::Attachment
+      .includes(:blob)
+      .where(record_type: "Habitation", name: "photos")
+      .order(:id)
+
+    attachments = attachments.joins(:blob).where(active_storage_blobs: { id: blob_id }) if blob_id
+    attachments = attachments.joins("INNER JOIN habitations ON habitations.id = active_storage_attachments.record_id").where(habitations: { codigo: codigo }) if codigo
+
+    scanned = 0
+    missing = 0
+    repaired = 0
+    skipped_without_source = 0
+    failed = 0
+
+    puts "[images:repair_missing_habitation_photo_blobs] service=#{Rails.application.config.active_storage.service} apply=#{apply} limit=#{limit} codigo=#{codigo || '-'} blob_id=#{blob_id || '-'}"
+
+    attachments.find_each(batch_size: 50) do |attachment|
+      break if scanned >= limit
+
+      blob = attachment.blob
+      next unless blob
+
+      scanned += 1
+      next if blob.service.exist?(blob.key)
+
+      missing += 1
+      source_url = SpacesImageSync.repair_source_url_for(blob)
+      source_url ||= SpacesImageSync.repair_source_url_for(blob, Habitation.find_by(id: attachment.record_id))
+      source_label = SpacesImageSync.source_label(source_url)
+
+      if source_url.blank?
+        skipped_without_source += 1
+        puts "[MISS sem_origem] habitation_id=#{attachment.record_id} blob_id=#{blob.id} filename=#{blob.filename}"
+        next
+      end
+
+      unless apply
+        puts "[DRY_RUN restauraria] habitation_id=#{attachment.record_id} blob_id=#{blob.id} filename=#{blob.filename} source=#{source_label}"
+        next
+      end
+
+      begin
+        SpacesImageSync.repair_missing_blob(blob, source_url)
+        Storage::PublicPropertyPhoto.publish_blob!(blob)
+        repaired += 1
+        puts "[OK restaurado] habitation_id=#{attachment.record_id} blob_id=#{blob.id} filename=#{blob.filename} source=#{source_label}"
+      rescue StandardError => e
+        failed += 1
+        puts "[ERRO] habitation_id=#{attachment.record_id} blob_id=#{blob.id} filename=#{blob.filename} source=#{source_label} error=#{e.class}: #{e.message}"
+      end
+    end
+
+    puts "[images:repair_missing_habitation_photo_blobs] scanned=#{scanned} missing=#{missing} repaired=#{repaired} skipped_without_source=#{skipped_without_source} failed=#{failed}"
+  end
+
+  desc "Publica ACL public-read para fotos de imóveis já anexadas, mantendo documentos privados"
+  task publish_public_habitation_photos: :environment do
+    apply = SpacesImageSync.truthy_env?(ENV.fetch("APPLY", "false"))
+    limit = ENV.fetch("LIMIT", "500").to_i
+    limit = nil if limit <= 0
+    codigo = ENV["CODIGO"].presence
+    start_after_blob_id = ENV.fetch("START_AFTER_BLOB_ID", "0").to_i
+    missing_file = ENV.fetch("MISSING_FILE", Rails.root.join("tmp/missing_habitation_photo_blobs.csv").to_s)
+    log_missing = SpacesImageSync.truthy_env?(ENV.fetch("LOG_MISSING", "false"))
+    progress_every = ENV.fetch("PROGRESS_EVERY", "500").to_i
+    progress_every = 500 if progress_every <= 0
+    cursor_file = ENV.fetch("CURSOR_FILE", Rails.root.join("tmp/publish_public_habitation_photos_cursor.txt").to_s)
+
+    attachments = ActiveStorage::Attachment
+      .includes(:blob)
+      .where(record_type: "Habitation", name: "photos")
+      .order(:id)
+
+    if codigo
+      attachments = attachments
+        .joins("INNER JOIN habitations ON habitations.id = active_storage_attachments.record_id")
+        .where(habitations: { codigo: codigo })
+    end
+
+    blob_ids = attachments.unscope(:order).distinct.pluck(:blob_id)
+    sample_attachment_ids_by_blob_id = attachments.unscope(:order).group(:blob_id).minimum(:id)
+    sample_record_id_by_blob_id = ActiveStorage::Attachment
+      .where(id: sample_attachment_ids_by_blob_id.values)
+      .pluck(:blob_id, :record_id)
+      .to_h
+    blobs = ActiveStorage::Blob.where(id: blob_ids).where("id > ?", start_after_blob_id).order(:id)
+
+    scanned = 0
+    published = 0
+    missing = 0
+    failed = 0
+    last_blob_id = start_after_blob_id
+
+    if apply && !File.exist?(missing_file)
+      FileUtils.mkdir_p(File.dirname(missing_file))
+      File.write(missing_file, "blob_id,habitation_id,filename,key\n")
+    end
+
+    puts "[images:publish_public_habitation_photos] service=#{Rails.application.config.active_storage.service} apply=#{apply} limit=#{limit || 'all'} codigo=#{codigo || '-'} start_after_blob_id=#{start_after_blob_id} distinct_blobs=#{blob_ids.size} log_missing=#{log_missing} progress_every=#{progress_every}"
+
+    emit_progress = lambda do
+      next unless (scanned % progress_every).zero?
+
+      FileUtils.mkdir_p(File.dirname(cursor_file))
+      File.write(cursor_file, last_blob_id.to_s)
+      puts "[images:publish_public_habitation_photos] progress scanned=#{scanned} published=#{published} missing=#{missing} failed=#{failed} last_blob_id=#{last_blob_id}"
+    end
+
+    blobs.find_each(batch_size: 100) do |blob|
+      break if limit && scanned >= limit
+
+      sample_record_id = sample_record_id_by_blob_id[blob.id]
+
+      scanned += 1
+      last_blob_id = blob.id
+
+      unless apply
+        public_url = Storage::PublicPropertyPhoto.public_url_for_blob(blob)
+        puts "[DRY_RUN publicaria] habitation_id=#{sample_record_id || '-'} blob_id=#{blob.id} filename=#{blob.filename} url_host=#{URI.parse(public_url).host rescue '-'}"
+        emit_progress.call
+        next
+      end
+
+      begin
+        if Storage::PublicPropertyPhoto.publish_blob!(blob, raise_errors: true)
+          published += 1
+        else
+          failed += 1
+          puts "[ERRO] habitation_id=#{sample_record_id || '-'} blob_id=#{blob.id} filename=#{blob.filename}"
+        end
+      rescue StandardError => e
+        if SpacesImageSync.missing_storage_object_error?(e)
+          missing += 1
+          File.open(missing_file, "a") { |f| f.puts([blob.id, sample_record_id, blob.filename, blob.key].to_csv) }
+          puts "[MISS] habitation_id=#{sample_record_id || '-'} blob_id=#{blob.id} filename=#{blob.filename}" if log_missing
+        else
+          failed += 1
+          puts "[ERRO] habitation_id=#{sample_record_id || '-'} blob_id=#{blob.id} filename=#{blob.filename} error=#{e.class}: #{e.message}"
+        end
+      end
+
+      emit_progress.call
+    end
+
+    FileUtils.mkdir_p(File.dirname(cursor_file))
+    File.write(cursor_file, last_blob_id.to_s)
+
+    puts "[images:publish_public_habitation_photos] scanned=#{scanned} published=#{published} missing=#{missing} failed=#{failed} last_blob_id=#{last_blob_id}"
+    puts "[images:publish_public_habitation_photos] missing_file=#{missing_file}" if missing.positive?
   end
 end

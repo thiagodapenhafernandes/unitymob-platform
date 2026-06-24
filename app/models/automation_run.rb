@@ -1,6 +1,7 @@
 class AutomationRun < ApplicationRecord
   belongs_to :automation_rule
   belongs_to :lead, optional: true
+  belongs_to :automation_event, optional: true
 
   STATUSES = %w[executed scheduled skipped error].freeze
 

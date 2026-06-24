@@ -190,22 +190,61 @@ module Admin::UiHelper
     )
   end
 
-  def ax_text_field(form:, method:, label:, tooltip: nil, type: :text, class_name: nil, field_class: nil, label_options: {}, **options)
+  def ax_text_field(form:, method:, label:, tooltip: nil, hint: nil, type: :text, class_name: nil, field_class: nil, label_options: {}, clearable: false, **options)
     render(
       "admin/shared/ui/text_field",
       form:,
       method:,
       label:,
       tooltip:,
+      hint:,
       type:,
       class_name:,
       field_class:,
       label_options:,
+      clearable:,
       options:
     )
   end
 
-  def ax_select_field(form:, method:, label:, choices:, select_options: {}, html_options: {}, tooltip: nil, class_name: nil)
+  def ax_color_field(form:, method:, label:, value:, tooltip: nil, hint: nil, token: nil, default_value: nil, swatch_title: nil, class_name: nil, field_class: nil, color_options: {}, text_options: {})
+    render(
+      "admin/shared/ui/color_field",
+      form:,
+      method:,
+      label:,
+      value:,
+      tooltip:,
+      hint:,
+      token:,
+      default_value:,
+      swatch_title:,
+      class_name:,
+      field_class:,
+      color_options:,
+      text_options:
+    )
+  end
+
+  def ax_file_field(form:, method:, label:, tooltip: nil, hint: nil, accept: nil, input_id: nil, button_label: "Escolher arquivo", empty_label: "Nenhum arquivo escolhido", class_name: nil, field_class: nil, **options)
+    render(
+      "admin/shared/ui/file_field",
+      form:,
+      method:,
+      label:,
+      tooltip:,
+      hint:,
+      accept:,
+      input_id:,
+      button_label:,
+      empty_label:,
+      class_name:,
+      field_class:,
+      options:
+    )
+  end
+
+  def ax_select_field(form:, method:, label:, choices:, select_options: {}, html_options: {}, tooltip: nil, class_name: nil, clearable: false)
     render(
       "admin/shared/ui/select_field",
       form:,
@@ -215,7 +254,35 @@ module Admin::UiHelper
       select_options:,
       html_options:,
       tooltip:,
-      class_name:
+      class_name:,
+      clearable:
+    )
+  end
+
+  def ax_autocomplete_select_field(form:, method:, label:, choices:, select_options: {}, html_options: {},
+                                   tooltip: nil, class_name: nil, placeholder: nil, create: false,
+                                   tags: false, multiple: false, url: nil, search_param: nil,
+                                   min_length: nil, tom_select_options: {}, option_descriptions: {}, clearable: false)
+    render(
+      "admin/shared/ui/autocomplete_select_field",
+      form:,
+      method:,
+      label:,
+      choices:,
+      select_options:,
+      html_options:,
+      tooltip:,
+      class_name:,
+      placeholder:,
+      create:,
+      tags:,
+      multiple:,
+      url:,
+      search_param:,
+      min_length:,
+      tom_select_options:,
+      option_descriptions:,
+      clearable:
     )
   end
 
@@ -322,7 +389,7 @@ module Admin::UiHelper
     )
   end
 
-  def ax_number_field(form:, method:, label:, tooltip: nil, class_name: nil, input_class: nil, **options)
+  def ax_number_field(form:, method:, label:, tooltip: nil, class_name: nil, input_class: nil, clearable: false, **options)
     render(
       "admin/shared/ui/number_field",
       form:,
@@ -331,11 +398,12 @@ module Admin::UiHelper
       tooltip:,
       class_name:,
       input_class:,
+      clearable:,
       options:
     )
   end
 
-  def ax_date_field(form:, method:, label:, tooltip: nil, class_name: nil, input_class: nil, **options)
+  def ax_date_field(form:, method:, label:, tooltip: nil, class_name: nil, input_class: nil, clearable: false, **options)
     render(
       "admin/shared/ui/date_field",
       form:,
@@ -344,6 +412,7 @@ module Admin::UiHelper
       tooltip:,
       class_name:,
       input_class:,
+      clearable:,
       options:
     )
   end

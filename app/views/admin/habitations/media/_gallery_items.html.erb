@@ -8,6 +8,8 @@
 <% if attached_media_photos.any? %>
   <% attached_media_photos.each_with_index do |photo, index| %>
     <% photo_hidden_from_site = Array(habitation.site_hidden_photo_ids).map(&:to_i).include?(photo.id) %>
+    <% photo_public_url = public_image_url({ attachment: photo }).presence || rails_blob_path(photo, only_path: true) %>
+    <% next if photo_public_url.blank? %>
     <% site_toggle = capture do %>
       <button type="button"
               class="media-photo-site-toggle ax-media-action <%= photo_hidden_from_site ? 'ax-media-action--neutral' : 'ax-media-action--published' %>"
@@ -51,8 +53,8 @@
       </span>
     <% end %>
     <%= ax_media_tile(
-          link_url: url_for(photo),
-          image_source: photo,
+          link_url: photo_public_url,
+          image_source: photo_public_url,
           caption: "Foto ativa #{index + 1} - #{photo.filename}",
           position: index + 1,
           root_class: "draggable-item attached-photo-item",

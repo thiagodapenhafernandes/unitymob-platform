@@ -1,4 +1,4 @@
-\restrict 6kuegVxn8W0DVnG58xZmpONNr85A10wre6ldLsGgZl4w8PSbDelMmCBfp2xcA9w
+\restrict 6ZH1HlVCQXgfu5WTEN6kXRkbM0pVMIHb9vRHcNXzNEIwJaI9NQLuIkJqPYRoUtl
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -573,6 +573,127 @@ ALTER SEQUENCE public.attribute_options_id_seq OWNED BY public.attribute_options
 
 
 --
+-- Name: automation_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automation_events (
+    id bigint NOT NULL,
+    lead_id bigint,
+    name character varying NOT NULL,
+    source character varying DEFAULT 'platform'::character varying NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    idempotency_key character varying,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    processed_at timestamp(6) without time zone,
+    error_message text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: automation_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.automation_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: automation_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.automation_events_id_seq OWNED BY public.automation_events.id;
+
+
+--
+-- Name: automation_execution_steps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automation_execution_steps (
+    id bigint NOT NULL,
+    automation_execution_id bigint NOT NULL,
+    node_id character varying NOT NULL,
+    node_type character varying NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    scheduled_for timestamp(6) without time zone,
+    started_at timestamp(6) without time zone,
+    finished_at timestamp(6) without time zone,
+    input jsonb DEFAULT '{}'::jsonb NOT NULL,
+    output jsonb DEFAULT '{}'::jsonb NOT NULL,
+    error_message text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: automation_execution_steps_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.automation_execution_steps_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: automation_execution_steps_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.automation_execution_steps_id_seq OWNED BY public.automation_execution_steps.id;
+
+
+--
+-- Name: automation_executions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automation_executions (
+    id bigint NOT NULL,
+    automation_workflow_id bigint NOT NULL,
+    automation_workflow_version_id bigint NOT NULL,
+    lead_id bigint,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    current_node_id character varying,
+    idempotency_key character varying,
+    context jsonb DEFAULT '{}'::jsonb NOT NULL,
+    started_at timestamp(6) without time zone,
+    finished_at timestamp(6) without time zone,
+    failed_at timestamp(6) without time zone,
+    error_message text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    automation_event_id bigint
+);
+
+
+--
+-- Name: automation_executions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.automation_executions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: automation_executions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.automation_executions_id_seq OWNED BY public.automation_executions.id;
+
+
+--
 -- Name: automation_rules; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -623,7 +744,8 @@ CREATE TABLE public.automation_runs (
     executed_at timestamp(6) without time zone,
     result jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    automation_event_id bigint
 );
 
 
@@ -644,6 +766,79 @@ CREATE SEQUENCE public.automation_runs_id_seq
 --
 
 ALTER SEQUENCE public.automation_runs_id_seq OWNED BY public.automation_runs.id;
+
+
+--
+-- Name: automation_workflow_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automation_workflow_versions (
+    id bigint NOT NULL,
+    automation_workflow_id bigint NOT NULL,
+    version_number integer NOT NULL,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    definition jsonb DEFAULT '{}'::jsonb NOT NULL,
+    validation_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_by_id bigint,
+    published_by_id bigint,
+    published_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: automation_workflow_versions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.automation_workflow_versions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: automation_workflow_versions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.automation_workflow_versions_id_seq OWNED BY public.automation_workflow_versions.id;
+
+
+--
+-- Name: automation_workflows; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automation_workflows (
+    id bigint NOT NULL,
+    name character varying NOT NULL,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    active_version_id bigint,
+    created_by_id bigint,
+    last_activated_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: automation_workflows_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.automation_workflows_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: automation_workflows_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.automation_workflows_id_seq OWNED BY public.automation_workflows.id;
 
 
 --
@@ -978,7 +1173,8 @@ CREATE TABLE public.client_property_interests (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    crm_contact_id bigint
+    crm_contact_id bigint,
+    lead_id bigint
 );
 
 
@@ -1308,7 +1504,8 @@ CREATE TABLE public.distribution_rules (
     checkin_store_id bigint,
     require_active_shift boolean DEFAULT false NOT NULL,
     checkin_store_ids bigint[] DEFAULT '{}'::bigint[] NOT NULL,
-    notify_push boolean DEFAULT false NOT NULL
+    notify_push boolean DEFAULT false NOT NULL,
+    notify_webhook_urls jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -1329,6 +1526,47 @@ CREATE SEQUENCE public.distribution_rules_id_seq
 --
 
 ALTER SEQUENCE public.distribution_rules_id_seq OWNED BY public.distribution_rules.id;
+
+
+--
+-- Name: email_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.email_settings (
+    id bigint NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    smtp_address character varying,
+    smtp_port integer DEFAULT 587 NOT NULL,
+    smtp_domain character varying,
+    smtp_user_name character varying,
+    smtp_password text,
+    smtp_authentication character varying DEFAULT 'plain'::character varying,
+    smtp_enable_starttls_auto boolean DEFAULT true NOT NULL,
+    from_name character varying,
+    from_email character varying,
+    reply_to character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: email_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.email_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: email_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.email_settings_id_seq OWNED BY public.email_settings.id;
 
 
 --
@@ -1562,6 +1800,7 @@ CREATE TABLE public.habitations (
     site_hidden_photo_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
     dwv_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
     rental_guarantee_method character varying,
+    permuta_valor_percentual integer,
     admin_review_return_reason text
 );
 
@@ -2172,6 +2411,40 @@ ALTER SEQUENCE public.home_settings_id_seq OWNED BY public.home_settings.id;
 
 
 --
+-- Name: inbound_webhook_tokens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inbound_webhook_tokens (
+    id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    token character varying NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    last_received_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: inbound_webhook_tokens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.inbound_webhook_tokens_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: inbound_webhook_tokens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.inbound_webhook_tokens_id_seq OWNED BY public.inbound_webhook_tokens.id;
+
+
+--
 -- Name: landing_pages; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2224,7 +2497,13 @@ CREATE TABLE public.layout_settings (
     admin_primary_color character varying DEFAULT '#365F8F'::character varying NOT NULL,
     admin_surface_color character varying DEFAULT '#FFFFFF'::character varying NOT NULL,
     admin_header_color character varying DEFAULT '#EEF2F7'::character varying NOT NULL,
-    admin_ink_color character varying DEFAULT '#1F2733'::character varying NOT NULL
+    admin_ink_color character varying DEFAULT '#1F2733'::character varying NOT NULL,
+    admin_area_name character varying DEFAULT 'Plataforma'::character varying NOT NULL,
+    admin_sidebar_color character varying DEFAULT '#FFFFFF'::character varying NOT NULL,
+    admin_workspace_color character varying DEFAULT '#EEF2F7'::character varying NOT NULL,
+    interest_intelligence_enabled boolean DEFAULT true NOT NULL,
+    interest_intelligence_instructions text,
+    interest_intelligence_settings jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -2316,6 +2595,53 @@ CREATE SEQUENCE public.lead_audit_logs_id_seq
 --
 
 ALTER SEQUENCE public.lead_audit_logs_id_seq OWNED BY public.lead_audit_logs.id;
+
+
+--
+-- Name: lead_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_settings (
+    id bigint NOT NULL,
+    stickiness_enabled boolean DEFAULT false NOT NULL,
+    stickiness_match character varying DEFAULT 'phone'::character varying NOT NULL,
+    stickiness_owner character varying DEFAULT 'attended'::character varying NOT NULL,
+    stickiness_fallback character varying DEFAULT 'active_in_rule'::character varying NOT NULL,
+    stickiness_window_days integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    secure_links_enabled boolean DEFAULT false NOT NULL,
+    secure_link_expiry_days integer DEFAULT 7 NOT NULL,
+    notify_on_direct_assignment boolean DEFAULT true NOT NULL,
+    notify_on_reassignment boolean DEFAULT true NOT NULL,
+    notify_on_lost_turn boolean DEFAULT false NOT NULL,
+    notify_on_shark_tank boolean DEFAULT true NOT NULL,
+    notify_on_distribution boolean DEFAULT true NOT NULL,
+    notify_on_sticky boolean DEFAULT true NOT NULL,
+    notify_on_redistribution boolean DEFAULT true NOT NULL,
+    secure_link_whatsapp boolean DEFAULT true NOT NULL,
+    secure_link_email boolean DEFAULT true NOT NULL,
+    secure_link_push boolean DEFAULT true NOT NULL
+);
+
+
+--
+-- Name: lead_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_settings_id_seq OWNED BY public.lead_settings.id;
 
 
 --
@@ -2960,6 +3286,119 @@ ALTER SEQUENCE public.proprietors_id_seq OWNED BY public.proprietors.id;
 
 
 --
+-- Name: public_navigation_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.public_navigation_events (
+    id bigint NOT NULL,
+    public_navigation_session_id bigint NOT NULL,
+    lead_id bigint,
+    habitation_id bigint,
+    name character varying NOT NULL,
+    path character varying,
+    duration_seconds integer,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    search_params jsonb DEFAULT '{}'::jsonb NOT NULL,
+    property_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: public_navigation_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.public_navigation_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: public_navigation_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.public_navigation_events_id_seq OWNED BY public.public_navigation_events.id;
+
+
+--
+-- Name: public_navigation_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.public_navigation_sessions (
+    id bigint NOT NULL,
+    token character varying NOT NULL,
+    lead_id bigint,
+    user_agent_digest character varying,
+    landing_url character varying,
+    referrer_url character varying,
+    first_seen_at timestamp(6) without time zone NOT NULL,
+    last_seen_at timestamp(6) without time zone NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: public_navigation_sessions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.public_navigation_sessions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: public_navigation_sessions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.public_navigation_sessions_id_seq OWNED BY public.public_navigation_sessions.id;
+
+
+--
+-- Name: push_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.push_settings (
+    id bigint NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    vapid_public_key text,
+    vapid_private_key text,
+    subject_email character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    lead_click_action character varying DEFAULT 'system'::character varying NOT NULL
+);
+
+
+--
+-- Name: push_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.push_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: push_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.push_settings_id_seq OWNED BY public.push_settings.id;
+
+
+--
 -- Name: push_subscriptions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3004,6 +3443,45 @@ ALTER SEQUENCE public.push_subscriptions_id_seq OWNED BY public.push_subscriptio
 CREATE TABLE public.schema_migrations (
     version character varying NOT NULL
 );
+
+
+--
+-- Name: secure_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.secure_links (
+    id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    token character varying NOT NULL,
+    action_type integer DEFAULT 0 NOT NULL,
+    expires_at timestamp(6) without time zone,
+    active boolean DEFAULT true NOT NULL,
+    access_count integer DEFAULT 0 NOT NULL,
+    first_accessed_at timestamp(6) without time zone,
+    last_accessed_at timestamp(6) without time zone,
+    issued_to_admin_user_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: secure_links_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.secure_links_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: secure_links_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.secure_links_id_seq OWNED BY public.secure_links.id;
 
 
 --
@@ -3652,6 +4130,54 @@ ALTER SEQUENCE public.solid_queue_semaphores_id_seq OWNED BY public.solid_queue_
 
 
 --
+-- Name: storage_integration_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.storage_integration_settings (
+    id bigint NOT NULL,
+    photo_provider character varying DEFAULT 'local'::character varying NOT NULL,
+    document_provider character varying DEFAULT 'local'::character varying NOT NULL,
+    public_photos_enabled boolean DEFAULT true NOT NULL,
+    do_spaces_bucket character varying,
+    do_spaces_region character varying DEFAULT 'sfo3'::character varying NOT NULL,
+    do_spaces_endpoint character varying DEFAULT 'https://sfo3.digitaloceanspaces.com'::character varying NOT NULL,
+    do_spaces_public_base_url character varying,
+    do_spaces_access_key_id_ciphertext text,
+    do_spaces_secret_access_key_ciphertext text,
+    s3_bucket character varying,
+    s3_region character varying DEFAULT 'us-east-1'::character varying NOT NULL,
+    s3_endpoint character varying,
+    s3_public_base_url character varying,
+    s3_access_key_id_ciphertext text,
+    s3_secret_access_key_ciphertext text,
+    last_tested_at timestamp(6) without time zone,
+    last_test_status character varying,
+    last_test_message text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: storage_integration_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.storage_integration_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: storage_integration_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.storage_integration_settings_id_seq OWNED BY public.storage_integration_settings.id;
+
+
+--
 -- Name: store_shifts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4270,6 +4796,27 @@ ALTER TABLE ONLY public.attribute_options ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
+-- Name: automation_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_events ALTER COLUMN id SET DEFAULT nextval('public.automation_events_id_seq'::regclass);
+
+
+--
+-- Name: automation_execution_steps id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_execution_steps ALTER COLUMN id SET DEFAULT nextval('public.automation_execution_steps_id_seq'::regclass);
+
+
+--
+-- Name: automation_executions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_executions ALTER COLUMN id SET DEFAULT nextval('public.automation_executions_id_seq'::regclass);
+
+
+--
 -- Name: automation_rules id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4281,6 +4828,20 @@ ALTER TABLE ONLY public.automation_rules ALTER COLUMN id SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.automation_runs ALTER COLUMN id SET DEFAULT nextval('public.automation_runs_id_seq'::regclass);
+
+
+--
+-- Name: automation_workflow_versions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflow_versions ALTER COLUMN id SET DEFAULT nextval('public.automation_workflow_versions_id_seq'::regclass);
+
+
+--
+-- Name: automation_workflows id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflows ALTER COLUMN id SET DEFAULT nextval('public.automation_workflows_id_seq'::regclass);
 
 
 --
@@ -4379,6 +4940,13 @@ ALTER TABLE ONLY public.distribution_rule_agents ALTER COLUMN id SET DEFAULT nex
 --
 
 ALTER TABLE ONLY public.distribution_rules ALTER COLUMN id SET DEFAULT nextval('public.distribution_rules_id_seq'::regclass);
+
+
+--
+-- Name: email_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.email_settings ALTER COLUMN id SET DEFAULT nextval('public.email_settings_id_seq'::regclass);
 
 
 --
@@ -4487,6 +5055,13 @@ ALTER TABLE ONLY public.home_settings ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
+-- Name: inbound_webhook_tokens id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inbound_webhook_tokens ALTER COLUMN id SET DEFAULT nextval('public.inbound_webhook_tokens_id_seq'::regclass);
+
+
+--
 -- Name: landing_pages id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4512,6 +5087,13 @@ ALTER TABLE ONLY public.lead_activities ALTER COLUMN id SET DEFAULT nextval('pub
 --
 
 ALTER TABLE ONLY public.lead_audit_logs ALTER COLUMN id SET DEFAULT nextval('public.lead_audit_logs_id_seq'::regclass);
+
+
+--
+-- Name: lead_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_settings ALTER COLUMN id SET DEFAULT nextval('public.lead_settings_id_seq'::regclass);
 
 
 --
@@ -4620,10 +5202,38 @@ ALTER TABLE ONLY public.proprietors ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: public_navigation_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_events ALTER COLUMN id SET DEFAULT nextval('public.public_navigation_events_id_seq'::regclass);
+
+
+--
+-- Name: public_navigation_sessions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_sessions ALTER COLUMN id SET DEFAULT nextval('public.public_navigation_sessions_id_seq'::regclass);
+
+
+--
+-- Name: push_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_settings ALTER COLUMN id SET DEFAULT nextval('public.push_settings_id_seq'::regclass);
+
+
+--
 -- Name: push_subscriptions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.push_subscriptions ALTER COLUMN id SET DEFAULT nextval('public.push_subscriptions_id_seq'::regclass);
+
+
+--
+-- Name: secure_links id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.secure_links ALTER COLUMN id SET DEFAULT nextval('public.secure_links_id_seq'::regclass);
 
 
 --
@@ -4750,6 +5360,13 @@ ALTER TABLE ONLY public.solid_queue_scheduled_executions ALTER COLUMN id SET DEF
 --
 
 ALTER TABLE ONLY public.solid_queue_semaphores ALTER COLUMN id SET DEFAULT nextval('public.solid_queue_semaphores_id_seq'::regclass);
+
+
+--
+-- Name: storage_integration_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.storage_integration_settings ALTER COLUMN id SET DEFAULT nextval('public.storage_integration_settings_id_seq'::regclass);
 
 
 --
@@ -4940,6 +5557,30 @@ ALTER TABLE ONLY public.attribute_options
 
 
 --
+-- Name: automation_events automation_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_events
+    ADD CONSTRAINT automation_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: automation_execution_steps automation_execution_steps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_execution_steps
+    ADD CONSTRAINT automation_execution_steps_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: automation_executions automation_executions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_executions
+    ADD CONSTRAINT automation_executions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: automation_rules automation_rules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4953,6 +5594,22 @@ ALTER TABLE ONLY public.automation_rules
 
 ALTER TABLE ONLY public.automation_runs
     ADD CONSTRAINT automation_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: automation_workflow_versions automation_workflow_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflow_versions
+    ADD CONSTRAINT automation_workflow_versions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: automation_workflows automation_workflows_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflows
+    ADD CONSTRAINT automation_workflows_pkey PRIMARY KEY (id);
 
 
 --
@@ -5065,6 +5722,14 @@ ALTER TABLE ONLY public.distribution_rule_agents
 
 ALTER TABLE ONLY public.distribution_rules
     ADD CONSTRAINT distribution_rules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: email_settings email_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.email_settings
+    ADD CONSTRAINT email_settings_pkey PRIMARY KEY (id);
 
 
 --
@@ -5188,6 +5853,14 @@ ALTER TABLE ONLY public.home_settings
 
 
 --
+-- Name: inbound_webhook_tokens inbound_webhook_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inbound_webhook_tokens
+    ADD CONSTRAINT inbound_webhook_tokens_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: landing_pages landing_pages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5217,6 +5890,14 @@ ALTER TABLE ONLY public.lead_activities
 
 ALTER TABLE ONLY public.lead_audit_logs
     ADD CONSTRAINT lead_audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_settings lead_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_settings
+    ADD CONSTRAINT lead_settings_pkey PRIMARY KEY (id);
 
 
 --
@@ -5340,6 +6021,30 @@ ALTER TABLE ONLY public.proprietors
 
 
 --
+-- Name: public_navigation_events public_navigation_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_events
+    ADD CONSTRAINT public_navigation_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: public_navigation_sessions public_navigation_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_sessions
+    ADD CONSTRAINT public_navigation_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: push_settings push_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_settings
+    ADD CONSTRAINT push_settings_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: push_subscriptions push_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5353,6 +6058,14 @@ ALTER TABLE ONLY public.push_subscriptions
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: secure_links secure_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.secure_links
+    ADD CONSTRAINT secure_links_pkey PRIMARY KEY (id);
 
 
 --
@@ -5500,6 +6213,14 @@ ALTER TABLE ONLY public.solid_queue_semaphores
 
 
 --
+-- Name: storage_integration_settings storage_integration_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.storage_integration_settings
+    ADD CONSTRAINT storage_integration_settings_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: store_shifts store_shifts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5601,6 +6322,41 @@ ALTER TABLE ONLY public.whatsapp_messages
 
 ALTER TABLE ONLY public.whatsapp_templates
     ADD CONSTRAINT whatsapp_templates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_automation_events_lead_name_occurred_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_automation_events_lead_name_occurred_at ON public.automation_events USING btree (lead_id, name, occurred_at);
+
+
+--
+-- Name: idx_automation_execution_steps_on_execution_node; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_automation_execution_steps_on_execution_node ON public.automation_execution_steps USING btree (automation_execution_id, node_id);
+
+
+--
+-- Name: idx_automation_executions_workflow_lead_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_automation_executions_workflow_lead_status ON public.automation_executions USING btree (automation_workflow_id, lead_id, status);
+
+
+--
+-- Name: idx_automation_workflow_versions_on_workflow_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_automation_workflow_versions_on_workflow_status ON public.automation_workflow_versions USING btree (automation_workflow_id, status);
+
+
+--
+-- Name: idx_automation_workflow_versions_unique_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_automation_workflow_versions_unique_number ON public.automation_workflow_versions USING btree (automation_workflow_id, version_number);
 
 
 --
@@ -5748,6 +6504,27 @@ CREATE UNIQUE INDEX idx_portal_listing_states_portal_code ON public.portal_listi
 --
 
 CREATE UNIQUE INDEX idx_portal_listing_states_portal_external ON public.portal_listing_states USING btree (portal, external_listing_id) WHERE (external_listing_id IS NOT NULL);
+
+
+--
+-- Name: idx_public_nav_events_habitation_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_public_nav_events_habitation_name ON public.public_navigation_events USING btree (habitation_id, name);
+
+
+--
+-- Name: idx_public_nav_events_lead_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_public_nav_events_lead_name ON public.public_navigation_events USING btree (lead_id, name);
+
+
+--
+-- Name: idx_public_nav_events_session_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_public_nav_events_session_time ON public.public_navigation_events USING btree (public_navigation_session_id, occurred_at);
 
 
 --
@@ -6087,10 +6864,108 @@ CREATE INDEX index_attribute_options_on_context_category_position ON public.attr
 
 
 --
+-- Name: index_automation_events_on_idempotency_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_automation_events_on_idempotency_key ON public.automation_events USING btree (idempotency_key);
+
+
+--
+-- Name: index_automation_events_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_events_on_lead_id ON public.automation_events USING btree (lead_id);
+
+
+--
+-- Name: index_automation_events_on_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_events_on_name ON public.automation_events USING btree (name);
+
+
+--
+-- Name: index_automation_events_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_events_on_status ON public.automation_events USING btree (status);
+
+
+--
+-- Name: index_automation_execution_steps_on_automation_execution_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_execution_steps_on_automation_execution_id ON public.automation_execution_steps USING btree (automation_execution_id);
+
+
+--
+-- Name: index_automation_execution_steps_on_scheduled_for; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_execution_steps_on_scheduled_for ON public.automation_execution_steps USING btree (scheduled_for);
+
+
+--
+-- Name: index_automation_execution_steps_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_execution_steps_on_status ON public.automation_execution_steps USING btree (status);
+
+
+--
+-- Name: index_automation_executions_on_automation_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_executions_on_automation_event_id ON public.automation_executions USING btree (automation_event_id);
+
+
+--
+-- Name: index_automation_executions_on_automation_workflow_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_executions_on_automation_workflow_id ON public.automation_executions USING btree (automation_workflow_id);
+
+
+--
+-- Name: index_automation_executions_on_automation_workflow_version_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_executions_on_automation_workflow_version_id ON public.automation_executions USING btree (automation_workflow_version_id);
+
+
+--
+-- Name: index_automation_executions_on_idempotency_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_automation_executions_on_idempotency_key ON public.automation_executions USING btree (idempotency_key);
+
+
+--
+-- Name: index_automation_executions_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_executions_on_lead_id ON public.automation_executions USING btree (lead_id);
+
+
+--
+-- Name: index_automation_executions_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_executions_on_status ON public.automation_executions USING btree (status);
+
+
+--
 -- Name: index_automation_rules_on_active_and_trigger_event; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_automation_rules_on_active_and_trigger_event ON public.automation_rules USING btree (active, trigger_event);
+
+
+--
+-- Name: index_automation_runs_on_automation_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_runs_on_automation_event_id ON public.automation_runs USING btree (automation_event_id);
 
 
 --
@@ -6112,6 +6987,48 @@ CREATE INDEX index_automation_runs_on_automation_rule_id_and_lead_id ON public.a
 --
 
 CREATE INDEX index_automation_runs_on_lead_id ON public.automation_runs USING btree (lead_id);
+
+
+--
+-- Name: index_automation_workflow_versions_on_automation_workflow_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_workflow_versions_on_automation_workflow_id ON public.automation_workflow_versions USING btree (automation_workflow_id);
+
+
+--
+-- Name: index_automation_workflow_versions_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_workflow_versions_on_created_by_id ON public.automation_workflow_versions USING btree (created_by_id);
+
+
+--
+-- Name: index_automation_workflow_versions_on_published_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_workflow_versions_on_published_by_id ON public.automation_workflow_versions USING btree (published_by_id);
+
+
+--
+-- Name: index_automation_workflows_on_active_version_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_workflows_on_active_version_id ON public.automation_workflows USING btree (active_version_id);
+
+
+--
+-- Name: index_automation_workflows_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_workflows_on_created_by_id ON public.automation_workflows USING btree (created_by_id);
+
+
+--
+-- Name: index_automation_workflows_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_workflows_on_status ON public.automation_workflows USING btree (status);
 
 
 --
@@ -6343,6 +7260,13 @@ CREATE INDEX index_client_property_interests_on_crm_contact_id ON public.client_
 --
 
 CREATE INDEX index_client_property_interests_on_habitation_id ON public.client_property_interests USING btree (habitation_id);
+
+
+--
+-- Name: index_client_property_interests_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_client_property_interests_on_lead_id ON public.client_property_interests USING btree (lead_id);
 
 
 --
@@ -7165,6 +8089,20 @@ CREATE INDEX index_home_section_items_on_home_section_id ON public.home_section_
 
 
 --
+-- Name: index_inbound_webhook_tokens_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_inbound_webhook_tokens_on_admin_user_id ON public.inbound_webhook_tokens USING btree (admin_user_id);
+
+
+--
+-- Name: index_inbound_webhook_tokens_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_inbound_webhook_tokens_on_token ON public.inbound_webhook_tokens USING btree (token);
+
+
+--
 -- Name: index_lead_activities_on_lead_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7613,6 +8551,48 @@ CREATE INDEX index_proprietors_on_vista_payload ON public.proprietors USING gin 
 
 
 --
+-- Name: index_public_navigation_events_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_navigation_events_on_habitation_id ON public.public_navigation_events USING btree (habitation_id);
+
+
+--
+-- Name: index_public_navigation_events_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_navigation_events_on_lead_id ON public.public_navigation_events USING btree (lead_id);
+
+
+--
+-- Name: index_public_navigation_events_on_public_navigation_session_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_navigation_events_on_public_navigation_session_id ON public.public_navigation_events USING btree (public_navigation_session_id);
+
+
+--
+-- Name: index_public_navigation_sessions_on_last_seen_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_navigation_sessions_on_last_seen_at ON public.public_navigation_sessions USING btree (last_seen_at);
+
+
+--
+-- Name: index_public_navigation_sessions_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_navigation_sessions_on_lead_id ON public.public_navigation_sessions USING btree (lead_id);
+
+
+--
+-- Name: index_public_navigation_sessions_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_public_navigation_sessions_on_token ON public.public_navigation_sessions USING btree (token);
+
+
+--
 -- Name: index_push_subscriptions_on_active; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7631,6 +8611,27 @@ CREATE INDEX index_push_subscriptions_on_admin_user_id ON public.push_subscripti
 --
 
 CREATE UNIQUE INDEX index_push_subscriptions_on_admin_user_id_and_endpoint ON public.push_subscriptions USING btree (admin_user_id, endpoint);
+
+
+--
+-- Name: index_secure_links_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_secure_links_on_lead_id ON public.secure_links USING btree (lead_id);
+
+
+--
+-- Name: index_secure_links_on_lead_id_and_action_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_secure_links_on_lead_id_and_action_type ON public.secure_links USING btree (lead_id, action_type);
+
+
+--
+-- Name: index_secure_links_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_secure_links_on_token ON public.secure_links USING btree (token);
 
 
 --
@@ -8369,6 +9370,14 @@ CREATE TRIGGER lead_audit_logs_no_update BEFORE DELETE OR UPDATE ON public.lead_
 
 
 --
+-- Name: automation_executions fk_rails_0e273bfb0b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_executions
+    ADD CONSTRAINT fk_rails_0e273bfb0b FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: habitation_share_links fk_rails_0e80d0e62c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8409,6 +9418,14 @@ ALTER TABLE ONLY public.footer_links
 
 
 --
+-- Name: public_navigation_events fk_rails_1681cf0713; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_events
+    ADD CONSTRAINT fk_rails_1681cf0713 FOREIGN KEY (public_navigation_session_id) REFERENCES public.public_navigation_sessions(id);
+
+
+--
 -- Name: ai_property_suggestions fk_rails_16f184cd4c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8422,6 +9439,14 @@ ALTER TABLE ONLY public.ai_property_suggestions
 
 ALTER TABLE ONLY public.stores
     ADD CONSTRAINT fk_rails_19c4970b14 FOREIGN KEY (director_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: inbound_webhook_tokens fk_rails_1c174f9f08; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inbound_webhook_tokens
+    ADD CONSTRAINT fk_rails_1c174f9f08 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -8505,6 +9530,22 @@ ALTER TABLE ONLY public.automation_runs
 
 
 --
+-- Name: automation_executions fk_rails_2caf5b71f7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_executions
+    ADD CONSTRAINT fk_rails_2caf5b71f7 FOREIGN KEY (automation_workflow_version_id) REFERENCES public.automation_workflow_versions(id);
+
+
+--
+-- Name: automation_workflows fk_rails_303e030651; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflows
+    ADD CONSTRAINT fk_rails_303e030651 FOREIGN KEY (active_version_id) REFERENCES public.automation_workflow_versions(id);
+
+
+--
 -- Name: client_interactions fk_rails_3070096ac7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8542,6 +9583,14 @@ ALTER TABLE ONLY public.seo_conversion_events
 
 ALTER TABLE ONLY public.solid_queue_failed_executions
     ADD CONSTRAINT fk_rails_39bbc7a631 FOREIGN KEY (job_id) REFERENCES public.solid_queue_jobs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: public_navigation_events fk_rails_39c3972f50; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_events
+    ADD CONSTRAINT fk_rails_39c3972f50 FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
 
 
 --
@@ -8590,6 +9639,14 @@ ALTER TABLE ONLY public.distribution_rule_agents
 
 ALTER TABLE ONLY public.vista_file_assets
     ADD CONSTRAINT fk_rails_434988960e FOREIGN KEY (vista_import_batch_id) REFERENCES public.vista_import_batches(id);
+
+
+--
+-- Name: public_navigation_sessions fk_rails_43befe6943; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_sessions
+    ADD CONSTRAINT fk_rails_43befe6943 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -8737,6 +9794,14 @@ ALTER TABLE ONLY public.property_settings
 
 
 --
+-- Name: automation_runs fk_rails_62830c56f1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_runs
+    ADD CONSTRAINT fk_rails_62830c56f1 FOREIGN KEY (automation_event_id) REFERENCES public.automation_events(id);
+
+
+--
 -- Name: proposals fk_rails_630ac967de; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8766,6 +9831,14 @@ ALTER TABLE ONLY public.seo_page_visits
 
 ALTER TABLE ONLY public.habitation_interactions
     ADD CONSTRAINT fk_rails_6e8270cc0c FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: automation_executions fk_rails_77842b67af; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_executions
+    ADD CONSTRAINT fk_rails_77842b67af FOREIGN KEY (automation_workflow_id) REFERENCES public.automation_workflows(id);
 
 
 --
@@ -8825,11 +9898,27 @@ ALTER TABLE ONLY public.habitation_broker_assignments
 
 
 --
+-- Name: automation_workflow_versions fk_rails_8449d535ac; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflow_versions
+    ADD CONSTRAINT fk_rails_8449d535ac FOREIGN KEY (published_by_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: habitation_interactions fk_rails_8531aa2028; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.habitation_interactions
     ADD CONSTRAINT fk_rails_8531aa2028 FOREIGN KEY (crm_contact_id) REFERENCES public.crm_contacts(id);
+
+
+--
+-- Name: automation_workflow_versions fk_rails_861c29bd15; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflow_versions
+    ADD CONSTRAINT fk_rails_861c29bd15 FOREIGN KEY (automation_workflow_id) REFERENCES public.automation_workflows(id);
 
 
 --
@@ -8905,11 +9994,27 @@ ALTER TABLE ONLY public.footer_stores
 
 
 --
+-- Name: client_property_interests fk_rails_9628964af1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_property_interests
+    ADD CONSTRAINT fk_rails_9628964af1 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: habitations fk_rails_97c90c12c7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.habitations
     ADD CONSTRAINT fk_rails_97c90c12c7 FOREIGN KEY (vista_import_batch_id) REFERENCES public.vista_import_batches(id);
+
+
+--
+-- Name: automation_workflow_versions fk_rails_98bcd5e309; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflow_versions
+    ADD CONSTRAINT fk_rails_98bcd5e309 FOREIGN KEY (created_by_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -8961,6 +10066,14 @@ ALTER TABLE ONLY public.crm_contacts
 
 
 --
+-- Name: public_navigation_events fk_rails_a13b99eafe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_navigation_events
+    ADD CONSTRAINT fk_rails_a13b99eafe FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: stores fk_rails_a351b46480; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8982,6 +10095,14 @@ ALTER TABLE ONLY public.habitations
 
 ALTER TABLE ONLY public.user_meta_integrations
     ADD CONSTRAINT fk_rails_b1764c6b36 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: automation_events fk_rails_b1cdd6b9ed; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_events
+    ADD CONSTRAINT fk_rails_b1cdd6b9ed FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -9014,6 +10135,14 @@ ALTER TABLE ONLY public.client_property_interests
 
 ALTER TABLE ONLY public.marketing_campaigns
     ADD CONSTRAINT fk_rails_bac0f15c01 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: automation_workflows fk_rails_bcad8004e0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflows
+    ADD CONSTRAINT fk_rails_bcad8004e0 FOREIGN KEY (created_by_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -9078,6 +10207,22 @@ ALTER TABLE ONLY public.access_control_rules
 
 ALTER TABLE ONLY public.solid_queue_scheduled_executions
     ADD CONSTRAINT fk_rails_c4316f352d FOREIGN KEY (job_id) REFERENCES public.solid_queue_jobs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: secure_links fk_rails_c574b4468c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.secure_links
+    ADD CONSTRAINT fk_rails_c574b4468c FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: automation_execution_steps fk_rails_c5bec9deed; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_execution_steps
+    ADD CONSTRAINT fk_rails_c5bec9deed FOREIGN KEY (automation_execution_id) REFERENCES public.automation_executions(id);
 
 
 --
@@ -9281,6 +10426,14 @@ ALTER TABLE ONLY public.lead_activities
 
 
 --
+-- Name: automation_executions fk_rails_ef0c0e3b67; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_executions
+    ADD CONSTRAINT fk_rails_ef0c0e3b67 FOREIGN KEY (automation_event_id) REFERENCES public.automation_events(id);
+
+
+--
 -- Name: leads fk_rails_f3159e7558; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9316,12 +10469,35 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 6kuegVxn8W0DVnG58xZmpONNr85A10wre6ldLsGgZl4w8PSbDelMmCBfp2xcA9w
+\unrestrict 6ZH1HlVCQXgfu5WTEN6kXRkbM0pVMIHb9vRHcNXzNEIwJaI9NQLuIkJqPYRoUtl
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260624170000'),
+('20260624160000'),
+('20260624150000'),
+('20260624140000'),
+('20260624130100'),
+('20260624130000'),
+('20260624120000'),
+('20260623180000'),
+('20260623170100'),
+('20260623170000'),
+('20260623160000'),
+('20260623120000'),
+('20260622150000'),
+('20260622103000'),
+('20260621220500'),
+('20260621214500'),
+('20260621180514'),
+('20260620172000'),
+('20260620170000'),
+('20260620124000'),
+('20260620120000'),
+('20260619234000'),
 ('20260619120000'),
+('20260619114704'),
 ('20260618150000'),
 ('20260618140000'),
 ('20260618130000'),
@@ -9335,6 +10511,8 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20260616120000'),
 ('20260615181000'),
 ('20260615180000'),
+('20260615153000'),
+('20260615141453'),
 ('20260613110200'),
 ('20260613104600'),
 ('20260611211000'),

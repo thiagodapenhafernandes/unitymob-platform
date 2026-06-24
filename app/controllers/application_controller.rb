@@ -3,7 +3,7 @@ class ApplicationController < ActionController::Base
   before_action :set_current_request_context
   before_action :set_admin_robots_header
   before_action :load_layout_settings
-  helper_method :current_public_seo_setting, :lgpd_consent_accepted?
+  helper_method :current_public_seo_setting, :lgpd_consent_accepted?, :admin_page_render_metrics, :admin_context_items
 
   LGPD_CONSENT_COOKIE = "salute_lgpd_consent".freeze
 
@@ -15,6 +15,26 @@ class ApplicationController < ActionController::Base
 
   def lgpd_consent_accepted?
     cookies[LGPD_CONSENT_COOKIE] == "accepted"
+  end
+
+  def admin_page_render_metrics
+    started_at = @admin_render_started_at
+    duration_ms =
+      if @admin_render_duration_ms
+        @admin_render_duration_ms
+      elsif started_at
+        ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round(1)
+      end
+
+    {
+      duration_ms: duration_ms,
+      page: "#{controller_path}##{action_name}",
+      status: response.status
+    }.compact
+  end
+
+  def admin_context_items
+    []
   end
 
   private

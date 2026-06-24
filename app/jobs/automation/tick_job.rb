@@ -20,9 +20,18 @@ module Automation
         scope = scope.where.not(id: processed) if processed.any?
 
         scope.limit(200).find_each do |lead|
-          Automation::RunActionsJob.perform_later(rule.id, lead.id)
+          Automation::Dispatcher.dispatch(
+            :lead_idle,
+            lead,
+            source: "automation_tick",
+            payload: { automation_rule_id: rule.id, idle_hours: hours },
+            idempotency_key: "lead_idle:rule:#{rule.id}:lead:#{lead.id}"
+          )
         end
       end
+
+      Automation::WorkflowDispatcher.dispatch_idle_candidates
+      Automation::WorkflowDispatcher.dispatch_scheduled_routines
     end
   end
 end

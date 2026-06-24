@@ -1,0 +1,362 @@
+<%
+  provider_options = StorageIntegrationSetting.provider_options
+  secret_placeholder = ->(configured) { configured ? "Já configurado. Preencha apenas para substituir." : "Informe o valor" }
+  selected_providers = [@storage_setting.photo_provider, @storage_setting.document_provider]
+  digital_ocean_connected = selected_providers.include?("digital_ocean") && @storage_setting.digital_ocean_ready?
+  amazon_connected = selected_providers.include?("amazon_s3") && @storage_setting.amazon_ready?
+  public_photo_stats = @public_photo_stats || Storage::PublicPropertyPhotoPublisher.stats
+  public_photo_publish_last_result = @public_photo_publish_last_result || Storage::PublicPropertyPhotoPublisher.last_result
+  public_photo_publish_progress = @public_photo_publish_progress || Storage::PublicPropertyPhotoPublisher.progress
+  public_photo_lookup = @public_photo_lookup || Storage::PublicPropertyPhotoPublisher.lookup(params[:photo_lookup])
+  public_photo_pending_summary = @public_photo_pending_summary
+  public_photo_publish_running = %w[queued running].include?(public_photo_publish_progress[:status].to_s)
+%>
+
+<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+  <div>
+    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2"><i class="bi bi-cloud-arrow-up" style="color: var(--admin-primary);"></i>Armazenamento</h1>
+    <p class="ax-page-subtitle">Configure onde fotos e documentos serão gravados. Fotos podem ser públicas; documentos permanecem privados.</p>
+  </div>
+</div>
+
+<%= ax_error_summary(@storage_setting) %>
+
+<% if @storage_setting.last_tested_at.present? %>
+  <%= ax_inline_notice(tone: @storage_setting.last_test_status == "success" ? :success : :warning, icon: @storage_setting.last_test_status == "success" ? "check-circle" : "exclamation-triangle", class_name: "tw-mb-4") do %>
+    <span>
+      Último teste:
+      <strong><%= @storage_setting.last_test_status == "success" ? "sucesso" : "falha" %></strong>
+      em <%= l(@storage_setting.last_tested_at, format: :short) %>.
+      <%= @storage_setting.last_test_message %>
+    </span>
+  <% end %>
+<% end %>
+
+<%= form_with model: @storage_setting, url: admin_storage_integration_path, method: :patch, local: true do |f| %>
+  <%= ax_field_grid(columns: 12, gap: :compact) do %>
+    <div class="ax-span-12">
+      <div class="ax-card">
+        <div class="ax-card__header">
+          <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-sliders"></i>Destino dos novos arquivos</h5>
+        </div>
+        <div class="ax-card__body">
+          <%= ax_field_grid(columns: 12, gap: :compact) do %>
+            <div class="ax-span-4">
+              <%= ax_select_field(form: f, method: :photo_provider, label: "Fotos de imóveis", choices: provider_options, select_options: {}, html_options: {}, tooltip: "Fotos podem ser públicas e entregues por CDN.") %>
+            </div>
+            <div class="ax-span-4">
+              <%= ax_select_field(form: f, method: :document_provider, label: "Documentos", choices: provider_options, select_options: {}, html_options: {}, tooltip: "Documentos usam rotas privadas do ActiveStorage.") %>
+            </div>
+            <div class="ax-span-4 tw-flex tw-items-end">
+              <%= ax_switch_field(form: f, method: :public_photos_enabled,
+                    label: "Servir fotos públicas via CDN",
+                    checked: @storage_setting.public_photos_enabled?,
+                    checked_value: "true", unchecked_value: "false",
+                    input_html: { checked: @storage_setting.public_photos_enabled? }) %>
+            </div>
+          <% end %>
+
+          <div class="tw-flex tw-gap-2 tw-mt-3">
+            <%= f.submit "Salvar configuração", class: "ax-btn ax-btn--primary" %>
+            <%= button_tag "Testar Local", type: "submit", class: "ax-btn ax-btn--ghost",
+                  formaction: test_connection_admin_storage_integration_path(provider: "local"),
+                  formmethod: "post" %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ax-span-6">
+      <div class="ax-card">
+        <div class="ax-card__header tw-flex tw-items-center tw-justify-between tw-gap-3">
+          <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-hdd-network"></i>DigitalOcean Spaces</h5>
+          <% if digital_ocean_connected %>
+            <%= ax_badge("Conectado", tone: :green, dot: true) %>
+          <% end %>
+        </div>
+        <div class="ax-card__body">
+          <%= ax_field_grid(columns: 12, gap: :compact) do %>
+            <div class="ax-span-6">
+              <%= ax_text_field(form: f, method: :do_spaces_bucket, label: "Bucket", placeholder: "imob") %>
+            </div>
+            <div class="ax-span-6">
+              <%= ax_text_field(form: f, method: :do_spaces_region, label: "Região", placeholder: "sfo3") %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_text_field(form: f, method: :do_spaces_endpoint, label: "Endpoint", placeholder: "https://sfo3.digitaloceanspaces.com") %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_text_field(form: f, method: :do_spaces_public_base_url, label: "Base pública/CDN", placeholder: "https://imob.sfo3.cdn.digitaloceanspaces.com") %>
+            </div>
+            <div class="ax-span-6">
+              <label class="ax-label">Access Key</label>
+              <%= password_field_tag "storage_integration_setting[do_spaces_access_key_id]",
+                    nil,
+                    class: "ax-control",
+                    autocomplete: "new-password",
+                    placeholder: secret_placeholder.call(@storage_setting.secret_configured?(:do_spaces_access_key_id)) %>
+            </div>
+            <div class="ax-span-6">
+              <label class="ax-label">Secret Key</label>
+              <%= password_field_tag "storage_integration_setting[do_spaces_secret_access_key]",
+                    nil,
+                    class: "ax-control",
+                    autocomplete: "new-password",
+                    placeholder: secret_placeholder.call(@storage_setting.secret_configured?(:do_spaces_secret_access_key)) %>
+            </div>
+          <% end %>
+
+          <div class="tw-flex tw-gap-2 tw-mt-3">
+            <%= button_tag "Testar DigitalOcean", type: "submit", class: "ax-btn ax-btn--ghost",
+                  formaction: test_connection_admin_storage_integration_path(provider: "digital_ocean"),
+                  formmethod: "post" %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ax-span-6">
+      <div class="ax-card">
+        <div class="ax-card__header tw-flex tw-items-center tw-justify-between tw-gap-3">
+          <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-cloud"></i>Amazon S3</h5>
+          <% if amazon_connected %>
+            <%= ax_badge("Conectado", tone: :green, dot: true) %>
+          <% end %>
+        </div>
+        <div class="ax-card__body">
+          <%= ax_field_grid(columns: 12, gap: :compact) do %>
+            <div class="ax-span-6">
+              <%= ax_text_field(form: f, method: :s3_bucket, label: "Bucket", placeholder: "unitymob-files") %>
+            </div>
+            <div class="ax-span-6">
+              <%= ax_text_field(form: f, method: :s3_region, label: "Região", placeholder: "us-east-1") %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_text_field(form: f, method: :s3_endpoint, label: "Endpoint opcional", placeholder: "Usar vazio para AWS padrão") %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_text_field(form: f, method: :s3_public_base_url, label: "Base pública/CDN", placeholder: "https://cdn.exemplo.com") %>
+            </div>
+            <div class="ax-span-6">
+              <label class="ax-label">Access Key</label>
+              <%= password_field_tag "storage_integration_setting[s3_access_key_id]",
+                    nil,
+                    class: "ax-control",
+                    autocomplete: "new-password",
+                    placeholder: secret_placeholder.call(@storage_setting.secret_configured?(:s3_access_key_id)) %>
+            </div>
+            <div class="ax-span-6">
+              <label class="ax-label">Secret Key</label>
+              <%= password_field_tag "storage_integration_setting[s3_secret_access_key]",
+                    nil,
+                    class: "ax-control",
+                    autocomplete: "new-password",
+                    placeholder: secret_placeholder.call(@storage_setting.secret_configured?(:s3_secret_access_key)) %>
+            </div>
+          <% end %>
+
+          <div class="tw-flex tw-gap-2 tw-mt-3">
+            <%= button_tag "Testar Amazon S3", type: "submit", class: "ax-btn ax-btn--ghost",
+                  formaction: test_connection_admin_storage_integration_path(provider: "amazon_s3"),
+                  formmethod: "post" %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ax-span-12">
+      <%= ax_inline_notice(tone: :neutral, icon: "shield-lock") do %>
+        <span>Credenciais são armazenadas criptografadas no banco. A troca de destino afeta novos uploads; arquivos antigos continuam apontando para o service onde foram gravados.</span>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<div class="tw-mt-4">
+  <div class="ax-card"
+       data-controller="storage-public-photo-publish"
+       data-storage-public-photo-publish-url-value="<%= public_photo_publish_status_admin_storage_integration_path(format: :json) %>">
+    <div class="ax-card__header tw-flex tw-items-center tw-justify-between tw-gap-3">
+      <div>
+        <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-images"></i>Fotos públicas/CDN</h5>
+        <p class="tw-m-0 tw-text-sm tw-text-muted">Publique acesso público somente para fotos de imóveis. Documentos ficam fora desta rotina.</p>
+      </div>
+      <div class="tw-flex tw-flex-wrap tw-gap-2 tw-justify-end">
+        <%= ax_badge("#{number_with_delimiter(public_photo_stats.total_attachments)} anexos", tone: :gray) %>
+        <%= ax_badge("#{number_with_delimiter(public_photo_stats.total_blobs)} blobs", tone: :gray) %>
+        <%= ax_badge(public_photo_publish_running ? "Publicando" : "Pronto", tone: public_photo_publish_running ? :amber : :green, dot: true, class_name: "storage-public-photo-publish__status") %>
+      </div>
+    </div>
+    <div class="ax-card__body">
+      <% if public_photo_publish_last_result.present? %>
+        <%= ax_inline_notice(
+              tone: public_photo_publish_last_result[:status] == "success" ? :success : :warning,
+              icon: public_photo_publish_last_result[:status] == "success" ? "check-circle" : "exclamation-triangle",
+              class_name: "tw-mb-3"
+            ) do %>
+          <span>
+            Última publicação:
+            <strong><%= public_photo_publish_last_result[:message] %></strong>
+            <% if public_photo_publish_last_result[:finished_at].present? %>
+              em <%= l(public_photo_publish_last_result[:finished_at], format: :short) %>.
+            <% end %>
+          </span>
+        <% end %>
+      <% end %>
+
+      <%= ax_field_grid(columns: 12, gap: :compact) do %>
+        <div class="ax-span-6">
+          <%= form_with url: admin_storage_integration_path, method: :get, local: true do %>
+            <label class="ax-label" for="storage_photo_lookup">Buscar imóvel por REF/código</label>
+            <div class="tw-flex tw-gap-2">
+              <%= text_field_tag :photo_lookup,
+                    public_photo_lookup.term,
+                    id: "storage_photo_lookup",
+                    class: "ax-control",
+                    placeholder: "Ex.: 8627" %>
+              <%= button_tag "Buscar", type: "submit", class: "ax-btn ax-btn--ghost" %>
+              <% if public_photo_lookup.term.present? %>
+                <%= link_to "Limpar", admin_storage_integration_path, class: "ax-btn" %>
+              <% end %>
+            </div>
+            <p class="tw-mt-2 tw-mb-0 tw-text-sm tw-text-muted">Localize um imóvel e publique todas as fotos dele de uma vez.</p>
+          <% end %>
+        </div>
+
+        <div class="ax-span-6">
+          <label class="ax-label">Imóveis candidatos à publicação</label>
+          <div class="tw-flex tw-flex-wrap tw-gap-2">
+            <%= link_to "Buscar candidatos",
+                  admin_storage_integration_path(pending_public_photos: "1", photo_lookup: public_photo_lookup.term.presence),
+                  class: "ax-btn ax-btn--ghost" %>
+            <%= button_to "Publicar todos os candidatos",
+                  publish_needed_public_photos_admin_storage_integration_path,
+                  method: :post,
+                  class: "ax-btn ax-btn--primary",
+                  disabled: public_photo_publish_running,
+                  data: {
+                    storage_public_photo_publish_target: "button",
+                    turbo_confirm: "Republicar acesso público para todas as fotos de imóveis elegíveis?"
+                  } %>
+          </div>
+          <p class="tw-mt-2 tw-mb-0 tw-text-sm tw-text-muted">A publicação em massa é assíncrona e idempotente: fotos já públicas permanecem como estão.</p>
+        </div>
+
+        <div class="ax-span-12">
+          <div class="tw-rounded tw-border tw-border-line tw-bg-surface-soft tw-p-3">
+            <div class="tw-flex tw-items-center tw-justify-between tw-gap-3">
+              <div>
+                <div class="ax-label tw-mb-1">Progresso da publicação</div>
+                <div class="tw-text-sm tw-text-muted" data-storage-public-photo-publish-target="message"><%= public_photo_publish_progress[:message] %></div>
+              </div>
+              <strong class="tw-text-sm tw-text-ink" data-storage-public-photo-publish-target="percent"><%= number_to_percentage(public_photo_publish_progress[:percent].to_f, precision: 1) %></strong>
+            </div>
+            <div class="ax-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<%= public_photo_publish_progress[:percent].to_f %>">
+              <i data-storage-public-photo-publish-target="bar" style="width:<%= public_photo_publish_progress[:percent].to_f %>%"></i>
+            </div>
+            <div class="tw-mt-2 tw-flex tw-flex-wrap tw-gap-3 tw-text-xs tw-text-muted">
+              <span><strong data-storage-public-photo-publish-target="processed"><%= number_with_delimiter(public_photo_publish_progress[:processed].to_i) %></strong> analisadas</span>
+              <span><strong data-storage-public-photo-publish-target="total"><%= number_with_delimiter(public_photo_publish_progress[:total].to_i) %></strong> total</span>
+              <span><strong data-storage-public-photo-publish-target="published"><%= number_with_delimiter(public_photo_publish_progress[:published].to_i) %></strong> publicadas</span>
+              <span><strong data-storage-public-photo-publish-target="failed"><%= number_with_delimiter(public_photo_publish_progress[:failed].to_i) %></strong> falhas</span>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <% if public_photo_pending_summary.present? %>
+        <div class="tw-mt-4">
+          <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-mb-2">
+            <div>
+              <div class="ax-label tw-mb-1">Candidatos encontrados</div>
+              <div class="tw-text-sm tw-text-muted">
+                <strong><%= number_with_delimiter(public_photo_pending_summary.total_habitations) %></strong> imóveis com fotos elegíveis,
+                <strong><%= number_with_delimiter(public_photo_pending_summary.total_attachments) %></strong> anexos no total.
+              </div>
+            </div>
+          </div>
+
+          <% if public_photo_pending_summary.sample.empty? %>
+            <%= ax_inline_notice(tone: :success, icon: "check-circle") do %>
+              <span>Nenhum imóvel com foto elegível foi encontrado.</span>
+            <% end %>
+          <% else %>
+            <div class="tw-flex tw-flex-col tw-gap-2">
+              <% public_photo_pending_summary.sample.each do |item| %>
+                <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-rounded tw-border tw-border-line tw-bg-white tw-p-3">
+                  <div class="tw-min-w-0">
+                    <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+                      <strong class="tw-text-sm tw-text-ink">REF <%= item.habitation.codigo %></strong>
+                      <span class="tw-text-sm tw-text-ink-muted"><%= item.habitation.display_title %></span>
+                      <%= ax_badge("#{item.attachments_count} fotos", tone: :gray) %>
+                    </div>
+                  </div>
+                  <%= button_to "Publicar fotos deste imóvel",
+                        publish_habitation_photos_admin_storage_integration_path,
+                        method: :post,
+                        params: { habitation_id: item.habitation.id, pending_public_photos: "1" },
+                        class: "ax-btn ax-btn--ghost",
+                        form: { data: { turbo_confirm: "Publicar fotos do imóvel #{item.habitation.codigo}?" } } %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if public_photo_lookup.term.present? %>
+        <div class="tw-mt-4">
+          <% if public_photo_lookup.habitations.empty? %>
+            <%= ax_inline_notice(tone: :warning, icon: "search") do %>
+              <span>Nenhum imóvel encontrado para <strong><%= public_photo_lookup.term %></strong>.</span>
+            <% end %>
+          <% elsif public_photo_lookup.rows.empty? %>
+            <%= ax_inline_notice(tone: :warning, icon: "image") do %>
+              <span>Imóvel encontrado, mas nenhuma foto elegível para publicação pública foi localizada.</span>
+            <% end %>
+          <% else %>
+            <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-mb-2">
+              <div>
+                <div class="ax-label tw-mb-1">Fotos do imóvel</div>
+                <div class="tw-text-sm tw-text-muted"><%= pluralize(public_photo_lookup.rows.size, "foto encontrada", "fotos encontradas") %> para <strong><%= public_photo_lookup.term %></strong>.</div>
+              </div>
+              <div class="tw-flex tw-flex-wrap tw-gap-2 tw-justify-end">
+                <% public_photo_lookup.habitations.each do |habitation| %>
+                  <% habitation_rows_count = public_photo_lookup.rows.count { |row| row.habitation&.id == habitation.id } %>
+                  <% next if habitation_rows_count.zero? %>
+
+                  <%= button_to "Publicar todas deste imóvel (#{habitation_rows_count})",
+                        publish_habitation_photos_admin_storage_integration_path,
+                        method: :post,
+                        params: { habitation_id: habitation.id, photo_lookup: public_photo_lookup.term },
+                        class: "ax-btn ax-btn--primary",
+                        form: { data: { turbo_confirm: "Publicar #{habitation_rows_count} fotos do imóvel #{habitation.codigo}?" } } %>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="tw-flex tw-flex-col tw-gap-2">
+              <% public_photo_lookup.rows.each do |row| %>
+                <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-rounded tw-border tw-border-line tw-bg-white tw-p-3">
+                  <div class="tw-min-w-0">
+                    <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+                      <strong class="tw-text-sm tw-text-ink"><%= row.habitation&.codigo || "Sem REF" %></strong>
+                      <span class="tw-text-sm tw-text-ink-muted"><%= row.habitation&.display_title || "Imóvel não vinculado" %></span>
+                      <%= ax_badge(row.source_label, tone: :gray) %>
+                    </div>
+                    <div class="tw-mt-1 tw-flex tw-flex-wrap tw-gap-2 tw-text-xs tw-text-muted">
+                      <span><%= row.blob.filename %></span>
+                      <% if row.public_url.present? %>
+                        <%= link_to "Abrir URL pública", row.public_url, target: "_blank", rel: "noopener", class: "tw-text-primary" %>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

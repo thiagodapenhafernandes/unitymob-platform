@@ -1709,8 +1709,8 @@ i.spin {
 }
 
 .fancybox__container {
-  --fancybox-zIndex: 2400;
-  z-index: 2400 !important;
+  --fancybox-zIndex: 5000;
+  z-index: 5000 !important;
 }
 
 .ax-media-modal__panel {
@@ -1803,8 +1803,10 @@ i.spin {
 }
 
 .ax-media-modal__body .media-gallery-scroll {
-  max-height: none;
-  padding-bottom: 96px;
+  max-height: min(52vh, 540px);
+  overflow-y: auto;
+  padding-bottom: 28px;
+  scroll-padding-bottom: 42px;
 }
 
 .ax-media-modal__footer-meta {

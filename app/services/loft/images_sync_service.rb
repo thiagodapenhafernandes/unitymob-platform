@@ -43,7 +43,20 @@ module Loft
 
         begin
           io = URI.open(url, read_timeout: 20, open_timeout: 10)
-          habitation.photos.attach(io: io, filename: filename)
+          service_name = StorageIntegrationSetting.current.photo_service_name
+          Storage::ActiveStorageRegistry.fetch!(service_name) unless service_name == :local
+          content_type = io.respond_to?(:content_type) ? io.content_type : Marcel::MimeType.for(io, name: filename)
+          io.rewind if io.respond_to?(:rewind)
+          blob = ActiveStorage::Blob.create_and_upload!(
+            io: io,
+            filename: filename,
+            content_type: content_type,
+            identify: false,
+            service_name: service_name
+          )
+          habitation.photos.attach(blob)
+          attachment = ActiveStorage::Attachment.find_by(record: habitation, name: "photos", blob: blob)
+          Storage::PublicPropertyPhoto.publish_attachment!(attachment) if attachment
           synced += 1
           existing_filenames << filename
         rescue => e

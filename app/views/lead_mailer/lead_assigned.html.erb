@@ -1,0 +1,33 @@
+<h2>Você recebeu um novo lead 🚀</h2>
+
+<p>Olá <%= @corretor.name %>, um novo lead foi atribuído a você:</p>
+
+<ul>
+  <li><strong>Nome:</strong> <%= @lead.display_name %></li>
+  <% if @contact&.secure?(:email) %>
+    <li><strong>Contato:</strong> protegido — use os botões abaixo</li>
+  <% else %>
+    <li><strong>Telefone:</strong> <%= @lead.display_phone %></li>
+    <li><strong>E-mail:</strong> <%= @lead.display_email %></li>
+  <% end %>
+  <li><strong>Origem:</strong> <%= @lead.origin %></li>
+  <% if @property %>
+    <li><strong>Imóvel:</strong> <%= @property.try(:title) || @property.try(:reference) || "##{@property.id}" %></li>
+  <% end %>
+</ul>
+
+<% if @contact&.secure?(:email) %>
+  <%# Link seguro: o contato fica atrás de /s/:token; o clique registra o
+      atendimento e mede o SLA, igual ao WhatsApp. %>
+  <p>
+    <a href="<%= @contact.url(:phone) %>">Falar no WhatsApp do lead</a> ·
+    <a href="<%= @contact.url(:email) %>">Enviar e-mail</a> ·
+    <a href="<%= @contact.url(:view) %>">Ver dados do lead</a>
+  </p>
+<% else %>
+  <p>
+    <a href="<%= "#{ENV['APP_HOST']}/admin/leads/#{@lead.id}" %>">Abrir o lead na plataforma</a>
+  </p>
+<% end %>
+
+<p style="color:#6b7280;font-size:13px;">Atenda rápido para aumentar suas chances de conversão.</p>

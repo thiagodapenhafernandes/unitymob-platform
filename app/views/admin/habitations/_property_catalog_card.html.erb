@@ -3,10 +3,11 @@
   details_path = admin_habitation_path(imovel, return_to: card_return_to_path)
   edit_path = edit_admin_habitation_path(imovel, return_to: card_return_to_path) if admin_can_edit_habitation?(imovel)
   catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
-  image_source = imovel.primary_image_source
-  image_url = image_source.present? ? public_image_url(image_source) : nil
+  image_urls = catalog_property_image_urls(imovel)
+  image_url = image_urls.first
+  fallback_image_urls = image_urls.drop(1)
   display_title = imovel.display_title
-  has_photo = imovel.has_any_photo?
+  has_photo = image_urls.any? || imovel.has_any_photo?
   captador_name = imovel.primary_captador_name
   data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
   seconds_since_update = [Time.current - data_referencia, 0].max
@@ -54,7 +55,8 @@
                     data: {
                       controller: "image-fallback",
                       action: "error->image-fallback#hide",
-                      image_fallback_container_selector_value: ".ax-property-card__media"
+                      image_fallback_container_selector_value: ".ax-property-card__media",
+                      image_fallback_fallback_urls_value: fallback_image_urls
                     } %>
     <% else %>
       <div class="ax-property-card__empty-media">
