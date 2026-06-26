@@ -98,6 +98,40 @@ RSpec.describe Vista::PropertyReconciliationService do
     end
   end
 
+  describe "publication flag preservation" do
+    let(:service) { described_class.new(codigos: ["6173"], dry_run: true) }
+
+    it "preserva a publicação local quando o imóvel já existe" do
+      habitation = build_stubbed(:habitation, exibir_no_site_flag: false)
+
+      flag = service.send(
+        :local_publication_flag_for,
+        habitation,
+        {
+          "ExibirNoSite" => "Sim",
+          "ExibirNoSiteSalute" => "Sim"
+        }
+      )
+
+      expect(flag).to be(false)
+    end
+
+    it "usa a API para definir a publicação inicial de imóvel novo" do
+      habitation = build(:habitation, exibir_no_site_flag: false)
+
+      flag = service.send(
+        :local_publication_flag_for,
+        habitation,
+        {
+          "ExibirNoSite" => "Sim",
+          "ExibirNoSiteSalute" => "Nao"
+        }
+      )
+
+      expect(flag).to be(true)
+    end
+  end
+
   describe "commission and rental management mapping" do
     let(:service) { described_class.new(codigos: ["8573"], dry_run: true) }
 

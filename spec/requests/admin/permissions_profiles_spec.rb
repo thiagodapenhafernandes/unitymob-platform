@@ -73,7 +73,7 @@ RSpec.describe "Admin profile permissions", type: :request do
 
     get edit_admin_admin_user_path(broker)
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Exibir perfil do corretor no site")
+    expect(response.body).to include("Exibir perfil no site")
 
     patch admin_admin_user_path(broker), params: {
       admin_user: {
@@ -88,5 +88,27 @@ RSpec.describe "Admin profile permissions", type: :request do
 
     expect(response).to redirect_to(admin_admin_users_path)
     expect(broker.reload.display_on_site).to be(false)
+  end
+
+  it "não concede integrações nem dashboard de captação ao perfil padrão de corretor" do
+    permissions = Profile.default_permissions_for("Corretor")
+
+    expect(permissions.dig("captacoes", "view")).to be(true)
+    expect(permissions["captacao_dashboard"]).to be_nil
+    expect(permissions["integracoes"]).to be_nil
+  end
+
+  it "bloqueia webhooks para corretor mesmo por URL direta" do
+    broker_profile = Profile.create!(
+      name: "Corretor #{SecureRandom.hex(6)}",
+      permissions: Profile.default_permissions_for("Corretor")
+    )
+    broker = create(:admin_user, profile: broker_profile)
+
+    sign_in broker
+
+    get admin_webhook_settings_path
+
+    expect(response).to redirect_to(admin_root_path)
   end
 end

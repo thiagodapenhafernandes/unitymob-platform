@@ -278,7 +278,7 @@
     <div class="ax-sidebar-contextbar">
       <span class="ax-contextbar__title"><i class="bi bi-layout-sidebar"></i><span>Explorer</span></span>
       <div class="ax-contextbar__tools">
-        <button type="button" class="ax-contextbar__tool ax-contextbar__tool--collapse" data-action="ax-drawer#toggleCompact" aria-label="Recolher menu lateral" title="Recolher menu lateral">
+        <button type="button" class="ax-contextbar__tool ax-contextbar__tool--collapse" data-action="ax-drawer#toggleResponsive" aria-label="Menu lateral" title="Menu lateral">
           <i class="bi bi-arrow-bar-left"></i>
         </button>
       </div>
@@ -346,6 +346,7 @@
     <%= render "admin/habitations/media/modal_shell" %>
     
     <%= render 'layouts/pwa_service_worker' %>
+    <%= render 'layouts/admin_push_subscriptions' if current_admin_user %>
     <script>
       (function () {
         const PULL_THRESHOLD = 70;

@@ -275,6 +275,7 @@ module Vista
 
         habitation = Habitation.find_or_initialize_by(codigo: codigo)
         habitation.skip_auto_audit = true if habitation.respond_to?(:skip_auto_audit=)
+        attrs.delete(:exibir_no_site_flag) if habitation.persisted?
         habitation.assign_attributes(attrs)
         habitation.save!
         upsert_address(habitation, row)

@@ -4,7 +4,7 @@ require "tempfile"
 RSpec.describe "Admin::HabitationMedia", type: :request do
   include Devise::Test::IntegrationHelpers
 
-  let(:admin) { create(:admin_user, :admin) }
+  let(:admin) { create(:admin_user, :admin, email: "media-admin-#{SecureRandom.hex(8)}@salute.test") }
 
   before do
     host! "localhost"
@@ -13,12 +13,18 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
 
   it "renderiza o conteúdo do modal de mídia com o mesmo manager do módulo" do
     habitation = create(:habitation, codigo: "MEDIA-MODAL-#{SecureRandom.hex(6)}")
+    habitation.photos.attach(io: StringIO.new("foto um"), filename: "um.jpg", content_type: "image/jpeg")
+    habitation.photos.attach(io: StringIO.new("foto dois"), filename: "dois.jpg", content_type: "image/jpeg")
 
     get modal_admin_habitation_media_path(habitation), headers: { "X-Requested-With" => "XMLHttpRequest" }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Organizador de mídia")
+    expect(response.body).to include("ax-media-modal__header--compact")
+    expect(response.body).to include("ax-media-manager--compact")
+    expect(response.body).to include("Configurações de mídia")
     expect(response.body).to include("photo-upload")
+    expect(response.body).to include("draggable-item")
+    expect(response.body).to include("media-photo-drag-handle")
     expect(response.body).to include("data-photo-upload-async-submit=\"true\"")
     expect(response.body).to include(upload_admin_habitation_media_path(habitation, format: :json))
   end

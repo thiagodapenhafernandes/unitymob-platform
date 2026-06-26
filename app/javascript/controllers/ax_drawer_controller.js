@@ -39,6 +39,18 @@ export default class extends Controller {
     this.element.classList.contains("is-open") ? this.close() : this.open()
   }
 
+  // Mesmo botão "recolher" (--collapse): no desktop (sidebar fixa, >=1024px)
+  // compacta a sidebar; no mobile/tablet (drawer) abre/fecha o menu. Assim o
+  // hambúrguer do header fica dispensável no mobile, SEM mudar o desktop.
+  toggleResponsive(event) {
+    if (event) event.preventDefault()
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      this.toggleCompact()
+    } else {
+      this.element.classList.contains("is-open") ? this.close() : this.open()
+    }
+  }
+
   toggleCompact(event) {
     if (event) event.preventDefault()
 

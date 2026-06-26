@@ -7,13 +7,16 @@ module Whatsapp
       return unless message&.outbound?
 
       conversation = message.whatsapp_conversation
+      recipient = conversation.cloud_recipient # telefone ou BSUID
+      return message.update!(status: "failed", error_message: "Conversa sem telefone ou BSUID") if recipient.blank?
+
       client = Whatsapp::CloudClient.new
 
       result =
         if message.msg_type == "template" && message.template_name.present?
-          client.send_template(to: conversation.contact_phone, name: message.template_name)
+          client.send_template(to: recipient, name: message.template_name)
         else
-          client.send_text(to: conversation.contact_phone, body: message.body)
+          client.send_text(to: recipient, body: message.body)
         end
 
       if result[:ok]

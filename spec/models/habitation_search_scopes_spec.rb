@@ -7,6 +7,45 @@ RSpec.describe Habitation::SearchScopes, type: :model do
     end
   end
 
+  describe ".public_location_options" do
+    it "deduplicates city and neighborhood options ignoring accents and casing" do
+      first = create(:habitation, cidade: nil, bairro: nil)
+      first.create_address!(
+        logradouro: "Rua 1000",
+        numero: "10",
+        bairro: "Centro",
+        cidade: "Balneário Camboriú",
+        uf: "SC"
+      )
+      second = create(:habitation, cidade: nil, bairro: nil)
+      second.create_address!(
+        logradouro: "Rua 1100",
+        numero: "20",
+        bairro: "centro",
+        cidade: "Balneario Camboriu",
+        uf: "SC"
+      )
+
+      options = Habitation.public_location_options
+      city_keys = options.select { |item| item[:type] == "city" }.map { |item| Habitation.normalize_location_value(item[:value]) }
+      neighborhood_keys = options.select { |item| item[:type] == "neighborhood" }.map { |item| Habitation.normalize_location_value(item[:value]) }
+
+      expect(city_keys.count("balneario camboriu")).to eq(1)
+      expect(neighborhood_keys.count("centro - balneario camboriu")).to eq(1)
+    end
+  end
+
+  describe "price sorting" do
+    it "sorts by the available non-zero public price and keeps empty prices last" do
+      rent = create(:habitation, codigo: "PRICE-RENT", valor_venda_cents: 0, valor_locacao_cents: 3_000_00)
+      sale = create(:habitation, codigo: "PRICE-SALE", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
+      empty = create(:habitation, codigo: "PRICE-EMPTY", valor_venda_cents: 0, valor_locacao_cents: 0)
+
+      expect(Habitation.where(id: [rent.id, sale.id, empty.id]).price_asc.to_a).to eq([rent, sale, empty])
+      expect(Habitation.where(id: [rent.id, sale.id, empty.id]).price_desc.to_a).to eq([sale, rent, empty])
+    end
+  end
+
   describe ".with_photos" do
     it "does not treat development photos as public photos for regular units" do
       unit_without_public_photo = create(

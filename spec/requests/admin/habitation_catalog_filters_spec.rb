@@ -3,7 +3,8 @@ require "rails_helper"
 RSpec.describe "Admin habitation catalog filters", type: :request do
   include Devise::Test::IntegrationHelpers
 
-  let(:admin) { create(:admin_user, :admin) }
+  let(:admin) { create(:admin_user, :admin, email: "admin-#{SecureRandom.hex(8)}@salute.test") }
+  let(:turbo_frame_headers) { { "Turbo-Frame" => "habitations_filter_inspector" } }
 
   before do
     host! "localhost"
@@ -40,6 +41,45 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     expect(response.body).not_to include(nonmatching_title), "filtro #{label} deixou passar imóvel incompatível"
   end
 
+  it "mantém compatibilidade do filtro legado exibir_no_site_salute usando a flag genérica do site" do
+    matching_title = "Filtro legado site match #{SecureRandom.hex(6)}"
+    nonmatching_title = "Filtro legado site miss #{SecureRandom.hex(6)}"
+    create_catalog_property(titulo_anuncio: matching_title, exibir_no_site_flag: true)
+    create_catalog_property(titulo_anuncio: nonmatching_title, exibir_no_site_flag: false)
+
+    get admin_habitations_path(exibir_no_site_salute: "1")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(matching_title)
+    expect(response.body).not_to include(nonmatching_title)
+  end
+
+  it "renderiza campos de preço com teclado numérico e máscara BR no inspector" do
+    get filter_inspector_admin_habitations_path(min_price: "800000", max_price: "1200000"),
+        headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+
+    document = Nokogiri::HTML(response.body)
+    min_price = document.at_css('input[name="min_price"]')
+    max_price = document.at_css('input[name="max_price"]')
+    form = document.at_css("form.habitations-inspector__form")
+    close_button = document.at_css('.habitations-inspector__header button[aria-label="Recolher filtros do catálogo"]')
+    clear_link = document.at_css('.habitations-inspector__actions a.ax-btn')
+
+    expect(form["data-action"]).to include("submit->ax-aside#collapse")
+    expect(close_button.at_css("i")["class"]).to include("bi-x-lg")
+    expect(clear_link["href"]).to eq(admin_habitations_path(ownership: "all"))
+    expect(clear_link["data-action"]).to include("click->ax-aside#collapse")
+
+    [min_price, max_price].each do |input|
+      expect(input["inputmode"]).to eq("numeric")
+      expect(input["pattern"]).to eq("[0-9.]*")
+      expect(input["data-controller"]).to include("currency-mask")
+      expect(input["data-action"]).to include("input->currency-mask#format")
+    end
+  end
+
   it "aplica todos os filtros principais do inspector do catálogo" do
     broker = create(:admin_user, name: "Corretor Filtro")
     proprietor = create(:proprietor, name: "Proprietário Filtro")
@@ -74,7 +114,7 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       ["area_privativa_max", { area_privativa_max: "80" }, { area_privativa_m2: 70 }, { area_privativa_m2: 120 }],
       ["destaque_web", { destaque_web: "1" }, { destaque_web_flag: true }, { destaque_web_flag: false }],
       ["festival_salute", { festival_salute: "1" }, { festival_salute_flag: true }, { festival_salute_flag: false }],
-      ["exibir_no_site_salute", { exibir_no_site_salute: "1" }, { exibir_no_site_salute_flag: true }, { exibir_no_site_salute_flag: false }],
+      ["exibir_no_site_salute", { exibir_no_site_salute: "1" }, { exibir_no_site_flag: true }, { exibir_no_site_flag: false }],
       ["tem_placa", { tem_placa: "1" }, { tem_placa_flag: true }, { tem_placa_flag: false }],
       ["exclusivo", { exclusivo: "1" }, { exclusivo_flag: true }, { exclusivo_flag: false }],
       ["somente_com_imagens", { somente_com_imagens: "1" }, { pictures: [{ "url" => "https://example.com/with.jpg" }] }, { pictures: [] }],
@@ -137,7 +177,8 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
   it "considera filtros de atualização como filtros extras limpáveis" do
     create_catalog_property(data_atualizacao_crm: Time.zone.local(2026, 6, 12))
 
-    get filter_inspector_admin_habitations_path(atualizacao_inicio: "2026-06-10", atualizacao_fim: "2026-06-16")
+    get filter_inspector_admin_habitations_path(atualizacao_inicio: "2026-06-10", atualizacao_fim: "2026-06-16"),
+        headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("2 filtros")

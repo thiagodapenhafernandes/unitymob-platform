@@ -11,22 +11,57 @@
     <%= ax_operational_panel(eyebrow: "Lógica", title: "Modo de distribuição") do %>
       <div class="ax-panel-body">
         <div class="ax-option-stack distribution-rule-modes">
-          <% [[:rotary, "arrow-repeat", "Rotativo", "Fila sequencial"],
-              [:performance, "graph-up", "Performance", "Baseado em peso"],
-              [:shark_tank, "lightning-charge", "Shark Tank", "Primeiro a aceitar"]].each do |mode, icon, label, sub| %>
+          <% [
+              [:rotary, "arrow-repeat", "Rotativo", "Fila sequencial", "Entrega para um corretor por vez, seguindo a ordem da fila. Depois que recebe um lead, o corretor vai para o fim da fila."],
+              [:performance, "graph-up", "Performance", "Baseado em peso", "Escolhe um corretor por sorteio ponderado. Corretores com peso maior têm mais chance de receber o lead, sem seguir uma fila fixa."],
+              [:shark_tank, "lightning-charge", "Shark Tank", "Primeiro a aceitar", "Notifica todos os corretores elegíveis da regra. O primeiro que aceitar assume o lead; os demais veem que perderam a vez."]
+            ].each do |mode, icon, label, sub, tooltip| %>
             <%= f.radio_button :distribution_mode, mode, class: "ax-option-card__input", id: "mode_#{mode}", data: { action: "change->distribution-rule#toggleMode" } %>
             <%= f.label "mode_#{mode}", class: "ax-option-card distribution-rule-mode", for: "mode_#{mode}" do %>
               <i class="bi bi-<%= icon %>"></i>
-              <span><strong><%= label %></strong><small><%= sub %></small></span>
+              <span>
+                <strong>
+                  <%= label %>
+                  <button type="button"
+                          class="ax-field-label__info distribution-rule-mode__info"
+                          aria-label="Ajuda: <%= label %>"
+                          data-controller="ax-tooltip"
+                          data-ax-tooltip-text-value="<%= tooltip %>">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                  </button>
+                </strong>
+                <small><%= sub %></small>
+              </span>
             <% end %>
           <% end %>
         </div>
 
         <div class="ax-field">
-          <%= ax_field_label(nil, nil, text: "Preço (R$)") %>
+          <%= ax_field_label(nil, nil,
+                text: "Preço",
+                tooltip: "Filtro opcional pela faixa de valor do lead. Mínimo define o menor valor aceito; máximo define o teto. Deixe vazio para não filtrar por preço."
+              ) %>
           <%= ax_field_grid do %>
-            <div class="ax-span-6"><%= f.number_field :min_price, class: "ax-control ax-control--sm", placeholder: "Mínimo" %></div>
-            <div class="ax-span-6"><%= f.number_field :max_price, class: "ax-control ax-control--sm", placeholder: "Máximo" %></div>
+            <div class="ax-span-6">
+              <%= ax_input_group(prefix: "R$") do %>
+                <%= f.text_field :min_price,
+                      value: (number_to_currency(f.object.min_price, unit: "", separator: ",", delimiter: ".").strip if f.object.min_price.present?),
+                      class: "ax-control ax-control--sm",
+                      placeholder: "Mínimo",
+                      inputmode: "decimal",
+                      data: { controller: "mask", mask_type_value: "currency" } %>
+              <% end %>
+            </div>
+            <div class="ax-span-6">
+              <%= ax_input_group(prefix: "R$") do %>
+                <%= f.text_field :max_price,
+                      value: (number_to_currency(f.object.max_price, unit: "", separator: ",", delimiter: ".").strip if f.object.max_price.present?),
+                      class: "ax-control ax-control--sm",
+                      placeholder: "Máximo",
+                      inputmode: "decimal",
+                      data: { controller: "mask", mask_type_value: "currency" } %>
+              <% end %>
+            </div>
           <% end %>
         </div>
       </div>
@@ -56,6 +91,7 @@
     <%# Horários e Bolsão %>
     <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e bolsão") do %>
       <div class="ax-panel-body">
+        <% secure_push_ready = DistributionRule.pocket_requires_secure_push? %>
         <%= ax_toggle_chip(f, :represamento_active,
               label: "Ativar bolsão (represamento fora do horário)",
               id: "checkRepresamento",
@@ -86,9 +122,17 @@
 
         <%= ax_toggle_chip(f, :pocket_active,
               label: "Ativar tempo limite (Pocket)",
+              disabled: !secure_push_ready,
               id: "checkPocket",
               input_data: { action: "change->distribution-rule#togglePocket" }) %>
-        <div class="section-toggle-container<%= ' tw-hidden' unless f.object.pocket_active? %>" data-distribution-rule-target="pocketSection">
+        <% unless secure_push_ready %>
+          <%= hidden_field_tag "distribution_rule[pocket_active]", "0" %>
+          <%= ax_inline_notice(tone: :warning, icon: "shield-lock") do %>
+            Para usar Pocket, habilite o <strong>link seguro no canal Push</strong>. O clique precisa passar pelo sistema para aceitar o lead, travar a vez do corretor e mostrar “lead já atendido” nas notificações antigas.
+            <%= link_to "Configurar agora", edit_admin_lead_setting_path, class: "tw-font-semibold tw-text-primary" %>
+          <% end %>
+        <% end %>
+        <div class="section-toggle-container<%= ' tw-hidden' unless secure_push_ready && f.object.pocket_active? %>" data-distribution-rule-target="pocketSection">
           <div class="ax-field">
             <%= ax_input_group(suffix: "minutos") do %>
               <%= f.number_field :pocket_time, class: "ax-control", placeholder: "30" %>

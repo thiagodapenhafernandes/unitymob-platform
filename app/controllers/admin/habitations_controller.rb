@@ -75,6 +75,7 @@ class Admin::HabitationsController < Admin::BaseController
   helper_method :can_release_intake_to_broker?, :can_manage_intake_status?, :can_complete_admin_intake_review?
   helper_method :can_filter_by_broker?, :can_filter_by_proprietor?
   helper_method :active_extra_filters_count, :clear_extra_filter_params
+  helper_method :owns_all_resource?
 
   def index
     load_index_filters
@@ -392,7 +393,7 @@ class Admin::HabitationsController < Admin::BaseController
     prepare_development_from_source(@habitation)
     prepare_admin_paper_intake(@habitation) if admin_paper_intake_form?
     @habitation.build_address
-    @page_title = "Novo Imóvel"
+    @page_title = admin_paper_intake_form? ? "Nova ficha interna de captação" : "Novo Imóvel"
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
   end
 
@@ -840,7 +841,7 @@ class Admin::HabitationsController < Admin::BaseController
     @filter_cities = cached[:cities]
     @filter_bairros = cached[:bairros]
     @filter_bairros_comerciais = cached[:bairros_comerciais]
-    @filter_statuses = cached[:statuses]
+    @filter_statuses = ["Venda", "Locação", "Ambos"] # status = tipo de negócio
     @filter_key_locations = cached[:key_locations]
     @filter_empreendimentos = cached[:empreendimentos]
     @filter_brokers = cached[:brokers]
@@ -875,7 +876,7 @@ class Admin::HabitationsController < Admin::BaseController
       permuta_vehicle permuta_property permuta_others permuta_min_value permuta_location
       permuta_min_dorms permuta_min_suites permuta_min_garagens
       situacao face ocupacao_status estado_conservacao area_total_min area_total_max area_privativa_min area_privativa_max
-      destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo empreendimento_codigo corretor_id proprietor_id regiao_foco
+      destaque_web festival_salute exibir_no_site exibir_no_site_salute tem_placa exclusivo empreendimento_codigo corretor_id proprietor_id regiao_foco
       publicar_imovelweb_2 publicar_lais_ai
       publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
       captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim somente_com_imagens somente_sem_imagens somente_dwv
@@ -956,7 +957,7 @@ class Admin::HabitationsController < Admin::BaseController
     @proprietor_id = can_filter_by_proprietor? ? params[:proprietor_id] : nil
     @destaque_web = params[:destaque_web]
     @festival_salute = params[:festival_salute]
-    @exibir_no_site_salute = params[:exibir_no_site_salute]
+    @exibir_no_site = params[:exibir_no_site].presence || params[:exibir_no_site_salute]
     @publicar_imovelweb_2 = params[:publicar_imovelweb_2]
     @publicar_netimoveis_2 = params[:publicar_netimoveis_2]
     @publicar_lais_ai = params[:publicar_lais_ai]
@@ -978,12 +979,12 @@ class Admin::HabitationsController < Admin::BaseController
     @max_price = params[:max_price].to_s.gsub(/[^\d]/, '').to_i
     @permuta_min_value = params[:permuta_min_value].to_s.gsub(/[^\d]/, '').to_i
     @scope = params[:scope]
-    # "all" só é permitido para quem tem escopo total; impede forçar ?ownership=all por URL.
-    @ownership_scope = if owns_all_resource?(:imoveis)
-                         params[:ownership].presence_in(%w[mine all]) || "all"
-                       else
-                         "mine"
-                       end
+    # Catálogo: o corretor também pode navegar todos os imóveis (curadoria), então
+    # "all" é permitido para todos. O default é "all" para quem tem escopo total e
+    # "mine" para os demais. Dados sensíveis por imóvel seguem gateados à parte.
+    @ownership_scope = params[:ownership].presence_in(%w[mine all]) ||
+                       (owns_all_resource?(:imoveis) ? "all" : "mine")
+    @ownership_scope = "all" if @corretor_id.present?
     @intake_review = params[:intake_review].presence_in(%w[pending])
     @captacao_inicio = params[:captacao_inicio]
     @captacao_fim = params[:captacao_fim]
@@ -1000,10 +1001,9 @@ class Admin::HabitationsController < Admin::BaseController
             end
 
     if @codigo.present?
-      code = ActiveRecord::Base.sanitize_sql_like(@codigo)
       scope = scope.where(
-        "habitations.codigo ILIKE :code OR habitations.codigo_dwv ILIKE :code",
-        code: "%#{code}%"
+        "habitations.codigo = :code OR habitations.codigo_dwv = :code",
+        code: @codigo
       )
     end
 
@@ -1139,7 +1139,7 @@ class Admin::HabitationsController < Admin::BaseController
     scope = scope.where("area_privativa_m2 <= ?", area_privativa_max) if area_privativa_max
     scope = apply_boolean_filter(scope, @destaque_web, :destaque_web_flag)
     scope = apply_boolean_filter(scope, @festival_salute, :festival_salute_flag)
-    scope = apply_boolean_filter(scope, @exibir_no_site_salute, :exibir_no_site_salute_flag)
+    scope = apply_boolean_filter(scope, @exibir_no_site, :exibir_no_site_flag)
     scope = apply_boolean_filter(scope, @publicar_imovelweb_2, :publicar_imovelweb_2)
     scope = apply_boolean_filter(scope, @publicar_netimoveis_2, :publicar_netimoveis_2)
     scope = apply_boolean_filter(scope, @publicar_lais_ai, :publicar_lais_ai)
@@ -1215,7 +1215,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def pending_intake_review_scope(scope)
-    scope = scope.broker_intakes.where(intake_status: Habitation::PENDING_REVIEW_INTAKE_STATUSES)
+    scope = scope.broker_intakes.where(intake_status: pending_review_visible_statuses)
 
     if can_review_intakes?
       return restrict_pending_review_to_manager_team(scope) if current_admin_user&.can_view_team?(:captacoes) && !administrative_profile? && !current_admin_user&.admin?
@@ -1223,6 +1223,14 @@ class Admin::HabitationsController < Admin::BaseController
       scope
     else
       scope_for_current_user_properties(scope.where(intake_status: "admin_approved"))
+    end
+  end
+
+  def pending_review_visible_statuses
+    if administrative_profile? && !current_admin_user&.admin?
+      %w[submitted_for_admin_review]
+    else
+      Habitation::PENDING_REVIEW_INTAKE_STATUSES
     end
   end
 
@@ -1399,7 +1407,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   def can_release_intake_to_broker?(habitation)
     return false unless habitation&.broker_intake?
-    return false unless habitation.intake_submitted_for_admin_review?
+    return false if habitation.intake_draft? || habitation.intake_published?
 
     can_complete_admin_intake_review?(habitation)
   end
@@ -1544,7 +1552,11 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def admin_paper_intake_form?
-    current_admin_user&.admin? || administrative_profile? || can?(:review, :captacoes)
+    admin_paper_intake_requested? && (current_admin_user&.admin? || administrative_profile? || can?(:review, :captacoes))
+  end
+
+  def admin_paper_intake_requested?
+    params[:intake_mode].to_s == "paper" || release_intake_to_broker_requested? || save_internal_intake_requested?
   end
 
   def prepare_development_from_source(habitation)
@@ -1644,11 +1656,20 @@ class Admin::HabitationsController < Admin::BaseController
     end
   end
 
+  # Filtro de status = tipo de negócio: Venda / Locação / Ambos, derivado dos
+  # valores (mesma lógica de `modalidade`). "Ambos" = tem valor de venda e locação.
   def apply_status_filter(scope, raw_status)
-    status = Habitation.normalize_status(raw_status)
-    return scope.where.not("unaccent(TRIM(habitations.status)) = unaccent(?)", "Suspenso") if status.blank? || status == "Todos"
-
-    scope.where("unaccent(TRIM(habitations.status)) = unaccent(?)", status)
+    case raw_status.to_s.strip.downcase
+    when "venda"
+      scope.where("habitations.valor_venda_cents > 0 AND COALESCE(habitations.valor_locacao_cents, 0) = 0")
+    when "locacao", "locação"
+      scope.where("habitations.valor_locacao_cents > 0 AND COALESCE(habitations.valor_venda_cents, 0) = 0")
+    when "ambos"
+      scope.where("habitations.valor_venda_cents > 0 AND habitations.valor_locacao_cents > 0")
+    else
+      # "Todos"/vazio: mantém o comportamento de esconder suspensos.
+      scope.where.not("unaccent(TRIM(habitations.status)) = unaccent(?)", "Suspenso")
+    end
   end
 
   def apply_category_filter(scope, raw_category)

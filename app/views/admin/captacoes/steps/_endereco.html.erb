@@ -1,19 +1,19 @@
 <h1 class="wizard-section-title"><i class="bi bi-geo-alt-fill tw-text-primary" style="margin-right:.5rem;"></i>Endereço do imóvel</h1>
-<p class="wizard-section-subtitle">Digite o CEP e nós preenchemos o endereço. Você só precisa completar com o número.</p>
+<p class="wizard-section-subtitle">Digite o CEP e nós preenchemos o endereço. Complete número e complemento quando necessário.</p>
 
 <div data-controller="cep-lookup">
-  <div class="wizard-field-group">
+  <div class="wizard-field-group wizard-field-group--cep">
     <%= f.label :zip_code, "CEP", class: "ax-label" %>
-    <div class="tw-flex tw-items-center tw-gap-2">
-      <span><i class="bi bi-mailbox tw-text-ink-muted"></i></span>
+    <div class="wizard-cep-row">
+      <span class="wizard-cep-icon" aria-hidden="true"><i class="bi bi-mailbox"></i></span>
       <%= f.text_field :zip_code,
-                       class: field_state.call(:zip_code),
+                       class: field_state.call(:zip_code, "ax-control wizard-cep-input"),
                        placeholder: "88330-030",
                        maxlength: 9,
                        inputmode: "numeric",
                        data: { cep_lookup_target: "cep", action: "blur->cep-lookup#lookup" } %>
-      <button type="button" class="ax-btn ax-btn--ghost" data-cep-lookup-target="button" data-action="cep-lookup#lookup">
-        <i class="bi bi-search"></i>Buscar
+      <button type="button" class="ax-btn ax-btn--ghost wizard-cep-button" data-cep-lookup-target="button" data-action="cep-lookup#lookup">
+        <i class="bi bi-search"></i><span>Buscar</span>
       </button>
     </div>
     <% if field_invalid.call(:zip_code) %><div class="invalid-feedback d-block">Informe o CEP.</div><% end %>
@@ -52,7 +52,7 @@
     </div>
   <% end %>
 
-  <%= ax_field_grid do %>
+  <%= ax_field_grid(class_name: "wizard-address-locality-grid") do %>
     <div class="ax-span-6">
       <div class="wizard-field-group">
         <%= f.label :neighborhood, "Bairro", class: "ax-label" %>
@@ -78,31 +78,33 @@
   <% end %>
 </div>
 
-<% if @captacao.requires_intake_development_name? || @captacao.requires_unit_number? %>
+<% if @captacao.requires_intake_development_name? || @captacao.requires_intake_address_complement? %>
   <hr class="my-3">
   <%= ax_field_grid do %>
-    <div class="<%= @captacao.requires_unit_number? ? 'ax-span-8' : 'ax-span-12' %>">
-      <div class="wizard-field-group">
-        <%= f.label :edificio_nome, "Edifício / Condomínio", class: "ax-label" %>
-        <% if @captacao.requires_intake_development_name? %><span class="required-star">*</span><% end %>
-        <%= f.text_field :edificio_nome,
-                         class: field_state.call(:edificio_nome),
-                         placeholder: "Ex.: Edifício Mirante do Atlântico",
-                         data: {
-                           habitation_duplicate_check_target: "building",
-                           action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
-                         } %>
-        <% if field_invalid.call(:edificio_nome) %><div class="invalid-feedback d-block">Informe o nome do condomínio/empreendimento.</div><% end %>
+    <% if @captacao.requires_intake_development_name? %>
+      <div class="<%= @captacao.requires_intake_address_complement? ? 'ax-span-8' : 'ax-span-12' %>">
+        <div class="wizard-field-group">
+          <%= f.label :edificio_nome, "Edifício / Condomínio", class: "ax-label" %>
+          <span class="required-star">*</span>
+          <%= f.text_field :edificio_nome,
+                           class: field_state.call(:edificio_nome),
+                           placeholder: "Ex.: Edifício Mirante do Atlântico",
+                           data: {
+                             habitation_duplicate_check_target: "building",
+                             action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                           } %>
+          <% if field_invalid.call(:edificio_nome) %><div class="invalid-feedback d-block">Informe o nome do condomínio/empreendimento.</div><% end %>
+        </div>
       </div>
-    </div>
+    <% end %>
     <% if @captacao.requires_unit_number? %>
       <div class="ax-span-4">
         <div class="wizard-field-group">
-          <%= f.label :unidade_numero, "Unidade / Apto", class: "ax-label" %>
+          <%= f.label :unidade_numero, @captacao.intake_address_complement_label, class: "ax-label" %>
           <span class="required-star">*</span>
           <%= f.text_field :unidade_numero,
                            class: field_state.call(:unidade_numero),
-                           placeholder: "1203",
+                           placeholder: @captacao.intake_address_complement_placeholder,
                            data: {
                              habitation_duplicate_check_target: "unit",
                              action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
@@ -110,9 +112,39 @@
           <% if field_invalid.call(:unidade_numero) %><div class="invalid-feedback d-block">Informe o número da unidade.</div><% end %>
         </div>
       </div>
+    <% elsif @captacao.requires_intake_address_complement? %>
+      <div class="<%= @captacao.requires_intake_development_name? ? 'ax-span-4' : 'ax-span-12' %>">
+        <div class="wizard-field-group">
+          <%= f.label :complemento, @captacao.intake_address_complement_label, class: "ax-label" %>
+          <span class="required-star">*</span>
+          <%= f.text_field :complemento,
+                           class: field_state.call(:complemento),
+                           placeholder: @captacao.intake_address_complement_placeholder,
+                           data: {
+                             habitation_duplicate_check_target: "complement",
+                             action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                           } %>
+          <% if field_invalid.call(:complemento) %><div class="invalid-feedback d-block">Informe o complemento.</div><% end %>
+        </div>
+      </div>
     <% end %>
   <% end %>
   <div data-habitation-duplicate-check-target="status"></div>
 <% else %>
+  <hr class="my-3">
+  <%= ax_field_grid do %>
+    <div class="ax-span-12">
+      <div class="wizard-field-group">
+        <%= f.label :complemento, "Complemento", class: "ax-label" %>
+        <%= f.text_field :complemento,
+                         class: field_state.call(:complemento),
+                         placeholder: @captacao.intake_address_complement_placeholder,
+                         data: {
+                           habitation_duplicate_check_target: "complement",
+                           action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                         } %>
+      </div>
+    </div>
+  <% end %>
   <div data-habitation-duplicate-check-target="status"></div>
 <% end %>

@@ -6,6 +6,11 @@ module Habitation::SearchScopes
                               "THEN COALESCE(habitations.caracteristica_unica::text[], ARRAY[]::text[]) " \
                               "ELSE string_to_array(COALESCE(habitations.caracteristica_unica::text, ''), ',') " \
                               "END".freeze
+  LOCATION_CITY_SQL = "COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), ''))".freeze
+  LOCATION_NEIGHBORHOOD_SQL = "COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), ''))".freeze
+  LOCATION_CITY_NORM_SQL = "LOWER(unaccent(#{LOCATION_CITY_SQL}))".freeze
+  LOCATION_NEIGHBORHOOD_NORM_SQL = "LOWER(unaccent(#{LOCATION_NEIGHBORHOOD_SQL}))".freeze
+  LOCATION_LABEL_NORM_SQL = "LOWER(unaccent(CONCAT_WS(' - ', #{LOCATION_NEIGHBORHOOD_SQL}, #{LOCATION_CITY_SQL})))".freeze
   
   included do
     # Scopes básicos de visibilidade
@@ -160,28 +165,42 @@ module Habitation::SearchScopes
     # Scopes por localização (com unaccent e busca flexível)
     scope :by_city, ->(city) { 
       if city.is_a?(Array)
-        clean = city.reject(&:blank?)
+        clean = normalize_location_values(city)
         if clean.any?
-          left_outer_joins(:address).where("unaccent(COALESCE(addresses.cidade, habitations.cidade)) IN (SELECT unaccent(n) FROM unnest(ARRAY[?]) AS n)", clean)
+          left_outer_joins(:address).where("#{LOCATION_CITY_NORM_SQL} IN (?)", clean)
         else
           all
         end
       elsif city.present?
-        left_outer_joins(:address).where("unaccent(COALESCE(addresses.cidade, habitations.cidade)) ILIKE unaccent(?)", "%#{city}%")
+        left_outer_joins(:address).where("#{LOCATION_CITY_NORM_SQL} ILIKE ?", "%#{normalize_location_value(city)}%")
       else
         all
       end
     }
     scope :by_neighborhood, ->(neighborhood) { 
       if neighborhood.is_a?(Array)
-        neighborhood_clean = neighborhood.reject(&:blank?)
+        neighborhood_clean = normalize_location_values(neighborhood)
         if neighborhood_clean.any?
-          left_outer_joins(:address).where("unaccent(COALESCE(addresses.bairro, habitations.bairro)) IN (SELECT unaccent(n) FROM unnest(ARRAY[?]) AS n)", neighborhood_clean)
+          left_outer_joins(:address).where("#{LOCATION_NEIGHBORHOOD_NORM_SQL} IN (?) OR #{LOCATION_LABEL_NORM_SQL} IN (?)", neighborhood_clean, neighborhood_clean)
         else
           all
         end
       elsif neighborhood.present?
-        left_outer_joins(:address).where("unaccent(COALESCE(addresses.bairro, habitations.bairro)) ILIKE unaccent(?)", "%#{neighborhood}%")
+        normalized = normalize_location_value(neighborhood)
+        left_outer_joins(:address).where("#{LOCATION_NEIGHBORHOOD_NORM_SQL} ILIKE ? OR #{LOCATION_LABEL_NORM_SQL} ILIKE ?", "%#{normalized}%", "%#{normalized}%")
+      else
+        all
+      end
+    }
+    scope :by_public_locations, ->(locations) {
+      normalized_locations = normalize_location_values(locations)
+      if normalized_locations.any?
+        left_outer_joins(:address).where(
+          "#{LOCATION_CITY_NORM_SQL} IN (:locations) OR " \
+          "#{LOCATION_NEIGHBORHOOD_NORM_SQL} IN (:locations) OR " \
+          "#{LOCATION_LABEL_NORM_SQL} IN (:locations)",
+          locations: normalized_locations
+        )
       else
         all
       end
@@ -383,9 +402,9 @@ module Habitation::SearchScopes
       where(festival_salute_flag: true)
     }
 
-    # Exibir no Site Salute
+    # Compatibilidade para filtros antigos que usavam "Exibir no Site Salute".
     scope :exibir_site_salute, lambda {
-      where(exibir_no_site_salute_flag: true)
+      where(exibir_no_site_flag: true)
     }
 
     # Oportunidade (Preço Reduzido)
@@ -518,8 +537,8 @@ module Habitation::SearchScopes
     # Scopes de ordenação
     scope :newest_first, -> { order(data_atualizacao_crm: :desc, created_at: :desc) }
     scope :oldest_first, -> { order(data_atualizacao_crm: :asc, created_at: :asc) }
-    scope :price_asc, -> { order(Arel.sql("COALESCE(valor_venda_cents, valor_locacao_cents) ASC")) }
-    scope :price_desc, -> { order(Arel.sql("COALESCE(valor_venda_cents, valor_locacao_cents) DESC")) }
+    scope :price_asc, -> { order(Arel.sql(public_price_sort_sql("ASC"))) }
+    scope :price_desc, -> { order(Arel.sql(public_price_sort_sql("DESC"))) }
     scope :area_asc, -> { order(area_total_m2: :asc) }
     scope :area_desc, -> { order(area_total_m2: :desc) }
     
@@ -563,6 +582,51 @@ module Habitation::SearchScopes
   end
   
   class_methods do
+    def normalize_location_value(value)
+      I18n.transliterate(value.to_s.strip).downcase
+    end
+
+    def normalize_location_values(values)
+      Array(values).map { |value| normalize_location_value(value) }.reject(&:blank?).uniq
+    end
+
+    def public_location_options
+      rows = active
+        .left_outer_joins(:address)
+        .pluck(Arel.sql("#{LOCATION_CITY_SQL} AS cidade_nome, #{LOCATION_NEIGHBORHOOD_SQL} AS bairro_nome"))
+
+      cities = rows.filter_map do |city, _neighborhood|
+        next if city.blank?
+
+        { type: "city", label: city.to_s.strip, value: city.to_s.strip }
+      end
+
+      neighborhoods = rows.filter_map do |city, neighborhood|
+        next if city.blank? || neighborhood.blank?
+
+        label = "#{neighborhood.to_s.strip} - #{city.to_s.strip}"
+        { type: "neighborhood", label: label, value: label }
+      end
+
+      (cities + neighborhoods)
+        .uniq { |item| [item[:type], normalize_location_value(item[:value])] }
+        .sort_by { |item| [item[:type] == "city" ? 0 : 1, normalize_location_value(item[:label])] }
+    end
+
+    def public_price_sort_sql(direction)
+      normalized_direction = direction.to_s.upcase == "DESC" ? "DESC" : "ASC"
+      price_sql = <<~SQL.squish
+        CASE
+          WHEN COALESCE(habitations.valor_venda_cents, 0) > 0 AND COALESCE(habitations.valor_locacao_cents, 0) > 0 THEN LEAST(habitations.valor_venda_cents, habitations.valor_locacao_cents)
+          WHEN COALESCE(habitations.valor_venda_cents, 0) > 0 THEN habitations.valor_venda_cents
+          WHEN COALESCE(habitations.valor_locacao_cents, 0) > 0 THEN habitations.valor_locacao_cents
+          ELSE NULL
+        END
+      SQL
+
+      "#{price_sql} #{normalized_direction} NULLS LAST, habitations.data_atualizacao_crm DESC, habitations.created_at DESC"
+    end
+
     # Busca avançada SUPER DINÂMICA combinando múltiplos filtros
     def advanced_search(params = {})
       params = params.to_h.with_indifferent_access
@@ -578,23 +642,15 @@ module Habitation::SearchScopes
       # Localização (busca flexível - cidade OU bairro)
       if params[:city].present?
         if params[:city].is_a?(Array)
-          locations = params[:city].reject(&:blank?).map(&:strip)
-          if locations.any?
-            query = query.left_outer_joins(:address).where(
-              "unaccent(COALESCE(addresses.cidade, habitations.cidade)) IN (SELECT unaccent(n) FROM unnest(ARRAY[?]) AS n) OR " \
-              "unaccent(COALESCE(addresses.bairro, habitations.bairro)) IN (SELECT unaccent(n) FROM unnest(ARRAY[?]) AS n) OR " \
-              "unaccent((COALESCE(addresses.bairro, habitations.bairro) || ' - ' || COALESCE(addresses.cidade, habitations.cidade))) IN (SELECT unaccent(n) FROM unnest(ARRAY[?]) AS n)",
-              locations, locations, locations
-            )
-          end
+          query = query.by_public_locations(params[:city])
         else
           city_term = params[:city].to_s.strip
           query = query.left_outer_joins(:address).where(
-            "unaccent(COALESCE(addresses.cidade, habitations.cidade)) ILIKE unaccent(:term) OR " \
-            "unaccent(COALESCE(addresses.bairro, habitations.bairro)) ILIKE unaccent(:term) OR " \
-            "unaccent((COALESCE(addresses.bairro, habitations.bairro) || ' - ' || COALESCE(addresses.cidade, habitations.cidade))) ILIKE unaccent(:term) OR " \
+            "#{LOCATION_CITY_NORM_SQL} ILIKE :term OR " \
+            "#{LOCATION_NEIGHBORHOOD_NORM_SQL} ILIKE :term OR " \
+            "#{LOCATION_LABEL_NORM_SQL} ILIKE :term OR " \
             "unaccent(nome_empreendimento) ILIKE unaccent(:term)",
-            term: "%#{city_term}%"
+            term: "%#{normalize_location_value(city_term)}%"
           )
         end
       end
@@ -715,7 +771,7 @@ module Habitation::SearchScopes
           when 'aceita_financiamento_flag' then char_conditions = char_conditions.or(Habitation.aceita_financiamento)
           when 'garden_flag' then char_conditions = char_conditions.or(Habitation.garden)
           when 'festival_salute_flag' then char_conditions = char_conditions.or(Habitation.festival_salute)
-          when 'exibir_no_site_salute_flag' then char_conditions = char_conditions.or(Habitation.exibir_site_salute)
+          when 'exibir_no_site_flag', 'exibir_no_site_salute_flag' then char_conditions = char_conditions.or(Habitation.exibir_site_salute)
           when 'opportunity' then char_conditions = char_conditions.or(Habitation.opportunity)
           when 'na_planta' then char_conditions = char_conditions.or(Habitation.na_planta)
           when 'lancamento' then char_conditions = char_conditions.or(Habitation.lancamento)

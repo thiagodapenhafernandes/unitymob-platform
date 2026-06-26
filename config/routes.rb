@@ -316,7 +316,10 @@ Rails.application.routes.draw do
     resources :location_pings, only: [:create]
     resources :manual_checkin_requests, only: [:new, :create]
     resources :push_subscriptions, only: [:create, :destroy] do
-      collection { get :vapid_key }
+      collection do
+        get :vapid_key
+        post :received
+      end
     end
   end
 

@@ -7,7 +7,7 @@
 //
 // NOTE: Keep this file minimal and dependency-free. Bumps cache version when shipping changes.
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v5";
 const SHELL_CACHE = `field-shell-${CACHE_VERSION}`;
 const PING_QUEUE_DB = "field-ping-queue";
 const PING_QUEUE_STORE = "pings";
@@ -177,28 +177,180 @@ self.addEventListener("message", (event) => {
 });
 
 // ---------- Push Notifications ----------
+// Logs com prefixo [push] para inspeção via Safari Web Inspector no iPhone:
+// se "event received" não aparece, o push nem chegou ao aparelho (entrega Apple);
+// se aparece mas "showNotification FAILED", é o iOS bloqueando a exibição.
 self.addEventListener("push", (event) => {
+  console.log("[push] event received", new Date().toISOString());
+
   let data = {};
-  try { data = event.data ? event.data.json() : {}; } catch (e) {}
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    console.warn("[push] falha ao ler JSON do payload", e, event.data && event.data.text && event.data.text());
+  }
+  console.log("[push] payload", data);
+
   const title = data.title || "Salute Campo";
   const options = {
     body:  data.body || "Nova atualização",
     icon:  data.icon || "/field-icons/icon-192.png",
     badge: "/field-icons/icon-192.png",
-    data:  { url: data.url || "/field" }
+    tag: data.tag || undefined,
+    renotify: Boolean(data.tag),
+    requireInteraction: Boolean(data.require_interaction || data.requireInteraction),
+    timestamp: data.timestamp || Date.now(),
+    data:  {
+      url: data.url || "/field",
+      accept_url: data.accept_url || data.acceptUrl,
+      tag: data.tag
+    }
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+
+  event.waitUntil(Promise.all([
+    notifyPushReceived(data),
+    self.registration.showNotification(title, options)
+      .then(() => console.log("[push] showNotification OK"))
+      .catch((err) => console.error("[push] showNotification FAILED", err)),
+    refreshPushSubscription("push")
+  ]));
 });
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  console.warn("[push] pushsubscriptionchange — inscrição trocada pelo navegador", event);
+  const oldEndpoint = event.oldSubscription && event.oldSubscription.endpoint;
+  event.waitUntil(refreshPushSubscription("pushsubscriptionchange", oldEndpoint, event.newSubscription));
+});
+
+async function refreshPushSubscription(reason, oldEndpoint, providedSubscription) {
+  try {
+    const keyResp = await fetch("/field/push_subscriptions/vapid_key", {
+      credentials: "include",
+      headers: { "Accept": "application/json" }
+    });
+    if (!keyResp.ok) {
+      console.warn("[push] renovação ignorada: VAPID key indisponível", keyResp.status, reason);
+      return;
+    }
+
+    const data = await keyResp.json();
+    const publicKey = data.public_key;
+    if (!publicKey) {
+      console.warn("[push] renovação ignorada: VAPID public key ausente", reason);
+      return;
+    }
+
+    let subscription = providedSubscription || await self.registration.pushManager.getSubscription();
+    const previousEndpoint = oldEndpoint || (subscription && subscription.endpoint);
+
+    if (subscription && !subscriptionUsesServerKey(subscription, publicKey)) {
+      console.warn("[push] subscription usa VAPID antigo; renovando no service worker", reason);
+      await subscription.unsubscribe();
+      subscription = null;
+    }
+
+    if (!subscription) {
+      subscription = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+    }
+
+    const saveResp = await fetch("/field/push_subscriptions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-Field-Service-Worker": "push-renewal"
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        subscription: subscription.toJSON(),
+        old_endpoint: previousEndpoint,
+        reason: reason
+      })
+    });
+
+    if (saveResp.ok) {
+      console.log("[push] subscription renovada/sincronizada", reason);
+    } else {
+      console.warn("[push] falha ao salvar subscription renovada", saveResp.status, reason);
+    }
+  } catch (error) {
+    console.warn("[push] refreshPushSubscription falhou", reason, error);
+  }
+}
+
+async function notifyPushReceived(data) {
+  try {
+    const subscription = await self.registration.pushManager.getSubscription();
+    if (!subscription) return;
+
+    await fetch("/field/push_subscriptions/received", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-Field-Service-Worker": "push-received"
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        endpoint: subscription.endpoint,
+        reason: "push",
+        tag: data.tag || null
+      })
+    });
+  } catch (error) {
+    console.warn("[push] falha ao registrar recebimento no device", error);
+  }
+}
+
+function subscriptionUsesServerKey(subscription, publicKey) {
+  try {
+    const currentKey = subscription.options && subscription.options.applicationServerKey;
+    if (!currentKey) return true;
+
+    const serverKey = urlBase64ToUint8Array(publicKey);
+    const current = new Uint8Array(currentKey);
+    if (current.length !== serverKey.length) return false;
+
+    return current.every((value, index) => value === serverKey[index]);
+  } catch (error) {
+    console.warn("[push] falha ao comparar VAPID da subscription", error);
+    return true;
+  }
+}
+
+function urlBase64ToUint8Array(base64) {
+  const padding = "=".repeat((4 - base64.length % 4) % 4);
+  const base = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base);
+  return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+}
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = event.notification.data?.url || "/field";
-  event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const c of list) {
-        if (c.url.includes(target) && "focus" in c) return c.focus();
+  const data = event.notification.data || {};
+  const target = data.url || "/field";
+  const acceptUrl = data.acceptUrl || data.accept_url;
+
+  event.waitUntil((async () => {
+    // Registra o aceite em background (não bloqueia a abertura do destino).
+    // É isso que mantém o sistema no meio sem mostrar tela: o clique abre o
+    // WhatsApp direto (target) e o servidor só "ouve" este evento.
+    if (acceptUrl) {
+      try {
+        await fetch(acceptUrl, { method: "GET", credentials: "include", keepalive: true });
+      } catch (e) {
+        console.warn("[push] beacon de aceite falhou", e);
       }
-      if (clients.openWindow) return clients.openWindow(target);
-    })
-  );
+    }
+
+    // Abre o destino direto (conversa do WhatsApp do lead, ou tela do sistema).
+    const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of list) {
+      if (c.url.includes(target) && "focus" in c) return c.focus();
+    }
+    if (clients.openWindow) return clients.openWindow(target);
+  })());
 });

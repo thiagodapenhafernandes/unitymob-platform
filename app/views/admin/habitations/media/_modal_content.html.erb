@@ -5,10 +5,10 @@
   upload_input_id = "habitation_media_modal_photos_#{habitation.id}"
 %>
 
-<header class="ax-media-modal__header">
+<header class="ax-media-modal__header ax-media-modal__header--compact">
   <div class="ax-media-modal__title-group">
-    <span class="ax-media-modal__eyebrow">Organizador de mídia</span>
-    <h2><%= habitation.display_title %></h2>
+    <span class="ax-media-modal__eyebrow">Mídia</span>
+    <h2 title="<%= habitation.display_title %>"><%= habitation.display_title %></h2>
     <div class="ax-media-modal__meta">
       <strong><%= habitation.codigo.present? ? "##{habitation.codigo}" : "Cadastro" %></strong>
       <% if habitation.status.present? %>
@@ -22,9 +22,12 @@
   </div>
 
   <div class="ax-media-modal__actions">
-    <%= link_to "Abrir página completa",
-                admin_habitation_media_path(habitation, return_to: return_to_path),
-                class: "ax-btn ax-btn--ghost ax-btn--sm" %>
+    <%= link_to admin_habitation_media_path(habitation, return_to: return_to_path),
+                class: "ax-icon-btn",
+                title: "Abrir página completa",
+                aria: { label: "Abrir página completa" } do %>
+      <i class="bi bi-arrows-fullscreen"></i>
+    <% end %>
     <button type="button" class="ax-icon-btn" data-action="ax-modal#close" aria-label="Fechar">
       <i class="bi bi-x-lg"></i>
     </button>
@@ -47,13 +50,14 @@
     <%= render "admin/habitations/media/manager",
                f: f,
                habitation: habitation,
-               upload_input_id: upload_input_id %>
+               upload_input_id: upload_input_id,
+               compact: true %>
   </div>
 
   <footer class="ax-media-modal__footer">
     <div class="ax-media-modal__footer-meta">
       <i class="bi bi-cloud-arrow-up"></i>
-      <span>Uploads, ordenação e visibilidade são salvos de forma assíncrona.</span>
+      <span><%= media_count %> mídia(s)</span>
     </div>
     <div class="ax-media-modal__footer-actions">
       <button type="button" class="ax-btn" data-action="ax-modal#close">Fechar</button>

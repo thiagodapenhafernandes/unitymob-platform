@@ -20,11 +20,12 @@ class LandingPagesController < ApplicationController
       opportunity: filters['opportunity'],
       characteristics: filters['characteristics'],
       caracteristica_unica: filters['caracteristica_unica'],
-      status: filters['status']
+      status: filters['status'],
+      sort: params[:sort].presence || filters['sort']
     }
 
     @habitations = Habitation.active.advanced_search(search_params).with_attached_photos
-    @habitations = @habitations.order(created_at: :desc).paginate(page: params[:page], per_page: 12)
+    @habitations = @habitations.paginate(page: params[:page], per_page: 12)
     
     # SEO meta tags
     @page_title = @landing_page.meta_title.presence || @landing_page.title

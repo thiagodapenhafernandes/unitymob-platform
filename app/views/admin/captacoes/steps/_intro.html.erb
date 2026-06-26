@@ -31,7 +31,7 @@
      data-habitation-form-tipo-by-type-value="<%= json_escape({ apartamentos: "Unitário", comerciais_industriais: "Unitário", imoveis_residenciais: "Unitário", terrenos: "Unitário" }.to_json) %>">
   <div class="wizard-field-group">
     <label class="ax-label">Tipo de cadastro <span class="required-star">*</span></label>
-    <div class="tw-grid tw-gap-2" style="grid-template-columns:repeat(2,1fr);" data-controller="option-picker">
+    <div class="wizard-option-grid" data-controller="option-picker">
       <% cadastro_type_labels.each do |val, label| %>
         <div>
           <label class="wizard-option-card <%= 'selected' if inferred_cadastro_type == val %>">
@@ -42,8 +42,8 @@
                                    habitation_form_target: "cadastroType",
                                    action: "change->option-picker#pick change->habitation-form#cadastroTypeChanged"
                                  } %>
-            <div class="icon tw-mb-2"><i class="bi <%= cadastro_type_icons[val] %>"></i></div>
-            <div class="tw-text-sm tw-font-semibold"><%= label %></div>
+            <div class="icon"><i class="bi <%= cadastro_type_icons[val] %>"></i></div>
+            <div class="wizard-option-card__text"><%= label %></div>
           </label>
         </div>
       <% end %>
@@ -57,12 +57,12 @@
                  cadastro_categories.fetch(inferred_cadastro_type),
                  { include_blank: "Selecione..." },
                  class: "ax-control",
-                 data: { controller: "tom-select", placeholder: "Selecione...", habitation_form_target: "category" } %>
+                 data: { habitation_form_target: "category" } %>
   </div>
 
   <div class="wizard-field-group">
     <label class="ax-label">Modalidade <span class="required-star">*</span></label>
-    <div class="tw-grid tw-gap-2" style="grid-template-columns:repeat(2,1fr);" data-controller="option-picker">
+    <div class="wizard-option-grid" data-controller="option-picker">
       <% [
         ["venda",          "Venda",           "bi-cash-coin"],
         ["locacao_anual",  "Locação anual",   "bi-calendar-month"],
@@ -72,8 +72,8 @@
         <div>
           <label class="wizard-option-card <%= 'selected' if @captacao.modalidade == val %>">
             <%= f.radio_button :modalidade, val, data: { action: "change->option-picker#pick" } %>
-            <div class="icon tw-mb-2"><i class="bi <%= icon %>"></i></div>
-            <div class="tw-text-sm tw-font-semibold"><%= label %></div>
+            <div class="icon"><i class="bi <%= icon %>"></i></div>
+            <div class="wizard-option-card__text"><%= label %></div>
           </label>
         </div>
       <% end %>

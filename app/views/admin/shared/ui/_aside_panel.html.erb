@@ -6,6 +6,7 @@
   actions_classes = ["ax-aside-panel__actions", actions_class].compact.join(" ")
   toggle_classes = ["ax-aside-panel__toggle", toggle_class].compact.join(" ")
   controller_name = local_assigns[:controller].presence || "ax-aside"
+  collapse_icon = local_assigns[:collapse_icon].presence || "arrow-bar-right"
   rail_body = local_assigns[:rail_body]
   toggle_action = "click->#{controller_name}#toggle"
   toggle_target_attribute = "data-#{controller_name}-target"
@@ -60,7 +61,7 @@
                 aria-expanded="true"
                 aria-label="<%= collapse_label %>"
                 title="<%= collapse_label %>">
-          <i class="bi bi-arrow-bar-right" aria-hidden="true"></i>
+          <i class="bi bi-<%= collapse_icon %>" aria-hidden="true"></i>
         </button>
       </div>
     </header>

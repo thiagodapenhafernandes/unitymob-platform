@@ -10,9 +10,23 @@
     rescue Devise::MissingWarden
       false
     end
+
+    # Visibilidade de cada seção = OR dos itens dela. O header só aparece se a
+    # seção tiver ao menos um item visível (evita rótulos de seção vazios).
+    produto_visible = can_access.call(:view, :dashboard) || can_access.call(:view, :imoveis) ||
+                      can_access.call(:view, :leads)
+    operacao_visible = can_access.call(:view, :comercial) || can_access.call(:view, :whatsapp_inbox) ||
+                       can_access.call(:manage, :automacoes) || can_access.call(:view, :distribution_rules) ||
+                       can_access.call(:manage, :distribution_rules) || can_access.call(:view, :captacoes) ||
+                       can_access.call(:view, :captacao_dashboard) || can_access.call(:view, :field_checkins) ||
+                       can_access.call(:view, :field_manual)
+    gestao_visible = can_access.call(:view, :proprietarios) || can_access.call(:view, :lojas) ||
+                     can_access.call(:manage, :lojas) || can_access.call(:view, :corretores) ||
+                     can_access.call(:view, :metas_captacao)
+    crescimento_visible = can_access.call(:manage, :marketing)
   %>
 <ul class="ax-nav">
-    <li class="ax-nav__section">Produto</li>
+    <% if produto_visible %><li class="ax-nav__section">Produto</li><% end %>
 
     <%# 1. Painel %>
     <% if can_access.call(:view, :dashboard) %>
@@ -41,7 +55,7 @@
       </li>
     <% end %>
 
-    <li class="ax-nav__section">Operação</li>
+    <% if operacao_visible %><li class="ax-nav__section">Operação</li><% end %>
 
     <%# 4a. Comercial: Tarefas + Agenda %>
     <% if can_access.call(:view, :comercial) %>
@@ -120,7 +134,7 @@
       </li>
     <% end %>
 
-    <li class="ax-nav__section">Gestão</li>
+    <% if gestao_visible %><li class="ax-nav__section">Gestão</li><% end %>
 
     <%# Proprietários %>
     <% if can_access.call(:view, :proprietarios) %>
@@ -158,7 +172,7 @@
       </li>
     <% end %>
 
-    <li class="ax-nav__section">Crescimento</li>
+    <% if crescimento_visible %><li class="ax-nav__section">Crescimento</li><% end %>
 
     <%# Marketing e crescimento comercial %>
     <% if can_access.call(:manage, :marketing) %>
@@ -246,8 +260,7 @@
 
     <%# Integrações técnicas %>
     <% schedule_context = can_access.call(:view, :agenda_fotografia) || can_access.call(:manage, :agenda_fotografia) || can_access.call(:manage, :integracoes) %>
-    <% webhook_self_service_context = current_admin_user.present? %>
-    <% if can_access.call(:manage, :integracoes) || schedule_context || webhook_self_service_context %>
+    <% if can_access.call(:manage, :integracoes) || schedule_context %>
       <li class="ax-nav__section">Integrações</li>
       <% integ_open = ['meta_integrations', 'whatsapp_integrations', 'email_settings', 'push_settings', 'webhook_settings', 'dwv_integrations', 'loft_integrations', 'portal_integrations', 'scheduling_integrations', 'image_migration_status', 'ai_integrations', 'google_integrations', 'tracking_integrations', 'storage_integrations'].include?(controller_name) || vista_soft_context %>
       <li class="ax-nav__group <%= 'is-open' if integ_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= integ_open %>">
@@ -271,10 +284,8 @@
           <% if schedule_context %>
             <li><%= link_to admin_scheduling_integration_path, class: "ax-nav__link #{'active' if controller_name == 'scheduling_integrations'}" do %><i class="bi bi-calendar2-check"></i><span>Agendamento</span><% end %></li>
           <% end %>
-          <% if can_access.call(:manage, :integracoes) || webhook_self_service_context %>
-            <li><%= link_to admin_webhook_settings_path(tab: (can_access.call(:manage, :integracoes) ? nil : "inbound")), class: "ax-nav__link #{'active' if controller_name == 'webhook_settings'}" do %><i class="bi bi-broadcast"></i><span>Webhooks</span><% end %></li>
-          <% end %>
           <% if can_access.call(:manage, :integracoes) %>
+            <li><%= link_to admin_webhook_settings_path, class: "ax-nav__link #{'active' if controller_name == 'webhook_settings'}" do %><i class="bi bi-broadcast"></i><span>Webhooks</span><% end %></li>
             <li><%= link_to admin_ai_integration_path, class: "ax-nav__link #{'active' if controller_name == 'ai_integrations'}" do %><i class="bi bi-stars"></i><span>IA</span><% end %></li>
             <li><%= link_to admin_habitations_path(sort: "last_sync_at", direction: "desc"), class: "ax-nav__link #{'active' if vista_soft_context}" do %><i class="bi bi-arrow-repeat"></i><span>Vista Soft</span><% end %></li>
             <li><%= link_to admin_image_migration_status_path, class: "ax-nav__link #{'active' if controller_name == 'image_migration_status'}" do %><i class="bi bi-images"></i><span>Migração de Imagens</span><% end %></li>

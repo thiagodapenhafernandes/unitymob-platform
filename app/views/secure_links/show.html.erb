@@ -38,10 +38,10 @@
 
       <div class="actions">
         <% if @lead.direct_whatsapp_url.present? %>
-          <a class="btn btn--wa" href="<%= @lead.direct_whatsapp_url %>">Abrir WhatsApp do lead</a>
+          <a class="btn btn--wa" href="<%= secure_link_path(@link.token, contact: "whatsapp") %>">Abrir WhatsApp do lead</a>
         <% end %>
         <% if @lead.display_email.present? %>
-          <a class="btn btn--mail" href="mailto:<%= @lead.display_email %>">Enviar e-mail</a>
+          <a class="btn btn--mail" href="<%= secure_link_path(@link.token, contact: "email") %>">Enviar e-mail</a>
         <% end %>
       </div>
     </div>

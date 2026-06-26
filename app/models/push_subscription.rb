@@ -13,4 +13,8 @@ class PushSubscription < ApplicationRecord
   def keys_hash
     { p256dh: p256dh, auth: auth }
   end
+
+  def apple_web_push?
+    endpoint.to_s.include?("web.push.apple.com")
+  end
 end

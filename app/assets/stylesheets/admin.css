@@ -1764,6 +1764,43 @@ i.spin {
   line-height: 1.15;
 }
 
+.ax-media-modal__header--compact {
+  min-height: 58px;
+  padding: 8px 10px;
+}
+
+.ax-media-modal__header--compact .ax-media-modal__title-group {
+  display: grid;
+  gap: 2px;
+}
+
+.ax-media-modal__header--compact .ax-media-modal__eyebrow {
+  font-size: .66rem;
+  line-height: 1;
+}
+
+.ax-media-modal__header--compact .ax-media-modal__title-group h2 {
+  max-width: min(760px, 64vw);
+  overflow: hidden;
+  margin: 0;
+  font-size: .98rem;
+  line-height: 1.08;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-media-modal__header--compact .ax-media-modal__meta {
+  gap: 5px;
+  font-size: .72rem;
+  line-height: 1;
+}
+
+.ax-media-modal__header--compact .ax-badge,
+.ax-media-modal__header--compact .ax-media-modal__meta span {
+  min-height: 20px;
+  padding-block: 0;
+}
+
 .ax-media-modal__meta,
 .ax-media-modal__actions,
 .ax-media-modal__footer-meta,
@@ -1798,8 +1835,16 @@ i.spin {
   scroll-padding-bottom: 112px;
 }
 
+.ax-media-modal__body:has(.ax-media-manager--compact) {
+  padding: 8px 8px 76px;
+}
+
 .ax-media-modal__body .ax-form-section {
   margin-bottom: 12px;
+}
+
+.ax-media-modal__body:has(.ax-media-manager--compact) .ax-form-section {
+  margin-bottom: 8px;
 }
 
 .ax-media-modal__body .media-gallery-scroll {
@@ -1809,10 +1854,24 @@ i.spin {
   scroll-padding-bottom: 42px;
 }
 
+.ax-media-modal__body:has(.ax-media-manager--compact) .media-gallery-scroll {
+  max-height: none;
+  padding-bottom: 52px;
+}
+
 .ax-media-modal__footer-meta {
   color: #667085;
   font-size: .82rem;
   font-weight: 700;
+}
+
+.ax-media-modal__footer:has(.ax-media-modal__footer-meta) {
+  min-height: 58px;
+  padding: 8px 10px;
+}
+
+.ax-media-modal__footer-actions {
+  margin-left: auto;
 }
 
 .ax-media-modal__state {
@@ -2034,6 +2093,28 @@ i.spin {
     flex-direction: column;
   }
 
+  .ax-media-modal__header--compact {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .ax-media-modal__header--compact .ax-media-modal__title-group h2 {
+    max-width: 100%;
+    font-size: .95rem;
+  }
+
+  .ax-media-modal__header--compact .ax-media-modal__meta {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 1px;
+  }
+
+  .ax-media-modal__header--compact .ax-media-modal__actions {
+    width: auto;
+    flex-direction: row;
+  }
+
   .ax-media-modal__actions,
   .ax-media-modal__footer-actions {
     width: 100%;
@@ -2043,5 +2124,11 @@ i.spin {
   .ax-media-modal__footer-actions .ax-btn {
     flex: 1 1 auto;
     justify-content: center;
+  }
+
+  .ax-media-modal__header--compact .ax-media-modal__actions,
+  .ax-media-modal__header--compact .ax-media-modal__actions .ax-icon-btn {
+    width: auto;
+    flex: 0 0 auto;
   }
 }

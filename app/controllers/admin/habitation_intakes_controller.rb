@@ -12,7 +12,7 @@ module Admin
     before_action :authorize_review!, only: %i[approve return_to_broker]
     before_action :load_form_options, only: %i[edit update]
     layout :resolve_layout
-    helper_method :can_export_captacoes?, :can_broker_release_to_site?
+    helper_method :can_export_captacoes?, :can_broker_release_to_site?, :can_filter_intakes_by_broker?
 
     def index
       @status = params[:status].presence
@@ -21,6 +21,7 @@ module Admin
       @habitations = filtered_intakes_scope.includes(:admin_user, :admin_reviewed_by, :address)
       @habitations = @habitations.order(updated_at: :desc).paginate(page: params[:page], per_page: 20)
       @captacoes = @habitations
+      @captacao_brokers = captacao_broker_options
       render "admin/captacoes/index"
     end
 
@@ -348,10 +349,10 @@ module Admin
     end
 
     def can_broker_release_to_site?(habitation)
-      return false unless habitation&.intake_admin_approved?
+      return false unless habitation&.broker_release_pending?
       return false if current_admin_user&.admin? || administrative_profile? || can?(:review, :captacoes)
 
-      habitation.admin_user_id == current_admin_user&.id
+      habitation.broker_responsible_for?(current_admin_user)
     end
 
     def scoped_intakes
@@ -367,6 +368,16 @@ module Admin
       scope.where(admin_user_id: visible_owner_ids(:captacoes) || [current_admin_user.id])
     end
 
+    def can_filter_intakes_by_broker?
+      current_admin_user&.admin? || can?(:review, :captacoes) || owns_all_resource?(:captacoes)
+    end
+
+    def captacao_broker_options
+      return AdminUser.none unless can_filter_intakes_by_broker?
+
+      AdminUser.where(id: scoped_intakes.reorder(nil).distinct.select(:admin_user_id)).order(:name)
+    end
+
     def filtered_intakes_scope
       scope = scoped_intakes
       scope = scope.where(categoria: "Terreno") if params[:property_kind] == "terreno"
@@ -380,8 +391,14 @@ module Admin
         scope = scope.where(intake_status: %w[submitted_for_admin_review admin_approved])
       when "published"
         scope = scope.where(intake_status: "published")
+      when nil, ""
+        scope = scope.where.not(intake_status: %w[internal published])
       else
         scope = scope.where(intake_status: params[:status]) if params[:status].present?
+      end
+
+      if params[:corretor_id].present? && can_filter_intakes_by_broker?
+        scope = scope.where(admin_user_id: params[:corretor_id])
       end
 
       q = params[:q].to_s.strip
@@ -576,6 +593,7 @@ module Admin
         missing << "Informe a UF." if @habitation.uf.blank?
         missing << "Informe o empreendimento/condomínio." if @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
         missing << "Informe o número da unidade." if @habitation.requires_unit_number? && @habitation.bloco.blank?
+        missing << "Informe o complemento." if @habitation.requires_intake_address_complement? && !@habitation.requires_unit_number? && @habitation.complemento.blank?
         missing
       when "caracteristicas"
         missing = []
@@ -660,6 +678,7 @@ module Admin
         fields[:state] = true if @habitation.uf.blank?
         fields[:edificio_nome] = true if @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
         fields[:unidade_numero] = true if @habitation.requires_unit_number? && @habitation.bloco.blank?
+        fields[:complemento] = true if @habitation.requires_intake_address_complement? && !@habitation.requires_unit_number? && @habitation.complemento.blank?
       when "caracteristicas"
         if @habitation.property_kind_terreno? && !@habitation.has_required_intake_area?
           fields[:area_total] = true
@@ -710,6 +729,8 @@ module Admin
         building: @habitation.nome_empreendimento,
         unit: @habitation.bloco,
         status: @habitation.status,
+        complement: @habitation.complemento,
+        category: @habitation.categoria,
         comparison: @habitation.duplicate_identity_scope,
         ignored_id: @habitation.id
       ).call
@@ -793,7 +814,7 @@ module Admin
         :andar, :ano_construcao, :demi_suites_qtd, :numero_box, :tipo_vaga,
         :dimensoes_terreno, :topografia, :key_location, :key_location_notes,
         :corretor_nome, :corretor_telefone, :corretor_email, :ordered_photo_ids,
-        :zip_code, :street, :street_number, :neighborhood, :city, :state, :edificio_nome, :unidade_numero,
+        :zip_code, :street, :street_number, :neighborhood, :city, :state, :complemento, :edificio_nome, :unidade_numero,
         :chaves_com, :senha_imovel, :senha_portaria,
         { rental_guarantee_method: [],
           caracteristicas: [], infra_estrutura: [], caracteristica_unica: [],
@@ -859,12 +880,13 @@ module Admin
       attrs["photos"] = attrs.delete("fotos") if attrs["fotos"].present?
       attrs["autorizacoes_venda"] = Array(attrs.delete("autorizacao_pdf")) if attrs["autorizacao_pdf"].present?
       normalize_intake_land_extra_fields!(attrs)
-      address_keys = %w[zip_code street street_number neighborhood city state]
+      address_keys = %w[zip_code street street_number neighborhood city state complemento]
       if address_keys.any? { |key| attrs.key?(key) }
         attrs["address_attributes"] = {
           cep: attrs.delete("zip_code"),
           logradouro: attrs.delete("street"),
           numero: attrs.delete("street_number"),
+          complemento: attrs.delete("complemento"),
           bairro: attrs.delete("neighborhood"),
           cidade: attrs.delete("city"),
           uf: attrs.delete("state")

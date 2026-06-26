@@ -49,10 +49,17 @@ module Admin::NavbarHelper
                   admin_contextbar_link("Novo proprietário", new_admin_proprietor_path, icon: "plus-lg", primary: true)
                 ]
               when "leads"
-                [
-                  admin_contextbar_link("Atendimento", admin_whatsapp_conversations_path, icon: "whatsapp", if: can?(:view, :whatsapp_inbox)),
-                  admin_contextbar_link("Tarefas", admin_tasks_path, icon: "check2-square", if: can?(:view, :comercial))
-                ]
+                if action_name == "show"
+                  view_mode = current_admin_user&.leads_view_mode.presence_in(%w[kanban list]) || "kanban"
+                  [
+                    admin_contextbar_link("Voltar", admin_leads_path(view: view_mode), icon: "arrow-left", if: can?(:view, :leads))
+                  ]
+                else
+                  [
+                    admin_contextbar_link("Atendimento", admin_whatsapp_conversations_path, icon: "whatsapp", if: can?(:view, :whatsapp_inbox)),
+                    admin_contextbar_link("Tarefas", admin_tasks_path, icon: "check2-square", if: can?(:view, :comercial))
+                  ]
+                end
               when "tasks"
                 [
                   admin_contextbar_link("Leads", admin_leads_path, icon: "megaphone", if: can?(:view, :comercial)),
@@ -120,9 +127,7 @@ module Admin::NavbarHelper
   end
 
   def admin_contextbar_root_label
-    return "Plataforma" if current_admin_user&.system_admin?
-
-    @layout_setting&.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : "Plataforma"
+    "Início"
   end
 
   # Contadores leves exibidos na navbar (rodam em toda página admin — sempre resilientes).
@@ -170,7 +175,7 @@ module Admin::NavbarHelper
     [
       admin_contextbar_link("Proprietários", admin_proprietors_path, icon: "person-vcard", if: current_admin_user&.admin?),
       admin_contextbar_button("Exportar", icon: "download", data: { ax_modal_open: "#habitationsExportModal" }, if: current_admin_user&.admin? || current_admin_user&.profile&.administrativo?),
-      admin_contextbar_link("Novo imóvel", new_admin_habitation_path, icon: "plus-lg", primary: true, if: can?(:view, :imoveis))
+      admin_contextbar_link("Novo imóvel", new_admin_habitation_path, icon: "plus-lg", primary: true, if: can?(:manage, :imoveis))
     ]
   end
 

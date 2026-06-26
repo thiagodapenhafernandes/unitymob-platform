@@ -1,7 +1,7 @@
 <h1 class="wizard-section-title"><i class="bi bi-check2-circle" style="color:#16a34a;margin-right:.5rem;"></i>Revisão final</h1>
 <p class="wizard-section-subtitle">Confira antes de finalizar. Depois de finalizar, admin pode ajustar se necessário.</p>
 
-<div class="ax-card tw-mb-3">
+<div class="ax-card wizard-review-card tw-mb-3">
   <div class="ax-card__body">
     <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-2">Imóvel</h6>
     <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
@@ -28,7 +28,7 @@
   </div>
 </div>
 
-<div class="ax-card tw-mb-3">
+<div class="ax-card wizard-review-card tw-mb-3">
   <div class="ax-card__body">
     <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-2">Proprietário</h6>
     <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
@@ -41,7 +41,7 @@
   </div>
 </div>
 
-<div class="ax-card tw-mb-3">
+<div class="ax-card wizard-review-card tw-mb-3">
   <div class="ax-card__body">
     <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-2">Negociação</h6>
     <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
@@ -62,7 +62,7 @@
 </div>
 
 <% if @captacao.fotos.attached? %>
-  <div class="ax-card tw-mb-3">
+  <div class="ax-card wizard-review-card tw-mb-3">
     <div class="ax-card__body">
       <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-2">
         Fotos (<%= @captacao.fotos.count %>)

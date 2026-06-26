@@ -7,8 +7,9 @@
     <%= link_to link_url,
         class: "ax-media-tile__link",
         title: "Abrir imagem",
+        draggable: "false",
         data: { fancybox: "habitation-media-gallery", caption: } do %>
-      <%= image_tag image_source, class: image_classes, alt: caption %>
+      <%= image_tag image_source, class: image_classes, alt: caption, draggable: false %>
     <% end %>
 
     <div class="media-photo-overlay">

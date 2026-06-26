@@ -164,6 +164,7 @@
   <%= hidden_field_tag :save_navigation, "exit", data: { save_state_target: "choice" } %>
   <%= hidden_field_tag :return_to, @return_to_path if @return_to_path.present? %>
   <%= hidden_field_tag :source_habitation_id, source_habitation.id if source_habitation.present? %>
+  <%= hidden_field_tag :intake_mode, "paper" if habitation.new_record? && habitation.broker_intake? %>
 
   <% action_footer_meta = capture do %>
     <% if updated_reference_at %>
@@ -223,6 +224,23 @@
         e a unidade será vinculada automaticamente após salvar.
       </span>
     </div>
+  <% end %>
+  <% if habitation.new_record? %>
+    <% if habitation.broker_intake? %>
+      <%= ax_inline_notice(tone: :info, icon: "journal-check", class_name: "habitation-new-mode-notice") do %>
+        <strong>Ficha de captação interna.</strong>
+        Este cadastro entra no fluxo de captações. Use <strong>Enviar para corretor</strong> para repassar a publicação ao captador ou <strong>Salvar interno</strong> para deixar o imóvel disponível no catálogo sem publicar no site.
+        <%= link_to "Cadastrar imóvel direto", new_admin_habitation_path, class: "habitation-new-mode-notice__link" %>
+      <% end %>
+    <% else %>
+      <%= ax_inline_notice(tone: :neutral, icon: "building", class_name: "habitation-new-mode-notice") do %>
+        <strong>Cadastro direto de imóvel.</strong>
+        Este caminho não passa pelo fluxo de captação/revisão. A publicação no site continua sendo definida pelos campos de publicação do próprio imóvel.
+        <% if current_admin_user&.admin? || current_admin_user&.profile&.administrativo? || can?(:review, :captacoes) %>
+          <%= link_to "Criar ficha de captação interna", new_admin_habitation_path(intake_mode: "paper"), class: "habitation-new-mode-notice__link" %>
+        <% end %>
+      <% end %>
+    <% end %>
   <% end %>
   <% if habitation.errors.any? %>
     <%= ax_error_summary(

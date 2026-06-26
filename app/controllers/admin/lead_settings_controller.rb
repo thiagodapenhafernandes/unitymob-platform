@@ -8,12 +8,29 @@ module Admin
 
     def update
       attrs = lead_setting_params
+      push_click_action = attrs.delete(:push_lead_click_action)
+
       # Janela em branco ou <= 0 significa "para sempre" (nil).
       if attrs[:stickiness_window_days].blank? || attrs[:stickiness_window_days].to_i <= 0
         attrs[:stickiness_window_days] = nil
       end
 
-      if @lead_setting.update(attrs)
+      @lead_setting.assign_attributes(attrs)
+      @lead_setting.push_lead_click_action = push_click_action if push_click_action.present?
+
+      push_setting = PushSetting.instance
+      push_setting.lead_click_action = push_click_action if push_click_action.present?
+
+      lead_setting_valid = @lead_setting.valid?
+      push_setting_valid = push_setting.valid?
+      push_setting.errors.full_messages.each { |message| @lead_setting.errors.add(:base, "Push: #{message}") } unless push_setting_valid
+
+      if lead_setting_valid && push_setting_valid
+        ActiveRecord::Base.transaction do
+          @lead_setting.save!
+          push_setting.save! if push_click_action.present?
+        end
+
         redirect_to edit_admin_lead_setting_path, notice: "Configurações de leads salvas com sucesso."
       else
         render :edit, status: :unprocessable_entity
@@ -38,6 +55,7 @@ module Admin
         :secure_link_whatsapp,
         :secure_link_email,
         :secure_link_push,
+        :push_lead_click_action,
         :notify_on_distribution,
         :notify_on_sticky,
         :notify_on_redistribution,

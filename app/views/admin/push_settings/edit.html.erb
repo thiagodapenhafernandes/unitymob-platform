@@ -13,7 +13,7 @@
       <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
         Funciona no <strong>Android (Chrome)</strong> e no <strong>iPhone (iOS 16.4+)</strong> — neste caso o corretor precisa
         <strong>instalar o app na tela inicial</strong> (Compartilhar → "Adicionar à Tela de Início") e permitir notificações.
-        Cada dispositivo se inscreve sozinho ao abrir o app de campo (<code>/field</code>).
+        Cada dispositivo se inscreve sozinho ao abrir o app de campo (<code>/field</code>) ou o PWA admin no Android.
       <% end %>
 
       <%= form_with(model: [:admin, @push_setting], url: admin_push_setting_path, method: :patch, local: true, class: "layout-settings-form") do |f| %>
@@ -38,17 +38,12 @@
           </div>
         <% end %>
 
-        <%= ax_operational_panel(eyebrow: "Comportamento", title: "Ao clicar na notificação de novo lead") do %>
+        <%= ax_operational_panel(eyebrow: "Comportamento", title: "Destino do push de lead") do %>
           <div class="ax-panel-body">
-            <%= ax_radio_group(form: f, method: :lead_click_action,
-                  label: "Dentro do prazo de atendimento, o clique deve:",
-                  choices: [
-                    ["Abrir o lead no sistema", "system"],
-                    ["Abrir o WhatsApp do lead", "whatsapp"]
-                  ]) %>
             <p class="ax-field__hint">
-              O clique também <strong>aceita o lead</strong> (passa para "Em Atendimento" e trava o prazo do pocket).
-              Se o prazo já tiver estourado e o lead foi redistribuído, o clique mostra um aviso de tempo esgotado.
+              O destino operacional do clique no push agora fica em
+              <%= link_to "Configurações de Leads", edit_admin_lead_setting_path %>, junto das regras de distribuição,
+              fidelização e privacidade do lead.
             </p>
           </div>
         <% end %>
@@ -127,7 +122,7 @@
       <%= ax_operational_panel(eyebrow: "Como funciona", title: "Fluxo do push") do %>
         <div class="ax-panel-body">
           <ol class="ax-field__hint" style="padding-left:18px;margin:0;line-height:1.6;">
-            <li>Corretor abre <code>/field</code> no celular e (no iPhone) instala na tela inicial.</li>
+            <li>Corretor abre <code>/field</code> no celular; no Android, o PWA admin também registra o dispositivo.</li>
             <li>O app pede permissão e inscreve o dispositivo com a <strong>chave pública</strong>.</li>
             <li>Ao distribuir um lead, o servidor assina com a <strong>chave privada</strong> e envia o push.</li>
             <li>Apple/Google entregam a notificação no aparelho.</li>

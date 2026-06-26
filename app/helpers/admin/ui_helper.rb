@@ -468,7 +468,7 @@ module Admin::UiHelper
     )
   end
 
-  def ax_file_upload_button(label:, input_id:, form: nil, method: nil, multiple: true, direct_upload: false, input_data: {}, label_data: {}, class_name: "ax-btn ax-btn--ghost ax-btn--sm")
+  def ax_file_upload_button(label:, input_id:, form: nil, method: nil, multiple: true, direct_upload: false, accept: nil, capture: nil, input_data: {}, label_data: {}, input_class: nil, input_options: {}, class_name: "ax-btn ax-btn--ghost ax-btn--sm")
     render(
       "admin/shared/ui/file_upload_button",
       label:,
@@ -477,8 +477,12 @@ module Admin::UiHelper
       method:,
       multiple:,
       direct_upload:,
+      accept:,
+      capture:,
       input_data:,
       label_data:,
+      input_class:,
+      input_options:,
       class_name:
     )
   end
@@ -581,13 +585,14 @@ module Admin::UiHelper
     )
   end
 
-  def ax_aside_panel(title:, token: nil, rail_label:, rail_icon: "layout-sidebar-inset-reverse", collapse_label: nil, controller: "ax-aside", class_name: nil, rail_class: nil, rail_body: nil, panel_class: nil, header_class: nil, actions_class: nil, toggle_class: nil, body: nil, &block)
+  def ax_aside_panel(title:, token: nil, rail_label:, rail_icon: "layout-sidebar-inset-reverse", collapse_icon: "arrow-bar-right", collapse_label: nil, controller: "ax-aside", class_name: nil, rail_class: nil, rail_body: nil, panel_class: nil, header_class: nil, actions_class: nil, toggle_class: nil, body: nil, &block)
     render(
       "admin/shared/ui/aside_panel",
       title:,
       token:,
       rail_label:,
       rail_icon:,
+      collapse_icon:,
       collapse_label: collapse_label.presence || "Recolher #{title}",
       controller:,
       class_name:,

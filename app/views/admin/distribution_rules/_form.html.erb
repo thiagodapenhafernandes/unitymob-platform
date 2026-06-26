@@ -21,23 +21,26 @@
       </header>
 
       <%# Dados Gerais %>
-      <%= ax_operational_panel(eyebrow: "Identificação", title: "Dados gerais") do %>
+      <%= ax_operational_panel(
+            eyebrow: "Identificação",
+            title: "Dados gerais",
+            actions: ax_toggle_chip(f, :active, label: "Regra ativa", id: "flexSwitchCheckActive")
+          ) do %>
         <div class="ax-panel-body">
-          <%= ax_text_field(form: f, method: :name, label: "Nome da regra", placeholder: "Ex: Vendas Zona Sul - Facebook") %>
-
-          <%= ax_field_grid do %>
-            <div class="ax-span-6">
+          <div class="distribution-rule-general-grid">
+            <div class="distribution-rule-general-grid__name">
+              <%= ax_text_field(form: f, method: :name, label: "Nome da regra", placeholder: "Ex: Vendas Zona Sul - Facebook") %>
+            </div>
+            <div class="distribution-rule-general-grid__type">
               <%= ax_select_field(
                     form: f,
                     method: :business_type,
                     label: "Tipo de negócio",
-                    choices: DistributionRule.business_types.keys.map { |k| [k.humanize, k] }
+                    choices: DistributionRule.business_types.keys.map { |k| [k.humanize, k] },
+                    tooltip: "Leads sem venda ou locação explícita continuam elegíveis para regras específicas. A ordem das regras decide origens ambíguas, como Meta Ads."
                   ) %>
             </div>
-            <div class="ax-span-6 ax-field-align-end">
-              <%= ax_toggle_chip(f, :active, label: "Regra ativa", id: "flexSwitchCheckActive") %>
-            </div>
-          <% end %>
+          </div>
         </div>
       <% end %>
 
@@ -68,9 +71,14 @@
                   selected_meta_page_ids = Array(distribution_rule.meta_page_ids).compact_blank.map(&:to_s)
                   selected_meta_form_options = selected_meta_page_ids.flat_map { |page_id| Array(@meta_form_options_by_page&.[](page_id)) }
                 %>
-                <%= ax_field_grid do %>
-                  <div class="ax-span-6">
-                    <%= ax_field_group(title: "Páginas do Facebook", token: "Conta Meta", class_name: "distribution-rule-source-config") do %>
+                <div class="distribution-rule-meta-grid">
+                  <div class="distribution-rule-meta-grid__field">
+                    <%= ax_field_group(
+                          title: "Páginas do Facebook",
+                          token: "Conta Meta",
+                          class_name: "distribution-rule-source-config",
+                          tooltip: "Selecione as páginas Meta que podem alimentar esta regra. Deixe vazio apenas quando quiser controlar a origem por outro filtro da regra."
+                        ) do %>
                       <div class="ax-field">
                         <%= f.select :meta_page_ids, @all_page_options || [], {},
                               { multiple: true, class: "ax-control", data: { meta_rules_target: "pageSelect", action: "change->meta-rules#updateForms", controller: "tom-select", tom_select_create_value: "false" } } %>
@@ -78,8 +86,13 @@
                     <% end %>
                   </div>
 
-                  <div class="ax-span-6">
-                    <%= ax_field_group(title: "Formulários específicos", token: "Filtros", class_name: "distribution-rule-source-config") do %>
+                  <div class="distribution-rule-meta-grid__field">
+                    <%= ax_field_group(
+                          title: "Formulários específicos",
+                          token: "Filtros",
+                          class_name: "distribution-rule-source-config",
+                          tooltip: "Selecione uma página primeiro. Depois filtre os formulários dessa página. Se nenhum formulário for selecionado, a regra pode considerar todos os formulários elegíveis conforme a configuração Meta."
+                        ) do %>
                       <div class="ax-field">
                         <%= f.select :meta_forms, options_for_select(selected_meta_form_options, distribution_rule.meta_forms), {},
                               { multiple: true, class: "ax-control",
@@ -92,22 +105,27 @@
                             <strong><%= selected_forms_count %></strong> formulário<%= "s" if selected_forms_count != 1 %> selecionado<%= "s" if selected_forms_count != 1 %>
                           <% end %>
                         </p>
-                        <p class="ax-field__hint">Selecione uma página primeiro. Depois use a busca para filtrar apenas os formulários dessa página.</p>
                       </div>
                     <% end %>
                   </div>
-                <% end %>
-
-                <div class="distribution-rule-source-sync">
-                  <%= ax_toggle_chip(f, :auto_add_forms, label: "Sincronização automática",
-                        id: "autoSyncForms",
-                        class_name: "distribution-rule-source-sync__toggle",
-                        input_data: { meta_rules_target: "autoSync", action: "change->meta-rules#toggleAutoSync" }) %>
-                  <p>Novos formulários destas páginas entram automaticamente nesta regra.</p>
-                  <button type="button" class="ax-btn ax-btn--sm" data-action="click->meta-rules#syncNow">
-                    <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar agora</span>
-                  </button>
                 </div>
+
+                <%= ax_field_group(
+                      title: "Sincronização",
+                      token: "Meta",
+                      class_name: "distribution-rule-source-config distribution-rule-source-sync",
+                      tooltip: "Quando ativo, novos formulários criados nas páginas selecionadas entram automaticamente nesta regra."
+                    ) do %>
+                  <div class="distribution-rule-source-sync__row">
+                    <%= ax_toggle_chip(f, :auto_add_forms, label: "Ativar sincronização",
+                          id: "autoSyncForms",
+                          class_name: "distribution-rule-source-sync__toggle",
+                          input_data: { meta_rules_target: "autoSync", action: "change->meta-rules#toggleAutoSync" }) %>
+                    <button type="button" class="ax-btn ax-btn--sm distribution-rule-source-sync__button" data-action="click->meta-rules#syncNow">
+                      <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar agora</span>
+                    </button>
+                  </div>
+                <% end %>
               </div>
             </section>
 

@@ -4,10 +4,17 @@
   property = local_assigns[:property]
 %>
 <article class="ax-board__card lead-kanban-card"
+         data-lead-id="<%= lead.id %>"
+         data-lead-url="<%= admin_lead_path(lead) %>"
          data-update-url="<%= admin_lead_path(lead) %>"
          data-current-status="<%= status_value %>">
   <div class="ax-board__card-top">
-    <h3 class="ax-board__card-title"><%= lead.name %></h3>
+    <div class="ax-board__card-title-row">
+      <h3 class="ax-board__card-title"><%= lead.name %></h3>
+      <span class="ax-board__card-handle" aria-hidden="true">
+        <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+      </span>
+    </div>
     <span class="ax-badge ax-badge--<%= tone %> ax-board__card-badge lead-kanban-status-badge"
           data-lead-kanban-status-badge><%= status_value %></span>
   </div>

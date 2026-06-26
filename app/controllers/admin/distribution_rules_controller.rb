@@ -208,6 +208,22 @@ class Admin::DistributionRulesController < Admin::BaseController
       if perms[:checkin_store_ids].is_a?(Array)
         perms[:checkin_store_ids] = perms[:checkin_store_ids].compact_blank.map(&:to_i)
       end
+      %i[min_price max_price].each do |key|
+        perms[key] = parse_brl_decimal(perms[key]) if perms[key].present?
+      end
+      unless DistributionRule.pocket_requires_secure_push?
+        perms[:pocket_active] = "0"
+      end
     end
+  end
+
+  def parse_brl_decimal(value)
+    normalized = value.to_s.gsub(/[^\d,\.]/, "")
+    return nil if normalized.blank?
+
+    normalized = normalized.delete(".").tr(",", ".") if normalized.include?(",")
+    BigDecimal(normalized)
+  rescue ArgumentError
+    value
   end
 end

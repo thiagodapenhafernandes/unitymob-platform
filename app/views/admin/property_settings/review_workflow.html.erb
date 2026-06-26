@@ -31,15 +31,67 @@
 
     <header class="ax-dashboard-command ax-property-form-command review-workflow-command">
       <div class="ax-dashboard-command__main">
-        <span class="ax-dashboard-command__eyebrow">Configuração operacional</span>
+        <span class="ax-dashboard-command__eyebrow">Regra de entrada, revisão e site</span>
         <h1>Fluxo de revisão de captações</h1>
-        <p>Mapa dinâmico: muda conforme as regras de captação, revisão e publicação desta conta.</p>
+        <p>Defina o que o captador precisa preencher, quem revisa e o que acontece quando a ficha volta para ajuste.</p>
       </div>
       <div class="ax-dashboard-command__status">
         <i class="bi bi-broadcast"></i>
         <%= ax_badge("Aplicado em tempo real", tone: :green, dot: true) %>
       </div>
     </header>
+
+    <section class="review-flow-brief" aria-label="Como a captação anda no sistema">
+      <div class="review-flow-brief__item">
+        <span class="review-flow-brief__number">1</span>
+        <div>
+          <strong>Captador preenche</strong>
+          <span>Rascunhos e devoluções ficam com o captador até ele mandar para análise.</span>
+        </div>
+      </div>
+      <div class="review-flow-brief__item">
+        <span class="review-flow-brief__number">2</span>
+        <div>
+          <strong>Sistema confere</strong>
+          <span>Ao mandar análise, a ficha precisa passar pelas validações escolhidas abaixo.</span>
+        </div>
+      </div>
+      <div class="review-flow-brief__item">
+        <span class="review-flow-brief__number">3</span>
+        <div>
+          <strong><%= layer_on ? "Admin aprova ou devolve" : "Fica pronta para publicar" %></strong>
+          <span><%= layer_on ? "Se devolver, só os blocos liberados podem ser editados pelo captador." : "Sem revisão, ela vai direto para a etapa de publicação pelo captador." %></span>
+        </div>
+      </div>
+      <div class="review-flow-brief__item">
+        <span class="review-flow-brief__number review-flow-brief__number--green">4</span>
+        <div>
+          <strong>Captador publica</strong>
+          <span>O site só recebe o imóvel quando o responsável clicar em Publicar Site.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="review-scope-clarifier" aria-label="Escopo do fluxo de revisão">
+      <div class="review-scope-clarifier__main">
+        <i class="bi bi-diagram-3"></i>
+        <div>
+          <strong>Esta regra vale para captações e fichas internas de captação.</strong>
+          <span>O cadastro direto em Imóveis cria um imóvel administrativo e não entra neste fluxo de aprovação/devolução.</span>
+        </div>
+      </div>
+      <div class="review-scope-clarifier__actions">
+        <%= link_to new_admin_captacao_path, class: "ax-btn ax-btn--primary ax-btn--sm" do %>
+          <i class="bi bi-journal-plus"></i><span>Nova captação</span>
+        <% end %>
+        <%= link_to new_admin_habitation_path, class: "ax-btn ax-btn--sm" do %>
+          <i class="bi bi-building"></i><span>Imóvel direto</span>
+        <% end %>
+        <%= link_to new_admin_habitation_path(intake_mode: "paper"), class: "ax-btn ax-btn--sm" do %>
+          <i class="bi bi-journal-check"></i><span>Ficha interna</span>
+        <% end %>
+      </div>
+    </section>
 
     <div class="review-workflow-grid">
       <div class="review-workflow-main">
@@ -50,14 +102,14 @@
               actions: ax_badge("#{selected_intake_checks.size} ativas", tone: :blue)
             ) do %>
           <div class="review-panel-body">
-            <p class="review-hint">O corretor cria a captação e, ao enviar para revisão, o sistema valida os itens selecionados abaixo.</p>
+            <p class="review-hint">Esses itens são conferidos no momento em que o captador toca em Mandar Análise. Se faltar algo, ele continua na ficha e vê as pendências.</p>
             <div class="review-field habitation-form-ui">
               <%= hidden_field_tag "property_setting[required_broker_intake_checks][]", "" %>
               <%= ax_multiselect_field(
                     form: f,
                     method: :required_broker_intake_checks,
-                    label: "Validações obrigatórias antes de enviar para revisão",
-                    tooltip: "Cada item é checado quando a captação é submetida. Tudo vem pré-selecionado para manter o comportamento atual; remova o que não for exigido nesta conta.",
+                    label: "O que precisa estar completo para mandar análise",
+                    tooltip: "Cada item é checado quando a captação é enviada. Se faltar, o captador recebe a lista de pendências e não avança.",
                     choices: intake_check_choices,
                     selected: selected_intake_checks,
                     id: "property_setting_required_broker_intake_checks",
@@ -71,32 +123,40 @@
         <%# Etapa 2 — Revisão administrativa %>
         <%= ax_operational_panel(
               eyebrow: "Etapa 2 · Revisão",
-              title: "Revisão administrativa",
+              title: "Decisão administrativa",
               actions: ax_badge(layer_on ? "Ativada" : "Desativada", tone: layer_on ? :green : :gray)
             ) do %>
           <div class="review-panel-body review-config">
             <div class="habitation-form-ui">
               <%= ax_toggle_chip(f, :broker_capture_layer_enabled,
-                    label: "Ativar revisão com administrador",
+                    label: "Exigir aprovação administrativa antes de publicar",
                     checked_value: "true",
                     unchecked_value: "false",
                     class_name: "review-config__switch") %>
             </div>
 
+            <%= ax_inline_notice(tone: layer_on ? :info : :warning, icon: layer_on ? "shield-check" : "exclamation-triangle-fill") do %>
+              <% if layer_on %>
+                <strong>Com revisão:</strong> a captação fica aguardando aprovação. O administrativo aprova ou devolve com motivo e nota interna.
+              <% else %>
+                <strong>Sem revisão:</strong> após passar no checklist, a captação fica pronta para o captador publicar. O sistema não publica sozinho.
+              <% end %>
+            <% end %>
+
             <div class="review-field">
               <%= ax_select_field(
                     form: f,
                     method: :broker_capture_fallback_admin_user_id,
-                    label: "Conta que assume imóveis anteriores do captador quando desativado",
-                    tooltip: "Usado ao desativar a camada; obrigatório para evitar imóveis sem responsável.",
+                    label: "Responsável por captações antigas se a revisão for desligada",
+                    tooltip: "Ao desligar a revisão, captações ainda não publicadas precisam ficar com um usuário administrativo para não perder responsável.",
                     choices: @broker_capture_fallback_users.map { |user| [user.name, user.id] },
                     select_options: { include_blank: "Selecione um usuário administrativo" }
                   ) %>
             </div>
 
             <div class="review-field">
-              <span class="review-field__label">Blocos editáveis na devolução do retorno</span>
-              <p class="review-hint">Ao devolver ao corretor, apenas essas seções permanecem liberadas para edição.</p>
+              <span class="review-field__label">Se devolver ao captador, o que ele pode corrigir?</span>
+              <p class="review-hint">Esses blocos reabrem quando o administrativo devolve a captação. O restante fica protegido para evitar alterações fora do motivo da devolução.</p>
               <%= hidden_field_tag "property_setting[returnable_intake_edit_sections][]", "" %>
               <%= ax_chip_grid do %>
                 <% PropertySetting::RETURNABLE_INTAKE_EDIT_SECTION_OPTIONS.each do |key, label| %>
@@ -120,29 +180,29 @@
         <%= ax_operational_panel(
               eyebrow: "Trilha",
               title: "Notificações de revisão",
-              actions: ax_badge(@property_setting&.notify_email_review_events ? "E-mail on" : "Só interno", tone: @property_setting&.notify_email_review_events ? :blue : :gray)
+              actions: ax_badge(@property_setting&.notify_email_review_events ? "Interno + e-mail" : "Só interno", tone: @property_setting&.notify_email_review_events ? :blue : :gray)
             ) do %>
           <div class="review-panel-body review-config">
             <div class="habitation-form-ui review-config__switches">
               <%= ax_toggle_chip(f, :notify_internal_review_events,
-                    label: "Notificar internamente em cada etapa",
+                    label: "Avisar admins e revisores dentro do sistema",
                     checked_value: "true",
                     unchecked_value: "false",
                     class_name: "review-config__switch") %>
               <%= ax_toggle_chip(f, :notify_email_review_events,
-                    label: "Notificar por e-mail em cada etapa",
+                    label: "Enviar e-mail também",
                     checked_value: "true",
                     unchecked_value: "false",
                     class_name: "review-config__switch") %>
             </div>
 
             <div class="review-field">
-              <%= ax_field_label(f, :review_notification_emails, text: "E-mails para notificação (separados por vírgula, ; ou linha)") %>
+              <%= ax_field_label(f, :review_notification_emails, text: "Quem recebe e-mail de acompanhamento") %>
               <%= f.text_area :review_notification_emails,
                     rows: 3,
                     class: "ax-control",
                     placeholder: "admin1@empresa.com, admin2@empresa.com" %>
-              <p class="review-hint">Use essa lista para alertas externos (ex.: gerência comercial). Ative o e-mail acima para disparar para estes endereços.</p>
+              <p class="review-hint">Use vírgula, ponto e vírgula ou uma linha por e-mail. Só dispara quando Enviar e-mail também estiver ligado.</p>
             </div>
           </div>
         <% end %>
@@ -155,16 +215,16 @@
               <li class="review-steps__item">
                 <span class="review-steps__badge">1</span>
                 <div class="review-steps__body">
-                  <strong>Captador / Corretor</strong>
-                  <span>Captação e submissão · valida <%= selected_intake_checks.size %> itens</span>
+                  <strong>Captador</strong>
+                  <span>Preenche e manda análise · <%= selected_intake_checks.size %> validações ativas</span>
                 </div>
               </li>
               <% if layer_on %>
                 <li class="review-steps__item">
                   <span class="review-steps__badge review-steps__badge--amber">2</span>
                   <div class="review-steps__body">
-                    <strong>Revisão administrativa</strong>
-                    <span>Aprova ou devolve · <%= @returnable_section_labels.count %> blocos editáveis no retorno</span>
+                    <strong>Administrativo</strong>
+                    <span>Aprova ou devolve · <%= @returnable_section_labels.count %> blocos reabrem se voltar</span>
                   </div>
                 </li>
               <% else %>
@@ -172,15 +232,15 @@
                   <span class="review-steps__badge review-steps__badge--muted">2</span>
                   <div class="review-steps__body">
                     <strong>Sem revisão administrativa</strong>
-                    <span>Publicação direta após as validações</span>
+                    <span>A ficha fica aprovada para o captador publicar</span>
                   </div>
                 </li>
               <% end %>
               <li class="review-steps__item">
                 <span class="review-steps__badge review-steps__badge--green">3</span>
                 <div class="review-steps__body">
-                  <strong>Publicação</strong>
-                  <span>Vai ao site e entra no ciclo de consulta pública</span>
+                  <strong>Publicar Site</strong>
+                  <span>O captador libera e o imóvel aparece no site</span>
                 </div>
               </li>
             </ol>
@@ -191,7 +251,7 @@
           <div class="review-panel-body">
             <dl class="review-state">
               <div class="review-state__row">
-                <dt>Camada de revisão</dt>
+                <dt>Aprovação administrativa</dt>
                 <dd><%= ax_badge(layer_on ? "Ativada" : "Desativada", tone: layer_on ? :green : :gray) %></dd>
               </div>
               <div class="review-state__row">
@@ -203,8 +263,27 @@
                 <dd><%= ax_badge(@property_setting&.notify_email_review_events ? "Ligada" : "Desligada", tone: @property_setting&.notify_email_review_events ? :blue : :gray) %></dd>
               </div>
               <div class="review-state__row">
-                <dt>Camada ativa no cadastro</dt>
-                <dd><%= ax_badge("Obrigatório antes de publicar", tone: :amber) %></dd>
+                <dt>Publicação no site</dt>
+                <dd><%= ax_badge("Sempre manual", tone: :amber) %></dd>
+              </div>
+            </dl>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Escopo", title: "O que esta tela controla") do %>
+          <div class="review-panel-body">
+            <dl class="review-state review-state--scope">
+              <div class="review-state__row">
+                <dt>Captação do PWA</dt>
+                <dd><%= ax_badge("Entra no fluxo", tone: :green) %></dd>
+              </div>
+              <div class="review-state__row">
+                <dt>Ficha interna de captação</dt>
+                <dd><%= ax_badge("Entra no fluxo", tone: :green) %></dd>
+              </div>
+              <div class="review-state__row">
+                <dt>Cadastro direto em Imóveis</dt>
+                <dd><%= ax_badge("Fora da revisão", tone: :gray) %></dd>
               </div>
             </dl>
           </div>
@@ -214,16 +293,16 @@
           <div class="review-panel-body">
             <dl class="review-state">
               <div class="review-state__row">
-                <dt>Validações obrigatórias no envio</dt>
+                <dt>Validações para mandar análise</dt>
                 <dd><strong><%= @required_check_labels.count %></strong></dd>
               </div>
               <div class="review-state__row">
-                <dt>Blocos editáveis no retorno</dt>
+                <dt>Blocos reabertos na devolução</dt>
                 <dd><strong><%= @returnable_section_labels.count %></strong></dd>
               </div>
               <div class="review-state__row">
-                <dt>Estado público atual</dt>
-                <dd><strong><%= layer_on ? "Com revisão" : "Publicação direta" %></strong></dd>
+                <dt>Próximo passo após checklist</dt>
+                <dd><strong><%= layer_on ? "Revisão admin" : "Publicar Site" %></strong></dd>
               </div>
             </dl>
           </div>
@@ -233,7 +312,7 @@
 
     <div class="ax-form-actions review-workflow-actions">
       <%= link_to "Voltar para Config Imóveis", edit_admin_property_setting_path, class: "ax-btn" %>
-      <%= f.submit "Salvar fluxo de revisão", class: "ax-btn ax-btn--primary" %>
+      <%= f.submit "Salvar regra do fluxo", class: "ax-btn ax-btn--primary" %>
     </div>
   <% end %>
 </div>
@@ -242,6 +321,127 @@
   .review-workflow-workspace { display: grid; gap: 8px; padding-top: 8px; }
   .review-workflow-form { min-width: 0; display: grid; gap: 8px; }
   .review-workflow-command { margin-bottom: 0; }
+
+  .review-flow-brief {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .review-flow-brief__item {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 10px;
+    border: 1px solid var(--ax-border-soft, #e4e9f0);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+  }
+
+  .review-flow-brief__number {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--admin-primary, #365f8f) 12%, #fff);
+    color: var(--admin-primary, #365f8f);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .review-flow-brief__number--green {
+    background: #e7f7ef;
+    color: #087f5b;
+  }
+
+  .review-flow-brief__item strong {
+    display: block;
+    color: #1f2733;
+    font-size: 12.5px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .review-flow-brief__item span {
+    display: block;
+    color: #697586;
+    font-size: 11.5px;
+    line-height: 1.35;
+    margin-top: 2px;
+  }
+
+  @media (max-width: 1180px) {
+    .review-flow-brief { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 720px) {
+    .review-flow-brief { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .review-scope-clarifier {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--admin-primary, #365f8f) 18%, #d8dee8);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--admin-primary, #365f8f) 5%, #fff);
+  }
+
+  .review-scope-clarifier__main {
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .review-scope-clarifier__main > i {
+    flex: 0 0 auto;
+    color: var(--admin-primary, #365f8f);
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .review-scope-clarifier__main strong {
+    display: block;
+    color: #1f2733;
+    font-size: 12.5px;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+
+  .review-scope-clarifier__main span {
+    display: block;
+    color: #697586;
+    font-size: 11.5px;
+    line-height: 1.35;
+    margin-top: 2px;
+  }
+
+  .review-scope-clarifier__actions {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  @media (max-width: 900px) {
+    .review-scope-clarifier {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .review-scope-clarifier__actions {
+      justify-content: flex-start;
+    }
+  }
 
   .review-workflow-grid {
     display: grid;

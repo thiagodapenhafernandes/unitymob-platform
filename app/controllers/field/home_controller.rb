@@ -16,17 +16,83 @@ module Field
       @active_check_in  = @field_enabled ? @admin_user.active_check_in : nil
       @today_shifts     = @field_enabled ? today_shifts_for(@admin_user) : []
 
-      # Stats rápidas do dia
-      @my_leads_today       = Lead.where(admin_user_id: @admin_user.id, created_at: Date.current.beginning_of_day..).count
-      @my_active_captacoes  = Habitation.broker_intakes
-                                        .where(admin_user_id: @admin_user.id)
-                                        .where(intake_status: [nil, "draft", "returned_to_broker"])
-                                        .count
-      @my_total_habitations = Habitation.where(admin_user_id: @admin_user.id).count
-      @recent_my_leads      = Lead.where(admin_user_id: @admin_user.id).order(created_at: :desc).limit(3)
+      lead_scope = Lead.where(admin_user_id: @admin_user.id)
+      intake_scope = Habitation.broker_intakes.where(admin_user_id: @admin_user.id)
+      habitation_scope = Habitation.where(admin_user_id: @admin_user.id)
+
+      @my_leads_today = lead_scope.where(created_at: Date.current.beginning_of_day..).count
+      @new_leads_count = lead_scope.where(status: Lead.status_value(:novo)).count
+      @waiting_leads_count = lead_scope.where(status: Lead.status_value(:waiting_acceptance)).count
+      @in_service_leads_count = lead_scope.where(status: Lead.status_value(:em_atendimento)).count
+      @pending_leads_count = @new_leads_count + @waiting_leads_count
+      @stale_new_leads_count = lead_scope
+                               .where(status: [Lead.status_value(:novo), Lead.status_value(:waiting_acceptance)])
+                               .where("created_at < ?", 2.hours.ago)
+                               .count
+
+      @my_draft_captacoes = intake_scope.where(intake_status: [nil, "draft"]).count
+      @my_returned_captacoes = intake_scope.where(intake_status: "returned_to_broker").count
+      @my_active_captacoes = @my_draft_captacoes + @my_returned_captacoes
+      @my_pending_review_captacoes = intake_scope.where(intake_status: Habitation::PENDING_REVIEW_INTAKE_STATUSES).count
+      @my_total_habitations = habitation_scope.count
+      @my_published_habitations = habitation_scope.where(exibir_no_site_flag: true).count
+
+      @recent_my_leads = lead_scope.order(created_at: :desc).limit(5)
+      @lead_properties_by_id = Habitation.where(id: @recent_my_leads.filter_map(&:property_id).uniq).index_by(&:id)
+      @recent_open_captacoes = intake_scope
+                                .where(intake_status: [nil, "draft", "returned_to_broker"])
+                                .order(updated_at: :desc)
+                                .limit(3)
+      @field_priorities = field_priorities
     end
 
     private
+
+    def field_priorities
+      items = []
+
+      if @stale_new_leads_count.positive?
+        items << {
+          icon: "exclamation-circle",
+          tone: "danger",
+          title: "Leads sem contato",
+          description: "#{@stale_new_leads_count} aguardando atendimento há mais de 2 horas",
+          path: admin_leads_path(status: Lead.status_value(:novo))
+        }
+      end
+
+      if @pending_leads_count.positive?
+        items << {
+          icon: "megaphone",
+          tone: "warning",
+          title: "Leads a atender",
+          description: "#{@pending_leads_count} novo(s) ou aguardando aceite",
+          path: admin_leads_path(status: Lead.status_value(:novo))
+        }
+      end
+
+      if @my_returned_captacoes.positive?
+        items << {
+          icon: "arrow-counterclockwise",
+          tone: "danger",
+          title: "Captações devolvidas",
+          description: "#{@my_returned_captacoes} precisam de ajuste antes de avançar",
+          path: admin_captacoes_path(status: "returned_to_broker")
+        }
+      end
+
+      if @my_draft_captacoes.positive?
+        items << {
+          icon: "journal-text",
+          tone: "primary",
+          title: "Captações em rascunho",
+          description: "#{@my_draft_captacoes} cadastro(s) ainda incompleto(s)",
+          path: admin_captacoes_path(status: "draft")
+        }
+      end
+
+      items
+    end
 
     def today_shifts_for(user)
       user.store_shifts

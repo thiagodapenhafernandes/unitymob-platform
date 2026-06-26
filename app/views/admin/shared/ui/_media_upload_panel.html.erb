@@ -13,7 +13,9 @@
     </span>
     <div class="ax-media-upload-panel__copy">
       <strong><%= title %></strong>
-      <span><%= description %></span>
+      <% if description.present? %>
+        <span><%= description %></span>
+      <% end %>
     </div>
     <% if actions.present? %>
       <div class="ax-media-upload-panel__actions">

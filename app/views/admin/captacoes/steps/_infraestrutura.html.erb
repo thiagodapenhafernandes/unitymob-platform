@@ -53,7 +53,7 @@
     <hr class="my-3">
     <div class="wizard-field-group">
       <label class="ax-label">Características do edifício, lazer e condomínio</label>
-      <div class="<%= 'wizard-invalid-choice' if field_invalid.call(:caracteristicas_predio) %>">
+      <div class="wizard-choice-panel wizard-choice-panel--boxed wizard-choice-panel--scroll <%= 'wizard-invalid-choice' if field_invalid.call(:caracteristicas_predio) %>">
         <% features_predio.each do |feat| %>
           <% selected = captacao_feature_selected?(@captacao.caracteristicas_predio, feat) %>
           <label class="wizard-feature-chip <%= 'selected' if selected %>" data-controller="selectable-chip">

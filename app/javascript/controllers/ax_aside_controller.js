@@ -24,6 +24,18 @@ export default class extends Controller {
     if (event) event.preventDefault()
 
     const collapsed = !this.element.classList.contains(this.collapsedClassValue)
+    this.setCollapsed(collapsed)
+  }
+
+  collapse() {
+    this.setCollapsed(true)
+  }
+
+  expand() {
+    this.setCollapsed(false)
+  }
+
+  setCollapsed(collapsed) {
     this.element.classList.toggle(this.collapsedClassValue, collapsed)
 
     try {
@@ -35,12 +47,16 @@ export default class extends Controller {
   }
 
   applyStoredState() {
-    try {
-      this.element.classList.toggle(
-        this.collapsedClassValue,
-        window.localStorage.getItem(this.storageKey) === "1"
-      )
-    } catch (_) {}
+    let stored = null
+    try { stored = window.localStorage.getItem(this.storageKey) } catch (_) {}
+
+    // Sem preferência salva: no mobile começa recolhido (conteúdo primeiro, com o
+    // filtro atrás do botão); no desktop segue expandido (inalterado). O default
+    // mobile é só calculado por viewport, NÃO é persistido — não afeta o desktop.
+    const collapsed = stored === "1" ||
+      (stored === null && window.matchMedia("(max-width: 767.98px)").matches)
+
+    this.element.classList.toggle(this.collapsedClassValue, collapsed)
   }
 
   get storageKey() {

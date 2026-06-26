@@ -5,7 +5,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   include Devise::Test::IntegrationHelpers
   include ActiveJob::TestHelper
 
-  let(:admin) { create(:admin_user, :admin) }
+  let(:admin) { create(:admin_user, :admin, email: "admin-#{SecureRandom.hex(8)}@salute.test") }
 
   before do
     host! "localhost"
@@ -39,6 +39,22 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(published.titulo_anuncio)
   end
 
+  it "mostra para o administrativo apenas captações enviadas para revisão, não as aguardando aceite do corretor" do
+    administrative_profile = Profile.find_or_initialize_by(name: "Administrativo")
+    administrative_profile.permissions = Profile.default_permissions_for("Administrativo")
+    administrative_profile.save!
+    administrative = create(:admin_user, profile: administrative_profile, name: "Administrativo Revisão")
+    submitted = create(:habitation, :broker_intake, admin_user: admin, codigo: "ADM-SUB-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Revisão do administrativo")
+    approved = create(:habitation, :broker_intake, admin_user: admin, codigo: "ADM-APP-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Aguardando corretor aceitar")
+
+    sign_in administrative
+    get admin_habitations_path(intake_review: "pending", ownership: "all")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(submitted.titulo_anuncio)
+    expect(response.body).not_to include(approved.titulo_anuncio)
+  end
+
   it "mostra para o corretor somente suas captações aguardando aceite" do
     broker_profile = Profile.create!(
       name: "Corretor revisão #{SecureRandom.hex(6)}",
@@ -60,15 +76,84 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Aguardando aceite do corretor")
   end
 
-  it "exibe ações de ficha de papel no novo cadastro administrativo" do
+  it "abre novo imóvel como cadastro direto fora do fluxo de revisão" do
     get new_admin_habitation_path
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('novalidate="novalidate"')
-    expect(response.body).to include("Enviar para corretor")
-    expect(response.body).to include("Salvar Interno")
+    expect(response.body).to include("Cadastro direto de imóvel")
+    expect(response.body).to include("não passa pelo fluxo de captação/revisão")
+    expect(response.body).to include("Criar ficha de captação interna")
+    expect(response.body).not_to include("Enviar para corretor")
+    expect(response.body).not_to include("Salvar Interno")
     expect(response.body).to include("Salvar")
     expect(response.body).to include("Salvar e sair")
+  end
+
+  it "exibe ficha interna de captação somente quando o modo é explícito" do
+    get new_admin_habitation_path(intake_mode: "paper")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Ficha de captação interna")
+    expect(response.body).to include('name="intake_mode"')
+    expect(response.body).to include('value="paper"')
+    expect(response.body).to include("Enviar para corretor")
+    expect(response.body).to include("Salvar Interno")
+    expect(response.body).to include("Cadastrar imóvel direto")
+    expect(response.body).to include("Salvar")
+    expect(response.body).to include("Salvar e sair")
+  end
+
+  it "cria imóvel direto sem marcar como captação" do
+    expect {
+      post admin_habitations_path, params: {
+        habitation: {
+          categoria: "Apartamento",
+          status: "Venda",
+          tipo: "Unitário",
+          nome_empreendimento: "Edifício Direto #{SecureRandom.hex(4)}",
+          bloco: "101",
+          address_attributes: {
+            logradouro: "Rua Direta #{SecureRandom.hex(4)}",
+            numero: "10",
+            bairro: "Centro",
+            cidade: "Balneário Camboriú",
+            uf: "SC"
+          }
+        }
+      }
+    }.to change(Habitation, :count).by(1)
+
+    habitation = Habitation.order(:created_at).last
+    expect(habitation).not_to be_broker_intake
+    expect(habitation.intake_origin).to be_blank
+  end
+
+  it "cria ficha interna como captação quando o modo paper é enviado" do
+    expect {
+      post admin_habitations_path, params: {
+        intake_mode: "paper",
+        habitation: {
+          categoria: "Apartamento",
+          status: "Venda",
+          tipo: "Unitário",
+          nome_empreendimento: "Edifício Ficha #{SecureRandom.hex(4)}",
+          bloco: "202",
+          address_attributes: {
+            logradouro: "Rua Ficha #{SecureRandom.hex(4)}",
+            numero: "20",
+            bairro: "Centro",
+            cidade: "Balneário Camboriú",
+            uf: "SC"
+          }
+        }
+      }
+    }.to change(Habitation.broker_intakes, :count).by(1)
+
+    habitation = Habitation.order(:created_at).last
+    expect(habitation).to be_broker_intake
+    expect(habitation.intake_status).to eq("draft")
+    expect(habitation.exibir_no_site_flag).to eq(false)
   end
 
   it "mantém ações de revisão administrativa vinculadas ao formulário principal" do
@@ -186,6 +271,26 @@ RSpec.describe "Admin::Habitations", type: :request do
     get search_by_code_admin_habitations_path(codigo: "54")
 
     expect(response).to redirect_to(edit_admin_habitation_path(development))
+  end
+
+  it "filtra código exato no catálogo sem casar códigos parecidos" do
+    exact_code = "894#{SecureRandom.random_number(1000..9999)}"
+    matching = create(
+      :habitation,
+      codigo: exact_code,
+      titulo_anuncio: "Imóvel com código exato"
+    )
+    partial_match = create(
+      :habitation,
+      codigo: "#{exact_code}2",
+      titulo_anuncio: "Imóvel com código parecido"
+    )
+
+    get admin_habitations_path(ownership: "all", codigo: exact_code)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(matching.titulo_anuncio)
+    expect(response.body).not_to include(partial_match.titulo_anuncio)
   end
 
   it "filtra somente imóveis do DWV na listagem" do
@@ -653,6 +758,42 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("FORA SITE")
     card = Nokogiri::HTML(response.body).css(".property-card-horizontal").find { |node| node.text.include?(internal.codigo) }
     expect(card["class"]).not_to include("property-card--inactive")
+  end
+
+  it "limpa filtros do estado vazio voltando para Todos os imóveis" do
+    get admin_habitations_path(ownership: "mine", q: "sem-resultado-#{SecureRandom.hex(8)}")
+
+    expect(response).to have_http_status(:ok)
+
+    document = Nokogiri::HTML(response.body)
+    clear_link = document.at_css(".ax-property-empty a.ax-btn")
+
+    expect(response.body).to include("Nenhum imóvel encontrado")
+    expect(clear_link.text).to include("Limpar filtros")
+    expect(clear_link["href"]).to eq(admin_habitations_path(ownership: "all"))
+  end
+
+  it "renderiza controles compactos do catálogo para mobile sem remover o bloco desktop" do
+    create(:habitation, codigo: "MOBILE-CATALOG-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel para controles mobile")
+
+    get admin_habitations_path(ownership: "all", min_price: "1400000")
+
+    expect(response).to have_http_status(:ok)
+
+    document = Nokogiri::HTML(response.body)
+    mobile_summary = document.at_css(".habitations-mobile-catalog-summary")
+    mobile_sort = document.at_css(".habitations-mobile-sort-controls")
+    desktop_heading = document.at_css(".habitations-workspace-heading")
+
+    expect(mobile_summary.text).to include("total")
+    expect(mobile_summary.text).to include("filtrados")
+    expect(mobile_summary.text.index("total")).to be < mobile_summary.text.index("filtrados")
+    expect(mobile_summary.at_css(".habitations-mobile-catalog-summary__item")).to be_nil
+    expect(mobile_sort.text).to include("Ordenar:")
+    expect(mobile_sort.at_css("[data-controller='ax-dropdown']")).to be_present
+    expect(mobile_sort.at_css("[data-action*='ax-dropdown#toggle']")).to be_present
+    expect(mobile_sort.at_css("[data-ax-dropdown-target='menu']")).to be_present
+    expect(desktop_heading.text).to include("Catálogo operacional")
   end
 
   it "renderiza o catálogo em workspace com sidebar global e filtros no inspector" do

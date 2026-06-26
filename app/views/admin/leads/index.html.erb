@@ -11,11 +11,489 @@
   end
 %>
 
+<style>
+  .lead-list-workspace {
+    display: grid;
+    gap: 10px;
+  }
+
+  .lead-list-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .lead-list-summary__item {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--ab-line-soft, #e7ebf2);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .lead-list-summary__item span {
+    color: var(--ab-muted, #657386);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .05em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .lead-list-summary__item strong {
+    color: var(--ab-ink, #202a37);
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+
+  .lead-list-summary__item--warning {
+    background: color-mix(in srgb, #f59e0b 7%, #fff);
+    border-color: color-mix(in srgb, #f59e0b 28%, #e7ebf2);
+  }
+
+  .lead-list-summary__item--danger {
+    background: color-mix(in srgb, #dc2626 5%, #fff);
+    border-color: color-mix(in srgb, #dc2626 22%, #e7ebf2);
+  }
+
+  .lead-list {
+    display: grid;
+    overflow: hidden;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  }
+
+  .lead-list-row {
+    display: grid;
+    grid-template-columns: minmax(250px, 1.12fr) minmax(240px, .95fr) minmax(220px, auto);
+    gap: 12px;
+    align-items: center;
+    min-width: 0;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--ab-line-soft, #e7ebf2);
+    background: #fff;
+  }
+
+  .lead-list-row:nth-child(even) { background: #fbfcfe; }
+  .lead-list-row:last-child { border-bottom: 0; }
+  .lead-list-row:hover { background: var(--admin-primary-softer, #f3f7fb); }
+
+  .lead-list-row__identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .lead-list-row__avatar {
+    display: inline-grid;
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--admin-primary, #365f8f) 22%, #d8dee8);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--admin-primary, #365f8f) 9%, #fff);
+    color: var(--admin-primary, #365f8f);
+    font-size: 15px;
+    font-weight: 900;
+  }
+
+  .lead-list-row__contact,
+  .lead-list-row__context {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .lead-list-row__topline {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .lead-list-row__name {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ab-ink, #202a37);
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.2;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lead-list-row__name:hover {
+    color: var(--admin-primary, #365f8f);
+    text-decoration: none;
+  }
+
+  .lead-list-row__status { flex: 0 0 auto; }
+
+  .lead-list-row__meta,
+  .lead-list-row__origin,
+  .lead-list-row__property {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    color: var(--ab-muted, #657386);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .lead-list-row__meta {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+
+  .lead-list-row__meta span,
+  .lead-list-row__origin span,
+  .lead-list-row__property span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lead-list-row__meta i,
+  .lead-list-row__origin i,
+  .lead-list-row__property > i {
+    flex: 0 0 auto;
+    color: #8a97a8;
+  }
+
+  .lead-list-row__property a {
+    color: var(--ab-ink, #202a37);
+    font-weight: 850;
+    text-decoration: none;
+  }
+
+  .lead-list-row__property a:hover { color: var(--admin-primary, #365f8f); }
+
+  .lead-list-row__property small {
+    display: inline-block;
+    margin-left: 5px;
+    color: #c2175b;
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  .lead-list-row__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .lead-list-row__primary-action {
+    background: #ecfdf3;
+    border-color: #abefc6;
+    color: #067647;
+  }
+
+  .lead-list-row__primary-action:hover {
+    background: #dcfae6;
+    border-color: #75e0a7;
+    color: #05603a;
+  }
+
+  .lead-filter-quick {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .lead-filter-quick__chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 28px;
+    padding: 0 9px;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ab-ink, #202a37);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    text-decoration: none;
+  }
+
+  .lead-filter-quick__chip span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lead-filter-quick__chip:hover {
+    background: var(--admin-primary-softer, #f3f7fb);
+    border-color: var(--admin-primary-ring, #b7c6da);
+    color: var(--admin-primary, #365f8f);
+    text-decoration: none;
+  }
+
+  .lead-filter-active {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .lead-filter-active__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--admin-primary-soft, #edf4ff);
+    color: var(--admin-primary, #365f8f);
+    font-size: 11px;
+    font-weight: 850;
+    line-height: 1;
+  }
+
+  .lead-filter-collapse {
+    display: grid;
+    overflow: hidden;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  }
+
+  .lead-filter-collapse__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 0 12px;
+    cursor: pointer;
+    list-style: none;
+    color: var(--ab-ink, #202a37);
+    font-weight: 900;
+  }
+
+  .lead-filter-collapse__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .lead-filter-collapse__summary-main,
+  .lead-filter-collapse__summary-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .lead-filter-collapse__summary-main span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lead-filter-collapse__summary-meta {
+    flex: 0 0 auto;
+    color: var(--ab-muted, #657386);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .lead-filter-collapse__chevron {
+    transition: transform .16s ease;
+  }
+
+  .lead-filter-collapse[open] .lead-filter-collapse__chevron {
+    transform: rotate(180deg);
+  }
+
+  .lead-filter-collapse:not([open]) + .ax-leads-filter-overlay {
+    display: none;
+  }
+
+  .lead-filter-collapse[open] {
+    border-radius: 10px 10px 0 0;
+  }
+
+  .lead-filter-collapse[open] + .ax-leads-filter-overlay {
+    display: block;
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: #fff;
+    padding: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+  }
+
+  .ax-leads-filter-overlay .ax-leads-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .ax-leads-filter-overlay .ax-filter-form__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .ax-leads-filter-overlay .lead-filter-quick,
+  .ax-leads-filter-overlay .ax-field-grid {
+    grid-column: 1 / -1;
+  }
+
+  .ax-leads-filter-overlay .lead-filter-quick {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 2px;
+  }
+
+  .ax-leads-filter-overlay .lead-filter-quick__chip {
+    min-height: 34px;
+    width: 100%;
+    border-radius: 8px;
+    font-size: 12px;
+  }
+
+  .ax-leads-filter-overlay .ax-filter-form__actions {
+    justify-content: stretch;
+  }
+
+  .ax-leads-filter-overlay .ax-filter-form__actions .ax-btn {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+
+  @media (max-width: 991.98px) {
+    .lead-list-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .lead-list-row {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: stretch;
+      gap: 10px;
+      padding: 13px;
+    }
+
+    .lead-list-row__avatar {
+      flex-basis: 34px;
+      width: 34px;
+      height: 34px;
+      font-size: 14px;
+    }
+
+    .lead-list-row__topline {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .lead-list-row__name,
+    .lead-list-row__meta span,
+    .lead-list-row__origin span,
+    .lead-list-row__property span {
+      white-space: normal;
+    }
+
+    .lead-list-row__context,
+    .lead-list-row__actions {
+      padding-left: 44px;
+    }
+
+    .lead-list-row__actions {
+      justify-content: stretch;
+    }
+
+    .lead-list-row__actions .ax-btn {
+      flex: 1 1 0;
+    }
+
+    .lead-list-row__actions .ax-icon-btn {
+      flex: 0 0 30px;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .lead-filter-collapse {
+      display: contents;
+      overflow: visible;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .lead-filter-collapse__summary {
+      display: none;
+    }
+
+    .lead-filter-collapse:not([open]) + .ax-leads-filter-overlay {
+      display: none;
+    }
+
+    .ax-leads-mobile-shell[data-ax-aside-ready="true"]:not(.is-inspector-collapsed) .lead-filter-collapse + .ax-leads-filter-overlay {
+      display: flex;
+    }
+
+    .ax-leads-filter-overlay .ax-filter-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 0;
+      padding: 10px;
+    }
+
+    .ax-leads-filter-overlay .ax-filter-form__fields {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .ax-leads-filter-overlay .ax-field-grid {
+      grid-template-columns: 1fr !important;
+      gap: 9px;
+    }
+
+    .ax-leads-filter-overlay .ax-field-grid > [class*="ax-span-"] {
+      grid-column: 1 / -1 !important;
+    }
+
+    .ax-leads-filter-overlay .lead-filter-quick {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .ax-leads-filter-overlay .lead-filter-quick__chip {
+      min-height: 36px;
+      padding: 0 8px;
+    }
+  }
+</style>
+
 <%
   leads_heading_pills = [params[:status].presence || "Todos"]
-  leads_heading_pills << "Filtros ativos" if @q.present? || @origin.present?
+  lead_filter_labels = []
+  lead_filter_labels << "Busca" if @q.present?
+  lead_filter_labels << "Status" if @status.present?
+  lead_filter_labels << "Origem" if @origin.present?
+  lead_filter_labels << "Corretor" if @broker_id.present?
+  lead_filter_labels << "Imóvel" if @property_filter.present? || @property_q.present?
+  lead_filter_labels << "Contato" if @contact_filter.present?
+  lead_filter_labels << "Período" if @start_date.present? || @end_date.present?
+  lead_active_filter_count = lead_filter_labels.size
+  leads_heading_pills << "#{lead_active_filter_count} filtro(s)" if lead_active_filter_count.positive?
 
   leads_can_manage_statuses = defined?(can?) && can?(:manage, :catalogos)
+  lead_quick_base_params = request.query_parameters.except("page")
 
   leads_heading_actions = capture do %>
     <% if leads_can_manage_statuses %>
@@ -40,7 +518,96 @@
     </div>
   <% end %>
 
-<div class="tw-flex tw-flex-col tw-gap-3">
+  <% leads_filter_form = capture do %>
+    <%= ax_filter_form(url: admin_leads_path,
+                       reset_path: admin_leads_path(view: @view_mode),
+                       submit_label: "Filtrar",
+                       class_name: "ax-leads-filters") do |f| %>
+      <%= f.hidden_field :view, value: @view_mode %>
+      <div class="lead-filter-quick" aria-label="Atalhos de filtro">
+        <%= link_to admin_leads_path(lead_quick_base_params.merge(start_date: Date.current.iso8601, end_date: Date.current.iso8601)),
+                    class: "lead-filter-quick__chip" do %>
+          <i class="bi bi-calendar-day"></i><span>Hoje</span>
+        <% end %>
+        <%= link_to admin_leads_path(lead_quick_base_params.merge(start_date: 7.days.ago.to_date.iso8601, end_date: Date.current.iso8601)),
+                    class: "lead-filter-quick__chip" do %>
+          <i class="bi bi-calendar-week"></i><span>7 dias</span>
+        <% end %>
+        <%= link_to admin_leads_path(lead_quick_base_params.merge(broker_id: "unassigned")),
+                    class: "lead-filter-quick__chip" do %>
+          <i class="bi bi-person-x"></i><span>Sem corretor</span>
+        <% end %>
+        <%= link_to admin_leads_path(lead_quick_base_params.merge(contact_filter: "with_phone")),
+                    class: "lead-filter-quick__chip" do %>
+          <i class="bi bi-telephone"></i><span>Com telefone</span>
+        <% end %>
+        <%= link_to admin_leads_path(lead_quick_base_params.merge(property_filter: "general")),
+                    class: "lead-filter-quick__chip" do %>
+          <i class="bi bi-megaphone"></i><span>Contato geral</span>
+        <% end %>
+      </div>
+      <%= ax_field_grid do %>
+        <div class="ax-span-12">
+          <%= ax_text_field(form: f, method: :q, label: "Buscar",
+                            value: params[:q],
+                            placeholder: "Nome, e-mail, telefone, origem ou produto...") %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_select_field(form: f, method: :status, label: "Status",
+                              choices: @status_options,
+                              select_options: { include_blank: "Todos os status", selected: @status }) %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_select_field(form: f, method: :origin, label: "Origem",
+                              choices: @origin_options,
+                              select_options: { include_blank: "Todas as origens", selected: @origin }) %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_select_field(form: f, method: :broker_id, label: "Corretor",
+                              choices: [["Sem corretor", "unassigned"]] + @broker_options,
+                              select_options: { include_blank: "Todos os corretores", selected: @broker_id }) %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_select_field(form: f, method: :property_filter, label: "Vínculo com imóvel",
+                              choices: [["Com imóvel vinculado", "with_property"], ["Contato geral", "general"], ["Imóvel indisponível", "unavailable_property"]],
+                              select_options: { include_blank: "Todos", selected: @property_filter }) %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_text_field(form: f, method: :property_q, label: "Imóvel",
+                            value: @property_q,
+                            placeholder: "Código, título ou empreendimento...") %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_select_field(form: f, method: :contact_filter, label: "Contato",
+                              choices: [["Com telefone", "with_phone"], ["Com e-mail", "with_email"], ["Sem telefone/e-mail", "missing_contact"]],
+                              select_options: { include_blank: "Todos", selected: @contact_filter }) %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_date_field(form: f, method: :start_date, label: "Entrada de", value: @start_date) %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_date_field(form: f, method: :end_date, label: "Entrada até", value: @end_date) %>
+        </div>
+        <% if team_available?(:leads) %>
+          <div class="ax-span-12">
+            <span class="ax-field__label">Abrangência</span>
+            <%= ax_team_toggle(:leads) %>
+          </div>
+        <% end %>
+      <% end %>
+      <% if lead_active_filter_count.positive? %>
+        <div class="lead-filter-active" aria-label="Filtros ativos">
+          <% lead_filter_labels.each do |label| %>
+            <span class="lead-filter-active__chip"><i class="bi bi-check2"></i><%= label %></span>
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+
+<div class="ax-leads-mobile-shell tw-flex tw-flex-col tw-gap-3"
+     data-controller="ax-aside"
+     data-ax-aside-storage-key-value="admin-leads-filters-collapsed">
   <%= ax_workspace_heading(
         eyebrow: "Funil de leads",
         icon: "megaphone",
@@ -55,38 +622,53 @@
         actions: leads_heading_actions
       ) %>
 
-  <%= ax_filter_form(url: admin_leads_path,
-                     reset_path: admin_leads_path(view: @view_mode),
-                     submit_label: "Filtrar",
-                     class_name: "ax-leads-filters") do |f| %>
-    <%= f.hidden_field :view, value: @view_mode %>
-    <%= ax_field_grid do %>
-      <div class="ax-span-6">
-        <%= ax_text_field(form: f, method: :q, label: "Buscar",
-                          value: params[:q],
-                          placeholder: "Nome, e-mail, telefone ou origem...") %>
-      </div>
-      <div class="ax-span-3">
-        <%= ax_select_field(form: f, method: :status, label: "Status",
-                            choices: @status_options,
-                            select_options: { include_blank: "Todos os status", selected: params[:status] }) %>
-      </div>
-      <div class="ax-span-3">
-        <%= ax_select_field(form: f, method: :origin, label: "Origem",
-                            choices: @origin_options,
-                            select_options: { include_blank: "Todas as origens", selected: params[:origin] }) %>
-      </div>
-      <% if team_available?(:leads) %>
-        <div class="ax-span-3">
-          <span class="ax-field__label">Abrangência</span>
-          <%= ax_team_toggle(:leads) %>
-        </div>
-      <% end %>
+  <details class="lead-filter-collapse">
+    <summary class="lead-filter-collapse__summary">
+      <span class="lead-filter-collapse__summary-main">
+        <i class="bi bi-funnel"></i>
+        <span>Filtros do funil</span>
+        <% if lead_active_filter_count.positive? %>
+          <%= ax_badge("#{lead_active_filter_count} ativo(s)", tone: :blue) %>
+        <% end %>
+      </span>
+      <span class="lead-filter-collapse__summary-meta">
+        <span>Buscar e refinar leads</span>
+        <i class="bi bi-chevron-down lead-filter-collapse__chevron"></i>
+      </span>
+    </summary>
+  </details>
+
+  <div class="ax-leads-filter-overlay" aria-label="Filtros do funil">
+    <div class="ax-leads-filter-overlay__header">
+      <span><i class="bi bi-funnel"></i> Filtros do funil</span>
+      <button type="button"
+              class="ax-leads-filter-overlay__close"
+              data-action="ax-aside#collapse"
+              data-ax-aside-target="toggle"
+              aria-expanded="false"
+              aria-label="Fechar filtros"
+              title="Fechar filtros">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <%= leads_filter_form %>
+  </div>
+
+  <button type="button"
+          class="ax-leads-mobile-filter-button"
+          data-action="ax-aside#toggle"
+          data-ax-aside-target="toggle"
+          aria-expanded="false"
+          aria-label="Abrir filtros do funil">
+    <i class="bi bi-funnel"></i>
+    <span>Filtros do funil</span>
+    <% if lead_active_filter_count.positive? %>
+      <strong><%= lead_active_filter_count %></strong>
     <% end %>
-  <% end %>
+  </button>
 
   <% if @view_mode == "kanban" %>
-    <%= ax_board(data: { controller: "lead-kanban" }) do %>
+    <%= ax_board(class_name: "ax-leads-board", data: { controller: "lead-kanban" }) do %>
       <% @lead_statuses.each do |status| %>
         <%= ax_board_column(
               title: status,
@@ -94,7 +676,8 @@
               count: @lead_counts_by_status[status].to_i,
               count_data: { lead_kanban_count: status },
               body_data: { lead_kanban_target: "column", lead_kanban_status: status },
-              empty_text: "Nenhum lead neste status."
+              class_name: "ax-leads-board__column",
+              empty_text: "Sem leads aqui. Verifique outros status ou ajuste os filtros."
             ) do %>
           <% @leads_by_status[status].to_a.each do |lead| %>
             <%= render "admin/leads/kanban_card",
@@ -107,70 +690,104 @@
     <% end %>
   <% else %>
     <% if @leads.any? %>
-      <div class="ax-table-wrap">
-        <table class="ax-table">
-          <thead>
-            <tr>
-              <th>Contato</th>
-              <th>Origem / Imóvel</th>
-              <th>Status</th>
-              <th>Data</th>
-              <th class="tw-text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @leads.each do |lead| %>
-              <% property = @properties_by_id[lead.property_id] if lead.property_id.present? %>
-              <tr>
-                <td>
-                  <div class="ax-strong"><%= lead.name %></div>
-                  <div class="ax-page-subtitle"><%= [lead.email, lead.phone].compact_blank.join(" · ") %></div>
-                </td>
-                <td>
-                  <% if lead.origin.present? %>
-                    <div class="tw-mb-1"><%= ax_badge(lead.origin, tone: :gray) %></div>
-                  <% end %>
-                  <div class="ax-page-subtitle">
-                    <i class="bi bi-person-badge"></i> <%= lead.admin_user&.name.presence || "Sem corretor atribuído" %>
+      <div class="lead-list-workspace">
+        <div class="lead-list-summary" aria-label="Resumo dos leads filtrados">
+          <div class="lead-list-summary__item">
+            <span>Total filtrado</span>
+            <strong><%= number_with_delimiter(@total_leads.to_i) %></strong>
+          </div>
+          <div class="lead-list-summary__item lead-list-summary__item--warning">
+            <span>Novos</span>
+            <strong><%= number_with_delimiter(@new_leads.to_i) %></strong>
+          </div>
+          <div class="lead-list-summary__item">
+            <span>Em atendimento</span>
+            <strong><%= number_with_delimiter(@in_service_leads.to_i) %></strong>
+          </div>
+          <div class="lead-list-summary__item lead-list-summary__item--danger">
+            <span>Sem corretor</span>
+            <strong><%= number_with_delimiter(@unassigned_leads.to_i) %></strong>
+          </div>
+        </div>
+
+        <div class="lead-list" role="list">
+          <% @leads.each do |lead| %>
+            <%
+              property = @properties_by_id[lead.property_id] if lead.property_id.present?
+              display_name = lead.display_name.presence || lead.name
+              contact_parts = [lead.display_email, lead.display_phone].compact_blank
+              phone_digits = lead.display_phone.to_s.gsub(/[^0-9+]/, "")
+            %>
+            <article class="lead-list-row" role="listitem">
+              <div class="lead-list-row__identity">
+                <div class="lead-list-row__avatar" aria-hidden="true">
+                  <%= display_name.to_s.first.to_s.upcase.presence || "L" %>
+                </div>
+                <div class="lead-list-row__contact">
+                  <div class="lead-list-row__topline">
+                    <%= link_to display_name, admin_lead_path(lead), class: "lead-list-row__name" %>
+                    <%= ax_badge(lead.status.presence || Lead.default_status, tone: ax_status_tone.call(lead.status), class_name: "lead-list-row__status") %>
                   </div>
+                  <div class="lead-list-row__meta">
+                    <% if contact_parts.any? %>
+                      <span><i class="bi bi-person-lines-fill"></i><%= contact_parts.join(" · ") %></span>
+                    <% else %>
+                      <span><i class="bi bi-person-lines-fill"></i>Contato sem telefone/e-mail</span>
+                    <% end %>
+                    <span><i class="bi bi-clock"></i><%= l(lead.created_at, format: "%d/%m/%Y %H:%M") %></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="lead-list-row__context">
+                <div class="lead-list-row__origin">
+                  <%= ax_badge(lead.origin.presence || "Origem não informada", tone: :gray) %>
+                  <span><i class="bi bi-person-badge"></i><%= lead.admin_user&.name.presence || "Sem corretor atribuído" %></span>
+                </div>
+                <div class="lead-list-row__property">
                   <% if property.present? %>
-                    <div>
-                      <%= link_to property.display_title, admin_habitation_path(property), class: "tw-font-semibold tw-text-xs" %>
-                      <span class="ax-page-subtitle tw-block"><code><%= property.codigo %></code></span>
-                    </div>
-                  <% elsif lead.property_id.present? %>
-                    <span class="ax-page-subtitle">Imóvel indisponível</span>
-                  <% else %>
-                    <%= ax_badge("Geral", tone: :gray) %>
-                  <% end %>
-                </td>
-                <td>
-                  <%= ax_badge(lead.status.presence || Lead.default_status, tone: ax_status_tone.call(lead.status)) %>
-                </td>
-                <td>
-                  <div class="ax-page-subtitle">
-                    <%= lead.created_at.strftime("%d/%m/%Y") %><br>
-                    <%= lead.created_at.strftime("%H:%M") %>
-                  </div>
-                </td>
-                <td class="tw-text-right">
-                  <div class="tw-inline-flex tw-items-center tw-gap-1 tw-justify-end">
-                    <%= ax_icon_button label: "Ver detalhes", icon: "eye", url: admin_lead_path(lead) %>
-                    <%= form_with url: admin_lead_path(lead), method: :delete,
-                                  id: "delete_lead_#{lead.id}", class: "tw-hidden" do %><% end %>
-                    <span data-controller="ax-confirm-submit"
-                          data-ax-confirm-submit-form-id-value="delete_lead_<%= lead.id %>"
-                          data-ax-confirm-submit-message-value="Excluir este lead?"
-                          data-ax-confirm-submit-confirm-label-value="Excluir">
-                      <%= ax_icon_button label: "Excluir", icon: "trash", variant: :danger,
-                                         data: { action: "click->ax-confirm-submit#request" } %>
+                    <i class="bi bi-house-door"></i>
+                    <span>
+                      <%= link_to property.display_title, admin_habitation_path(property) %>
+                      <small><%= property.codigo %></small>
                     </span>
-                  </div>
-                </td>
-              </tr>
+                  <% elsif lead.property_id.present? %>
+                    <i class="bi bi-exclamation-circle"></i>
+                    <span>Imóvel indisponível</span>
+                  <% else %>
+                    <i class="bi bi-megaphone"></i>
+                    <span>Contato geral</span>
+                  <% end %>
+                </div>
+              </div>
+
+              <div class="lead-list-row__actions">
+                <% if lead.direct_whatsapp_url.present? %>
+                  <%= link_to lead.direct_whatsapp_url, target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm lead-list-row__primary-action" do %>
+                    <i class="bi bi-whatsapp ax-ico"></i><span>WhatsApp</span>
+                  <% end %>
+                <% end %>
+                <% if phone_digits.present? %>
+                  <%= link_to "tel:#{phone_digits}", class: "ax-btn ax-btn--sm" do %>
+                    <i class="bi bi-telephone ax-ico"></i><span>Ligar</span>
+                  <% end %>
+                <% end %>
+                <%= link_to admin_lead_path(lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+                  <i class="bi bi-eye ax-ico"></i><span>Atender</span>
+                <% end %>
+                <%= form_with url: admin_lead_path(lead), method: :delete,
+                              id: "delete_lead_#{lead.id}", class: "tw-hidden" do %><% end %>
+                <span data-controller="ax-confirm-submit"
+                      data-ax-confirm-submit-form-id-value="delete_lead_<%= lead.id %>"
+                      data-ax-confirm-submit-message-value="Excluir este lead?"
+                      data-ax-confirm-submit-confirm-label-value="Excluir">
+                  <%= ax_icon_button label: "Excluir", icon: "trash", variant: :danger,
+                                     data: { action: "click->ax-confirm-submit#request" } %>
+                </span>
+              </div>
+            </article>
             <% end %>
-          </tbody>
-        </table>
+        </div>
       </div>
 
       <% if @leads.total_pages > 1 %>

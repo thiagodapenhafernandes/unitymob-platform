@@ -59,6 +59,51 @@ RSpec.describe HabitationDuplicateChecker do
     expect(result.matches).to be_empty
   end
 
+  it "considera captação de corretor enviada para revisão como candidata de duplicidade" do
+    intake = create(:habitation, :broker_intake, intake_status: "submitted_for_admin_review", status: "Venda", bloco: "501")
+    intake.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Residencial Teste",
+      unit: "501",
+      status: "Venda"
+    ).call
+
+    expect(result.matches).to include(intake)
+  end
+
+  it "ignora rascunho de captação de corretor como candidato de duplicidade" do
+    draft = create(:habitation, :broker_intake, intake_status: "draft", status: "Venda", bloco: "501")
+    draft.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Residencial Teste",
+      unit: "501",
+      status: "Venda"
+    ).call
+
+    expect(result.matches).not_to include(draft)
+  end
+
+  it "normaliza tipo de logradouro ao comparar endereços" do
+    existing = create(:habitation, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: "501")
+    existing.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "1500",
+      number: "10",
+      building: "Edificio Solar",
+      unit: "501",
+      status: "Venda"
+    ).call
+
+    expect(result.matches).to include(existing)
+  end
+
   it "bloqueia imóvel sem unidade por rua e número quando status é igual" do
     house = create(:habitation, status: "Venda", nome_empreendimento: nil, bloco: nil, complemento: nil)
     house.create_address!(logradouro: "Rua 3000", numero: "50", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")

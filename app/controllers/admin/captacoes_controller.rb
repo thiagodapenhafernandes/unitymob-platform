@@ -226,7 +226,13 @@ module Admin
     end
 
     def build_leads_heatmap
-      leads = Lead.where(created_at: @period_start.beginning_of_day..@period_end.end_of_day)
+      @heatmap_start_date = parse_date(params[:heatmap_start_date]) || (Date.current - 6)
+      @heatmap_end_date = parse_date(params[:heatmap_end_date]) || Date.current
+      if @heatmap_start_date > @heatmap_end_date
+        @heatmap_start_date, @heatmap_end_date = @heatmap_end_date, @heatmap_start_date
+      end
+
+      leads = Lead.where(created_at: @heatmap_start_date.beginning_of_day..@heatmap_end_date.end_of_day)
                   .where.not(admin_user_id: nil)
       leads = leads.where(lead_type: params[:lead_category]) if params[:lead_category].present?
       leads = leads.where(origin: params[:lead_source])      if params[:lead_source].present?
@@ -236,7 +242,7 @@ module Admin
 
       user_ids = rows.keys.map(&:first).uniq
       @heatmap_corretores = AdminUser.where(id: user_ids).order(:name).to_a
-      @heatmap_dates = (@period_start.to_date..@period_end.to_date).to_a
+      @heatmap_dates = (@heatmap_start_date.to_date..@heatmap_end_date.to_date).to_a
 
       # Monta hash { admin_user_id => { date => count } }
       @heatmap_matrix = Hash.new { |h, k| h[k] = Hash.new(0) }

@@ -90,6 +90,38 @@ module Admin::ComercialHelper
     end
   end
 
+  def push_delivery_event_label(event_type)
+    {
+      "provider_accepted" => "Gateway aceitou",
+      "device_received" => "Device confirmou",
+      "provider_failed" => "Falha no provedor",
+      "invalid_subscription" => "Subscription inválida",
+      "no_active_subscription" => "Sem subscription ativa",
+      "push_unavailable" => "Push indisponível"
+    }[event_type.to_s] || event_type.to_s.humanize
+  end
+
+  def push_delivery_event_tone(event_type)
+    {
+      "provider_accepted" => "blue",
+      "device_received" => "green",
+      "provider_failed" => "red",
+      "invalid_subscription" => "red",
+      "no_active_subscription" => "amber",
+      "push_unavailable" => "amber"
+    }[event_type.to_s] || "gray"
+  end
+
+  def push_delivery_event_device(event)
+    agent = event.user_agent.to_s
+    return "iPhone / Safari" if agent.include?("iPhone")
+    return "Android / Chrome" if agent.include?("Android")
+    return "Mac / Safari" if agent.include?("Macintosh") && agent.include?("Safari")
+    return "Chrome" if agent.include?("Chrome")
+
+    event.endpoint_host.presence || "Device não identificado"
+  end
+
   def brl(value)
     number_to_currency(value.to_f, unit: "R$ ", separator: ",", delimiter: ".", format: "%u%n")
   end

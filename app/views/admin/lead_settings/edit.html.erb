@@ -100,6 +100,22 @@
           </div>
         <% end %>
 
+        <%# ===== Comportamento do push ===== %>
+        <%= ax_operational_panel(eyebrow: "Push", title: "Ao tocar na notificação") do %>
+          <div class="ax-panel-body">
+            <%= ax_radio_group(form: f, method: :push_lead_click_action,
+                  label: "O push de lead deve abrir:",
+                  choices: [
+                    ["Detalhes do lead primeiro", "system"],
+                    ["WhatsApp do lead direto", "whatsapp"]
+                  ]) %>
+            <p class="ax-field__hint tw-mt-2">
+              Nas duas opções, o toque no push conta como aceite no prazo e trava a rotação do pocket.
+              Use detalhes quando o corretor precisa ver telefone, e-mail, origem e interesse antes de chamar o cliente.
+            </p>
+          </div>
+        <% end %>
+
         <%# ===== Privacidade / Link seguro ===== %>
         <%= ax_operational_panel(eyebrow: "Privacidade", title: "Mascarar contato na notificação") do %>
           <div class="ax-panel-body">
@@ -153,6 +169,10 @@
             <span>Link seguro</span>
             <%= ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true) %>
           </div>
+          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+            <span>Clique no push</span>
+            <%= ax_badge(@lead_setting.push_lead_click_action == "whatsapp" ? "WhatsApp direto" : "Detalhes primeiro", tone: :blue) %>
+          </div>
           <% if @lead_setting.secure_links_enabled? %>
             <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
               <span>Validade do link</span>
@@ -174,7 +194,8 @@
         <div class="ax-panel-body">
           <ol class="ax-field__hint" style="padding-left:18px;margin:0;line-height:1.6;">
             <li><strong>Fidelização</strong>: na distribuição, se a pessoa já tem corretor (pela chave escolhida) e ele está elegível → vai direto pra ele; senão, rotação normal.</li>
-            <li><strong>Link seguro</strong>: nos canais ligados (WhatsApp, e-mail, push), a notificação esconde o contato atrás de um link <code>/s/&lt;token&gt;</code>; o clique valida a expiração, abre o contato/lead e marca o atendimento dentro do prazo (mede o SLA). No push, o clique vale como aceite.</li>
+            <li><strong>Push</strong>: o clique sempre vale como aceite dentro do prazo; depois abre o destino configurado: detalhes do lead ou WhatsApp direto.</li>
+            <li><strong>Link seguro</strong>: nos canais ligados (WhatsApp, e-mail, push), a notificação esconde o contato atrás de um link <code>/s/&lt;token&gt;</code>; o clique valida a expiração, abre o contato/lead e marca o atendimento dentro do prazo (mede o SLA).</li>
           </ol>
         </div>
       <% end %>

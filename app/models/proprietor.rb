@@ -74,11 +74,25 @@ class Proprietor < ApplicationRecord
   has_one_attached :profile_image
 
   validates :name, presence: true
+  validate :cpf_cnpj_must_be_unique
 
   scope :ordered, -> { order(name: :asc) }
 
   def self.normalized_phone(value)
     value.to_s.gsub(/\D/, "")
+  end
+
+  def self.normalized_cpf_cnpj(value)
+    value.to_s.gsub(/\D/, "")
+  end
+
+  def self.find_by_cpf_cnpj(value)
+    digits = normalized_cpf_cnpj(value)
+    return if digits.blank?
+
+    where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: digits)
+      .order(:id)
+      .first
   end
 
   def self.find_by_phone(value)
@@ -115,5 +129,19 @@ class Proprietor < ApplicationRecord
     return nil unless profile_image.attached?
 
     Rails.application.routes.url_helpers.rails_storage_proxy_path(profile_image, only_path: true)
+  end
+
+  private
+
+  def cpf_cnpj_must_be_unique
+    return if vista_code.present?
+
+    digits = self.class.normalized_cpf_cnpj(cpf_cnpj)
+    return if digits.blank?
+
+    scope = self.class.where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: digits)
+    scope = scope.where.not(id: id) if persisted?
+
+    errors.add(:cpf_cnpj, "já cadastrado para outro proprietário") if scope.exists?
   end
 end

@@ -566,6 +566,104 @@
   }
   /* Mobile-specific tweaks for /admin/habitations */
   @media (max-width: 767.98px) {
+    /* Fase 3 mobile: o catálogo (cards) vem primeiro; os filtros ficam recolhidos
+       atrás do botão |→ (default recolhido no mobile via ax-aside). */
+    body.ax-habitations-workspace .habitations-master-detail-layout {
+      grid-template-areas: "master" "detail";
+    }
+
+    /* O ←| (menu) é uma barra fixa; no mobile ela tinha a largura da sidebar
+       (~260px) e cobria a breadcrumb. Encolhe pra só o botão e libera a linha. */
+    body.ax-habitations-workspace .ax-sidebar-contextbar {
+      width: auto !important;
+      justify-content: flex-start;
+      border-right: 0;
+      padding-right: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    /* A breadcrumb/ações do catálogo começam depois do ←|. */
+    body.ax-habitations-workspace .habitations-middle-contextbar {
+      padding-left: calc(40px + var(--ax-workspace-gutter));
+    }
+
+    /* ---- Scroll natural: o shell desktop usa altura fixa de viewport +
+       overflow hidden (scroll interno). No mobile isso corta tudo abaixo da
+       dobra. Aqui tudo vira altura automática e rola com o body. ---- */
+    body.ax-habitations-workspace .ax-main {
+      height: auto !important;
+      min-height: calc(100vh - var(--ax-navbar-h)) !important;
+      overflow: visible !important;
+    }
+    body.ax-habitations-workspace .habitations-master-detail-layout,
+    body.ax-habitations-workspace .habitations-master-pane,
+    body.ax-habitations-workspace .habitations-master-body,
+    body.ax-habitations-workspace .habitations-master-content,
+    body.ax-habitations-workspace .habitations-results-shell,
+    body.ax-habitations-workspace .habitations-results-list {
+      height: auto !important;
+      max-height: none !important;
+      min-height: 0 !important;
+      overflow: visible !important;
+    }
+
+    /* ---- Filtros = sheet fullscreen acionado por um FAB sempre acessível ---- */
+    /* O rail do inspector vira um botão flutuante (abre os filtros). */
+    body.ax-habitations-workspace .habitations-inspector-rail {
+      position: fixed !important;
+      inset: auto 14px calc(14px + env(safe-area-inset-bottom, 0px)) auto !important;
+      width: 52px !important;
+      height: 52px !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      border-radius: 50% !important;
+      background: var(--admin-primary, #365f8f) !important;
+      color: #fff !important;
+      box-shadow: 0 8px 24px rgb(15 23 42 / .28) !important;
+      z-index: 1250 !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: none !important;
+    }
+    body.ax-habitations-workspace .habitations-inspector-rail .ax-aside-rail__toggle {
+      color: #fff;
+      width: 100%;
+      height: 100%;
+      font-size: 1.25rem;
+    }
+    /* O painel ocupa a tela inteira quando aberto. */
+    body.ax-habitations-workspace .habitations-inspector {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      max-height: none !important;
+      z-index: 1260 !important;
+      border-left: 0 !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: translateY(0) !important;
+      transition: transform 220ms var(--ax-motion-ease, cubic-bezier(.2,.8,.2,1)), opacity 160ms ease !important;
+      padding-top: env(safe-area-inset-top, 0px) !important;
+      background: #fff;
+    }
+    body.ax-habitations-workspace .habitations-inspector__form {
+      height: auto !important;
+      max-height: calc(100dvh - var(--ax-contextbar-h)) !important;
+    }
+    /* Recolhido: o sheet sai pra baixo e o FAB aparece. */
+    html.ax-inspector-collapsed-preload body.ax-habitations-workspace .habitations-inspector,
+    body.ax-habitations-workspace .habitations-master-detail-layout.is-inspector-collapsed .habitations-inspector {
+      transform: translateY(100%) !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    /* Aberto: esconde o FAB (o painel já tem o botão de fechar no header). */
+    body.ax-habitations-workspace .habitations-master-detail-layout:not(.is-inspector-collapsed) .habitations-inspector-rail {
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
     .habitations-header { flex-direction: column !important; align-items: stretch !important; gap: .75rem; }
     .habitations-header-actions { flex-wrap: wrap; }
     .habitations-header-actions .btn { flex: 1 1 auto; min-width: 0; font-size: .85rem; padding: .5rem .75rem; }
@@ -838,6 +936,13 @@
     justify-content: flex-end;
     gap: .38rem;
   }
+  .habitations-mobile-filter-button {
+    display: none;
+  }
+  .habitations-mobile-catalog-summary,
+  .habitations-mobile-sort-controls {
+    display: none;
+  }
   .habitations-workspace-heading__tool,
   .habitations-workspace-heading__select-all {
     display: inline-flex;
@@ -925,22 +1030,27 @@
     border-color: #355984;
     background: #355984;
   }
-  .habitations-workspace-heading .dropdown {
+  .habitations-workspace-heading .dropdown,
+  .habitations-workspace-scopebar .dropdown {
     position: relative;
   }
-  .habitations-workspace-heading .dropdown.is-open {
+  .habitations-workspace-heading .dropdown.is-open,
+  .habitations-workspace-scopebar .dropdown.is-open {
     z-index: 1200;
   }
-  .habitations-workspace-heading .dropdown-menu {
+  .habitations-workspace-heading .dropdown-menu,
+  .habitations-workspace-scopebar .dropdown-menu {
     z-index: 1060;
     border: 1px solid #d8dee8;
     border-radius: 8px;
     box-shadow: 0 12px 28px rgba(15, 23, 42, .14);
   }
-  .habitations-workspace-heading .dropdown-menu[hidden] {
+  .habitations-workspace-heading .dropdown-menu[hidden],
+  .habitations-workspace-scopebar .dropdown-menu[hidden] {
     display: none !important;
   }
-  .habitations-workspace-heading .dropdown.is-open > .dropdown-menu {
+  .habitations-workspace-heading .dropdown.is-open > .dropdown-menu,
+  .habitations-workspace-scopebar .dropdown.is-open > .dropdown-menu {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -1523,6 +1633,677 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* PWA/mobile only: catálogo compacto + filtro fullscreen explícito.
+     Mantém o desktop no inspector lateral existente. */
+  @media (max-width: 767.98px) {
+    body.ax-habitations-workspace .habitations-workspace-heading {
+      display: none !important;
+    }
+
+    body.ax-habitations-workspace .habitations-mobile-catalog-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      margin: 0 0 .42rem;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #64748b;
+      font-size: .72rem;
+      font-weight: 800;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    body.ax-habitations-workspace .habitations-mobile-catalog-summary strong {
+      color: #1f2937;
+      font-weight: 900;
+    }
+
+    body.ax-habitations-workspace .ax-pagination {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: .55rem;
+      margin: .82rem 0 calc(72px + env(safe-area-inset-bottom, 0px));
+      padding: .72rem .72rem .78rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .92);
+    }
+
+    body.ax-habitations-workspace .ax-pagination__summary {
+      font-size: .78rem;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    body.ax-habitations-workspace .ax-pagination__controls,
+    body.ax-habitations-workspace .ax-pagination__window {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      max-width: 100%;
+      margin-left: 0;
+      gap: .34rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body.ax-habitations-workspace .ax-pagination__controls::-webkit-scrollbar,
+    body.ax-habitations-workspace .ax-pagination__window::-webkit-scrollbar {
+      display: none;
+    }
+
+    body.ax-habitations-workspace .ax-pagination__controls > a,
+    body.ax-habitations-workspace .ax-pagination__controls > span,
+    body.ax-habitations-workspace .ax-pagination__controls > em {
+      flex: 0 0 auto;
+      min-width: 34px;
+      height: 34px;
+      padding: 0 .62rem;
+      border-radius: 8px;
+      font-size: .82rem;
+    }
+
+    body.ax-habitations-workspace .ax-pagination__controls > .previous_page,
+    body.ax-habitations-workspace .ax-pagination__controls > .next_page {
+      min-width: 34px;
+      padding-inline: .5rem;
+    }
+
+    body.ax-habitations-workspace .ax-pagination__controls .ax-pagination__nav-label {
+      display: none;
+    }
+
+    body.ax-habitations-workspace .ax-pagination__controls > .disabled {
+      min-width: 30px;
+      padding-inline: .35rem;
+      color: #94a3b8;
+    }
+
+    body.ax-habitations-workspace .ax-pagination__controls > .gap {
+      min-width: 24px;
+      padding-inline: .2rem;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-scopebar {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr);
+      align-items: center;
+      gap: .32rem;
+      margin-bottom: .38rem;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-scopebar > .habitations-view-toggle--scope {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-width: 0;
+      height: 34px;
+      min-height: 34px;
+      border-radius: 8px;
+      padding: 3px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-scopebar > .habitations-view-toggle--scope .habitations-view-toggle__item {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1 1 0;
+      height: 28px;
+      min-width: 0;
+      min-height: 0;
+      padding: 0 .2rem;
+      border-radius: 7px;
+      font-size: .62rem;
+      gap: .18rem;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-scopebar > .habitations-view-toggle--scope .habitations-view-toggle__item i {
+      font-size: .7rem;
+    }
+
+    body.ax-habitations-workspace .habitations-mobile-sort-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 34px;
+      align-items: center;
+      gap: .24rem;
+      height: 34px;
+      min-width: 0;
+    }
+
+    body.ax-habitations-workspace .habitations-mobile-sort-controls .habitations-sort-menu {
+      grid-column: auto !important;
+      height: 34px;
+      min-width: 0;
+    }
+
+    body.ax-habitations-workspace .habitations-mobile-sort-controls .habitations-command-menu--sort {
+      right: 0 !important;
+      left: auto !important;
+      width: min(260px, calc(100vw - 28px));
+      max-height: min(360px, calc(100dvh - 170px));
+    }
+
+    body.ax-habitations-workspace .habitations-mobile-sort-controls .habitations-workspace-heading__tool {
+      width: 100%;
+      height: 34px;
+      min-width: 0;
+      min-height: 34px;
+      padding: 0 .34rem;
+      border-radius: 8px;
+      font-size: .62rem;
+      gap: .22rem;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    body.ax-habitations-workspace .habitations-mobile-sort-controls .habitations-workspace-heading__tool span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    body.ax-habitations-workspace .habitations-mobile-sort-controls .habitations-workspace-heading__tool--icon {
+      width: 34px;
+      padding: 0;
+    }
+
+    body.ax-habitations-workspace .habitations-scope-strip {
+      gap: .36rem;
+      margin: 0 -.45rem .5rem;
+      padding: 0 .45rem .12rem;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body.ax-habitations-workspace .habitations-scope-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    body.ax-habitations-workspace .habitations-scope-chip {
+      flex: 0 0 auto;
+      min-height: 30px;
+      padding: .28rem .68rem;
+      border-radius: 999px;
+      font-size: .72rem;
+      line-height: 1;
+    }
+
+    body.ax-habitations-workspace .habitations-results-shell,
+    body.ax-habitations-workspace .habitations-results-list,
+    body.ax-habitations-workspace .ax-property-list--cards {
+      min-width: 0;
+    }
+
+    body.ax-habitations-workspace .ax-property-list--cards {
+      gap: .72rem;
+    }
+
+    body.ax-habitations-workspace .ax-property-card--catalog {
+      width: 100%;
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, .08);
+    }
+
+    body.ax-habitations-workspace .ax-property-card--catalog .ax-property-card__media,
+    body.ax-habitations-workspace .ax-property-card--catalog .ax-property-card__empty-media {
+      height: clamp(174px, 50vw, 230px);
+      min-height: clamp(174px, 50vw, 230px);
+      border-right: 0;
+    }
+
+    body.ax-habitations-workspace .ax-property-card--catalog .ax-property-card__media {
+      overflow: hidden !important;
+      border-radius: 8px 8px 0 0;
+      isolation: isolate;
+    }
+
+    body.ax-habitations-workspace .ax-property-card--catalog .ax-property-card__media img,
+    body.ax-habitations-workspace .ax-property-card--catalog .ax-property-card__media.is-image-missing::before {
+      border-radius: inherit;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__top-badges {
+      top: 10px;
+      left: 10px;
+      max-width: calc(100% - 20px);
+    }
+
+    body.ax-habitations-workspace .ax-property-badge,
+    body.ax-habitations-workspace .ax-property-chip {
+      min-height: 19px;
+      padding: 3px 7px;
+      font-size: .62rem;
+    }
+
+    body.ax-habitations-workspace .ax-property-update {
+      min-height: 18px;
+      padding-inline: 7px;
+      font-size: .66rem;
+    }
+
+    body.ax-habitations-workspace .ax-property-card--catalog .ax-property-card__body {
+      gap: .55rem;
+      padding: .75rem .78rem .82rem;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: flex-start;
+      gap: .58rem;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__title {
+      display: -webkit-box;
+      overflow: hidden;
+      font-size: 1.02rem;
+      line-height: 1.16;
+      text-overflow: clip;
+      white-space: normal;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__identity {
+      gap: .34rem;
+      margin-top: .42rem;
+      overflow: hidden;
+      font-size: .7rem;
+      line-height: 1.15;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__identity-category {
+      display: none;
+    }
+
+    body.ax-habitations-workspace .admin-property-actions {
+      gap: .35rem;
+      align-self: start;
+      justify-self: end;
+    }
+
+    body.ax-habitations-workspace .admin-property-action-trigger {
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+      border-radius: 8px;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__meta {
+      gap: .22rem;
+      font-size: .77rem;
+      line-height: 1.25;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__meta span {
+      display: -webkit-box;
+      overflow: hidden;
+      white-space: normal;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 1;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__meta span:first-child {
+      -webkit-line-clamp: 2;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__features {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .34rem;
+      font-size: .75rem;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__features span {
+      justify-content: center;
+      min-width: 0;
+      min-height: 28px;
+      padding: .22rem .28rem;
+      overflow: hidden;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__features i {
+      flex: 0 0 auto;
+    }
+
+    body.ax-habitations-workspace .ax-property-card__footer {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+      align-items: end;
+      gap: .75rem;
+      padding-top: .68rem;
+    }
+
+    body.ax-habitations-workspace .ax-property-price span {
+      font-size: .68rem;
+      letter-spacing: 0;
+    }
+
+    body.ax-habitations-workspace .ax-property-price strong {
+      margin-top: .22rem;
+      overflow: hidden;
+      font-size: 1.32rem;
+      line-height: 1.05;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    body.ax-habitations-workspace .ax-property-costs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .35rem;
+      width: 100%;
+      justify-content: stretch;
+      text-align: left;
+    }
+
+    body.ax-habitations-workspace .ax-property-costs small {
+      font-size: .68rem;
+    }
+
+    body.ax-habitations-workspace .ax-property-costs strong {
+      display: block;
+      overflow: hidden;
+      font-size: .82rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-scopebar > .ax-team-toggle,
+    body.ax-habitations-workspace .habitations-workspace-scopebar > .habitations-workspace-bulkline {
+      grid-column: 1 / -1;
+    }
+
+    body.ax-habitations-workspace .habitations-active-filter-chips {
+      display: none !important;
+    }
+
+    body.ax-habitations-workspace .ax-property-card,
+    body.ax-habitations-workspace .ax-property-card__body,
+    body.ax-habitations-workspace .ax-property-card__footer,
+    body.ax-habitations-workspace .admin-property-actions,
+    body.ax-habitations-workspace .admin-property-action-dropdown {
+      overflow: visible !important;
+    }
+
+    body.ax-habitations-workspace .admin-property-action-dropdown.is-open {
+      z-index: 1250;
+    }
+
+    body.ax-habitations-workspace .admin-property-action-dropdown {
+      position: relative;
+    }
+
+    body.ax-habitations-workspace .admin-property-action-dropdown .admin-property-menu {
+      top: calc(100% + 6px) !important;
+      right: 0 !important;
+      left: auto !important;
+      width: min(188px, calc(100vw - 24px));
+      min-width: min(188px, calc(100vw - 24px));
+      padding: 5px;
+      max-height: min(360px, calc(100dvh - 140px));
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    body.ax-habitations-workspace .admin-property-action-dropdown:first-child .admin-property-menu {
+      right: calc(-34px - .35rem) !important;
+    }
+
+    body.ax-habitations-workspace .admin-property-menu__header {
+      min-height: 22px;
+      padding: 1px 6px 4px;
+      font-size: .72rem;
+    }
+
+    body.ax-habitations-workspace .admin-property-menu__item {
+      min-width: 0;
+      min-height: 34px;
+      gap: .55rem;
+      padding: .42rem .5rem;
+      font-size: .82rem;
+      line-height: 1.1;
+    }
+
+    body.ax-habitations-workspace .admin-property-menu__item i {
+      width: 18px;
+      min-width: 18px;
+      font-size: .95rem;
+    }
+
+    body.ax-habitations-workspace .admin-property-menu__item span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    body.ax-habitations-workspace .admin-property-menu--share .admin-property-menu__item--social-share {
+      display: none;
+    }
+
+    body.ax-habitations-workspace .admin-property-menu__sep {
+      margin: 4px 0;
+    }
+
+
+    body.ax-habitations-workspace .ax-sidebar-contextbar {
+      position: fixed !important;
+      top: var(--ax-navbar-h) !important;
+      left: 0 !important;
+      z-index: 39 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      width: calc(44px + var(--ax-shell-gutter)) !important;
+      height: var(--ax-contextbar-h) !important;
+      padding: 0 0 0 var(--ax-shell-gutter) !important;
+      border: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    body.ax-habitations-workspace .habitations-middle-contextbar {
+      position: fixed !important;
+      top: var(--ax-navbar-h) !important;
+      left: 0 !important;
+      right: 0 !important;
+      z-index: 38 !important;
+      flex-wrap: nowrap !important;
+      width: 100% !important;
+      height: var(--ax-contextbar-h) !important;
+      min-height: var(--ax-contextbar-h) !important;
+      padding: 0 var(--ax-workspace-gutter, var(--ax-shell-gutter)) 0 calc(52px + var(--ax-workspace-gutter, var(--ax-shell-gutter))) !important;
+      border-bottom: 1px solid #d8dee8 !important;
+      background: #fff !important;
+      box-shadow: 0 1px 2px rgb(15 23 42 / .05) !important;
+    }
+
+    body.ax-habitations-workspace .habitations-master-pane {
+      padding-top: var(--ax-contextbar-h) !important;
+    }
+
+    body.ax-habitations-workspace .habitations-middle-contextbar .ax-breadcrumb {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading__eyebrow {
+      font-size: .58rem;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading__title-row {
+      flex-direction: row;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .35rem;
+      margin-top: .18rem;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading h1 {
+      font-size: 1.08rem !important;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading p {
+      display: none;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading__side {
+      width: 100%;
+      gap: .5rem;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading__meta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+      gap: .35rem;
+      width: 100%;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading__meta span {
+      min-height: 32px;
+      padding: .24rem .42rem;
+      font-size: .68rem;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading__meta strong {
+      font-size: .78rem;
+    }
+
+    body.ax-habitations-workspace .habitations-page-size > span {
+      display: none;
+    }
+
+    body.ax-habitations-workspace .habitations-page-size__button {
+      width: 38px;
+      height: 32px;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading__toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 38px;
+      gap: .35rem;
+      width: 100%;
+    }
+
+    body.ax-habitations-workspace .habitations-mobile-filter-button {
+      display: inline-flex;
+      grid-column: 1 / -1;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading__toolbar > .habitations-view-toggle {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+
+    body.ax-habitations-workspace .habitations-print-menu {
+      display: none;
+    }
+
+    body.ax-habitations-workspace .habitations-sort-menu {
+      grid-column: 1 / 3;
+      min-width: 0;
+    }
+
+    body.ax-habitations-workspace .habitations-sort-menu .habitations-workspace-heading__tool {
+      width: 100%;
+    }
+
+    body.ax-habitations-workspace .habitations-workspace-heading__tool,
+    body.ax-habitations-workspace .habitations-view-toggle__item {
+      min-height: 34px;
+      font-size: .72rem;
+    }
+
+    body.ax-habitations-workspace .habitations-inspector-rail {
+      position: fixed !important;
+      inset: auto auto calc(14px + env(safe-area-inset-bottom, 0px)) 50% !important;
+      z-index: 1250 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: auto !important;
+      max-width: calc(100vw - 28px) !important;
+      min-width: 112px !important;
+      height: 40px !important;
+      min-height: 0 !important;
+      padding: 0 13px !important;
+      border: 1px solid color-mix(in srgb, var(--admin-primary, #365f8f) 78%, #fff) !important;
+      border-radius: 999px !important;
+      background: var(--admin-primary, #365f8f) !important;
+      color: #fff !important;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, .22) !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: translateX(-50%) !important;
+    }
+
+    body.ax-habitations-workspace .habitations-inspector-rail .ax-aside-rail__content {
+      writing-mode: horizontal-tb !important;
+      text-orientation: mixed !important;
+      color: #fff !important;
+      font-size: .74rem !important;
+      letter-spacing: 0 !important;
+      text-transform: none !important;
+    }
+
+    body.ax-habitations-workspace .habitations-inspector-rail .ax-aside-rail__content i {
+      color: inherit !important;
+    }
+
+    body.ax-habitations-workspace .habitations-inspector {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100dvh !important;
+      max-height: none !important;
+      z-index: 1260 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: #fff !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      transform: translateY(0) !important;
+      transition: transform 220ms var(--ax-motion-ease, cubic-bezier(.2,.8,.2,1)), opacity 160ms ease !important;
+    }
+
+    html.ax-inspector-collapsed-preload body.ax-habitations-workspace .habitations-inspector,
+    body.ax-habitations-workspace .habitations-master-detail-layout.is-inspector-collapsed .habitations-inspector {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateY(100%) !important;
+    }
+
+    body.ax-habitations-workspace .habitations-inspector__header {
+      min-height: calc(var(--ax-contextbar-h) + env(safe-area-inset-top, 0px));
+      height: auto;
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    body.ax-habitations-workspace .habitations-inspector > .ax-aside-panel__body,
+    body.ax-habitations-workspace .habitations-inspector__form {
+      height: calc(100dvh - var(--ax-contextbar-h) - env(safe-area-inset-top, 0px)) !important;
+      max-height: none !important;
+      overflow-y: auto !important;
+      overscroll-behavior: contain;
+    }
+  }
 </style>
 
 <%
@@ -1639,6 +2420,21 @@
     </div>
 
     <div class="habitations-workspace-heading__toolbar" aria-label="Ações do catálogo">
+      <button type="button"
+              class="habitations-workspace-heading__tool habitations-mobile-filter-button"
+              data-action="ax-aside#toggle"
+              data-ax-aside-target="toggle"
+              aria-expanded="false"
+              aria-label="Abrir filtros">
+        <i class="bi bi-funnel"></i>
+        <span>Filtros</span>
+        <% if active_extra_filters_count.positive? %>
+          <strong><%= active_extra_filters_count %></strong>
+        <% elsif filtering_active %>
+          <strong>ativo</strong>
+        <% end %>
+      </button>
+
       <div class="habitations-view-toggle" aria-label="Visualização da listagem">
         <%= link_to admin_habitations_path(property_view_params.merge(visualizacao: "cards")),
                     class: "habitations-view-toggle__item #{property_view_mode == 'cards' ? 'is-active' : ''}",
@@ -1663,7 +2459,7 @@
         <% end %>
       </div>
 
-      <div class="dropdown" data-controller="ax-dropdown">
+      <div class="dropdown habitations-print-menu" data-controller="ax-dropdown">
         <button class="habitations-workspace-heading__tool dropdown-toggle"
                 type="button"
                 data-ax-dropdown-target="trigger"
@@ -1695,7 +2491,7 @@
         </ul>
       </div>
 
-      <div class="dropdown" data-controller="ax-dropdown">
+      <div class="dropdown habitations-sort-menu" data-controller="ax-dropdown">
         <button class="habitations-workspace-heading__tool dropdown-toggle"
                 type="button"
                 data-ax-dropdown-target="trigger"
@@ -1752,13 +2548,60 @@
       <i class="bi bi-person-check"></i>
       <span>Meus imóveis</span>
     <% end %>
+    <%# Catálogo: todos podem navegar todos os imóveis (curadoria). %>
     <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all")), class: "habitations-view-toggle__item #{all_active ? 'is-active' : ''}" do %>
       <i class="bi bi-collection"></i>
       <span>Todos</span>
     <% end %>
-    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "pending")), class: "habitations-view-toggle__item #{pending_review_active ? 'is-active' : ''}" do %>
-      <i class="bi bi-clipboard-check"></i>
-      <span>Pendente de revisão</span>
+    <%# "Pendente de revisão" é curadoria de intake (admin) — só para escopo total. %>
+    <% if owns_all_resource?(:imoveis) %>
+      <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "pending")), class: "habitations-view-toggle__item #{pending_review_active ? 'is-active' : ''}" do %>
+        <i class="bi bi-clipboard-check"></i>
+        <span>Pendente de revisão</span>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="habitations-mobile-sort-controls" aria-label="Ordenação da listagem">
+    <div class="dropdown habitations-sort-menu" data-controller="ax-dropdown">
+      <button class="habitations-workspace-heading__tool dropdown-toggle"
+              type="button"
+              data-ax-dropdown-target="trigger"
+              data-action="click->ax-dropdown#toggle"
+              aria-expanded="false">
+        <i class="bi bi-sort-down"></i>
+        <span>Ordenar: <strong><%= current_sort_label %></strong></span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end habitations-command-menu habitations-command-menu--sort"
+          data-ax-dropdown-target="menu"
+          hidden
+          style="right: 0; left: auto;">
+        <li class="habitations-command-menu__header">
+          <span>Ordenar por</span>
+          <small><%= sort_direction == "asc" ? "asc" : "desc" %></small>
+        </li>
+        <% sort_options.each do |sort_key, sort_config| %>
+          <% active_sort = current_sort_key == sort_key %>
+          <li>
+            <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: sort_key, direction: sort_config[:default_direction])),
+                        class: "habitations-command-menu__item #{active_sort ? 'is-active' : ''}" do %>
+              <span class="habitations-command-menu__item-icon <%= active_sort ? '' : 'is-empty' %>">
+                <% if active_sort %>
+                  <i class="bi bi-check2"></i>
+                <% end %>
+              </span>
+              <span class="habitations-command-menu__item-label"><%= sort_config[:label] %></span>
+              <span class="habitations-command-menu__item-status"><%= active_sort ? "Atual" : "" %></span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(sort: current_sort_key, direction: next_sort_direction)),
+                class: "habitations-workspace-heading__tool habitations-workspace-heading__tool--icon",
+                title: sort_direction == "asc" ? "Ordenar decrescente" : "Ordenar crescente" do %>
+      <i class="bi bi-sort-<%= sort_direction == "asc" ? "up" : "down" %>"></i>
     <% end %>
   </div>
 
@@ -1998,8 +2841,13 @@
 %>
 
 <div class="habitations-results-list">
+  <p class="habitations-mobile-catalog-summary" aria-label="Resumo do catálogo">
+    <span><strong><%= number_with_delimiter(total_habitations_count) %></strong> total</span>
+    <span><strong><%= number_with_delimiter(@filtered_count) %></strong> filtrados</span>
+  </p>
+
 <% if active_filter_chips.any? %>
-  <div class="tw-mb-3 tw-flex tw-flex-wrap tw-gap-2">
+  <div class="habitations-active-filter-chips tw-mb-3 tw-flex tw-flex-wrap tw-gap-2">
     <% active_filter_chips.each do |chip| %>
       <%= ax_badge(chip, tone: :gray) %>
     <% end %>
@@ -2057,7 +2905,7 @@
     <div class="ax-property-empty__icon"><i class="bi bi-search"></i></div>
     <h5>Nenhum imóvel encontrado</h5>
     <p>Tente ajustar seus filtros ou buscar por outro termo.</p>
-    <%= link_to "Limpar filtros", admin_habitations_path, class: "ax-btn" %>
+    <%= link_to "Limpar filtros", admin_habitations_path(ownership: "all"), class: "ax-btn" %>
   </div>
 <% end %>
 

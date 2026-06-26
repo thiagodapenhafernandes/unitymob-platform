@@ -51,6 +51,56 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("Remover imagem atual")
   end
 
+  it "explica o fluxo de captação, revisão e publicação em linguagem operacional" do
+    admin = create(:admin_user, :admin)
+    setting = PropertySetting.instance
+    setting.update!(
+      broker_capture_layer_enabled: true,
+      required_broker_intake_checks: %w[proprietario endereco fotos],
+      returnable_intake_edit_sections: %w[proprietario fotos]
+    )
+
+    sign_in admin
+
+    get review_workflow_admin_property_setting_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Regra de entrada, revisão e site")
+    expect(response.body).to include("Captador preenche")
+    expect(response.body).to include("Sistema confere")
+    expect(response.body).to include("Admin aprova ou devolve")
+    expect(response.body).to include("O site só recebe o imóvel quando o responsável clicar em Publicar Site")
+    expect(response.body).to include("Esta regra vale para captações e fichas internas de captação")
+    expect(response.body).to include("O cadastro direto em Imóveis cria um imóvel administrativo e não entra neste fluxo")
+    expect(response.body).to include("Imóvel direto")
+    expect(response.body).to include("Ficha interna")
+    expect(response.body).to include("O que precisa estar completo para mandar análise")
+    expect(response.body).to include("Se devolver ao captador, o que ele pode corrigir?")
+    expect(response.body).to include("Aprovação administrativa")
+    expect(response.body).to include("Sempre manual")
+    expect(response.body).to include("Fora da revisão")
+  end
+
+  it "deixa claro que revisão desligada não publica automaticamente" do
+    admin = create(:admin_user, :admin)
+    setting = PropertySetting.instance
+    setting.update!(
+      broker_capture_layer_enabled: false,
+      broker_capture_fallback_admin_user: admin
+    )
+
+    sign_in admin
+
+    get review_workflow_admin_property_setting_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Sem revisão:")
+    expect(response.body).to include("O sistema não publica sozinho")
+    expect(response.body).to include("A ficha fica aprovada para o captador publicar")
+    expect(response.body).to include("Próximo passo após checklist")
+    expect(response.body).to include("Publicar Site")
+  end
+
   it "requires fallback admin user when disabling broker capture review layer" do
     admin = create(:admin_user, :admin)
     administrativo = Profile.find_or_initialize_by(name: "Administrativo")

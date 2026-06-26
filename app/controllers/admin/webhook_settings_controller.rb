@@ -89,13 +89,7 @@ class Admin::WebhookSettingsController < Admin::BaseController
   private
 
   def authorize_webhook_settings!
-    return if inbound_self_service_action?
-
     check_permission!(:manage, :integracoes)
-  end
-
-  def inbound_self_service_action?
-    action_name == "index" || action_name.in?(%w[update_inbound_token regenerate_inbound_token])
   end
 
   def resolve_active_tab

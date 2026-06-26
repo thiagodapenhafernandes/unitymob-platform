@@ -6,6 +6,7 @@
   attached_media_photos = media_gallery.attached_media_photos
   api_media_pictures = media_gallery.api_media_pictures
   media_gallery_count = media_gallery.media_gallery_count
+  compact_mode = local_assigns[:compact] == true
   media_controller_data = { controller: "photo-upload fancybox-gallery" }
   if habitation.persisted?
     media_controller_data.merge!(
@@ -18,20 +19,85 @@
   end
 %>
 
+<% media_controls = capture do %>
+  <% if can?(:manage, :imoveis) %>
+    <div class="ax-media-upload-panel__classification">
+      <%= ax_select_field(
+            form: f,
+            method: :foto_classificacao,
+            label: "Classificação das fotos",
+            choices: Habitation::FOTO_CLASSIFICACAO,
+            select_options: { include_blank: "Selecione..." },
+            html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+          ) %>
+    </div>
+  <% end %>
+<% end %>
+
+<% watermark_available = @property_setting&.watermark_configured? %>
+<% media_watermark_action = capture do %>
+  <div class="ax-media-upload-panel__watermark">
+    <label class="ax-toggle-chip <%= 'is-checked' if watermark_available %>" data-controller="ax-checkbox-chips">
+      <%= hidden_field_tag "habitation[apply_photo_watermark]", "0" %>
+      <%= check_box_tag "habitation[apply_photo_watermark]", "1", watermark_available, class: "ax-toggle-chip__input", disabled: !watermark_available, data: { action: "change->ax-checkbox-chips#sync" } %>
+      <span class="ax-toggle-chip__box" aria-hidden="true">
+        <i class="bi bi-check-lg"></i>
+      </span>
+      <span class="ax-toggle-chip__label">Aplicar marca d'água</span>
+    </label>
+    <% unless watermark_available %>
+      <span class="ax-media-upload-panel__hint">
+        Marca d'água não configurada.
+        <% if current_admin_user&.admin? %>
+          <%= link_to "Configurar", edit_admin_property_setting_path, class: "tw-font-semibold" %>
+        <% end %>
+      </span>
+    <% end %>
+  </div>
+<% end %>
+<% media_upload_action = capture do %>
+  <%= ax_file_upload_button(
+        form: f,
+        method: :photos,
+        label: "Adicionar fotos",
+        input_id: upload_input_id,
+        direct_upload: true,
+        class_name: "ax-btn ax-btn--primary",
+        input_data: { action: "change->photo-upload#preview", photo_upload_target: "input" }
+      ) %>
+<% end %>
+<% media_actions = safe_join([media_watermark_action, media_upload_action]) %>
+
 <div class="ax-form-section ax-form-section--media">
   <div class="ax-form-section__body">
-    <div class="ax-media-manager" <%= tag.attributes(data: media_controller_data) %>>
+    <div class="ax-media-manager <%= 'ax-media-manager--compact' if compact_mode %>" <%= tag.attributes(data: media_controller_data) %>>
       <div class="ax-media-toolbar">
         <div class="ax-media-toolbar__title">
           <h6>Fotos</h6>
           <span><%= "#{media_gallery_count} #{media_gallery_count == 1 ? 'item vinculado' : 'itens vinculados'}" %></span>
         </div>
-        <% if media_gallery_count.positive? %>
-          <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-gallery-open>
-            <i class="bi bi-images"></i>
-            Abrir galeria
-          </button>
-        <% end %>
+        <div class="ax-media-toolbar__actions">
+          <% if media_gallery_count.positive? %>
+            <button type="button" class="ax-icon-btn" data-gallery-open title="Abrir galeria" aria-label="Abrir galeria">
+              <i class="bi bi-images"></i>
+            </button>
+          <% end %>
+          <% if compact_mode %>
+            <details class="ax-media-popover">
+              <summary class="ax-icon-btn" title="Configurações de mídia" aria-label="Configurações de mídia">
+                <i class="bi bi-sliders"></i>
+              </summary>
+              <div class="ax-media-popover__body">
+                <% if media_controls.present? %>
+                  <%= media_controls %>
+                <% end %>
+                <% if media_watermark_action.present? %>
+                  <div class="ax-media-popover__actions"><%= media_watermark_action %></div>
+                <% end %>
+              </div>
+            </details>
+          <% end %>
+        </div>
       </div>
 
       <% if linked_development.present? %>
@@ -39,61 +105,34 @@
         <% development_photo_action = capture do %>
           <%= ax_toggle_chip(f, :use_development_photos_flag, label: "Usar fotos do empreendimento") %>
         <% end %>
-        <%= ax_media_source_notice(
-              title: "Fotos do empreendimento vinculado",
-              description: safe_join([
-                "Este imóvel está vinculado a ",
-                tag.strong(linked_development_name),
-                ". Se não houver fotos próprias, ele pode usar as fotos desse empreendimento."
-              ]),
-              action: development_photo_action
-            ) %>
-      <% end %>
-
-      <% media_controls = capture do %>
-        <% if can?(:manage, :imoveis) %>
-          <div class="ax-media-upload-panel__classification">
-            <%= ax_select_field(
-                  form: f,
-                  method: :foto_classificacao,
-                  label: "Classificação das fotos",
-                  choices: Habitation::FOTO_CLASSIFICACAO,
-                  select_options: { include_blank: "Selecione..." },
-                  html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+        <% if compact_mode %>
+          <details class="ax-media-compact-details">
+            <summary>
+              <i class="bi bi-building"></i>
+              <span>Empreendimento vinculado</span>
+              <strong><%= linked_development_name %></strong>
+            </summary>
+            <%= ax_media_source_notice(
+                  title: "Fotos do empreendimento",
+                  description: safe_join([
+                    "Usar fotos de ",
+                    tag.strong(linked_development_name),
+                    " quando o imóvel não tiver fotos próprias."
+                  ]),
+                  action: development_photo_action
                 ) %>
-          </div>
+          </details>
+        <% else %>
+          <%= ax_media_source_notice(
+                title: "Fotos do empreendimento vinculado",
+                description: safe_join([
+                  "Este imóvel está vinculado a ",
+                  tag.strong(linked_development_name),
+                  ". Se não houver fotos próprias, ele pode usar as fotos desse empreendimento."
+                ]),
+                action: development_photo_action
+              ) %>
         <% end %>
-      <% end %>
-
-      <% watermark_available = @property_setting&.watermark_configured? %>
-      <% media_actions = capture do %>
-        <div class="ax-media-upload-panel__watermark">
-          <label class="ax-toggle-chip <%= 'is-checked' if watermark_available %>" data-controller="ax-checkbox-chips">
-            <%= hidden_field_tag "habitation[apply_photo_watermark]", "0" %>
-            <%= check_box_tag "habitation[apply_photo_watermark]", "1", watermark_available, class: "ax-toggle-chip__input", disabled: !watermark_available, data: { action: "change->ax-checkbox-chips#sync" } %>
-            <span class="ax-toggle-chip__box" aria-hidden="true">
-              <i class="bi bi-check-lg"></i>
-            </span>
-            <span class="ax-toggle-chip__label">Aplicar marca d'água</span>
-          </label>
-          <% unless watermark_available %>
-            <span class="ax-media-upload-panel__hint">
-              Marca d'água não configurada.
-              <% if current_admin_user&.admin? %>
-                <%= link_to "Configurar", edit_admin_property_setting_path, class: "tw-font-semibold" %>
-              <% end %>
-            </span>
-          <% end %>
-        </div>
-        <%= ax_file_upload_button(
-              form: f,
-              method: :photos,
-              label: "Adicionar fotos",
-              input_id: upload_input_id,
-              direct_upload: true,
-              class_name: "ax-btn ax-btn--primary",
-              input_data: { action: "change->photo-upload#preview", photo_upload_target: "input" }
-            ) %>
       <% end %>
 
       <% media_feedback = tag.div("", class: "ax-media-upload-panel__feedback", hidden: true, data: { photo_upload_target: "uploadLimitFeedback" }) %>
@@ -113,23 +152,25 @@
       <% end %>
 
       <%= ax_media_upload_panel(
-            title: media_gallery_count.positive? ? "Solte novas fotos aqui" : "Arraste fotos ou clique para selecionar",
-            description: media_gallery_count.positive? ? "Upload assíncrono. A ordem pode ser ajustada arrastando as imagens abaixo." : "As fotos adicionadas serão enviadas sem sair do cadastro.",
-            controls: media_controls,
-            actions: media_actions,
+            title: compact_mode ? "Adicionar fotos" : (media_gallery_count.positive? ? "Solte novas fotos aqui" : "Arraste fotos ou clique para selecionar"),
+            description: compact_mode ? "Arraste aqui ou selecione arquivos." : (media_gallery_count.positive? ? "Upload assíncrono. A ordem pode ser ajustada arrastando as imagens abaixo." : "As fotos adicionadas serão enviadas sem sair do cadastro."),
+            controls: (compact_mode ? nil : media_controls),
+            actions: (compact_mode ? media_upload_action : media_actions),
             feedback: media_feedback,
             hidden_fields: media_hidden_fields,
-            class_name: media_gallery_count.positive? ? "ax-media-upload-panel--compact" : nil
+            class_name: [("ax-media-upload-panel--compact" if media_gallery_count.positive?), ("ax-media-upload-panel--minimal" if compact_mode)].compact.join(" ").presence
           ) %>
 
       <div class="ax-media-organizer">
-        <div class="ax-media-organizer__header">
-          <div>
-            <strong>Organização da galeria</strong>
-            <span>Arraste pelo ícone de ordenação. Use os controles abaixo da foto para publicar, destacar ou remover.</span>
+        <% unless compact_mode %>
+          <div class="ax-media-organizer__header">
+            <div>
+              <strong>Organização da galeria</strong>
+              <span>Arraste as imagens para reordenar. Use os controles abaixo da foto para publicar, destacar ou remover.</span>
+            </div>
+            <span class="ax-media-organizer__count"><%= media_gallery_count %> itens</span>
           </div>
-          <span class="ax-media-organizer__count"><%= media_gallery_count %> itens</span>
-        </div>
+        <% end %>
 
         <div class="media-gallery-scroll">
           <%= ax_media_grid(data: { photo_upload_target: "previewContainer" }) do %>
@@ -145,19 +186,33 @@
   </div>
 </div>
 
-<div class="ax-form-section ax-form-section--media">
+<div class="ax-form-section ax-form-section--media <%= 'ax-media-links-section--compact' if compact_mode %>">
   <div class="ax-form-section__body">
-    <%= ax_dynamic_list_field(
-          label: "Vídeos e tour virtual",
-          values: f.object.videos || [],
-          input_name: "habitation[videos][]",
-          placeholder: "https://..."
-        ) %>
-    <div class="ax-media-link-field">
-      <%= ax_text_field(form: f, method: :tour_virtual, label: "Link Tour Virtual (360)", placeholder: "https://...") %>
-    </div>
-    <div class="ax-media-link-field">
-      <%= ax_text_field(form: f, method: :podcast_url, label: "Link do Podcast", placeholder: "https://...") %>
-    </div>
+    <% links_content = capture do %>
+      <%= ax_dynamic_list_field(
+            label: "Vídeos e tour virtual",
+            values: f.object.videos || [],
+            input_name: "habitation[videos][]",
+            placeholder: "https://..."
+          ) %>
+      <div class="ax-media-link-field">
+        <%= ax_text_field(form: f, method: :tour_virtual, label: "Link Tour Virtual (360)", placeholder: "https://...") %>
+      </div>
+      <div class="ax-media-link-field">
+        <%= ax_text_field(form: f, method: :podcast_url, label: "Link do Podcast", placeholder: "https://...") %>
+      </div>
+    <% end %>
+    <% if compact_mode %>
+      <details class="ax-media-compact-details">
+        <summary>
+          <i class="bi bi-plus-lg"></i>
+          <span>Vídeos e links</span>
+          <strong>opcional</strong>
+        </summary>
+        <div class="ax-media-compact-details__body"><%= links_content %></div>
+      </details>
+    <% else %>
+      <%= links_content %>
+    <% end %>
   </div>
 </div>

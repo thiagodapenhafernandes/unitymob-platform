@@ -14,7 +14,7 @@
 <div class="wizard-field-group">
   <label class="ax-label">Dias / horários melhores para visita</label>
   <span class="required-star">*</span>
-  <div class="<%= 'wizard-invalid-choice' if field_invalid.call(:dias_visitas) %>">
+  <div class="wizard-choice-panel wizard-choice-panel--boxed <%= 'wizard-invalid-choice' if field_invalid.call(:dias_visitas) %>">
     <% %w[Seg Ter Qua Qui Sex Sáb Dom Manhã Tarde Noite].each do |opt| %>
       <% selected = Array(@captacao.dias_visitas).include?(opt) %>
       <label class="wizard-feature-chip <%= 'selected' if selected %>" data-controller="selectable-chip">
@@ -43,5 +43,5 @@
 
 <div class="wizard-field-group">
   <%= f.label :observacoes, "Observações gerais", class: "ax-label" %>
-  <%= f.text_area :observacoes, rows: 4, class: "ax-control", placeholder: "Detalhes úteis sobre o imóvel ou a negociação" %>
+  <%= f.text_area :observacoes, rows: 3, class: "ax-control", placeholder: "Detalhes úteis sobre o imóvel ou a negociação" %>
 </div>

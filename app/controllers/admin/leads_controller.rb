@@ -8,16 +8,30 @@ class Admin::LeadsController < Admin::BaseController
     @q = params[:q]
     @status = params[:status]
     @origin = params[:origin]
-    @view_mode = params[:view].presence_in(%w[kanban list]) || "kanban"
+    @broker_id = params[:broker_id]
+    @property_filter = params[:property_filter]
+    @property_q = params[:property_q].to_s.strip
+    @contact_filter = params[:contact_filter]
+    @start_date = params[:start_date]
+    @end_date = params[:end_date]
+    @view_mode = resolve_view_mode
 
     lead_scope = lead_scope_for_current_user
     
     if @q.present?
-      lead_scope = lead_scope.where("name ILIKE :q OR email ILIKE :q OR phone ILIKE :q OR origin ILIKE :q", q: "%#{@q}%")
+      term = "%#{ActiveRecord::Base.sanitize_sql_like(@q.to_s.strip)}%"
+      lead_scope = lead_scope.where(
+        "leads.name ILIKE :q OR leads.email ILIKE :q OR leads.phone ILIKE :q OR leads.client_name ILIKE :q OR leads.client_email ILIKE :q OR leads.client_phone ILIKE :q OR leads.origin ILIKE :q OR leads.product ILIKE :q",
+        q: term
+      )
     end
     
-    lead_scope = lead_scope.where(status: Lead.status_value(@status)) if @status.present?
+    lead_scope = lead_scope.where(leads: { status: Lead.status_value(@status) }) if @status.present?
     lead_scope = lead_scope.by_origin(@origin)
+    lead_scope = apply_broker_filter(lead_scope)
+    lead_scope = apply_property_filter(lead_scope)
+    lead_scope = apply_contact_filter(lead_scope)
+    lead_scope = apply_created_at_filter(lead_scope)
 
     stats_scope = lead_scope.reorder(nil)
     @total_leads = stats_scope.count
@@ -56,11 +70,13 @@ class Admin::LeadsController < Admin::BaseController
     # Workspace comercial: timeline unificada + tarefas + propostas + próxima ação
     @timeline = @lead.activities.recent.limit(60)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
-    @next_task = @lead.tasks.pendentes.where.not(due_at: nil).order(:due_at).first ||
-                 @lead.tasks.pendentes.order(:created_at).first
+    @actionable_tasks = actionable_lead_tasks(@tasks)
+    @next_task = @actionable_tasks.select(&:pendente?).find { |task| task.due_at.present? } ||
+                 @actionable_tasks.find(&:pendente?)
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
     @funnel_statuses = Lead.status_options
+    @push_delivery_events = push_delivery_events_for(@lead)
     load_interest_intelligence
   end
 
@@ -76,7 +92,10 @@ class Admin::LeadsController < Admin::BaseController
     if @lead.admin_user_id.nil? && shark_tank_open?(@lead)
       claimed = Lead.claim!(@lead.id, current_admin_user&.id)
       @lead.reload
-      @lead.activities.create(kind: "accepted", metadata: { by: current_admin_user&.name, shark_tank: true }.compact) if claimed
+      if claimed
+        @lead.distribution_rule&.mark_agent_served!(current_admin_user.id)
+        @lead.activities.create(kind: "accepted", metadata: { by: current_admin_user&.name, shark_tank: true }.compact)
+      end
 
       unless @lead.admin_user_id == current_admin_user&.id
         @attend_reason = :taken
@@ -87,6 +106,7 @@ class Admin::LeadsController < Admin::BaseController
     end
 
     unless lead_still_mine?(@lead)
+      @attend_reason = :taken if @lead.admin_user_id.present? && @lead.admin_user_id != current_admin_user&.id
       return render :attend_expired, status: :ok
     end
 
@@ -154,6 +174,97 @@ class Admin::LeadsController < Admin::BaseController
 
   private
 
+  def apply_broker_filter(scope)
+    return scope if @broker_id.blank?
+    return scope.where(leads: { admin_user_id: nil }) if @broker_id == "unassigned"
+
+    scope.where(leads: { admin_user_id: @broker_id })
+  end
+
+  def apply_property_filter(scope)
+    case @property_filter
+    when "with_property"
+      scope = scope.where.not(leads: { property_id: nil })
+    when "general"
+      scope = scope.where(leads: { property_id: nil })
+    when "unavailable_property"
+      scope = scope.where.not(leads: { property_id: nil }).where.not(leads: { property_id: Habitation.select(:id) })
+    end
+
+    return scope if @property_q.blank?
+
+    term = "%#{ActiveRecord::Base.sanitize_sql_like(@property_q)}%"
+    property_ids = Habitation
+                   .where("codigo ILIKE :q OR titulo_anuncio ILIKE :q OR nome_empreendimento ILIKE :q", q: term)
+                   .select(:id)
+    scope.where(leads: { property_id: property_ids })
+  end
+
+  def apply_contact_filter(scope)
+    case @contact_filter
+    when "with_phone"
+      scope.where(phone_presence_sql)
+    when "with_email"
+      scope.where(email_presence_sql)
+    when "missing_contact"
+      scope.where("NOT (#{phone_presence_sql})").where("NOT (#{email_presence_sql})")
+    else
+      scope
+    end
+  end
+
+  def apply_created_at_filter(scope)
+    if parsed_start_date.present?
+      scope = scope.where("leads.created_at >= ?", parsed_start_date.beginning_of_day)
+    end
+
+    if parsed_end_date.present?
+      scope = scope.where("leads.created_at <= ?", parsed_end_date.end_of_day)
+    end
+
+    scope
+  end
+
+  def parsed_start_date
+    @parsed_start_date ||= parse_filter_date(@start_date)
+  end
+
+  def parsed_end_date
+    @parsed_end_date ||= parse_filter_date(@end_date)
+  end
+
+  def parse_filter_date(value)
+    return nil if value.blank?
+
+    Date.iso8601(value.to_s)
+  rescue ArgumentError
+    nil
+  end
+
+  def phone_presence_sql
+    "NULLIF(TRIM(COALESCE(leads.client_phone, '')), '') IS NOT NULL OR NULLIF(TRIM(COALESCE(leads.phone, '')), '') IS NOT NULL"
+  end
+
+  def email_presence_sql
+    "NULLIF(TRIM(COALESCE(leads.client_email, '')), '') IS NOT NULL OR NULLIF(TRIM(COALESCE(leads.email, '')), '') IS NOT NULL"
+  end
+
+  # Modo de visualização da lista de leads (kanban/list), lembrado por usuário.
+  # Com `?view=` válido na URL, usa e salva a escolha; sem param, cai na
+  # preferência salva e, por fim, no padrão kanban.
+  def resolve_view_mode
+    requested = params[:view].presence_in(%w[kanban list])
+
+    if requested
+      if current_admin_user && current_admin_user.leads_view_mode != requested
+        current_admin_user.update_column(:leads_view_mode, requested)
+      end
+      requested
+    else
+      current_admin_user&.leads_view_mode.presence_in(%w[kanban list]) || "kanban"
+    end
+  end
+
   def set_lead
     @lead = Lead.find(params[:id])
   end
@@ -189,12 +300,24 @@ class Admin::LeadsController < Admin::BaseController
 
   def authorize_lead_access!
     return if lead_scope_for_current_user.where(id: @lead.id).exists?
-    redirect_to admin_leads_path, alert: "Você não tem acesso a este lead."
+
+    respond_to do |format|
+      format.html { redirect_to admin_leads_path, alert: "Você não tem acesso a este lead." }
+      format.json do
+        render(
+          json: {
+            error: "lead_unavailable",
+            message: "Este lead saiu da sua fila ou expirou. Atualize o Kanban."
+          },
+          status: :not_found
+        )
+      end
+    end
   end
 
   def lead_params
-    permitted = [:status, :notes, :origin]
-    permitted << :admin_user_id if can?(:manage, :leads) || owns_all_resource?(:leads)
+    permitted = [:status, :notes]
+    permitted << :admin_user_id if can?(:manage, :leads)
     attributes = params.require(:lead).permit(permitted)
 
     if attributes[:admin_user_id].present? && permitted_admin_user_ids_for_leads.exclude?(attributes[:admin_user_id].to_i)
@@ -208,6 +331,15 @@ class Admin::LeadsController < Admin::BaseController
     @origin_options = Lead.origin_options
     @status_options = Lead.status_options
     @broker_options = permitted_admin_users_for_leads.order(:name).pluck(:name, :id)
+  end
+
+  def actionable_lead_tasks(tasks)
+    tasks.reject { |task| non_actionable_lead_task?(task) }
+  end
+
+  def non_actionable_lead_task?(task)
+    title = task.title.to_s.squish
+    title.match?(/\A(notificar corretor sobre oportunidade|oportunidade de interesse para)\b/i)
   end
 
   def lead_scope_for_current_user
@@ -267,13 +399,23 @@ class Admin::LeadsController < Admin::BaseController
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
     @timeline = @lead.activities.recent.limit(60)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)
-    @next_task = @lead.tasks.pendentes.where.not(due_at: nil).order(:due_at).first ||
-                 @lead.tasks.pendentes.order(:created_at).first
+    @actionable_tasks = actionable_lead_tasks(@tasks)
+    @next_task = @actionable_tasks.select(&:pendente?).find { |task| task.due_at.present? } ||
+                 @actionable_tasks.find(&:pendente?)
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
     @funnel_statuses = Lead.status_options
+    @push_delivery_events = push_delivery_events_for(@lead)
     load_origin_options
     load_interest_intelligence
+  end
+
+  def push_delivery_events_for(lead)
+    PushDeliveryEvent
+      .where(lead_id: lead.id)
+      .includes(:admin_user, :push_subscription)
+      .order(created_at: :desc)
+      .limit(20)
   end
 
   def load_interest_intelligence

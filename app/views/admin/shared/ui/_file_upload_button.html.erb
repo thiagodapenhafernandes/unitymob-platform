@@ -10,9 +10,12 @@
   <%= form.file_field method,
                       multiple:,
                       direct_upload:,
-                      class: "ax-file-upload__input",
+                      accept:,
+                      capture:,
+                      class: ["ax-file-upload__input", input_class].compact_blank.join(" "),
                       id: input_id,
-                      data: input_data %>
+                      data: input_data,
+                      **input_options %>
 <% else %>
   <%= label_tag input_id, label, label_options %>
 <% end %>

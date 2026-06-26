@@ -1,12 +1,10 @@
-<div data-controller="attribute-manager" data-attribute-manager-modal-id-value="attributeManagerModalLead">
+<div class="lead-show-workspace" data-controller="attribute-manager" data-attribute-manager-modal-id-value="attributeManagerModalLead">
 
 <%# ===== Cabeçalho ===== %>
 <% sla = lead_sla(@lead) %>
+<% open_tasks = (@actionable_tasks || @tasks).reject(&:concluida?) %>
 
 <% @lead_heading_actions = capture do %>
-    <% if @lead.direct_whatsapp_url %>
-      <%= ax_icon_button(label: "WhatsApp", icon: "whatsapp", url: @lead.direct_whatsapp_url, target: "_blank", size: :sm) %>
-    <% end %>
     <button type="button" class="ax-btn ax-btn--sm" data-ax-modal-open="#leadAuditHistoryModal">
       <i class="bi bi-clock-history ax-ico"></i><span>Histórico</span>
     </button>
@@ -48,11 +46,13 @@
   </div>
 </div>
 
-<%= render "admin/shared/hint", key: "lead_workspace", icon: "bi-stars",
-      text: "Esta é a central do lead: a <strong>barra acima</strong> mostra a etapa do funil (clique para avançar). Tudo que você fizer — tarefa, visita, proposta, WhatsApp — aparece na <strong>linha do tempo</strong> abaixo." %>
+<div class="lead-desktop-hint">
+  <%= render "admin/shared/hint", key: "lead_workspace", icon: "bi-stars",
+        text: "Esta é a central do lead: a <strong>barra acima</strong> mostra a etapa do funil (clique para avançar). Tudo que você fizer — tarefa, visita, proposta, WhatsApp — aparece na <strong>linha do tempo</strong> abaixo." %>
+</div>
 
 <%# ===== Próxima ação + ações rápidas ===== %>
-<div class="ax-card tw-mb-4">
+<div class="ax-card tw-mb-4 lead-next-action-card">
   <div class="ax-card__body tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
     <div class="tw-flex tw-items-center tw-gap-2">
     <i class="bi bi-flag-fill tw-text-lg lead-next-action-icon"></i>
@@ -77,6 +77,75 @@
         <% end %>
       </div>
     <% end %>
+  </div>
+</div>
+
+<div class="lead-mobile-priority" aria-label="Resumo operacional do lead">
+  <section class="lead-mobile-priority__identity">
+    <div>
+      <span>Contato</span>
+      <strong><%= @lead.display_name %></strong>
+      <small><%= [@lead.origin.presence || "Origem não informada", @lead.admin_user&.name.presence || "Sem corretor"].join(" · ") %></small>
+    </div>
+    <span class="ax-badge ax-badge--blue"><%= @lead.status.presence || Lead.default_status %></span>
+  </section>
+
+  <div class="lead-mobile-priority__actions" aria-label="Ações rápidas">
+    <% if @lead.direct_whatsapp_url.present? %>
+      <%= link_to @lead.direct_whatsapp_url, target: "_blank", class: "lead-mobile-priority__action" do %>
+        <i class="bi bi-whatsapp"></i><span>WhatsApp</span>
+      <% end %>
+    <% end %>
+    <% if @lead.display_phone.present? %>
+      <%= link_to "tel:#{@lead.display_phone.to_s.gsub(/[^0-9+]/, '')}", class: "lead-mobile-priority__action" do %>
+        <i class="bi bi-telephone"></i><span>Ligar</span>
+      <% end %>
+    <% end %>
+    <% if @lead.display_email.present? %>
+      <%= mail_to @lead.display_email, class: "lead-mobile-priority__action" do %>
+        <i class="bi bi-envelope"></i><span>E-mail</span>
+      <% end %>
+    <% end %>
+  </div>
+
+  <section class="lead-mobile-priority__next">
+    <span><%= @next_task ? "Próxima ação" : "Situação" %></span>
+    <% if @next_task %>
+      <% b = task_badge(@next_task) %>
+      <strong><%= @next_task.title %></strong>
+      <small><%= b[:label] %></small>
+    <% elsif @lead.admin_user.present? %>
+      <strong>Lead atribuído</strong>
+      <small><%= @lead.admin_user.name %> já recebeu esta oportunidade.</small>
+    <% else %>
+      <strong>Sem corretor atribuído</strong>
+      <small>Defina um responsável antes de avançar o atendimento.</small>
+    <% end %>
+  </section>
+
+  <section class="lead-mobile-priority__property">
+    <div>
+      <span>Imóvel de interesse</span>
+      <% if @property %>
+        <strong><%= @property.display_title %></strong>
+        <small><%= [@property.bairro, @property.cidade].compact_blank.join(", ") %></small>
+      <% elsif @lead.property_id.present? %>
+        <strong>Imóvel não disponível</strong>
+        <small>O lead aponta para um imóvel que não está mais acessível no catálogo.</small>
+      <% else %>
+        <strong>Sem imóvel específico</strong>
+        <small>Este lead chegou por origem geral ou campanha, sem propriedade atrelada.</small>
+      <% end %>
+    </div>
+    <% if @property %>
+      <%= link_to admin_habitation_path(@property), class: "ax-ico-btn", title: "Abrir imóvel" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
+    <% end %>
+  </section>
+
+  <div class="lead-mobile-priority__metrics">
+    <span><strong><%= open_tasks.size %></strong><small>tarefas</small></span>
+    <span><strong><%= @proposals.size %></strong><small>propostas</small></span>
+    <span><strong><%= @appointments.size %></strong><small>visitas</small></span>
   </div>
 </div>
 
@@ -129,26 +198,18 @@
                 </div>
               </div>
               <div class="tw-min-w-[160px]">
-                <label class="ax-label">Origem</label>
-                <div class="tw-flex tw-items-center tw-gap-2">
-                  <%= f.select :origin, @origin_options, { include_blank: "Selecione..." }, class: "ax-select tw-flex-1", id: "lead_origin", data: { controller: "tom-select", tom_select_create_value: true } %>
-                  <% if can?(:manage, :catalogos) %>
-                    <button type="button" class="ax-btn ax-btn--sm"
-                            data-attribute-manager-context-value="lead"
-                            data-attribute-manager-category-value="source"
-                            data-attribute-manager-field-name-value="lead[origin]"
-                            data-attribute-manager-modal-id-value="attributeManagerModalLead"
-                            data-action="click->attribute-manager#open"
-                            title="Gerenciar origens">
-                      <i class="bi bi-gear"></i>
-                    </button>
-                  <% end %>
-                </div>
+                <span class="ax-label">Origem</span>
+                <div class="lead-readonly-field"><%= @lead.origin.presence || "Origem não informada" %></div>
               </div>
-              <% if can?(:manage, :leads) || owns_all_resource?(:leads) %>
+              <% if can?(:manage, :leads) %>
                 <div class="tw-min-w-[200px]">
                   <label class="ax-label">Corretor</label>
                   <%= f.select :admin_user_id, @broker_options, { include_blank: "Sem corretor" }, class: "ax-select" %>
+                </div>
+              <% else %>
+                <div class="tw-min-w-[200px]">
+                  <span class="ax-label">Corretor</span>
+                  <div class="lead-readonly-field"><%= @lead.admin_user&.name.presence || "Sem corretor" %></div>
                 </div>
               <% end %>
             </div>
@@ -159,7 +220,7 @@
     </div>
 
     <%# Timeline unificada %>
-    <div class="ax-card">
+    <div class="ax-card lead-timeline-card">
       <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-activity ax-ico"></i> Linha do tempo</span></div>
       <div class="ax-card__body">
         <% if @timeline.any? %>
@@ -206,10 +267,56 @@
           settings: @interest_settings,
           simulation: @interest_simulation %>
 
-    <% if @property %>
-      <div class="ax-card tw-mb-4">
-        <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-house ax-ico"></i> Imóvel de interesse</span></div>
-        <div class="ax-card__body">
+    <div class="ax-card tw-mb-4">
+      <div class="ax-card__header">
+        <span class="ax-card__title"><i class="bi bi-bell ax-ico"></i> Provas do push</span>
+      </div>
+      <div class="ax-card__body tw-grid tw-gap-2">
+        <% if @push_delivery_events.any? %>
+          <% @push_delivery_events.each do |event| %>
+            <div class="tw-flex tw-items-start tw-justify-between tw-gap-3">
+              <div class="tw-min-w-0">
+                <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+                  <span class="ax-badge ax-badge--<%= push_delivery_event_tone(event.event_type) %>">
+                    <%= push_delivery_event_label(event.event_type) %>
+                  </span>
+                  <span class="ax-page-subtitle"><%= l(event.created_at, format: :short) %></span>
+                </div>
+                <div class="tw-mt-1 tw-text-sm tw-text-slate-600 tw-truncate">
+                  <%= push_delivery_event_device(event) %>
+                  <% if event.endpoint_host.present? %>
+                    · <%= event.endpoint_host %>
+                  <% end %>
+                  <% if event.push_subscription_id.present? %>
+                    · sub #<%= event.push_subscription_id %>
+                  <% end %>
+                </div>
+                <% if event.error_message.present? %>
+                  <div class="tw-mt-1 tw-text-xs tw-text-red-600 tw-truncate">
+                    <%= [event.error_class, event.error_message].compact.join(": ") %>
+                  </div>
+                <% end %>
+              </div>
+              <div class="tw-flex tw-shrink-0 tw-flex-col tw-items-end tw-gap-1 tw-text-xs tw-text-slate-500">
+                <% if event.provider_status.present? %>
+                  <span>HTTP <%= event.provider_status %></span>
+                <% end %>
+                <% if event.urgency.present? || event.ttl.present? %>
+                  <span><%= [event.urgency.presence, ("TTL #{event.ttl}" if event.ttl.present?)].compact.join(" · ") %></span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="ax-page-subtitle">Nenhuma tentativa de push registrada para este lead ainda.</p>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="ax-card tw-mb-4 lead-property-card">
+      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-house ax-ico"></i> Imóvel de interesse</span></div>
+      <div class="ax-card__body">
+        <% if @property %>
           <% if @property.primary_image.present? %>
           <img src="<%= @property.primary_image['url'] %>" class="lead-property-image" alt="Imagem principal do imóvel">
           <% end %>
@@ -219,9 +326,25 @@
             <%= link_to "Gerenciar imóvel", admin_habitation_path(@property), class: "ax-btn ax-btn--sm" %>
             <%= link_to "Ver no site", habitation_path(@property), target: "_blank", class: "ax-btn ax-btn--sm" %>
           </div>
-        </div>
+        <% elsif @lead.property_id.present? %>
+          <div class="lead-property-empty">
+            <i class="bi bi-house-slash"></i>
+            <div>
+              <strong>Imóvel não disponível</strong>
+              <p>Este lead possui referência de imóvel, mas o cadastro não está acessível no catálogo atual.</p>
+            </div>
+          </div>
+        <% else %>
+          <div class="lead-property-empty">
+            <i class="bi bi-megaphone"></i>
+            <div>
+              <strong>Lead sem imóvel específico</strong>
+              <p>Este contato veio de uma origem geral, campanha, webhook ou atendimento sem propriedade atrelada.</p>
+            </div>
+          </div>
+        <% end %>
       </div>
-    <% end %>
+    </div>
 
     <%# Propostas %>
     <div class="ax-card tw-mb-4">
@@ -258,7 +381,6 @@
     <div class="ax-card tw-mb-4">
       <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-check2-square ax-ico"></i> Tarefas</span></div>
       <div class="ax-card__body tw-grid tw-gap-2">
-        <% open_tasks = @tasks.reject(&:concluida?) %>
         <% if open_tasks.any? %>
           <% open_tasks.first(6).each do |t| %>
             <% b = task_badge(t) %>

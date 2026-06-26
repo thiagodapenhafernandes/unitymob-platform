@@ -102,6 +102,29 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include(submitted.titulo_anuncio)
   end
 
+  it "oculta captações internas/publicadas da lista padrão e filtra por corretor para perfis autorizados" do
+    first_broker = create(:admin_user, name: "Corretor Alfa")
+    second_broker = create(:admin_user, name: "Corretor Beta")
+    first_visible = create(:habitation, :broker_intake, admin_user: first_broker, intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação Alfa em revisão")
+    second_visible = create(:habitation, :broker_intake, admin_user: second_broker, intake_status: "admin_approved", titulo_anuncio: "Captação Beta aprovada")
+    internal = create(:habitation, :broker_intake, admin_user: first_broker, intake_status: "internal", titulo_anuncio: "Captação Alfa interna")
+    published = create(:habitation, :broker_intake, admin_user: first_broker, intake_status: "published", titulo_anuncio: "Captação Alfa publicada")
+
+    get admin_captacoes_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('name="corretor_id"')
+    expect(response.body).to include(first_visible.titulo_anuncio)
+    expect(response.body).to include(second_visible.titulo_anuncio)
+    expect(response.body).not_to include(internal.titulo_anuncio)
+    expect(response.body).not_to include(published.titulo_anuncio)
+
+    get admin_captacoes_path(corretor_id: first_broker.id)
+
+    expect(response.body).to include(first_visible.titulo_anuncio)
+    expect(response.body).not_to include(second_visible.titulo_anuncio)
+  end
+
   it "usa rótulos claros para enviar análise e publicar no site pelo captador" do
     broker_profile = Profile.create!(
       name: "Corretor publicação #{SecureRandom.hex(6)}",
@@ -845,7 +868,32 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to have_http_status(:unprocessable_entity)
     expect(response.body).to include("Informe o empreendimento/condomínio.")
+    expect(response.body).to include("Informe o complemento.")
     expect(response.body).not_to include("Informe o número da unidade.")
+  end
+
+  it "salva complemento obrigatório para casa em condomínio" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, categoria: "Casa em Condomínio", nome_empreendimento: nil, bloco: nil, intake_step: "endereco")
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco",
+      direction: "forward",
+      habitation: {
+        zip_code: "88330-000",
+        street: "Rua 3001",
+        street_number: "51",
+        neighborhood: "Centro",
+        city: "Balneário Camboriú",
+        state: "SC",
+        edificio_nome: "Condomínio Atlântico",
+        complemento: "Casa 12"
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
+    intake.reload
+    expect(intake.nome_empreendimento).to eq("Condomínio Atlântico")
+    expect(intake.complemento).to eq("Casa 12")
   end
 
   it "exige ocupação, situação, chaves e dias de visita na captação" do

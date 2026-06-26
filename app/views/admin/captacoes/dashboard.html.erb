@@ -14,276 +14,42 @@
   }
 %>
 
-<style>
-  .capt-dash-hero {
-    background: linear-gradient(135deg, #0d253f 0%, #1b3a5b 100%);
-    color: #fff;
-    border-radius: 14px;
-    padding: 1.25rem 1.5rem;
-  }
-  .capt-hero-settings {
-    border-color: rgba(255, 255, 255, .24) !important;
-    color: rgba(255, 255, 255, .78) !important;
-  }
-  .capt-hero-settings:hover,
-  .capt-hero-settings:focus {
-    border-color: rgba(255, 255, 255, .48) !important;
-    color: #fff !important;
-  }
-  .capt-gauge-wrapper {
-    position: relative;
-    height: 220px;
-    max-width: 320px;
-    margin: 0 auto;
-  }
-  .capt-gauge-center {
-    position: absolute;
-    top: 55%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-  }
-  .capt-gauge-center .value {
-    font-size: 3rem;
-    font-weight: 800;
-    color: #0d253f;
-    line-height: 1;
-  }
-  .capt-gauge-center .meta-label {
-    font-size: .8rem;
-    color: #64748b;
-  }
-  .capt-foco-banner {
-    background: linear-gradient(135deg, #198754 0%, #146c43 100%);
-    color: #fff;
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-  }
-  .capt-foco-stat {
-    min-width: 8rem;
-    text-align: right;
-  }
-  .capt-target-month {
-    color: #94a3b8;
-    font-size: .86rem;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-  .capt-target-month strong {
-    color: #0f172a;
-    font-size: 1rem;
-    text-transform: none;
-  }
-  .capt-summary-card { height: 100%; }
-  .capt-summary-card > .ax-field-grid,
-  .capt-summary-card > .ax-field-grid > [class*="ax-span-"] {
-    height: 100%;
-  }
-  .capt-summary-card .summary-label {
-    color: #64748b;
-    font-size: .86rem;
-  }
-  .capt-total-card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    box-shadow: 0 .5rem 1rem rgba(15, 23, 42, .08);
-    color: #0f172a;
-    height: 100%;
-    padding: 1rem;
-  }
-  .capt-panel-main {
-    height: 380px;
-  }
-  .capt-panel-secondary {
-    height: 250px;
-  }
-  .capt-panel-main .ax-card__body,
-  .capt-panel-secondary .ax-card__body {
-    height: 100%;
-  }
-  .capt-panel-main .capt-gauge-wrapper {
-    height: calc(100% - 74px) !important;
-    max-width: none;
-  }
-  .capt-ranking-row .bar-cell {
-    position: relative;
-    background: #e0f2fe;
-    border-radius: 4px;
-    height: 22px;
-    min-width: 60px;
-  }
-  .capt-ranking-row .bar-cell .fill {
-    background: #0ea5e9;
-    height: 100%;
-    border-radius: 4px;
-  }
-  .capt-ranking-row .bar-cell .label {
-    position: absolute; top: 0; left: 6px; line-height: 22px;
-    font-size: .85rem; font-weight: 600; color: #0d253f;
-  }
-  .capt-donut-wrapper {
-    height: 210px;
-    min-height: 210px;
-    position: relative;
-  }
-  .capt-donut-title {
-    color: #4b5563;
-    font-size: .82rem;
-    font-weight: 800;
-    margin-bottom: .35rem;
-    text-align: center;
-    text-transform: uppercase;
-  }
-  .capt-tv-toolbar {
-    display: flex;
-    justify-content: flex-end;
-    gap: .5rem;
-    margin-top: -.35rem;
-    margin-bottom: .75rem;
-  }
-  .capt-tv-tab-actions {
-    margin-left: auto;
-  }
-  .capt-ranking-card .ax-card__body {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-  .capt-ranking-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    scrollbar-width: none;
-  }
-  .capt-ranking-scroll::-webkit-scrollbar {
-    display: none;
-  }
-  .capt-tv-shell:fullscreen {
-    overflow: auto;
-    background: #0d253f;
-    padding: 1rem;
-  }
-  .capt-tv-shell:fullscreen .capt-dash-hero {
-    border-radius: 0;
-    background: #263f4e;
-  }
-  .capt-tv-shell:fullscreen .ax-card,
-  body.capt-dashboard-tv-active .capt-tv-shell .ax-card {
-    border-radius: 18px;
-  }
-  .capt-tv-shell:fullscreen .capt-gauge-wrapper,
-  body.capt-dashboard-tv-active .capt-gauge-wrapper {
-    height: min(38vh, 420px);
-    max-width: none;
-  }
-  .capt-tv-shell:fullscreen .capt-gauge-center .value,
-  body.capt-dashboard-tv-active .capt-gauge-center .value {
-    font-size: clamp(3.4rem, 7vw, 7rem);
-  }
-  body.capt-dashboard-tv-active {
-    background: #0d253f;
-  }
-  body.capt-dashboard-tv-active .admin-navbar,
-  body.capt-dashboard-tv-active > .admin-sidebar,
-  body.capt-dashboard-tv-active .admin-sidebar-offcanvas {
-    display: none !important;
-  }
-  body.capt-dashboard-tv-active .admin-content {
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: none !important;
-    width: 100% !important;
-  }
-  body.capt-dashboard-tv-active .capt-tv-shell {
-    min-height: 100vh;
-    padding: 1rem;
-    background: #0d253f;
-  }
-  body.capt-dashboard-tv-active .capt-filter-card {
-    display: none !important;
-  }
-  body.capt-dashboard-tv-active .capt-tv-toolbar {
-    position: fixed;
-    top: .75rem;
-    right: .75rem;
-    z-index: 20;
-    margin: 0;
-  }
-  body.capt-dashboard-tv-active .capt-dash-hero .ax-btn {
-    display: none !important;
-  }
-  body.capt-dashboard-tv-active .capt-target-month {
-    color: rgba(255, 255, 255, .62);
-  }
-  body.capt-dashboard-tv-active .capt-target-month strong {
-    color: #fff;
-  }
-  body.capt-dashboard-tv-active .capt-panel-main {
-    height: min(31vh, 390px);
-  }
-  body.capt-dashboard-tv-active .capt-panel-secondary {
-    height: min(23vh, 280px);
-  }
-  body.capt-dashboard-tv-active [data-capt-tv-tab],
-  body.capt-dashboard-tv-active [data-capt-active-tv] {
-    display: none !important;
-  }
-  body.capt-dashboard-tv-active [data-capt-tv-exit] {
-    display: inline-flex !important;
-    align-items: center;
-    gap: .25rem;
-    border-color: rgba(255, 255, 255, .22) !important;
-    background: rgba(255, 255, 255, .12) !important;
-    color: rgba(255, 255, 255, .72) !important;
-    box-shadow: none;
-    opacity: .58;
-  }
-  body.capt-dashboard-tv-active [data-capt-tv-exit]:hover,
-  body.capt-dashboard-tv-active [data-capt-tv-exit]:focus {
-    opacity: 1;
-    color: #fff !important;
-    background: rgba(255, 255, 255, .2) !important;
-  }
-  @media (max-width: 575px) {
-    .capt-gauge-wrapper { height: 180px; }
-    .capt-gauge-center .value { font-size: 2.2rem; }
-  }
-</style>
 
 <div id="captDashboard"
-     class="capt-tv-shell"
+     class="capt-tv-shell capt-dashboard-workspace"
      data-controller="captacoes-dashboard"
      data-captacoes-dashboard-chart-url-value="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
      data-captacoes-dashboard-data-value="<%= capt_dashboard_chart_payload.to_json %>">
-<!-- Hero -->
-<div class="capt-dash-hero tw-mb-3">
-  <div class="tw-flex tw-justify-between tw-items-start flex-wrap tw-gap-2">
-    <div>
-      <div class="opacity-75 tw-text-sm text-uppercase"><%= @dashboard_eyebrow %></div>
-      <h2 class="tw-font-bold tw-mb-0"><%= @dashboard_title %></h2>
-    </div>
-    <div class="tw-flex tw-gap-2">
-      <% if current_admin_user.admin? %>
-        <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm capt-hero-settings" data-ax-modal-open="#dashboardTitleModal" aria-label="Editar título do dashboard">
-          <i class="bi bi-gear"></i>
-        </button>
-      <% end %>
-      <% if current_admin_user.admin? %>
-        <%= link_to admin_captacao_goals_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-          <i class="bi bi-bullseye"></i>Metas
-        <% end %>
-      <% end %>
-      <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-        <i class="bi bi-list"></i>Ver lista
-      <% end %>
-    </div>
-  </div>
-</div>
+<%
+  dashboard_actions = capture do
+%>
+  <% if current_admin_user.admin? %>
+    <button type="button" class="ax-workspace-heading__tool captacoes-heading-action" data-ax-modal-open="#dashboardTitleModal" aria-label="Editar título do dashboard">
+      <i class="bi bi-gear"></i><span>Título</span>
+    </button>
+    <%= link_to admin_captacao_goals_path, class: "ax-workspace-heading__tool captacoes-heading-action" do %>
+      <i class="bi bi-bullseye"></i><span>Metas</span>
+    <% end %>
+  <% end %>
+  <%= link_to admin_captacoes_path, class: "ax-workspace-heading__tool captacoes-heading-action" do %>
+    <i class="bi bi-list"></i><span>Ver lista</span>
+  <% end %>
+<% end %>
+
+<%= ax_workspace_heading(
+      title: @dashboard_title,
+      eyebrow: @dashboard_eyebrow,
+      icon: "bullseye",
+      subtitle: "Metas, publicação, foco regional e desempenho por corretor.",
+      pills: [@target_month_label],
+      metrics: [
+        { value: @total_venda, label: "venda" },
+        { value: @total_locacao, label: "locação" },
+        { value: @pre_cadastro_total, label: "pré-cadastros" }
+      ],
+      actions: dashboard_actions,
+      class_name: "capt-dashboard-heading"
+    ) %>
 
 <% if current_admin_user.admin? %>
   <div class="ax-quick-modal ax-quick-modal--md" id="dashboardTitleModal" tabindex="-1" role="presentation" hidden aria-hidden="true" data-controller="ax-modal" data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
@@ -312,18 +78,19 @@
   </div>
 <% end %>
 
-<div class="capt-tv-toolbar">
-      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-geral" data-action="captacoes-dashboard#enterTv">
-    <i class="bi bi-arrows-fullscreen"></i>Tela cheia Geral
+<div class="capt-dashboard-tvbar">
+  <span class="capt-dashboard-tvbar__label"><i class="bi bi-display"></i> Apresentação</span>
+  <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-geral" data-action="captacoes-dashboard#enterTv">
+    <i class="bi bi-arrows-fullscreen"></i>Geral
   </button>
-      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-venda" data-action="captacoes-dashboard#enterTv">
-    <i class="bi bi-arrows-fullscreen"></i>Tela cheia Venda
+  <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-venda" data-action="captacoes-dashboard#enterTv">
+    <i class="bi bi-arrows-fullscreen"></i>Venda
   </button>
-      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-locacao" data-action="captacoes-dashboard#enterTv">
-    <i class="bi bi-arrows-fullscreen"></i>Tela cheia Locação
+  <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-locacao" data-action="captacoes-dashboard#enterTv">
+    <i class="bi bi-arrows-fullscreen"></i>Locação
   </button>
-      <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-leads" data-action="captacoes-dashboard#enterTv">
-    <i class="bi bi-arrows-fullscreen"></i>Tela cheia Leads
+  <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-tab="tab-leads" data-action="captacoes-dashboard#enterTv">
+    <i class="bi bi-arrows-fullscreen"></i>Leads
   </button>
   <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-capt-tv-exit data-action="captacoes-dashboard#exitTv" hidden>
     <i class="bi bi-x-lg"></i><span>Sair</span>
@@ -331,78 +98,50 @@
 </div>
 
 <!-- Filtros -->
-<div class="ax-card tw-mb-3 capt-filter-card">
-  <div class="ax-card__body">
-    <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true do %>
-      <%= ax_field_grid do %>
-        <div class="ax-span-3">
-          <label class="ax-label">Início</label>
-          <%= date_field_tag :start_date, @period_start, class: "ax-control ax-control--sm" %>
-        </div>
-        <div class="ax-span-3">
-          <label class="ax-label">Fim</label>
-          <%= date_field_tag :end_date, @period_end, class: "ax-control ax-control--sm" %>
-        </div>
-        <div class="ax-span-3">
-          <label class="ax-label">Mês</label>
-          <%= select_tag :month,
-                         options_for_select([["Todos", ""]] + (1..12).map { |m| [I18n.l(Date.new(2026, m), format: "%B").capitalize, m] }, @month_filter),
-                         class: "ax-control ax-control--sm" %>
-        </div>
-        <div class="ax-span-3 ax-field-align-end">
-          <%= submit_tag "Aplicar", class: "ax-btn ax-btn--primary ax-btn--sm tw-w-full" %>
-        </div>
-      <% end %>
-    <% end %>
+<%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "capt-dashboard-filters capt-filter-card" do %>
+  <div class="capt-dashboard-filters__title">
+    <span><i class="bi bi-funnel"></i> Período</span>
+    <strong><%= @target_month_label %></strong>
   </div>
-</div>
-
-<%= ax_field_grid class_name: "tw-mb-3" do %>
-  <div class="ax-span-3">
-    <div class="ax-card">
-      <div class="ax-card__body">
-        <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Pré-cadastros</div>
-        <div class="display-6 tw-font-bold text-primary"><%= @pre_cadastro_total %></div>
-      </div>
-    </div>
+  <div class="capt-dashboard-filter-field">
+    <%= ax_field_label(nil, nil, text: "Início") %>
+    <%= date_field_tag :start_date, @period_start, class: "ax-control ax-control--sm" %>
   </div>
-  <div class="ax-span-3">
-    <div class="ax-card">
-      <div class="ax-card__body">
-        <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Rascunho/devolvido</div>
-        <div class="display-6 tw-font-bold text-warning"><%= @pre_cadastro_draft %></div>
-      </div>
-    </div>
+  <div class="capt-dashboard-filter-field">
+    <%= ax_field_label(nil, nil, text: "Fim") %>
+    <%= date_field_tag :end_date, @period_end, class: "ax-control ax-control--sm" %>
   </div>
-  <div class="ax-span-3">
-    <div class="ax-card">
-      <div class="ax-card__body">
-        <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Em aprovação</div>
-        <div class="display-6 tw-font-bold text-info"><%= @pre_cadastro_review %></div>
-      </div>
-    </div>
+  <div class="capt-dashboard-filter-field">
+    <%= ax_field_label(nil, nil, text: "Mês") %>
+    <%= select_tag :month,
+                   options_for_select([["Todos", ""]] + (1..12).map { |m| [I18n.l(Date.new(2026, m), format: "%B").capitalize, m] }, @month_filter),
+                   class: "ax-control ax-control--sm" %>
   </div>
-  <div class="ax-span-3">
-    <div class="ax-card">
-      <div class="ax-card__body">
-        <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Liberados site</div>
-        <div class="display-6 tw-font-bold text-success"><%= @pre_cadastro_published %></div>
-      </div>
-    </div>
-  </div>
+  <%= submit_tag "Aplicar", class: "ax-btn ax-btn--primary ax-btn--sm capt-dashboard-filters__submit" %>
 <% end %>
 
+<section class="capt-dashboard-kpis" aria-label="Resumo dos pré-cadastros">
+  <% [
+       ["Pré-cadastros", @pre_cadastro_total, "blue"],
+       ["Rascunho/devolvido", @pre_cadastro_draft, "amber"],
+       ["Em aprovação", @pre_cadastro_review, "cyan"],
+       ["Liberados site", @pre_cadastro_published, "green"]
+     ].each do |label, value, tone| %>
+    <article class="capt-dashboard-kpi capt-dashboard-kpi--<%= tone %>">
+      <span><%= label %></span>
+      <strong><%= value %></strong>
+    </article>
+  <% end %>
+</section>
+
 <!-- Tabs -->
-<div class="tw-flex tw-items-center tw-gap-3 border-bottom tw-mb-3">
+<div class="capt-dashboard-tabs">
   <ul class="ax-form-tabs tw-flex-1 tw-mb-0" id="captTabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#captTabContent">
     <li><button class="ax-form-tabs__item active" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-geral" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Geral</button></li>
     <li><button class="ax-form-tabs__item" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-venda" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Venda</button></li>
     <li><button class="ax-form-tabs__item" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-locacao" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Locação</button></li>
     <li><button class="ax-form-tabs__item" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-leads" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Leads</button></li>
   </ul>
-  <div class="capt-target-month text-end text-nowrap">
-    Mês alvo <strong class="d-block"><%= @target_month_label %></strong>
-  </div>
   <button class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" type="button" data-capt-active-tv data-action="captacoes-dashboard#enterActiveTv">
     <i class="bi bi-display"></i>TV da aba atual
   </button>
@@ -412,7 +151,7 @@
 
   <!-- GERAL -->
   <div class="tab-pane fade show active" id="tab-geral">
-    <%= ax_field_grid class_name: "tw-mb-3" do %>
+    <%= ax_field_grid class_name: "capt-dashboard-chart-grid tw-mb-3" do %>
       <div class="ax-span-6">
         <div class="ax-card">
           <div class="ax-card__body">

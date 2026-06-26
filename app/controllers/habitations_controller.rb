@@ -366,28 +366,8 @@ class HabitationsController < ApplicationController
       Habitation.public_property_types
     end
 
-    @location_options = Rails.cache.fetch("habitations_location_options_v1", expires_in: 6.hours) do
-      cities = Habitation.active
-        .left_outer_joins(:address)
-        .where("COALESCE(addresses.cidade, habitations.cidade) IS NOT NULL")
-        .distinct
-        .order(Arel.sql("COALESCE(addresses.cidade, habitations.cidade) ASC"))
-        .pluck(Arel.sql("COALESCE(addresses.cidade, habitations.cidade)"))
-        .map { |city| { type: "city", label: city, value: city } }
-
-      neighborhoods = Habitation.active
-        .left_outer_joins(:address)
-        .where("COALESCE(addresses.bairro, habitations.bairro) IS NOT NULL")
-        .where("COALESCE(addresses.cidade, habitations.cidade) IS NOT NULL")
-        .select("COALESCE(addresses.bairro, habitations.bairro) AS bairro_nome, COALESCE(addresses.cidade, habitations.cidade) AS cidade_nome")
-        .distinct
-        .order("bairro_nome ASC, cidade_nome ASC")
-        .map do |h|
-          label = "#{h.bairro_nome} - #{h.cidade_nome}"
-          { type: "neighborhood", label: label, value: label }
-        end
-
-      (cities + neighborhoods).uniq { |item| item[:value] }
+    @location_options = Rails.cache.fetch("habitations_location_options_v2", expires_in: 6.hours) do
+      Habitation.public_location_options
     end
   end
 

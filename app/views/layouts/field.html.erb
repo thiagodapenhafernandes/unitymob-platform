@@ -27,10 +27,11 @@
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
-          navigator.serviceWorker.register("/field-service-worker.js", { scope: "/field/" })
+          navigator.serviceWorker.register("/field-service-worker.js", { scope: "/field/", updateViaCache: "none" })
             .then(function (reg) {
               console.log("[field SW] registered, scope:", reg.scope);
               window.__fieldSWReg = reg;
+              reg.update().catch(function (err) { console.warn("[field SW] update check failed:", err); });
               // IMPORTANTE: nunca pedir permissão no load — o iOS só mostra o prompt
               // a partir de um gesto do usuário. No load apenas renovamos se já concedido.
               if (pushSupported() && Notification.permission === "granted") {
@@ -105,7 +106,14 @@
             return;
           }
 
-          const existing = await registration.pushManager.getSubscription();
+          let existing = await registration.pushManager.getSubscription();
+          const oldEndpoint = existing && existing.endpoint;
+          if (existing && !subscriptionUsesServerKey(existing, public_key)) {
+            console.warn("[push] subscription usa VAPID antigo; renovando inscrição.");
+            await existing.unsubscribe();
+            existing = null;
+          }
+
           const sub = existing || await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(public_key)
@@ -120,10 +128,26 @@
               "Accept": "application/json"
             },
             credentials: "same-origin",
-            body: JSON.stringify({ subscription: sub.toJSON() })
+            body: JSON.stringify({ subscription: sub.toJSON(), old_endpoint: oldEndpoint })
           });
         } catch (e) {
           console.warn("[push] subscribe failed:", e);
+        }
+      }
+
+      function subscriptionUsesServerKey(subscription, publicKey) {
+        try {
+          const currentKey = subscription.options && subscription.options.applicationServerKey;
+          if (!currentKey) return true;
+
+          const serverKey = urlBase64ToUint8Array(publicKey);
+          const current = new Uint8Array(currentKey);
+          if (current.length !== serverKey.length) return false;
+
+          return current.every((value, index) => value === serverKey[index]);
+        } catch (e) {
+          console.warn("[push] falha ao comparar VAPID da subscription", e);
+          return true;
         }
       }
 
@@ -155,17 +179,15 @@
         background: #f8f9fa;
         min-height: 100vh;
         min-height: 100dvh;
-        padding-top: 54px;
+        /* O /field não tem navbar fixo — então nada de "testa" de 54px.
+           Reserva apenas o status bar / notch quando rodando como PWA
+           standalone (iOS); no navegador o inset é 0 e o conteúdo sobe. */
+        padding-top: env(safe-area-inset-top, 0px);
       }
       .field-layout {
         max-width: 480px;
         margin: 0 auto;
-        padding: 1rem 1rem 5rem;
-      }
-      @supports (-webkit-touch-callout: none) {
-        @media (max-width: 767.98px) {
-          html, body { padding-top: 58px; }
-        }
+        padding: 0.75rem 1rem 5rem;
       }
       .field-card {
         background: white;

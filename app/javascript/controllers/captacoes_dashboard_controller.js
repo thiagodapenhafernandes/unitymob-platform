@@ -16,7 +16,7 @@ export default class extends Controller {
 
   disconnect() {
     document.removeEventListener("fullscreenchange", this.handleFullscreenChange)
-    document.body.classList.remove("capt-dashboard-tv-active")
+    this.clearTvBodyState()
     this.destroyCharts()
   }
 
@@ -37,7 +37,7 @@ export default class extends Controller {
   }
 
   exitTv() {
-    document.body.classList.remove("capt-dashboard-tv-active")
+    this.clearTvBodyState()
     const exitButton = this.element.querySelector("[data-capt-tv-exit]")
     if (exitButton) exitButton.hidden = true
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
@@ -49,8 +49,10 @@ export default class extends Controller {
   }
 
   enterTvMode(tabId, requestFullscreen = true) {
-    this.activateTab(tabId || "tab-geral")
+    const targetTabId = tabId || "tab-geral"
+    this.activateTab(targetTabId)
     document.body.classList.add("capt-dashboard-tv-active")
+    this.setTvBodyTabClass(targetTabId)
     const exitButton = this.element.querySelector("[data-capt-tv-exit]")
     if (exitButton) exitButton.hidden = false
 
@@ -174,8 +176,27 @@ export default class extends Controller {
   }
 
   handleFullscreenChange() {
-    if (!document.fullscreenElement) document.body.classList.remove("capt-dashboard-tv-active")
+    if (!document.fullscreenElement) this.clearTvBodyState()
     window.setTimeout(() => this.renderCharts({ force: true }), 180)
+  }
+
+  setTvBodyTabClass(tabId) {
+    this.clearTvTabClass()
+    const slug = String(tabId || "tab-geral").replace(/^tab-/, "")
+    document.body.classList.add(`capt-dashboard-tv-tab-${slug}`)
+  }
+
+  clearTvTabClass() {
+    Array.from(document.body.classList).forEach((className) => {
+      if (className.startsWith("capt-dashboard-tv-tab-")) {
+        document.body.classList.remove(className)
+      }
+    })
+  }
+
+  clearTvBodyState() {
+    document.body.classList.remove("capt-dashboard-tv-active")
+    this.clearTvTabClass()
   }
 
   destroyChart(id) {

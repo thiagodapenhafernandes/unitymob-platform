@@ -50,7 +50,7 @@ export default class extends Controller {
       } else {
         this.showAvailable()
       }
-      this.toggleSubmit(false)
+      this.toggleSubmit(this.hasDuplicate)
     } catch (error) {
       console.error("[habitation-duplicate-check] erro:", error)
       this.clearStatus()

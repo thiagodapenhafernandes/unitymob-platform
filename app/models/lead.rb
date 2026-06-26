@@ -54,7 +54,10 @@ class Lead < ApplicationRecord
   scope :holding, -> { represado }
   scope :by_origin, ->(origin) { where(origin: origin) if origin.present? }
 
-  validates :name, :phone, presence: true
+  validates :name, presence: true
+  # Telefone é obrigatório, exceto quando o lead é identificado por BSUID
+  # (usuário do WhatsApp que esconde o número — recurso de username da Meta).
+  validates :phone, presence: true, unless: -> { business_scoped_user_id.present? }
   
   def display_name
     client_name.presence || name
@@ -77,6 +80,15 @@ class Lead < ApplicationRecord
     end
 
     WhatsappBusinessIntegration.current.whatsapp_url_for(habitation: property, message: message.presence || fallback_message)
+  end
+
+  # Destinatário para a Cloud API: telefone se houver, senão BSUID.
+  # (O link wa.me só existe com telefone; por BSUID, mensageia-se via API.)
+  def whatsapp_recipient
+    return display_phone if display_phone.present?
+    return { user_id: business_scoped_user_id } if business_scoped_user_id.present?
+
+    nil
   end
 
   def direct_whatsapp_url

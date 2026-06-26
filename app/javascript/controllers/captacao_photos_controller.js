@@ -11,6 +11,7 @@ export default class extends Controller {
     "uploadPanel",
     "newPhotosPanel",
     "existingPhotosPanel",
+    "newCount",
     "schedulePanel",
     "externalScheduleButton",
     "internalScheduleButton",
@@ -171,10 +172,14 @@ export default class extends Controller {
   renderNewFiles() {
     this.newListTarget.innerHTML = ""
     this.toggle(this.emptyStateTarget, this.selectedFiles.length === 0)
+    if (this.hasNewCountTarget) {
+      const count = this.selectedFiles.length
+      this.newCountTarget.textContent = `${count} ${count === 1 ? "nova" : "novas"}`
+    }
 
     this.selectedFiles.forEach((file, index) => {
       const row = document.createElement("div")
-      row.className = "captacao-photo-row"
+      row.className = "captacao-photo-row captacao-photo-row--new"
 
       const preview = document.createElement("img")
       preview.alt = file.name
@@ -186,16 +191,16 @@ export default class extends Controller {
         <div class="captacao-photo-preview"></div>
         <div class="captacao-photo-meta">
           <strong>${this.escapeHtml(file.name)}</strong>
-          <span class="captacao-photo-size">${this.formatSize(file.size)}</span>
+          <span class="captacao-photo-size">${this.formatSize(file.size)} · antes do envio</span>
           <label class="captacao-highlight-choice">
             <input type="radio" name="new_photo_highlight" value="${index}" ${index === 0 ? "checked" : ""} data-action="change->captacao-photos#highlightNew">
             Destaque
           </label>
         </div>
         <div class="captacao-photo-actions">
-          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewUp" aria-label="Subir foto"><i class="bi bi-arrow-up"></i></button>
-          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewDown" aria-label="Descer foto"><i class="bi bi-arrow-down"></i></button>
-          <button type="button" class="captacao-photo-action captacao-photo-action--danger" data-index="${index}" data-action="captacao-photos#removeNew" aria-label="Remover foto"><i class="bi bi-trash"></i></button>
+          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewUp" aria-label="Subir foto" title="Subir"><i class="bi bi-arrow-up"></i></button>
+          <button type="button" class="captacao-photo-action" data-index="${index}" data-action="captacao-photos#moveNewDown" aria-label="Descer foto" title="Descer"><i class="bi bi-arrow-down"></i></button>
+          <button type="button" class="captacao-photo-action captacao-photo-action--danger" data-index="${index}" data-action="captacao-photos#removeNew" aria-label="Remover foto" title="Remover"><i class="bi bi-trash"></i></button>
         </div>
       `
       row.querySelector(".captacao-photo-preview").appendChild(preview)

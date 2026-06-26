@@ -19,6 +19,12 @@ module Leads
       end
 
       if rule.shark_tank?
+        candidates = rule.candidates_filtered_by_checkin
+        if rule.require_active_checkin? && candidates.empty?
+          return dammed_no_eligible_checkin(rule) if rule.represamento_active?
+          return nil
+        end
+
         @lead.update(
           admin_user_id: nil,
           status: :aguardando_aceite,
@@ -26,7 +32,7 @@ module Leads
         )
         @lead.activities.create(kind: "shark_tank_ready", metadata: { rule_id: rule.id, rule_name: rule.name })
         # Notifica TODOS os corretores da regra; o 1º que aceitar vira dono.
-        Leads::NotificationDispatcher.notify_shark_tank(@lead.reload, rule)
+        Leads::NotificationDispatcher.notify_shark_tank(@lead.reload, rule, candidates: candidates)
         return rule
       end
 
@@ -62,6 +68,7 @@ module Leads
     # as notificações. Reutilizado pela fidelização e pela distribuição normal.
     def finalize_assignment(rule, admin_user_id:, admin_user_name:, sticky: false)
       @lead.update(admin_user_id: admin_user_id, status: :waiting_acceptance, distribution_rule_id: rule.id)
+      rule.mark_agent_served!(admin_user_id)
 
       metadata = {
         rule_id: rule.id,
@@ -72,8 +79,8 @@ module Leads
       metadata[:sticky] = true if sticky
       @lead.activities.create(kind: "distributed", metadata: metadata)
 
-      if rule.pocket_active? && rule.pocket_time.to_i > 0
-        Leads::PocketExpirationJob.set(wait: rule.pocket_time.to_i.minutes).perform_later(@lead.id)
+      if rule.pocket_operational?
+        Leads::PocketExpirationJob.set(wait: rule.pocket_time.to_i.minutes).perform_later(@lead.id, admin_user_id)
       end
 
       # Dispara notificações conforme as flags da regra (push/whatsapp/email/webhook)
@@ -178,23 +185,33 @@ module Leads
     def matches_source?(rule)
       origin = @lead.origin.to_s.downcase
 
-      if rule.source_meta? && (origin.include?("facebook") || origin.include?("instagram") || origin.include?("meta"))
-        return true
-      end
-
-      if rule.source_portal? && (origin.include?("zap") || origin.include?("vivareal") || origin.include?("olx"))
-        return true
-      end
-
-      if rule.source_webhook? && origin == "webhook"
-        return true
-      end
-
-      # Default to site if it doesn't match other specific sources and rule allows site
-      # Simplified site match logic
-      return true if !origin.include?("fb") && !origin.include?("zap") && origin != "webhook"
+      return true if rule.source_meta? && meta_origin?(origin)
+      return true if rule.source_portal? && portal_origin?(origin)
+      return true if rule.source_webhook? && webhook_origin?(origin)
+      return true if rule.source_site? && site_origin?(origin)
 
       false
+    end
+
+    def meta_origin?(origin)
+      origin.include?("facebook") ||
+        origin.include?("instagram") ||
+        origin.include?("meta") ||
+        origin.include?("fb")
+    end
+
+    def portal_origin?(origin)
+      origin.include?("zap") ||
+        origin.include?("vivareal") ||
+        origin.include?("olx")
+    end
+
+    def webhook_origin?(origin)
+      origin == "webhook"
+    end
+
+    def site_origin?(origin)
+      origin.blank? || (!meta_origin?(origin) && !portal_origin?(origin) && !webhook_origin?(origin))
     end
 
     def matches_business_type?(rule)
@@ -203,6 +220,10 @@ module Leads
       is_explicit_rental = lead_content.include?("aluguel") || lead_content.include?("locacao")
       is_explicit_sale = lead_content.include?("venda") || lead_content.include?("comprar")
 
+      # Regra de negócio intencional: quando o lead não traz sinal explícito de
+      # venda ou locação (ex.: muitos leads Meta), regras específicas continuam
+      # elegíveis. Isso preserva flexibilidade e deixa a prioridade/ordem das
+      # regras decidir o destino em origens ambíguas.
       if rule.locacao_business_type?
         return is_explicit_rental || !is_explicit_sale
       elsif rule.venda_business_type?
@@ -217,7 +238,7 @@ module Leads
       return false if schedule.blank?
 
       now = Time.zone.now
-      current_day_key = now.strftime("%a").downcase
+      current_day_key = DistributionRule::DAYS[(now.wday + 6) % 7]
       day_config = schedule[current_day_key]
       return false unless day_config && day_config["active"] == "true"
 

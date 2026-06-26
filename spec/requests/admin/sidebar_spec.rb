@@ -40,4 +40,22 @@ RSpec.describe "Admin sidebar", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(CGI.escapeHTML(admin_habitations_path(ownership: "all")))
   end
+
+  it "mantém corretor fora de integrações e dashboard de captação no menu" do
+    broker_profile = Profile.create!(
+      name: "Corretor #{SecureRandom.hex(6)}",
+      permissions: Profile.default_permissions_for("Corretor")
+    )
+    broker = create(:admin_user, profile: broker_profile)
+    sign_in broker
+
+    get admin_habitations_path(ownership: "all")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Captações")
+    expect(response.body).not_to include("Dashboard Captação")
+    expect(response.body).not_to include("Integrações")
+    expect(response.body).not_to include(admin_webhook_settings_path)
+    expect(response.body).not_to include(dashboard_admin_captacoes_path)
+  end
 end

@@ -24,6 +24,9 @@ class Admin::SessionsController < Devise::SessionsController
         return
       end
 
+      # Sessão persistente: emite o cookie "lembrar-me" para o PWA não deslogar
+      # sozinho quando o iOS descarta a sessão. Só o logout explícito encerra.
+      resource.remember_me = true
       sign_in(resource_name, resource)
       AccessAuditLog.log!(
         event_type: "login",

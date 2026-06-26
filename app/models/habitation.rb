@@ -101,6 +101,7 @@ class Habitation < ApplicationRecord
   }.freeze
   CATALOG_VISIBLE_INTAKE_STATUSES = %w[internal published].freeze
   PENDING_REVIEW_INTAKE_STATUSES = %w[submitted_for_admin_review admin_approved].freeze
+  SITE_RELEASABLE_INTAKE_STATUSES = %w[admin_approved returned_to_broker internal].freeze
   PHOTO_FLOW_CHOICES = {
     "upload" => "Enviar fotos",
     "schedule" => "Agendar fotógrafo"
@@ -417,6 +418,32 @@ class Habitation < ApplicationRecord
 
   def requires_intake_development_name?
     property_kind_apartment_unit? || condominium_house?
+  end
+
+  def requires_intake_address_complement?
+    requires_unit_number? ||
+      condominium_house? ||
+      property_kind_sala_comercial? ||
+      property_kind_galpao? ||
+      property_kind_terreno?
+  end
+
+  def intake_address_complement_label
+    return "Unidade / Apto" if requires_unit_number?
+    return "Complemento / Casa" if condominium_house?
+    return "Complemento / Sala" if property_kind_sala_comercial?
+
+    "Complemento"
+  end
+
+  def intake_address_complement_placeholder
+    return "1203" if requires_unit_number?
+    return "Ex.: Casa 12, Quadra B" if condominium_house?
+    return "Ex.: Sala 402" if property_kind_sala_comercial?
+    return "Ex.: Galpão B, fundos" if property_kind_galpao?
+    return "Ex.: Lote 12, Quadra B" if property_kind_terreno?
+
+    "Ex.: fundos, sala, lote..."
   end
 
   def street_house?
@@ -740,6 +767,21 @@ class Habitation < ApplicationRecord
     intake_status == "admin_approved"
   end
 
+  def broker_release_pending?
+    SITE_RELEASABLE_INTAKE_STATUSES.include?(intake_status)
+  end
+
+  def broker_responsible_for?(user)
+    return false if user.nil?
+    return true if admin_user_id == user.id
+
+    if broker_assignments.loaded?
+      broker_assignments.any? { |assignment| assignment.admin_user_id == user.id }
+    else
+      broker_assignments.exists?(admin_user_id: user.id)
+    end
+  end
+
   def intake_internal?
     intake_status == "internal"
   end
@@ -798,6 +840,7 @@ class Habitation < ApplicationRecord
     missing << "Endereço e localização" if check.call("endereco") && (address.blank? || cep.blank? || logradouro.blank? || bairro.blank? || cidade.blank? || uf.blank?)
     missing << "Empreendimento" if check.call("empreendimento") && requires_intake_development_name? && nome_empreendimento.blank?
     missing << "Número da unidade" if check.call("unidade") && requires_unit_number? && bloco.blank?
+    missing << "Complemento" if check.call("endereco") && requires_intake_address_complement? && !requires_unit_number? && complemento.blank?
     missing << "Definições básicas" if check.call("definicoes") && (categoria.blank? || status.blank?)
     missing << "Título do anúncio" if check.call("titulo") && titulo_anuncio.blank?
     missing << "Título do anúncio coerente com a categoria" if check.call("titulo_categoria") && title_category_inconsistent?

@@ -18,6 +18,17 @@ class DistributionRule < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
+  def self.pocket_requires_secure_push?
+    setting = LeadSetting.instance
+    setting.secure_links_enabled? && setting.secure_link_push?
+  rescue ActiveRecord::StatementInvalid
+    false
+  end
+
+  def pocket_operational?
+    pocket_active? && pocket_time.to_i.positive? && self.class.pocket_requires_secure_push?
+  end
+
   def next_available_agent(candidates = nil)
     candidates ||= distribution_rule_agents
     if rotary?
@@ -80,6 +91,12 @@ class DistributionRule < ApplicationRecord
 
     max_pos = distribution_rule_agents.maximum(:position) || 0
     served.update(position: max_pos + 1, last_lead_received_at: Time.current)
+  end
+
+  def mark_agent_served!(admin_user_id)
+    distribution_rule_agents
+      .where(admin_user_id: admin_user_id)
+      .update_all(last_lead_received_at: Time.current, updated_at: Time.current)
   end
 
   DAYS = %w[mon tue wed thu fri sat sun]

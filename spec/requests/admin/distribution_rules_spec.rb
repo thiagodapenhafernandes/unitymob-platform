@@ -22,6 +22,10 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(response.body).to include("Distribuição vertical")
     expect(response.body).to include("Gestor Praia")
     expect(response.body).to include("Corretor Cascata")
+    expect(response.body).to include("Entrega para um corretor por vez")
+    expect(response.body).to include("sorteio ponderado")
+    expect(response.body).to include("O primeiro que aceitar assume o lead")
+    expect(response.body).to include("Filtro opcional pela faixa de valor do lead")
   end
 
   it "mantem formularios da Meta em cascata pelas paginas selecionadas" do
@@ -71,6 +75,63 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(response).to redirect_to(admin_distribution_rule_path(DistributionRule.last))
     rule = DistributionRule.last
     expect(rule.distribution_rule_agents.pluck(:admin_user_id)).to eq([receiver.id])
+  end
+
+  it "bloqueia Pocket no formulario quando o link seguro do Push nao esta habilitado" do
+    LeadSetting.instance.update!(secure_links_enabled: false, secure_link_push: true)
+
+    get new_admin_distribution_rule_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Para usar Pocket, habilite o")
+    expect(response.body).to include(edit_admin_lead_setting_path)
+    doc = Nokogiri::HTML(response.body)
+    pocket_input = doc.at_css("input#checkPocket")
+    expect(pocket_input["disabled"]).to eq("disabled")
+  end
+
+  it "forca Pocket desligado ao salvar regra sem link seguro do Push" do
+    LeadSetting.instance.update!(secure_links_enabled: false, secure_link_push: true)
+
+    post admin_distribution_rules_path, params: {
+      distribution_rule: {
+        name: "Regra Sem Link Seguro",
+        business_type: "ambos",
+        distribution_mode: "rotary",
+        active: "1",
+        source_site: "1",
+        source_meta: "0",
+        source_portal: "0",
+        source_webhook: "0",
+        pocket_active: "1",
+        pocket_time: "5"
+      }
+    }
+
+    expect(response).to redirect_to(admin_distribution_rule_path(DistributionRule.last))
+    expect(DistributionRule.last.pocket_active).to be(false)
+  end
+
+  it "permite Pocket quando link seguro do Push esta habilitado" do
+    LeadSetting.instance.update!(secure_links_enabled: true, secure_link_push: true)
+
+    post admin_distribution_rules_path, params: {
+      distribution_rule: {
+        name: "Regra Com Link Seguro",
+        business_type: "ambos",
+        distribution_mode: "rotary",
+        active: "1",
+        source_site: "1",
+        source_meta: "0",
+        source_portal: "0",
+        source_webhook: "0",
+        pocket_active: "1",
+        pocket_time: "5"
+      }
+    }
+
+    expect(response).to redirect_to(admin_distribution_rule_path(DistributionRule.last))
+    expect(DistributionRule.last.pocket_active).to be(true)
   end
 
   it "atualiza a fila de distribuicao a partir do select de corretores ao editar" do
@@ -124,6 +185,55 @@ RSpec.describe "Admin::DistributionRules", type: :request do
 
     expect(response).to redirect_to(admin_distribution_rule_path(rule))
     expect(rule.reload.distribution_rule_agents.order(:position).pluck(:admin_user_id)).to eq([second_receiver.id, first_receiver.id])
+  end
+
+  it "salva os pesos dos corretores no modo performance" do
+    first_receiver = create(:admin_user, :admin)
+    second_receiver = create(:admin_user, :admin)
+
+    post admin_distribution_rules_path, params: {
+      agent_select: [first_receiver.id.to_s, second_receiver.id.to_s],
+      distribution_rule: {
+        name: "Regra Performance",
+        business_type: "ambos",
+        distribution_mode: "performance",
+        active: "1",
+        source_site: "1",
+        source_meta: "0",
+        source_portal: "0",
+        source_webhook: "0",
+        distribution_rule_agents_attributes: {
+          "0" => { admin_user_id: first_receiver.id, position: 1, weight: 2 },
+          "1" => { admin_user_id: second_receiver.id, position: 2, weight: 5 }
+        }
+      }
+    }
+
+    expect(response).to redirect_to(admin_distribution_rule_path(DistributionRule.last))
+    weights = DistributionRule.last.distribution_rule_agents.index_by(&:admin_user_id).transform_values(&:weight)
+    expect(weights).to include(first_receiver.id => 2, second_receiver.id => 5)
+  end
+
+  it "salva faixa de preco enviada com mascara pt-BR" do
+    post admin_distribution_rules_path, params: {
+      distribution_rule: {
+        name: "Regra Alto Padrao",
+        business_type: "venda",
+        distribution_mode: "rotary",
+        active: "1",
+        source_site: "1",
+        source_meta: "0",
+        source_portal: "0",
+        source_webhook: "0",
+        min_price: "1.500.000,00",
+        max_price: "2.750.000,00"
+      }
+    }
+
+    expect(response).to redirect_to(admin_distribution_rule_path(DistributionRule.last))
+    rule = DistributionRule.last
+    expect(rule.min_price).to eq(1_500_000)
+    expect(rule.max_price).to eq(2_750_000)
   end
 
   it "permite reordenar a fila pela tela de detalhe" do

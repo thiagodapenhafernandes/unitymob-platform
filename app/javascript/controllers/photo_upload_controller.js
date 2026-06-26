@@ -1,5 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
-import Sortable from "sortablejs"
+import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine"
+import {
+  draggable,
+  dropTargetForElements,
+  monitorForElements
+} from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
 
 // Connects to data-controller="photo-upload"
 export default class extends Controller {
@@ -33,11 +38,18 @@ export default class extends Controller {
     this.boundHandleDragLeave = this.handleDragLeave.bind(this)
     this.boundHandleFormSubmit = this.handleFormSubmit.bind(this)
     this.boundHandleSortableAutoScrollPointer = this.handleSortableAutoScrollPointer.bind(this)
+    this.boundCaptureMediaPointerDown = this.prepareMediaPointerIntent.bind(this)
+    this.boundSuppressMediaClickAfterDrag = this.suppressMediaClickAfterDrag.bind(this)
     this.form = this.element.closest('form')
+    this.mediaDragState = null
+    this.dragAllowedItem = null
+    this.recentlyReorderedMedia = false
 
-    this.initSortable()
+    this.initMediaDragAndDrop()
 
     // Drag and Drop
+    this.element.addEventListener("pointerdown", this.boundCaptureMediaPointerDown, true)
+    this.element.addEventListener("click", this.boundSuppressMediaClickAfterDrag, true)
     this.element.addEventListener('dragover', this.boundHandleDragOver)
     this.element.addEventListener('drop', this.boundHandleDrop)
     this.element.addEventListener('dragleave', this.boundHandleDragLeave)
@@ -45,8 +57,10 @@ export default class extends Controller {
   }
 
   disconnect() {
-    if (this.sortable) this.sortable.destroy()
+    this.cleanupMediaDragAndDrop?.()
     this.stopSortableAutoScroll()
+    this.element.removeEventListener("pointerdown", this.boundCaptureMediaPointerDown, true)
+    this.element.removeEventListener("click", this.boundSuppressMediaClickAfterDrag, true)
     this.element.removeEventListener('dragover', this.boundHandleDragOver)
     this.element.removeEventListener('drop', this.boundHandleDrop)
     this.element.removeEventListener('dragleave', this.boundHandleDragLeave)
@@ -79,77 +93,294 @@ export default class extends Controller {
     }
   }
 
-  initSortable() {
-    // Only initialize if container exists
+  initMediaDragAndDrop() {
     if (!this.hasPreviewContainerTarget) return
 
-    this.sortable = new Sortable(this.previewContainerTarget, {
-      animation: 150,
-      ghostClass: 'sortable-ghost',
-      chosenClass: 'sortable-chosen',
-      dragClass: 'sortable-drag',
-      handle: '.media-photo-drag-handle',
-      draggable: '.draggable-item',
-      direction: this.resolveSortableDirection.bind(this),
-      forceFallback: true,
-      fallbackOnBody: true,
-      fallbackTolerance: 3,
-      fallbackClass: 'ax-media-sortable-fallback',
-      scroll: true,
-      bubbleScroll: true,
-      scrollSensitivity: 148,
-      scrollSpeed: 28,
-      swapThreshold: 0.72,
-      invertSwap: true,
-      invertedSwapThreshold: 0.28,
-      emptyInsertThreshold: 88,
-      onClone: (evt) => {
-        this.prepareSortableFallback(evt)
-      },
-      onStart: (evt) => {
-        this.startSortableAutoScroll(evt?.originalEvent)
-      },
-      onMove: (evt) => {
-        this.handleSortableAutoScrollPointer(evt?.originalEvent)
-        return true
-      },
-      onEnd: (evt) => {
-        this.stopSortableAutoScroll()
-        this.syncNewFilesFromDom()
-        this.updateOrder()
-        this.refreshPhotoBadges()
-        this.syncReorder()
-      },
-      onUnchoose: () => {
-        this.stopSortableAutoScroll()
-      }
+    this.cleanupMediaDragAndDrop?.()
+    this.cleanupMediaDragAndDrop = combine(
+      this.registerMediaGrid(this.previewContainerTarget),
+      ...this.mediaDragItems().map((item) => this.registerMediaItem(item)),
+      monitorForElements({
+        canMonitor: ({ source }) => this.isMediaDragSource(source),
+        onDrag: ({ source, location }) => this.moveMediaItemWithPointer(source, location),
+        onDropTargetChange: ({ source, location }) => this.moveMediaItemWithPointer(source, location),
+        onDrop: ({ source }) => this.commitMediaDrop(source)
+      })
+    )
+  }
+
+  refreshMediaDragAndDrop() {
+    this.cleanupMediaDragAndDrop?.()
+    this.cleanupMediaDragAndDrop = null
+    this.initMediaDragAndDrop()
+  }
+
+  registerMediaGrid(grid) {
+    return dropTargetForElements({
+      element: grid,
+      canDrop: ({ source }) => this.isMediaDragSource(source),
+      getData: () => ({ type: "media-grid" }),
+      getIsSticky: () => true
     })
   }
 
-  prepareSortableFallback(event) {
-    const item = event?.item
-    const clone = event?.clone
-    if (!item || !clone) return
-
-    const rect = item.getBoundingClientRect()
-    if (!rect.width || !rect.height) return
-
-    clone.style.width = `${Math.round(rect.width)}px`
-    clone.style.maxWidth = `${Math.round(rect.width)}px`
-    clone.style.height = `${Math.round(rect.height)}px`
-    clone.style.boxSizing = "border-box"
+  registerMediaItem(item) {
+    return draggable({
+      element: item,
+      canDrag: () => this.dragAllowedItem === item,
+      getInitialData: () => ({ type: "media-item" }),
+      onDragStart: () => this.beginMediaDrag(item),
+      onDrop: () => this.finishMediaDrag(item)
+    })
   }
 
-  resolveSortableDirection(_event, target, dragEl) {
-    if (!target || !dragEl) return "horizontal"
+  mediaDragItems() {
+    if (!this.hasPreviewContainerTarget) return []
 
-    const targetRect = target.getBoundingClientRect()
-    const dragRect = dragEl.getBoundingClientRect()
-    const targetCenterY = targetRect.top + targetRect.height / 2
-    const dragCenterY = dragRect.top + dragRect.height / 2
-    const sameRowTolerance = Math.min(targetRect.height, dragRect.height) * 0.7
+    return Array.from(this.previewContainerTarget.querySelectorAll(".draggable-item"))
+  }
 
-    return Math.abs(targetCenterY - dragCenterY) <= sameRowTolerance ? "horizontal" : "vertical"
+  beginMediaDrag(item) {
+    this.clearMediaDropTarget()
+    this.mediaDragState = {
+      item,
+      directionX: 0,
+      directionY: 0,
+      lastPointerX: null,
+      lastPointerY: null,
+      placementKey: null
+    }
+    item.classList.add("sortable-chosen", "sortable-drag")
+    this.previewContainerTarget.classList.add("is-sorting")
+    this.startSortableAutoScroll()
+  }
+
+  finishMediaDrag(item) {
+    item?.classList.remove("sortable-chosen", "sortable-drag")
+    this.previewContainerTarget?.classList?.remove("is-sorting")
+    this.clearMediaDropTarget()
+    this.stopSortableAutoScroll()
+    window.setTimeout(() => {
+      this.recentlyReorderedMedia = false
+    }, 120)
+  }
+
+  moveMediaItemWithPointer(source, location) {
+    if (!this.isMediaDragSource(source) || !this.hasPreviewContainerTarget) return
+
+    const input = location?.current?.input
+    const item = source.element
+    if (!item || !input) return
+
+    this.handleSortableAutoScrollPointer(input)
+
+    this.updateMediaPointerDirection(input.clientX, input.clientY)
+    const placement = this.mediaPlacementForPointer(item, input.clientX, input.clientY)
+    this.setMediaDropTarget(placement?.target)
+    const referenceItem = this.mediaInsertReference(item, placement)
+    const placementKey = referenceItem ? `before:${this.mediaItemKey(referenceItem)}` : "append"
+
+    if (this.mediaDragState?.placementKey === placementKey) return
+    if (referenceItem === item || item.nextElementSibling === referenceItem) {
+      if (this.mediaDragState) this.mediaDragState.placementKey = placementKey
+      return
+    }
+
+    const previousRects = this.captureMediaItemRects()
+    if (referenceItem) {
+      this.previewContainerTarget.insertBefore(item, referenceItem)
+    } else {
+      this.previewContainerTarget.appendChild(item)
+    }
+
+    if (this.mediaDragState) this.mediaDragState.placementKey = placementKey
+    this.animateMediaReorder(previousRects, item)
+  }
+
+  setMediaDropTarget(target) {
+    if (this.mediaDropTarget === target) return
+
+    this.clearMediaDropTarget()
+    this.mediaDropTarget = target || null
+    this.mediaDropTarget?.classList?.add("media-drop-target")
+  }
+
+  clearMediaDropTarget() {
+    this.mediaDropTarget?.classList?.remove("media-drop-target")
+    this.mediaDropTarget = null
+  }
+
+  commitMediaDrop(source) {
+    if (!this.isMediaDragSource(source)) return
+
+    this.recentlyReorderedMedia = true
+    this.syncNewFilesFromDom()
+    this.updateOrder()
+    this.refreshPhotoBadges()
+    this.syncReorder()
+  }
+
+  mediaPlacementForPointer(draggedItem, pointerX, pointerY) {
+    const items = this.mediaDragItems().filter((item) => item !== draggedItem)
+    if (items.length === 0) return { target: null, insertAfter: true }
+
+    const target = this.closestMediaItemForPointer(items, pointerX, pointerY) ||
+      this.mediaEdgeItemForPointer(items, pointerX, pointerY)
+    if (!target) return null
+
+    return {
+      target,
+      insertAfter: this.shouldInsertMediaAfterTarget(target, pointerX, pointerY)
+    }
+  }
+
+  closestMediaItemForPointer(items, pointerX, pointerY) {
+    return items.reduce((best, item) => {
+      const rect = item.getBoundingClientRect()
+      const expandX = Math.max(28, Math.min(64, rect.width * 0.36))
+      const expandY = Math.max(22, Math.min(58, rect.height * 0.32))
+
+      if (
+        pointerX < rect.left - expandX ||
+        pointerX > rect.right + expandX ||
+        pointerY < rect.top - expandY ||
+        pointerY > rect.bottom + expandY
+      ) {
+        return best
+      }
+
+      const centerX = rect.left + rect.width / 2
+      const centerY = rect.top + rect.height / 2
+      const normalizedX = (pointerX - centerX) / Math.max(rect.width, 1)
+      const normalizedY = (pointerY - centerY) / Math.max(rect.height, 1)
+      const score = Math.hypot(normalizedX, normalizedY)
+
+      if (!best || score < best.score) return { item, score }
+      return best
+    }, null)?.item
+  }
+
+  mediaEdgeItemForPointer(items, pointerX, pointerY) {
+    const first = items[0]
+    const last = items[items.length - 1]
+    const firstRect = first.getBoundingClientRect()
+    const lastRect = last.getBoundingClientRect()
+    const verticalSlack = Math.max(36, firstRect.height * 0.34)
+
+    if (pointerY < firstRect.top - verticalSlack) return first
+    if (pointerY > lastRect.bottom + verticalSlack) return last
+
+    const sameLastRow = pointerY >= lastRect.top - verticalSlack && pointerY <= lastRect.bottom + verticalSlack
+    if (sameLastRow && pointerX > lastRect.right) return last
+
+    return null
+  }
+
+  shouldInsertMediaAfterTarget(target, pointerX, pointerY) {
+    const rect = target.getBoundingClientRect()
+    const directionX = this.mediaDragState?.directionX || 0
+    const directionY = this.mediaDragState?.directionY || 0
+    const horizontalIntent = Math.abs(directionX) >= Math.abs(directionY)
+
+    if (horizontalIntent && Math.abs(directionX) > 1) return directionX > 0
+    if (!horizontalIntent && Math.abs(directionY) > 1) return directionY > 0
+
+    const sameRow = pointerY >= rect.top && pointerY <= rect.bottom
+    if (sameRow) return pointerX >= rect.left + rect.width * 0.42
+
+    return pointerY >= rect.top + rect.height * 0.42
+  }
+
+  mediaInsertReference(draggedItem, placement) {
+    if (!placement) return draggedItem.nextElementSibling
+    if (!placement.target) return null
+    if (!placement.insertAfter) return placement.target
+
+    let reference = placement.target.nextElementSibling
+    while (reference === draggedItem) reference = reference.nextElementSibling
+
+    return reference
+  }
+
+  updateMediaPointerDirection(pointerX, pointerY) {
+    if (!this.mediaDragState) return
+
+    const lastX = this.mediaDragState.lastPointerX
+    const lastY = this.mediaDragState.lastPointerY
+    if (typeof lastX === "number") {
+      const deltaX = pointerX - lastX
+      if (Math.abs(deltaX) > 1) this.mediaDragState.directionX = deltaX
+    }
+    if (typeof lastY === "number") {
+      const deltaY = pointerY - lastY
+      if (Math.abs(deltaY) > 1) this.mediaDragState.directionY = deltaY
+    }
+
+    this.mediaDragState.lastPointerX = pointerX
+    this.mediaDragState.lastPointerY = pointerY
+  }
+
+  captureMediaItemRects() {
+    return new Map(this.mediaDragItems().map((item) => [item, item.getBoundingClientRect()]))
+  }
+
+  animateMediaReorder(previousRects, draggedItem) {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return
+
+    this.mediaDragItems().forEach((item) => {
+      if (item === draggedItem) return
+
+      const previousRect = previousRects.get(item)
+      if (!previousRect) return
+
+      const currentRect = item.getBoundingClientRect()
+      const deltaX = previousRect.left - currentRect.left
+      const deltaY = previousRect.top - currentRect.top
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return
+
+      item.getAnimations?.().forEach((animation) => animation.cancel())
+      item.animate(
+        [
+          { transform: `translate(${deltaX}px, ${deltaY}px)` },
+          { transform: "translate(0, 0)" }
+        ],
+        {
+          duration: 170,
+          easing: "cubic-bezier(.2, .8, .2, 1)",
+          fill: "both"
+        }
+      )
+    })
+  }
+
+  mediaItemKey(item) {
+    return item.dataset.id ||
+      item.dataset.apiIndex ||
+      item.dataset.newFileId ||
+      Array.from(item.parentElement?.children || []).indexOf(item).toString()
+  }
+
+  prepareMediaPointerIntent(event) {
+    const item = event.target.closest(".draggable-item")
+    if (!item) {
+      this.dragAllowedItem = null
+      return
+    }
+
+    const handle = event.target.closest(".media-photo-drag-handle")
+    this.dragAllowedItem = handle && item.contains(handle) ? item : null
+  }
+
+  isMediaDragSource(source) {
+    return source?.data?.type === "media-item" && source?.element?.classList?.contains("draggable-item")
+  }
+
+  suppressMediaClickAfterDrag(event) {
+    if (!this.recentlyReorderedMedia) return
+    if (!event.target.closest(".draggable-item")) return
+
+    event.preventDefault()
+    event.stopImmediatePropagation()
   }
 
   startSortableAutoScroll(event) {
@@ -179,6 +410,7 @@ export default class extends Controller {
     }
 
     this.sortablePointerY = null
+    this.mediaDragState = null
     this.previewContainerTarget?.classList?.remove("is-sorting")
     this.sortableScrollContainer?.classList?.remove("is-sorting")
     this.sortableScrollContainer = null
@@ -441,7 +673,7 @@ export default class extends Controller {
       imgContainer.innerHTML = `
         <div class="ax-media-tile__frame media-photo-tile">
           <div class="ax-media-tile__link" title="Pré-visualização de ${this.escapeHtml(file.name)}">
-            <img src="${previewUrl}" class="ax-media-tile__image" alt="${this.escapeHtml(file.name)}">
+            <img src="${previewUrl}" class="ax-media-tile__image" alt="${this.escapeHtml(file.name)}" draggable="false">
           </div>
           <div class="media-photo-overlay">
             <div class="ax-media-tile__row ax-media-tile__row--top">
@@ -484,6 +716,7 @@ export default class extends Controller {
     this.syncInputFilesFromState()
     this.updateOrder()
     this.refreshPhotoBadges()
+    this.refreshMediaDragAndDrop()
     this.uploadNewFiles(newFileEntries)
   }
 
@@ -862,6 +1095,7 @@ export default class extends Controller {
 
     if (replaceGallery && typeof payload.gallery_html === "string" && this.hasPreviewContainerTarget) {
       this.previewContainerTarget.innerHTML = payload.gallery_html
+      this.refreshMediaDragAndDrop()
     }
 
     if (payload.inputs) {

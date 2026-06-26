@@ -1,60 +1,27 @@
-<style>
-  .heatmap-wrap { overflow-x: auto; }
-  .heatmap-table {
-    border-collapse: separate;
-    border-spacing: 2px;
-    font-size: .8rem;
-    width: 100%;
-  }
-  .heatmap-table th, .heatmap-table td {
-    text-align: center;
-    padding: .35rem .25rem;
-    min-width: 32px;
-    white-space: nowrap;
-  }
-  .heatmap-table th.broker-col {
-    text-align: left;
-    position: sticky; left: 0;
-    background: #fff;
-    min-width: 160px;
-    z-index: 2;
-  }
-  .heatmap-table thead th {
-    background: #f8f9fa;
-    font-weight: 600;
-    color: #64748b;
-    font-size: .72rem;
-  }
-  .heatmap-table td.hc {
-    border-radius: 4px;
-    font-weight: 600;
-    color: #3f2d00;
-  }
-  .heatmap-table tbody tr:hover td {
-    outline: 1px solid var(--admin-primary);
-  }
-  .heatmap-table tfoot td {
-    font-weight: 700;
-    border-top: 2px solid #e5e7eb;
-    background: #fafafa;
-  }
-</style>
-
-<div class="ax-card">
+<div class="ax-card capt-heatmap-card">
   <div class="ax-card__body">
-    <div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
+    <div class="capt-heatmap-toolbar">
       <h6 class="tw-font-bold tw-flex tw-items-center tw-gap-2"><i class="bi bi-grid-3x3-gap-fill tw-text-primary"></i>Leads por Corretor</h6>
-      <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "tw-flex tw-gap-2 tw-flex-wrap tw-items-center", data: { controller: "auto-submit" } do %>
+      <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "capt-heatmap-filters", data: { controller: "auto-submit" } do %>
         <%= hidden_field_tag :start_date, @period_start %>
         <%= hidden_field_tag :end_date,   @period_end %>
         <%= hidden_field_tag :month,      @month_filter %>
+        <div class="capt-heatmap-date-field">
+          <%= ax_field_label(nil, nil, text: "Início") %>
+          <%= date_field_tag :heatmap_start_date, @heatmap_start_date, class: "ax-control ax-control--sm" %>
+        </div>
+        <div class="capt-heatmap-date-field">
+          <%= ax_field_label(nil, nil, text: "Fim") %>
+          <%= date_field_tag :heatmap_end_date, @heatmap_end_date, class: "ax-control ax-control--sm" %>
+        </div>
         <%= select_tag :lead_category,
                        options_for_select([["Categoria: Todos", ""]] + @lead_categories.map { |c| [c.to_s.humanize, c] }, params[:lead_category]),
                        class: "ax-control ax-control--sm", data: { action: "change->auto-submit#submit" } %>
         <%= select_tag :lead_source,
                        options_for_select([["Fonte: Todos", ""]] + @lead_sources.map { |s| [s.to_s, s] }, params[:lead_source]),
                        class: "ax-control ax-control--sm", data: { action: "change->auto-submit#submit" } %>
-        <% if params[:lead_category].present? || params[:lead_source].present? %>
+        <%= submit_tag "Aplicar", class: "ax-btn ax-btn--primary ax-btn--sm" %>
+        <% if params[:lead_category].present? || params[:lead_source].present? || params[:heatmap_start_date].present? || params[:heatmap_end_date].present? %>
           <%= link_to "Limpar", dashboard_admin_captacoes_path(start_date: @period_start, end_date: @period_end, month: @month_filter), class: "ax-btn ax-btn--ghost ax-btn--sm" %>
         <% end %>
       <% end %>
@@ -107,8 +74,8 @@
         </table>
       </div>
     <% else %>
-      <div class="tw-text-center tw-text-ink-muted" style="padding-top:3rem;padding-bottom:3rem;">
-        <i class="bi bi-inbox" style="font-size: 2.5rem;"></i>
+      <div class="capt-heatmap-empty">
+        <i class="bi bi-inbox"></i>
         <p class="tw-mt-2">Nenhum lead atribuído a corretor no período.</p>
       </div>
     <% end %>

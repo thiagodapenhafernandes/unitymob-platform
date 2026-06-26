@@ -103,9 +103,9 @@
         <div class="flex items-center gap-2">
           <span class="text-sm text-gray-500">Ordenar por:</span>
           <select class="form-select border-none text-sm font-bold text-blue-three focus:ring-0 cursor-pointer bg-transparent py-0 pl-0 pr-8" onchange="window.location.href = this.value">
-            <option value="<%= url_for(params.permit!.merge(sort: 'newest')) %>" <%= 'selected' if params[:sort] == 'newest' || params[:sort].blank? %>>Mais recentes</option>
-            <option value="<%= url_for(params.permit!.merge(sort: 'price_desc')) %>" <%= 'selected' if params[:sort] == 'price_desc' %>>Maior valor</option>
-            <option value="<%= url_for(params.permit!.merge(sort: 'price_asc')) %>" <%= 'selected' if params[:sort] == 'price_asc' %>>Menor valor</option>
+            <option value="<%= habitations_path(request.query_parameters.merge(sort: 'newest', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'newest' || params[:sort].blank? %>>Mais recentes</option>
+            <option value="<%= habitations_path(request.query_parameters.merge(sort: 'price_desc', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'price_desc' %>>Maior valor</option>
+            <option value="<%= habitations_path(request.query_parameters.merge(sort: 'price_asc', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'price_asc' %>>Menor valor</option>
           </select>
         </div>
       </div>
@@ -150,6 +150,7 @@
         <div class="flex justify-center mt-8">
           <%= will_paginate @habitations, 
               renderer: WillPaginate::ActionView::TailwindLinkRenderer,
+              path_helper: ->(page) { habitations_path(request.query_parameters.merge(page: page).compact_blank) },
               inner_window: 2,
               outer_window: 0,
               previous_label: '<i class="bi bi-chevron-left"></i>',

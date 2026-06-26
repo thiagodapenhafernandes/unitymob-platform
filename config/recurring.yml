@@ -40,6 +40,10 @@ production:
     class: CheckIns::StaleActiveCheckinJob
     queue: checkin
     schedule: every 5 minutes
+  lead_pocket_sweep:
+    class: Leads::PocketSweepJob
+    queue: default
+    schedule: every minute
   automation_tick:
     class: Automation::TickJob
     queue: default

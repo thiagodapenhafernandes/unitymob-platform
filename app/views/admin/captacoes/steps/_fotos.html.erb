@@ -22,36 +22,49 @@
 
   <div class="wizard-field-group" data-captacao-photos-target="uploadPanel" hidden>
     <label class="ax-label">Fotos do imóvel</label>
-    <div class="captacao-photo-picker-actions">
-      <label class="ax-btn ax-btn--primary captacao-photo-picker-button tw-mb-0">
-        <i class="bi bi-images"></i>
-        Selecionar da galeria
-        <%= f.file_field (@captacao.is_a?(Habitation) ? :photos : :fotos),
-                         multiple: true,
-                         accept: "image/*",
-                         class: "visually-hidden #{'is-invalid' if field_invalid.call(:photos)}",
-                         direct_upload: true,
-                         data: { captacao_photos_target: "input", action: "change->captacao-photos#filesChanged" } %>
-      </label>
-      <label class="ax-btn ax-btn--ghost captacao-photo-picker-button tw-mb-0">
-        <i class="bi bi-camera"></i>
-        Tirar foto
-        <input type="file"
-               accept="image/*"
-               capture="environment"
-               class="visually-hidden"
-               data-action="change->captacao-photos#filesChanged"
-               data-captacao-photos-append="true">
-      </label>
-    </div>
+    <% photo_actions = capture do %>
+      <div class="captacao-photo-picker-actions">
+        <%= ax_file_upload_button(
+              form: f,
+              method: (@captacao.is_a?(Habitation) ? :photos : :fotos),
+              label: tag.i(class: "bi bi-images") + "Galeria",
+              input_id: "captacao_fotos",
+              multiple: true,
+              accept: "image/*",
+              direct_upload: true,
+              input_class: ("is-invalid" if field_invalid.call(:photos)),
+              class_name: "ax-btn ax-btn--primary captacao-photo-picker-button tw-mb-0",
+              input_data: { captacao_photos_target: "input", action: "change->captacao-photos#filesChanged" }
+            ) %>
+        <label class="ax-btn ax-btn--ghost captacao-photo-picker-button tw-mb-0">
+          <i class="bi bi-camera"></i>
+          Câmera
+          <input type="file"
+                 accept="image/*"
+                 capture="environment"
+                 class="visually-hidden"
+                 data-action="change->captacao-photos#filesChanged"
+                 data-captacao-photos-append="true">
+        </label>
+      </div>
+    <% end %>
+    <%= ax_media_upload_panel(
+          title: "Enviar fotos",
+          description: "Galeria para lote de fotos; câmera para adicionar uma por vez.",
+          icon: "images",
+          actions: photo_actions,
+          class_name: "captacao-photo-upload-panel"
+        ) %>
     <% if field_invalid.call(:photos) %><div class="invalid-feedback d-block">Envie ao menos uma foto do imóvel.</div><% end %>
-    <small class="tw-text-ink-muted">Use a galeria para enviar 20 a 30 fotos de uma vez, ou tire uma foto por vez e vá acrescentando na lista.</small>
   </div>
 
-  <div class="captacao-photo-list tw-mb-4" data-captacao-photos-target="newPhotosPanel" hidden>
-    <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-      <label class="ax-label tw-mb-0">Fotos selecionadas agora</label>
-      <span class="tw-text-sm tw-text-ink-muted">antes do envio</span>
+  <div class="captacao-photo-list captacao-photo-list--new tw-mb-4" data-captacao-photos-target="newPhotosPanel" hidden>
+    <div class="captacao-photo-list__header">
+      <div>
+        <label class="ax-label tw-mb-0">Fotos selecionadas agora</label>
+        <span>Serão enviadas ao avançar.</span>
+      </div>
+      <strong data-captacao-photos-target="newCount">0 novas</strong>
     </div>
     <div class="captacao-photo-empty" data-captacao-photos-target="emptyState">
       Nenhuma foto nova selecionada.
@@ -60,10 +73,13 @@
   </div>
 
   <% if photos_attachment.attached? %>
-    <div class="captacao-photo-list tw-mb-4" data-captacao-photos-target="existingPhotosPanel">
-      <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-        <label class="ax-label tw-mb-0">Fotos já anexadas</label>
-        <span class="tw-text-sm tw-text-ink-muted"><%= pluralize(photos_attachment.count, "foto", "fotos") %></span>
+    <div class="captacao-photo-list captacao-photo-list--existing tw-mb-4" data-captacao-photos-target="existingPhotosPanel">
+      <div class="captacao-photo-list__header">
+        <div>
+          <label class="ax-label tw-mb-0">Fotos já anexadas</label>
+          <span>Ordem atual do imóvel.</span>
+        </div>
+        <strong><%= pluralize(photos_attachment.count, "foto", "fotos") %></strong>
       </div>
       <%= f.hidden_field :ordered_photo_ids,
                          data: { captacao_photos_target: "orderInput" },
@@ -134,13 +150,21 @@
 
   <div class="wizard-field-group">
     <label class="ax-label">Autorização do proprietário</label>
-    <%= f.file_field (@captacao.is_a?(Habitation) ? :autorizacoes_venda : :autorizacao_pdf),
-                     multiple: @captacao.is_a?(Habitation),
-                     accept: "image/*,application/pdf",
-                     class: field_state.call(:autorizacoes_venda),
-                     direct_upload: true %>
+    <div class="captacao-authorization-upload">
+      <%= ax_file_upload_button(
+            form: f,
+            method: (@captacao.is_a?(Habitation) ? :autorizacoes_venda : :autorizacao_pdf),
+            label: tag.i(class: "bi bi-paperclip") + "Anexar autorização",
+            input_id: "captacao_autorizacao",
+            multiple: @captacao.is_a?(Habitation),
+            accept: "image/*,application/pdf",
+            direct_upload: true,
+            input_class: field_state.call(:autorizacoes_venda),
+            class_name: "ax-btn ax-btn--ghost captacao-authorization-upload__button"
+          ) %>
+      <span>Print, imagem ou PDF.</span>
+    </div>
     <% if field_invalid.call(:autorizacoes_venda) %><div class="invalid-feedback d-block">Anexe a autorização do proprietário.</div><% end %>
-    <small class="tw-text-ink-muted">Anexe o print ou PDF da autorização.</small>
   </div>
 
   <% if authorization_attachments.attached? %>

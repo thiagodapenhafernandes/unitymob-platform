@@ -10,12 +10,13 @@ module Leads
     end
 
     # Shark Tank: notifica TODOS os corretores da regra (o 1º que aceitar vira dono).
-    def self.notify_shark_tank(lead, rule)
+    def self.notify_shark_tank(lead, rule, candidates: nil)
       return unless LeadSetting.instance.notify_on_shark_tank?
       return unless rule
 
       dispatcher = new(lead)
-      rule.distribution_rule_agents.includes(:admin_user).each do |dra|
+      scope = candidates || rule.distribution_rule_agents
+      scope.includes(:admin_user).each do |dra|
         agent = dra.admin_user
         dispatcher.deliver_to_agent(agent) if agent
       end
@@ -134,20 +135,46 @@ module Leads
     def deliver_push
       links = Leads::ContactLinks.new(@lead, @corretor)
       secure = links.secure?(:push)
+      click_action = PushSetting.instance.lead_click_action_value
 
-      # Com link seguro, o destino é /s/:token (ação attend): o clique passa pelo
-      # mesmo motor — valida expiração, marca atendido no prazo e abre o lead.
-      # Sem ele, mantém o endpoint autenticado do admin. O contato no corpo só
-      # aparece quando não está mascarado.
-      url = secure ? links.url(:attend) : "/admin/leads/#{@lead.id}/attend"
+      # Endpoint que marca o lead como atendido no prazo (mesmo motor do link seguro).
+      attend_url = secure ? links.url(:attend) : admin_attend_url
+
+      # Padrão "WhatsApp": o clique abre a conversa do lead direto e o service worker
+      # avisa o sistema do aceite em background (beacon) — sem tela intermediária.
+      whatsapp = @lead.direct_whatsapp_url if click_action == "whatsapp"
+
+      if whatsapp.present?
+        url = whatsapp
+        accept_url = secure ? "#{attend_url}?ack=1" : attend_url
+      else
+        # Detalhes primeiro: usa o card seguro do lead e marca o aceite ao abrir.
+        # Mesmo com mascaramento desativado, o push precisa de uma URL segura fora
+        # do admin para funcionar bem no PWA/aparelho do corretor.
+        url = "#{links.url(:attend)}?details=1"
+        accept_url = nil
+      end
+
       body = secure ? "Toque para atender · Origem: #{@lead.origin}" : "#{@lead.display_phone} · Origem: #{@lead.origin}"
 
-      Notifications::PushDispatcher.deliver(
+      sent = Notifications::PushDispatcher.deliver(
         admin_user_id: @corretor.id,
         title: "Novo lead: #{@lead.display_name}",
         body:  body,
-        url:   url
+        url:   url,
+        accept_url: accept_url,
+        tag: "lead-#{@lead.id}-#{@corretor.id}",
+        urgency: "high",
+        ttl: 900,
+        require_interaction: true
       )
+      Rails.logger.warn("[LeadNotify] push nao enviado lead=#{@lead.id} corretor=#{@corretor.id}") if sent.to_i.zero?
+    end
+
+    def admin_attend_url
+      host = ENV["APP_HOST"].presence
+      path = "/admin/leads/#{@lead.id}/attend"
+      host ? "#{host}#{path}" : path
     end
 
     # Template aprovado para notificar o corretor de um novo lead (pt_BR).

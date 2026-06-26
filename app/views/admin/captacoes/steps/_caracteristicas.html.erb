@@ -108,10 +108,10 @@
     </div>
   <% end %>
 
-  <%= ax_field_grid do %>
+  <%= ax_field_grid(class_name: "wizard-switch-grid") do %>
     <% [[:sacada, "Sacada"], [:terraco, "Terraço"], [:dependencia_empregada, "Dep. empregada"], [:precisa_reforma, "Precisa reforma"]].each do |field, label| %>
-      <div class="ax-span-3">
-        <%= ax_switch_field(label: label, form: f, method: field, class_name: "tw-py-2") %>
+      <div class="ax-span-6">
+        <%= ax_switch_field(label: label, form: f, method: field, class_name: "wizard-switch") %>
       </div>
     <% end %>
   <% end %>
@@ -184,7 +184,7 @@
   <hr class="my-3">
   <div class="wizard-field-group">
     <label class="ax-label">Características do imóvel</label>
-    <div class="<%= 'wizard-invalid-choice' if field_invalid.call(:caracteristicas_imovel) %>">
+    <div class="wizard-choice-panel wizard-choice-panel--boxed wizard-choice-panel--scroll <%= 'wizard-invalid-choice' if field_invalid.call(:caracteristicas_imovel) %>">
       <% features_imovel.each do |feat| %>
         <% selected = captacao_feature_selected?(@captacao.caracteristicas_imovel, feat) %>
         <label class="wizard-feature-chip <%= 'selected' if selected %>" data-controller="selectable-chip">

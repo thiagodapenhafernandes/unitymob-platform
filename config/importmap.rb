@@ -12,3 +12,5 @@ pin "tom-select", to: "https://ga.jspm.io/npm:tom-select@2.2.2/dist/js/tom-selec
 pin "trix", preload: false
 pin "@rails/actiontext", to: "actiontext.esm.js", preload: false
 pin "sortablejs", to: "https://ga.jspm.io/npm:sortablejs@1.15.2/modular/sortable.esm.js", preload: false
+pin "@atlaskit/pragmatic-drag-and-drop/combine", to: "https://esm.sh/@atlaskit/pragmatic-drag-and-drop@2.0.1/es2022/combine.bundle.mjs", preload: false
+pin "@atlaskit/pragmatic-drag-and-drop/element/adapter", to: "https://esm.sh/@atlaskit/pragmatic-drag-and-drop@2.0.1/es2022/element/adapter.bundle.mjs", preload: false

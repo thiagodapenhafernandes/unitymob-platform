@@ -21,10 +21,10 @@ class HabitationDuplicateChecker
     return Result.new(complete: false, matches: [], comparison: comparison) unless complete_identity?
 
     candidates = base_scope
-      .where("#{normalized_sql("COALESCE(addresses.logradouro, habitations.endereco)")} = :street", street: normalize(@street))
+      .where(street_match_sql("COALESCE(addresses.logradouro, habitations.endereco)"), street: normalize_street(@street))
       .where("#{normalized_sql("COALESCE(addresses.numero, habitations.numero)")} = :number", number: normalize(@number))
       .where(status: normalized_status)
-      .where(exibir_no_site_flag: true)
+      .where("habitations.exibir_no_site_flag = ? OR habitations.intake_origin = ?", true, Habitation::INTAKE_ORIGIN_BROKER)
       .where.not("habitations.status ~* ?", "suspenso|vendido|alugado")
       .limit(20)
 
@@ -66,7 +66,15 @@ class HabitationDuplicateChecker
   end
 
   def active_duplicate_candidate?(habitation)
+    return true if active_broker_intake?(habitation)
+
     !habitation.unavailable_for_duplicate_check?
+  end
+
+  def active_broker_intake?(habitation)
+    habitation.intake_origin == Habitation::INTAKE_ORIGIN_BROKER &&
+      !habitation.intake_draft? &&
+      !habitation.exibir_no_site_flag?
   end
 
   def same_status?(habitation)
@@ -101,7 +109,7 @@ class HabitationDuplicateChecker
   end
 
   def comparison
-    @comparison ||= if condominium_house_category? && (normalize_unit(@unit).present? || normalize(@complement).present?)
+    @comparison ||= if complement_block_category? && (normalize_unit(@unit).present? || normalize(@complement).present?)
                       :condominium_unit
                     elsif normalize_unit(@unit).present?
                       :unit
@@ -129,16 +137,34 @@ class HabitationDuplicateChecker
     I18n.transliterate(value.to_s.downcase).gsub(/[^a-z0-9]+/, "")
   end
 
+  def normalize_street(value)
+    strip_street_type(value).then { |street| normalize(street) }
+  end
+
   def normalize_unit(value)
     normalize(value).sub(/\A(apartamento|apto|unidade|unid|un|bloco|bl|ap)/, "")
   end
 
-  def condominium_house_category?
+  def complement_block_category?
     normalized_category = I18n.transliterate(@category.to_s.downcase)
-    normalized_category.include?("casa em condominio")
+    normalized_category.include?("casa em condominio") || normalized_category.include?("terreno")
   end
 
   def normalized_sql(expression)
     "regexp_replace(unaccent(lower(COALESCE(#{expression}, ''))), '[^a-z0-9]+', '', 'g')"
+  end
+
+  def normalized_street_sql(expression)
+    "regexp_replace(regexp_replace(unaccent(lower(COALESCE(#{expression}, ''))), " \
+      "'^(rua|r|avenida|av|alameda|travessa|rodovia|estrada|servidao|servidão|beco|praca|praça)\\s+', '', 'i'), " \
+      "'[^a-z0-9]+', '', 'g')"
+  end
+
+  def street_match_sql(expression)
+    "(#{normalized_sql(expression)} = :street OR #{normalized_street_sql(expression)} = :street)"
+  end
+
+  def strip_street_type(value)
+    value.to_s.sub(/\A\s*(rua|r\.?|avenida|av\.?|alameda|travessa|rodovia|estrada|servid[aã]o|beco|pra[çc]a)\s+/i, "")
   end
 end

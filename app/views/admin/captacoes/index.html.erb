@@ -1,109 +1,206 @@
 <%# Captações — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <% modalidade_map = { "venda" => ["blue", "Venda"], "locacao_anual" => ["amber", "Locação"], "ambos" => ["green", "Ambos"], "locacao_diaria" => ["blue", "Temporada"] } %>
 <% dashboard = @captacoes_dashboard || {} %>
-
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Captações</h1>
-    <p class="ax-page-subtitle"><%= current_admin_user.admin? ? "Todas as captações da equipe." : "Suas captações." %></p>
-  </div>
-  <div class="tw-flex tw-flex-wrap tw-gap-2">
-    <% if can_export_captacoes? %>
-      <%= link_to export_admin_captacoes_path(request.query_parameters), class: "ax-btn ax-btn--sm" do %><i class="bi bi-file-earmark-spreadsheet ax-ico"></i><span>Exportar</span><% end %>
+<% filters_active = params[:property_kind].present? || params[:status].present? || params[:corretor_id].present? %>
+<% status_tiles = [
+  ["Total", dashboard[:total].to_i, "neutral"],
+  ["Rascunhos", dashboard[:draft].to_i, "amber"],
+  ["Em revisão", dashboard[:submitted_for_admin_review].to_i, "blue"],
+  ["Aprovadas", dashboard[:admin_approved].to_i, "cyan"],
+  ["Publicadas", dashboard[:published].to_i, "green"],
+  ["Devolvidas", dashboard[:returned_to_broker].to_i, "red"]
+] %>
+<% heading_actions = capture do %>
+  <% if can_export_captacoes? %>
+    <%= link_to export_admin_captacoes_path(request.query_parameters), class: "ax-workspace-heading__tool captacoes-heading-action" do %>
+      <i class="bi bi-file-earmark-spreadsheet"></i>
+      <span>Exportar</span>
     <% end %>
-    <%= link_to new_admin_captacao_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %><i class="bi bi-plus-lg ax-ico"></i><span>Nova captação</span><% end %>
-  </div>
-</div>
-
-<div class="tw-grid tw-grid-cols-3 lg:tw-grid-cols-6 tw-gap-3 tw-mb-3">
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Total</div><div class="ax-stat-value"><%= dashboard[:total].to_i %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Rascunhos</div><div class="ax-stat-value tw-text-amber-600"><%= dashboard[:draft].to_i %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Em revisão</div><div class="ax-stat-value tw-text-blue-600"><%= dashboard[:submitted_for_admin_review].to_i %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Aprovadas</div><div class="ax-stat-value tw-text-cyan-600"><%= dashboard[:admin_approved].to_i %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Publicadas</div><div class="ax-stat-value tw-text-green-600"><%= dashboard[:published].to_i %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Devolvidas</div><div class="ax-stat-value tw-text-red-600"><%= dashboard[:returned_to_broker].to_i %></div></div>
-</div>
-
-<div class="ax-card tw-mb-3">
-  <div class="ax-card__body tw-grid tw-grid-cols-1 md:tw-grid-cols-4 tw-gap-3 tw-text-2xs">
-    <div>
-      <div class="ax-stat-label tw-mb-1">Tipos</div>
-      <div class="tw-flex tw-flex-wrap tw-gap-1"><span class="ax-badge ax-badge--gray">Residencial: <%= dashboard.dig(:property_kinds, :residencial).to_i %></span><span class="ax-badge ax-badge--gray">Comercial: <%= dashboard.dig(:property_kinds, :sala_comercial).to_i %></span><span class="ax-badge ax-badge--gray">Terreno: <%= dashboard.dig(:property_kinds, :terreno).to_i %></span></div>
-    </div>
-    <div class="md:tw-col-span-2">
-      <div class="ax-stat-label tw-mb-1">Modalidades</div>
-      <div class="tw-flex tw-flex-wrap tw-gap-1"><span class="ax-badge ax-badge--blue">Venda: <%= dashboard.dig(:modalities, :venda).to_i %></span><span class="ax-badge ax-badge--amber">Locação: <%= dashboard.dig(:modalities, :locacao_anual).to_i %></span><span class="ax-badge ax-badge--green">Ambos: <%= dashboard.dig(:modalities, :ambos).to_i %></span><span class="ax-badge ax-badge--blue">Temporada: <%= dashboard.dig(:modalities, :locacao_diaria).to_i %></span></div>
-    </div>
-    <div>
-      <div class="ax-stat-label tw-mb-1">Últimos 7 dias / Sem fotos</div>
-      <div class="ax-strong"><%= dashboard[:last_7_days].to_i %> · <%= dashboard[:missing_photos].to_i %> sem fotos</div>
-    </div>
-  </div>
-</div>
-
-<%= form_with url: admin_captacoes_path, method: :get, local: true do %>
-  <div class="ax-card tw-mb-3">
-    <div class="ax-card__body tw-flex tw-flex-wrap tw-items-end tw-gap-3">
-      <div class="tw-w-52"><label class="ax-label">Tipo</label><%= select_tag :property_kind, options_for_select([["Todos os tipos", ""], ["Residencial", "residencial"], ["Sala comercial", "sala_comercial"], ["Terreno", "terreno"]], params[:property_kind]), class: "ax-select" %></div>
-      <div class="tw-w-52"><label class="ax-label">Status</label><%= select_tag :status, options_for_select([["Todos status", ""], ["Rascunhos", "draft"], ["Finalizadas", "completed"], ["Publicadas no site", "published"]], params[:status]), class: "ax-select" %></div>
-      <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-funnel ax-ico"></i>Filtrar</button>
-      <% if params[:property_kind].present? || params[:status].present? %><%= link_to "Limpar", admin_captacoes_path, class: "ax-btn ax-btn--ghost" %><% end %>
-      <%= ax_team_toggle(:captacoes, class_name: "tw-ml-auto") %>
-    </div>
-  </div>
+  <% end %>
+  <%= link_to new_admin_captacao_path, class: "ax-workspace-heading__tool captacoes-heading-action captacoes-heading-action--primary" do %>
+    <i class="bi bi-plus-lg"></i>
+    <span>Nova captação</span>
+  <% end %>
 <% end %>
 
-<div class="ax-table-wrap">
-  <table class="ax-table">
-    <thead>
-      <tr>
-        <th>Imóvel</th>
-        <th style="width:90px">Código</th>
-        <th style="width:120px">Tipo</th>
-        <th style="width:110px">Modalidade</th>
-        <% if current_admin_user.admin? %><th style="width:150px">Corretor</th><% end %>
-        <th class="ax-num" style="width:130px">Valor</th>
-        <th style="width:110px">Status</th>
-        <th style="width:96px">Atualizada</th>
-        <th class="ax-num" style="width:96px">Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @captacoes.each do |c| %>
-        <% mod_color, mod_label = modalidade_map[c.modalidade] || ["gray", "—"] %>
+<div class="captacoes-workspace">
+  <%= ax_workspace_heading(
+        title: "Captações",
+        eyebrow: "Operação",
+        icon: "journal-plus",
+        subtitle: current_admin_user.admin? ? "Captações da equipe, revisão e publicação." : "Suas captações em andamento.",
+        pills: [filters_active ? "Filtrado" : "Todos"],
+        metrics: [
+          { value: dashboard[:total].to_i, label: "total" },
+          { value: dashboard[:missing_photos].to_i, label: "sem fotos" }
+        ],
+        actions: heading_actions,
+        class_name: "captacoes-heading"
+      ) %>
+
+  <section class="captacoes-kpi-strip" aria-label="Resumo de captações">
+    <% status_tiles.each do |label, value, tone| %>
+      <div class="captacoes-kpi captacoes-kpi--<%= tone %>">
+        <span class="captacoes-kpi__label"><%= label %></span>
+        <strong class="captacoes-kpi__value"><%= value %></strong>
+      </div>
+    <% end %>
+  </section>
+
+  <section class="captacoes-signal-strip" aria-label="Indicadores rápidos">
+    <div class="captacoes-signal-group">
+      <span class="captacoes-signal-label">Tipos</span>
+      <span class="ax-badge ax-badge--gray">Residencial: <%= dashboard.dig(:property_kinds, :residencial).to_i %></span>
+      <span class="ax-badge ax-badge--gray">Comercial: <%= dashboard.dig(:property_kinds, :sala_comercial).to_i %></span>
+      <span class="ax-badge ax-badge--gray">Terreno: <%= dashboard.dig(:property_kinds, :terreno).to_i %></span>
+    </div>
+    <div class="captacoes-signal-group">
+      <span class="captacoes-signal-label">Modalidades</span>
+      <span class="ax-badge ax-badge--blue">Venda: <%= dashboard.dig(:modalities, :venda).to_i %></span>
+      <span class="ax-badge ax-badge--amber">Locação: <%= dashboard.dig(:modalities, :locacao_anual).to_i %></span>
+      <span class="ax-badge ax-badge--green">Ambos: <%= dashboard.dig(:modalities, :ambos).to_i %></span>
+      <span class="ax-badge ax-badge--blue">Temporada: <%= dashboard.dig(:modalities, :locacao_diaria).to_i %></span>
+    </div>
+    <div class="captacoes-signal-group captacoes-signal-group--risk">
+      <span class="captacoes-signal-label">Últimos 7 dias / Sem fotos</span>
+      <strong><%= dashboard[:last_7_days].to_i %></strong>
+      <span>·</span>
+      <strong><%= dashboard[:missing_photos].to_i %> sem fotos</strong>
+    </div>
+  </section>
+
+  <%= form_with url: admin_captacoes_path, method: :get, local: true, class: "captacoes-filter-panel" do %>
+    <div class="captacoes-filter-panel__header">
+      <div>
+        <span class="captacoes-filter-panel__eyebrow"><i class="bi bi-funnel"></i> Filtros</span>
+        <strong>Refinar captações</strong>
+      </div>
+      <%= ax_team_toggle(:captacoes, class_name: "captacoes-team-toggle") %>
+    </div>
+    <div class="captacoes-filter-grid">
+      <div class="captacoes-filter-field">
+        <label class="ax-label">Tipo</label>
+        <%= select_tag :property_kind, options_for_select([["Todos os tipos", ""], ["Residencial", "residencial"], ["Sala comercial", "sala_comercial"], ["Terreno", "terreno"]], params[:property_kind]), class: "ax-select" %>
+      </div>
+      <div class="captacoes-filter-field">
+        <label class="ax-label">Status</label>
+        <%= select_tag :status, options_for_select([["Todos status", ""], ["Rascunhos", "draft"], ["Finalizadas", "completed"], ["Publicadas no site", "published"]], params[:status]), class: "ax-select" %>
+      </div>
+      <% if can_filter_intakes_by_broker? %>
+        <div class="captacoes-filter-field captacoes-filter-field--broker">
+          <label class="ax-label">Corretor</label>
+          <%= select_tag :corretor_id,
+                         options_from_collection_for_select(@captacao_brokers, :id, :name, params[:corretor_id]),
+                         include_blank: "Todos corretores",
+                         class: "ax-select" %>
+        </div>
+      <% end %>
+      <div class="captacoes-filter-actions">
+        <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-funnel ax-ico"></i>Filtrar</button>
+        <% if filters_active %><%= link_to "Limpar", admin_captacoes_path, class: "ax-btn ax-btn--ghost" %><% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="captacoes-table-wrap ax-table-wrap">
+    <table class="ax-table">
+      <thead>
         <tr>
-          <td>
-            <div class="ax-strong"><%= c.display_title %></div>
-            <% if c.city.present? %><div class="tw-text-2xs tw-text-ink-faint"><i class="bi bi-geo-alt"></i> <%= c.city %></div><% end %>
-          </td>
-          <td><% if c.codigo.present? %><%= link_to c.codigo, admin_habitations_path(q: c.codigo) %><% else %>—<% end %></td>
-          <td><span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span></td>
-          <td><span class="ax-badge ax-badge--<%= mod_color %>"><%= mod_label %></span></td>
-          <% if current_admin_user.admin? %><td><%= c.corretor.name %></td><% end %>
-          <td class="ax-num"><% if c.valor_venda.present? %><%= number_to_currency(c.valor_venda, unit: "R$ ", precision: 0) %><% elsif c.valor_locacao.present? %><%= number_to_currency(c.valor_locacao, unit: "R$ ", precision: 0) %>/mês<% else %>—<% end %></td>
-          <td>
-            <% if c.published_on_site? %><span class="ax-badge ax-badge--green ax-badge--dot">Publicada</span><% elsif c.completed? %><span class="ax-badge ax-badge--blue ax-badge--dot">Finalizada</span><% else %><span class="ax-badge ax-badge--amber ax-badge--dot">Rascunho</span><% end %>
-          </td>
-          <td class="tw-text-2xs tw-text-ink-muted"><%= time_ago_in_words(c.updated_at) %></td>
-          <td class="ax-num">
-            <% if c.completed? %>
-              <%= link_to admin_captacao_path(c), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
-            <% else %>
-              <%= link_to edit_admin_captacao_path(c), class: "ax-btn ax-btn--sm", title: "Continuar" do %><i class="bi bi-pencil ax-ico"></i><% end %>
-            <% end %>
-          </td>
+          <th>Imóvel</th>
+          <th style="width:90px">Código</th>
+          <th style="width:120px">Tipo</th>
+          <th style="width:110px">Modalidade</th>
+          <% if can_filter_intakes_by_broker? %><th style="width:150px">Corretor</th><% end %>
+          <th class="ax-num" style="width:130px">Valor</th>
+          <th style="width:110px">Status</th>
+          <th style="width:96px">Atualizada</th>
+          <th class="ax-num" style="width:96px">Ações</th>
         </tr>
-      <% end %>
-      <% if @captacoes.empty? %>
-        <tr><td colspan="<%= current_admin_user.admin? ? 9 : 8 %>"><div class="ax-empty">
-          <i class="bi bi-inbox tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>
-          Você ainda não tem captações. <%= link_to "Criar primeira", new_admin_captacao_path, class: "tw-text-primary" %>.
-        </div></td></tr>
-      <% end %>
-    </tbody>
-  </table>
-</div>
+      </thead>
+      <tbody>
+        <% @captacoes.each do |c| %>
+          <% mod_color, mod_label = modalidade_map[c.modalidade] || ["gray", "—"] %>
+          <tr>
+            <td>
+              <div class="ax-strong"><%= c.display_title %></div>
+              <% if c.city.present? %><div class="tw-text-2xs tw-text-ink-faint"><i class="bi bi-geo-alt"></i> <%= c.city %></div><% end %>
+            </td>
+            <td><% if c.codigo.present? %><%= link_to c.codigo, admin_habitations_path(q: c.codigo) %><% else %>—<% end %></td>
+            <td><span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span></td>
+            <td><span class="ax-badge ax-badge--<%= mod_color %>"><%= mod_label %></span></td>
+            <% if can_filter_intakes_by_broker? %><td><%= c.corretor.name %></td><% end %>
+            <td class="ax-num"><% if c.valor_venda.present? %><%= number_to_currency(c.valor_venda, unit: "R$ ", precision: 0) %><% elsif c.valor_locacao.present? %><%= number_to_currency(c.valor_locacao, unit: "R$ ", precision: 0) %>/mês<% else %>—<% end %></td>
+            <td>
+              <% if c.published_on_site? %><span class="ax-badge ax-badge--green ax-badge--dot">Publicada</span><% elsif c.completed? %><span class="ax-badge ax-badge--blue ax-badge--dot">Finalizada</span><% else %><span class="ax-badge ax-badge--amber ax-badge--dot">Rascunho</span><% end %>
+            </td>
+            <td class="tw-text-2xs tw-text-ink-muted"><%= time_ago_in_words(c.updated_at) %></td>
+            <td class="ax-num">
+              <% if c.completed? %>
+                <%= link_to admin_captacao_path(c), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
+              <% else %>
+                <%= link_to edit_admin_captacao_path(c), class: "ax-btn ax-btn--sm", title: "Continuar" do %><i class="bi bi-pencil ax-ico"></i><% end %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @captacoes.empty? %>
+          <tr><td colspan="<%= can_filter_intakes_by_broker? ? 9 : 8 %>"><div class="ax-empty">
+            <i class="bi bi-inbox tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>
+            Você ainda não tem captações. <%= link_to "Criar primeira", new_admin_captacao_path, class: "tw-text-primary" %>.
+          </div></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
 
-<% if @captacoes.respond_to?(:total_pages) && @captacoes.total_pages > 1 %>
-  <%= ax_pagination @captacoes, params: request.query_parameters %>
-<% end %>
+  <div class="captacoes-mobile-list" aria-label="Lista de captações">
+    <% @captacoes.each do |c| %>
+      <% mod_color, mod_label = modalidade_map[c.modalidade] || ["gray", "—"] %>
+      <article class="captacao-mobile-card">
+        <div class="captacao-mobile-card__main">
+          <div class="captacao-mobile-card__title"><%= c.display_title %></div>
+          <div class="captacao-mobile-card__meta">
+            <% if c.codigo.present? %><span>Cod. <%= c.codigo %></span><% end %>
+            <% if c.city.present? %><span><i class="bi bi-geo-alt"></i> <%= c.city %></span><% end %>
+            <% if can_filter_intakes_by_broker? %><span><i class="bi bi-person"></i> <%= c.corretor.name %></span><% end %>
+          </div>
+          <div class="captacao-mobile-card__badges">
+            <span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span>
+            <span class="ax-badge ax-badge--<%= mod_color %>"><%= mod_label %></span>
+            <% if c.published_on_site? %><span class="ax-badge ax-badge--green ax-badge--dot">Publicada</span><% elsif c.completed? %><span class="ax-badge ax-badge--blue ax-badge--dot">Finalizada</span><% else %><span class="ax-badge ax-badge--amber ax-badge--dot">Rascunho</span><% end %>
+          </div>
+        </div>
+        <div class="captacao-mobile-card__side">
+          <strong>
+            <% if c.valor_venda.present? %>
+              <%= number_to_currency(c.valor_venda, unit: "R$ ", precision: 0) %>
+            <% elsif c.valor_locacao.present? %>
+              <%= number_to_currency(c.valor_locacao, unit: "R$ ", precision: 0) %>/mês
+            <% else %>
+              —
+            <% end %>
+          </strong>
+          <span><%= time_ago_in_words(c.updated_at) %></span>
+          <% if c.completed? %>
+            <%= link_to admin_captacao_path(c), class: "ax-btn ax-btn--sm ax-btn--ghost" do %><i class="bi bi-eye ax-ico"></i>Ver<% end %>
+          <% else %>
+            <%= link_to edit_admin_captacao_path(c), class: "ax-btn ax-btn--sm" do %><i class="bi bi-pencil ax-ico"></i>Continuar<% end %>
+          <% end %>
+        </div>
+      </article>
+    <% end %>
+    <% if @captacoes.empty? %>
+      <div class="captacoes-empty-state">
+        <i class="bi bi-inbox"></i>
+        <strong>Nenhuma captação encontrada</strong>
+        <span>Você ainda não tem captações. <%= link_to "Criar primeira", new_admin_captacao_path, class: "tw-text-primary" %>.</span>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @captacoes.respond_to?(:total_pages) && @captacoes.total_pages > 1 %>
+    <div class="captacoes-pagination">
+      <%= ax_pagination @captacoes, params: request.query_parameters %>
+    </div>
+  <% end %>
+</div>

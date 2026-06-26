@@ -1,4 +1,4 @@
-\restrict 6ZH1HlVCQXgfu5WTEN6kXRkbM0pVMIHb9vRHcNXzNEIwJaI9NQLuIkJqPYRoUtl
+\restrict 0M8wMbdB9bsxhaTNfmTVNCVsLzoTCU4uhl1CqtT5Jr3tOYK7ds67VpS6gKIfVIa
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -423,7 +423,8 @@ CREATE TABLE public.admin_users (
     rental_capture_goal integer,
     sales_goal_cents bigint,
     hierarchy_position integer,
-    super_admin boolean DEFAULT false NOT NULL
+    super_admin boolean DEFAULT false NOT NULL,
+    leads_view_mode character varying
 );
 
 
@@ -2678,7 +2679,8 @@ CREATE TABLE public.leads (
     share_token character varying,
     shared_by_admin_user_id bigint,
     vista_import_batch_id bigint,
-    vista_payload jsonb DEFAULT '{}'::jsonb NOT NULL
+    vista_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    business_scoped_user_id character varying
 );
 
 
@@ -3364,6 +3366,50 @@ ALTER SEQUENCE public.public_navigation_sessions_id_seq OWNED BY public.public_n
 
 
 --
+-- Name: push_delivery_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.push_delivery_events (
+    id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    push_subscription_id bigint,
+    lead_id bigint,
+    event_type character varying NOT NULL,
+    tag character varying,
+    endpoint_host character varying,
+    endpoint_sha256 character varying,
+    user_agent text,
+    provider_status character varying,
+    error_class character varying,
+    error_message text,
+    urgency character varying,
+    ttl integer,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: push_delivery_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.push_delivery_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: push_delivery_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.push_delivery_events_id_seq OWNED BY public.push_delivery_events.id;
+
+
+--
 -- Name: push_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3375,7 +3421,7 @@ CREATE TABLE public.push_settings (
     subject_email character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    lead_click_action character varying DEFAULT 'system'::character varying NOT NULL
+    lead_click_action character varying DEFAULT 'whatsapp'::character varying NOT NULL
 );
 
 
@@ -4608,14 +4654,15 @@ CREATE TABLE public.whatsapp_conversations (
     id bigint NOT NULL,
     lead_id bigint,
     assigned_admin_user_id bigint,
-    contact_phone character varying NOT NULL,
+    contact_phone character varying,
     contact_name character varying,
     last_message_at timestamp(6) without time zone,
     last_message_preview character varying,
     unread_count integer DEFAULT 0 NOT NULL,
     status character varying DEFAULT 'open'::character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    business_scoped_user_id character varying
 );
 
 
@@ -4658,7 +4705,8 @@ CREATE TABLE public.whatsapp_messages (
     delivered_at timestamp(6) without time zone,
     read_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    recipient_user_id character varying
 );
 
 
@@ -5213,6 +5261,13 @@ ALTER TABLE ONLY public.public_navigation_events ALTER COLUMN id SET DEFAULT nex
 --
 
 ALTER TABLE ONLY public.public_navigation_sessions ALTER COLUMN id SET DEFAULT nextval('public.public_navigation_sessions_id_seq'::regclass);
+
+
+--
+-- Name: push_delivery_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_delivery_events ALTER COLUMN id SET DEFAULT nextval('public.push_delivery_events_id_seq'::regclass);
 
 
 --
@@ -6034,6 +6089,14 @@ ALTER TABLE ONLY public.public_navigation_events
 
 ALTER TABLE ONLY public.public_navigation_sessions
     ADD CONSTRAINT public_navigation_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: push_delivery_events push_delivery_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_delivery_events
+    ADD CONSTRAINT push_delivery_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -8166,6 +8229,13 @@ CREATE INDEX index_leads_on_admin_user_id ON public.leads USING btree (admin_use
 
 
 --
+-- Name: index_leads_on_bsuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_bsuid ON public.leads USING btree (business_scoped_user_id) WHERE (business_scoped_user_id IS NOT NULL);
+
+
+--
 -- Name: index_leads_on_client_c2s_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8590,6 +8660,55 @@ CREATE INDEX index_public_navigation_sessions_on_lead_id ON public.public_naviga
 --
 
 CREATE UNIQUE INDEX index_public_navigation_sessions_on_token ON public.public_navigation_sessions USING btree (token);
+
+
+--
+-- Name: index_push_delivery_events_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_push_delivery_events_on_admin_user_id ON public.push_delivery_events USING btree (admin_user_id);
+
+
+--
+-- Name: index_push_delivery_events_on_admin_user_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_push_delivery_events_on_admin_user_id_and_created_at ON public.push_delivery_events USING btree (admin_user_id, created_at);
+
+
+--
+-- Name: index_push_delivery_events_on_endpoint_sha256; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_push_delivery_events_on_endpoint_sha256 ON public.push_delivery_events USING btree (endpoint_sha256);
+
+
+--
+-- Name: index_push_delivery_events_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_push_delivery_events_on_lead_id ON public.push_delivery_events USING btree (lead_id);
+
+
+--
+-- Name: index_push_delivery_events_on_lead_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_push_delivery_events_on_lead_id_and_created_at ON public.push_delivery_events USING btree (lead_id, created_at);
+
+
+--
+-- Name: index_push_delivery_events_on_push_subscription_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_push_delivery_events_on_push_subscription_id ON public.push_delivery_events USING btree (push_subscription_id);
+
+
+--
+-- Name: index_push_delivery_events_on_tag_and_event_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_push_delivery_events_on_tag_and_event_type ON public.push_delivery_events USING btree (tag, event_type);
 
 
 --
@@ -9258,6 +9377,13 @@ CREATE INDEX index_vista_raw_records_on_vista_import_batch_id ON public.vista_ra
 
 
 --
+-- Name: index_wa_conversations_on_bsuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_wa_conversations_on_bsuid ON public.whatsapp_conversations USING btree (business_scoped_user_id) WHERE (business_scoped_user_id IS NOT NULL);
+
+
+--
 -- Name: index_whatsapp_business_integrations_on_phone_number_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9674,6 +9800,14 @@ ALTER TABLE ONLY public.solid_queue_blocked_executions
 
 
 --
+-- Name: push_delivery_events fk_rails_4e2921ec0c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_delivery_events
+    ADD CONSTRAINT fk_rails_4e2921ec0c FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: vista_file_assets fk_rails_4efde7904b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9727,6 +9861,14 @@ ALTER TABLE ONLY public.crm_appointments
 
 ALTER TABLE ONLY public.location_pings
     ADD CONSTRAINT fk_rails_550bb129fb FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: push_delivery_events fk_rails_554cf67930; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_delivery_events
+    ADD CONSTRAINT fk_rails_554cf67930 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -10450,6 +10592,14 @@ ALTER TABLE ONLY public.vista_file_assets
 
 
 --
+-- Name: push_delivery_events fk_rails_fdc40cc273; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_delivery_events
+    ADD CONSTRAINT fk_rails_fdc40cc273 FOREIGN KEY (push_subscription_id) REFERENCES public.push_subscriptions(id);
+
+
+--
 -- Name: store_shifts fk_rails_fe171d980e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10469,11 +10619,16 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 6ZH1HlVCQXgfu5WTEN6kXRkbM0pVMIHb9vRHcNXzNEIwJaI9NQLuIkJqPYRoUtl
+\unrestrict 0M8wMbdB9bsxhaTNfmTVNCVsLzoTCU4uhl1CqtT5Jr3tOYK7ds67VpS6gKIfVIa
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260626164000'),
+('20260626103000'),
+('20260624200000'),
+('20260624190000'),
+('20260624180000'),
 ('20260624170000'),
 ('20260624160000'),
 ('20260624150000'),

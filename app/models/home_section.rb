@@ -19,9 +19,12 @@ class HomeSection < ApplicationRecord
       label: "Imóvel DWV",
       where: ["LOWER(TRIM(COALESCE(habitations.imovel_dwv, ''))) = ?", "sim"]
     },
-    "exibir_site_salute" => { label: "Exibir no Site Salute", column: :exibir_no_site_salute_flag },
+    "exibir_no_site" => { label: "Exibir no site", column: :exibir_no_site_flag },
     "administracao_locacao_salute" => { label: "Administração de locação feita pela Salute", column: :salute_rental_management_flag },
     "vitrine_corporate" => { label: "Vitrine Corporate da Página Inicial", column: :home_corporate_flag }
+  }.freeze
+  LEGACY_PROPERTY_FILTER_KEYS = {
+    "exibir_site_salute" => "exibir_no_site"
   }.freeze
 
   # Associations
@@ -61,7 +64,11 @@ class HomeSection < ApplicationRecord
   end
 
   def property_filter_enabled?(key)
-    ActiveModel::Type::Boolean.new.cast((property_filters || {})[key.to_s])
+    raw_filters = property_filters || {}
+    values = [raw_filters[key.to_s]]
+    values.concat(LEGACY_PROPERTY_FILTER_KEYS.select { |_legacy_key, canonical_key| canonical_key == key.to_s }.keys.map { |legacy_key| raw_filters[legacy_key] })
+
+    values.any? { |value| ActiveModel::Type::Boolean.new.cast(value) }
   end
 
   def property_filter_labels
@@ -86,7 +93,9 @@ class HomeSection < ApplicationRecord
   def normalize_property_filters
     raw_filters = property_filters || {}
     self.property_filters = PROPERTY_FILTER_OPTIONS.keys.each_with_object({}) do |key, filters|
-      enabled = ActiveModel::Type::Boolean.new.cast(raw_filters[key] || raw_filters[key.to_sym])
+      legacy_keys = LEGACY_PROPERTY_FILTER_KEYS.select { |_legacy_key, canonical_key| canonical_key == key }.keys
+      raw_value = raw_filters[key] || raw_filters[key.to_sym] || legacy_keys.lazy.map { |legacy_key| raw_filters[legacy_key] || raw_filters[legacy_key.to_sym] }.find(&:present?)
+      enabled = ActiveModel::Type::Boolean.new.cast(raw_value)
       filters[key] = "1" if enabled
     end
   end

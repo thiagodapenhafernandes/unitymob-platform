@@ -65,8 +65,7 @@ class Profile < ApplicationRecord
       "leads" => { "view" => true, "manage" => true, "scope" => "own" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "own" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "own" },
-      "captacoes" => { "view" => true, "manage" => true, "review" => false, "publish" => true, "scope" => "own" },
-      "captacao_dashboard" => { "view" => true }
+      "captacoes" => { "view" => true, "manage" => true, "review" => false, "publish" => true, "scope" => "own" }
     },
     "Administrativo" => {
       "admin" => false,

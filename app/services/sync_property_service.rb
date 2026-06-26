@@ -217,10 +217,13 @@ class SyncPropertyService
   end
 
   def filtered_habitation_attrs(attrs, existing_record:)
-    return attrs unless existing_record
-    return attrs unless preserve_manual_fields?
+    filtered_attrs = attrs.dup
+    filtered_attrs.delete(:exibir_no_site_flag) if existing_record
 
-    attrs.slice(*PRESERVED_MANUAL_MODE_FIELDS)
+    return filtered_attrs unless existing_record
+    return filtered_attrs unless preserve_manual_fields?
+
+    filtered_attrs.slice(*PRESERVED_MANUAL_MODE_FIELDS)
   end
 
   def sync_address_for?(existing_record:)

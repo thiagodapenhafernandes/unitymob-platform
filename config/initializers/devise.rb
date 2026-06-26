@@ -164,13 +164,17 @@ Devise.setup do |config|
 
   # ==> Configuration for :rememberable
   # The time the user will be remembered without asking for credentials again.
-  # config.remember_for = 2.weeks
+  # PWA de campo: corretor não pode ser deslogado sozinho. Janela longa + extensão
+  # a cada uso mantém o login vivo enquanto o app for usado.
+  config.remember_for = 6.months
 
   # Invalidates all the remember me tokens when the user signs out.
+  # Mantém true: só o logout explícito encerra a sessão lembrada.
   config.expire_all_remember_me_on_sign_out = true
 
   # If true, extends the user's remember period when remembered via cookie.
-  # config.extend_remember_period = false
+  # Renova o token a cada acesso, então usuário ativo nunca expira.
+  config.extend_remember_period = true
 
   # Options to be passed to the created cookie. For instance, you can set
   # secure: true in order to force SSL only cookies.

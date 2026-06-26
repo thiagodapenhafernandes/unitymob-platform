@@ -64,7 +64,7 @@ module Whatsapp
       return error_result("Integração não configurada") unless configured?
 
       url = "#{base}/#{@integration.phone_number_id}/messages"
-      body = { messaging_product: "whatsapp", recipient_type: "individual", to: normalize(to) }.merge(payload)
+      body = { messaging_product: "whatsapp", recipient_type: "individual" }.merge(recipient_field(to)).merge(payload)
       response = HTTParty.post(url, headers: auth_headers, body: body.to_json, timeout: 15)
       parse(response)
     rescue => e
@@ -81,6 +81,17 @@ module Whatsapp
 
     def auth_headers
       { "Authorization" => "Bearer #{token}", "Content-Type" => "application/json" }
+    end
+
+    # Campo de destinatário da Cloud API:
+    # - telefone  -> { to: "<E.164>" }
+    # - BSUID     -> { recipient: "<BSUID>" }  (passe `to: { user_id: "<bsuid>" }`)
+    # Conforme a doc da Meta: o BSUID vai no campo `recipient` (omitindo `to`).
+    # Use o valor inteiro do BSUID (código do país + ponto + alfanumérico).
+    def recipient_field(to)
+      return { recipient: to[:user_id].to_s } if to.is_a?(Hash) && to[:user_id].present?
+
+      { to: normalize(to) }
     end
 
     def normalize(phone)

@@ -30,6 +30,12 @@ module WillPaginate
       def html_container(html)
         tag(:div, html, container_attributes)
       end
+
+      def url(page)
+        return super unless @options[:path_helper].respond_to?(:call)
+
+        @options[:path_helper].call(page)
+      end
     end
 
     class AxPaginationRenderer < LinkRenderer

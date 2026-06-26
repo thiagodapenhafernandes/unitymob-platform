@@ -52,6 +52,37 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.valor_alugado_terceiros_cents).to eq(450_000)
       expect(habitation.valor_vendido_terceiros_cents).to eq(98_000_000)
     end
+
+    it "clears formatted money values when the submitted value is blank" do
+      habitation = create(:habitation, valor_venda_cents: 500_000_00)
+
+      habitation.update!(valor_venda_formatted: "")
+
+      expect(habitation.reload.valor_venda_cents).to be_nil
+    end
+  end
+
+  describe "broker intake address complement rules" do
+    it "requires complement for category-specific intakes without treating street houses as mandatory complement" do
+      expect(described_class.new(categoria: "Apartamento")).to be_requires_intake_address_complement
+      expect(described_class.new(categoria: "Casa em Condomínio")).to be_requires_intake_address_complement
+      expect(described_class.new(categoria: "Sala Comercial")).to be_requires_intake_address_complement
+      expect(described_class.new(categoria: "Terreno")).to be_requires_intake_address_complement
+      expect(described_class.new(categoria: "Casa")).not_to be_requires_intake_address_complement
+    end
+
+    it "allows the owner broker or assigned broker to release a broker intake" do
+      owner = create(:admin_user)
+      assigned = create(:admin_user)
+      outsider = create(:admin_user)
+      habitation = create(:habitation, :broker_intake, admin_user: owner, intake_status: "admin_approved")
+      habitation.broker_assignments.create!(admin_user: assigned, role: "captador")
+
+      expect(habitation).to be_broker_release_pending
+      expect(habitation.broker_responsible_for?(owner)).to be(true)
+      expect(habitation.broker_responsible_for?(assigned)).to be(true)
+      expect(habitation.broker_responsible_for?(outsider)).to be(false)
+    end
   end
 
   describe "#inactive_for_admin_card?" do

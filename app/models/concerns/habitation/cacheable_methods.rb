@@ -6,21 +6,21 @@ module Habitation::CacheableMethods
   
   # Retorna área formatada com cache
   def area_formatted
-    Rails.cache.fetch([cache_key, 'area_formatted'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'area_formatted'], expires_in: CACHE_EXPIRATION) do
       calculate_area_formatted
     end
   end
   
   # Retorna título do card com cache
   def card_title
-    Rails.cache.fetch([cache_key, 'card_title'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'card_title'], expires_in: CACHE_EXPIRATION) do
       display_title.presence || default_title
     end
   end
   
   # Retorna descrição resumida com cache
   def short_description(length = 150)
-    Rails.cache.fetch([cache_key, "short_description_#{length}"], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, "short_description_#{length}"], expires_in: CACHE_EXPIRATION) do
       return '' if descricao_web.blank?
       
       text = descricao_web.strip
@@ -34,14 +34,14 @@ module Habitation::CacheableMethods
   
   # Retorna endereço completo formatado com cache
   def full_address
-    Rails.cache.fetch([cache_key, 'full_address'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'full_address'], expires_in: CACHE_EXPIRATION) do
       calculate_full_address
     end
   end
   
   # Retorna endereço resumido com cache
   def short_address
-    Rails.cache.fetch([cache_key, 'short_address'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'short_address'], expires_in: CACHE_EXPIRATION) do
       parts = []
       parts << bairro if bairro.present?
       parts << cidade if cidade.present?
@@ -51,28 +51,28 @@ module Habitation::CacheableMethods
   
   # Retorna características principais com cache
   def main_features
-    Rails.cache.fetch([cache_key, 'main_features'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'main_features'], expires_in: CACHE_EXPIRATION) do
       calculate_main_features
     end
   end
   
   # Retorna URL da imagem principal com cache
   def primary_image_url
-    Rails.cache.fetch([cache_key, 'primary_image_url'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'primary_image_url'], expires_in: CACHE_EXPIRATION) do
       Storage::PublicCdnImageUrl.resolve(primary_image)
     end
   end
   
   # Retorna todas as URLs de imagens com cache
   def image_urls
-    Rails.cache.fetch([cache_key, 'image_urls'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'image_urls'], expires_in: CACHE_EXPIRATION) do
       all_images.filter_map { |img| Storage::PublicCdnImageUrl.resolve(img) }
     end
   end
   
   # Retorna dados formatados para card com cache
   def card_data
-    Rails.cache.fetch([cache_key, 'card_data'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'card_data'], expires_in: CACHE_EXPIRATION) do
       {
         id: id,
         codigo: codigo,

@@ -473,7 +473,7 @@ module Vista
         observacoes_visitas: visit_notes(api),
         key_location: key_location(api),
         key_location_notes: value(api["Chave"]),
-        exibir_no_site_flag: yes?(api["ExibirNoSite"]) || yes?(api["ExibirNoSiteSalute"]),
+        exibir_no_site_flag: local_publication_flag_for(habitation, api),
         exibir_no_site_salute_flag: yes?(api["ExibirNoSiteSalute"]),
         destaque_web_flag: yes?(api["DestaqueWeb"]),
         festival_salute_flag: yes?(api["SuperDestaqueWeb"]) || yes?(api["FestivalSalute"]),
@@ -543,6 +543,16 @@ module Vista
       habitation.assign_attributes(attrs)
       habitation.save!
       ensure_attribute_options!(features.keys, infrastructure)
+    end
+
+    def local_publication_flag_for(habitation, api)
+      return habitation.exibir_no_site_flag if habitation.persisted?
+
+      vista_publication_flag(api)
+    end
+
+    def vista_publication_flag(api)
+      yes?(api["ExibirNoSite"]) || yes?(api["ExibirNoSiteSalute"])
     end
 
     def update_address!(habitation, api)
