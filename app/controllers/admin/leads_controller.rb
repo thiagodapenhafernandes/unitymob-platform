@@ -8,6 +8,7 @@ class Admin::LeadsController < Admin::BaseController
     @q = params[:q]
     @status = params[:status]
     @origin = params[:origin]
+    @tags = Array(params[:tags]).map(&:to_s).reject(&:blank?)
     @broker_id = params[:broker_id]
     @property_filter = params[:property_filter]
     @property_q = params[:property_q].to_s.strip
@@ -28,6 +29,7 @@ class Admin::LeadsController < Admin::BaseController
     
     lead_scope = lead_scope.where(leads: { status: Lead.status_value(@status) }) if @status.present?
     lead_scope = lead_scope.by_origin(@origin)
+    lead_scope = lead_scope.with_any_tags(@tags)
     lead_scope = apply_broker_filter(lead_scope)
     lead_scope = apply_property_filter(lead_scope)
     lead_scope = apply_contact_filter(lead_scope)
@@ -329,6 +331,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def load_origin_options
     @origin_options = Lead.origin_options
+    @tag_options = Lead.tag_options
     @status_options = Lead.status_options
     @broker_options = permitted_admin_users_for_leads.order(:name).pluck(:name, :id)
   end

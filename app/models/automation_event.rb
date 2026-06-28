@@ -23,8 +23,10 @@ class AutomationEvent < ApplicationRecord
   def source_label
     {
       "lead" => "Lead",
+      "distribution" => "Distribuição",
       "proposal" => "Proposta",
       "whatsapp" => "WhatsApp",
+      "whatsapp_campaign" => "Disparo WhatsApp",
       "automation_tick" => "Rotina",
       "interest_intelligence" => "Inteligência de Interesse",
       "platform" => "Plataforma"

@@ -92,6 +92,24 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Período")
       expect(response.body).not_to include("Lead Fora do Filtro")
     end
+
+    it "filtra por tags em lista e kanban" do
+      create(:lead, name: "Lead Premium", phone: "11999999999", status: "Novo", tags: ["Produto", "Premium"])
+      create(:lead, name: "Lead Popular", phone: "11888888888", status: "Novo", tags: ["Popular"])
+
+      get admin_leads_path(view: "list", tags: ["Premium"])
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead Premium")
+      expect(response.body).to include("Tags")
+      expect(response.body).not_to include("Lead Popular")
+
+      get admin_leads_path(view: "kanban", tags: ["Premium"])
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead Premium")
+      expect(response.body).not_to include("Lead Popular")
+    end
   end
 
   describe "PATCH /admin/leads/:id" do

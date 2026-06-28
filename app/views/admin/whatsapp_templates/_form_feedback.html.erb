@@ -1,0 +1,26 @@
+<%
+  messages = template.errors.full_messages
+  messages << template.submission_error if template.submission_error.present?
+  messages = messages.compact_blank.uniq
+%>
+
+<% if messages.any? %>
+  <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle", class_name: "whatsapp-template-form__feedback") do %>
+    <span>
+      <strong>Não foi possível enviar este modelo para aprovação.</strong>
+      <span>Corrija os pontos abaixo e tente novamente.</span>
+      <ul>
+        <% messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </span>
+  <% end %>
+<% elsif flash.now[:alert].present? %>
+  <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle", class_name: "whatsapp-template-form__feedback") do %>
+    <span>
+      <strong>Não foi possível enviar este modelo para aprovação.</strong>
+      <span><%= flash.now[:alert] %></span>
+    </span>
+  <% end %>
+<% end %>

@@ -119,4 +119,30 @@ RSpec.describe "Admin::AutomationRules", type: :request do
       expect(AutomationRule.last.name).to eq("Resgate de lead frio")
     end
   end
+
+  describe "POST test_webhook" do
+    it "executa uma entrega de teste e retorna o status" do
+      delivery = AutomationWebhookDelivery.new(status: "success", response_code: 200)
+      allow(Automation::WebhookTestDelivery).to receive(:call).and_return(delivery)
+
+      post test_webhook_admin_automation_rules_path,
+           params: {
+             url: "https://example.test/hook",
+             http_method: "post",
+             headers: "X-Test: 1",
+             payload_template: { lead: { name: "{{nome}}" } }.to_json
+           },
+           headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+      expect(data["ok"]).to be true
+      expect(Automation::WebhookTestDelivery).to have_received(:call).with(
+        url: "https://example.test/hook",
+        http_method: "post",
+        headers: "X-Test: 1",
+        payload_template: { lead: { name: "{{nome}}" } }.to_json
+      )
+    end
+  end
 end

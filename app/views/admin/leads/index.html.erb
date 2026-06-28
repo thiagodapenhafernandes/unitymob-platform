@@ -485,6 +485,7 @@
   lead_filter_labels << "Busca" if @q.present?
   lead_filter_labels << "Status" if @status.present?
   lead_filter_labels << "Origem" if @origin.present?
+  lead_filter_labels << "Tags" if @tags.present?
   lead_filter_labels << "Corretor" if @broker_id.present?
   lead_filter_labels << "Imóvel" if @property_filter.present? || @property_q.present?
   lead_filter_labels << "Contato" if @contact_filter.present?
@@ -561,6 +562,19 @@
           <%= ax_select_field(form: f, method: :origin, label: "Origem",
                               choices: @origin_options,
                               select_options: { include_blank: "Todas as origens", selected: @origin }) %>
+        </div>
+        <div class="ax-span-12">
+          <%= ax_autocomplete_select_field(
+                form: f,
+                method: :tags,
+                label: "Tags",
+                choices: @tag_options.map { |tag| [tag, tag] },
+                select_options: { selected: @tags },
+                multiple: true,
+                tags: true,
+                create: true,
+                placeholder: "Filtrar por uma ou mais tags..."
+              ) %>
         </div>
         <div class="ax-span-6">
           <%= ax_select_field(form: f, method: :broker_id, label: "Corretor",

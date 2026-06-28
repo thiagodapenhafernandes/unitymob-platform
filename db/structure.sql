@@ -1,4 +1,4 @@
-\restrict 0M8wMbdB9bsxhaTNfmTVNCVsLzoTCU4uhl1CqtT5Jr3tOYK7ds67VpS6gKIfVIa
+\restrict eyLftfcBQsefKqtwVCDRPnj0jGabteTJadg5ugtWWmi9iqTFATpndbIF9QHhUaJ
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -767,6 +767,51 @@ CREATE SEQUENCE public.automation_runs_id_seq
 --
 
 ALTER SEQUENCE public.automation_runs_id_seq OWNED BY public.automation_runs.id;
+
+
+--
+-- Name: automation_webhook_deliveries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automation_webhook_deliveries (
+    id bigint NOT NULL,
+    automation_event_id bigint,
+    automation_run_id bigint,
+    automation_execution_step_id bigint,
+    lead_id bigint,
+    url character varying NOT NULL,
+    http_method character varying DEFAULT 'post'::character varying NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    response_code integer,
+    request_headers jsonb DEFAULT '{}'::jsonb NOT NULL,
+    request_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    response_body text,
+    error_message text,
+    sent_at timestamp(6) without time zone,
+    responded_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: automation_webhook_deliveries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.automation_webhook_deliveries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: automation_webhook_deliveries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.automation_webhook_deliveries_id_seq OWNED BY public.automation_webhook_deliveries.id;
 
 
 --
@@ -2680,7 +2725,8 @@ CREATE TABLE public.leads (
     shared_by_admin_user_id bigint,
     vista_import_batch_id bigint,
     vista_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
-    business_scoped_user_id character varying
+    business_scoped_user_id character varying,
+    tags jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -4647,6 +4693,165 @@ ALTER SEQUENCE public.whatsapp_business_integrations_id_seq OWNED BY public.what
 
 
 --
+-- Name: whatsapp_campaign_messages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.whatsapp_campaign_messages (
+    id bigint NOT NULL,
+    whatsapp_campaign_id bigint NOT NULL,
+    lead_id bigint,
+    whatsapp_message_id bigint,
+    phone_number character varying NOT NULL,
+    external_message_id character varying,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    template_variables jsonb DEFAULT '{}'::jsonb NOT NULL,
+    queued_at timestamp(6) without time zone,
+    sent_at timestamp(6) without time zone,
+    delivered_at timestamp(6) without time zone,
+    read_at timestamp(6) without time zone,
+    failed_at timestamp(6) without time zone,
+    replied_at timestamp(6) without time zone,
+    failure_reason text,
+    retry_count integer DEFAULT 0 NOT NULL,
+    next_retry_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    whatsapp_campaign_recipient_id bigint,
+    reply_type character varying,
+    reply_body text,
+    reply_button_text character varying,
+    reply_button_payload character varying,
+    reply_payload jsonb DEFAULT '{}'::jsonb NOT NULL
+);
+
+
+--
+-- Name: whatsapp_campaign_messages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.whatsapp_campaign_messages_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: whatsapp_campaign_messages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.whatsapp_campaign_messages_id_seq OWNED BY public.whatsapp_campaign_messages.id;
+
+
+--
+-- Name: whatsapp_campaign_recipients; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.whatsapp_campaign_recipients (
+    id bigint NOT NULL,
+    whatsapp_campaign_id bigint NOT NULL,
+    lead_id bigint,
+    admin_user_id bigint,
+    source character varying DEFAULT 'spreadsheet'::character varying NOT NULL,
+    name character varying,
+    phone_number character varying NOT NULL,
+    email character varying,
+    origin character varying,
+    status character varying,
+    tags jsonb DEFAULT '[]'::jsonb NOT NULL,
+    custom_data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    conversion_status character varying DEFAULT 'pending'::character varying NOT NULL,
+    converted_at timestamp(6) without time zone,
+    unsubscribed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: whatsapp_campaign_recipients_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.whatsapp_campaign_recipients_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: whatsapp_campaign_recipients_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.whatsapp_campaign_recipients_id_seq OWNED BY public.whatsapp_campaign_recipients.id;
+
+
+--
+-- Name: whatsapp_campaigns; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.whatsapp_campaigns (
+    id bigint NOT NULL,
+    whatsapp_template_id bigint NOT NULL,
+    created_by_id bigint NOT NULL,
+    name character varying NOT NULL,
+    description text,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    audience_filters jsonb DEFAULT '{}'::jsonb NOT NULL,
+    template_variables jsonb DEFAULT '{}'::jsonb NOT NULL,
+    scheduled_at timestamp(6) without time zone,
+    started_at timestamp(6) without time zone,
+    completed_at timestamp(6) without time zone,
+    paused_at timestamp(6) without time zone,
+    cancelled_at timestamp(6) without time zone,
+    send_rate integer DEFAULT 50 NOT NULL,
+    requested_recipients integer DEFAULT 0 NOT NULL,
+    total_recipients integer DEFAULT 0 NOT NULL,
+    sent_count integer DEFAULT 0 NOT NULL,
+    delivered_count integer DEFAULT 0 NOT NULL,
+    read_count integer DEFAULT 0 NOT NULL,
+    failed_count integer DEFAULT 0 NOT NULL,
+    replied_count integer DEFAULT 0 NOT NULL,
+    failure_reason text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    whatsapp_sender_number_id bigint,
+    group_name character varying,
+    audience_mode character varying DEFAULT 'filters'::character varying NOT NULL,
+    audience_definition jsonb DEFAULT '{}'::jsonb NOT NULL,
+    import_batch_size integer DEFAULT 300 NOT NULL,
+    import_interval_minutes integer DEFAULT 1 NOT NULL,
+    import_status character varying,
+    import_total_rows integer DEFAULT 0 NOT NULL,
+    import_valid_rows integer DEFAULT 0 NOT NULL,
+    import_invalid_rows integer DEFAULT 0 NOT NULL,
+    import_last_error text,
+    response_decisions jsonb DEFAULT '{}'::jsonb NOT NULL
+);
+
+
+--
+-- Name: whatsapp_campaigns_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.whatsapp_campaigns_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: whatsapp_campaigns_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.whatsapp_campaigns_id_seq OWNED BY public.whatsapp_campaigns.id;
+
+
+--
 -- Name: whatsapp_conversations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4730,6 +4935,48 @@ ALTER SEQUENCE public.whatsapp_messages_id_seq OWNED BY public.whatsapp_messages
 
 
 --
+-- Name: whatsapp_sender_numbers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.whatsapp_sender_numbers (
+    id bigint NOT NULL,
+    whatsapp_business_integration_id bigint,
+    label character varying NOT NULL,
+    display_phone_number character varying NOT NULL,
+    phone_number_id character varying NOT NULL,
+    waba_id character varying,
+    verified_name character varying,
+    quality_rating character varying,
+    status character varying DEFAULT 'connected'::character varying NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    cpl_sent_unit_price numeric(10,2) DEFAULT 0.59 NOT NULL,
+    cpl_fla_unit_price numeric(10,2) DEFAULT 0.12 NOT NULL
+);
+
+
+--
+-- Name: whatsapp_sender_numbers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.whatsapp_sender_numbers_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: whatsapp_sender_numbers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.whatsapp_sender_numbers_id_seq OWNED BY public.whatsapp_sender_numbers.id;
+
+
+--
 -- Name: whatsapp_templates; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4743,7 +4990,19 @@ CREATE TABLE public.whatsapp_templates (
     status character varying,
     meta_id character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    template_type character varying DEFAULT 'text'::character varying NOT NULL,
+    allow_category_change boolean DEFAULT false NOT NULL,
+    header_format character varying DEFAULT 'none'::character varying NOT NULL,
+    header_text character varying,
+    header_media_handle character varying,
+    footer_text character varying,
+    buttons jsonb DEFAULT '[]'::jsonb NOT NULL,
+    example_values jsonb DEFAULT '[]'::jsonb NOT NULL,
+    components jsonb DEFAULT '[]'::jsonb NOT NULL,
+    submission_error text,
+    carousel_cards jsonb DEFAULT '[]'::jsonb NOT NULL,
+    flow_config jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -4876,6 +5135,13 @@ ALTER TABLE ONLY public.automation_rules ALTER COLUMN id SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.automation_runs ALTER COLUMN id SET DEFAULT nextval('public.automation_runs_id_seq'::regclass);
+
+
+--
+-- Name: automation_webhook_deliveries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_webhook_deliveries ALTER COLUMN id SET DEFAULT nextval('public.automation_webhook_deliveries_id_seq'::regclass);
 
 
 --
@@ -5495,6 +5761,27 @@ ALTER TABLE ONLY public.whatsapp_business_integrations ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: whatsapp_campaign_messages id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_messages ALTER COLUMN id SET DEFAULT nextval('public.whatsapp_campaign_messages_id_seq'::regclass);
+
+
+--
+-- Name: whatsapp_campaign_recipients id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_recipients ALTER COLUMN id SET DEFAULT nextval('public.whatsapp_campaign_recipients_id_seq'::regclass);
+
+
+--
+-- Name: whatsapp_campaigns id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaigns ALTER COLUMN id SET DEFAULT nextval('public.whatsapp_campaigns_id_seq'::regclass);
+
+
+--
 -- Name: whatsapp_conversations id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5506,6 +5793,13 @@ ALTER TABLE ONLY public.whatsapp_conversations ALTER COLUMN id SET DEFAULT nextv
 --
 
 ALTER TABLE ONLY public.whatsapp_messages ALTER COLUMN id SET DEFAULT nextval('public.whatsapp_messages_id_seq'::regclass);
+
+
+--
+-- Name: whatsapp_sender_numbers id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_sender_numbers ALTER COLUMN id SET DEFAULT nextval('public.whatsapp_sender_numbers_id_seq'::regclass);
 
 
 --
@@ -5649,6 +5943,14 @@ ALTER TABLE ONLY public.automation_rules
 
 ALTER TABLE ONLY public.automation_runs
     ADD CONSTRAINT automation_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: automation_webhook_deliveries automation_webhook_deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_webhook_deliveries
+    ADD CONSTRAINT automation_webhook_deliveries_pkey PRIMARY KEY (id);
 
 
 --
@@ -6364,6 +6666,30 @@ ALTER TABLE ONLY public.whatsapp_business_integrations
 
 
 --
+-- Name: whatsapp_campaign_messages whatsapp_campaign_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_messages
+    ADD CONSTRAINT whatsapp_campaign_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: whatsapp_campaign_recipients whatsapp_campaign_recipients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_recipients
+    ADD CONSTRAINT whatsapp_campaign_recipients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: whatsapp_campaigns whatsapp_campaigns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaigns
+    ADD CONSTRAINT whatsapp_campaigns_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: whatsapp_conversations whatsapp_conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6377,6 +6703,14 @@ ALTER TABLE ONLY public.whatsapp_conversations
 
 ALTER TABLE ONLY public.whatsapp_messages
     ADD CONSTRAINT whatsapp_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: whatsapp_sender_numbers whatsapp_sender_numbers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_sender_numbers
+    ADD CONSTRAINT whatsapp_sender_numbers_pkey PRIMARY KEY (id);
 
 
 --
@@ -6507,6 +6841,13 @@ CREATE UNIQUE INDEX idx_hba_vista_batch_source_key ON public.habitation_broker_a
 
 
 --
+-- Name: idx_on_automation_execution_step_id_3b66d0bae6; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_automation_execution_step_id_3b66d0bae6 ON public.automation_webhook_deliveries USING btree (automation_execution_step_id);
+
+
+--
 -- Name: idx_on_broker_capture_fallback_admin_user_id_a0c8e86b6d; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6546,6 +6887,13 @@ CREATE INDEX idx_on_vista_habitation_code_occurred_at_914b53c11a ON public.habit
 --
 
 CREATE INDEX idx_on_vista_habitation_code_occurred_at_965a8d5412 ON public.client_interactions USING btree (vista_habitation_code, occurred_at);
+
+
+--
+-- Name: idx_on_whatsapp_business_integration_id_1506c99b7b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_whatsapp_business_integration_id_1506c99b7b ON public.whatsapp_sender_numbers USING btree (whatsapp_business_integration_id);
 
 
 --
@@ -6623,6 +6971,27 @@ CREATE UNIQUE INDEX idx_vista_file_assets_unique_source ON public.vista_file_ass
 --
 
 CREATE UNIQUE INDEX idx_vista_raw_records_batch_table_row ON public.vista_raw_records USING btree (vista_import_batch_id, table_name, row_index);
+
+
+--
+-- Name: idx_wa_campaign_messages_on_campaign_lead; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_campaign_messages_on_campaign_lead ON public.whatsapp_campaign_messages USING btree (whatsapp_campaign_id, lead_id);
+
+
+--
+-- Name: idx_wa_campaign_messages_on_recipient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_campaign_messages_on_recipient ON public.whatsapp_campaign_messages USING btree (whatsapp_campaign_recipient_id);
+
+
+--
+-- Name: idx_wa_campaign_recipients_on_campaign_phone; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_wa_campaign_recipients_on_campaign_phone ON public.whatsapp_campaign_recipients USING btree (whatsapp_campaign_id, phone_number);
 
 
 --
@@ -7050,6 +7419,41 @@ CREATE INDEX index_automation_runs_on_automation_rule_id_and_lead_id ON public.a
 --
 
 CREATE INDEX index_automation_runs_on_lead_id ON public.automation_runs USING btree (lead_id);
+
+
+--
+-- Name: index_automation_webhook_deliveries_on_automation_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_webhook_deliveries_on_automation_event_id ON public.automation_webhook_deliveries USING btree (automation_event_id);
+
+
+--
+-- Name: index_automation_webhook_deliveries_on_automation_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_webhook_deliveries_on_automation_run_id ON public.automation_webhook_deliveries USING btree (automation_run_id);
+
+
+--
+-- Name: index_automation_webhook_deliveries_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_webhook_deliveries_on_created_at ON public.automation_webhook_deliveries USING btree (created_at);
+
+
+--
+-- Name: index_automation_webhook_deliveries_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_webhook_deliveries_on_lead_id ON public.automation_webhook_deliveries USING btree (lead_id);
+
+
+--
+-- Name: index_automation_webhook_deliveries_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_webhook_deliveries_on_status ON public.automation_webhook_deliveries USING btree (status);
 
 
 --
@@ -8271,6 +8675,13 @@ CREATE INDEX index_leads_on_shared_by_admin_user_id ON public.leads USING btree 
 
 
 --
+-- Name: index_leads_on_tags; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tags ON public.leads USING gin (tags);
+
+
+--
 -- Name: index_leads_on_vista_import_batch_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9405,6 +9816,167 @@ CREATE INDEX index_whatsapp_business_integrations_on_waba_id ON public.whatsapp_
 
 
 --
+-- Name: index_whatsapp_campaign_messages_on_external_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_whatsapp_campaign_messages_on_external_message_id ON public.whatsapp_campaign_messages USING btree (external_message_id) WHERE (external_message_id IS NOT NULL);
+
+
+--
+-- Name: index_whatsapp_campaign_messages_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_messages_on_lead_id ON public.whatsapp_campaign_messages USING btree (lead_id);
+
+
+--
+-- Name: index_whatsapp_campaign_messages_on_next_retry_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_messages_on_next_retry_at ON public.whatsapp_campaign_messages USING btree (next_retry_at);
+
+
+--
+-- Name: index_whatsapp_campaign_messages_on_reply_button_text; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_messages_on_reply_button_text ON public.whatsapp_campaign_messages USING btree (reply_button_text);
+
+
+--
+-- Name: index_whatsapp_campaign_messages_on_reply_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_messages_on_reply_type ON public.whatsapp_campaign_messages USING btree (reply_type);
+
+
+--
+-- Name: index_whatsapp_campaign_messages_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_messages_on_status ON public.whatsapp_campaign_messages USING btree (status);
+
+
+--
+-- Name: index_whatsapp_campaign_messages_on_whatsapp_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_messages_on_whatsapp_campaign_id ON public.whatsapp_campaign_messages USING btree (whatsapp_campaign_id);
+
+
+--
+-- Name: index_whatsapp_campaign_messages_on_whatsapp_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_messages_on_whatsapp_message_id ON public.whatsapp_campaign_messages USING btree (whatsapp_message_id);
+
+
+--
+-- Name: index_whatsapp_campaign_recipients_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_recipients_on_admin_user_id ON public.whatsapp_campaign_recipients USING btree (admin_user_id);
+
+
+--
+-- Name: index_whatsapp_campaign_recipients_on_conversion_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_recipients_on_conversion_status ON public.whatsapp_campaign_recipients USING btree (conversion_status);
+
+
+--
+-- Name: index_whatsapp_campaign_recipients_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_recipients_on_lead_id ON public.whatsapp_campaign_recipients USING btree (lead_id);
+
+
+--
+-- Name: index_whatsapp_campaign_recipients_on_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_recipients_on_source ON public.whatsapp_campaign_recipients USING btree (source);
+
+
+--
+-- Name: index_whatsapp_campaign_recipients_on_tags; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_recipients_on_tags ON public.whatsapp_campaign_recipients USING gin (tags);
+
+
+--
+-- Name: index_whatsapp_campaign_recipients_on_whatsapp_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_recipients_on_whatsapp_campaign_id ON public.whatsapp_campaign_recipients USING btree (whatsapp_campaign_id);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_audience_definition; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_audience_definition ON public.whatsapp_campaigns USING gin (audience_definition);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_audience_mode; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_audience_mode ON public.whatsapp_campaigns USING btree (audience_mode);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_created_at ON public.whatsapp_campaigns USING btree (created_at);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_created_by_id ON public.whatsapp_campaigns USING btree (created_by_id);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_group_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_group_name ON public.whatsapp_campaigns USING btree (group_name);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_scheduled_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_scheduled_at ON public.whatsapp_campaigns USING btree (scheduled_at);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_status ON public.whatsapp_campaigns USING btree (status);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_whatsapp_sender_number_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_whatsapp_sender_number_id ON public.whatsapp_campaigns USING btree (whatsapp_sender_number_id);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_whatsapp_template_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_whatsapp_template_id ON public.whatsapp_campaigns USING btree (whatsapp_template_id);
+
+
+--
 -- Name: index_whatsapp_conversations_on_assigned_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9454,10 +10026,45 @@ CREATE INDEX index_whatsapp_messages_on_whatsapp_conversation_id ON public.whats
 
 
 --
+-- Name: index_whatsapp_sender_numbers_on_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_sender_numbers_on_active ON public.whatsapp_sender_numbers USING btree (active);
+
+
+--
+-- Name: index_whatsapp_sender_numbers_on_phone_number_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_whatsapp_sender_numbers_on_phone_number_id ON public.whatsapp_sender_numbers USING btree (phone_number_id);
+
+
+--
+-- Name: index_whatsapp_sender_numbers_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_sender_numbers_on_status ON public.whatsapp_sender_numbers USING btree (status);
+
+
+--
 -- Name: index_whatsapp_templates_on_name_and_language; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX index_whatsapp_templates_on_name_and_language ON public.whatsapp_templates USING btree (name, language);
+
+
+--
+-- Name: index_whatsapp_templates_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_templates_on_status ON public.whatsapp_templates USING btree (status);
+
+
+--
+-- Name: index_whatsapp_templates_on_template_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_templates_on_template_type ON public.whatsapp_templates USING btree (template_type);
 
 
 --
@@ -9493,6 +10100,14 @@ CREATE TRIGGER habitation_audit_logs_no_update BEFORE DELETE OR UPDATE ON public
 --
 
 CREATE TRIGGER lead_audit_logs_no_update BEFORE DELETE OR UPDATE ON public.lead_audit_logs FOR EACH ROW EXECUTE FUNCTION public.raise_lead_audit_immutable();
+
+
+--
+-- Name: whatsapp_campaign_recipients fk_rails_0bf1e1cab0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_recipients
+    ADD CONSTRAINT fk_rails_0bf1e1cab0 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -9616,6 +10231,22 @@ ALTER TABLE ONLY public.client_property_interests
 
 
 --
+-- Name: whatsapp_campaign_messages fk_rails_26131b72dd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_messages
+    ADD CONSTRAINT fk_rails_26131b72dd FOREIGN KEY (whatsapp_message_id) REFERENCES public.whatsapp_messages(id);
+
+
+--
+-- Name: whatsapp_campaigns fk_rails_26c34a4ecc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaigns
+    ADD CONSTRAINT fk_rails_26c34a4ecc FOREIGN KEY (created_by_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: habitation_share_links fk_rails_2772a86517; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9733,6 +10364,14 @@ ALTER TABLE ONLY public.access_control_rules
 
 ALTER TABLE ONLY public.leads
     ADD CONSTRAINT fk_rails_3b8845bac5 FOREIGN KEY (vista_import_batch_id) REFERENCES public.vista_import_batches(id);
+
+
+--
+-- Name: automation_webhook_deliveries fk_rails_3e8969d1cd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_webhook_deliveries
+    ADD CONSTRAINT fk_rails_3e8969d1cd FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -9856,6 +10495,14 @@ ALTER TABLE ONLY public.crm_appointments
 
 
 --
+-- Name: automation_webhook_deliveries fk_rails_54434d3d00; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_webhook_deliveries
+    ADD CONSTRAINT fk_rails_54434d3d00 FOREIGN KEY (automation_run_id) REFERENCES public.automation_runs(id);
+
+
+--
 -- Name: location_pings fk_rails_550bb129fb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9877,6 +10524,14 @@ ALTER TABLE ONLY public.push_delivery_events
 
 ALTER TABLE ONLY public.client_property_interests
     ADD CONSTRAINT fk_rails_5562a97d6c FOREIGN KEY (crm_contact_id) REFERENCES public.crm_contacts(id);
+
+
+--
+-- Name: whatsapp_campaigns fk_rails_570e00c34f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaigns
+    ADD CONSTRAINT fk_rails_570e00c34f FOREIGN KEY (whatsapp_template_id) REFERENCES public.whatsapp_templates(id);
 
 
 --
@@ -9960,6 +10615,14 @@ ALTER TABLE ONLY public.proprietors
 
 
 --
+-- Name: whatsapp_sender_numbers fk_rails_6af8b1646a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_sender_numbers
+    ADD CONSTRAINT fk_rails_6af8b1646a FOREIGN KEY (whatsapp_business_integration_id) REFERENCES public.whatsapp_business_integrations(id);
+
+
+--
 -- Name: seo_page_visits fk_rails_6b14e26baa; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9973,6 +10636,14 @@ ALTER TABLE ONLY public.seo_page_visits
 
 ALTER TABLE ONLY public.habitation_interactions
     ADD CONSTRAINT fk_rails_6e8270cc0c FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: whatsapp_campaign_messages fk_rails_6efdbc3737; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_messages
+    ADD CONSTRAINT fk_rails_6efdbc3737 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -10096,6 +10767,14 @@ ALTER TABLE ONLY public.manual_checkin_requests
 
 
 --
+-- Name: whatsapp_campaign_recipients fk_rails_8c063a6839; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_recipients
+    ADD CONSTRAINT fk_rails_8c063a6839 FOREIGN KEY (whatsapp_campaign_id) REFERENCES public.whatsapp_campaigns(id);
+
+
+--
 -- Name: portal_listing_states fk_rails_8def14d270; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10125,6 +10804,14 @@ ALTER TABLE ONLY public.habitation_interactions
 
 ALTER TABLE ONLY public.whatsapp_conversations
     ADD CONSTRAINT fk_rails_9151a6c10c FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: whatsapp_campaigns fk_rails_92b02b457f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaigns
+    ADD CONSTRAINT fk_rails_92b02b457f FOREIGN KEY (whatsapp_sender_number_id) REFERENCES public.whatsapp_sender_numbers(id);
 
 
 --
@@ -10208,6 +10895,14 @@ ALTER TABLE ONLY public.crm_contacts
 
 
 --
+-- Name: whatsapp_campaign_messages fk_rails_a1286b45ba; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_messages
+    ADD CONSTRAINT fk_rails_a1286b45ba FOREIGN KEY (whatsapp_campaign_recipient_id) REFERENCES public.whatsapp_campaign_recipients(id);
+
+
+--
 -- Name: public_navigation_events fk_rails_a13b99eafe; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10245,6 +10940,14 @@ ALTER TABLE ONLY public.user_meta_integrations
 
 ALTER TABLE ONLY public.automation_events
     ADD CONSTRAINT fk_rails_b1cdd6b9ed FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: whatsapp_campaign_recipients fk_rails_b3ebdb9b63; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_recipients
+    ADD CONSTRAINT fk_rails_b3ebdb9b63 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -10408,6 +11111,14 @@ ALTER TABLE ONLY public.seo_change_logs
 
 
 --
+-- Name: automation_webhook_deliveries fk_rails_d4def20ddb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_webhook_deliveries
+    ADD CONSTRAINT fk_rails_d4def20ddb FOREIGN KEY (automation_event_id) REFERENCES public.automation_events(id);
+
+
+--
 -- Name: automation_runs fk_rails_d4f6870713; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10440,6 +11151,14 @@ ALTER TABLE ONLY public.admin_users
 
 
 --
+-- Name: automation_webhook_deliveries fk_rails_d9b086da60; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_webhook_deliveries
+    ADD CONSTRAINT fk_rails_d9b086da60 FOREIGN KEY (automation_execution_step_id) REFERENCES public.automation_execution_steps(id);
+
+
+--
 -- Name: whatsapp_messages fk_rails_db315c944a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10453,6 +11172,14 @@ ALTER TABLE ONLY public.whatsapp_messages
 
 ALTER TABLE ONLY public.habitation_broker_assignments
     ADD CONSTRAINT fk_rails_dc25c47a24 FOREIGN KEY (vista_import_batch_id) REFERENCES public.vista_import_batches(id);
+
+
+--
+-- Name: whatsapp_campaign_messages fk_rails_e07384f903; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_messages
+    ADD CONSTRAINT fk_rails_e07384f903 FOREIGN KEY (whatsapp_campaign_id) REFERENCES public.whatsapp_campaigns(id);
 
 
 --
@@ -10619,12 +11346,24 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 0M8wMbdB9bsxhaTNfmTVNCVsLzoTCU4uhl1CqtT5Jr3tOYK7ds67VpS6gKIfVIa
+\unrestrict eyLftfcBQsefKqtwVCDRPnj0jGabteTJadg5ugtWWmi9iqTFATpndbIF9QHhUaJ
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260627215000'),
+('20260627172000'),
+('20260627152000'),
+('20260627143000'),
+('20260627113000'),
+('20260627102000'),
+('20260627093200'),
+('20260627093100'),
+('20260627093000'),
 ('20260626164000'),
+('20260626120200'),
+('20260626120100'),
+('20260626120000'),
 ('20260626103000'),
 ('20260624200000'),
 ('20260624190000'),

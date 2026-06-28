@@ -16,6 +16,7 @@
     produto_visible = can_access.call(:view, :dashboard) || can_access.call(:view, :imoveis) ||
                       can_access.call(:view, :leads)
     operacao_visible = can_access.call(:view, :comercial) || can_access.call(:view, :whatsapp_inbox) ||
+                       can_access.call(:view, :whatsapp_campaigns) ||
                        can_access.call(:manage, :automacoes) || can_access.call(:view, :distribution_rules) ||
                        can_access.call(:manage, :distribution_rules) || can_access.call(:view, :captacoes) ||
                        can_access.call(:view, :captacao_dashboard) || can_access.call(:view, :field_checkins) ||
@@ -74,11 +75,34 @@
     <% end %>
 
     <%# 4a2. Atendimento WhatsApp (inbox) %>
-    <% if can_access.call(:view, :whatsapp_inbox) %>
-      <li>
-        <%= link_to admin_whatsapp_conversations_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_inbox'}" do %>
-          <i class="bi bi-whatsapp"></i><span>Atendimento</span>
-        <% end %>
+    <% if can_access.call(:view, :whatsapp_inbox) || can_access.call(:view, :whatsapp_campaigns) %>
+      <% whatsapp_open = %w[whatsapp_inbox whatsapp_campaigns whatsapp_templates].include?(controller_name) %>
+      <li class="ax-nav__group <%= 'is-open' if whatsapp_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= whatsapp_open %>">
+        <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= whatsapp_open %>">
+          <i class="bi bi-whatsapp"></i><span>WhatsApp</span>
+          <i class="bi bi-chevron-down ax-nav__chevron"></i>
+        </button>
+        <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless whatsapp_open %>>
+          <% if can_access.call(:view, :whatsapp_inbox) %>
+            <li>
+              <%= link_to admin_whatsapp_conversations_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_inbox'}" do %>
+                <i class="bi bi-chat-dots"></i><span>Atendimento</span>
+              <% end %>
+            </li>
+          <% end %>
+          <% if can_access.call(:view, :whatsapp_campaigns) %>
+            <li>
+              <%= link_to admin_whatsapp_templates_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_templates'}" do %>
+                <i class="bi bi-grid-3x2-gap"></i><span>Templates</span>
+              <% end %>
+            </li>
+            <li>
+              <%= link_to admin_whatsapp_campaigns_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_campaigns'}" do %>
+                <i class="bi bi-broadcast"></i><span>Disparos</span>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
       </li>
     <% end %>
 

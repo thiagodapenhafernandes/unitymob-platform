@@ -1,0 +1,23 @@
+<% content_for :admin_contextbar_title, @template_type.present? ? "Novo template" : "Tipo de template" %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_whatsapp_templates_path(whatsapp_sender_number_id: @sender_number&.id), class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
+  <% end %>
+<% end %>
+
+<%= render "critical_styles" %>
+
+<div class="whatsapp-templates">
+  <% if @template_type.blank? %>
+    <%= render "type_chooser", sender_number: @sender_number %>
+  <% elsif @template_type == "text" %>
+    <%= render "text_form", template: @template, sender_number: @sender_number %>
+  <% elsif @template_type == "carousel" %>
+    <%= render "carousel_form", template: @template, sender_number: @sender_number %>
+  <% elsif @template_type == "flow" %>
+    <%= render "flow_form", template: @template, sender_number: @sender_number %>
+  <% else %>
+    <%= render "advanced_placeholder", template_type: @template_type, sender_number: @sender_number %>
+  <% end %>
+</div>

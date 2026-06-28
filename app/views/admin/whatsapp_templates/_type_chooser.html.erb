@@ -1,0 +1,27 @@
+<section class="whatsapp-template-type-chooser">
+  <div class="whatsapp-template-type-chooser__heading">
+    <div class="whatsapp-template-header__icon"><i class="bi bi-grid-3x2-gap"></i></div>
+    <div>
+      <strong>Escolha o tipo de template</strong>
+      <span>Selecione o formato da mensagem que será criada e enviada para aprovação.</span>
+    </div>
+  </div>
+
+  <div class="whatsapp-template-type-grid">
+    <% [
+      ["text", "Mensagem de Texto", "Template tradicional com corpo em texto, variáveis, cabeçalho opcional, rodapé e botões.", "bi-file-text", "green"],
+      ["carousel", "Media Card Carousel", "Sequência de cards com mídia e botões para campanhas visuais.", "bi-layers", "blue"],
+      ["flow", "Template com Flow", "Template interativo com formulário, agendamento ou pesquisa conectada ao WhatsApp Flow.", "bi-diagram-3", "purple"]
+    ].each do |key, title, description, icon, tone| %>
+      <article class="whatsapp-template-type-card whatsapp-template-type-card--<%= tone %>">
+        <div class="whatsapp-template-type-card__icon"><i class="bi <%= icon %>"></i></div>
+        <%= ax_badge("Disponível", tone: :green, dot: true, class_name: "whatsapp-template-type-card__badge") %>
+        <strong><%= title %></strong>
+        <p><%= description %></p>
+        <%= link_to new_admin_whatsapp_template_path(template_type: key, whatsapp_sender_number_id: sender_number&.id), class: "ax-btn ax-btn--primary" do %>
+          <span>Selecionar</span><i class="bi bi-arrow-right ax-ico"></i>
+        <% end %>
+      </article>
+    <% end %>
+  </div>
+</section>

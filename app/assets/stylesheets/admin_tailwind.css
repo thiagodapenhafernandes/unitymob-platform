@@ -237,7 +237,7 @@ a.ax-btn.ax-btn--primary:focus-visible {
 .ax-table thead th {
   position: sticky; top: 0; z-index: 1;
   padding: 8px 12px;
-  background: #f2f4f7;
+  background: #f8fafa;
   color: #667085;
   border-bottom: 1px solid #d2d6db;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
@@ -418,7 +418,7 @@ a.ax-btn.ax-btn--primary:focus-visible {
   width: 34px; height: 34px; border-radius: 8px; color: #3b4656;
   position: relative; text-decoration: none; transition: background .12s, color .12s;
 }
-.ax-nav-quick:hover { background: #f2f4f7; color: #1f2733; }
+.ax-nav-quick:hover { background: #f8fafa; color: #1f2733; }
 .ax-nav-quick__count {
   position: absolute; top: -1px; right: -1px; min-width: 16px; height: 16px;
   padding: 0 4px; border-radius: 999px; color: #fff; font-size: 10px; font-weight: 700;
@@ -595,7 +595,7 @@ html.ax-admin-is-loading body.ax-app .ax-main {
   border: 0;
   text-align: left;
 }
-.ax-menu__item:hover { background: #f2f4f7; color: #1f2733; }
+.ax-menu__item:hover { background: #f8fafa; color: #1f2733; }
 .ax-menu__item--danger { color: #be123c; }
 .ax-menu__item--danger:hover { background: #fff1f2; }
 .ax-menu__sep { height: 1px; margin: 5px 0; background: #eceef1; }
@@ -3935,7 +3935,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   --ax-field-border: var(--ab-field-border);
   --ax-field-hover: var(--ab-field-hover);
   --ax-field-focus: var(--ab-field-focus);
-  --ax-form-control-height: 34px;
+  --ax-form-control-height: 28px;
   --ax-form-control-radius: 7px;
 }
 
@@ -4308,7 +4308,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   align-items: center;
   gap: 5px;
   min-width: 0;
-  margin: 0 0 4px;
+  margin: 0;
   color: #667085;
   font-size: 11px;
   font-weight: 850;
@@ -4388,6 +4388,14 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   border-color: var(--ax-field-focus);
   box-shadow: 0 0 0 2px rgba(54, 95, 143, .12), inset 0 1px 0 rgba(15, 23, 42, .03) !important;
   outline: 0;
+}
+
+textarea.ax-control,
+.ax-field textarea {
+  min-height: 72px;
+  padding: 9px 10px;
+  line-height: 1.45;
+  resize: vertical;
 }
 
 .ax-field.is-invalid .ax-control,
@@ -4647,15 +4655,46 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 }
 
 .ax-upload-control {
-  display: grid;
-  gap: 6px;
-  margin: 6px 0;
+  display: flex;
+  min-height: var(--ax-form-control-height);
+  flex-wrap: nowrap;
+  gap: 0;
+  align-items: center;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #cfd8e5;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, .03);
+}
+
+.ax-upload-button {
+  height: calc(var(--ax-form-control-height) - 2px);
+  min-height: 0;
+  border: 0;
+  border-right: 1px solid #d8dee8;
+  border-radius: 0;
+  background: #fff;
+  color: #344054;
+  font-weight: 750;
+  justify-content: center;
+}
+
+.ax-upload-button:hover {
+  background: #f8fafc;
+  color: #172033;
 }
 
 .ax-upload-status {
   min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  padding: 0 9px;
+  color: #667085;
   font-size: 11px;
   line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- Layout settings / Identidade e Marca ---------- */
@@ -14256,7 +14295,7 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background: #f2f4f7;
+  background: #f8fafa;
   color: var(--admin-primary, #365f8f);
 }
 
@@ -14874,6 +14913,7 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 }
 
 .automation-workflow-builder {
+  --automation-workflow-builder-aside-width: 390px;
   height: calc(100dvh - var(--ax-navbar-h, 48px) - var(--ax-contextbar-h, 48px));
   min-height: 0;
   display: grid;
@@ -14884,12 +14924,12 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 }
 
 .automation-workflow-builder__topbar {
-  height: 56px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 0 18px;
+  gap: 10px;
+  padding: 0 12px;
   border-bottom: 1px solid #d9e0ea;
   background: #fff;
 }
@@ -14898,25 +14938,25 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 .automation-workflow-builder__commands {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
   min-width: 0;
 }
 
 .automation-workflow-builder__tab {
   color: #1f2937;
-  font-size: .88rem;
+  font-size: .8rem;
   font-weight: 800;
   text-decoration: none;
 }
 
 .automation-workflow-builder__help {
-  height: 30px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0 9px;
+  padding: 0 8px;
   border: 1px solid #d8e0ea;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #fff;
   cursor: pointer;
 }
@@ -15015,8 +15055,8 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 
 .automation-workflow-builder__name {
   width: min(36vw, 360px);
-  height: 36px;
-  padding: 0 10px;
+  height: 30px;
+  padding: 0 9px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
   color: #1f2937;
@@ -15035,7 +15075,7 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 .automation-workflow-builder__workspace {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, var(--automation-workflow-builder-aside-width));
   overflow: hidden;
   transition: grid-template-columns 180ms ease;
 }
@@ -15049,7 +15089,7 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: 42px;
+  padding: 34px;
   overscroll-behavior: contain;
 }
 
@@ -15274,6 +15314,46 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
   transform: translateY(-1px);
 }
 
+.automation-workflow-builder__inline-add--response {
+  width: 210px;
+  flex-basis: 210px;
+  gap: 9px;
+}
+
+.automation-workflow-builder__inline-add-choice {
+  position: relative;
+  z-index: 1;
+  min-width: 78px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid #c9d3df;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--admin-primary, #365f8f);
+  font-size: .68rem;
+  font-weight: 850;
+  box-shadow: 0 8px 18px rgba(30, 41, 59, .1);
+  cursor: pointer;
+}
+
+.automation-workflow-builder__inline-add-choice:hover,
+.automation-workflow-builder__inline-add-choice:focus-visible {
+  border-color: var(--admin-primary, #365f8f);
+  background: var(--admin-primary, #365f8f);
+  color: #fff;
+  outline: 0;
+}
+
+.automation-workflow-builder__inline-add--response .automation-workflow-builder__inline-add-btn--parallel {
+  margin-left: 1px;
+  opacity: 1;
+  transform: none;
+}
+
 .automation-workflow-builder__connector {
   width: 18px;
   margin-top: 2px;
@@ -15289,6 +15369,7 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 }
 
 .automation-workflow-builder__aside {
+  position: relative;
   min-height: 0;
   height: 100%;
   display: grid;
@@ -15299,6 +15380,44 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
+.automation-workflow-builder__aside-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  z-index: 12;
+  width: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.automation-workflow-builder__aside-resizer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 2px;
+  height: 42px;
+  border-radius: 999px;
+  background: transparent;
+  transform: translateY(-50%);
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.automation-workflow-builder__aside-resizer:hover::after,
+.automation-workflow-builder__aside-resizer:focus-visible::after,
+body.automation-workflow-builder-resizing .automation-workflow-builder__aside-resizer::after {
+  background: var(--admin-primary, #365f8f);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-primary, #365f8f) 12%, transparent);
+}
+
+body.automation-workflow-builder-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
 .automation-workflow-builder__aside.is-collapsed {
   opacity: 0;
   transform: translateX(16px);
@@ -15307,28 +15426,28 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 }
 
 .automation-workflow-builder__aside-header {
-  min-height: 76px;
+  min-height: 54px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 18px;
+  gap: 8px;
+  padding: 10px 12px;
   border-bottom: 1px solid #e1e7ef;
 }
 
 .automation-workflow-builder__aside-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .automation-workflow-builder__aside-close {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   display: inline-grid;
   place-items: center;
   border: 1px solid #d8e0ea;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #fff;
   color: #536176;
   cursor: pointer;
@@ -15343,16 +15462,16 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 .automation-workflow-builder__aside-eyebrow,
 .automation-workflow-builder__palette-title {
   color: #68758a;
-  font-size: .72rem;
+  font-size: .64rem;
   font-weight: 850;
   letter-spacing: .04em;
   text-transform: uppercase;
 }
 
 .automation-workflow-builder__aside-header h2 {
-  margin: 3px 0 0;
+  margin: 1px 0 0;
   color: #1f2937;
-  font-size: 1.15rem;
+  font-size: .98rem;
   font-weight: 850;
 }
 
@@ -15360,8 +15479,8 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
   min-height: 0;
   display: grid;
   align-content: start;
-  gap: 14px;
-  padding: 18px;
+  gap: 9px;
+  padding: 10px 12px 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -15369,14 +15488,14 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 
 .automation-workflow-builder__field {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .automation-workflow-builder__literal-summary {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px 9px;
   border: 1px solid color-mix(in srgb, var(--admin-primary, #365f8f) 22%, #d8e0ea);
   border-radius: 8px;
   background: color-mix(in srgb, var(--admin-primary, #365f8f) 6%, #fff);
@@ -15384,12 +15503,12 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 }
 
 .automation-workflow-builder__literal-summary-icon {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   display: inline-grid;
   place-items: center;
-  flex: 0 0 30px;
-  border-radius: 8px;
+  flex: 0 0 24px;
+  border-radius: 7px;
   background: color-mix(in srgb, var(--admin-primary, #365f8f) 10%, #fff);
   color: var(--admin-primary, #365f8f);
 }
@@ -15397,12 +15516,12 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 .automation-workflow-builder__literal-summary-copy {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 2px;
 }
 
 .automation-workflow-builder__literal-summary-copy strong {
   color: #536176;
-  font-size: .72rem;
+  font-size: .64rem;
   font-weight: 850;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -15410,9 +15529,9 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 
 .automation-workflow-builder__literal-summary-copy small {
   color: #334155;
-  font-size: .82rem;
+  font-size: .74rem;
   font-weight: 700;
-  line-height: 1.42;
+  line-height: 1.28;
 }
 
 .automation-workflow-builder__field--compact > span {
@@ -15426,18 +15545,133 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 
 .automation-workflow-builder__field > span {
   color: #536176;
-  font-size: .78rem;
+  font-size: .68rem;
   font-weight: 800;
+}
+
+.automation-workflow-builder__field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.automation-workflow-builder__field-label > span {
+  min-width: 0;
+}
+
+.automation-workflow-builder__fixed-type {
+  display: grid;
+  gap: 4px;
+}
+
+.automation-workflow-builder__fixed-type-value {
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 7px;
+  padding: 6px 8px;
+  border: 1px solid #dbe4ef;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--admin-surface, #fff) 78%, var(--admin-surface-header, #eef2f7));
+  color: #1f2937;
+}
+
+.automation-workflow-builder__fixed-type-value i {
+  grid-row: span 2;
+  color: var(--admin-primary, #365f8f);
+  font-size: .9rem;
+  text-align: center;
+}
+
+.automation-workflow-builder__fixed-type-value strong {
+  min-width: 0;
+  color: #243246;
+  font-size: .78rem;
+  font-weight: 820;
+  line-height: 1.15;
+}
+
+.automation-workflow-builder__fixed-type-value small {
+  min-width: 0;
+  color: #64748b;
+  font-size: .66rem;
+  font-weight: 680;
+  line-height: 1.18;
+}
+
+.automation-workflow-builder__field-info {
+  width: 16px;
+  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 8%, #eef2f7);
+  color: var(--admin-primary, #365f8f);
+  font-size: .72rem;
+  cursor: help;
+}
+
+.automation-workflow-builder__field-info:hover,
+.automation-workflow-builder__field-info:focus-visible {
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 16%, #eef2f7);
+  outline: 0;
 }
 
 .automation-workflow-builder__field .ts-wrapper {
   width: 100%;
 }
 
+.automation-workflow-builder .ax-input,
+.automation-workflow-builder .ax-select {
+  min-height: 30px;
+  height: 30px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: .78rem;
+  font-weight: 680;
+  line-height: 1.2;
+}
+
+.automation-workflow-builder .ts-wrapper.single .ts-control {
+  min-height: 30px;
+  padding: 3px 8px;
+}
+
+.automation-workflow-builder .ts-wrapper.single .ts-control > div {
+  line-height: 1.2;
+}
+
+.automation-workflow-builder .ts-dropdown {
+  margin-top: 3px;
+  border-radius: 7px;
+  font-size: .76rem;
+}
+
+.automation-workflow-builder .ts-dropdown-content {
+  max-height: 220px;
+}
+
+.automation-workflow-builder .ts-dropdown .option,
+.automation-workflow-builder .ts-dropdown .optgroup-header {
+  min-height: 28px;
+  padding: 6px 10px;
+  line-height: 1.2;
+}
+
+.automation-workflow-builder .ts-dropdown .active {
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 12%, #fff);
+  color: var(--admin-primary, #365f8f);
+}
+
 .automation-workflow-builder__field .ts-wrapper .ts-control {
-  min-height: 38px;
+  min-height: 30px;
   border-color: #d8e0ea;
-  border-radius: 8px;
+  border-radius: 7px;
+  padding-block: 2px;
   color: #1f2937;
   font-weight: 700;
   box-shadow: inset 0 1px 0 rgba(15, 23, 42, .03) !important;
@@ -15474,18 +15708,314 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 }
 
 .automation-workflow-builder__textarea {
-  min-height: 96px;
-  padding: 10px 12px;
-  line-height: 1.45;
+  min-height: 72px;
+  padding: 7px 9px;
+  line-height: 1.32;
   resize: vertical;
+}
+
+.automation-workflow-builder__kv-section {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.automation-workflow-builder__kv-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.automation-workflow-builder__kv-header span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.automation-workflow-builder__kv-header strong {
+  color: #1f2937;
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.automation-workflow-builder__kv-header small {
+  color: #667085;
+  font-size: .68rem;
+  font-weight: 650;
+  line-height: 1.22;
+}
+
+.automation-workflow-builder__kv-list {
+  display: grid;
+  gap: 5px;
+}
+
+.automation-workflow-builder__kv-row {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.15fr) 28px;
+  gap: 6px;
+  align-items: end;
+}
+
+.automation-workflow-builder__kv-field {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.automation-workflow-builder__kv-field span {
+  color: #536176;
+  font-size: .64rem;
+  font-weight: 800;
+}
+
+.automation-workflow-builder__kv-field .ax-input {
+  min-width: 0;
+}
+
+.automation-workflow-builder__kv-remove {
+  width: 28px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #f1c7c7;
+  border-radius: 7px;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.automation-workflow-builder__kv-remove:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.automation-workflow-builder__kv-add {
+  justify-content: center;
+}
+
+.automation-workflow-builder__response-info,
+.automation-workflow-builder__response-section,
+.automation-workflow-builder__response-route {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.automation-workflow-builder__response-info {
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 5%, #fff);
+  border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 20%, #d8e0ea);
+}
+
+.automation-workflow-builder__response-info > i {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--admin-primary, #365f8f);
+}
+
+.automation-workflow-builder__response-info span,
+.automation-workflow-builder__response-section-header span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.automation-workflow-builder__response-info strong,
+.automation-workflow-builder__response-section-header strong {
+  color: #1f2937;
+  font-size: .76rem;
+  font-weight: 850;
+}
+
+.automation-workflow-builder__response-info small,
+.automation-workflow-builder__response-section-header small {
+  color: #536176;
+  font-size: .68rem;
+  font-weight: 650;
+  line-height: 1.24;
+}
+
+.automation-workflow-builder__response-routes,
+.automation-workflow-builder__response-list {
+  display: grid;
+  gap: 6px;
+}
+
+.automation-workflow-builder__response-route {
+  padding: 7px;
+  background: #f8fafc;
+}
+
+.automation-workflow-builder__response-route-header,
+.automation-workflow-builder__response-condition,
+.automation-workflow-builder__response-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 6px;
+  align-items: end;
+}
+
+.automation-workflow-builder__response-condition {
+  grid-template-columns: minmax(0, 1fr) minmax(0, .86fr) minmax(0, 1fr) 28px;
+}
+
+.automation-workflow-builder__response-action {
+  grid-template-columns: minmax(0, .92fr) minmax(0, 1.18fr) 28px;
+}
+
+.automation-workflow-builder__response-mini-title {
+  color: #536176;
+  font-size: .68rem;
+  font-weight: 850;
+}
+
+.automation-workflow-builder__response-inline-add,
+.automation-workflow-builder__response-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.automation-workflow-builder__response-inline-add {
+  min-height: 26px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--admin-primary, #365f8f);
+  font-size: .7rem;
+  font-weight: 800;
+}
+
+.automation-workflow-builder__webhook-context {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--admin-primary, #365f8f) 18%, #d8e0ea);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 6%, #fff);
+}
+
+.automation-workflow-builder__webhook-context-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--admin-primary, #365f8f);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-primary, #365f8f) 16%, #d8e0ea);
+}
+
+.automation-workflow-builder__webhook-context > span:last-child {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.automation-workflow-builder__webhook-context strong {
+  color: #1f2937;
+  font-size: .76rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.automation-workflow-builder__webhook-context small {
+  color: #536176;
+  font-size: .68rem;
+  font-weight: 650;
+  line-height: 1.24;
+}
+
+.automation-workflow-builder__token-reference {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--admin-primary, #365f8f) 22%, #d8e0ea);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 5%, #fff);
+}
+
+.automation-workflow-builder__token-reference > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--admin-primary, #365f8f);
+}
+
+.automation-workflow-builder__token-reference > div span {
+  display: grid;
+  gap: 2px;
+}
+
+.automation-workflow-builder__token-reference strong {
+  color: #1f2937;
+  font-size: .76rem;
+  font-weight: 850;
+}
+
+.automation-workflow-builder__token-reference small {
+  color: #536176;
+  font-size: .68rem;
+  font-weight: 650;
+  line-height: 1.24;
+}
+
+.automation-workflow-builder__token-reference ul {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.automation-workflow-builder__token-reference li {
+  display: grid;
+  grid-template-columns: minmax(112px, .82fr) minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+
+.automation-workflow-builder__token-reference code {
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid #d8e0ea;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2937;
+  font-size: .66rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.automation-workflow-builder__token-reference li span {
+  color: #667085;
+  font-size: .66rem;
+  font-weight: 650;
+  line-height: 1.25;
 }
 
 .automation-workflow-builder__check-field {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 9px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
   background: #fff;
@@ -15494,9 +16024,9 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 }
 
 .automation-workflow-builder__check-field input {
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
   accent-color: var(--admin-primary, #365f8f);
 }
 
@@ -15508,24 +16038,24 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__check-field strong {
   color: #1f2937;
-  font-size: .82rem;
+  font-size: .76rem;
   font-weight: 850;
   line-height: 1.2;
 }
 
 .automation-workflow-builder__check-field small {
   color: #667085;
-  font-size: .76rem;
+  font-size: .68rem;
   font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.24;
 }
 
 .automation-workflow-builder__final-action {
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px 9px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
   background: #fff;
@@ -15547,10 +16077,10 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 }
 
 .automation-workflow-builder__final-action-marker {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   display: inline-grid;
-  flex: 0 0 22px;
+  flex: 0 0 18px;
   place-items: center;
   margin-top: 1px;
   border: 1px solid #c9d3df;
@@ -15568,29 +16098,29 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__final-action-copy {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
 .automation-workflow-builder__final-action-copy strong {
   color: #1f2937;
-  font-size: .85rem;
+  font-size: .76rem;
   font-weight: 850;
   line-height: 1.2;
 }
 
 .automation-workflow-builder__final-action-copy span {
   color: #667085;
-  font-size: .78rem;
+  font-size: .68rem;
   font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.24;
 }
 
 .automation-workflow-builder__legacy-action {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px 9px;
   border: 1px solid #fed7aa;
   border-radius: 8px;
   background: #fff8ed;
@@ -15609,22 +16139,22 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__legacy-action strong {
   color: #92400e;
-  font-size: .84rem;
+  font-size: .76rem;
   font-weight: 850;
   line-height: 1.2;
 }
 
 .automation-workflow-builder__legacy-action small {
   color: #9a5b16;
-  font-size: .78rem;
+  font-size: .68rem;
   font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.24;
 }
 
 .automation-workflow-builder__entry-panel {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 8px;
+  padding: 9px;
   border: 1px solid #e1e7ef;
   border-radius: 8px;
   background: color-mix(in srgb, var(--admin-surface-header, #eef2f7) 52%, #fff);
@@ -15633,22 +16163,22 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 .automation-workflow-builder__entry-header {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 8px;
   min-width: 0;
   color: #1f2937;
 }
 
 .automation-workflow-builder__entry-icon {
   display: inline-grid;
-  flex: 0 0 38px;
-  width: 38px;
-  height: 38px;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--admin-primary, #365f8f) 18%, #d8e0ea);
   border-radius: 8px;
   background: color-mix(in srgb, var(--admin-primary, #365f8f) 10%, #fff);
   color: var(--admin-primary, #365f8f);
-  font-size: 17px;
+  font-size: 14px;
 }
 
 .automation-workflow-builder__entry-header small,
@@ -15659,7 +16189,7 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__entry-header small {
   color: #68758a;
-  font-size: .68rem;
+  font-size: .62rem;
   font-weight: 850;
   letter-spacing: .04em;
   line-height: 1.15;
@@ -15667,9 +16197,9 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 }
 
 .automation-workflow-builder__entry-header strong {
-  margin-top: 2px;
+  margin-top: 1px;
   color: #1f2937;
-  font-size: .98rem;
+  font-size: .82rem;
   font-weight: 850;
   line-height: 1.2;
 }
@@ -15682,10 +16212,10 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 .automation-workflow-builder__entry-select-trigger {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 11px 12px;
+  padding: 7px 8px;
   border: 1px solid #cfd8e5;
   border-radius: 8px;
   background: #fff;
@@ -15718,7 +16248,7 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__entry-select-copy {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -15726,7 +16256,7 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 .automation-workflow-builder__entry-select-option strong {
   min-width: 0;
   color: #1f2937;
-  font-size: .86rem;
+  font-size: .76rem;
   font-weight: 850;
   line-height: 1.2;
 }
@@ -15734,9 +16264,9 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 .automation-workflow-builder__entry-select-copy span,
 .automation-workflow-builder__entry-select-option-main span {
   color: #536176;
-  font-size: .78rem;
+  font-size: .68rem;
   font-weight: 620;
-  line-height: 1.34;
+  line-height: 1.24;
 }
 
 .automation-workflow-builder__entry-select-badge,
@@ -15744,12 +16274,12 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  min-height: 20px;
-  padding: 0 7px;
+  min-height: 18px;
+  padding: 0 6px;
   border-radius: 999px;
   background: #eef2f7;
   color: #536176;
-  font-size: .68rem;
+  font-size: .62rem;
   font-style: normal;
   font-weight: 800;
 }
@@ -15770,10 +16300,10 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 .automation-workflow-builder__entry-select-option {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 11px 12px;
+  padding: 8px 9px;
   border: 0;
   border-top: 1px solid #edf1f5;
   background: #fff;
@@ -15796,23 +16326,23 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__entry-select-option-main {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
 .automation-workflow-builder__entry-note {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
-  padding: 9px 10px;
+  padding: 7px 8px;
   border: 1px solid #dfe7f2;
   border-radius: 8px;
   background: color-mix(in srgb, var(--admin-surface, #fff) 76%, var(--admin-surface-header, #eef2f7));
   color: #536176;
-  font-size: .78rem;
+  font-size: .68rem;
   font-weight: 680;
-  line-height: 1.35;
+  line-height: 1.24;
 }
 
 .automation-workflow-builder__entry-note i {
@@ -15823,15 +16353,15 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__step-chooser {
   display: grid;
-  gap: 14px;
+  gap: 9px;
 }
 
 .automation-workflow-builder__step-chooser-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 14px;
+  gap: 8px;
+  padding: 9px;
   border: 1px solid #e1e7ef;
   border-radius: 8px;
   background: color-mix(in srgb, var(--admin-surface-header, #eef2f7) 48%, #fff);
@@ -15841,7 +16371,7 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 .automation-workflow-builder__step-chooser-group-title span {
   display: block;
   color: #68758a;
-  font-size: .7rem;
+  font-size: .64rem;
   font-weight: 850;
   letter-spacing: .04em;
   line-height: 1.15;
@@ -15850,27 +16380,27 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__step-chooser-header strong {
   display: block;
-  margin-top: 3px;
+  margin-top: 2px;
   color: #1f2937;
-  font-size: .98rem;
+  font-size: .82rem;
   font-weight: 850;
   line-height: 1.25;
 }
 
 .automation-workflow-builder__step-chooser-header p {
-  margin: 5px 0 0;
+  margin: 3px 0 0;
   color: #536176;
-  font-size: .8rem;
+  font-size: .7rem;
   font-weight: 650;
-  line-height: 1.4;
+  line-height: 1.28;
 }
 
 .automation-workflow-builder__step-search {
-  min-height: 38px;
+  min-height: 30px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px;
+  gap: 6px;
+  padding: 0 8px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
   background: #fff;
@@ -15892,12 +16422,12 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 .automation-workflow-builder__step-search input {
   width: 100%;
   min-width: 0;
-  height: 36px;
+  height: 28px;
   border: 0;
   outline: 0;
   background: transparent;
   color: #1f2937;
-  font-size: .82rem;
+  font-size: .76rem;
   font-weight: 720;
 }
 
@@ -15906,7 +16436,7 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 }
 
 .automation-workflow-builder__step-chooser-cancel {
-  min-height: 30px;
+  min-height: 28px;
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
@@ -15930,7 +16460,7 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__step-chooser-group {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .automation-workflow-builder__step-chooser-group-title {
@@ -15940,26 +16470,26 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__step-chooser-group-title strong {
   color: #1f2937;
-  font-size: .84rem;
+  font-size: .76rem;
   font-weight: 850;
 }
 
 .automation-workflow-builder__step-chooser-group-title span {
   color: #68758a;
-  font-size: .72rem;
+  font-size: .66rem;
   font-weight: 700;
   letter-spacing: 0;
-  line-height: 1.35;
+  line-height: 1.24;
   text-transform: none;
 }
 
 .automation-workflow-builder__step-option {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  min-height: 58px;
-  padding: 10px;
+  min-height: 46px;
+  padding: 8px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
   background: #fff;
@@ -15979,10 +16509,10 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 }
 
 .automation-workflow-builder__step-option-icon {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   display: inline-grid;
-  flex: 0 0 34px;
+  flex: 0 0 28px;
   place-items: center;
   border-radius: 8px;
   background: #eaf1f8;
@@ -15991,35 +16521,35 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 
 .automation-workflow-builder__step-option-copy {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
 .automation-workflow-builder__step-option-copy strong {
   color: #1f2937;
-  font-size: .86rem;
+  font-size: .76rem;
   font-weight: 850;
   line-height: 1.2;
 }
 
 .automation-workflow-builder__step-option-copy span {
   color: #536176;
-  font-size: .76rem;
+  font-size: .66rem;
   font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.24;
 }
 
 .automation-workflow-builder__step-option-badge {
   width: fit-content;
-  min-height: 19px;
+  min-height: 17px;
   display: inline-flex;
   align-items: center;
-  padding: 0 7px;
+  padding: 0 6px;
   border: 1px solid color-mix(in srgb, var(--admin-primary, #365f8f) 20%, #d8e0ea);
   border-radius: 999px;
   background: color-mix(in srgb, var(--admin-primary, #365f8f) 7%, #fff);
   color: var(--admin-primary, #365f8f);
-  font-size: .66rem;
+  font-size: .6rem;
   font-style: normal;
   font-weight: 850;
   line-height: 1;
@@ -16037,11 +16567,11 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
 }
 
 .automation-workflow-builder__danger {
-  min-height: 44px;
+  min-height: 34px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
+  gap: 8px;
+  padding: 0 10px;
   border: 1px solid #d8e0ea;
   border-radius: 8px;
   background: #fff;
@@ -16320,6 +16850,10 @@ body.ax-app .automation-workflow-builder .automation-workflow-builder__field .ts
     max-height: min(70dvh, 720px);
     border-left: 0;
     border-top: 1px solid #d9e0ea;
+  }
+
+  .automation-workflow-builder__aside-resizer {
+    display: none;
   }
 
   .automation-workflow-builder__topbar {
@@ -17137,6 +17671,1841 @@ html.ax-webhook-settings-aside-collapsed-preload body.ax-app .webhook-settings-w
 
   .webhook-examples-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.whatsapp-campaigns {
+  display: grid;
+  gap: 12px;
+}
+
+.whatsapp-campaign-hero,
+.whatsapp-campaign-detail-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f7fbff 0%, #eefdf7 100%);
+  box-shadow: 0 10px 28px rgba(23, 32, 51, .06);
+}
+
+.whatsapp-campaign-hero__icon,
+.whatsapp-campaign-detail-hero__status {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 24px;
+  background: linear-gradient(135deg, #00a884 0%, #0ec66e 100%);
+  box-shadow: 0 12px 22px rgba(0, 168, 132, .24);
+}
+
+.whatsapp-campaign-hero h1,
+.whatsapp-campaign-detail-hero h1 {
+  margin: 0;
+  color: #172033;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.whatsapp-campaign-hero p,
+.whatsapp-campaign-detail-hero p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 5px 0 0;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.whatsapp-campaign-detail-hero dl {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 16px;
+  margin: 0;
+}
+
+.whatsapp-campaign-detail-hero dt {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.whatsapp-campaign-detail-hero dd {
+  margin: 3px 0 0;
+  color: #172033;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.whatsapp-sender-create {
+  position: relative;
+  justify-self: end;
+}
+
+.whatsapp-sender-create > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  background: #00a884;
+  cursor: pointer;
+  list-style: none;
+}
+
+.whatsapp-sender-create > summary::-webkit-details-marker {
+  display: none;
+}
+
+.whatsapp-sender-create__form {
+  position: absolute;
+  right: 0;
+  z-index: 8;
+  display: grid;
+  width: min(420px, calc(100vw - 40px));
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid #c7d2e1;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(23, 32, 51, .18);
+}
+
+.whatsapp-sender-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 340px));
+  gap: 10px;
+}
+
+.whatsapp-sender-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(23, 32, 51, .05);
+}
+
+.whatsapp-sender-card.is-selected {
+  border-color: #00a884;
+  box-shadow: 0 0 0 3px rgba(0, 168, 132, .12);
+}
+
+.whatsapp-sender-card__head,
+.whatsapp-sender-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.whatsapp-sender-card__open {
+  border-color: #00a884;
+  color: #fff;
+  background: #00a884;
+}
+
+.whatsapp-sender-card__open:hover {
+  color: #fff;
+  background: #008f72;
+}
+
+.whatsapp-sender-card__head > span {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.whatsapp-sender-card strong {
+  color: #172033;
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.whatsapp-sender-card p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.whatsapp-sender-card dl {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.whatsapp-sender-card dl > div {
+  display: flex;
+  gap: 6px;
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.whatsapp-sender-card dt {
+  font-weight: 800;
+}
+
+.whatsapp-sender-card dd {
+  margin: 0;
+}
+
+.whatsapp-sender-card--empty {
+  border-style: dashed;
+  background: #f8fafc;
+}
+
+.whatsapp-campaigns__kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.whatsapp-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(130px, 1fr));
+  gap: 10px;
+  overflow: visible;
+  padding-bottom: 2px;
+}
+
+.whatsapp-dashboard-grid--detail {
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+}
+
+.whatsapp-dashboard-card {
+  position: relative;
+  display: grid;
+  min-height: 108px;
+  gap: 4px;
+  overflow: hidden;
+  padding: 13px;
+  border-radius: 8px;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(23, 32, 51, .12);
+}
+
+.whatsapp-dashboard-card::after {
+  content: "";
+  position: absolute;
+  top: -36px;
+  right: -26px;
+  width: 82px;
+  height: 82px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+}
+
+.whatsapp-dashboard-card__top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+}
+
+.whatsapp-dashboard-card__top > i {
+  font-size: 18px;
+  opacity: .92;
+}
+
+.whatsapp-dashboard-card span {
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.whatsapp-dashboard-card strong {
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.whatsapp-dashboard-card small {
+  color: rgba(255, 255, 255, .78);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.whatsapp-cpl-settings {
+  position: relative;
+  z-index: 5;
+}
+
+.whatsapp-cpl-settings > summary {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(255, 255, 255, .18);
+  cursor: pointer;
+  list-style: none;
+}
+
+.whatsapp-cpl-settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.whatsapp-cpl-settings__modal {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  display: grid;
+  width: min(430px, calc(100vw - 48px));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  color: #172033;
+  background: #fff;
+  box-shadow: 0 22px 55px rgba(23, 32, 51, .24);
+}
+
+.whatsapp-cpl-settings__header {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.whatsapp-cpl-settings__header strong {
+  color: #172033;
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.whatsapp-cpl-settings__header span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.whatsapp-cpl-settings__form {
+  display: grid;
+  gap: 10px;
+}
+
+.whatsapp-cpl-settings__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.whatsapp-dashboard-card__tool {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(255, 255, 255, .18);
+  cursor: pointer;
+}
+
+.whatsapp-dashboard-card__tool:hover {
+  background: rgba(255, 255, 255, .28);
+}
+
+.whatsapp-cpl-modal .ax-quick-modal__body {
+  display: grid;
+  gap: 12px;
+}
+
+.whatsapp-cpl-modal__context {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.whatsapp-cpl-modal__context span {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.whatsapp-cpl-modal__context strong {
+  color: #172033;
+  font-size: 14px;
+}
+
+.whatsapp-campaigns .ax-operational-panel__header,
+.whatsapp-campaigns .ax-dashboard-panel__header {
+  padding-bottom: 10px;
+}
+
+.whatsapp-campaigns .ax-operational-panel__body {
+  padding-top: 8px;
+}
+
+.whatsapp-campaigns .ax-table-wrap {
+  border-top: 1px solid #edf1f6;
+}
+
+.whatsapp-selected-group__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.whatsapp-selected-group .ax-btn--primary,
+.whatsapp-selected-group .ax-btn--primary:visited,
+.whatsapp-selected-group .ax-btn--primary span,
+.whatsapp-selected-group .ax-btn--primary i {
+  color: #fff;
+}
+
+.whatsapp-selected-group .ax-btn--primary {
+  border-color: #365f8f;
+  background: #365f8f;
+}
+
+.whatsapp-selected-group .ax-btn--primary:hover {
+  border-color: #294b74;
+  background: #294b74;
+}
+
+.whatsapp-dashboard-card--slate { background: linear-gradient(135deg, #53657c, #34465d); }
+.whatsapp-dashboard-card--purple { background: linear-gradient(135deg, #8b5cf6, #a21caf); }
+.whatsapp-dashboard-card--red { background: linear-gradient(135deg, #ff3d68, #e6002f); }
+.whatsapp-dashboard-card--cyan { background: linear-gradient(135deg, #08bdd4, #0284c7); }
+.whatsapp-dashboard-card--green { background: linear-gradient(135deg, #35c65e, #4fa900); }
+.whatsapp-dashboard-card--blue { background: linear-gradient(135deg, #6274ff, #2456e8); }
+.whatsapp-dashboard-card--orange { background: linear-gradient(135deg, #ff9d00, #ff5400); }
+.whatsapp-dashboard-card--teal { background: linear-gradient(135deg, #00b894, #00947f); }
+
+.whatsapp-response-card-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(23, 32, 51, .05);
+}
+
+.whatsapp-response-card-panel__head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.whatsapp-response-card-panel__head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.whatsapp-response-card-panel__head strong {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.whatsapp-response-card-panel__head span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.whatsapp-response-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.whatsapp-response-card {
+  display: grid;
+  min-height: 86px;
+  gap: 3px;
+  padding: 11px;
+  border-radius: 8px;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(23, 32, 51, .10);
+}
+
+.whatsapp-response-card i {
+  font-size: 16px;
+  opacity: .9;
+}
+
+.whatsapp-response-card span {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whatsapp-response-card strong {
+  font-size: 23px;
+  line-height: 1;
+}
+
+.whatsapp-response-card small {
+  color: rgba(255, 255, 255, .82);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.whatsapp-response-card--slate { background: linear-gradient(135deg, #53657c, #34465d); }
+.whatsapp-response-card--purple { background: linear-gradient(135deg, #8b5cf6, #a21caf); }
+.whatsapp-response-card--cyan { background: linear-gradient(135deg, #08bdd4, #0284c7); }
+.whatsapp-response-card--green { background: linear-gradient(135deg, #35c65e, #4fa900); }
+.whatsapp-response-card--blue { background: linear-gradient(135deg, #6274ff, #2456e8); }
+.whatsapp-response-card--orange { background: linear-gradient(135deg, #ff9d00, #ff5400); }
+
+.whatsapp-campaign-filters {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(130px, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(23, 32, 51, .05);
+}
+
+.whatsapp-campaign-filters__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.whatsapp-selected-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px;
+  border: 1px solid #b7f3d3;
+  border-radius: 8px;
+  background: #f3fff9;
+  box-shadow: 0 8px 20px rgba(0, 168, 132, .08);
+}
+
+.whatsapp-selected-group div {
+  display: grid;
+  gap: 3px;
+}
+
+.whatsapp-selected-group strong {
+  color: #172033;
+  font-size: 15px;
+}
+
+.whatsapp-selected-group span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.whatsapp-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin: 2px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 800;
+  background: #eef2f7;
+}
+
+.whatsapp-chip--purple { color: #6d28d9; background: #f1e8ff; }
+.whatsapp-chip--red { color: #b42318; background: #ffe4e8; }
+.whatsapp-chip--cyan { color: #0e7490; background: #d9f8ff; }
+
+.whatsapp-campaign-table td strong,
+.whatsapp-group-table td strong {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.whatsapp-progress {
+  display: grid;
+  min-width: 120px;
+  gap: 4px;
+}
+
+.whatsapp-progress span,
+.whatsapp-progress small {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.whatsapp-progress meter,
+.whatsapp-progress-panel meter {
+  width: 100%;
+  height: 7px;
+}
+
+.whatsapp-warning-panel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #f6c768;
+  border-radius: 8px;
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.whatsapp-warning-panel strong {
+  color: #92400e;
+  font-size: 13px;
+}
+
+.whatsapp-warning-panel p,
+.whatsapp-warning-panel li {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.whatsapp-warning-panel ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.whatsapp-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.whatsapp-performance-grid,
+.whatsapp-audience-context {
+  display: grid;
+  gap: 10px;
+}
+
+.whatsapp-performance-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.whatsapp-performance-grid > div,
+.whatsapp-audience-context > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.whatsapp-performance-grid span,
+.whatsapp-audience-context span {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.whatsapp-performance-grid strong,
+.whatsapp-audience-context strong {
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.whatsapp-audience-context strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.whatsapp-progress-panel {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.whatsapp-progress-panel > div {
+  display: flex;
+  justify-content: space-between;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.whatsapp-progress-panel small {
+  color: #667085;
+  font-size: 11px;
+}
+
+.whatsapp-campaign-form {
+  display: grid;
+  gap: 12px;
+}
+
+.whatsapp-campaign-form__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.whatsapp-campaign-form__stack {
+  display: grid;
+  gap: 10px;
+}
+
+.whatsapp-campaign-form__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.whatsapp-campaign-builder {
+  display: grid;
+  gap: 12px;
+}
+
+.whatsapp-campaign-builder__nav {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.whatsapp-campaign-builder__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 650;
+  background: transparent;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.whatsapp-campaign-builder__step:hover,
+.whatsapp-campaign-builder__step.is-active {
+  border-color: #c7d2e1;
+  color: #1f3f64;
+  background: #fff;
+}
+
+.whatsapp-campaign-builder__progress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5eaf1;
+}
+
+.whatsapp-campaign-builder__progress > span {
+  display: block;
+  width: 20%;
+  height: 100%;
+  border-radius: inherit;
+  background: #365f8f;
+  transition: width 180ms ease;
+}
+
+.whatsapp-campaign-builder__workspace {
+  display: grid;
+  gap: 12px;
+}
+
+.whatsapp-campaign-builder__pane[hidden] {
+  display: none;
+}
+
+.whatsapp-campaign-builder__footer {
+  padding: 8px 10px;
+}
+
+.whatsapp-campaign-builder__footer .ax-sticky-action-footer__inner {
+  min-height: 36px;
+}
+
+.whatsapp-campaign-audience-preview {
+  display: grid;
+  gap: 8px;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.whatsapp-campaign-audience-preview > strong {
+  color: #172033;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.whatsapp-campaign-audience-preview ul {
+  display: grid;
+  gap: 6px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.whatsapp-campaign-audience-preview li {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid #e0e6ef;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.whatsapp-campaign-audience-preview li strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.whatsapp-campaign-audience-preview li span {
+  color: #667085;
+  font-size: 12px;
+}
+
+.whatsapp-audience-builder {
+  gap: 12px;
+}
+
+.whatsapp-audience-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.whatsapp-audience-mode {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.whatsapp-audience-mode input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.whatsapp-audience-mode.is-selected {
+  border-color: #10b981;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, .12);
+}
+
+.whatsapp-audience-mode__icon {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #047857;
+  background: #d1fae5;
+  font-size: 16px;
+}
+
+.whatsapp-audience-mode strong,
+.whatsapp-audience-mode small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.whatsapp-audience-mode strong {
+  color: #172033;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.whatsapp-audience-mode small {
+  margin-top: 2px;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.whatsapp-audience-panel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #dce4ee;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.whatsapp-audience-panel[hidden] {
+  display: none;
+}
+
+.whatsapp-audience-panel__head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.whatsapp-audience-panel__head strong,
+.whatsapp-audience-panel__head span {
+  display: block;
+}
+
+.whatsapp-audience-panel__head strong {
+  color: #172033;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.whatsapp-audience-panel__head span {
+  margin-top: 2px;
+  color: #667085;
+  font-size: 11px;
+}
+
+.whatsapp-audience-panel__actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.whatsapp-audience-condition-list {
+  display: grid;
+  gap: 8px;
+}
+
+.whatsapp-audience-condition {
+  display: grid;
+  grid-template-columns: minmax(150px, .9fr) minmax(120px, .7fr) minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  padding: 8px;
+  border: 1px solid #e3e9f2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.whatsapp-audience-condition__dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.whatsapp-audience-condition__dates[hidden],
+.whatsapp-audience-condition__value[hidden] {
+  display: none;
+}
+
+.whatsapp-audience-condition__actions {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 1px;
+}
+
+.whatsapp-filter-chipset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: var(--ax-form-control-height, 28px);
+  align-items: center;
+}
+
+.whatsapp-filter-chipset__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.whatsapp-filter-chipset__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ax-form-control-height, 28px);
+  padding: 0 10px;
+  border: 1px solid #d9e1ec;
+  border-radius: 999px;
+  color: #475467;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.whatsapp-filter-chipset__chip:hover {
+  border-color: #c5d3e3;
+  background: #f8fafc;
+}
+
+.whatsapp-filter-chipset__chip:has(.whatsapp-filter-chipset__input:focus-visible) {
+  box-shadow: 0 0 0 3px rgb(54 99 153 / .12);
+}
+
+.whatsapp-filter-chipset__chip:has(.whatsapp-filter-chipset__input:checked) {
+  border-color: #00a66a;
+  color: #007f52;
+  background: #eafff6;
+}
+
+.whatsapp-filter-chipset__chip:has(.whatsapp-filter-chipset__input:disabled) {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.whatsapp-audience-preview-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.whatsapp-audience-preview-metrics > div {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid #e1e8f2;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.whatsapp-audience-preview-metrics small {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.whatsapp-audience-preview-metrics b {
+  color: #172033;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.whatsapp-campaign-template-preview,
+.whatsapp-campaign-test-send {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #e0e6ef;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.whatsapp-template-variable-map {
+  display: grid;
+  gap: 6px;
+}
+
+.whatsapp-template-variable-map__head,
+.whatsapp-template-variable-row {
+  display: grid;
+  grid-template-columns: minmax(72px, .35fr) minmax(180px, 1fr) minmax(180px, .8fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.whatsapp-template-variable-map__head {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.whatsapp-template-variable-row {
+  padding: 7px;
+  border: 1px solid #e0e6ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.whatsapp-template-variable-row__token {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: var(--ax-form-control-height, 28px);
+  padding: 0 9px;
+  border-radius: 999px;
+  color: #365f8f;
+  background: #edf4ff;
+  font-size: 12px;
+  font-weight: 850;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.whatsapp-template-variable-row__context {
+  color: #344054;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.whatsapp-response-decision-map {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.whatsapp-response-decision-map__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.whatsapp-response-decision-map__head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.whatsapp-response-decision-map__head strong {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.whatsapp-response-decision-map__head span {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.whatsapp-response-decision-row {
+  display: grid;
+  grid-template-columns: minmax(150px, .8fr) minmax(180px, .8fr) minmax(180px, .9fr) minmax(210px, 1fr);
+  gap: 8px;
+  align-items: end;
+  padding: 8px;
+  border: 1px solid #e0e6ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.whatsapp-response-decision-row__button {
+  display: grid;
+  align-self: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.whatsapp-response-decision-row__button span {
+  overflow: hidden;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.whatsapp-response-decision-row__button small,
+.whatsapp-response-decision-row__hint {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.whatsapp-response-decision-row__hint {
+  grid-column: 2 / -1;
+  margin: -2px 0 0;
+}
+
+.whatsapp-campaign-template-preview > div {
+  display: grid;
+  gap: 6px;
+}
+
+.whatsapp-campaign-template-preview strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.whatsapp-campaign-template-preview span {
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.whatsapp-campaign-test-send {
+  grid-template-columns: minmax(220px, 1fr) auto minmax(180px, .8fr);
+  align-items: end;
+}
+
+.whatsapp-test-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-height: var(--ax-form-control-height, 28px);
+  padding: 6px 8px;
+  border: 1px solid #d8e1ec;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.whatsapp-test-result i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.whatsapp-test-result span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.whatsapp-test-result strong {
+  color: inherit;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.whatsapp-test-result small {
+  color: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.whatsapp-test-result--loading {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.whatsapp-test-result--success {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.whatsapp-test-result--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b42318;
+}
+
+.whatsapp-campaign-review dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.whatsapp-campaign-review dl > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 8px 0;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.whatsapp-campaign-review dt {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.whatsapp-campaign-review dd {
+  margin: 0;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.whatsapp-campaign-failures {
+  display: grid;
+  gap: 8px;
+}
+
+.whatsapp-campaign-failures > div {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 8px;
+  border: 1px solid #fee2e2;
+  border-radius: 7px;
+  background: #fff7f7;
+}
+
+.whatsapp-campaign-failures strong {
+  color: #b42318;
+}
+
+.whatsapp-campaign-failures span,
+.whatsapp-campaign-failures p {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 13px;
+}
+
+.whatsapp-campaign-message-filters {
+  padding-bottom: 0;
+}
+
+.whatsapp-campaign-message-filters__form {
+  display: grid;
+  grid-template-columns: minmax(180px, .6fr) minmax(240px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.whatsapp-message-table__wamid {
+  display: inline-block;
+  max-width: 180px;
+  padding: 2px 5px;
+  border: 1px solid #d8e1ec;
+  border-radius: 5px;
+  background: #f8fafc;
+  color: #344054;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.automation-workflow-builder__webhook-test {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #d8dee8;
+  border-radius: 7px;
+  background: #f8fafc;
+}
+
+.automation-workflow-builder__webhook-test > span {
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+@media (max-width: 980px) {
+  .whatsapp-campaign-hero,
+  .whatsapp-campaign-detail-hero,
+  .whatsapp-campaign-detail-hero dl,
+  .whatsapp-campaign-filters,
+  .whatsapp-detail-grid,
+  .whatsapp-performance-grid,
+  .whatsapp-campaign-builder__nav,
+  .whatsapp-campaign-test-send,
+  .whatsapp-campaign-message-filters__form,
+  .whatsapp-campaigns__kpis,
+  .whatsapp-campaign-form__grid,
+  .whatsapp-campaign-form__row,
+  .whatsapp-audience-mode-grid,
+  .whatsapp-audience-condition {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .whatsapp-campaign-review dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
+.whatsapp-templates {
+  display: grid;
+  gap: 12px;
+}
+
+.whatsapp-template-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(23, 32, 51, .04);
+}
+
+.whatsapp-template-header--approval {
+  border-color: #fedf89;
+  background: #fffbeb;
+}
+
+.whatsapp-template-header__icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 8px;
+  background: #d1fae5;
+  color: #059669;
+  font-size: 22px;
+}
+
+.whatsapp-template-header strong {
+  display: block;
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.whatsapp-template-header span {
+  color: #667085;
+  font-size: 13px;
+}
+
+.whatsapp-template-header__status {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.whatsapp-template-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, .45fr) minmax(150px, .45fr) minmax(170px, .55fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(23, 32, 51, .04);
+}
+
+.whatsapp-template-table-section {
+  display: grid;
+  gap: 8px;
+}
+
+.whatsapp-template-table {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(23, 32, 51, .04);
+}
+
+.whatsapp-template-table th {
+  padding: 10px;
+  background: #f8fafa;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.whatsapp-template-table td {
+  padding: 12px 10px;
+  border-top: 1px solid #edf1f6;
+  color: #334155;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.whatsapp-template-table td strong {
+  display: block;
+  color: #172033;
+  font-size: 14px;
+}
+
+.whatsapp-template-table td span {
+  color: #667085;
+  font-size: 12px;
+}
+
+.whatsapp-template-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.whatsapp-template-type-chooser {
+  display: grid;
+  gap: 14px;
+}
+
+.whatsapp-template-type-chooser__heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 4px 2px;
+}
+
+.whatsapp-template-type-chooser__heading strong {
+  display: block;
+  color: #172033;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.whatsapp-template-type-chooser__heading span {
+  color: #667085;
+  font-size: 14px;
+}
+
+.whatsapp-template-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.whatsapp-template-type-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  min-height: 245px;
+  padding: 18px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(23, 32, 51, .06);
+}
+
+.whatsapp-template-type-card::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 130px;
+  height: 110px;
+  border-bottom-left-radius: 100px;
+  background: #f0fdf4;
+  content: "";
+}
+
+.whatsapp-template-type-card--blue::before {
+  background: #eff6ff;
+}
+
+.whatsapp-template-type-card--purple::before {
+  background: #f5f3ff;
+}
+
+.whatsapp-template-type-card__icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 10px;
+  background: #10b981;
+  color: #fff;
+  font-size: 28px;
+}
+
+.whatsapp-template-type-card--blue .whatsapp-template-type-card__icon {
+  background: #0ea5e9;
+}
+
+.whatsapp-template-type-card--purple .whatsapp-template-type-card__icon {
+  background: #8b5cf6;
+}
+
+.whatsapp-template-type-card__badge {
+  position: absolute;
+  z-index: 1;
+  top: 16px;
+  right: 16px;
+}
+
+.whatsapp-template-type-card strong,
+.whatsapp-template-type-card p,
+.whatsapp-template-type-card .ax-btn {
+  position: relative;
+  z-index: 1;
+}
+
+.whatsapp-template-type-card strong {
+  margin-top: 16px;
+  color: #172033;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.whatsapp-template-type-card p {
+  min-height: 62px;
+  margin: 0;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.whatsapp-template-type-card .ax-btn {
+  justify-content: center;
+  margin-top: auto;
+}
+
+.whatsapp-template-form {
+  display: grid;
+  gap: 12px;
+}
+
+.whatsapp-template-form__stack {
+  display: grid;
+  gap: 12px;
+}
+
+.whatsapp-template-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.whatsapp-template-form__grid--media {
+  grid-template-columns: minmax(180px, .45fr) minmax(0, 1fr);
+}
+
+.whatsapp-template-form [hidden] {
+  display: none !important;
+}
+
+.whatsapp-template-form textarea.ax-control {
+  min-height: 86px;
+  padding: 10px 12px;
+  line-height: 1.45;
+}
+
+.whatsapp-template-check {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.whatsapp-template-check input {
+  width: 16px;
+  height: 16px;
+}
+
+.whatsapp-template-media-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: #667085;
+  font-size: 12px;
+}
+
+.whatsapp-template-media-rules span {
+  padding: 4px 8px;
+  border: 1px solid #d8dee8;
+  border-radius: 999px;
+  background: #f8fafc;
+}
+
+.whatsapp-template-example-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.whatsapp-template-examples__head {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.whatsapp-template-examples__head .ax-field__hint {
+  margin: 0;
+}
+
+.whatsapp-template-example-row__input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 6px;
+}
+
+.whatsapp-template-example-row__remove,
+.whatsapp-template-button-row__remove {
+  width: 36px;
+  min-width: 36px;
+  justify-content: center;
+  color: #b42318;
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.whatsapp-template-button-list {
+  display: grid;
+  gap: 10px;
+}
+
+.whatsapp-template-button-row {
+  display: grid;
+  grid-template-columns: minmax(170px, .35fr) minmax(220px, .5fr) minmax(240px, .65fr) 36px;
+  gap: 10px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.whatsapp-template-form__footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #edf1f6;
+}
+
+.whatsapp-template-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.whatsapp-template-preview h1 {
+  margin: 4px 0;
+  color: #172033;
+  font-size: 24px;
+}
+
+.whatsapp-template-preview p,
+.whatsapp-template-preview span {
+  color: #667085;
+}
+
+.whatsapp-template-phone-preview {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #c8eadb;
+  border-radius: 10px;
+  background: #e7f5ee;
+}
+
+.whatsapp-template-phone-preview p {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+}
+
+.whatsapp-template-phone-preview small {
+  color: #667085;
+}
+
+.whatsapp-template-phone-preview button {
+  padding: 8px;
+  border: 1px solid #c8eadb;
+  border-radius: 7px;
+  background: #fff;
+  color: #047857;
+  font-weight: 750;
+}
+
+.whatsapp-template-phone-preview__media {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  border: 1px dashed #a7f3d0;
+  border-radius: 8px;
+  background: #fff;
+  color: #047857;
+}
+
+.whatsapp-template-advanced {
+  display: grid;
+  gap: 12px;
+}
+
+.whatsapp-template-advanced .ax-btn {
+  justify-self: start;
+}
+
+@media (max-width: 1100px) {
+  .whatsapp-template-filters,
+  .whatsapp-template-form__grid,
+  .whatsapp-template-form__grid--media,
+  .whatsapp-template-preview,
+  .whatsapp-template-type-grid,
+  .whatsapp-template-button-row,
+  .whatsapp-template-example-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .whatsapp-template-header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .whatsapp-template-header__status {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 }
 

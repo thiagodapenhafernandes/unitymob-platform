@@ -227,12 +227,15 @@ RSpec.describe "Admin::AutomationWorkflows", type: :request do
         { "from" => "condition_1", "to" => "action_1" }
       ]
 
-      post simulate_admin_automation_workflow_path(workflow), params: {
+      patch simulate_admin_automation_workflow_path(workflow), params: {
         automation_workflow: {
           name: "Simular",
           definition_json: definition.to_json
         }
       }
+
+      expect(response).to redirect_to(builder_admin_automation_workflow_path(workflow))
+      follow_redirect!
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Simulação do builder")

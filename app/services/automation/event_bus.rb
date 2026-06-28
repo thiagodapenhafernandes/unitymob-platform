@@ -21,8 +21,6 @@ module Automation
     end
 
     def emit
-      return unless @lead
-
       event = find_or_build_event
       return event if event.persisted? && !event.pending?
 
@@ -34,7 +32,7 @@ module Automation
         occurred_at: Time.current
       )
       event.save!
-      record_timeline(event)
+      record_timeline(event) if @lead
       dispatch(event)
       event
     end

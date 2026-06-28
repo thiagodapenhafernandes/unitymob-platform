@@ -468,7 +468,7 @@ module Admin::UiHelper
     )
   end
 
-  def ax_file_upload_button(label:, input_id:, form: nil, method: nil, multiple: true, direct_upload: false, accept: nil, capture: nil, input_data: {}, label_data: {}, input_class: nil, input_options: {}, class_name: "ax-btn ax-btn--ghost ax-btn--sm")
+  def ax_file_upload_button(label:, input_id:, form: nil, method: nil, multiple: true, direct_upload: false, accept: nil, capture: nil, input_data: {}, label_data: {}, input_class: nil, input_options: {}, class_name: "ax-btn ax-btn--sm ax-upload-button")
     render(
       "admin/shared/ui/file_upload_button",
       label:,

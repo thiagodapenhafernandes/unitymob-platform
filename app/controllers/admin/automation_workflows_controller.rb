@@ -38,6 +38,7 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
 
   def builder
     @version = @workflow.draft_version!
+    consume_simulation_result
     set_monitoring
     @page_title = @workflow.name
   end
@@ -46,12 +47,7 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
     version = @workflow.draft_version!
     definition = parse_definition
 
-    @workflow.assign_attributes(workflow_params) if params[:automation_workflow].present?
-    version.assign_attributes(definition: definition, created_by: version.created_by || current_admin_user)
-
-    if @workflow.valid? && version.valid?
-      @workflow.save!
-      version.save!
+    if persist_draft(version, definition)
       redirect_to builder_admin_automation_workflow_path(@workflow), notice: "Rascunho salvo."
     else
       set_catalogs
@@ -89,15 +85,22 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
   end
 
   def simulate
-    @version = @workflow.draft_version!
+    version = @workflow.draft_version!
     definition = parse_definition
-    @simulation_result = Automation::Simulator.workflow(definition)
-    @version.assign_attributes(definition: definition)
-    set_catalogs
-    set_monitoring
-    @page_title = @workflow.name.presence || "Automação de acompanhamento"
-    flash.now[:notice] = "Simulação gerada sem executar intervenções."
-    render :builder, status: :ok
+
+    if persist_draft(version, definition)
+      session[:automation_workflow_simulation_id] = @workflow.id
+      redirect_to builder_admin_automation_workflow_path(@workflow),
+                  notice: "Simulação gerada sem executar intervenções.",
+                  status: :see_other
+    else
+      set_catalogs
+      set_monitoring
+      @version = version
+      @page_title = @workflow.name.presence || "Automação de acompanhamento"
+      flash.now[:alert] = "A simulação não pode ser gerada com a definição atual."
+      render :builder, status: :unprocessable_entity
+    end
   end
 
   def destroy
@@ -119,6 +122,7 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
     @source_options = Lead.origin_options
     @broker_options = AdminUser.active.order(:name).pluck(:name, :id)
     @template_options = WhatsappTemplate.approved.ordered.pluck(:name, :name)
+    @distribution_rule_options = DistributionRule.active.order(:name).pluck(:name, :id)
   end
 
   def set_monitoring
@@ -138,6 +142,23 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
 
   def workflow_params
     params.fetch(:automation_workflow, {}).permit(:name, :definition_json).slice(:name)
+  end
+
+  def persist_draft(version, definition)
+    @workflow.assign_attributes(workflow_params) if params[:automation_workflow].present?
+    version.assign_attributes(definition: definition, created_by: version.created_by || current_admin_user)
+
+    return false unless @workflow.valid? && version.valid?
+
+    @workflow.save!
+    version.save!
+    true
+  end
+
+  def consume_simulation_result
+    return unless session.delete(:automation_workflow_simulation_id).to_i == @workflow.id
+
+    @simulation_result = Automation::Simulator.workflow(@version.definition_hash)
   end
 
   def parse_definition

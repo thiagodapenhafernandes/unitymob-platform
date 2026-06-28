@@ -177,7 +177,7 @@
                 </div>
                 <%= link_to "Abrir Atendimento", admin_whatsapp_conversations_path, class: "ax-btn ax-btn--sm" %>
               </header>
-              <p class="wa-hint">Configure no painel da Meta (WhatsApp › Configuration › Webhook) para receber e responder mensagens dentro do CRM. Campo a assinar: <code>messages</code>.</p>
+              <p class="wa-hint">Configure no painel da Meta (WhatsApp › Configuration › Webhook) para receber mensagens e retornos de aprovação. Campos a assinar: <code>messages</code> e <code>message_template_status_update</code>.</p>
 
               <% if @webhook_settings_errors.present? %>
                 <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>

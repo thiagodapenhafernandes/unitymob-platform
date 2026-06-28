@@ -31,6 +31,10 @@ class WhatsappBusinessIntegration < ApplicationRecord
   ].freeze
 
   belongs_to :connected_by_admin_user, class_name: "AdminUser", optional: true
+  has_many :sender_numbers,
+           class_name: "WhatsappSenderNumber",
+           dependent: :nullify,
+           inverse_of: :whatsapp_business_integration
 
   validates :status, inclusion: { in: STATUSES }
   validate :validate_site_phone_numbers

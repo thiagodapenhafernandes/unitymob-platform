@@ -1,4 +1,26 @@
 <section class="automation-workflow-monitor automation-workflow-monitor--modal">
+  <% step_label = lambda do |step|
+       {
+         "await_whatsapp_response" => "Aguardou resposta WhatsApp",
+         "response_condition" => "Condição de resposta",
+         "response_fallback" => "Fallback de resposta",
+         "await_event" => "Aguardou evento",
+         "action" => "Intervenção",
+         "wait" => "Espera"
+       }[step.node_type.to_s] || step.node_type
+     end %>
+  <% step_detail = lambda do |step|
+       output = step.output.to_h
+       if step.node_type.to_s == "await_whatsapp_response"
+         output["matched_event_id"].present? ? "resposta recebida" : (output["timeout"] ? "timeout" : nil)
+       elsif step.node_type.to_s == "response_condition"
+         output.key?("matched") ? (output["matched"] ? "casou" : "não casou") : nil
+       elsif step.node_type.to_s == "response_fallback"
+         output["fallback_type"].presence || (output["matched"] ? "acionado" : nil)
+       elsif output["label"].present?
+         output["label"]
+       end
+     end %>
   <div class="automation-workflow-monitor__header">
     <div>
       <div class="automation-workflow-monitor__eyebrow">Monitoramento</div>
@@ -63,7 +85,8 @@
             <% if execution.steps.any? %>
               <div class="automation-workflow-monitor__steps">
                 <% execution.steps.order(:id).last(4).each do |step| %>
-                  <span><i class="bi bi-dot"></i><%= step.node_type %>: <%= step.status_label %></span>
+                  <% detail = step_detail.call(step) %>
+                  <span><i class="bi bi-dot"></i><%= step_label.call(step) %>: <%= detail.presence || step.status_label %></span>
                 <% end %>
               </div>
             <% end %>

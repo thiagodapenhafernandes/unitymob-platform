@@ -1,0 +1,405 @@
+<% content_for :admin_contextbar_title, campaign.persisted? ? "Editar disparo" : "Novo disparo" %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_whatsapp_campaigns_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
+  <% end %>
+<% end %>
+
+<%
+  audience_definition = campaign.audience_definition.to_h.with_indifferent_access
+  audience_conditions = Array(audience_definition[:conditions]).presence
+  audience_conditions ||= [
+    campaign.audience_filters["status"].present? ? { field: "status", operator: "equals", value: campaign.audience_filters["status"] } : nil,
+    campaign.audience_filters["origin"].present? ? { field: "origin", operator: "equals", value: campaign.audience_filters["origin"] } : nil,
+    campaign.audience_filters["admin_user_id"].present? ? { field: "admin_user_id", operator: "equals", value: campaign.audience_filters["admin_user_id"] } : nil
+  ].compact
+  audience_conditions = [{ field: "status", operator: "in", value: "" }] if audience_conditions.blank?
+  selected_audience_mode = campaign.audience_mode.presence || "filters"
+  audience_template_csv = "nome,telefone,email,origem,status,tags,responsavel_email\nMaria Silva,5511999990000,maria@example.com,importacao,novo,\"Produto; Premium\",corretor@example.com\nThiago Silva,5521990872427,thiago@example.com,importacao,novo,\"[\"\"Produto 02\"\", \"\"Premium\"\"]\",\n"
+%>
+
+<%= form_with model: [:admin, campaign],
+              class: "whatsapp-campaign-builder",
+              multipart: true,
+              data: {
+                controller: "whatsapp-campaign-builder",
+                whatsapp_campaign_builder_preview_url_value: preview_audience_admin_whatsapp_campaigns_path,
+                whatsapp_campaign_builder_template_preview_url_value: preview_template_admin_whatsapp_campaigns_path,
+                whatsapp_campaign_builder_test_url_value: send_test_admin_whatsapp_campaigns_path,
+                whatsapp_campaign_builder_response_actions_value: WhatsappCampaign::RESPONSE_ACTIONS.to_json,
+                whatsapp_campaign_builder_distribution_rules_value: @distribution_rule_options.map { |label, value| { label: label, value: value } }.to_json,
+                whatsapp_campaign_builder_current_response_decisions_value: campaign.response_decisions.to_json
+              } do |f| %>
+  <% if campaign.errors.any? %>
+    <div class="ax-inline-notice ax-inline-notice--danger"><%= campaign.errors.full_messages.to_sentence %></div>
+  <% end %>
+
+  <div class="whatsapp-campaign-builder__nav" role="list">
+    <% [
+      [1, "Dados", "bi-pencil-square"],
+      [2, "Modelo", "bi-chat-square-text"],
+      [3, "Audiência", "bi-people"],
+      [4, "Agendamento", "bi-clock"],
+      [5, "Revisão", "bi-check2-circle"]
+    ].each do |step, label, icon| %>
+      <button type="button"
+              class="whatsapp-campaign-builder__step"
+              data-whatsapp-campaign-builder-target="stepButton"
+              data-step="<%= step %>"
+              data-action="whatsapp-campaign-builder#goTo">
+        <i class="bi <%= icon %> ax-ico"></i>
+        <span><%= label %></span>
+      </button>
+    <% end %>
+  </div>
+
+  <div class="whatsapp-campaign-builder__progress" aria-hidden="true">
+    <span data-whatsapp-campaign-builder-target="progress"></span>
+  </div>
+
+  <div class="whatsapp-campaign-builder__workspace">
+    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="1">
+      <%= ax_operational_panel(eyebrow: "Etapa 1", title: "Dados do disparo") do %>
+        <div class="ax-panel-body whatsapp-campaign-form__stack">
+          <%= ax_text_field(
+                form: f,
+                method: :name,
+                label: "Nome do disparo",
+                placeholder: "Ex: Reativação leads de venda",
+                data: {
+                  whatsapp_campaign_builder_target: "nameInput",
+                  action: "input->whatsapp-campaign-builder#refreshReview"
+                }
+              ) %>
+          <div class="ax-field">
+            <%= ax_field_label(f, :description, text: "Descrição interna") %>
+            <%= f.text_area :description, class: "ax-control", rows: 4, placeholder: "Contexto interno para equipe comercial" %>
+          </div>
+          <div class="whatsapp-campaign-form__row">
+            <div class="ax-field">
+              <%= ax_field_label(f, :whatsapp_sender_number_id, text: "Número de envio") %>
+              <%= f.select :whatsapp_sender_number_id,
+                           @sender_number_options,
+                           { prompt: "Usar número padrão conectado" },
+                           class: "ax-control",
+                           data: {
+                             whatsapp_campaign_builder_target: "senderSelect",
+                             action: "change->whatsapp-campaign-builder#refreshReview"
+                           } %>
+              <p class="ax-field__hint">Este será o remetente usado pelos clientes ao receber a mensagem.</p>
+            </div>
+            <%= ax_autocomplete_select_field(
+                  form: f,
+                  method: :group_name,
+                  label: "Grupo de campanhas",
+                  choices: @group_options.map { |group_name| [group_name, group_name] },
+                  select_options: { include_blank: "Sem grupo", selected: campaign.group_name },
+                  placeholder: "Buscar ou criar grupo...",
+                  create: true,
+                  html_options: {
+                    data: {
+                      whatsapp_campaign_builder_target: "groupInput",
+                      action: "change->whatsapp-campaign-builder#refreshReview"
+                    }
+                  },
+                  tooltip: "Opcional. Use grupos para organizar campanhas relacionadas na listagem."
+                ) %>
+          </div>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="2" hidden>
+      <%= ax_operational_panel(eyebrow: "Etapa 2", title: "Modelo e variáveis") do %>
+        <div class="ax-panel-body whatsapp-campaign-form__stack">
+          <div class="ax-field">
+            <%= ax_field_label(f, :whatsapp_template_id, text: "Modelo WhatsApp aprovado") %>
+            <%= f.select :whatsapp_template_id,
+                         @template_options,
+                         { prompt: "Selecione um modelo aprovado" },
+                         class: "ax-control",
+                         data: {
+                           whatsapp_campaign_builder_target: "templateSelect",
+                           action: "change->whatsapp-campaign-builder#refreshReview change->whatsapp-campaign-builder#previewTemplate"
+                         } %>
+          </div>
+          <div class="whatsapp-template-variable-map" data-whatsapp-campaign-builder-target="variableList">
+            <div class="ax-inline-notice ax-inline-notice--info">
+              Selecione um modelo para o sistema identificar e montar os campos variáveis automaticamente.
+            </div>
+          </div>
+          <div class="whatsapp-campaign-template-preview">
+            <div>
+              <strong>Preview do modelo</strong>
+              <span data-whatsapp-campaign-builder-target="templatePreview">Selecione um modelo para visualizar.</span>
+            </div>
+            <button type="button" class="ax-btn" data-action="whatsapp-campaign-builder#previewTemplate">
+              <i class="bi bi-eye ax-ico"></i><span>Atualizar preview</span>
+            </button>
+          </div>
+          <div class="whatsapp-response-decision-map">
+            <div class="whatsapp-response-decision-map__head">
+              <div>
+                <strong>Decisões dos botões</strong>
+                <span>O sistema detecta os botões do modelo e deixa claro o que cada resposta fará.</span>
+              </div>
+              <button type="button"
+                      class="ax-icon-btn"
+                      title="Use Converter em lead para botões de intenção comercial, Sem interesse para recusa e Descadastrar quando o contato pediu para sair da base. Essas decisões alimentam relatórios e automações.">
+                <i class="bi bi-info-circle"></i>
+              </button>
+            </div>
+            <div data-whatsapp-campaign-builder-target="responseDecisionList">
+              <div class="ax-inline-notice ax-inline-notice--info">
+                Selecione um modelo para detectar os botões e configurar as decisões comerciais.
+              </div>
+            </div>
+          </div>
+          <div class="whatsapp-campaign-test-send">
+            <div class="ax-field">
+              <%= label_tag :test_phone, "Telefone de teste", class: "ax-label" %>
+              <%= telephone_field_tag :test_phone, nil, class: "ax-control", placeholder: "5547999990000", data: { whatsapp_campaign_builder_target: "testPhone" } %>
+            </div>
+            <button type="button" class="ax-btn" data-action="whatsapp-campaign-builder#sendTest">
+              <i class="bi bi-send-check ax-ico"></i><span>Enviar teste</span>
+            </button>
+            <span data-whatsapp-campaign-builder-target="testResult"></span>
+          </div>
+          <p class="ax-field__hint">Escolha quais dados do lead preencherão cada campo do modelo aprovado.</p>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="3" hidden>
+      <div class="whatsapp-campaign-form__grid">
+        <%= ax_operational_panel(eyebrow: "Etapa 3", title: "Segmentação do público") do %>
+          <div class="ax-panel-body whatsapp-campaign-form__stack whatsapp-audience-builder">
+            <div class="whatsapp-audience-mode-grid" role="radiogroup" aria-label="Modo de público">
+              <% [
+                ["filters", "Segmentar com filtros", "Use regras do CRM para encontrar leads.", "bi-funnel"],
+                ["spreadsheet", "Importar planilha", "Use um CSV validado pelo sistema.", "bi-file-earmark-spreadsheet"],
+                ["saved_audience", "Público salvo", "Reaproveite uma lista pronta.", "bi-bookmark-check"]
+              ].each do |mode, title, description, icon| %>
+                <label class="whatsapp-audience-mode <%= 'is-selected' if selected_audience_mode == mode %>" data-whatsapp-campaign-builder-target="audienceModeCard">
+                  <%= f.radio_button :audience_mode,
+                                     mode,
+                                     checked: selected_audience_mode == mode,
+                                     data: {
+                                       whatsapp_campaign_builder_target: "audienceMode",
+                                       action: "change->whatsapp-campaign-builder#toggleAudienceMode"
+                                     } %>
+                  <span class="whatsapp-audience-mode__icon"><i class="bi <%= icon %>"></i></span>
+                  <span>
+                    <strong><%= title %></strong>
+                    <small><%= description %></small>
+                  </span>
+                </label>
+              <% end %>
+            </div>
+
+            <div class="whatsapp-audience-panel" data-whatsapp-campaign-builder-target="audienceModePanel" data-audience-mode="filters">
+              <div class="whatsapp-audience-panel__head">
+                <div>
+                  <strong>Condições de filtro</strong>
+                  <span>As condições usam lógica E: o lead precisa cumprir todas.</span>
+                </div>
+                <button type="button" class="ax-btn ax-btn--sm" data-action="whatsapp-campaign-builder#addCondition">
+                  <i class="bi bi-plus-circle ax-ico"></i><span>Adicionar condição</span>
+                </button>
+              </div>
+
+              <%= hidden_field_tag "whatsapp_campaign[audience_definition][logic]", "and" %>
+              <datalist id="whatsapp-campaign-origin-options">
+                <% @origin_options.each do |origin| %>
+                  <option value="<%= origin %>"></option>
+                <% end %>
+              </datalist>
+
+              <div class="whatsapp-audience-condition-list" data-whatsapp-campaign-builder-target="conditionList">
+                <% audience_conditions.each_with_index do |condition, index| %>
+                  <%= render "admin/whatsapp_campaigns/audience_condition_row",
+                             index: index,
+                             condition: condition,
+                             field_options: @audience_field_options,
+                             operator_options: @audience_operator_options,
+                             status_options: @status_options,
+                             broker_options: @broker_options,
+                             origin_options: @origin_options,
+                             tag_options: @tag_options %>
+                <% end %>
+              </div>
+
+              <template data-whatsapp-campaign-builder-target="conditionTemplate">
+                <%= render "admin/whatsapp_campaigns/audience_condition_row",
+                           index: "__INDEX__",
+                           condition: { field: "status", operator: "in" },
+                           field_options: @audience_field_options,
+                           operator_options: @audience_operator_options,
+                           status_options: @status_options,
+                           broker_options: @broker_options,
+                           origin_options: @origin_options,
+                           tag_options: @tag_options %>
+              </template>
+            </div>
+
+            <div class="whatsapp-audience-panel" data-whatsapp-campaign-builder-target="audienceModePanel" data-audience-mode="spreadsheet">
+              <div class="whatsapp-audience-panel__head">
+                <div>
+                  <strong>Importar destinatários por planilha</strong>
+                  <span>Baixe o modelo, preencha os dados e envie o CSV.</span>
+                </div>
+                <div class="whatsapp-audience-panel__actions">
+                  <button type="button"
+                          class="ax-icon-btn"
+                          title="A planilha aceita nome, telefone, email, origem, status, responsavel_id, responsavel_email, responsavel e tags. Tags podem vir como Produto; Premium, ['Produto', 'Premium'] ou JSON [\"Produto\", \"Premium\"]. Campos extras são ignorados sem quebrar a importação.">
+                    <i class="bi bi-info-circle"></i>
+                  </button>
+                  <%= link_to "Baixar modelo CSV",
+                              "data:text/csv;charset=utf-8,#{ERB::Util.url_encode(audience_template_csv)}",
+                              download: "modelo_importacao_destinatarios_whatsapp.csv",
+                              class: "ax-btn ax-btn--sm" %>
+                </div>
+              </div>
+
+              <%= ax_file_field(
+                    form: f,
+                    method: :audience_file,
+                    label: "Arquivo CSV",
+                    tooltip: "Use o modelo CSV com colunas nome, telefone, email, origem e status. XLS/XLSX ainda deve ser exportado como CSV antes de enviar.",
+                    accept: ".csv,text/csv",
+                    button_label: "Selecionar arquivo",
+                    empty_label: campaign.audience_file.attached? ? campaign.audience_file.filename.to_s : "Nenhum arquivo selecionado",
+                    data: { action: "change->whatsapp-campaign-builder#previewAudience" }
+                  ) %>
+
+              <div class="whatsapp-campaign-form__row">
+                <%= ax_number_field(
+                      form: f,
+                      method: :import_batch_size,
+                      label: "Destinatários por janela",
+                      min: 1,
+                      max: 10_000,
+                      data: { action: "input->whatsapp-campaign-builder#refreshReview" }
+                    ) %>
+                <%= ax_number_field(
+                      form: f,
+                      method: :import_interval_minutes,
+                      label: "Frequência da janela",
+                      min: 1,
+                      max: 1_440,
+                      data: { action: "input->whatsapp-campaign-builder#refreshReview" }
+                    ) %>
+              </div>
+
+              <div class="ax-inline-notice ax-inline-notice--info">
+                O processamento usa essa cadência para controlar quantos destinatários entram por vez. O envio continua respeitando o ritmo da etapa de agendamento.
+              </div>
+              <button type="button" class="ax-btn ax-btn--primary" data-action="whatsapp-campaign-builder#prepareSpreadsheet">
+                <i class="bi bi-file-earmark-check ax-ico"></i><span>Preparar planilha para disparo</span>
+              </button>
+            </div>
+
+            <div class="whatsapp-audience-panel" data-whatsapp-campaign-builder-target="audienceModePanel" data-audience-mode="saved_audience">
+              <div class="ax-inline-notice ax-inline-notice--warning">
+                Público salvo ainda não está habilitado para envio. A opção fica visível para manter o desenho do produto, mas o sistema bloqueia o disparo até existir uma lista selecionável.
+              </div>
+            </div>
+
+            <button type="button" class="ax-btn ax-btn--primary" data-action="whatsapp-campaign-builder#previewAudience">
+              <i class="bi bi-calculator ax-ico"></i><span>Pré-visualizar audiência</span>
+            </button>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Preview", title: "Destinatários impactados") do %>
+          <div class="ax-panel-body whatsapp-campaign-audience-preview">
+            <strong data-whatsapp-campaign-builder-target="audienceCount">Ainda não calculado</strong>
+            <span data-whatsapp-campaign-builder-target="audienceMeta">Use a pré-visualização antes de enviar.</span>
+            <div class="whatsapp-audience-preview-metrics">
+              <div><small>Total</small><b data-whatsapp-campaign-builder-target="audienceTotal">--</b></div>
+              <div><small>Com telefone</small><b data-whatsapp-campaign-builder-target="audienceWithPhone">--</b></div>
+              <div><small>Ignorados</small><b data-whatsapp-campaign-builder-target="audienceInvalid">--</b></div>
+            </div>
+            <ul data-whatsapp-campaign-builder-target="audienceSample"></ul>
+          </div>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="4" hidden>
+      <%= ax_operational_panel(eyebrow: "Etapa 4", title: "Agendamento e ritmo") do %>
+        <div class="ax-panel-body whatsapp-campaign-form__row">
+          <%= ax_number_field(
+                form: f,
+                method: :send_rate,
+                label: "Envios por minuto",
+                min: 1,
+                max: 500,
+                data: {
+                  whatsapp_campaign_builder_target: "sendRateInput",
+                  action: "input->whatsapp-campaign-builder#refreshReview"
+                }
+              ) %>
+          <div class="ax-field">
+            <%= ax_field_label(f, :scheduled_at, text: "Agendar para") %>
+            <%= f.datetime_field :scheduled_at,
+                                 class: "ax-control",
+                                 data: {
+                                   whatsapp_campaign_builder_target: "scheduledInput",
+                                   action: "input->whatsapp-campaign-builder#refreshReview"
+                                 } %>
+          </div>
+        </div>
+      <% end %>
+    </section>
+
+    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="5" hidden>
+      <%= ax_operational_panel(eyebrow: "Etapa 5", title: "Revisão antes do disparo") do %>
+        <div class="ax-panel-body whatsapp-campaign-review">
+          <dl>
+            <div><dt>Nome</dt><dd data-whatsapp-campaign-builder-target="reviewName">Sem nome</dd></div>
+            <div><dt>Número</dt><dd data-whatsapp-campaign-builder-target="reviewSender">Número padrão</dd></div>
+            <div><dt>Grupo</dt><dd data-whatsapp-campaign-builder-target="reviewGroup">Sem grupo</dd></div>
+            <div><dt>Modelo</dt><dd data-whatsapp-campaign-builder-target="reviewTemplate">Modelo não selecionado</dd></div>
+            <div><dt>Audiência</dt><dd data-whatsapp-campaign-builder-target="reviewAudience">Pré-visualização pendente</dd></div>
+            <div><dt>Agendamento</dt><dd data-whatsapp-campaign-builder-target="reviewSchedule">Envio manual</dd></div>
+            <div><dt>Variáveis</dt><dd data-whatsapp-campaign-builder-target="reviewVariables">Sem variáveis</dd></div>
+          </dl>
+          <p class="ax-field__hint">O disparo emitirá eventos para a Automação conforme envio, entrega, leitura, falha e resposta.</p>
+        </div>
+      <% end %>
+    </section>
+  </div>
+
+  <%= ax_sticky_action_footer(
+        meta: "Avance pelas etapas, valide a audiência e revise antes de enviar.",
+        class_name: "whatsapp-campaign-builder__footer"
+      ) do %>
+    <button type="button" class="ax-btn" data-action="whatsapp-campaign-builder#previous">
+      <i class="bi bi-arrow-left ax-ico"></i><span>Anterior</span>
+    </button>
+    <button type="button" class="ax-btn" data-action="whatsapp-campaign-builder#next">
+      <i class="bi bi-arrow-right ax-ico"></i><span>Próxima</span>
+    </button>
+    <%= button_tag type: "submit", name: "commit_action", value: "draft", class: "ax-btn" do %>
+      <i class="bi bi-save ax-ico"></i><span>Salvar rascunho</span>
+    <% end %>
+    <%= button_tag type: "submit",
+                   name: "commit_action",
+                   value: "schedule",
+                   class: "ax-btn",
+                   data: { whatsapp_campaign_builder_target: "scheduleSubmit" },
+                   hidden: true do %>
+      <i class="bi bi-calendar2-check ax-ico"></i><span>Agendar</span>
+    <% end %>
+    <%= button_tag type: "submit",
+                   name: "commit_action",
+                   value: "start_now",
+                   class: "ax-btn ax-btn--primary",
+                   data: { whatsapp_campaign_builder_target: "startNowSubmit" },
+                   hidden: true do %>
+      <i class="bi bi-send ax-ico"></i><span>Enviar agora</span>
+    <% end %>
+  <% end %>
+<% end %>

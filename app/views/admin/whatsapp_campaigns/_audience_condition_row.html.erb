@@ -1,0 +1,131 @@
+<%
+  condition = (local_assigns[:condition] || {}).with_indifferent_access
+  index = local_assigns.fetch(:index)
+  field = condition[:field].presence || "status"
+  operator = condition[:operator].presence || "in"
+  values = Array(condition[:values].presence || condition[:value]).map(&:to_s)
+  value = values.first.to_s
+  base_name = "whatsapp_campaign[audience_definition][conditions][#{index}]"
+  text_field_active = %w[name email phone].include?(field) || (field == "origin" && !%w[in].include?(operator))
+%>
+
+<div class="whatsapp-audience-condition"
+     data-whatsapp-campaign-builder-target="conditionRow"
+     data-action="change->whatsapp-campaign-builder#syncConditionRow input->whatsapp-campaign-builder#syncConditionRow">
+  <div class="ax-field">
+    <%= label_tag "#{base_name}_field", "Filtro", class: "ax-label" %>
+    <%= select_tag "#{base_name}[field]",
+                   options_for_select(field_options, field),
+                   id: "#{base_name}_field",
+                   class: "ax-control",
+                   data: { condition_field: true, action: "change->whatsapp-campaign-builder#syncConditionRow" } %>
+  </div>
+
+  <div class="ax-field">
+    <%= label_tag "#{base_name}_operator", "Regra", class: "ax-label" %>
+    <%= select_tag "#{base_name}[operator]",
+                   options_for_select(operator_options, operator),
+                   id: "#{base_name}_operator",
+                   class: "ax-control",
+                   data: { condition_operator: true, action: "change->whatsapp-campaign-builder#syncConditionRow" } %>
+  </div>
+
+  <div class="ax-field whatsapp-audience-condition__value" data-condition-value-type="status">
+    <%= label_tag "#{base_name}_status", "Valor", class: "ax-label" %>
+    <div class="whatsapp-filter-chipset">
+      <% status_options.each do |item| %>
+        <label class="whatsapp-filter-chipset__chip">
+          <%= check_box_tag "#{base_name}[values][]",
+                            item,
+                            field == "status" && values.include?(item),
+                            class: "whatsapp-filter-chipset__input",
+                            disabled: field != "status" %>
+          <span><%= item %></span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="ax-field whatsapp-audience-condition__value" data-condition-value-type="origin">
+    <%= label_tag "#{base_name}_origin", "Valor", class: "ax-label" %>
+    <div class="whatsapp-filter-chipset">
+      <% origin_options.each do |item| %>
+        <label class="whatsapp-filter-chipset__chip">
+          <%= check_box_tag "#{base_name}[values][]",
+                            item,
+                            field == "origin" && values.include?(item),
+                            class: "whatsapp-filter-chipset__input",
+                            disabled: field != "origin" %>
+          <span><%= item %></span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="ax-field whatsapp-audience-condition__value" data-condition-value-type="admin_user_id">
+    <%= label_tag "#{base_name}_admin_user_id", "Valor", class: "ax-label" %>
+    <%= select_tag "#{base_name}[value]",
+                   options_for_select([["Selecione o responsável", ""]] + broker_options, field == "admin_user_id" ? value : nil),
+                   id: "#{base_name}_admin_user_id",
+                   class: "ax-control ax-autocomplete-select",
+                   disabled: field != "admin_user_id",
+                   data: {
+                     controller: "tom-select",
+                     tom_select_options_value: { placeholder: "Buscar responsável..." }
+                   } %>
+  </div>
+
+  <div class="ax-field whatsapp-audience-condition__value" data-condition-value-type="tags">
+    <%= label_tag "#{base_name}_tags", "Tags", class: "ax-label" %>
+    <%= select_tag "#{base_name}[values][]",
+                   options_for_select(tag_options.map { |item| [item, item] }, field == "tags" ? values : []),
+                   id: "#{base_name}_tags",
+                   class: "ax-control ax-autocomplete-select",
+                   multiple: true,
+                   disabled: field != "tags",
+                   data: {
+                     controller: "tom-select",
+                     tom_select_create_value: "true",
+                     tom_select_tags_value: true,
+                     tom_select_options_value: { placeholder: "Escolha ou crie tags..." }
+                   } %>
+  </div>
+
+  <div class="ax-field whatsapp-audience-condition__value" data-condition-value-type="text">
+    <%= label_tag "#{base_name}_text", "Valor", class: "ax-label" %>
+    <%= text_field_tag "#{base_name}[value]",
+                       text_field_active ? value : nil,
+                       id: "#{base_name}_text",
+                       class: "ax-control",
+                       placeholder: "Digite o valor esperado",
+                       disabled: !text_field_active %>
+  </div>
+
+  <div class="whatsapp-audience-condition__dates" data-condition-value-type="created_at">
+    <div class="ax-field">
+      <%= label_tag "#{base_name}_from", "De", class: "ax-label" %>
+      <%= date_field_tag "#{base_name}[from]",
+                         field == "created_at" ? condition[:from] : nil,
+                         id: "#{base_name}_from",
+                         class: "ax-control",
+                         disabled: field != "created_at" %>
+    </div>
+    <div class="ax-field">
+      <%= label_tag "#{base_name}_to", "Até", class: "ax-label" %>
+      <%= date_field_tag "#{base_name}[to]",
+                         field == "created_at" ? condition[:to] : nil,
+                         id: "#{base_name}_to",
+                         class: "ax-control",
+                         disabled: field != "created_at" %>
+    </div>
+  </div>
+
+  <div class="whatsapp-audience-condition__actions">
+    <button type="button" class="ax-icon-btn" title="Duplicar condição" data-action="whatsapp-campaign-builder#duplicateCondition">
+      <i class="bi bi-copy"></i>
+    </button>
+    <button type="button" class="ax-icon-btn ax-icon-btn--danger" title="Remover condição" data-action="whatsapp-campaign-builder#removeCondition">
+      <i class="bi bi-trash"></i>
+    </button>
+  </div>
+</div>

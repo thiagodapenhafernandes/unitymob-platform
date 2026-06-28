@@ -1,0 +1,221 @@
+<% content_for :admin_contextbar_title, @campaign.name %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_whatsapp_campaigns_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
+  <% end %>
+  <%= link_to edit_admin_whatsapp_campaign_path(@campaign), class: "ax-contextbar__button" do %>
+    <i class="bi bi-pencil ax-ico"></i><span>Editar</span>
+  <% end %>
+  <% if @campaign.draft? || @campaign.scheduled? || @campaign.failed? %>
+    <%= button_to start_admin_whatsapp_campaign_path(@campaign), method: :post, class: "ax-contextbar__button ax-contextbar__button--primary" do %>
+      <i class="bi bi-play-fill ax-ico"></i><span>Iniciar</span>
+    <% end %>
+  <% end %>
+  <% if @campaign.processing? %>
+    <%= button_to pause_admin_whatsapp_campaign_path(@campaign), method: :post, class: "ax-contextbar__button" do %>
+      <i class="bi bi-pause-fill ax-ico"></i><span>Pausar</span>
+    <% end %>
+  <% end %>
+  <% if @campaign.paused? %>
+    <%= button_to resume_admin_whatsapp_campaign_path(@campaign), method: :post, class: "ax-contextbar__button" do %>
+      <i class="bi bi-play ax-ico"></i><span>Retomar</span>
+    <% end %>
+  <% end %>
+  <% unless @campaign.completed? || @campaign.cancelled? %>
+    <%= button_to cancel_admin_whatsapp_campaign_path(@campaign), method: :post, class: "ax-contextbar__button", data: { turbo_confirm: "Cancelar este disparo?" } do %>
+      <i class="bi bi-x-circle ax-ico"></i><span>Cancelar</span>
+    <% end %>
+  <% end %>
+<% end %>
+
+<div class="whatsapp-campaigns whatsapp-campaigns--show"
+     data-controller="whatsapp-campaign-live"
+     data-whatsapp-campaign-live-status-url-value="<%= status_admin_whatsapp_campaign_path(@campaign, messages_status: @messages_status, messages_query: @messages_query) %>"
+     data-whatsapp-campaign-live-interval-value="3000">
+  <section class="whatsapp-campaign-detail-hero">
+    <div class="whatsapp-campaign-detail-hero__status"><i class="bi bi-check2-circle"></i></div>
+    <div>
+      <h1><%= @campaign.name %></h1>
+      <p>
+        <span data-whatsapp-campaign-live-target="statusBadge"><%= ax_badge(@campaign.status.humanize, tone: @campaign.failed? ? :red : (@campaign.completed? ? :green : (@campaign.processing? || @campaign.scheduled? || @campaign.paused? ? :amber : :gray))) %></span>
+        <span><i class="bi bi-phone"></i> <%= @campaign.whatsapp_sender_number&.formatted_phone.presence || "Número padrão" %></span>
+        <span><i class="bi bi-folder2"></i> <%= @campaign.group_name.presence || "Sem grupo" %></span>
+      </p>
+    </div>
+    <dl>
+      <div><dt>Criada em</dt><dd><%= l(@campaign.created_at, format: :short) %></dd></div>
+      <div><dt>Template</dt><dd><%= @campaign.whatsapp_template.name %></dd></div>
+      <div><dt>Ritmo</dt><dd><%= @campaign.send_rate %> msg/min</dd></div>
+    </dl>
+  </section>
+
+  <% if @failure_summary[:count].positive? %>
+    <section class="whatsapp-warning-panel">
+      <strong><i class="bi bi-exclamation-triangle"></i> <%= pluralize(@failure_summary[:count], "ocorrência de entrega", "ocorrências de entrega") %> nesta campanha.</strong>
+      <p>As falhas normalmente vêm de contato inválido, revisão do WhatsApp ou restrição temporária de envio.</p>
+      <ul>
+        <% @failure_summary[:reasons].each do |item| %>
+          <li><%= item[:reason] %> — <%= pluralize(item[:count], "mensagem impactada", "mensagens impactadas") %></li>
+        <% end %>
+      </ul>
+      <%= button_to retry_failed_admin_whatsapp_campaign_path(@campaign), method: :post, class: "ax-btn ax-btn--sm" do %>
+        <i class="bi bi-arrow-clockwise ax-ico"></i><span>Reprocessar falhas</span>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% detail_cards = [
+    ["total", "Total", @metrics[:total], "mensagens criadas", "bi-people", "slate"],
+    ["sent", "Enviadas", @metrics[:sent], "#{@metrics[:delivery_rate]}% entregues", "bi-send", "purple"],
+    ["delivered", "Entregues", @metrics[:delivered], "recebidas pelo WhatsApp", "bi-check2-circle", "green"],
+    ["read", "Lidas", @metrics[:read], "#{@metrics[:read_rate]}% leitura", "bi-eye", "blue"],
+    ["failed", "Falhas", @metrics[:failed], "#{@metrics[:failure_rate]}% falha", "bi-x-circle", "red"],
+    ["replied", "Respostas", @metrics[:replied], "#{@metrics[:reply_rate]}% resposta", "bi-chat-dots", "cyan"],
+    ["attended", "Convertidos", @metrics[:attended], "viraram lead", "bi-person-check", "green"],
+    ["unattended", "Sem conversão", @metrics[:unattended], "responderam sem virar lead", "bi-person-x", "blue"],
+    ["cpl", "CPL", number_to_currency(@metrics[:cpl], unit: "R$", separator: ",", delimiter: "."), "custo por atendimento", "bi-calculator", "orange"],
+    ["cost", "Gasto total", number_to_currency(@metrics[:cost], unit: "R$", separator: ",", delimiter: "."), "estimativa", "bi-wallet2", "teal"]
+  ] %>
+  <section class="whatsapp-dashboard-grid whatsapp-dashboard-grid--detail" aria-label="Indicadores da campanha">
+    <% detail_cards.each do |key, label, value, hint, icon, tone| %>
+      <article class="whatsapp-dashboard-card whatsapp-dashboard-card--<%= tone %>">
+        <i class="bi <%= icon %>"></i>
+        <span><%= label %></span>
+        <strong data-whatsapp-campaign-live-target="metric" data-metric-key="<%= key %>"><%= value %></strong>
+        <small data-whatsapp-campaign-live-target="metricHint" data-metric-key="<%= key %>"><%= hint %></small>
+      </article>
+    <% end %>
+  </section>
+
+  <section class="whatsapp-response-card-panel" aria-label="Respostas por botão do template">
+    <div class="whatsapp-response-card-panel__head">
+      <div>
+        <strong>Respostas por botão do template</strong>
+        <span>Cards gerados a partir dos botões reais do modelo usado nesta campanha.</span>
+      </div>
+      <%= link_to edit_admin_whatsapp_campaign_path(@campaign), class: "ax-btn ax-btn--sm" do %>
+        <i class="bi bi-sliders ax-ico"></i><span>Editar decisões</span>
+      <% end %>
+    </div>
+    <div class="whatsapp-response-card-grid" data-whatsapp-campaign-live-target="responseCards">
+      <% @campaign.dynamic_response_cards.each do |card| %>
+        <article class="whatsapp-response-card whatsapp-response-card--<%= card[:tone] %>">
+          <i class="bi <%= card[:icon] %>"></i>
+          <span><%= card[:label] %></span>
+          <strong><%= card[:count] %></strong>
+          <small><%= card[:action_label] %></small>
+        </article>
+      <% end %>
+      <% if @campaign.dynamic_response_cards.blank? %>
+        <div class="ax-inline-notice ax-inline-notice--info">
+          Este template não possui botões mensuráveis. Respostas por texto continuam aparecendo em Mensagens recentes e podem ser tratadas pela Automação.
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <div class="whatsapp-detail-grid">
+    <%= ax_operational_panel(eyebrow: "Conversão", title: "Performance") do %>
+      <div class="ax-panel-body whatsapp-performance-grid">
+        <div><span>Taxa de entrega</span><strong data-whatsapp-campaign-live-target="rate" data-rate-key="delivery_rate"><%= @metrics[:delivery_rate] %>%</strong></div>
+        <div><span>Taxa de leitura</span><strong data-whatsapp-campaign-live-target="rate" data-rate-key="read_rate"><%= @metrics[:read_rate] %>%</strong></div>
+        <div><span>Taxa de falha</span><strong data-whatsapp-campaign-live-target="rate" data-rate-key="failure_rate"><%= @metrics[:failure_rate] %>%</strong></div>
+        <div><span>Taxa de resposta</span><strong data-whatsapp-campaign-live-target="rate" data-rate-key="reply_rate"><%= @metrics[:reply_rate] %>%</strong></div>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Público", title: "Contexto da campanha") do %>
+      <div class="ax-panel-body whatsapp-audience-context">
+        <div><span>Origem dos filtros</span><strong>Filtros manuais</strong></div>
+        <div>
+          <span>Filtros aplicados</span>
+          <strong>
+            <% filters = @campaign.audience_filters.to_h.reject { |_key, value| value.blank? } %>
+            <%= filters.any? ? filters.map { |key, value| "#{key}: #{value}" }.join(" · ") : "Nenhum filtro aplicado" %>
+          </strong>
+        </div>
+        <div>
+          <span>Variáveis do template</span>
+          <% variable_labels = {
+            "{{nome}}" => "Nome do destinatário",
+            "{{telefone}}" => "Telefone do destinatário",
+            "{{email}}" => "E-mail do destinatário",
+            "{{origem}}" => "Origem do destinatário",
+            "{{corretor}}" => "Responsável pelo atendimento"
+          } %>
+          <strong><%= @campaign.template_variables.presence&.map { |key, value| "Campo #{key}: #{variable_labels.fetch(value.to_s, value.to_s.presence || "-")}" }&.join(" · ") || "Nenhum campo dinâmico" %></strong>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <section class="whatsapp-progress-panel">
+    <% completed_messages = @campaign.sent_count.to_i + @campaign.failed_count.to_i %>
+    <% progress = @campaign.total_recipients.to_i.positive? ? ((completed_messages.to_f / @campaign.total_recipients.to_f) * 100).round(1) : 0 %>
+    <div>
+      <strong>Progresso</strong>
+      <span data-whatsapp-campaign-live-target="progressPercent"><%= progress %>%</span>
+    </div>
+    <meter min="0" max="100" value="<%= progress %>" data-whatsapp-campaign-live-target="progressMeter"></meter>
+    <small>Pendentes: <span data-whatsapp-campaign-live-target="pendingCount"><%= [@campaign.total_recipients.to_i - @campaign.sent_count.to_i - @campaign.failed_count.to_i, 0].max %></span></small>
+  </section>
+
+  <%= ax_operational_panel(eyebrow: "Atualizado em tempo real", title: "Mensagens recentes") do %>
+    <div class="ax-panel-body whatsapp-campaign-message-filters">
+      <%= form_with url: admin_whatsapp_campaign_path(@campaign), method: :get, local: true, class: "whatsapp-campaign-message-filters__form" do %>
+        <div class="ax-field">
+          <%= label_tag :messages_query, "Buscar destinatário ou telefone", class: "ax-label" %>
+          <%= text_field_tag :messages_query, @messages_query, class: "ax-control", placeholder: "Nome ou telefone" %>
+        </div>
+        <div class="ax-field">
+          <%= label_tag :messages_status, "Status", class: "ax-label" %>
+          <%= select_tag :messages_status,
+                         options_for_select([["Todos os status", ""]] + WhatsappCampaignMessage::STATUSES.map { |status| [status.humanize, status] }, @messages_status),
+                         class: "ax-control" %>
+        </div>
+        <button type="submit" class="ax-btn ax-btn--primary">
+          <i class="bi bi-funnel ax-ico"></i><span>Filtrar</span>
+        </button>
+      <% end %>
+    </div>
+    <div class="ax-table-wrap">
+      <table class="ax-table whatsapp-message-table">
+        <thead>
+          <tr>
+            <th>Destinatário</th>
+            <th>Telefone</th>
+            <th>WAMID</th>
+            <th>Status</th>
+            <th>Erro</th>
+            <th>Atualizado</th>
+          </tr>
+        </thead>
+        <tbody data-whatsapp-campaign-live-target="messagesBody">
+          <% @messages.each do |message| %>
+            <tr>
+              <td>
+                <% if message.lead %>
+                  <strong><%= link_to message.lead.display_name, admin_lead_path(message.lead), class: "ax-link" %></strong>
+                <% else %>
+                  <strong><%= message.display_name %></strong>
+                  <small class="tw-block tw-text-slate-500">Ainda não convertido em lead</small>
+                <% end %>
+              </td>
+              <td><%= message.phone_number %></td>
+              <td><code class="whatsapp-message-table__wamid"><%= message.external_message_id.presence || "-" %></code></td>
+              <td><%= ax_badge(message.status_label, tone: (message.failed? || message.cancelled?) ? :red : (message.replied? || message.delivered? || message.read? ? :green : (message.sent? ? :blue : :gray))) %></td>
+              <td><%= message.failure_reason.presence || "-" %></td>
+              <td><%= l(message.updated_at, format: :short) %></td>
+            </tr>
+          <% end %>
+          <% if @messages.empty? %>
+            <tr><td colspan="6" class="ax-table__empty">Nenhuma mensagem encontrada para os filtros atuais.</td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+
+  <%= ax_pagination @messages %>
+</div>

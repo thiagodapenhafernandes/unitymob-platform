@@ -1,0 +1,39 @@
+<% content_for :admin_contextbar_title, "Prévia do template" %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_whatsapp_templates_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left ax-ico"></i><span>Templates</span>
+  <% end %>
+  <% if @template.approved? %>
+    <%= link_to new_campaign_admin_whatsapp_template_path(@template), class: "ax-contextbar__button ax-contextbar__button--primary" do %>
+      <i class="bi bi-megaphone ax-ico"></i><span>Criar campanha</span>
+    <% end %>
+  <% end %>
+<% end %>
+
+<%= render "critical_styles" %>
+
+<div class="whatsapp-templates">
+  <section class="whatsapp-template-preview">
+    <div>
+      <span><%= @template.template_type_label %> · <%= @template.category_label %></span>
+      <h1><%= @template.name %></h1>
+      <p><%= @template.language %> · <%= @template.status.to_s.titleize.presence || "Rascunho" %></p>
+    </div>
+    <div class="whatsapp-template-phone-preview">
+      <% if @template.header_format != "none" %>
+        <div class="whatsapp-template-phone-preview__media">
+          <i class="bi <%= @template.header_format == "video" ? "bi-play-btn" : "bi-file-earmark" %>"></i>
+          <span><%= WhatsappTemplate::HEADER_FORMATS[@template.header_format] %></span>
+        </div>
+      <% end %>
+      <p><%= simple_format(@template.body.to_s) %></p>
+      <% if @template.footer_text.present? %>
+        <small><%= @template.footer_text %></small>
+      <% end %>
+      <% @template.clean_buttons.each do |button| %>
+        <button type="button"><%= button["text"] %></button>
+      <% end %>
+    </div>
+  </section>
+</div>

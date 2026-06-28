@@ -79,6 +79,24 @@ class Admin::AutomationRulesController < Admin::BaseController
     redirect_to admin_automation_rules_path, notice: "Intervenção de exemplo criada (pausada). Revise e ative quando quiser."
   end
 
+  def test_webhook
+    delivery = Automation::WebhookTestDelivery.call(
+      url: params[:url],
+      http_method: params[:http_method],
+      headers: params[:headers],
+      payload_template: params[:payload_template]
+    )
+
+    render json: {
+      ok: delivery.status == "success",
+      status: delivery.status,
+      response_code: delivery.response_code,
+      error: delivery.error_message
+    }
+  rescue => e
+    render json: { ok: false, error: e.message }, status: :unprocessable_entity
+  end
+
   private
 
   def set_rule
@@ -114,7 +132,7 @@ class Admin::AutomationRulesController < Admin::BaseController
     return [] if json.blank?
 
     parsed = JSON.parse(json)
-    actions = Array(parsed).map { |a| a.is_a?(Hash) ? a.slice("type", "title", "due_in_hours", "message", "template", "to", "admin_user_id", "body", "days") : nil }.compact
+    actions = Array(parsed).map { |a| a.is_a?(Hash) ? a.slice("type", "title", "due_in_hours", "message", "template", "to", "admin_user_id", "body", "days", "url", "http_method", "headers", "payload_template") : nil }.compact
       .reject { |action| AutomationRule::VERTICAL_DISTRIBUTION_ACTION_TYPES.include?(action["type"].to_s) }
       .reject { |action| action["type"].to_s == "move_stage" && !Automation::StagePolicy.allowed_transition?(action["to"]) }
     actions

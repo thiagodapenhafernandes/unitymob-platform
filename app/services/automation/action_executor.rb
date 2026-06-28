@@ -11,7 +11,10 @@ module Automation
       when "create_task"            then "criar tarefa “#{action[:title]}”"
       when "send_whatsapp"          then "enviar WhatsApp"
       when "send_whatsapp_template" then "enviar modelo “#{action[:template]}”"
+      when "send_webhook"           then "enviar webhook"
+      when "set_flow_result"        then flow_result_label(action)
       when "move_stage"             then "mover para “#{action[:to]}”"
+      when "update_lead_lifecycle"  then lifecycle_label(action)
       when "assign_agent"           then "ação vertical legada"
       when "add_note"               then "registrar nota"
       when "create_interest_curation_task" then "criar tarefa de curadoria"
@@ -25,8 +28,9 @@ module Automation
       end
     end
 
-    def initialize(lead)
+    def initialize(lead, automation_event: nil)
       @lead = lead
+      @automation_event = automation_event
     end
 
     def execute(action)
@@ -36,7 +40,10 @@ module Automation
       when "create_task"            then act_create_task(action)
       when "send_whatsapp"          then act_send_whatsapp(action, template: false)
       when "send_whatsapp_template" then act_send_whatsapp(action, template: true)
+      when "send_webhook"           then act_send_webhook(action)
+      when "set_flow_result"        then act_set_flow_result(action)
       when "move_stage"             then act_move_stage(action)
+      when "update_lead_lifecycle"  then act_update_lead_lifecycle(action)
       when "assign_agent"           then act_assign_agent(action)
       when "add_note"               then act_add_note(action)
       when "create_interest_curation_task" then act_create_interest_curation_task(action)
@@ -49,6 +56,26 @@ module Automation
     end
 
     private
+
+    def self.lifecycle_label(action)
+      labels = {
+        "mark_no_interest" => "marcar sem interesse",
+        "remove_no_interest" => "remover sem interesse",
+        "block_lead" => "bloquear lead",
+        "discard_lead" => "descartar lead",
+        "unsubscribe_lead" => "descadastrar lead",
+        "reactivate_lead" => "reativar lead"
+      }
+      labels[action[:lifecycle_action].to_s] || "atualizar ciclo de vida"
+    end
+
+    def self.flow_result_label(action)
+      if action[:result].to_s == "generates_attendance"
+        "resultado: gera atendimento"
+      else
+        "resultado: não gera atendimento"
+      end
+    end
 
     def act_create_task(action)
       assignee = task_assignee(action)
@@ -98,6 +125,61 @@ module Automation
       LeadActivity.log!(lead: @lead, kind: "whatsapp_out", metadata: { body: message.preview, by: "Automação" })
     end
 
+    def act_send_webhook(action)
+      url = action[:url].to_s.strip
+      return if url.blank?
+
+      delivery = AutomationWebhookDelivery.create!(
+        automation_event: @automation_event,
+        lead: @lead,
+        url: url,
+        http_method: action[:http_method].presence || "post",
+        request_headers: parse_headers(action[:headers]),
+        request_payload: webhook_payload(action)
+      )
+      Automation::WebhookDeliveryJob.perform_later(delivery.id)
+      if @lead
+        LeadActivity.log!(
+          lead: @lead,
+          kind: "automation_webhook",
+          metadata: { automation_webhook_delivery_id: delivery.id, url: url, event: @automation_event&.name }
+        )
+      end
+    end
+
+    def act_set_flow_result(action)
+      result = action[:result].presence || "no_attendance"
+      raise ArgumentError, "Resultado do caminho inválido" unless %w[generates_attendance no_attendance].include?(result.to_s)
+
+      destination = nil
+      if result.to_s == "generates_attendance"
+        destination = DistributionRule.active.find_by(id: action[:distribution_rule_id])
+        raise ArgumentError, "Resultado com atendimento sem destino" unless destination
+
+        @lead ||= campaign_recipient&.convert_to_lead!(distribution_rule: destination)
+        raise ArgumentError, "Resultado com atendimento sem destinatário para converter" unless @lead
+
+        @lead.update!(distribution_rule: destination)
+      elsif @lead.nil? && campaign_recipient
+        campaign_recipient.mark_no_interest!
+      end
+
+      if @lead
+        LeadActivity.log!(
+          lead: @lead,
+          kind: "automation_flow_result",
+          metadata: {
+            result: result,
+            result_label: result.to_s == "generates_attendance" ? "Gera atendimento" : "Não gera atendimento",
+            distribution_rule_id: destination&.id,
+            distribution_rule_name: destination&.name,
+            note: render_text(action[:note]),
+            by: "Automação"
+          }.compact
+        )
+      end
+    end
+
     def act_move_stage(action)
       to = action[:to].to_s
       return if to.blank?
@@ -105,6 +187,48 @@ module Automation
 
       @lead.update(status: to)
       LeadActivity.log!(lead: @lead, kind: "status_change", metadata: { to: @lead.status, by: "Automação" })
+    end
+
+    def act_update_lead_lifecycle(action)
+      lifecycle_action = action[:lifecycle_action].to_s
+      if @lead.nil? && campaign_recipient
+        case lifecycle_action
+        when "unsubscribe_lead"
+          campaign_recipient.unsubscribe!
+        when "mark_no_interest", "block_lead", "discard_lead"
+          campaign_recipient.mark_no_interest!
+        end
+        return
+      end
+
+      to = action[:to].presence || default_lifecycle_stage(lifecycle_action)
+      raise ArgumentError, "Ação de ciclo de vida sem etapa de destino" if to.blank?
+      raise ArgumentError, Automation::StagePolicy.blocked_stage_message(to) unless Automation::StagePolicy.allowed_transition?(to)
+
+      from = @lead.status
+      @lead.update!(status: to)
+      LeadActivity.log!(
+        lead: @lead,
+        kind: "status_change",
+        metadata: {
+          from: from,
+          to: @lead.status,
+          lifecycle_action: lifecycle_action,
+          note: render_text(action[:note]),
+          by: "Automação"
+        }.compact
+      )
+    end
+
+    def default_lifecycle_stage(lifecycle_action)
+      case lifecycle_action.to_s
+      when "mark_no_interest", "block_lead", "discard_lead"
+        "Descartado"
+      when "unsubscribe_lead"
+        "Descadastrado"
+      when "remove_no_interest", "reactivate_lead"
+        "Em Atendimento"
+      end
     end
 
     def act_assign_agent(action)
@@ -249,9 +373,197 @@ module Automation
     end
 
     def render_text(text)
+      recipient = campaign_recipient
       text.to_s
-          .gsub("{{nome}}", @lead.display_name.to_s)
-          .gsub("{{corretor}}", @lead.admin_user&.name.to_s)
+          .gsub("{{nome}}", @lead&.display_name.to_s.presence || recipient&.display_name.to_s)
+          .gsub("{{corretor}}", @lead&.admin_user&.name.to_s.presence || recipient&.admin_user&.name.to_s)
+          .gsub("{{telefone}}", @lead&.display_phone.to_s.presence || recipient&.display_phone.to_s)
+          .gsub("{{email}}", @lead&.display_email.to_s.presence || recipient&.display_email.to_s)
+          .gsub("{{origem}}", @lead&.origin.to_s.presence || recipient&.origin.to_s)
+    end
+
+    def webhook_payload(action)
+      template = action[:payload_template].to_s.strip
+      if template.present?
+        rendered = render_webhook_template(template)
+        parsed = JSON.parse(rendered)
+        return parsed if parsed.is_a?(Hash)
+      end
+
+      {
+        event: @automation_event&.name,
+        source: @automation_event&.source,
+        occurred_at: @automation_event&.occurred_at&.iso8601,
+        lead: webhook_lead_payload,
+        recipient: webhook_recipient_payload,
+        campaign: webhook_campaign_payload,
+        campaign_message: webhook_campaign_message_payload,
+        payload: @automation_event&.payload_hash || {}
+      }.compact
+    rescue JSON::ParserError
+      { raw: render_webhook_template(template), lead_id: @lead&.id, event: @automation_event&.name }.compact
+    end
+
+    def render_webhook_template(template)
+      rendered = render_text(template)
+
+      rendered.gsub(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/) do
+        token = Regexp.last_match(1)
+        value = resolve_webhook_token(token)
+        value.nil? ? "" : value.to_s
+      end
+    end
+
+    def parse_headers(value)
+      return value.to_h if value.is_a?(Hash)
+
+      value.to_s.lines.each_with_object({}) do |line, memo|
+        key, header_value = line.split(":", 2).map { |part| part.to_s.strip }
+        memo[key] = render_webhook_template(header_value) if key.present? && header_value.present?
+      end
+    end
+
+    def dig_hash(hash, dotted_key)
+      dotted_key.to_s.split(".").reduce(hash.to_h.with_indifferent_access) do |memo, key|
+        return nil unless memo.respond_to?(:[])
+
+        memo[key]
+      end
+    end
+
+    def resolve_webhook_token(token)
+      context = webhook_context
+      value = dig_hash(context, token)
+      return value unless value.nil?
+
+      if token.to_s.start_with?("event.")
+        return dig_hash(@automation_event&.payload_hash || {}, token.to_s.delete_prefix("event."))
+      end
+
+      nil
+    end
+
+    def webhook_context
+      lead_context = @lead && {
+        "id" => @lead.id,
+        "name" => @lead.display_name,
+        "email" => @lead.display_email,
+        "phone" => @lead.display_phone,
+        "origin" => @lead.origin,
+        "status" => @lead.status
+      }
+      agent_context = @lead && {
+        "id" => @lead.admin_user_id,
+        "name" => @lead.admin_user&.name,
+        "email" => @lead.admin_user&.email
+      }
+
+      {
+        "event" => {
+          "id" => @automation_event&.id,
+          "name" => @automation_event&.name,
+          "source" => @automation_event&.source,
+          "occurred_at" => @automation_event&.occurred_at&.iso8601,
+          "payload" => @automation_event&.payload_hash || {}
+        },
+        "lead" => lead_context || {},
+        "recipient" => webhook_recipient_payload || {},
+        "agent" => agent_context || {},
+        "whatsapp" => webhook_whatsapp_payload,
+        "campaign" => webhook_campaign_payload || {},
+        "campaign_message" => webhook_campaign_message_payload || {}
+      }
+    end
+
+    def webhook_lead_payload
+      return unless @lead
+
+      {
+        id: @lead.id,
+        name: @lead.display_name,
+        email: @lead.display_email,
+        phone: @lead.display_phone,
+        origin: @lead.origin,
+        status: @lead.status,
+        admin_user_id: @lead.admin_user_id,
+        admin_user_name: @lead.admin_user&.name
+      }
+    end
+
+    def webhook_recipient_payload
+      recipient = campaign_recipient
+      return unless recipient
+
+      {
+        id: recipient.id,
+        lead_id: recipient.lead_id,
+        name: recipient.display_name,
+        email: recipient.display_email,
+        phone: recipient.display_phone,
+        origin: recipient.origin,
+        status: recipient.status,
+        conversion_status: recipient.conversion_status,
+        tags: recipient.tag_list
+      }
+    end
+
+    def campaign_recipient
+      @campaign_recipient ||= begin
+        payload = @automation_event&.payload_hash || {}
+        id = payload[:whatsapp_campaign_recipient_id] || payload["whatsapp_campaign_recipient_id"]
+        WhatsappCampaignRecipient.find_by(id: id) if id.present?
+      end
+    end
+
+    def webhook_whatsapp_payload
+      payload = @automation_event&.payload_hash || {}
+      message_id = payload[:whatsapp_message_id] || payload["whatsapp_message_id"] || payload[:inbound_whatsapp_message_id] || payload["inbound_whatsapp_message_id"]
+      message = WhatsappMessage.find_by(id: message_id) if message_id.present?
+
+      {
+        "message_id" => message&.id || message_id,
+        "external_message_id" => message&.wa_message_id || payload[:wa_message_id] || payload["wa_message_id"],
+        "phone" => payload[:phone] || payload["phone"] || message&.whatsapp_conversation&.contact_phone,
+        "bsuid" => payload[:bsuid] || payload["bsuid"] || message&.whatsapp_conversation&.business_scoped_user_id,
+        "message_body" => message&.body
+      }.compact
+    end
+
+    def webhook_campaign
+      @webhook_campaign ||= begin
+        id = @automation_event&.payload_hash&.dig(:whatsapp_campaign_id) || @automation_event&.payload_hash&.dig("whatsapp_campaign_id")
+        WhatsappCampaign.find_by(id: id) if id.present?
+      end
+    end
+
+    def webhook_campaign_message
+      @webhook_campaign_message ||= begin
+        id = @automation_event&.payload_hash&.dig(:whatsapp_campaign_message_id) || @automation_event&.payload_hash&.dig("whatsapp_campaign_message_id")
+        WhatsappCampaignMessage.find_by(id: id) if id.present?
+      end
+    end
+
+    def webhook_campaign_payload
+      campaign = webhook_campaign
+      return nil unless campaign
+
+      campaign.metrics_payload.merge(
+        id: campaign.id,
+        template: campaign.whatsapp_template&.name
+      )
+    end
+
+    def webhook_campaign_message_payload
+      message = webhook_campaign_message
+      return nil unless message
+
+      message.payload.merge(
+        id: message.id,
+        external_message_id: message.external_message_id,
+        phone_number: message.phone_number,
+        status: message.status,
+        failure_reason: message.failure_reason
+      )
     end
 
     def normalized_phone

@@ -1,0 +1,104 @@
+<% content_for :admin_contextbar_title, "Templates WhatsApp" %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @sender_number&.id), class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left ax-ico"></i><span>Campanhas</span>
+  <% end %>
+  <%= button_to sync_admin_whatsapp_templates_path, method: :post, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar</span>
+  <% end %>
+  <%= link_to new_admin_whatsapp_template_path(whatsapp_sender_number_id: @sender_number&.id), class: "ax-contextbar__button ax-contextbar__button--primary" do %>
+    <i class="bi bi-plus-lg ax-ico"></i><span>Novo template</span>
+  <% end %>
+<% end %>
+
+<%= render "critical_styles" %>
+
+<div class="whatsapp-templates">
+  <section class="whatsapp-template-header">
+    <div class="whatsapp-template-header__icon"><i class="bi bi-grid-3x2-gap"></i></div>
+    <div>
+      <strong>Templates WhatsApp</strong>
+      <span>Gerencie modelos aprovados e use-os nas campanhas.</span>
+    </div>
+    <div class="whatsapp-template-header__status">
+      <%= ax_badge("#{@approved_count} aprovados", tone: :green, dot: true) %>
+      <%= ax_badge("#{@pending_count} em análise", tone: :amber, dot: true) %>
+    </div>
+  </section>
+
+  <%= form_with url: admin_whatsapp_templates_path, method: :get, local: true, class: "whatsapp-template-filters" do %>
+    <%= hidden_field_tag :whatsapp_sender_number_id, @sender_number&.id if @sender_number %>
+    <div class="ax-field">
+      <%= label_tag :query, "Buscar", class: "ax-label" %>
+      <%= text_field_tag :query, @filters[:query], class: "ax-control", placeholder: "Nome do template" %>
+    </div>
+    <div class="ax-field">
+      <%= label_tag :status, "Status", class: "ax-label" %>
+      <%= select_tag :status, options_for_select([["Todos", ""], ["Aprovado", "APPROVED"], ["Em análise", "PENDING"], ["Rejeitado", "REJECTED"]], @filters[:status]), class: "ax-control" %>
+    </div>
+    <div class="ax-field">
+      <%= label_tag :category, "Categoria", class: "ax-label" %>
+      <%= select_tag :category, options_for_select([["Todas", ""]] + WhatsappTemplate::CATEGORIES.map { |category| [category.titleize, category] }, @filters[:category]), class: "ax-control" %>
+    </div>
+    <div class="ax-field">
+      <%= label_tag :template_type, "Tipo", class: "ax-label" %>
+      <%= select_tag :template_type, options_for_select([["Todos", ""]] + WhatsappTemplate::TEMPLATE_TYPES.map { |key, label| [label, key] }, @filters[:template_type]), class: "ax-control" %>
+    </div>
+    <button type="submit" class="ax-btn ax-btn--primary">
+      <i class="bi bi-funnel ax-ico"></i><span>Filtrar</span>
+    </button>
+  <% end %>
+
+  <section class="whatsapp-template-table-section">
+    <table class="ax-table whatsapp-template-table">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Categoria</th>
+          <th>Idioma</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @templates.each do |template| %>
+          <tr>
+            <td>
+              <strong><%= template.name %></strong>
+              <span><%= template.status.to_s.upcase == "APPROVED" ? "Disponível para campanhas" : "Aguardando revisão" %></span>
+            </td>
+            <td><%= template.template_type_label %></td>
+            <td><%= ax_badge(template.category_label.presence || "Sem categoria", tone: :gray) %></td>
+            <td><%= template.language %></td>
+            <td>
+              <% tone = template.approved? ? :green : (template.pending? ? :amber : :red) %>
+              <%= ax_badge(template.status.to_s.titleize.presence || "Rascunho", tone: tone, dot: true) %>
+            </td>
+            <td>
+              <div class="whatsapp-template-table__actions">
+                <%= link_to admin_whatsapp_template_path(template), class: "ax-btn ax-btn--sm" do %>
+                  <i class="bi bi-eye ax-ico"></i><span>Prévia</span>
+                <% end %>
+                <% if template.approved? %>
+                  <%= link_to new_campaign_admin_whatsapp_template_path(template, whatsapp_sender_number_id: @sender_number&.id),
+                              class: "ax-btn ax-btn--sm ax-btn--primary",
+                              style: "color:#fff" do %>
+                    <i class="bi bi-megaphone ax-ico"></i><span>Criar campanha</span>
+                  <% end %>
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+        <% if @templates.empty? %>
+          <tr>
+            <td colspan="6">Nenhum template encontrado para os filtros atuais.</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <%= will_paginate @templates if @templates.respond_to?(:total_pages) && @templates.total_pages > 1 %>
+  </section>
+</div>

@@ -32,6 +32,7 @@ class Lead < ApplicationRecord
   has_many :client_property_interests, foreign_key: :lead_id, dependent: :nullify
   has_many :automation_events, dependent: :nullify
   has_many :seo_conversion_events, dependent: :nullify
+  has_many :whatsapp_campaign_messages, dependent: :destroy
   has_many :tasks, dependent: :nullify
   has_many :appointments, dependent: :nullify
   has_many :proposals, dependent: :destroy
@@ -44,6 +45,7 @@ class Lead < ApplicationRecord
   after_update_commit :dispatch_automation_stage_changed
 
   before_validation :normalize_status
+  before_validation :normalize_tags
 
   scope :novo, -> { where(status: status_value(:novo)) }
   scope :em_atendimento, -> { where(status: status_value(:em_atendimento)) }
@@ -53,6 +55,24 @@ class Lead < ApplicationRecord
   scope :concluido, -> { where(status: status_value(:concluido)) }
   scope :holding, -> { represado }
   scope :by_origin, ->(origin) { where(origin: origin) if origin.present? }
+  scope :with_any_tags, ->(values) {
+    normalized = normalize_tags_value(values)
+    if normalized.present?
+      conditions = normalized.map { "leads.tags @> ?" }.join(" OR ")
+      where(conditions, *normalized.map { |tag| [tag].to_json })
+    else
+      all
+    end
+  }
+  scope :without_any_tags, ->(values) {
+    normalized = normalize_tags_value(values)
+    if normalized.present?
+      conditions = normalized.map { "leads.tags @> ?" }.join(" OR ")
+      where.not(conditions, *normalized.map { |tag| [tag].to_json })
+    else
+      all
+    end
+  }
 
   validates :name, presence: true
   # Telefone é obrigatório, exceto quando o lead é identificado por BSUID
@@ -107,6 +127,10 @@ class Lead < ApplicationRecord
     found ? found["answer"] : nil
   end
 
+  def tag_list
+    self.class.normalize_tags_value(tags)
+  end
+
   def self.origin_options
     catalog_options = AttributeOption.where(context: "lead", category: "source").order(name: :asc).pluck(:name)
     recorded_origins = where.not(origin: [nil, ""])
@@ -118,6 +142,50 @@ class Lead < ApplicationRecord
       .reject(&:blank?)
       .uniq
       .sort_by(&:downcase)
+  end
+
+  def self.tag_options
+    where.not(tags: [nil, []])
+      .pluck(:tags)
+      .flat_map { |value| normalize_tags_value(value) }
+      .uniq
+      .sort_by(&:downcase)
+  end
+
+  def self.normalize_tags_value(value)
+    case value
+    when Array
+      value.flat_map { |item| normalize_tags_value(item) }
+    when Hash
+      value.values.flat_map { |item| normalize_tags_value(item) }
+    else
+      raw = value.to_s.strip
+      return [] if raw.blank?
+
+      parsed = parsed_tags_from(raw)
+      parsed.is_a?(Hash) ? parsed.values : parsed
+    end
+      .map { |tag| tag.to_s.strip.gsub(/["']/, "") }
+      .reject(&:blank?)
+      .uniq
+  end
+
+  def self.parsed_tags_from(raw)
+    if raw.start_with?("[", "{")
+      begin
+        return JSON.parse(raw)
+      rescue JSON::ParserError
+        begin
+          return JSON.parse(raw.tr("'", '"'))
+        rescue JSON::ParserError
+          # Falls through to tolerant parsing below.
+        end
+      end
+    end
+
+    raw.tr("[]{}", "")
+       .split(/[;,]/)
+       .map { |part| part.to_s.strip.gsub(/["']/, "") }
   end
 
   def self.status_options
@@ -162,6 +230,10 @@ class Lead < ApplicationRecord
 
   def normalize_status
     self.status = self.class.status_value(status)
+  end
+
+  def normalize_tags
+    self.tags = self.class.normalize_tags_value(tags)
   end
 
   def record_audit_create

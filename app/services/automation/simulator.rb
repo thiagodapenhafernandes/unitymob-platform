@@ -25,7 +25,7 @@ module Automation
       entry_config = entry[:config].is_a?(Hash) ? entry[:config].with_indifferent_access : {}
       conditions = nodes.select { |node| node[:type].to_s == "condition" }.map { |node| node[:config].is_a?(Hash) ? node[:config].with_indifferent_access : {} }
       actions = nodes.select { |node| node[:type].to_s == "action" }.map { |node| Automation::WorkflowActionAdapter.to_action(node) }
-      waits = nodes.select { |node| %w[wait await_event].include?(node[:type].to_s) }
+      waits = nodes.select { |node| %w[wait await_event await_whatsapp_response response_condition response_fallback].include?(node[:type].to_s) }
 
       build_result(
         title: "Simulação do builder",
@@ -142,6 +142,17 @@ module Automation
         amount = config[:timeout_amount].presence || 1
         unit = { "minutes" => "minuto(s)", "hours" => "hora(s)", "days" => "dia(s)" }[config[:timeout_unit].to_s] || "dia(s)"
         return "aguardar #{Automation::EventCatalog.label(config[:trigger])} por ate #{amount} #{unit}"
+      end
+      if node[:type].to_s == "await_whatsapp_response"
+        amount = config[:timeout_amount].presence || 1
+        unit = { "minutes" => "minuto(s)", "hours" => "hora(s)", "days" => "dia(s)" }[config[:timeout_unit].to_s] || "dia(s)"
+        return "aguardar resposta WhatsApp por ate #{amount} #{unit}"
+      end
+      if node[:type].to_s == "response_condition"
+        return "condicao de resposta: #{config[:field].presence || 'campo'} #{config[:operator].presence || 'equals'} #{config[:value]}"
+      end
+      if node[:type].to_s == "response_fallback"
+        return config[:fallback_type].to_s == "timeout" ? "fallback: sem resposta ate timeout" : "fallback: resposta nao reconhecida"
       end
 
       return "esperar ate #{config[:run_at]}" if config[:mode].to_s == "datetime" && config[:run_at].present?

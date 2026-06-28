@@ -23,6 +23,11 @@ module Whatsapp
             next
           end
 
+          if change["field"].to_s == "message_template_status_update"
+            handle_template_status_update(value)
+            next
+          end
+
           contacts = index_contacts(value["contacts"])
           Array(value["messages"]).each { |msg| handle_inbound(msg, contacts) }
           Array(value["statuses"]).each { |st| handle_status(st) }
@@ -76,6 +81,8 @@ module Whatsapp
       conversation.update_columns(unread_count: conversation.unread_count.to_i + 1, updated_at: Time.current)
       conversation.touch_last_message!(message)
 
+      campaign_message = mark_campaign_reply!(conversation, message, raw_message: msg)
+
       if conversation.lead_id
         meta = { body: message.preview, phone: phone, bsuid: bsuid }.compact
         LeadActivity.log!(lead: conversation.lead, kind: "whatsapp_in", metadata: meta)
@@ -122,6 +129,45 @@ module Whatsapp
       Rails.logger.warn("[wa-bsuid] capture falhou: #{e.message}")
     end
 
+    def handle_template_status_update(value)
+      template_id = value["message_template_id"].presence&.to_s
+      template_name = value["message_template_name"].presence
+      language = value["message_template_language"].presence || "pt_BR"
+      event = value["event"].presence&.to_s&.upcase
+      reason = value["reason"].presence
+
+      template = if template_id.present?
+                   WhatsappTemplate.find_by(meta_id: template_id)
+                 end
+      template ||= WhatsappTemplate.find_by(name: template_name, language: language) if template_name.present?
+
+      unless template
+        Rails.logger.warn(
+          "[wa-template-status] template nao encontrado " \
+          "meta_id=#{template_id.inspect} name=#{template_name.inspect} language=#{language.inspect} event=#{event.inspect}"
+        )
+        return
+      end
+
+      attrs = { updated_at: Time.current }
+      attrs[:status] = event if event.present? && event != "NONE"
+      attrs[:submission_error] = template_submission_error(event, reason)
+      template.update_columns(attrs)
+
+      Rails.logger.info(
+        "[wa-template-status] template=#{template.name.inspect} meta_id=#{template.meta_id.inspect} " \
+        "status=#{template.status.inspect} reason=#{reason.inspect}"
+      )
+    end
+
+    def template_submission_error(event, reason)
+      return nil if event.to_s == "APPROVED"
+      return reason if reason.present?
+      return nil if event.blank? || event == "NONE" || event == "PENDING"
+
+      "Status retornado pela Meta: #{event}"
+    end
+
     def handle_status(status)
       message = WhatsappMessage.find_by(wa_message_id: status["id"])
       return unless message
@@ -133,6 +179,82 @@ module Whatsapp
       attrs[:read_at] = Time.zone.at(status["timestamp"].to_i) if state == "read" && status["timestamp"].present?
       attrs[:error_message] = status.dig("errors", 0, "title") if state == "failed"
       message.update_columns(attrs.merge(updated_at: Time.current))
+
+      campaign_message = WhatsappCampaignMessage.find_by(external_message_id: status["id"])
+      return unless campaign_message
+
+      occurred_at = status["timestamp"].present? ? Time.zone.at(status["timestamp"].to_i) : Time.current
+      case state
+      when "sent"
+        campaign_message.mark_accepted_by_meta!(
+          message_id: status["id"],
+          whatsapp_message: message,
+          at: occurred_at
+        )
+      when "delivered"
+        campaign_message.mark_delivered!(at: occurred_at)
+      when "read"
+        campaign_message.mark_read!(at: occurred_at)
+      when "failed"
+        campaign_message.mark_failed!(attrs[:error_message].presence || "Falha informada pela Meta")
+      end
+    end
+
+    def mark_campaign_reply!(conversation, inbound_message, raw_message:)
+      campaign_message = nil
+      if conversation.lead_id.present?
+        campaign_message = WhatsappCampaignMessage
+          .joins(:whatsapp_campaign)
+          .where(lead_id: conversation.lead_id)
+          .where(status: %w[sent delivered read])
+          .where(whatsapp_campaigns: { status: %w[processing completed] })
+          .order(sent_at: :desc, id: :desc)
+          .first
+      end
+      campaign_message ||= campaign_reply_candidate(conversation.contact_phone)
+
+      return unless campaign_message
+
+      campaign_message.mark_replied!(
+        at: inbound_message.created_at,
+        inbound_message: inbound_message,
+        raw_payload: raw_message
+      )
+      link_conversation_to_campaign_lead!(conversation, campaign_message)
+      campaign_message
+    end
+
+    def link_conversation_to_campaign_lead!(conversation, campaign_message)
+      campaign_message.reload
+      lead = campaign_message.lead
+      return unless lead
+      return if conversation.lead_id == lead.id
+
+      conversation.update_column(:lead_id, lead.id)
+    end
+
+    def normalize_phone(value)
+      digits = value.to_s.gsub(/\D/, "")
+      return "" if digits.blank?
+
+      digits.length <= 11 ? "55#{digits}" : digits
+    end
+
+    def campaign_reply_candidate(phone)
+      normalized = normalize_phone(phone)
+      return if normalized.blank?
+
+      WhatsappCampaignMessage
+        .left_joins(:whatsapp_campaign_recipient)
+        .joins(:whatsapp_campaign)
+        .where(status: %w[sent delivered read])
+        .where(whatsapp_campaigns: { status: %w[processing completed] })
+        .where(
+          "whatsapp_campaign_messages.phone_number = :phone OR whatsapp_campaign_recipients.phone_number = :phone",
+          phone: normalized
+        )
+        .order(sent_at: :desc, id: :desc)
+        .first
     end
 
     def extract_body(msg, type)
@@ -157,7 +279,7 @@ module Whatsapp
       conversation.contact_name = name if name.present? && conversation.contact_name.blank?
       conversation.status = "open"
 
-      if conversation.lead_id.blank?
+      if conversation.lead_id.blank? && campaign_reply_candidate(phone).blank?
         conversation.lead = link_or_create_lead(phone: phone, bsuid: bsuid, name: name)
       end
 

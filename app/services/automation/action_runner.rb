@@ -13,7 +13,7 @@ module Automation
       @lead = lead
       @automation_event = automation_event
       @log = []
-      @executor = Automation::ActionExecutor.new(lead)
+      @executor = Automation::ActionExecutor.new(lead, automation_event: automation_event)
     end
 
     def run(from = 0)

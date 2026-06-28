@@ -23,6 +23,7 @@ class Profile < ApplicationRecord
     { key: "leads",              label: "Leads",                  icon: "bi-megaphone",        actions: %w[view manage],       scopeable: true,  description: "Atendimento e gestão de leads" },
     { key: "comercial",          label: "Comercial",              icon: "bi-briefcase",        actions: %w[view manage],       scopeable: true,  description: "Tarefas, agenda e propostas comerciais" },
     { key: "whatsapp_inbox",     label: "Atendimento WhatsApp",   icon: "bi-whatsapp",         actions: %w[view manage],       scopeable: true,  description: "Central de atendimento (inbox) do WhatsApp" },
+    { key: "whatsapp_campaigns", label: "Disparos WhatsApp",      icon: "bi-send",             actions: %w[view manage],       scopeable: true,  description: "Campanhas e disparos em massa pelo WhatsApp" },
     { key: "automacoes",         label: "Automação",              icon: "bi-lightning-charge", actions: %w[manage],            scopeable: false, description: "Regras de automação e nutrição de leads" },
     { key: "captacoes",          label: "Captações",              icon: "bi-journal-plus",     actions: %w[view manage review publish], scopeable: true, description: "Intake de imóveis em campo" },
     { key: "captacao_dashboard", label: "Dashboard Captação",     icon: "bi-bullseye",         actions: %w[view],              scopeable: false, description: "Métricas e gauges de captação" },
@@ -74,6 +75,7 @@ class Profile < ApplicationRecord
       "leads" => { "view" => true, "manage" => true, "scope" => "all" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "all" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "all" },
+      "whatsapp_campaigns" => { "view" => true, "manage" => true, "scope" => "all" },
       "captacoes" => { "view" => true, "manage" => true, "review" => true, "publish" => true, "scope" => "all" },
       "captacao_dashboard" => { "view" => true },
       "agenda_fotografia" => { "view" => true, "manage" => true },
@@ -87,6 +89,7 @@ class Profile < ApplicationRecord
       "leads" => { "view" => true, "manage" => true, "scope" => "team" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "team" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "team" },
+      "whatsapp_campaigns" => { "view" => true, "manage" => true, "scope" => "team" },
       "captacoes" => { "view" => true, "manage" => true, "review" => true, "publish" => true, "scope" => "team" },
       "captacao_dashboard" => { "view" => true }
     }

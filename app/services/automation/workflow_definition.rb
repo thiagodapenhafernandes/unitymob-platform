@@ -1,6 +1,9 @@
 module Automation
   class WorkflowDefinition
-    NODE_TYPES = %w[entry condition wait await_event action branch exit].freeze
+    NODE_TYPES = %w[
+      entry condition wait await_event await_whatsapp_response response_condition response_fallback
+      response_router action branch exit
+    ].freeze
 
     def self.default_definition
       {
@@ -72,6 +75,21 @@ module Automation
         unit = config[:timeout_unit].presence || config[:unit]
         errors << "tem espera por evento sem timeout valido" unless amount.to_i.positive?
         errors << "tem espera por evento com unidade de timeout invalida" unless %w[minutes hours days].include?(unit.to_s)
+      when "await_whatsapp_response"
+        amount = config[:timeout_amount].presence || config[:amount]
+        unit = config[:timeout_unit].presence || config[:unit]
+        errors << "tem espera de resposta WhatsApp sem timeout valido" unless amount.to_i.positive?
+        errors << "tem espera de resposta WhatsApp com unidade de timeout invalida" unless %w[minutes hours days].include?(unit.to_s)
+      when "response_condition"
+        errors << "tem condicao de resposta sem campo" if config[:field].blank?
+        errors << "tem condicao de resposta com operador invalido" unless %w[equals contains not_contains present].include?(config[:operator].to_s.presence || "equals")
+      when "response_fallback"
+        errors << "tem fallback de resposta com tipo invalido" unless %w[timeout no_match].include?(config[:fallback_type].to_s.presence || "no_match")
+      when "response_router"
+        amount = config[:timeout_amount].presence || config[:amount]
+        unit = config[:timeout_unit].presence || config[:unit]
+        errors << "tem resposta condicional sem timeout valido" unless amount.to_i.positive?
+        errors << "tem resposta condicional com unidade de timeout invalida" unless %w[minutes hours days].include?(unit.to_s)
       end
     end
 
@@ -131,6 +149,29 @@ module Automation
           errors << "tem rotina agendada mensal sem dia valido" if frequency.to_s == "monthly" && config[:month_day].to_i <= 0
         end
 
+        if type == "response_router"
+          routes = Array(config[:routes])
+          errors << "tem resposta condicional sem fluxo de resposta" if routes.empty?
+          routes.each do |route|
+            route_config = route.is_a?(Hash) ? route.with_indifferent_access : {}
+            errors << "tem fluxo de resposta sem condicao" if Array(route_config[:conditions]).empty?
+            errors << "tem fluxo de resposta sem acao" if Array(route_config[:actions]).empty?
+            Array(route_config[:actions]).each do |action|
+              action_config = action.is_a?(Hash) ? action.with_indifferent_access : {}
+              action_type = action_config[:type].presence || action_config[:action_type]
+              errors << "tem fluxo de resposta com acao invalida" unless %w[send_whatsapp add_note move_stage].include?(action_type.to_s)
+              errors << "tem fluxo de resposta com WhatsApp sem mensagem" if action_type.to_s == "send_whatsapp" && action_config[:message].blank?
+              errors << "tem fluxo de resposta com nota sem texto" if action_type.to_s == "add_note" && action_config[:body].blank?
+              if action_type.to_s == "move_stage"
+                errors << "tem fluxo de resposta com etapa sem destino" if action_config[:to].blank?
+                if action_config[:to].present? && !Automation::StagePolicy.allowed_transition?(action_config[:to])
+                  errors << Automation::StagePolicy.blocked_stage_message(action_config[:to])
+                end
+              end
+            end
+          end
+        end
+
         next unless type == "action"
 
         case config[:action_type].to_s
@@ -142,10 +183,28 @@ module Automation
           errors << "tem acao de WhatsApp sem mensagem" if config[:message].blank?
         when "send_whatsapp_template"
           errors << "tem acao de modelo WhatsApp sem template" if config[:template].blank?
+        when "send_webhook"
+          errors << "tem acao de webhook sem URL" if config[:url].blank?
+          if config[:url].present? && config[:url] !~ URI::DEFAULT_PARSER.make_regexp(%w[http https])
+            errors << "tem acao de webhook com URL invalida"
+          end
+          if config[:http_method].present? && !AutomationWebhookDelivery::HTTP_METHODS.include?(config[:http_method].to_s)
+            errors << "tem acao de webhook com metodo invalido"
+          end
+        when "set_flow_result"
+          result = config[:result].presence || "no_attendance"
+          errors << "tem resultado de caminho invalido" unless %w[generates_attendance no_attendance].include?(result.to_s)
+          errors << "tem resultado que gera atendimento sem destino" if result.to_s == "generates_attendance" && config[:distribution_rule_id].blank?
         when "move_stage"
           errors << "tem acao de mover etapa sem destino" if config[:to].blank?
           if config[:to].present? && !Automation::StagePolicy.allowed_transition?(config[:to])
             errors << Automation::StagePolicy.blocked_stage_message(config[:to])
+          end
+        when "update_lead_lifecycle"
+          errors << "tem acao de ciclo de vida sem tipo" unless %w[mark_no_interest remove_no_interest block_lead discard_lead unsubscribe_lead reactivate_lead].include?(config[:lifecycle_action].to_s)
+          to = config[:to].presence
+          if to.present? && !Automation::StagePolicy.allowed_transition?(to)
+            errors << Automation::StagePolicy.blocked_stage_message(to)
           end
         when "assign_agent"
           errors << "tem acao de atribuir corretor sem responsavel" if config[:admin_user_id].blank?
@@ -192,9 +251,9 @@ module Automation
         type = node[:type].to_s
         outgoing = edges.count { |edge| edge[:from].to_s == node[:id].to_s }
 
-        if %w[condition branch].include?(type) && outgoing.zero?
+        if %w[condition branch response_condition response_fallback].include?(type) && outgoing.zero?
           errors << "tem ramificacao sem caminho de saida"
-        elsif %w[wait await_event].include?(type) && outgoing.zero?
+        elsif %w[wait await_event await_whatsapp_response response_router].include?(type) && outgoing.zero?
           errors << "tem espera sem proxima etapa"
         elsif type == "entry" && outgoing.zero?
           errors << "tem entrada sem proxima etapa"

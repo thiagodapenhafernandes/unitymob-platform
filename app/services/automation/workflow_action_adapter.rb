@@ -22,8 +22,21 @@ module Automation
         action["message"] = @config[:message]
       when "send_whatsapp_template"
         action["template"] = @config[:template].presence || @config[:message]
+      when "send_webhook"
+        action["url"] = @config[:url]
+        action["http_method"] = @config[:http_method].presence || "post"
+        action["headers"] = @config[:headers]
+        action["payload_template"] = @config[:payload_template]
+      when "set_flow_result"
+        action["result"] = @config[:result].presence || "no_attendance"
+        action["distribution_rule_id"] = @config[:distribution_rule_id] if @config[:distribution_rule_id].present?
+        action["note"] = @config[:note] if @config[:note].present?
       when "move_stage"
         action["to"] = @config[:to].presence || @config[:message]
+      when "update_lead_lifecycle"
+        action["lifecycle_action"] = @config[:lifecycle_action]
+        action["to"] = @config[:to] if @config[:to].present?
+        action["note"] = @config[:note] if @config[:note].present?
       when "assign_agent"
         action["admin_user_id"] = @config[:admin_user_id].presence || @config[:message]
       when "add_note"

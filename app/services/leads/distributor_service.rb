@@ -78,6 +78,13 @@ module Leads
       }
       metadata[:sticky] = true if sticky
       @lead.activities.create(kind: "distributed", metadata: metadata)
+      Automation::Dispatcher.dispatch(
+        :lead_assigned,
+        @lead,
+        source: "distribution",
+        payload: metadata,
+        idempotency_key: "lead_assigned:#{@lead.id}:#{admin_user_id}:#{rule.id}"
+      )
 
       if rule.pocket_operational?
         Leads::PocketExpirationJob.set(wait: rule.pocket_time.to_i.minutes).perform_later(@lead.id, admin_user_id)

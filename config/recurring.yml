@@ -48,3 +48,7 @@ production:
     class: Automation::TickJob
     queue: default
     schedule: every 15 minutes
+  whatsapp_templates_sync:
+    class: Whatsapp::SyncTemplatesJob
+    queue: default
+    schedule: every 5 minutes

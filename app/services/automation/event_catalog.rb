@@ -9,6 +9,10 @@ module Automation
         label: "Lead mudou de etapa",
         description: "Observa mudanças de etapa/status depois que o lead já existe."
       },
+      "lead_assigned" => {
+        label: "Lead atribuído",
+        description: "Observa quando a distribuição entrega um lead para um corretor."
+      },
       "lead_idle" => {
         label: "Lead parado",
         description: "Observa leads sem andamento pelo tempo configurado."
@@ -28,6 +32,38 @@ module Automation
       "whatsapp_received" => {
         label: "WhatsApp recebido",
         description: "Observa quando o lead envia uma mensagem para a plataforma."
+      },
+      "whatsapp_campaign_started" => {
+        label: "Disparo WhatsApp iniciado",
+        description: "Observa quando uma campanha de WhatsApp começa a processar sua audiência."
+      },
+      "whatsapp_campaign_completed" => {
+        label: "Disparo WhatsApp concluído",
+        description: "Observa quando uma campanha de WhatsApp termina seus envios."
+      },
+      "whatsapp_campaign_failed" => {
+        label: "Disparo WhatsApp com erro",
+        description: "Observa falhas críticas no processamento de uma campanha WhatsApp."
+      },
+      "whatsapp_campaign_message_sent" => {
+        label: "Mensagem de disparo enviada",
+        description: "Observa quando uma mensagem de campanha é aceita pela Cloud API."
+      },
+      "whatsapp_campaign_message_delivered" => {
+        label: "Mensagem de disparo entregue",
+        description: "Observa quando a Meta confirma entrega de uma mensagem de campanha."
+      },
+      "whatsapp_campaign_message_read" => {
+        label: "Mensagem de disparo lida",
+        description: "Observa quando a Meta confirma leitura de uma mensagem de campanha."
+      },
+      "whatsapp_campaign_message_failed" => {
+        label: "Mensagem de disparo falhou",
+        description: "Observa quando uma mensagem de campanha falha."
+      },
+      "whatsapp_campaign_message_replied" => {
+        label: "Destinatário respondeu disparo",
+        description: "Observa quando uma resposta ou clique do destinatário é associado a uma campanha WhatsApp."
       },
       "scheduled_routine" => {
         label: "Rotina agendada",

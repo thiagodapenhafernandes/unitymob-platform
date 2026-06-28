@@ -3,7 +3,7 @@ module Automation
     MAX_STEPS = 50
 
     def self.start(workflow, lead, event:, automation_event: nil)
-      return unless workflow&.active_version && lead
+      return unless workflow&.active_version
 
       key = idempotency_key(workflow, workflow.active_version, lead, event, automation_event: automation_event)
       execution = AutomationExecution.find_or_initialize_by(idempotency_key: key)
@@ -30,7 +30,7 @@ module Automation
           "event" => event.to_s,
           "automation_event_id" => automation_event&.id,
           "automation_event_source" => automation_event&.source
-        }.compact
+        }.compact.merge(initial_response_context(event, automation_event))
       )
       execution.save!
       Automation::RunWorkflowJob.perform_later(execution.id)
@@ -46,7 +46,28 @@ module Automation
         return "workflow:#{workflow.id}:version:#{version.id}:automation_event:#{automation_event.id}"
       end
 
-      "workflow:#{workflow.id}:version:#{version.id}:lead:#{lead.id}:event:#{event}"
+      lead_key = lead ? "lead:#{lead.id}" : "lead:none"
+      "workflow:#{workflow.id}:version:#{version.id}:#{lead_key}:event:#{event}"
+    end
+
+    def self.initial_response_context(event, automation_event)
+      return {} unless automation_event
+      return {} unless %w[whatsapp_received whatsapp_campaign_message_replied].include?(event.to_s)
+
+      payload = automation_event.payload_hash
+      body = payload[:message_body].presence ||
+             payload[:button_text].presence ||
+             payload.dig(:recipient, :message_body).presence
+      {
+        "whatsapp_response" => {
+          "event_id" => automation_event.id,
+          "event" => event.to_s,
+          "payload" => payload.to_h,
+          "body" => body.to_s,
+          "lead_status" => automation_event.lead&.status,
+          "received_at" => Time.current.iso8601
+        }
+      }
     end
 
     def initialize(execution)
@@ -55,7 +76,7 @@ module Automation
       @version = execution.automation_workflow_version
       @lead = execution.lead
       @definition = @version.definition_hash
-      @executor = Automation::ActionExecutor.new(@lead)
+      @executor = Automation::ActionExecutor.new(@lead, automation_event: execution.automation_event)
     end
 
     def run(from_node_id: nil)
@@ -130,6 +151,40 @@ module Automation
       when "await_event"
         schedule_await_event(step, node)
         :waiting
+      when "await_whatsapp_response"
+        schedule_await_whatsapp_response(step, node)
+        :waiting
+      when "response_condition"
+        matched = response_condition_matched?(node)
+        record_response_condition_match(node) if matched
+        complete_step(step, output: { "matched" => matched, "response_event_id" => whatsapp_response_context.with_indifferent_access[:event_id] })
+        unless matched
+          return :completed
+        end
+      when "response_fallback"
+        matched = response_fallback_matched?(node)
+        complete_timed_out_response_waits if matched && (node[:config] || {})[:fallback_type].to_s == "timeout"
+        complete_step(step, output: { "matched" => matched, "fallback_type" => (node[:config] || {})[:fallback_type].presence || "no_match" })
+        unless matched
+          return :completed
+        end
+      when "response_router"
+        if (route_match = response_route_match_for(node))
+          actions = Array(route_match["actions"])
+          actions.each { |action| @executor.execute(action) }
+          clear_response_route_match(node[:id])
+          complete_step(
+            step,
+            output: {
+              "matched_route_id" => route_match["route_id"],
+              "matched_route_label" => route_match["route_label"],
+              "actions_count" => actions.size
+            }
+          )
+        else
+          schedule_response_router(step, node)
+          :waiting
+        end
       when "exit"
         complete_step(step)
         :completed
@@ -181,6 +236,59 @@ module Automation
       @execution.update!(status: "waiting", current_node_id: node[:id])
 
       schedule_resume_jobs(scheduled_for, next_ids)
+    end
+
+    def schedule_response_router(step, node)
+      config = (node[:config] || {}).with_indifferent_access
+      scheduled_for = Automation::ScheduleCalculator.wait_until({
+        "mode" => "duration",
+        "amount" => config[:timeout_amount].presence || config[:amount].presence || 1,
+        "unit" => config[:timeout_unit].presence || config[:unit].presence || "days"
+      })
+      next_ids = next_nodes(node).filter_map { |item| item[:id] }
+
+      step.update!(
+        status: "waiting",
+        scheduled_for: scheduled_for,
+        output: {
+          "resume_node_id" => next_ids.first,
+          "resume_node_ids" => next_ids,
+          "await_event" => "whatsapp_received",
+          "response_router" => true,
+          "timeout_at" => scheduled_for
+        }
+      )
+      @execution.update!(status: "waiting", current_node_id: node[:id])
+
+      schedule_resume_jobs(scheduled_for, next_ids)
+    end
+
+    def schedule_await_whatsapp_response(step, node)
+      config = (node[:config] || {}).with_indifferent_access
+      scheduled_for = Automation::ScheduleCalculator.wait_until({
+        "mode" => "duration",
+        "amount" => config[:timeout_amount].presence || config[:amount].presence || 1,
+        "unit" => config[:timeout_unit].presence || config[:unit].presence || "days"
+      })
+      next_ids = next_nodes(node).filter_map { |item| item[:id] }
+      timeout_next_ids = next_nodes(node)
+        .select { |item| item[:type].to_s == "response_fallback" && (item[:config] || {})[:fallback_type].to_s == "timeout" }
+        .filter_map { |item| item[:id] }
+
+      step.update!(
+        status: "waiting",
+        scheduled_for: scheduled_for,
+        output: {
+          "resume_node_id" => next_ids.first,
+          "resume_node_ids" => next_ids,
+          "await_event" => "whatsapp_received",
+          "await_whatsapp_response" => true,
+          "timeout_at" => scheduled_for
+        }
+      )
+      @execution.update!(status: "waiting", current_node_id: node[:id])
+
+      schedule_resume_jobs(scheduled_for, timeout_next_ids.presence || next_ids)
     end
 
     def schedule_resume_jobs(scheduled_for, next_ids)
@@ -239,16 +347,107 @@ module Automation
       checks = []
 
       if config[:stage].present?
+        return false unless @lead
         checks << (Lead.status_value(@lead.status) == Lead.status_value(config[:stage]))
       end
 
       if config[:source].present?
+        return false unless @lead
         checks << @lead.origin.to_s.casecmp?(config[:source].to_s)
       end
 
       return true if checks.empty?
 
       config[:operator].to_s == "or" ? checks.any? : checks.all?
+    end
+
+    def response_condition_matched?(node)
+      response = whatsapp_response_context
+      return false if response.blank?
+
+      config = (node[:config] || {}).with_indifferent_access
+      value = response_value(config[:field])
+      expected = config[:value].to_s.strip
+
+      case config[:operator].to_s
+      when "present"
+        value.present?
+      when "not_contains"
+        expected.blank? || !value.to_s.downcase.include?(expected.downcase)
+      when "contains"
+        expected.blank? || value.to_s.downcase.include?(expected.downcase)
+      else
+        value.to_s.casecmp?(expected)
+      end
+    end
+
+    def response_fallback_matched?(node)
+      fallback_type = (node[:config] || {})[:fallback_type].to_s.presence || "no_match"
+      response = whatsapp_response_context
+
+      return response.blank? if fallback_type == "timeout"
+      return false if response.blank?
+
+      !sibling_response_condition_matched?(node)
+    end
+
+    def sibling_response_condition_matched?(fallback_node)
+      incoming = edges.select { |edge| edge[:to].to_s == fallback_node[:id].to_s }.map { |edge| edge[:from].to_s }
+      sibling_ids = edges
+        .select { |edge| incoming.include?(edge[:from].to_s) }
+        .map { |edge| edge[:to].to_s }
+        .reject { |id| id == fallback_node[:id].to_s }
+
+      sibling_ids.filter_map { |id| node_by_id(id) }
+        .select { |node| node[:type].to_s == "response_condition" }
+        .any? { |node| response_condition_matched?(node) }
+    end
+
+    def response_value(field)
+      response = whatsapp_response_context.with_indifferent_access
+      payload = (response[:payload] || {}).with_indifferent_access
+
+      case field.to_s
+      when "message.body"
+        response[:body]
+      when "interaction.button_text"
+        payload.dig(:button, :title).presence ||
+          payload.dig(:interactive, :button_reply, :title).presence ||
+          payload[:button_text].presence ||
+          response[:body]
+      when "interaction.button_payload"
+        payload.dig(:button, :id).presence ||
+          payload.dig(:interactive, :button_reply, :id).presence ||
+          payload[:button_payload].presence ||
+          payload[:button_id]
+      when "lead.status", "lead.lifecycle"
+        @lead&.status
+      when "guardrail.outside_hours"
+        payload[:outside_hours]
+      when "guardrail.crm_error"
+        payload[:crm_error]
+      else
+        payload.dig(*field.to_s.split(".").map(&:to_sym))
+      end
+    end
+
+    def whatsapp_response_context
+      (@execution.context.to_h["whatsapp_response"] || {}).with_indifferent_access
+    end
+
+    def record_response_condition_match(node)
+      context = @execution.context.to_h.deep_dup
+      context["response_condition_matches"] ||= {}
+      event_id = whatsapp_response_context[:event_id] || whatsapp_response_context["event_id"] || "latest"
+      context["response_condition_matches"][event_id.to_s] ||= []
+      context["response_condition_matches"][event_id.to_s] << node[:id].to_s
+      @execution.update!(context: context)
+    end
+
+    def complete_timed_out_response_waits
+      @execution.steps
+        .where(status: "waiting", node_type: "await_whatsapp_response")
+        .update_all(status: "completed", finished_at: Time.current, output: { "timeout" => true })
     end
 
     def stop_after_node?(node)
@@ -267,6 +466,16 @@ module Automation
       context = @execution.context.to_h.deep_dup
       context["retries"] ||= {}
       context["retries"][node_id.to_s] = attempts
+      @execution.update!(context: context)
+    end
+
+    def response_route_match_for(node)
+      @execution.context.to_h.dig("response_router_matches", node[:id].to_s)
+    end
+
+    def clear_response_route_match(node_id)
+      context = @execution.context.to_h.deep_dup
+      context.dig("response_router_matches")&.delete(node_id.to_s)
       @execution.update!(context: context)
     end
 

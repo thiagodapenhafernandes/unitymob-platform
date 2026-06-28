@@ -180,7 +180,7 @@ Rails.application.routes.draw do
         get :builder
         patch :save_draft
         patch :publish
-        post :simulate
+        match :simulate, via: [:post, :patch]
       end
     end
     resources :automation_rules, path: "automacoes" do
@@ -189,8 +189,37 @@ Rails.application.routes.draw do
       collection do
         post :create_example
         post :simulate
+        post :test_webhook
       end
     end
+
+    resources :whatsapp_campaigns, path: "whatsapp/disparos" do
+      collection do
+        get :documentation
+        match :preview_audience, via: [:post, :patch]
+        match :preview_template, via: [:post, :patch]
+        match :send_test, via: [:post, :patch]
+      end
+      member do
+        post :start
+        post :pause
+        post :resume
+        post :cancel
+        post :cancel_pending
+        post :retry_failed
+        get :status
+      end
+    end
+    resources :whatsapp_templates, path: "whatsapp/templates" do
+      collection do
+        post :sync
+        post :upload_media
+      end
+      member do
+        get :new_campaign
+      end
+    end
+    resources :whatsapp_sender_numbers, path: "whatsapp/numeros", only: [:create, :update, :destroy]
 
     # === Atendimento WhatsApp (inbox) ===
     resources :whatsapp_conversations, only: [:index, :show], path: "atendimento/whatsapp", controller: "whatsapp_inbox" do

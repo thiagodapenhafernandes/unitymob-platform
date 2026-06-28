@@ -1,0 +1,15 @@
+<section class="whatsapp-template-advanced">
+  <div class="whatsapp-template-header">
+    <div class="whatsapp-template-header__icon"><i class="bi bi-layers"></i></div>
+    <div>
+      <strong><%= WhatsappTemplate::TEMPLATE_TYPES[template_type] %></strong>
+      <span>Este formato exige um editor próprio antes de ficar disponível para aprovação.</span>
+    </div>
+  </div>
+  <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+    A estrutura já separa modelos simples, carrossel e flow para evitar configuração incompleta. O próximo passo é liberar o editor específico deste formato.
+  <% end %>
+  <%= link_to new_admin_whatsapp_template_path(template_type: "text", whatsapp_sender_number_id: sender_number&.id), class: "ax-btn" do %>
+    <i class="bi bi-file-text ax-ico"></i><span>Criar mensagem de texto</span>
+  <% end %>
+</section>

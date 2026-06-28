@@ -1,0 +1,192 @@
+<%= form_with model: [:admin, template],
+              class: "whatsapp-template-form",
+              data: {
+                controller: "whatsapp-template-form",
+                action: "submit->whatsapp-template-form#submitStarted",
+                whatsapp_template_form_upload_media_url_value: upload_media_admin_whatsapp_templates_path
+              } do |f| %>
+  <%= hidden_field_tag :whatsapp_sender_number_id, sender_number&.id if sender_number %>
+  <%= f.hidden_field :template_type, value: "carousel" %>
+  <%= f.hidden_field :header_format, value: "none" %>
+
+  <%= render "form_feedback", template: template %>
+
+  <section class="whatsapp-template-header whatsapp-template-header--approval">
+    <div class="whatsapp-template-header__icon"><i class="bi bi-collection"></i></div>
+    <div>
+      <strong>Media Card Carousel</strong>
+      <span>Crie uma mensagem com 2 a 10 cards, cada um com mídia e botão de ação.</span>
+    </div>
+  </section>
+
+  <%= ax_operational_panel(eyebrow: "Carousel", title: "Informações do template") do %>
+    <div class="ax-panel-body whatsapp-template-form__stack">
+      <div class="whatsapp-template-form__grid">
+        <div class="ax-field">
+          <%= ax_field_label(f, :name, text: "Nome interno", tooltip: "Use um nome curto. O sistema normaliza o identificador antes de enviar para aprovação.") %>
+          <%= f.text_field :name, class: "ax-control", placeholder: "ex: carrossel_lancamento_julho" %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :category, text: "Categoria", tooltip: "Carrosséis são normalmente usados em Marketing para campanhas com ofertas ou opções visuais.") %>
+          <%= f.select :category, WhatsappTemplate::CATEGORIES.map { |category| [category.titleize, category] }, {}, class: "ax-control" %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :language, text: "Idioma", tooltip: "Idioma usado pela Meta para revisar o texto e os cards.") %>
+          <%= f.select :language, [["Português (Brasil)", "pt_BR"], ["English", "en_US"], ["Español", "es"]], {}, class: "ax-control" %>
+        </div>
+        <label class="whatsapp-template-check">
+          <%= f.check_box :allow_category_change %>
+          <span>Permitir ajuste automático de categoria</span>
+        </label>
+      </div>
+
+      <div class="ax-field">
+        <%= ax_field_label(f, :body, text: "Texto introdutório", tooltip: "Mensagem enviada antes dos cards. Use variáveis como {{1}} quando precisar personalizar.") %>
+        <%= f.text_area :body,
+                        class: "ax-control",
+                        rows: 4,
+                        maxlength: 1024,
+                        placeholder: "Escolha uma das opções abaixo.",
+                        data: {
+                          whatsapp_template_form_target: "bodyInput",
+                          action: "input->whatsapp-template-form#syncExamples"
+                        } %>
+      </div>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Variáveis", title: "Exemplos para aprovação") do %>
+    <div class="ax-panel-body whatsapp-template-form__stack">
+      <div class="whatsapp-template-examples__head">
+        <p class="ax-field__hint">Preencha um exemplo para cada variável usada no texto introdutório.</p>
+        <button type="button" class="ax-btn ax-btn--sm" data-action="whatsapp-template-form#addExample">
+          <i class="bi bi-plus-lg ax-ico"></i><span>Adicionar exemplo</span>
+        </button>
+      </div>
+      <div class="whatsapp-template-example-grid" data-whatsapp-template-form-target="examplesList">
+        <% example_rows = Array(template.example_values).map(&:to_s).reject(&:blank?) %>
+        <% example_rows = [""] if example_rows.blank? %>
+        <% example_rows.each_with_index do |value, index| %>
+          <div class="ax-field whatsapp-template-example-row" data-whatsapp-template-form-target="exampleRow">
+            <%= label_tag "whatsapp_template_example_values_#{index}", "Exemplo #{index + 1}", class: "ax-label" %>
+            <div class="whatsapp-template-example-row__input">
+              <%= text_field_tag "whatsapp_template[example_values][]",
+                                 value,
+                                 id: "whatsapp_template_example_values_#{index}",
+                                 class: "ax-control",
+                                 placeholder: index.zero? ? "Maria Silva" : "",
+                                 data: { whatsapp_template_form_target: "exampleInput" } %>
+              <button type="button" class="ax-btn ax-btn--sm whatsapp-template-example-row__remove" aria-label="Remover exemplo" data-action="whatsapp-template-form#removeExample">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Cards", title: "Cards do carrossel") do %>
+    <div class="ax-panel-body whatsapp-template-form__stack">
+      <div class="whatsapp-template-examples__head">
+        <p class="ax-field__hint">Cada card precisa de mídia, texto e botão. O sistema envia as mídias para a Meta e usa os handles retornados.</p>
+        <button type="button" class="ax-btn ax-btn--primary ax-btn--sm" data-action="whatsapp-template-form#addCarouselCard">
+          <i class="bi bi-plus-lg ax-ico"></i><span>Adicionar card</span>
+        </button>
+      </div>
+
+      <div class="whatsapp-template-carousel-list" data-whatsapp-template-form-target="carouselCardList">
+        <% cards = template.clean_carousel_cards.presence || template.carousel_cards.presence || [{}, {}] %>
+        <% cards.first(10).each_with_index do |card, index| %>
+          <% upload_input_id = "whatsapp_template_carousel_card_media_files_#{index}" %>
+          <div class="whatsapp-template-carousel-card" data-whatsapp-template-form-target="carouselCardRow">
+            <div class="whatsapp-template-carousel-card__head">
+              <strong>Card <%= index + 1 %></strong>
+              <button type="button" class="ax-btn ax-btn--sm whatsapp-template-button-row__remove" aria-label="Remover card" data-action="whatsapp-template-form#removeCarouselCard">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+            <div class="whatsapp-template-carousel-card__grid">
+              <div class="ax-field">
+                <%= label_tag "whatsapp_template_carousel_cards_#{index}_media_type", "Tipo de mídia", class: "ax-label" %>
+                <%= select_tag "whatsapp_template[carousel_cards][#{index}][media_type]",
+                               options_for_select(WhatsappTemplate::CAROUSEL_MEDIA_TYPES.map { |key, label| [label, key] }, card["media_type"].presence || "image"),
+                               id: "whatsapp_template_carousel_cards_#{index}_media_type",
+                               class: "ax-control" %>
+              </div>
+              <div class="ax-field">
+                <%= ax_field_label(
+                      text: "Mídia do card",
+                      tooltip: "Formatos aceitos: imagem JPG/PNG ou vídeo MP4/3GPP. O sistema envia o arquivo para a Meta e usa o handle retornado na aprovação.",
+                      for: upload_input_id
+                    ) %>
+                <div class="ax-upload-control whatsapp-template-upload-control">
+                  <%= ax_file_upload_button(
+                        label: "Selecionar mídia",
+                        input_id: upload_input_id
+                      ) %>
+                  <%= file_field_tag "whatsapp_template[carousel_card_media_files][]",
+                                     id: upload_input_id,
+                                     class: "ax-file-upload__input whatsapp-template-file",
+                                     accept: "image/png,image/jpeg,video/mp4,video/3gpp",
+                                     data: { action: "change->whatsapp-template-form#updateFileName" } %>
+                  <span class="ax-upload-status" data-whatsapp-template-file-status>Nenhum arquivo selecionado</span>
+                </div>
+                <%= hidden_field_tag "whatsapp_template[carousel_cards][#{index}][media_handle]", card["media_handle"] %>
+              </div>
+              <div class="ax-field">
+                <%= label_tag "whatsapp_template_carousel_cards_#{index}_button_kind", "Tipo de botão", class: "ax-label" %>
+                <%= select_tag "whatsapp_template[carousel_cards][#{index}][button_kind]",
+                               options_for_select(WhatsappTemplate::BUTTON_KINDS.map { |key, label| [label, key] }, card["button_kind"].presence || "url"),
+                               id: "whatsapp_template_carousel_cards_#{index}_button_kind",
+                               class: "ax-control",
+                               data: { action: "change->whatsapp-template-form#toggleCarouselButtonRows" } %>
+              </div>
+              <div class="ax-field">
+                <%= label_tag "whatsapp_template_carousel_cards_#{index}_button_text", "Texto do botão", class: "ax-label" %>
+                <%= text_field_tag "whatsapp_template[carousel_cards][#{index}][button_text]", card["button_text"], id: "whatsapp_template_carousel_cards_#{index}_button_text", class: "ax-control", placeholder: "Ver detalhes" %>
+              </div>
+              <div class="ax-field whatsapp-template-carousel-card__wide">
+                <div class="whatsapp-template-carousel-button-extra" data-whatsapp-template-carousel-extra="url" <%= "hidden" unless (card["button_kind"].presence || "url") == "url" %>>
+                  <div class="whatsapp-template-carousel-extra-grid">
+                    <div class="ax-field">
+                      <%= label_tag "whatsapp_template_carousel_cards_#{index}_button_url", "URL", class: "ax-label" %>
+                      <%= text_field_tag "whatsapp_template[carousel_cards][#{index}][button_url]", card["button_url"], id: "whatsapp_template_carousel_cards_#{index}_button_url", class: "ax-control", placeholder: "https://exemplo.com/promo" %>
+                    </div>
+                    <div class="ax-field">
+                      <%= label_tag "whatsapp_template_carousel_cards_#{index}_button_url_example", "Exemplo da URL", class: "ax-label" %>
+                      <%= text_field_tag "whatsapp_template[carousel_cards][#{index}][button_url_example]", card["button_url_example"], id: "whatsapp_template_carousel_cards_#{index}_button_url_example", class: "ax-control", placeholder: "https://exemplo.com/cliente123" %>
+                    </div>
+                  </div>
+                </div>
+                <div class="whatsapp-template-carousel-button-extra" data-whatsapp-template-carousel-extra="phone_number" <%= "hidden" unless card["button_kind"] == "phone_number" %>>
+                  <div class="ax-field">
+                    <%= label_tag "whatsapp_template_carousel_cards_#{index}_button_phone_number", "Telefone", class: "ax-label" %>
+                    <%= text_field_tag "whatsapp_template[carousel_cards][#{index}][button_phone_number]", card["button_phone_number"], id: "whatsapp_template_carousel_cards_#{index}_button_phone_number", class: "ax-control", placeholder: "5511999990000" %>
+                  </div>
+                </div>
+              </div>
+              <div class="ax-field whatsapp-template-carousel-card__wide">
+                <%= label_tag "whatsapp_template_carousel_cards_#{index}_text", "Texto do card", class: "ax-label" %>
+                <%= text_area_tag "whatsapp_template[carousel_cards][#{index}][text]",
+                                  card["text"],
+                                  id: "whatsapp_template_carousel_cards_#{index}_text",
+                                  class: "ax-control",
+                                  rows: 3,
+                                  maxlength: 160,
+                                  placeholder: "Resumo curto do imóvel, oferta ou opção." %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <footer class="whatsapp-template-form__footer">
+    <%= link_to "Cancelar", admin_whatsapp_templates_path(whatsapp_sender_number_id: sender_number&.id), class: "ax-btn" %>
+    <button type="submit" class="ax-btn ax-btn--primary">
+      <i class="bi bi-send-check ax-ico"></i><span>Enviar para aprovação</span>
+    </button>
+  </footer>
+<% end %>

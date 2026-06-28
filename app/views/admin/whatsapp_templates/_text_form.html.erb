@@ -1,0 +1,188 @@
+<%= form_with model: [:admin, template],
+              class: "whatsapp-template-form",
+              data: {
+                controller: "whatsapp-template-form",
+                action: "submit->whatsapp-template-form#submitStarted",
+                whatsapp_template_form_upload_media_url_value: upload_media_admin_whatsapp_templates_path
+              } do |f| %>
+  <%= hidden_field_tag :whatsapp_sender_number_id, sender_number&.id if sender_number %>
+  <%= f.hidden_field :template_type, value: "text" %>
+
+  <%= render "form_feedback", template: template %>
+
+  <section class="whatsapp-template-header whatsapp-template-header--approval">
+    <div class="whatsapp-template-header__icon"><i class="bi bi-send-check"></i></div>
+    <div>
+      <strong>Enviar para aprovação</strong>
+      <span>Depois do envio, acompanhe o status na listagem de modelos.</span>
+    </div>
+  </section>
+
+  <%= ax_operational_panel(eyebrow: "Mensagem de Texto", title: "Informações do template") do %>
+    <div class="ax-panel-body whatsapp-template-form__stack">
+      <div class="whatsapp-template-form__grid">
+        <div class="ax-field">
+          <%= ax_field_label(f, :name, text: "Nome interno", tooltip: "Use um nome curto para encontrar este modelo depois. O sistema ajusta o formato automaticamente.") %>
+          <%= f.text_field :name, class: "ax-control", placeholder: "ex: convite_lancamento_julho" %>
+        </div>
+        <div class="ax-field">
+          <%= ax_field_label(f, :category, text: "Categoria", tooltip: "Marketing para campanhas, Utility para avisos transacionais e Authentication para autenticação.") %>
+          <%= f.select :category, WhatsappTemplate::CATEGORIES.map { |category| [category.titleize, category] }, {}, class: "ax-control" %>
+        </div>
+        <div class="ax-field">
+        <%= ax_field_label(f, :language, text: "Idioma", tooltip: "Idioma da mensagem que será revisada e aprovada.") %>
+          <%= f.select :language, [["Português (Brasil)", "pt_BR"], ["English", "en_US"], ["Español", "es"]], {}, class: "ax-control" %>
+        </div>
+        <label class="whatsapp-template-check">
+          <%= f.check_box :allow_category_change %>
+          <span>Permitir ajuste automático de categoria</span>
+        </label>
+      </div>
+
+      <div class="ax-field">
+        <%= ax_field_label(f, :body, text: "Texto da mensagem", tooltip: "Escreva a mensagem como o cliente receberá. Para trechos personalizados, use os exemplos abaixo na ordem em que aparecem no texto.") %>
+        <%= f.text_area :body,
+                        class: "ax-control",
+                        rows: 6,
+                        maxlength: 1024,
+                        placeholder: "Olá {{1}}, temos uma novidade para você.",
+                        data: {
+                          whatsapp_template_form_target: "bodyInput",
+                          action: "input->whatsapp-template-form#syncExamples"
+                        } %>
+        <p class="ax-field__hint">Quando usar informações variáveis, preencha exemplos reais para facilitar a aprovação.</p>
+      </div>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Header", title: "Cabeçalho") do %>
+    <div class="ax-panel-body whatsapp-template-form__stack">
+      <div class="whatsapp-template-form__grid whatsapp-template-form__grid--media">
+        <div class="ax-field">
+          <%= ax_field_label(f, :header_format, text: "Tipo de cabeçalho", tooltip: "Opcional. Use texto curto, imagem, vídeo ou documento para aparecer no topo da mensagem.") %>
+          <%= f.select :header_format,
+                       WhatsappTemplate::HEADER_FORMATS.map { |key, label| [label, key] },
+                       {},
+                       class: "ax-control",
+                       data: {
+                         whatsapp_template_form_target: "mediaSelect",
+                         action: "change->whatsapp-template-form#toggleMedia"
+                       } %>
+        </div>
+        <div class="ax-field" data-whatsapp-template-form-target="headerTextField">
+          <%= ax_field_label(f, :header_text, text: "Texto do cabeçalho", tooltip: "Texto curto que aparece antes da mensagem.") %>
+          <%= f.text_field :header_text, class: "ax-control", maxlength: 60, placeholder: "Ex: Convite especial" %>
+        </div>
+        <div class="ax-field" data-whatsapp-template-form-target="mediaField">
+          <%= ax_field_label(f, :header_media_file, text: "Mídia de exemplo", tooltip: "Anexe o arquivo que será usado como exemplo na aprovação. O sistema prepara o envio automaticamente.") %>
+          <div class="ax-upload-control whatsapp-template-upload-control">
+            <%= ax_file_upload_button(
+                  form: f,
+                  method: :header_media_file,
+                  label: "Selecionar mídia",
+                  input_id: "whatsapp_template_header_media_file",
+                  multiple: false,
+                  accept: "image/png,image/jpeg,video/mp4,video/3gpp,application/pdf",
+                  input_class: "whatsapp-template-file",
+                  input_data: { action: "change->whatsapp-template-form#updateFileName" }
+                ) %>
+            <span class="ax-upload-status" data-whatsapp-template-file-status>Nenhum arquivo selecionado</span>
+          </div>
+          <%= f.hidden_field :header_media_handle %>
+        </div>
+      </div>
+      <div class="whatsapp-template-media-rules" data-whatsapp-template-form-target="mediaRules">
+        <span>Imagem: JPG, PNG</span>
+        <span>Vídeo: MP4 ou 3GPP</span>
+        <span>Documento: PDF</span>
+      </div>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Variáveis", title: "Exemplos para aprovação") do %>
+    <div class="ax-panel-body whatsapp-template-form__stack">
+      <div class="whatsapp-template-examples__head">
+        <p class="ax-field__hint">Adicione um exemplo para cada variável usada no texto, como <code>{{1}}</code> ou <code>{{2}}</code>.</p>
+        <button type="button" class="ax-btn ax-btn--sm" data-action="whatsapp-template-form#addExample">
+          <i class="bi bi-plus-lg ax-ico"></i><span>Adicionar exemplo</span>
+        </button>
+      </div>
+      <div class="whatsapp-template-example-grid" data-whatsapp-template-form-target="examplesList">
+        <% example_rows = Array(template.example_values).map(&:to_s).reject(&:blank?) %>
+        <% example_rows = [""] if example_rows.blank? %>
+        <% example_rows.each_with_index do |value, index| %>
+          <div class="ax-field whatsapp-template-example-row" data-whatsapp-template-form-target="exampleRow">
+            <%= label_tag "whatsapp_template_example_values_#{index}", "Exemplo #{index + 1}", class: "ax-label" %>
+            <div class="whatsapp-template-example-row__input">
+              <%= text_field_tag "whatsapp_template[example_values][]",
+                                 value,
+                                 id: "whatsapp_template_example_values_#{index}",
+                                 class: "ax-control",
+                                 placeholder: index.zero? ? "Maria Silva" : "",
+                                 data: { whatsapp_template_form_target: "exampleInput" } %>
+              <button type="button"
+                      class="ax-btn ax-btn--sm whatsapp-template-example-row__remove"
+                      aria-label="Remover exemplo"
+                      data-action="whatsapp-template-form#removeExample">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Complementos", title: "Rodapé e botões") do %>
+    <div class="ax-panel-body whatsapp-template-form__stack">
+      <div class="ax-field">
+        <%= ax_field_label(f, :footer_text, text: "Rodapé", tooltip: "Texto curto opcional, sem variáveis.") %>
+        <%= f.text_field :footer_text, class: "ax-control", placeholder: "Texto adicional ou instruções" %>
+      </div>
+
+      <div class="whatsapp-template-examples__head">
+        <p class="ax-field__hint">Adicione até 3 botões. Campos extras aparecem conforme o tipo escolhido.</p>
+        <button type="button" class="ax-btn ax-btn--sm" data-action="whatsapp-template-form#addButton">
+          <i class="bi bi-plus-lg ax-ico"></i><span>Adicionar botão</span>
+        </button>
+      </div>
+      <div class="whatsapp-template-button-list" data-whatsapp-template-form-target="buttonList">
+        <% existing_buttons = template.clean_buttons.presence || [{}] %>
+        <% existing_buttons.first(3).each_with_index do |button, index| %>
+          <div class="whatsapp-template-button-row" data-whatsapp-template-form-target="buttonRow">
+            <div class="ax-field">
+              <%= label_tag "whatsapp_template_buttons_#{index}_kind", "Tipo", class: "ax-label" %>
+              <%= select_tag "whatsapp_template[buttons][#{index}][kind]",
+                             options_for_select(WhatsappTemplate::BUTTON_KINDS.map { |key, label| [label, key] }, button["kind"]),
+                             id: "whatsapp_template_buttons_#{index}_kind",
+                             class: "ax-control",
+                             data: { action: "change->whatsapp-template-form#toggleButtonRows" } %>
+            </div>
+            <div class="ax-field">
+              <%= label_tag "whatsapp_template_buttons_#{index}_text", "Texto do botão", class: "ax-label" %>
+              <%= text_field_tag "whatsapp_template[buttons][#{index}][text]", button["text"], class: "ax-control", placeholder: "Ex: Ver ofertas" %>
+            </div>
+            <div class="ax-field" data-whatsapp-template-button-extra>
+              <%= label_tag "whatsapp_template_buttons_#{index}_url", "URL ou telefone", class: "ax-label" %>
+              <%= text_field_tag "whatsapp_template[buttons][#{index}][url]", button["url"].presence || button["phone_number"], class: "ax-control", placeholder: "https://... ou 5511999990000" %>
+            </div>
+            <button type="button"
+                    class="ax-btn ax-btn--sm whatsapp-template-button-row__remove"
+                    aria-label="Remover botão"
+                    data-action="whatsapp-template-form#removeButton">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        <% end %>
+      </div>
+      <p class="ax-field__hint">Resposta rápida gera retorno direto no WhatsApp; URL e telefone são ações externas.</p>
+    </div>
+  <% end %>
+
+  <footer class="whatsapp-template-form__footer">
+    <%= link_to "Cancelar", admin_whatsapp_templates_path(whatsapp_sender_number_id: sender_number&.id), class: "ax-btn" %>
+    <button type="submit" class="ax-btn ax-btn--primary">
+      <i class="bi bi-send-check ax-ico"></i><span>Enviar para aprovação</span>
+    </button>
+  </footer>
+<% end %>

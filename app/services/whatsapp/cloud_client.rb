@@ -58,6 +58,58 @@ module Whatsapp
       error_result(e.message)
     end
 
+    def create_template(payload)
+      return error_result("Integração não configurada") unless configured? && @integration.waba_id.present?
+
+      url = "#{base}/#{@integration.waba_id}/message_templates"
+      response = HTTParty.post(url, headers: auth_headers, body: payload.to_json, timeout: 20)
+      parse(response)
+    rescue => e
+      error_result(e.message)
+    end
+
+    def upload_template_media(file_name:, content_type:, byte_size:, io:)
+      return error_result("Integração não configurada") unless @integration&.access_token.present?
+      return error_result("Upload de mídia para aprovação ainda não está configurado.") if template_upload_app_id.blank?
+
+      session_url = "#{base}/#{template_upload_app_id}/uploads"
+      session = parse(HTTParty.post(
+        session_url,
+        query: {
+          access_token: token,
+          file_name: file_name,
+          file_length: byte_size,
+          file_type: content_type
+        },
+        timeout: 20
+      ))
+      return session unless session[:ok]
+
+      session_id = session.dig(:data, "id")
+      return error_result("Não foi possível iniciar o envio da mídia de exemplo.") if session_id.blank?
+
+      upload_url = "#{base}/#{session_id}"
+      io.rewind if io.respond_to?(:rewind)
+      upload = parse(HTTParty.post(
+        upload_url,
+        headers: {
+          "Authorization" => "OAuth #{token}",
+          "file_offset" => "0",
+          "Content-Type" => "application/octet-stream"
+        },
+        body: io.read,
+        timeout: 60
+      ))
+      return upload unless upload[:ok]
+
+      handle = upload.dig(:data, "h").presence || upload.dig(:data, "handle").presence
+      return error_result("Não foi possível concluir o envio da mídia de exemplo.") if handle.blank?
+
+      upload.merge(handle: handle)
+    rescue => e
+      error_result(e.message)
+    end
+
     private
 
     def post_message(to:, **payload)
@@ -77,6 +129,10 @@ module Whatsapp
 
     def token
       @integration.access_token
+    end
+
+    def template_upload_app_id
+      ENV["FACEBOOK_APP_ID"].presence
     end
 
     def auth_headers
@@ -108,12 +164,31 @@ module Whatsapp
       if response.success?
         { ok: true, status: response.code, data: data, message_id: data.dig("messages", 0, "id") }
       else
-        { ok: false, status: response.code, data: data, error: data.dig("error", "message") || "Erro #{response.code}" }
+        meta_error = data["error"].is_a?(Hash) ? data["error"] : {}
+        {
+          ok: false,
+          status: response.code,
+          data: data,
+          error: meta_error_message(meta_error, response.code),
+          meta_error: {
+            code: meta_error["code"],
+            subcode: meta_error["error_subcode"],
+            type: meta_error["type"],
+            trace_id: meta_error["fbtrace_id"]
+          }.compact
+        }
       end
     end
 
     def error_result(message)
       { ok: false, status: 0, data: {}, error: message }
+    end
+
+    def meta_error_message(meta_error, status_code)
+      user_message = meta_error["error_user_msg"].presence || meta_error["error_user_title"].presence
+      technical_message = meta_error["message"].presence
+      [user_message, technical_message].compact_blank.uniq.join(" ")
+        .presence || "Erro #{status_code} na comunicação com a Meta."
     end
   end
 end
