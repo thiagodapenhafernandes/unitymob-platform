@@ -8,12 +8,12 @@ module Field
     before_action :ensure_field_agent!
 
     def new
-      @request = ManualCheckinRequest.new
-      @stores = Store.active.order(:name)
+      @request = current_tenant.manual_checkin_requests.new
+      @stores = current_tenant.stores.active.order(:name)
     end
 
     def create
-      @request = ManualCheckinRequest.new(
+      @request = current_tenant.manual_checkin_requests.new(
         admin_user: current_admin_user,
         store_id: params.dig(:manual_checkin_request, :store_id),
         justification: params.dig(:manual_checkin_request, :justification),
@@ -29,7 +29,7 @@ module Field
         )
         redirect_to field_root_path, notice: "Solicitação enviada. Aguarde a aprovação do administrador."
       else
-        @stores = Store.active.order(:name)
+        @stores = current_tenant.stores.active.order(:name)
         render :new, status: :unprocessable_entity
       end
     end

@@ -8,8 +8,8 @@ module Admin
       before_action :set_check_in, only: [:show, :force_check_out]
 
       def index
-        @active_check_ins = CheckIn.where(status: :active).includes(:admin_user, :store).order(checked_in_at: :desc)
-        @today_closed = CheckIn.where.not(status: :active).today.includes(:admin_user, :store).order(checked_in_at: :desc)
+        @active_check_ins = current_tenant.check_ins.where(status: :active).includes(:admin_user, :store).order(checked_in_at: :desc)
+        @today_closed = current_tenant.check_ins.where.not(status: :active).today.includes(:admin_user, :store).order(checked_in_at: :desc)
       end
 
       def show
@@ -33,7 +33,7 @@ module Admin
       private
 
       def set_check_in
-        @check_in = CheckIn.find(params[:id])
+        @check_in = current_tenant.check_ins.find(params[:id])
       end
     end
   end

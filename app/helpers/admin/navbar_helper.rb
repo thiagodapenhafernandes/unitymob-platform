@@ -14,6 +14,8 @@ module Admin::NavbarHelper
     "automation_workflows" => "Automação",
     "whatsapp_inbox" => "Atendimento",
     "whatsapp_campaigns" => "Disparos WhatsApp",
+    "whatsapp_campaign_recipients" => "Importados CSV",
+    "whatsapp_campaign_unsubscribes" => "Descadastros WhatsApp",
     "marketing_campaigns" => "Campanhas",
     "marketing_opportunities" => "Oportunidades",
     "marketing_properties" => "Marketing",
@@ -74,17 +76,17 @@ module Admin::NavbarHelper
                 ]
               when "distribution_rules"
                 [
-                  admin_contextbar_link("Nova regra", new_admin_distribution_rule_path, icon: "plus-lg", primary: true, if: can?(:view, :distribuicao_leads))
+                  admin_contextbar_link("Nova regra", new_admin_distribution_rule_path, icon: "plus-lg", primary: true, if: can?(:manage, :distribution_rules))
                 ]
               when "stores"
                 [
-                  admin_contextbar_link("Nova loja", new_admin_store_path, icon: "plus-lg", primary: true, if: can?(:view, :lojas))
+                  admin_contextbar_link("Nova loja", new_admin_store_path, icon: "plus-lg", primary: true, if: can?(:manage, :lojas))
                 ]
               when "captacoes", "habitation_intakes"
                 admin_captacoes_contextbar_actions
               when "automation_rules"
                 [
-                  admin_contextbar_link("Nova automação", new_admin_automation_rule_path, icon: "plus-lg", primary: true, if: can?(:view, :automacao))
+                  admin_contextbar_link("Nova automação", new_admin_automation_rule_path, icon: "plus-lg", primary: true, if: can?(:manage, :automacoes))
                 ]
               when "marketing_campaigns"
                 [
@@ -101,11 +103,12 @@ module Admin::NavbarHelper
               when "admin_users"
                 [
                   admin_contextbar_link("Hierarquia", hierarchy_admin_admin_users_path, icon: "diagram-3"),
-                  admin_contextbar_link("Novo usuário", new_admin_admin_user_path, icon: "person-plus", primary: true, if: current_admin_user&.admin?)
+                  admin_contextbar_link("Novo usuário", new_admin_admin_user_path, icon: "person-plus", primary: true, if: can?(:manage, :corretores))
                 ]
               when "profiles"
                 [
-                  admin_contextbar_link("Novo perfil", new_admin_profile_path, icon: "plus-lg", primary: true, if: current_admin_user&.admin?)
+                  admin_contextbar_link("Perfil vertical", new_admin_profile_path(axis: "vertical"), icon: "diagram-3", primary: true, if: tenant_owner?),
+                  admin_contextbar_link("Função horizontal", new_admin_profile_path(axis: "horizontal"), icon: "person-gear", if: tenant_owner?)
                 ]
               else
                 []
@@ -121,11 +124,39 @@ module Admin::NavbarHelper
 
     safe_join(
       [
-        link_to(admin_contextbar_root_label, current_admin_user&.admin? ? admin_root_path : field_root_path),
+        link_to(admin_contextbar_root_label, tenant_owner? ? admin_root_path : field_root_path),
         tag.i(class: "bi bi-chevron-right"),
         tag.strong(admin_contextbar_title)
       ]
     )
+  end
+
+  def admin_contextbar_navigation(breadcrumb = nil)
+    safe_join(
+      [
+        admin_contextbar_back_link,
+        breadcrumb.presence || admin_contextbar_breadcrumb
+      ].compact
+    )
+  end
+
+  def admin_contextbar_back_link
+    path = admin_contextbar_back_path
+    return nil if path.blank?
+
+    link_to(path, class: "ax-breadcrumb__back", title: "Voltar para a tela anterior") do
+      safe_join([tag.i(class: "bi bi-arrow-left"), tag.span("Voltar")])
+    end
+  end
+
+  def admin_contextbar_back_path
+    explicit_return_path = safe_admin_contextbar_return_path(params[:return_to])
+    return explicit_return_path if explicit_return_path.present?
+
+    inferred_return_path = admin_contextbar_inferred_back_path
+    return inferred_return_path if inferred_return_path.present?
+
+    safe_admin_contextbar_return_path(request.referer)
   end
 
   def admin_contextbar_root_label
@@ -135,7 +166,7 @@ module Admin::NavbarHelper
   # Contadores leves exibidos na navbar (rodam em toda página admin — sempre resilientes).
   def navbar_pending_tasks_count
     return 0 unless current_admin_user && can?(:view, :comercial)
-    Task.where(admin_user_id: current_admin_user.id, status: "pendente").count
+    current_tenant.tasks.where(admin_user_id: current_admin_user.id, status: "pendente").count
   rescue StandardError
     0
   end
@@ -143,8 +174,8 @@ module Admin::NavbarHelper
   def navbar_unread_conversations_count
     return 0 unless current_admin_user && can?(:view, :whatsapp_inbox)
 
-    scope = WhatsappConversation.where("unread_count > 0")
-    unless current_admin_user.admin? || current_admin_user.owns_all?(:whatsapp_inbox)
+    scope = current_tenant.whatsapp_conversations.where("unread_count > 0")
+    unless tenant_owner? || current_admin_user.owns_all?(:whatsapp_inbox)
       scope = scope.left_joins(:lead).where(
         "whatsapp_conversations.assigned_admin_user_id = :id OR leads.admin_user_id = :id",
         id: current_admin_user.id
@@ -158,12 +189,12 @@ module Admin::NavbarHelper
   private
 
   def admin_dashboard_contextbar_actions
-    if current_admin_user&.admin?
-      [
-        admin_contextbar_link("Lojas", admin_stores_path, icon: "shop", if: can?(:view, :lojas)),
-        admin_contextbar_link("Regras", admin_distribution_rules_path, icon: "diagram-3", if: can?(:view, :distribuicao_leads)),
-        admin_contextbar_link("Check-ins", admin_field_check_ins_path, icon: "geo-fill", if: can?(:view, :campo))
-      ]
+    if tenant_owner?
+        [
+          admin_contextbar_link("Lojas", admin_stores_path, icon: "shop", if: can?(:view, :lojas)),
+          admin_contextbar_link("Regras", admin_distribution_rules_path, icon: "diagram-3", if: can?(:manage, :distribution_rules)),
+          admin_contextbar_link("Check-ins", admin_field_check_ins_path, icon: "geo-fill", if: can?(:view, :field_checkins))
+        ]
     else
       [
         admin_contextbar_link("Nova captação", new_admin_captacao_path, icon: "journal-plus", primary: true),
@@ -175,8 +206,8 @@ module Admin::NavbarHelper
 
   def admin_habitations_contextbar_actions
     [
-      admin_contextbar_link("Proprietários", admin_proprietors_path, icon: "person-vcard", if: current_admin_user&.admin?),
-      admin_contextbar_button("Exportar", icon: "download", data: { ax_modal_open: "#habitationsExportModal" }, if: current_admin_user&.admin? || current_admin_user&.profile&.administrativo?),
+      admin_contextbar_link("Proprietários", admin_proprietors_path, icon: "person-vcard", if: can?(:view, :proprietarios)),
+      admin_contextbar_button("Exportar", icon: "download", data: { ax_modal_open: "#habitationsExportModal" }, if: tenant_owner? || current_admin_user&.owns_all?(:imoveis)),
       admin_contextbar_link("Novo imóvel", new_admin_habitation_path, icon: "plus-lg", primary: true, if: can?(:manage, :imoveis))
     ]
   end
@@ -186,6 +217,14 @@ module Admin::NavbarHelper
     actions << admin_contextbar_link("Exportar", export_admin_captacoes_path(request.query_parameters), icon: "file-earmark-spreadsheet", if: respond_to?(:can_export_captacoes?) && can_export_captacoes?)
     actions << admin_contextbar_link("Nova captação", new_admin_captacao_path, icon: "plus-lg", primary: true)
     actions
+  end
+
+  def admin_contextbar_inferred_back_path
+    return admin_whatsapp_campaigns_path if controller_name == "whatsapp_campaigns" &&
+                                           action_name == "index" &&
+                                           params[:whatsapp_sender_number_id].present?
+
+    nil
   end
 
   def admin_contextbar_link(label, path, icon:, primary: false, **options)
@@ -212,5 +251,71 @@ module Admin::NavbarHelper
     tag.button(**options.merge(type: "button", class: classes.compact.join(" "))) do
       safe_join([tag.i(class: "bi bi-#{icon}"), tag.span(label)])
     end
+  end
+
+  def safe_admin_contextbar_return_path(value)
+    raw_value = value.to_s.strip
+    return nil if raw_value.blank?
+
+    uri = URI.parse(raw_value)
+    return nil if uri.scheme.present? && !same_request_host?(uri)
+    return nil if uri.host.present? && !same_request_host?(uri)
+    return nil unless internal_contextbar_path?(uri.path)
+
+    query = uri.path == admin_habitations_path ? compact_admin_contextbar_return_query(uri.query) : uri.query.presence
+    path = [uri.path, query].compact.join("?")
+    return nil if same_contextbar_path?(path)
+
+    uri.fragment.present? ? "#{path}##{uri.fragment}" : path
+  rescue URI::InvalidURIError
+    nil
+  end
+
+  def compact_admin_contextbar_return_query(query)
+    compacted = compact_admin_contextbar_return_params(Rack::Utils.parse_nested_query(query.to_s))
+    return nil if blank_admin_contextbar_return_param?(compacted)
+
+    Rack::Utils.build_nested_query(compacted)
+  end
+
+  def compact_admin_contextbar_return_params(value)
+    case value
+    when Hash
+      value.each_with_object({}) do |(key, nested_value), compacted_hash|
+        compacted_value = compact_admin_contextbar_return_params(nested_value)
+        compacted_hash[key] = compacted_value unless blank_admin_contextbar_return_param?(compacted_value)
+      end
+    when Array
+      value.filter_map do |nested_value|
+        compacted_value = compact_admin_contextbar_return_params(nested_value)
+        compacted_value unless blank_admin_contextbar_return_param?(compacted_value)
+      end
+    else
+      value.to_s.strip.presence
+    end
+  end
+
+  def blank_admin_contextbar_return_param?(value)
+    value.blank? || (value.respond_to?(:empty?) && value.empty?)
+  end
+
+  def same_request_host?(uri)
+    uri.host == request.host && (uri.port.blank? || uri.port == request.port)
+  end
+
+  def internal_contextbar_path?(path)
+    normalized_path = path.to_s
+    return false unless normalized_path.start_with?("/")
+    return false if normalized_path.start_with?("//")
+
+    normalized_path == admin_root_path ||
+      normalized_path.start_with?("#{admin_root_path}/") ||
+      normalized_path == field_root_path ||
+      normalized_path.start_with?("#{field_root_path}/")
+  end
+
+  def same_contextbar_path?(path)
+    current_path = request.fullpath.presence || request.path
+    path.to_s == current_path.to_s
   end
 end

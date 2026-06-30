@@ -26,7 +26,7 @@ class HabitationsController < ApplicationController
       end
     end
 
-    @habitations = Habitation
+    @habitations = public_habitation_scope
       .active
       .without_developments
       .advanced_search(search_params)
@@ -65,7 +65,7 @@ class HabitationsController < ApplicationController
       return
     end
     
-    property = Habitation.find_by(codigo: code)
+    property = public_tenant.habitations.find_by(codigo: code)
     
     if property&.publicly_viewable?
       redirect_to habitation_path(property), notice: "Imóvel ##{code} encontrado!"
@@ -103,7 +103,7 @@ class HabitationsController < ApplicationController
 
     if term.present?
       # 1. Cidades
-      cidades = Habitation.active
+      cidades = public_habitation_scope.active
                          .left_outer_joins(:address)
                          .where("unaccent(COALESCE(addresses.cidade, habitations.cidade)) ILIKE unaccent(?)", "%#{term}%")
                          .distinct
@@ -113,7 +113,7 @@ class HabitationsController < ApplicationController
       results += cidades.map { |c| { label: "#{c} (Cidade)", value: c, type: 'cidade' } }
 
       # 2. Bairros
-      bairros = Habitation.active
+      bairros = public_habitation_scope.active
                           .left_outer_joins(:address)
                           .where("unaccent(COALESCE(addresses.bairro, habitations.bairro)) ILIKE unaccent(?)", "%#{term}%")
                           .distinct
@@ -123,7 +123,7 @@ class HabitationsController < ApplicationController
       results += bairros.map { |b| { label: "#{b} (Bairro)", value: b, type: 'bairro' } }
 
       # 3. Empreendimentos
-      empreendimentos = Habitation.empreendimentos_publicos
+      empreendimentos = public_habitation_scope.empreendimentos_publicos
                                   .where("unaccent(nome_empreendimento) ILIKE unaccent(?)", "%#{term}%")
                                   .limit(5)
                                   .select(:nome_empreendimento, :slug)
@@ -138,7 +138,7 @@ class HabitationsController < ApplicationController
       end
     else
       # Sugestões padrão quando vazio (opcional)
-      cidades_populares = Habitation.active
+      cidades_populares = public_habitation_scope.active
                                   .left_outer_joins(:address)
                                   .group(Arel.sql("COALESCE(addresses.cidade, habitations.cidade)"))
                                   .order('count_all DESC')
@@ -195,7 +195,7 @@ class HabitationsController < ApplicationController
         min_price = (base_price * 0.8).to_i
         max_price = (base_price * 1.2).to_i
         
-        @related_properties = Habitation
+        @related_properties = public_habitation_scope
           .active
           .with_photos  # Apenas com fotos
           .with_attached_photos
@@ -259,7 +259,7 @@ class HabitationsController < ApplicationController
   end
 
   def public_habitation_scope
-    Habitation.with_attached_photos
+    public_tenant.habitations.with_attached_photos
   end
 
   def find_habitation_by_trailing_code(identifier)
@@ -362,12 +362,12 @@ class HabitationsController < ApplicationController
     @selected_categories = normalize_filter_values(params[:category])
     @selected_locations = normalize_filter_values(params[:city])
 
-    @property_types = Rails.cache.fetch("habitations_property_types_v2", expires_in: 12.hours) do
-      Habitation.public_property_types
+    @property_types = Rails.cache.fetch("habitations_property_types_v2/tenant/#{public_tenant.id}", expires_in: 12.hours) do
+      public_tenant.habitations.public_property_types
     end
 
-    @location_options = Rails.cache.fetch("habitations_location_options_v2", expires_in: 6.hours) do
-      Habitation.public_location_options
+    @location_options = Rails.cache.fetch("habitations_location_options_v2/tenant/#{public_tenant.id}", expires_in: 6.hours) do
+      public_tenant.habitations.public_location_options
     end
   end
 
@@ -548,7 +548,7 @@ class HabitationsController < ApplicationController
   def redirect_to_canonical_habitation_url
     return unless @habitation&.publicly_viewable?
     return unless request.get? && request.format.html?
-    return unless request.path.start_with?("/imovel/", "/empreendimento/")
+    return unless request.path.start_with?("/imovel/")
 
     canonical_path = habitation_path(@habitation)
     return if request.path == canonical_path
@@ -613,4 +613,5 @@ class HabitationsController < ApplicationController
       "#{request.base_url}#{image.start_with?('/') ? image : "/#{image}"}"
     end
   end
+
 end

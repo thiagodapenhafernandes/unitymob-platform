@@ -1,4 +1,6 @@
 class Proprietor < ApplicationRecord
+  include TenantScoped
+
   CAPTURE_VEHICLES = [
     "Cliente indicado por outro cliente",
     "Active Campaign",
@@ -99,14 +101,18 @@ class Proprietor < ApplicationRecord
     digits = normalized_phone(value)
     return if digits.blank?
 
+    with_normalized_phone(digits).order(:id).first
+  end
+
+  scope :with_normalized_phone, ->(digits) {
     where(
       "regexp_replace(COALESCE(phone_primary, ''), '\\D', '', 'g') = :digits OR " \
       "regexp_replace(COALESCE(mobile_phone, ''), '\\D', '', 'g') = :digits OR " \
       "regexp_replace(COALESCE(residential_phone, ''), '\\D', '', 'g') = :digits OR " \
       "regexp_replace(COALESCE(business_phone, ''), '\\D', '', 'g') = :digits",
       digits: digits
-    ).order(:id).first
-  end
+    )
+  }
 
   def select_label
     phones = [phone_primary, mobile_phone, residential_phone, business_phone].compact_blank.uniq
@@ -139,7 +145,7 @@ class Proprietor < ApplicationRecord
     digits = self.class.normalized_cpf_cnpj(cpf_cnpj)
     return if digits.blank?
 
-    scope = self.class.where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: digits)
+    scope = self.class.where(tenant_id: tenant_id).where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: digits)
     scope = scope.where.not(id: id) if persisted?
 
     errors.add(:cpf_cnpj, "já cadastrado para outro proprietário") if scope.exists?

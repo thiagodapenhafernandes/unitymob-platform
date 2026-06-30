@@ -1,4 +1,6 @@
 class LeadActivity < ApplicationRecord
+  include TenantScoped
+
   belongs_to :lead
 
   validates :kind, presence: true

@@ -8,6 +8,14 @@ RSpec.describe "Automation engine" do
   # entre na fila antes da regra que cada exemplo está exercitando.
   let!(:lead) { create(:lead, admin_user: admin, status: "Em Atendimento") }
 
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = admin.tenant
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   describe Automation::ConditionMatcher do
     it "casa por etapa e tempo parado" do
       rule = AutomationRule.new(trigger_event: "lead_idle", conditions: { "stage" => "Em Atendimento", "idle_hours" => 1 })
@@ -38,6 +46,7 @@ RSpec.describe "Automation engine" do
 
       expect(lead.reload.status).to eq("Concluido")
       expect(lead.tasks.first.title).to eq("Ligar")
+      expect(lead.tasks.first.tenant).to eq(lead.tenant)
       expect(lead.activities.where(kind: "task_created").count).to eq(1)
       expect(lead.activities.where(kind: "note").count).to eq(1)
       expect(AutomationRun.last.status).to eq("executed")
@@ -110,6 +119,36 @@ RSpec.describe "Automation engine" do
       expect(AutomationRun.last.automation_rule).to eq(rule)
       expect(AutomationRun.last.automation_event).to eq(event)
       expect(lead.activities.where(kind: "note").last.metadata["body"]).to eq("oi")
+    end
+
+    it "mantem idempotencia de eventos isolada por tenant" do
+      other_tenant = Tenant.create!(name: "Outro automation #{SecureRandom.hex(3)}", slug: "outro-automation-#{SecureRandom.hex(3)}")
+      other_lead = create(:lead, tenant: other_tenant, name: "Lead Outro Tenant")
+
+      first_event = Automation::EventBus.emit(:lead_created, lead: lead, idempotency_key: "external:lead:123", async: false)
+      second_event = Automation::EventBus.emit(:lead_created, lead: other_lead, idempotency_key: "external:lead:123", async: false)
+
+      expect(first_event).to be_persisted
+      expect(second_event).to be_persisted
+      expect(first_event.id).not_to eq(second_event.id)
+      expect(first_event.tenant).to eq(lead.tenant)
+      expect(second_event.tenant).to eq(other_tenant)
+    end
+
+    it "ignora evento de outro tenant ao executar acoes enfileiradas" do
+      other_tenant = Tenant.create!(name: "Tenant externo #{SecureRandom.hex(3)}", slug: "tenant-externo-#{SecureRandom.hex(3)}")
+      other_lead = create(:lead, tenant: other_tenant)
+      rule = AutomationRule.create!(
+        tenant: lead.tenant,
+        name: "novo",
+        trigger_event: "lead_created",
+        actions: [{ "type" => "add_note", "body" => "oi" }]
+      )
+      event = AutomationEvent.create!(tenant: other_tenant, lead: other_lead, name: "lead_created", source: "lead")
+
+      expect {
+        Automation::RunActionsJob.perform_now(rule.id, lead.id, 0, event.id)
+      }.not_to change(AutomationRun, :count)
     end
   end
 

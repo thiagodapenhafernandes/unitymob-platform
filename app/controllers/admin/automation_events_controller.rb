@@ -8,9 +8,9 @@ class Admin::AutomationEventsController < Admin::BaseController
     @source = params[:source].to_s.strip.presence
     @q = params[:q].to_s.strip
 
-    @status_counts = AutomationEvent.group(:status).count
-    @event_counts = AutomationEvent.group(:name).count
-    @source_options = AutomationEvent.where.not(source: [nil, ""]).distinct.order(:source).pluck(:source)
+    @status_counts = current_tenant.automation_events.group(:status).count
+    @event_counts = current_tenant.automation_events.group(:name).count
+    @source_options = current_tenant.automation_events.where.not(source: [nil, ""]).distinct.order(:source).pluck(:source)
     @failed_count = @status_counts.fetch("failed", 0)
     @pending_count = @status_counts.fetch("pending", 0)
     @processed_count = @status_counts.fetch("processed", 0)
@@ -36,11 +36,11 @@ class Admin::AutomationEventsController < Admin::BaseController
   private
 
   def set_event
-    @event = AutomationEvent.find(params[:id])
+    @event = current_tenant.automation_events.find(params[:id])
   end
 
   def filtered_events
-    scope = AutomationEvent.includes(:lead, :automation_runs, :automation_executions).recent
+    scope = current_tenant.automation_events.includes(:lead, :automation_runs, :automation_executions).recent
     scope = scope.where(status: @status) if @status.present?
     scope = scope.where(name: @event_name) if @event_name.present?
     scope = scope.where(source: @source) if @source.present?

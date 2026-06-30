@@ -1,7 +1,15 @@
 require "rails_helper"
 
 RSpec.describe Admin::HabitationExportJob, type: :job do
-  let(:user) { AdminUser.create!(email: "exp#{SecureRandom.hex(3)}@x.com", password: "password123", name: "Exp", role: :admin) }
+  let(:user) { create(:admin_user, :admin, email: "exp#{SecureRandom.hex(3)}@x.com", name: "Exp") }
+
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = user.tenant
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
 
   it "gera o CSV, anexa o arquivo e marca como completed (progress 100)" do
     h1 = create(:habitation, codigo: "JOB1")

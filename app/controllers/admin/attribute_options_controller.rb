@@ -5,7 +5,7 @@ module Admin
 
     def index
       # This action serves both the sidebar page (HTML) and modal usage (JSON)
-      @options = AttributeOption.all
+      @options = current_tenant.attribute_options
 
       if modal_request?
         @options = @options.for_context(params[:context]).for_category(params[:category]).order(name: :asc)
@@ -24,7 +24,7 @@ module Admin
     end
 
     def create
-      @attribute_option = AttributeOption.new(attribute_option_params)
+      @attribute_option = current_tenant.attribute_options.new(attribute_option_params)
 
       if @attribute_option.save
         return render json: @attribute_option, status: :created if modal_request?
@@ -75,7 +75,7 @@ module Admin
     private
 
     def set_attribute_option
-      @attribute_option = AttributeOption.find(params[:id])
+      @attribute_option = current_tenant.attribute_options.find(params[:id])
     end
 
     def attribute_option_params

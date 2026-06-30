@@ -1,10 +1,7 @@
 <% content_for :admin_contextbar_title, @campaign.name %>
 
 <% content_for :admin_contextbar_actions do %>
-  <%= link_to admin_whatsapp_campaigns_path, class: "ax-contextbar__button" do %>
-    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
-  <% end %>
-  <%= link_to edit_admin_whatsapp_campaign_path(@campaign), class: "ax-contextbar__button" do %>
+  <%= link_to edit_admin_whatsapp_campaign_path(@campaign, return_to: request.fullpath), class: "ax-contextbar__button" do %>
     <i class="bi bi-pencil ax-ico"></i><span>Editar</span>
   <% end %>
   <% if @campaign.draft? || @campaign.scheduled? || @campaign.failed? %>
@@ -50,20 +47,56 @@
     </dl>
   </section>
 
-  <% if @failure_summary[:count].positive? %>
-    <section class="whatsapp-warning-panel">
-      <strong><i class="bi bi-exclamation-triangle"></i> <%= pluralize(@failure_summary[:count], "ocorrência de entrega", "ocorrências de entrega") %> nesta campanha.</strong>
-      <p>As falhas normalmente vêm de contato inválido, revisão do WhatsApp ou restrição temporária de envio.</p>
-      <ul>
-        <% @failure_summary[:reasons].each do |item| %>
-          <li><%= item[:reason] %> — <%= pluralize(item[:count], "mensagem impactada", "mensagens impactadas") %></li>
+  <% pending_messages_count = @campaign.campaign_messages.pending_or_queued.count %>
+  <% failed_messages_count = @failure_summary[:failed_count].to_i %>
+  <% operational_actions_visible = @campaign.processing? || @campaign.paused? || @campaign.draft? || @campaign.scheduled? || @campaign.failed? || pending_messages_count.positive? || failed_messages_count.positive? %>
+  <% if operational_actions_visible %>
+    <section class="whatsapp-campaign-actions" aria-label="Operações do disparo">
+      <div class="whatsapp-campaign-actions__copy">
+        <strong>Operações do disparo</strong>
+        <span>
+          <%= pluralize(pending_messages_count, "envio pendente", "envios pendentes") %> ·
+          <%= pluralize(failed_messages_count, "falha registrada", "falhas registradas") %>
+        </span>
+      </div>
+      <div class="whatsapp-campaign-actions__buttons">
+        <% if @campaign.draft? || @campaign.scheduled? || @campaign.failed? %>
+          <%= button_to start_admin_whatsapp_campaign_path(@campaign), method: :post, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+            <i class="bi bi-play-fill ax-ico"></i><span>Iniciar</span>
+          <% end %>
         <% end %>
-      </ul>
-      <%= button_to retry_failed_admin_whatsapp_campaign_path(@campaign), method: :post, class: "ax-btn ax-btn--sm" do %>
-        <i class="bi bi-arrow-clockwise ax-ico"></i><span>Reprocessar falhas</span>
-      <% end %>
+        <% if @campaign.processing? %>
+          <%= button_to pause_admin_whatsapp_campaign_path(@campaign), method: :post, class: "ax-btn ax-btn--sm" do %>
+            <i class="bi bi-pause-fill ax-ico"></i><span>Pausar</span>
+          <% end %>
+        <% end %>
+        <% if @campaign.paused? %>
+          <%= button_to resume_admin_whatsapp_campaign_path(@campaign), method: :post, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+            <i class="bi bi-play ax-ico"></i><span>Retomar</span>
+          <% end %>
+        <% end %>
+        <% if pending_messages_count.positive? && !@campaign.completed? && !@campaign.cancelled? %>
+          <%= button_to cancel_pending_admin_whatsapp_campaign_path(@campaign),
+                        method: :post,
+                        class: "ax-btn ax-btn--sm ax-btn--danger",
+                        data: { turbo_confirm: "Cancelar #{pending_messages_count} envio(s) pendente(s) desta campanha?" } do %>
+            <i class="bi bi-slash-circle ax-ico"></i><span>Cancelar pendentes</span>
+          <% end %>
+        <% end %>
+        <% if failed_messages_count.positive? && !@campaign.cancelled? %>
+          <% retry_confirm = @failure_summary[:tone].to_s == "error" ? "Há erros críticos nesta campanha. Reprocessar sem revisar template, integração ou payload pode repetir as falhas. Reprocessar mesmo assim?" : "Estas ocorrências parecem avisos operacionais ou restrições da Meta. Algumas podem continuar até a próxima janela. Reprocessar agora?" %>
+          <%= button_to retry_failed_admin_whatsapp_campaign_path(@campaign),
+                        method: :post,
+                        class: "ax-btn ax-btn--sm",
+                        data: { turbo_confirm: retry_confirm } do %>
+            <i class="bi bi-arrow-clockwise ax-ico"></i><span>Reprocessar falhas</span>
+          <% end %>
+        <% end %>
+      </div>
     </section>
   <% end %>
+
+  <%= render "admin/whatsapp_campaigns/delivery_occurrence_summary", campaign: @campaign, summary: @failure_summary %>
 
   <% detail_cards = [
     ["total", "Total", @metrics[:total], "mensagens criadas", "bi-people", "slate"],
@@ -94,7 +127,12 @@
         <strong>Respostas por botão do template</strong>
         <span>Cards gerados a partir dos botões reais do modelo usado nesta campanha.</span>
       </div>
-      <%= link_to edit_admin_whatsapp_campaign_path(@campaign), class: "ax-btn ax-btn--sm" do %>
+      <% if @campaign.automation_workflow %>
+        <%= link_to builder_admin_automation_workflow_path(@campaign.automation_workflow), class: "ax-btn ax-btn--sm" do %>
+          <i class="bi bi-diagram-3 ax-ico"></i><span>Automação</span>
+        <% end %>
+      <% end %>
+      <%= link_to edit_admin_whatsapp_campaign_path(@campaign, return_to: request.fullpath), class: "ax-btn ax-btn--sm" do %>
         <i class="bi bi-sliders ax-ico"></i><span>Editar decisões</span>
       <% end %>
     </div>
@@ -171,7 +209,7 @@
         <div class="ax-field">
           <%= label_tag :messages_status, "Status", class: "ax-label" %>
           <%= select_tag :messages_status,
-                         options_for_select([["Todos os status", ""]] + WhatsappCampaignMessage::STATUSES.map { |status| [status.humanize, status] }, @messages_status),
+                         options_for_select([["Todos os status", ""]] + WhatsappCampaignMessage.status_options, @messages_status),
                          class: "ax-control" %>
         </div>
         <button type="submit" class="ax-btn ax-btn--primary">
@@ -187,6 +225,7 @@
             <th>Telefone</th>
             <th>WAMID</th>
             <th>Status</th>
+            <th>Resposta</th>
             <th>Erro</th>
             <th>Atualizado</th>
           </tr>
@@ -204,13 +243,17 @@
               </td>
               <td><%= message.phone_number %></td>
               <td><code class="whatsapp-message-table__wamid"><%= message.external_message_id.presence || "-" %></code></td>
-              <td><%= ax_badge(message.status_label, tone: (message.failed? || message.cancelled?) ? :red : (message.replied? || message.delivered? || message.read? ? :green : (message.sent? ? :blue : :gray))) %></td>
-              <td><%= message.failure_reason.presence || "-" %></td>
+              <td><%= ax_badge(message.display_status_label, tone: (message.failed? || message.cancelled?) ? :red : (message.delivery_unconfirmed? ? :amber : (message.replied? || message.delivered? || message.read? ? :green : (message.sent? ? :blue : :gray)))) %></td>
+              <td>
+                <%= ax_badge(message.response_status_label, tone: message.response_status_tone.to_sym) %>
+                <small class="tw-block tw-text-slate-500"><%= message.response_status_note %></small>
+              </td>
+              <td><%= message.status_note %></td>
               <td><%= l(message.updated_at, format: :short) %></td>
             </tr>
           <% end %>
           <% if @messages.empty? %>
-            <tr><td colspan="6" class="ax-table__empty">Nenhuma mensagem encontrada para os filtros atuais.</td></tr>
+            <tr><td colspan="7" class="ax-table__empty">Nenhuma mensagem encontrada para os filtros atuais.</td></tr>
           <% end %>
         </tbody>
       </table>

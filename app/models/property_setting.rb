@@ -264,7 +264,7 @@ class PropertySetting < ApplicationRecord
     return true if broker_capture_layer_enabled
     return false if admin_user.blank?
 
-    admin_user.admin? || admin_user.can?(:review, :captacoes)
+    admin_user.tenant_owner? || admin_user.can?(:review, :captacoes)
   end
 
   def broker_capture_layer_configured?
@@ -330,9 +330,17 @@ class PropertySetting < ApplicationRecord
 
     return if broker_capture_layer_enabled
     return if broker_capture_fallback_admin_user_id.blank?
-    return if broker_capture_fallback_admin_user&.admin? || broker_capture_fallback_admin_user&.profile&.administrativo?
+    return if broker_capture_fallback_admin_user_eligible?
 
     errors.add(:broker_capture_fallback_admin_user, "deve ser um usuário administrativo")
+  end
+
+  def broker_capture_fallback_admin_user_eligible?
+    user = broker_capture_fallback_admin_user
+    return false if user.blank?
+    return true if user.tenant_owner?
+
+    user.can?(:review, :captacoes) && user.owns_all?(:captacoes)
   end
 
   def normalized_checks(values, default_values)

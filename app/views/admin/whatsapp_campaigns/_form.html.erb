@@ -1,11 +1,5 @@
 <% content_for :admin_contextbar_title, campaign.persisted? ? "Editar disparo" : "Novo disparo" %>
 
-<% content_for :admin_contextbar_actions do %>
-  <%= link_to admin_whatsapp_campaigns_path, class: "ax-contextbar__button" do %>
-    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
-  <% end %>
-<% end %>
-
 <%
   audience_definition = campaign.audience_definition.to_h.with_indifferent_access
   audience_conditions = Array(audience_definition[:conditions]).presence
@@ -16,6 +10,10 @@
   ].compact
   audience_conditions = [{ field: "status", operator: "in", value: "" }] if audience_conditions.blank?
   selected_audience_mode = campaign.audience_mode.presence || "filters"
+  selected_delivery_mode = params[:delivery_mode].presence || (campaign.scheduled_at.present? ? "scheduled" : "now")
+  selected_delivery_mode = "now" unless %w[now scheduled].include?(selected_delivery_mode)
+  scheduled_date_value = params[:whatsapp_campaign_scheduled_date].presence || campaign.scheduled_at&.strftime("%Y-%m-%d")
+  scheduled_time_value = params[:whatsapp_campaign_scheduled_time].presence || campaign.scheduled_at&.strftime("%H:%M")
   audience_template_csv = "nome,telefone,email,origem,status,tags,responsavel_email\nMaria Silva,5511999990000,maria@example.com,importacao,novo,\"Produto; Premium\",corretor@example.com\nThiago Silva,5521990872427,thiago@example.com,importacao,novo,\"[\"\"Produto 02\"\", \"\"Premium\"\"]\",\n"
 %>
 
@@ -89,22 +87,32 @@
                            } %>
               <p class="ax-field__hint">Este será o remetente usado pelos clientes ao receber a mensagem.</p>
             </div>
-            <%= ax_autocomplete_select_field(
-                  form: f,
-                  method: :group_name,
-                  label: "Grupo de campanhas",
-                  choices: @group_options.map { |group_name| [group_name, group_name] },
-                  select_options: { include_blank: "Sem grupo", selected: campaign.group_name },
-                  placeholder: "Buscar ou criar grupo...",
-                  create: true,
-                  html_options: {
-                    data: {
-                      whatsapp_campaign_builder_target: "groupInput",
-                      action: "change->whatsapp-campaign-builder#refreshReview"
-                    }
-                  },
-                  tooltip: "Opcional. Use grupos para organizar campanhas relacionadas na listagem."
-                ) %>
+            <div class="ax-field whatsapp-campaign-group-field">
+              <%= ax_field_label(f, :group_name, text: "Grupo de campanhas", tooltip: "Opcional. Use grupos para organizar campanhas relacionadas na listagem.") %>
+              <%= ax_input_group(
+                    action: button_tag(
+                      tag.i(class: "bi bi-plus-lg ax-ico"),
+                      type: "button",
+                      class: "ax-btn ax-btn--icon whatsapp-campaign-group-field__add",
+                      title: "Criar grupo",
+                      aria: { label: "Criar grupo de campanhas" },
+                      data: { ax_modal_open: "#whatsappCampaignGroupModal" }
+                    )
+                  ) do %>
+                <%= f.select :group_name,
+                             @group_options.map { |group_name| [group_name, group_name] },
+                             { include_blank: "Sem grupo", selected: campaign.group_name },
+                             class: "ax-control ax-autocomplete-select",
+                             data: {
+                               controller: "tom-select",
+                               tom_select_create_value: true,
+                               tom_select_options_value: { placeholder: "Buscar ou criar grupo..." },
+                               whatsapp_campaign_builder_target: "groupInput",
+                               action: "change->whatsapp-campaign-builder#refreshReview"
+                             } %>
+              <% end %>
+              <%= render "admin/shared/ui/field_error", form: f, method: :group_name %>
+            </div>
           </div>
         </div>
       <% end %>
@@ -141,8 +149,9 @@
           <div class="whatsapp-response-decision-map">
             <div class="whatsapp-response-decision-map__head">
               <div>
+                <span>Respostas do modelo</span>
                 <strong>Decisões dos botões</strong>
-                <span>O sistema detecta os botões do modelo e deixa claro o que cada resposta fará.</span>
+                <small>Configure o que acontece quando o contato clica em cada botão real do template.</small>
               </div>
               <button type="button"
                       class="ax-icon-btn"
@@ -150,6 +159,22 @@
                 <i class="bi bi-info-circle"></i>
               </button>
             </div>
+            <% linked_workflow = campaign.automation_workflow %>
+            <% if linked_workflow&.whatsapp_campaign_customized? %>
+              <div class="ax-inline-notice ax-inline-notice--warning">
+                A automação vinculada foi personalizada no builder avançado. As decisões simples continuam visíveis aqui, mas não sobrescrevem os ajustes finos.
+                <%= link_to "Revisar automação", builder_admin_automation_workflow_path(linked_workflow) %>.
+              </div>
+            <% elsif linked_workflow.present? %>
+              <div class="ax-inline-notice ax-inline-notice--info">
+                Estas decisões mantêm a automação vinculada sincronizada. Usuários avançados podem revisar e ajustar o fluxo no builder.
+                <%= link_to "Abrir automação", builder_admin_automation_workflow_path(linked_workflow) %>.
+              </div>
+            <% else %>
+              <div class="ax-inline-notice ax-inline-notice--info">
+                Ao salvar a campanha, o sistema gera uma automação vinculada com base nos botões reais do template.
+              </div>
+            <% end %>
             <div data-whatsapp-campaign-builder-target="responseDecisionList">
               <div class="ax-inline-notice ax-inline-notice--info">
                 Selecione um modelo para detectar os botões e configurar as decisões comerciais.
@@ -329,27 +354,109 @@
 
     <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="4" hidden>
       <%= ax_operational_panel(eyebrow: "Etapa 4", title: "Agendamento e ritmo") do %>
-        <div class="ax-panel-body whatsapp-campaign-form__row">
-          <%= ax_number_field(
-                form: f,
-                method: :send_rate,
-                label: "Envios por minuto",
-                min: 1,
-                max: 500,
-                data: {
-                  whatsapp_campaign_builder_target: "sendRateInput",
-                  action: "input->whatsapp-campaign-builder#refreshReview"
-                }
-              ) %>
-          <div class="ax-field">
-            <%= ax_field_label(f, :scheduled_at, text: "Agendar para") %>
-            <%= f.datetime_field :scheduled_at,
-                                 class: "ax-control",
-                                 data: {
-                                   whatsapp_campaign_builder_target: "scheduledInput",
-                                   action: "input->whatsapp-campaign-builder#refreshReview"
-                                 } %>
+        <div class="ax-panel-body whatsapp-schedule-workspace">
+          <div class="whatsapp-schedule-main">
+            <div class="whatsapp-schedule-block">
+              <div class="whatsapp-schedule-block__head">
+                <i class="bi bi-send ax-ico"></i>
+                <strong>Modo de envio</strong>
+              </div>
+              <div class="whatsapp-schedule-mode-grid" role="radiogroup" aria-label="Modo de envio">
+                <% [
+                  ["now", "Enviar agora", "Inicia após salvar", "bi-lightning-charge"],
+                  ["scheduled", "Agendar", "Escolha data e hora", "bi-calendar2-week"]
+                ].each do |mode, title, description, icon| %>
+                  <label class="whatsapp-schedule-mode <%= 'is-selected' if selected_delivery_mode == mode %>" data-whatsapp-campaign-builder-target="scheduleModeCard">
+                    <%= radio_button_tag :delivery_mode,
+                                         mode,
+                                         selected_delivery_mode == mode,
+                                         data: {
+                                           whatsapp_campaign_builder_target: "scheduleMode",
+                                           action: "change->whatsapp-campaign-builder#toggleScheduleMode"
+                                         } %>
+                    <span class="whatsapp-schedule-mode__icon whatsapp-schedule-mode__icon--<%= mode %>"><i class="bi <%= icon %>"></i></span>
+                    <span>
+                      <strong><%= title %></strong>
+                      <small><%= description %></small>
+                    </span>
+                  </label>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="whatsapp-schedule-datetime" data-whatsapp-campaign-builder-target="schedulePanel" data-schedule-mode="scheduled" <%= "hidden" unless selected_delivery_mode == "scheduled" %>>
+              <%= f.hidden_field :scheduled_at,
+                                 value: campaign.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
+                                 data: { whatsapp_campaign_builder_target: "scheduledInput" } %>
+              <div class="ax-field">
+                <%= label_tag :whatsapp_campaign_scheduled_date, "Data", class: "ax-label" %>
+                <%= date_field_tag :whatsapp_campaign_scheduled_date,
+                                   scheduled_date_value,
+                                   class: "ax-control",
+                                   data: {
+                                     whatsapp_campaign_builder_target: "scheduleDateInput",
+                                     action: "input->whatsapp-campaign-builder#syncScheduleDateTime"
+                                   } %>
+              </div>
+              <div class="ax-field">
+                <%= label_tag :whatsapp_campaign_scheduled_time, "Horário", class: "ax-label" %>
+                <%= time_field_tag :whatsapp_campaign_scheduled_time,
+                                   scheduled_time_value,
+                                   class: "ax-control",
+                                   data: {
+                                     whatsapp_campaign_builder_target: "scheduleTimeInput",
+                                     action: "input->whatsapp-campaign-builder#syncScheduleDateTime"
+                                   } %>
+              </div>
+            </div>
+
+            <div class="whatsapp-schedule-rate">
+              <span class="whatsapp-schedule-rate__icon"><i class="bi bi-speedometer2"></i></span>
+              <div class="whatsapp-schedule-rate__content">
+                <div>
+                  <strong>Velocidade de envio</strong>
+                  <small>Mensagens por minuto</small>
+                </div>
+                <div class="whatsapp-schedule-rate__field">
+                  <%= f.number_field :send_rate,
+                                     min: 1,
+                                     max: 500,
+                                     class: "ax-control",
+                                     data: {
+                                       whatsapp_campaign_builder_target: "sendRateInput",
+                                       action: "input->whatsapp-campaign-builder#refreshSchedule"
+                                     } %>
+                  <span>msg/min</span>
+                </div>
+                <p><i class="bi bi-lightbulb"></i> Recomendado: 40-60</p>
+              </div>
+            </div>
           </div>
+
+          <aside class="whatsapp-schedule-aside" aria-label="Estimativas do disparo">
+            <div class="whatsapp-schedule-estimates">
+              <div class="whatsapp-schedule-aside__head">
+                <i class="bi bi-calculator"></i>
+                <strong>Estimativas</strong>
+              </div>
+              <dl>
+                <div><dt>Duração</dt><dd data-whatsapp-campaign-builder-target="estimatedDuration">--</dd></div>
+                <div><dt>Término</dt><dd data-whatsapp-campaign-builder-target="estimatedFinish">--</dd></div>
+                <div><dt>Msg/hora</dt><dd data-whatsapp-campaign-builder-target="estimatedThroughput">--</dd></div>
+              </dl>
+            </div>
+            <div class="whatsapp-schedule-tips">
+              <div class="whatsapp-schedule-aside__head">
+                <i class="bi bi-lightbulb"></i>
+                <strong>Dicas</strong>
+              </div>
+              <ul>
+                <li><i class="bi bi-check2"></i><span>Evite horários de pico</span></li>
+                <li><i class="bi bi-check2"></i><span>Monitore após envios</span></li>
+                <li><i class="bi bi-check2"></i><span>Use taxa menor em contas novas</span></li>
+              </ul>
+            </div>
+          </aside>
         </div>
       <% end %>
     </section>
@@ -371,6 +478,33 @@
       <% end %>
     </section>
   </div>
+
+  <%= ax_quick_modal(
+        id: "whatsappCampaignGroupModal",
+        title: "Criar grupo de campanhas",
+        size: :sm,
+        data: { whatsapp_campaign_builder_target: "groupModal" },
+        footer: safe_join([
+          button_tag("Cancelar", type: "button", class: "ax-btn ax-btn--sm", data: { action: "ax-modal#close" }),
+          button_tag(type: "button", class: "ax-btn ax-btn--sm ax-btn--primary", data: { action: "whatsapp-campaign-builder#createGroup" }) do
+            safe_join([tag.i(class: "bi bi-plus-lg ax-ico"), tag.span("Criar grupo")])
+          end
+        ])
+      ) do %>
+    <div class="ax-field">
+      <%= label_tag :whatsapp_campaign_new_group_name, "Nome do grupo", class: "ax-label" %>
+      <%= text_field_tag :whatsapp_campaign_new_group_name,
+                         nil,
+                         class: "ax-control",
+                         placeholder: "Ex: Reativação Junho",
+                         autofocus: true,
+                         data: {
+                           whatsapp_campaign_builder_target: "groupNameInput",
+                           action: "keydown.enter->whatsapp-campaign-builder#createGroup"
+                         } %>
+      <p class="ax-field__hint">O grupo será salvo junto com a campanha atual.</p>
+    </div>
+  <% end %>
 
   <%= ax_sticky_action_footer(
         meta: "Avance pelas etapas, valide a audiência e revise antes de enviar.",

@@ -8,6 +8,14 @@ RSpec.describe WhatsappCampaign, type: :model do
   let(:campaign) { described_class.create!(name: "Campanha", whatsapp_template: template, created_by: admin, status: "processing") }
   let(:lead) { create(:lead, admin_user: admin, phone: "(47) 99999-0000") }
 
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = admin.tenant
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   it "cancela mensagens pendentes e atualiza contadores" do
     campaign.campaign_messages.create!(lead: lead, phone_number: "5547999990000", status: "pending")
 
@@ -23,7 +31,7 @@ RSpec.describe WhatsappCampaign, type: :model do
 
     expect {
       expect(campaign.retry_failed_messages!).to eq(1)
-    }.to have_enqueued_job(Whatsapp::BulkSendJob).with(campaign.id)
+    }.to have_enqueued_job(Whatsapp::BulkSendJob).with(campaign.id, tenant_id: campaign.tenant_id)
 
     expect(campaign.campaign_messages.last.reload.status).to eq("pending")
   end
@@ -36,6 +44,13 @@ RSpec.describe WhatsappCampaign, type: :model do
       failed_count: 2,
       replied_count: 4
     )
+    4.times do |index|
+      campaign.campaign_messages.create!(
+        lead: lead,
+        phone_number: "554799999000#{index}",
+        status: "replied"
+      )
+    end
 
     expect(campaign.estimated_cost).to eq(7.90.to_d)
     expect(campaign.estimated_cpl).to eq(1.975.to_d)

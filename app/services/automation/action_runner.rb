@@ -17,24 +17,29 @@ module Automation
     end
 
     def run(from = 0)
-      Thread.current[:automation_depth] = (Thread.current[:automation_depth] || 0) + 1
-      actions = @rule.action_list
-      i = from
-      scheduled = false
+      tenant = @lead&.tenant || @rule.tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para executar automação" if tenant.blank?
 
-      while i < actions.size
-        action = actions[i]
-        if action[:type] == "wait"
-          schedule_continuation(i + 1, action[:days].to_i)
-          scheduled = true
-          break
+      Current.set(tenant: tenant) do
+        Thread.current[:automation_depth] = (Thread.current[:automation_depth] || 0) + 1
+        actions = @rule.action_list
+        i = from
+        scheduled = false
+
+        while i < actions.size
+          action = actions[i]
+          if action[:type] == "wait"
+            schedule_continuation(i + 1, action[:days].to_i)
+            scheduled = true
+            break
+          end
+          execute(action)
+          i += 1
         end
-        execute(action)
-        i += 1
-      end
 
-      @rule.register_run! if from.zero?
-      record_run(scheduled ? "scheduled" : "executed")
+        @rule.register_run! if from.zero?
+        record_run(scheduled ? "scheduled" : "executed")
+      end
     rescue => e
       Rails.logger.error("[automation] #{e.class}: #{e.message}")
       record_run("error", error: e.message)

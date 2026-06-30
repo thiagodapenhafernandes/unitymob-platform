@@ -6,6 +6,24 @@ RSpec.describe "Admin::Habitations", type: :request do
   include ActiveJob::TestHelper
 
   let(:admin) { create(:admin_user, :admin, email: "admin-#{SecureRandom.hex(8)}@salute.test") }
+  let(:turbo_frame_headers) { { "Turbo-Frame" => "admin_habitations_filter_inspector" } }
+
+  def default_agent_profile
+    Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
+      profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+    end
+  end
+
+  def default_administrative_profiles
+    internal_management_profile = Tenant.default.profiles.vertical.find_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME).tap do |profile|
+      profile.update!(permissions: Profile.default_permissions_for("Administrativo"))
+    end
+    administrative_profile = Tenant.default.profiles.find_by!(key: "administrativo").tap do |profile|
+      profile.update!(permissions: Profile.default_permissions_for("Administrativo"))
+    end
+
+    [internal_management_profile, administrative_profile]
+  end
 
   before do
     host! "localhost"
@@ -40,10 +58,8 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "mostra para o administrativo apenas captações enviadas para revisão, não as aguardando aceite do corretor" do
-    administrative_profile = Profile.find_or_initialize_by(name: "Administrativo")
-    administrative_profile.permissions = Profile.default_permissions_for("Administrativo")
-    administrative_profile.save!
-    administrative = create(:admin_user, profile: administrative_profile, name: "Administrativo Revisão")
+    manager_profile, administrative_profile = default_administrative_profiles
+    administrative = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Administrativo Revisão")
     submitted = create(:habitation, :broker_intake, admin_user: admin, codigo: "ADM-SUB-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Revisão do administrativo")
     approved = create(:habitation, :broker_intake, admin_user: admin, codigo: "ADM-APP-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Aguardando corretor aceitar")
 
@@ -56,10 +72,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "mostra para o corretor somente suas captações aguardando aceite" do
-    broker_profile = Profile.create!(
-      name: "Corretor revisão #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Indalécio")
     patricia = create(:admin_user, profile: broker_profile, name: "Patrícia Paula")
     own_waiting = create(:habitation, :broker_intake, admin_user: luciana, codigo: "OWN-REV-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Aguardando aceite Luciana")
@@ -88,6 +101,109 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include("Salvar Interno")
     expect(response.body).to include("Salvar")
     expect(response.body).to include("Salvar e sair")
+  end
+
+  it "permite excluir imóvel por permissão operacional com escopo total, sem exigir Tenant Owner" do
+    tenant = Tenant.create!(name: "Tenant delete #{SecureRandom.hex(3)}", slug: "tenant-delete-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Operations delete #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 300,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "imoveis" => { "view" => true, "manage" => true, "scope" => "all" }
+      }
+    )
+    operator = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+    habitation = create(:habitation, tenant: tenant, admin_user: operator, codigo: "DEL-ALL-#{SecureRandom.hex(6)}")
+
+    sign_in operator
+
+    expect {
+      delete admin_habitation_path(habitation)
+    }.to change(Habitation, :count).by(-1)
+
+    expect(response).to redirect_to(admin_habitations_path)
+  end
+
+  it "bloqueia exclusão de imóvel para perfil operacional limitado à equipe" do
+    tenant = Tenant.create!(name: "Tenant team delete #{SecureRandom.hex(3)}", slug: "tenant-team-delete-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Team operations #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 300,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "imoveis" => { "view" => true, "manage" => true, "scope" => "team" }
+      }
+    )
+    manager = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+    habitation = create(:habitation, tenant: tenant, admin_user: manager, codigo: "DEL-TEAM-#{SecureRandom.hex(6)}")
+
+    sign_in manager
+
+    expect {
+      delete admin_habitation_path(habitation)
+    }.not_to change(Habitation, :count)
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(flash[:alert]).to eq("Você não tem permissão para excluir imóveis.")
+  end
+
+  it "permite publicação em massa por permissão operacional com escopo total" do
+    tenant = Tenant.create!(name: "Tenant bulk #{SecureRandom.hex(3)}", slug: "tenant-bulk-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Bulk publisher #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 300,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "imoveis" => { "view" => true, "manage" => true, "scope" => "all" }
+      }
+    )
+    operator = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+    habitation = create(:habitation, tenant: tenant, admin_user: operator, codigo: "BULK-ALL-#{SecureRandom.hex(6)}", exibir_no_site_flag: false)
+
+    sign_in operator
+
+    post bulk_publish_admin_habitations_path, params: {
+      selected_ids: [habitation.id],
+      action_type: "publicar",
+      channels: %w[site]
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(habitation.reload.exibir_no_site_flag).to be(true)
+  end
+
+  it "bloqueia publicação em massa para perfil operacional limitado à equipe" do
+    tenant = Tenant.create!(name: "Tenant bulk team #{SecureRandom.hex(3)}", slug: "tenant-bulk-team-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Bulk team #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 300,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "imoveis" => { "view" => true, "manage" => true, "scope" => "team" }
+      }
+    )
+    manager = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+    habitation = create(:habitation, tenant: tenant, admin_user: manager, codigo: "BULK-TEAM-#{SecureRandom.hex(6)}", exibir_no_site_flag: false)
+
+    sign_in manager
+
+    post bulk_publish_admin_habitations_path, params: {
+      selected_ids: [habitation.id],
+      action_type: "publicar",
+      channels: %w[site]
+    }
+
+    expect(response).to have_http_status(:forbidden)
+    expect(habitation.reload.exibir_no_site_flag).to be(false)
   end
 
   it "exibe ficha interna de captação somente quando o modo é explícito" do
@@ -254,8 +370,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     get edit_admin_habitation_path(development)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Pesquisar por código/referência")
-    expect(response.body).to include("Nome do empreendimento:")
+    expect(response.body).to include("Pertence ao empreendimento")
+    expect(response.body).to include("Nome do empreendimento")
     expect(response.body).to include("Empreendimento Centro Cod. 54")
   end
 
@@ -316,10 +432,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "não inclui imóveis apenas vinculados como corretor secundário em Meus imóveis" do
-    broker_profile = Profile.create!(
-      name: "Corretor ownership #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Indalécio")
     patricia = create(:admin_user, profile: broker_profile, name: "Patrícia Paula")
     own_property = create(:habitation, admin_user: luciana, codigo: "OWN-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel da Luciana")
@@ -335,10 +448,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "abre imóvel de Todos no detalhe interno para corretor sem permissão de edição" do
-    broker_profile = Profile.create!(
-      name: "Corretor todos #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     vera = create(:admin_user, profile: broker_profile, name: "Vera Corretora")
     other_broker = create(:admin_user, profile: broker_profile, name: "Outro Corretor")
     other_property = create(
@@ -356,7 +466,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include(other_property.titulo_anuncio)
     expect(response.body).to include("Captador:")
     expect(response.body).to include(other_broker.name)
-    card = Nokogiri::HTML(response.body).css(".property-card-horizontal").find { |node| node.text.include?(other_property.codigo) }
+    card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(other_property.codigo) }
+    expect(card).to be_present
     expect(card["style"].to_s).not_to include("height: 240px")
     expect(response.body).to include(CGI.escapeHTML(admin_habitation_path(other_property, return_to: request.fullpath)))
     expect(response.body).not_to include(%(data-clickable-card-url-value="#{CGI.escapeHTML(habitation_path(other_property))}"))
@@ -364,7 +475,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     get admin_habitation_path(other_property, return_to: admin_habitations_path(ownership: "all", q: other_property.codigo))
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Informações principais")
+    expect(response.body).to include("Resumo do imóvel")
+    expect(response.body).to include("Dados principais")
     expect(response.body).to include(other_property.titulo_anuncio)
     expect(response.body).to include("Captador")
     expect(response.body).to include(other_broker.name)
@@ -392,10 +504,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "abre imóvel próprio na aba Todos em visualização interna, não em edição" do
-    broker_profile = Profile.create!(
-      name: "Corretor todos proprio #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     vera = create(:admin_user, profile: broker_profile, name: "Vera Corretora")
     own_property = create(
       :habitation,
@@ -413,11 +522,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include(CGI.escapeHTML(edit_admin_habitation_path(own_property, return_to: request.fullpath)))
   end
 
-  it "permite que corretor filtre imóveis por outro corretor na aba Todos" do
-    broker_profile = Profile.create!(
-      name: "Corretor filtro #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+  it "não permite que corretor filtre imóveis por outro corretor fora do próprio escopo vertical" do
+    broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Filtro")
     patricia = create(:admin_user, profile: broker_profile, name: "Patrícia Filtro")
     own_property = create(
@@ -434,18 +540,56 @@ RSpec.describe "Admin::Habitations", type: :request do
     )
 
     sign_in luciana
-    get admin_habitations_path(ownership: "all")
+    get filter_inspector_admin_habitations_path(ownership: "all"), headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('name="corretor_id"')
-    expect(response.body).to include("Patrícia Filtro")
+    expect(response.body).to include("Luciana Filtro")
+    expect(response.body).not_to include("Patrícia Filtro")
     expect(response.body).not_to include('name="proprietor_id"')
 
-    get admin_habitations_path(ownership: "all", corretor_id: patricia.id)
+    get admin_habitations_path(ownership: "mine", corretor_id: patricia.id)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(other_property.titulo_anuncio)
-    expect(response.body).not_to include(own_property.titulo_anuncio)
+    expect(response.body).to include(own_property.titulo_anuncio)
+    expect(response.body).not_to include(other_property.titulo_anuncio)
+  end
+
+  it "limita filtro de corretor de imóveis à subárvore do perfil vertical intermediário" do
+    tenant = admin.tenant
+    manager_profile = Profile.create!(
+      tenant: tenant,
+      name: "Gestor Imóveis #{SecureRandom.hex(4)}",
+      axis: "vertical",
+      position: 700,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "imoveis" => { "view" => true, "manage" => true, "scope" => "team" }
+      }
+    )
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: admin, name: "Gestor Imóveis")
+    subordinate = create(:admin_user, tenant: tenant, profile: agent_profile, manager: manager, name: "Subordinado Imóveis")
+    peer = create(:admin_user, tenant: tenant, profile: agent_profile, manager: admin, name: "Par Imóveis")
+    manager_property = create(:habitation, tenant: tenant, admin_user: manager, codigo: "GESTOR-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel do gestor")
+    subordinate_property = create(:habitation, tenant: tenant, admin_user: subordinate, codigo: "SUB-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel do subordinado")
+    peer_property = create(:habitation, tenant: tenant, admin_user: peer, codigo: "PEER-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel do par")
+
+    sign_in manager
+
+    get filter_inspector_admin_habitations_path(ownership: "all"), headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Gestor Imóveis")
+    expect(response.body).to include("Subordinado Imóveis")
+    expect(response.body).not_to include("Par Imóveis")
+
+    get admin_habitations_path(ownership: "mine", corretor_id: peer.id)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(manager_property.titulo_anuncio)
+    expect(response.body).to include(subordinate_property.titulo_anuncio)
+    expect(response.body).not_to include(peer_property.titulo_anuncio)
   end
 
   it "combina status, categoria e Frente Mar sem trazer imóveis incompatíveis" do
@@ -595,9 +739,9 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "filtra por múltiplos bairros no catálogo" do
-    centro = create(:habitation, codigo: "BAIRRO-CENTRO-#{SecureRandom.hex(4)}", titulo_anuncio: "Imóvel bairro Centro", bairro: "Centro")
-    barra = create(:habitation, codigo: "BAIRRO-BARRA-#{SecureRandom.hex(4)}", titulo_anuncio: "Imóvel bairro Barra Sul", bairro: "Barra Sul")
-    outro = create(:habitation, codigo: "BAIRRO-OUTRO-#{SecureRandom.hex(4)}", titulo_anuncio: "Imóvel bairro Outro", bairro: "Nações")
+    centro = create(:habitation, codigo: "BAIRRO-CENTRO-#{SecureRandom.hex(4)}", titulo_anuncio: "Imóvel bairro Centro").tap { |habitation| habitation.address.update!(bairro: "Centro") }
+    barra = create(:habitation, codigo: "BAIRRO-BARRA-#{SecureRandom.hex(4)}", titulo_anuncio: "Imóvel bairro Barra Sul").tap { |habitation| habitation.address.update!(bairro: "Barra Sul") }
+    outro = create(:habitation, codigo: "BAIRRO-OUTRO-#{SecureRandom.hex(4)}", titulo_anuncio: "Imóvel bairro Outro").tap { |habitation| habitation.address.update!(bairro: "Nações") }
 
     get admin_habitations_path(bairro: ["Centro", "Barra Sul"])
 
@@ -626,7 +770,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       titulo_anuncio: "Outro imóvel"
     )
 
-    get admin_habitations_path
+    get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Residencial Sem Cadastro")
@@ -645,13 +789,27 @@ RSpec.describe "Admin::Habitations", type: :request do
       :habitation,
       codigo: "EMP-BROKER-#{SecureRandom.hex(6)}",
       codigo_empreendimento: "183",
-      titulo_anuncio: "Imóvel do corretor filtrado"
+      titulo_anuncio: "Imóvel do corretor filtrado",
+      address_attributes: {
+        logradouro: "Rua Empreendimento",
+        numero: "183",
+        bairro: "Centro",
+        cidade: "Balneário Camboriú",
+        uf: "SC"
+      }
     )
     other_property = create(
       :habitation,
       codigo: "EMP-OTHER-#{SecureRandom.hex(6)}",
       codigo_empreendimento: "183",
-      titulo_anuncio: "Imóvel de outro corretor"
+      titulo_anuncio: "Imóvel de outro corretor",
+      address_attributes: {
+        logradouro: "Rua Empreendimento",
+        numero: "184",
+        bairro: "Centro",
+        cidade: "Balneário Camboriú",
+        uf: "SC"
+      }
     )
     matching.broker_assignments.create!(admin_user: broker, role: "captador")
 
@@ -745,7 +903,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     get admin_habitations_path(q: inactive.codigo, status: "Suspenso")
 
     expect(response).to have_http_status(:ok)
-    card = Nokogiri::HTML(response.body).css(".property-card-horizontal").find { |node| node.text.include?(inactive.codigo) }
+    card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(inactive.codigo) }
+    expect(card).to be_present
     expect(card["class"]).to include("property-card--inactive")
   end
 
@@ -755,8 +914,9 @@ RSpec.describe "Admin::Habitations", type: :request do
     get admin_habitations_path(q: internal.codigo)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("FORA SITE")
-    card = Nokogiri::HTML(response.body).css(".property-card-horizontal").find { |node| node.text.include?(internal.codigo) }
+    expect(response.body).to include("Fora site")
+    card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(internal.codigo) }
+    expect(card).to be_present
     expect(card["class"]).not_to include("property-card--inactive")
   end
 
@@ -806,12 +966,13 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to match(%r{<body class="[^"]*\bax-habitations-workspace\b})
     expect(response.body).not_to match(%r{<body class="[^"]*\badmin-drawer-catalog-layout\b})
     expect(response.body).not_to match(%r{<body class="[^"]*\bax-catalog-layout\b})
-    expect(response.body).to include('class="habitations-master-detail-layout" data-controller="habitations-inspector"')
-    expect(response.body).to include('class="habitations-detail-pane"')
-    expect(response.body).to include('class="habitations-master-pane"')
+    expect(response.body).to match(/class="[^"]*\bhabitations-master-detail-layout\b[^"]*"/)
+    expect(response.body).to include('data-controller="ax-aside"')
+    expect(response.body).to match(/class="[^"]*\bhabitations-detail-pane\b[^"]*"/)
+    expect(response.body).to match(/class="[^"]*\bhabitations-master-pane\b[^"]*"/)
     expect(response.body).to include("Filtros do catálogo")
-    expect(response.body).to include('class="habitations-inspector-rail"')
-    expect(response.body).to include('data-action="click-&gt;habitations-inspector#toggle"')
+    expect(response.body).to match(/class="[^"]*\bhabitations-inspector-rail\b[^"]*"/)
+    expect(response.body).to include('data-action="click-&gt;ax-aside#toggle"')
     expect(response.body).not_to include("PROPERTY_QUERY")
     expect(response.body).not_to include(">Inspector<")
   end
@@ -890,7 +1051,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       get print_admin_habitations_path(report_type: report_type, full_print: "1")
 
       expect(response).to have_http_status(:ok), "esperava abrir o relatório #{report_type}"
-      expect(response.body).to include(Admin::HabitationsController::REPORT_TYPES.fetch(report_type).upcase)
+      expect(response.body).to include(Admin::HabitationsController::REPORT_TYPES.fetch(report_type))
     end
   end
 
@@ -900,6 +1061,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       cep: "88330-000",
       logradouro: "Rua Central",
       numero: "100",
+      complemento: "Casa 12",
       bairro: "Centro",
       cidade: "Balneário Camboriú",
       uf: "SC"
@@ -934,6 +1096,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       cep: "88330-000",
       logradouro: "Rua Autorização",
       numero: "100",
+      complemento: "Casa 14",
       bairro: "Centro",
       cidade: "Balneário Camboriú",
       uf: "SC"
@@ -964,6 +1127,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       cep: "88330-000",
       logradouro: "Rua Autorização Nova",
       numero: "100",
+      complemento: "Casa 15",
       bairro: "Centro",
       cidade: "Balneário Camboriú",
       uf: "SC"
@@ -994,6 +1158,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       cep: "88330-000",
       logradouro: "Rua Interna",
       numero: "200",
+      complemento: "Casa 20",
       bairro: "Centro",
       cidade: "Balneário Camboriú",
       uf: "SC"
@@ -1010,7 +1175,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Devolver para captador")
     expect(response.body).to include("Salvar Interno")
     expect(response.body).to include("Salvar e sair")
-    expect(response.body).to include("Autorizações de Venda")
+    expect(response.body).to include("Autorizações de venda")
     expect(response.body).to include("autorizacao.txt")
     expect(response.body).to include("Adicionar arquivos")
 
@@ -1112,10 +1277,10 @@ RSpec.describe "Admin::Habitations", type: :request do
   it "mantém classificação de fotos visível para o administrativo" do
     habitation = create(:habitation, codigo: "FOTO-ADM-#{SecureRandom.hex(6)}")
 
-    get edit_admin_habitation_path(habitation)
+    get modal_admin_habitation_media_path(habitation)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Classificação das Fotos:")
+    expect(response.body).to include("Classificação das fotos")
   end
 
   it "não remove fotos existentes quando o formulário envia upload vazio" do
@@ -1188,8 +1353,10 @@ RSpec.describe "Admin::Habitations", type: :request do
       cidade: "Balneário Camboriú",
       uf: "SC"
     )
+    direct_upload_io = StringIO.new("foto enviada direto")
+    direct_upload_io.rewind
     blob = ActiveStorage::Blob.create_and_upload!(
-      io: StringIO.new("foto enviada direto"),
+      io: direct_upload_io,
       filename: "direct-upload.jpg",
       content_type: "image/jpeg"
     )
@@ -1218,8 +1385,10 @@ RSpec.describe "Admin::Habitations", type: :request do
     )
     setting = PropertySetting.instance
     setting.watermark_image.attach(io: StringIO.new("watermark"), filename: "watermark.png", content_type: "image/png")
+    direct_upload_io = StringIO.new("foto enviada direto")
+    direct_upload_io.rewind
     blob = ActiveStorage::Blob.create_and_upload!(
-      io: StringIO.new("foto enviada direto"),
+      io: direct_upload_io,
       filename: "direct-watermark.jpg",
       content_type: "image/jpeg"
     )
@@ -1288,7 +1457,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       content_type: "image/jpeg"
     )
 
-    get edit_admin_habitation_path(habitation)
+    get modal_admin_habitation_media_path(habitation)
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("local.jpg")
@@ -1421,8 +1590,9 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Salvar e permanecer")
     expect(response.body).to include("Salvar e sair")
     expect(response.body).to include("Cancelar")
-    expect(response.body).to include("data-habitation-save-options-form")
-    expect(response.body).to include("data-habitation-save-options-action")
+    expect(response.body).to include("data-save-state-target=\"modal\"")
+    expect(response.body).to include("data-action=\"save-state#submitStay\"")
+    expect(response.body).to include("data-action=\"save-state#submitExit\"")
   end
 
   it "permanece na ficha de cadastro quando solicitado no salvamento" do
@@ -1480,10 +1650,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "oculta classificação de fotos da ficha de pré-cadastro do corretor" do
-    broker_profile = Profile.create!(
-      name: "Corretor #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     intake = create(
       :habitation,
@@ -1501,12 +1668,8 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "exibe anexos internos para perfil administrativo revisar autorização" do
-    administrative_profile = Profile.create!(
-      name: "Administrativo",
-      active: true,
-      permissions: Profile.default_permissions_for("Administrativo")
-    )
-    administrative_user = create(:admin_user, profile: administrative_profile)
+    manager_profile, administrative_profile = default_administrative_profiles
+    administrative_user = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile)
     intake = create(:habitation, :broker_intake, admin_user: admin, codigo: "DOC-ADM-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review")
     intake.autorizacoes_venda.attach(
       io: StringIO.new("autorizacao"),
@@ -1524,7 +1687,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(documents_pane).to be_present
     expect(documents_pane["role"]).to eq("tabpanel")
     expect(documents_pane["aria-labelledby"]).to eq("documents-tab")
-    expect(response.body).to include("Autorizações de Venda")
+    expect(response.body).to include("Autorizações de venda")
     expect(response.body).to include("autorizacao-administrativo.txt")
     expect(response.body).to include("Adicionar arquivos")
   end
@@ -1588,10 +1751,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "permite captador visualizar documentos sem anexar ou remover" do
-    broker_profile = Profile.create!(
-      name: "Corretor docs #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     habitation = create(:habitation, :broker_intake, admin_user: broker, codigo: "DOC-COR-#{SecureRandom.hex(6)}", intake_status: "returned_to_broker")
     habitation.fichas_cadastro.attach(
@@ -1616,10 +1776,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "mostra resumo e fotos no detalhe sem expor cadastro interno para corretor não captador" do
-    broker_profile = Profile.create!(
-      name: "Corretor show restrito #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     captador = create(:admin_user, profile: broker_profile, name: "Captador Responsável")
     other_broker = create(:admin_user, profile: broker_profile, name: "Outro Corretor")
     habitation = create(
@@ -1640,7 +1797,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       vista_referencia_externa: "VISTA-REF-1",
       praia_brava_flag: true,
       home_corporate_flag: true,
-      pictures: [{ "url" => "https://example.com/foto-api-show.jpg" }]
+      pictures: [{ "url" => "https://imob.sfo3.cdn.digitaloceanspaces.com/spec/foto-api-show.jpg" }]
     )
     habitation.create_address!(
       logradouro: "Rua Show",
@@ -1673,10 +1830,9 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Apartamento completo para show")
     expect(response.body).to include("Edifício Visível")
-    expect(response.body).to include("https://example.com/foto-api-show.jpg")
-    expect(response.body).to include("foto-local-show.jpg")
+    expect(response.body).to include("https://imob.sfo3.cdn.digitaloceanspaces.com/spec/foto-api-show.jpg")
     expect(response.body).to include("data-fancybox")
-    expect(response.body).to include("Informações principais")
+    expect(response.body).to include("Dados principais")
     expect(response.body).to include("Captador")
     expect(response.body).to include("Captador Responsável")
     expect(response.body).to include("Valores")
@@ -1700,10 +1856,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "mantém proprietário e anexos fora do detalhe simplificado para o captador do imóvel" do
-    broker_profile = Profile.create!(
-      name: "Corretor show captador #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     captador = create(:admin_user, profile: broker_profile, name: "Captador Show")
     habitation = create(
       :habitation,
@@ -1724,7 +1877,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Imóvel do captador")
-    expect(response.body).to include("Editar cadastro")
+    expect(response.body).to include("Editar")
     expect(response.body).not_to include("Proprietário do Captador")
     expect(response.body).not_to include("proprietario@example.com")
     expect(response.body).not_to include("Anexos e documentos internos")
@@ -1732,10 +1885,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "bloqueia campos sensíveis para corretor ao editar imóvel atribuído" do
-    broker_profile = Profile.create!(
-      name: "Corretor edição limitada #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     habitation = create(
       :habitation,

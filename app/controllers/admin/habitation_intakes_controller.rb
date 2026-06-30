@@ -288,7 +288,7 @@ module Admin
     end
 
     def build_intake_preview
-      Habitation.new(
+      current_tenant.habitations.new(
         admin_user: current_admin_user,
         intake_origin: Habitation::INTAKE_ORIGIN_BROKER,
         intake_status: "draft",
@@ -321,7 +321,7 @@ module Admin
     end
 
     def set_habitation
-      @habitation = Habitation.broker_intakes.friendly.find(params[:id])
+      @habitation = current_tenant.habitations.broker_intakes.friendly.find(params[:id])
     end
 
     def set_property_setting
@@ -345,18 +345,18 @@ module Admin
     end
 
     def can_export_captacoes?
-      current_admin_user&.admin? || current_admin_user&.profile&.administrativo?
+      tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes)
     end
 
     def can_broker_release_to_site?(habitation)
       return false unless habitation&.broker_release_pending?
-      return false if current_admin_user&.admin? || administrative_profile? || can?(:review, :captacoes)
+      return false if tenant_owner? || can?(:review, :captacoes)
 
       habitation.broker_responsible_for?(current_admin_user)
     end
 
     def scoped_intakes
-      scope = Habitation.broker_intakes
+      scope = current_tenant.habitations.broker_intakes
       if owns_all_resource?(:captacoes) || can?(:review, :captacoes)
         return scope.where(
           "(habitations.intake_status IS NOT NULL AND habitations.intake_status NOT IN (:draft_statuses)) OR habitations.admin_user_id = :user_id",
@@ -369,13 +369,13 @@ module Admin
     end
 
     def can_filter_intakes_by_broker?
-      current_admin_user&.admin? || can?(:review, :captacoes) || owns_all_resource?(:captacoes)
+      tenant_owner? || can?(:review, :captacoes) || owns_all_resource?(:captacoes)
     end
 
     def captacao_broker_options
       return AdminUser.none unless can_filter_intakes_by_broker?
 
-      AdminUser.where(id: scoped_intakes.reorder(nil).distinct.select(:admin_user_id)).order(:name)
+      current_tenant.admin_users.where(id: scoped_intakes.reorder(nil).distinct.select(:admin_user_id)).order(:name)
     end
 
     def filtered_intakes_scope
@@ -492,14 +492,10 @@ module Admin
 
     def authorize_intake_edit!
       return unless @habitation.intake_submitted_for_admin_review?
-      return if current_admin_user&.admin? || administrative_profile?
+      return if can?(:review, :captacoes)
       return if current_admin_user&.can_view_team?(:captacoes) && manager_can_access_intake?(@habitation)
 
-      redirect_to admin_captacoes_path, alert: "Captações pendentes de revisão só podem ser alteradas pelo Administrativo ou Gerente responsável."
-    end
-
-    def administrative_profile?
-      current_admin_user&.profile&.administrativo?
+      redirect_to admin_captacoes_path, alert: "Captações pendentes de revisão só podem ser alteradas por quem revisa captações ou pelo gestor responsável."
     end
 
     def manager_team_user_ids
@@ -508,7 +504,7 @@ module Admin
       ids = current_admin_user.team_scope_ids
       return ids if current_admin_user.both?
 
-      AdminUser.where(id: ids, acting_type: manager_allowed_acting_types).pluck(:id)
+      current_tenant.admin_users.where(id: ids, acting_type: manager_allowed_acting_types).pluck(:id)
     end
 
     def manager_allowed_acting_types
@@ -542,17 +538,17 @@ module Admin
     end
 
     def load_form_options
-      @brokers = AdminUser.account_members.order(:name)
-      @proprietors = Proprietor.order(:name).limit(300)
+      @brokers = current_tenant.admin_users.account_members.order(:name)
+      @proprietors = current_tenant.proprietors.order(:name).limit(300)
       @internal_features = (
-        AttributeOption.where(context: "habitation", category: "feature").order(:name).pluck(:name) +
+        current_tenant.attribute_options.where(context: "habitation", category: "feature").order(:name).pluck(:name) +
         Admin::HabitationsController::CUSTOM_FEATURE_OPTIONS
       ).uniq.sort
-      @external_features = AttributeOption.where(context: "habitation", category: "infrastructure").order(:name).pluck(:name)
-      @badges = AttributeOption.where(context: "habitation", category: "unique_feature").order(:name).pluck(:name)
+      @external_features = current_tenant.attribute_options.where(context: "habitation", category: "infrastructure").order(:name).pluck(:name)
+      @badges = current_tenant.attribute_options.where(context: "habitation", category: "unique_feature").order(:name).pluck(:name)
       @sale_reasons = sale_reason_options
       @photography_blocked_dates = PhotographyScheduleBlock.pluck(:date).map(&:iso8601)
-      @photography_booked_slots = Habitation
+      @photography_booked_slots = current_tenant.habitations
         .broker_intakes
         .where(photo_flow_choice: "schedule")
         .where.not(id: @habitation&.id)
@@ -732,7 +728,8 @@ module Admin
         complement: @habitation.complemento,
         category: @habitation.categoria,
         comparison: @habitation.duplicate_identity_scope,
-        ignored_id: @habitation.id
+        ignored_id: @habitation.id,
+        tenant: Current.tenant
       ).call
     end
 
@@ -1024,9 +1021,9 @@ module Admin
     end
 
     def sale_reason_options
-      catalog_options = AttributeOption.where(context: "habitation", category: "sale_reason").order(:name).pluck(:name)
+      catalog_options = current_tenant.attribute_options.where(context: "habitation", category: "sale_reason").order(:name).pluck(:name)
       habitation_options = if Habitation.column_names.include?("motivo_venda")
-                             Habitation.where.not(motivo_venda: [nil, ""]).distinct.pluck(:motivo_venda)
+                             current_tenant.habitations.where.not(motivo_venda: [nil, ""]).distinct.pluck(:motivo_venda)
                            else
                              []
                            end

@@ -1,4 +1,6 @@
 class LeadAuditLog < ApplicationRecord
+  include TenantScoped
+
   ACTIONS = {
     "created" => "Criado",
     "updated" => "Atualizado",
@@ -52,7 +54,7 @@ class LeadAuditLog < ApplicationRecord
   end
 
   def actor_name
-    admin_user&.name.presence || admin_user&.email.presence || "Sistema"
+    tenant_admin_user(admin_user_id)&.then { |user| user.name.presence || user.email.presence } || "Sistema"
   end
 
   def action_label
@@ -100,13 +102,17 @@ class LeadAuditLog < ApplicationRecord
 
     case field
     when "admin_user_id"
-      AdminUser.find_by(id: value)&.name || "Usuário ##{value}"
+      tenant_admin_user(value)&.name || "Usuário ##{value}"
     when "property_id"
-      Habitation.find_by(id: value)&.codigo || "Imóvel ##{value}"
+      tenant.habitations.find_by(id: value)&.codigo || "Imóvel ##{value}"
     when "distribution_rule_id"
-      DistributionRule.find_by(id: value)&.name || "Regra ##{value}"
+      tenant.distribution_rules.find_by(id: value)&.name || "Regra ##{value}"
     else
       value.is_a?(Hash) || value.is_a?(Array) ? value.to_json : value.to_s
     end
+  end
+
+  def tenant_admin_user(value)
+    tenant.admin_users.find_by(id: value)
   end
 end

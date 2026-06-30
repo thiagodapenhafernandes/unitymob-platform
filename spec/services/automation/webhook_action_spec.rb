@@ -25,6 +25,14 @@ RSpec.describe "Automation webhook action" do
     )
   end
 
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = admin.tenant
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   before { clear_enqueued_jobs }
 
   it "cria entrega de webhook com tokens do lead/evento e enfileira envio" do

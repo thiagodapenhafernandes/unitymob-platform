@@ -9,7 +9,9 @@ module Leads
           .includes(:distribution_rule)
           .limit(BATCH_LIMIT)
           .find_each do |lead|
-        Leads::PocketExpirationService.expire!(lead, source: "sweep")
+        Current.set(tenant: lead.tenant) do
+          Leads::PocketExpirationService.expire!(lead, source: "sweep")
+        end
       rescue => e
         Rails.logger.warn("[PocketSweepJob] falha ao verificar lead #{lead.id}: #{e.class} #{e.message}")
       end

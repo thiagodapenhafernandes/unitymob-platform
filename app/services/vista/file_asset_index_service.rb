@@ -24,7 +24,7 @@ module Vista
 
       result = Result.new(batch_id: @batch.id, dry_run: @dry_run, scanned: 0, indexed: 0, skipped: 0, by_kind: Hash.new(0))
       rows = []
-      habitation_id_by_code = Habitation.where.not(codigo: [nil, ""]).pluck(:codigo, :id).to_h
+      habitation_id_by_code = tenant.habitations.where.not(codigo: [nil, ""]).pluck(:codigo, :id).to_h
 
       raw_scope.find_each(batch_size: BATCH_SIZE) do |record|
         result.scanned += 1
@@ -60,6 +60,10 @@ module Vista
     end
 
     private
+
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para indexar arquivos Vista")
+    end
 
     def raw_scope
       @batch.vista_raw_records.where(table_name: %w[CDIMIM CDIMDC CDCLDC CDEMDC CMPN1 CADIMO])

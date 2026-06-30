@@ -3,6 +3,7 @@ class Admin::BaseController < ApplicationController
 
   before_action :authenticate_admin_user!
   before_action :set_current_admin_user
+  before_action :ensure_tenant_context_selected!
   before_action :enforce_access_control_policy!
   before_action :prevent_search_indexing
   around_action :measure_admin_page_render
@@ -44,6 +45,22 @@ class Admin::BaseController < ApplicationController
 
   def set_current_admin_user
     Current.admin_user = current_admin_user
+    Current.tenant = resolve_admin_tenant_context
+  end
+
+  def resolve_admin_tenant_context
+    return current_admin_user&.tenant unless current_admin_user&.system_admin?
+
+    session.delete(:admin_current_tenant_id)
+    nil
+  end
+
+  def ensure_tenant_context_selected!
+    return unless current_admin_user&.system_admin?
+    return if Current.tenant.present?
+    return if controller_path == "admin/system"
+
+    redirect_to admin_system_path, alert: "Admin do Sistema acessa áreas da conta apenas por impersonação."
   end
 
   def enforce_access_control_policy!
@@ -68,15 +85,30 @@ class Admin::BaseController < ApplicationController
   end
   
   def require_admin!
-    unless current_admin_user&.admin?
+    unless tenant_owner?
       redirect_to admin_root_path, alert: 'Acesso negado. Apenas administradores.'
     end
   end
+
+  def current_tenant
+    Current.tenant || (current_admin_user&.system_admin? ? nil : current_admin_user&.tenant)
+  end
+  helper_method :current_tenant
+
+  def selected_tenant_context?
+    current_tenant.present?
+  end
+  helper_method :selected_tenant_context?
 
   def system_admin?
     current_admin_user&.system_admin?
   end
   helper_method :system_admin?
+
+  def tenant_owner?
+    current_admin_user&.tenant_owner?
+  end
+  helper_method :tenant_owner?
 
   def require_system_admin!
     unless system_admin?
@@ -169,6 +201,15 @@ class Admin::BaseController < ApplicationController
     return true if allowed.nil?
     ids = owner_ids.flatten.compact.map(&:to_i)
     ids.intersect?(allowed)
+  end
+
+  def restrict_owner_param_to_scope!(attrs, resource, key: :admin_user_id)
+    value = attrs[key]
+    return attrs if value.blank?
+    return attrs if owner_in_scope?(resource, value)
+
+    attrs.delete(key)
+    attrs
   end
 
   helper_method :can?, :scope_for_resource, :owns_all_resource?,

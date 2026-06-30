@@ -55,6 +55,13 @@ Rails.application.routes.draw do
 
     # Painel do Admin do Sistema (operador da aplicação) — acima da conta.
     get "system", to: "system#index", as: :system
+    get "system/users", to: "system#users", as: :system_users
+    post "system/users/:admin_user_id/impersonate",
+         to: "system#impersonate_user",
+         as: :system_user_impersonation
+    post "system/tenants/:tenant_id/impersonate_owner",
+         to: "system#impersonate_owner",
+         as: :system_tenant_owner_impersonation
     
     resource :home_setting, only: [:edit, :update]
     resource :contact_setting, only: [:edit, :update]
@@ -126,9 +133,6 @@ Rails.application.routes.draw do
       resources :home_section_items, only: [:new, :create, :edit, :update, :destroy]
     end
     resources :admin_users, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
-      member do
-        post :impersonate
-      end
       collection do
         get   :hierarchy
         patch :move_hierarchy
@@ -219,6 +223,12 @@ Rails.application.routes.draw do
         get :new_campaign
       end
     end
+    resources :whatsapp_campaign_unsubscribes, path: "whatsapp/descadastros", only: [:index] do
+      member do
+        patch :reenable
+      end
+    end
+    resources :whatsapp_campaign_recipients, path: "whatsapp/importados", only: [:index]
     resources :whatsapp_sender_numbers, path: "whatsapp/numeros", only: [:create, :update, :destroy]
 
     # === Atendimento WhatsApp (inbox) ===

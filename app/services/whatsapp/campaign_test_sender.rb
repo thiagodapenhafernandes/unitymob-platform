@@ -8,17 +8,19 @@ module Whatsapp
       @template = template
       @phone = phone.to_s
       @variables = variables.to_h
-      @sender_number = sender_number || WhatsappSenderNumber.default_for_campaign
       @admin_user = admin_user
+      @tenant = sender_number&.tenant || template&.tenant || admin_user&.tenant || Current.tenant
+      @sender_number = sender_number || WhatsappSenderNumber.default_for_campaign(@tenant)
     end
 
     def call
       return { ok: false, error: "Informe um telefone para teste." } if normalized_phone.blank?
       return { ok: false, error: "Número de envio WhatsApp não está configurado." } unless sender_number&.messaging_ready?
 
-      components = template_components
+      client = Whatsapp::CloudClient.new(sender_number)
+      components = template_components(client)
       outbound = create_pending_outbound!
-      response = Whatsapp::CloudClient.new(sender_number).send_template(
+      response = client.send_template(
         to: normalized_phone,
         name: template.name,
         language: template.language.presence || "pt_BR",
@@ -58,7 +60,7 @@ module Whatsapp
 
     private
 
-    attr_reader :template, :phone, :variables, :sender_number, :admin_user
+    attr_reader :template, :phone, :variables, :sender_number, :admin_user, :tenant
 
     def normalized_phone
       @normalized_phone ||= begin
@@ -69,10 +71,10 @@ module Whatsapp
       end
     end
 
-    def template_components
+    def template_components(client)
       values = Whatsapp::CampaignTemplatePreview.call(template: template, variables: variables).values
       variables_by_index = values.each_with_index.to_h { |value, index| [(index + 1).to_s, value] }
-      result = Whatsapp::TemplateMessageComponents.call(template: template, variables: variables_by_index)
+      result = Whatsapp::TemplateMessageComponents.call(template: template, variables: variables_by_index, client: client)
       raise ArgumentError, result.error unless result.ok?
 
       result.components
@@ -91,7 +93,7 @@ module Whatsapp
 
     def conversation
       @conversation ||= begin
-        record = WhatsappConversation.find_or_initialize_by(contact_phone: normalized_phone)
+        record = tenant.whatsapp_conversations.find_or_initialize_by(contact_phone: normalized_phone)
         record.contact_name ||= "Teste WhatsApp #{normalized_phone}"
         record.status = "open"
         record.save!

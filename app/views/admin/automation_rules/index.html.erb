@@ -32,6 +32,9 @@
               <i class="bi bi-diagram-3" style="color:var(--admin-primary)"></i>
               <span class="ax-strong"><%= workflow.name %></span>
               <span class="ax-badge ax-badge--<%= workflow.status == 'active' ? 'green' : 'gray' %>"><%= workflow.status_label %></span>
+              <% if workflow.whatsapp_campaign_source? %>
+                <span class="ax-badge ax-badge--cyan">Disparo WhatsApp #<%= workflow.whatsapp_campaign_source_id %></span>
+              <% end %>
             </div>
             <p class="ax-page-subtitle tw-mb-0 tw-mt-1">
               <% if workflow.active_version %>
@@ -41,9 +44,16 @@
               <% end %>
             </p>
           </div>
-          <%= link_to builder_admin_automation_workflow_path(workflow), class: "ax-btn ax-btn--sm" do %>
-            <i class="bi bi-pencil-square ax-ico"></i><span>Abrir builder</span>
-          <% end %>
+          <div class="tw-flex tw-items-center tw-gap-2">
+            <% if workflow.whatsapp_campaign_source? %>
+              <%= link_to admin_whatsapp_campaign_path(workflow.whatsapp_campaign_source_id), class: "ax-btn ax-btn--sm" do %>
+                <i class="bi bi-megaphone ax-ico"></i><span>Ver disparo</span>
+              <% end %>
+            <% end %>
+            <%= link_to builder_admin_automation_workflow_path(workflow), class: "ax-btn ax-btn--sm" do %>
+              <i class="bi bi-pencil-square ax-ico"></i><span>Abrir builder</span>
+            <% end %>
+          </div>
         </div>
       </div>
     <% end %>

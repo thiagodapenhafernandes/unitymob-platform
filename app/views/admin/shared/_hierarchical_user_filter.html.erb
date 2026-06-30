@@ -1,0 +1,42 @@
+<%
+  component_id ||= "hierarchical_user_filter_#{SecureRandom.hex(4)}"
+  profiles ||= []
+  users ||= []
+  target_select_id ||= nil
+  selection_input_id ||= nil
+  locked_user_id ||= nil
+  label ||= "Filtrar por hierarquia"
+  hint ||= "Selecione um nível para filtrar automaticamente os níveis abaixo."
+  submit_on_change ||= false
+%>
+
+<div id="<%= component_id %>"
+     class="ax-hierarchy-filter"
+     data-controller="hierarchical-user-filter"
+     data-hierarchical-user-filter-users-value="<%= users.to_json %>"
+     data-hierarchical-user-filter-locked-user-id-value="<%= locked_user_id %>"
+     data-hierarchical-user-filter-target-select-id-value="<%= target_select_id %>"
+     data-hierarchical-user-filter-selection-input-id-value="<%= selection_input_id %>"
+     <%= %(data-action="hierarchical-user-filter:change->auto-submit#submit").html_safe if submit_on_change %>>
+  <div class="ax-field">
+    <%= ax_field_label(nil, nil, text: label) %>
+    <div class="ax-hierarchy-filter__grid">
+      <% profiles.each do |profile| %>
+        <div class="ax-hierarchy-filter__level">
+          <label class="ax-label ax-label--sm" for="<%= "#{component_id}_profile_#{profile.id}" %>"><%= profile.name %></label>
+          <select id="<%= "#{component_id}_profile_#{profile.id}" %>"
+                  class="ax-control ax-control--sm"
+                  data-controller="tom-select"
+                  data-placeholder="Todos"
+                  data-tom-select-options-value="<%= { allowEmptyOption: true, maxOptions: nil }.to_json %>"
+                  data-hierarchical-user-filter-target="levelSelect"
+                  data-profile-id="<%= profile.id %>"
+                  data-action="change->hierarchical-user-filter#filter">
+            <option value="">Todos</option>
+          </select>
+        </div>
+      <% end %>
+    </div>
+    <p class="ax-field__hint"><%= hint %></p>
+  </div>
+</div>

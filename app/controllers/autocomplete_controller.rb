@@ -12,7 +12,7 @@ class AutocompleteController < ApplicationController
     results = []
     
     # Cidades (usando unaccent para ignorar acentos)
-    cities = Habitation.active
+    cities = public_habitations.active
       .left_outer_joins(:address)
       .where("unaccent(COALESCE(addresses.cidade, habitations.cidade)) ILIKE unaccent(?)", "%#{query}%")
       .distinct
@@ -22,7 +22,7 @@ class AutocompleteController < ApplicationController
       .map { |city| { type: 'Cidade', value: city, label: city } }
     
     # Bairros com cidade (usando unaccent)
-    neighborhoods = Habitation.active
+    neighborhoods = public_habitations.active
       .left_outer_joins(:address)
       .where("unaccent(COALESCE(addresses.bairro, habitations.bairro)) ILIKE unaccent(?) OR unaccent(COALESCE(addresses.cidade, habitations.cidade)) ILIKE unaccent(?)", "%#{query}%", "%#{query}%")
       .select("COALESCE(addresses.bairro, habitations.bairro) AS bairro_nome, COALESCE(addresses.cidade, habitations.cidade) AS cidade_nome")
@@ -32,7 +32,7 @@ class AutocompleteController < ApplicationController
       .compact
     
     # Empreendimentos (usando unaccent)
-    developments = Habitation.empreendimentos_publicos
+    developments = public_habitations.empreendimentos_publicos
       .where("unaccent(nome_empreendimento) ILIKE unaccent(?)", "%#{query}%")
       .where.not(nome_empreendimento: nil)
       .left_outer_joins(:address)
@@ -50,7 +50,7 @@ class AutocompleteController < ApplicationController
   
   def popular_locations
     # Retornar as cidades/bairros com mais imóveis
-    popular_cities = Habitation.active
+    popular_cities = public_habitations.active
       .left_outer_joins(:address)
       .group(Arel.sql("COALESCE(addresses.cidade, habitations.cidade)"))
       .order('count_all DESC')
@@ -59,7 +59,7 @@ class AutocompleteController < ApplicationController
       .keys
       .map { |city| { type: 'Cidade', value: city, label: city } }
     
-    popular_neighborhoods = Habitation.active
+    popular_neighborhoods = public_habitations.active
       .left_outer_joins(:address)
       .where("COALESCE(addresses.bairro, habitations.bairro) IS NOT NULL")
       .group(Arel.sql("COALESCE(addresses.bairro, habitations.bairro)"))

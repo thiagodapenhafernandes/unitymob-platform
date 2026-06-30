@@ -8,8 +8,8 @@ module Admin
       before_action :set_request, only: [:show, :approve, :reject]
 
       def index
-        @pending = ManualCheckinRequest.pending.recent.includes(:admin_user, :store)
-        @resolved = ManualCheckinRequest.where.not(status: :pending).recent.includes(:admin_user, :store).limit(50)
+        @pending = current_tenant.manual_checkin_requests.pending.recent.includes(:admin_user, :store)
+        @resolved = current_tenant.manual_checkin_requests.where.not(status: :pending).recent.includes(:admin_user, :store).limit(50)
       end
 
       def show
@@ -43,7 +43,7 @@ module Admin
       private
 
       def set_request
-        @request = ManualCheckinRequest.find(params[:id])
+        @request = current_tenant.manual_checkin_requests.find(params[:id])
       end
     end
   end

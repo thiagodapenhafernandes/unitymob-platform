@@ -84,7 +84,7 @@ module Admin::DistributionRulesHelper
     store_ids = rule.checkin_store_id_list
     return [] if store_ids.blank?
 
-    Store.where(id: store_ids).order(:name).pluck(:name)
+    rule.tenant.stores.where(id: store_ids).order(:name).pluck(:name)
   end
 
   def distribution_rule_schedule_rows(rule)
@@ -104,7 +104,7 @@ module Admin::DistributionRulesHelper
     {
       whatsapp: {
         label: "WhatsApp",
-        configured: WhatsappBusinessIntegration.current.connected?,
+        configured: Current.tenant.present? && WhatsappBusinessIntegration.current(Current.tenant).connected?,
         path: admin_whatsapp_integration_path,
         instructions: "Conecte uma conta WhatsApp Business (Cloud API) para enviar avisos de novos leads ao corretor."
       },

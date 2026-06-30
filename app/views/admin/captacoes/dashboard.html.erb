@@ -23,10 +23,12 @@
 <%
   dashboard_actions = capture do
 %>
-  <% if current_admin_user.admin? %>
+  <% if tenant_owner? %>
     <button type="button" class="ax-workspace-heading__tool captacoes-heading-action" data-ax-modal-open="#dashboardTitleModal" aria-label="Editar título do dashboard">
       <i class="bi bi-gear"></i><span>Título</span>
     </button>
+  <% end %>
+  <% if current_admin_user.can?(:view, :metas_captacao) %>
     <%= link_to admin_captacao_goals_path, class: "ax-workspace-heading__tool captacoes-heading-action" do %>
       <i class="bi bi-bullseye"></i><span>Metas</span>
     <% end %>
@@ -51,7 +53,7 @@
       class_name: "capt-dashboard-heading"
     ) %>
 
-<% if current_admin_user.admin? %>
+<% if tenant_owner? %>
   <div class="ax-quick-modal ax-quick-modal--md" id="dashboardTitleModal" tabindex="-1" role="presentation" hidden aria-hidden="true" data-controller="ax-modal" data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
     <div class="ax-quick-modal__panel" role="dialog" aria-modal="true">
       <%= form_with url: dashboard_title_admin_captacoes_path, method: :patch, local: true do %>

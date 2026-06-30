@@ -7,6 +7,11 @@ module AttributeOptions
     CONTEXT = "habitation"
     CATEGORIES = %w[feature infrastructure unique_feature imediacoes].freeze
 
+    def initialize(tenant: nil)
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para reconstruir catálogo dinâmico" if @tenant.blank?
+    end
+
     def call
       values_by_category = {
         "feature" => extract_feature_values,
@@ -24,7 +29,7 @@ module AttributeOptions
       now = Time.current
       rows = []
 
-      existing = AttributeOption.where(context: CONTEXT, category: CATEGORIES).pluck(:category, :name)
+      existing = attribute_option_scope.where(context: CONTEXT, category: CATEGORIES).pluck(:category, :name)
       existing_lookup = existing.each_with_object({}) do |(category, name), acc|
         acc[[category, normalized_key(name)]] = true
       end
@@ -35,6 +40,7 @@ module AttributeOptions
           next if existing_lookup[key]
 
           rows << {
+            tenant_id: @tenant.id,
             context: CONTEXT,
             category: category,
             name: value,
@@ -58,7 +64,7 @@ module AttributeOptions
     def extract_feature_values
       values = Set.new
 
-      Habitation.find_each do |habitation|
+      habitation_scope.find_each do |habitation|
         raw = habitation.caracteristicas
         items =
           case raw
@@ -81,7 +87,7 @@ module AttributeOptions
     def extract_infrastructure_values
       values = Set.new
 
-      Habitation.find_each do |habitation|
+      habitation_scope.find_each do |habitation|
         normalize_items(habitation.infra_estrutura, category: "infrastructure").each { |item| values << item }
       end
 
@@ -91,7 +97,7 @@ module AttributeOptions
     def extract_unique_feature_values
       values = Set.new
 
-      Habitation.find_each do |habitation|
+      habitation_scope.find_each do |habitation|
         raw = habitation.caracteristica_unica
         items =
           case raw
@@ -112,7 +118,7 @@ module AttributeOptions
     def extract_imediacoes_values
       values = Set.new
 
-      Address.where(addressable_type: "Habitation").find_each do |address|
+      Address.where(addressable_type: "Habitation", addressable_id: habitation_scope.select(:id)).find_each do |address|
         normalize_items(address.imediacoes, category: "feature").each { |item| values << item }
       end
 
@@ -136,6 +142,14 @@ module AttributeOptions
 
     def normalized_key(value)
       AttributeOptions::HabitationFeatureNormalizer.key(value)
+    end
+
+    def habitation_scope
+      @tenant.habitations
+    end
+
+    def attribute_option_scope
+      @tenant.attribute_options
     end
   end
 end

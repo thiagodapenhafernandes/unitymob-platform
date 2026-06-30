@@ -66,7 +66,8 @@
       <thead>
         <tr>
           <th>Usuário</th>
-          <th>Perfil</th>
+          <th>Perfil vertical</th>
+          <th>Função</th>
           <th class="ax-num">Status</th>
           <th class="ax-num">Atuação</th>
           <th>Gestor</th>
@@ -105,6 +106,13 @@
                   <%= ax_badge(user.role.humanize, tone: :gray) %>
                 <% end %>
               </td>
+              <td>
+                <% if user.horizontal_profile %>
+                  <%= ax_badge(user.horizontal_profile.name, tone: :gray) %>
+                <% else %>
+                  <span class="au-muted">—</span>
+                <% end %>
+              </td>
               <td class="ax-num">
                 <%= ax_badge(user.active ? "Ativo" : "Inativo", tone: user.active ? :green : :red, dot: true) %>
               </td>
@@ -125,13 +133,6 @@
               <td class="ax-num"><%= ax_badge(@habitations_count_by_admin_user.fetch(user.id, 0).to_s, tone: :gray) %></td>
               <td class="ax-num">
                 <span class="au-actions">
-                  <% if current_admin_user.admin? && user != current_admin_user %>
-                    <%= button_to impersonate_admin_admin_user_path(user), method: :post,
-                          class: "ax-ico-btn", form_class: "tw-inline", title: "Acessar como #{user.name}",
-                          data: { turbo_confirm: "Acessar o sistema como #{user.name}?" } do %>
-                      <i class="bi bi-person-check"></i>
-                    <% end %>
-                  <% end %>
                   <%= link_to edit_admin_admin_user_path(user), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
                   <% if user != current_admin_user %>
                     <button type="button" class="ax-ico-btn" title="Excluir"
@@ -150,7 +151,7 @@
             </tr>
           <% end %>
         <% else %>
-          <tr><td colspan="7">
+          <tr><td colspan="8">
             <%= ax_empty_state(title: "Nenhum usuário encontrado", description: "Ajuste os filtros de busca, perfil, atuação, gestor ou status.", icon: "people") %>
           </td></tr>
         <% end %>
@@ -171,7 +172,8 @@
       <p class="reassign-delete__hint">Os dados do usuário (leads, imóveis, captações, tarefas, propostas e carteira) serão <strong>reatribuídos</strong> para o admin escolhido. Auditorias permanecem imutáveis com o id histórico.</p>
       <label class="ax-field-label" for="reassign_to_id"><span class="ax-field-label__text">Reatribuir para</span></label>
       <select name="reassign_to_id" id="reassign_to_id" class="ax-control" data-reassign-delete-target="select" required>
-        <% AdminUser.account_members.order(:name).each do |a| %>
+        <% manageable_reassign_users = tenant_owner? ? current_tenant.admin_users.account_members.order(:name) : current_tenant.admin_users.account_members.where(id: [current_admin_user.id] + current_admin_user.descendant_ids).order(:name) %>
+        <% manageable_reassign_users.each do |a| %>
           <option value="<%= a.id %>" data-user-id="<%= a.id %>"<%= " selected" if a == current_admin_user %>><%= a.name %><%= " (você)" if a == current_admin_user %></option>
         <% end %>
       </select>

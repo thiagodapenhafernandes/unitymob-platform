@@ -13,19 +13,112 @@ RSpec.describe "Admin::DistributionRules", type: :request do
   it "renderiza o formulario com objetivo em modal, aside e dados de equipe em cascata" do
     manager = create(:admin_user, :admin, name: "Gestor Praia")
     create(:admin_user, name: "Corretor Cascata", manager: manager)
+    Profile.create!(
+      tenant: admin.tenant,
+      name: "Coordenador",
+      axis: "vertical",
+      position: 2_100,
+      permissions: { "distribution_rules" => { "manage" => true } }
+    )
 
     get new_admin_distribution_rule_path
+
+    doc = Nokogiri::HTML(response.body)
+    vertical_profile_ids = admin.tenant.profiles.ordered_vertical.pluck(:id).map(&:to_s)
+    rendered_profile_ids = doc.css("#distribution_rule_hierarchy_filter select[data-profile-id]").map { |select| select["data-profile-id"] }
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("distribution-rule-workspace")
     expect(response.body).to include("Configuração da regra")
     expect(response.body).to include("Distribuição vertical")
+    expect(doc.css("#distribution_rule_hierarchy_filter select[data-controller='tom-select']").size).to eq(vertical_profile_ids.size)
     expect(response.body).to include("Gestor Praia")
     expect(response.body).to include("Corretor Cascata")
+    expect(rendered_profile_ids).to eq(vertical_profile_ids)
     expect(response.body).to include("Entrega para um corretor por vez")
     expect(response.body).to include("sorteio ponderado")
     expect(response.body).to include("O primeiro que aceitar assume o lead")
     expect(response.body).to include("Filtro opcional pela faixa de valor do lead")
+  end
+
+  it "limita selecao de fila a subarvore do usuario logado com permissao de distribuicao" do
+    tenant = admin.tenant
+    manager_profile = Profile.create!(
+      tenant: tenant,
+      name: "Gerente Distribuição",
+      axis: "vertical",
+      position: 2_100,
+      permissions: { "distribution_rules" => { "manage" => true } }
+    )
+    agent_profile = tenant.profiles.find_or_create_by!(key: "agent") do |profile|
+      profile.name = "Agent"
+      profile.axis = "vertical"
+      profile.permissions = Profile.default_permissions_for("Corretor")
+    end
+    manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: admin, name: "Gerente Logado")
+    subordinate = create(:admin_user, tenant: tenant, profile: agent_profile, manager: manager, name: "Corretor Subordinado")
+    outside = create(:admin_user, tenant: tenant, profile: agent_profile, manager: admin, name: "Corretor Fora da Subarvore")
+
+    sign_in manager
+
+    post admin_distribution_rules_path, params: {
+      agent_select: [subordinate.id.to_s, outside.id.to_s],
+      distribution_rule: {
+        name: "Regra Subarvore",
+        business_type: "ambos",
+        distribution_mode: "rotary",
+        active: "1",
+        source_site: "1",
+        source_meta: "0",
+        source_portal: "0",
+        source_webhook: "0"
+      }
+    }
+
+    expect(response).to redirect_to(admin_distribution_rule_path(DistributionRule.last))
+    expect(DistributionRule.last.distribution_rule_agents.pluck(:admin_user_id)).to eq([subordinate.id])
+  end
+
+  it "renderiza a hierarquia travada do perfil logado para baixo em usuarios intermediarios" do
+    tenant = admin.tenant
+    director_profile = Profile.create!(
+      tenant: tenant,
+      name: "Diretoria",
+      axis: "vertical",
+      position: 2_100,
+      permissions: { "distribution_rules" => { "manage" => true } }
+    )
+    coordinator_profile = Profile.create!(
+      tenant: tenant,
+      name: "Coordenacao",
+      axis: "vertical",
+      position: 2_200,
+      permissions: { "distribution_rules" => { "manage" => true } }
+    )
+    agent_profile = tenant.profiles.find_or_create_by!(key: "agent") do |profile|
+      profile.name = "Agent"
+      profile.axis = "vertical"
+      profile.permissions = Profile.default_permissions_for("Corretor")
+    end
+    director = create(:admin_user, tenant: tenant, profile: director_profile, manager: admin, name: "Diretora")
+    coordinator = create(:admin_user, tenant: tenant, profile: coordinator_profile, manager: director, name: "Coordenador Logado")
+    subordinate = create(:admin_user, tenant: tenant, profile: agent_profile, manager: coordinator, name: "Corretor da Coordenacao")
+    create(:admin_user, tenant: tenant, profile: agent_profile, manager: director, name: "Corretor da Diretoria")
+
+    sign_in coordinator
+
+    get new_admin_distribution_rule_path
+
+    doc = Nokogiri::HTML(response.body)
+    rendered_profile_ids = doc.css("#distribution_rule_hierarchy_filter select[data-profile-id]").map { |select| select["data-profile-id"].to_i }
+
+    expect(response).to have_http_status(:ok)
+    expect(rendered_profile_ids).to eq([coordinator_profile.id, agent_profile.id])
+    expect(doc.at_css("#distribution_rule_hierarchy_filter")["data-hierarchical-user-filter-locked-user-id-value"]).to eq(coordinator.id.to_s)
+    expect(response.body).to include("Coordenador Logado")
+    expect(response.body).to include("Corretor da Coordenacao")
+    expect(response.body).not_to include("Diretora")
+    expect(response.body).not_to include("Corretor da Diretoria")
   end
 
   it "mantem formularios da Meta em cascata pelas paginas selecionadas" do

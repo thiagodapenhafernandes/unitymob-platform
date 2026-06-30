@@ -3,6 +3,8 @@
 # Table name: habitations
 #
 class Habitation < ApplicationRecord
+  include TenantScoped
+
   REVIEW_RETURN_WARNING_THRESHOLD = 3
 
   attr_accessor :skip_auto_audit, :auto_audit_destroy_snapshot
@@ -138,12 +140,14 @@ class Habitation < ApplicationRecord
 
   # INTERNAL_FEATURES = [ ... ] (Deprecated in favor of AttributeOption)
   def self.internal_features
-    AttributeOption.where(context: 'habitation', category: 'feature').order(name: :asc).pluck(:name)
+    tenant = Current.tenant || raise(ArgumentError, "Tenant obrigatório para listar características")
+    tenant.attribute_options.where(context: 'habitation', category: 'feature').order(name: :asc).pluck(:name)
   end
 
   # EXTERNAL_FEATURES = [ ... ] (Deprecated in favor of AttributeOption)
   def self.external_features
-    AttributeOption.where(context: 'habitation', category: 'infrastructure').order(name: :asc).pluck(:name)
+    tenant = Current.tenant || raise(ArgumentError, "Tenant obrigatório para listar infraestruturas")
+    tenant.attribute_options.where(context: 'habitation', category: 'infrastructure').order(name: :asc).pluck(:name)
   end
 
   # Endereço e Localização
@@ -225,7 +229,8 @@ class Habitation < ApplicationRecord
   # Paginação
   self.per_page = 12
   
-  belongs_to :empreendimento, 
+  belongs_to :empreendimento,
+    ->(habitation) { where(tenant_id: habitation.tenant_id) },
     class_name: 'Habitation',
     primary_key: 'codigo',
     foreign_key: 'codigo_empreendimento',
@@ -236,7 +241,8 @@ class Habitation < ApplicationRecord
   belongs_to :admin_reviewed_by, class_name: "AdminUser", optional: true
   has_many :habitation_interactions, dependent: :nullify
   
-  has_many :units, 
+  has_many :units,
+    ->(habitation) { where(tenant_id: habitation.tenant_id) },
     class_name: 'Habitation',
     primary_key: 'codigo',
     foreign_key: 'codigo_empreendimento'
@@ -270,7 +276,7 @@ class Habitation < ApplicationRecord
   has_rich_text :meta_description
 
   # Validations
-  validates :codigo, presence: true, uniqueness: true
+  validates :codigo, presence: true, uniqueness: { scope: :tenant_id }
   validates :categoria, presence: true
   validates :captador_commission_percentage,
             numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
@@ -675,6 +681,10 @@ class Habitation < ApplicationRecord
     nil
   end
 
+  def proprietario_cidade=(value)
+    set_captacao_note_value("Cidade do proprietário", value)
+  end
+
   def captacao_note_list(label)
     captacao_note_value(label).to_s.split(",").map(&:strip).compact_blank
   end
@@ -682,6 +692,12 @@ class Habitation < ApplicationRecord
   def captacao_feature_enabled?(label)
     values = caracteristicas.is_a?(Hash) ? caracteristicas.to_a.flatten : Array(caracteristicas)
     values.any? { |value| value.to_s.casecmp?(label) }
+  end
+
+  def set_captacao_note_value(label, value)
+    lines = observacoes_visitas.to_s.lines.map(&:chomp).reject { |line| line.start_with?("#{label}:") }
+    lines << "#{label}: #{value}" if value.present?
+    self.observacoes_visitas = lines.join("\n")
   end
 
   {
@@ -1229,7 +1245,7 @@ class Habitation < ApplicationRecord
   # Empreendimento tem 'codigo', unidades têm 'codigo_empreendimento'
   def development_units
     return Habitation.none unless empreendimento? && codigo.present?
-    Habitation.active.where(codigo_empreendimento: codigo)
+    tenant.habitations.active.where(codigo_empreendimento: codigo)
   end
   
   # Conta quantas unidades disponíveis esse empreendimento tem
@@ -1408,7 +1424,7 @@ class Habitation < ApplicationRecord
   end
 
   def codigo_empreendimento_must_exist
-    parent = Habitation.empreendimentos.find_by(codigo: codigo_empreendimento)
+    parent = tenant.habitations.empreendimentos.find_by(codigo: codigo_empreendimento)
     return if parent.present?
 
     errors.add(:codigo_empreendimento, "não corresponde a um empreendimento válido")
@@ -1458,7 +1474,7 @@ class Habitation < ApplicationRecord
 
     return if codigo_empreendimento.blank?
 
-    parent = Habitation.empreendimentos.find_by(codigo: codigo_empreendimento)
+    parent = tenant.habitations.empreendimentos.find_by(codigo: codigo_empreendimento)
     return if parent.blank?
 
     force_sync = new_record? || will_save_change_to_codigo_empreendimento?

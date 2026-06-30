@@ -1,4 +1,6 @@
 class Task < ApplicationRecord
+  include TenantScoped
+
   KINDS = {
     "ligacao" => "Ligação",
     "visita" => "Visita",
@@ -16,6 +18,7 @@ class Task < ApplicationRecord
   validates :title, presence: true
   validates :status, inclusion: { in: STATUSES }
   validates :kind, inclusion: { in: KINDS.keys }
+  validate :associations_belong_to_same_tenant
 
   scope :pendentes, -> { where(status: "pendente") }
   scope :concluidas, -> { where(status: "concluida") }
@@ -33,5 +36,19 @@ class Task < ApplicationRecord
   def complete!(by: nil)
     update!(status: "concluida", completed_at: Time.current)
     LeadActivity.log!(lead: lead, kind: "task_completed", metadata: { task_id: id, title: title, by: by&.name }.compact) if lead_id
+  end
+
+  private
+
+  def associations_belong_to_same_tenant
+    {
+      admin_user: admin_user,
+      created_by: created_by,
+      lead: lead
+    }.each do |name, record|
+      next if record.blank? || tenant.blank? || record.tenant_id == tenant_id
+
+      errors.add(name, "deve pertencer à mesma conta da tarefa")
+    end
   end
 end

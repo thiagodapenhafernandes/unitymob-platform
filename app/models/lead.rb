@@ -1,4 +1,6 @@
 class Lead < ApplicationRecord
+  include TenantScoped
+
   DEFAULT_STATUS = "Novo".freeze
   LEGACY_STATUSES = ["Novo", "Em Atendimento", "Aguardando Aceite", "Represado", "Descartado", "Concluido"].freeze
   STATUS_ALIASES = {
@@ -78,6 +80,7 @@ class Lead < ApplicationRecord
   # Telefone é obrigatório, exceto quando o lead é identificado por BSUID
   # (usuário do WhatsApp que esconde o número — recurso de username da Meta).
   validates :phone, presence: true, unless: -> { business_scoped_user_id.present? }
+  validate :associated_records_must_belong_to_tenant
   
   def display_name
     client_name.presence || name
@@ -92,14 +95,14 @@ class Lead < ApplicationRecord
   end
 
   def whatsapp_url(message: nil)
-    property = Habitation.find_by(id: property_id)
+    property = tenant.habitations.find_by(id: property_id)
     fallback_message = if property
       "Olá, meu nome é #{display_name}. Estou interessado no imóvel #{property.codigo}. (Origem: #{origin})"
     else
       "Olá, meu nome é #{display_name}. Gostaria de mais informações. (Origem: #{origin})"
     end
 
-    WhatsappBusinessIntegration.current.whatsapp_url_for(habitation: property, message: message.presence || fallback_message)
+    WhatsappBusinessIntegration.current(tenant).whatsapp_url_for(habitation: property, message: message.presence || fallback_message)
   end
 
   # Destinatário para a Cloud API: telefone se houver, senão BSUID.
@@ -131,9 +134,11 @@ class Lead < ApplicationRecord
     self.class.normalize_tags_value(tags)
   end
 
-  def self.origin_options
-    catalog_options = AttributeOption.where(context: "lead", category: "source").order(name: :asc).pluck(:name)
-    recorded_origins = where.not(origin: [nil, ""])
+  def self.origin_options(scope: all, tenant: Current.tenant)
+    raise ArgumentError, "Tenant obrigatório para listar origens de leads" if tenant.blank?
+
+    catalog_options = tenant.attribute_options.where(context: "lead", category: "source").order(name: :asc).pluck(:name)
+    recorded_origins = scope.where.not(origin: [nil, ""])
       .distinct
       .pluck(:origin)
 
@@ -144,8 +149,8 @@ class Lead < ApplicationRecord
       .sort_by(&:downcase)
   end
 
-  def self.tag_options
-    where.not(tags: [nil, []])
+  def self.tag_options(scope: all)
+    scope.where.not(tags: [nil, []])
       .pluck(:tags)
       .flat_map { |value| normalize_tags_value(value) }
       .uniq
@@ -189,7 +194,8 @@ class Lead < ApplicationRecord
   end
 
   def self.status_options
-    relation = AttributeOption.where(context: "lead", category: "status")
+    tenant = Current.tenant || raise(ArgumentError, "Tenant obrigatório para listar status de leads")
+    relation = tenant.attribute_options.where(context: "lead", category: "status")
     relation = if AttributeOption.column_names.include?("position")
                  relation.order(Arel.sql("position ASC NULLS LAST")).order(name: :asc)
                else
@@ -201,17 +207,32 @@ class Lead < ApplicationRecord
     catalog_statuses
   end
 
-  def self.status_value(value)
+  def self.status_value(value, tenant: Current.tenant)
     raw = value.to_s.strip
-    return default_status if raw.blank?
+    return default_status(tenant: tenant) if raw.blank?
 
     STATUS_ALIASES[raw] || STATUS_ALIASES[raw.downcase] || raw
   end
 
-  def self.default_status
-    status_options.first || DEFAULT_STATUS
-  rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError
+  def self.default_status(tenant: Current.tenant)
+    status_options_for_tenant(tenant).first || DEFAULT_STATUS
+  rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError, ArgumentError
     DEFAULT_STATUS
+  end
+
+  def self.status_options_for_tenant(tenant)
+    raise ArgumentError, "Tenant obrigatório para listar status de leads" if tenant.blank?
+
+    relation = tenant.attribute_options.where(context: "lead", category: "status")
+    relation = if AttributeOption.column_names.include?("position")
+                 relation.order(Arel.sql("position ASC NULLS LAST")).order(name: :asc)
+               else
+                 relation.order(name: :asc)
+               end
+    catalog_statuses = relation.pluck(:name)
+    return LEGACY_STATUSES if catalog_statuses.blank?
+
+    catalog_statuses
   end
 
   def self.status_badge_class(status)
@@ -236,6 +257,24 @@ class Lead < ApplicationRecord
     self.tags = self.class.normalize_tags_value(tags)
   end
 
+  def associated_records_must_belong_to_tenant
+    return if tenant_id.blank?
+
+    {
+      admin_user: admin_user,
+      shared_by_admin_user: shared_by_admin_user,
+      distribution_rule: distribution_rule
+    }.each do |attribute, record|
+      next if record.blank? || record.tenant_id == tenant_id
+
+      errors.add(attribute, "deve pertencer ao mesmo Tenant")
+    end
+
+    if property_id.present? && !tenant.habitations.exists?(id: property_id)
+      errors.add(:property_id, "deve pertencer ao mesmo Tenant")
+    end
+  end
+
   def record_audit_create
     Leads::AuditChangeRecorder.record_create!(self)
   end
@@ -249,6 +288,8 @@ class Lead < ApplicationRecord
   end
 
   def route_lead
+    return unless persisted? && !destroyed?
+
     Leads::RoutingService.route!(self)
   end
 

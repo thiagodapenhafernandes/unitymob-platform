@@ -4,7 +4,7 @@ class Admin::HabitationsController < Admin::BaseController
   before_action -> { check_permission!(:view, :imoveis) }
   before_action -> { check_permission!(:manage, :imoveis) }, only: [:new, :create]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
-  before_action :require_admin!, only: [:bulk_publish, :bulk_publish_eligibility]
+  before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility]
   before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :sync, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   require "csv"
   require "uri"
@@ -73,7 +73,11 @@ class Admin::HabitationsController < Admin::BaseController
   helper_method :can_view_proprietor_data?, :can_view_internal_documents?, :can_manage_internal_documents?,
                 :can_view_habitation_show_sensitive_data?, :can_edit_habitation?, :sort_options
   helper_method :can_release_intake_to_broker?, :can_manage_intake_status?, :can_complete_admin_intake_review?
-  helper_method :can_filter_by_broker?, :can_filter_by_proprietor?
+  helper_method :can_filter_by_broker?, :can_filter_by_proprietor?, :can_export_proprietor_data?
+  helper_method :can_create_internal_intake?
+  helper_method :can_destroy_habitation?
+  helper_method :can_bulk_publish_habitations?
+  helper_method :can_edit_protected_habitation_fields?
   helper_method :active_extra_filters_count, :clear_extra_filter_params
   helper_method :owns_all_resource?
 
@@ -119,7 +123,7 @@ class Admin::HabitationsController < Admin::BaseController
       Integer(value, exception: false)
     end.uniq
 
-    scope = Proprietor.select(:id, :name, :phone_primary, :mobile_phone, :residential_phone, :business_phone, :email)
+    scope = current_tenant.proprietors.select(:id, :name, :phone_primary, :mobile_phone, :residential_phone, :business_phone, :email)
 
     proprietors =
       if query.present?
@@ -131,7 +135,7 @@ class Admin::HabitationsController < Admin::BaseController
       elsif selected_ids.any?
         scope.where(id: selected_ids).order(:name).limit(20)
       else
-        Proprietor.none
+        current_tenant.proprietors.none
       end
 
     render json: proprietors.map { |proprietor| { value: proprietor.id, text: proprietor.select_label } }
@@ -144,7 +148,7 @@ class Admin::HabitationsController < Admin::BaseController
       return
     end
 
-    habitation = resolve_admin_habitation_param(code) || Habitation.find_by(codigo_dwv: code)
+    habitation = resolve_admin_habitation_param(code) || current_tenant.habitations.find_by(codigo_dwv: code)
     unless habitation
       redirect_back fallback_location: admin_habitations_path, alert: "Nenhum cadastro encontrado para o código #{code}."
       return
@@ -342,7 +346,7 @@ class Admin::HabitationsController < Admin::BaseController
 
     updated_count = 0
     Habitation.transaction do
-      updated_count = Habitation.where(id: ids).update_all(updates)
+      updated_count = current_tenant.habitations.where(id: ids).update_all(updates)
       record_bulk_habitation_updates(bulk_audit_changesets, action_type: action_type, channels: channels)
     end
 
@@ -382,13 +386,13 @@ class Admin::HabitationsController < Admin::BaseController
 
     flag_column = config[:flag]
     target_flag = (action_type == "despublicar")
-    eligible = Habitation.where(id: ids).where(flag_column => target_flag).count
+    eligible = current_tenant.habitations.where(id: ids).where(flag_column => target_flag).count
 
     render json: { total: ids.size, eligible: eligible }
   end
 
   def new
-    @habitation = Habitation.new
+    @habitation = current_tenant.habitations.new
     assign_new_habitation_defaults(@habitation)
     prepare_development_from_source(@habitation)
     prepare_admin_paper_intake(@habitation) if admin_paper_intake_form?
@@ -408,7 +412,7 @@ class Admin::HabitationsController < Admin::BaseController
     permitted_attributes = habitation_params
     new_photo_uploads = extract_photo_uploads!(permitted_attributes)
     new_document_uploads = extract_document_uploads!(permitted_attributes)
-    @habitation = Habitation.new(permitted_attributes)
+    @habitation = current_tenant.habitations.new(permitted_attributes)
     @habitation.skip_auto_audit = true
     prepare_admin_paper_intake(@habitation) if admin_paper_intake_form?
     apply_picture_removals_to_memory(@habitation)
@@ -437,7 +441,7 @@ class Admin::HabitationsController < Admin::BaseController
       end
     end
 
-    assign_proprietor_from_legacy_fields(@habitation) if current_admin_user&.admin?
+    assign_proprietor_from_legacy_fields(@habitation) if can_access_sensitive_habitation_data?
     apply_intake_status_transition_metadata(@habitation)
 
     unless no_duplicate_address?(@habitation)
@@ -500,6 +504,11 @@ class Admin::HabitationsController < Admin::BaseController
         return
       end
 
+      if new_document_uploads.present?
+        attach_new_documents(@habitation, new_document_uploads)
+        new_document_uploads = {}
+      end
+
       unless @habitation.intake_ready_for_admin_review?(require_owner_city: true)
         @habitation.intake_missing_requirements(require_owner_city: true).each { |message| @habitation.errors.add(:base, message) }
         load_ai_suggestion
@@ -515,7 +524,7 @@ class Admin::HabitationsController < Admin::BaseController
       end
     end
 
-    assign_proprietor_from_legacy_fields(@habitation) if current_admin_user&.admin?
+    assign_proprietor_from_legacy_fields(@habitation) if can_access_sensitive_habitation_data?
     apply_intake_status_transition_metadata(@habitation)
     if @habitation.save
       attach_new_photos(@habitation, new_photo_uploads, apply_watermark: apply_photo_watermark_requested?)
@@ -538,8 +547,8 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def destroy
-    unless current_admin_user&.admin?
-      redirect_to admin_habitations_path, alert: "Apenas administradores podem excluir imóveis."
+    unless can_destroy_habitation?
+      redirect_to admin_habitations_path, alert: "Você não tem permissão para excluir imóveis."
       return
     end
 
@@ -658,7 +667,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def authorize_data_export!
-    return if current_admin_user&.admin? || administrative_profile?
+    return if tenant_owner? || owns_all_resource?(:imoveis)
 
     redirect_to admin_habitations_path, alert: "Você não tem permissão para imprimir ou exportar imóveis."
   end
@@ -666,10 +675,16 @@ class Admin::HabitationsController < Admin::BaseController
   def authorize_habitation_edit!
     return unless @habitation&.broker_intake?
     return unless @habitation.intake_submitted_for_admin_review?
-    return if current_admin_user&.admin? || administrative_profile?
+    return if can_complete_admin_intake_review?(@habitation)
     return if current_admin_user&.can_view_team?(:captacoes) && manager_can_view_proprietor_data?(@habitation)
 
-    redirect_to admin_habitations_path, alert: "Captações pendentes de revisão só podem ser alteradas pelo Administrativo ou Gerente responsável."
+    redirect_to admin_habitations_path, alert: "Captações pendentes de revisão só podem ser alteradas por quem revisa captações ou pelo gestor responsável."
+  end
+
+  def authorize_bulk_publish!
+    return if can_bulk_publish_habitations?
+
+    render json: { error: "Você não tem permissão para publicação em massa de imóveis." }, status: :forbidden
   end
 
   def sort_column
@@ -706,9 +721,9 @@ class Admin::HabitationsController < Admin::BaseController
     return if identifier.blank?
 
     if identifier.match?(/\A\d+\z/)
-      Habitation.find_by(codigo: identifier) || Habitation.find_by(id: identifier)
+      current_tenant.habitations.find_by(codigo: identifier) || current_tenant.habitations.find_by(id: identifier)
     else
-      Habitation.friendly.find(identifier)
+      current_tenant.habitations.friendly.find(identifier)
     end
   rescue ActiveRecord::RecordNotFound
     nil
@@ -731,8 +746,10 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def load_autocomplete_data
-    @proprietors = Proprietor.select(:id, :name).order(name: :asc)
-    @developments = Habitation.empreendimentos
+    tenant_habitations = current_tenant.habitations
+
+    @proprietors = current_tenant.proprietors.select(:id, :name).order(name: :asc)
+    @developments = tenant_habitations.empreendimentos
                               .includes(:address)
                               .select(
                                 :id, :slug, :codigo, :nome_empreendimento, :titulo_anuncio,
@@ -742,10 +759,10 @@ class Admin::HabitationsController < Admin::BaseController
                               )
                               .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
                               .order(nome_empreendimento: :asc)
-    @brokers = AdminUser.select(:id, :name).order(name: :asc)
+    @brokers = habitation_visible_admin_users.select(:id, :name).order(name: :asc)
 
-    cached = Rails.cache.fetch("admin/habitations/form_options/v1", expires_in: 2.minutes) do
-      base_address_scope = Habitation.left_outer_joins(:address)
+    cached = Rails.cache.fetch("admin/habitations/form_options/v1/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
+      base_address_scope = tenant_habitations.left_outer_joins(:address)
 
       {
         cities: base_address_scope
@@ -763,10 +780,10 @@ class Admin::HabitationsController < Admin::BaseController
           .distinct
           .pluck(Arel.sql("addresses.bairro_comercial"))
           .sort,
-        badges: AttributeOption.where(context: 'habitation', category: 'unique_feature').order(name: :asc).pluck(:name),
-        imediacoes_options: AttributeOption.where(context: 'habitation', category: 'imediacoes').order(name: :asc).pluck(:name),
-        internal_features: (AttributeOption.where(context: 'habitation', category: 'feature').order(name: :asc).pluck(:name) + CUSTOM_FEATURE_OPTIONS).uniq.sort,
-        external_features: AttributeOption.where(context: 'habitation', category: 'infrastructure').order(name: :asc).pluck(:name)
+        badges: current_tenant.attribute_options.where(context: 'habitation', category: 'unique_feature').order(name: :asc).pluck(:name),
+        imediacoes_options: current_tenant.attribute_options.where(context: 'habitation', category: 'imediacoes').order(name: :asc).pluck(:name),
+        internal_features: (current_tenant.attribute_options.where(context: 'habitation', category: 'feature').order(name: :asc).pluck(:name) + CUSTOM_FEATURE_OPTIONS).uniq.sort,
+        external_features: current_tenant.attribute_options.where(context: 'habitation', category: 'infrastructure').order(name: :asc).pluck(:name)
       }
     end
 
@@ -779,59 +796,60 @@ class Admin::HabitationsController < Admin::BaseController
     @external_features = cached[:external_features]
     @categories = (
       Habitation::CATEGORIES +
-      Habitation.where("NULLIF(TRIM(categoria), '') IS NOT NULL AND categoria != '.'").distinct.pluck(:categoria) +
+      tenant_habitations.where("NULLIF(TRIM(categoria), '') IS NOT NULL AND categoria != '.'").distinct.pluck(:categoria) +
       ["Empreendimento"]
     ).compact.uniq.sort
     @status_options = (
       Habitation::STATUS_OPTIONS +
-      Habitation.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'").distinct.pluck(:status)
+      tenant_habitations.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'").distinct.pluck(:status)
     ).compact.uniq
   end
 
   def load_filter_data
-    cached = Rails.cache.fetch("admin/habitations/filter_data/v4", expires_in: 2.minutes) do
+    tenant_habitations = current_tenant.habitations
+
+    cached = Rails.cache.fetch("admin/habitations/filter_data/v4/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
       city_sql = "COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), ''))"
       neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), ''))"
       commercial_neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro_comercial), ''), NULLIF(TRIM(habitations.bairro_comercial), ''))"
-      existing_key_locations = Habitation.where("NULLIF(TRIM(key_location), '') IS NOT NULL")
+      existing_key_locations = tenant_habitations.where("NULLIF(TRIM(key_location), '') IS NOT NULL")
                                          .distinct
                                          .pluck(:key_location)
                                          .sort
 
       {
-        categories: Habitation.where("NULLIF(TRIM(categoria), '') IS NOT NULL AND categoria != '.'")
+        categories: tenant_habitations.where("NULLIF(TRIM(categoria), '') IS NOT NULL AND categoria != '.'")
                               .distinct.pluck(:categoria).sort,
-        cities: Habitation.left_outer_joins(:address)
+        cities: tenant_habitations.left_outer_joins(:address)
                           .where("#{city_sql} IS NOT NULL AND #{city_sql} != '.'")
                           .distinct
                           .pluck(Arel.sql(city_sql))
                           .sort,
-        bairros: Habitation.left_outer_joins(:address)
+        bairros: tenant_habitations.left_outer_joins(:address)
                            .where("#{neighborhood_sql} IS NOT NULL AND #{neighborhood_sql} != '.'")
                            .distinct
                            .pluck(Arel.sql(neighborhood_sql))
                            .sort,
-        bairros_comerciais: Habitation.left_outer_joins(:address)
+        bairros_comerciais: tenant_habitations.left_outer_joins(:address)
                                       .where("#{commercial_neighborhood_sql} IS NOT NULL AND #{commercial_neighborhood_sql} != '.'")
                                       .distinct
                                       .pluck(Arel.sql(commercial_neighborhood_sql))
                                       .reject { |name| excluded_commercial_neighborhood?(name) }
                                       .sort,
-        statuses: Habitation.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
+        statuses: tenant_habitations.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
                             .distinct.pluck(:status).sort,
         key_locations: (Habitation::KEY_LOCATION_OPTIONS + existing_key_locations).uniq,
         empreendimentos: filter_empreendimento_options,
-        brokers: AdminUser.account_members.order(name: :asc).pluck(:name, :id),
-        situacoes: (Habitation::SITUATIONS + Habitation.where("NULLIF(TRIM(situacao), '') IS NOT NULL AND situacao != '.'")
+        situacoes: (Habitation::SITUATIONS + tenant_habitations.where("NULLIF(TRIM(situacao), '') IS NOT NULL AND situacao != '.'")
                                                        .distinct
                                                        .pluck(:situacao)).uniq.sort,
-        faces: (Habitation::FACES + Habitation.where("NULLIF(TRIM(face), '') IS NOT NULL AND face != '.'")
+        faces: (Habitation::FACES + tenant_habitations.where("NULLIF(TRIM(face), '') IS NOT NULL AND face != '.'")
                                               .distinct
                                               .pluck(:face)).uniq.sort,
-        ocupacao_statuses: (Habitation::OCUPACAO_STATUS + Habitation.where("NULLIF(TRIM(ocupacao_status), '') IS NOT NULL AND ocupacao_status != '.'")
+        ocupacao_statuses: (Habitation::OCUPACAO_STATUS + tenant_habitations.where("NULLIF(TRIM(ocupacao_status), '') IS NOT NULL AND ocupacao_status != '.'")
                                                                     .distinct
                                                                     .pluck(:ocupacao_status)).uniq.sort,
-        estado_conservacoes: (Habitation::ESTADO_CONSERVACAO + Habitation.where("NULLIF(TRIM(estado_conservacao), '') IS NOT NULL AND estado_conservacao != '.'")
+        estado_conservacoes: (Habitation::ESTADO_CONSERVACAO + tenant_habitations.where("NULLIF(TRIM(estado_conservacao), '') IS NOT NULL AND estado_conservacao != '.'")
                                                                         .distinct
                                                                         .pluck(:estado_conservacao)).uniq.sort
       }
@@ -844,7 +862,7 @@ class Admin::HabitationsController < Admin::BaseController
     @filter_statuses = ["Venda", "Locação", "Ambos"] # status = tipo de negócio
     @filter_key_locations = cached[:key_locations]
     @filter_empreendimentos = cached[:empreendimentos]
-    @filter_brokers = cached[:brokers]
+    @filter_brokers = habitation_visible_admin_users.order(name: :asc).pluck(:name, :id)
     @filter_proprietors = selected_filter_proprietors
     @filter_situacoes = cached[:situacoes]
     @filter_faces = cached[:faces]
@@ -953,7 +971,7 @@ class Admin::HabitationsController < Admin::BaseController
     @key_location = params[:key_location]
     @salute_rental_management = params[:salute_rental_management]
     @empreendimento_codigo = params[:empreendimento_codigo]
-    @corretor_id = params[:corretor_id]
+    @corretor_id = visible_habitation_admin_user_id(params[:corretor_id])
     @proprietor_id = can_filter_by_proprietor? ? params[:proprietor_id] : nil
     @destaque_web = params[:destaque_web]
     @festival_salute = params[:festival_salute]
@@ -993,7 +1011,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def filtered_habitations_scope
-    scope = Habitation.left_outer_joins(:address)
+    scope = current_tenant.habitations.left_outer_joins(:address)
     scope = if @intake_review == "pending"
               pending_intake_review_scope(scope)
             else
@@ -1093,7 +1111,7 @@ class Admin::HabitationsController < Admin::BaseController
       )
     end
     if @corretor_id.present?
-      broker_name = AdminUser.where(id: @corretor_id).pick(:name).to_s
+      broker_name = current_tenant.admin_users.where(id: @corretor_id).pick(:name).to_s
       scope = scope.where(
         "EXISTS (
            SELECT 1
@@ -1188,9 +1206,15 @@ class Admin::HabitationsController < Admin::BaseController
 
   # Imóveis pertencentes à equipe (subárvore): dono direto ou corretor designado.
   def team_property_scope(scope, owner_ids)
-    scope.left_outer_joins(:broker_assignments)
-         .where("habitations.admin_user_id IN (:ids) OR habitation_broker_assignments.admin_user_id IN (:ids)", ids: owner_ids)
-         .distinct
+    scope.where(
+      "habitations.admin_user_id IN (:ids) OR EXISTS (
+        SELECT 1
+        FROM habitation_broker_assignments
+        WHERE habitation_broker_assignments.habitation_id = habitations.id
+          AND habitation_broker_assignments.admin_user_id IN (:ids)
+      )",
+      ids: owner_ids
+    )
   end
 
   def scope_for_current_user_properties(scope)
@@ -1218,7 +1242,7 @@ class Admin::HabitationsController < Admin::BaseController
     scope = scope.broker_intakes.where(intake_status: pending_review_visible_statuses)
 
     if can_review_intakes?
-      return restrict_pending_review_to_manager_team(scope) if current_admin_user&.can_view_team?(:captacoes) && !administrative_profile? && !current_admin_user&.admin?
+      return restrict_pending_review_to_manager_team(scope) if current_admin_user&.can_view_team?(:captacoes) && !owns_all_resource?(:captacoes) && !tenant_owner?
 
       scope
     else
@@ -1227,11 +1251,10 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def pending_review_visible_statuses
-    if administrative_profile? && !current_admin_user&.admin?
-      %w[submitted_for_admin_review]
-    else
-      Habitation::PENDING_REVIEW_INTAKE_STATUSES
-    end
+    return Habitation::PENDING_REVIEW_INTAKE_STATUSES if tenant_owner?
+    return %w[submitted_for_admin_review] if can_review_intakes?
+
+    %w[admin_approved]
   end
 
   def normalized_report_type
@@ -1365,21 +1388,21 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def can_view_proprietor_data?(habitation)
-    return true if current_admin_user&.admin? || administrative_profile?
+    return true if can_access_sensitive_habitation_data?
     return manager_can_view_proprietor_data?(habitation) if current_admin_user&.can_view_team?(:imoveis)
 
     property_belongs_to_current_user?(habitation)
   end
 
   def can_view_internal_documents?(habitation)
-    return true if current_admin_user&.admin? || administrative_profile?
+    return true if can_access_sensitive_habitation_data?
     return manager_can_view_proprietor_data?(habitation) if current_admin_user&.can_view_team?(:imoveis)
 
     property_belongs_to_current_user?(habitation)
   end
 
   def can_view_habitation_show_sensitive_data?(habitation)
-    return true if current_admin_user&.admin? || administrative_profile?
+    return true if can_access_sensitive_habitation_data?
     return manager_can_view_proprietor_data?(habitation) if current_admin_user&.can_view_team?(:imoveis)
 
     property_captured_by_current_user?(habitation)
@@ -1415,21 +1438,21 @@ class Admin::HabitationsController < Admin::BaseController
   def can_complete_admin_intake_review?(habitation)
     return false unless habitation&.broker_intake?
 
-    current_admin_user&.admin? || owns_all_resource?(:imoveis) || can?(:review, :captacoes)
+    tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes)
   end
 
   def can_review_intakes?
-    current_admin_user&.admin? || administrative_profile? || current_admin_user&.can_view_team?(:captacoes) || can?(:review, :captacoes)
+    tenant_owner? || current_admin_user&.can_view_team?(:captacoes) || can?(:review, :captacoes)
   end
 
   def can_manage_intake_status?(habitation)
     return false unless habitation&.broker_intake?
 
-    current_admin_user&.admin? || owns_all_resource?(:imoveis) || can?(:review, :captacoes)
+    tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes)
   end
 
   def can_manage_internal_documents?
-    current_admin_user&.admin? || administrative_profile?
+    can_access_sensitive_habitation_data?
   end
 
   def no_duplicate_address?(habitation)
@@ -1442,7 +1465,8 @@ class Admin::HabitationsController < Admin::BaseController
       complement: habitation.complemento,
       category: habitation.categoria,
       comparison: habitation.duplicate_identity_scope,
-      ignored_id: habitation.id
+      ignored_id: habitation.id,
+      tenant: Current.tenant
     ).call
     return true unless result.complete && result.duplicate?
 
@@ -1552,7 +1576,11 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def admin_paper_intake_form?
-    admin_paper_intake_requested? && (current_admin_user&.admin? || administrative_profile? || can?(:review, :captacoes))
+    admin_paper_intake_requested? && can_create_internal_intake?
+  end
+
+  def can_create_internal_intake?
+    tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes)
   end
 
   def admin_paper_intake_requested?
@@ -1594,7 +1622,7 @@ class Admin::HabitationsController < Admin::BaseController
     @source_habitation = nil
     return @source_habitation if id.blank?
 
-    candidate = Habitation.find_by(id: id)
+    candidate = current_tenant.habitations.find_by(id: id)
     @source_habitation = candidate if candidate.present? && can_edit_habitation?(candidate) && !candidate.empreendimento?
   end
 
@@ -1656,19 +1684,17 @@ class Admin::HabitationsController < Admin::BaseController
     end
   end
 
-  # Filtro de status = tipo de negócio: Venda / Locação / Ambos, derivado dos
-  # valores (mesma lógica de `modalidade`). "Ambos" = tem valor de venda e locação.
   def apply_status_filter(scope, raw_status)
-    case raw_status.to_s.strip.downcase
-    when "venda"
-      scope.where("habitations.valor_venda_cents > 0 AND COALESCE(habitations.valor_locacao_cents, 0) = 0")
-    when "locacao", "locação"
-      scope.where("habitations.valor_locacao_cents > 0 AND COALESCE(habitations.valor_venda_cents, 0) = 0")
+    status = raw_status.to_s.squish
+    normalized_status = Habitation.normalize_status(status)
+
+    case I18n.transliterate(status).downcase
+    when "", "todos"
+      scope.where.not("unaccent(TRIM(habitations.status)) = unaccent(?)", "Suspenso")
     when "ambos"
       scope.where("habitations.valor_venda_cents > 0 AND habitations.valor_locacao_cents > 0")
     else
-      # "Todos"/vazio: mantém o comportamento de esconder suspensos.
-      scope.where.not("unaccent(TRIM(habitations.status)) = unaccent(?)", "Suspenso")
+      scope.where("unaccent(TRIM(habitations.status)) = unaccent(?)", normalized_status)
     end
   end
 
@@ -1892,7 +1918,7 @@ class Admin::HabitationsController < Admin::BaseController
     permitted = params.require(:habitation).permit(*permitted_habitation_fields)
     strip_blank_photo_uploads!(permitted)
 
-    unless current_admin_user&.admin? || owns_all_resource?(:imoveis)
+    unless can_edit_protected_habitation_fields?
       permitted = permitted.except(*broker_protected_habitation_param_keys)
     end
 
@@ -2050,13 +2076,14 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def filter_empreendimento_options
-    development_options = Habitation.empreendimentos
+    tenant_habitations = current_tenant.habitations
+    development_options = tenant_habitations.empreendimentos
       .where("NULLIF(TRIM(codigo), '') IS NOT NULL")
       .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
       .pluck(:nome_empreendimento, :codigo)
 
     names_with_development = development_options.map { |name, _code| normalized_filter_text(name) }
-    standalone_options = Habitation
+    standalone_options = tenant_habitations
       .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
       .where.not(tipo: "Empreendimento")
       .distinct
@@ -2120,7 +2147,7 @@ class Admin::HabitationsController < Admin::BaseController
     audit_fields -= %w[updated_at]
     return {} if audit_fields.blank?
 
-    Habitation.where(id: ids).pluck(:id, *audit_fields).each_with_object({}) do |row, result|
+    current_tenant.habitations.where(id: ids).pluck(:id, *audit_fields).each_with_object({}) do |row, result|
       habitation_id = row.first
       changeset = {}
 
@@ -2137,7 +2164,7 @@ class Admin::HabitationsController < Admin::BaseController
   def record_bulk_habitation_updates(changesets_by_id, action_type:, channels:)
     return if changesets_by_id.blank?
 
-    Habitation.where(id: changesets_by_id.keys).find_each do |habitation|
+    current_tenant.habitations.where(id: changesets_by_id.keys).find_each do |habitation|
       Habitations::AuditChangeRecorder.new(
         habitation,
         actor: current_admin_user,
@@ -2260,7 +2287,19 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def can_manage_habitation_signal_flags?
-    current_admin_user&.admin? || administrative_profile? || owns_all_resource?(:imoveis)
+    tenant_owner? || owns_all_resource?(:imoveis) || can?(:review, :captacoes)
+  end
+
+  def can_destroy_habitation?
+    tenant_owner? || (can?(:manage, :imoveis) && owns_all_resource?(:imoveis))
+  end
+
+  def can_bulk_publish_habitations?
+    tenant_owner? || (can?(:manage, :imoveis) && owns_all_resource?(:imoveis))
+  end
+
+  def can_edit_protected_habitation_fields?
+    tenant_owner? || owns_all_resource?(:imoveis)
   end
 
   def property_belongs_to_current_user?(habitation)
@@ -2285,20 +2324,35 @@ class Admin::HabitationsController < Admin::BaseController
     broker_name.present? && habitation.corretor_nome.to_s.downcase.include?(broker_name.downcase)
   end
 
-  def administrative_profile?
-    current_admin_user&.profile&.administrativo?
-  end
-
   def can_filter_by_proprietor?
-    current_admin_user&.admin? || administrative_profile?
+    can_export_proprietor_data?
   end
 
   def can_filter_by_broker?
-    current_admin_user&.admin? || current_admin_user&.profile&.can?(:view, :imoveis)
+    tenant_owner? || can?(:view, :imoveis)
   end
 
   def can_export_proprietor_data?
-    current_admin_user&.admin? || administrative_profile?
+    can_access_sensitive_habitation_data?
+  end
+
+  def habitation_visible_admin_users
+    ids = accessible_owner_ids(:imoveis)
+    scope = current_tenant.admin_users.account_members
+    ids.nil? ? scope : scope.where(id: ids)
+  end
+
+  def visible_habitation_admin_user_id(value)
+    return nil if value.blank?
+
+    id = value.to_i
+    return nil unless id.positive?
+
+    habitation_visible_admin_users.exists?(id: id) ? id.to_s : nil
+  end
+
+  def can_access_sensitive_habitation_data?
+    tenant_owner? || owns_all_resource?(:imoveis) || can?(:review, :captacoes)
   end
 
   # Equipe do gestor = própria subárvore recursiva (team_scope_ids), ainda recortada
@@ -2309,7 +2363,7 @@ class Admin::HabitationsController < Admin::BaseController
     ids = current_admin_user.team_scope_ids
     return ids if current_admin_user.both?
 
-    AdminUser.where(id: ids, acting_type: manager_allowed_acting_types).pluck(:id)
+    current_tenant.admin_users.where(id: ids, acting_type: manager_allowed_acting_types).pluck(:id)
   end
 
   def manager_allowed_acting_types

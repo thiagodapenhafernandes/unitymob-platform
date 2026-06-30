@@ -46,7 +46,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     }
 
     expect(response).to redirect_to(admin_whatsapp_integration_path(tab: "site_phones"))
-    integration = WhatsappBusinessIntegration.current
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
     expect(integration.phone_for("sale")).to eq("5547991111111")
     expect(integration.phone_for("rent")).to eq("5547992222222")
     expect(integration.requires_form_for?("rent")).to be(false)
@@ -70,7 +70,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     }, as: :json
 
     expect(response).to have_http_status(:ok)
-    integration = WhatsappBusinessIntegration.current
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
     expect(integration).to be_connected
     expect(integration.access_token).to eq("business-token")
     expect(integration.connected_by_admin_user).to eq(admin)
@@ -86,7 +86,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     }, as: :json
 
     expect(response).to have_http_status(:unprocessable_content)
-    integration = WhatsappBusinessIntegration.current
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
     expect(integration.status).to eq("canceled")
     expect(integration.last_error_message).to eq("Conexão cancelada na Meta em PHONE_NUMBER_SETUP.")
     expect(integration.access_token).to be_blank
@@ -102,7 +102,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
 
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.parsed_body["message"]).to include("Meta retornou erro")
-    integration = WhatsappBusinessIntegration.current
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
     expect(integration.status).to eq("failed")
     expect(integration.last_error_message).to include("Meta retornou erro")
     expect(integration.signup_payload).to eq("event" => "ERROR", "session_info" => {})
@@ -118,7 +118,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     }, as: :json
 
     expect(response).to have_http_status(:unprocessable_content)
-    integration = WhatsappBusinessIntegration.current
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
     expect(integration.status).to eq("failed")
     expect(integration.last_error_message).to include("WABA ID")
     expect(integration.access_token).to be_blank
@@ -130,7 +130,7 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     delete disconnect_admin_whatsapp_integration_path
 
     expect(response).to redirect_to(admin_whatsapp_integration_path)
-    integration = WhatsappBusinessIntegration.current
+    integration = WhatsappBusinessIntegration.current(admin.tenant)
     expect(integration.status).to eq("disconnected")
     expect(integration.access_token).to be_nil
   end

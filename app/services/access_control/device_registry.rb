@@ -13,15 +13,28 @@ module AccessControl
 
     def call
       fingerprint = device_fingerprint
-      device = TrustedDevice.find_or_initialize_by(admin_user: admin_user, fingerprint: fingerprint)
+      device = trusted_device_scope.find_or_initialize_by(admin_user: admin_user, fingerprint: fingerprint)
       device.assign_attributes(device_attributes)
       device.save!
+      device
+    rescue ActiveRecord::RecordNotUnique => error
+      device = TrustedDevice.where(admin_user: admin_user, fingerprint: fingerprint).first
+      raise error unless device
+
+      device.tenant = admin_user.system_admin? ? nil : admin_user.tenant
+      device.update!(device_attributes)
       device
     end
 
     private
 
     attr_reader :controller, :admin_user
+
+    def trusted_device_scope
+      return TrustedDevice.where(tenant_id: nil) if admin_user.system_admin?
+
+      admin_user.tenant.trusted_devices
+    end
 
     def device_fingerprint
       existing = cookie_jar.signed[COOKIE_KEY].presence

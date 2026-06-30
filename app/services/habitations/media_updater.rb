@@ -36,18 +36,7 @@ module Habitations
       return if valid_uploads.blank?
 
       existing_attachment_ids = habitation.photos.attachments.ids
-      blobs = valid_uploads.map.with_index do |upload, index|
-        Storage::BlobFactory.create_from_upload!(
-          upload,
-          service_name: Storage::Routing.service_name_for(record: habitation, name: "photos"),
-          key_prefix: ["habitations", habitation.codigo.presence || habitation.id, "photos"].join("/"),
-          metadata: {
-            "identified" => true,
-            "source" => "admin_upload",
-            "position" => index + 1
-          }
-        )
-      end
+      blobs = valid_uploads.map.with_index { |upload, index| blob_for_photo_upload(upload, index) }
       habitation.photos.attach(blobs)
       habitation.reload
 
@@ -60,7 +49,7 @@ module Habitations
 
       return unless apply_watermark && property_setting&.watermark_configured?
 
-      HabitationPhotoWatermarkJob.perform_later(habitation.id, new_attachment_ids, property_setting.id)
+      HabitationPhotoWatermarkJob.perform_later(habitation.id, new_attachment_ids, property_setting.id, tenant_id: habitation.tenant_id)
     end
 
     def extract_document_uploads!(attributes)
@@ -95,6 +84,21 @@ module Habitations
         end
         habitation.public_send(name).attach(blobs)
       end
+    end
+
+    def blob_for_photo_upload(upload, index)
+      return ActiveStorage::Blob.find_signed!(upload) if upload.is_a?(String)
+
+      Storage::BlobFactory.create_from_upload!(
+        upload,
+        service_name: Storage::Routing.service_name_for(record: habitation, name: "photos"),
+        key_prefix: ["habitations", habitation.codigo.presence || habitation.id, "photos"].join("/"),
+        metadata: {
+          "identified" => true,
+          "source" => "admin_upload",
+          "position" => index + 1
+        }
+      )
     end
 
     def apply_picture_removals_to_memory(indices = selected_picture_indices_for_removal)

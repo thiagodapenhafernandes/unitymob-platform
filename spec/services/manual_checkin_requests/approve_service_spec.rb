@@ -15,6 +15,7 @@ RSpec.describe ManualCheckinRequests::ApproveService do
       expect(ci.status).to eq("active")
       expect(ci.admin_user).to eq(agent)
       expect(ci.store).to eq(store)
+      expect(ci.tenant).to eq(request.tenant)
       expect(ci.device_info["manual"]).to be true
 
       expect(request.reload).to be_approved
@@ -26,6 +27,7 @@ RSpec.describe ManualCheckinRequests::ApproveService do
       expect {
         described_class.new(request: request, reviewer: admin, notes: "ok").call
       }.to change { CheckinAuditLog.where(action: "manual_request_approved").count }.by(1)
+      expect(CheckinAuditLog.where(action: "manual_request_approved").last.tenant).to eq(request.tenant)
     end
 
     it "falha se já existe check-in ativo" do

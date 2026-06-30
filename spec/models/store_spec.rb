@@ -36,6 +36,26 @@ RSpec.describe Store, type: :model do
       expect(store).not_to be_valid
       expect(store.errors[:longitude]).to be_present
     end
+
+    it "rejeita diretor de outra conta" do
+      tenant = Tenant.create!(name: "Conta A", slug: "conta-a-#{SecureRandom.hex(3)}")
+      other_tenant = Tenant.create!(name: "Conta B", slug: "conta-b-#{SecureRandom.hex(3)}")
+      director_profile = Profile.create!(tenant: other_tenant, name: "Operacional", axis: "vertical", position: 50)
+      director = create(:admin_user, tenant: other_tenant, profile: director_profile)
+      store = build(:store, tenant: tenant, director: director)
+
+      expect(store).not_to be_valid
+      expect(store.errors[:director]).to include("deve pertencer à mesma conta da loja")
+    end
+
+    it "aceita diretor da mesma conta" do
+      tenant = Tenant.create!(name: "Conta C", slug: "conta-c-#{SecureRandom.hex(3)}")
+      director_profile = Profile.create!(tenant: tenant, name: "Operacional", axis: "vertical", position: 50)
+      director = create(:admin_user, tenant: tenant, profile: director_profile)
+      store = build(:store, tenant: tenant, director: director)
+
+      expect(store).to be_valid
+    end
   end
 
   describe "friendly_id slug" do

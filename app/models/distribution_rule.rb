@@ -1,4 +1,6 @@
 class DistributionRule < ApplicationRecord
+  include TenantScoped
+
   after_initialize :set_defaults
 
   has_many :distribution_rule_agents, dependent: :destroy
@@ -18,6 +20,29 @@ class DistributionRule < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
+  def eligible_admin_users_scope
+    tenant.admin_users.active.where.not(profile_id: nil)
+  end
+
+  def eligible_distribution_agent?(admin_user)
+    admin_user.present? &&
+      admin_user.tenant_id == tenant_id &&
+      admin_user.active? &&
+      admin_user.profile&.vertical?
+  end
+
+  def eligible_distribution_rule_agents(candidates = distribution_rule_agents)
+    if candidates.respond_to?(:joins)
+      candidates
+        .joins(admin_user: :profile)
+        .where(tenant_id: tenant_id)
+        .where(admin_users: { tenant_id: tenant_id, active: true, super_admin: false })
+        .where(profiles: { tenant_id: tenant_id, axis: Profile::AXES[:vertical] })
+    else
+      candidates.select { |candidate| eligible_distribution_agent?(candidate.admin_user) }
+    end
+  end
+
   def self.pocket_requires_secure_push?
     setting = LeadSetting.instance
     setting.secure_links_enabled? && setting.secure_link_push?
@@ -30,9 +55,13 @@ class DistributionRule < ApplicationRecord
   end
 
   def next_available_agent(candidates = nil)
-    candidates ||= distribution_rule_agents
+    candidates = eligible_distribution_rule_agents(candidates || distribution_rule_agents)
     if rotary?
-      candidates.order(position: :asc, last_lead_received_at: :asc).first
+      if candidates.respond_to?(:order)
+        candidates.order(position: :asc, last_lead_received_at: :asc).first
+      else
+        candidates.min_by { |dra| [ dra.position.to_i, dra.last_lead_received_at || Time.at(0) ] }
+      end
     elsif performance?
       candidates.to_a.max_by { |dra| rand ** (1.0 / dra.weight) }
     else
@@ -61,9 +90,10 @@ class DistributionRule < ApplicationRecord
   #                                 AGORA; se check-in manual sem turno, exige um
   #                                 turno ativo do corretor naquela loja.
   def candidates_filtered_by_checkin
-    return distribution_rule_agents unless require_active_checkin?
+    eligible_agents = eligible_distribution_rule_agents
+    return eligible_agents unless require_active_checkin?
 
-    scope = CheckIn.where(status: :active)
+    scope = tenant.check_ins.where(status: :active)
     store_ids = checkin_store_id_list
     scope = scope.where(store_id: store_ids) if store_ids.any?
     scope = scope.where(suspicious: false) if exclude_suspicious_checkins?
@@ -72,7 +102,7 @@ class DistributionRule < ApplicationRecord
     scope = scope.includes(:store_shift, :admin_user)
 
     eligible_user_ids = scope.select { |ci| shift_ok?(ci) }.map(&:admin_user_id)
-    distribution_rule_agents.where(admin_user_id: eligible_user_ids)
+    eligible_agents.where(admin_user_id: eligible_user_ids)
   end
 
   # URLs de webhook externo desta regra (config no form, multi-valor).
@@ -86,16 +116,16 @@ class DistributionRule < ApplicationRecord
   def rotate_queue!(just_served_admin_user_id)
     return unless rotary?
 
-    served = distribution_rule_agents.find_by(admin_user_id: just_served_admin_user_id)
+    served = distribution_rule_agents.find_by(tenant_id: tenant_id, admin_user_id: just_served_admin_user_id)
     return unless served
 
-    max_pos = distribution_rule_agents.maximum(:position) || 0
+    max_pos = distribution_rule_agents.where(tenant_id: tenant_id).maximum(:position) || 0
     served.update(position: max_pos + 1, last_lead_received_at: Time.current)
   end
 
   def mark_agent_served!(admin_user_id)
     distribution_rule_agents
-      .where(admin_user_id: admin_user_id)
+      .where(tenant_id: tenant_id, admin_user_id: admin_user_id)
       .update_all(last_lead_received_at: Time.current, updated_at: Time.current)
   end
 

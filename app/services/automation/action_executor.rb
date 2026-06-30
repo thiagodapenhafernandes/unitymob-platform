@@ -72,6 +72,8 @@ module Automation
     def self.flow_result_label(action)
       if action[:result].to_s == "generates_attendance"
         "resultado: gera atendimento"
+      elsif action[:result].to_s == "record_only"
+        "resultado: apenas registrar"
       else
         "resultado: não gera atendimento"
       end
@@ -82,6 +84,7 @@ module Automation
       return unless assignee
 
       task = Task.create!(
+        tenant: @lead.tenant,
         lead: @lead,
         admin_user: assignee,
         title: action[:title].presence || "Follow-up automático",
@@ -96,7 +99,7 @@ module Automation
       phone = normalized_phone
       return if phone.blank?
 
-      conversation = WhatsappConversation.find_or_create_by!(contact_phone: phone) do |record|
+      conversation = @lead.tenant.whatsapp_conversations.find_or_create_by!(contact_phone: phone) do |record|
         record.lead = @lead
         record.contact_name = @lead.display_name
       end
@@ -109,7 +112,7 @@ module Automation
             status: "pending",
             msg_type: "template",
             template_name: action[:template],
-            body: WhatsappTemplate.find_by(name: action[:template])&.body
+            body: @lead.tenant.whatsapp_templates.find_by(name: action[:template])&.body
           )
         else
           conversation.messages.create!(
@@ -121,7 +124,7 @@ module Automation
         end
 
       conversation.touch_last_message!(message)
-      Whatsapp::SendMessageJob.perform_later(message.id)
+      Whatsapp::SendMessageJob.perform_later(message.id, tenant_id: message.tenant_id)
       LeadActivity.log!(lead: @lead, kind: "whatsapp_out", metadata: { body: message.preview, by: "Automação" })
     end
 
@@ -149,11 +152,11 @@ module Automation
 
     def act_set_flow_result(action)
       result = action[:result].presence || "no_attendance"
-      raise ArgumentError, "Resultado do caminho inválido" unless %w[generates_attendance no_attendance].include?(result.to_s)
+      raise ArgumentError, "Resultado do caminho inválido" unless %w[generates_attendance no_attendance record_only].include?(result.to_s)
 
       destination = nil
       if result.to_s == "generates_attendance"
-        destination = DistributionRule.active.find_by(id: action[:distribution_rule_id])
+        destination = tenant.distribution_rules.active.find_by(id: action[:distribution_rule_id])
         raise ArgumentError, "Resultado com atendimento sem destino" unless destination
 
         @lead ||= campaign_recipient&.convert_to_lead!(distribution_rule: destination)
@@ -161,7 +164,11 @@ module Automation
 
         @lead.update!(distribution_rule: destination)
       elsif @lead.nil? && campaign_recipient
-        campaign_recipient.mark_no_interest!
+        if result.to_s == "no_attendance"
+          campaign_recipient.mark_no_interest!
+        elsif campaign_recipient.conversion_status == "pending"
+          campaign_recipient.update!(conversion_status: "ignored")
+        end
       end
 
       if @lead
@@ -170,7 +177,7 @@ module Automation
           kind: "automation_flow_result",
           metadata: {
             result: result,
-            result_label: result.to_s == "generates_attendance" ? "Gera atendimento" : "Não gera atendimento",
+            result_label: flow_result_name(result),
             distribution_rule_id: destination&.id,
             distribution_rule_name: destination&.name,
             note: render_text(action[:note]),
@@ -195,6 +202,7 @@ module Automation
         case lifecycle_action
         when "unsubscribe_lead"
           campaign_recipient.unsubscribe!
+          register_campaign_unsubscribe!
         when "mark_no_interest", "block_lead", "discard_lead"
           campaign_recipient.mark_no_interest!
         end
@@ -231,8 +239,37 @@ module Automation
       end
     end
 
+    def flow_result_name(result)
+      {
+        "generates_attendance" => "Gera atendimento",
+        "no_attendance" => "Não gera atendimento",
+        "record_only" => "Apenas registrar"
+      }[result.to_s] || result.to_s
+    end
+
+    def register_campaign_unsubscribe!
+      message = webhook_campaign_message
+      campaign = message&.whatsapp_campaign || webhook_campaign
+      sender_number = campaign&.sender_number
+      recipient = campaign_recipient
+      return unless sender_number && message
+
+      WhatsappCampaignUnsubscribe.register!(
+        sender_number: sender_number,
+        phone: message.phone_number,
+        contact_name: recipient&.display_name,
+        campaign_message: message,
+        campaign_recipient: recipient,
+        inbound_message: inbound_whatsapp_message,
+        metadata: {
+          automation_event_id: @automation_event&.id,
+          automation_workflow: true
+        }.compact
+      )
+    end
+
     def act_assign_agent(action)
-      agent = AdminUser.find_by(id: action[:admin_user_id])
+      agent = @lead.tenant.admin_users.find_by(id: action[:admin_user_id])
       @lead.update(admin_user: agent) if agent
     end
 
@@ -246,6 +283,7 @@ module Automation
 
       profile = InterestIntelligence::ProfileBuilder.call(@lead)
       task = Task.create!(
+        tenant: @lead.tenant,
         lead: @lead,
         admin_user: assignee,
         title: action[:title].presence || "Curar imóveis para #{ @lead.display_name }",
@@ -300,6 +338,7 @@ module Automation
       matches = InterestIntelligence::Matcher.call(@lead, limit: 3)
       summary = InterestIntelligence::AiSummary.call(@lead, matches: matches)
       task = Task.create!(
+        tenant: @lead.tenant,
         lead: @lead,
         admin_user: assignee,
         title: action[:title].presence || "Oportunidade de interesse para #{@lead.display_name}",
@@ -313,14 +352,21 @@ module Automation
     end
 
     def task_assignee(action)
-      @lead.admin_user || fallback_admin_user(action) || AdminUser.active.first
+      @lead.admin_user || fallback_admin_user(action) || tenant.admin_users.active.first
     end
 
     def fallback_admin_user(action)
       id = action[:fallback_admin_user_id].presence
       return nil if id.blank?
 
-      AdminUser.active.find_by(id: id)
+      tenant.admin_users.active.find_by(id: id)
+    end
+
+    def tenant
+      @tenant ||= @lead&.tenant || campaign_recipient&.tenant || @automation_event&.tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para executar ação de automação" if @tenant.blank?
+
+      @tenant
     end
 
     def act_prepare_matching_properties_whatsapp(action)
@@ -511,14 +557,14 @@ module Automation
       @campaign_recipient ||= begin
         payload = @automation_event&.payload_hash || {}
         id = payload[:whatsapp_campaign_recipient_id] || payload["whatsapp_campaign_recipient_id"]
-        WhatsappCampaignRecipient.find_by(id: id) if id.present?
+        @automation_event.tenant.whatsapp_campaign_recipients.find_by(id: id) if id.present? && @automation_event&.tenant
       end
     end
 
     def webhook_whatsapp_payload
       payload = @automation_event&.payload_hash || {}
       message_id = payload[:whatsapp_message_id] || payload["whatsapp_message_id"] || payload[:inbound_whatsapp_message_id] || payload["inbound_whatsapp_message_id"]
-      message = WhatsappMessage.find_by(id: message_id) if message_id.present?
+      message = @automation_event.tenant.whatsapp_messages.find_by(id: message_id) if message_id.present? && @automation_event&.tenant
 
       {
         "message_id" => message&.id || message_id,
@@ -532,15 +578,21 @@ module Automation
     def webhook_campaign
       @webhook_campaign ||= begin
         id = @automation_event&.payload_hash&.dig(:whatsapp_campaign_id) || @automation_event&.payload_hash&.dig("whatsapp_campaign_id")
-        WhatsappCampaign.find_by(id: id) if id.present?
+        @automation_event.tenant.whatsapp_campaigns.find_by(id: id) if id.present? && @automation_event&.tenant
       end
     end
 
     def webhook_campaign_message
       @webhook_campaign_message ||= begin
         id = @automation_event&.payload_hash&.dig(:whatsapp_campaign_message_id) || @automation_event&.payload_hash&.dig("whatsapp_campaign_message_id")
-        WhatsappCampaignMessage.find_by(id: id) if id.present?
+        @automation_event.tenant.whatsapp_campaign_messages.find_by(id: id) if id.present? && @automation_event&.tenant
       end
+    end
+
+    def inbound_whatsapp_message
+      payload = @automation_event&.payload_hash || {}
+      id = payload[:inbound_whatsapp_message_id] || payload["inbound_whatsapp_message_id"] || payload[:whatsapp_message_id] || payload["whatsapp_message_id"]
+      @automation_event.tenant.whatsapp_messages.find_by(id: id) if id.present? && @automation_event&.tenant
     end
 
     def webhook_campaign_payload
@@ -567,7 +619,7 @@ module Automation
     end
 
     def normalized_phone
-      digits = @lead.display_phone.to_s.gsub(/\D/, "")
+      digits = (@lead&.display_phone.presence || campaign_recipient&.display_phone).to_s.gsub(/\D/, "")
       return "" if digits.blank?
 
       digits.length <= 11 ? "55#{digits}" : digits

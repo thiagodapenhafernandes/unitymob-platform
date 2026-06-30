@@ -4,6 +4,8 @@
 # Ex: Carlos trabalha na Loja Centro às segundas-feiras das 09:00 às 18:00.
 # Múltiplos turnos permitem escalas como "seg, qua, sex" via rows separados.
 class StoreShift < ApplicationRecord
+  include TenantScoped
+
   DAYS_OF_WEEK = {
     0 => "Domingo",
     1 => "Segunda-feira",

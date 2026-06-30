@@ -1,4 +1,6 @@
 class WhatsappCampaignRecipient < ApplicationRecord
+  include TenantScoped
+
   SOURCES = %w[spreadsheet filters saved_audience manual].freeze
   CONVERSION_STATUSES = %w[pending converted no_interest unsubscribed ignored].freeze
 
@@ -42,6 +44,7 @@ class WhatsappCampaignRecipient < ApplicationRecord
     return lead if lead.present?
 
     created_lead = Lead.new(
+      tenant: tenant,
       name: display_name,
       phone: display_phone,
       email: display_email,
@@ -85,7 +88,7 @@ class WhatsappCampaignRecipient < ApplicationRecord
   def set_defaults
     self.source = "spreadsheet" if source.blank?
     self.origin = "whatsapp_campaign" if origin.blank?
-    self.status = Lead.default_status if status.blank?
+    self.status = Lead.default_status(tenant: tenant || whatsapp_campaign&.tenant || Current.tenant) if status.blank?
     self.conversion_status = "pending" if conversion_status.blank?
     self.custom_data = {} unless custom_data.is_a?(Hash)
   end

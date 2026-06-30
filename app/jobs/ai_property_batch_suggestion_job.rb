@@ -1,27 +1,34 @@
 class AiPropertyBatchSuggestionJob < ApplicationJob
   queue_as :default
 
-  def perform(triggered_by_id: nil)
-    admin_user = AdminUser.find_by(id: triggered_by_id)
-    scope = Habitation.order(:id)
-    total = scope.count
-    processed = 0
-    failed = 0
+  def perform(triggered_by_id: nil, tenant_id: nil)
+    tenant = Tenant.find_by(id: tenant_id) ||
+      AdminUser.find_by(id: triggered_by_id)&.tenant ||
+      Current.tenant
+    raise ArgumentError, "Tenant obrigatório para enriquecimento em lote com IA" if tenant.blank?
+    admin_user = triggered_by_id.present? ? tenant.admin_users.find_by(id: triggered_by_id) : nil
 
-    set_status!("processing", 0, "Gerando sugestões com IA para #{total} imóveis.")
+    Current.set(tenant: tenant) do
+      scope = tenant.habitations.order(:id)
+      total = scope.count
+      processed = 0
+      failed = 0
 
-    scope.find_each(batch_size: 25) do |habitation|
-      Ai::PropertyContentService.new(habitation, admin_user: admin_user).generate_suggestion!
-    rescue => e
-      failed += 1
-      Rails.logger.error("[AiPropertyBatchSuggestionJob] habitation=#{habitation.id} error=#{e.message}")
-    ensure
-      processed += 1
-      progress = total.positive? ? ((processed.to_f / total) * 100).round : 100
-      set_status!("processing", progress, "Processados #{processed}/#{total}. Falhas: #{failed}.")
+      set_status!("processing", 0, "Gerando sugestões com IA para #{total} imóveis.")
+
+      scope.find_each(batch_size: 25) do |habitation|
+        Ai::PropertyContentService.new(habitation, admin_user: admin_user).generate_suggestion!
+      rescue => e
+        failed += 1
+        Rails.logger.error("[AiPropertyBatchSuggestionJob] habitation=#{habitation.id} error=#{e.message}")
+      ensure
+        processed += 1
+        progress = total.positive? ? ((processed.to_f / total) * 100).round : 100
+        set_status!("processing", progress, "Processados #{processed}/#{total}. Falhas: #{failed}.")
+      end
+
+      set_status!("completed", 100, "Lote concluído. Processados #{processed}/#{total}. Falhas: #{failed}.")
     end
-
-    set_status!("completed", 100, "Lote concluído. Processados #{processed}/#{total}. Falhas: #{failed}.")
   rescue => e
     set_status!("failed", Setting.get("openai_batch_progress", "0").to_i, "Falha no lote: #{e.message}")
     raise

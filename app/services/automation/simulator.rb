@@ -67,7 +67,8 @@ module Automation
     end
 
     def lead_scope(trigger_event, conditions)
-      scope = Lead.all.order(updated_at: :desc)
+      tenant = Current.tenant || raise(ArgumentError, "Tenant obrigatório para simular automação")
+      scope = tenant.leads.order(updated_at: :desc)
 
       stage = conditions[:stage].presence
       stage ||= conditions[:to_stage].presence if trigger_event.to_s == "lead_stage_changed"

@@ -44,11 +44,13 @@
 <% end %>
 
 <ul class="ax-form-tabs tw-mb-4" id="accessSecurityTabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#access-security-panels">
-  <li role="presentation">
-    <button class="ax-form-tabs__item <%= @active_tab == "settings" ? "active" : "" %>" id="settings-tab" data-ax-tabs-target="tab" data-action="click->ax-tabs#select" data-ax-tabs-target-param="#settings-pane" type="button" role="tab">
-      Configurações
-    </button>
-  </li>
+  <% if @can_manage_global_access_security %>
+    <li role="presentation">
+      <button class="ax-form-tabs__item <%= @active_tab == "settings" ? "active" : "" %>" id="settings-tab" data-ax-tabs-target="tab" data-action="click->ax-tabs#select" data-ax-tabs-target-param="#settings-pane" type="button" role="tab">
+        Configurações
+      </button>
+    </li>
+  <% end %>
   <li role="presentation">
     <button class="ax-form-tabs__item <%= @active_tab == "rules" ? "active" : "" %>" id="rules-tab" data-ax-tabs-target="tab" data-action="click->ax-tabs#select" data-ax-tabs-target-param="#rules-pane" type="button" role="tab">
       Regras de IP
@@ -62,28 +64,30 @@
 </ul>
 
 <div class="tab-content" id="access-security-panels">
-  <div class="tab-pane fade <%= @active_tab == "settings" ? "show active" : "" %>" id="settings-pane" role="tabpanel" aria-labelledby="settings-tab">
-    <div class="ax-card tw-mb-4">
-      <div class="ax-card__header">
-        <h2 class="ax-card__title">Regras gerais para corretores</h2>
-      </div>
-      <div class="ax-card__body">
-        <%= form_with url: admin_access_security_path, method: :patch, local: true do %>
-          <div class="tw-mb-3">
-            <%= ax_switch_field(name: :enforce_broker_ip_allowlist, value: "1", checked: @broker_ip_allowlist_enabled, label: "Corretores só podem logar por IP permitido", id: "enforce_broker_ip_allowlist") %>
-            <div class="form-text">Use para exigir rede da imobiliária, VPN ou faixas específicas para perfis não administrativos.</div>
-          </div>
+  <% if @can_manage_global_access_security %>
+    <div class="tab-pane fade <%= @active_tab == "settings" ? "show active" : "" %>" id="settings-pane" role="tabpanel" aria-labelledby="settings-tab">
+      <div class="ax-card tw-mb-4">
+        <div class="ax-card__header">
+          <h2 class="ax-card__title">Regras gerais para corretores</h2>
+        </div>
+        <div class="ax-card__body">
+          <%= form_with url: admin_access_security_path, method: :patch, local: true do %>
+            <div class="tw-mb-3">
+              <%= ax_switch_field(name: :enforce_broker_ip_allowlist, value: "1", checked: @broker_ip_allowlist_enabled, label: "Corretores só podem logar por IP permitido", id: "enforce_broker_ip_allowlist") %>
+              <div class="form-text">Use para exigir rede da imobiliária, VPN ou faixas específicas para perfis não administrativos.</div>
+            </div>
 
-          <div class="tw-mb-4">
-            <%= ax_switch_field(name: :enforce_broker_trusted_devices, value: "1", checked: @broker_trusted_devices_enabled, label: "Corretores só podem logar em aparelhos aprovados", id: "enforce_broker_trusted_devices") %>
-            <div class="form-text">Ao tentar logar em aparelho novo, ele fica pendente para aprovação nesta tela.</div>
-          </div>
+            <div class="tw-mb-4">
+              <%= ax_switch_field(name: :enforce_broker_trusted_devices, value: "1", checked: @broker_trusted_devices_enabled, label: "Corretores só podem logar em aparelhos aprovados", id: "enforce_broker_trusted_devices") %>
+              <div class="form-text">Ao tentar logar em aparelho novo, ele fica pendente para aprovação nesta tela.</div>
+            </div>
 
-          <%= submit_tag "Salvar configurações", class: "ax-btn ax-btn--primary" %>
-        <% end %>
+            <%= submit_tag "Salvar configurações", class: "ax-btn ax-btn--primary" %>
+          <% end %>
+        </div>
       </div>
     </div>
-  </div>
+  <% end %>
 
   <div class="tab-pane fade <%= @active_tab == "rules" ? "show active" : "" %>" id="rules-pane" role="tabpanel" aria-labelledby="rules-tab">
     <div class="ax-card tw-mb-4">
@@ -107,7 +111,7 @@
           </div>
           <div class="ax-span-2">
             <%= f.label :scope_type, "Aplicar para", class: "ax-label" %>
-            <%= f.select :scope_type, AccessControlRule::SCOPE_TYPES.map { |key, label| [label, key] }, {}, class: "ax-control" %>
+            <%= f.select :scope_type, @access_scope_types.map { |key, label| [label, key] }, {}, class: "ax-control" %>
           </div>
           <div class="ax-span-3">
             <%= f.label :description, "Observação", class: "ax-label" %>
@@ -142,7 +146,7 @@
           </div>
           <div class="ax-span-2">
             <%= label_tag :scope_type, "Aplicar para", class: "ax-label tw-text-sm tw-font-bold tw-text-ink-muted text-uppercase" %>
-            <%= select_tag :scope_type, options_for_select([["Todos", ""], *AccessControlRule::SCOPE_TYPES.map { |key, label| [label, key] }], params[:scope_type]), class: "ax-control ax-control--sm" %>
+            <%= select_tag :scope_type, options_for_select([["Todos", ""], *@access_scope_types.map { |key, label| [label, key] }], params[:scope_type]), class: "ax-control ax-control--sm" %>
           </div>
           <div class="ax-span-2">
             <%= label_tag :rule_enabled, "Status", class: "ax-label tw-text-sm tw-font-bold tw-text-ink-muted text-uppercase" %>

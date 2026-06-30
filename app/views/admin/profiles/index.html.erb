@@ -3,10 +3,11 @@
   <div class="ax-dashboard-command__main">
     <span class="ax-dashboard-command__eyebrow">Administração</span>
     <h1>Perfis de acesso</h1>
-    <p>Gerencie níveis de acesso, permissões e escopos operacionais.</p>
+    <p>Gerencie hierarquia vertical, funções horizontais, permissões e escopos operacionais.</p>
   </div>
   <div class="ax-dashboard-command__status">
-    <%= ax_badge("#{@profiles.size} perfis", tone: :gray) %>
+    <%= ax_badge("#{@vertical_profiles.size} verticais", tone: :blue) %>
+    <%= ax_badge("#{@horizontal_profiles.size} horizontais", tone: :gray) %>
   </div>
 </header>
 
@@ -15,6 +16,9 @@
     <thead>
       <tr>
         <th>Nome do Perfil</th>
+        <th style="width:130px">Eixo</th>
+        <th style="width:180px">Vinculado a</th>
+        <th class="ax-num" style="width:90px">Ordem</th>
         <th class="ax-num" style="width:110px">Usuários</th>
         <th style="width:96px">Status</th>
         <th class="ax-num" style="width:90px">Ações</th>
@@ -23,8 +27,24 @@
     <tbody>
       <% @profiles.each do |profile| %>
         <tr>
-          <td class="ax-strong"><%= profile.name %></td>
-          <td class="ax-num"><span class="ax-badge ax-badge--gray"><%= profile.admin_users.count %></span></td>
+          <td class="ax-strong">
+            <%= profile.name %>
+            <% if profile.locked? %><span class="ax-badge ax-badge--gray">fixo</span><% end %>
+          </td>
+          <td>
+            <% if profile.vertical? %>
+              <span class="ax-badge ax-badge--blue">Vertical</span>
+            <% else %>
+              <span class="ax-badge ax-badge--purple">Horizontal</span>
+            <% end %>
+          </td>
+          <td><%= profile.horizontal? ? profile.vertical_profile&.name : "Hierarquia principal" %></td>
+          <td class="ax-num"><%= profile.vertical? ? profile.position : "—" %></td>
+          <td class="ax-num">
+            <span class="ax-badge ax-badge--gray">
+              <%= profile.vertical? ? profile.admin_users.where(tenant: current_tenant).count : current_tenant.admin_users.where(horizontal_profile_id: profile.id).count %>
+            </span>
+          </td>
           <td>
             <% if profile.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativo</span>
             <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativo</span><% end %>
@@ -32,7 +52,9 @@
           <td class="ax-num">
             <span class="tw-inline-flex tw-gap-0.5">
               <%= link_to edit_admin_profile_path(profile), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
-              <%= button_to admin_profile_path(profile), method: :delete, form_class: "tw-inline", data: { turbo_confirm: "Tem certeza? Isso pode afetar o acesso dos usuários vinculados." }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
+              <% unless profile.locked? %>
+                <%= button_to admin_profile_path(profile), method: :delete, form_class: "tw-inline", data: { turbo_confirm: "Tem certeza? Isso pode afetar o acesso dos usuários vinculados." }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
+              <% end %>
             </span>
           </td>
         </tr>
@@ -40,7 +62,7 @@
 
       <% if @profiles.empty? %>
         <tr>
-          <td colspan="4">
+          <td colspan="7">
             <%= ax_empty_state(title: "Nenhum perfil cadastrado.", icon: "shield-lock") %>
           </td>
         </tr>

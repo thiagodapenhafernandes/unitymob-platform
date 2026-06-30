@@ -10,8 +10,8 @@ module Vista
 
     Result = Struct.new(:scanned, :downloaded, :skipped, :failed, :errors, keyword_init: true)
 
-    def initialize(scope: AdminUser.where.not(source_photo_path: [nil, ""]), dry_run: false)
-      @scope = scope
+    def initialize(scope: nil, dry_run: false)
+      @scope = scope || tenant.admin_users.where.not(source_photo_path: [nil, ""])
       @dry_run = ActiveModel::Type::Boolean.new.cast(dry_run)
     end
 
@@ -42,6 +42,10 @@ module Vista
     end
 
     private
+
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para baixar avatares Vista")
+    end
 
     def attach_avatar(user)
       io = download(source_url_for(user))

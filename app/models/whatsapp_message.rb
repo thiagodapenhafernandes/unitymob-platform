@@ -1,4 +1,6 @@
 class WhatsappMessage < ApplicationRecord
+  include TenantScoped
+
   belongs_to :whatsapp_conversation
   belongs_to :admin_user, optional: true
 

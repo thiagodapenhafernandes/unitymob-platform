@@ -28,7 +28,7 @@
         title: "Captações",
         eyebrow: "Operação",
         icon: "journal-plus",
-        subtitle: current_admin_user.admin? ? "Captações da equipe, revisão e publicação." : "Suas captações em andamento.",
+        subtitle: (tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes) || current_admin_user.can_view_team?(:captacoes)) ? "Captações da equipe, revisão e publicação." : "Suas captações em andamento.",
         pills: [filters_active ? "Filtrado" : "Todos"],
         metrics: [
           { value: dashboard[:total].to_i, label: "total" },

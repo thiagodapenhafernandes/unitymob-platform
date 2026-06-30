@@ -28,6 +28,9 @@ class Admin::TrustedDevicesController < Admin::BaseController
   private
 
   def set_device
-    @device = TrustedDevice.find(params[:id])
+    @device = current_tenant.trusted_devices.find(params[:id])
+    return if owner_in_scope?(:access_security, @device.admin_user_id)
+
+    raise ActiveRecord::RecordNotFound
   end
 end

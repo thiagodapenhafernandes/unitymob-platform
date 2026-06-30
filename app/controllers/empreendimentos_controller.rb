@@ -4,7 +4,7 @@ class EmpreendimentosController < ApplicationController
     @strategic_landing = Seo::StrategicLanding.development(params[:seo_slug])
     
     # Base scope: only 'Empreendimento' type
-    @empreendimentos = Habitation.empreendimentos_publicos.with_attached_photos.left_outer_joins(:address).order(nome_empreendimento: :asc)
+    @empreendimentos = public_habitations.empreendimentos_publicos.with_attached_photos.left_outer_joins(:address).order(nome_empreendimento: :asc)
     @empreendimentos = apply_strategic_landing_scope(@empreendimentos)
 
     # Filter by search term if present
@@ -20,7 +20,7 @@ class EmpreendimentosController < ApplicationController
     # We can do a group count query for all habitations that match these development codes
     development_codes = @empreendimentos.map(&:codigo).compact
     
-    @unit_counts = Habitation.where.not(codigo_empreendimento: nil)
+    @unit_counts = public_habitations.where.not(codigo_empreendimento: nil)
                              .where(codigo_empreendimento: development_codes)
                              .group(:codigo_empreendimento)
                              .count
@@ -37,7 +37,7 @@ class EmpreendimentosController < ApplicationController
     return render json: [] if term.blank?
 
     # Autocomplete search
-    results = Habitation.empreendimentos_publicos
+    results = public_habitations.empreendimentos_publicos
                         .where("unaccent(nome_empreendimento) ILIKE unaccent(?)", "%#{term}%")
                         .limit(10)
                         .pluck(:nome_empreendimento, :codigo)

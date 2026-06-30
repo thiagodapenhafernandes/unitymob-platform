@@ -19,7 +19,7 @@ class Admin::TasksController < Admin::BaseController
   end
 
   def create
-    @task = Task.new(task_params)
+    @task = current_tenant.tasks.new(task_params)
     @task.created_by = current_admin_user
     @task.admin_user ||= current_admin_user
 
@@ -67,8 +67,9 @@ class Admin::TasksController < Admin::BaseController
 
   def task_scope
     ids = visible_owner_ids(:comercial)
-    return Task.all if ids.nil?
-    Task.where(admin_user_id: ids)
+    base = current_tenant.tasks
+    return base if ids.nil?
+    base.where(admin_user_id: ids)
   end
 
   def set_task
@@ -77,7 +78,8 @@ class Admin::TasksController < Admin::BaseController
 
   def task_params
     permitted = [:title, :description, :kind, :due_at, :priority, :lead_id]
-    permitted << :admin_user_id if can?(:manage, :comercial) && (current_admin_user.admin? || owns_all_resource?(:comercial) || current_admin_user.can_view_team?(:comercial))
-    params.require(:task).permit(permitted)
+    permitted << :admin_user_id if can?(:manage, :comercial) && (tenant_owner? || owns_all_resource?(:comercial) || current_admin_user.can_view_team?(:comercial))
+    attrs = params.require(:task).permit(permitted)
+    restrict_owner_param_to_scope!(attrs, :comercial)
   end
 end

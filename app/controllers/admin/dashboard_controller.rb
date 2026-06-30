@@ -19,16 +19,16 @@ class Admin::DashboardController < Admin::BaseController
   private
 
   def require_dashboard_admin!
-    return if current_admin_user.admin?
+    return if tenant_owner? || can?(:view, :dashboard)
 
     redirect_to field_root_path
   end
 
   def set_dashboard_context
-    @is_admin_view = current_admin_user.admin?
-    @habitation_scope = @is_admin_view ? Habitation : Habitation.where(admin_user_id: current_admin_user.id)
-    @lead_scope = @is_admin_view ? Lead : Lead.where(admin_user_id: current_admin_user.id)
-    @captacao_scope = @is_admin_view ? Captacao : Captacao.where(corretor_id: current_admin_user.id)
+    @is_admin_view = tenant_owner?
+    @habitation_scope = scoped_dashboard_habitations
+    @lead_scope = scoped_dashboard_leads
+    @captacao_scope = scoped_dashboard_captacoes
     @field_feature_enabled = Setting.get("field_checkin_enabled", "false").to_s == "true"
   end
 
@@ -40,23 +40,23 @@ class Admin::DashboardController < Admin::BaseController
     @featured_count = @habitation_scope.featured.count
     @developments_count = @habitation_scope.empreendimentos.count
 
-    @brokers_active = @is_admin_view ? AdminUser.active.count : 0
-    @stores_active_count = @is_admin_view ? Store.active.count : 0
-    @active_checkins_count = @is_admin_view ? CheckIn.where(status: :active).count : (current_admin_user.active_check_in.present? ? 1 : 0)
-    @today_checkins_count = @is_admin_view ? CheckIn.today.count : CheckIn.where(admin_user_id: current_admin_user.id).today.count
-    @suspicious_checkins = @is_admin_view ? CheckIn.where(suspicious: true).count : 0
-    @pending_manual_requests = @is_admin_view ? ManualCheckinRequest.pending.count : 0
+    @brokers_active = @is_admin_view ? current_tenant.admin_users.active.count : 0
+    @stores_active_count = @is_admin_view ? current_tenant.stores.active.count : 0
+    @active_checkins_count = @is_admin_view ? CheckIn.where(tenant: current_tenant, status: :active).count : (current_admin_user.active_check_in.present? ? 1 : 0)
+    @today_checkins_count = @is_admin_view ? CheckIn.where(tenant: current_tenant).today.count : CheckIn.where(tenant: current_tenant, admin_user_id: current_admin_user.id).today.count
+    @suspicious_checkins = @is_admin_view ? CheckIn.where(tenant: current_tenant, suspicious: true).count : 0
+    @pending_manual_requests = @is_admin_view ? ManualCheckinRequest.where(tenant: current_tenant).pending.count : 0
 
     @new_leads = @lead_scope.where(status: [Lead.default_status, nil]).count
     @leads_today = @lead_scope.where("created_at >= ?", beginning).count
     @leads_last_7_days = @lead_scope.where("created_at >= ?", 7.days.ago).count
-    @holding_leads = @is_admin_view ? Lead.holding.count : 0
+    @holding_leads = @is_admin_view ? current_tenant.leads.holding.count : 0
 
-    @distribution_rules_total = @is_admin_view ? DistributionRule.count : 0
-    @distribution_rules_active = @is_admin_view ? DistributionRule.active.count : 0
-    @rules_with_checkin = @is_admin_view ? DistributionRule.where(require_active_checkin: true).count : 0
+    @distribution_rules_total = @is_admin_view ? current_tenant.distribution_rules.count : 0
+    @distribution_rules_active = @is_admin_view ? current_tenant.distribution_rules.active.count : 0
+    @rules_with_checkin = @is_admin_view ? current_tenant.distribution_rules.where(require_active_checkin: true).count : 0
 
-    @sync_errors_count = @is_admin_view ? Habitation.where(last_sync_status: "error").count : 0
+    @sync_errors_count = @is_admin_view ? current_tenant.habitations.where(last_sync_status: "error").count : 0
     @today_captacoes = @captacao_scope.where(created_at: beginning..).count
     @today_new_habitations = @habitation_scope.where("COALESCE(data_atualizacao_crm, created_at) >= ?", beginning).count
     @drafts_count = @captacao_scope.draft.count
@@ -78,7 +78,7 @@ class Admin::DashboardController < Admin::BaseController
 
   def load_rankings_slice
     @top_brokers = if @is_admin_view
-                     AdminUser
+                     current_tenant.admin_users
                        .joins(:habitations)
                        .where(habitations: { status: [nil, "Venda", "Locação", "Locacao", "Aluguel"] })
                        .group("admin_users.id", "admin_users.name")
@@ -91,6 +91,7 @@ class Admin::DashboardController < Admin::BaseController
 
     @top_stores = if @is_admin_view
                     CheckIn
+                      .where(tenant: current_tenant)
                       .where("checked_in_at >= ?", 30.days.ago)
                       .joins(:store)
                       .group("stores.id", "stores.name")
@@ -105,9 +106,9 @@ class Admin::DashboardController < Admin::BaseController
   def load_operations_slice
     @bs_to_ax = { "success" => "green", "danger" => "red", "warning" => "amber", "info" => "blue", "primary" => "blue", "secondary" => "gray", "dark" => "gray" }
     @recent_audit_logs = if @is_admin_view
-                           CheckinAuditLog.includes(:admin_user, :actor_admin_user, check_in: :store).order(created_at: :desc).limit(6)
+                           current_tenant.checkin_audit_logs.includes(:admin_user, :actor_admin_user, check_in: :store).order(created_at: :desc).limit(6)
                          else
-                           CheckinAuditLog.includes(:actor_admin_user, check_in: :store).where(admin_user_id: current_admin_user.id).order(created_at: :desc).limit(6)
+                           current_tenant.checkin_audit_logs.includes(:actor_admin_user, check_in: :store).where(admin_user_id: current_admin_user.id).order(created_at: :desc).limit(6)
                          end
     @recent_habitations = @habitation_scope
       .includes(:address)
@@ -143,6 +144,24 @@ class Admin::DashboardController < Admin::BaseController
 
   def dashboard_window_start
     29.days.ago.to_date.beginning_of_day
+  end
+
+  def scoped_dashboard_habitations
+    scope = current_tenant.habitations
+    owner_ids = visible_owner_ids(:imoveis)
+    owner_ids.nil? ? scope : scope.where(admin_user_id: owner_ids)
+  end
+
+  def scoped_dashboard_leads
+    scope = current_tenant.leads
+    owner_ids = visible_owner_ids(:leads)
+    owner_ids.nil? ? scope : scope.where(admin_user_id: owner_ids)
+  end
+
+  def scoped_dashboard_captacoes
+    scope = Captacao.joins(:corretor).where(admin_users: { tenant_id: current_tenant.id })
+    owner_ids = visible_owner_ids(:captacoes)
+    owner_ids.nil? ? scope : scope.where(corretor_id: owner_ids)
   end
 
   def commercial_funnel_rows

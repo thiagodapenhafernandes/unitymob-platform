@@ -6,6 +6,14 @@ RSpec.describe "Automation workflow runtime" do
   let(:admin) { create(:admin_user, :admin, email: "workflow-runtime-#{SecureRandom.hex(6)}@salute.test") }
   let!(:lead) { create(:lead, admin_user: admin, status: "Em Atendimento", origin: "Site") }
 
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = admin.tenant
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   def publish_workflow(definition)
     workflow = AutomationWorkflow.create!(name: "Fluxo runtime")
     version = workflow.draft_version!
@@ -62,6 +70,27 @@ RSpec.describe "Automation workflow runtime" do
     expect(execution.automation_workflow).to eq(workflow)
     expect(execution.automation_workflow_version).to eq(workflow.active_version)
     expect(execution.automation_event).to eq(event)
+  end
+
+  it "nao inicia workflow quando lead pertence a outro tenant" do
+    workflow = publish_workflow(
+      definition_with(
+        entry_node,
+        {
+          "id" => "action_1",
+          "type" => "action",
+          "label" => "Registrar nota",
+          "config" => { "action_type" => "add_note", "body" => "via workflow" }
+        },
+        edges: [{ "from" => "entry_1", "to" => "action_1" }]
+      )
+    )
+    other_tenant = Tenant.create!(name: "Outro workflow #{SecureRandom.hex(3)}", slug: "outro-workflow-#{SecureRandom.hex(3)}")
+    other_lead = create(:lead, tenant: other_tenant)
+
+    expect {
+      Automation::WorkflowRunner.start(workflow, other_lead, event: "lead_created")
+    }.not_to change(AutomationExecution, :count)
   end
 
   it "respeita criterios do evento de mudanca de etapa antes de iniciar workflow" do
@@ -899,6 +928,60 @@ RSpec.describe "Automation workflow runtime" do
     expect(lead.phone).to eq("5511999990000")
     expect(lead.distribution_rule_id).to eq(destination_rule.id)
     expect(recipient.conversion_status).to eq("converted")
+  end
+
+  it "nao converte destinatario de campanha usando regra de distribuicao de outro tenant" do
+    other_tenant = Tenant.create!(name: "Outro flow result #{SecureRandom.hex(3)}", slug: "outro-flow-result-#{SecureRandom.hex(3)}")
+    other_rule = create(:distribution_rule, tenant: other_tenant, name: "Regra externa")
+    template = WhatsappTemplate.create!(name: "campanha_cross_tenant", language: "pt_BR", status: "APPROVED", body: "Oi {{1}}")
+    campaign = WhatsappCampaign.create!(name: "Campanha cross tenant", whatsapp_template: template, created_by: admin)
+    recipient = campaign.campaign_recipients.create!(
+      name: "Contato Cross",
+      phone_number: "11966660000",
+      email: "cross@example.com",
+      origin: "planilha",
+      source: "spreadsheet"
+    )
+    event = AutomationEvent.create!(
+      name: "whatsapp_campaign_message_replied",
+      source: "whatsapp_campaign",
+      payload: {
+        whatsapp_campaign_id: campaign.id,
+        whatsapp_campaign_recipient_id: recipient.id,
+        button_text: "Saiba mais"
+      }
+    )
+    workflow = publish_workflow(
+      definition_with(
+        entry_node(trigger: "whatsapp_campaign_message_replied"),
+        {
+          "id" => "flow_result_1",
+          "type" => "action",
+          "label" => "Resultado do caminho",
+          "config" => {
+            "action_type" => "set_flow_result",
+            "result" => "generates_attendance",
+            "distribution_rule_id" => other_rule.id.to_s
+          }
+        },
+        edges: [{ "from" => "entry_1", "to" => "flow_result_1" }]
+      )
+    )
+    execution = AutomationExecution.create!(
+      automation_workflow: workflow,
+      automation_workflow_version: workflow.active_version,
+      automation_event: event,
+      status: "pending"
+    )
+
+    lead_count = Lead.count
+
+    Automation::WorkflowRunner.run(execution)
+
+    expect(Lead.count).to eq(lead_count)
+    expect(execution.reload.status).to eq("failed")
+    expect(execution.error_message).to eq("Resultado com atendimento sem destino")
+    expect(recipient.reload.conversion_status).to eq("pending")
   end
 
   it "marca destinatario de campanha sem interesse sem criar lead" do

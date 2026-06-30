@@ -24,7 +24,7 @@ class Admin::AppointmentsController < Admin::BaseController
   end
 
   def create
-    @appointment = Appointment.new(appointment_params)
+    @appointment = current_tenant.appointments.new(appointment_params)
     @appointment.admin_user ||= current_admin_user
 
     if @appointment.save
@@ -62,8 +62,9 @@ class Admin::AppointmentsController < Admin::BaseController
 
   def appointment_scope
     ids = visible_owner_ids(:comercial)
-    return Appointment.all if ids.nil?
-    Appointment.where(admin_user_id: ids)
+    base = current_tenant.appointments
+    return base if ids.nil?
+    base.where(admin_user_id: ids)
   end
 
   def set_appointment
@@ -76,7 +77,8 @@ class Admin::AppointmentsController < Admin::BaseController
 
   def appointment_params
     permitted = [:title, :kind, :starts_at, :ends_at, :location, :status, :notes, :lead_id, :habitation_id]
-    permitted << :admin_user_id if current_admin_user.admin? || owns_all_resource?(:comercial) || current_admin_user.can_view_team?(:comercial)
-    params.require(:appointment).permit(permitted)
+    permitted << :admin_user_id if tenant_owner? || owns_all_resource?(:comercial) || current_admin_user.can_view_team?(:comercial)
+    attrs = params.require(:appointment).permit(permitted)
+    restrict_owner_param_to_scope!(attrs, :comercial)
   end
 end

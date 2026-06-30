@@ -48,6 +48,66 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     expect(response.body).to include("Captação Salute")
   end
 
+  it "mostra atalho de metas por permissão funcional sem exigir Tenant Owner" do
+    tenant = Tenant.create!(name: "Tenant metas #{SecureRandom.hex(3)}", slug: "tenant-metas-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Analista de metas #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 400,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "captacao_dashboard" => { "view" => true },
+        "metas_captacao" => { "view" => true }
+      }
+    )
+    analyst = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+
+    sign_out admin
+    sign_in analyst
+
+    get dashboard_admin_captacoes_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(admin_captacao_goals_path)
+    expect(response.body).to include("Metas")
+    expect(response.body).not_to include("dashboardTitleModal")
+  end
+
+  it "respeita escopo de equipe e Tenant no heatmap de leads" do
+    tenant = Tenant.create!(name: "Tenant heatmap #{SecureRandom.hex(3)}", slug: "tenant-heatmap-#{SecureRandom.hex(3)}")
+    other_tenant = Tenant.create!(name: "Outro heatmap #{SecureRandom.hex(3)}", slug: "outro-heatmap-#{SecureRandom.hex(3)}")
+    manager_profile = Profile.create!(
+      tenant: tenant,
+      name: "Manager heatmap #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 300,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "captacao_dashboard" => { "view" => true },
+        "leads" => { "view" => true, "scope" => "team" }
+      }
+    )
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    other_profile = other_tenant.profiles.find_by!(key: "agent")
+    manager = create(:admin_user, tenant: tenant, profile: manager_profile, role: :editor, name: "Gestor Heatmap")
+    team_agent = create(:admin_user, tenant: tenant, profile: agent_profile, manager: manager, role: :editor, name: "Equipe Heatmap")
+    outside_agent = create(:admin_user, tenant: other_tenant, profile: other_profile, role: :editor, name: "Outro Tenant Heatmap")
+    create(:lead, tenant: tenant, admin_user: manager, created_at: Time.current)
+    create(:lead, tenant: tenant, admin_user: team_agent, created_at: Time.current)
+    create(:lead, tenant: other_tenant, admin_user: outside_agent, created_at: Time.current)
+
+    sign_out admin
+    sign_in manager
+
+    get dashboard_admin_captacoes_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Gestor Heatmap")
+    expect(response.body).to include("Equipe Heatmap")
+    expect(response.body).not_to include("Outro Tenant Heatmap")
+  end
+
   it "usa os últimos 7 dias como padrão do heatmap de leads e permite filtrar datas" do
     travel_to Time.zone.local(2026, 6, 26, 10, 0, 0) do
       create(:lead, admin_user: admin, created_at: Time.zone.local(2026, 6, 20, 9, 0, 0))
@@ -74,10 +134,8 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
   end
 
   it "bloqueia o dashboard de captação para corretor" do
-    broker_profile = Profile.create!(
-      name: "Corretor #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+    broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
     broker = create(:admin_user, profile: broker_profile)
 
     sign_out admin

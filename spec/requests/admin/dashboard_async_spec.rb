@@ -30,6 +30,53 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include(admin_dashboard_section_path("support"))
   end
 
+  it "permite dashboard principal para usuário operacional com permissão dashboard" do
+    tenant = Tenant.create!(name: "Tenant dashboard #{SecureRandom.hex(3)}", slug: "tenant-dashboard-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Analista dashboard #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 600,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "imoveis" => { "view" => true, "scope" => "own" },
+        "leads" => { "view" => true, "scope" => "own" },
+        "captacoes" => { "view" => true, "scope" => "own" }
+      }
+    )
+    user = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+
+    sign_out admin
+    sign_in user
+
+    get admin_root_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('id="admin_dashboard_charts"')
+    expect(response.body).not_to include(admin_profiles_path)
+  end
+
+  it "mantém usuário sem permissão dashboard fora do dashboard principal" do
+    tenant = Tenant.create!(name: "Tenant sem dashboard #{SecureRandom.hex(3)}", slug: "tenant-sem-dashboard-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Sem dashboard #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 600,
+      permissions: {
+        "imoveis" => { "view" => true, "scope" => "own" }
+      }
+    )
+    user = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+
+    sign_out admin
+    sign_in user
+
+    get admin_root_path
+
+    expect(response).to redirect_to(field_root_path)
+  end
+
   it "renderiza cada slice em seu turbo frame" do
     %w[charts funnel status rankings operations support].each do |section|
       get admin_dashboard_section_path(section), headers: { "Turbo-Frame" => "admin_dashboard_#{section}" }

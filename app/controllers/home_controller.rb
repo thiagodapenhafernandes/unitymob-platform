@@ -9,7 +9,7 @@ class HomeController < ApplicationController
     # Carrossel de Destaques - 12 imóveis (only if section is active)
     if (section = @sections_map["featured_properties"])&.active?
       @featured_properties = section
-        .apply_property_filters(Habitation.active.featured.with_attached_photos)
+        .apply_property_filters(public_habitations.active.featured.with_attached_photos)
         .newest_first
         .limit(12)
     end
@@ -18,7 +18,7 @@ class HomeController < ApplicationController
     if (section = @sections_map["opportunities"])&.active?
       @opportunity_properties = section
         .apply_property_filters(
-          Habitation.active
+          public_habitations.active
             .with_attached_photos
             .where("valor_venda_anterior_cents > valor_venda_cents AND valor_venda_cents > 0")
         )
@@ -30,7 +30,7 @@ class HomeController < ApplicationController
     if (section = @sections_map["developments"])&.active?
       all_developments = section
         .apply_property_filters(
-          Habitation
+          public_habitations
             .empreendimentos_publicos
             .with_attached_photos
             .where.not(codigo: nil)
@@ -48,7 +48,7 @@ class HomeController < ApplicationController
 
       # Pre-calculate unit counts for development carousel to avoid N+1
       dev_codes = @recent_properties.map(&:codigo).compact
-      @dev_unit_counts = Habitation.where.not(codigo_empreendimento: nil)
+      @dev_unit_counts = public_habitations.where.not(codigo_empreendimento: nil)
                                    .where(codigo_empreendimento: dev_codes)
                                    .group(:codigo_empreendimento)
                                    .count
@@ -57,20 +57,20 @@ class HomeController < ApplicationController
     # Imóveis para Locação (only if section is active)
     if (section = @sections_map["rentals"])&.active?
       @rental_properties = section
-        .apply_property_filters(Habitation.active.for_rent.with_attached_photos)
+        .apply_property_filters(public_habitations.active.for_rent.with_attached_photos)
         .newest_first
         .limit(6)
-      @corporate_properties = Habitation.active.home_corporate.with_attached_photos.limit(3)
+      @corporate_properties = public_habitations.active.home_corporate.with_attached_photos.limit(3)
     end
     
     # Tipos de imóveis disponíveis (para o formulário de busca) - CACHED
-    @property_types = Rails.cache.fetch("home_property_types_v6", expires_in: 12.hours) do
-      Habitation.public_property_types
+    @property_types = Rails.cache.fetch("home_property_types_v6/tenant/#{public_tenant.id}", expires_in: 12.hours) do
+      public_habitations.public_property_types
     end
 
     # Localizações disponíveis (cidade e bairro/cidade) para multiseleção na home
-    @location_options = Rails.cache.fetch("home_location_options_v2", expires_in: 6.hours) do
-      Habitation.public_location_options
+    @location_options = Rails.cache.fetch("home_location_options_v2/tenant/#{public_tenant.id}", expires_in: 6.hours) do
+      public_habitations.public_location_options
     end
     
     # Home settings

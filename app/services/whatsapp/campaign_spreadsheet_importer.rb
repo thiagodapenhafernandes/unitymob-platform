@@ -173,20 +173,20 @@ module Whatsapp
 
     def find_existing_lead(phone)
       tail = phone.to_s.last(11)
-      Lead.where("regexp_replace(coalesce(phone, ''), '\\D', '', 'g') LIKE ?", "%#{tail}").first
+      campaign.tenant.leads.where("regexp_replace(coalesce(phone, ''), '\\D', '', 'g') LIKE ?", "%#{tail}").first
     end
 
     def resolve_admin_user(data)
       id = Integer(data[:admin_user_id], exception: false)
-      return AdminUser.active.find_by(id:) if id
+      return campaign.tenant.admin_users.active.find_by(id:) if id
 
       email = data[:admin_user_email].to_s.strip
-      return AdminUser.active.find_by("LOWER(email) = ?", email.downcase) if email.present?
+      return campaign.tenant.admin_users.active.find_by("LOWER(email) = ?", email.downcase) if email.present?
 
       name = data[:admin_user_name].to_s.strip
       return if name.blank?
 
-      AdminUser.active.find_by("LOWER(name) = ?", name.downcase)
+      campaign.tenant.admin_users.active.find_by("LOWER(name) = ?", name.downcase)
     end
   end
 end

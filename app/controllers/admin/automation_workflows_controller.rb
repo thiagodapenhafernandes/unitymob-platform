@@ -4,17 +4,17 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
   before_action :set_catalogs, only: [:new, :builder]
 
   def index
-    @workflows = AutomationWorkflow.includes(:active_version).recent
+    @workflows = current_tenant.automation_workflows.includes(:active_version).recent
     @page_title = "Automação de acompanhamento"
   end
 
   def new
-    @workflow = AutomationWorkflow.new(name: "Nova intervenção automatizada")
+    @workflow = current_tenant.automation_workflows.new(name: "Nova intervenção automatizada")
     @page_title = "Nova intervenção automatizada"
   end
 
   def create
-    @workflow = AutomationWorkflow.new(workflow_params)
+    @workflow = current_tenant.automation_workflows.new(workflow_params)
     @workflow.created_by = current_admin_user
 
     if @workflow.save
@@ -61,7 +61,7 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
 
   def publish
     version = @workflow.draft_version!
-    definition = parse_definition
+    definition = mark_campaign_workflow_customized(parse_definition)
     version.assign_attributes(definition: definition)
 
     if @workflow.update(workflow_params) && version.save
@@ -111,7 +111,7 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
   private
 
   def set_workflow
-    @workflow = AutomationWorkflow.find(params[:id])
+    @workflow = current_tenant.automation_workflows.find(params[:id])
   end
 
   def set_catalogs
@@ -120,9 +120,9 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
     @status_options = Lead.status_options
     @automation_stage_options = Automation::StagePolicy.allowed_transition_stages
     @source_options = Lead.origin_options
-    @broker_options = AdminUser.active.order(:name).pluck(:name, :id)
-    @template_options = WhatsappTemplate.approved.ordered.pluck(:name, :name)
-    @distribution_rule_options = DistributionRule.active.order(:name).pluck(:name, :id)
+    @broker_options = current_tenant.admin_users.active.order(:name).pluck(:name, :id)
+    @template_options = current_tenant.whatsapp_templates.approved.ordered.pluck(:name, :name)
+    @distribution_rule_options = current_tenant.distribution_rules.active.order(:name).pluck(:name, :id)
   end
 
   def set_monitoring
@@ -145,6 +145,7 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
   end
 
   def persist_draft(version, definition)
+    definition = mark_campaign_workflow_customized(definition)
     @workflow.assign_attributes(workflow_params) if params[:automation_workflow].present?
     version.assign_attributes(definition: definition, created_by: version.created_by || current_admin_user)
 
@@ -168,5 +169,22 @@ class Admin::AutomationWorkflowsController < Admin::BaseController
     JSON.parse(raw)
   rescue JSON::ParserError
     {}
+  end
+
+  def mark_campaign_workflow_customized(definition)
+    return definition unless @workflow.whatsapp_campaign_source?
+    return definition if params.dig(:automation_workflow, :definition_json).blank?
+
+    normalized = definition.deep_dup.with_indifferent_access
+    source = (normalized[:source].is_a?(Hash) ? normalized[:source] : {}).with_indifferent_access
+    return definition unless source[:kind].to_s == "whatsapp_campaign"
+
+    source[:managed_by_campaign] = false
+    source[:customized_by_advanced_user] = true
+    source[:customized_by_admin_user_id] = current_admin_user&.id
+    source[:customized_at] = Time.current.iso8601
+    source[:sync_mode] = "advanced_custom"
+    normalized[:source] = source
+    normalized.to_h.deep_stringify_keys
   end
 end

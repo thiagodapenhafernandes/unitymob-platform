@@ -1,4 +1,6 @@
 class AutomationExecutionStep < ApplicationRecord
+  include TenantScoped
+
   STATUSES = %w[pending running waiting completed failed skipped canceled].freeze
 
   belongs_to :automation_execution

@@ -30,6 +30,10 @@ module Vista
 
     private
 
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para importação operacional Vista")
+    end
+
     def importers
       {
         "CDCLHI" => method(:client_interaction_attrs),
@@ -42,17 +46,24 @@ module Vista
     end
 
     def reset_tables!
-      ClientInteraction.delete_all
-      HabitationInteraction.delete_all
-      CrmAppointment.delete_all
-      ClientPropertyInterest.delete_all
+      tenant_habitation_ids = tenant.habitations.select(:id)
+      tenant_proprietor_ids = tenant.proprietors.select(:id)
+      tenant_admin_user_ids = tenant.admin_users.select(:id)
+
+      [ClientInteraction, HabitationInteraction, CrmAppointment, ClientPropertyInterest].each do |model|
+        model
+          .where(habitation_id: tenant_habitation_ids)
+          .or(model.where(proprietor_id: tenant_proprietor_ids))
+          .or(model.where(admin_user_id: tenant_admin_user_ids))
+          .delete_all
+      end
     end
 
     def load_reference_ids
-      @habitation_id_by_code = Habitation.where.not(codigo: [nil, ""]).pluck(:codigo, :id).to_h
+      @habitation_id_by_code = tenant.habitations.where.not(codigo: [nil, ""]).pluck(:codigo, :id).to_h
       @crm_contact_id_by_code = CrmContact.where.not(vista_code: [nil, ""]).pluck(:vista_code, :id).to_h
-      @proprietor_id_by_code = Proprietor.where.not(vista_code: [nil, ""]).pluck(:vista_code, :id).to_h
-      @admin_user_id_by_code = AdminUser.where.not(vista_id: [nil, ""]).pluck(:vista_id, :id).to_h
+      @proprietor_id_by_code = tenant.proprietors.where.not(vista_code: [nil, ""]).pluck(:vista_code, :id).to_h
+      @admin_user_id_by_code = tenant.admin_users.where.not(vista_id: [nil, ""]).pluck(:vista_id, :id).to_h
     end
 
     def import_table(table, importer)

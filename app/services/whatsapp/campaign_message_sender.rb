@@ -12,6 +12,11 @@ module Whatsapp
     end
 
     def call
+      if unsubscribed_contact?
+        campaign_message.mark_cancelled!("Contato descadastrado para campanhas deste número.")
+        return
+      end
+
       campaign_message.queue!
       conversation = find_or_create_conversation!
       template = campaign.whatsapp_template
@@ -25,7 +30,7 @@ module Whatsapp
       )
       conversation.touch_last_message!(outbound)
 
-      result = Whatsapp::CloudClient.new(campaign.sender_number).send_template(
+      result = client.send_template(
         to: campaign_message.phone_number,
         name: template.name,
         language: template.language.presence || "pt_BR",
@@ -52,6 +57,13 @@ module Whatsapp
 
     attr_reader :campaign_message, :campaign, :lead, :recipient
 
+    def unsubscribed_contact?
+      WhatsappCampaignUnsubscribe.active_for?(
+        sender_number: campaign.sender_number,
+        phone: campaign_message.phone_number
+      )
+    end
+
     def pause_campaign_for_template_error!(error)
       text = error.to_s
       return unless text.include?("132015") || text.downcase.include?("template is temporarily unavailable")
@@ -64,11 +76,13 @@ module Whatsapp
       return if campaign_message.next_retry_at.blank?
       return if campaign_message.retry_count.to_i >= 3
 
-      Whatsapp::CampaignMessageRetryJob.set(wait_until: campaign_message.next_retry_at).perform_later(campaign_message.id)
+      Whatsapp::CampaignMessageRetryJob
+        .set(wait_until: campaign_message.next_retry_at)
+        .perform_later(campaign_message.id, tenant_id: campaign_message.tenant_id)
     end
 
     def find_or_create_conversation!
-      conversation = WhatsappConversation.find_or_initialize_by(contact_phone: campaign_message.phone_number)
+      conversation = campaign.tenant.whatsapp_conversations.find_or_initialize_by(contact_phone: campaign_message.phone_number)
       conversation.lead ||= lead if lead
       conversation.contact_name ||= recipient&.display_name || lead&.display_name || campaign_message.phone_number
       conversation.status = "open"
@@ -94,10 +108,14 @@ module Whatsapp
 
     def template_components
       vars = campaign_message.template_variables.to_h
-      result = Whatsapp::TemplateMessageComponents.call(template: campaign.whatsapp_template, variables: vars)
+      result = Whatsapp::TemplateMessageComponents.call(template: campaign.whatsapp_template, variables: vars, client: client)
       raise ArgumentError, result.error unless result.ok?
 
       result.components
+    end
+
+    def client
+      @client ||= Whatsapp::CloudClient.new(campaign.sender_number)
     end
   end
 end

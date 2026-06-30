@@ -5,15 +5,15 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
 
   def index
     @filters = template_filters
-    @templates = apply_filters(WhatsappTemplate.ordered).paginate(page: params[:page], per_page: 25)
-    @approved_count = WhatsappTemplate.where(status: "APPROVED").count
-    @pending_count = WhatsappTemplate.where(status: "PENDING").count
-    @sender_number = WhatsappSenderNumber.active.find_by(id: params[:whatsapp_sender_number_id])
+    @templates = apply_filters(template_scope.ordered).paginate(page: params[:page], per_page: 25)
+    @approved_count = template_scope.where(status: "APPROVED").count
+    @pending_count = template_scope.where(status: "PENDING").count
+    @sender_number = sender_number_scope.active.find_by(id: params[:whatsapp_sender_number_id])
     @page_title = "Templates WhatsApp"
   end
 
   def sync
-    result = Whatsapp::SyncTemplatesJob.perform_now
+    result = Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
     if result[:ok]
       redirect_to admin_whatsapp_templates_path, notice: "#{result[:synced]} template(s) sincronizado(s)."
     else
@@ -25,7 +25,7 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
     upload = Whatsapp::TemplateMediaHandleUploader.upload_attachable(
       attachable: params[:file],
       media_type: params[:media_type],
-      client: Whatsapp::CloudClient.new
+      client: Whatsapp::CloudClient.new(WhatsappBusinessIntegration.current(current_tenant))
     )
 
     if upload[:ok]
@@ -44,7 +44,7 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
   end
 
   def create
-    @template = WhatsappTemplate.new(template_params)
+    @template = template_scope.new(template_params)
     @template.status = "PENDING"
     @template.buttons = @template.clean_buttons
     @template.carousel_cards = @template.clean_carousel_cards
@@ -111,11 +111,11 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
   private
 
   def set_template
-    @template = WhatsappTemplate.find(params[:id])
+    @template = template_scope.find(params[:id])
   end
 
   def build_template
-    template = WhatsappTemplate.new(
+    template = template_scope.new(
       template_type: @template_type.presence || "text",
       category: "MARKETING",
       language: "pt_BR",
@@ -134,7 +134,7 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
   end
 
   def selected_sender_number
-    WhatsappSenderNumber.active.find_by(id: params[:whatsapp_sender_number_id]) || WhatsappSenderNumber.active.order(:label, :display_phone_number).first
+    sender_number_scope.active.find_by(id: params[:whatsapp_sender_number_id]) || sender_number_scope.active.order(:label, :display_phone_number).first
   end
 
   def template_filters
@@ -153,6 +153,14 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
     scope = scope.where(category: filters[:category]) if filters[:category].present?
     scope = scope.where(template_type: filters[:template_type]) if filters[:template_type].present?
     scope
+  end
+
+  def template_scope
+    current_tenant.whatsapp_templates
+  end
+
+  def sender_number_scope
+    current_tenant.whatsapp_sender_numbers
   end
 
   def template_params

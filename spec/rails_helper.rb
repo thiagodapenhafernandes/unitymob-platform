@@ -13,6 +13,19 @@ require 'shoulda/matchers'
 
 # Add additional requires below this line. Rails is not loaded until this point!
 
+module DeviseCurrentTenantSync
+  def sign_in(resource, *args, **kwargs)
+    super.tap do
+      next unless resource.respond_to?(:tenant)
+      next if resource.respond_to?(:system_admin?) && resource.system_admin?
+
+      Current.tenant = resource.tenant
+    end
+  end
+end
+
+Devise::Test::IntegrationHelpers.prepend(DeviseCurrentTenantSync)
+
 Shoulda::Matchers.configure do |config|
   config.integrate do |with|
     with.test_framework :rspec
@@ -80,4 +93,12 @@ RSpec.configure do |config|
 
   config.include FactoryBot::Syntax::Methods
   config.infer_spec_type_from_file_location!
+
+  config.before(:each) do
+    Current.tenant ||= Tenant.default
+  end
+
+  config.after(:each) do
+    Current.reset
+  end
 end

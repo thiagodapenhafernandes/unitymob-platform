@@ -100,6 +100,7 @@
                         <%= button_tag type: "button",
                                        class: "ax-btn ax-btn--ghost ax-btn--sm ax-text-danger",
                                        title: "Remover arquivo",
+                                       form: "purge_attachment_#{attachment.id}",
                                        data: { action: "click->ax-confirm-submit#request" } do %>
                           <i class="bi bi-trash"></i>
                         <% end %>
@@ -164,6 +165,7 @@
                         <%= button_tag type: "button",
                                        class: "ax-btn ax-btn--ghost ax-btn--sm ax-text-danger",
                                        title: "Remover arquivo",
+                                       form: "purge_attachment_#{attachment.id}",
                                        data: { action: "click->ax-confirm-submit#request" } do %>
                           <i class="bi bi-trash"></i>
                         <% end %>

@@ -77,13 +77,11 @@ module Admin
     end
 
     def set_broker_capture_fallback_users
-      administrative_profile = Profile.find_by(key: "administrativo")
-      admin_users = AdminUser.where(role: :admin)
-      @broker_capture_fallback_users = if administrative_profile
-        admin_users.or(AdminUser.where(profile: administrative_profile)).order(:name).distinct
-      else
-        admin_users.order(:name)
-      end
+      @broker_capture_fallback_users = current_tenant.admin_users
+        .active
+        .includes(:profile, :horizontal_profile)
+        .order(:name)
+        .select { |user| user.tenant_owner? || (user.can?(:review, :captacoes) && user.owns_all?(:captacoes)) }
     end
 
     def reassign_broker_intakes_to_fallback_admin_user!

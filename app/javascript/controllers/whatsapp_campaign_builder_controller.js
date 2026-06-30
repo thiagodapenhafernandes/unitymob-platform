@@ -30,9 +30,19 @@ export default class extends Controller {
     "templateSelect",
     "senderSelect",
     "groupInput",
+    "groupModal",
+    "groupNameInput",
     "nameInput",
     "scheduledInput",
+    "scheduleMode",
+    "scheduleModeCard",
+    "schedulePanel",
+    "scheduleDateInput",
+    "scheduleTimeInput",
     "sendRateInput",
+    "estimatedDuration",
+    "estimatedFinish",
+    "estimatedThroughput",
     "variableList",
     "variableInput",
     "responseDecisionList",
@@ -54,8 +64,10 @@ export default class extends Controller {
 
   connect() {
     this.audiencePreviewReady = false
+    this.audienceValidPhoneCount = 0
     this.showStep(this.currentStepValue || 1)
     this.toggleAudienceMode()
+    this.toggleScheduleMode()
     this.conditionRowTargets.forEach((row) => this.syncConditionRow({ currentTarget: row }))
     this.refreshReview()
     if (this.hasTemplateSelectTarget && this.templateSelectTarget.value) this.previewTemplate()
@@ -99,7 +111,8 @@ export default class extends Controller {
     if (this.hasReviewScheduleTarget) {
       const schedule = this.hasScheduledInputTarget ? this.scheduledInputTarget.value : ""
       const rate = this.hasSendRateInputTarget ? this.sendRateInputTarget.value : ""
-      this.reviewScheduleTarget.textContent = schedule ? `${schedule} - ${rate || "0"} envios/min` : `${rate || "0"} envios/min - envio manual`
+      const mode = this.selectedScheduleMode()
+      this.reviewScheduleTarget.textContent = mode === "scheduled" && schedule ? `${this.formatDateTime(schedule)} - ${rate || "0"} envios/min` : `${rate || "0"} envios/min - enviar agora`
     }
 
     if (this.hasReviewVariablesTarget) {
@@ -108,6 +121,47 @@ export default class extends Controller {
         .join(" | ")
       this.reviewVariablesTarget.textContent = values || "Sem variaveis"
     }
+  }
+
+  createGroup(event) {
+    event?.preventDefault()
+    const name = this.hasGroupNameInputTarget ? this.groupNameInputTarget.value.trim() : ""
+
+    if (!name) {
+      this.showValidationError("Informe o nome do grupo.")
+      return
+    }
+
+    if (name.length > 80) {
+      this.showValidationError("O grupo deve ter no máximo 80 caracteres.")
+      return
+    }
+
+    this.selectCampaignGroup(name)
+    if (this.hasGroupNameInputTarget) this.groupNameInputTarget.value = ""
+    if (this.hasGroupModalTarget) {
+      this.groupModalTarget.dispatchEvent(new CustomEvent("ax-modal:close", { bubbles: true }))
+    }
+    this.refreshReview()
+  }
+
+  selectCampaignGroup(name) {
+    if (!this.hasGroupInputTarget) return
+
+    const select = this.groupInputTarget
+    const tomSelect = select.tomselect
+
+    if (tomSelect) {
+      if (!tomSelect.options[name]) tomSelect.addOption({ value: name, text: name })
+      tomSelect.setValue(name, true)
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+      return
+    }
+
+    const option = Array.from(select.options).find((item) => item.value === name)
+    if (!option) select.add(new Option(name, name))
+    select.value = name
+    select.dispatchEvent(new Event("change", { bubbles: true }))
   }
 
   previewAudience(event) {
@@ -311,16 +365,84 @@ export default class extends Controller {
   }
 
   updateFooterActions() {
+    const finalStep = this.currentStepValue === this.stepTargets.length
+    const scheduled = this.selectedScheduleMode() === "scheduled"
+
     if (this.hasScheduleSubmitTarget) {
-      this.scheduleSubmitTarget.hidden = this.currentStepValue !== 4
+      this.scheduleSubmitTarget.hidden = !(finalStep && scheduled)
     }
 
     if (this.hasStartNowSubmitTarget) {
-      this.startNowSubmitTarget.hidden = this.currentStepValue !== 5
+      this.startNowSubmitTarget.hidden = !(finalStep && !scheduled)
+    }
+  }
+
+  toggleScheduleMode() {
+    const selected = this.selectedScheduleMode()
+    this.scheduleModeCardTargets.forEach((card) => {
+      const radio = card.querySelector("input[type='radio']")
+      card.classList.toggle("is-selected", radio?.checked)
+    })
+
+    this.schedulePanelTargets.forEach((panel) => {
+      const active = selected === "scheduled"
+      panel.hidden = !active
+      panel.querySelectorAll("input, select, textarea").forEach((input) => {
+        if (input === this.scheduledInputTarget) return
+        input.disabled = !active
+      })
+    })
+
+    if (selected === "scheduled") {
+      this.syncScheduleDateTime()
+    } else if (this.hasScheduledInputTarget) {
+      this.scheduledInputTarget.value = ""
+    }
+
+    this.refreshSchedule()
+  }
+
+  syncScheduleDateTime() {
+    if (!this.hasScheduledInputTarget) return
+
+    const date = this.hasScheduleDateInputTarget ? this.scheduleDateInputTarget.value : ""
+    const time = this.hasScheduleTimeInputTarget ? this.scheduleTimeInputTarget.value : ""
+    this.scheduledInputTarget.value = date && time ? `${date}T${time}` : ""
+    this.refreshSchedule()
+  }
+
+  refreshSchedule() {
+    this.updateScheduleEstimates()
+    this.updateFooterActions()
+    this.refreshReview()
+  }
+
+  updateScheduleEstimates() {
+    const rate = this.currentSendRate()
+    const recipients = this.currentRecipientCount()
+    const messagesPerHour = rate > 0 ? rate * 60 : 0
+    const durationMinutes = rate > 0 && recipients > 0 ? Math.ceil(recipients / rate) : 0
+
+    if (this.hasEstimatedThroughputTarget) {
+      this.estimatedThroughputTarget.textContent = messagesPerHour > 0 ? `${this.formatNumber(messagesPerHour)} msg/h` : "--"
+    }
+
+    if (this.hasEstimatedDurationTarget) {
+      this.estimatedDurationTarget.textContent = durationMinutes > 0 ? this.formatDuration(durationMinutes) : "--"
+    }
+
+    if (this.hasEstimatedFinishTarget) {
+      if (durationMinutes > 0) {
+        const startAt = this.selectedScheduleMode() === "scheduled" ? this.selectedScheduleDate() : new Date()
+        this.estimatedFinishTarget.textContent = startAt ? this.formatFinish(new Date(startAt.getTime() + durationMinutes * 60000)) : "--"
+      } else {
+        this.estimatedFinishTarget.textContent = "--"
+      }
     }
   }
 
   setAudienceLoading() {
+    this.audienceValidPhoneCount = 0
     if (this.hasAudienceCountTarget) this.audienceCountTarget.textContent = "Calculando..."
     if (this.hasAudienceMetaTarget) this.audienceMetaTarget.textContent = "Validando filtros e telefones"
     if (this.hasAudienceSampleTarget) this.audienceSampleTarget.innerHTML = ""
@@ -335,6 +457,7 @@ export default class extends Controller {
       return
     }
     this.audiencePreviewReady = true
+    this.audienceValidPhoneCount = Number(data.valid_phone_count || 0)
 
     if (this.hasAudienceCountTarget) this.audienceCountTarget.textContent = `${data.valid_phone_count || 0} destinatários com telefone`
     if (this.hasAudienceMetaTarget) {
@@ -357,15 +480,18 @@ export default class extends Controller {
         </li>
       `).join("")
     }
+    this.updateScheduleEstimates()
   }
 
   renderAudienceError(error) {
     this.audiencePreviewReady = false
+    this.audienceValidPhoneCount = 0
     if (this.hasAudienceCountTarget) this.audienceCountTarget.textContent = "Erro no preview"
     if (this.hasAudienceMetaTarget) this.audienceMetaTarget.textContent = error.message
     if (this.hasAudienceTotalTarget) this.audienceTotalTarget.textContent = "--"
     if (this.hasAudienceWithPhoneTarget) this.audienceWithPhoneTarget.textContent = "--"
     if (this.hasAudienceInvalidTarget) this.audienceInvalidTarget.textContent = "--"
+    this.updateScheduleEstimates()
   }
 
   renderTestResult({ state, message, hint, metaError }) {
@@ -507,18 +633,24 @@ export default class extends Controller {
       const action = decision.action || button.action || "ignore"
       const distributionRuleId = decision.distribution_rule_id || button.distribution_rule_id || ""
       const message = decision.message || button.message || ""
+      const buttonText = button.text || "-"
+      const buttonKind = button.context || button.kind_label || "Botão do template"
 
       return `
         <div class="whatsapp-response-decision-row" data-whatsapp-campaign-builder-target="responseDecisionRow">
           <input type="hidden" name="whatsapp_campaign[response_decisions][buttons][${index}][key]" value="${this.escapeAttribute(button.key || "")}">
-          <input type="hidden" name="whatsapp_campaign[response_decisions][buttons][${index}][text]" value="${this.escapeAttribute(button.text || "")}">
+          <input type="hidden" name="whatsapp_campaign[response_decisions][buttons][${index}][text]" value="${this.escapeAttribute(buttonText)}">
           <input type="hidden" name="whatsapp_campaign[response_decisions][buttons][${index}][kind]" value="${this.escapeAttribute(button.kind || "")}">
-          <div class="whatsapp-response-decision-row__button">
-            <span>${this.escape(button.text || "-")}</span>
-            <small>${this.escape(button.context || button.kind_label || "Botão do template")}</small>
+          <div class="whatsapp-response-decision-row__button" title="${this.escapeAttribute(buttonText)}">
+            <em>Botão recebido</em>
+            <strong>${this.escape(buttonText)}</strong>
+            <small>${this.escape(buttonKind)}</small>
           </div>
-          <div class="ax-field">
-            <label class="ax-label">Quando clicarem</label>
+          <div class="whatsapp-response-decision-row__config">
+            <div class="whatsapp-response-decision-row__config-head">
+              <span>Quando clicarem</span>
+              <strong data-response-decision-badge>${this.escape(this.responseDecisionBadge(action))}</strong>
+            </div>
             <select class="ax-control"
                     name="whatsapp_campaign[response_decisions][buttons][${index}][action]"
                     data-whatsapp-campaign-builder-target="responseDecisionInput"
@@ -526,21 +658,24 @@ export default class extends Controller {
               ${this.responseActionOptions(action)}
             </select>
           </div>
-          <div class="ax-field" data-response-decision-extra="distribution_rule">
+          <div class="whatsapp-response-decision-row__extra" data-response-decision-extra="distribution_rule">
             <label class="ax-label">Regra de distribuição</label>
             <select class="ax-control" name="whatsapp_campaign[response_decisions][buttons][${index}][distribution_rule_id]">
               <option value="">Escolher regra...</option>
               ${this.distributionRuleOptions(distributionRuleId)}
             </select>
           </div>
-          <div class="ax-field" data-response-decision-extra="message">
+          <div class="whatsapp-response-decision-row__extra" data-response-decision-extra="message">
             <label class="ax-label">Mensagem automática</label>
             <input class="ax-control"
                    name="whatsapp_campaign[response_decisions][buttons][${index}][message]"
                    value="${this.escapeAttribute(message)}"
                    placeholder="Ex: Perfeito, vou te encaminhar para atendimento.">
           </div>
-          <p class="whatsapp-response-decision-row__hint" data-response-decision-summary></p>
+          <div class="whatsapp-response-decision-row__impact">
+            <i class="bi bi-arrow-return-right" aria-hidden="true"></i>
+            <span data-response-decision-summary></span>
+          </div>
         </div>
       `
     }).join("")
@@ -553,6 +688,7 @@ export default class extends Controller {
     if (!row) return
 
     const action = row.querySelector("select[name*='[action]']")?.value || "ignore"
+    row.dataset.responseAction = action
     row.querySelectorAll("[data-response-decision-extra]").forEach((element) => {
       const type = element.dataset.responseDecisionExtra
       const visible = (type === "distribution_rule" && action === "generate_lead") ||
@@ -565,6 +701,9 @@ export default class extends Controller {
 
     const summary = row.querySelector("[data-response-decision-summary]")
     if (summary) summary.textContent = this.responseDecisionSummary(action)
+
+    const badge = row.querySelector("[data-response-decision-badge]")
+    if (badge) badge.textContent = this.responseDecisionBadge(action)
   }
 
   currentDecisionFor(button) {
@@ -611,6 +750,17 @@ export default class extends Controller {
       unsubscribe: "Marca o contato como descadastrado para futuras campanhas.",
       ignore: "Apenas registra a resposta para relatório e automações futuras."
     }[action] || "Apenas registra a resposta."
+  }
+
+  responseDecisionBadge(action) {
+    return {
+      generate_lead: "Conversão",
+      send_message: "Mensagem",
+      create_task: "Tarefa",
+      mark_no_interest: "Sem interesse",
+      unsubscribe: "Descadastro",
+      ignore: "Registro"
+    }[action] || "Registro"
   }
 
   templateVariableOptions() {
@@ -675,6 +825,20 @@ export default class extends Controller {
         this.showValidationError("Informe uma velocidade de envio entre 1 e 500 mensagens por minuto.")
         return false
       }
+
+      if (this.selectedScheduleMode() === "scheduled") {
+        this.syncScheduleDateTime()
+        if (!this.hasScheduledInputTarget || !this.scheduledInputTarget.value) {
+          this.showValidationError("Informe data e horário para agendar o disparo.")
+          return false
+        }
+
+        const scheduledAt = this.selectedScheduleDate()
+        if (!scheduledAt || scheduledAt <= new Date()) {
+          this.showValidationError("Agende o disparo para uma data e horário futuros.")
+          return false
+        }
+      }
     }
 
     return true
@@ -689,6 +853,56 @@ export default class extends Controller {
 
   selectedAudienceMode() {
     return this.audienceModeTargets.find((input) => input.checked)?.value || "filters"
+  }
+
+  selectedScheduleMode() {
+    return this.scheduleModeTargets.find((input) => input.checked)?.value || "now"
+  }
+
+  selectedScheduleDate() {
+    if (!this.hasScheduledInputTarget || !this.scheduledInputTarget.value) return null
+    const date = new Date(this.scheduledInputTarget.value)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
+  currentSendRate() {
+    return this.hasSendRateInputTarget ? Number(this.sendRateInputTarget.value || 0) : 0
+  }
+
+  currentRecipientCount() {
+    if (this.audienceValidPhoneCount) return this.audienceValidPhoneCount
+    if (!this.hasAudienceWithPhoneTarget) return 0
+
+    return Number(this.audienceWithPhoneTarget.textContent.replace(/\D/g, "") || 0)
+  }
+
+  formatDuration(minutes) {
+    if (minutes < 60) return `${minutes} min`
+
+    const hours = Math.floor(minutes / 60)
+    const rest = minutes % 60
+    return rest > 0 ? `${hours}h ${rest}min` : `${hours}h`
+  }
+
+  formatFinish(date) {
+    return new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(date)
+  }
+
+  formatDateTime(value) {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+
+    return this.formatFinish(date)
+  }
+
+  formatNumber(value) {
+    return new Intl.NumberFormat("pt-BR").format(value)
   }
 
   valueTypeForField(field) {

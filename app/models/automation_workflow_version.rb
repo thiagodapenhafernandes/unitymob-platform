@@ -1,4 +1,6 @@
 class AutomationWorkflowVersion < ApplicationRecord
+  include TenantScoped
+
   STATUSES = %w[draft published archived].freeze
 
   belongs_to :automation_workflow, inverse_of: :versions

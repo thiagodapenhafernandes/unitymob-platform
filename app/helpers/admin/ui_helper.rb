@@ -11,7 +11,10 @@ module Admin::UiHelper
     primary: "ax-btn--primary",
     secondary: nil,
     ghost: "ax-btn--ghost",
-    danger: "ax-btn--danger"
+    danger: "ax-btn--danger",
+    success: "ax-btn--success",
+    warning: "ax-btn--warning",
+    info: "ax-btn--info"
   }.freeze
 
   def ax_icon(name, class_name: nil)

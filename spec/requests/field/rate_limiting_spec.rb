@@ -4,10 +4,12 @@ RSpec.describe "Field rate limiting via rack-attack", type: :request do
   before do
     # MemoryStore dedicado para não vazar estado entre specs.
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+    Rack::Attack.enabled = true
+    Rack::Attack.reset!
     host! "localhost"
   end
 
-  after { Rack::Attack.cache.store.clear }
+  after { Rack::Attack.reset! }
 
   describe "POST /field/location_pings burst limit (2/seg)" do
     it "retorna 429 após 2 requests no mesmo segundo" do

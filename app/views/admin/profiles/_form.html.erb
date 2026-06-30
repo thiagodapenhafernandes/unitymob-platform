@@ -1,5 +1,6 @@
-<%= form_with model: [:admin, profile], local: true, html: { class: "prof-form" } do |f| %>
+<%= form_with model: [:admin, profile], local: true, html: { class: "prof-form", data: { controller: "profile-axis-context" } } do |f| %>
   <%= ax_error_summary(profile) %>
+  <% fixed_profile = profile.locked? %>
 
   <div class="prof-grid">
     <div class="prof-main">
@@ -77,6 +78,59 @@
           </div>
 
           <div class="prof-field">
+            <%= ax_field_label(f, :axis, text: "Eixo do perfil", tooltip: "Vertical define hierarquia; horizontal define função operacional dentro de um nível vertical.") %>
+            <%= f.select :axis,
+                         [["Vertical - hierarquia", "vertical"], ["Horizontal - função operacional", "horizontal"]],
+                         {},
+                         class: "ax-control",
+                         disabled: fixed_profile,
+                         data: { profile_axis_context_target: "axis", action: "profile-axis-context#sync" } %>
+            <% if fixed_profile %>
+              <%= hidden_field_tag "profile[axis]", profile.axis %>
+            <% end %>
+            <p class="prof-hint">Somente Dono da Conta e Corretor são fixos. Os demais perfis podem mudar de eixo quando necessário.</p>
+          </div>
+
+          <%
+            vertical_profiles = current_tenant.profiles.ordered_vertical.where.not(id: profile.id)
+            insert_after_profiles = vertical_profiles.reject(&:agent?)
+            selected_insert_after_id =
+              if profile.vertical? && profile.position.present?
+                insert_after_profiles.select { |candidate| candidate.position.to_i < profile.position.to_i }.max_by(&:position)&.id
+              end
+            selected_insert_after_id ||= current_tenant.profiles.vertical.find_by(key: "tenant_owner")&.id
+            insert_after_options = insert_after_profiles.map do |candidate|
+              label = "#{candidate.name} (Vertical)"
+              label = "Dono da conta (Topo fixo)" if candidate.tenant_owner?
+              [label, candidate.id]
+            end
+          %>
+          <div class="prof-field" data-profile-axis-context-target="verticalProfileField" <%= "hidden" unless profile.horizontal? %>>
+            <%= ax_field_label(f, :vertical_profile_id, text: "Perfil vertical vinculado", tooltip: "Obrigatório para perfis horizontais. Não cria nova hierarquia.") %>
+            <%= f.collection_select :vertical_profile_id,
+                                    vertical_profiles,
+                                    :id,
+                                    :name,
+                                    { prompt: "Somente para perfil horizontal" },
+                                    { class: "ax-control", disabled: fixed_profile } %>
+            <% if fixed_profile %>
+              <%= hidden_field_tag "profile[vertical_profile_id]", profile.vertical_profile_id %>
+            <% end %>
+            <p class="prof-hint">Usado por perfis horizontais. Ao trocar o vínculo, usuários dessa função passam a operar no novo nível vertical.</p>
+          </div>
+
+          <div class="prof-field" data-profile-axis-context-target="insertAfterField" <%= "hidden" if profile.horizontal? %>>
+            <%= label_tag "profile_insert_after_profile_id", "Após o perfil", class: "prof-field__label" %>
+            <%= select_tag "profile[insert_after_profile_id]",
+                           options_for_select([["Selecione", ""]] + insert_after_options, selected_insert_after_id),
+                           id: "profile_insert_after_profile_id",
+                           class: "ax-control",
+                           disabled: fixed_profile %>
+            <p class="prof-hint">Usado por perfis verticais. Corretor permanece fixo como último nível.</p>
+            <%= f.hidden_field :position if fixed_profile %>
+          </div>
+
+          <div class="prof-field">
             <span class="prof-field__label">Status</span>
             <%= ax_switch_field(label: "Perfil ativo", form: f, method: :active) %>
             <p class="prof-hint">Perfis inativos deixam de ser usados em novos acessos.</p>
@@ -87,8 +141,17 @@
       <div class="prof-fullaccess">
         <i class="bi bi-shield-fill-check prof-fullaccess__icon"></i>
         <div>
-          <%= ax_switch_field(label: tag.strong("Acesso total"), name: "profile[permissions][admin]", value: "1", checked: (profile.permissions || {})["admin"] == true, id: "profile_admin_toggle", class_name: "prof-fullaccess__toggle") %>
-          <p>Quando ativado, este perfil ignora permissões granulares e acessa todos os recursos.</p>
+          <%
+            full_access_label = profile.horizontal? ? "Acesso funcional total" : "Acesso total do perfil vertical"
+            full_access_hint =
+              if profile.horizontal?
+                "Concede ações funcionais, mas não transforma o usuário em Tenant Owner, não altera a hierarquia e não remove o limite do perfil vertical."
+              else
+                "Concede acesso total dentro do Tenant apenas para este nível vertical. Tenant Owner continua sendo o único perfil estrutural de administração da conta."
+              end
+          %>
+          <%= ax_switch_field(label: tag.strong(full_access_label), name: "profile[permissions][admin]", value: "1", checked: (profile.permissions || {})["admin"] == true, id: "profile_admin_toggle", class_name: "prof-fullaccess__toggle") %>
+          <p><%= full_access_hint %></p>
         </div>
       </div>
     </aside>

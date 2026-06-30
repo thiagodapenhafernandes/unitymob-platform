@@ -17,7 +17,7 @@ class SyncPropertyService
   end
 
   def perform
-    habitation = Habitation.find_or_initialize_by(codigo: @codigo)
+    habitation = tenant.habitations.find_or_initialize_by(codigo: @codigo)
     existing_record = habitation.persisted?
     hb = fetch_details(@codigo)
     
@@ -63,6 +63,10 @@ class SyncPropertyService
   end
 
   private
+
+  def tenant
+    Current.tenant || raise(ArgumentError, "Tenant obrigatório para SyncPropertyService")
+  end
 
   def fetch_details(codigo)
     payload = {
@@ -275,12 +279,12 @@ class SyncPropertyService
     code = hb['CodigoCorretor'].to_s.strip.presence
     return current_broker_id if code.blank?
 
-    user = AdminUser.find_by(vista_id: code)
+    user = tenant.admin_users.find_by(vista_id: code)
     user&.id || current_broker_id
   end
 
   def current_broker_id
-    Habitation.where(codigo: @codigo).limit(1).pluck(:admin_user_id).first
+    tenant.habitations.where(codigo: @codigo).limit(1).pluck(:admin_user_id).first
   end
 
   def resolve_proprietor(hb, owner_data = {})
@@ -291,9 +295,9 @@ class SyncPropertyService
     role = hb['Proprietario'].present? ? :owner : :developer
 
     proprietor = nil
-    proprietor = Proprietor.find_by(vista_code: proprietor_code) if proprietor_code.present?
-    proprietor ||= Proprietor.where("lower(name) = lower(?)", proprietor_name.to_s.strip).first
-    proprietor ||= Proprietor.new
+    proprietor = tenant.proprietors.find_by(vista_code: proprietor_code) if proprietor_code.present?
+    proprietor ||= tenant.proprietors.where("lower(name) = lower(?)", proprietor_name.to_s.strip).first
+    proprietor ||= tenant.proprietors.new
 
     proprietor.name = proprietor_name.to_s.strip
     proprietor.role = role
@@ -369,7 +373,7 @@ class SyncPropertyService
 
   def build_attribute_rows(values, category, now)
     normalize_csv_list(values).map do |name|
-      { context: "habitation", category: category, name: name, created_at: now, updated_at: now }
+      { tenant_id: tenant.id, context: "habitation", category: category, name: name, created_at: now, updated_at: now }
     end
   end
 end

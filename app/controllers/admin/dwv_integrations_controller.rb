@@ -57,7 +57,7 @@ class Admin::DwvIntegrationsController < Admin::BaseController
     return redirect_to(admin_dwv_integrations_path, alert: "Informe o ID do imóvel na DWV.") if property_id.blank?
 
     payload = dwv_client.property_details(property_id)
-    result = Dwv::PropertyImportService.new(payload).perform
+    result = Dwv::PropertyImportService.new(payload, tenant: current_tenant).perform
 
     stamp_sync!("Imóvel DWV ##{property_id} sincronizado. Código local: #{result[:habitation].codigo}")
     redirect_to admin_dwv_integrations_path, notice: "Imóvel sincronizado com sucesso."
@@ -72,6 +72,7 @@ class Admin::DwvIntegrationsController < Admin::BaseController
 
     DwvSyncJob.perform_later(
       mode: "full",
+      tenant_id: current_tenant.id,
       triggered_by_id: current_admin_user.id
     )
 
@@ -93,6 +94,7 @@ class Admin::DwvIntegrationsController < Admin::BaseController
       mode: "batch",
       limit: limit,
       max_pages: 1,
+      tenant_id: current_tenant.id,
       triggered_by_id: current_admin_user.id
     )
 
@@ -108,6 +110,7 @@ class Admin::DwvIntegrationsController < Admin::BaseController
 
     DwvSyncJob.perform_later(
       mode: "deactivate_removed",
+      tenant_id: current_tenant.id,
       triggered_by_id: current_admin_user.id
     )
 

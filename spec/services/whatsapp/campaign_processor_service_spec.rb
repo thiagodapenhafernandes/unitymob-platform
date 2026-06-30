@@ -4,6 +4,15 @@ RSpec.describe Whatsapp::CampaignProcessorService do
   include ActiveJob::TestHelper
 
   let(:admin) { create(:admin_user, :admin) }
+
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = admin.tenant
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   let(:template) do
     WhatsappTemplate.create!(
       name: "lead_nurture",
@@ -38,9 +47,10 @@ RSpec.describe Whatsapp::CampaignProcessorService do
     expect {
       described_class.call(campaign)
     }.to change(WhatsappCampaignMessage, :count).by(1)
-      .and have_enqueued_job(Whatsapp::BulkSendJob).with(campaign.id)
+      .and have_enqueued_job(Whatsapp::BulkSendJob).with(campaign.id, tenant_id: campaign.tenant_id)
 
     message = campaign.campaign_messages.last
+    expect(message.tenant).to eq(campaign.tenant)
     expect(message.lead).to eq(matched)
     expect(message.phone_number).to eq("5547999990000")
     expect(message.template_variables).to eq("1" => "Lead Certo", "2" => "site")

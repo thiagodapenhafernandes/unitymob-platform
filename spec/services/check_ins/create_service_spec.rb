@@ -75,6 +75,19 @@ RSpec.describe CheckIns::CreateService do
       end
     end
 
+    context "multi-tenant" do
+      it "não cria check-in em loja de outro tenant dentro do raio" do
+        other_tenant = Tenant.create!(name: "Outro create check-in #{SecureRandom.hex(3)}", slug: "outro-create-checkin-#{SecureRandom.hex(3)}")
+        create(:store, tenant: other_tenant, latitude: -26.9906, longitude: -48.6348, geofence_radius_meters: 150)
+        store.update!(latitude: -26.9800, longitude: -48.6200, geofence_radius_meters: 50)
+
+        result = described_class.new(admin_user: user, lat: -26.9906, lng: -48.6348, accuracy: 10).call
+
+        expect(result[:success]).to be false
+        expect(result[:error]).to eq(:no_store_in_range)
+      end
+    end
+
     context "sem turno ativo" do
       it "falha com :no_active_shift" do
         user.store_shifts.destroy_all

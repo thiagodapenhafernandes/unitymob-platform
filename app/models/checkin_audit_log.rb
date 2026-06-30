@@ -3,6 +3,8 @@
 # Trilha de auditoria de check-ins — append-only via trigger PG.
 # Qualquer UPDATE/DELETE no banco é rejeitado com PG::RaiseException.
 class CheckinAuditLog < ApplicationRecord
+  include TenantScoped
+
   ACTIONS = %w[
     created
     closed

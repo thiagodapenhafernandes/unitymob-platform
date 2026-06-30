@@ -24,12 +24,12 @@ module Habitations
     def selected_proprietor
       return if habitation.proprietor_id.blank?
 
-      Proprietor.find_by(id: habitation.proprietor_id)
+      habitation.tenant.proprietors.find_by(id: habitation.proprietor_id)
     end
 
     def existing_proprietor
       find_by_vista_code ||
-        Proprietor.find_by_phone(primary_phone) ||
+        find_by_phone ||
         find_by_email ||
         find_by_name
     end
@@ -37,25 +37,32 @@ module Habitations
     def new_proprietor
       return if owner_name.blank?
 
-      Proprietor.new(name: owner_name, role: :owner)
+      habitation.tenant.proprietors.new(name: owner_name, role: :owner)
     end
 
     def find_by_vista_code
       return if vista_code.blank?
 
-      Proprietor.find_by(vista_code: vista_code)
+      habitation.tenant.proprietors.find_by(vista_code: vista_code)
+    end
+
+    def find_by_phone
+      digits = Proprietor.normalized_phone(primary_phone)
+      return if digits.blank?
+
+      habitation.tenant.proprietors.with_normalized_phone(digits).order(:id).first
     end
 
     def find_by_email
       return if email.blank?
 
-      Proprietor.find_by(email: email)
+      habitation.tenant.proprietors.find_by(email: email)
     end
 
     def find_by_name
       return if owner_name.blank?
 
-      Proprietor.find_by(name: owner_name)
+      habitation.tenant.proprietors.find_by(name: owner_name)
     end
 
     def apply_habitation_data_to(proprietor)

@@ -2,13 +2,18 @@ module Whatsapp
   class SyncTemplatesJob < ApplicationJob
     queue_as :default
 
-    def perform
-      result = Whatsapp::CloudClient.new.fetch_templates
+    def perform(tenant_id = nil)
+      tenant = Tenant.find_by(id: tenant_id) if tenant_id.present?
+      return { ok: false, error: "Tenant não encontrado." } unless tenant
+
+      Current.tenant = tenant
+      integration = WhatsappBusinessIntegration.current(tenant)
+      result = Whatsapp::CloudClient.new(integration).fetch_templates
       return { ok: false, error: result[:error] } unless result[:ok]
 
       synced = 0
       Array(result.dig(:data, "data")).each do |tpl|
-        record = WhatsappTemplate.find_or_initialize_by(name: tpl["name"], language: tpl["language"].presence || "pt_BR")
+        record = tenant.whatsapp_templates.find_or_initialize_by(name: tpl["name"], language: tpl["language"].presence || "pt_BR")
         record.assign_attributes(
           category: normalized_category(tpl["category"]),
           status: tpl["status"].presence || "PENDING",
@@ -27,6 +32,8 @@ module Whatsapp
         synced += 1
       end
       { ok: true, synced: synced }
+    ensure
+      Current.tenant = nil if tenant_id.present?
     end
 
     private

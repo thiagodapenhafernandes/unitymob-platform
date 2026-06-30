@@ -110,6 +110,52 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Lead Premium")
       expect(response.body).not_to include("Lead Popular")
     end
+
+    it "nao filtra por corretor de outro tenant mesmo se houver lead legado inconsistente" do
+      other_tenant = Tenant.create!(name: "Outro leads filter #{SecureRandom.hex(3)}", slug: "outro-leads-filter-#{SecureRandom.hex(3)}")
+      other_profile = other_tenant.profiles.find_by!(key: "agent")
+      other_broker = create(:admin_user, tenant: other_tenant, profile: other_profile, email: "other-broker-filter-#{SecureRandom.hex(6)}@salute.test")
+      legacy_lead = create(:lead, name: "Lead Inconsistente", phone: "11977777777", tenant: admin.tenant)
+      legacy_lead.update_columns(admin_user_id: other_broker.id)
+
+      get admin_leads_path(view: "list", broker_id: other_broker.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("Lead Inconsistente")
+    end
+
+    it "recorta a listagem com team=0 sem bloquear acesso direto a lead subordinado" do
+      manager_profile = Profile.create!(
+        tenant: admin.tenant,
+        name: "Manager Leads #{SecureRandom.hex(4)}",
+        axis: "vertical",
+        position: 200,
+        permissions: { "leads" => { "view" => true, "manage" => true, "scope" => "team" } }
+      )
+      agent_profile = admin.tenant.profiles.find_or_create_by!(key: "agent") do |profile|
+        profile.name = "Agent"
+        profile.axis = "vertical"
+        profile.permissions = Profile.default_permissions_for("Corretor")
+      end
+      manager = create(:admin_user, tenant: admin.tenant, profile: manager_profile, email: "manager-leads-#{SecureRandom.hex(6)}@salute.test")
+      subordinate = create(:admin_user, tenant: admin.tenant, profile: agent_profile, manager: manager, email: "subordinate-leads-#{SecureRandom.hex(6)}@salute.test")
+      own_lead = create(:lead, name: "Lead do Gestor", phone: "11911111111", tenant: admin.tenant, admin_user: manager)
+      team_lead = create(:lead, name: "Lead Subordinado", phone: "11922222222", tenant: admin.tenant, admin_user: subordinate)
+
+      sign_out admin
+      sign_in manager
+
+      get admin_leads_path(view: "list", team: "0")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(own_lead.name)
+      expect(response.body).not_to include(team_lead.name)
+
+      get admin_lead_path(team_lead, team: "0")
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(team_lead.name)
+    end
   end
 
   describe "PATCH /admin/leads/:id" do
@@ -143,10 +189,8 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "permite que o corretor atualize status do proprio lead via json" do
-      broker_profile = Profile.create!(
-        name: "Corretor Kanban #{SecureRandom.hex(4)}",
-        permissions: Profile.default_permissions_for("Corretor")
-      )
+      broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+      broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
       broker = create(:admin_user, profile: broker_profile, email: "broker-kanban-#{SecureRandom.hex(4)}@salute.test")
       lead = create(:lead, status: "Aguardando Aceite")
       lead.update_columns(admin_user_id: broker.id, status: "Aguardando Aceite")
@@ -164,10 +208,8 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "nao permite que corretor reatribua lead ou altere origem por parametro forjado" do
-      broker_profile = Profile.create!(
-        name: "Corretor bloqueio #{SecureRandom.hex(4)}",
-        permissions: Profile.default_permissions_for("Corretor")
-      )
+      broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+      broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
       broker = create(:admin_user, profile: broker_profile, email: "broker-lock-#{SecureRandom.hex(4)}@salute.test")
       other_broker = create(:admin_user, profile: broker_profile, email: "broker-lock-other-#{SecureRandom.hex(4)}@salute.test")
       lead = create(:lead, status: "Aguardando Aceite", origin: "webhook")
@@ -187,10 +229,8 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "retorna erro json claro quando o lead saiu da fila do corretor" do
-      broker_profile = Profile.create!(
-        name: "Corretor Kanban stale #{SecureRandom.hex(4)}",
-        permissions: Profile.default_permissions_for("Corretor")
-      )
+      broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+      broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
       broker = create(:admin_user, profile: broker_profile, email: "broker-stale-#{SecureRandom.hex(4)}@salute.test")
       other_broker = create(:admin_user, profile: broker_profile, email: "broker-other-#{SecureRandom.hex(4)}@salute.test")
       lead = create(:lead, status: "Aguardando Aceite")
@@ -239,10 +279,8 @@ RSpec.describe "Admin::Leads", type: :request do
 
   describe "GET /admin/leads/:id/attend" do
     it "permite que o primeiro corretor reivindique um lead de Shark Tank" do
-      broker_profile = Profile.create!(
-        name: "Corretor Shark #{SecureRandom.hex(4)}",
-        permissions: Profile.default_permissions_for("Corretor")
-      )
+      broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+      broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
       broker = create(:admin_user, :field_agent, profile: broker_profile, email: "broker-shark-#{SecureRandom.hex(4)}@salute.test")
       rule = create(:distribution_rule, distribution_mode: :shark_tank)
       rule_agent = create(:distribution_rule_agent, distribution_rule: rule, admin_user: broker)
@@ -266,10 +304,8 @@ RSpec.describe "Admin::Leads", type: :request do
     end
 
     it "mostra lead ja atendido para corretor que perdeu a corrida do Shark Tank" do
-      broker_profile = Profile.create!(
-        name: "Corretor Shark Lost #{SecureRandom.hex(4)}",
-        permissions: Profile.default_permissions_for("Corretor")
-      )
+      broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+      broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
       winner = create(:admin_user, :field_agent, profile: broker_profile, email: "broker-winner-#{SecureRandom.hex(4)}@salute.test")
       loser = create(:admin_user, :field_agent, profile: broker_profile, email: "broker-loser-#{SecureRandom.hex(4)}@salute.test")
       Lead.skip_callback(:commit, :after, :route_lead)

@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :store do
+    tenant { Current.tenant || Tenant.default }
     sequence(:name) { |n| "Loja #{n}" }
     address { "Av. Atlântica, 3750" }
     city { "Balneário Camboriú" }

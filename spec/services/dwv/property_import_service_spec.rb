@@ -1,11 +1,13 @@
 require "rails_helper"
 
 RSpec.describe Dwv::PropertyImportService do
+  let(:tenant) { Tenant.default }
+
   describe "#perform" do
     it "creates a DWV habitation with the full unit/building mapping" do
-      create(:habitation, codigo: "8628", imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
+      create(:habitation, tenant: tenant, codigo: "8628", imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
 
-      result = described_class.new(unit_payload).perform
+      result = described_class.new(unit_payload, tenant: tenant).perform
 
       habitation = result[:habitation]
       expect(habitation).to be_persisted
@@ -51,6 +53,7 @@ RSpec.describe Dwv::PropertyImportService do
     it "updates rich fields on an existing DWV record" do
       habitation = create(
         :habitation,
+        tenant: tenant,
         codigo: "DWV-632439",
         codigo_dwv: "632439",
         imovel_dwv: "Sim",
@@ -60,7 +63,7 @@ RSpec.describe Dwv::PropertyImportService do
         area_privativa_m2: nil
       )
 
-      described_class.new(unit_payload).perform
+      described_class.new(unit_payload, tenant: tenant).perform
       habitation.reload
 
       expect(habitation.titulo_anuncio).to eq("Apartamento com vista mar")
@@ -71,8 +74,33 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.last_sync_message).to eq("Sincronizado via DWV (mapeamento completo)")
     end
 
+    it "não atualiza imóvel DWV de outro tenant com o mesmo código externo" do
+      current_tenant = Tenant.create!(name: "Tenant DWV #{SecureRandom.hex(3)}", slug: "tenant-dwv-import-#{SecureRandom.hex(3)}")
+      other_tenant = Tenant.create!(name: "Outro DWV #{SecureRandom.hex(3)}", slug: "outro-dwv-import-#{SecureRandom.hex(3)}")
+      other_habitation = create(
+        :habitation,
+        tenant: other_tenant,
+        codigo: "OUT-DWV-632439",
+        codigo_dwv: "632439",
+        imovel_dwv: "Sim",
+        titulo_anuncio: "Título do outro tenant"
+      )
+
+      result = described_class.new(unit_payload, tenant: current_tenant).perform
+
+      expect(result[:habitation]).to be_persisted
+      expect(result[:habitation].tenant).to eq(current_tenant)
+      expect(result[:habitation].codigo_dwv).to eq("632439")
+      expect(result[:habitation].titulo_anuncio).to eq("Apartamento com vista mar")
+      expect(other_habitation.reload).to have_attributes(
+        tenant_id: other_tenant.id,
+        titulo_anuncio: "Título do outro tenant",
+        codigo_dwv: "632439"
+      )
+    end
+
     it "maps third party property fields without requiring unit data" do
-      result = described_class.new(third_party_payload).perform
+      result = described_class.new(third_party_payload, tenant: tenant).perform
       habitation = result[:habitation]
 
       expect(habitation.status).to eq("Aluguel")

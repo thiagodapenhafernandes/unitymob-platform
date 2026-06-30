@@ -42,6 +42,30 @@ RSpec.describe "Leads", type: :request do
       )
       expect(body["whatsapp_url"]).to include("wa.me/5547999990002")
     end
+
+    it "ignora imóvel de outro tenant ao montar URL de WhatsApp" do
+      other_tenant = Tenant.create!(name: "Outro leads #{SecureRandom.hex(3)}", slug: "outro-leads-#{SecureRandom.hex(3)}")
+      habitation = create(:habitation, tenant: other_tenant, status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 4_500_00)
+
+      get whatsapp_url_leads_path, params: { property_id: habitation.id, message: "Quero alugar" }
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["negotiation_type"]).to eq("sale")
+      expect(body["whatsapp_url"]).to include("wa.me/5547999990001")
+    end
+
+    it "usa tenant_slug para resolver imóvel do tenant público solicitado" do
+      tenant = Tenant.create!(name: "Tenant publico leads #{SecureRandom.hex(3)}", slug: "tenant-publico-leads-#{SecureRandom.hex(3)}")
+      habitation = create(:habitation, tenant: tenant, status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 4_500_00)
+
+      get whatsapp_url_leads_path, params: { tenant_slug: tenant.slug, property_id: habitation.id, message: "Quero alugar" }
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["negotiation_type"]).to eq("rent")
+      expect(body["whatsapp_url"]).to include("wa.me/5547999990002")
+    end
   end
 
   describe "POST /leads" do
@@ -81,6 +105,45 @@ RSpec.describe "Leads", type: :request do
       body = JSON.parse(response.body)
       expect(body["success"]).to be(true)
       expect(body["whatsapp_url"]).to include("wa.me/5547999990001")
+    end
+
+    it "cria lead no tenant público e descarta property_id de outro tenant" do
+      other_tenant = Tenant.create!(name: "Outro leads #{SecureRandom.hex(3)}", slug: "outro-leads-#{SecureRandom.hex(3)}")
+      habitation = create(:habitation, tenant: other_tenant, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
+
+      expect {
+        post leads_path, params: {
+          lead: {
+            name: "Cliente Cross Tenant",
+            phone: "(47) 98888-7777",
+            property_id: habitation.id,
+            lead_type: "whatsapp_modal"
+          }
+        }, as: :json
+      }.to change(Lead, :count).by(1)
+
+      expect(response).to have_http_status(:ok)
+      lead = Lead.order(:created_at).last
+      expect(lead.tenant).to eq(Tenant.default)
+      expect(lead.property_id).to be_nil
+    end
+
+    it "cria lead no tenant público informado por tenant_slug" do
+      tenant = Tenant.create!(name: "Tenant lead publico #{SecureRandom.hex(3)}", slug: "tenant-lead-publico-#{SecureRandom.hex(3)}")
+      habitation = create(:habitation, tenant: tenant, valor_venda_cents: 700_000_00, valor_locacao_cents: 0)
+
+      post leads_path, params: {
+        tenant_slug: tenant.slug,
+        lead: {
+          name: "Cliente Tenant",
+          phone: "47999990000",
+          property_id: habitation.id,
+          origin: "site"
+        }
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(tenant.leads.order(:created_at).last).to have_attributes(name: "Cliente Tenant", property_id: habitation.id)
     end
   end
 end

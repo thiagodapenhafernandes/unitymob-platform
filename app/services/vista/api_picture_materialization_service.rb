@@ -100,7 +100,8 @@ module Vista
     private
 
     def self.default_scope
-      Habitation
+      tenant = Current.tenant || raise(ArgumentError, "Tenant obrigatório para materializar fotos Vista")
+      tenant.habitations
         .where.not(imovel_dwv: "Sim")
         .where(SOURCE_GALLERY_SQL)
     end
@@ -148,7 +149,7 @@ module Vista
     end
 
     def process_habitation_id(habitation_id)
-      habitation = Habitation.find(habitation_id)
+      habitation = tenant.habitations.find(habitation_id)
       outcome = {
         properties_scanned: 1,
         pictures_scanned: 0,
@@ -215,6 +216,10 @@ module Vista
       end
 
       outcome
+    end
+
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para materializar fotos Vista")
     end
 
     def apply_outcome(result, outcome)

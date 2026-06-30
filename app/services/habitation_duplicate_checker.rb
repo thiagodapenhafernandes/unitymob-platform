@@ -5,7 +5,7 @@ class HabitationDuplicateChecker
     end
   end
 
-  def initialize(street:, number:, building:, unit:, status: nil, comparison: nil, ignored_id: nil, complement: nil, category: nil)
+  def initialize(street:, number:, building:, unit:, status: nil, comparison: nil, ignored_id: nil, complement: nil, category: nil, tenant: nil)
     @street = street
     @number = number
     @building = building
@@ -15,6 +15,8 @@ class HabitationDuplicateChecker
     @ignored_id = ignored_id
     @complement = complement
     @category = category
+    @tenant = tenant || Current.tenant
+    raise ArgumentError, "Tenant obrigatório para verificar duplicidade de imóvel" if @tenant.blank?
   end
 
   def call
@@ -40,15 +42,19 @@ class HabitationDuplicateChecker
   private
 
   def base_scope
-    scope = Habitation.left_outer_joins(:address).includes(:address, :admin_user)
+    scope = habitation_scope.left_outer_joins(:address).includes(:address, :admin_user)
     if @ignored_id.present?
       scope = scope.where.not(id: @ignored_id)
-      ignored_group_uuid = Habitation.where(id: @ignored_id).pick(:intake_group_uuid)
+      ignored_group_uuid = habitation_scope.where(id: @ignored_id).pick(:intake_group_uuid)
       if ignored_group_uuid.present?
         scope = scope.where("habitations.intake_group_uuid IS NULL OR habitations.intake_group_uuid != ?", ignored_group_uuid)
       end
     end
     scope
+  end
+
+  def habitation_scope
+    @tenant.habitations
   end
 
   def complete_identity?

@@ -36,9 +36,11 @@ module Dwv
       nil
     end
 
-    def initialize(payload)
+    def initialize(payload, tenant: nil)
       @raw_payload = payload || {}
       @payload = unwrap_payload(@raw_payload)
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para Dwv::PropertyImportService" if @tenant.blank?
     end
 
     def perform
@@ -47,7 +49,7 @@ module Dwv
 
       incoming_codigo = value(["reference"], ["codigo"], ["code"]).to_s.strip
 
-      habitation = find_existing_habitation(dwv_id: dwv_id, codigo: incoming_codigo) || Habitation.new
+      habitation = find_existing_habitation(dwv_id: dwv_id, codigo: incoming_codigo) || tenant.habitations.new
       existing_record = habitation.persisted?
 
       if !existing_record && insufficient_payload_for_new_record?
@@ -80,6 +82,8 @@ module Dwv
     end
 
     private
+
+    attr_reader :tenant
 
     def value(*paths)
       self.class.value(@payload, *paths)
@@ -176,18 +180,18 @@ module Dwv
     end
 
     def find_existing_habitation(dwv_id:, codigo:)
-      by_dwv_code = Habitation.where(codigo_dwv: dwv_id, imovel_dwv: "Sim")
+      by_dwv_code = tenant.habitations.where(codigo_dwv: dwv_id, imovel_dwv: "Sim")
       return pick_best_candidate(by_dwv_code) if by_dwv_code.exists?
 
-      by_dwv_code_legacy = Habitation.where(codigo_dwv: dwv_id)
+      by_dwv_code_legacy = tenant.habitations.where(codigo_dwv: dwv_id)
       return pick_best_candidate(by_dwv_code_legacy) if by_dwv_code_legacy.exists?
 
       return nil if codigo.blank?
 
-      by_code_and_dwv_flag = Habitation.where(codigo: codigo, imovel_dwv: "Sim")
+      by_code_and_dwv_flag = tenant.habitations.where(codigo: codigo, imovel_dwv: "Sim")
       return pick_best_candidate(by_code_and_dwv_flag) if by_code_and_dwv_flag.exists?
 
-      by_code_and_dwv_code = Habitation.where(codigo: codigo).where.not(codigo_dwv: [nil, ""])
+      by_code_and_dwv_code = tenant.habitations.where(codigo: codigo).where.not(codigo_dwv: [nil, ""])
       return pick_best_candidate(by_code_and_dwv_code) if by_code_and_dwv_code.exists?
 
       nil
@@ -213,7 +217,7 @@ module Dwv
       raw_code = text_value(["building", "id"])
       return nil if raw_code.blank?
 
-      Habitation.empreendimentos.exists?(codigo: raw_code) ? raw_code : nil
+      tenant.habitations.empreendimentos.exists?(codigo: raw_code) ? raw_code : nil
     end
 
     def normalize_category(raw)

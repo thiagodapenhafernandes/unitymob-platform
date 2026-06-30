@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :distribution_rule do
+    tenant { Current.tenant || Tenant.default }
     sequence(:name) { |n| "Regra #{n}" }
     business_type { :ambos }
     distribution_mode { :rotary }

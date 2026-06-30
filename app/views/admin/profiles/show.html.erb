@@ -1,4 +1,42 @@
-<div>
-  <h1 class="font-bold text-4xl">Admin::Profiles#show</h1>
-  <p>Find me in app/views/admin/profiles/show.html.erb</p>
+<header class="ax-dashboard-command ax-property-form-command">
+  <div class="ax-dashboard-command__main">
+    <span class="ax-dashboard-command__eyebrow">Perfil de acesso</span>
+    <h1><%= @profile.name %></h1>
+    <p>
+      <%= @profile.vertical? ? "Perfil vertical da hierarquia principal." : "Função horizontal anexada a um perfil vertical." %>
+    </p>
+  </div>
+  <div class="ax-dashboard-command__actions">
+    <%= link_to "Voltar", admin_profiles_path, class: "ax-btn" %>
+    <%= link_to "Editar", edit_admin_profile_path(@profile), class: "ax-btn ax-btn--primary" %>
+  </div>
+</header>
+
+<div class="ax-table-wrap" style="margin-top:8px">
+  <table class="ax-table">
+    <tbody>
+      <tr>
+        <th style="width:220px">Eixo</th>
+        <td><%= @profile.vertical? ? "Vertical" : "Horizontal" %></td>
+      </tr>
+      <tr>
+        <th>Vinculado a</th>
+        <td><%= @profile.horizontal? ? @profile.vertical_profile&.name : "Hierarquia principal" %></td>
+      </tr>
+      <tr>
+        <th>Ordem vertical</th>
+        <td><%= @profile.vertical? ? @profile.position : "Nao se aplica" %></td>
+      </tr>
+      <tr>
+        <th>Status</th>
+        <td><%= @profile.active? ? "Ativo" : "Inativo" %></td>
+      </tr>
+      <tr>
+        <th>Usuários vinculados</th>
+        <td>
+          <%= @profile.vertical? ? @profile.admin_users.where(tenant: current_tenant).count : current_tenant.admin_users.where(horizontal_profile_id: @profile.id).count %>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </div>

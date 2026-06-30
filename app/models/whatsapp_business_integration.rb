@@ -1,4 +1,6 @@
 class WhatsappBusinessIntegration < ApplicationRecord
+  include TenantScoped
+
   STATUSES = %w[disconnected connected pending failed canceled].freeze
   NEGOTIATION_TYPES = {
     "sale" => {
@@ -37,6 +39,7 @@ class WhatsappBusinessIntegration < ApplicationRecord
            inverse_of: :whatsapp_business_integration
 
   validates :status, inclusion: { in: STATUSES }
+  validate :connected_user_must_belong_to_tenant
   validate :validate_site_phone_numbers
 
   SITE_PHONE_ATTRIBUTES.each do |attribute_name|
@@ -49,8 +52,10 @@ class WhatsappBusinessIntegration < ApplicationRecord
     end
   end
 
-  def self.current
-    order(created_at: :asc).first_or_initialize
+  def self.current(tenant = Current.tenant)
+    raise ArgumentError, "Tenant obrigatório para integração WhatsApp" if tenant.blank?
+
+    tenant.whatsapp_business_integrations.order(created_at: :asc).first_or_initialize
   end
 
   def connected?
@@ -148,5 +153,12 @@ class WhatsappBusinessIntegration < ApplicationRecord
       digits = value.gsub(/\D/, "")
       errors.add(attribute, "deve ter DDD e número válidos") unless digits.length.between?(10, 13)
     end
+  end
+
+  def connected_user_must_belong_to_tenant
+    return if connected_by_admin_user.blank? || tenant_id.blank?
+    return if connected_by_admin_user.tenant_id == tenant_id
+
+    errors.add(:connected_by_admin_user, "deve pertencer ao mesmo Tenant")
   end
 end

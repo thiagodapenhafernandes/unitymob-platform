@@ -52,6 +52,21 @@ RSpec.describe "Admin::AutomationEvents", type: :request do
       expect(response.body).to include("erro controlado")
       expect(response.body).not_to include("Lead Processado")
     end
+
+    it "não lista eventos de outro Tenant" do
+      other_tenant = Tenant.create!(name: "Outro auto #{SecureRandom.hex(3)}", slug: "outro-auto-#{SecureRandom.hex(3)}")
+      other_lead = create(:lead, tenant: other_tenant, name: "Lead Outro Tenant")
+      current_lead = create(:lead, tenant: admin.tenant, name: "Lead Tenant Atual")
+      AutomationEvent.delete_all
+      AutomationEvent.create!(tenant: admin.tenant, lead: current_lead, name: "lead_created", source: "lead", status: "processed", occurred_at: Time.current)
+      AutomationEvent.create!(tenant: other_tenant, lead: other_lead, name: "lead_created", source: "lead", status: "processed", occurred_at: Time.current)
+
+      get admin_automation_events_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Lead Tenant Atual")
+      expect(response.body).not_to include("Lead Outro Tenant")
+    end
   end
 
   describe "POST reprocess" do

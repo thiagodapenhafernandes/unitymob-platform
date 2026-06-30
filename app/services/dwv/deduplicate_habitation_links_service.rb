@@ -1,5 +1,10 @@
 module Dwv
   class DeduplicateHabitationLinksService
+    def initialize(tenant: nil)
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para Dwv::DeduplicateHabitationLinksService" if @tenant.blank?
+    end
+
     def call!
       duplicate_codes = duplicate_codigo_dwv_values
       detached = 0
@@ -24,7 +29,7 @@ module Dwv
       duplicate_ids = duplicates.map(&:id)
       timestamp = Time.current
 
-      Habitation.where(id: duplicate_ids).update_all(
+      tenant.habitations.where(id: duplicate_ids).update_all(
         codigo_dwv: nil,
         imovel_dwv: "Não",
         last_sync_at: timestamp,
@@ -40,8 +45,10 @@ module Dwv
 
     private
 
+    attr_reader :tenant
+
     def dwv_scope
-      Habitation.where(imovel_dwv: "Sim").where.not(codigo_dwv: [nil, ""])
+      tenant.habitations.where(imovel_dwv: "Sim").where.not(codigo_dwv: [nil, ""])
     end
 
     def duplicate_codigo_dwv_values

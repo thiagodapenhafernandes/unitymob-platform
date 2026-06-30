@@ -56,10 +56,10 @@ class HabitationIntakeReviewNotifier
   end
 
   def internal_recipients
-    @internal_recipients ||= AdminUser
+    @internal_recipients ||= @habitation.tenant.admin_users
       .active
       .includes(:profile)
-      .select { |user| user.admin? || user.can?(:review, :captacoes) }
+      .select { |user| user.tenant_owner? || user.can?(:review, :captacoes) }
   end
 
   def property_setting

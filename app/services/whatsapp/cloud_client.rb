@@ -26,6 +26,36 @@ module Whatsapp
       post_message(to: to, type: "template", template: template)
     end
 
+    def upload_message_media(file_name:, content_type:, type:, io:)
+      return error_result("Integração não configurada") unless configured?
+
+      require "faraday/multipart"
+
+      io.rewind if io.respond_to?(:rewind)
+      response = Faraday.new(url: base) do |faraday|
+        faraday.request :multipart
+        faraday.request :url_encoded
+        faraday.adapter Faraday.default_adapter
+      end.post("#{@integration.phone_number_id}/media") do |request|
+        request.headers["Authorization"] = "Bearer #{token}"
+        request.body = {
+          messaging_product: "whatsapp",
+          type: type.to_s.presence || "image",
+          file: Faraday::Multipart::FilePart.new(io.path, content_type.to_s.presence || "application/octet-stream", file_name.to_s.presence || "media")
+        }
+      end
+
+      result = parse(response)
+      return result unless result[:ok]
+
+      media_id = result.dig(:data, "id").presence
+      return error_result("Meta não retornou o ID da mídia para envio.") if media_id.blank?
+
+      result.merge(media_id: media_id)
+    rescue => e
+      error_result(e.message)
+    end
+
     # Health check de envio: consulta o número na Cloud API (valida token + phone_number_id).
     def phone_info
       return error_result("Integração não configurada") unless configured?
@@ -161,15 +191,17 @@ module Whatsapp
       rescue JSON::ParserError
         {}
       end
-      if response.success?
-        { ok: true, status: response.code, data: data, message_id: data.dig("messages", 0, "id") }
+      status_code = response.respond_to?(:code) ? response.code : response.status
+      success = response.respond_to?(:success?) ? response.success? : status_code.to_i.between?(200, 299)
+      if success
+        { ok: true, status: status_code, data: data, message_id: data.dig("messages", 0, "id") }
       else
         meta_error = data["error"].is_a?(Hash) ? data["error"] : {}
         {
           ok: false,
-          status: response.code,
+          status: status_code,
           data: data,
-          error: meta_error_message(meta_error, response.code),
+          error: meta_error_message(meta_error, status_code),
           meta_error: {
             code: meta_error["code"],
             subcode: meta_error["error_subcode"],

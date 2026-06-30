@@ -2,13 +2,14 @@ module Whatsapp
   class TemplateMessageComponents
     Result = Struct.new(:ok?, :components, :error, keyword_init: true)
 
-    def self.call(template:, variables:)
-      new(template, variables).call
+    def self.call(template:, variables:, client: nil)
+      new(template, variables, client).call
     end
 
-    def initialize(template, variables)
+    def initialize(template, variables, client = nil)
       @template = template
       @variables = variables.to_h.transform_keys(&:to_s)
+      @client = client
     end
 
     def call
@@ -25,7 +26,7 @@ module Whatsapp
 
     private
 
-    attr_reader :template, :variables
+    attr_reader :template, :variables, :client
 
     def template_components
       @template_components ||= Array(template.components).map { |component| normalize_hash(component) }
@@ -160,12 +161,35 @@ module Whatsapp
     end
 
     def header_media_reference(header)
-      Array(header.dig("example", "header_handle")).first.presence || template.header_media_handle.to_s.presence
+      uploaded_header_media_reference || Array(header.dig("example", "header_handle")).first.presence || template.header_media_handle.to_s.presence
     end
 
     def carousel_media_reference(header, card_index)
       Array(header.dig("example", "header_handle")).first.presence ||
         Array(template.carousel_cards).dig(card_index, "media_handle").to_s.presence
+    end
+
+    def uploaded_header_media_reference
+      return @uploaded_header_media_reference if defined?(@uploaded_header_media_reference)
+
+      @uploaded_header_media_reference = nil
+      return unless client && template.header_media_file.attached?
+
+      blob = template.header_media_file.blob
+      media_type = template.header_format.to_s.downcase
+      template.header_media_file.open do |file|
+        upload = client.upload_message_media(
+          file_name: blob.filename.to_s,
+          content_type: blob.content_type,
+          type: media_type,
+          io: file
+        )
+        raise ArgumentError, upload[:error] unless upload[:ok]
+
+        @uploaded_header_media_reference = upload[:media_id].presence
+      end
+
+      @uploaded_header_media_reference
     end
 
     def media_label(type)

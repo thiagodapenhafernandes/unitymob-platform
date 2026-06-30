@@ -1,6 +1,13 @@
 require "rails_helper"
 
 RSpec.describe Vista::PropertyReconciliationService do
+  around do |example|
+    previous_tenant = Current.tenant
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   describe "bathroom mapping" do
     it "uses the Vista form bathroom count before the aggregated bathroom count" do
       service = described_class.new(codigos: ["8627"], dry_run: true)
@@ -162,6 +169,40 @@ RSpec.describe Vista::PropertyReconciliationService do
       )
 
       expect(flag).to be(true)
+    end
+  end
+
+  describe "tenant isolation" do
+    it "resolve proprietario e corretor apenas no Tenant corrente" do
+      current_tenant = Tenant.create!(name: "Tenant reconcile #{SecureRandom.hex(3)}", slug: "tenant-reconcile-#{SecureRandom.hex(3)}")
+      other_tenant = Tenant.create!(name: "Outro reconcile #{SecureRandom.hex(3)}", slug: "outro-reconcile-#{SecureRandom.hex(3)}")
+      current_profile = current_tenant.profiles.find_by!(key: "agent")
+      other_profile = other_tenant.profiles.find_by!(key: "agent")
+      current_broker = create(:admin_user, tenant: current_tenant, profile: current_profile, vista_id: "BROKER-REC-1")
+      create(:admin_user, tenant: other_tenant, profile: other_profile, vista_id: "BROKER-REC-2")
+      other_proprietor = create(:proprietor, tenant: other_tenant, vista_code: "PROP-REC-1", name: "Proprietário Externo")
+
+      Current.tenant = current_tenant
+      service = described_class.new(codigos: ["REC-1"], dry_run: true)
+
+      expect(service.send(:resolve_broker, { "CodigoCorretor" => "BROKER-REC-1" })).to eq(current_broker)
+      expect(service.send(:resolve_broker, { "CodigoCorretor" => "BROKER-REC-2" })).to be_nil
+
+      proprietor = service.send(:resolve_proprietor, { "CodigoProprietario" => "PROP-REC-1", "Proprietario" => "Proprietário Atual" })
+      expect(proprietor.tenant).to eq(current_tenant)
+      expect(proprietor.id).not_to eq(other_proprietor.id)
+    end
+
+    it "valida duplicidade de codigo DWV apenas dentro do Tenant corrente" do
+      current_tenant = Tenant.create!(name: "Tenant dwv #{SecureRandom.hex(3)}", slug: "tenant-dwv-#{SecureRandom.hex(3)}")
+      other_tenant = Tenant.create!(name: "Outro dwv #{SecureRandom.hex(3)}", slug: "outro-dwv-#{SecureRandom.hex(3)}")
+      create(:habitation, tenant: other_tenant, codigo: "OUT-DWV", codigo_dwv: "DWV-1")
+      habitation = build(:habitation, tenant: current_tenant, codigo: "CUR-DWV")
+
+      Current.tenant = current_tenant
+      service = described_class.new(codigos: ["CUR-DWV"], dry_run: true)
+
+      expect(service.send(:unique_dwv_code, { "CodigoDWV" => "DWV-1" }, habitation)).to eq("DWV-1")
     end
   end
 end

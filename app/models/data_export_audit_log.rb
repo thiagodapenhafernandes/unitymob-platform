@@ -1,4 +1,6 @@
 class DataExportAuditLog < ApplicationRecord
+  include TenantScoped
+
   EXPORT_TYPES = {
     "csv_export" => "Exportação CSV",
     "print_report" => "Relatório/Impressão"
@@ -27,7 +29,7 @@ class DataExportAuditLog < ApplicationRecord
   end
 
   def actor_name
-    admin_user&.name.presence || admin_user&.email.presence || "Usuário não identificado"
+    tenant_admin_user&.then { |user| user.name.presence || user.email.presence } || "Usuário não identificado"
   end
 
   def export_type_label
@@ -42,5 +44,11 @@ class DataExportAuditLog < ApplicationRecord
 
   def set_created_at
     self.created_at ||= Time.current
+  end
+
+  def tenant_admin_user
+    return if admin_user_id.blank?
+
+    tenant.admin_users.find_by(id: admin_user_id)
   end
 end

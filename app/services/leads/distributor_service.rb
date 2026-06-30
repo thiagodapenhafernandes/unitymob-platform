@@ -87,7 +87,7 @@ module Leads
       )
 
       if rule.pocket_operational?
-        Leads::PocketExpirationJob.set(wait: rule.pocket_time.to_i.minutes).perform_later(@lead.id, admin_user_id)
+        Leads::PocketExpirationJob.set(wait: rule.pocket_time.to_i.minutes).perform_later(@lead.id, admin_user_id, tenant_id: @lead.tenant_id)
       end
 
       # Dispara notificações conforme as flags da regra (push/whatsapp/email/webhook)
@@ -109,7 +109,7 @@ module Leads
     end
 
     def find_matching_rule
-      DistributionRule.active.find_each do |rule|
+      tenant.distribution_rules.active.find_each do |rule|
         begin
           if matches_source?(rule) && matches_business_type?(rule) && matches_filters?(rule)
             return rule
@@ -120,6 +120,13 @@ module Leads
         end
       end
       nil
+    end
+
+    def tenant
+      @tenant ||= @lead.tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para distribuir lead" if @tenant.blank?
+
+      @tenant
     end
 
     def matches_filters?(rule)

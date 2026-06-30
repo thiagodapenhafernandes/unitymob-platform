@@ -13,22 +13,50 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
 
   def create_catalog_property(attributes = {}, address: nil, **keyword_attributes)
     attributes = attributes.merge(keyword_attributes)
+    address_attributes = attributes.extract!(
+      :tipo_endereco,
+      :logradouro,
+      :numero,
+      :bairro,
+      :bairro_comercial,
+      :cidade,
+      :uf,
+      :cep
+    )
     defaults = {
       codigo: "FLT-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Filtro #{SecureRandom.hex(8)}",
       categoria: "Apartamento",
       status: "Venda",
       tipo: "Unitário",
-      exibir_no_site_flag: true,
+      exibir_no_site_flag: false,
+      data_cadastro_crm: Time.zone.local(2026, 1, 1),
+      data_atualizacao_crm: Time.zone.local(2026, 1, 1),
       pictures: [{ "url" => "https://example.com/filter.jpg", "ordem" => 1, "principal" => true }]
     }
+    default_address = {
+      logradouro: "Rua 1000",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC",
+      pais: "Brasil"
+    }
+    merged_address = default_address.merge(address_attributes).merge(address || {})
 
     create(:habitation, defaults.merge(attributes)).tap do |habitation|
-      habitation.create_address!(address) if address
+      if habitation.address
+        habitation.address.update!(merged_address)
+      else
+        habitation.create_address!(merged_address)
+      end
     end
   end
 
   def expect_catalog_filter(label, params, matching_attrs:, nonmatching_attrs:, matching_address: nil, nonmatching_address: nil)
+    habitation_ids = admin.tenant.habitations.ids
+    Address.where(addressable_type: "Habitation", addressable_id: habitation_ids).delete_all if habitation_ids.any?
+    Habitation.where(id: habitation_ids).delete_all if habitation_ids.any?
+
     matching_title = matching_attrs[:titulo_anuncio] || "Filtro #{label} match #{SecureRandom.hex(6)}"
     nonmatching_title = nonmatching_attrs[:titulo_anuncio] || "Filtro #{label} miss #{SecureRandom.hex(6)}"
     create_catalog_property({ titulo_anuncio: matching_title }.merge(matching_attrs), address: matching_address)
@@ -87,7 +115,7 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     create_catalog_property(codigo: "EMP-100", tipo: "Empreendimento", categoria: "Empreendimento", nome_empreendimento: "Empreendimento 100")
 
     scalar_filter_cases = [
-      ["codigo", { codigo: "COD-UNICO" }, { codigo: "COD-UNICO-#{SecureRandom.hex(3)}" }, { codigo: "COD-OUTRO-#{SecureRandom.hex(3)}" }],
+      ["codigo", { codigo: "COD-UNICO" }, { codigo: "COD-UNICO" }, { codigo: "COD-UNICO-#{SecureRandom.hex(3)}" }],
       ["q", { q: "Vista Alpha" }, { titulo_anuncio: "Filtro q match Vista Alpha #{SecureRandom.hex(6)}" }, { titulo_anuncio: "Filtro q miss Beta #{SecureRandom.hex(6)}" }],
       ["status", { status: "Aluguel" }, { status: "Aluguel", valor_locacao_cents: 450_000 }, { status: "Venda" }],
       ["categoria", { categoria: "Terreno" }, { categoria: "Terreno" }, { categoria: "Apartamento" }],

@@ -13,7 +13,7 @@ RSpec.describe "Admin habitation filter inspector", type: :request do
   it "renderiza o inspector em um turbo frame separado" do
     create(:habitation, bairro: "Centro")
 
-    get filter_inspector_admin_habitations_path
+    get filter_inspector_admin_habitations_path, headers: { "Turbo-Frame" => "admin_habitations_filter_inspector" }
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('turbo-frame id="admin_habitations_filter_inspector"')

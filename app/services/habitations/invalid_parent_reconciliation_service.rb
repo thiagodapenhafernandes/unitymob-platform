@@ -15,8 +15,10 @@ module Habitations
       keyword_init: true
     )
 
-    def initialize(apply: false)
+    def initialize(apply: false, tenant: nil)
       @apply = apply
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para reconciliar pais de imóveis" if @tenant.blank?
       @now = Time.current
       @developments_by_code = load_developments_by_code
       @any_habitation_by_code = load_any_habitation_by_code
@@ -58,23 +60,25 @@ module Habitations
 
     private
 
+    attr_reader :tenant
+
     def invalid_units
-      Habitation.where.not(codigo_empreendimento: [nil, ""])
-                .where.not(codigo_empreendimento: Habitation.empreendimentos.select(:codigo))
+      tenant.habitations.where.not(codigo_empreendimento: [nil, ""])
+            .where.not(codigo_empreendimento: tenant.habitations.empreendimentos.select(:codigo))
     end
 
     def load_developments_by_code
-      Habitation.empreendimentos.where.not(codigo: [nil, ""]).index_by { |row| row.codigo.to_s }
+      tenant.habitations.empreendimentos.where.not(codigo: [nil, ""]).index_by { |row| row.codigo.to_s }
     end
 
     def load_any_habitation_by_code
-      Habitation.where.not(codigo: [nil, ""]).index_by { |row| row.codigo.to_s }
+      tenant.habitations.where.not(codigo: [nil, ""]).index_by { |row| row.codigo.to_s }
     end
 
     def load_developments_by_name
-      Habitation.empreendimentos
-                .where.not(nome_empreendimento: [nil, ""])
-                .group_by { |row| normalized(row.nome_empreendimento) }
+      tenant.habitations.empreendimentos
+            .where.not(nome_empreendimento: [nil, ""])
+            .group_by { |row| normalized(row.nome_empreendimento) }
     end
 
     def find_suggestion(unit)

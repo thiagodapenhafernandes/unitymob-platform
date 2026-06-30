@@ -49,7 +49,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
 
     expect(payload["ok"]).to eq(true)
     expect(payload["gallery_html"]).to include("attached-photo-item")
-    expect(payload.dig("counts", "total")).to eq(1)
+    expect(payload.dig("counts", "photos")).to eq(1)
     expect(payload.dig("inputs", "ordered_photo_ids")).to eq(attachment.id.to_s)
     expect(habitation.tour_virtual).to eq("https://example.com/tour-360")
   end

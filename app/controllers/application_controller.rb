@@ -1,9 +1,11 @@
 class ApplicationController < ActionController::Base
   before_action :apply_seo_redirect
   before_action :set_current_request_context
+  before_action :set_current_public_tenant, unless: :administrative_request?
   before_action :set_admin_robots_header
   before_action :load_layout_settings
-  helper_method :current_public_seo_setting, :lgpd_consent_accepted?, :admin_page_render_metrics, :admin_context_items
+  helper_method :current_public_seo_setting, :lgpd_consent_accepted?, :admin_page_render_metrics, :admin_context_items,
+                :public_tenant, :public_habitations
 
   LGPD_CONSENT_COOKIE = "salute_lgpd_consent".freeze
 
@@ -37,7 +39,27 @@ class ApplicationController < ActionController::Base
     []
   end
 
+  def public_tenant
+    @public_tenant ||= Tenant.public_for(slug: public_tenant_slug)
+  end
+
+  def public_habitations
+    public_tenant.habitations
+  end
+
   private
+
+  def set_current_public_tenant
+    Current.tenant = public_tenant
+  end
+
+  def administrative_request?
+    request.path.start_with?("/admin", "/field")
+  end
+
+  def public_tenant_slug
+    params[:tenant_slug].presence || params[:tenant].presence
+  end
 
   def set_current_request_context
     Current.request_ip = request.remote_ip
@@ -80,7 +102,7 @@ class ApplicationController < ActionController::Base
     @home_setting = HomeSetting.instance
     @footer_setting = FooterSetting.instance
     @footer_links = Footer::QuickLinksService.call
-    @footer_stores = Store.active.order(:id)
+    @footer_stores = public_tenant.stores.active.order(:id)
     @footer_stores = FooterStore.all if @footer_stores.empty?
     @footer_social_links = FooterSocialLink.where(enabled: true)
   end

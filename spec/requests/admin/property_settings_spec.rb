@@ -103,10 +103,11 @@ RSpec.describe "Admin::PropertySettings", type: :request do
 
   it "requires fallback admin user when disabling broker capture review layer" do
     admin = create(:admin_user, :admin)
-    administrativo = Profile.find_or_initialize_by(name: "Administrativo")
-    administrativo.permissions = Profile.default_permissions_for("Administrativo")
-    administrativo.save!
-    fallback = create(:admin_user, profile: administrativo)
+    gerente = Tenant.default.profiles.vertical.find_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME)
+    administrativo = Tenant.default.profiles.find_by!(key: "administrativo")
+    gerente.update!(permissions: Profile.default_permissions_for("Administrativo"))
+    administrativo.update!(permissions: Profile.default_permissions_for("Administrativo"))
+    fallback = create(:admin_user, profile: gerente, horizontal_profile: administrativo)
     other_admin = create(:admin_user, :admin, name: "Outro admin")
     intake = create(:habitation, :broker_intake, admin_user: other_admin, intake_status: "draft")
     intake.update_column(:admin_user_id, other_admin.id)

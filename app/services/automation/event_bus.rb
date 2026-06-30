@@ -25,6 +25,7 @@ module Automation
       return event if event.persisted? && !event.pending?
 
       event.assign_attributes(
+        tenant: tenant,
         lead: @lead,
         name: @name,
         source: @source,
@@ -41,10 +42,17 @@ module Automation
 
     def find_or_build_event
       if @idempotency_key.present?
-        AutomationEvent.find_or_initialize_by(idempotency_key: @idempotency_key)
+        tenant.automation_events.find_or_initialize_by(idempotency_key: @idempotency_key)
       else
-        AutomationEvent.new
+        tenant.automation_events.new
       end
+    end
+
+    def tenant
+      @tenant ||= @lead&.tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para emitir evento de automação" if @tenant.blank?
+
+      @tenant
     end
 
     def record_timeline(event)

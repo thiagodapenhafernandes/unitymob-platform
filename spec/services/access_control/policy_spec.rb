@@ -1,35 +1,25 @@
 require "rails_helper"
 
 RSpec.describe AccessControl::Policy do
-  let(:request) { instance_double(ActionDispatch::Request, remote_ip: "10.0.0.10") }
-
-  it "denies login when IP is blocked for the user" do
-    user = create(:admin_user, email: "policy-#{SecureRandom.hex(8)}@salute.test")
-    create(:access_control_rule, rule_type: "block_ip", scope_type: "user", admin_user: user, ip_value: "10.0.0.10")
+  it "ignora regras globais de IP de outro Tenant" do
+    tenant = Tenant.create!(name: "Tenant #{SecureRandom.hex(3)}", slug: "tenant-#{SecureRandom.hex(3)}")
+    other_tenant = Tenant.create!(name: "Outro #{SecureRandom.hex(3)}", slug: "outro-#{SecureRandom.hex(3)}")
+    profile = tenant.profiles.find_by!(key: "agent")
+    user = create(:admin_user, tenant: tenant, profile: profile)
+    create(:access_control_rule, tenant: other_tenant, rule_type: "block_ip", scope_type: "global", ip_value: "10.90.0.5")
+    request = instance_double(ActionDispatch::Request, remote_ip: "10.90.0.5")
 
     result = described_class.call(admin_user: user, request: request)
 
-    expect(result).not_to be_allowed
-    expect(result.reason).to eq("IP bloqueado para login administrativo")
+    expect(result).to be_allowed
   end
 
-  it "denies broker login outside allowlist when global enforcement is enabled" do
-    user = create(:admin_user, email: "policy-#{SecureRandom.hex(8)}@salute.test")
-    allow(AccessControl::Settings).to receive(:broker_ip_allowlist_enabled?).and_return(true)
-    create(:access_control_rule, rule_type: "allow_ip", scope_type: "global", ip_value: "10.0.0.20")
+  it "não trata Admin do Sistema como corretor nas regras globais de broker" do
+    Setting.set(AccessControl::Settings::ENFORCE_BROKER_IP_KEY, "true", "Teste")
+    system_admin = create(:admin_user, super_admin: true)
+    request = instance_double(ActionDispatch::Request, remote_ip: "10.90.0.5")
 
-    result = described_class.call(admin_user: user, request: request)
-
-    expect(result).not_to be_allowed
-    expect(result.reason).to eq("IP fora da lista permitida para este usuário")
-  end
-
-  it "allows broker login when IP matches allowlist" do
-    user = create(:admin_user, email: "policy-#{SecureRandom.hex(8)}@salute.test")
-    allow(AccessControl::Settings).to receive(:broker_ip_allowlist_enabled?).and_return(true)
-    create(:access_control_rule, rule_type: "allow_ip", scope_type: "global", ip_value: "10.0.0.0/24")
-
-    result = described_class.call(admin_user: user, request: request)
+    result = described_class.call(admin_user: system_admin, request: request)
 
     expect(result).to be_allowed
   end

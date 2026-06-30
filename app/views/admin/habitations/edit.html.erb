@@ -15,7 +15,7 @@
   <button type="button" class="ax-contextbar__button" data-ax-modal-open="#habitationHistoryModal">
     <i class="bi bi-clock-history"></i><span>Timeline</span>
   </button>
-  <% if current_admin_user&.admin? && @habitation.persisted? %>
+  <% if can_destroy_habitation? && @habitation.persisted? %>
     <%= button_to admin_habitation_path(@habitation),
         method: :delete,
         class: "ax-contextbar__button ax-contextbar__button--danger",

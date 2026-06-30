@@ -5,6 +5,10 @@ RSpec.describe "Habitation details", type: :request do
     host! "localhost"
   end
 
+  def public_photo_url(filename)
+    "#{Storage::PublicPropertyPhoto.public_base_url}/spec/#{filename}"
+  end
+
   describe "GET /imoveis/:id" do
     it "renders a public habitation by slug" do
       habitation = create(:habitation, codigo: "8397", slug: "casa-em-condominio-8397")
@@ -13,6 +17,26 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body).fetch("codigo")).to eq("8397")
+    end
+
+    it "não renderiza imóvel público de outro tenant pelo slug" do
+      other_tenant = Tenant.create!(name: "Outro hab public #{SecureRandom.hex(3)}", slug: "outro-hab-public-#{SecureRandom.hex(3)}")
+      habitation = create(:habitation, tenant: other_tenant, codigo: "TENANT-X", slug: "imovel-outro-tenant")
+
+      get habitation_path(habitation)
+
+      expect(response).to redirect_to(habitations_path)
+      expect(flash[:alert]).to eq("Imóvel não encontrado ou indisponível no momento.")
+    end
+
+    it "não encontra imóvel de outro tenant pela busca por código" do
+      other_tenant = Tenant.create!(name: "Outro hab public #{SecureRandom.hex(3)}", slug: "outro-hab-public-#{SecureRandom.hex(3)}")
+      create(:habitation, tenant: other_tenant, codigo: "BUSCA-X", slug: "busca-outro-tenant")
+
+      get search_by_code_path, params: { code: "BUSCA-X" }
+
+      expect(response).to redirect_to(habitations_path(search: "BUSCA-X"))
+      expect(flash[:alert]).to include("não encontrado")
     end
 
     it "falls back to the trailing code when the slug changed" do
@@ -160,7 +184,7 @@ RSpec.describe "Habitation details", type: :request do
         :habitation,
         codigo: "DESC-RICH",
         slug: "descricao-rica",
-        pictures: [{ "url" => "https://example.com/descricao.jpg" }],
+        pictures: [{ "url" => public_photo_url("descricao.jpg") }],
         descricao_web: %(<div class="trix-content"><div>#{long_description}</div></div>)
       )
 
@@ -184,7 +208,14 @@ RSpec.describe "Habitation details", type: :request do
         slug: "unidade-sem-empreendimento",
         codigo_empreendimento: development.codigo,
         nome_empreendimento: "Residencial Oculto",
-        titulo_anuncio: "Apartamento unidade"
+        titulo_anuncio: "Apartamento unidade",
+        address_attributes: {
+          logradouro: "Rua Unidade",
+          numero: "101",
+          bairro: "Centro",
+          cidade: "Balneário Camboriú",
+          uf: "SC"
+        }
       )
 
       get habitation_path(unit)
@@ -260,7 +291,7 @@ RSpec.describe "Habitation details", type: :request do
         nome_empreendimento: "Nome do Empreendimento",
         valor_venda_cents: 0,
         pictures: [],
-        fotos_empreendimento: [{ "url" => "https://example.com/development.jpg" }]
+        fotos_empreendimento: [{ "url" => public_photo_url("development.jpg") }]
       )
 
       expect(development.slug).to eq("nome-do-empreendimento")
@@ -281,7 +312,7 @@ RSpec.describe "Habitation details", type: :request do
         nome_empreendimento: "Nome do Empreendimento",
         valor_venda_cents: 0,
         pictures: [],
-        fotos_empreendimento: [{ "url" => "https://example.com/development.jpg" }]
+        fotos_empreendimento: [{ "url" => public_photo_url("development.jpg") }]
       )
 
       get "/empreendimento/empreendimento-balneario-camboriu-centro-4652"
@@ -301,9 +332,20 @@ RSpec.describe "Habitation details", type: :request do
         nome_empreendimento: "Vista Atlântico",
         valor_venda_cents: 0,
         pictures: [],
-        fotos_empreendimento: [{ "url" => "https://example.com/development.jpg" }]
+        fotos_empreendimento: [{ "url" => public_photo_url("development.jpg") }]
       )
-      create(:habitation, codigo: "9002", codigo_empreendimento: development.codigo)
+      create(
+        :habitation,
+        codigo: "9002",
+        codigo_empreendimento: development.codigo,
+        address_attributes: {
+          logradouro: "Rua Unidade",
+          numero: "102",
+          bairro: "Centro",
+          cidade: "Balneário Camboriú",
+          uf: "SC"
+        }
+      )
 
       get habitations_path(format: :json)
 
@@ -322,9 +364,20 @@ RSpec.describe "Habitation details", type: :request do
         nome_empreendimento: "Vista Atlântico",
         valor_venda_cents: 0,
         pictures: [],
-        fotos_empreendimento: [{ "url" => "https://example.com/development.jpg" }]
+        fotos_empreendimento: [{ "url" => public_photo_url("development.jpg") }]
       )
-      create(:habitation, codigo: "9002", codigo_empreendimento: development.codigo)
+      create(
+        :habitation,
+        codigo: "9002",
+        codigo_empreendimento: development.codigo,
+        address_attributes: {
+          logradouro: "Rua Unidade",
+          numero: "103",
+          bairro: "Centro",
+          cidade: "Balneário Camboriú",
+          uf: "SC"
+        }
+      )
 
       get habitations_path(category: "Empreendimento", format: :json)
 
@@ -357,29 +410,23 @@ RSpec.describe "Habitation details", type: :request do
         :habitation,
         codigo: "9101",
         categoria: "Apartamento",
-        cidade: "Balneário Camboriú",
-        bairro: "Centro",
         valor_venda_cents: 1_000_000_00,
         valor_locacao_cents: 0
-      )
+      ).tap { |habitation| habitation.address.update!(cidade: "Balneário Camboriú", bairro: "Centro") }
       create(
         :habitation,
         codigo: "9102",
         categoria: "Casa",
-        cidade: "Balneário Camboriú",
-        bairro: "Centro",
         valor_venda_cents: 1_000_000_00,
         valor_locacao_cents: 0
-      )
+      ).tap { |habitation| habitation.address.update!(cidade: "Balneário Camboriú", bairro: "Centro") }
       create(
         :habitation,
         codigo: "9103",
         categoria: "Apartamento",
-        cidade: "Itajaí",
-        bairro: "Centro",
         valor_venda_cents: 1_000_000_00,
         valor_locacao_cents: 0
-      )
+      ).tap { |habitation| habitation.address.update!(cidade: "Itajaí", bairro: "Centro") }
 
       get habitations_path(
         category: ["Apartamento"],

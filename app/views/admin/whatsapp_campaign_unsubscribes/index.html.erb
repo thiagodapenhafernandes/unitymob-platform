@@ -1,0 +1,147 @@
+<% content_for :admin_contextbar_title, "Descadastros WhatsApp" %>
+
+<% content_for :admin_contextbar_breadcrumb do %>
+  <div class="whatsapp-campaigns-contextbar">
+    <%= link_to "Disparos WhatsApp", admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number&.id) %>
+    <i class="bi bi-chevron-right"></i>
+    <strong>Descadastros</strong>
+  </div>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number&.id), class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
+  <% end %>
+<% end %>
+
+<style>
+  .whatsapp-unsubscribes { display:grid; gap:14px; }
+  .whatsapp-unsubscribes__summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .whatsapp-unsubscribe-card { border:1px solid #d8dee8; border-radius:8px; background:#fff; padding:12px; box-shadow:0 6px 16px rgba(23,32,51,.04); }
+  .whatsapp-unsubscribe-card span { display:block; color:#667085; font-size:10px; font-weight:850; text-transform:uppercase; }
+  .whatsapp-unsubscribe-card strong { display:block; margin-top:4px; color:#172033; font-size:20px; line-height:1; }
+  .whatsapp-unsubscribes__filters { display:grid; grid-template-columns:1.2fr .8fr 1.2fr auto; gap:10px; align-items:end; padding:12px; border:1px solid #d8dee8; border-radius:8px; background:#fff; }
+  .whatsapp-unsubscribes__actions { display:flex; gap:8px; justify-content:flex-end; }
+  .whatsapp-unsubscribes .ax-table-wrap { border:1px solid #d8dee8; border-radius:8px; background:#fff; box-shadow:0 6px 16px rgba(23,32,51,.04); }
+  .whatsapp-unsubscribes__reason { max-width:260px; color:#667085; font-size:12px; line-height:1.25; }
+  .whatsapp-unsubscribes__reenable { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
+  .whatsapp-unsubscribes__reenable .ax-control { width:180px; height:32px; }
+  @media (max-width: 900px) {
+    .whatsapp-unsubscribes__summary,
+    .whatsapp-unsubscribes__filters { grid-template-columns:1fr; }
+    .whatsapp-unsubscribes__actions,
+    .whatsapp-unsubscribes__reenable { justify-content:flex-start; flex-wrap:wrap; }
+  }
+</style>
+
+<div class="whatsapp-unsubscribes">
+  <h1 class="tw-hidden">Descadastros WhatsApp</h1>
+
+  <% active_count = WhatsappCampaignUnsubscribe.active.count %>
+  <% selected_active_count = @selected_sender_number ? @selected_sender_number.whatsapp_campaign_unsubscribes.active.count : active_count %>
+  <section class="whatsapp-unsubscribes__summary">
+    <article class="whatsapp-unsubscribe-card">
+      <span>Ativos no sistema</span>
+      <strong><%= number_with_delimiter(active_count) %></strong>
+    </article>
+    <article class="whatsapp-unsubscribe-card">
+      <span>No número selecionado</span>
+      <strong><%= number_with_delimiter(selected_active_count) %></strong>
+    </article>
+    <article class="whatsapp-unsubscribe-card">
+      <span>Reabilitados</span>
+      <strong><%= number_with_delimiter(WhatsappCampaignUnsubscribe.reenabled.count) %></strong>
+    </article>
+  </section>
+
+  <%= form_with url: admin_whatsapp_campaign_unsubscribes_path, method: :get, local: true, class: "whatsapp-unsubscribes__filters" do %>
+    <div class="ax-field">
+      <%= label_tag :whatsapp_sender_number_id, "Número de envio", class: "ax-label" %>
+      <%= select_tag :whatsapp_sender_number_id,
+                     options_for_select([["Todos", ""]] + @sender_numbers.map { |number| [number.display_label, number.id] }, @selected_sender_number&.id),
+                     class: "ax-control" %>
+    </div>
+    <div class="ax-field">
+      <%= label_tag :status, "Status", class: "ax-label" %>
+      <%= select_tag :status,
+                     options_for_select([["Ativos", "active"], ["Todos", "all"]], @status),
+                     class: "ax-control" %>
+    </div>
+    <div class="ax-field">
+      <%= label_tag :query, "Contato ou telefone", class: "ax-label" %>
+      <%= text_field_tag :query, @query, class: "ax-control", placeholder: "Nome ou telefone" %>
+    </div>
+    <div class="whatsapp-unsubscribes__actions">
+      <%= link_to admin_whatsapp_campaign_unsubscribes_path, class: "ax-btn" do %>
+        <i class="bi bi-x ax-ico"></i><span>Limpar</span>
+      <% end %>
+      <button type="submit" class="ax-btn ax-btn--primary">
+        <i class="bi bi-funnel ax-ico"></i><span>Filtrar</span>
+      </button>
+    </div>
+  <% end %>
+
+  <div class="ax-table-wrap">
+    <table class="ax-table">
+      <thead>
+        <tr>
+          <th>Contato</th>
+          <th>Número de envio</th>
+          <th>Campanha</th>
+          <th>Motivo</th>
+          <th>Descadastrado em</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @unsubscribes.each do |unsubscribe| %>
+          <tr>
+            <td>
+              <strong><%= unsubscribe.contact_name.presence || "Contato sem nome" %></strong>
+              <span><%= unsubscribe.phone_number %></span>
+            </td>
+            <td>
+              <strong><%= unsubscribe.whatsapp_sender_number.formatted_phone %></strong>
+              <span><%= unsubscribe.whatsapp_sender_number.label %></span>
+            </td>
+            <td>
+              <% if unsubscribe.whatsapp_campaign %>
+                <%= link_to unsubscribe.whatsapp_campaign.name, admin_whatsapp_campaign_path(unsubscribe.whatsapp_campaign) %>
+              <% else %>
+                -
+              <% end %>
+            </td>
+            <td><div class="whatsapp-unsubscribes__reason"><%= unsubscribe.reason %></div></td>
+            <td><%= l(unsubscribe.unsubscribed_at, format: :short) %></td>
+            <td>
+              <% if unsubscribe.reenabled? %>
+                <%= ax_badge("Reabilitado", tone: :green) %>
+                <span><%= unsubscribe.reenabled_by&.name %></span>
+              <% else %>
+                <%= ax_badge("Descadastrado", tone: :orange) %>
+              <% end %>
+            </td>
+            <td class="ax-table__actions">
+              <% unless unsubscribe.reenabled? %>
+                <%= form_with url: reenable_admin_whatsapp_campaign_unsubscribe_path(unsubscribe), method: :patch, local: true, class: "whatsapp-unsubscribes__reenable" do %>
+                  <%= text_field_tag :reenable_reason, nil, class: "ax-control", placeholder: "Motivo da reabilitação" %>
+                  <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary" data-turbo-confirm="Reabilitar este contato para novas campanhas deste número?">
+                    <i class="bi bi-arrow-counterclockwise ax-ico"></i><span>Reabilitar</span>
+                  </button>
+                <% end %>
+              <% else %>
+                -
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @unsubscribes.empty? %>
+          <tr><td colspan="7" class="ax-table__empty">Nenhum descadastro encontrado para os filtros atuais.</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <%= ax_pagination @unsubscribes %>
+</div>

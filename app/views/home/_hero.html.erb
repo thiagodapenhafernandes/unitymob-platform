@@ -11,8 +11,8 @@
   <!-- Cinematic Slider Container -->
   <div class="hero-slider-container">
     <% (@hero_images.presence || [{ source: asset_path("hero_05.jpeg"), alt: "Salute Imóveis - Luxo e Exclusividade" }]).each_with_index do |image, index| %>
-      <% desktop_source = public_image_url(image[:source]) %>
-      <% mobile_source = public_image_url(image[:mobile_source] || image[:source]) %>
+      <% desktop_source = public_image_url(image[:source]).presence || image[:source] %>
+      <% mobile_source = public_image_url(image[:mobile_source] || image[:source]).presence || image[:mobile_source] || image[:source] %>
       <div class="hero-slide <%= 'active' if index == 0 %>" data-hero-slider-target="slide">
         <%= image_tag desktop_source,
                       class: "hero-image", 

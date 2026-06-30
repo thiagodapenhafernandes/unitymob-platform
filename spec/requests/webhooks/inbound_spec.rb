@@ -23,6 +23,8 @@ RSpec.describe "Webhooks::Inbound", type: :request do
     lead = Lead.last
     expect(lead.origin).to eq("webhook")
     expect(lead.lead_type).to eq("webhook")
+    expect(lead.tenant).to eq(admin_user.tenant)
+    expect(lead.admin_user).to eq(admin_user)
     expect(lead.name).to eq("Maria Lead")
     expect(lead.source_url).to eq("https://landing.example.test/praia")
     expect(lead.other_information["webhook_tags"]).to contain_exactly("elite", "praia")
@@ -84,5 +86,22 @@ RSpec.describe "Webhooks::Inbound", type: :request do
 
     expect(response).to have_http_status(:unprocessable_entity)
     expect(response.parsed_body["details"].join).to include("não pode ficar em branco")
+  end
+
+  it "recusa property_id de outro tenant" do
+    other_tenant = Tenant.create!(name: "Outro inbound #{SecureRandom.hex(3)}", slug: "outro-inbound-#{SecureRandom.hex(3)}")
+    external_property = create(:habitation, tenant: other_tenant, codigo: "INBOUND-OUT-#{SecureRandom.hex(3)}")
+
+    expect {
+      post "/webhooks/inbound/leads", params: {
+        token: webhook_token.token,
+        name: "Lead Imóvel Externo",
+        phone: "47999999999",
+        property_id: external_property.id
+      }, as: :json
+    }.not_to change(Lead, :count)
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body["details"].join).to include("Property deve pertencer ao mesmo Tenant")
   end
 end

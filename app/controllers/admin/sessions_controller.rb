@@ -65,11 +65,12 @@ class Admin::SessionsController < Devise::SessionsController
   end
   
   def after_sign_in_path_for(resource)
-    # Corretor (não-admin) vai direto pro PWA /field — ambiente mobile-first
-    # com hub de atalhos (captações, leads, imóveis, check-in).
-    # Admin continua no painel tradicional /admin.
-    return field_root_path if resource.respond_to?(:admin?) && !resource.admin?
-    admin_root_path
+    # Roteia por capacidade real, não pelo eixo/cargo. Perfis intermediários com
+    # acesso ao admin ficam no painel; usuários field-only seguem para o PWA.
+    return admin_system_path if resource.respond_to?(:system_admin?) && resource.system_admin?
+    return admin_root_path if resource.respond_to?(:can?) && resource.can?(:view, :dashboard)
+
+    field_root_path
   end
   
   def after_sign_out_path_for(resource_or_scope)

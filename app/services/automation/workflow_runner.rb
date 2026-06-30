@@ -4,9 +4,11 @@ module Automation
 
     def self.start(workflow, lead, event:, automation_event: nil)
       return unless workflow&.active_version
+      return unless workflow.tenant_id == lead&.tenant_id
+      return if automation_event.present? && automation_event.tenant_id != workflow.tenant_id
 
       key = idempotency_key(workflow, workflow.active_version, lead, event, automation_event: automation_event)
-      execution = AutomationExecution.find_or_initialize_by(idempotency_key: key)
+      execution = workflow.tenant.automation_executions.find_or_initialize_by(idempotency_key: key)
       if execution.persisted?
         if %w[failed canceled].include?(execution.status)
           execution.update!(
@@ -21,6 +23,7 @@ module Automation
       end
 
       execution.assign_attributes(
+        tenant: workflow.tenant,
         automation_workflow: workflow,
         automation_workflow_version: workflow.active_version,
         lead: lead,
@@ -366,6 +369,8 @@ module Automation
       return false if response.blank?
 
       config = (node[:config] || {}).with_indifferent_access
+      return button_payload_or_text_condition_matched?(config) if config[:match_strategy].to_s == "button_payload_or_text"
+
       value = response_value(config[:field])
       expected = config[:value].to_s.strip
 
@@ -379,6 +384,16 @@ module Automation
       else
         value.to_s.casecmp?(expected)
       end
+    end
+
+    def button_payload_or_text_condition_matched?(config)
+      expected_payload = config[:button_payload].presence || config[:button_key].presence || config[:value].presence
+      expected_text = config[:button_text].presence || config[:fallback_value].presence
+      payload_value = response_value("interaction.button_payload")
+      text_value = response_value("interaction.button_text")
+
+      (expected_payload.present? && payload_value.to_s.casecmp?(expected_payload.to_s)) ||
+        (expected_text.present? && text_value.to_s.casecmp?(expected_text.to_s))
     end
 
     def response_fallback_matched?(node)
@@ -420,6 +435,12 @@ module Automation
           payload.dig(:interactive, :button_reply, :id).presence ||
           payload[:button_payload].presence ||
           payload[:button_id]
+      when "campaign.response_decision.action"
+        payload.dig(:response_decision, :action)
+      when "campaign.response_decision.label"
+        payload.dig(:response_decision, :action_label)
+      when "campaign.response_decision.distribution_rule_id"
+        payload.dig(:response_decision, :distribution_rule_id)
       when "lead.status", "lead.lifecycle"
         @lead&.status
       when "guardrail.outside_hours"

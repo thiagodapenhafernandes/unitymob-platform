@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe Vista::FileAssetDownloadService do
   before do
-    ActiveStorage::Blob.service.delete_prefixed("vista")
+    ActiveStorage::Blob.services.fetch(:local).delete_prefixed("vista")
   end
 
   it "uploads with a deterministic key and stores reusable storage metadata" do
@@ -31,7 +31,7 @@ RSpec.describe Vista::FileAssetDownloadService do
       status: "downloaded",
       active_storage_key: "vista/property_photo/1001/#{asset.id}-foto.jpg",
       storage_byte_size: 10,
-      storage_service_name: "test"
+      storage_service_name: "local"
     )
     expect(asset.storage_checksum).to be_present
     expect(asset.active_storage_attachment).to be_present
@@ -75,6 +75,6 @@ RSpec.describe Vista::FileAssetDownloadService do
       storage_byte_size: 10
     )
     expect(asset.active_storage_attachment).to be_present
-    expect(ActiveStorage::Blob.service.exist?(key)).to be(true)
+    expect(ActiveStorage::Blob.services.fetch(asset.reload.storage_service_name.to_sym).exist?(key)).to be(true)
   end
 end

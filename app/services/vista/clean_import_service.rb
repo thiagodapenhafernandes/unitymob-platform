@@ -36,10 +36,10 @@ module Vista
     private
 
     def reset_targets!
-      HabitationBrokerAssignment.delete_all
-      Habitation.delete_all
-      Proprietor.delete_all
-      AdminUser.where.not(email: admin_email).delete_all
+      HabitationBrokerAssignment.where(habitation_id: tenant.habitations.select(:id)).delete_all
+      tenant.habitations.delete_all
+      tenant.proprietors.delete_all
+      tenant.admin_users.where.not(email: admin_email).delete_all
     end
 
     def admin_email
@@ -55,11 +55,11 @@ module Vista
     end
 
     def load_reference_ids
-      @admin_user_id_by_vista_id = AdminUser.where.not(vista_id: [nil, ""]).pluck(:vista_id, :id).to_h
+      @admin_user_id_by_vista_id = tenant.admin_users.where.not(vista_id: [nil, ""]).pluck(:vista_id, :id).to_h
       @crm_contact_id_by_vista_code = CrmContact.where.not(vista_code: [nil, ""]).pluck(:vista_code, :id).to_h
-      @proprietor_id_by_vista_code = Proprietor.where.not(vista_code: [nil, ""]).pluck(:vista_code, :id).to_h
-      @habitation_id_by_codigo = Habitation.where.not(codigo: [nil, ""]).pluck(:codigo, :id).to_h
-      @development_codes = Habitation.where(tipo: "Empreendimento").where.not(codigo: [nil, ""]).pluck(:codigo).to_set
+      @proprietor_id_by_vista_code = tenant.proprietors.where.not(vista_code: [nil, ""]).pluck(:vista_code, :id).to_h
+      @habitation_id_by_codigo = tenant.habitations.where.not(codigo: [nil, ""]).pluck(:codigo, :id).to_h
+      @development_codes = tenant.habitations.where(tipo: "Empreendimento").where.not(codigo: [nil, ""]).pluck(:codigo).to_set
     end
 
     def load_owner_codes
@@ -76,7 +76,7 @@ module Vista
     end
 
     def import_admin_users
-      default_profile = profile_for("corretor")
+      default_profile = profile_for("agent")
 
       raw("CADEMP").find_each do |record|
         row = record.payload
@@ -114,6 +114,7 @@ module Vista
           sales_goal_cents: money_cents(row["META_VLR_VENDAS"]),
           role: role_for_agent(row),
           profile: profile_for_agent(row) || default_profile,
+          horizontal_profile: horizontal_profile_for_agent(row),
           active: !yes?(row["INATIVO"]) && !yes?(row["EXCLUIDO"]),
           display_on_site: yes?(row["VER_WEB"]) || yes?(row["CORRETOR"]),
           acting_type: acting_type(row),
@@ -126,7 +127,8 @@ module Vista
           next
         end
 
-        user = AdminUser.find_by(vista_id: vista_id) || AdminUser.find_or_initialize_by(email: attrs[:email])
+        user = tenant.admin_users.find_by(vista_id: vista_id) || tenant.admin_users.find_or_initialize_by(email: attrs[:email])
+        user.tenant = tenant
         user.assign_attributes(attrs)
         user.password = DEFAULT_PASSWORD if user.encrypted_password.blank?
         user.save!
@@ -196,7 +198,7 @@ module Vista
           next
         end
 
-        proprietor = Proprietor.find_or_initialize_by(vista_code: vista_code)
+        proprietor = tenant.proprietors.find_or_initialize_by(vista_code: vista_code)
         proprietor.assign_attributes(attrs)
         proprietor.save!
         @stats[:proprietors_imported] += 1
@@ -273,7 +275,7 @@ module Vista
           next
         end
 
-        habitation = Habitation.find_or_initialize_by(codigo: codigo)
+        habitation = tenant.habitations.find_or_initialize_by(codigo: codigo)
         habitation.skip_auto_audit = true if habitation.respond_to?(:skip_auto_audit=)
         attrs.delete(:exibir_no_site_flag) if habitation.persisted?
         habitation.assign_attributes(attrs)
@@ -303,7 +305,7 @@ module Vista
           next
         end
 
-        updated = Habitation
+        updated = tenant.habitations
           .where(codigo: codigo)
           .where("tipo IS DISTINCT FROM ?", "Empreendimento")
           .where(codigo_empreendimento: [nil, ""])
@@ -316,7 +318,9 @@ module Vista
     end
 
     def import_broker_assignments
-      HabitationBrokerAssignment.where(vista_import_batch_id: @batch.id).delete_all unless @dry_run
+      HabitationBrokerAssignment
+        .where(vista_import_batch_id: @batch.id, habitation_id: tenant.habitations.select(:id))
+        .delete_all unless @dry_run
 
       raw("CDIMAG").find_each do |record|
         row = record.payload
@@ -564,35 +568,57 @@ module Vista
     end
 
     def profile_for_agent(row)
+      return internal_management_profile if administrative_agent?(row)
+
       key = if yes?(row["DIRETOR"])
               "diretor"
             elsif yes?(row["GERENTE"])
               "gerente"
-            elsif yes?(row["CADUSU"])
-              "administrativo"
             elsif yes?(row["CORRETOR"])
-              "corretor"
+              "agent"
             end
-      profile_for(key)
+      profile_for(key) || profile_for("agent")
+    end
+
+    def horizontal_profile_for_agent(row)
+      administrative_agent?(row) ? tenant.profiles.horizontal.find_by!(key: "administrativo") : nil
+    end
+
+    def administrative_agent?(row)
+      yes?(row["CADUSU"])
+    end
+
+    def internal_management_profile
+      tenant.profiles.vertical.find_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME)
     end
 
     # Casa o perfil pelo `key` estável (não pelo nome): renomear um perfil no admin
     # não faz o import recriar/duplicar o papel.
     def profile_for(key)
       return if key.blank?
+      return tenant.profiles.vertical.find_by!(key: "agent") if key == "agent"
 
-      Profile.where(key: key).first_or_create! do |profile|
-        profile.key = key
-        profile.name = Profile::ROLE_KEY_NAMES[key] || key.humanize
-        profile.permissions = {}
-        profile.active = true
-      end
+      name = {
+        "diretor" => "Diretor",
+        "gerente" => "Gerente"
+      }[key] || key.humanize
+
+      active_vertical_profiles.find_by(key: key) ||
+        active_vertical_profiles.find_by("LOWER(name) = ?", name.downcase)
+    end
+
+    def active_vertical_profiles
+      tenant.profiles.vertical.where(active: true)
+    end
+
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para importação limpa Vista")
     end
 
     def email_for_agent(row, vista_id)
       email = value(row["EMAIL"])
       if email&.match?(URI::MailTo::EMAIL_REGEXP)
-        existing = AdminUser.where(email: email).where.not(vista_id: [nil, vista_id]).exists?
+        existing = tenant.admin_users.where(email: email).where.not(vista_id: [nil, vista_id]).exists?
         return email unless existing
       end
 
@@ -600,7 +626,7 @@ module Vista
     end
 
     def role_for_agent(row)
-      yes?(row["DIRETOR"]) || yes?(row["GERENTE"]) ? "admin" : "editor"
+      "editor"
     end
 
     def acting_type(row)
@@ -639,7 +665,7 @@ module Vista
         .pluck(Arel.sql("payload->>'CODIGO_C'"))
       valid_codes = valid_codes.compact.uniq
 
-      invalid_scope = Proprietor.where(vista_import_batch_id: @batch.id).where.not(vista_code: valid_codes)
+      invalid_scope = tenant.proprietors.where(vista_import_batch_id: @batch.id).where.not(vista_code: valid_codes)
       invalid_ids = invalid_scope.pluck(:id)
       return if invalid_ids.empty?
 
@@ -667,7 +693,7 @@ module Vista
       candidate = code(row["CODIGO_DWV"])
       return unless candidate
 
-      duplicate = Habitation.where(imovel_dwv: "Sim", codigo_dwv: candidate).where.not(codigo: code(row["CODIGO"])).exists?
+      duplicate = tenant.habitations.where(imovel_dwv: "Sim", codigo_dwv: candidate).where.not(codigo: code(row["CODIGO"])).exists?
       candidate unless duplicate
     end
 

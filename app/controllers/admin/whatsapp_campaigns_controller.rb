@@ -5,11 +5,11 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   before_action :load_options, only: [:new, :edit, :create, :update]
 
   def index
-    WhatsappSenderNumber.sync_from_current_integration! if WhatsappSenderNumber.none?
-    @selected_sender_number = WhatsappSenderNumber.active.find_by(id: params[:whatsapp_sender_number_id])
+    WhatsappSenderNumber.sync_from_current_integration!(current_tenant) if current_tenant.whatsapp_sender_numbers.none?
+    @selected_sender_number = current_tenant.whatsapp_sender_numbers.active.find_by(id: params[:whatsapp_sender_number_id])
     @number_selection_only = @selected_sender_number.blank?
     @filters = campaign_filters
-    @sender_numbers = WhatsappSenderNumber.ordered
+    @sender_numbers = current_tenant.whatsapp_sender_numbers.ordered
     @campaign_groups = grouped_campaigns(base_campaign_scope)
     scoped = apply_campaign_filters(base_campaign_scope)
     @campaigns = scoped.recent.paginate(page: params[:page], per_page: 25)
@@ -52,7 +52,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   end
 
   def new
-    @campaign = WhatsappCampaign.new(
+    @campaign = current_tenant.whatsapp_campaigns.new(
       send_rate: 50,
       status: "draft",
       whatsapp_sender_number_id: params[:whatsapp_sender_number_id].presence,
@@ -62,11 +62,12 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   end
 
   def create
-    @campaign = WhatsappCampaign.new(campaign_params)
+    @campaign = current_tenant.whatsapp_campaigns.new(campaign_params)
     @campaign.created_by = current_admin_user
     apply_submit_mode
 
     if @campaign.save
+      Automation::WhatsappCampaignWorkflowSync.call(@campaign)
       @campaign.start! if params[:commit_action] == "start_now"
       schedule_campaign_start if params[:commit_action] == "schedule"
       redirect_to admin_whatsapp_campaign_path(@campaign), notice: "Disparo WhatsApp criado."
@@ -77,7 +78,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   end
 
   def preview_audience
-    preview_campaign = WhatsappCampaign.new(preview_campaign_params)
+    preview_campaign = current_tenant.whatsapp_campaigns.new(preview_campaign_params)
     preview_campaign.created_by = current_admin_user
     preview = Whatsapp::CampaignAudienceResolver.call(
       preview_campaign,
@@ -109,7 +110,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   end
 
   def preview_template
-    template = WhatsappTemplate.approved.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_template_id))
+    template = current_tenant.whatsapp_templates.approved.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_template_id))
     unless template
       render json: { ok: false, error: "Selecione um modelo aprovado." }, status: :unprocessable_content
       return
@@ -131,7 +132,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   end
 
   def send_test
-    template = WhatsappTemplate.approved.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_template_id))
+    template = current_tenant.whatsapp_templates.approved.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_template_id))
     unless template
       render json: { ok: false, error: "Selecione um modelo aprovado." }, status: :unprocessable_entity
       return
@@ -141,7 +142,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
       template: template,
       phone: params[:test_phone],
       variables: clean_template_variables(params.dig(:whatsapp_campaign, :template_variables)),
-      sender_number: WhatsappSenderNumber.active.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_sender_number_id)),
+      sender_number: current_tenant.whatsapp_sender_numbers.active.find_by(id: params.dig(:whatsapp_campaign, :whatsapp_sender_number_id)),
       admin_user: current_admin_user
     )
     status = result[:ok] ? :ok : :unprocessable_content
@@ -157,6 +158,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
     apply_submit_mode
 
     if @campaign.save
+      Automation::WhatsappCampaignWorkflowSync.call(@campaign)
       @campaign.start! if params[:commit_action] == "start_now"
       schedule_campaign_start if params[:commit_action] == "schedule"
       redirect_to admin_whatsapp_campaign_path(@campaign), notice: "Disparo WhatsApp atualizado."
@@ -213,18 +215,18 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   private
 
   def set_campaign
-    @campaign = WhatsappCampaign.find(params[:id])
+    @campaign = base_campaign_scope.find(params[:id])
   end
 
   def load_options
-    @template_options = WhatsappTemplate.approved.ordered.pluck(:name, :id)
+    @template_options = current_tenant.whatsapp_templates.approved.ordered.pluck(:name, :id)
     @status_options = Lead.status_options
     @origin_options = Lead.origin_options
     @tag_options = Lead.tag_options
-    @broker_options = AdminUser.active.order(:name).pluck(:name, :id)
-    @sender_number_options = WhatsappSenderNumber.active.ordered.map { |number| [number.display_label, number.id] }
-    @group_options = WhatsappCampaign.where.not(group_name: [nil, ""]).distinct.order(:group_name).pluck(:group_name)
-    @distribution_rule_options = DistributionRule.active.order(:name).pluck(:name, :id)
+    @broker_options = current_tenant.admin_users.active.order(:name).pluck(:name, :id)
+    @sender_number_options = current_tenant.whatsapp_sender_numbers.active.ordered.map { |number| [number.display_label, number.id] }
+    @group_options = current_tenant.whatsapp_campaigns.where.not(group_name: [nil, ""]).distinct.order(:group_name).pluck(:group_name)
+    @distribution_rule_options = current_tenant.distribution_rules.active.order(:name).pluck(:name, :id)
     @audience_field_options = Whatsapp::CampaignFilterConditions::FIELD_DEFINITIONS.map { |key, meta| [meta[:label], key] }
     @audience_operator_options = [
       ["Contém", "contains"],
@@ -259,7 +261,9 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
         { conditions: [:field, :operator, :value, :from, :to, { values: [] }] }
       ],
       template_variables: {},
-      response_decisions: {}
+      response_decisions: {
+        buttons: [:key, :text, :kind, :action, :distribution_rule_id, :message]
+      }
     )
     permitted[:audience_filters] = clean_audience_filters(permitted[:audience_filters])
     permitted[:audience_mode] = clean_audience_mode(permitted[:audience_mode])
@@ -272,7 +276,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   def preview_campaign_params
     attrs = campaign_params
     attrs.delete(:audience_file)
-    attrs[:whatsapp_template_id] ||= WhatsappTemplate.approved.limit(1).pick(:id)
+    attrs[:whatsapp_template_id] ||= current_tenant.whatsapp_templates.approved.limit(1).pick(:id)
     attrs[:name] = attrs[:name].presence || "Preview de público"
     attrs
   end
@@ -452,7 +456,9 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   end
 
   def base_campaign_scope
-    scope = WhatsappCampaign.includes(:whatsapp_template, :created_by, :whatsapp_sender_number)
+    scope = current_tenant.whatsapp_campaigns.includes(:whatsapp_template, :created_by, :whatsapp_sender_number)
+    owner_ids = visible_owner_ids(:whatsapp_campaigns)
+    scope = scope.where(created_by_id: owner_ids) if owner_ids.present?
     scope = scope.where(whatsapp_sender_number_id: @selected_sender_number.id) if @selected_sender_number
     scope
   end
@@ -488,10 +494,10 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   def campaign_filter_options
     {
       statuses: WhatsappCampaign::STATUSES.map { |status| [status.humanize, status] },
-      creators: AdminUser.active.order(:name).pluck(:name, :id),
-      templates: WhatsappTemplate.order(:name).pluck(:name, :id),
-      senders: WhatsappSenderNumber.active.ordered.map { |number| [number.display_label, number.id] },
-      groups: WhatsappCampaign.where.not(group_name: [nil, ""]).distinct.order(:group_name).pluck(:group_name)
+      creators: current_tenant.admin_users.active.order(:name).pluck(:name, :id),
+      templates: current_tenant.whatsapp_templates.order(:name).pluck(:name, :id),
+      senders: current_tenant.whatsapp_sender_numbers.active.ordered.map { |number| [number.display_label, number.id] },
+      groups: current_tenant.whatsapp_campaigns.where.not(group_name: [nil, ""]).distinct.order(:group_name).pluck(:group_name)
     }
   end
 
@@ -553,12 +559,21 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
   def schedule_campaign_start
     return if @campaign.scheduled_at.blank?
 
-    Whatsapp::CampaignStartJob.set(wait_until: @campaign.scheduled_at).perform_later(@campaign.id)
+    Whatsapp::CampaignStartJob
+      .set(wait_until: @campaign.scheduled_at)
+      .perform_later(@campaign.id, tenant_id: @campaign.tenant_id)
   end
 
   def filtered_messages
     scope = @campaign.campaign_messages.includes(:lead, :whatsapp_campaign_recipient).order(created_at: :desc)
-    scope = scope.where(status: @messages_status) if WhatsappCampaignMessage::STATUSES.include?(@messages_status)
+    scope =
+      if @messages_status == WhatsappCampaignMessage::DELIVERY_UNCONFIRMED_STATUS
+        scope.delivery_unconfirmed
+      elsif WhatsappCampaignMessage::STATUSES.include?(@messages_status)
+        scope.where(status: @messages_status)
+      else
+        scope
+      end
 
     if @messages_query.present?
       digits = @messages_query.gsub(/\D/, "")
@@ -606,6 +621,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
       status_label: @campaign.status.humanize,
       status_tone: campaign_status_tone(@campaign),
       active: @campaign.processing? || @campaign.scheduled?,
+      next_poll_interval_ms: campaign_status_poll_interval_ms,
       updated_at: l(@campaign.updated_at, format: :short),
       progress_percent: progress[:percent],
       pending_count: progress[:pending_count],
@@ -634,10 +650,14 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
         lead_url: message.lead ? admin_lead_path(message.lead) : nil,
         phone_number: message.phone_number,
         external_message_id: message.external_message_id,
-        status: message.status,
-        status_label: message.status_label,
+        status: message.display_status_key,
+        status_label: message.display_status_label,
         status_tone: message_status_tone(message),
-        failure_reason: message.failure_reason.presence || "-",
+        response_status: message.response_status_key,
+        response_status_label: message.response_status_label,
+        response_status_tone: message.response_status_tone,
+        response_status_note: message.response_status_note,
+        failure_reason: message.status_note,
         updated_at: l(message.updated_at, format: :short)
       }
     end
@@ -653,21 +673,51 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
 
   def message_status_tone(message)
     return "red" if message.failed? || message.cancelled?
+    return "amber" if message.delivery_unconfirmed?
     return "green" if message.replied? || message.delivered? || message.read?
     return "blue" if message.sent?
 
     "gray"
   end
 
+  def campaign_status_poll_interval_ms
+    return 3_000 if @campaign.processing? || @campaign.scheduled?
+
+    nil
+  end
+
   def campaign_failure_summary
     failed_scope = @campaign.campaign_messages.where(status: %w[failed cancelled])
+    failed_count = @campaign.campaign_messages.failed.count
+    cancelled_count = @campaign.campaign_messages.where(status: "cancelled").count
+    reason_rows = normalize_failure_reasons(failed_scope.group(:failure_reason).count)
+    latest_message = failed_scope.order(failed_at: :desc, updated_at: :desc).first
+    latest_details = latest_message&.failure_reason_details || {}
+    severity_counts = reason_rows.each_with_object(Hash.new(0)) do |row, memo|
+      memo[row[:severity].to_s] += row[:count].to_i
+    end
+
     {
       count: failed_scope.count,
-      reasons: failed_scope.group(:failure_reason).count.sort_by { |_reason, count| -count }.first(5).map do |reason, count|
-        { reason: reason.presence || "Motivo não informado", count: count }
-      end,
-      latest: failed_scope.order(failed_at: :desc, updated_at: :desc).first
+      failed_count: failed_count,
+      cancelled_count: cancelled_count,
+      tone: severity_counts["error"].positive? ? "error" : "warning",
+      severity_counts: severity_counts,
+      reasons: reason_rows.first(5),
+      latest: latest_message ? latest_details.merge(failed_at: latest_message.failed_at || latest_message.updated_at) : nil,
+      next_retry_at: failed_scope.where.not(next_retry_at: nil).minimum(:next_retry_at),
+      retryable_count: failed_scope.ready_for_retry.count,
+      pending_retry_count: failed_scope.where.not(next_retry_at: nil).where("next_retry_at > ?", Time.current).count
     }
+  end
+
+  def normalize_failure_reasons(raw_reasons)
+    raw_reasons.each_with_object({}) do |(reason, count), memo|
+      details = WhatsappCampaignMessage.normalize_failure_reason(reason)
+      key = details[:group_key]
+      memo[key] ||= details.merge(count: 0)
+      memo[key][:count] += count.to_i
+    end.values.sort_by { |item| [-item[:count].to_i, item[:label].to_s] }
   end
 
   def percent(part, total)

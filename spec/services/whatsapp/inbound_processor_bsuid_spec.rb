@@ -1,9 +1,15 @@
 require "rails_helper"
 
 RSpec.describe Whatsapp::InboundProcessor do
+  let!(:integration) do
+    WhatsappBusinessIntegration.current(Tenant.default).tap do |record|
+      record.update!(status: "connected", phone_number_id: "phone-bsuid", waba_id: "waba-bsuid", access_token: "token")
+    end
+  end
+
   def payload(contacts:, messages:)
     { "entry" => [{ "changes" => [{ "field" => "messages",
-      "value" => { "contacts" => contacts, "messages" => messages } }] }] }
+      "value" => { "metadata" => { "phone_number_id" => integration.phone_number_id }, "contacts" => contacts, "messages" => messages } }] }] }
   end
 
   it "captura o BSUID (contacts.user_id + messages.from_user_id) na conversa e no lead" do
@@ -43,7 +49,7 @@ RSpec.describe Whatsapp::InboundProcessor do
   end
 
   it "faz backfill do BSUID numa conversa que já existia só com telefone" do
-    conv = WhatsappConversation.create!(contact_phone: "5521988887777", status: "open")
+    conv = WhatsappConversation.create!(tenant: integration.tenant, contact_phone: "5521988887777", status: "open")
 
     described_class.call(payload(
       contacts: [{ "wa_id" => "5521988887777", "user_id" => "US.B", "profile" => { "name" => "X" } }],
@@ -54,11 +60,11 @@ RSpec.describe Whatsapp::InboundProcessor do
   end
 
   it "re-vincula conversa/lead quando o BSUID muda (webhook user_id_update)" do
-    conv = WhatsappConversation.create!(business_scoped_user_id: "US.OLD", status: "open")
+    conv = WhatsappConversation.create!(tenant: integration.tenant, business_scoped_user_id: "US.OLD", status: "open")
 
     described_class.call({ "entry" => [{ "changes" => [{
       "field" => "user_id_update",
-      "value" => { "user_id_update" => [{ "wa_id" => "5521988887777",
+      "value" => { "metadata" => { "phone_number_id" => integration.phone_number_id }, "user_id_update" => [{ "wa_id" => "5521988887777",
         "user_id" => { "previous" => "US.OLD", "current" => "US.NEW" } }] }
     }] }] })
 

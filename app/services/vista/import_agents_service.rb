@@ -72,26 +72,50 @@ module Vista
 
     private
 
-    # Mapeia as flags booleanas (Sim/Nao) do Vista para 1 Profile local.
-    # A Vista permite acumular cargos (ex: Gerente + Corretor); escolhemos
-    # o de maior autoridade segundo a ordem abaixo. Profile é criado on-demand
-    # com permissions vazias — o admin ajusta em /admin/profiles depois.
-    # Flag booleana da Vista -> key estável do Profile, em ordem de autoridade.
+    # Mapeia flags booleanas do Vista para perfis verticais já configurados.
+    # Administrativo é função horizontal: fica ancorado em Gestão Interna.
     PROFILE_PRIORITY = [
-      ["Diretor", "diretor"],
-      ["Gerente", "gerente"],
-      ["Administrativo", "administrativo"],
-      ["Corretor", "corretor"]
+      ["Diretor", "Diretor", "diretor"],
+      ["Gerente", "Gerente", "gerente"],
+      ["Corretor", "Agent", "agent"]
     ].freeze
 
     def resolve_profile(data)
-      key = PROFILE_PRIORITY.find { |flag, _key| data[flag].to_s.casecmp("sim").zero? }&.last || "corretor"
-      name = Profile::ROLE_KEY_NAMES[key] || key.humanize
-      Profile.where(key: key).first ||
-        Profile.create!(key: key, name: name, permissions: {}, active: true)
-    rescue ActiveRecord::RecordInvalid => e
-      Rails.logger.warn("[Vista Import] Falha ao criar Profile '#{key}': #{e.message}")
-      nil
+      return internal_management_profile if administrative_flag?(data)
+
+      _flag, name, key = PROFILE_PRIORITY.find { |flag, _name, _key| data[flag].to_s.casecmp("sim").zero? } || PROFILE_PRIORITY.last
+      configured_vertical_profile(name: name, key: key) || agent_profile
+    end
+
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para importar corretores Vista")
+    end
+
+    def configured_vertical_profile(name:, key:)
+      return agent_profile if key == "agent"
+
+      active_vertical_profiles.find_by(key: key) ||
+        active_vertical_profiles.find_by("LOWER(name) = ?", name.to_s.downcase)
+    end
+
+    def administrative_flag?(data)
+      data["Administrativo"].to_s.casecmp("sim").zero?
+    end
+
+    def administrative_horizontal_profile
+      tenant.profiles.horizontal.find_by!(key: "administrativo")
+    end
+
+    def internal_management_profile
+      tenant.profiles.vertical.find_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME)
+    end
+
+    def agent_profile
+      tenant.profiles.vertical.find_by!(key: "agent")
+    end
+
+    def active_vertical_profiles
+      tenant.profiles.vertical.where(active: true)
     end
 
     def empty_stats
@@ -151,10 +175,11 @@ module Vista
       email = data['E-mail']
       return :skipped unless email.present?
 
-      # Find by vista_id first to handle email changes, fallback to email
-      user = AdminUser.find_by(vista_id: data['Codigo']) || AdminUser.find_or_initialize_by(email: email)
+      # Find by vista_id first to handle email changes, fallback to email inside the current Tenant.
+      user = tenant.admin_users.find_by(vista_id: data['Codigo']) || tenant.admin_users.find_or_initialize_by(email: email)
       is_new = user.new_record?
 
+      user.tenant = tenant
       user.vista_id = data['Codigo']
       user.name     = data['Nomecompleto'].presence || user.name
       user.creci    = data['CRECI']
@@ -164,9 +189,15 @@ module Vista
       user.active   = data['Inativo'] != 'Sim'
       
       # Assign Profile derivado das flags do Vista (Diretor > Gerente >
-      # Administrativo > Corretor). Auto-cria o Profile se ele não existir.
+      # Administrativo > Corretor). Administrativo aplica função horizontal e
+      # mantém a hierarquia no vertical Gestão Interna.
       assigned_profile = resolve_profile(data)
-      user.profile = assigned_profile if assigned_profile && user.profile.blank?
+      if administrative_flag?(data)
+        user.profile = assigned_profile
+        user.horizontal_profile = administrative_horizontal_profile
+      elsif assigned_profile && user.profile.blank?
+        user.profile = assigned_profile
+      end
       
       if data['Nascimento'].present? && data['Nascimento'] != '0000-00-00'
         user.birth_date = Date.parse(data['Nascimento']) rescue nil

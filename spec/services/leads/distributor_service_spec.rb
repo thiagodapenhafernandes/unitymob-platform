@@ -7,6 +7,14 @@ RSpec.describe Leads::DistributorService do
   let(:agent_with_checkin) { create(:admin_user, :field_agent) }
   let(:agent_without_checkin) { create(:admin_user, :field_agent) }
 
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = Tenant.default
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   before do
     # agent_with_checkin tem check-in ativo na loja
     create(:check_in, admin_user: agent_with_checkin, store: store, status: :active, checked_in_at: 5.minutes.ago)
@@ -18,6 +26,12 @@ RSpec.describe Leads::DistributorService do
 
   def build_lead(attrs = {})
     Lead.create!(attrs.reverse_merge(name: "Cliente Teste", phone: "11999999999", origin: "site"))
+  end
+
+  def create_tenant_with_agent_profile(name)
+    tenant = Tenant.create!(name: "#{name} #{SecureRandom.hex(3)}", slug: "#{name.parameterize}-#{SecureRandom.hex(3)}")
+    profile = tenant.profiles.find_by!(key: "agent")
+    [ tenant, profile ]
   end
 
   describe "retrocompatibilidade (flags default off)" do
@@ -58,6 +72,23 @@ RSpec.describe Leads::DistributorService do
   end
 
   describe "filtro de origem" do
+    it "procura regras apenas dentro do Tenant do lead" do
+      other_tenant, other_profile = create_tenant_with_agent_profile("Outra conta")
+      lead_tenant, lead_profile = create_tenant_with_agent_profile("Conta do lead")
+      other_agent = create(:admin_user, tenant: other_tenant, profile: other_profile)
+      lead_agent = create(:admin_user, tenant: lead_tenant, profile: lead_profile)
+      other_rule = create(:distribution_rule, tenant: other_tenant, source_site: true)
+      lead_rule = create(:distribution_rule, tenant: lead_tenant, source_site: true)
+      create(:distribution_rule_agent, distribution_rule: other_rule, admin_user: other_agent)
+      create(:distribution_rule_agent, distribution_rule: lead_rule, admin_user: lead_agent)
+
+      lead = build_lead(tenant: lead_tenant, origin: "site")
+      described_class.find_and_distribute(lead)
+
+      expect(lead.reload.admin_user_id).to eq(lead_agent.id)
+      expect(lead.distribution_rule_id).to eq(lead_rule.id)
+    end
+
     it "nao captura lead de site quando a regra nao habilita origem site" do
       rule = create(:distribution_rule, source_site: false, source_webhook: true)
       create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
@@ -179,6 +210,25 @@ RSpec.describe Leads::DistributorService do
       expect(rule.candidates_filtered_by_checkin.pluck(:id)).to eq([dra.id])
     end
 
+    it "ignora check-in legado de outro tenant para agente da regra" do
+      other_tenant = Tenant.create!(name: "Outro tenant check-in regra #{SecureRandom.hex(3)}", slug: "outro-tenant-checkin-regra-#{SecureRandom.hex(3)}")
+      other_store = create(:store, tenant: other_tenant)
+      legacy_check_in = build(
+        :check_in,
+        tenant: other_tenant,
+        admin_user: agent_without_checkin,
+        store: other_store,
+        store_shift: nil,
+        status: :active,
+        checked_in_at: 5.minutes.ago
+      )
+      legacy_check_in.save!(validate: false)
+      rule = create(:distribution_rule, require_active_checkin: true)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
+
+      expect(rule.candidates_filtered_by_checkin).to be_empty
+    end
+
     context "sem candidatos elegíveis + represamento_active" do
       it "deixa lead represado com razão no_eligible_agent_with_checkin" do
         rule = create(:distribution_rule,
@@ -276,6 +326,18 @@ RSpec.describe Leads::DistributorService do
       expect(rule.candidates_filtered_by_checkin.pluck(:id)).to match_array([dra1.id, dra2.id])
     end
 
+    it "remove usuários que deixaram de ser elegíveis mesmo quando check-in está desligado" do
+      tenant, profile = create_tenant_with_agent_profile("Conta elegivel")
+      rule = create(:distribution_rule, tenant: tenant, require_active_checkin: false)
+      active_user = create(:admin_user, tenant: tenant, profile: profile, active: true)
+      inactive_user = create(:admin_user, tenant: tenant, profile: profile, active: false)
+      active_agent = create(:distribution_rule_agent, distribution_rule: rule, admin_user: active_user)
+      inactive_agent = build(:distribution_rule_agent, distribution_rule: rule, admin_user: inactive_user)
+      inactive_agent.save!(validate: false)
+
+      expect(rule.candidates_filtered_by_checkin.pluck(:id)).to eq([active_agent.id])
+    end
+
     it "filtra apenas agents com check-in ativo quando flag on" do
       rule = create(:distribution_rule, require_active_checkin: true)
       dra1 = create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_with_checkin)
@@ -303,6 +365,9 @@ RSpec.describe Leads::DistributorService do
     end
 
     context "require_active_shift" do
+      before { travel_to Time.zone.local(2026, 6, 29, 12, 0, 0) }
+      after { travel_back }
+
       let(:today_wday) { Time.current.in_time_zone("America/Sao_Paulo").wday }
 
       it "inclui quando turno vinculado está ativo agora" do
@@ -310,8 +375,8 @@ RSpec.describe Leads::DistributorService do
                        admin_user: agent_with_checkin,
                        store: store,
                        day_of_week: today_wday,
-                       start_time: 1.hour.ago.strftime("%H:%M"),
-                       end_time: 2.hours.from_now.strftime("%H:%M"))
+                       start_time: "08:00",
+                       end_time: "18:00")
         agent_with_checkin.active_check_in.update!(store_shift: shift)
 
         rule = create(:distribution_rule, require_active_checkin: true, require_active_shift: true)
@@ -343,8 +408,8 @@ RSpec.describe Leads::DistributorService do
                admin_user: agent_with_checkin,
                store: store,
                day_of_week: today_wday,
-               start_time: 1.hour.ago.strftime("%H:%M"),
-               end_time: 2.hours.from_now.strftime("%H:%M"))
+               start_time: "08:00",
+               end_time: "18:00")
 
         rule = create(:distribution_rule, require_active_checkin: true, require_active_shift: true)
         dra = create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_with_checkin)
@@ -354,7 +419,8 @@ RSpec.describe Leads::DistributorService do
 
       it "exclui manual sem nenhum turno ativo agora" do
         agent_with_checkin.active_check_in.update!(store_shift: nil)
-        # Sem nenhum store_shift criado → nenhum turno ativo
+        agent_with_checkin.store_shifts.destroy_all
+        # Sem nenhum store_shift ativo → nenhum turno ativo
         rule = create(:distribution_rule, require_active_checkin: true, require_active_shift: true)
         create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_with_checkin)
 

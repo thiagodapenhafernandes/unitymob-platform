@@ -120,7 +120,7 @@ class Admin::LoftIntegrationsController < Admin::BaseController
 
   def sync_now
     ensure_enabled_and_credentials!
-    LoftSyncJob.perform_later(mode: "full", batch_size: Setting.get("loft_sync_batch_size", "100").to_i, triggered_by_id: current_admin_user.id)
+    LoftSyncJob.perform_later(mode: "full", batch_size: Setting.get("loft_sync_batch_size", "100").to_i, tenant_id: current_tenant.id, triggered_by_id: current_admin_user.id)
     redirect_to admin_loft_integrations_path, notice: "Reconciliação completa pela API Vista iniciada em segundo plano."
   rescue => e
     redirect_to admin_loft_integrations_path, alert: "Falha ao iniciar reconciliação Vista: #{e.message}"
@@ -128,7 +128,7 @@ class Admin::LoftIntegrationsController < Admin::BaseController
 
   def sync_batch
     ensure_enabled_and_credentials!
-    LoftSyncJob.perform_later(mode: "batch", batch_size: Setting.get("loft_sync_batch_size", "100").to_i, triggered_by_id: current_admin_user.id)
+    LoftSyncJob.perform_later(mode: "batch", batch_size: Setting.get("loft_sync_batch_size", "100").to_i, tenant_id: current_tenant.id, triggered_by_id: current_admin_user.id)
     redirect_to admin_loft_integrations_path, notice: "Reconciliação em lote pela API Vista iniciada."
   rescue => e
     redirect_to admin_loft_integrations_path, alert: "Falha ao iniciar lote Vista: #{e.message}"
@@ -136,7 +136,7 @@ class Admin::LoftIntegrationsController < Admin::BaseController
 
   def sync_images_now
     ensure_enabled_and_credentials!
-    LoftImagesSyncJob.perform_later(limit: Setting.get("loft_images_sync_limit", "100").to_i, triggered_by_id: current_admin_user.id)
+    LoftImagesSyncJob.perform_later(limit: Setting.get("loft_images_sync_limit", "100").to_i, tenant_id: current_tenant.id, triggered_by_id: current_admin_user.id)
     redirect_to admin_loft_integrations_path, notice: "Sincronização de imagens para Spaces iniciada."
   rescue => e
     redirect_to admin_loft_integrations_path, alert: "Falha ao iniciar sync de imagens: #{e.message}"

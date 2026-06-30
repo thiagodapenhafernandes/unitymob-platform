@@ -19,8 +19,12 @@ RSpec.describe Habitations::MediaGallery do
 
       api_pictures = described_class.new(habitation.reload).api_media_pictures
 
-      expect(api_pictures.map { |_pic, index, _url| index }).to eq([2])
-      expect(api_pictures.map { |_pic, _index, url| url }).to eq(["https://cdn.vista.test/imoveis/1/fallback.jpg"])
+      expect(api_pictures.map { |_pic, index, _url| index }).to eq([0, 2])
+      expect(api_pictures.map { |_pic, _index, url| url }).to eq([
+        "https://cdn.vista.test/imoveis/1/posicao-um.jpg",
+        "https://cdn.vista.test/imoveis/1/fallback.jpg"
+      ])
+      expect(api_pictures.map { |_pic, _index, url| File.basename(URI.parse(url).path) }).not_to include("foto-local.jpg")
     end
   end
 end

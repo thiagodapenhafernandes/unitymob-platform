@@ -24,7 +24,7 @@ class Admin::AiIntegrationsController < Admin::BaseController
       return redirect_to admin_ai_integration_path, alert: "Configure o token da OpenAI antes de iniciar o lote."
     end
 
-    AiPropertyBatchSuggestionJob.perform_later(triggered_by_id: current_admin_user.id)
+    AiPropertyBatchSuggestionJob.perform_later(triggered_by_id: current_admin_user.id, tenant_id: current_tenant.id)
     redirect_to admin_ai_integration_path, notice: "Geração em lote iniciada em segundo plano. As sugestões não serão aplicadas automaticamente."
   rescue => e
     redirect_to admin_ai_integration_path, alert: "Erro ao iniciar lote: #{e.message}"

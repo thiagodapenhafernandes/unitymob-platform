@@ -9,6 +9,11 @@ module Dwv
     MAX_LIMIT = 50
     MAX_PAGES = 100
 
+    def initialize(tenant: nil)
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para Dwv::SyncRunnerService" if @tenant.blank?
+    end
+
     def call(mode: "full", limit: nil, max_pages: nil, status_service: nil)
       ensure_enabled_and_token!
       @status_service = status_service
@@ -35,6 +40,8 @@ module Dwv
 
     private
 
+    attr_reader :tenant
+
     def sync_active_properties(limit:, max_pages:, deactivate_removed:)
       client = build_client
       imported = 0
@@ -52,7 +59,7 @@ module Dwv
       active_ids.each do |property_id|
         begin
           details = client.property_details(property_id)
-          Dwv::PropertyImportService.new(details).perform
+          Dwv::PropertyImportService.new(details, tenant: tenant).perform
           imported += 1
         rescue => e
           errors_count += 1
@@ -91,7 +98,7 @@ module Dwv
     def deactivate_removed_properties_by_ids(removed_ids)
       return 0 if removed_ids.empty?
 
-      Habitation.where(codigo_dwv: removed_ids).update_all(
+      tenant.habitations.where(codigo_dwv: removed_ids).update_all(
         exibir_no_site_flag: false,
         status: "Suspenso",
         last_sync_at: Time.current,

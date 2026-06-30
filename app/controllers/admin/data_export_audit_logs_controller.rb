@@ -2,7 +2,10 @@ class Admin::DataExportAuditLogsController < Admin::BaseController
   before_action -> { check_permission!(:view, :data_export_audit) }
 
   def index
-    scope = DataExportAuditLog.includes(:admin_user).recent
+    scope = current_tenant.data_export_audit_logs.includes(:admin_user).recent
+    scoped_admin_user_ids = accessible_owner_ids(:data_export_audit)
+    scope = scope.where(admin_user_id: scoped_admin_user_ids) if scoped_admin_user_ids
+
     scope = scope.where(export_type: params[:export_type]) if params[:export_type].present?
     scope = scope.where(resource_name: params[:resource_name]) if params[:resource_name].present?
     scope = scope.where(admin_user_id: params[:admin_user_id]) if params[:admin_user_id].present?
@@ -19,9 +22,11 @@ class Admin::DataExportAuditLogsController < Admin::BaseController
     @csv_exports = stats_scope.where(export_type: "csv_export").count
     @print_reports = stats_scope.where(export_type: "print_report").count
     @total_records = stats_scope.sum(:record_count)
-    @available_users = AdminUser.order(:name)
-    @available_profiles = Profile.order(:name)
-    @available_formats = DataExportAuditLog.where.not(format: [nil, ""]).distinct.order(:format).pluck(:format)
+    @available_users = scoped_admin_users(scoped_admin_user_ids).order(:name)
+    @available_profiles = current_tenant.profiles
+      .where(id: @available_users.reselect(:profile_id))
+      .order(:name)
+    @available_formats = current_tenant.data_export_audit_logs.where.not(format: [nil, ""]).distinct.order(:format).pluck(:format)
   end
 
   private
@@ -32,5 +37,10 @@ class Admin::DataExportAuditLogsController < Admin::BaseController
     Date.parse(value.to_s)
   rescue ArgumentError, TypeError
     nil
+  end
+
+  def scoped_admin_users(scoped_admin_user_ids)
+    users = current_tenant.admin_users.account_members
+    scoped_admin_user_ids ? users.where(id: scoped_admin_user_ids) : users
   end
 end

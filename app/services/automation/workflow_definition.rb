@@ -193,7 +193,7 @@ module Automation
           end
         when "set_flow_result"
           result = config[:result].presence || "no_attendance"
-          errors << "tem resultado de caminho invalido" unless %w[generates_attendance no_attendance].include?(result.to_s)
+          errors << "tem resultado de caminho invalido" unless %w[generates_attendance no_attendance record_only].include?(result.to_s)
           errors << "tem resultado que gera atendimento sem destino" if result.to_s == "generates_attendance" && config[:distribution_rule_id].blank?
         when "move_stage"
           errors << "tem acao de mover etapa sem destino" if config[:to].blank?

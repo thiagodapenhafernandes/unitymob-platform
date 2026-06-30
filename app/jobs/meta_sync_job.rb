@@ -67,12 +67,14 @@ class MetaSyncJob < ApplicationJob
 
           # Auto-add to Distribution Rules if enabled
           if is_new # Only for new forms effectively found
-            DistributionRule.where(auto_add_forms: true).each do |rule|
-              # Check if the rule is watching this page
-              if rule.meta_page_ids.include?(page.page_id)
-                current_forms = rule.meta_forms || []
-                unless current_forms.include?(form.form_id)
-                  rule.update!(meta_forms: current_forms + [form.form_id])
+            DistributionRule.where(auto_add_forms: true).find_each do |rule|
+              Current.set(tenant: rule.tenant) do
+                # Check if the rule is watching this page
+                if rule.meta_page_ids.include?(page.page_id)
+                  current_forms = rule.meta_forms || []
+                  unless current_forms.include?(form.form_id)
+                    rule.update!(meta_forms: current_forms + [form.form_id])
+                  end
                 end
               end
             end

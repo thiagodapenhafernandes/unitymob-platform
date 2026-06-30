@@ -32,6 +32,39 @@ RSpec.describe "Admin::Appointments", type: :request do
 
       expect(response).to have_http_status(:redirect)
     end
+
+    it "não permite atribuir compromisso para usuário fora da subárvore do gestor" do
+      tenant = Tenant.create!(name: "Tenant agenda #{SecureRandom.hex(3)}", slug: "tenant-agenda-#{SecureRandom.hex(3)}")
+      owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+      manager_profile = Profile.create!(
+        tenant: tenant,
+        name: "Manager Agenda",
+        axis: "vertical",
+        position: 300,
+        permissions: {
+          "dashboard" => { "view" => true },
+          "comercial" => { "view" => true, "manage" => true, "scope" => "team" }
+        }
+      )
+      agent_profile = tenant.profiles.find_by!(key: "agent")
+      owner = create(:admin_user, tenant: tenant, profile: owner_profile)
+      manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: owner)
+      peer = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner)
+      sign_in manager
+
+      post admin_appointments_path, params: {
+        appointment: {
+          title: "Visita fora da equipe",
+          kind: "visita",
+          starts_at: 1.day.from_now,
+          admin_user_id: peer.id
+        }
+      }
+
+      expect(response).to have_http_status(:redirect)
+      expect(Appointment.last.admin_user_id).to eq(manager.id)
+      expect(Appointment.last.admin_user_id).not_to eq(peer.id)
+    end
   end
 
   describe "PATCH /admin/appointments/:id" do

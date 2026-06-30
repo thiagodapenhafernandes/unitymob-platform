@@ -1,4 +1,6 @@
 class AutomationEvent < ApplicationRecord
+  include TenantScoped
+
   STATUSES = %w[pending processing processed failed ignored].freeze
 
   belongs_to :lead, optional: true
@@ -11,7 +13,7 @@ class AutomationEvent < ApplicationRecord
   validates :name, presence: true
   validates :source, presence: true
   validates :status, inclusion: { in: STATUSES }
-  validates :idempotency_key, uniqueness: true, allow_blank: true
+  validates :idempotency_key, uniqueness: { scope: :tenant_id }, allow_blank: true
 
   scope :recent, -> { order(occurred_at: :desc, id: :desc) }
   scope :pending, -> { where(status: "pending") }

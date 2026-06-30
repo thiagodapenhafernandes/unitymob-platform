@@ -68,7 +68,7 @@ class PublicNavigationEventsController < ApplicationController
     id = navigation_event_params[:habitation_id].to_s
     return nil if id.blank?
 
-    Habitation.active.find_by(id: id)
+    public_habitations.active.find_by(id: id)
   end
 
   def search_params_payload

@@ -9,7 +9,7 @@
     <%= link_to admin_store_path(@store), class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
       <i class="bi bi-eye"></i>Ver
     <% end %>
-    <% if current_admin_user&.admin? %>
+    <% if can?(:manage, :lojas) %>
       <%= button_to admin_store_path(@store),
                     method: :delete,
                     data: { turbo_confirm: "Remover a loja '#{@store.name}'? Esta ação não pode ser desfeita." },

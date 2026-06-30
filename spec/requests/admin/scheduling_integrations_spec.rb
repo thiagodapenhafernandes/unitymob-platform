@@ -43,8 +43,10 @@ RSpec.describe "Admin::SchedulingIntegrations", type: :request do
 
   it "permite que perfil fotografo veja agenda e pendencias sem gerenciar bloqueios" do
     profile = Profile.create!(
+      tenant: Tenant.default,
       name: "Fotógrafo teste",
       active: true,
+      position: 650,
       permissions: {
         "admin" => false,
         "agenda_fotografia" => { "view" => true, "manage" => false }

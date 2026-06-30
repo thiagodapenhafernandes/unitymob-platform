@@ -15,22 +15,40 @@ module Whatsapp
       Array(@payload["entry"]).each do |entry|
         Array(entry["changes"]).each do |change|
           value = change["value"] || {}
-          capture_bsuid_payload(change) # Fase 0: visibilidade dos webhooks reais
+          @tenant_resolution_ambiguous = false
+          @tenant = tenant_from_payload(value)
+          Current.tenant = @tenant
 
-          # Webhook dedicado de mudança de BSUID (field "user_id_update").
-          if change["field"].to_s == "user_id_update" || value["user_id_update"].present?
-            handle_user_id_update(value)
-            next
+          begin
+            if @tenant_resolution_ambiguous
+              Rails.logger.warn("[wa webhook] tenant ambiguo; change ignorado para evitar vazamento entre contas")
+              next
+            end
+            if @tenant.blank?
+              Rails.logger.warn("[wa webhook] tenant nao identificado; change ignorado para evitar fallback inseguro")
+              next
+            end
+
+            capture_bsuid_payload(change) # Fase 0: visibilidade dos webhooks reais
+
+            # Webhook dedicado de mudança de BSUID (field "user_id_update").
+            if change["field"].to_s == "user_id_update" || value["user_id_update"].present?
+              handle_user_id_update(value)
+              next
+            end
+
+            if change["field"].to_s == "message_template_status_update"
+              handle_template_status_update(value)
+              next
+            end
+
+            contacts = index_contacts(value["contacts"])
+            Array(value["messages"]).each { |msg| handle_inbound(msg, contacts) }
+            Array(value["statuses"]).each { |st| handle_status(st) }
+          ensure
+            Current.tenant = nil
+            @tenant = nil
           end
-
-          if change["field"].to_s == "message_template_status_update"
-            handle_template_status_update(value)
-            next
-          end
-
-          contacts = index_contacts(value["contacts"])
-          Array(value["messages"]).each { |msg| handle_inbound(msg, contacts) }
-          Array(value["statuses"]).each { |st| handle_status(st) }
         end
       end
       true
@@ -53,7 +71,7 @@ module Whatsapp
     end
 
     def handle_inbound(msg, contacts)
-      return if WhatsappMessage.exists?(wa_message_id: msg["id"]) # dedup pelo id da mensagem
+      return if tenant.whatsapp_messages.exists?(wa_message_id: msg["id"]) # dedup pelo id da mensagem no tenant
       return if msg["type"].to_s == "system" # eventos de sistema (ex.: troca de número) não são mensagens
 
       # Campos oficiais da Meta: `from` (telefone, pode faltar quando o número está
@@ -104,10 +122,10 @@ module Whatsapp
         new_id = entry.dig("user_id", "current").presence
         next if old_id.blank? || new_id.blank?
 
-        WhatsappConversation.where(business_scoped_user_id: old_id)
-                            .update_all(business_scoped_user_id: new_id, updated_at: Time.current)
-        Lead.where(business_scoped_user_id: old_id)
-            .update_all(business_scoped_user_id: new_id, updated_at: Time.current)
+        tenant.whatsapp_conversations.where(business_scoped_user_id: old_id)
+              .update_all(business_scoped_user_id: new_id, updated_at: Time.current)
+        tenant.leads.where(business_scoped_user_id: old_id)
+              .update_all(business_scoped_user_id: new_id, updated_at: Time.current)
         Rails.logger.info("[wa-bsuid] user_id_update #{old_id} -> #{new_id}")
       end
     end
@@ -137,9 +155,9 @@ module Whatsapp
       reason = value["reason"].presence
 
       template = if template_id.present?
-                   WhatsappTemplate.find_by(meta_id: template_id)
+                   tenant.whatsapp_templates.find_by(meta_id: template_id)
                  end
-      template ||= WhatsappTemplate.find_by(name: template_name, language: language) if template_name.present?
+      template ||= tenant.whatsapp_templates.find_by(name: template_name, language: language) if template_name.present?
 
       unless template
         Rails.logger.warn(
@@ -169,7 +187,7 @@ module Whatsapp
     end
 
     def handle_status(status)
-      message = WhatsappMessage.find_by(wa_message_id: status["id"])
+      message = tenant.whatsapp_messages.find_by(wa_message_id: status["id"])
       return unless message
 
       state = status["status"].to_s
@@ -180,7 +198,7 @@ module Whatsapp
       attrs[:error_message] = status.dig("errors", 0, "title") if state == "failed"
       message.update_columns(attrs.merge(updated_at: Time.current))
 
-      campaign_message = WhatsappCampaignMessage.find_by(external_message_id: status["id"])
+      campaign_message = tenant.whatsapp_campaign_messages.find_by(external_message_id: status["id"])
       return unless campaign_message
 
       occurred_at = status["timestamp"].present? ? Time.zone.at(status["timestamp"].to_i) : Time.current
@@ -206,6 +224,7 @@ module Whatsapp
         campaign_message = WhatsappCampaignMessage
           .joins(:whatsapp_campaign)
           .where(lead_id: conversation.lead_id)
+          .where(tenant: tenant)
           .where(status: %w[sent delivered read])
           .where(whatsapp_campaigns: { status: %w[processing completed] })
           .order(sent_at: :desc, id: :desc)
@@ -247,6 +266,7 @@ module Whatsapp
       WhatsappCampaignMessage
         .left_joins(:whatsapp_campaign_recipient)
         .joins(:whatsapp_campaign)
+        .where(tenant: tenant)
         .where(status: %w[sent delivered read])
         .where(whatsapp_campaigns: { status: %w[processing completed] })
         .where(
@@ -269,9 +289,9 @@ module Whatsapp
 
     def find_or_create_conversation(phone:, bsuid:, name:)
       conversation =
-        (phone.present? && WhatsappConversation.find_by(contact_phone: phone)) ||
-        (bsuid.present? && WhatsappConversation.find_by(business_scoped_user_id: bsuid)) ||
-        WhatsappConversation.new
+        (phone.present? && tenant.whatsapp_conversations.find_by(contact_phone: phone)) ||
+        (bsuid.present? && tenant.whatsapp_conversations.find_by(business_scoped_user_id: bsuid)) ||
+        tenant.whatsapp_conversations.new
 
       # Backfill: completa a identidade que faltava (mescla telefone + BSUID).
       conversation.contact_phone = phone if phone.present? && conversation.contact_phone.blank?
@@ -290,21 +310,21 @@ module Whatsapp
     def link_or_create_lead(phone:, bsuid:, name:)
       # 1) Por BSUID (identidade estável).
       if bsuid.present?
-        lead = Lead.find_by(business_scoped_user_id: bsuid)
+        lead = tenant.leads.find_by(business_scoped_user_id: bsuid)
         return lead if lead
       end
 
       # 2) Por telefone (últimos 8 dígitos), e backfill do BSUID quando o conhecemos.
       if phone.present?
         tail = phone.gsub(/\D/, "").last(8)
-        lead = Lead.where("regexp_replace(coalesce(phone, ''), '\\D', '', 'g') LIKE ?", "%#{tail}").first
+        lead = tenant.leads.where("regexp_replace(coalesce(phone, ''), '\\D', '', 'g') LIKE ?", "%#{tail}").first
         if lead
           lead.update_column(:business_scoped_user_id, bsuid) if bsuid.present? && lead.business_scoped_user_id.blank?
           return lead
         end
       end
 
-      Lead.create!(
+      tenant.leads.create!(
         name: name.presence || "Contato WhatsApp #{phone || bsuid}",
         phone: phone,
         business_scoped_user_id: bsuid,
@@ -313,6 +333,52 @@ module Whatsapp
       )
     rescue => e
       Rails.logger.warn("[wa inbound] lead link failed: #{e.message}")
+      nil
+    end
+
+    def tenant
+      @tenant || Current.tenant || raise(ArgumentError, "Tenant obrigatório para webhook WhatsApp")
+    end
+
+    def tenant_from_payload(value)
+      phone_number_id = value.dig("metadata", "phone_number_id").presence || value["phone_number_id"].presence
+      if phone_number_id.present?
+        sender_tenant = unique_tenant_from_relation(WhatsappSenderNumber.where(phone_number_id: phone_number_id))
+        return sender_tenant if sender_tenant
+
+        integration_tenant = unique_tenant_from_relation(WhatsappBusinessIntegration.where(phone_number_id: phone_number_id))
+        return integration_tenant if integration_tenant
+      end
+
+      waba_id = value["whatsapp_business_account_id"].presence || value["waba_id"].presence
+      if waba_id.present?
+        integration_tenant = unique_tenant_from_relation(WhatsappBusinessIntegration.where(waba_id: waba_id))
+        return integration_tenant if integration_tenant
+      end
+
+      message_ids = Array(value["statuses"]).filter_map { |status| status["id"].presence }
+      if message_ids.present?
+        message_tenant = unique_tenant_from_relation(WhatsappMessage.where(wa_message_id: message_ids))
+        return message_tenant if message_tenant
+
+        campaign_message_tenant = unique_tenant_from_relation(WhatsappCampaignMessage.where(external_message_id: message_ids))
+        return campaign_message_tenant if campaign_message_tenant
+      end
+
+      template_id = value["message_template_id"].presence&.to_s
+      if template_id.present?
+        template_tenant = unique_tenant_from_relation(WhatsappTemplate.where(meta_id: template_id))
+        return template_tenant if template_tenant
+      end
+
+      nil
+    end
+
+    def unique_tenant_from_relation(relation)
+      tenant_ids = relation.where.not(tenant_id: nil).distinct.limit(2).pluck(:tenant_id)
+      return Tenant.find_by(id: tenant_ids.first) if tenant_ids.one?
+
+      @tenant_resolution_ambiguous = true if tenant_ids.many?
       nil
     end
   end

@@ -26,7 +26,7 @@ module Whatsapp
       create_messages!(recipients)
       campaign.refresh_counters!
       campaign.emit_event!("whatsapp_campaign_started", payload: campaign.metrics_payload)
-      Whatsapp::BulkSendJob.perform_later(campaign.id)
+      Whatsapp::BulkSendJob.perform_later(campaign.id, tenant_id: campaign.tenant_id)
     rescue => e
       Rails.logger.error("[whatsapp campaign] process failed campaign=#{campaign&.id}: #{e.class} - #{e.message}")
       campaign&.fail!(e.message)
@@ -51,6 +51,7 @@ module Whatsapp
         next if phone.blank?
 
         rows << {
+          tenant_id: campaign.tenant_id,
           whatsapp_campaign_id: campaign.id,
           whatsapp_campaign_recipient_id: recipient.id,
           lead_id: recipient.respond_to?(:lead_id) ? recipient.lead_id : recipient.id,

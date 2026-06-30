@@ -60,6 +60,7 @@ module Whatsapp
 
     def filters_result
       filter_result = Whatsapp::CampaignFilterConditions.call(
+        scope: campaign_leads_scope,
         definition: campaign.audience_definition,
         legacy_filters: campaign.audience_filters
       )
@@ -149,6 +150,22 @@ module Whatsapp
       end
 
       recipients
+    end
+
+    def campaign_tenant
+      tenant = campaign.tenant || campaign.created_by&.tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para audiência de campanha WhatsApp" if tenant.blank?
+
+      tenant
+    end
+
+    def campaign_leads_scope
+      tenant = campaign_tenant
+      creator = campaign.created_by
+      return tenant.leads if creator.blank? || creator.tenant_owner? || creator.owns_all?(:leads)
+
+      owner_ids = creator.can_view_team?(:leads) ? creator.team_scope_ids : [creator.id]
+      tenant.leads.where(admin_user_id: owner_ids)
     end
   end
 end

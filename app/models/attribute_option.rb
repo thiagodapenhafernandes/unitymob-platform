@@ -1,4 +1,6 @@
 class AttributeOption < ApplicationRecord
+  include TenantScoped
+
   CONTEXTS = %w[habitation lead].freeze
   CATEGORIES = %w[feature infrastructure unique_feature source status imediacoes sale_reason].freeze
 
@@ -9,7 +11,7 @@ class AttributeOption < ApplicationRecord
   validates :name, :category, :context, presence: true
   validates :context, inclusion: { in: CONTEXTS }
   validates :category, inclusion: { in: CATEGORIES }
-  validates :name, uniqueness: { scope: [:category, :context], case_sensitive: false, message: "já existe nesta categoria" }
+  validates :name, uniqueness: { scope: [:tenant_id, :category, :context], case_sensitive: false, message: "já existe nesta categoria" }
   validate :context_immutable, on: :update
   validate :category_immutable, on: :update
 
@@ -33,7 +35,7 @@ class AttributeOption < ApplicationRecord
     return unless self.class.column_names.include?("position")
     return if position.present?
 
-    max = self.class.where(context: context, category: category).maximum(:position)
+    max = tenant.attribute_options.where(context: context, category: category).maximum(:position)
     self.position = (max || -1) + 1
   end
 
@@ -60,7 +62,8 @@ class AttributeOption < ApplicationRecord
       category: category_before_last_save || category,
       old_name: name_before_last_save,
       new_name: name,
-      action: :rename
+      action: :rename,
+      tenant: tenant
     ).call
   end
 
@@ -69,7 +72,8 @@ class AttributeOption < ApplicationRecord
       context: context,
       category: category,
       old_name: name,
-      action: :delete
+      action: :delete,
+      tenant: tenant
     ).call
   end
 end

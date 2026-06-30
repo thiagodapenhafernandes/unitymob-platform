@@ -33,6 +33,7 @@
 
     <div class="hier-row__tags">
       <% if user.profile %><%= ax_badge(user.profile.name, tone: :blue) %><% else %><%= ax_badge(user.role.humanize, tone: :gray) %><% end %>
+      <% if user.horizontal_profile %><span class="hier-row__horizontal"><%= ax_badge("Função: #{user.horizontal_profile.name}", tone: :gray) %></span><% end %>
       <%= ax_badge(user.active ? "Ativo" : "Inativo", tone: user.active ? :green : :red, dot: true) %>
       <% if acting %><%= ax_badge(acting[0], tone: acting[1]) %><% end %>
     </div>
@@ -46,13 +47,6 @@
     </div>
 
     <div class="hier-row__actions">
-      <% if current_admin_user.admin? && user != current_admin_user %>
-        <%= button_to impersonate_admin_admin_user_path(user), method: :post,
-              class: "ax-ico-btn", form_class: "tw-inline", title: "Acessar como #{user.name}",
-              data: { turbo_confirm: "Acessar o sistema como #{user.name}?" } do %>
-          <i class="bi bi-person-check"></i>
-        <% end %>
-      <% end %>
       <%= link_to admin_admin_user_path(user), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
       <%= link_to edit_admin_admin_user_path(user), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
     </div>

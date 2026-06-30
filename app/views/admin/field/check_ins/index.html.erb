@@ -32,7 +32,7 @@
             <td class="ax-num">
               <span class="tw-inline-flex tw-gap-0.5">
                 <%= link_to admin_field_check_in_path(c), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
-                <% if current_admin_user&.admin? %>
+                <% if can?(:manage, :field_checkins) %>
                   <%= button_to force_check_out_admin_field_check_in_path(c), method: :post, form_class: "tw-inline", class: "ax-ico-btn", title: "Forçar check-out", form: { data: { turbo_confirm: "Forçar check-out de #{c.admin_user.name}?" } } do %><i class="bi bi-power"></i><% end %>
                 <% end %>
               </span>

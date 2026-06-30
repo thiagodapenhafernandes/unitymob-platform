@@ -13,7 +13,12 @@ module Whatsapp
 
     Result = Struct.new(:scope, :summary, :conditions, keyword_init: true)
 
-    def self.call(scope: Lead.all, definition: {}, legacy_filters: {})
+    def self.call(scope: nil, tenant: Current.tenant, definition: {}, legacy_filters: {})
+      scope ||= begin
+        raise ArgumentError, "Tenant obrigatório para filtros de campanha WhatsApp" if tenant.blank?
+
+        tenant.leads
+      end
       new(scope:, definition:, legacy_filters:).call
     end
 

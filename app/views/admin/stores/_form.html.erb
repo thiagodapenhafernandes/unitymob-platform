@@ -23,7 +23,7 @@
         <div class="ax-span-6">
           <%= f.label :director_admin_user_id, "Diretor da loja", class: "ax-label tw-font-semibold" %>
           <%= f.select :director_admin_user_id,
-                       options_for_select(AdminUser.active.order(:name).map { |u| [u.name, u.id] }, store.director_admin_user_id),
+                       options_for_select(current_tenant.admin_users.active.order(:name).map { |u| [u.name, u.id] }, store.director_admin_user_id),
                        { include_blank: "— Sem diretor —" },
                        class: "ax-control",
                        data: { controller: "tom-select", placeholder: "Buscar corretor…" } %>

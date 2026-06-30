@@ -48,7 +48,7 @@
     <% unless watermark_available %>
       <span class="ax-media-upload-panel__hint">
         Marca d'água não configurada.
-        <% if current_admin_user&.admin? %>
+        <% if tenant_owner? %>
           <%= link_to "Configurar", edit_admin_property_setting_path, class: "tw-font-semibold" %>
         <% end %>
       </span>

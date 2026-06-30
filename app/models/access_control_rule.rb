@@ -1,4 +1,6 @@
 class AccessControlRule < ApplicationRecord
+  include TenantScoped
+
   RULE_TYPES = {
     "block_ip" => "IP bloqueado",
     "allow_ip" => "IP permitido",
@@ -20,6 +22,7 @@ class AccessControlRule < ApplicationRecord
   validates :scope_type, inclusion: { in: SCOPE_TYPES.keys }
   validate :valid_ip_value
   validate :scope_target_matches_scope_type
+  validate :scope_target_tenant_consistency
 
   scope :enabled, -> { where(enabled: true) }
   scope :recent, -> { order(created_at: :desc) }
@@ -28,6 +31,12 @@ class AccessControlRule < ApplicationRecord
     return none if ip.blank?
 
     enabled.select { |rule| rule.matches_ip?(ip) }
+  end
+
+  def self.matching_ip_for_tenant(ip, tenant)
+    return none if tenant.blank?
+
+    for_tenant(tenant).matching_ip(ip)
   end
 
   def matches_ip?(ip)
@@ -75,5 +84,11 @@ class AccessControlRule < ApplicationRecord
   def scope_target_matches_scope_type
     errors.add(:profile, "deve ser informado") if scope_type == "profile" && profile_id.blank?
     errors.add(:admin_user, "deve ser informado") if scope_type == "user" && admin_user_id.blank?
+  end
+
+  def scope_target_tenant_consistency
+    errors.add(:profile, "deve pertencer ao mesmo Tenant") if profile.present? && profile.tenant_id != tenant_id
+    errors.add(:admin_user, "deve pertencer ao mesmo Tenant") if admin_user.present? && admin_user.tenant_id != tenant_id
+    errors.add(:created_by, "deve pertencer ao mesmo Tenant") if created_by.present? && created_by.tenant_id != tenant_id
   end
 end

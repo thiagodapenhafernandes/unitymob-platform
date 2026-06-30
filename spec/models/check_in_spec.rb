@@ -9,6 +9,20 @@ RSpec.describe CheckIn, type: :model do
 
   describe "validations" do
     it { is_expected.to validate_presence_of(:checked_in_at) }
+
+    it "exige admin_user, loja e turno no mesmo tenant" do
+      tenant = Tenant.create!(name: "Tenant check model #{SecureRandom.hex(3)}", slug: "tenant-check-model-#{SecureRandom.hex(3)}")
+      other_tenant = Tenant.create!(name: "Outro check model #{SecureRandom.hex(3)}", slug: "outro-check-model-#{SecureRandom.hex(3)}")
+      user = create(:admin_user, tenant: tenant)
+      store = create(:store, tenant: other_tenant)
+      shift = create(:store_shift, tenant: other_tenant, store: store, admin_user: create(:admin_user, tenant: other_tenant))
+
+      check_in = build(:check_in, tenant: tenant, admin_user: user, store: store, store_shift: shift)
+
+      expect(check_in).not_to be_valid
+      expect(check_in.errors[:store]).to include("deve pertencer à mesma conta do check-in")
+      expect(check_in.errors[:store_shift]).to include("deve pertencer à mesma conta do check-in")
+    end
   end
 
   describe "enum status" do

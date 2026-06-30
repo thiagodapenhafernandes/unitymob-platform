@@ -66,15 +66,15 @@ class Admin::ProposalsController < Admin::BaseController
   private
 
   def set_lead
-    @lead = Lead.find(params[:lead_id])
+    @lead = current_tenant.leads.find(params[:lead_id])
   end
 
   def set_proposal
-    @proposal = Proposal.find(params[:id])
+    @proposal = Proposal.joins(:lead).where(leads: { tenant_id: current_tenant.id }).find(params[:id])
   end
 
   def habitation_options
-    Habitation.order(updated_at: :desc).limit(500)
+    current_tenant.habitations.order(updated_at: :desc).limit(500)
   end
 
   def proposal_params

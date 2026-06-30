@@ -13,6 +13,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
 
     it "returns the internal show path when the current user can only view the property" do
       broker_profile = Profile.create!(
+        tenant: Tenant.default,
         name: "Corretor helper #{SecureRandom.hex(6)}",
         permissions: Profile.default_permissions_for("Corretor")
       )

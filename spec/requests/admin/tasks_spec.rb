@@ -35,6 +35,39 @@ RSpec.describe "Admin::Tasks", type: :request do
       expect(response).to have_http_status(:redirect)
       expect(Task.last.created_by_id).to eq(admin.id)
     end
+
+    it "não permite atribuir tarefa para usuário fora da subárvore do gestor" do
+      tenant = Tenant.create!(name: "Tenant tarefas #{SecureRandom.hex(3)}", slug: "tenant-tarefas-#{SecureRandom.hex(3)}")
+      owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+      manager_profile = Profile.create!(
+        tenant: tenant,
+        name: "Manager Comercial",
+        axis: "vertical",
+        position: 300,
+        permissions: {
+          "dashboard" => { "view" => true },
+          "comercial" => { "view" => true, "manage" => true, "scope" => "team" }
+        }
+      )
+      agent_profile = tenant.profiles.find_by!(key: "agent")
+      owner = create(:admin_user, tenant: tenant, profile: owner_profile)
+      manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: owner)
+      peer = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner)
+      sign_in manager
+
+      post admin_tasks_path, params: {
+        task: {
+          title: "Tarefa fora da equipe",
+          kind: "follow_up",
+          due_at: 1.day.from_now,
+          admin_user_id: peer.id
+        }
+      }
+
+      expect(response).to have_http_status(:redirect)
+      expect(Task.last.admin_user_id).to eq(manager.id)
+      expect(Task.last.admin_user_id).not_to eq(peer.id)
+    end
   end
 
   describe "PATCH /admin/tasks/:id/complete" do

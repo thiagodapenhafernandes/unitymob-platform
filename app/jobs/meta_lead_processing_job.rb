@@ -10,6 +10,11 @@ class MetaLeadProcessingJob < ApplicationJob
       Rails.logger.error "[MetaLeadProcessingJob] Nenhuma integração encontrada para a Page ID: #{page_id}"
       return
     end
+    tenant = integration.admin_user&.tenant
+    unless tenant
+      Rails.logger.error "[MetaLeadProcessingJob] Integração #{integration.id} sem Tenant associado."
+      return
+    end
 
     # 2. Buscar detalhes do Lead na API
     # Usamos o token da página se disponível, ou o do usuário
@@ -38,25 +43,30 @@ class MetaLeadProcessingJob < ApplicationJob
 
     name ||= "Lead Facebook"
 
-    form_record = MetaLeadForm.find_by(form_id: form_id.to_s)
+    form_record = integration.meta_lead_forms.find_by(form_id: form_id.to_s)
     product_name = form_record&.name || "Meta Lead (#{form_id})"
 
     # 4. Criar o Lead no CRM
     # Note: O RoutingService será chamado automaticamente pelo callback after_create do model Lead
-    Lead.create!(
-      admin_user_id: integration.admin_user_id, # Atribuído inicialmente ao dono da integração
-      client_name: name,
-      client_email: email,
-      client_phone: phone,
-      origin: "Facebook Lead Ads",
-      product: product_name,
-      custom_answers: map_to_custom_answers(field_data),
-      other_information: lead_details.as_json.merge({
-        "meta_page_id" => page_id.to_s,
-        "meta_form_id" => form_id.to_s,
-        "processed_at" => Time.current
-      })
-    )
+    Current.set(tenant: tenant) do
+      tenant.leads.create!(
+        admin_user_id: integration.admin_user_id, # Atribuído inicialmente ao dono da integração
+        name: name,
+        email: email,
+        phone: phone,
+        client_name: name,
+        client_email: email,
+        client_phone: phone,
+        origin: "Facebook Lead Ads",
+        product: product_name,
+        custom_answers: map_to_custom_answers(field_data),
+        other_information: lead_details.as_json.merge({
+          "meta_page_id" => page_id.to_s,
+          "meta_form_id" => form_id.to_s,
+          "processed_at" => Time.current
+        })
+      )
+    end
 
     Rails.logger.info "[MetaLeadProcessingJob] Lead #{lead_id} processado com sucesso."
 

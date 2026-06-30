@@ -1,4 +1,6 @@
 class AccessAuditLog < ApplicationRecord
+  include TenantScoped
+
   EVENT_TYPES = %w[login logout admin_access access_denied impersonation_start impersonation_stop].freeze
   RESULTS = %w[allowed denied].freeze
 
@@ -20,6 +22,7 @@ class AccessAuditLog < ApplicationRecord
 
   validates :event_type, presence: true, inclusion: { in: EVENT_TYPES }
   validates :result, presence: true, inclusion: { in: RESULTS }
+  validate :admin_user_tenant_consistency
 
   self.record_timestamps = false
   before_create :set_created_at
@@ -58,7 +61,11 @@ class AccessAuditLog < ApplicationRecord
   end
 
   def actor_name
-    admin_user&.name.presence || email.presence || "Usuário não identificado"
+    tenant_admin_user&.name.presence || email.presence || "Usuário não identificado"
+  end
+
+  def tenant_optional?
+    admin_user.blank? || admin_user.system_admin?
   end
 
   def event_label
@@ -77,5 +84,25 @@ class AccessAuditLog < ApplicationRecord
 
   def set_created_at
     self.created_at ||= Time.current
+  end
+
+  def tenant_admin_user
+    return if admin_user_id.blank?
+    return admin_user if tenant_id.blank? && admin_user&.system_admin?
+    return if tenant.blank?
+
+    tenant.admin_users.find_by(id: admin_user_id)
+  end
+
+  def admin_user_tenant_consistency
+    return if admin_user.blank?
+
+    if admin_user.system_admin?
+      errors.add(:tenant, "deve ficar vazio para log de Admin do Sistema") if tenant_id.present?
+    elsif tenant_id.blank?
+      errors.add(:tenant, "deve estar presente para log de usuário da conta")
+    elsif admin_user.tenant_id != tenant_id
+      errors.add(:admin_user, "deve pertencer ao mesmo Tenant")
+    end
   end
 end

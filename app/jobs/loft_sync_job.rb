@@ -3,7 +3,13 @@ require "set"
 class LoftSyncJob < ApplicationJob
   queue_as :default
 
-  def perform(mode: "full", batch_size: nil, triggered_by_id: nil)
+  def perform(mode: "full", batch_size: nil, triggered_by_id: nil, tenant_id: nil)
+    @tenant = resolve_tenant(tenant_id: tenant_id, triggered_by_id: triggered_by_id)
+    tenant = @tenant
+    raise ArgumentError, "Tenant obrigatório para sincronização Loft" if tenant.blank?
+
+    triggered_by = resolve_triggered_by(tenant: tenant, triggered_by_id: triggered_by_id)
+    Current.tenant = tenant
     lock_service = Loft::SyncLockService.new(
       lock_key: "loft_sync_lock",
       lease_seconds: ENV.fetch("LOFT_SYNC_LOCK_LEASE_SECONDS", "5400")
@@ -42,9 +48,10 @@ class LoftSyncJob < ApplicationJob
     end
     codes = empreendimentos + unidades
 
-    dwv_codes = Habitation.where(codigo: codes, imovel_dwv: "Sim").pluck(:codigo).map(&:to_s).to_set
+    tenant_habitations = tenant.habitations
+    dwv_codes = tenant_habitations.where(codigo: codes, imovel_dwv: "Sim").pluck(:codigo).map(&:to_s).to_set
     codes_to_sync = codes.reject { |code| dwv_codes.include?(code.to_s) }
-    existing_codes = Habitation.where(codigo: codes_to_sync).pluck(:codigo).map(&:to_s).to_set
+    existing_codes = tenant_habitations.where(codigo: codes_to_sync).pluck(:codigo).map(&:to_s).to_set
 
     result = Vista::PropertyReconciliationService.new(
       codigos: codes_to_sync,
@@ -85,7 +92,7 @@ class LoftSyncJob < ApplicationJob
       "documentos_reaproveitados=#{result.documents_reused}",
       "documentos_pendentes_download=#{result.documents_pending_download}",
       "total_remoto=#{listing[:remote_total]}",
-      ("triggered_by=#{triggered_by_id}" if triggered_by_id.present?)
+      ("triggered_by=#{triggered_by.id}" if triggered_by.present?)
     ].compact.join(" | ")
 
     status_service.mark_completed!(
@@ -111,13 +118,16 @@ class LoftSyncJob < ApplicationJob
     raise e
   ensure
     lock_service&.release(lock_owner)
+    Current.tenant = nil
   end
 
   private
 
+  attr_reader :tenant
+
   def hide_missing_from_vista_api!(api_codes)
     now = Time.current
-    Habitation
+    tenant.habitations
       .where(Habitation::VISTA_REFERENCE_CODIGO_SQL)
       .where.not(codigo: api_codes.map(&:to_s))
       .where("exibir_no_site_flag = TRUE OR exibir_no_site_salute_flag = TRUE OR last_sync_status <> ?", "missing_from_vista_api")
@@ -129,5 +139,16 @@ class LoftSyncJob < ApplicationJob
         last_sync_at: now,
         updated_at: now
       )
+  end
+
+  def resolve_tenant(tenant_id:, triggered_by_id:)
+    Tenant.find_by(id: tenant_id) ||
+      AdminUser.find_by(id: triggered_by_id)&.tenant
+  end
+
+  def resolve_triggered_by(tenant:, triggered_by_id:)
+    return nil if triggered_by_id.blank?
+
+    tenant.admin_users.find_by(id: triggered_by_id)
   end
 end

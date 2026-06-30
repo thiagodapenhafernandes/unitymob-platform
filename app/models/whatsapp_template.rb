@@ -1,4 +1,6 @@
 class WhatsappTemplate < ApplicationRecord
+  include TenantScoped
+
   TEMPLATE_TYPES = {
     "text" => "Mensagem de Texto",
     "carousel" => "Media Card Carousel",
@@ -30,7 +32,7 @@ class WhatsappTemplate < ApplicationRecord
   has_one_attached :header_media_file
   has_many_attached :carousel_card_media_files
 
-  validates :name, presence: true
+  validates :name, presence: true, uniqueness: { scope: [:tenant_id, :language] }
   validates :template_type, inclusion: { in: TEMPLATE_TYPES.keys }
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :header_format, inclusion: { in: HEADER_FORMATS.keys }

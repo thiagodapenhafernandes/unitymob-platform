@@ -68,7 +68,7 @@ module AntiFraud
         fp = @check_in.fingerprint_hash
         return false if fp.blank?
 
-        CheckIn.where(fingerprint_hash: fp)
+        @check_in.tenant.check_ins.where(fingerprint_hash: fp)
                .where.not(admin_user_id: @check_in.admin_user_id)
                .where("checked_in_at >= ?", FINGERPRINT_WINDOW.ago)
                .exists?

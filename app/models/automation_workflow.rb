@@ -1,4 +1,6 @@
 class AutomationWorkflow < ApplicationRecord
+  include TenantScoped
+
   STATUSES = %w[draft active paused archived].freeze
 
   belongs_to :created_by, class_name: "AdminUser", optional: true
@@ -64,11 +66,50 @@ class AutomationWorkflow < ApplicationRecord
     }[status] || status
   end
 
+  def whatsapp_campaign_source_id
+    active_version&.definition_hash&.dig(:source, :whatsapp_campaign_id).presence ||
+      draft_version&.definition_hash&.dig(:source, :whatsapp_campaign_id).presence
+  end
+
+  def whatsapp_campaign_source?
+    whatsapp_campaign_source_id.present?
+  end
+
+  def whatsapp_campaign_managed?
+    sources = whatsapp_campaign_source_metadata_list
+    return false if sources.blank?
+    return false if sources.any? { |source| whatsapp_campaign_customized_source?(source) }
+
+    source = sources.first
+    managed_value = source.key?(:managed_by_campaign) ? source[:managed_by_campaign] : true
+    ActiveModel::Type::Boolean.new.cast(managed_value) &&
+      !ActiveModel::Type::Boolean.new.cast(source[:customized_by_advanced_user])
+  end
+
+  def whatsapp_campaign_customized?
+    whatsapp_campaign_source_metadata_list.any? { |source| whatsapp_campaign_customized_source?(source) }
+  end
+
   def active?
     status == "active"
   end
 
   private
+
+  def whatsapp_campaign_source_metadata_list
+    [draft_version, active_version].filter_map do |version|
+      source = version&.definition_hash&.dig(:source)
+      next if source.blank?
+
+      metadata = source.with_indifferent_access
+      metadata if metadata[:kind].to_s == "whatsapp_campaign" || metadata[:whatsapp_campaign_id].present?
+    end
+  end
+
+  def whatsapp_campaign_customized_source?(source)
+    ActiveModel::Type::Boolean.new.cast(source[:customized_by_advanced_user]) ||
+      source[:sync_mode].to_s == "advanced_custom"
+  end
 
   def draft_seed_definition
     active_version&.definition_hash&.deep_dup.presence || Automation::WorkflowDefinition.default_definition

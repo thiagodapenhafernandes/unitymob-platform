@@ -24,7 +24,7 @@ module InboundWebhooks
     end
 
     def call
-      lead = Lead.new(lead_attributes)
+      lead = token.admin_user.tenant.leads.new(lead_attributes.except(:tenant))
 
       if lead.save
         @token.record_received!
@@ -43,6 +43,8 @@ module InboundWebhooks
       tags = normalized_tags
 
       {
+        tenant: token.admin_user.tenant,
+        admin_user: token.admin_user,
         name: field_value("name", "nome", "client_name", "clientName"),
         email: field_value("email", "client_email", "clientEmail"),
         phone: field_value("phone", "telefone", "celular", "whatsapp", "client_phone", "clientPhone"),

@@ -9,26 +9,36 @@ module CheckIns
 
     STALE_THRESHOLD = 10.minutes
 
-    def perform
+    def perform(tenant_id: nil)
       return unless FieldFeatureGate.field_checkin_enabled?
 
       threshold = STALE_THRESHOLD.ago
       closed = 0
 
-      CheckIn.where(status: :active).find_each do |check_in|
-        last_ping = check_in.location_pings.maximum(:recorded_at)
-        last_activity = [last_ping, check_in.checked_in_at].compact.max
-        next unless last_activity < threshold
+      tenants_for(tenant_id).find_each do |tenant|
+        Current.set(tenant: tenant) do
+          tenant.check_ins.where(status: :active).find_each do |check_in|
+            last_ping = check_in.location_pings.maximum(:recorded_at)
+            last_activity = [last_ping, check_in.checked_in_at].compact.max
+            next unless last_activity < threshold
 
-        CheckIns::CheckOutService.new(
-          check_in: check_in,
-          reason: :closed_auto_out_of_radius
-        ).call
-        closed += 1
+            CheckIns::CheckOutService.new(
+              check_in: check_in,
+              reason: :closed_auto_out_of_radius
+            ).call
+            closed += 1
+          end
+        end
       end
 
       Rails.logger.info("[StaleActiveCheckinJob] closed=#{closed}") if closed.positive?
       closed
+    end
+
+    private
+
+    def tenants_for(tenant_id)
+      tenant_id.present? ? Tenant.where(id: tenant_id) : Tenant.active
     end
   end
 end

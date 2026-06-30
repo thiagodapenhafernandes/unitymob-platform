@@ -24,7 +24,7 @@
         <% if habitation.persisted? %>
           <button type="button"
                   class="ax-btn ax-btn--primary"
-                  data-media-modal-url="<%= modal_admin_habitation_media_path(habitation, return_to: request.fullpath) %>">
+                  data-media-modal-url="<%= modal_admin_habitation_media_path(habitation, return_to: @return_to_path || request.fullpath) %>">
             <i class="bi bi-arrows-fullscreen"></i>
             Abrir organizador de mídia
           </button>

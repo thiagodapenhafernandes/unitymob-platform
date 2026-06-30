@@ -5,6 +5,8 @@
 # é só a entrada de rodapé do site de marketing. Vínculo opcional via
 # `footer_store_id` quando a mesma loja aparece nos dois lugares.
 class Store < ApplicationRecord
+  include TenantScoped
+
   extend FriendlyId
   friendly_id :name, use: [:slugged, :finders]
 
@@ -23,6 +25,7 @@ class Store < ApplicationRecord
   validates :geofence_radius_meters, numericality: { greater_than: 0, less_than_or_equal_to: 5000 }
   validate :valid_timezone
   validate :valid_coordinates
+  validate :director_belongs_to_same_tenant
 
   scope :active, -> { where(active: true) }
   scope :with_location, -> { where.not(location: nil) }
@@ -118,6 +121,12 @@ class Store < ApplicationRecord
       errors.add(:latitude,  "deve estar entre -90 e 90")   unless lat.between?(-90, 90)
       errors.add(:longitude, "deve estar entre -180 e 180") unless lng.between?(-180, 180)
     end
+  end
+
+  def director_belongs_to_same_tenant
+    return if director.blank? || tenant.blank? || director.tenant_id == tenant_id
+
+    errors.add(:director, "deve pertencer à mesma conta da loja")
   end
 
   def extract_coordinates_from_location

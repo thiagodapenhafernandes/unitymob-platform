@@ -461,10 +461,16 @@ vencendo a regra global `.ax-app h2`.
 O design system de referência usa botões compactos:
 
 - botão de toolbar com altura visual próxima de `28px`;
-- botão de ação normal com altura próxima de `32px`;
-- raio `6px` a `8px`;
+- botão de ação normal com altura próxima de `30px`;
+- raio `6px`;
 - foco sutil com `--admin-primary-ring`;
 - primário sempre em `--admin-primary`.
+- botões da contextbar usam a escala compacta (`28px`) e devem alinhar com o
+  breadcrumb/estado da `ax-contextbar__main`.
+- variantes oficiais: `primary`, `secondary`, `ghost`, `danger`, `success`,
+  `warning` e `info`; todas precisam manter contraste em estado normal, hover,
+  foco, visited e disabled.
+- ícones internos devem usar `.ax-ico` e herdar `currentColor`.
 
 No admin Rails:
 
@@ -475,7 +481,9 @@ No admin Rails:
 ```
 
 Não criar classes locais de botão quando `ax_button` ou `ax_icon_button` cobrir o
-caso. Evolua o helper antes de duplicar.
+caso. Evolua o helper antes de duplicar. Não criar CSS local para tamanho,
+padding, hover, foco ou cor de botão; se faltar uma intenção visual, adicionar a
+variante no componente compartilhado.
 
 ## Inputs, Selects E Autocomplete
 

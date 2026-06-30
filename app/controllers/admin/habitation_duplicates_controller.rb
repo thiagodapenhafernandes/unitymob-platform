@@ -12,7 +12,8 @@ module Admin
         complement: params[:complement],
         category: params[:category],
         comparison: params[:comparison],
-        ignored_id: params[:ignored_id]
+        ignored_id: params[:ignored_id],
+        tenant: Current.tenant
       ).call
 
       render json: {

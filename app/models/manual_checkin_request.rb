@@ -3,6 +3,8 @@
 # Pedido de check-in manual — usado quando GPS falha e o corretor precisa
 # de aprovação do admin para registrar presença.
 class ManualCheckinRequest < ApplicationRecord
+  include TenantScoped
+
   enum status: { pending: 0, approved: 1, rejected: 2 }
 
   belongs_to :admin_user

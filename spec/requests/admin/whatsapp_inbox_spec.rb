@@ -48,7 +48,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       msg = conv.messages.outbound.last
       expect(msg.body).to eq("Olá, posso ajudar?")
       expect(msg.status).to eq("pending")
-      expect(Whatsapp::SendMessageJob).to have_received(:perform_later).with(msg.id)
+      expect(Whatsapp::SendMessageJob).to have_received(:perform_later).with(msg.id, tenant_id: msg.tenant_id)
       expect(lead.activities.where(kind: "whatsapp_out").count).to eq(1)
     end
   end

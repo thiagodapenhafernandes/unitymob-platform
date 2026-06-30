@@ -24,7 +24,7 @@ module Field
         short_name: "Salute Campo",
         description: "Check-in geolocalizado dos corretores em plantão.",
         start_url: "/field",
-        scope: "/",
+        scope: "/field/",
         display: "standalone",
         orientation: "portrait",
         background_color: "#f8f9fa",

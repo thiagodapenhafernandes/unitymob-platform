@@ -3,16 +3,20 @@ class HabitationPhotoWatermarkJob < ApplicationJob
 
   discard_on ActiveJob::DeserializationError
 
-  def perform(habitation_id, attachment_ids, property_setting_id = nil)
-    habitation = Habitation.find_by(id: habitation_id)
+  def perform(habitation_id, attachment_ids, property_setting_id = nil, tenant_id: nil)
+    tenant = Tenant.find_by(id: tenant_id) || Current.tenant
+    habitation = tenant.present? ? tenant.habitations.find_by(id: habitation_id) : Habitation.find_by(id: habitation_id)
     return if habitation.blank?
+    tenant ||= habitation.tenant
 
-    setting = property_setting_id.present? ? PropertySetting.find_by(id: property_setting_id) : PropertySetting.instance
-    return unless setting&.watermark_configured?
+    Current.set(tenant: habitation.tenant) do
+      setting = property_setting_id.present? ? PropertySetting.find_by(id: property_setting_id) : PropertySetting.instance
+      return unless setting&.watermark_configured?
 
-    attachments = habitation.photos.attachments.includes(:blob).where(id: Array(attachment_ids))
-    attachments.find_each do |attachment|
-      process_attachment(attachment, setting)
+      attachments = habitation.photos.attachments.includes(:blob).where(id: Array(attachment_ids))
+      attachments.find_each do |attachment|
+        process_attachment(attachment, setting)
+      end
     end
   end
 

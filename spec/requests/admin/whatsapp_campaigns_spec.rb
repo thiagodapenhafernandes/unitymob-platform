@@ -7,6 +7,14 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
   let(:admin) { create(:admin_user, :admin, email: "wa-campaign-#{SecureRandom.hex(6)}@salute.test") }
   let(:template) { WhatsappTemplate.create!(name: "lead_nurture", language: "pt_BR", status: "APPROVED", body: "Oi {{1}}, origem {{2}}.") }
 
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = admin.tenant
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   before do
     host! "localhost"
     sign_in admin
@@ -20,6 +28,8 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Campanhas por número")
+      expect(response.body).to include("Importados CSV")
+      expect(response.body).to include("Descadastros WhatsApp")
       expect(response.body).to include("5511988887777")
       expect(response.body).to include("Abrir campanhas")
     end
@@ -27,7 +37,7 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
     it "filtra campanhas por numero de envio" do
       sender = create(:whatsapp_sender_number, display_phone_number: "5511988887777", phone_number_id: "111222333444")
       other_sender = create(:whatsapp_sender_number, display_phone_number: "5511977776666", phone_number_id: "555666777888")
-      WhatsappCampaign.create!(name: "Campanha do numero", whatsapp_template: template, created_by: admin, whatsapp_sender_number: sender)
+      campaign = WhatsappCampaign.create!(name: "Campanha do numero", whatsapp_template: template, created_by: admin, whatsapp_sender_number: sender)
       WhatsappCampaign.create!(name: "Outra campanha", whatsapp_template: template, created_by: admin, whatsapp_sender_number: other_sender)
 
       get admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id)
@@ -40,7 +50,45 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response.body).to include("Nova campanha")
       expect(response.body).to include("Documentação")
       expect(response.body).to include(documentation_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: sender.id))
+      expect(response.body).to include(admin_whatsapp_campaign_path(campaign))
+      expect(response.body).to include(edit_admin_whatsapp_campaign_path(campaign))
       expect(response.body).not_to include("Workspace do número")
+    end
+  end
+
+  describe "GET imported recipients" do
+    it "lista destinatarios importados por CSV no menu do WhatsApp" do
+      sender = create(:whatsapp_sender_number, display_phone_number: "5511988887777", phone_number_id: "111222333444")
+      campaign = WhatsappCampaign.create!(
+        name: "Campanha CSV",
+        whatsapp_template: template,
+        whatsapp_sender_number: sender,
+        created_by: admin
+      )
+      campaign.campaign_recipients.create!(
+        source: "spreadsheet",
+        name: "Maria Importada",
+        phone_number: "11999990000",
+        email: "maria@example.com",
+        origin: "csv",
+        status: "Novo",
+        tags: ["Premium"]
+      )
+      campaign.campaign_recipients.create!(
+        source: "filters",
+        name: "Lead por filtro",
+        phone_number: "11999990001"
+      )
+
+      get admin_whatsapp_campaign_recipients_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Importados CSV")
+      expect(response.body).to include("Maria Importada")
+      expect(response.body).to include("maria@example.com")
+      expect(response.body).to include("Premium")
+      expect(response.body).not_to include("Lead por filtro")
+      expect(response.body).to include(admin_whatsapp_campaign_recipients_path)
     end
   end
 
@@ -62,6 +110,10 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response.body).to include("whatsapp-campaign-builder")
       expect(response.body).to include("Pré-visualizar audiência")
       expect(response.body).to include("Enviar teste")
+      expect(response.body).to include("Modo de envio")
+      expect(response.body).to include("Enviar agora")
+      expect(response.body).to include("Estimativas")
+      expect(response.body).not_to include("Resposta automática")
     end
 
     it "pre-seleciona template vindo do catalogo" do
@@ -98,6 +150,41 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response.body).to include("Performance")
       expect(response.body).to include("Mensagens recentes")
     end
+
+    it "exibe resumo de ocorrencias e operacoes para falhas de entrega" do
+      campaign = WhatsappCampaign.create!(
+        name: "Campanha com ocorrencias",
+        whatsapp_template: template,
+        created_by: admin,
+        status: "completed"
+      )
+      campaign.campaign_messages.create!(
+        phone_number: "5511999990001",
+        status: "failed",
+        failure_reason: "Envio limitado pela Meta para manter engajamento saudável (código 131049)",
+        failed_at: 2.minutes.ago,
+        retry_count: 1,
+        next_retry_at: 6.hours.from_now
+      )
+      campaign.campaign_messages.create!(
+        phone_number: "5511999990002",
+        status: "failed",
+        failure_reason: "Template paused due to low quality (132015)",
+        failed_at: 1.minute.ago,
+        retry_count: 1
+      )
+
+      get admin_whatsapp_campaign_path(campaign)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Operações do disparo")
+      expect(response.body).to include("Reprocessar falhas")
+      expect(response.body).to include("ocorrências de entrega nesta campanha")
+      expect(response.body).to include("Principais motivos")
+      expect(response.body).to include("Envio limitado pela Meta para manter engajamento saudável")
+      expect(response.body).to include("Template pausado pela Meta por baixa qualidade")
+      expect(response.body).to include("erros críticos")
+    end
   end
 
   describe "GET status" do
@@ -111,7 +198,7 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       sent_lead = create(:lead, admin_user: admin, name: "Lead enviado", phone: "(11) 99999-0000")
       failed_lead = create(:lead, admin_user: admin, name: "Lead falhou", phone: "(11) 99999-0001")
       pending_lead = create(:lead, admin_user: admin, name: "Lead pendente", phone: "(11) 99999-0002")
-      campaign.campaign_messages.create!(lead: sent_lead, phone_number: "5511999990000", status: "sent")
+      campaign.campaign_messages.create!(lead: sent_lead, phone_number: "5511999990000", status: "sent", sent_at: 6.minutes.ago)
       campaign.campaign_messages.create!(lead: failed_lead, phone_number: "5511999990001", status: "failed", failure_reason: "Contato inválido")
       campaign.campaign_messages.create!(lead: pending_lead, phone_number: "5511999990002", status: "pending")
 
@@ -121,10 +208,41 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       data = JSON.parse(response.body)
       expect(data["status"]).to eq("processing")
       expect(data["active"]).to eq(true)
+      expect(data["next_poll_interval_ms"]).to eq(3000)
       expect(data["progress_percent"]).to eq(66.7)
       expect(data["pending_count"]).to eq(1)
       expect(data["metrics"]).to include("total" => 3, "sent" => 1, "failed" => 1)
       expect(data["recent_messages"].map { |message| message["recipient_name"] }).to include("Lead enviado", "Lead falhou", "Lead pendente")
+      expect(data["recent_messages"].find { |message| message["recipient_name"] == "Lead enviado" }).to include(
+        "status" => "delivery_unconfirmed",
+        "status_label" => "Sem retorno de entrega",
+        "status_tone" => "amber"
+      )
+    end
+
+    it "nao mantem polling automatico quando campanha concluida apenas monitora retorno tardio de entrega" do
+      campaign = WhatsappCampaign.create!(
+        name: "Campanha concluida aguardando status",
+        whatsapp_template: template,
+        created_by: admin,
+        status: "completed"
+      )
+      campaign.campaign_messages.create!(
+        phone_number: "5511999990000",
+        status: "sent",
+        sent_at: 6.minutes.ago
+      )
+
+      get status_admin_whatsapp_campaign_path(campaign), headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+      expect(data["active"]).to eq(false)
+      expect(data["next_poll_interval_ms"]).to be_nil
+      expect(data["recent_messages"].first).to include(
+        "status" => "delivery_unconfirmed",
+        "status_label" => "Sem retorno de entrega"
+      )
     end
 
     it "inclui cards dinamicos de respostas por botao" do
@@ -158,6 +276,10 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response).to have_http_status(:ok)
       data = JSON.parse(response.body)
       expect(data["response_cards"].first).to include("label" => "Saiba mais", "count" => 1)
+      expect(data["recent_messages"].first).to include(
+        "response_status_label" => "Saiba mais",
+        "response_status_note" => "Apenas registrar"
+      )
     end
   end
 
@@ -184,6 +306,50 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       data = JSON.parse(response.body)
       expect(data["valid_phone_count"]).to eq(1)
       expect(data["sample"].first["name"]).to eq("Lead Preview")
+    end
+
+    it "limita audiencia por filtro ao escopo hierarquico de leads do criador" do
+      tenant = admin.tenant
+      owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+      agent_profile = tenant.profiles.find_by!(key: "agent")
+      manager_profile = Profile.create!(
+        tenant: tenant,
+        name: "Manager WhatsApp",
+        axis: "vertical",
+        position: 300,
+        permissions: {
+          "dashboard" => { "view" => true },
+          "leads" => { "view" => true, "manage" => true, "scope" => "team" },
+          "whatsapp_campaigns" => { "view" => true, "manage" => true, "scope" => "team" }
+        }
+      )
+      owner = create(:admin_user, tenant: tenant, profile: owner_profile)
+      manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: owner)
+      subordinate = create(:admin_user, tenant: tenant, profile: agent_profile, manager: manager)
+      peer = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner)
+      create(:lead, name: "Lead da Equipe", phone: "47999990001", status: "Novo", admin_user: subordinate)
+      create(:lead, name: "Lead Fora da Equipe", phone: "47999990002", status: "Novo", admin_user: peer)
+      sign_in manager
+
+      post preview_audience_admin_whatsapp_campaigns_path,
+           params: {
+             whatsapp_campaign: {
+               audience_mode: "filters",
+               whatsapp_template_id: template.id,
+               audience_definition: {
+                 conditions: {
+                   "0" => { field: "status", operator: "equals", value: "Novo" }
+                 }
+               }
+             }
+           },
+           headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+      expect(data["valid_phone_count"]).to eq(1)
+      expect(data["sample"].map { |row| row["name"] }).to include("Lead da Equipe")
+      expect(data["sample"].map { |row| row["name"] }).not_to include("Lead Fora da Equipe")
     end
 
     it "retorna preview de importacao CSV" do
@@ -474,6 +640,24 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
 
       expect(WhatsappCampaign.last.status).to eq("scheduled")
     end
+
+    it "bloqueia agendamento sem data e horario" do
+      expect {
+        post admin_whatsapp_campaigns_path, params: {
+          commit_action: "schedule",
+          whatsapp_campaign: {
+            name: "Agendada sem data",
+            whatsapp_template_id: template.id,
+            send_rate: 30,
+            audience_filters: { status: "Novo" },
+            template_variables: { "1" => "{{nome}}" }
+          }
+        }
+      }.not_to change(WhatsappCampaign, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include("Scheduled at precisa ser informado")
+    end
   end
 
   describe "POST whatsapp sender numbers" do
@@ -530,6 +714,43 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       }.to have_enqueued_job(Whatsapp::BulkSendJob)
 
       expect(campaign.campaign_messages.last.reload.status).to eq("pending")
+    end
+  end
+
+  describe "GET /admin/whatsapp/descadastros" do
+    it "lista descadastros para admin com permissao de campanhas" do
+      create(:whatsapp_campaign_unsubscribe, phone_number: "5511999990000", contact_name: "Contato Teste")
+
+      get admin_whatsapp_campaign_unsubscribes_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Descadastros WhatsApp")
+      expect(response.body).to include("Contato Teste")
+    end
+
+    it "lista e reabilita contatos descadastrados por numero" do
+      sender = create(:whatsapp_sender_number, display_phone_number: "5511988887777")
+      unsubscribe = create(
+        :whatsapp_campaign_unsubscribe,
+        whatsapp_sender_number: sender,
+        phone_number: "5511999990000",
+        contact_name: "Contato Teste"
+      )
+
+      get admin_whatsapp_campaign_unsubscribes_path(whatsapp_sender_number_id: sender.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Descadastros WhatsApp")
+      expect(response.body).to include("Contato Teste")
+      expect(response.body).to include("5511999990000")
+
+      patch reenable_admin_whatsapp_campaign_unsubscribe_path(unsubscribe),
+            params: { reenable_reason: "Teste concluído" }
+
+      expect(response).to redirect_to(admin_whatsapp_campaign_unsubscribes_path)
+      expect(unsubscribe.reload).to be_reenabled
+      expect(unsubscribe.reenabled_by).to eq(admin)
+      expect(unsubscribe.reenable_reason).to eq("Teste concluído")
     end
   end
 end

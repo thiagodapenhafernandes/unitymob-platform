@@ -1,5 +1,5 @@
 <%
-  statuses = AttributeOption.where(context: "lead", category: "status").ordered
+  statuses = current_tenant.attribute_options.where(context: "lead", category: "status").ordered
 
   modal_body = capture do %>
     <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>

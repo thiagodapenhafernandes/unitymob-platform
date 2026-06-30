@@ -38,7 +38,7 @@ module AccessControl
     end
 
     def matching_rules(rule_type)
-      AccessControlRule.matching_ip(ip).select do |rule|
+      AccessControlRule.matching_ip_for_tenant(ip, admin_user&.tenant).select do |rule|
         rule.rule_type == rule_type && rule.applies_to_user?(admin_user)
       end
     end
@@ -64,7 +64,7 @@ module AccessControl
     end
 
     def broker?
-      admin_user.present? && !admin_user.admin?
+      admin_user.present? && !admin_user.system_admin? && !admin_user.admin?
     end
 
     def device

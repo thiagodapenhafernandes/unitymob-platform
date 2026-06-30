@@ -105,6 +105,10 @@ module Vista
 
     private
 
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para importar dump Vista")
+    end
+
     def validate_dump!
       [cadimo_path, cadcli_path, cdimim_path, cadcat_path].each do |path|
         raise ArgumentError, "Arquivo nao encontrado: #{path}" unless File.exist?(path)
@@ -112,9 +116,9 @@ module Vista
     end
 
     def load_reference_data
-      @existing_property_codes = Habitation.where.not(codigo: [nil, ""]).pluck(:codigo).map { |code| code.to_s.strip }.to_set
-      @existing_development_codes = Habitation.empreendimentos.where.not(codigo: [nil, ""]).pluck(:codigo).map { |code| code.to_s.strip }.to_set
-      @existing_proprietor_codes = Proprietor.where.not(vista_code: [nil, ""]).pluck(:vista_code).map { |code| code.to_s.strip }.to_set
+      @existing_property_codes = tenant.habitations.where.not(codigo: [nil, ""]).pluck(:codigo).map { |code| code.to_s.strip }.to_set
+      @existing_development_codes = tenant.habitations.empreendimentos.where.not(codigo: [nil, ""]).pluck(:codigo).map { |code| code.to_s.strip }.to_set
+      @existing_proprietor_codes = tenant.proprietors.where.not(vista_code: [nil, ""]).pluck(:vista_code).map { |code| code.to_s.strip }.to_set
 
       each_row(cadcat_path, "CADCAT", CADCAT_FIELDS) do |row|
         code = normalize_code(row["CODIGO"])
@@ -165,7 +169,7 @@ module Vista
       end
 
       Habitation.transaction do
-        habitation = Habitation.new(attrs)
+        habitation = tenant.habitations.new(attrs)
         habitation.skip_auto_audit = true
         habitation.save!
         @existing_property_codes << code
@@ -185,7 +189,7 @@ module Vista
 
       if @existing_proprietor_codes.include?(owner_code)
         @reported_existing_proprietor_codes << owner_code
-        return Proprietor.find_by(vista_code: owner_code) unless @dry_run
+        return tenant.proprietors.find_by(vista_code: owner_code) unless @dry_run
 
         nil
       end
@@ -199,7 +203,7 @@ module Vista
         return nil
       end
 
-      proprietor = Proprietor.create!(proprietor_attributes(client))
+      proprietor = tenant.proprietors.create!(proprietor_attributes(client))
       @existing_proprietor_codes << owner_code
       @reported_created_proprietor_codes << owner_code
       proprietor
@@ -345,7 +349,7 @@ module Vista
       code = normalize_code(raw_code)
       return nil if code.blank?
 
-      Habitation.where(imovel_dwv: "Sim", codigo_dwv: code).exists? ? nil : code
+      tenant.habitations.where(imovel_dwv: "Sim", codigo_dwv: code).exists? ? nil : code
     end
 
     def photo_classification(row)

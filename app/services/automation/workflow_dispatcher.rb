@@ -10,66 +10,71 @@ module Automation
 
     def self.dispatch_idle_candidates(limit: 200)
       active_workflows_for_event("lead_idle").each do |workflow|
-        entry = entry_node(workflow)
-        idle_hours = entry.dig(:config, :idle_hours).to_i
-        next unless idle_hours.positive?
+        Current.set(tenant: workflow.tenant) do
+          entry = entry_node(workflow)
+          idle_hours = entry.dig(:config, :idle_hours).to_i
+          next unless idle_hours.positive?
 
-        scope = Lead.where("leads.updated_at <= ?", idle_hours.hours.ago)
-        stage = entry.dig(:config, :stage)
-        scope = scope.where(status: Lead.status_value(stage)) if stage.present?
-        source = entry.dig(:config, :source)
-        scope = scope.where("origin ILIKE ?", source) if source.present?
-        distribution_rule_ids = distribution_rule_ids_for(entry.fetch(:config, {}))
-        scope = scope.where(distribution_rule_id: distribution_rule_ids) if distribution_rule_ids.any?
+          scope = workflow.tenant.leads.where("leads.updated_at <= ?", idle_hours.hours.ago)
+          stage = entry.dig(:config, :stage)
+          scope = scope.where(status: Lead.status_value(stage)) if stage.present?
+          source = entry.dig(:config, :source)
+          scope = scope.where("origin ILIKE ?", source) if source.present?
+          distribution_rule_ids = distribution_rule_ids_for(entry.fetch(:config, {}))
+          scope = scope.where(distribution_rule_id: distribution_rule_ids) if distribution_rule_ids.any?
 
-        processed = AutomationExecution
-          .where(automation_workflow_id: workflow.id)
-          .where.not(lead_id: nil)
-          .pluck(:lead_id)
-          .uniq
-        scope = scope.where.not(id: processed) if processed.any?
+          processed = AutomationExecution
+            .where(tenant: workflow.tenant, automation_workflow_id: workflow.id)
+            .where.not(lead_id: nil)
+            .pluck(:lead_id)
+            .uniq
+          scope = scope.where.not(id: processed) if processed.any?
 
-        scope.limit(limit).find_each do |lead|
-          Automation::Dispatcher.dispatch(
-            :lead_idle,
-            lead,
-            source: "automation_tick",
-            payload: { workflow_id: workflow.id, idle_hours: idle_hours },
-            idempotency_key: "lead_idle:workflow:#{workflow.id}:lead:#{lead.id}"
-          )
+          scope.limit(limit).find_each do |lead|
+            Automation::Dispatcher.dispatch(
+              :lead_idle,
+              lead,
+              source: "automation_tick",
+              payload: { workflow_id: workflow.id, idle_hours: idle_hours },
+              idempotency_key: "lead_idle:workflow:#{workflow.id}:lead:#{lead.id}"
+            )
+          end
         end
       end
     end
 
     def self.dispatch_scheduled_routines(limit: 200)
       active_workflows_for_event("scheduled_routine").each do |workflow|
-        entry = entry_node(workflow)
-        config = entry.fetch(:config, {}).with_indifferent_access
-        next unless Automation::ScheduleCalculator.recurring_due?(config)
+        Current.set(tenant: workflow.tenant) do
+          entry = entry_node(workflow)
+          config = entry.fetch(:config, {}).with_indifferent_access
+          next unless Automation::ScheduleCalculator.recurring_due?(config)
 
-        bucket = Automation::ScheduleCalculator.recurring_bucket(config)
-        scope = Lead.all
-        stage = config[:stage]
-        scope = scope.where(status: Lead.status_value(stage)) if stage.present?
-        source = config[:source]
-        scope = scope.where("origin ILIKE ?", source) if source.present?
-        distribution_rule_ids = distribution_rule_ids_for(config)
-        scope = scope.where(distribution_rule_id: distribution_rule_ids) if distribution_rule_ids.any?
+          bucket = Automation::ScheduleCalculator.recurring_bucket(config)
+          scope = workflow.tenant.leads
+          stage = config[:stage]
+          scope = scope.where(status: Lead.status_value(stage)) if stage.present?
+          source = config[:source]
+          scope = scope.where("origin ILIKE ?", source) if source.present?
+          distribution_rule_ids = distribution_rule_ids_for(config)
+          scope = scope.where(distribution_rule_id: distribution_rule_ids) if distribution_rule_ids.any?
 
-        scope.limit(limit).find_each do |lead|
-          Automation::Dispatcher.dispatch(
-            :scheduled_routine,
-            lead,
-            source: "automation_tick",
-            payload: { workflow_id: workflow.id, bucket: bucket },
-            idempotency_key: "scheduled_routine:workflow:#{workflow.id}:lead:#{lead.id}:bucket:#{bucket}"
-          )
+          scope.limit(limit).find_each do |lead|
+            Automation::Dispatcher.dispatch(
+              :scheduled_routine,
+              lead,
+              source: "automation_tick",
+              payload: { workflow_id: workflow.id, bucket: bucket },
+              idempotency_key: "scheduled_routine:workflow:#{workflow.id}:lead:#{lead.id}:bucket:#{bucket}"
+            )
+          end
         end
       end
     end
 
     def self.active_workflows_for_event(event)
-      AutomationWorkflow.active.includes(:active_version).select do |workflow|
+      scope = Current.tenant ? Current.tenant.automation_workflows : AutomationWorkflow
+      scope.active.includes(:active_version).select do |workflow|
         entry_node(workflow).dig(:config, :trigger).to_s == event.to_s
       end
     end
@@ -86,18 +91,22 @@ module Automation
     end
 
     def dispatch
-      self.class.active_workflows_for_event(@event).each do |workflow|
-        next unless entry_matches_event?(self.class.entry_node(workflow))
+      tenant = @lead&.tenant || @automation_event&.tenant || Current.tenant
+      Current.set(tenant: tenant) do
+        self.class.active_workflows_for_event(@event).each do |workflow|
+          next unless entry_matches_event?(self.class.entry_node(workflow))
 
-        Automation::WorkflowRunner.start(workflow, @lead, event: @event, automation_event: @automation_event)
+          Automation::WorkflowRunner.start(workflow, @lead, event: @event, automation_event: @automation_event)
+        end
+        resume_waiting_executions
       end
-      resume_waiting_executions
     end
 
     private
 
     def entry_matches_event?(entry)
       config = entry.fetch(:config, {}).with_indifferent_access
+      return false unless whatsapp_campaign_matches?(config)
       return false unless distribution_rule_matches?(config)
       return true if @lead.nil? && campaign_recipient_event?
 
@@ -122,8 +131,10 @@ module Automation
     def resume_waiting_executions
       return unless @automation_event
 
-      AutomationExecution
-        .where(lead_id: @lead&.id, status: "waiting")
+      scope = AutomationExecution.where(lead_id: @lead&.id, status: "waiting")
+      scope = scope.where(tenant: Current.tenant) if Current.tenant
+
+      scope
         .includes(:automation_workflow, :automation_workflow_version)
         .find_each do |execution|
           next unless execution.automation_workflow&.active?
@@ -255,7 +266,9 @@ module Automation
 
     def whatsapp_message_body
       payload = (@automation_event&.payload || {}).with_indifferent_access
-      WhatsappMessage.find_by(id: payload[:whatsapp_message_id])&.body.to_s
+      return "" unless @automation_event&.tenant && payload[:whatsapp_message_id].present?
+
+      @automation_event.tenant.whatsapp_messages.find_by(id: payload[:whatsapp_message_id])&.body.to_s
     end
 
     def resume_response_router(execution, step, node)
@@ -368,6 +381,8 @@ module Automation
     end
 
     def response_condition_matches?(condition)
+      return button_payload_or_text_condition_matches?(condition) if condition[:match_strategy].to_s == "button_payload_or_text"
+
       value = response_route_value(condition[:field])
       expected = condition[:value].to_s.strip
 
@@ -381,6 +396,16 @@ module Automation
       else
         value.to_s.casecmp?(expected)
       end
+    end
+
+    def button_payload_or_text_condition_matches?(condition)
+      expected_payload = condition[:button_payload].presence || condition[:button_key].presence || condition[:value].presence
+      expected_text = condition[:button_text].presence || condition[:fallback_value].presence
+      payload_value = response_route_value("interaction.button_payload")
+      text_value = response_route_value("interaction.button_text")
+
+      (expected_payload.present? && payload_value.to_s.casecmp?(expected_payload.to_s)) ||
+        (expected_text.present? && text_value.to_s.casecmp?(expected_text.to_s))
     end
 
     def response_route_value(field)
@@ -413,6 +438,14 @@ module Automation
       else
         payload.dig(*field.to_s.split(".").map(&:to_sym))
       end
+    end
+
+    def whatsapp_campaign_matches?(config)
+      campaign_id = config[:whatsapp_campaign_id].to_i
+      return true unless campaign_id.positive?
+
+      payload = (@automation_event&.payload_hash || {}).with_indifferent_access
+      payload[:whatsapp_campaign_id].to_i == campaign_id
     end
 
     def response_route_actions(route)

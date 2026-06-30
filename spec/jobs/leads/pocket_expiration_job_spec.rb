@@ -87,4 +87,38 @@ RSpec.describe Leads::PocketExpirationJob, type: :job do
     expect(lead.activities.where(kind: "pocket_expired")).to be_empty
     expect(Leads::NotificationDispatcher).not_to have_received(:deliver)
   end
+
+  it "nao expira lead quando o tenant_id do job nao corresponde a conta do lead" do
+    other_tenant = Tenant.create!(
+      name: "Conta externa pocket #{SecureRandom.hex(3)}",
+      slug: "conta-externa-pocket-#{SecureRandom.hex(3)}"
+    )
+    lead = create(
+      :lead,
+      status: :waiting_acceptance,
+      admin_user: first_agent,
+      distribution_rule: rule,
+      updated_at: 2.minutes.ago
+    )
+    lead.activities.create!(
+      kind: "distributed",
+      created_at: 2.minutes.ago,
+      metadata: {
+        rule_id: rule.id,
+        admin_user_id: first_agent.id,
+        admin_user_name: first_agent.name
+      }
+    )
+
+    allow(Leads::NotificationDispatcher).to receive(:notify_lost_turn)
+    allow(Leads::NotificationDispatcher).to receive(:deliver)
+
+    described_class.perform_now(lead.id, first_agent.id, tenant_id: other_tenant.id)
+
+    expect(lead.reload.admin_user_id).to eq(first_agent.id)
+    expect(lead.status).to eq(Lead.status_value(:waiting_acceptance))
+    expect(lead.activities.where(kind: "pocket_expired")).to be_empty
+    expect(Leads::NotificationDispatcher).not_to have_received(:notify_lost_turn)
+    expect(Leads::NotificationDispatcher).not_to have_received(:deliver)
+  end
 end

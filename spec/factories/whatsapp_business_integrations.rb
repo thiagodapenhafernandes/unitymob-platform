@@ -1,5 +1,6 @@
 FactoryBot.define do
   factory :whatsapp_business_integration do
+    tenant { connected_by_admin_user&.tenant || Current.tenant || Tenant.default }
     status { "connected" }
     waba_id { "616242481017427" }
     phone_number_id { "649374078254590" }

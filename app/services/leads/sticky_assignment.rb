@@ -21,7 +21,7 @@ module Leads
       owner_id = previous_owner_id
       return nil if owner_id.blank?
 
-      user = AdminUser.find_by(id: owner_id)
+      user = @lead.tenant.admin_users.find_by(id: owner_id)
       return nil unless eligible?(user)
 
       user
@@ -39,7 +39,7 @@ module Leads
     # Leads anteriores (não o atual) com corretor atribuído, aplicando match,
     # dono (atendido x qualquer atribuição) e janela de tempo.
     def base_scope
-      scope = Lead.where.not(id: @lead.id).where.not(admin_user_id: nil)
+      scope = @lead.tenant.leads.where.not(id: @lead.id).where.not(admin_user_id: nil)
 
       scope = apply_match(scope)
       return nil if scope.nil?

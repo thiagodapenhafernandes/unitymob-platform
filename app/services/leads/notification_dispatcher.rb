@@ -183,7 +183,7 @@ module Leads
     # Notifica o corretor recém-atribuído via WhatsApp Business (Cloud API) usando
     # o template aprovado — funciona dentro e fora da janela de 24h.
     def deliver_whatsapp
-      integration = WhatsappBusinessIntegration.current
+      integration = WhatsappBusinessIntegration.current(@lead.tenant)
       return unless integration.messaging_ready?
 
       phone = @corretor.phone.presence

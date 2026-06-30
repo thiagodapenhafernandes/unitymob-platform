@@ -3,8 +3,13 @@ require "set"
 
 module Loft
   class ImagesSyncService
+    def initialize(tenant: nil)
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para Loft::ImagesSyncService" if @tenant.blank?
+    end
+
     def call(limit: 100)
-      scope = Habitation.where.not(codigo: [nil, ""]).where.not(imovel_dwv: "Sim").order(updated_at: :desc).limit(limit.to_i.clamp(1, 500))
+      scope = tenant.habitations.where.not(codigo: [nil, ""]).where.not(imovel_dwv: "Sim").order(updated_at: :desc).limit(limit.to_i.clamp(1, 500))
 
       synced = 0
       skipped = 0
@@ -21,6 +26,8 @@ module Loft
     end
 
     private
+
+    attr_reader :tenant
 
     def sync_habitation_images(habitation)
       pictures = habitation.pictures.is_a?(Array) ? habitation.pictures : []

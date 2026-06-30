@@ -26,7 +26,7 @@ module Webhooks
       now = Time.current
 
       parsed_events.each do |event|
-        habitation = Habitation.find_by(codigo: event[:habitation_code]) if event[:habitation_code].present?
+        habitation = public_tenant.habitations.find_by(codigo: event[:habitation_code]) if event[:habitation_code].present?
 
         PortalIntegrationEvent.create!(
           portal: @portal,

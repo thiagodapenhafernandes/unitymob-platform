@@ -18,35 +18,35 @@ module Storage
     PendingSummary = Struct.new(:total_habitations, :total_attachments, :sample, keyword_init: true)
     PendingProperty = Struct.new(:habitation, :attachments_count, keyword_init: true)
 
-    def self.stats
-      new.stats
+    def self.stats(tenant: nil)
+      new(tenant: tenant).stats
     end
 
-    def self.lookup(term)
-      new.lookup(term)
+    def self.lookup(term, tenant: nil)
+      new(tenant: tenant).lookup(term)
     end
 
-    def self.pending_summary(limit: 12)
-      new.pending_summary(limit:)
+    def self.pending_summary(limit: 12, tenant: nil)
+      new(tenant: tenant).pending_summary(limit:)
     end
 
-    def self.last_result
-      Rails.cache.read(CACHE_KEY)
+    def self.last_result(tenant: nil)
+      Rails.cache.read(cache_key(CACHE_KEY, tenant: tenant))
     end
 
-    def self.progress
-      Rails.cache.read(PROGRESS_KEY) || default_progress
+    def self.progress(tenant: nil)
+      Rails.cache.read(cache_key(PROGRESS_KEY, tenant: tenant)) || default_progress
     end
 
-    def self.write_progress(attributes = {})
-      payload = progress.merge(attributes.symbolize_keys)
+    def self.write_progress(attributes = {}, tenant: nil)
+      payload = progress(tenant: tenant).merge(attributes.symbolize_keys)
       total = payload[:total].to_i
       processed = payload[:processed].to_i
       payload[:percent] = total.positive? ? ((processed.to_f / total) * 100).round(1) : 0
       payload[:percent] = 100.0 if payload[:status] == "completed"
       payload[:updated_at] = Time.current
 
-      Rails.cache.write(PROGRESS_KEY, payload, expires_in: 12.hours)
+      Rails.cache.write(cache_key(PROGRESS_KEY, tenant: tenant), payload, expires_in: 12.hours)
       payload
     end
 
@@ -66,9 +66,9 @@ module Storage
       }
     end
 
-    def self.write_last_result(result)
+    def self.write_last_result(result, tenant: nil)
       Rails.cache.write(
-        CACHE_KEY,
+        cache_key(CACHE_KEY, tenant: tenant),
         {
           status: result.ok? ? "success" : "failed",
           message: result_message(result),
@@ -85,6 +85,18 @@ module Storage
         "#{result.failed} falharam",
         "#{result.total} analisadas"
       ].join(", ")
+    end
+
+    def self.cache_key(base, tenant: nil)
+      resolved_tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para cache de fotos públicas" if resolved_tenant.blank?
+
+      "#{base}:tenant:#{resolved_tenant.id}"
+    end
+
+    def initialize(tenant: nil)
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para publicação de fotos públicas" if @tenant.blank?
     end
 
     def stats
@@ -112,7 +124,7 @@ module Storage
     def pending_summary(limit: 12)
       habitation_ids = candidate_habitation_ids
       sample_ids = habitation_ids.first(limit)
-      habitations = Habitation.where(id: sample_ids).index_by(&:id)
+      habitations = tenant.habitations.where(id: sample_ids).index_by(&:id)
       counts = attachment_counts_by_habitation(habitations.values)
 
       PendingSummary.new(
@@ -137,24 +149,24 @@ module Storage
         publish_all_concurrently(result, track_progress:, concurrency: concurrency.to_i, &progress_callback)
       end
 
-      self.class.write_last_result(result)
+      self.class.write_last_result(result, tenant: tenant)
       write_progress_finish(result) if track_progress
       progress_callback&.call(progress_payload(result.total, result, "completed"))
       result
     end
 
     def publish_attachment_id(attachment_id)
-      attachment = ActiveStorage::Attachment.includes(:blob).find_by(id: attachment_id)
+      attachment = eligible_attachments.includes(:blob).find_by(id: attachment_id)
       return failed_result("Attachment #{attachment_id} não encontrado.") unless attachment
 
       result = build_result(total: 1)
       publish_attachment_object(attachment, result)
-      self.class.write_last_result(result)
+      self.class.write_last_result(result, tenant: tenant)
       result
     end
 
     def publish_habitation_id(habitation_id)
-      habitation = Habitation.find_by(id: habitation_id)
+      habitation = tenant.habitations.find_by(id: habitation_id)
       return failed_result("Imóvel #{habitation_id} não encontrado.") unless habitation
 
       attachments = lookup_attachments_for([habitation]).includes(:blob)
@@ -164,7 +176,7 @@ module Storage
         publish_attachment_object(attachment, result, trusted: true)
       end
 
-      self.class.write_last_result(result)
+      self.class.write_last_result(result, tenant: tenant)
       result
     end
 
@@ -175,14 +187,20 @@ module Storage
 
       result = build_result(total: 1)
       publish_blob_object(blob, result)
-      self.class.write_last_result(result)
+      self.class.write_last_result(result, tenant: tenant)
       result
     end
 
     private
 
+    attr_reader :tenant
+
     def eligible_attachments
-      ActiveStorage::Attachment.where(record_type: "Habitation", name: "photos")
+      ActiveStorage::Attachment.where(
+        record_type: "Habitation",
+        name: "photos",
+        record_id: tenant.habitations.select(:id)
+      )
     end
 
     def candidate_habitation_ids
@@ -205,8 +223,8 @@ module Storage
 
     def lookup_habitations(term)
       pattern = "%#{ActiveRecord::Base.sanitize_sql_like(term)}%"
-      scope = Habitation.where("codigo = :term OR titulo_anuncio ILIKE :pattern", term: term, pattern: pattern)
-      scope = scope.or(Habitation.where(id: term.to_i)) if term.match?(/\A\d+\z/)
+      scope = tenant.habitations.where("codigo = :term OR titulo_anuncio ILIKE :pattern", term: term, pattern: pattern)
+      scope = scope.or(tenant.habitations.where(id: term.to_i)) if term.match?(/\A\d+\z/)
       scope.order(updated_at: :desc).limit(8)
     end
 
@@ -312,7 +330,8 @@ module Storage
         percent: 0,
         message: "Publicação das fotos públicas iniciada.",
         started_at: Time.current,
-        finished_at: nil
+        finished_at: nil,
+        tenant: tenant
       )
     end
 
@@ -323,7 +342,8 @@ module Storage
         published: result.published,
         failed: result.failed,
         skipped: result.skipped,
-        message: "#{processed} de #{result.total} fotos analisadas."
+        message: "#{processed} de #{result.total} fotos analisadas.",
+        tenant: tenant
       )
     end
 
@@ -335,7 +355,8 @@ module Storage
         failed: result.failed,
         skipped: result.skipped,
         message: self.class.result_message(result),
-        finished_at: Time.current
+        finished_at: Time.current,
+        tenant: tenant
       )
     end
 

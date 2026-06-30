@@ -1,4 +1,6 @@
 class AutomationExecution < ApplicationRecord
+  include TenantScoped
+
   STATUSES = %w[pending running waiting completed failed canceled].freeze
 
   belongs_to :automation_workflow
@@ -12,7 +14,7 @@ class AutomationExecution < ApplicationRecord
            inverse_of: :automation_execution
 
   validates :status, inclusion: { in: STATUSES }
-  validates :idempotency_key, uniqueness: true, allow_blank: true
+  validates :idempotency_key, uniqueness: { scope: :tenant_id }, allow_blank: true
 
   scope :recent, -> { order(created_at: :desc) }
 

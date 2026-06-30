@@ -115,6 +115,58 @@ RSpec.describe "Admin::AutomationWorkflows", type: :request do
       expect(workflow.reload.name).to eq("Novo nome")
       expect(workflow.draft_version.definition_hash[:nodes].size).to eq(2)
     end
+
+    it "marca workflow de campanha como personalizado quando salvo pelo builder" do
+      sender = create(:whatsapp_sender_number)
+      template = WhatsappTemplate.create!(
+        name: "campanha_builder_personalizado",
+        language: "pt_BR",
+        status: "APPROVED",
+        body: "Escolha.",
+        buttons: { "0" => { "kind" => "quick_reply", "text" => "Saiba mais" } }
+      )
+      button = template.interactive_buttons.first
+      campaign = WhatsappCampaign.create!(
+        name: "Campanha com builder",
+        whatsapp_template: template,
+        whatsapp_sender_number: sender,
+        created_by: admin,
+        response_decisions: {
+          buttons: [
+            {
+              key: button["key"],
+              text: "Saiba mais",
+              kind: "quick_reply",
+              action: "send_message",
+              message: "Retorno recebido."
+            }
+          ]
+        }
+      )
+      workflow = Automation::WhatsappCampaignWorkflowSync.call(campaign)
+      definition = workflow.active_version.definition_hash.deep_dup
+      definition[:nodes] << {
+        "id" => "manual_note",
+        "type" => "action",
+        "label" => "Ajuste fino",
+        "config" => { "action_type" => "add_note", "body" => "feito no builder" }
+      }
+
+      patch save_draft_admin_automation_workflow_path(workflow), params: {
+        automation_workflow: {
+          name: workflow.name,
+          definition_json: definition.to_json
+        }
+      }
+
+      source = workflow.reload.draft_version.definition_hash[:source]
+      expect(response).to redirect_to(builder_admin_automation_workflow_path(workflow))
+      expect(source[:managed_by_campaign]).to eq(false)
+      expect(source[:customized_by_advanced_user]).to eq(true)
+      expect(source[:customized_by_admin_user_id]).to eq(admin.id)
+      expect(source[:sync_mode]).to eq("advanced_custom")
+      expect(workflow).to be_whatsapp_campaign_customized
+    end
   end
 
   describe "PATCH publish" do

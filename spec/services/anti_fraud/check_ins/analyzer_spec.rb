@@ -89,5 +89,24 @@ RSpec.describe AntiFraud::CheckIns::Analyzer do
       result = described_class.analyze_ping(ping)
       expect(result[:reasons]).to include("duplicate_fingerprint")
     end
+
+    it "não sinaliza fingerprint duplicado de outro tenant" do
+      other_tenant = Tenant.create!(name: "Outro antifraude #{SecureRandom.hex(3)}", slug: "outro-antifraude-#{SecureRandom.hex(3)}")
+      other_user = create(:admin_user, :field_agent, tenant: other_tenant)
+      other_store = create(:store, tenant: other_tenant)
+      create(:check_in,
+             tenant: other_tenant,
+             admin_user: other_user,
+             store: other_store,
+             status: :active,
+             checked_in_at: 1.hour.ago,
+             fingerprint_hash: "ABC123")
+      check_in.update!(fingerprint_hash: "ABC123")
+
+      ping = make_ping(lat: -26.9906, lng: -48.6348, recorded_at: Time.current)
+      result = described_class.analyze_ping(ping.reload)
+
+      expect(result[:reasons]).not_to include("duplicate_fingerprint")
+    end
   end
 end

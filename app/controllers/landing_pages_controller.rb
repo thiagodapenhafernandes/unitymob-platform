@@ -24,7 +24,7 @@ class LandingPagesController < ApplicationController
       sort: params[:sort].presence || filters['sort']
     }
 
-    @habitations = Habitation.active.advanced_search(search_params).with_attached_photos
+    @habitations = public_habitations.active.advanced_search(search_params).with_attached_photos
     @habitations = @habitations.paginate(page: params[:page], per_page: 12)
     
     # SEO meta tags

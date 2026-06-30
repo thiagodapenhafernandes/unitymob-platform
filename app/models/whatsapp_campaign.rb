@@ -1,4 +1,6 @@
 class WhatsappCampaign < ApplicationRecord
+  include TenantScoped
+
   STATUSES = %w[draft scheduled processing paused completed cancelled failed].freeze
   AUDIENCE_MODES = %w[filters spreadsheet saved_audience].freeze
   RESPONSE_ACTIONS = {
@@ -13,6 +15,7 @@ class WhatsappCampaign < ApplicationRecord
   belongs_to :whatsapp_template
   belongs_to :created_by, class_name: "AdminUser"
   belongs_to :whatsapp_sender_number, optional: true
+  belongs_to :automation_workflow, optional: true
   has_one_attached :audience_file
   has_many :campaign_messages,
            class_name: "WhatsappCampaignMessage",
@@ -31,6 +34,7 @@ class WhatsappCampaign < ApplicationRecord
   validates :import_batch_size, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 10_000 }
   validates :import_interval_minutes, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 1_440 }
   validate :template_must_be_approved
+  validate :associations_must_belong_to_tenant
   validate :scheduled_at_must_be_future, if: -> { status == "scheduled" }
   validate :spreadsheet_requires_file_or_existing_attachment
   validate :response_decisions_must_be_complete
@@ -50,7 +54,7 @@ class WhatsappCampaign < ApplicationRecord
 
     transaction do
       update!(status: "processing", started_at: Time.current, failure_reason: nil)
-      Whatsapp::CampaignProcessorJob.perform_later(id)
+      Whatsapp::CampaignProcessorJob.perform_later(id, tenant_id: tenant_id)
     end
   end
 
@@ -64,7 +68,7 @@ class WhatsappCampaign < ApplicationRecord
     return unless paused?
 
     update!(status: "processing", paused_at: nil)
-    Whatsapp::BulkSendJob.perform_later(id)
+    Whatsapp::BulkSendJob.perform_later(id, tenant_id: tenant_id)
   end
 
   def cancel!
@@ -125,7 +129,7 @@ class WhatsappCampaign < ApplicationRecord
     return 0 if count.zero?
 
     update!(status: "processing", paused_at: nil, completed_at: nil, failure_reason: nil) unless processing?
-    Whatsapp::BulkSendJob.perform_later(id)
+    Whatsapp::BulkSendJob.perform_later(id, tenant_id: tenant_id)
     count
   end
 
@@ -168,7 +172,7 @@ class WhatsappCampaign < ApplicationRecord
   end
 
   def sender_number
-    whatsapp_sender_number || WhatsappSenderNumber.default_for_campaign
+    whatsapp_sender_number || WhatsappSenderNumber.default_for_campaign(tenant)
   end
 
   def delivery_rate
@@ -236,6 +240,10 @@ class WhatsappCampaign < ApplicationRecord
     return {} unless row
 
     row.slice("key", "text", "kind", "kind_label", "source", "context", "action", "action_label", "message", "distribution_rule_id")
+  end
+
+  def automation_driven_response_decisions?
+    automation_workflow&.active?
   end
 
   def button_response_counts
@@ -306,7 +314,7 @@ class WhatsappCampaign < ApplicationRecord
     self.template_variables = {} unless template_variables.is_a?(Hash)
     self.response_decisions = {} unless response_decisions.is_a?(Hash)
     self.group_name = group_name.to_s.strip.presence
-    self.whatsapp_sender_number ||= WhatsappSenderNumber.default_for_campaign
+    self.whatsapp_sender_number ||= WhatsappSenderNumber.default_for_campaign(tenant || created_by&.tenant || Current.tenant)
     self.audience_mode = "filters" if audience_mode.blank?
   end
 
@@ -316,8 +324,29 @@ class WhatsappCampaign < ApplicationRecord
     errors.add(:whatsapp_template, "precisa estar aprovado para disparo")
   end
 
+  def associations_must_belong_to_tenant
+    return if tenant_id.blank?
+
+    if whatsapp_template && whatsapp_template.tenant_id != tenant_id
+      errors.add(:whatsapp_template, "deve pertencer ao mesmo Tenant")
+    end
+
+    if whatsapp_sender_number && whatsapp_sender_number.tenant_id != tenant_id
+      errors.add(:whatsapp_sender_number, "deve pertencer ao mesmo Tenant")
+    end
+
+    if automation_workflow && automation_workflow.tenant_id != tenant_id
+      errors.add(:automation_workflow, "deve pertencer ao mesmo Tenant")
+    end
+  end
+
   def scheduled_at_must_be_future
-    return if scheduled_at.blank? || scheduled_at.future?
+    if scheduled_at.blank?
+      errors.add(:scheduled_at, "precisa ser informado para agendar o disparo")
+      return
+    end
+
+    return if scheduled_at.future?
 
     errors.add(:scheduled_at, "precisa estar no futuro")
   end
@@ -338,7 +367,7 @@ class WhatsappCampaign < ApplicationRecord
         next
       end
 
-      unless DistributionRule.active.exists?(id: row["distribution_rule_id"])
+      unless tenant.distribution_rules.active.exists?(id: row["distribution_rule_id"])
         errors.add(:response_decisions, "usa uma regra de distribuição inválida para o botão #{row['text']}")
       end
     end

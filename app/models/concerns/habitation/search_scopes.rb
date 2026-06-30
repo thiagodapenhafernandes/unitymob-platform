@@ -23,6 +23,7 @@ module Habitation::SearchScopes
           "(habitations.tipo = 'Empreendimento' AND EXISTS (" \
           "SELECT 1 FROM habitations units " \
           "WHERE units.codigo_empreendimento = habitations.codigo " \
+          "AND units.tenant_id = habitations.tenant_id " \
           "AND units.exibir_no_site_flag = TRUE " \
           "AND units.status IN (?) " \
           "AND (units.valor_venda_cents > 0 OR units.valor_locacao_cents > 0) " \
@@ -94,6 +95,7 @@ module Habitation::SearchScopes
         "  EXISTS (" \
         "    SELECT 1 FROM habitations developments " \
         "    WHERE developments.codigo = habitations.codigo_empreendimento " \
+        "      AND developments.tenant_id = habitations.tenant_id " \
         "      AND (" \
         "        (jsonb_typeof(developments.pictures) = 'array' AND jsonb_array_length(developments.pictures) > 0) OR " \
         "        (jsonb_typeof(developments.fotos_empreendimento) = 'array' AND jsonb_array_length(developments.fotos_empreendimento) > 0) OR " \
@@ -306,6 +308,7 @@ module Habitation::SearchScopes
               SELECT developments.nome_empreendimento
               FROM habitations developments
               WHERE developments.codigo = habitations.codigo_empreendimento
+                AND developments.tenant_id = habitations.tenant_id
               LIMIT 1
             ), '')
           )
@@ -565,6 +568,7 @@ module Habitation::SearchScopes
         "EXISTS (" \
         "SELECT 1 FROM habitations units " \
         "WHERE units.codigo_empreendimento = habitations.codigo " \
+        "AND units.tenant_id = habitations.tenant_id " \
         "AND units.exibir_no_site_flag = TRUE " \
         "AND units.status IN (?) " \
         "AND (units.valor_venda_cents > 0 OR units.valor_locacao_cents > 0) " \

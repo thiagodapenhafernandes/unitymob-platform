@@ -21,9 +21,11 @@ module Habitations
       keyword_init: true
     )
 
-    def initialize(apply: false, limit: nil)
+    def initialize(apply: false, limit: nil, tenant: nil)
       @apply = apply
       @limit = limit&.to_i
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para backfill de pais Vista" if @tenant.blank?
       @not_found = []
       @errors = []
       @processed = 0
@@ -37,16 +39,16 @@ module Habitations
 
       if @apply
         parent_codes.each { |code| process_code!(code) }
-        Habitations::HierarchyNormalizerService.new.call
+        Habitations::HierarchyNormalizerService.new(tenant: tenant).call
       else
         parent_codes.each { |code| process_code(code) }
       end
 
       reconciliation_result =
         if @apply
-          Habitations::InvalidParentReconciliationService.new(apply: true).call
+          Habitations::InvalidParentReconciliationService.new(apply: true, tenant: tenant).call
         else
-          Habitations::InvalidParentReconciliationService.new(apply: false).call
+          Habitations::InvalidParentReconciliationService.new(apply: false, tenant: tenant).call
         end
 
       Result.new(
@@ -62,15 +64,17 @@ module Habitations
 
     private
 
+    attr_reader :tenant
+
     def invalid_parent_codes
       @invalid_parent_codes ||= begin
-        valid_development_codes = Habitation.empreendimentos.where.not(codigo: [nil, ""]).pluck(:codigo).map(&:to_s).to_set
+        valid_development_codes = tenant.habitations.empreendimentos.where.not(codigo: [nil, ""]).pluck(:codigo).map(&:to_s).to_set
 
-        Habitation.where.not(codigo_empreendimento: [nil, ""])
-                  .distinct
-                  .pluck(:codigo_empreendimento)
-                  .map(&:to_s)
-                  .reject { |code| valid_development_codes.include?(code) }
+        tenant.habitations.where.not(codigo_empreendimento: [nil, ""])
+              .distinct
+              .pluck(:codigo_empreendimento)
+              .map(&:to_s)
+              .reject { |code| valid_development_codes.include?(code) }
       end
     end
 
@@ -134,7 +138,7 @@ module Habitations
 
     def upsert_development_from_vista!(hb)
       code = hb["Codigo"].to_s
-      development = Habitation.find_or_initialize_by(codigo: code)
+      development = tenant.habitations.find_or_initialize_by(codigo: code)
 
       constructor_name = hb["Construtora"].to_s.strip
       constructor_id = resolve_constructor_id(constructor_name)

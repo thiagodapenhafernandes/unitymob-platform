@@ -186,9 +186,12 @@ class SeoSetting < ApplicationRecord
     identifier = canonical_key.to_s[/\Aproperty:(.+)\z/, 1].presence || path_identifier
     return if identifier.blank?
 
-    Habitation.find_by(codigo: identifier) ||
-      Habitation.find_by(id: identifier) ||
-      Habitation.find_by(slug: identifier)
+    tenant_habitations = Current.tenant&.habitations
+    return if tenant_habitations.blank?
+
+    tenant_habitations.find_by(codigo: identifier) ||
+      tenant_habitations.find_by(id: identifier) ||
+      tenant_habitations.find_by(slug: identifier)
   end
 
   def path_identifier

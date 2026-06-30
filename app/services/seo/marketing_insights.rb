@@ -14,6 +14,11 @@ module Seo
       "/aluguel"
     ].freeze
 
+    def initialize(tenant: nil)
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para insights de marketing" if @tenant.blank?
+    end
+
     def call
       {
         campaign_opportunities: Seo::DashboardMetrics.new(period: "90").call[:campaign_opportunities],
@@ -25,18 +30,19 @@ module Seo
     end
 
     def property_insights(limit: 20)
-      lead_counts = Lead.where.not(property_id: nil).group(:property_id).count
+      lead_counts = tenant.leads.where.not(property_id: nil).group(:property_id).count
       page_view_counts = SeoConversionEvent.where(event_type: %w[property_card_click whatsapp_click lead_created schedule_visit])
                                          .where.not(habitation_id: nil)
+                                         .where(habitation_id: tenant.habitations.select(:id))
                                          .group(:habitation_id)
                                          .count
 
-      Habitation.active
-                .without_developments
-                .with_attached_photos
-                .newest_first
-                .limit(120)
-                .filter_map do |habitation|
+      tenant.habitations.active
+            .without_developments
+            .with_attached_photos
+            .newest_first
+            .limit(120)
+            .filter_map do |habitation|
         insight_for_property(habitation, lead_counts[habitation.id].to_i, page_view_counts[habitation.id].to_i)
       end.sort_by { |item| -item.score }.first(limit)
     end
@@ -78,6 +84,8 @@ module Seo
     end
 
     private
+
+    attr_reader :tenant
 
     def insight_for_property(habitation, lead_count, page_views)
       score = 0
@@ -175,7 +183,7 @@ module Seo
     end
 
     def alert_for_public_properties_without_images
-      count = Habitation.active.without_developments.where.missing(:photos_attachments).limit(50).count
+      count = tenant.habitations.active.without_developments.where.missing(:photos_attachments).limit(50).count
       return if count.zero?
 
       Alert.new(
@@ -203,21 +211,21 @@ module Seo
     def stock_for_path(path)
       case path
       when %r{\A/imoveis/frente-mar}
-        Habitation.active.without_developments.frente_mar.count
+        tenant.habitations.active.without_developments.frente_mar.count
       when %r{\A/imoveis/quadra-mar}
-        Habitation.active.without_developments.quadra_mar.count
+        tenant.habitations.active.without_developments.quadra_mar.count
       when %r{\A/imoveis/praia-brava}
-        Habitation.active.without_developments.by_neighborhood("Praia Brava").count
+        tenant.habitations.active.without_developments.by_neighborhood("Praia Brava").count
       when %r{\A/imoveis/barra-sul}
-        Habitation.active.without_developments.by_neighborhood("Barra Sul").count
+        tenant.habitations.active.without_developments.by_neighborhood("Barra Sul").count
       when %r{\A/imoveis/lancamentos}
-        Habitation.active.without_developments.lancamento.count
+        tenant.habitations.active.without_developments.lancamento.count
       when %r{\A/empreendimentos}
-        Habitation.empreendimentos_publicos.count
+        tenant.habitations.empreendimentos_publicos.count
       when %r{\A/corporativos}
-        Habitation.active.without_developments.home_corporate.count
+        tenant.habitations.active.without_developments.home_corporate.count
       when %r{\A/aluguel}
-        Habitation.active.without_developments.for_rent.count
+        tenant.habitations.active.without_developments.for_rent.count
       else
         1
       end

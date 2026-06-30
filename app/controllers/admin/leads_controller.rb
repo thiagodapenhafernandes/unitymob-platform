@@ -59,14 +59,14 @@ class Admin::LeadsController < Admin::BaseController
     @lead_counts_by_status = @leads_by_status.transform_values(&:size)
     @leads = lead_scope.paginate(page: params[:page], per_page: 20)
     property_ids = (@kanban_leads + @leads.to_a).filter_map(&:property_id).uniq
-    @properties_by_id = Habitation.where(id: property_ids).index_by(&:id)
+    @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
     @selected_lead = @kanban_leads.first || @leads.first
     @page_title = "Gerenciar Leads"
   end
 
   def show
     @page_title = "Lead: #{@lead.name}"
-    @property = Habitation.find_by(id: @lead.property_id)
+    @property = current_tenant.habitations.find_by(id: @lead.property_id)
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
 
     # Workspace comercial: timeline unificada + tarefas + propostas + próxima ação
@@ -87,7 +87,7 @@ class Admin::LeadsController < Admin::BaseController
   # (dentro do prazo do pocket), aceita e abre conforme a config global; se já
   # foi redistribuído (prazo estourado), mostra a tela de tempo esgotado.
   def attend
-    @lead = Lead.find_by(id: params[:id])
+    @lead = current_tenant.leads.find_by(id: params[:id])
     return render :attend_expired, status: :ok unless @lead
 
     # Shark Tank: lead sem dono em "Aguardando Aceite" — corrida pra reivindicar.
@@ -179,6 +179,7 @@ class Admin::LeadsController < Admin::BaseController
   def apply_broker_filter(scope)
     return scope if @broker_id.blank?
     return scope.where(leads: { admin_user_id: nil }) if @broker_id == "unassigned"
+    return scope.none unless permitted_admin_user_ids_for_leads.include?(@broker_id.to_i)
 
     scope.where(leads: { admin_user_id: @broker_id })
   end
@@ -190,13 +191,13 @@ class Admin::LeadsController < Admin::BaseController
     when "general"
       scope = scope.where(leads: { property_id: nil })
     when "unavailable_property"
-      scope = scope.where.not(leads: { property_id: nil }).where.not(leads: { property_id: Habitation.select(:id) })
+      scope = scope.where.not(leads: { property_id: nil }).where.not(leads: { property_id: current_tenant.habitations.select(:id) })
     end
 
     return scope if @property_q.blank?
 
     term = "%#{ActiveRecord::Base.sanitize_sql_like(@property_q)}%"
-    property_ids = Habitation
+    property_ids = current_tenant.habitations
                    .where("codigo ILIKE :q OR titulo_anuncio ILIKE :q OR nome_empreendimento ILIKE :q", q: term)
                    .select(:id)
     scope.where(leads: { property_id: property_ids })
@@ -268,7 +269,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def set_lead
-    @lead = Lead.find(params[:id])
+    @lead = current_tenant.leads.find(params[:id])
   end
 
   # O lead ainda pertence ao corretor que clicou (não expirou/redistribuiu)?
@@ -301,7 +302,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def authorize_lead_access!
-    return if lead_scope_for_current_user.where(id: @lead.id).exists?
+    return if accessible_lead_scope_for_current_user.where(id: @lead.id).exists?
 
     respond_to do |format|
       format.html { redirect_to admin_leads_path, alert: "Você não tem acesso a este lead." }
@@ -330,8 +331,9 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def load_origin_options
-    @origin_options = Lead.origin_options
-    @tag_options = Lead.tag_options
+    option_scope = lead_scope_for_current_user.reorder(nil)
+    @origin_options = Lead.origin_options(scope: option_scope, tenant: current_tenant)
+    @tag_options = Lead.tag_options(scope: option_scope)
     @status_options = Lead.status_options
     @broker_options = permitted_admin_users_for_leads.order(:name).pluck(:name, :id)
   end
@@ -349,12 +351,21 @@ class Admin::LeadsController < Admin::BaseController
     return Lead.none unless current_admin_user
 
     owner_ids = visible_owner_ids(:leads)
-    return Lead.all if owner_ids.nil? # escopo "all"/admin: sem filtro de dono
+    return current_tenant.leads if owner_ids.nil? # escopo "all"/admin dentro do Tenant
 
-    scope = Lead.where(admin_user_id: owner_ids)
+    scope = current_tenant.leads.where(admin_user_id: owner_ids)
     # Ao ver a equipe, mantém o recorte por tipo de atuação (venda/locação) do gestor.
     scope = filter_leads_by_acting_type(scope) if include_team?(:leads)
     scope
+  end
+
+  def accessible_lead_scope_for_current_user
+    return Lead.none unless current_admin_user
+
+    owner_ids = accessible_owner_ids(:leads)
+    return current_tenant.leads if owner_ids.nil?
+
+    current_tenant.leads.where(admin_user_id: owner_ids)
   end
 
   # Recorte adicional por acting_type — preservado por cima do escopo de equipe.
@@ -371,14 +382,14 @@ class Admin::LeadsController < Admin::BaseController
 
   def permitted_admin_users_for_leads
     return AdminUser.none unless current_admin_user
-    return AdminUser.active if owns_all_resource?(:leads)
+    return current_tenant.admin_users.active if owns_all_resource?(:leads)
 
     if current_admin_user.can_view_team?(:leads)
-      scope = AdminUser.active.where(id: current_admin_user.team_scope_ids)
+      scope = current_tenant.admin_users.active.where(id: current_admin_user.team_scope_ids)
       return filter_users_by_acting_type(scope)
     end
 
-    AdminUser.active.where(id: current_admin_user.id)
+    current_tenant.admin_users.active.where(id: current_admin_user.id)
   end
 
   def filter_users_by_acting_type(scope)
@@ -398,7 +409,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def load_show_context
     @page_title = "Lead: #{@lead.name}"
-    @property = Habitation.find_by(id: @lead.property_id)
+    @property = current_tenant.habitations.find_by(id: @lead.property_id)
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
     @timeline = @lead.activities.recent.limit(60)
     @tasks = @lead.tasks.includes(:admin_user).ordered.limit(50)

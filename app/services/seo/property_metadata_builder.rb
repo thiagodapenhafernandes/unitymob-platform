@@ -14,7 +14,7 @@ module Seo
         canonical_key: "property:#{identifier}",
         page_name: "imovel:#{identifier}",
         page_type: page_type,
-        canonical_path: habitation_path(@habitation),
+        canonical_path: canonical_path,
         meta_title: meta_title,
         meta_description: meta_description,
         meta_keywords: meta_keywords,
@@ -58,7 +58,7 @@ module Seo
         @habitation.tipo_transacao,
         @habitation.cidade,
         @habitation.bairro,
-        @habitation.nome_empreendimento,
+        development_keyword,
         site_name,
         "imobiliaria"
       ].compact_blank.map(&:to_s).map(&:squish).uniq.join(", ")
@@ -73,6 +73,16 @@ module Seo
       parts << "#{@habitation.vagas_qtd} vagas" if @habitation.vagas_qtd.to_i.positive?
       parts << "Confira fotos, detalhes e disponibilidade."
       parts.compact_blank.join(". ")
+    end
+
+    def canonical_path
+      return empreendimento_details_path(@habitation) if @habitation.empreendimento?
+
+      habitation_path(@habitation)
+    end
+
+    def development_keyword
+      @habitation.nome_empreendimento if @habitation.empreendimento?
     end
 
     def plain_text(value)

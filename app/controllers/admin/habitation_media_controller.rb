@@ -275,9 +275,9 @@ class Admin::HabitationMediaController < Admin::BaseController
     return if identifier.blank?
 
     if identifier.match?(/\A\d+\z/)
-      Habitation.find_by(codigo: identifier) || Habitation.find_by(id: identifier)
+      current_tenant.habitations.find_by(codigo: identifier) || current_tenant.habitations.find_by(id: identifier)
     else
-      Habitation.friendly.find(identifier)
+      current_tenant.habitations.friendly.find(identifier)
     end
   rescue ActiveRecord::RecordNotFound
     nil

@@ -6,7 +6,7 @@ class MarketingEventsController < ApplicationController
 
     event_type = params[:event_type].presence_in(SeoConversionEvent::EVENT_TYPES.keys) || "campaign_click"
     campaign = MarketingCampaign.find_by(id: params[:marketing_campaign_id])
-    habitation = Habitation.find_by(id: params[:habitation_id])
+    habitation = public_tenant.habitations.find_by(id: params[:habitation_id])
 
     event = Seo::ConversionTracker.record!(
       event_type: event_type,
@@ -30,4 +30,5 @@ class MarketingEventsController < ApplicationController
   def click_event?(event_type)
     %w[campaign_click footer_click property_card_click whatsapp_click cta_click share_click].include?(event_type.to_s)
   end
+
 end

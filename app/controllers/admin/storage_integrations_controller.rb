@@ -43,7 +43,7 @@ class Admin::StorageIntegrationsController < Admin::BaseController
   end
 
   def publish_needed_public_photos
-    stats = Storage::PublicPropertyPhotoPublisher.stats
+    stats = Storage::PublicPropertyPhotoPublisher.stats(tenant: current_tenant)
     Storage::PublicPropertyPhotoPublisher.write_progress(
       status: "queued",
       total: stats.total_attachments,
@@ -54,31 +54,32 @@ class Admin::StorageIntegrationsController < Admin::BaseController
       percent: 0,
       message: "Publicação enfileirada. Aguardando o worker iniciar.",
       started_at: Time.current,
-      finished_at: nil
+      finished_at: nil,
+      tenant: current_tenant
     )
 
-    Storage::PublishPublicPropertyPhotosJob.perform_later(current_admin_user&.id)
+    Storage::PublishPublicPropertyPhotosJob.perform_later(current_admin_user&.id, current_tenant.id)
 
     redirect_to admin_storage_integration_path(pending_public_photos: "1"),
                 notice: "Publicação das fotos públicas iniciada. Acompanhe o progresso nesta tela."
   end
 
   def public_photo_publish_status
-    render json: Storage::PublicPropertyPhotoPublisher.progress
+    render json: Storage::PublicPropertyPhotoPublisher.progress(tenant: current_tenant)
   end
 
   def publish_attachment
-    result = Storage::PublicPropertyPhotoPublisher.new.publish_attachment_id(params[:attachment_id])
+    result = Storage::PublicPropertyPhotoPublisher.new(tenant: current_tenant).publish_attachment_id(params[:attachment_id])
     redirect_with_publish_result(result, "attachment")
   end
 
   def publish_habitation_photos
-    result = Storage::PublicPropertyPhotoPublisher.new.publish_habitation_id(params[:habitation_id])
+    result = Storage::PublicPropertyPhotoPublisher.new(tenant: current_tenant).publish_habitation_id(params[:habitation_id])
     redirect_with_publish_result(result, "imóvel")
   end
 
   def publish_blob
-    result = Storage::PublicPropertyPhotoPublisher.new.publish_blob_id(params[:blob_id])
+    result = Storage::PublicPropertyPhotoPublisher.new(tenant: current_tenant).publish_blob_id(params[:blob_id])
     redirect_with_publish_result(result, "blob")
   end
 
@@ -89,11 +90,11 @@ class Admin::StorageIntegrationsController < Admin::BaseController
   end
 
   def prepare_show_state
-    @public_photo_stats = Storage::PublicPropertyPhotoPublisher.stats
-    @public_photo_publish_last_result = Storage::PublicPropertyPhotoPublisher.last_result
-    @public_photo_publish_progress = Storage::PublicPropertyPhotoPublisher.progress
-    @public_photo_lookup = Storage::PublicPropertyPhotoPublisher.lookup(params[:photo_lookup])
-    @public_photo_pending_summary = Storage::PublicPropertyPhotoPublisher.pending_summary if params[:pending_public_photos].present?
+    @public_photo_stats = Storage::PublicPropertyPhotoPublisher.stats(tenant: current_tenant)
+    @public_photo_publish_last_result = Storage::PublicPropertyPhotoPublisher.last_result(tenant: current_tenant)
+    @public_photo_publish_progress = Storage::PublicPropertyPhotoPublisher.progress(tenant: current_tenant)
+    @public_photo_lookup = Storage::PublicPropertyPhotoPublisher.lookup(params[:photo_lookup], tenant: current_tenant)
+    @public_photo_pending_summary = Storage::PublicPropertyPhotoPublisher.pending_summary(tenant: current_tenant) if params[:pending_public_photos].present?
   end
 
   def redirect_with_publish_result(result, label)

@@ -250,7 +250,8 @@
       <button type="button" class="ax-navbar__toggle" data-action="ax-drawer#toggle" aria-label="Abrir menu">
         <i class="bi bi-list"></i>
       </button>
-      <%= link_to((current_admin_user&.admin? ? admin_root_path : field_root_path), class: "ax-navbar__brand") do %>
+      <% brand_path = current_admin_user&.system_admin? ? admin_system_path : (tenant_owner? ? admin_root_path : field_root_path) %>
+      <%= link_to(brand_path, class: "ax-navbar__brand") do %>
         <span class="ax-navbar__brand-mark"><i class="bi bi-buildings"></i></span>
         <span class="ax-navbar__brand-text"><% if current_admin_user&.system_admin? %>Unitymob <span>Plataforma</span><% else %><%= account_site_name %> <span><%= account_admin_area_name %></span><% end %></span>
       <% end %>
@@ -288,7 +289,7 @@
       <div class="ax-contextbar">
         <div class="ax-contextbar__main">
           <nav class="ax-breadcrumb" aria-label="Contexto atual">
-            <%= admin_contextbar_breadcrumb %>
+            <%= admin_contextbar_navigation %>
           </nav>
 
           <div class="ax-contextbar__actions">

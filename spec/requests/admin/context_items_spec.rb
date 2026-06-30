@@ -63,7 +63,9 @@ RSpec.describe "Admin context items", type: :request do
   it "usa permissoes do usuario logado para exibir contexto de proprietario" do
     sign_out admin
     profile = Profile.create!(
+      tenant: Tenant.default,
       name: "Contexto proprietario #{SecureRandom.hex(4)}",
+      position: 850,
       permissions: {
         "dashboard" => { "view" => true },
         "proprietarios" => { "view" => true, "manage" => true }

@@ -16,7 +16,7 @@ module Vista
 
     def initialize
       @status = SyncStatusService.new(namespace: "brokers_backfill")
-      @broker_cache = AdminUser.where.not(vista_id: nil).pluck(:vista_id, :id).to_h
+      @broker_cache = tenant.admin_users.where.not(vista_id: nil).pluck(:vista_id, :id).to_h
     end
 
     def call
@@ -64,7 +64,7 @@ module Vista
           end
 
           # update em lote sem callbacks
-          habitation_ids = Habitation.where(codigo: codigo).pluck(:id, :admin_user_id)
+          habitation_ids = tenant.habitations.where(codigo: codigo).pluck(:id, :admin_user_id)
           if habitation_ids.empty?
             not_found_codigo += 1
             next
@@ -72,7 +72,7 @@ module Vista
 
           to_update = habitation_ids.select { |_, current| current != broker_id }.map(&:first)
           if to_update.any?
-            Habitation.where(id: to_update).update_all(admin_user_id: broker_id)
+            tenant.habitations.where(id: to_update).update_all(admin_user_id: broker_id)
             linked += to_update.size
           else
             unchanged += 1
@@ -104,6 +104,10 @@ module Vista
     end
 
     private
+
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para backfill de corretores Vista")
+    end
 
     def empty_stats
       { processed: 0, linked: 0, unchanged: 0, missing_broker: 0, not_found_codigo: 0, page: 0, total_pages: 0 }

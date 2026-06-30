@@ -2,6 +2,15 @@ require "rails_helper"
 
 RSpec.describe "WhatsApp campaign builder services" do
   let(:admin) { create(:admin_user, :admin) }
+
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = admin.tenant
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   let(:template) do
     WhatsappTemplate.create!(
       name: "lead_nurture",
@@ -11,6 +20,132 @@ RSpec.describe "WhatsApp campaign builder services" do
     )
   end
 
+  describe Automation::WhatsappCampaignWorkflowSync do
+    it "cria workflow ativo por campanha com condicoes dos botoes reais" do
+      sender = create(:whatsapp_sender_number)
+      distribution_rule = create(:distribution_rule, name: "Rodizio WhatsApp")
+      button_template = WhatsappTemplate.create!(
+        name: "campanha_com_botoes",
+        language: "pt_BR",
+        status: "APPROVED",
+        body: "Escolha.",
+        buttons: {
+          "0" => { "kind" => "quick_reply", "text" => "Saiba mais" },
+          "1" => { "kind" => "quick_reply", "text" => "Descadastrar" }
+        }
+      )
+      buttons = button_template.interactive_buttons
+      campaign = WhatsappCampaign.create!(
+        name: "Campanha com automacao",
+        whatsapp_template: button_template,
+        whatsapp_sender_number: sender,
+        created_by: admin,
+        response_decisions: {
+          buttons: [
+            {
+              key: buttons.first["key"],
+              text: "Saiba mais",
+              kind: "quick_reply",
+              action: "generate_lead",
+              distribution_rule_id: distribution_rule.id
+            },
+            {
+              key: buttons.second["key"],
+              text: "Descadastrar",
+              kind: "quick_reply",
+              action: "unsubscribe"
+            }
+          ]
+        }
+      )
+
+      workflow = described_class.call(campaign)
+
+      expect(workflow).to be_active
+      expect(campaign.reload.automation_workflow).to eq(workflow)
+      expect(workflow.whatsapp_campaign_source_id.to_i).to eq(campaign.id)
+      definition = workflow.active_version.definition_hash
+      expect(definition.dig(:source, :whatsapp_campaign_id)).to eq(campaign.id)
+      expect(definition.dig(:source, :managed_by_campaign)).to eq(true)
+      expect(definition.dig(:source, :sync_mode)).to eq("campaign_managed")
+      entry = definition[:nodes].find { |node| node[:type] == "entry" }
+      expect(entry.dig(:config, :trigger)).to eq("whatsapp_campaign_message_replied")
+      expect(entry.dig(:config, :whatsapp_campaign_id)).to eq(campaign.id)
+      condition_configs = definition[:nodes].select { |node| node[:type] == "response_condition" }.map { |node| node[:config] }
+      expect(condition_configs.map { |config| config[:field] }).to all(eq("interaction.button_payload"))
+      expect(condition_configs.map { |config| config[:match_strategy] }).to all(eq("button_payload_or_text"))
+      expect(condition_configs.map { |config| config[:button_text] }).to contain_exactly("Saiba mais", "Descadastrar")
+      expect(condition_configs.map { |config| config[:button_key] }).to contain_exactly(buttons.first["key"], buttons.second["key"])
+      expect(definition[:nodes].select { |node| node[:type] == "action" }.map { |node| node.dig(:config, :action_type) })
+        .to include("set_flow_result", "update_lead_lifecycle")
+    end
+
+    it "nao sobrescreve workflow de campanha personalizado no builder avancado" do
+      sender = create(:whatsapp_sender_number)
+      distribution_rule = create(:distribution_rule, name: "Rodizio protegido")
+      button_template = WhatsappTemplate.create!(
+        name: "campanha_com_fluxo_personalizado",
+        language: "pt_BR",
+        status: "APPROVED",
+        body: "Escolha.",
+        buttons: {
+          "0" => { "kind" => "quick_reply", "text" => "Saiba mais" }
+        }
+      )
+      button = button_template.interactive_buttons.first
+      campaign = WhatsappCampaign.create!(
+        name: "Campanha protegida",
+        whatsapp_template: button_template,
+        whatsapp_sender_number: sender,
+        created_by: admin,
+        response_decisions: {
+          buttons: [
+            {
+              key: button["key"],
+              text: "Saiba mais",
+              kind: "quick_reply",
+              action: "generate_lead",
+              distribution_rule_id: distribution_rule.id
+            }
+          ]
+        }
+      )
+      workflow = described_class.call(campaign)
+      custom_definition = workflow.active_version.definition_hash.deep_dup
+      custom_definition[:source][:managed_by_campaign] = false
+      custom_definition[:source][:customized_by_advanced_user] = true
+      custom_definition[:source][:sync_mode] = "advanced_custom"
+      custom_definition[:nodes] << {
+        "id" => "manual_note",
+        "type" => "action",
+        "label" => "Ajuste manual",
+        "config" => { "action_type" => "add_note", "body" => "mantido pelo builder" }
+      }
+      workflow.active_version.update!(definition: custom_definition)
+
+      campaign.update!(
+        name: "Campanha protegida editada",
+        response_decisions: {
+          buttons: [
+            {
+              key: button["key"],
+              text: "Saiba mais",
+              kind: "quick_reply",
+              action: "unsubscribe"
+            }
+          ]
+        }
+      )
+
+      expect(described_class.call(campaign)).to eq(workflow)
+      reloaded_definition = workflow.reload.active_version.definition_hash
+      expect(reloaded_definition.dig(:source, :sync_mode)).to eq("advanced_custom")
+      expect(reloaded_definition[:nodes].map { |node| node[:id] }).to include("manual_note")
+      expect(reloaded_definition[:nodes].select { |node| node[:type] == "action" }.map { |node| node.dig(:config, :action_type) })
+        .to include("add_note")
+    end
+  end
+
   describe Whatsapp::CampaignAudiencePreview do
     it "conta audiencia filtrada separando leads com e sem telefone" do
       create(:lead, name: "Lead A", phone: "(47) 99999-0000", origin: "site", status: "Novo", admin_user: admin)
@@ -18,7 +153,7 @@ RSpec.describe "WhatsApp campaign builder services" do
       without_phone.update_column(:phone, nil)
       create(:lead, phone: "(47) 97777-0000", origin: "portal", status: "Novo", admin_user: admin)
 
-      result = described_class.call(filters: { status: "Novo", origin: "site", admin_user_id: admin.id })
+      result = described_class.call(filters: { status: "Novo", origin: "site", admin_user_id: admin.id }, tenant: admin.tenant)
 
       expect(result.total).to eq(2)
       expect(result.valid_phone_count).to eq(1)
@@ -298,6 +433,38 @@ RSpec.describe "WhatsApp campaign builder services" do
         status: "failed"
       )
       expect(WhatsappMessage.last.error_message).to include("#132012")
+    end
+  end
+
+  describe Whatsapp::CampaignMessageSender do
+    it "cancela envio para contato descadastrado no numero de envio sem chamar a Meta" do
+      sender = create(:whatsapp_sender_number)
+      campaign = WhatsappCampaign.create!(
+        name: "Campanha com opt-out",
+        whatsapp_template: template,
+        whatsapp_sender_number: sender,
+        created_by: admin,
+        status: "processing"
+      )
+      recipient = campaign.campaign_recipients.create!(
+        name: "Contato Bloqueado",
+        phone_number: "11999990000",
+        source: "spreadsheet"
+      )
+      campaign_message = campaign.campaign_messages.create!(
+        whatsapp_campaign_recipient: recipient,
+        phone_number: "5511999990000",
+        status: "pending"
+      )
+      create(:whatsapp_campaign_unsubscribe, whatsapp_sender_number: sender, phone_number: "5511999990000")
+
+      expect(Whatsapp::CloudClient).not_to receive(:new)
+
+      described_class.call(campaign_message)
+
+      expect(campaign_message.reload.status).to eq("cancelled")
+      expect(campaign_message.failure_reason).to eq("Contato descadastrado para campanhas deste número.")
+      expect(campaign.reload.failed_count).to eq(1)
     end
   end
 end

@@ -21,10 +21,13 @@ module Loft
       mode = "full" unless %w[full batch].include?(mode)
       batch_size = Setting.get("loft_sync_batch_size", "100").to_i
 
-      LoftSyncJob.perform_later(mode: mode, batch_size: batch_size)
+      tenants = Tenant.active.to_a
+      tenants.each do |tenant|
+        LoftSyncJob.perform_later(mode: mode, batch_size: batch_size, tenant_id: tenant.id)
+      end
       Setting.set(LAST_SLOT_KEY, slot, "Último slot executado no scheduler Loft")
 
-      { status: :enqueued, message: "Loft sync agendado no slot #{slot}." }
+      { status: :enqueued, message: "Loft sync agendado no slot #{slot} para #{tenants.size} tenant(s)." }
     rescue => e
       { status: :error, message: e.message }
     end

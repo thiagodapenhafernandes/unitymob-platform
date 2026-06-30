@@ -9,6 +9,8 @@ require "ipaddr"
 # entre múltiplos processos Puma (hoje usa memória local do processo).
 
 class Rack::Attack
+  WHATSAPP_WEBHOOK_PATH = "/webhooks/whatsapp".freeze
+
   # Cache store: se Rails.cache for NullStore (default em dev/test), usa um
   # MemoryStore dedicado para o rack-attack funcionar. Em produção, Redis/Memcached.
   Rack::Attack.cache.store =
@@ -37,6 +39,10 @@ class Rack::Attack
     end
   end
 
+  def self.public_webhook_path?(req)
+    req.path == WHATSAPP_WEBHOOK_PATH
+  end
+
   if Rails.env.development?
     blocklist("development/blocked_ips") do |req|
       blocked_ips = Rack::Attack.env_ip_list("DEV_BLOCKED_IPS")
@@ -45,7 +51,9 @@ class Rack::Attack
 
     blocklist("development/not_allowed_ips") do |req|
       allowed_ips = Rack::Attack.env_ip_list("DEV_ALLOWED_IPS")
-      allowed_ips.present? && !Rack::Attack.ip_matches?(req.ip, allowed_ips)
+      allowed_ips.present? &&
+        !Rack::Attack.public_webhook_path?(req) &&
+        !Rack::Attack.ip_matches?(req.ip, allowed_ips)
     end
   end
 

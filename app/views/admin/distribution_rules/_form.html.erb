@@ -207,16 +207,17 @@
 
       <%# Equipe %>
       <div id="team" data-controller="team-rules"
-           data-team-rules-structure-value="<%= (@team_structure || {}).to_json %>"
            data-team-rules-all-agents-value="<%= (@all_agents || []).to_json %>">
         <%= ax_operational_panel(eyebrow: "Equipe", title: "Corretores e fila") do %>
           <div class="ax-panel-body">
-            <div class="ax-field">
-              <%= ax_field_label(nil, nil, text: "Filtrar por gestor", for: "manager_id") %>
-              <%= select_tag :manager_id,
-                    options_for_select(@manager_options || []),
-                    include_blank: "Todos os corretores", class: "ax-control", data: { action: "change->team-rules#filterAgents" } %>
-            </div>
+            <%= render "admin/shared/hierarchical_user_filter",
+                  component_id: "distribution_rule_hierarchy_filter",
+                  profiles: @distribution_hierarchy_profiles || [],
+                  users: @all_agents || [],
+                  target_select_id: "agent_select",
+                  locked_user_id: @distribution_hierarchy_locked_user_id,
+                  label: "Filtrar por hierarquia",
+                  hint: "Os níveis são criados dinamicamente pelos perfis verticais da conta. Usuários sem Tenant Owner ficam travados no próprio perfil e filtram apenas subordinados." %>
 
             <div class="ax-field">
               <%= ax_field_label(nil, nil, text: "Corretores na regra", for: "agent_select") %>

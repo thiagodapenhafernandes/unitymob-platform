@@ -22,10 +22,12 @@ module Habitations
       keyword_init: true
     )
 
-    def initialize(apply: false, min_confidence: 0.78, min_margin: 0.15)
+    def initialize(apply: false, min_confidence: 0.78, min_margin: 0.15, tenant: nil)
       @apply = apply
       @min_confidence = min_confidence.to_f
       @min_margin = min_margin.to_f
+      @tenant = tenant || Current.tenant
+      raise ArgumentError, "Tenant obrigatório para backfill de construtora" if @tenant.blank?
       @constructors = Constructor.order(:id).to_a
       @constructor_tokens = @constructors.each_with_object({}) do |constructor, memo|
         memo[constructor.id] = tokenize(constructor.name)
@@ -70,8 +72,10 @@ module Habitations
 
     private
 
+    attr_reader :tenant
+
     def missing_developments
-      Habitation.empreendimentos.where(constructor_id: nil)
+      tenant.habitations.empreendimentos.where(constructor_id: nil)
     end
 
     def best_suggestion_for(development)
@@ -85,14 +89,14 @@ module Habitations
       normalized_name = normalize(development.nome_empreendimento)
       return nil if normalized_name.blank?
 
-      candidates = Habitation.empreendimentos
-                             .where.not(id: development.id)
-                             .where.not(constructor_id: nil)
-                             .where("lower(unaccent(nome_empreendimento)) = ?", normalized_name)
-                             .distinct
-                             .pluck(:constructor_id)
-                             .compact
-                             .uniq
+      candidates = tenant.habitations.empreendimentos
+                         .where.not(id: development.id)
+                         .where.not(constructor_id: nil)
+                         .where("lower(unaccent(nome_empreendimento)) = ?", normalized_name)
+                         .distinct
+                         .pluck(:constructor_id)
+                         .compact
+                         .uniq
 
       return nil unless candidates.one?
 

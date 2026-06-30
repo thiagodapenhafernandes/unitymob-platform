@@ -3,20 +3,20 @@ class Admin::AutomationRulesController < Admin::BaseController
   before_action :set_rule, only: [:edit, :update, :destroy, :toggle_active]
 
   def index
-    @rules = AutomationRule.ordered
-    @workflows = AutomationWorkflow.includes(:active_version).recent.limit(12)
-    @recent_runs = AutomationRun.includes(:automation_rule, :lead).recent.limit(20)
+    @rules = current_tenant.automation_rules.ordered
+    @workflows = current_tenant.automation_workflows.includes(:active_version).recent.limit(12)
+    @recent_runs = AutomationRun.joins(:automation_rule).where(automation_rules: { tenant_id: current_tenant.id }).includes(:automation_rule, :lead).recent.limit(20)
     @page_title = "Automação de acompanhamento"
   end
 
   def new
-    @rule = AutomationRule.new(active: true, trigger_event: "lead_idle")
+    @rule = current_tenant.automation_rules.new(active: true, trigger_event: "lead_idle")
     load_options
     @page_title = "Nova intervenção automatizada"
   end
 
   def create
-    @rule = AutomationRule.new(rule_params)
+    @rule = current_tenant.automation_rules.new(rule_params)
     if @rule.save
       redirect_to admin_automation_rules_path, notice: "Intervenção criada."
     else
@@ -40,7 +40,7 @@ class Admin::AutomationRulesController < Admin::BaseController
   end
 
   def simulate
-    @rule = params[:id].present? ? AutomationRule.find(params[:id]) : AutomationRule.new(active: true)
+    @rule = params[:id].present? ? current_tenant.automation_rules.find(params[:id]) : current_tenant.automation_rules.new(active: true)
     @rule.assign_attributes(rule_params)
     load_options
     @simulation_result = Automation::Simulator.rule(
@@ -65,7 +65,7 @@ class Admin::AutomationRulesController < Admin::BaseController
 
   # Cria uma intervenção de exemplo para mostrar acompanhamento horizontal.
   def create_example
-    AutomationRule.create!(
+    current_tenant.automation_rules.create!(
       name: "Resgate de lead frio",
       active: false,
       trigger_event: "lead_idle",
@@ -100,15 +100,15 @@ class Admin::AutomationRulesController < Admin::BaseController
   private
 
   def set_rule
-    @rule = AutomationRule.find(params[:id])
+    @rule = current_tenant.automation_rules.find(params[:id])
   end
 
   def load_options
     @status_options = Lead.status_options
     @automation_stage_options = Automation::StagePolicy.allowed_transition_stages
     @source_options = Lead.origin_options
-    @broker_options = AdminUser.active.order(:name).pluck(:name, :id)
-    @templates = WhatsappTemplate.approved.ordered
+    @broker_options = current_tenant.admin_users.active.order(:name).pluck(:name, :id)
+    @templates = current_tenant.whatsapp_templates.approved.ordered
   end
 
   def rule_params

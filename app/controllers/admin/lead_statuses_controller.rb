@@ -38,7 +38,7 @@ module Admin
       destroy = ActiveModel::Type::Boolean.new.cast(row[:_destroy])
 
       if id.present?
-        option = AttributeOption.find_by(id: id, context: "lead", category: "status")
+        option = current_tenant.attribute_options.find_by(id: id, context: "lead", category: "status")
         return if option.nil?
 
         if destroy
@@ -47,7 +47,7 @@ module Admin
           option.update!(name: name, description: description, position: index)
         end
       elsif !destroy && name.present?
-        AttributeOption.create!(
+        current_tenant.attribute_options.create!(
           context: "lead",
           category: "status",
           name: name,
@@ -58,7 +58,7 @@ module Admin
     end
 
     def statuses_scope
-      AttributeOption.where(context: "lead", category: "status").ordered
+      current_tenant.attribute_options.where(context: "lead", category: "status").ordered
     end
   end
 end

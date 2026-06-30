@@ -100,7 +100,7 @@
 
         <button type="button"
                 class="admin-property-menu__item"
-                data-media-modal-url="<%= modal_admin_habitation_media_path(imovel, return_to: request.fullpath) %>"
+                data-media-modal-url="<%= modal_admin_habitation_media_path(imovel, return_to: @return_to_path || request.fullpath) %>"
                 data-action="click->ax-dropdown#close">
           <i class="bi bi-images"></i>
           <span>Mídia e uploads</span>
@@ -115,7 +115,7 @@
         <span>Ver no site</span>
       <% end %>
 
-      <% if current_admin_user&.admin? %>
+      <% if can_destroy_habitation? %>
         <div class="admin-property-menu__sep"></div>
         <%= button_to admin_habitation_path(imovel),
                       method: :delete,

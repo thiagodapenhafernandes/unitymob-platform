@@ -52,7 +52,7 @@
   end
   intake_waiting_admin_review = habitation.broker_intake? && habitation.intake_submitted_for_admin_review?
   can_manage_internal_documents = can_manage_internal_documents?
-  can_edit_protected_habitation_fields = current_admin_user&.admin? || owns_all_resource?(:imoveis)
+  can_edit_protected_habitation_fields = can_edit_protected_habitation_fields?
   vista_document_assets = Array(@habitation_vista_document_assets)
   show_vista_document_assets = vista_document_assets.any? || habitation.vista_integrated?
   vista_document_status_labels = {
@@ -236,7 +236,7 @@
       <%= ax_inline_notice(tone: :neutral, icon: "building", class_name: "habitation-new-mode-notice") do %>
         <strong>Cadastro direto de imóvel.</strong>
         Este caminho não passa pelo fluxo de captação/revisão. A publicação no site continua sendo definida pelos campos de publicação do próprio imóvel.
-        <% if current_admin_user&.admin? || current_admin_user&.profile&.administrativo? || can?(:review, :captacoes) %>
+        <% if can_create_internal_intake? %>
           <%= link_to "Criar ficha de captação interna", new_admin_habitation_path(intake_mode: "paper"), class: "habitation-new-mode-notice__link" %>
         <% end %>
       <% end %>

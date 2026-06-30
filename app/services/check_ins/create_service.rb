@@ -44,7 +44,7 @@ module CheckIns
       return fail_with(:already_active) if @admin_user.active_check_in.present?
 
       discovery = DiscoverStoreService.new(
-        lat: @lat, lng: @lng, prefer_store: @admin_user.default_store
+        lat: @lat, lng: @lng, prefer_store: @admin_user.default_store, tenant: @admin_user.tenant
       ).call
       return fail_with(:no_store_in_range) if discovery.nil? || !discovery[:inside_radius]
 

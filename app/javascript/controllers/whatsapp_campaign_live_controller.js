@@ -22,7 +22,6 @@ export default class extends Controller {
     this.timer = null
     this.fetching = false
     this.refresh()
-    this.start()
   }
 
   disconnect() {
@@ -32,19 +31,27 @@ export default class extends Controller {
   start() {
     if (this.timer || !this.hasStatusUrlValue) return
 
-    this.timer = window.setInterval(() => this.refresh(), this.intervalValue)
+    this.schedule(this.intervalValue)
   }
 
   stop() {
     if (!this.timer) return
 
-    window.clearInterval(this.timer)
+    window.clearTimeout(this.timer)
     this.timer = null
+  }
+
+  schedule(interval) {
+    this.stop()
+    if (!this.hasStatusUrlValue) return
+
+    this.timer = window.setTimeout(() => this.refresh(), Number(interval || this.intervalValue))
   }
 
   async refresh() {
     if (this.fetching || !this.hasStatusUrlValue) return
 
+    this.stop()
     this.fetching = true
     try {
       const response = await fetch(this.statusUrlValue, {
@@ -60,7 +67,9 @@ export default class extends Controller {
       const data = await response.json()
       this.render(data)
 
-      if (!data.active) this.stop()
+      if (data.active) {
+        this.schedule(data.next_poll_interval_ms || this.intervalValue)
+      }
     } catch (_error) {
       this.stop()
     } finally {
@@ -125,7 +134,7 @@ export default class extends Controller {
     if (!this.hasMessagesBodyTarget) return
 
     if (!messages.length) {
-      this.messagesBodyTarget.innerHTML = '<tr><td colspan="6" class="ax-table__empty">Nenhuma mensagem encontrada para os filtros atuais.</td></tr>'
+      this.messagesBodyTarget.innerHTML = '<tr><td colspan="7" class="ax-table__empty">Nenhuma mensagem encontrada para os filtros atuais.</td></tr>'
       return
     }
 
@@ -156,6 +165,7 @@ export default class extends Controller {
 
   messageRow(message) {
     const badgeTone = this.badgeTone(message.status_tone)
+    const responseTone = this.badgeTone(message.response_status_tone)
     const recipientName = this.escape(message.recipient_name || message.lead_name || "-")
     const recipientUrl = this.escapeAttribute(message.recipient_url || message.lead_url || "#")
     const recipientCell = message.recipient_url || message.lead_url
@@ -168,6 +178,10 @@ export default class extends Controller {
         <td>${this.escape(message.phone_number || "-")}</td>
         <td><code class="whatsapp-message-table__wamid">${this.escape(message.external_message_id || "-")}</code></td>
         <td><span class="ax-badge ${badgeTone}">${this.escape(message.status_label || message.status || "-")}</span></td>
+        <td>
+          <span class="ax-badge ${responseTone}">${this.escape(message.response_status_label || "Sem resposta")}</span>
+          <small class="tw-block tw-text-slate-500">${this.escape(message.response_status_note || "Aguardando resposta do destinatário.")}</small>
+        </td>
         <td>${this.escape(message.failure_reason || "-")}</td>
         <td>${this.escape(message.updated_at || "-")}</td>
       </tr>
@@ -198,7 +212,7 @@ export default class extends Controller {
   }
 
   badgeTone(tone) {
-    const allowed = ["gray", "green", "amber", "red", "blue"]
+    const allowed = ["gray", "green", "amber", "red", "blue", "orange", "cyan"]
     return `ax-badge--${allowed.includes(tone) ? tone : "gray"}`
   }
 

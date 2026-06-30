@@ -1,4 +1,5 @@
 <%
+    system_admin_without_tenant = current_admin_user&.system_admin? && !selected_tenant_context?
     vista_soft_context = controller_name == 'habitations' && params[:sort] == 'last_sync_at'
     can_access = lambda do |action, resource|
       if respond_to?(:can?)
@@ -10,6 +11,24 @@
     rescue Devise::MissingWarden
       false
     end
+  %>
+<ul class="ax-nav">
+  <% if system_admin_without_tenant %>
+    <li class="ax-nav__section">Sistema</li>
+    <li class="ax-nav__item">
+      <%= link_to admin_system_path, class: "ax-nav__link #{'active' if controller_name == 'system'}" do %>
+        <i class="bi bi-hdd-stack"></i><span>Painel do Sistema</span>
+      <% end %>
+    </li>
+    <li class="ax-nav__item">
+      <%= link_to admin_system_users_path, class: "ax-nav__link #{'active' if controller_name == 'system' && action_name == 'users'}" do %>
+        <i class="bi bi-people"></i><span>Usuários</span>
+      <% end %>
+    </li>
+    <li class="ax-nav__caption">Contas</li>
+    <li class="ax-nav__hint">Acesse áreas operacionais apenas por impersonação.</li>
+  <% else %>
+    <%
 
     # Visibilidade de cada seção = OR dos itens dela. O header só aparece se a
     # seção tiver ao menos um item visível (evita rótulos de seção vazios).
@@ -26,7 +45,6 @@
                      can_access.call(:view, :metas_captacao)
     crescimento_visible = can_access.call(:manage, :marketing)
   %>
-<ul class="ax-nav">
     <% if produto_visible %><li class="ax-nav__section">Produto</li><% end %>
 
     <%# 1. Painel %>
@@ -249,7 +267,7 @@
       settings_open = settings_controllers.include?(controller_name)
       settings_visible = can_access.call(:manage, :marketing) ||
                          can_access.call(:view, :catalogos) ||
-                         current_admin_user&.admin? ||
+                         tenant_owner? ||
                          can_access.call(:manage, :distribution_rules) ||
                          can_access.call(:manage, :field_settings)
     %>
@@ -270,7 +288,7 @@
           <% if can_access.call(:view, :catalogos) %>
             <li><%= link_to admin_attribute_options_path, class: "ax-nav__link #{'active' if controller_name == 'attribute_options'}" do %><i class="bi bi-tags"></i><span>Catálogos Dinâmicos</span><% end %></li>
           <% end %>
-          <% if current_admin_user&.admin? %>
+          <% if tenant_owner? %>
             <li><%= link_to edit_admin_property_setting_path, class: "ax-nav__link #{'active' if controller_name == 'property_settings' && action_name == 'edit'}" do %><i class="bi bi-house-gear"></i><span>Configuração de Imóveis</span><% end %></li>
             <li><%= link_to review_workflow_admin_property_setting_path, class: "ax-nav__link #{'active' if controller_name == 'property_settings' && action_name == 'review_workflow'}" do %><i class="bi bi-diagram-3"></i><span>Fluxo de revisão</span><% end %></li>
           <% end %>
@@ -320,12 +338,13 @@
 
     <%# Administração (submenu) %>
     <%
-      admin_controllers = ['profiles', 'access_security', 'access_audit_logs', 'data_export_audit_logs']
+      admin_controllers = ['profiles', 'access_security', 'access_audit_logs', 'data_export_audit_logs', 'whatsapp_campaign_recipients', 'whatsapp_campaign_unsubscribes']
       admin_context = admin_controllers.include?(controller_name) || controller_path == 'admin/field/audit_logs'
       audit_menu_visible = can_access.call(:view, :field_audit) || can_access.call(:view, :access_audit) || can_access.call(:view, :data_export_audit)
       security_menu_visible = can_access.call(:manage, :access_security)
+      whatsapp_admin_menu_visible = can_access.call(:view, :whatsapp_campaigns)
     %>
-    <% if current_admin_user&.admin? || security_menu_visible || audit_menu_visible %>
+    <% if tenant_owner? || security_menu_visible || audit_menu_visible || whatsapp_admin_menu_visible %>
       <li class="ax-nav__section">Administração</li>
       <li class="ax-nav__group <%= 'is-open' if admin_context %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= admin_context %>">
         <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= admin_context %>">
@@ -333,8 +352,13 @@
           <i class="bi bi-chevron-down ax-nav__chevron"></i>
         </button>
         <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless admin_context %>>
-          <% if current_admin_user&.admin? %>
+          <% if tenant_owner? %>
             <li><%= link_to admin_profiles_path, class: "ax-nav__link #{'active' if controller_name == 'profiles'}" do %><i class="bi bi-shield-lock"></i><span>Perfis</span><% end %></li>
+          <% end %>
+          <% if whatsapp_admin_menu_visible %>
+            <li class="ax-nav__caption">WhatsApp</li>
+            <li><%= link_to admin_whatsapp_campaign_recipients_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_campaign_recipients'}" do %><i class="bi bi-table"></i><span>Importados CSV</span><% end %></li>
+            <li><%= link_to admin_whatsapp_campaign_unsubscribes_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_campaign_unsubscribes'}" do %><i class="bi bi-person-dash"></i><span>Descadastros WhatsApp</span><% end %></li>
           <% end %>
           <% if security_menu_visible %>
             <li class="ax-nav__caption">Segurança</li>
@@ -366,4 +390,5 @@
       </li>
     <% end %>
 
+  <% end %>
 </ul>

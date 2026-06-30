@@ -2,14 +2,18 @@ class LeadsController < ApplicationController
   skip_before_action :verify_authenticity_token, only: [:create] # Para facilitar testes AJAX se necessário, mas idealmente usar CSRF
 
   def whatsapp_url
-    habitation = Habitation.find_by(id: params[:property_id])
+    habitation = public_tenant.habitations.find_by(id: params[:property_id])
     routing = Whatsapp::SiteRouting.for_habitation(habitation, message: params[:message])
 
     render json: routing.slice(:capture_required, :whatsapp_url, :negotiation_type, :negotiation_label)
   end
 
   def create
-    @lead = Lead.new(lead_params)
+    permitted = lead_params
+    habitation = public_tenant.habitations.find_by(id: permitted[:property_id]) if permitted[:property_id].present?
+    permitted[:property_id] = nil if permitted[:property_id].present? && habitation.blank?
+
+    @lead = public_tenant.leads.new(permitted)
     @lead.source_url = request.referer
     apply_share_attribution(@lead)
     
@@ -19,7 +23,7 @@ class LeadsController < ApplicationController
         token: cookies.signed[PublicNavigationSession::COOKIE_KEY]
       )
 
-      habitation = Habitation.find_by(id: @lead.property_id)
+      habitation ||= public_tenant.habitations.find_by(id: @lead.property_id)
       business_type = lead_business_type(habitation)
 
       Seo::ConversionTracker.record!(
@@ -91,7 +95,7 @@ class LeadsController < ApplicationController
     token = lead.share_token.to_s.strip.presence || cookies.signed[HabitationShareLink::COOKIE_KEY].to_s.strip
     return if token.blank? || lead.property_id.blank?
 
-    share_link = HabitationShareLink.active.find_by(token: token, habitation_id: lead.property_id)
+    share_link = HabitationShareLink.active.joins(:habitation).where(habitations: { tenant_id: public_tenant.id }).find_by(token: token, habitation_id: lead.property_id)
     return unless share_link
 
     lead.share_token = share_link.token
@@ -99,4 +103,5 @@ class LeadsController < ApplicationController
     lead.shared_by_admin_user_id = share_link.admin_user_id
     lead.origin = "Compartilhamento Corretor" if lead.origin.blank?
   end
+
 end

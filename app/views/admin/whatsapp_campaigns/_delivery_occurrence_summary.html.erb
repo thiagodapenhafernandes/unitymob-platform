@@ -1,0 +1,77 @@
+<% summary ||= {} %>
+<% occurrence_count = summary[:count].to_i %>
+
+<% if occurrence_count.positive? %>
+  <% tone = summary[:tone].to_s == "error" ? "error" : "warning" %>
+  <% severity_counts = summary[:severity_counts] || {} %>
+  <% warning_count = severity_counts["warning"].to_i %>
+  <% error_count = severity_counts["error"].to_i %>
+  <% latest = summary[:latest] || {} %>
+
+  <section class="whatsapp-delivery-summary whatsapp-delivery-summary--<%= tone %>" aria-label="Ocorrências de entrega">
+    <div class="whatsapp-delivery-summary__head">
+      <i class="bi <%= tone == "error" ? "bi-exclamation-octagon" : "bi-exclamation-triangle" %>"></i>
+      <div>
+        <strong><%= pluralize(occurrence_count, "ocorrência de entrega", "ocorrências de entrega") %> nesta campanha.</strong>
+        <span>
+          <% if tone == "error" %>
+            Há erros críticos que precisam de revisão antes de reprocessar.
+          <% else %>
+            Há avisos operacionais ou restrições da Meta; isso é diferente de falha do sistema.
+          <% end %>
+        </span>
+      </div>
+    </div>
+
+    <div class="whatsapp-delivery-summary__meta">
+      <% if latest[:label].present? %>
+        <span>
+          Última ocorrência
+          <% if latest[:failed_at].present? %>
+            em <%= l(latest[:failed_at], format: :short) %>
+          <% end %>:
+          <strong><%= latest[:label] %><%= latest[:technical].present? ? " (#{latest[:technical]})" : "" %></strong>
+        </span>
+      <% end %>
+      <span><%= pluralize(warning_count, "aviso operacional", "avisos operacionais") %> · <%= pluralize(error_count, "erro crítico", "erros críticos") %></span>
+      <% if summary[:next_retry_at].present? %>
+        <span>Próxima tentativa automática: <strong><%= l(summary[:next_retry_at], format: :short) %></strong></span>
+      <% end %>
+    </div>
+
+    <% if summary[:reasons].present? %>
+      <div class="whatsapp-delivery-summary__reasons">
+        <strong>Principais motivos</strong>
+        <ul>
+          <% summary[:reasons].each do |item| %>
+            <li class="whatsapp-delivery-summary__reason whatsapp-delivery-summary__reason--<%= item[:severity] %>">
+              <span>
+                <%= item[:label] %>
+                <% if item[:technical].present? %>
+                  <small><%= item[:technical] %></small>
+                <% end %>
+              </span>
+              <em><%= pluralize(item[:count].to_i, "mensagem impactada", "mensagens impactadas") %></em>
+              <% if item[:guidance].present? %>
+                <p><%= item[:guidance] %></p>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="whatsapp-delivery-summary__footer">
+      <span>
+        <% if tone == "error" %>
+          Revise conexão, template e payload antes de reprocessar para evitar repetição das falhas.
+        <% else %>
+          Para avisos da Meta, reprocessar imediatamente pode manter o mesmo bloqueio até a próxima janela.
+        <% end %>
+      </span>
+      <%= link_to admin_whatsapp_campaign_path(campaign, messages_status: "failed"), class: "ax-btn ax-btn--sm" do %>
+        <i class="bi bi-list-check ax-ico"></i><span>Ver mensagens com falha</span>
+      <% end %>
+    </div>
+  </section>
+<% end %>

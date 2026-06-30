@@ -2,7 +2,9 @@ class Admin::AccessAuditLogsController < Admin::BaseController
   before_action -> { check_permission!(:view, :access_audit) }
 
   def index
-    scope = AccessAuditLog.includes(:admin_user).recent
+    scope = current_tenant.access_audit_logs.includes(:admin_user).recent
+    scoped_admin_user_ids = accessible_owner_ids(:access_audit)
+    scope = scope.where(admin_user_id: scoped_admin_user_ids) if scoped_admin_user_ids
 
     scope = scope.where(event_type: params[:event_type]) if params[:event_type].present?
     scope = scope.where(result: params[:result]) if params[:result].present?
@@ -23,12 +25,14 @@ class Admin::AccessAuditLogsController < Admin::BaseController
     @allowed_events = stats_scope.allowed.count
     @denied_events = stats_scope.denied.count
     @unique_ips = stats_scope.where.not(ip: nil).distinct.count(:ip)
-    @available_users = AdminUser.order(:name)
-    @available_profiles = Profile.order(:name)
-    @available_device_types = AccessAuditLog.where.not(device_type: [nil, ""]).distinct.order(:device_type).pluck(:device_type)
-    @available_browsers = AccessAuditLog.where.not(browser: [nil, ""]).distinct.order(:browser).pluck(:browser)
-    @available_controllers = AccessAuditLog.where.not(controller_name: [nil, ""]).distinct.order(:controller_name).pluck(:controller_name)
-    @available_actions = AccessAuditLog.where.not(action_name: [nil, ""]).distinct.order(:action_name).pluck(:action_name)
+    @available_users = scoped_admin_users(scoped_admin_user_ids).order(:name)
+    @available_profiles = current_tenant.profiles
+      .where(id: @available_users.reselect(:profile_id))
+      .order(:name)
+    @available_device_types = current_tenant.access_audit_logs.where.not(device_type: [nil, ""]).distinct.order(:device_type).pluck(:device_type)
+    @available_browsers = current_tenant.access_audit_logs.where.not(browser: [nil, ""]).distinct.order(:browser).pluck(:browser)
+    @available_controllers = current_tenant.access_audit_logs.where.not(controller_name: [nil, ""]).distinct.order(:controller_name).pluck(:controller_name)
+    @available_actions = current_tenant.access_audit_logs.where.not(action_name: [nil, ""]).distinct.order(:action_name).pluck(:action_name)
   end
 
   private
@@ -39,5 +43,10 @@ class Admin::AccessAuditLogsController < Admin::BaseController
     Date.parse(value.to_s)
   rescue ArgumentError, TypeError
     nil
+  end
+
+  def scoped_admin_users(scoped_admin_user_ids)
+    users = current_tenant.admin_users.account_members
+    scoped_admin_user_ids ? users.where(id: scoped_admin_user_ids) : users
   end
 end

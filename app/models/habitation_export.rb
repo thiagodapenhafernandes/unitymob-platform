@@ -1,4 +1,6 @@
 class HabitationExport < ApplicationRecord
+  include TenantScoped
+
   belongs_to :admin_user
   has_one_attached :file
 

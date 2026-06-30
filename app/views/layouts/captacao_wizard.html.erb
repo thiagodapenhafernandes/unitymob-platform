@@ -1045,7 +1045,7 @@
         wizard_site_name = @layout_setting&.site_name.presence || 'Salute'
         wizard_admin_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : 'Plataforma'
       %>
-      <%= link_to((current_admin_user&.admin? ? admin_root_path : field_root_path), class: "admin-navbar-brand") do %>
+      <%= link_to((tenant_owner? ? admin_root_path : field_root_path), class: "admin-navbar-brand") do %>
         <i class="bi bi-speedometer2"></i>
         <span class="admin-navbar-brand-text"><%= wizard_site_name %> <%= wizard_admin_area_name %></span>
       <% end %>

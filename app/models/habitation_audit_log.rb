@@ -1,4 +1,6 @@
 class HabitationAuditLog < ApplicationRecord
+  include TenantScoped
+
   ACTIONS = %w[
     created updated deleted published unpublished intake_status_changed
     attachments_changed broker_assignments_changed bulk_updated
@@ -112,7 +114,7 @@ class HabitationAuditLog < ApplicationRecord
   end
 
   def actor_name
-    admin_user&.name.presence || admin_user&.email.presence || "Sistema"
+    tenant_admin_user&.then { |user| user.name.presence || user.email.presence } || "Sistema"
   end
 
   def source_label
@@ -260,5 +262,11 @@ class HabitationAuditLog < ApplicationRecord
 
   def set_created_at
     self.created_at ||= Time.current
+  end
+
+  def tenant_admin_user
+    return if admin_user_id.blank?
+
+    tenant.admin_users.find_by(id: admin_user_id)
   end
 end

@@ -1,0 +1,169 @@
+<% content_for :admin_contextbar_title, "Importados CSV" %>
+
+<% content_for :admin_contextbar_breadcrumb do %>
+  <div class="whatsapp-campaigns-contextbar">
+    <%= link_to "Disparos WhatsApp", admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number&.id) %>
+    <i class="bi bi-chevron-right"></i>
+    <strong>Importados CSV</strong>
+  </div>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number&.id), class: "ax-contextbar__button" do %>
+    <i class="bi bi-broadcast ax-ico"></i><span>Disparos</span>
+  <% end %>
+<% end %>
+
+<style>
+  .whatsapp-imports { display:grid; gap:14px; }
+  .whatsapp-imports__summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+  .whatsapp-import-card { border:1px solid #d8dee8; border-radius:8px; background:#fff; padding:12px; box-shadow:0 6px 16px rgba(23,32,51,.04); }
+  .whatsapp-import-card span { display:block; color:#667085; font-size:10px; font-weight:850; text-transform:uppercase; }
+  .whatsapp-import-card strong { display:block; margin-top:4px; color:#172033; font-size:20px; line-height:1; }
+  .whatsapp-imports__filters { display:grid; grid-template-columns:1.1fr .8fr .8fr 1.2fr auto; gap:10px; align-items:end; padding:12px; border:1px solid #d8dee8; border-radius:8px; background:#fff; }
+  .whatsapp-imports__actions { display:flex; gap:8px; justify-content:flex-end; }
+  .whatsapp-imports .ax-table-wrap { border:1px solid #d8dee8; border-radius:8px; background:#fff; box-shadow:0 6px 16px rgba(23,32,51,.04); }
+  .whatsapp-imports__tags { display:flex; gap:4px; flex-wrap:wrap; max-width:260px; }
+  .whatsapp-imports__tag { border:1px solid #d8dee8; border-radius:999px; color:#475467; font-size:11px; font-weight:750; padding:2px 8px; }
+  .whatsapp-imports__muted { color:#667085; font-size:12px; }
+  @media (max-width: 1100px) {
+    .whatsapp-imports__summary,
+    .whatsapp-imports__filters { grid-template-columns:1fr; }
+    .whatsapp-imports__actions { justify-content:flex-start; flex-wrap:wrap; }
+  }
+</style>
+
+<div class="whatsapp-imports">
+  <% base_scope = WhatsappCampaignRecipient.all %>
+  <% spreadsheet_count = base_scope.where(source: "spreadsheet").count %>
+  <% selected_scope = @selected_sender_number ? base_scope.joins(:whatsapp_campaign).where(whatsapp_campaigns: { whatsapp_sender_number_id: @selected_sender_number.id }) : base_scope %>
+  <section class="whatsapp-imports__summary">
+    <article class="whatsapp-import-card">
+      <span>CSV no sistema</span>
+      <strong><%= number_with_delimiter(spreadsheet_count) %></strong>
+    </article>
+    <article class="whatsapp-import-card">
+      <span>No número selecionado</span>
+      <strong><%= number_with_delimiter(selected_scope.where(source: "spreadsheet").count) %></strong>
+    </article>
+    <article class="whatsapp-import-card">
+      <span>Convertidos em lead</span>
+      <strong><%= number_with_delimiter(selected_scope.where(conversion_status: "converted").count) %></strong>
+    </article>
+    <article class="whatsapp-import-card">
+      <span>Na lista atual</span>
+      <strong><%= number_with_delimiter(@recipients.total_entries) %></strong>
+    </article>
+  </section>
+
+  <%= form_with url: admin_whatsapp_campaign_recipients_path, method: :get, local: true, class: "whatsapp-imports__filters" do %>
+    <div class="ax-field">
+      <%= label_tag :whatsapp_sender_number_id, "Número de envio", class: "ax-label" %>
+      <%= select_tag :whatsapp_sender_number_id,
+                     options_for_select([["Todos", ""]] + @sender_numbers.map { |number| [number.display_label, number.id] }, @selected_sender_number&.id),
+                     class: "ax-control" %>
+    </div>
+    <div class="ax-field">
+      <%= label_tag :source, "Origem", class: "ax-label" %>
+      <%= select_tag :source,
+                     options_for_select([["Planilha CSV", "spreadsheet"], ["Filtros do CRM", "filters"], ["Todos", "all"]], @source),
+                     class: "ax-control" %>
+    </div>
+    <div class="ax-field">
+      <%= label_tag :conversion_status, "Situação", class: "ax-label" %>
+      <%= select_tag :conversion_status,
+                     options_for_select([["Todas", ""]] + WhatsappCampaignRecipient::CONVERSION_STATUSES.map { |status| [status.humanize, status] }, @conversion_status),
+                     class: "ax-control" %>
+    </div>
+    <div class="ax-field">
+      <%= label_tag :query, "Contato", class: "ax-label" %>
+      <%= text_field_tag :query, @query, class: "ax-control", placeholder: "Nome, telefone ou e-mail" %>
+    </div>
+    <div class="whatsapp-imports__actions">
+      <%= link_to admin_whatsapp_campaign_recipients_path, class: "ax-btn" do %>
+        <i class="bi bi-x ax-ico"></i><span>Limpar</span>
+      <% end %>
+      <button type="submit" class="ax-btn ax-btn--primary">
+        <i class="bi bi-funnel ax-ico"></i><span>Filtrar</span>
+      </button>
+    </div>
+  <% end %>
+
+  <div class="ax-table-wrap">
+    <table class="ax-table">
+      <thead>
+        <tr>
+          <th>Contato importado</th>
+          <th>Campanha</th>
+          <th>Origem</th>
+          <th>Status importado</th>
+          <th>Responsável</th>
+          <th>Tags</th>
+          <th>Situação</th>
+          <th>Importado em</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @recipients.each do |recipient| %>
+          <tr>
+            <td>
+              <strong><%= recipient.name.presence || recipient.display_name %></strong>
+              <span><%= recipient.phone_number %></span>
+              <% if recipient.email.present? %>
+                <span><%= recipient.email %></span>
+              <% end %>
+            </td>
+            <td>
+              <%= link_to recipient.whatsapp_campaign.name, admin_whatsapp_campaign_path(recipient.whatsapp_campaign) %>
+              <span><%= recipient.whatsapp_campaign.whatsapp_sender_number&.display_label %></span>
+            </td>
+            <td><%= recipient.source == "spreadsheet" ? "Planilha CSV" : recipient.source.humanize %></td>
+            <td>
+              <strong><%= recipient.status.presence || "-" %></strong>
+              <span><%= recipient.origin.presence || "whatsapp_campaign" %></span>
+            </td>
+            <td><%= recipient.admin_user&.name.presence || "-" %></td>
+            <td>
+              <% tags = recipient.tag_list %>
+              <% if tags.any? %>
+                <div class="whatsapp-imports__tags">
+                  <% tags.first(4).each do |tag| %>
+                    <span class="whatsapp-imports__tag"><%= tag %></span>
+                  <% end %>
+                  <% if tags.size > 4 %>
+                    <span class="whatsapp-imports__muted">+<%= tags.size - 4 %></span>
+                  <% end %>
+                </div>
+              <% else %>
+                -
+              <% end %>
+            </td>
+            <td>
+              <% case recipient.conversion_status %>
+              <% when "converted" %>
+                <%= ax_badge("Convertido", tone: :green) %>
+              <% when "no_interest" %>
+                <%= ax_badge("Sem interesse", tone: :blue) %>
+              <% when "unsubscribed" %>
+                <%= ax_badge("Descadastrado", tone: :orange) %>
+              <% when "ignored" %>
+                <%= ax_badge("Ignorado", tone: :gray) %>
+              <% else %>
+                <%= ax_badge("Pendente", tone: :gray) %>
+              <% end %>
+              <% if recipient.lead %>
+                <span><%= link_to "Lead ##{recipient.lead.id}", admin_lead_path(recipient.lead) %></span>
+              <% end %>
+            </td>
+            <td><%= l(recipient.created_at, format: :short) %></td>
+          </tr>
+        <% end %>
+        <% if @recipients.empty? %>
+          <tr><td colspan="8" class="ax-table__empty">Nenhum destinatário importado encontrado para os filtros atuais.</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <%= ax_pagination @recipients %>
+</div>

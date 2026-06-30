@@ -42,11 +42,10 @@ RSpec.describe "Admin sidebar", type: :request do
   end
 
   it "mantém corretor fora de integrações e dashboard de captação no menu" do
-    broker_profile = Profile.create!(
-      name: "Corretor #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
-    broker = create(:admin_user, profile: broker_profile)
+    tenant = Tenant.default
+    broker_profile = tenant.profiles.find_by!(key: "agent")
+    broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+    broker = create(:admin_user, tenant: tenant, profile: broker_profile)
     sign_in broker
 
     get admin_habitations_path(ownership: "all")
@@ -57,5 +56,46 @@ RSpec.describe "Admin sidebar", type: :request do
     expect(response.body).not_to include("Integrações")
     expect(response.body).not_to include(admin_webhook_settings_path)
     expect(response.body).not_to include(dashboard_admin_captacoes_path)
+  end
+
+  it "exibe listagens administrativas de WhatsApp para usuário operacional autorizado" do
+    tenant = Tenant.create!(name: "Tenant sidebar #{SecureRandom.hex(3)}", slug: "tenant-sidebar-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Operador WhatsApp #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 600,
+      permissions: {
+        "whatsapp_campaigns" => { "view" => true, "scope" => "own" }
+      }
+    )
+    user = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+    sign_in user
+
+    get admin_whatsapp_campaign_recipients_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Administração")
+    expect(response.body).to include("Importados CSV")
+    expect(response.body).to include("Descadastros WhatsApp")
+    expect(response.body).to include(admin_whatsapp_campaign_recipients_path)
+    expect(response.body).to include(admin_whatsapp_campaign_unsubscribes_path)
+    expect(response.body).not_to include(admin_profiles_path)
+  end
+
+  it "mantém Admin do Sistema sem links diretos para áreas operacionais de tenants" do
+    system_admin = create(:admin_user, super_admin: true)
+    sign_in system_admin
+
+    get admin_system_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Painel do Sistema")
+    expect(response.body).to include("Acesse áreas operacionais apenas por impersonação.")
+    expect(response.body).to include(admin_system_path)
+    expect(response.body).not_to include(CGI.escapeHTML(admin_habitations_path(ownership: "all")))
+    expect(response.body).not_to include(admin_leads_path)
+    expect(response.body).not_to include(admin_whatsapp_campaigns_path)
+    expect(response.body).not_to include(admin_admin_users_path)
   end
 end

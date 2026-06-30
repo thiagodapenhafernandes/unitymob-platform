@@ -1,6 +1,14 @@
 require "rails_helper"
 
 RSpec.describe HabitationDuplicateChecker do
+  around do |example|
+    previous_tenant = Current.tenant
+    Current.tenant = Tenant.default
+    example.run
+  ensure
+    Current.tenant = previous_tenant
+  end
+
   it "ignora imóveis do mesmo grupo de captação desdobrada sem ocultar imóveis comuns" do
     group_uuid = SecureRandom.uuid
     sale = create(:habitation, intake_group_uuid: group_uuid, nome_empreendimento: "Edifício Solar", bloco: "501")
@@ -42,6 +50,55 @@ RSpec.describe HabitationDuplicateChecker do
     expect(result.matches).to include(rental)
     expect(result.matches).not_to include(sale)
   end
+
+  it "não retorna imóveis duplicados de outro tenant" do
+    current_tenant = Tenant.create!(name: "Conta A", slug: "conta-a")
+    other_tenant = Tenant.create!(name: "Conta B", slug: "conta-b")
+    Current.tenant = current_tenant
+
+    local_duplicate = create(:habitation, tenant: current_tenant, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: "501")
+    local_duplicate.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    other_duplicate = create(:habitation, tenant: other_tenant, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: "501")
+    other_duplicate.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Edificio Solar",
+      unit: "501",
+      status: "Venda"
+    ).call
+
+    expect(result.matches).to include(local_duplicate)
+    expect(result.matches).not_to include(other_duplicate)
+  end
+
+  it "não usa ignored_id de outro tenant para ignorar grupo local" do
+    current_tenant = Tenant.create!(name: "Conta A", slug: "conta-a")
+    other_tenant = Tenant.create!(name: "Conta B", slug: "conta-b")
+    group_uuid = SecureRandom.uuid
+
+    local_duplicate = create(:habitation, tenant: current_tenant, intake_group_uuid: group_uuid, nome_empreendimento: "Edifício Solar", bloco: "501")
+    local_duplicate.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    ignored_from_other_tenant = create(:habitation, tenant: other_tenant, intake_group_uuid: group_uuid, nome_empreendimento: "Edifício Solar", bloco: "501")
+    ignored_from_other_tenant.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Edificio Solar",
+      unit: "501",
+      status: "Venda",
+      ignored_id: ignored_from_other_tenant.id,
+      tenant: current_tenant
+    ).call
+
+    expect(result.matches).to include(local_duplicate)
+    expect(result.matches).not_to include(ignored_from_other_tenant)
+  end
+
 
   it "ignora imóveis inativos como duplicados" do
     inactive = create(:habitation, :unavailable, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: "501")

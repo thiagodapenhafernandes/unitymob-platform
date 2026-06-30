@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
+  let(:tenant) { Tenant.create!(name: "Tenant templates #{SecureRandom.hex(3)}", slug: "tenant-templates-#{SecureRandom.hex(3)}") }
+
   it "normaliza templates sincronizados com cabecalho de texto" do
     client = instance_double(Whatsapp::CloudClient)
     allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
@@ -23,10 +25,10 @@ RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
       }
     )
 
-    result = described_class.perform_now
+    result = described_class.perform_now(tenant.id)
 
     expect(result).to eq(ok: true, synced: 1)
-    template = WhatsappTemplate.find_by!(name: "sample_template", language: "en_US")
+    template = tenant.whatsapp_templates.find_by!(name: "sample_template", language: "en_US")
     expect(template.header_format).to eq("text")
     expect(template.header_text).to eq("Hello")
     expect(template.template_type).to eq("text")
@@ -50,9 +52,9 @@ RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
       }
     )
 
-    described_class.perform_now
+    described_class.perform_now(tenant.id)
 
-    template = WhatsappTemplate.find_by!(name: "weird_template")
+    template = tenant.whatsapp_templates.find_by!(name: "weird_template")
     expect(template.header_format).to eq("none")
     expect(template.category).to eq("MARKETING")
     expect(template.status).to eq("PENDING")
@@ -109,15 +111,24 @@ RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
       }
     )
 
-    result = described_class.perform_now
+    result = described_class.perform_now(tenant.id)
 
     expect(result).to eq(ok: true, synced: 2)
-    carousel = WhatsappTemplate.find_by!(name: "carousel_template")
+    carousel = tenant.whatsapp_templates.find_by!(name: "carousel_template")
     expect(carousel.template_type).to eq("carousel")
     expect(carousel.carousel_cards.map { |card| card["media_handle"] }).to eq(%w[handle-1 handle-2])
 
-    flow = WhatsappTemplate.find_by!(name: "flow_template")
+    flow = tenant.whatsapp_templates.find_by!(name: "flow_template")
     expect(flow.template_type).to eq("flow")
     expect(flow.flow_config).to include("flow_id" => "123", "button_text" => "Abrir", "screen" => "START")
+  end
+
+  it "não sincroniza no Tenant default quando nenhum contexto é informado" do
+    allow(Whatsapp::CloudClient).to receive(:new)
+
+    result = described_class.perform_now
+
+    expect(result).to eq(ok: false, error: "Tenant não encontrado.")
+    expect(Whatsapp::CloudClient).not_to have_received(:new)
   end
 end

@@ -19,6 +19,8 @@ module Admin::ContextItems
   end
 
   def admin_context_items
+    return [] if current_admin_user&.system_admin? && current_tenant.blank?
+
     admin_context_skip_once_item_keys
     normalize_admin_context_session_items
 
@@ -170,18 +172,19 @@ module Admin::ContextItems
 
   def find_admin_context_record(type, id)
     return if id.blank?
+    return if current_tenant.blank?
 
     case type.to_s
     when "habitation"
-      Habitation.find_by(id: id)
+      current_tenant.habitations.find_by(id: id)
     when "proprietor"
-      Proprietor.find_by(id: id)
+      current_tenant.proprietors.find_by(id: id)
     when "lead"
-      Lead.find_by(id: id)
+      current_tenant.leads.find_by(id: id)
     when "proposal"
-      Proposal.find_by(id: id)
+      Proposal.joins(:lead).where(leads: { tenant_id: current_tenant.id }).find_by(id: id)
     when "whatsapp_conversation"
-      WhatsappConversation.find_by(id: id)
+      current_tenant.whatsapp_conversations.find_by(id: id)
     end
   end
 

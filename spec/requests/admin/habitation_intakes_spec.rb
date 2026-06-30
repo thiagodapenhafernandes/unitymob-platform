@@ -6,6 +6,23 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
   let(:admin) { create(:admin_user, :admin) }
 
+  def default_agent_profile
+    Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
+      profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+    end
+  end
+
+  def default_administrative_profiles
+    internal_management_profile = Tenant.default.profiles.vertical.find_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME).tap do |profile|
+      profile.update!(permissions: Profile.default_permissions_for("Administrativo"))
+    end
+    administrative_profile = Tenant.default.profiles.find_by!(key: "administrativo").tap do |profile|
+      profile.update!(permissions: Profile.default_permissions_for("Administrativo"))
+    end
+
+    [internal_management_profile, administrative_profile]
+  end
+
   before do
     host! "localhost"
     sign_in admin
@@ -30,10 +47,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Exportar")
 
-    broker_profile = Profile.create!(
-      name: "Corretor #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     sign_in broker
 
@@ -81,11 +95,9 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "mantém rascunho de ficha de papel visível somente para quem começou" do
-    administrative_profile = Profile.find_or_initialize_by(name: "Administrativo")
-    administrative_profile.permissions = Profile.default_permissions_for("Administrativo")
-    administrative_profile.save!
-    creator = create(:admin_user, profile: administrative_profile, name: "Administrativo Criador")
-    other = create(:admin_user, profile: administrative_profile, name: "Administrativo Outro")
+    manager_profile, administrative_profile = default_administrative_profiles
+    creator = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Administrativo Criador")
+    other = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Administrativo Outro")
     own_draft = create(:habitation, :broker_intake, admin_user: creator, intake_status: "draft", titulo_anuncio: "Rascunho do criador")
     other_draft = create(:habitation, :broker_intake, admin_user: other, intake_status: "draft", titulo_anuncio: "Rascunho de outro usuário")
     submitted = create(:habitation, :broker_intake, admin_user: other, intake_status: "submitted_for_admin_review", titulo_anuncio: "Ficha em revisão")
@@ -126,10 +138,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "usa rótulos claros para enviar análise e publicar no site pelo captador" do
-    broker_profile = Profile.create!(
-      name: "Corretor publicação #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     intake = create(:habitation, :broker_intake, admin_user: broker, intake_step: "review", intake_status: "draft")
 
@@ -155,10 +164,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "exporta planilha de captações para perfil administrativo" do
-    administrative_profile = Profile.find_or_initialize_by(name: "Administrativo")
-    administrative_profile.permissions = Profile.default_permissions_for("Administrativo")
-    administrative_profile.save!
-    administrative = create(:admin_user, profile: administrative_profile, name: "Iasmim")
+    manager_profile, administrative_profile = default_administrative_profiles
+    administrative = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Iasmim")
     intake = create(
       :habitation,
       :broker_intake,
@@ -183,6 +190,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       cep: "88330-000",
       logradouro: "Rua Central",
       numero: "100",
+      complemento: "Casa 12",
       bairro: "Centro",
       cidade: "Balneário Camboriú",
       uf: "SC"
@@ -215,10 +223,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "bloqueia exportação de captações para corretor" do
-    broker_profile = Profile.create!(
-      name: "Corretor #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     sign_in broker
 
@@ -297,6 +302,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       cep: "88330-001",
       logradouro: "Avenida Brasil",
       numero: "577",
+      complemento: "Sala 402",
       bairro: "Centro",
       cidade: "Balneário Camboriú",
       uf: "SC"
@@ -606,9 +612,9 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   it "limpa opções técnicas e duplicadas na ficha de captação" do
     now = Time.current
     AttributeOption.insert_all([
-      { context: "habitation", category: "feature", name: "ar_condicionado", created_at: now, updated_at: now },
-      { context: "habitation", category: "feature", name: "Ar Condicionado", created_at: now, updated_at: now },
-      { context: "habitation", category: "feature", name: "banheiro_social", created_at: now, updated_at: now }
+      { tenant_id: admin.tenant_id, context: "habitation", category: "feature", name: "ar_condicionado", created_at: now, updated_at: now },
+      { tenant_id: admin.tenant_id, context: "habitation", category: "feature", name: "Ar Condicionado", created_at: now, updated_at: now },
+      { tenant_id: admin.tenant_id, context: "habitation", category: "feature", name: "banheiro_social", created_at: now, updated_at: now }
     ])
     intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "caracteristicas")
 
@@ -810,8 +816,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       }
     }
 
-    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
     intake.reload
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
     expect(intake.categoria).to eq("Casa")
     expect(intake).not_to be_requires_unit_number
   end
@@ -970,16 +976,14 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "envia, aprova e libera para o site quando a ficha está completa" do
-    broker_profile = Profile.create!(
-      name: "Corretor fluxo #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     intake = create(:habitation, :broker_intake, admin_user: broker)
     intake.create_address!(
       cep: "88330-000",
       logradouro: "Rua Central",
       numero: "100",
+      complemento: "Casa 12",
       bairro: "Centro",
       cidade: "Balneário Camboriú",
       uf: "SC"
@@ -1012,10 +1016,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "mostra título e descrição do anúncio para o corretor conferir antes da publicação" do
-    broker_profile = Profile.create!(
-      name: "Corretor anúncio #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     intake = create(
       :habitation,
@@ -1048,10 +1049,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "lista pendências específicas quando corretor tenta publicar captação não pronta" do
-    broker_profile = Profile.create!(
-      name: "Corretor pendência #{SecureRandom.hex(6)}",
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     intake = create(
       :habitation,
@@ -1094,6 +1092,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       :broker_intake,
       admin_user: admin,
       intake_status: "submitted_for_admin_review",
+      proprietario: nil,
+      proprietario_celular: nil,
       observacoes_visitas: ""
     )
 
@@ -1106,11 +1106,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "bloqueia campos sensíveis para corretor após publicação no site" do
-    broker_profile = Profile.create!(
-      name: "Corretor teste",
-      active: true,
-      permissions: Profile.default_permissions_for("Corretor")
-    )
+    broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
     intake = create(
       :habitation,
@@ -1204,6 +1200,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
         zip_code: "88331-000",
         street: "Rua Alterada",
         street_number: "200",
+        complemento: "Casa 12",
         neighborhood: "Barra Sul",
         city: "Itajaí",
         state: "SC"
@@ -1236,6 +1233,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       cep: "88330-100",
       logradouro: "Rua Dupla",
       numero: "200",
+      complemento: "Casa 12",
       bairro: "Centro",
       cidade: "Balneário Camboriú",
       uf: "SC"

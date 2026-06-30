@@ -68,16 +68,17 @@ module Admin
     end
 
     def pending_photo_habitations
-      scheduled_ids = Habitation.broker_intakes.where(photo_flow_choice: "schedule").select(:id)
-      without_photo_ids = Habitation
+      tenant_habitations = current_tenant.habitations
+      scheduled_ids = tenant_habitations.broker_intakes.where(photo_flow_choice: "schedule").select(:id)
+      without_photo_ids = tenant_habitations
         .broker_intakes
         .left_joins(:photos_attachments)
         .where(active_storage_attachments: { id: nil })
         .select(:id)
 
-      Habitation
+      tenant_habitations
         .where(id: scheduled_ids)
-        .or(Habitation.where(id: without_photo_ids))
+        .or(tenant_habitations.where(id: without_photo_ids))
         .where.not(intake_status: "published")
         .includes(:admin_user)
         .order(Arel.sql("photo_session_requested_at ASC NULLS LAST"), created_at: :desc)

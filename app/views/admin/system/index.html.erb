@@ -1,5 +1,5 @@
 <% content_for :admin_contextbar_breadcrumb do %>
-  <%= link_to "Admin", admin_root_path %>
+  <%= link_to "Plataforma", admin_system_path %>
   <i class="bi bi-chevron-right"></i>
   <strong>Sistema</strong>
 <% end %>
@@ -40,6 +40,54 @@
           hint: "#{fmt.call(@metrics[:jobs_claimed])} executando · #{fmt.call(@metrics[:jobs_scheduled])} agendados") %>
     <%= ax_metric_card(label: "Logins hoje", value: fmt.call(@metrics[:logins_today])) %>
   </div>
+
+  <%= ax_operational_panel(
+        eyebrow: "Contas",
+        title: "Acesso por impersonação",
+        actions: ax_badge("sem acesso operacional direto", tone: :gray)
+      ) do %>
+    <p class="ax-page-subtitle">
+      Admins do Sistema administram a plataforma inteira. Para abrir áreas operacionais
+      de uma conta, entre como o Dono da conta via impersonação.
+    </p>
+
+    <% if @tenants.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th>Tenant</th>
+              <th>Slug</th>
+              <th>Dono da conta</th>
+              <th class="ax-num" style="width:120px">Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @tenants.each do |tenant| %>
+              <% owner = tenant.admin_users.detect { |user| user.active? && !user.super_admin? && user.profile&.tenant_owner? } %>
+              <tr>
+                <td class="ax-strong"><%= tenant.name %></td>
+                <td><%= tenant.slug %></td>
+                <td><%= owner&.name || "Sem dono ativo" %></td>
+                <td class="ax-num">
+                  <% if owner %>
+                    <%= button_to "Impersonar",
+                          admin_system_tenant_owner_impersonation_path(tenant),
+                          method: :post,
+                          class: "ax-dashboard-panel__link" %>
+                  <% else %>
+                    <span class="ax-system-muted">Indisponível</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <%= ax_empty_state(title: "Nenhum Tenant ativo", description: "Crie ou reative uma conta para acessar áreas operacionais.", icon: "building") %>
+    <% end %>
+  <% end %>
 
   <%= ax_operational_panel(
         eyebrow: "Fila",
@@ -91,13 +139,13 @@
   <%= ax_operational_panel(
         eyebrow: "Operadores",
         title: "Admins do Sistema",
-        actions: link_to("Gerenciar usuários", admin_admin_users_path, class: "ax-dashboard-panel__link")
+        actions: ax_badge("fora das contas", tone: :gray)
       ) do %>
     <div class="ax-system-admin-summary">
       <div>
         <p class="ax-page-subtitle">
           Operadores da aplicação, acima do Admin da Conta. Têm acesso a este painel e podem
-          impersonar usuários pela tela de <%= link_to "Usuários", admin_admin_users_path, class: "tw-text-primary" %>.
+          impersonar uma conta pelo Dono da conta, sem selecionar Tenant operacional direto.
         </p>
       </div>
       <div class="ax-system-admin-summary__badges">
@@ -119,7 +167,6 @@
               <th>Último login</th>
               <th>Segurança</th>
               <th style="width:120px">Status</th>
-              <th class="ax-num" style="width:96px">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -127,7 +174,7 @@
               <% last_login = @last_login_by_admin_id[u.id] %>
               <tr>
                 <td class="ax-strong">
-                  <%= link_to u.name, edit_admin_admin_user_path(u) %>
+                  <%= u.name %>
                   <span class="ax-system-admin-role">Sistema</span>
                 </td>
                 <td><%= u.email %></td>
@@ -147,7 +194,6 @@
                   </div>
                 </td>
                 <td><%= ax_badge(u.active? ? "Ativo" : "Inativo", tone: u.active? ? :green : :gray, dot: true) %></td>
-                <td class="ax-num"><%= link_to "Editar", edit_admin_admin_user_path(u), class: "ax-dashboard-panel__link" %></td>
               </tr>
             <% end %>
           </tbody>

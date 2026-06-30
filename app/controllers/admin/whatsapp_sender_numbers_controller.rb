@@ -3,7 +3,7 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
   before_action :set_sender_number, only: [:update, :destroy]
 
   def create
-    @sender_number = WhatsappSenderNumber.new(sender_number_params)
+    @sender_number = current_tenant.whatsapp_sender_numbers.new(sender_number_params)
     @sender_number.status = "connected"
     @sender_number.active = true
 
@@ -30,7 +30,7 @@ class Admin::WhatsappSenderNumbersController < Admin::BaseController
   private
 
   def set_sender_number
-    @sender_number = WhatsappSenderNumber.find(params[:id])
+    @sender_number = current_tenant.whatsapp_sender_numbers.find(params[:id])
   end
 
   def sender_number_params

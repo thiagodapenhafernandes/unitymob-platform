@@ -3,6 +3,8 @@
 # Registro de check-in/check-out de um corretor numa loja.
 # Unicidade: apenas 1 check-in ativo por admin_user (via partial unique index).
 class CheckIn < ApplicationRecord
+  include TenantScoped
+
   SRID = 4326
 
   enum status: {
@@ -19,6 +21,7 @@ class CheckIn < ApplicationRecord
   has_many :location_pings, dependent: :delete_all
 
   validates :checked_in_at, presence: true
+  validate :associations_belong_to_same_tenant
 
   scope :today, -> { where(checked_in_at: Time.current.beginning_of_day..Time.current.end_of_day) }
   scope :suspicious, -> { where(suspicious: true) }
@@ -79,6 +82,15 @@ class CheckIn < ApplicationRecord
     end
     if checkout_latitude.present? && checkout_longitude.present?
       self.checkout_location = "SRID=#{SRID};POINT(#{checkout_longitude.to_f} #{checkout_latitude.to_f})"
+    end
+  end
+
+  def associations_belong_to_same_tenant
+    %i[admin_user store store_shift].each do |association_name|
+      record = public_send(association_name)
+      next if record.blank? || tenant.blank? || record.tenant_id == tenant_id
+
+      errors.add(association_name, "deve pertencer à mesma conta do check-in")
     end
   end
 end

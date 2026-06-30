@@ -13,51 +13,53 @@ module Admin
       log_export(:warn, "[HabitationExportJob] export_id=#{export_id} status=missing") unless export
       return unless export
 
-      export.update!(status: "processing", progress: 0)
+      Current.set(tenant: export.tenant) do
+        export.update!(status: "processing", progress: 0)
 
-      ids = Array(export.source_ids).map(&:to_i)
-      fields = Array(export.fields)
-      total = [ids.size, 1].max
-      done = 0
-      last_logged_progress = -1
+        ids = Array(export.source_ids).map(&:to_i)
+        fields = Array(export.fields)
+        total = [ids.size, 1].max
+        done = 0
+        last_logged_progress = -1
 
-      log_export(
-        :info,
-        "[HabitationExportJob] export_id=#{export.id} user_id=#{export.admin_user_id} status=started records=#{ids.size} fields=#{fields.size}"
-      )
+        log_export(
+          :info,
+          "[HabitationExportJob] export_id=#{export.id} user_id=#{export.admin_user_id} status=started records=#{ids.size} fields=#{fields.size}"
+        )
 
-      csv = CSV.generate(headers: true, col_sep: export.col_sep) do |out|
-        out << Habitations::CsvExporter.header_row(fields)
-        ids.each_slice(BATCH) do |slice|
-          by_id = Habitation.where(id: slice).index_by(&:id)
-          slice.each do |id|
-            habitation = by_id[id]
-            out << Habitations::CsvExporter.row(habitation, fields) if habitation
-          end
-          done += slice.size
-          progress = [(done * 100 / total), 100].min
-          export.update_column(:progress, progress)
+        csv = CSV.generate(headers: true, col_sep: export.col_sep) do |out|
+          out << Habitations::CsvExporter.header_row(fields)
+          ids.each_slice(BATCH) do |slice|
+            by_id = export.tenant.habitations.where(id: slice).index_by(&:id)
+            slice.each do |id|
+              habitation = by_id[id]
+              out << Habitations::CsvExporter.row(habitation, fields) if habitation
+            end
+            done += slice.size
+            progress = [(done * 100 / total), 100].min
+            export.update_column(:progress, progress)
 
-          if progress == 100 || progress >= last_logged_progress + 10
-            log_export(
-              :info,
-              "[HabitationExportJob] export_id=#{export.id} status=processing progress=#{progress}% done=#{done}/#{ids.size}"
-            )
-            last_logged_progress = progress
+            if progress == 100 || progress >= last_logged_progress + 10
+              log_export(
+                :info,
+                "[HabitationExportJob] export_id=#{export.id} status=processing progress=#{progress}% done=#{done}/#{ids.size}"
+              )
+              last_logged_progress = progress
+            end
           end
         end
-      end
 
-      export.file.attach(
-        io: StringIO.new(csv),
-        filename: export.filename,
-        content_type: "text/csv; charset=utf-8"
-      )
-      export.update!(status: "completed", progress: 100)
-      log_export(
-        :info,
-        "[HabitationExportJob] export_id=#{export.id} status=completed records=#{ids.size} filename=#{export.filename}"
-      )
+        export.file.attach(
+          io: StringIO.new(csv),
+          filename: export.filename,
+          content_type: "text/csv; charset=utf-8"
+        )
+        export.update!(status: "completed", progress: 100)
+        log_export(
+          :info,
+          "[HabitationExportJob] export_id=#{export.id} status=completed records=#{ids.size} filename=#{export.filename}"
+        )
+      end
     rescue StandardError => e
       export&.update(status: "failed", error_message: e.message.to_s[0, 500])
       log_export(

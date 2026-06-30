@@ -16,9 +16,9 @@ module Field
       @active_check_in  = @field_enabled ? @admin_user.active_check_in : nil
       @today_shifts     = @field_enabled ? today_shifts_for(@admin_user) : []
 
-      lead_scope = Lead.where(admin_user_id: @admin_user.id)
-      intake_scope = Habitation.broker_intakes.where(admin_user_id: @admin_user.id)
-      habitation_scope = Habitation.where(admin_user_id: @admin_user.id)
+      lead_scope = current_tenant.leads.where(admin_user_id: @admin_user.id)
+      intake_scope = current_tenant.habitations.broker_intakes.where(admin_user_id: @admin_user.id)
+      habitation_scope = current_tenant.habitations.where(admin_user_id: @admin_user.id)
 
       @my_leads_today = lead_scope.where(created_at: Date.current.beginning_of_day..).count
       @new_leads_count = lead_scope.where(status: Lead.status_value(:novo)).count
@@ -38,7 +38,7 @@ module Field
       @my_published_habitations = habitation_scope.where(exibir_no_site_flag: true).count
 
       @recent_my_leads = lead_scope.order(created_at: :desc).limit(5)
-      @lead_properties_by_id = Habitation.where(id: @recent_my_leads.filter_map(&:property_id).uniq).index_by(&:id)
+      @lead_properties_by_id = current_tenant.habitations.where(id: @recent_my_leads.filter_map(&:property_id).uniq).index_by(&:id)
       @recent_open_captacoes = intake_scope
                                 .where(intake_status: [nil, "draft", "returned_to_broker"])
                                 .order(updated_at: :desc)

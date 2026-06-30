@@ -1,4 +1,4 @@
-\restrict eyLftfcBQsefKqtwVCDRPnj0jGabteTJadg5ugtWWmi9iqTFATpndbIF9QHhUaJ
+\restrict fkQsWClk0o1OVcyKm7xx9MeWO8IPhxH5t71lfD4zUROyixFELso5va3cfC2sFhd
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -41,6 +41,207 @@ CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION unaccent IS 'text search dictionary that removes accents';
+
+
+--
+-- Name: enforce_access_audit_log_tenant_governance(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_access_audit_log_tenant_governance() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  owner_is_system_admin boolean;
+  owner_tenant_id bigint;
+BEGIN
+  IF NEW.admin_user_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT super_admin, tenant_id
+    INTO owner_is_system_admin, owner_tenant_id
+  FROM admin_users
+  WHERE id = NEW.admin_user_id;
+
+  IF owner_is_system_admin IS DISTINCT FROM TRUE AND NEW.tenant_id IS NULL THEN
+    RAISE EXCEPTION 'access audit log tenant is required for account users'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF owner_is_system_admin = TRUE AND NEW.tenant_id IS NOT NULL THEN
+    RAISE EXCEPTION 'platform access audit log must not belong to a tenant'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF owner_is_system_admin IS DISTINCT FROM TRUE AND owner_tenant_id IS DISTINCT FROM NEW.tenant_id THEN
+    RAISE EXCEPTION 'access audit log tenant must match admin user tenant'
+      USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: enforce_admin_user_profile_governance(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_admin_user_profile_governance() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  user_profile_axis text;
+  user_profile_position integer;
+  horizontal_axis text;
+  horizontal_vertical_profile_id bigint;
+  manager_profile_position integer;
+  cycle_found boolean;
+BEGIN
+  IF NEW.profile_id IS NOT NULL THEN
+    SELECT axis, position
+      INTO user_profile_axis, user_profile_position
+    FROM profiles
+    WHERE id = NEW.profile_id
+      AND tenant_id = NEW.tenant_id;
+
+    IF user_profile_axis IS DISTINCT FROM 'vertical' THEN
+      RAISE EXCEPTION 'admin user profile must be a vertical profile from the same tenant'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  IF NEW.horizontal_profile_id IS NOT NULL THEN
+    IF NEW.profile_id IS NULL THEN
+      RAISE EXCEPTION 'admin user horizontal profile requires a vertical profile'
+        USING ERRCODE = '23514';
+    END IF;
+
+    SELECT axis, vertical_profile_id
+      INTO horizontal_axis, horizontal_vertical_profile_id
+    FROM profiles
+    WHERE id = NEW.horizontal_profile_id
+      AND tenant_id = NEW.tenant_id;
+
+    IF horizontal_axis IS DISTINCT FROM 'horizontal' THEN
+      RAISE EXCEPTION 'admin user horizontal profile must be a horizontal profile from the same tenant'
+        USING ERRCODE = '23514';
+    END IF;
+
+    IF horizontal_vertical_profile_id IS DISTINCT FROM NEW.profile_id THEN
+      RAISE EXCEPTION 'admin user horizontal profile must be attached to the user vertical profile'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  IF NEW.manager_id IS NOT NULL THEN
+    IF NEW.profile_id IS NULL THEN
+      RAISE EXCEPTION 'admin user with manager requires a vertical profile'
+        USING ERRCODE = '23514';
+    END IF;
+
+    SELECT manager_profile.position
+      INTO manager_profile_position
+    FROM admin_users manager
+    JOIN profiles manager_profile
+      ON manager_profile.id = manager.profile_id
+     AND manager_profile.tenant_id = manager.tenant_id
+    WHERE manager.id = NEW.manager_id
+      AND manager.tenant_id = NEW.tenant_id
+      AND manager_profile.axis = 'vertical';
+
+    IF manager_profile_position IS NULL OR manager_profile_position >= user_profile_position THEN
+      RAISE EXCEPTION 'admin user manager must be above the user vertical profile'
+        USING ERRCODE = '23514';
+    END IF;
+
+    IF NEW.id IS NOT NULL THEN
+      WITH RECURSIVE subtree AS (
+        SELECT id
+        FROM admin_users
+        WHERE manager_id = NEW.id
+          AND tenant_id = NEW.tenant_id
+        UNION ALL
+        SELECT child.id
+        FROM admin_users child
+        JOIN subtree parent ON child.manager_id = parent.id
+        WHERE child.tenant_id = NEW.tenant_id
+      )
+      SELECT EXISTS(SELECT 1 FROM subtree WHERE id = NEW.manager_id)
+        INTO cycle_found;
+
+      IF cycle_found THEN
+        RAISE EXCEPTION 'admin user manager cannot create a hierarchy cycle'
+          USING ERRCODE = '23514';
+      END IF;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: enforce_profile_axis_governance(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_profile_axis_governance() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.axis = 'horizontal' THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM profiles parent
+      WHERE parent.id = NEW.vertical_profile_id
+        AND parent.tenant_id = NEW.tenant_id
+        AND parent.axis = 'vertical'
+    ) THEN
+      RAISE EXCEPTION 'horizontal profile must reference a vertical profile from the same tenant'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: enforce_trusted_device_tenant_governance(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_trusted_device_tenant_governance() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  owner_is_system_admin boolean;
+  owner_tenant_id bigint;
+BEGIN
+  SELECT super_admin, tenant_id
+    INTO owner_is_system_admin, owner_tenant_id
+  FROM admin_users
+  WHERE id = NEW.admin_user_id;
+
+  IF owner_is_system_admin IS DISTINCT FROM TRUE AND NEW.tenant_id IS NULL THEN
+    RAISE EXCEPTION 'trusted device tenant is required for account users'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF owner_is_system_admin = TRUE AND NEW.tenant_id IS NOT NULL THEN
+    RAISE EXCEPTION 'platform trusted device must not belong to a tenant'
+      USING ERRCODE = '23514';
+  END IF;
+
+  IF owner_is_system_admin IS DISTINCT FROM TRUE AND owner_tenant_id IS DISTINCT FROM NEW.tenant_id THEN
+    RAISE EXCEPTION 'trusted device tenant must match admin user tenant'
+      USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
 
 
 --
@@ -130,7 +331,8 @@ CREATE TABLE public.access_audit_logs (
     controller_name character varying,
     action_name character varying,
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL
+    created_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint
 );
 
 
@@ -169,7 +371,8 @@ CREATE TABLE public.access_control_rules (
     enabled boolean DEFAULT true NOT NULL,
     description text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -424,7 +627,12 @@ CREATE TABLE public.admin_users (
     sales_goal_cents bigint,
     hierarchy_position integer,
     super_admin boolean DEFAULT false NOT NULL,
-    leads_view_mode character varying
+    leads_view_mode character varying,
+    tenant_id bigint,
+    horizontal_profile_id bigint,
+    CONSTRAINT admin_users_profile_required_unless_system_admin CHECK (((super_admin = true) OR (profile_id IS NOT NULL))),
+    CONSTRAINT admin_users_system_admin_outside_tenant CHECK (((super_admin = false) OR ((tenant_id IS NULL) AND (profile_id IS NULL) AND (horizontal_profile_id IS NULL) AND (manager_id IS NULL)))),
+    CONSTRAINT admin_users_tenant_required_unless_system_admin CHECK (((super_admin = true) OR (tenant_id IS NOT NULL)))
 );
 
 
@@ -503,7 +711,8 @@ CREATE TABLE public.appointments (
     status character varying DEFAULT 'agendado'::character varying NOT NULL,
     notes text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -550,7 +759,8 @@ CREATE TABLE public.attribute_options (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     "position" integer,
-    description character varying
+    description character varying,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -589,7 +799,8 @@ CREATE TABLE public.automation_events (
     processed_at timestamp(6) without time zone,
     error_message text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -629,7 +840,8 @@ CREATE TABLE public.automation_execution_steps (
     output jsonb DEFAULT '{}'::jsonb NOT NULL,
     error_message text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -671,7 +883,8 @@ CREATE TABLE public.automation_executions (
     error_message text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    automation_event_id bigint
+    automation_event_id bigint,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -709,7 +922,8 @@ CREATE TABLE public.automation_rules (
     last_run_at timestamp(6) without time zone,
     runs_count integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -829,7 +1043,8 @@ CREATE TABLE public.automation_workflow_versions (
     published_by_id bigint,
     published_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -864,7 +1079,8 @@ CREATE TABLE public.automation_workflows (
     created_by_id bigint,
     last_activated_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -1074,7 +1290,8 @@ CREATE TABLE public.check_ins (
     checkout_location public.geography(Point,4326),
     suspicious boolean DEFAULT false NOT NULL,
     suspicious_reasons jsonb DEFAULT '[]'::jsonb,
-    fingerprint_hash character varying
+    fingerprint_hash character varying,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -1109,7 +1326,8 @@ CREATE TABLE public.checkin_audit_logs (
     action character varying NOT NULL,
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     ip inet,
-    created_at timestamp(6) without time zone NOT NULL
+    created_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -1454,7 +1672,8 @@ CREATE TABLE public.data_export_audit_logs (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     ip inet,
     user_agent character varying,
-    created_at timestamp(6) without time zone NOT NULL
+    created_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -1489,7 +1708,8 @@ CREATE TABLE public.distribution_rule_agents (
     last_lead_received_at timestamp(6) without time zone,
     "position" integer,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -1551,7 +1771,8 @@ CREATE TABLE public.distribution_rules (
     require_active_shift boolean DEFAULT false NOT NULL,
     checkin_store_ids bigint[] DEFAULT '{}'::bigint[] NOT NULL,
     notify_push boolean DEFAULT false NOT NULL,
-    notify_webhook_urls jsonb DEFAULT '[]'::jsonb NOT NULL
+    notify_webhook_urls jsonb DEFAULT '[]'::jsonb NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -1847,7 +2068,8 @@ CREATE TABLE public.habitations (
     dwv_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
     rental_guarantee_method character varying,
     permuta_valor_percentual integer,
-    admin_review_return_reason text
+    admin_review_return_reason text,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2075,7 +2297,8 @@ CREATE TABLE public.habitation_audit_logs (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     ip inet,
     user_agent character varying,
-    created_at timestamp(6) without time zone NOT NULL
+    created_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2160,7 +2383,8 @@ CREATE TABLE public.habitation_exports (
     col_sep character varying DEFAULT ';'::character varying NOT NULL,
     error_message text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2582,7 +2806,8 @@ CREATE TABLE public.lead_activities (
     kind character varying,
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2620,7 +2845,8 @@ CREATE TABLE public.lead_audit_logs (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     ip inet,
     user_agent character varying,
-    created_at timestamp(6) without time zone NOT NULL
+    created_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2726,7 +2952,8 @@ CREATE TABLE public.leads (
     vista_import_batch_id bigint,
     vista_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
     business_scoped_user_id character varying,
-    tags jsonb DEFAULT '[]'::jsonb NOT NULL
+    tags jsonb DEFAULT '[]'::jsonb NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2806,7 +3033,8 @@ CREATE TABLE public.manual_checkin_requests (
     review_notes text,
     approved_check_in_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -3115,7 +3343,14 @@ CREATE TABLE public.profiles (
     active boolean,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    key character varying
+    key character varying,
+    tenant_id bigint NOT NULL,
+    axis character varying DEFAULT 'vertical'::character varying NOT NULL,
+    vertical_profile_id bigint,
+    "position" integer,
+    locked boolean DEFAULT false NOT NULL,
+    CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY ((ARRAY['vertical'::character varying, 'horizontal'::character varying])::text[]))),
+    CONSTRAINT profiles_axis_shape CHECK (((((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)) OR (((axis)::text = 'horizontal'::text) AND (vertical_profile_id IS NOT NULL) AND ("position" IS NULL))))
 );
 
 
@@ -3310,7 +3545,8 @@ CREATE TABLE public.proprietors (
     receive_information boolean DEFAULT false NOT NULL,
     show_email_to_client boolean DEFAULT false NOT NULL,
     show_phone_on_web boolean DEFAULT false NOT NULL,
-    spouse_birth_date date
+    spouse_birth_date date,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4282,7 +4518,8 @@ CREATE TABLE public.store_shifts (
     end_time time without time zone NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4330,7 +4567,8 @@ CREATE TABLE public.stores (
     updated_at timestamp(6) without time zone NOT NULL,
     location public.geography(Point,4326),
     number character varying,
-    neighborhood character varying
+    neighborhood character varying,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4370,7 +4608,8 @@ CREATE TABLE public.tasks (
     status character varying DEFAULT 'pendente'::character varying NOT NULL,
     priority character varying DEFAULT 'normal'::character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4394,6 +4633,39 @@ ALTER SEQUENCE public.tasks_id_seq OWNED BY public.tasks.id;
 
 
 --
+-- Name: tenants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tenants (
+    id bigint NOT NULL,
+    name character varying NOT NULL,
+    slug character varying NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: tenants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tenants_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tenants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tenants_id_seq OWNED BY public.tenants.id;
+
+
+--
 -- Name: trusted_devices; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4412,7 +4684,8 @@ CREATE TABLE public.trusted_devices (
     trusted_at timestamp(6) without time zone,
     last_seen_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint
 );
 
 
@@ -4669,7 +4942,8 @@ CREATE TABLE public.whatsapp_business_integrations (
     sale_rent_requires_lead_form boolean DEFAULT true NOT NULL,
     webhook_verify_token character varying,
     app_secret character varying,
-    webhook_callback_url character varying
+    webhook_callback_url character varying,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4721,7 +4995,8 @@ CREATE TABLE public.whatsapp_campaign_messages (
     reply_body text,
     reply_button_text character varying,
     reply_button_payload character varying,
-    reply_payload jsonb DEFAULT '{}'::jsonb NOT NULL
+    reply_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4765,7 +5040,8 @@ CREATE TABLE public.whatsapp_campaign_recipients (
     converted_at timestamp(6) without time zone,
     unsubscribed_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4786,6 +5062,51 @@ CREATE SEQUENCE public.whatsapp_campaign_recipients_id_seq
 --
 
 ALTER SEQUENCE public.whatsapp_campaign_recipients_id_seq OWNED BY public.whatsapp_campaign_recipients.id;
+
+
+--
+-- Name: whatsapp_campaign_unsubscribes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.whatsapp_campaign_unsubscribes (
+    id bigint NOT NULL,
+    whatsapp_sender_number_id bigint NOT NULL,
+    whatsapp_campaign_id bigint,
+    whatsapp_campaign_message_id bigint,
+    whatsapp_campaign_recipient_id bigint,
+    unsubscribed_by_message_id bigint,
+    reenabled_by_id bigint,
+    phone_number character varying NOT NULL,
+    contact_name character varying,
+    source character varying DEFAULT 'campaign_button'::character varying NOT NULL,
+    reason character varying DEFAULT 'Descadastro solicitado pelo contato.'::character varying NOT NULL,
+    unsubscribed_at timestamp(6) without time zone NOT NULL,
+    reenabled_at timestamp(6) without time zone,
+    reenable_reason text,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
+);
+
+
+--
+-- Name: whatsapp_campaign_unsubscribes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.whatsapp_campaign_unsubscribes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: whatsapp_campaign_unsubscribes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.whatsapp_campaign_unsubscribes_id_seq OWNED BY public.whatsapp_campaign_unsubscribes.id;
 
 
 --
@@ -4828,7 +5149,9 @@ CREATE TABLE public.whatsapp_campaigns (
     import_valid_rows integer DEFAULT 0 NOT NULL,
     import_invalid_rows integer DEFAULT 0 NOT NULL,
     import_last_error text,
-    response_decisions jsonb DEFAULT '{}'::jsonb NOT NULL
+    response_decisions jsonb DEFAULT '{}'::jsonb NOT NULL,
+    automation_workflow_id bigint,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4867,7 +5190,8 @@ CREATE TABLE public.whatsapp_conversations (
     status character varying DEFAULT 'open'::character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    business_scoped_user_id character varying
+    business_scoped_user_id character varying,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4911,7 +5235,8 @@ CREATE TABLE public.whatsapp_messages (
     read_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    recipient_user_id character varying
+    recipient_user_id character varying,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4953,7 +5278,8 @@ CREATE TABLE public.whatsapp_sender_numbers (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     cpl_sent_unit_price numeric(10,2) DEFAULT 0.59 NOT NULL,
-    cpl_fla_unit_price numeric(10,2) DEFAULT 0.12 NOT NULL
+    cpl_fla_unit_price numeric(10,2) DEFAULT 0.12 NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -5002,7 +5328,8 @@ CREATE TABLE public.whatsapp_templates (
     components jsonb DEFAULT '[]'::jsonb NOT NULL,
     submission_error text,
     carousel_cards jsonb DEFAULT '[]'::jsonb NOT NULL,
-    flow_config jsonb DEFAULT '{}'::jsonb NOT NULL
+    flow_config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -5712,6 +6039,13 @@ ALTER TABLE ONLY public.tasks ALTER COLUMN id SET DEFAULT nextval('public.tasks_
 
 
 --
+-- Name: tenants id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenants ALTER COLUMN id SET DEFAULT nextval('public.tenants_id_seq'::regclass);
+
+
+--
 -- Name: trusted_devices id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5772,6 +6106,13 @@ ALTER TABLE ONLY public.whatsapp_campaign_messages ALTER COLUMN id SET DEFAULT n
 --
 
 ALTER TABLE ONLY public.whatsapp_campaign_recipients ALTER COLUMN id SET DEFAULT nextval('public.whatsapp_campaign_recipients_id_seq'::regclass);
+
+
+--
+-- Name: whatsapp_campaign_unsubscribes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes ALTER COLUMN id SET DEFAULT nextval('public.whatsapp_campaign_unsubscribes_id_seq'::regclass);
 
 
 --
@@ -6338,11 +6679,35 @@ ALTER TABLE ONLY public.portal_listing_states
 
 
 --
+-- Name: profiles profiles_builtin_axis_governance; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.profiles
+    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) OR (((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
+
+
+--
+-- Name: profiles profiles_locked_only_for_builtin_verticals; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.profiles
+    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])))) NOT VALID;
+
+
+--
 -- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.profiles
     ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: profiles profiles_vertical_position_governance; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.profiles
+    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
 
 
 --
@@ -6610,6 +6975,14 @@ ALTER TABLE ONLY public.tasks
 
 
 --
+-- Name: tenants tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenants
+    ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: trusted_devices trusted_devices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6679,6 +7052,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_messages
 
 ALTER TABLE ONLY public.whatsapp_campaign_recipients
     ADD CONSTRAINT whatsapp_campaign_recipients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: whatsapp_campaign_unsubscribes whatsapp_campaign_unsubscribes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
+    ADD CONSTRAINT whatsapp_campaign_unsubscribes_pkey PRIMARY KEY (id);
 
 
 --
@@ -6869,6 +7250,62 @@ CREATE INDEX idx_on_portal_external_listing_id_a9202d155f ON public.portal_integ
 
 
 --
+-- Name: idx_on_tenant_id_automation_execution_id_34e6c3acad; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_automation_execution_id_34e6c3acad ON public.automation_execution_steps USING btree (tenant_id, automation_execution_id);
+
+
+--
+-- Name: idx_on_tenant_id_automation_workflow_id_4d4759b95a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_automation_workflow_id_4d4759b95a ON public.automation_executions USING btree (tenant_id, automation_workflow_id);
+
+
+--
+-- Name: idx_on_tenant_id_automation_workflow_id_d14f88f362; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_automation_workflow_id_d14f88f362 ON public.automation_workflow_versions USING btree (tenant_id, automation_workflow_id);
+
+
+--
+-- Name: idx_on_tenant_id_phone_number_id_9c3acbd0a4; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_phone_number_id_9c3acbd0a4 ON public.whatsapp_business_integrations USING btree (tenant_id, phone_number_id);
+
+
+--
+-- Name: idx_on_tenant_id_whatsapp_campaign_id_234de3ba14; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_whatsapp_campaign_id_234de3ba14 ON public.whatsapp_campaign_recipients USING btree (tenant_id, whatsapp_campaign_id);
+
+
+--
+-- Name: idx_on_tenant_id_whatsapp_campaign_id_4ce4f8680f; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_whatsapp_campaign_id_4ce4f8680f ON public.whatsapp_campaign_messages USING btree (tenant_id, whatsapp_campaign_id);
+
+
+--
+-- Name: idx_on_tenant_id_whatsapp_campaign_id_8359110939; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_whatsapp_campaign_id_8359110939 ON public.whatsapp_campaign_unsubscribes USING btree (tenant_id, whatsapp_campaign_id);
+
+
+--
+-- Name: idx_on_tenant_id_whatsapp_conversation_id_37b8916511; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_whatsapp_conversation_id_37b8916511 ON public.whatsapp_messages USING btree (tenant_id, whatsapp_conversation_id);
+
+
+--
 -- Name: idx_on_vista_client_code_occurred_at_61bc0ad3da; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6974,6 +7411,13 @@ CREATE UNIQUE INDEX idx_vista_raw_records_batch_table_row ON public.vista_raw_re
 
 
 --
+-- Name: idx_wa_campaign_messages_dispatch_scan; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_campaign_messages_dispatch_scan ON public.whatsapp_campaign_messages USING btree (whatsapp_campaign_id, status, created_at);
+
+
+--
 -- Name: idx_wa_campaign_messages_on_campaign_lead; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6992,6 +7436,69 @@ CREATE INDEX idx_wa_campaign_messages_on_recipient ON public.whatsapp_campaign_m
 --
 
 CREATE UNIQUE INDEX idx_wa_campaign_recipients_on_campaign_phone ON public.whatsapp_campaign_recipients USING btree (whatsapp_campaign_id, phone_number);
+
+
+--
+-- Name: idx_wa_unsub_active_sender_phone; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_wa_unsub_active_sender_phone ON public.whatsapp_campaign_unsubscribes USING btree (whatsapp_sender_number_id, phone_number) WHERE (reenabled_at IS NULL);
+
+
+--
+-- Name: idx_wa_unsub_campaign; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_unsub_campaign ON public.whatsapp_campaign_unsubscribes USING btree (whatsapp_campaign_id);
+
+
+--
+-- Name: idx_wa_unsub_campaign_message; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_unsub_campaign_message ON public.whatsapp_campaign_unsubscribes USING btree (whatsapp_campaign_message_id);
+
+
+--
+-- Name: idx_wa_unsub_campaign_recipient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_unsub_campaign_recipient ON public.whatsapp_campaign_unsubscribes USING btree (whatsapp_campaign_recipient_id);
+
+
+--
+-- Name: idx_wa_unsub_inbound_message; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_unsub_inbound_message ON public.whatsapp_campaign_unsubscribes USING btree (unsubscribed_by_message_id);
+
+
+--
+-- Name: idx_wa_unsub_phone; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_unsub_phone ON public.whatsapp_campaign_unsubscribes USING btree (phone_number);
+
+
+--
+-- Name: idx_wa_unsub_reenabled_by; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_unsub_reenabled_by ON public.whatsapp_campaign_unsubscribes USING btree (reenabled_by_id);
+
+
+--
+-- Name: idx_wa_unsub_sender; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_unsub_sender ON public.whatsapp_campaign_unsubscribes USING btree (whatsapp_sender_number_id);
+
+
+--
+-- Name: idx_wa_unsub_unsubscribed_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_unsub_unsubscribed_at ON public.whatsapp_campaign_unsubscribes USING btree (unsubscribed_at);
 
 
 --
@@ -7037,6 +7544,13 @@ CREATE INDEX index_access_audit_logs_on_result ON public.access_audit_logs USING
 
 
 --
+-- Name: index_access_audit_logs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_access_audit_logs_on_tenant_id ON public.access_audit_logs USING btree (tenant_id);
+
+
+--
 -- Name: index_access_control_rules_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7076,6 +7590,20 @@ CREATE INDEX index_access_control_rules_on_rule_type ON public.access_control_ru
 --
 
 CREATE INDEX index_access_control_rules_on_scope_type ON public.access_control_rules USING btree (scope_type);
+
+
+--
+-- Name: index_access_control_rules_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_access_control_rules_on_tenant_id ON public.access_control_rules USING btree (tenant_id);
+
+
+--
+-- Name: index_access_rules_on_tenant_type_scope_enabled; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_access_rules_on_tenant_type_scope_enabled ON public.access_control_rules USING btree (tenant_id, rule_type, scope_type, enabled);
 
 
 --
@@ -7163,6 +7691,20 @@ CREATE INDEX index_admin_users_on_field_agent_enabled ON public.admin_users USIN
 
 
 --
+-- Name: index_admin_users_on_horizontal_profile_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_admin_users_on_horizontal_profile_id ON public.admin_users USING btree (horizontal_profile_id);
+
+
+--
+-- Name: index_admin_users_on_id_and_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_admin_users_on_id_and_tenant_id ON public.admin_users USING btree (id, tenant_id);
+
+
+--
 -- Name: index_admin_users_on_manager_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7202,6 +7744,27 @@ CREATE INDEX index_admin_users_on_super_admin ON public.admin_users USING btree 
 --
 
 CREATE INDEX index_admin_users_on_team_code ON public.admin_users USING btree (team_code);
+
+
+--
+-- Name: index_admin_users_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_admin_users_on_tenant_id ON public.admin_users USING btree (tenant_id);
+
+
+--
+-- Name: index_admin_users_on_tenant_id_and_manager_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_admin_users_on_tenant_id_and_manager_id ON public.admin_users USING btree (tenant_id, manager_id);
+
+
+--
+-- Name: index_admin_users_on_tenant_id_and_profile_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_admin_users_on_tenant_id_and_profile_id ON public.admin_users USING btree (tenant_id, profile_id);
 
 
 --
@@ -7282,24 +7845,38 @@ CREATE INDEX index_appointments_on_starts_at ON public.appointments USING btree 
 
 
 --
+-- Name: index_appointments_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_appointments_on_tenant_id ON public.appointments USING btree (tenant_id);
+
+
+--
+-- Name: index_appointments_on_tenant_id_and_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_appointments_on_tenant_id_and_admin_user_id ON public.appointments USING btree (tenant_id, admin_user_id);
+
+
+--
 -- Name: index_attribute_options_on_context_category_lower_name; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_attribute_options_on_context_category_lower_name ON public.attribute_options USING btree (lower((name)::text), category, context);
+CREATE UNIQUE INDEX index_attribute_options_on_context_category_lower_name ON public.attribute_options USING btree (tenant_id, lower((name)::text), category, context);
 
 
 --
 -- Name: index_attribute_options_on_context_category_position; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_attribute_options_on_context_category_position ON public.attribute_options USING btree (context, category, "position");
+CREATE INDEX index_attribute_options_on_context_category_position ON public.attribute_options USING btree (tenant_id, context, category, "position");
 
 
 --
--- Name: index_automation_events_on_idempotency_key; Type: INDEX; Schema: public; Owner: -
+-- Name: index_attribute_options_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_automation_events_on_idempotency_key ON public.automation_events USING btree (idempotency_key);
+CREATE INDEX index_attribute_options_on_tenant_id ON public.attribute_options USING btree (tenant_id);
 
 
 --
@@ -7324,6 +7901,27 @@ CREATE INDEX index_automation_events_on_status ON public.automation_events USING
 
 
 --
+-- Name: index_automation_events_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_events_on_tenant_id ON public.automation_events USING btree (tenant_id);
+
+
+--
+-- Name: index_automation_events_on_tenant_id_and_idempotency_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_automation_events_on_tenant_id_and_idempotency_key ON public.automation_events USING btree (tenant_id, idempotency_key) WHERE (idempotency_key IS NOT NULL);
+
+
+--
+-- Name: index_automation_execs_on_tenant_id_and_idempotency_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_automation_execs_on_tenant_id_and_idempotency_key ON public.automation_executions USING btree (tenant_id, idempotency_key) WHERE (idempotency_key IS NOT NULL);
+
+
+--
 -- Name: index_automation_execution_steps_on_automation_execution_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7342,6 +7940,13 @@ CREATE INDEX index_automation_execution_steps_on_scheduled_for ON public.automat
 --
 
 CREATE INDEX index_automation_execution_steps_on_status ON public.automation_execution_steps USING btree (status);
+
+
+--
+-- Name: index_automation_execution_steps_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_execution_steps_on_tenant_id ON public.automation_execution_steps USING btree (tenant_id);
 
 
 --
@@ -7366,13 +7971,6 @@ CREATE INDEX index_automation_executions_on_automation_workflow_version_id ON pu
 
 
 --
--- Name: index_automation_executions_on_idempotency_key; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_automation_executions_on_idempotency_key ON public.automation_executions USING btree (idempotency_key);
-
-
---
 -- Name: index_automation_executions_on_lead_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7387,10 +7985,31 @@ CREATE INDEX index_automation_executions_on_status ON public.automation_executio
 
 
 --
+-- Name: index_automation_executions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_executions_on_tenant_id ON public.automation_executions USING btree (tenant_id);
+
+
+--
 -- Name: index_automation_rules_on_active_and_trigger_event; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_automation_rules_on_active_and_trigger_event ON public.automation_rules USING btree (active, trigger_event);
+
+
+--
+-- Name: index_automation_rules_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_rules_on_tenant_id ON public.automation_rules USING btree (tenant_id);
+
+
+--
+-- Name: index_automation_rules_on_tenant_id_and_trigger_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_rules_on_tenant_id_and_trigger_event ON public.automation_rules USING btree (tenant_id, trigger_event);
 
 
 --
@@ -7478,6 +8097,13 @@ CREATE INDEX index_automation_workflow_versions_on_published_by_id ON public.aut
 
 
 --
+-- Name: index_automation_workflow_versions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_workflow_versions_on_tenant_id ON public.automation_workflow_versions USING btree (tenant_id);
+
+
+--
 -- Name: index_automation_workflows_on_active_version_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7496,6 +8122,20 @@ CREATE INDEX index_automation_workflows_on_created_by_id ON public.automation_wo
 --
 
 CREATE INDEX index_automation_workflows_on_status ON public.automation_workflows USING btree (status);
+
+
+--
+-- Name: index_automation_workflows_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_workflows_on_tenant_id ON public.automation_workflows USING btree (tenant_id);
+
+
+--
+-- Name: index_automation_workflows_on_tenant_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_automation_workflows_on_tenant_id_and_status ON public.automation_workflows USING btree (tenant_id, status);
 
 
 --
@@ -7611,6 +8251,13 @@ CREATE INDEX index_check_ins_on_suspicious ON public.check_ins USING btree (susp
 
 
 --
+-- Name: index_check_ins_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_check_ins_on_tenant_id ON public.check_ins USING btree (tenant_id);
+
+
+--
 -- Name: index_checkin_audit_logs_on_action; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7643,6 +8290,13 @@ CREATE INDEX index_checkin_audit_logs_on_admin_user_id_and_created_at ON public.
 --
 
 CREATE INDEX index_checkin_audit_logs_on_check_in_id ON public.checkin_audit_logs USING btree (check_in_id);
+
+
+--
+-- Name: index_checkin_audit_logs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_checkin_audit_logs_on_tenant_id ON public.checkin_audit_logs USING btree (tenant_id);
 
 
 --
@@ -7919,6 +8573,13 @@ CREATE INDEX index_data_export_audit_logs_on_resource_name_and_created_at ON pub
 
 
 --
+-- Name: index_data_export_audit_logs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_data_export_audit_logs_on_tenant_id ON public.data_export_audit_logs USING btree (tenant_id);
+
+
+--
 -- Name: index_distribution_rule_agents_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7933,6 +8594,13 @@ CREATE INDEX index_distribution_rule_agents_on_distribution_rule_id ON public.di
 
 
 --
+-- Name: index_distribution_rule_agents_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_distribution_rule_agents_on_tenant_id ON public.distribution_rule_agents USING btree (tenant_id);
+
+
+--
 -- Name: index_distribution_rules_on_checkin_store_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7944,6 +8612,20 @@ CREATE INDEX index_distribution_rules_on_checkin_store_id ON public.distribution
 --
 
 CREATE INDEX index_distribution_rules_on_checkin_store_ids ON public.distribution_rules USING gin (checkin_store_ids);
+
+
+--
+-- Name: index_distribution_rules_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_distribution_rules_on_tenant_id ON public.distribution_rules USING btree (tenant_id);
+
+
+--
+-- Name: index_distribution_rules_on_tenant_id_and_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_distribution_rules_on_tenant_id_and_active ON public.distribution_rules USING btree (tenant_id, active);
 
 
 --
@@ -8059,6 +8741,13 @@ CREATE INDEX index_habitation_audit_logs_on_source ON public.habitation_audit_lo
 
 
 --
+-- Name: index_habitation_audit_logs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitation_audit_logs_on_tenant_id ON public.habitation_audit_logs USING btree (tenant_id);
+
+
+--
 -- Name: index_habitation_broker_assignments_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8091,6 +8780,13 @@ CREATE INDEX index_habitation_exports_on_admin_user_id ON public.habitation_expo
 --
 
 CREATE INDEX index_habitation_exports_on_admin_user_id_and_created_at ON public.habitation_exports USING btree (admin_user_id, created_at);
+
+
+--
+-- Name: index_habitation_exports_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitation_exports_on_tenant_id ON public.habitation_exports USING btree (tenant_id);
 
 
 --
@@ -8203,20 +8899,6 @@ CREATE INDEX index_habitations_on_caracteristicas ON public.habitations USING gi
 --
 
 CREATE INDEX index_habitations_on_centro_flag ON public.habitations USING btree (centro_flag);
-
-
---
--- Name: index_habitations_on_codigo; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_habitations_on_codigo ON public.habitations USING btree (codigo);
-
-
---
--- Name: index_habitations_on_codigo_dwv_unique_when_dwv; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_habitations_on_codigo_dwv_unique_when_dwv ON public.habitations USING btree (codigo_dwv) WHERE (((imovel_dwv)::text = 'Sim'::text) AND (codigo_dwv IS NOT NULL) AND ((codigo_dwv)::text <> ''::text));
 
 
 --
@@ -8465,6 +9147,34 @@ CREATE UNIQUE INDEX index_habitations_on_slug ON public.habitations USING btree 
 
 
 --
+-- Name: index_habitations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitations_on_tenant_id ON public.habitations USING btree (tenant_id);
+
+
+--
+-- Name: index_habitations_on_tenant_id_and_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitations_on_tenant_id_and_admin_user_id ON public.habitations USING btree (tenant_id, admin_user_id);
+
+
+--
+-- Name: index_habitations_on_tenant_id_and_codigo; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_habitations_on_tenant_id_and_codigo ON public.habitations USING btree (tenant_id, codigo);
+
+
+--
+-- Name: index_habitations_on_tenant_id_and_codigo_dwv_unique_when_dwv; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_habitations_on_tenant_id_and_codigo_dwv_unique_when_dwv ON public.habitations USING btree (tenant_id, codigo_dwv) WHERE (((imovel_dwv)::text = 'Sim'::text) AND (codigo_dwv IS NOT NULL) AND ((codigo_dwv)::text <> ''::text));
+
+
+--
 -- Name: index_habitations_on_updated_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8577,6 +9287,13 @@ CREATE INDEX index_lead_activities_on_lead_id ON public.lead_activities USING bt
 
 
 --
+-- Name: index_lead_activities_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_activities_on_tenant_id ON public.lead_activities USING btree (tenant_id);
+
+
+--
 -- Name: index_lead_audit_logs_on_action; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8623,6 +9340,13 @@ CREATE INDEX index_lead_audit_logs_on_lead_id_and_created_at ON public.lead_audi
 --
 
 CREATE INDEX index_lead_audit_logs_on_source ON public.lead_audit_logs USING btree (source);
+
+
+--
+-- Name: index_lead_audit_logs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_audit_logs_on_tenant_id ON public.lead_audit_logs USING btree (tenant_id);
 
 
 --
@@ -8679,6 +9403,20 @@ CREATE INDEX index_leads_on_shared_by_admin_user_id ON public.leads USING btree 
 --
 
 CREATE INDEX index_leads_on_tags ON public.leads USING gin (tags);
+
+
+--
+-- Name: index_leads_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_id ON public.leads USING btree (tenant_id);
+
+
+--
+-- Name: index_leads_on_tenant_id_and_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_id_and_admin_user_id ON public.leads USING btree (tenant_id, admin_user_id);
 
 
 --
@@ -8756,6 +9494,13 @@ CREATE INDEX index_manual_checkin_requests_on_status ON public.manual_checkin_re
 --
 
 CREATE INDEX index_manual_checkin_requests_on_store_id ON public.manual_checkin_requests USING btree (store_id);
+
+
+--
+-- Name: index_manual_checkin_requests_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_manual_checkin_requests_on_tenant_id ON public.manual_checkin_requests USING btree (tenant_id);
 
 
 --
@@ -8906,10 +9651,52 @@ CREATE INDEX index_portal_listing_states_on_habitation_id ON public.portal_listi
 
 
 --
--- Name: index_profiles_on_key; Type: INDEX; Schema: public; Owner: -
+-- Name: index_profiles_on_id_and_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_profiles_on_key ON public.profiles USING btree (key) WHERE (key IS NOT NULL);
+CREATE UNIQUE INDEX index_profiles_on_id_and_tenant_id ON public.profiles USING btree (id, tenant_id);
+
+
+--
+-- Name: index_profiles_on_tenant_and_vertical_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_profiles_on_tenant_and_vertical_position ON public.profiles USING btree (tenant_id, "position") WHERE ((axis)::text = 'vertical'::text);
+
+
+--
+-- Name: index_profiles_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_profiles_on_tenant_id ON public.profiles USING btree (tenant_id);
+
+
+--
+-- Name: index_profiles_on_tenant_id_and_axis_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_profiles_on_tenant_id_and_axis_and_position ON public.profiles USING btree (tenant_id, axis, "position");
+
+
+--
+-- Name: index_profiles_on_tenant_id_and_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_profiles_on_tenant_id_and_key ON public.profiles USING btree (tenant_id, key) WHERE (key IS NOT NULL);
+
+
+--
+-- Name: index_profiles_on_tenant_id_and_vertical_profile_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_profiles_on_tenant_id_and_vertical_profile_id_and_name ON public.profiles USING btree (tenant_id, vertical_profile_id, name) WHERE ((axis)::text = 'horizontal'::text);
+
+
+--
+-- Name: index_profiles_on_vertical_profile_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_profiles_on_vertical_profile_id ON public.profiles USING btree (vertical_profile_id);
 
 
 --
@@ -9008,6 +9795,20 @@ CREATE INDEX index_proprietors_on_spouse_email ON public.proprietors USING btree
 --
 
 CREATE INDEX index_proprietors_on_spouse_name ON public.proprietors USING btree (spouse_name);
+
+
+--
+-- Name: index_proprietors_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_proprietors_on_tenant_id ON public.proprietors USING btree (tenant_id);
+
+
+--
+-- Name: index_proprietors_on_tenant_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_proprietors_on_tenant_id_and_name ON public.proprietors USING btree (tenant_id, name);
 
 
 --
@@ -9564,6 +10365,13 @@ CREATE INDEX index_store_shifts_on_store_id_and_day_of_week ON public.store_shif
 
 
 --
+-- Name: index_store_shifts_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_store_shifts_on_tenant_id ON public.store_shifts USING btree (tenant_id);
+
+
+--
 -- Name: index_stores_on_active; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9596,6 +10404,20 @@ CREATE INDEX index_stores_on_location ON public.stores USING gist (location);
 --
 
 CREATE UNIQUE INDEX index_stores_on_slug ON public.stores USING btree (slug);
+
+
+--
+-- Name: index_stores_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_stores_on_tenant_id ON public.stores USING btree (tenant_id);
+
+
+--
+-- Name: index_stores_on_tenant_id_and_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_stores_on_tenant_id_and_active ON public.stores USING btree (tenant_id, active);
 
 
 --
@@ -9634,6 +10456,27 @@ CREATE INDEX index_tasks_on_lead_id ON public.tasks USING btree (lead_id);
 
 
 --
+-- Name: index_tasks_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tasks_on_tenant_id ON public.tasks USING btree (tenant_id);
+
+
+--
+-- Name: index_tasks_on_tenant_id_and_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tasks_on_tenant_id_and_admin_user_id ON public.tasks USING btree (tenant_id, admin_user_id);
+
+
+--
+-- Name: index_tenants_on_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tenants_on_slug ON public.tenants USING btree (slug);
+
+
+--
 -- Name: index_trusted_devices_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9666,6 +10509,20 @@ CREATE INDEX index_trusted_devices_on_last_ip ON public.trusted_devices USING bt
 --
 
 CREATE INDEX index_trusted_devices_on_status ON public.trusted_devices USING btree (status);
+
+
+--
+-- Name: index_trusted_devices_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_trusted_devices_on_tenant_id ON public.trusted_devices USING btree (tenant_id);
+
+
+--
+-- Name: index_trusted_devices_on_tenant_user_fingerprint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_trusted_devices_on_tenant_user_fingerprint ON public.trusted_devices USING btree (tenant_id, admin_user_id, fingerprint);
 
 
 --
@@ -9788,10 +10645,24 @@ CREATE INDEX index_vista_raw_records_on_vista_import_batch_id ON public.vista_ra
 
 
 --
--- Name: index_wa_conversations_on_bsuid; Type: INDEX; Schema: public; Owner: -
+-- Name: index_wa_campaign_messages_on_tenant_and_external_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_wa_conversations_on_bsuid ON public.whatsapp_conversations USING btree (business_scoped_user_id) WHERE (business_scoped_user_id IS NOT NULL);
+CREATE UNIQUE INDEX index_wa_campaign_messages_on_tenant_and_external_id ON public.whatsapp_campaign_messages USING btree (tenant_id, external_message_id) WHERE (external_message_id IS NOT NULL);
+
+
+--
+-- Name: index_wa_conversations_on_tenant_and_bsuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_wa_conversations_on_tenant_and_bsuid ON public.whatsapp_conversations USING btree (tenant_id, business_scoped_user_id) WHERE (business_scoped_user_id IS NOT NULL);
+
+
+--
+-- Name: index_wa_conversations_on_tenant_and_phone; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_wa_conversations_on_tenant_and_phone ON public.whatsapp_conversations USING btree (tenant_id, contact_phone) WHERE (contact_phone IS NOT NULL);
 
 
 --
@@ -9809,17 +10680,24 @@ CREATE INDEX index_whatsapp_business_integrations_on_status ON public.whatsapp_b
 
 
 --
+-- Name: index_whatsapp_business_integrations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_business_integrations_on_tenant_id ON public.whatsapp_business_integrations USING btree (tenant_id);
+
+
+--
+-- Name: index_whatsapp_business_integrations_on_tenant_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_business_integrations_on_tenant_id_and_status ON public.whatsapp_business_integrations USING btree (tenant_id, status);
+
+
+--
 -- Name: index_whatsapp_business_integrations_on_waba_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_whatsapp_business_integrations_on_waba_id ON public.whatsapp_business_integrations USING btree (waba_id);
-
-
---
--- Name: index_whatsapp_campaign_messages_on_external_message_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_whatsapp_campaign_messages_on_external_message_id ON public.whatsapp_campaign_messages USING btree (external_message_id) WHERE (external_message_id IS NOT NULL);
 
 
 --
@@ -9855,6 +10733,13 @@ CREATE INDEX index_whatsapp_campaign_messages_on_reply_type ON public.whatsapp_c
 --
 
 CREATE INDEX index_whatsapp_campaign_messages_on_status ON public.whatsapp_campaign_messages USING btree (status);
+
+
+--
+-- Name: index_whatsapp_campaign_messages_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_messages_on_tenant_id ON public.whatsapp_campaign_messages USING btree (tenant_id);
 
 
 --
@@ -9907,10 +10792,24 @@ CREATE INDEX index_whatsapp_campaign_recipients_on_tags ON public.whatsapp_campa
 
 
 --
+-- Name: index_whatsapp_campaign_recipients_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_recipients_on_tenant_id ON public.whatsapp_campaign_recipients USING btree (tenant_id);
+
+
+--
 -- Name: index_whatsapp_campaign_recipients_on_whatsapp_campaign_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_whatsapp_campaign_recipients_on_whatsapp_campaign_id ON public.whatsapp_campaign_recipients USING btree (whatsapp_campaign_id);
+
+
+--
+-- Name: index_whatsapp_campaign_unsubscribes_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaign_unsubscribes_on_tenant_id ON public.whatsapp_campaign_unsubscribes USING btree (tenant_id);
 
 
 --
@@ -9925,6 +10824,13 @@ CREATE INDEX index_whatsapp_campaigns_on_audience_definition ON public.whatsapp_
 --
 
 CREATE INDEX index_whatsapp_campaigns_on_audience_mode ON public.whatsapp_campaigns USING btree (audience_mode);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_automation_workflow_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_automation_workflow_id ON public.whatsapp_campaigns USING btree (automation_workflow_id);
 
 
 --
@@ -9963,6 +10869,20 @@ CREATE INDEX index_whatsapp_campaigns_on_status ON public.whatsapp_campaigns USI
 
 
 --
+-- Name: index_whatsapp_campaigns_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_tenant_id ON public.whatsapp_campaigns USING btree (tenant_id);
+
+
+--
+-- Name: index_whatsapp_campaigns_on_tenant_id_and_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_campaigns_on_tenant_id_and_created_by_id ON public.whatsapp_campaigns USING btree (tenant_id, created_by_id);
+
+
+--
 -- Name: index_whatsapp_campaigns_on_whatsapp_sender_number_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9984,13 +10904,6 @@ CREATE INDEX index_whatsapp_conversations_on_assigned_admin_user_id ON public.wh
 
 
 --
--- Name: index_whatsapp_conversations_on_contact_phone; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_whatsapp_conversations_on_contact_phone ON public.whatsapp_conversations USING btree (contact_phone);
-
-
---
 -- Name: index_whatsapp_conversations_on_last_message_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10005,10 +10918,31 @@ CREATE INDEX index_whatsapp_conversations_on_lead_id ON public.whatsapp_conversa
 
 
 --
+-- Name: index_whatsapp_conversations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_conversations_on_tenant_id ON public.whatsapp_conversations USING btree (tenant_id);
+
+
+--
+-- Name: index_whatsapp_conversations_on_tenant_id_and_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_conversations_on_tenant_id_and_lead_id ON public.whatsapp_conversations USING btree (tenant_id, lead_id);
+
+
+--
 -- Name: index_whatsapp_messages_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_whatsapp_messages_on_admin_user_id ON public.whatsapp_messages USING btree (admin_user_id);
+
+
+--
+-- Name: index_whatsapp_messages_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_messages_on_tenant_id ON public.whatsapp_messages USING btree (tenant_id);
 
 
 --
@@ -10047,10 +10981,24 @@ CREATE INDEX index_whatsapp_sender_numbers_on_status ON public.whatsapp_sender_n
 
 
 --
--- Name: index_whatsapp_templates_on_name_and_language; Type: INDEX; Schema: public; Owner: -
+-- Name: index_whatsapp_sender_numbers_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_whatsapp_templates_on_name_and_language ON public.whatsapp_templates USING btree (name, language);
+CREATE INDEX index_whatsapp_sender_numbers_on_tenant_id ON public.whatsapp_sender_numbers USING btree (tenant_id);
+
+
+--
+-- Name: index_whatsapp_sender_numbers_on_tenant_id_and_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_sender_numbers_on_tenant_id_and_active ON public.whatsapp_sender_numbers USING btree (tenant_id, active);
+
+
+--
+-- Name: index_whatsapp_sender_numbers_on_tenant_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_sender_numbers_on_tenant_id_and_status ON public.whatsapp_sender_numbers USING btree (tenant_id, status);
 
 
 --
@@ -10065,6 +11013,27 @@ CREATE INDEX index_whatsapp_templates_on_status ON public.whatsapp_templates USI
 --
 
 CREATE INDEX index_whatsapp_templates_on_template_type ON public.whatsapp_templates USING btree (template_type);
+
+
+--
+-- Name: index_whatsapp_templates_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_templates_on_tenant_id ON public.whatsapp_templates USING btree (tenant_id);
+
+
+--
+-- Name: index_whatsapp_templates_on_tenant_id_and_name_and_language; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_whatsapp_templates_on_tenant_id_and_name_and_language ON public.whatsapp_templates USING btree (tenant_id, name, language);
+
+
+--
+-- Name: index_whatsapp_templates_on_tenant_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_templates_on_tenant_id_and_status ON public.whatsapp_templates USING btree (tenant_id, status);
 
 
 --
@@ -10100,6 +11069,98 @@ CREATE TRIGGER habitation_audit_logs_no_update BEFORE DELETE OR UPDATE ON public
 --
 
 CREATE TRIGGER lead_audit_logs_no_update BEFORE DELETE OR UPDATE ON public.lead_audit_logs FOR EACH ROW EXECUTE FUNCTION public.raise_lead_audit_immutable();
+
+
+--
+-- Name: access_audit_logs trigger_enforce_access_audit_log_tenant_governance; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_enforce_access_audit_log_tenant_governance BEFORE INSERT OR UPDATE OF tenant_id, admin_user_id ON public.access_audit_logs FOR EACH ROW EXECUTE FUNCTION public.enforce_access_audit_log_tenant_governance();
+
+
+--
+-- Name: admin_users trigger_enforce_admin_user_profile_governance; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_enforce_admin_user_profile_governance BEFORE INSERT OR UPDATE OF tenant_id, profile_id, horizontal_profile_id, manager_id ON public.admin_users FOR EACH ROW EXECUTE FUNCTION public.enforce_admin_user_profile_governance();
+
+
+--
+-- Name: profiles trigger_enforce_profile_axis_governance; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_enforce_profile_axis_governance BEFORE INSERT OR UPDATE OF tenant_id, axis, vertical_profile_id ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.enforce_profile_axis_governance();
+
+
+--
+-- Name: trusted_devices trigger_enforce_trusted_device_tenant_governance; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_enforce_trusted_device_tenant_governance BEFORE INSERT OR UPDATE OF tenant_id, admin_user_id ON public.trusted_devices FOR EACH ROW EXECUTE FUNCTION public.enforce_trusted_device_tenant_governance();
+
+
+--
+-- Name: admin_users fk_admin_users_horizontal_profile_same_tenant; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_users
+    ADD CONSTRAINT fk_admin_users_horizontal_profile_same_tenant FOREIGN KEY (horizontal_profile_id, tenant_id) REFERENCES public.profiles(id, tenant_id) NOT VALID;
+
+
+--
+-- Name: admin_users fk_admin_users_manager_same_tenant; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_users
+    ADD CONSTRAINT fk_admin_users_manager_same_tenant FOREIGN KEY (manager_id, tenant_id) REFERENCES public.admin_users(id, tenant_id) NOT VALID;
+
+
+--
+-- Name: admin_users fk_admin_users_profile_same_tenant; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_users
+    ADD CONSTRAINT fk_admin_users_profile_same_tenant FOREIGN KEY (profile_id, tenant_id) REFERENCES public.profiles(id, tenant_id) NOT VALID;
+
+
+--
+-- Name: profiles fk_profiles_vertical_profile_same_tenant; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT fk_profiles_vertical_profile_same_tenant FOREIGN KEY (vertical_profile_id, tenant_id) REFERENCES public.profiles(id, tenant_id) NOT VALID;
+
+
+--
+-- Name: store_shifts fk_rails_0416b68456; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.store_shifts
+    ADD CONSTRAINT fk_rails_0416b68456 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: lead_audit_logs fk_rails_0468a96dcf; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_audit_logs
+    ADD CONSTRAINT fk_rails_0468a96dcf FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: whatsapp_campaign_unsubscribes fk_rails_05ee37a843; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
+    ADD CONSTRAINT fk_rails_05ee37a843 FOREIGN KEY (whatsapp_campaign_recipient_id) REFERENCES public.whatsapp_campaign_recipients(id);
+
+
+--
+-- Name: whatsapp_sender_numbers fk_rails_0b40b13075; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_sender_numbers
+    ADD CONSTRAINT fk_rails_0b40b13075 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10140,6 +11201,14 @@ ALTER TABLE ONLY public.leads
 
 ALTER TABLE ONLY public.captacoes
     ADD CONSTRAINT fk_rails_121e1dda03 FOREIGN KEY (corretor_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: whatsapp_campaign_unsubscribes fk_rails_13334d8900; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
+    ADD CONSTRAINT fk_rails_13334d8900 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10188,6 +11257,14 @@ ALTER TABLE ONLY public.stores
 
 ALTER TABLE ONLY public.inbound_webhook_tokens
     ADD CONSTRAINT fk_rails_1c174f9f08 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: automation_workflow_versions fk_rails_1cd4d6081b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflow_versions
+    ADD CONSTRAINT fk_rails_1cd4d6081b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10287,11 +11364,27 @@ ALTER TABLE ONLY public.automation_runs
 
 
 --
+-- Name: whatsapp_messages fk_rails_2c031c7799; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_messages
+    ADD CONSTRAINT fk_rails_2c031c7799 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: automation_executions fk_rails_2caf5b71f7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.automation_executions
     ADD CONSTRAINT fk_rails_2caf5b71f7 FOREIGN KEY (automation_workflow_version_id) REFERENCES public.automation_workflow_versions(id);
+
+
+--
+-- Name: distribution_rule_agents fk_rails_2ff40d37bc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.distribution_rule_agents
+    ADD CONSTRAINT fk_rails_2ff40d37bc FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10327,11 +11420,35 @@ ALTER TABLE ONLY public.marketing_campaigns
 
 
 --
+-- Name: data_export_audit_logs fk_rails_330294625a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.data_export_audit_logs
+    ADD CONSTRAINT fk_rails_330294625a FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: profiles fk_rails_350dbd643d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT fk_rails_350dbd643d FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: seo_conversion_events fk_rails_354f47c6c3; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.seo_conversion_events
     ADD CONSTRAINT fk_rails_354f47c6c3 FOREIGN KEY (seo_setting_id) REFERENCES public.seo_settings(id);
+
+
+--
+-- Name: check_ins fk_rails_381f0953e0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_ins
+    ADD CONSTRAINT fk_rails_381f0953e0 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10423,6 +11540,14 @@ ALTER TABLE ONLY public.habitations
 
 
 --
+-- Name: trusted_devices fk_rails_4780fd9ba4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trusted_devices
+    ADD CONSTRAINT fk_rails_4780fd9ba4 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: habitations fk_rails_49efca6fdb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10431,11 +11556,27 @@ ALTER TABLE ONLY public.habitations
 
 
 --
+-- Name: whatsapp_conversations fk_rails_4c2819349d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_conversations
+    ADD CONSTRAINT fk_rails_4c2819349d FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: solid_queue_blocked_executions fk_rails_4cd34e2228; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.solid_queue_blocked_executions
     ADD CONSTRAINT fk_rails_4cd34e2228 FOREIGN KEY (job_id) REFERENCES public.solid_queue_jobs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: automation_workflows fk_rails_4cf5f305c9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_workflows
+    ADD CONSTRAINT fk_rails_4cf5f305c9 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10575,6 +11716,14 @@ ALTER TABLE ONLY public.client_interactions
 
 
 --
+-- Name: whatsapp_campaign_unsubscribes fk_rails_5fa226f99c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
+    ADD CONSTRAINT fk_rails_5fa226f99c FOREIGN KEY (whatsapp_campaign_id) REFERENCES public.whatsapp_campaigns(id);
+
+
+--
 -- Name: home_hero_slides fk_rails_612e24602a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10615,6 +11764,14 @@ ALTER TABLE ONLY public.proprietors
 
 
 --
+-- Name: whatsapp_campaign_unsubscribes fk_rails_658c0aa041; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
+    ADD CONSTRAINT fk_rails_658c0aa041 FOREIGN KEY (reenabled_by_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: whatsapp_sender_numbers fk_rails_6af8b1646a; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10644,6 +11801,14 @@ ALTER TABLE ONLY public.habitation_interactions
 
 ALTER TABLE ONLY public.whatsapp_campaign_messages
     ADD CONSTRAINT fk_rails_6efdbc3737 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: whatsapp_templates fk_rails_737f4f7e1b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_templates
+    ADD CONSTRAINT fk_rails_737f4f7e1b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10719,6 +11884,14 @@ ALTER TABLE ONLY public.automation_workflow_versions
 
 
 --
+-- Name: profiles fk_rails_8465209026; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT fk_rails_8465209026 FOREIGN KEY (vertical_profile_id) REFERENCES public.profiles(id);
+
+
+--
 -- Name: habitation_interactions fk_rails_8531aa2028; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10732,6 +11905,14 @@ ALTER TABLE ONLY public.habitation_interactions
 
 ALTER TABLE ONLY public.automation_workflow_versions
     ADD CONSTRAINT fk_rails_861c29bd15 FOREIGN KEY (automation_workflow_id) REFERENCES public.automation_workflows(id);
+
+
+--
+-- Name: access_control_rules fk_rails_8770e6ed8e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.access_control_rules
+    ADD CONSTRAINT fk_rails_8770e6ed8e FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10775,6 +11956,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_recipients
 
 
 --
+-- Name: whatsapp_campaign_unsubscribes fk_rails_8cdc0b98a2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
+    ADD CONSTRAINT fk_rails_8cdc0b98a2 FOREIGN KEY (whatsapp_sender_number_id) REFERENCES public.whatsapp_sender_numbers(id);
+
+
+--
 -- Name: portal_listing_states fk_rails_8def14d270; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10788,6 +11977,14 @@ ALTER TABLE ONLY public.portal_listing_states
 
 ALTER TABLE ONLY public.manual_checkin_requests
     ADD CONSTRAINT fk_rails_90325dd80b FOREIGN KEY (reviewed_by_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: habitation_exports fk_rails_9124ea0acc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_exports
+    ADD CONSTRAINT fk_rails_9124ea0acc FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10815,6 +12012,22 @@ ALTER TABLE ONLY public.whatsapp_campaigns
 
 
 --
+-- Name: whatsapp_business_integrations fk_rails_92eb1feb23; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_business_integrations
+    ADD CONSTRAINT fk_rails_92eb1feb23 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: checkin_audit_logs fk_rails_93113a4461; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.checkin_audit_logs
+    ADD CONSTRAINT fk_rails_93113a4461 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: footer_stores fk_rails_937ebd4dbd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10823,11 +12036,27 @@ ALTER TABLE ONLY public.footer_stores
 
 
 --
+-- Name: automation_events fk_rails_950cb0d638; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_events
+    ADD CONSTRAINT fk_rails_950cb0d638 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: client_property_interests fk_rails_9628964af1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.client_property_interests
     ADD CONSTRAINT fk_rails_9628964af1 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: appointments fk_rails_968f2723bc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT fk_rails_968f2723bc FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10871,6 +12100,14 @@ ALTER TABLE ONLY public.crm_appointments
 
 
 --
+-- Name: proprietors fk_rails_9c4f41ef47; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.proprietors
+    ADD CONSTRAINT fk_rails_9c4f41ef47 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: solid_queue_claimed_executions fk_rails_9cfe4d4944; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10911,11 +12148,35 @@ ALTER TABLE ONLY public.public_navigation_events
 
 
 --
+-- Name: stores fk_rails_a1a57f3b7c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stores
+    ADD CONSTRAINT fk_rails_a1a57f3b7c FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: whatsapp_campaigns fk_rails_a1f28d7e1b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaigns
+    ADD CONSTRAINT fk_rails_a1f28d7e1b FOREIGN KEY (automation_workflow_id) REFERENCES public.automation_workflows(id);
+
+
+--
 -- Name: stores fk_rails_a351b46480; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.stores
     ADD CONSTRAINT fk_rails_a351b46480 FOREIGN KEY (footer_store_id) REFERENCES public.footer_stores(id);
+
+
+--
+-- Name: admin_users fk_rails_a6e17e12bd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_users
+    ADD CONSTRAINT fk_rails_a6e17e12bd FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10959,6 +12220,14 @@ ALTER TABLE ONLY public.meta_lead_forms
 
 
 --
+-- Name: lead_activities fk_rails_b52a6e8f8d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_activities
+    ADD CONSTRAINT fk_rails_b52a6e8f8d FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: photography_schedule_blocks fk_rails_b567a6e52d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10972,6 +12241,22 @@ ALTER TABLE ONLY public.photography_schedule_blocks
 
 ALTER TABLE ONLY public.client_property_interests
     ADD CONSTRAINT fk_rails_b98e81d5c7 FOREIGN KEY (vista_import_batch_id) REFERENCES public.vista_import_batches(id);
+
+
+--
+-- Name: access_audit_logs fk_rails_ba13076d13; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.access_audit_logs
+    ADD CONSTRAINT fk_rails_ba13076d13 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: manual_checkin_requests fk_rails_ba396e4d85; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.manual_checkin_requests
+    ADD CONSTRAINT fk_rails_ba396e4d85 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -10996,6 +12281,14 @@ ALTER TABLE ONLY public.automation_workflows
 
 ALTER TABLE ONLY public.client_property_interests
     ADD CONSTRAINT fk_rails_bd88596118 FOREIGN KEY (proprietor_id) REFERENCES public.proprietors(id);
+
+
+--
+-- Name: whatsapp_campaigns fk_rails_bded8a2aaa; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaigns
+    ADD CONSTRAINT fk_rails_bded8a2aaa FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -11039,6 +12332,14 @@ ALTER TABLE ONLY public.active_storage_attachments
 
 
 --
+-- Name: habitations fk_rails_c3c5adeb81; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitations
+    ADD CONSTRAINT fk_rails_c3c5adeb81 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: access_control_rules fk_rails_c3da571690; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11052,6 +12353,22 @@ ALTER TABLE ONLY public.access_control_rules
 
 ALTER TABLE ONLY public.solid_queue_scheduled_executions
     ADD CONSTRAINT fk_rails_c4316f352d FOREIGN KEY (job_id) REFERENCES public.solid_queue_jobs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: tasks fk_rails_c4ca39ccc2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tasks
+    ADD CONSTRAINT fk_rails_c4ca39ccc2 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: whatsapp_campaign_recipients fk_rails_c55335b620; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_recipients
+    ADD CONSTRAINT fk_rails_c55335b620 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -11087,6 +12404,14 @@ ALTER TABLE ONLY public.proposals
 
 
 --
+-- Name: automation_executions fk_rails_c96f23d405; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_executions
+    ADD CONSTRAINT fk_rails_c96f23d405 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: store_shifts fk_rails_c9e77c3011; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11095,11 +12420,27 @@ ALTER TABLE ONLY public.store_shifts
 
 
 --
+-- Name: automation_rules fk_rails_cf6a0dd51b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_rules
+    ADD CONSTRAINT fk_rails_cf6a0dd51b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: trusted_devices fk_rails_d44f794038; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.trusted_devices
     ADD CONSTRAINT fk_rails_d44f794038 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: distribution_rules fk_rails_d49a5237d1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.distribution_rules
+    ADD CONSTRAINT fk_rails_d49a5237d1 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -11135,11 +12476,27 @@ ALTER TABLE ONLY public.crm_appointments
 
 
 --
+-- Name: whatsapp_campaign_unsubscribes fk_rails_d85b823492; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
+    ADD CONSTRAINT fk_rails_d85b823492 FOREIGN KEY (whatsapp_campaign_message_id) REFERENCES public.whatsapp_campaign_messages(id);
+
+
+--
 -- Name: seo_conversion_events fk_rails_d8efb77461; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.seo_conversion_events
     ADD CONSTRAINT fk_rails_d8efb77461 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: attribute_options fk_rails_d92fe9ed75; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attribute_options
+    ADD CONSTRAINT fk_rails_d92fe9ed75 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -11156,6 +12513,22 @@ ALTER TABLE ONLY public.admin_users
 
 ALTER TABLE ONLY public.automation_webhook_deliveries
     ADD CONSTRAINT fk_rails_d9b086da60 FOREIGN KEY (automation_execution_step_id) REFERENCES public.automation_execution_steps(id);
+
+
+--
+-- Name: habitation_audit_logs fk_rails_da066d1bf0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_audit_logs
+    ADD CONSTRAINT fk_rails_da066d1bf0 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: leads fk_rails_da2e88f6a7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_rails_da2e88f6a7 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -11183,6 +12556,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_messages
 
 
 --
+-- Name: admin_users fk_rails_e079e77d29; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_users
+    ADD CONSTRAINT fk_rails_e079e77d29 FOREIGN KEY (horizontal_profile_id) REFERENCES public.profiles(id);
+
+
+--
 -- Name: location_pings fk_rails_e12dc32194; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11204,6 +12585,14 @@ ALTER TABLE ONLY public.client_property_interests
 
 ALTER TABLE ONLY public.whatsapp_conversations
     ADD CONSTRAINT fk_rails_e3fd91ed99 FOREIGN KEY (assigned_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: whatsapp_campaign_messages fk_rails_e477ef2c00; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_messages
+    ADD CONSTRAINT fk_rails_e477ef2c00 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -11255,6 +12644,14 @@ ALTER TABLE ONLY public.habitation_interactions
 
 
 --
+-- Name: whatsapp_campaign_unsubscribes fk_rails_ea5bfea8f5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
+    ADD CONSTRAINT fk_rails_ea5bfea8f5 FOREIGN KEY (unsubscribed_by_message_id) REFERENCES public.whatsapp_messages(id);
+
+
+--
 -- Name: habitation_interactions fk_rails_ea8d35a43f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11268,6 +12665,14 @@ ALTER TABLE ONLY public.habitation_interactions
 
 ALTER TABLE ONLY public.tasks
     ADD CONSTRAINT fk_rails_ec34c29a53 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: automation_execution_steps fk_rails_ec5169344f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automation_execution_steps
+    ADD CONSTRAINT fk_rails_ec5169344f FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -11346,11 +12751,38 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict eyLftfcBQsefKqtwVCDRPnj0jGabteTJadg5ugtWWmi9iqTFATpndbIF9QHhUaJ
+\unrestrict fkQsWClk0o1OVcyKm7xx9MeWO8IPhxH5t71lfD4zUROyixFELso5va3cfC2sFhd
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260628255000'),
+('20260628254500'),
+('20260628254400'),
+('20260628254300'),
+('20260628254200'),
+('20260628254100'),
+('20260628254000'),
+('20260628253000'),
+('20260628252000'),
+('20260628251000'),
+('20260628250000'),
+('20260628245000'),
+('20260628244000'),
+('20260628243000'),
+('20260628242000'),
+('20260628241000'),
+('20260628240000'),
+('20260628235900'),
+('20260628235800'),
+('20260628235700'),
+('20260628235600'),
+('20260628235500'),
+('20260628235000'),
+('20260628234000'),
+('20260628223000'),
+('20260628192500'),
+('20260628185000'),
 ('20260627215000'),
 ('20260627172000'),
 ('20260627152000'),

@@ -8,11 +8,22 @@ module Field
     include FieldFeatureGate
 
     before_action :authenticate_admin_user!
+    before_action :set_current_tenant
     before_action :enforce_access_control_policy!
     after_action :record_allowed_field_access
     layout "field"
 
     private
+
+    def set_current_tenant
+      Current.admin_user = current_admin_user
+      Current.tenant = current_admin_user&.tenant
+    end
+
+    def current_tenant
+      Current.tenant || current_admin_user&.tenant
+    end
+    helper_method :current_tenant
 
     def enforce_access_control_policy!
       access_result = AccessControl::Policy.call(admin_user: current_admin_user, request: request, controller: self)

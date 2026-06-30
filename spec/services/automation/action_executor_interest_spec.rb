@@ -72,6 +72,7 @@ RSpec.describe Automation::ActionExecutor do
 
     task = Task.last
     expect(task.title).to eq("Revisar oportunidade")
+    expect(task.tenant).to eq(lead.tenant)
     expect(task.description).to include("Lead com interesse claro")
     expect(task.description).to include("Apartamento compatível")
   end
@@ -90,6 +91,27 @@ RSpec.describe Automation::ActionExecutor do
     )
 
     expect(Task.last.admin_user).to eq(fallback)
+  end
+
+  it "ignores configured fallback users from another Tenant" do
+    lead_tenant = Tenant.create!(name: "Lead tenant #{SecureRandom.hex(3)}", slug: "lead-tenant-#{SecureRandom.hex(3)}")
+    other_tenant = Tenant.create!(name: "Other tenant #{SecureRandom.hex(3)}", slug: "other-tenant-#{SecureRandom.hex(3)}")
+    lead_profile = lead_tenant.profiles.find_by!(key: "agent")
+    other_profile = other_tenant.profiles.find_by!(key: "agent")
+    tenant_fallback = create(:admin_user, tenant: lead_tenant, profile: lead_profile, email: "tenant-fallback-#{SecureRandom.hex(6)}@salute.test")
+    other_fallback = create(:admin_user, tenant: other_tenant, profile: other_profile, email: "other-fallback-#{SecureRandom.hex(6)}@salute.test")
+    lead.update!(tenant: lead_tenant, admin_user: nil)
+
+    described_class.execute(
+      {
+        type: "notify_broker_interest_opportunity",
+        title: "Revisar oportunidade",
+        fallback_admin_user_id: other_fallback.id
+      },
+      lead
+    )
+
+    expect(Task.last.admin_user).to eq(tenant_fallback)
   end
 
   it "keeps the current lead responsible before using the configured fallback" do

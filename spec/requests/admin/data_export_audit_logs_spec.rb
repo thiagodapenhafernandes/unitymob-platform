@@ -47,8 +47,8 @@ RSpec.describe "Admin::DataExportAuditLogs", type: :request do
   end
 
   it "filtra exportações por perfil, usuário, formato e arquivo" do
-    broker_profile = Profile.create!(name: "Perfil export #{SecureRandom.hex(4)}", permissions: Profile.default_permissions_for("Corretor"))
-    other_profile = Profile.create!(name: "Outro export #{SecureRandom.hex(4)}", permissions: Profile.default_permissions_for("Gerente"))
+    broker_profile = Profile.create!(tenant: admin.tenant, name: "Perfil export #{SecureRandom.hex(4)}", axis: "vertical", position: 8_900, permissions: Profile.default_permissions_for("Corretor"))
+    other_profile = Profile.create!(tenant: admin.tenant, name: "Outro export #{SecureRandom.hex(4)}", axis: "vertical", position: 700, permissions: Profile.default_permissions_for("Gerente"))
     broker = create(:admin_user, profile: broker_profile, name: "Exportador Certo")
     other = create(:admin_user, profile: other_profile, name: "Exportador Errado")
 
@@ -66,5 +66,54 @@ RSpec.describe "Admin::DataExportAuditLogs", type: :request do
     expect(response.body).to include("Exportador Certo")
     expect(response.body).to include("captações-maio.csv")
     expect(response.body).not_to include("imoveis.pdf")
+  end
+
+  it "não exibe exportações de outro Tenant" do
+    other_tenant = Tenant.create!(name: "Outro export #{SecureRandom.hex(3)}", slug: "outro-export-#{SecureRandom.hex(3)}")
+    other_profile = other_tenant.profiles.find_by!(key: "agent")
+    other_user = create(:admin_user, tenant: other_tenant, profile: other_profile)
+    create(:data_export_audit_log, admin_user: admin, filename: "tenant-atual.csv", resource_name: "habitations")
+    create(:data_export_audit_log, admin_user: other_user, filename: "tenant-outro.csv", resource_name: "habitations")
+
+    get admin_data_export_audit_logs_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("tenant-atual.csv")
+    expect(response.body).not_to include("tenant-outro.csv")
+  end
+
+  it "limita auditoria de exportações à subárvore do perfil vertical intermediário" do
+    tenant = admin.tenant
+    owner = admin
+    manager_profile = Profile.create!(
+      tenant: tenant,
+      name: "Gestor Auditoria Export #{SecureRandom.hex(4)}",
+      axis: "vertical",
+      position: 720,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "data_export_audit" => { "view" => true, "scope" => "team" }
+      }
+    )
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    manager = create(:admin_user, tenant: tenant, profile: manager_profile, manager: owner, name: "Gestor Exportação")
+    subordinate = create(:admin_user, tenant: tenant, profile: agent_profile, manager: manager, name: "Subordinado Exportação")
+    peer = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Par Exportação")
+
+    create(:data_export_audit_log, admin_user: manager, filename: "gestor.csv")
+    create(:data_export_audit_log, admin_user: subordinate, filename: "subordinado.csv")
+    create(:data_export_audit_log, admin_user: peer, filename: "par-fora.csv")
+    create(:data_export_audit_log, admin_user: owner, filename: "dono-acima.csv")
+
+    sign_in manager
+
+    get admin_data_export_audit_logs_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("gestor.csv")
+    expect(response.body).to include("subordinado.csv")
+    expect(response.body).not_to include("par-fora.csv")
+    expect(response.body).not_to include("dono-acima.csv")
+    expect(response.body).not_to include("Par Exportação")
   end
 end

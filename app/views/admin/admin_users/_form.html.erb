@@ -76,40 +76,77 @@
     <div class="au-form-side">
       <%= ax_operational_panel(eyebrow: "Acesso", title: "Acesso e equipe") do %>
         <div class="au-body">
-          <div class="au-field">
-            <%= ax_field_label(f, :profile_id, text: "Perfil de acesso", tooltip: "Define o que o usuário pode ver e fazer no painel.") %>
-            <%= f.collection_select :profile_id, Profile.where(active: true).where.not(name: "Fotógrafo").order(:name), :id, :name, { prompt: "Selecione um perfil..." }, { class: "ax-control" } %>
-          </div>
+          <% if current_admin_user&.can?(:manage, :corretores) %>
+            <div data-controller="admin-user-access">
+            <div class="au-field">
+              <%= ax_field_label(f, :profile_id, text: "Perfil de acesso", tooltip: "Define o que o usuário pode ver e fazer no painel.") %>
+              <%= f.collection_select :profile_id,
+                                      @assignable_vertical_profiles || [],
+                                      :id,
+                                      :name,
+                                      { prompt: "Selecione um perfil vertical..." },
+                                      { class: "ax-control", data: { admin_user_access_target: "vertical", action: "change->admin-user-access#sync" } } %>
+              <p class="au-hint">Perfil vertical define hierarquia e escopo máximo de visão.</p>
+            </div>
+
+            <div class="au-field">
+              <%= ax_field_label(f, :horizontal_profile_id, text: "Função operacional", tooltip: "Opcional. Especializa permissões sem alterar a hierarquia principal.") %>
+              <select name="admin_user[horizontal_profile_id]"
+                      id="admin_user_horizontal_profile_id"
+                      class="ax-control"
+                      data-admin-user-access-target="horizontal">
+                <option value="">Nenhuma função horizontal</option>
+                <% (@assignable_horizontal_profiles || []).group_by(&:vertical_profile).each do |vertical_profile, profiles| %>
+                  <optgroup label="<%= vertical_profile&.name || "Sem vínculo" %>">
+                    <% profiles.each do |horizontal_profile| %>
+                      <option value="<%= horizontal_profile.id %>"
+                              data-vertical-profile-id="<%= horizontal_profile.vertical_profile_id %>"
+                              <%= "selected" if admin_user.horizontal_profile_id == horizontal_profile.id %>>
+                        <%= horizontal_profile.name %>
+                      </option>
+                    <% end %>
+                  </optgroup>
+                <% end %>
+              </select>
+              <p class="au-hint">Funções horizontais atuam dentro do limite do perfil vertical.</p>
+            </div>
+            </div>
+          <% else %>
+            <div class="au-field">
+              <span class="au-field__label">Perfil de acesso</span>
+              <p class="au-hint"><strong><%= admin_user.profile&.name || "Ainda não definido" %></strong><%= " · #{admin_user.horizontal_profile.name}" if admin_user.horizontal_profile %></p>
+            </div>
+          <% end %>
 
           <div class="au-switches">
             <%= ax_toggle_chip(f, :active, label: "Ativo no sistema", id: "admin_user_active") %>
             <%= ax_toggle_chip(f, :display_on_site, label: "Exibir perfil no site", id: "admin_user_display_on_site") %>
-            <% if current_admin_user&.system_admin? %>
-              <%= ax_toggle_chip(f, :super_admin, label: "Admin do Sistema", id: "admin_user_super_admin") %>
-            <% end %>
           </div>
           <p class="au-hint">Usuários inativos não recebem leads e ficam fora da distribuição. O status é sincronizado a cada importação do Vista.</p>
-          <% if current_admin_user&.system_admin? %>
-            <p class="au-hint"><i class="bi bi-hdd-stack"></i> <strong>Admin do Sistema</strong> está acima da conta: acessa o painel do sistema e pode impersonar qualquer usuário. Conceda com cautela.</p>
-          <% end %>
 
           <div class="au-field">
             <%= ax_field_label(f, :acting_type, text: "Área de atuação", tooltip: "Venda, Locação ou Ambos.") %>
             <%= f.select :acting_type, AdminUser.acting_types.keys.map { |k| [I18n.t("enums.admin_user.acting_type.#{k}", default: k.humanize), k] }, { prompt: "Selecione..." }, { class: "ax-control" } %>
           </div>
 
-          <div class="au-field">
-            <%= ax_field_label(f, :manager_id, text: "Gestor imediato", tooltip: "Organiza equipes e regras de distribuição.") %>
-            <%= f.collection_select :manager_id, AdminUser.where.not(id: admin_user.id).order(:name), :id, :name, { prompt: "Nenhum (topo da hierarquia)" }, { class: "ax-control" } %>
-          </div>
-
-          <div class="au-field">
-            <span class="au-field__label">Segurança de login</span>
-            <div class="au-switches">
-              <%= ax_toggle_chip(f, :require_ip_allowlist, label: "Exigir IP permitido", id: "admin_user_require_ip_allowlist") %>
-              <%= ax_toggle_chip(f, :require_trusted_device, label: "Exigir aparelho confiável", id: "admin_user_require_trusted_device") %>
+          <% if current_admin_user&.can?(:manage, :corretores) %>
+            <div class="au-field">
+              <%= ax_field_label(f, :manager_id, text: "Gestor imediato", tooltip: "Organiza equipes e regras de distribuição.") %>
+              <% manager_options = @assignable_manager_options || [] %>
+              <%= f.collection_select :manager_id, manager_options, :id, :name, { prompt: "Nenhum (topo da hierarquia)" }, { class: "ax-control" } %>
+              <p class="au-hint">O gestor precisa estar em um perfil vertical acima do usuário.</p>
             </div>
-          </div>
+          <% end %>
+
+          <% if current_admin_user&.tenant_owner? %>
+            <div class="au-field">
+              <span class="au-field__label">Segurança de login</span>
+              <div class="au-switches">
+                <%= ax_toggle_chip(f, :require_ip_allowlist, label: "Exigir IP permitido", id: "admin_user_require_ip_allowlist") %>
+                <%= ax_toggle_chip(f, :require_trusted_device, label: "Exigir aparelho confiável", id: "admin_user_require_trusted_device") %>
+              </div>
+            </div>
+          <% end %>
 
           <% if admin_user.vista_id.present? %>
             <div class="au-field">

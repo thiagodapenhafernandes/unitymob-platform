@@ -1,0 +1,193 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_system_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Usuários</strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_system_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-hdd-stack"></i><span>Painel</span>
+  <% end %>
+<% end %>
+
+<div class="ax-system">
+  <header class="ax-dashboard-command ax-property-form-command">
+    <div class="ax-dashboard-command__main">
+      <span class="ax-dashboard-command__eyebrow">Admin do Sistema</span>
+      <h1>Usuários da plataforma</h1>
+      <p>Lista global para impersonação auditada. O acesso operacional acontece somente depois de entrar como o usuário escolhido.</p>
+    </div>
+    <div class="ax-dashboard-command__status">
+      <%= ax_badge("#{@admin_users.total_entries} usuários", tone: :blue) %>
+    </div>
+  </header>
+
+  <%= ax_operational_panel(
+        eyebrow: "Filtro",
+        title: "Localizar usuário",
+        actions: ax_badge("impersonação exclusiva do sistema", tone: :gray)
+      ) do %>
+    <%= form_with url: admin_system_users_path, method: :get, local: true, class: "ax-filter-form", data: { controller: "auto-submit admin-user-access" } do |f| %>
+      <div class="ax-field-grid">
+        <div class="ax-field ax-span-4">
+          <%= f.label :q, "Busca", class: "ax-field__label" %>
+          <%= f.search_field :q, value: @query, class: "ax-input", placeholder: "Nome, e-mail ou conta" %>
+        </div>
+        <div class="ax-field ax-span-3">
+          <%= f.label :tenant_id, "Conta", class: "ax-field__label" %>
+          <%= f.select :tenant_id,
+                options_from_collection_for_select(@tenants, :id, :name, @tenant_id),
+                { include_blank: "Todas as contas" },
+                class: "ax-input",
+                data: {
+                  controller: "tom-select",
+                  placeholder: "Buscar conta...",
+                  tom_select_options_value: { allowEmptyOption: true, maxOptions: nil },
+                  action: "change->auto-submit#submit"
+                } %>
+        </div>
+        <div class="ax-field ax-span-2">
+          <%= f.label :status, "Status", class: "ax-field__label" %>
+          <%= f.select :status,
+                options_for_select([["Todos", "all"], ["Ativos", "active"], ["Inativos", "inactive"]], @status),
+                {},
+                class: "ax-input",
+                data: { action: "change->auto-submit#submit" } %>
+        </div>
+        <div class="ax-field ax-span-3">
+          <%= f.label :user_kind, "Tipo", class: "ax-field__label" %>
+          <%= f.select :user_kind,
+                options_for_select([["Todos", "all"], ["Usuários da conta", "account"], ["Admins do Sistema", "system"]], @user_kind),
+                {},
+                class: "ax-input",
+                data: { action: "change->auto-submit#submit" } %>
+        </div>
+
+        <div class="ax-field ax-span-3">
+          <%= f.label :profile_id, "Perfil vertical", class: "ax-field__label" %>
+          <%= f.select :profile_id,
+                options_from_collection_for_select(@tenant_vertical_profiles, :id, :name, @profile_id),
+                { include_blank: @account_filters_enabled ? "Todos os perfis" : "Selecione uma conta" },
+                class: "ax-input",
+                disabled: !@account_filters_enabled,
+                data: {
+                  controller: "tom-select",
+                  admin_user_access_target: "vertical",
+                  placeholder: @account_filters_enabled ? "Buscar perfil..." : "Selecione uma conta",
+                  tom_select_options_value: { allowEmptyOption: true, maxOptions: nil },
+                  action: "change->admin-user-access#sync change->auto-submit#submit"
+                } %>
+        </div>
+        <div class="ax-field ax-span-3">
+          <%= f.label :horizontal_profile_id, "Função horizontal", class: "ax-field__label" %>
+          <select name="horizontal_profile_id"
+                  id="horizontal_profile_id"
+                  class="ax-input"
+                  <%= "disabled" unless @account_filters_enabled %>
+                  data-controller="tom-select"
+                  data-admin-user-access-target="horizontal"
+                  data-placeholder="<%= @account_filters_enabled ? "Buscar função..." : "Selecione uma conta" %>"
+                  data-tom-select-options-value="<%= { allowEmptyOption: true, maxOptions: nil }.to_json %>"
+                  data-action="change->auto-submit#submit">
+            <option value=""><%= @account_filters_enabled ? "Todas as funções" : "Selecione uma conta" %></option>
+            <% @tenant_horizontal_profiles.group_by(&:vertical_profile).each do |vertical_profile, profiles| %>
+              <optgroup label="<%= vertical_profile&.name || "Sem vínculo" %>">
+                <% profiles.each do |horizontal_profile| %>
+                  <option value="<%= horizontal_profile.id %>"
+                          data-vertical-profile-id="<%= horizontal_profile.vertical_profile_id %>"
+                          <%= "selected" if horizontal_profile.id.to_s == @horizontal_profile_id.to_s %>>
+                    <%= horizontal_profile.name %>
+                  </option>
+                <% end %>
+              </optgroup>
+            <% end %>
+          </select>
+        </div>
+        <div class="ax-field ax-span-6 ax-system-filter-actions">
+          <%= f.button type: "submit", class: "ax-btn ax-btn--primary" do %>
+            <i class="bi bi-search"></i><span>Filtrar</span>
+          <% end %>
+          <%= link_to admin_system_users_path, class: "ax-btn ax-btn--ghost" do %>
+            <i class="bi bi-x-circle"></i><span>Limpar</span>
+          <% end %>
+        </div>
+      </div>
+
+      <%= hidden_field_tag :hierarchy_user_id, @hierarchy_user_id, id: "system_user_hierarchy_id" %>
+
+      <% if @account_filters_enabled %>
+        <div class="ax-system-hierarchy-filter">
+          <%= render "admin/shared/hierarchical_user_filter",
+                component_id: "system_user_hierarchy_filter",
+                profiles: @tenant_vertical_profiles,
+                users: @hierarchy_users,
+                selection_input_id: "system_user_hierarchy_id",
+                label: "Hierarquia da conta",
+                hint: "Filtra pela pessoa selecionada e por todos os subordinados abaixo dela. A lista de níveis vem dos perfis verticais desta conta.",
+                submit_on_change: true %>
+        </div>
+      <% else %>
+        <p class="ax-field__hint ax-system-filter-note">Selecione uma conta e o tipo usuários da conta para habilitar o filtro hierárquico em cascata.</p>
+      <% end %>
+    <% end %>
+  <% end %>
+
+  <%= ax_operational_panel(
+        eyebrow: "Acesso",
+        title: "Impersonar usuário",
+        actions: ax_badge("auditado", tone: :green, dot: true)
+      ) do %>
+    <% if @admin_users.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Conta</th>
+              <th>Perfil vertical</th>
+              <th>Função horizontal</th>
+              <th>Status</th>
+              <th class="ax-num" style="width:130px">Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @admin_users.each do |user| %>
+              <tr>
+                <td class="ax-strong">
+                  <%= user.name %>
+                  <span class="ax-system-admin-role"><%= user.email %></span>
+                </td>
+                <td><%= user.system_admin? ? "Plataforma" : user.tenant&.name %></td>
+                <td><%= user.system_admin? ? "Admin do Sistema" : user.profile&.name.presence || "Sem perfil" %></td>
+                <td><%= user.horizontal_profile&.name.presence || "Sem função" %></td>
+                <td>
+                  <div class="ax-system-admin-flags">
+                    <%= ax_badge(user.active? ? "Ativo" : "Inativo", tone: user.active? ? :green : :gray, dot: true) %>
+                    <% if user.system_admin? %><%= ax_badge("Sistema", tone: :blue) %><% end %>
+                  </div>
+                </td>
+                <td class="ax-num">
+                  <% if user == current_admin_user %>
+                    <span class="ax-system-muted">Sessão atual</span>
+                  <% else %>
+                    <%= button_to "Impersonar",
+                          admin_system_user_impersonation_path(user),
+                          method: :post,
+                          class: "ax-dashboard-panel__link",
+                          form: { data: { turbo_confirm: "Entrar como #{user.name}?" } } %>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="ax-pagination">
+        <%= will_paginate @admin_users %>
+      </div>
+    <% else %>
+      <%= ax_empty_state(title: "Nenhum usuário encontrado", description: "Ajuste a busca ou selecione outra conta.", icon: "people") %>
+    <% end %>
+  <% end %>
+</div>

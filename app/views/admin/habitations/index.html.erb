@@ -2326,7 +2326,7 @@
   end
   clear_extras_params = clear_extra_filter_params
   total_habitations_count = Habitation.count
-  bulk_actions_allowed = can?(:manage, :imoveis) && current_admin_user&.admin?
+  bulk_actions_allowed = can_bulk_publish_habitations?
   filters_json = request.query_parameters.except("page").to_json.html_safe if bulk_actions_allowed
   current_sort_key = sort_options.key?(params[:sort].to_s) ? params[:sort].to_s : "data_cadastro_crm"
   current_sort_label = sort_options[current_sort_key][:label]
@@ -2744,7 +2744,7 @@
           <div class="tw-py-2 tw-font-semibold" style="padding:8px 12px;background:#f6f8fb">Selecione os campos para exportação</div>
           <div style="max-height:340px;overflow-y:auto">
             <% @export_fields.each do |field_key, field_label| %>
-              <% next if !(current_admin_user&.admin? || current_admin_user&.profile&.administrativo?) && field_key == "proprietario" %>
+              <% next if !can_export_proprietor_data? && field_key == "proprietario" %>
               <label class="tw-flex tw-items-center tw-gap-2 tw-py-2 tw-border-b tw-text-sm" style="padding-left:12px;padding-right:12px">
                 <%= check_box_tag "fields[]", field_key, @default_export_fields.include?(field_key) %>
                 <span><%= field_label %></span>
@@ -2829,7 +2829,7 @@
   active_filter_chips << "Garagens permuta ≥ #{params[:permuta_min_garagens]}" if params[:permuta_min_garagens].present?
   active_filter_chips << "Empreendimento: #{params[:empreendimento_codigo]}" if params[:empreendimento_codigo].present?
   active_filter_chips << "Corretor: #{params[:corretor_id]}" if params[:corretor_id].present?
-  active_filter_chips << "Proprietário: #{params[:proprietor_id]}" if (current_admin_user&.admin? || current_admin_user&.profile&.administrativo?) && params[:proprietor_id].present?
+  active_filter_chips << "Proprietário: #{params[:proprietor_id]}" if can_export_proprietor_data? && params[:proprietor_id].present?
   active_filter_chips << "Região foco?: #{params[:regiao_foco]}" if params[:regiao_foco].present?
   active_filter_chips << "Meus imóveis" if @ownership_scope == "mine"
   active_filter_chips << "Pendente de revisão" if @intake_review == "pending"

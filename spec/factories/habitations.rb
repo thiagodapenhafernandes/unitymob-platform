@@ -1,20 +1,32 @@
 FactoryBot.define do
   factory :habitation do
+    tenant { Current.tenant || Tenant.default }
     sequence(:codigo) { |n| (8000 + n).to_s }
     categoria { "Casa em Condomínio" }
     tipo { "Unitário" }
     status { "Venda" }
+    endereco { "Rua 1000" }
     exibir_no_site_flag { true }
     valor_venda_cents { 990_000_000 }
     valor_locacao_cents { 0 }
     pictures do
       [
         {
-          "url" => "https://example.com/property.jpg",
+          "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/property.jpg",
           "ordem" => 1,
           "principal" => true
         }
       ]
+    end
+
+    after(:build) do |habitation|
+      habitation.build_address(
+        logradouro: habitation.endereco.presence || "Rua 1000",
+        bairro: "Centro",
+        cidade: "Balneário Camboriú",
+        uf: "SC",
+        pais: "Brasil"
+      ) unless habitation.address
     end
 
     trait :unavailable do

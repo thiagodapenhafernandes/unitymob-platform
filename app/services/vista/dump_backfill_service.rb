@@ -144,6 +144,10 @@ module Vista
 
     private
 
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para backfill de dump Vista")
+    end
+
     def validate_dump!
       [cadimo_path, cadcli_path].each do |path|
         raise ArgumentError, "Arquivo nao encontrado: #{path}" unless File.exist?(path)
@@ -156,11 +160,11 @@ module Vista
         @clients[code] = row if code.present?
       end
 
-      @admin_user_id_by_vista_id = AdminUser.where.not(vista_id: [nil, ""]).pluck(:vista_id, :id).to_h
+      @admin_user_id_by_vista_id = tenant.admin_users.where.not(vista_id: [nil, ""]).pluck(:vista_id, :id).to_h
     end
 
     def target_scope
-      scope = Habitation.all
+      scope = tenant.habitations
       return scope unless @only_imported
 
       scope.where("last_sync_message LIKE ?", "%Importado do dump Vista%")

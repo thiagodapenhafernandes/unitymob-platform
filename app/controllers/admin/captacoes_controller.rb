@@ -66,7 +66,7 @@ module Admin
       @regiao_foco_locacao_percent = percentage(@regiao_foco_locacao, @total_locacao)
       @captacao_adm_locacao_percent = percentage(@captacao_adm_locacao, @total_locacao)
 
-      intake_scope = Habitation.broker_intakes.where(created_at: @period_start.beginning_of_day..@period_end.end_of_day)
+      intake_scope = current_tenant.habitations.broker_intakes.where(created_at: @period_start.beginning_of_day..@period_end.end_of_day)
       intake_scope = intake_scope.where("EXTRACT(MONTH FROM habitations.created_at) = ?", @month_filter.to_i) if @month_filter.present?
       unless owns_all_resource?(:pre_cadastros) || can?(:review, :pre_cadastros)
         pre_cadastro_owner_ids = visible_owner_ids(:captacoes)
@@ -182,13 +182,13 @@ module Admin
     end
 
     def require_admin!
-      return if current_admin_user.admin?
+      return if tenant_owner?
 
       redirect_to dashboard_admin_captacoes_path, alert: "Você não tem permissão para alterar o dashboard."
     end
 
     def captacao_habitation_scope
-      Habitation
+      current_tenant.habitations
         .where("COALESCE(habitations.tipo, '') <> 'Empreendimento'")
         .where("COALESCE(habitations.data_cadastro_crm, habitations.created_at) BETWEEN ? AND ?", @period_start.beginning_of_day, @period_end.end_of_day)
     end
@@ -209,7 +209,7 @@ module Admin
     end
 
     def set_captacao
-      @captacao = Captacao.find(params[:id])
+      @captacao = tenant_captacoes_scope.find(params[:id])
     end
 
     def parse_date(str)
@@ -232,16 +232,17 @@ module Admin
         @heatmap_start_date, @heatmap_end_date = @heatmap_end_date, @heatmap_start_date
       end
 
-      leads = Lead.where(created_at: @heatmap_start_date.beginning_of_day..@heatmap_end_date.end_of_day)
-                  .where.not(admin_user_id: nil)
+      leads = current_tenant.leads.where(created_at: @heatmap_start_date.beginning_of_day..@heatmap_end_date.end_of_day)
+                            .where.not(admin_user_id: nil)
       leads = leads.where(lead_type: params[:lead_category]) if params[:lead_category].present?
       leads = leads.where(origin: params[:lead_source])      if params[:lead_source].present?
-      leads = leads.where(admin_user_id: current_admin_user.id) unless current_admin_user.admin?
+      lead_owner_ids = visible_owner_ids(:leads)
+      leads = leads.where(admin_user_id: lead_owner_ids) unless lead_owner_ids.nil?
 
       rows = leads.group(:admin_user_id, "DATE(created_at)").count
 
       user_ids = rows.keys.map(&:first).uniq
-      @heatmap_corretores = AdminUser.where(id: user_ids).order(:name).to_a
+      @heatmap_corretores = current_tenant.admin_users.where(id: user_ids).order(:name).to_a
       @heatmap_dates = (@heatmap_start_date.to_date..@heatmap_end_date.to_date).to_a
 
       # Monta hash { admin_user_id => { date => count } }
@@ -254,8 +255,8 @@ module Admin
       @heatmap_max = rows.values.max || 0
 
       # Opções dos filtros
-      @lead_categories = Lead.distinct.pluck(:lead_type).compact.sort
-      @lead_sources    = Lead.distinct.pluck(:origin).compact.sort
+      @lead_categories = current_tenant.leads.distinct.pluck(:lead_type).compact.sort
+      @lead_sources    = current_tenant.leads.distinct.pluck(:origin).compact.sort
     end
 
     def authorize_access!
@@ -265,7 +266,11 @@ module Admin
 
     def scoped_captacoes
       ids = visible_owner_ids(:captacoes)
-      ids.nil? ? Captacao.all : Captacao.where(corretor_id: ids)
+      ids.nil? ? tenant_captacoes_scope : tenant_captacoes_scope.where(corretor_id: ids)
+    end
+
+    def tenant_captacoes_scope
+      Captacao.joins(:corretor).where(admin_users: { tenant_id: current_tenant.id })
     end
 
     def resolve_layout

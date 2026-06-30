@@ -7,7 +7,7 @@ module Admin
     before_action :set_store, only: [:show, :edit, :update, :destroy]
 
     def index
-      @stores = Store.includes(:director, :store_shifts).order(active: :desc, name: :asc)
+      @stores = current_tenant.stores.includes(:director, :store_shifts).order(active: :desc, name: :asc)
       @stores = @stores.where("name ILIKE ?", "%#{params[:q]}%") if params[:q].present?
     end
 
@@ -15,7 +15,7 @@ module Admin
     end
 
     def new
-      @store = Store.new(
+      @store = current_tenant.stores.new(
         timezone: "America/Sao_Paulo",
         geofence_radius_meters: 150,
         out_of_radius_tolerance_minutes: 10,
@@ -25,7 +25,7 @@ module Admin
     end
 
     def create
-      @store = Store.new(store_params)
+      @store = current_tenant.stores.new(store_params)
 
       if @store.save
         redirect_to admin_store_path(@store), notice: "Loja cadastrada com sucesso."
@@ -54,9 +54,9 @@ module Admin
     private
 
     def set_store
-      @store = Store.friendly.find(params[:id])
+      @store = current_tenant.stores.friendly.find(params[:id])
     rescue ActiveRecord::RecordNotFound
-      @store = Store.find(params[:id])
+      @store = current_tenant.stores.find(params[:id])
     end
 
     def store_params

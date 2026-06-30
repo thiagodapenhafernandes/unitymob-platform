@@ -123,6 +123,10 @@ module Vista
 
     private
 
+    def tenant
+      Current.tenant || raise(ArgumentError, "Tenant obrigatório para reconciliação Vista")
+    end
+
     def normalize_workers(workers)
       requested = workers.to_i.positive? ? workers.to_i : 1
       [requested, max_workers_for_connection_pool, @codigos.size].compact.min
@@ -279,12 +283,12 @@ module Vista
       normalized_codigo = codigo.to_s.strip
       return nil if normalized_codigo.blank?
 
-      Habitation.find_by(vista_codigo: normalized_codigo) ||
-        Habitation.find_by(codigo: normalized_codigo)
+      tenant.habitations.find_by(vista_codigo: normalized_codigo) ||
+        tenant.habitations.find_by(codigo: normalized_codigo)
     end
 
     def build_habitation_for_api(codigo, api)
-      Habitation.new(
+      tenant.habitations.new(
         codigo: value(api["Codigo"]).presence || codigo.to_s.strip,
         categoria: value(api["Categoria"]).presence || "Apartamento",
         status: Habitation.normalize_status(value(api["Status"])).presence || "Venda",
@@ -590,7 +594,7 @@ module Vista
         interaction.assign_attributes(
           habitation: habitation,
           proprietor: owner,
-          admin_user: AdminUser.find_by(vista_id: agent_code) || broker,
+          admin_user: tenant.admin_users.find_by(vista_id: agent_code) || broker,
           vista_habitation_code: habitation.codigo,
           vista_client_code: value(row["Cliente"]),
           vista_agent_code: agent_code,
@@ -973,14 +977,14 @@ module Vista
       code = value(api["CodigoProprietario"])
       return if code.blank?
 
-      proprietor = Proprietor.find_by(vista_code: code)
+      proprietor = tenant.proprietors.find_by(vista_code: code)
       attrs = proprietor_attrs(api, code)
       if proprietor
         proprietor.update!(attrs.compact_blank)
         return proprietor
       end
 
-      Proprietor.create!(attrs.merge(vista_code: code, name: attrs[:name].presence || "Proprietário #{code}"))
+      tenant.proprietors.create!(attrs.merge(vista_code: code, name: attrs[:name].presence || "Proprietário #{code}"))
     end
 
     def owner_data(api)
@@ -1026,7 +1030,7 @@ module Vista
       code = broker_code_from_api(api)
       return if code.blank?
 
-      AdminUser.find_by(vista_id: code)
+      tenant.admin_users.find_by(vista_id: code)
     end
 
     def broker_code_from_api(api)
@@ -1173,10 +1177,11 @@ module Vista
           next if name.blank?
 
           option = AttributeOption
+                   .where(tenant: tenant)
                    .where(context: "habitation", category: category)
                    .where("lower(name) = ?", name.to_s.downcase)
                    .first
-          option ? option.update!(name: name) : AttributeOption.create!(context: "habitation", category: category, name: name)
+          option ? option.update!(name: name) : tenant.attribute_options.create!(context: "habitation", category: category, name: name)
         rescue ActiveRecord::RecordNotUnique
           retry
         end
@@ -1259,7 +1264,7 @@ module Vista
       code = value(api["CodigoEmpreendimento"]) || value(api["CodigoEmp"])
       return if code.blank? || code == value(api["Codigo"])
 
-      Habitation.empreendimentos.exists?(codigo: code) ? code : nil
+      tenant.habitations.empreendimentos.exists?(codigo: code) ? code : nil
     end
 
     def development_name_from_vista(api, development_code)
@@ -1434,7 +1439,7 @@ module Vista
       return :__not_available__ unless api.key?("Empreendimento")
 
       code = value(api["CodigoEmpreendimento"]) || value(api["CodigoEmp"])
-      valid_code = code.present? && code != value(api["Codigo"]) && Habitation.empreendimentos.exists?(codigo: code)
+      valid_code = code.present? && code != value(api["Codigo"]) && tenant.habitations.empreendimentos.exists?(codigo: code)
       development_name_from_vista(api, valid_code ? code : nil)
     end
 
@@ -1485,7 +1490,7 @@ module Vista
       code = value(api["CodigoDWV"])
       return if code.blank? || code == "0"
 
-      duplicate = Habitation.where(codigo_dwv: code).where.not(id: habitation.id).exists?
+      duplicate = tenant.habitations.where(codigo_dwv: code).where.not(id: habitation.id).exists?
       duplicate ? nil : code
     end
 

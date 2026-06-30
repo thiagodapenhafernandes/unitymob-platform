@@ -13,6 +13,7 @@ module ManualCheckinRequests
       return { success: false, error: :already_has_active } if @request.admin_user.active_check_in.present?
 
       check_in = CheckIn.new(
+        tenant: @request.tenant,
         admin_user: @request.admin_user,
         store: @request.store,
         checked_in_at: Time.current,

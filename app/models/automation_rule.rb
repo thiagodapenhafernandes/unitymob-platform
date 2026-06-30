@@ -1,4 +1,6 @@
 class AutomationRule < ApplicationRecord
+  include TenantScoped
+
   # Gatilhos disponíveis (QUANDO)
   TRIGGERS = {
     "lead_created"       => "Quando um lead é criado",

@@ -11,7 +11,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   end
 
   def embedded_signup_callback
-    integration = WhatsappBusinessIntegration.current
+    integration = current_whatsapp_integration
     payload = callback_params
     event = payload[:event].to_s
     session_info = payload[:session_info].to_h
@@ -50,7 +50,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
       render json: { ok: false, message: error_message }, status: :unprocessable_content
     end
   rescue Facebook::WhatsappEmbeddedSignupService::Error => e
-    WhatsappBusinessIntegration.current.update!(
+    current_whatsapp_integration.update!(
       status: "failed",
       last_event: callback_params[:event].presence || "ERROR",
       last_error_message: e.message,
@@ -60,7 +60,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   end
 
   def update
-    integration = WhatsappBusinessIntegration.current
+    integration = current_whatsapp_integration
 
     if integration.update(webhook_settings_params)
       redirect_to admin_whatsapp_integration_path, notice: "Webhook do WhatsApp atualizado."
@@ -72,9 +72,9 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   end
 
   # Conexão manual via credenciais de System User / Cloud API (sem Embedded Signup).
-  # Útil para apenas notificar/enviar mensagens, igual ao NotificaLead.
+  # Útil para apenas notificar/enviar mensagens, igual ao NL.
   def manual_connection
-    integration = WhatsappBusinessIntegration.current
+    integration = current_whatsapp_integration
     attrs = manual_connection_params
     # Campos sensíveis em branco => mantém o atual (não sobrescreve credencial já salva).
     attrs.delete(:access_token) if attrs[:access_token].blank?
@@ -102,7 +102,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   # Testa conexão real contra a Graph API: envio (consulta o número) e recebimento
   # (apps inscritos no webhook da WABA). Não envia mensagem.
   def test_connection
-    client = Whatsapp::CloudClient.new
+    client = Whatsapp::CloudClient.new(current_whatsapp_integration)
 
     unless client.configured?
       return render json: { ok: false, message: "Configure Access Token e Phone Number ID antes de testar." }, status: :unprocessable_content
@@ -132,7 +132,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     to = params[:to].to_s.strip
     return render json: { ok: false, message: "Informe um número (ex.: 5547999999999)." }, status: :unprocessable_content if to.blank?
 
-    result = Whatsapp::CloudClient.new.send_text(
+    result = Whatsapp::CloudClient.new(current_whatsapp_integration).send_text(
       to: to,
       body: params[:body].presence || "Teste de conexão do CRM ✅"
     )
@@ -145,7 +145,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   end
 
   def disconnect
-    WhatsappBusinessIntegration.current.update!(
+    current_whatsapp_integration.update!(
       status: "disconnected",
       access_token: nil,
       last_event: "DISCONNECT",
@@ -158,7 +158,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   end
 
   def phone_settings
-    integration = WhatsappBusinessIntegration.current
+    integration = current_whatsapp_integration
 
     if integration.update(phone_settings_params)
       redirect_to admin_whatsapp_integration_path(tab: "site_phones"), notice: "Telefones do site atualizados."
@@ -172,7 +172,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
   private
 
   def load_page_state
-    @whatsapp_integration = WhatsappBusinessIntegration.current
+    @whatsapp_integration = current_whatsapp_integration
     @site_phone_settings = @whatsapp_integration.site_phone_settings
     @embedded_signup_config_id = embedded_signup_config_id
     @diagnostics = diagnostics
@@ -245,6 +245,10 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     top_level = permitted.slice("code", "event", "session_info", "raw")
     wrapped = permitted.fetch("whatsapp_integration", {})
     top_level.merge(wrapped) { |_key, top_value, wrapped_value| wrapped_value.presence || top_value }.with_indifferent_access
+  end
+
+  def current_whatsapp_integration
+    @current_whatsapp_integration ||= WhatsappBusinessIntegration.current(current_tenant)
   end
 
   def manual_connection_params

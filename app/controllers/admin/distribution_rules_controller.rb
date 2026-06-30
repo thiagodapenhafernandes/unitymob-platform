@@ -5,14 +5,14 @@ class Admin::DistributionRulesController < Admin::BaseController
   before_action :load_team_structure, only: [:new, :create, :edit, :update]
 
   def index
-    @distribution_rules = DistributionRule.all.order(created_at: :desc)
-    @holding_leads_count = Lead.represado.count
+    @distribution_rules = current_tenant.distribution_rules.order(created_at: :desc)
+    @holding_leads_count = current_tenant.leads.represado.count
   end
 
   def show
     @agents_queue = @rule.distribution_rule_agents.includes(:admin_user).order(position: :asc)
 
-    rule_leads = Lead.where(distribution_rule_id: @rule.id)
+    rule_leads = current_tenant.leads.where(distribution_rule_id: @rule.id)
     @leads_total = rule_leads.count
     @leads_distributed = rule_leads.where.not(admin_user_id: nil).count
     @leads_today = rule_leads.where(created_at: Time.current.all_day).count
@@ -24,12 +24,12 @@ class Admin::DistributionRulesController < Admin::BaseController
   end
 
   def new
-    @distribution_rule = DistributionRule.new
+    @distribution_rule = current_tenant.distribution_rules.new
     @distribution_rule.ensure_full_schedule
   end
 
   def create
-    @distribution_rule = DistributionRule.new(rule_params)
+    @distribution_rule = current_tenant.distribution_rules.new(rule_params)
     sync_agents
     populate_meta_forms_if_auto
     if @distribution_rule.save
@@ -82,7 +82,7 @@ class Admin::DistributionRulesController < Admin::BaseController
   private
 
   def set_rule
-    @rule = DistributionRule.find(params[:id])
+    @rule = current_tenant.distribution_rules.find(params[:id])
     @distribution_rule = @rule # For form compatibility
   end
 
@@ -102,25 +102,11 @@ class Admin::DistributionRulesController < Admin::BaseController
   end
 
   def load_team_structure
-    active_users = AdminUser.active.order(:name).to_a
-    @all_users_options = active_users.map { |u| [ u.name, u.id ] }
-    @all_agents = active_users.map { |u| { id: u.id, name: u.name } }
-
-    managers = AdminUser.account_members
-                        .where(id: AdminUser.where.not(manager_id: nil).select(:manager_id))
-                        .order(:name)
-
-    users_by_id = active_users.index_by(&:id)
-    @team_structure = managers.each_with_object({}) do |manager, structure|
-      agent_ids = manager.descendant_ids
-      agents = agent_ids.filter_map { |id| users_by_id[id] }.sort_by { |user| user.name.to_s.downcase }
-      structure[manager.id] = {
-        name: manager.name,
-        agents: agents.map { |agent| { id: agent.id, name: agent.name } }
-      }
-    end
-
-    @manager_options = managers.map { |m| [ m.name, m.id ] }
+    eligible_users = eligible_distribution_admin_users.to_a
+    @all_users_options = eligible_users.map { |u| [ u.name, u.id ] }
+    @all_agents = eligible_users.map { |u| distribution_hierarchy_user_payload(u) }
+    @distribution_hierarchy_profiles = distribution_hierarchy_profiles
+    @distribution_hierarchy_locked_user_id = tenant_owner? ? nil : current_admin_user.id
   end
 
   def populate_meta_forms_if_auto
@@ -146,19 +132,52 @@ class Admin::DistributionRulesController < Admin::BaseController
       else
         metadata.keys
       end
+    eligible_ids = eligible_distribution_admin_users.where(id: selected_ids).pluck(:id)
+    selected_ids = selected_ids.select { |admin_user_id| eligible_ids.include?(admin_user_id) }
 
     existing_agents = @distribution_rule.distribution_rule_agents.index_by(&:admin_user_id)
 
     existing_agents.each do |admin_user_id, agent|
-      agent.mark_for_destruction unless selected_ids.include?(admin_user_id)
+      agent.mark_for_destruction unless selected_ids.include?(admin_user_id) && eligible_ids.include?(admin_user_id)
     end
 
     selected_ids.each_with_index do |admin_user_id, index|
       agent = existing_agents[admin_user_id] || @distribution_rule.distribution_rule_agents.build(admin_user_id: admin_user_id)
+      agent.tenant = current_tenant
       meta = metadata[admin_user_id] || {}
       agent.position = (meta[:position].presence || index + 1).to_i
       agent.weight = (meta[:weight].presence || agent.weight.presence || 1).to_i
     end
+  end
+
+  def eligible_distribution_admin_users
+    scope = current_tenant.admin_users.active.includes(:profile).where.not(profile_id: nil)
+                          .where(profiles: { axis: Profile::AXES[:vertical] })
+                          .references(:profile)
+
+    unless tenant_owner?
+      scope = scope.where(id: current_admin_user.team_scope_ids)
+    end
+
+    scope.order(:name)
+  end
+
+  def distribution_hierarchy_profiles
+    profiles = current_tenant.profiles.ordered_vertical.to_a
+    return profiles if tenant_owner? || current_admin_user.vertical_profile.blank?
+
+    current_position = current_admin_user.vertical_profile.position.to_i
+    profiles.select { |profile| profile.position.to_i >= current_position }
+  end
+
+  def distribution_hierarchy_user_payload(user)
+    {
+      id: user.id,
+      name: user.name,
+      profile_id: user.profile_id,
+      profile_name: user.profile&.name,
+      manager_id: user.manager_id
+    }
   end
 
   # { admin_user_id => { weight:, position: } } a partir das linhas nested da fila,

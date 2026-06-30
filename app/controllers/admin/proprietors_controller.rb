@@ -35,32 +35,34 @@ module Admin
       @filters = proprietor_filter_params.to_h.symbolize_keys
       @proprietors = filtered_proprietors_scope
                     .paginate(page: params[:page], per_page: 20)
-      @habitations_count_by_proprietor = Habitation.where(proprietor_id: @proprietors.map(&:id)).group(:proprietor_id).count
+      @habitations_count_by_proprietor = current_tenant.habitations.where(proprietor_id: @proprietors.map(&:id)).group(:proprietor_id).count
 
       @capture_vehicle_options = Proprietor::CAPTURE_VEHICLES
-      @name_options = Proprietor.where.not(name: [nil, ""]).distinct.order(:name).pluck(:name)
-      @city_options = Proprietor.where.not(city: [nil, ""]).distinct.order(:city).pluck(:city)
-      @email_options = Proprietor.where.not(email: [nil, ""]).distinct.order(:email).pluck(:email)
-      @phone_options = Proprietor
+      tenant_proprietors = current_tenant.proprietors
+      tenant_habitations = current_tenant.habitations
+      @name_options = tenant_proprietors.where.not(name: [nil, ""]).distinct.order(:name).pluck(:name)
+      @city_options = tenant_proprietors.where.not(city: [nil, ""]).distinct.order(:city).pluck(:city)
+      @email_options = tenant_proprietors.where.not(email: [nil, ""]).distinct.order(:email).pluck(:email)
+      @phone_options = tenant_proprietors
         .pluck(:phone_primary, :mobile_phone, :residential_phone, :business_phone)
         .flatten
         .map { |value| value.to_s.strip }
         .reject(&:blank?)
         .uniq
         .sort
-      @spouse_name_options = Proprietor.where.not(spouse_name: [nil, ""]).distinct.order(:spouse_name).pluck(:spouse_name)
-      @spouse_email_options = Proprietor.where.not(spouse_email: [nil, ""]).distinct.order(:spouse_email).pluck(:spouse_email)
-      @spouse_phone_options = Proprietor.where.not(spouse_phone: [nil, ""]).distinct.order(:spouse_phone).pluck(:spouse_phone)
+      @spouse_name_options = tenant_proprietors.where.not(spouse_name: [nil, ""]).distinct.order(:spouse_name).pluck(:spouse_name)
+      @spouse_email_options = tenant_proprietors.where.not(spouse_email: [nil, ""]).distinct.order(:spouse_email).pluck(:spouse_email)
+      @spouse_phone_options = tenant_proprietors.where.not(spouse_phone: [nil, ""]).distinct.order(:spouse_phone).pluck(:spouse_phone)
 
-      reference_codes = Habitation.where.not(codigo: [nil, ""]).distinct.order(:codigo).limit(200).pluck(:codigo)
-      reference_titles = Habitation.where.not(titulo_anuncio: [nil, ""]).distinct.order(:titulo_anuncio).limit(200).pluck(:titulo_anuncio)
-      reference_developments = Habitation.where.not(nome_empreendimento: [nil, ""]).distinct.order(:nome_empreendimento).limit(200).pluck(:nome_empreendimento)
+      reference_codes = tenant_habitations.where.not(codigo: [nil, ""]).distinct.order(:codigo).limit(200).pluck(:codigo)
+      reference_titles = tenant_habitations.where.not(titulo_anuncio: [nil, ""]).distinct.order(:titulo_anuncio).limit(200).pluck(:titulo_anuncio)
+      reference_developments = tenant_habitations.where.not(nome_empreendimento: [nil, ""]).distinct.order(:nome_empreendimento).limit(200).pluck(:nome_empreendimento)
       @habitation_reference_options = (reference_codes + reference_titles + reference_developments).map(&:to_s).map(&:strip).reject(&:blank?).uniq.sort
-      @habitation_address_options = Habitation.where.not(endereco: [nil, ""]).distinct.order(:endereco).limit(400).pluck(:endereco)
-      @habitation_number_options = Habitation.where.not(numero: [nil, ""]).distinct.order(:numero).limit(300).pluck(:numero)
+      @habitation_address_options = tenant_habitations.where.not(endereco: [nil, ""]).distinct.order(:endereco).limit(400).pluck(:endereco)
+      @habitation_number_options = tenant_habitations.where.not(numero: [nil, ""]).distinct.order(:numero).limit(300).pluck(:numero)
 
-      @habitation_category_options = Habitation.where.not(categoria: [nil, ""]).distinct.order(:categoria).pluck(:categoria)
-      @habitation_status_options = Habitation.where.not(status: [nil, ""]).distinct.order(:status).pluck(:status)
+      @habitation_category_options = tenant_habitations.where.not(categoria: [nil, ""]).distinct.order(:categoria).pluck(:categoria)
+      @habitation_status_options = tenant_habitations.where.not(status: [nil, ""]).distinct.order(:status).pluck(:status)
       @export_fields = EXPORT_FIELDS
       @report_types = REPORT_TYPES
       @default_export_fields = %w[name phone_primary residential_phone business_phone mobile_phone habitation_code habitation_brokers habitation_rent]
@@ -98,7 +100,7 @@ module Admin
       report_type = normalized_report_type
       fields = sanitized_export_fields
       data_format = normalized_data_format
-      proprietors = apply_index_filters(Proprietor.left_outer_joins(:habitations), filters).distinct.order(name: :asc)
+      proprietors = apply_index_filters(current_tenant.proprietors.left_outer_joins(:habitations), filters).distinct.order(name: :asc)
       ids = sanitized_selected_ids
       proprietors = proprietors.where(id: ids) if ids.any?
 
@@ -143,7 +145,7 @@ module Admin
     end
 
     def new
-      @proprietor = Proprietor.new
+      @proprietor = current_tenant.proprietors.new
     end
 
     def edit
@@ -151,7 +153,7 @@ module Admin
     end
 
     def create
-      @proprietor = Proprietor.new(proprietor_params)
+      @proprietor = current_tenant.proprietors.new(proprietor_params)
 
       if @proprietor.save
         redirect_to admin_proprietors_path, notice: "Proprietário criado com sucesso."
@@ -163,8 +165,9 @@ module Admin
     def quick_create
       permitted = quick_proprietor_params
       phone = permitted[:mobile_phone].presence || permitted[:phone_primary].presence
-      @proprietor = Proprietor.find_by_phone(phone) if phone.present?
-      @proprietor ||= Proprietor.new(role: :owner)
+      phone_digits = Proprietor.normalized_phone(phone)
+      @proprietor = current_tenant.proprietors.with_normalized_phone(phone_digits).order(:id).first if phone_digits.present?
+      @proprietor ||= current_tenant.proprietors.new(role: :owner)
 
       @proprietor.name = permitted[:name] if permitted[:name].present?
       @proprietor.email = permitted[:email] if permitted[:email].present?
@@ -195,13 +198,13 @@ module Admin
     private
 
     def set_proprietor
-      @proprietor = Proprietor.find_by(id: params[:id])
+      @proprietor = current_tenant.proprietors.find_by(id: params[:id])
       return if @proprietor.present?
 
       # Compatibilidade com links legados do módulo de construtoras.
       legacy_constructor = Constructor.find_by(id: params[:id]) if defined?(Constructor)
       if legacy_constructor.present?
-        @proprietor = Proprietor.find_or_create_by!(name: legacy_constructor.name) do |p|
+        @proprietor = current_tenant.proprietors.find_or_create_by!(name: legacy_constructor.name) do |p|
           p.role = :builder
         end
         redirect_to edit_admin_proprietor_path(@proprietor), notice: "Cadastro legado convertido para Proprietário."
@@ -209,12 +212,6 @@ module Admin
       end
 
       redirect_to admin_proprietors_path, alert: "Proprietário não encontrado."
-    end
-
-    def require_admin_or_administrative!
-      return if current_admin_user&.admin? || current_admin_user&.profile&.administrativo?
-
-      redirect_to admin_root_path, alert: "Acesso negado. Apenas administradores."
     end
 
     def proprietor_params
@@ -249,7 +246,7 @@ module Admin
     end
 
     def filtered_proprietors_scope
-      apply_index_filters(Proprietor.left_outer_joins(:habitations), @filters)
+      apply_index_filters(current_tenant.proprietors.left_outer_joins(:habitations), @filters)
         .distinct
         .order(name: :asc)
     end

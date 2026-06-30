@@ -60,7 +60,6 @@ module Habitations
 
     def covered_by_attached_media?(pic, original_index, pic_url)
       return false if attached_media_photos.blank?
-      return true if original_index.to_i < attached_media_photos.size
 
       (picture_identity_keys(pic, pic_url) & attached_media_identity_keys).any?
     end

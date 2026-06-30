@@ -26,7 +26,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def send_message
-    @integration = WhatsappBusinessIntegration.current
+    @integration = WhatsappBusinessIntegration.current(current_tenant)
     body = params[:body].to_s.strip
     template_name = params[:template_name].to_s.strip
 
@@ -40,20 +40,20 @@ class Admin::WhatsappInboxController < Admin::BaseController
 
     message.save!
     @conversation.touch_last_message!(message)
-    Whatsapp::SendMessageJob.perform_later(message.id)
+    Whatsapp::SendMessageJob.perform_later(message.id, tenant_id: message.tenant_id)
     LeadActivity.log!(lead: @conversation.lead, kind: "whatsapp_out", metadata: { body: message.preview, by: current_admin_user&.name }) if @conversation.lead_id
 
     redirect_to admin_whatsapp_conversation_path(@conversation)
   end
 
   def assign_lead
-    lead = Lead.find_by(id: params[:lead_id])
+    lead = current_tenant.leads.find_by(id: params[:lead_id])
     @conversation.update(lead: lead) if lead
     redirect_to admin_whatsapp_conversation_path(@conversation), notice: "Conversa vinculada ao lead."
   end
 
   def sync_templates
-    result = Whatsapp::SyncTemplatesJob.perform_now
+    result = Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
     if result.is_a?(Hash) && result[:ok]
       redirect_to admin_whatsapp_conversations_path, notice: "#{result[:synced]} modelos sincronizados."
     else
@@ -64,14 +64,14 @@ class Admin::WhatsappInboxController < Admin::BaseController
   private
 
   def load_inbox
-    @integration = WhatsappBusinessIntegration.current
+    @integration = WhatsappBusinessIntegration.current(current_tenant)
     @conversations = conversation_scope.recent.limit(200)
-    @templates = WhatsappTemplate.approved.ordered
+    @templates = current_tenant.whatsapp_templates.approved.ordered
     @total_unread = conversation_scope.unread.sum(:unread_count)
   end
 
   def conversation_scope
-    base = WhatsappConversation.includes(:lead, :assigned_admin_user)
+    base = current_tenant.whatsapp_conversations.includes(:lead, :assigned_admin_user)
     ids = visible_owner_ids(:whatsapp_inbox)
     return base if ids.nil?
 
@@ -90,7 +90,7 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def template_body(name)
-    WhatsappTemplate.find_by(name: name)&.body
+    current_tenant.whatsapp_templates.find_by(name: name)&.body
   end
 
   def serialize(message)
