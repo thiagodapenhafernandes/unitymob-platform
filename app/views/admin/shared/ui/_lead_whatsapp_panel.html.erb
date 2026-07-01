@@ -1,0 +1,117 @@
+<% lead = local_assigns.fetch(:lead) %>
+<% conversation = local_assigns[:conversation] %>
+<% templates = Array(local_assigns[:templates]) %>
+<% summary = local_assigns[:summary] || {} %>
+<% thread_context_locals = local_assigns[:thread_context_locals] || {} %>
+<% messages = Array(local_assigns[:messages]) %>
+<% return_to = local_assigns[:return_to].presence %>
+<% channel_label = lead.business_scoped_user_id.present? ? "BSUID #{lead.business_scoped_user_id}" : (lead.display_phone.presence || "Canal não identificado") %>
+<% media_support_label = "Texto, imagem, vídeo, áudio e documento" %>
+
+<div class="ax-card tw-mb-4 lead-whatsapp-card" data-lead-whatsapp-panel="true">
+  <div class="ax-card__body tw-grid tw-gap-3">
+    <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
+      <div class="tw-flex tw-items-center tw-gap-2">
+        <i class="bi bi-whatsapp tw-text-lg lead-whatsapp-card__icon"></i>
+        <div>
+          <div class="ax-stat-label">WhatsApp individual</div>
+          <% if conversation %>
+            <div class="ax-strong">Atendimento sem sair do lead</div>
+          <% elsif lead.whatsapp_recipient.present? %>
+            <div class="ax-page-subtitle">Abra a thread individual, envie mídia real ou ative o lead com um template aprovado.</div>
+          <% else %>
+            <div class="ax-page-subtitle">Este lead ainda não tem telefone ou BSUID para abrir conversa no WhatsApp.</div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="tw-flex tw-flex-wrap tw-gap-2">
+        <% if conversation %>
+          <%= ax_button "Tela dedicada", admin_whatsapp_conversation_path(conversation, workspace: "focus"), variant: :primary, size: :sm, icon: "layout-sidebar-inset-reverse" %>
+        <% elsif lead.whatsapp_recipient.present? %>
+          <%= button_to open_whatsapp_conversation_admin_lead_path(lead), method: :post, class: "ax-btn ax-btn--sm" do %>
+            <i class="bi bi-chat-dots ax-ico"></i>
+            <span>Abrir conversa</span>
+          <% end %>
+          <%= button_to open_whatsapp_conversation_admin_lead_path(lead, workspace: "focus"), method: :post, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+            <i class="bi bi-layout-sidebar-inset-reverse ax-ico"></i>
+            <span>Abrir dedicada</span>
+          <% end %>
+        <% else %>
+          <button type="button" class="ax-btn ax-btn--sm" disabled>
+            <i class="bi bi-chat-dots ax-ico"></i><span>Sem canal disponível</span>
+          </button>
+        <% end %>
+      </div>
+    </div>
+
+    <% if conversation %>
+      <%= render "admin/whatsapp_inbox/thread_workspace",
+            conversation: conversation,
+            messages: messages,
+            thread_context_locals: thread_context_locals,
+            focus_mode: false,
+            compact_mode: true,
+            can_manage_comercial: can?(:manage, :comercial),
+            wrapper_class: "lead-whatsapp-card__workspace",
+            empty_title: "Conversa aberta, sem histórico ainda",
+            empty_description: "Assim que a primeira troca acontecer, as mensagens mais recentes aparecerão aqui." %>
+
+      <% if can?(:manage, :whatsapp_inbox) %>
+        <%= render "admin/shared/ui/whatsapp_composer",
+              title: "Responder sem sair do lead",
+              conversation: conversation,
+              templates: templates,
+              return_to: return_to,
+              file_input_id: "lead-whatsapp-media-file",
+              compact_mode: true,
+              class_name: "lead-whatsapp-card__composer" %>
+      <% end %>
+    <% elsif can?(:manage, :whatsapp_inbox) %>
+      <div class="lead-whatsapp-card__summary lead-whatsapp-card__summary--setup">
+        <div class="lead-whatsapp-card__summary-item">
+          <span>Canal</span>
+          <strong><%= channel_label %></strong>
+        </div>
+        <div class="lead-whatsapp-card__summary-item">
+          <span>Suporte</span>
+          <strong><%= media_support_label %></strong>
+        </div>
+        <div class="lead-whatsapp-card__summary-badges">
+          <%= ax_badge(lead.business_scoped_user_id.present? ? "BSUID" : "Telefone", tone: :gray) if lead.whatsapp_recipient.present? %>
+          <%= ax_badge("#{templates.size} template#{'s' if templates.size != 1}", tone: :blue) if templates.any? %>
+          <%= ax_badge("Canal pronto", tone: :green) if lead.whatsapp_recipient.present? %>
+        </div>
+      </div>
+
+      <div class="lead-whatsapp-card__template-row">
+        <%= form_with url: activate_whatsapp_template_admin_lead_path(lead), method: :post, class: "lead-whatsapp-card__template-form" do %>
+          <% if return_to.present? %>
+            <input type="hidden" name="return_to" value="<%= return_to %>">
+          <% end %>
+          <select name="whatsapp_template_id"
+                  class="ax-select lead-whatsapp-card__template-select"
+                  <%= "disabled" unless lead.whatsapp_recipient.present? && templates.any? %>>
+            <option value="">Ativar com template aprovado</option>
+            <% templates.each do |template| %>
+              <option value="<%= template.id %>"><%= template.name %></option>
+            <% end %>
+          </select>
+          <button type="submit"
+                  class="ax-btn ax-btn--sm ax-btn--primary"
+                  <%= "disabled" unless lead.whatsapp_recipient.present? && templates.any? %>>
+            <i class="bi bi-send ax-ico"></i><span>Enviar template</span>
+          </button>
+        <% end %>
+
+        <% if templates.blank? %>
+          <span class="lead-whatsapp-card__hint">Nenhum template aprovado disponível para esta conta.</span>
+        <% elsif lead.whatsapp_recipient.blank? %>
+          <span class="lead-whatsapp-card__hint">Cadastre telefone ou BSUID no lead para ativar o WhatsApp.</span>
+        <% else %>
+          <span class="lead-whatsapp-card__hint">Abra a thread para enviar texto, imagem, vídeo, áudio e documento ou inicie o contato com um template aprovado.</span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

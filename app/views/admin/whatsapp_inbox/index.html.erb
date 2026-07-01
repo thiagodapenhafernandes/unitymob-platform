@@ -1,150 +1,194 @@
-<%# Central de Atendimento WhatsApp — inbox 2 colunas (.ax-* + wa-*) %>
-<style>
-  .wa-shell { display:flex; gap:0; border:1px solid #e6e8eb; border-radius:14px; overflow:hidden; background:#fff; height:calc(100vh - 150px); min-height:480px; }
-  .wa-list { width:320px; flex:0 0 320px; border-right:1px solid #e6e8eb; display:flex; flex-direction:column; }
-  .wa-list__items { overflow-y:auto; flex:1; }
-  .wa-conv { display:block; padding:11px 14px; border-bottom:1px solid #f1f3f5; text-decoration:none; color:inherit; }
-  .wa-conv:hover { background:#f7f8fa; }
-  .wa-conv.is-active { background:var(--admin-primary-soft); }
-  .wa-conv__top { display:flex; justify-content:space-between; align-items:center; gap:6px; }
-  .wa-conv__name { font-weight:650; font-size:13px; color:#1f2733; }
-  .wa-conv__time { font-size:11px; color:#98a2b3; white-space:nowrap; }
-  .wa-conv__preview { font-size:12px; color:#697586; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .wa-unread { background:#25d366; color:#fff; border-radius:999px; font-size:10.5px; font-weight:700; padding:1px 7px; }
-  .wa-thread { flex:1; display:flex; flex-direction:column; min-width:0; }
-  .wa-thread__header { padding:12px 16px; border-bottom:1px solid #e6e8eb; display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  .wa-thread__scroll { flex:1; overflow-y:auto; padding:18px 16px; background:#efeae2; background-image:linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)); }
-  .wa-bubble-row { display:flex; margin-bottom:8px; }
-  .wa-bubble-row--outbound { justify-content:flex-end; }
-  .wa-bubble { max-width:72%; padding:7px 10px 5px; border-radius:10px; font-size:13px; box-shadow:0 1px 1px rgba(0,0,0,.06); white-space:pre-wrap; word-break:break-word; }
-  .wa-bubble--inbound { background:#fff; border-top-left-radius:2px; }
-  .wa-bubble--outbound { background:#d9fdd3; border-top-right-radius:2px; }
-  .wa-time { font-size:10px; color:#667781; text-align:right; margin-top:2px; }
-  .wa-composer { border-top:1px solid #e6e8eb; padding:10px 12px; display:flex; gap:8px; align-items:flex-end; background:#fff; }
-  .wa-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#98a2b3; text-align:center; padding:24px; }
-  @media (max-width: 860px) {
-    .wa-shell { flex-direction:column; height:auto; }
-    .wa-list { width:100%; flex:none; max-height:280px; border-right:0; border-bottom:1px solid #e6e8eb; }
-  }
-</style>
+<%
+  focus_url = @conversation ? admin_whatsapp_conversation_path(@conversation, workspace: "focus") : admin_whatsapp_conversations_path(workspace: "focus")
+  standard_url = @conversation ? admin_whatsapp_conversation_path(@conversation) : admin_whatsapp_conversations_path
+  current_thread_url = @conversation ? (@focus_mode ? admin_whatsapp_conversation_path(@conversation, workspace: "focus") : admin_whatsapp_conversation_path(@conversation)) : nil
+  queue_compact = true
+  thread_compact = true
+  composer_compact = true
+  thread_panel_compact = true
+%>
 
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Atendimento WhatsApp
-      <% if @total_unread.to_i > 0 %><span class="ax-badge ax-badge--green tw-ml-1"><%= @total_unread %> não lidas</span><% end %>
-    </h1>
-    <p class="ax-page-subtitle">Converse com seus contatos sem sair do CRM. Tudo registra na timeline do lead.</p>
-  </div>
-  <% if can?(:manage, :whatsapp_inbox) %>
-    <%= button_to sync_templates_admin_whatsapp_conversations_path, method: :post, class: "ax-btn ax-btn--sm", form_class: "tw-inline" do %>
-      <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar modelos</span>
+<% heading_actions = capture do %>
+  <div class="wa-inbox-heading-actions tw-inline-flex tw-flex-wrap tw-items-center tw-justify-end tw-gap-2">
+    <%= link_to (@focus_mode ? standard_url : focus_url),
+          class: "ax-btn ax-btn--sm ax-btn--ghost" do %>
+      <i class="bi bi-layout-sidebar-inset-reverse ax-ico"></i><span><%= @focus_mode ? "Sair do foco" : "Modo foco" %></span>
     <% end %>
-  <% end %>
-</div>
 
-<%= render "admin/shared/hint", key: "inbox", icon: "bi-whatsapp",
-      text: "Responda seus contatos sem sair do CRM. Cada conversa vira/atualiza um <strong>lead</strong> e registra na <strong>linha do tempo</strong>. Use modelos aprovados no seletor do campo de envio." %>
+    <% if @focus_mode %>
+      <button type="button"
+              class="ax-btn ax-btn--sm ax-btn--ghost"
+              title="Tela cheia"
+              aria-label="Tela cheia"
+              data-wa-workspace-target="enter"
+              data-action="wa-workspace#enterFullscreen">
+        <i class="bi bi-arrows-fullscreen ax-ico"></i><span>Tela cheia</span>
+      </button>
+      <button type="button"
+              class="ax-btn ax-btn--sm ax-btn--ghost"
+              title="Sair da tela cheia"
+              aria-label="Sair da tela cheia"
+              data-wa-workspace-target="exit"
+              data-action="wa-workspace#exitFullscreen"
+              hidden>
+        <i class="bi bi-fullscreen-exit ax-ico"></i><span>Sair da tela cheia</span>
+      </button>
+    <% end %>
 
-<% unless @integration&.messaging_ready? %>
-  <div class="ax-card tw-mb-3" style="border-left:3px solid #f59e0b">
-    <div class="ax-card__body tw-flex tw-items-center tw-gap-2">
-      <i class="bi bi-exclamation-triangle tw-text-amber-500"></i>
-      <div class="ax-page-subtitle">
-        O número do WhatsApp ainda não está conectado para envio/recebimento. Conclua a conexão em
-        <%= link_to "Integrações › WhatsApp", admin_whatsapp_integration_path, class: "tw-text-primary" %>.
-        O inbox funciona, mas as mensagens só trafegam com o número conectado.
-      </div>
-    </div>
+    <% if can?(:manage, :whatsapp_inbox) %>
+      <%= button_to sync_templates_admin_whatsapp_conversations_path, method: :post, class: "ax-btn ax-btn--sm ax-btn--ghost wa-inbox-heading__sync", form_class: "tw-inline" do %>
+        <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar modelos</span>
+      <% end %>
+    <% end %>
   </div>
 <% end %>
 
-<div class="wa-shell">
-  <%# ----- Lista de conversas ----- %>
-  <div class="wa-list">
-    <% if team_available?(:whatsapp_inbox) %>
-      <div class="tw-flex tw-justify-end tw-p-2" style="border-bottom:1px solid #e6e8eb"><%= ax_team_toggle(:whatsapp_inbox) %></div>
-    <% end %>
-    <div class="wa-list__items">
-      <% if @conversations.any? %>
-        <% @conversations.each do |conv| %>
-          <%= link_to admin_whatsapp_conversation_path(conv), class: "wa-conv #{'is-active' if @conversation&.id == conv.id}" do %>
-            <div class="wa-conv__top">
-              <span class="wa-conv__name"><%= conv.display_name %></span>
-              <span class="wa-conv__time"><%= conv.last_message_at&.strftime("%d/%m %H:%M") %></span>
-            </div>
-            <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
-              <span class="wa-conv__preview"><%= conv.last_message_preview.presence || "—" %></span>
-              <% if conv.unread_count.to_i > 0 %><span class="wa-unread"><%= conv.unread_count %></span><% end %>
-            </div>
-          <% end %>
-        <% end %>
-      <% else %>
-        <div class="tw-p-4 ax-page-subtitle tw-text-center">Nenhuma conversa ainda.<br>Mensagens recebidas no número conectado aparecem aqui.</div>
+<div class="wa-inbox-page <%= 'wa-inbox-page--focus' if @focus_mode %>"
+     data-controller="wa-workspace">
+  <div class="wa-inbox-page__header">
+    <%= ax_workspace_heading(
+          eyebrow: (@focus_mode ? "Workspace dedicado" : "Atendimento"),
+          icon: "whatsapp",
+          title: "Atendimento WhatsApp",
+          subtitle: (@focus_mode ? "Tela de operação contínua para fila, thread e resposta." : "Fila, thread e resposta."),
+          metrics: [
+            { value: number_with_delimiter(@conversation_count.to_i), label: "conv.", data: { wa_inbox_heading_metric: "conversations" } },
+            { value: number_with_delimiter(@total_unread.to_i), label: "n. lidas", data: { wa_inbox_heading_metric: "unread" } }
+          ],
+          actions: heading_actions
+        ) %>
+
+    <% unless @integration&.messaging_ready? %>
+      <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", class_name: "wa-inbox__integration-notice") do %>
+        O número do WhatsApp ainda não está conectado para envio/recebimento. Conclua a conexão em
+        <%= link_to "Integrações › WhatsApp", admin_whatsapp_integration_path, class: "tw-text-primary" %>.
+        O inbox funciona, mas as mensagens só trafegam com o número conectado.
       <% end %>
-    </div>
+    <% end %>
   </div>
 
-  <%# ----- Thread + composer ----- %>
-  <% if @conversation %>
-    <div class="wa-thread">
-      <div class="wa-thread__header">
-        <div class="tw-min-w-0">
-          <div class="ax-strong tw-truncate"><%= @conversation.display_name %></div>
-          <div class="ax-page-subtitle">
-            <%= @conversation.contact_phone %>
-            <% if @conversation.lead %> · <%= link_to "ver lead", admin_lead_path(@conversation.lead), class: "tw-text-primary" %><% end %>
-          </div>
-        </div>
-        <div class="tw-flex tw-gap-1">
-          <%= link_to @conversation.whatsapp_link, target: "_blank", class: "ax-ico-btn", title: "Abrir no WhatsApp" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
-        </div>
-      </div>
-
-      <% last_id = @messages.last&.id.to_i %>
-      <div class="wa-thread__scroll" data-controller="wa-thread"
-           data-wa-thread-url-value="<%= messages_admin_whatsapp_conversation_path(@conversation) %>"
-           data-wa-thread-last-value="<%= last_id %>">
-        <div data-wa-thread-target="list">
-          <% if @messages.any? %>
-            <% @messages.each do |m| %>
-              <div class="wa-bubble-row wa-bubble-row--<%= m.direction %>">
-                <div class="wa-bubble wa-bubble--<%= m.direction %>">
-                  <% if m.msg_type == "template" %><div class="ax-page-subtitle tw-mb-1"><i class="bi bi-file-text"></i> modelo <%= m.template_name %></div><% end %>
-                  <div><%= m.body.presence || m.preview %></div>
-                  <div class="wa-time">
-                    <%= m.created_at.strftime("%H:%M") %>
-                    <% if m.outbound? %>
-                      <% icon = { "read" => "bi-check2-all", "delivered" => "bi-check2-all", "sent" => "bi-check2", "pending" => "bi-clock", "failed" => "bi-exclamation-circle" }[m.status] %>
-                      <i class="bi <%= icon %>" style="<%= 'color:#53bdeb' if m.status == 'read' %><%= 'color:#ef4444' if m.failed? %>" title="<%= m.status %>"></i>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          <% end %>
-        </div>
-      </div>
-
-      <% if can?(:manage, :whatsapp_inbox) %>
-        <%= form_with url: send_message_admin_whatsapp_conversation_path(@conversation), method: :post, class: "wa-composer" do %>
-          <% if @templates.any? %>
-            <select name="template_name" class="ax-select" style="max-width:170px" title="Enviar modelo aprovado">
-              <option value="">Mensagem livre</option>
-              <% @templates.each do |t| %><option value="<%= t.name %>"><%= t.name %></option><% end %>
-            </select>
-          <% end %>
-          <input type="text" name="body" class="ax-input" placeholder="Escreva uma mensagem..." autocomplete="off" style="flex:1">
-          <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary"><i class="bi bi-send ax-ico"></i></button>
-        <% end %>
+<div class="wa-inbox-page__shell" data-wa-workspace-target="shell">
+<div class="wa-inbox-shell">
+  <% list_actions = capture do %>
+    <div class="wa-inbox-list-actions">
+      <% if team_available?(:whatsapp_inbox) %>
+        <%= ax_team_toggle(:whatsapp_inbox) %>
       <% end %>
     </div>
-  <% else %>
-    <div class="wa-thread">
-      <div class="wa-empty">
-        <i class="bi bi-whatsapp" style="font-size:42px;color:#25d366;opacity:.5"></i>
-        <p class="tw-mt-3 ax-strong">Selecione uma conversa</p>
-        <p class="ax-page-subtitle">Escolha um contato à esquerda para ver o histórico e responder.</p>
+  <% end %>
+
+  <% unread_conversation_count = @conversations.count { |conv| conv.unread_count.to_i.positive? } %>
+  <% unlinked_conversation_count = @conversations.count { |conv| conv.lead.blank? } %>
+
+  <%= ax_operational_panel(eyebrow: "Fila", title: "Conversas", actions: list_actions, class_name: "wa-inbox-panel wa-inbox-panel--list #{'wa-inbox-panel--compact' if queue_compact}") do %>
+    <div class="wa-inbox-list-shell" data-controller="wa-queue">
+      <div class="wa-inbox-list-toolbar">
+        <label class="wa-inbox-list-search-shell" for="wa-inbox-search">
+          <i class="bi bi-search"></i>
+          <span class="tw-sr-only">Buscar conversas</span>
+          <input type="search"
+                 id="wa-inbox-search"
+                 name="queue_search"
+                 class="ax-control ax-control--sm wa-inbox-list-search"
+                 placeholder="Buscar"
+                 aria-label="Buscar conversas"
+                 autocomplete="off"
+                 data-action="input->wa-queue#search"
+                 data-wa-queue-target="search">
+        </label>
+        <div class="wa-inbox-list-filters">
+          <button type="button"
+                  class="wa-inbox-list-filter is-active"
+                  data-filter="all"
+                  data-action="wa-queue#filter"
+                  data-wa-queue-target="filterButton">
+            <span>Todas</span>
+            <small data-wa-inbox-filter-count="all"><%= @conversation_count %></small>
+          </button>
+          <button type="button"
+                  class="wa-inbox-list-filter"
+                  data-filter="unread"
+                  data-action="wa-queue#filter"
+                  data-wa-queue-target="filterButton">
+            <span>Não lidas</span>
+            <small data-wa-inbox-filter-count="unread"><%= unread_conversation_count %></small>
+          </button>
+          <button type="button"
+                  class="wa-inbox-list-filter"
+                  data-filter="unlinked"
+                  data-action="wa-queue#filter"
+                  data-wa-queue-target="filterButton">
+            <span>Sem lead</span>
+            <small data-wa-inbox-filter-count="unlinked"><%= unlinked_conversation_count %></small>
+          </button>
+        </div>
+      </div>
+
+      <div class="wa-inbox-list" data-wa-queue-list data-wa-queue-target="list">
+      <% if @conversations.any? %>
+        <% @conversations.each do |conv| %>
+          <%= render "conversation_item", conv: conv, active: @conversation&.id == conv.id, focus_mode: @focus_mode, compact_mode: queue_compact %>
+        <% end %>
+      <% else %>
+        <div class="wa-inbox-list__empty">
+          <%= ax_empty_state(
+                title: "Nenhuma conversa ainda",
+                description: "Mensagens recebidas no número conectado aparecem aqui.",
+                icon: "whatsapp"
+              ) %>
+        </div>
+      <% end %>
       </div>
     </div>
   <% end %>
+
+  <% if @conversation %>
+    <% thread_lead = @thread_context_locals[:thread_lead] %>
+    <% can_manage_comercial = @thread_context_locals[:can_manage_comercial] %>
+    <% thread_actions = capture do %>
+      <div class="wa-inbox-thread-actions">
+        <% if thread_lead %>
+          <%= render "admin/lead_labels/button", lead: thread_lead, trigger_label: "Etiquetas", trigger_class: "ax-btn ax-btn--sm" %>
+        <% end %>
+        <% if can_manage_comercial && thread_lead %>
+          <%= render "admin/tasks/form_modal", modal_id: "whatsappInboxTask", lead: thread_lead, trigger_label: "Tarefa", trigger_class: "ax-btn ax-btn--sm" %>
+          <%= render "admin/appointments/form_modal", lead: thread_lead, trigger_label: "Agendar", trigger_class: "ax-btn ax-btn--sm" %>
+          <%= link_to new_admin_lead_proposal_path(thread_lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+            <i class="bi bi-file-earmark-text ax-ico"></i><span>Proposta</span>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Thread", title: "Conversa ativa", actions: thread_actions, class_name: "wa-inbox-panel wa-inbox-panel--thread #{'wa-inbox-panel--compact' if thread_panel_compact}") do %>
+      <%= render "thread_workspace",
+            conversation: @conversation,
+            messages: @messages,
+            thread_context_locals: @thread_context_locals,
+            focus_mode: @focus_mode,
+            compact_mode: thread_compact %>
+
+      <% if can?(:manage, :whatsapp_inbox) %>
+        <%= render "admin/shared/ui/whatsapp_composer",
+              title: "Responder no CRM",
+              conversation: @conversation,
+              templates: @templates,
+              return_to: current_thread_url,
+              file_input_id: "wa-inbox-media-file",
+              compact_mode: composer_compact %>
+      <% end %>
+    <% end %>
+  <% else %>
+    <%= ax_operational_panel(eyebrow: "Thread", title: "Selecione uma conversa", class_name: "wa-inbox-panel wa-inbox-panel--thread") do %>
+      <div class="wa-inbox-thread__placeholder">
+        <%= ax_empty_state(
+              title: "Selecione uma conversa",
+              description: "Escolha um contato à esquerda para ver o histórico e responder.",
+              icon: "whatsapp"
+            ) %>
+      </div>
+    <% end %>
+  <% end %>
+</div>
+</div>
 </div>

@@ -1,0 +1,62 @@
+<%
+  conversation = local_assigns.fetch(:conversation)
+  messages = Array(local_assigns[:messages])
+  thread_context_locals = local_assigns.fetch(:thread_context_locals, {})
+  focus_mode = local_assigns.fetch(:focus_mode, false)
+  compact_mode = local_assigns.fetch(:compact_mode, false)
+  can_manage_comercial = local_assigns.key?(:can_manage_comercial) ? local_assigns[:can_manage_comercial] : can?(:manage, :comercial)
+  wrapper_class = local_assigns[:wrapper_class]
+  empty_title = local_assigns[:empty_title].presence || "Sem mensagens nesta conversa"
+  empty_description = local_assigns[:empty_description].presence || "Quando houver troca de mensagens, o histórico aparecerá aqui."
+  last_id = messages.last&.id.to_i
+  status_cursor = messages.map(&:updated_at).compact.max&.iso8601(6)
+
+  workspace_classes = ["wa-inbox-thread__workspace"]
+  workspace_classes << "wa-inbox-thread__workspace--compact" if compact_mode
+  workspace_classes << wrapper_class if wrapper_class.present?
+%>
+
+<div data-controller="wa-thread fancybox-gallery"
+     data-wa-thread-last-value="<%= last_id %>"
+     data-wa-thread-conversation-id-value="<%= conversation.id %>"
+     data-wa-thread-focus-mode-value="<%= focus_mode %>"
+     data-wa-thread-status-cursor-value="<%= status_cursor %>"
+     class="<%= workspace_classes.compact.join(' ') %>">
+  <div data-wa-thread-target="context" class="wa-inbox-thread__context">
+    <%= render "admin/whatsapp_inbox/thread_context",
+          **thread_context_locals,
+          focus_mode: focus_mode,
+          compact_mode: compact_mode,
+          can_manage_comercial: can_manage_comercial %>
+  </div>
+
+  <div class="wa-inbox-thread__scroll" data-wa-thread-target="scroll">
+    <div data-wa-thread-target="list" class="wa-inbox-thread__list">
+      <% if messages.any? %>
+        <% messages.each_with_index do |message, index| %>
+          <%= render "admin/whatsapp_inbox/message_bubble",
+                message: message,
+                compact_mode: compact_mode,
+                previous_message: (index.positive? ? messages[index - 1] : nil),
+                next_message: (messages[index + 1] if index < messages.length - 1) %>
+        <% end %>
+      <% else %>
+        <div class="wa-inbox-thread__empty">
+          <%= ax_empty_state(
+                title: empty_title,
+                description: empty_description,
+                icon: "chat-dots"
+              ) %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <button type="button"
+          class="ax-btn ax-btn--sm ax-btn--primary wa-inbox-thread__jump is-hidden"
+          data-action="wa-thread#jumpToLatest"
+          data-wa-thread-target="jump">
+    <i class="bi bi-arrow-down ax-ico"></i>
+    <span>Ir para o fim</span>
+  </button>
+</div>

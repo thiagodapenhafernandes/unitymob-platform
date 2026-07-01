@@ -1,126 +1,169 @@
-<div class="container-fluid py-3 seo-settings-page">
-  <% current_base_url = request.base_url %>
+<% current_base_url = request.base_url %>
+<% public_ratio = @stats[:total].to_i.positive? ? ((@stats[:public].to_f / @stats[:total].to_i) * 100).round : 0 %>
+<% active_ratio = @stats[:total].to_i.positive? ? ((@stats[:active].to_f / @stats[:total].to_i) * 100).round : 0 %>
+<% generated_ratio = @stats[:total].to_i.positive? ? ((@stats[:generated].to_f / @stats[:total].to_i) * 100).round : 0 %>
 
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
-    <div>
-      <h1 class="ax-page-title"><i class="bi bi-search tw-text-ink-muted"></i>SEO Técnico</h1>
-      <p class="tw-text-ink-muted tw-text-sm tw-mb-0">Inventário automático, aplicação pública, score e geração com IA.</p>
-    </div>
-    <div class="tw-flex tw-gap-2">
+<div class="seo-settings-page">
+  <% heading_actions = capture do %>
+    <div class="tw-inline-flex tw-flex-wrap tw-items-center tw-justify-end tw-gap-2">
       <%= button_to discover_admin_seo_settings_path,
           method: :post,
           class: "ax-btn ax-btn--sm ax-btn--primary",
           data: { turbo_submits_with: "Descobrindo..." } do %>
         <i class="bi bi-compass"></i>Descobrir SEO
       <% end %>
+
       <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-ax-modal-open="#seoStrategyModal">
         <i class="bi bi-stars"></i>Estratégia IA
       </button>
-      <%= link_to admin_seo_redirects_path, class: "ax-btn ax-btn--sm ax-btn--ghost" do %>
-        <i class="bi bi-signpost-split"></i>Redirects
-      <% end %>
-      <%= link_to new_admin_seo_setting_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-        <i class="bi bi-plus-circle"></i>Novo SEO
-      <% end %>
-    </div>
-  </div>
 
-  <%= ax_field_grid(class_name: "tw-mb-3") do %>
-    <div class="ax-span-3"><div class="ax-card seo-stat"><div class="ax-card__body"><div class="tw-text-ink-muted tw-text-sm">Mapeadas</div><div class="h4 tw-mb-0"><%= @stats[:total] %></div></div></div></div>
-    <div class="ax-span-3"><div class="ax-card seo-stat"><div class="ax-card__body"><div class="tw-text-ink-muted tw-text-sm">Ativas</div><div class="h4 tw-mb-0"><%= @stats[:active] %></div></div></div></div>
-    <div class="ax-span-3"><div class="ax-card seo-stat"><div class="ax-card__body"><div class="tw-text-ink-muted tw-text-sm">Públicas</div><div class="h4 tw-mb-0"><%= @stats[:public] %></div></div></div></div>
-    <div class="ax-span-3"><div class="ax-card seo-stat"><div class="ax-card__body"><div class="tw-text-ink-muted tw-text-sm">Com IA</div><div class="h4 tw-mb-0"><%= @stats[:generated] %></div></div></div></div>
+      <%= ax_button("Redirects", admin_seo_redirects_path, size: :sm, variant: :ghost, icon: "signpost-split") %>
+      <%= ax_button("Novo SEO", new_admin_seo_setting_path, size: :sm, variant: :primary, icon: "plus-circle") %>
+    </div>
   <% end %>
 
-  <div class="ax-card tw-mb-3">
-    <div class="ax-card__body">
-      <div class="tw-flex tw-justify-between tw-items-start tw-flex-wrap tw-gap-3">
-        <div>
-          <h2 class="h6 tw-font-bold tw-mb-1"><i class="bi bi-compass" style="color:#16a34a;"></i>Descoberta automática</h2>
-          <p class="tw-text-sm tw-text-ink-muted tw-mb-0"><%= @seo_discovery_status[:message] %></p>
-          <% if @seo_discovery_status[:last_run_at].present? %>
-            <div class="tw-text-sm tw-text-ink-muted tw-mt-1">Última execução: <%= l(@seo_discovery_status[:last_run_at], format: :short) %></div>
-          <% end %>
-          <% if @seo_discovery_status[:last_error].present? %>
-            <div class="tw-text-sm tw-mt-1" style="color:#dc2626;"><%= @seo_discovery_status[:last_error] %></div>
-          <% end %>
-        </div>
-        <div class="tw-flex tw-flex-wrap tw-gap-2 tw-justify-end">
-          <span class="ax-badge <%= @seo_discovery_enabled ? "ax-badge--green" : "ax-badge--gray" %>">Proativa: <%= @seo_discovery_enabled ? "ativa" : "off" %></span>
-          <span class="ax-badge ax-badge--gray">avaliadas: <%= @seo_discovery_status[:evaluated] %></span>
-          <span class="ax-badge ax-badge--blue">criadas: <%= @seo_discovery_status[:created] %></span>
-          <span class="ax-badge ax-badge--blue">atualizadas: <%= @seo_discovery_status[:updated] %></span>
-          <span class="ax-badge ax-badge--green">indexáveis: <%= @seo_discovery_status[:indexable] %></span>
-          <span class="ax-badge ax-badge--gray">noindex: <%= @seo_discovery_status[:noindex] %></span>
-          <span class="ax-badge ax-badge--amber">IA fila: <%= @seo_discovery_status[:ai_enqueued] %></span>
-        </div>
-      </div>
-    </div>
-  </div>
+  <%= ax_workspace_heading(
+        eyebrow: "Site público",
+        icon: "search",
+        title: "Páginas SEO",
+        subtitle: "Inventário técnico das páginas públicas, aplicação, indexação e geração com IA.",
+        metrics: [
+          { value: number_with_delimiter(@stats[:total]), label: "mapeadas" },
+          { value: number_with_delimiter(@stats[:public]), label: "públicas" },
+          { value: number_with_delimiter(@stats[:generated]), label: "com IA" }
+        ],
+        actions: heading_actions
+      ) %>
 
-  <div class="ax-card tw-mb-3">
-    <div class="ax-card__body tw-flex tw-flex-wrap tw-gap-2 tw-items-center">
-      <span class="ax-badge <%= @auto_inventory_enabled ? "ax-badge--green" : "ax-badge--gray" %>">Inventário: <%= @auto_inventory_enabled ? "auto" : "manual" %></span>
-      <span class="ax-badge <%= @auto_apply_enabled ? "ax-badge--green" : "ax-badge--gray" %>">Público default: <%= @auto_apply_enabled ? "auto" : "manual" %></span>
-      <span class="ax-badge <%= @auto_ai_enabled ? "ax-badge--green" : "ax-badge--gray" %>">IA: <%= @auto_ai_enabled ? "auto" : "manual" %></span>
-      <span class="tw-text-ink-muted tw-text-sm">Admin já recebe <code>noindex, nofollow</code> por meta tag e header.</span>
+  <%= ax_field_grid do %>
+    <div class="ax-span-3">
+      <%= ax_metric_card(
+            label: "Mapeadas",
+            value: number_with_delimiter(@stats[:total]),
+            hint: "registros no inventário técnico",
+            badge: ax_badge("Inventário", tone: :blue)
+          ) %>
     </div>
-  </div>
 
-  <div class="ax-card tw-mb-3">
-    <div class="ax-card__body">
-      <div class="tw-flex tw-justify-between tw-items-center tw-flex-wrap tw-gap-2 tw-mb-2">
-        <div>
-          <h2 class="h6 tw-font-bold tw-mb-0"><i class="bi bi-diagram-3" style="color:var(--admin-primary);"></i>Sitemap para buscadores</h2>
-          <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Use estes links no Google Search Console e em outras ferramentas de busca.</p>
-        </div>
-        <%= link_to "#{current_base_url}/sitemap.xml", target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm ax-btn--ghost" do %>
-          <i class="bi bi-box-arrow-up-right"></i>Abrir sitemap
-        <% end %>
-      </div>
-      <%= ax_field_grid do %>
-        <div class="ax-span-6">
-          <label class="ax-label tw-text-sm tw-font-semibold tw-mb-1">Sitemap XML</label>
-          <div data-controller="clipboard">
-            <%= ax_input_group(action: button_tag("Copiar", type: "button", class: "ax-btn ax-btn--sm ax-btn--ghost", data: { action: "clipboard#copy", clipboard_target: "button" })) do %>
-              <input type="text" readonly class="ax-control ax-control--sm" value="<%= "#{current_base_url}/sitemap.xml" %>" data-clipboard-target="source">
+    <div class="ax-span-3">
+      <%= ax_metric_card(
+            label: "Ativas",
+            value: number_with_delimiter(@stats[:active]),
+            hint: "#{active_ratio}% do inventário",
+            badge: ax_badge("Operação", tone: :green),
+            progress: active_ratio
+          ) %>
+    </div>
+
+    <div class="ax-span-3">
+      <%= ax_metric_card(
+            label: "Públicas",
+            value: number_with_delimiter(@stats[:public]),
+            hint: "#{public_ratio}% aplicadas no site",
+            badge: ax_badge("Site", tone: :blue),
+            progress: public_ratio
+          ) %>
+    </div>
+
+    <div class="ax-span-3">
+      <%= ax_metric_card(
+            label: "Com IA",
+            value: number_with_delimiter(@stats[:generated]),
+            hint: "#{generated_ratio}% geradas automaticamente",
+            badge: ax_badge("IA", tone: :amber),
+            progress: generated_ratio
+          ) %>
+    </div>
+  <% end %>
+
+  <%= ax_field_grid do %>
+    <div class="ax-span-7">
+      <% discovery_actions = capture do %>
+        <%= ax_badge("Proativa: #{@seo_discovery_enabled ? "ativa" : "off"}", tone: @seo_discovery_enabled ? :green : :gray) %>
+        <%= ax_badge("IA fila: #{@seo_discovery_status[:ai_enqueued]}", tone: :amber) %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Descoberta", title: "Descoberta automática", actions: discovery_actions) do %>
+        <div class="seo-settings-status">
+          <div>
+            <p><%= @seo_discovery_status[:message] %></p>
+            <% if @seo_discovery_status[:last_run_at].present? %>
+              <span>Última execução: <%= l(@seo_discovery_status[:last_run_at], format: :short) %></span>
+            <% end %>
+            <% if @seo_discovery_status[:last_error].present? %>
+              <strong><%= @seo_discovery_status[:last_error] %></strong>
             <% end %>
           </div>
-        </div>
-        <div class="ax-span-6">
-          <label class="ax-label tw-text-sm tw-font-semibold tw-mb-1">Robots.txt</label>
-          <div data-controller="clipboard">
-            <%= ax_input_group(action: button_tag("Copiar", type: "button", class: "ax-btn ax-btn--sm ax-btn--ghost", data: { action: "clipboard#copy", clipboard_target: "button" })) do %>
-              <input type="text" readonly class="ax-control ax-control--sm" value="<%= "#{current_base_url}/robots.txt" %>" data-clipboard-target="source">
-            <% end %>
+
+          <div class="seo-settings-badge-grid">
+            <%= ax_badge("Avaliadas #{@seo_discovery_status[:evaluated]}", tone: :gray) %>
+            <%= ax_badge("Criadas #{@seo_discovery_status[:created]}", tone: :blue) %>
+            <%= ax_badge("Atualizadas #{@seo_discovery_status[:updated]}", tone: :blue) %>
+            <%= ax_badge("Indexáveis #{@seo_discovery_status[:indexable]}", tone: :green) %>
+            <%= ax_badge("Noindex #{@seo_discovery_status[:noindex]}", tone: :gray) %>
           </div>
         </div>
       <% end %>
     </div>
-  </div>
 
-  <div class="ax-card">
-    <div class="ax-card__body py-2 border-bottom">
-      <%= ax_pagination @seo_settings, params: request.query_parameters, class_name: "ax-pagination--embedded" %>
+    <div class="ax-span-5">
+      <%= ax_operational_panel(eyebrow: "Publicação", title: "Regras automáticas") do %>
+        <div class="seo-settings-rule-grid">
+          <%= ax_badge("Inventário: #{@auto_inventory_enabled ? "auto" : "manual"}", tone: @auto_inventory_enabled ? :green : :gray) %>
+          <%= ax_badge("Público default: #{@auto_apply_enabled ? "auto" : "manual"}", tone: @auto_apply_enabled ? :green : :gray) %>
+          <%= ax_badge("IA: #{@auto_ai_enabled ? "auto" : "manual"}", tone: @auto_ai_enabled ? :green : :gray) %>
+        </div>
+
+        <%= ax_inline_notice(tone: :info, icon: "shield-check") do %>
+          Admin já recebe <code>noindex, nofollow</code> por meta tag e header.
+        <% end %>
+      <% end %>
     </div>
+  <% end %>
+
+  <% sitemap_actions = ax_button("Abrir sitemap", "#{current_base_url}/sitemap.xml", size: :sm, variant: :ghost, icon: "box-arrow-up-right", target: "_blank", rel: "noopener") %>
+  <%= ax_operational_panel(eyebrow: "Buscadores", title: "Sitemap para buscadores", actions: sitemap_actions) do %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-6">
+        <label class="ax-label tw-text-sm tw-font-semibold tw-mb-1">Sitemap XML</label>
+        <div data-controller="clipboard">
+          <%= ax_input_group(action: button_tag("Copiar", type: "button", class: "ax-btn ax-btn--sm ax-btn--ghost", data: { action: "clipboard#copy", clipboard_target: "button" })) do %>
+            <input type="text" readonly class="ax-control ax-control--sm" value="<%= "#{current_base_url}/sitemap.xml" %>" data-clipboard-target="source">
+          <% end %>
+        </div>
+      </div>
+
+      <div class="ax-span-6">
+        <label class="ax-label tw-text-sm tw-font-semibold tw-mb-1">Robots.txt</label>
+        <div data-controller="clipboard">
+          <%= ax_input_group(action: button_tag("Copiar", type: "button", class: "ax-btn ax-btn--sm ax-btn--ghost", data: { action: "clipboard#copy", clipboard_target: "button" })) do %>
+            <input type="text" readonly class="ax-control ax-control--sm" value="<%= "#{current_base_url}/robots.txt" %>" data-clipboard-target="source">
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% table_actions = ax_pagination(@seo_settings, params: request.query_parameters, class_name: "ax-pagination--embedded") %>
+  <%= ax_operational_panel(eyebrow: "Inventário", title: "Páginas monitoradas", actions: table_actions) do %>
     <div class="ax-table-wrap">
       <table class="ax-table">
         <thead>
           <tr>
             <th>Página</th>
             <th>SEO</th>
-            <th class="text-center">Score</th>
-            <th class="text-center">Acessos</th>
-            <th class="text-center">Flags</th>
-            <th class="text-end">Ações</th>
+            <th class="tw-text-center">Score</th>
+            <th class="tw-text-center">Acessos</th>
+            <th class="tw-text-center">Flags</th>
+            <th class="tw-text-right">Ações</th>
           </tr>
         </thead>
         <tbody>
           <% @seo_settings.each do |seo| %>
+            <% public_url = seo.public_url(current_base_url) %>
             <tr>
               <td class="seo-page-cell">
-                <% public_url = seo.public_url(current_base_url) %>
-                <div class="tw-flex tw-items-start tw-gap-2">
+                <div class="seo-settings-page-cell">
                   <%= link_to public_url,
                       target: "_blank",
                       rel: "noopener",
@@ -128,39 +171,43 @@
                       title: "Abrir página pública" do %>
                     <i class="bi bi-box-arrow-up-right"></i>
                   <% end %>
-                  <div class="min-w-0 flex-grow-1">
+
+                  <div>
                     <div class="tw-font-bold text-truncate" title="<%= seo.display_name %>"><%= seo.display_name %></div>
-                    <div class="tw-text-sm tw-text-ink-muted text-truncate" title="<%= seo.page_type %>"><%= seo.page_type %></div>
+                    <div class="tw-text-sm tw-text-ink-muted text-truncate" title="<%= seo.page_type_label %>"><%= seo.page_type_label %></div>
                     <div class="tw-text-sm tw-text-ink-muted text-truncate" title="<%= seo.sanitized_canonical_path %>"><%= seo.sanitized_canonical_path %></div>
                   </div>
                 </div>
               </td>
+
               <td class="seo-copy-cell">
                 <div class="tw-font-semibold"><%= seo.meta_title.presence || "Sem meta title" %></div>
                 <div class="tw-text-sm tw-text-ink-muted"><%= truncate(seo.meta_description.to_s, length: 110) %></div>
                 <% if seo.ai_insights.present? %>
-                  <div class="tw-text-sm tw-mt-1" style="color:#d97706;"><i class="bi bi-lightbulb"></i> <%= truncate(seo.ai_insights.lines.first.to_s.strip, length: 80) %></div>
+                  <div class="seo-settings-insight"><i class="bi bi-lightbulb"></i> <%= truncate(seo.ai_insights.lines.first.to_s.strip, length: 80) %></div>
                 <% end %>
               </td>
-              <td class="text-center">
-                <span class="ax-badge <%= seo.seo_score.to_i >= 80 ? "ax-badge--green" : seo.seo_score.to_i >= 60 ? "ax-badge--amber" : "ax-badge--red" %>">
-                  <%= seo.seo_score %>
-                </span>
+
+              <td class="tw-text-center">
+                <%= ax_badge(seo.seo_score, tone: seo.seo_score.to_i >= 80 ? :green : seo.seo_score.to_i >= 60 ? :amber : :red) %>
                 <div class="tw-text-sm tw-text-ink-muted"><%= seo.score_label %></div>
               </td>
-              <td class="text-center">
-                <div class="tw-font-bold"><%= seo.access_count %></div>
+
+              <td class="tw-text-center">
+                <div class="tw-font-bold"><%= number_with_delimiter(seo.access_count) %></div>
                 <div class="tw-text-sm tw-text-ink-muted"><%= seo.last_accessed_at ? l(seo.last_accessed_at, format: :short) : "sem acesso" %></div>
               </td>
+
               <td class="seo-flags-cell">
-                <div class="tw-flex tw-flex-wrap tw-gap-1 tw-justify-center">
+                <div class="seo-settings-flag-actions">
                   <%= button_to toggle_admin_seo_setting_path(seo, field: "active"), method: :patch, class: "ax-btn ax-btn--sm #{seo.active? ? "ax-btn--primary" : "ax-btn--ghost"}" do %><%= seo.active? ? "Ativo" : "Off" %><% end %>
                   <%= button_to toggle_admin_seo_setting_path(seo, field: "apply_to_public"), method: :patch, class: "ax-btn ax-btn--sm #{seo.apply_to_public? ? "ax-btn--primary" : "ax-btn--ghost"}" do %><%= seo.apply_to_public? ? "Público" : "Manual" %><% end %>
-                  <span class="ax-badge <%= seo.robots_index? ? "ax-badge--blue" : "ax-badge--gray" %>"><%= seo.robots_index? ? "index" : "noindex" %></span>
+                  <%= ax_badge(seo.robots_index? ? "index" : "noindex", tone: seo.robots_index? ? :blue : :gray) %>
                 </div>
               </td>
-              <td class="text-end seo-actions-cell">
-                <div class="tw-inline-flex tw-gap-1 tw-items-center">
+
+              <td class="tw-text-right seo-actions-cell">
+                <div class="seo-settings-row-actions">
                   <%= button_to generate_ai_admin_seo_setting_path(seo), method: :post, class: "ax-btn ax-btn--sm ax-btn--ghost", title: "Gerar com IA" do %>
                     <i class="bi bi-stars"></i>
                   <% end %>
@@ -175,16 +222,23 @@
               </td>
             </tr>
           <% end %>
+
+          <% if @seo_settings.blank? %>
+            <tr>
+              <td colspan="6">
+                <%= ax_empty_state(title: "Nenhuma página SEO", description: "Use a descoberta automática ou crie um registro manual.", icon: "search") %>
+              </td>
+            </tr>
+          <% end %>
         </tbody>
       </table>
     </div>
-    <div class="ax-card__body py-2 border-top">
-      <%= ax_pagination @seo_settings, params: request.query_parameters, class_name: "ax-pagination--embedded", show_summary: false %>
-    </div>
-  </div>
+
+    <%= ax_pagination(@seo_settings, params: request.query_parameters, class_name: "ax-pagination--embedded", show_summary: false) %>
+  <% end %>
 </div>
 
-<div class="ax-quick-modal ax-quick-modal--lg" id="seoStrategyModal" tabindex="-1" role="presentation" hidden aria-hidden="true" data-controller="ax-modal" data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+<div class="ax-quick-modal ax-quick-modal--lg seo-strategy-modal" id="seoStrategyModal" tabindex="-1" role="presentation" hidden aria-hidden="true" data-controller="ax-modal" data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
   <div class="ax-quick-modal__panel" role="dialog" aria-modal="true">
     <header class="ax-quick-modal__header">
       <h5 class="ax-quick-modal__title"><i class="bi bi-stars" style="color:var(--admin-primary);"></i> Estratégia da IA para SEO</h5>
@@ -192,35 +246,31 @@
     </header>
     <%= form_with url: update_strategy_admin_seo_settings_path, method: :patch, local: true do %>
       <div class="ax-quick-modal__body">
-        <%= ax_field_grid(class_name: "tw-mb-3") do %>
-          <div class="ax-span-4">
-            <label class="custom-checkbox-card tw-w-full tw-justify-between">
-              <span>Criar SEO ao acessar</span>
-              <%= check_box_tag :seo_auto_inventory_enabled, "1", @auto_inventory_enabled, class: "form-check-input" %>
-            </label>
-          </div>
-          <div class="ax-span-4">
-            <label class="custom-checkbox-card tw-w-full tw-justify-between">
-              <span>Aplicar por padrão</span>
-              <%= check_box_tag :seo_auto_apply_enabled, "1", @auto_apply_enabled, class: "form-check-input" %>
-            </label>
-          </div>
-          <div class="ax-span-4">
-            <label class="custom-checkbox-card tw-w-full tw-justify-between">
-              <span>Gerar IA automaticamente</span>
-              <%= check_box_tag :seo_ai_auto_generate_enabled, "1", @auto_ai_enabled, class: "form-check-input" %>
-            </label>
-          </div>
-          <div class="ax-span-4">
-            <label class="custom-checkbox-card tw-w-full tw-justify-between">
-              <span>Descobrir oportunidades todo dia</span>
-              <%= check_box_tag :seo_discovery_enabled, "1", @seo_discovery_enabled, class: "form-check-input" %>
-            </label>
-          </div>
-        <% end %>
-        <label class="ax-label tw-font-bold">Instruções para IA</label>
-        <%= text_area_tag :seo_ai_strategy_prompt, @seo_strategy_prompt, rows: 18, class: "ax-control font-monospace" %>
-        <p class="form-text">Essas instruções guiam a IA em todas as páginas, especialmente listagens por filtros.</p>
+        <div class="seo-strategy-toggle-grid">
+          <label class="seo-strategy-toggle">
+            <span>Criar SEO ao acessar</span>
+            <%= check_box_tag :seo_auto_inventory_enabled, "1", @auto_inventory_enabled, class: "seo-strategy-toggle__input" %>
+          </label>
+
+          <label class="seo-strategy-toggle">
+            <span>Aplicar por padrão</span>
+            <%= check_box_tag :seo_auto_apply_enabled, "1", @auto_apply_enabled, class: "seo-strategy-toggle__input" %>
+          </label>
+
+          <label class="seo-strategy-toggle">
+            <span>Gerar IA automaticamente</span>
+            <%= check_box_tag :seo_ai_auto_generate_enabled, "1", @auto_ai_enabled, class: "seo-strategy-toggle__input" %>
+          </label>
+
+          <label class="seo-strategy-toggle">
+            <span>Descobrir oportunidades todo dia</span>
+            <%= check_box_tag :seo_discovery_enabled, "1", @seo_discovery_enabled, class: "seo-strategy-toggle__input" %>
+          </label>
+        </div>
+
+        <label class="ax-label tw-font-bold" for="seo_ai_strategy_prompt">Instruções para IA</label>
+        <%= text_area_tag :seo_ai_strategy_prompt, @seo_strategy_prompt, rows: 18, class: "ax-control seo-strategy-prompt" %>
+        <p class="seo-strategy-help">Essas instruções guiam a IA em todas as páginas, especialmente listagens por filtros.</p>
       </div>
       <footer class="ax-quick-modal__footer">
         <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>

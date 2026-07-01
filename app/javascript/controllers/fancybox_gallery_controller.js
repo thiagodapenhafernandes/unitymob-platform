@@ -10,6 +10,7 @@ let fancyboxStylesheetPromise = null
 export default class extends Controller {
   connect() {
     this.open = this.open.bind(this)
+    this.element.dataset.fancyboxGalleryReady = "true"
     this.element.addEventListener("click", this.open, true)
     this.debug("connect", {
       links: this.galleryLinks().length,
@@ -19,6 +20,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    delete this.element.dataset.fancyboxGalleryReady
     this.element.removeEventListener("click", this.open, true)
     this.debug("disconnect")
   }
@@ -33,6 +35,8 @@ export default class extends Controller {
 
     if (!trigger || !this.element.contains(trigger)) return
 
+    const galleryTrigger = this.galleryAnchorFor(trigger) || trigger
+
     event.preventDefault()
     event.stopPropagation()
     event.stopImmediatePropagation()
@@ -44,27 +48,53 @@ export default class extends Controller {
         return
       }
 
-      const startIndex = trigger.hasAttribute("data-gallery-open") ? 0 : Math.max(links.indexOf(trigger), 0)
-      this.debug("open:fancybox", { links: links.length, startIndex, href: trigger.href })
+      const startIndex = Math.max(links.indexOf(galleryTrigger), 0)
+      this.debug("open:fancybox", { links: links.length, startIndex, href: galleryTrigger.href })
+      this.pauseEmbeddableMedia()
 
       Fancybox.show(
-        links.map((item) => ({
-          src: item.href,
-          type: "image",
-          caption: item.dataset.caption || ""
-        })),
-        { startIndex }
+        links.map((item) => this.galleryItem(item)),
+        {
+          startIndex,
+          animated: false,
+          dragToClose: false,
+          hideScrollbar: false,
+          keyboard: {
+            Escape: "close",
+            Delete: "close",
+            Backspace: "close",
+            ArrowLeft: "prev",
+            ArrowRight: "next"
+          },
+          closeButton: "top",
+          mainClass: "wa-fancybox-shell",
+          Toolbar: {
+            display: {
+              left: [],
+              middle: [],
+              right: ["close"]
+            }
+          },
+          on: {
+            close: () => this.pauseEmbeddableMedia(),
+            destroy: () => this.pauseEmbeddableMedia()
+          }
+        }
       )
     }).catch((error) => {
       console.error("Failed to open image gallery", error)
-      this.debug("open:fallback", { error: error.message, href: trigger.href })
-      if (trigger.matches("a[data-fancybox]") && trigger.href) window.open(trigger.href, "_blank", "noopener")
+      this.debug("open:fallback", { error: error.message, href: galleryTrigger.href })
+      if (galleryTrigger.matches("a[data-fancybox]") && galleryTrigger.href) window.open(galleryTrigger.href, "_blank", "noopener")
     })
   }
 
   triggerFor(event) {
     const directTrigger = event.target.closest("a[data-fancybox], [data-gallery-open]")
-    if (directTrigger) return directTrigger
+    if (directTrigger && this.element.contains(directTrigger)) {
+      if (this.isNestedInteractiveControl(event.target, directTrigger)) return null
+
+      return directTrigger
+    }
 
     if (this.isInteractiveControl(event.target)) return null
 
@@ -72,6 +102,14 @@ export default class extends Controller {
     if (!mediaTile || !this.element.contains(mediaTile)) return null
 
     return mediaTile.querySelector("a[data-fancybox]")
+  }
+
+  isNestedInteractiveControl(target, trigger) {
+    if (!target || target === trigger) return false
+
+    return Boolean(
+      target.closest("button, input, select, textarea, label")
+    )
   }
 
   isInteractiveControl(target) {
@@ -96,6 +134,91 @@ export default class extends Controller {
 
   galleryLinks() {
     return Array.from(this.element.querySelectorAll("a[data-fancybox]")).filter((link) => link.href)
+  }
+
+  galleryItem(item) {
+    const type = item.dataset.fancyboxType || "image"
+    const caption = item.dataset.caption || ""
+
+    if (type === "html") {
+      return {
+        src: item.dataset.fancyboxHtml || "",
+        type,
+        caption
+      }
+    }
+
+    if (type === "inline") {
+      const targetMarkup = this.inlineTargetMarkup(item)
+      if (targetMarkup) {
+        return {
+          src: targetMarkup,
+          type: "html",
+          caption
+        }
+      }
+
+      return {
+        src: item.getAttribute("href"),
+        type,
+        caption
+      }
+    }
+
+    if (type === "html5video") {
+      return {
+        src: item.href,
+        type,
+        caption,
+        html5video: {
+          autoplay: true,
+          controls: true,
+          preload: "metadata"
+        }
+      }
+    }
+
+    if (type === "iframe") {
+      return {
+        src: item.href,
+        type,
+        caption,
+        preload: false
+      }
+    }
+
+    return {
+      src: item.href,
+      type: "image",
+      caption
+    }
+  }
+
+  inlineTargetFor(item) {
+    const selector = item.getAttribute("href")
+    if (!selector || !selector.startsWith("#")) return null
+    return document.querySelector(selector)
+  }
+
+  inlineTargetMarkup(item) {
+    const target = this.inlineTargetFor(item)
+    if (!target) return null
+
+    const clone = target.cloneNode(true)
+    clone.hidden = false
+    clone.removeAttribute("hidden")
+    return clone.outerHTML
+  }
+
+  galleryAnchorFor(trigger) {
+    if (trigger.matches("a[data-fancybox]")) return trigger
+    return trigger.parentElement?.querySelector("a[data-fancybox]") || trigger.closest('[data-controller~="wa-audio-preview"]')?.querySelector("a[data-fancybox]")
+  }
+
+  pauseEmbeddableMedia() {
+    document.querySelectorAll("audio, video").forEach((media) => {
+      if (typeof media.pause === "function") media.pause()
+    })
   }
 
   ensureFancyboxAssets() {

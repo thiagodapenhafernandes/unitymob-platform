@@ -1,39 +1,48 @@
-<div class="seo-dashboard-page" style="padding-top:1rem; padding-bottom:1rem">
-  <% summary = @dashboard[:summary] %>
-  <% score_buckets = @dashboard[:score_buckets] %>
-  <% current_base_url = request.base_url %>
-  <% period_label = { "7" => "7 dias", "30" => "30 dias", "90" => "90 dias", "all" => "todo período" }[@dashboard[:period]] %>
-  <% percentage = ->(value, total) { total.to_i.positive? ? ((value.to_f / total.to_i) * 100).round : 0 } %>
-  <% max_daily_visits = @dashboard[:daily_trend].map { |day| day[:visits] }.max.to_i %>
+<% summary = @dashboard[:summary] %>
+<% score_buckets = @dashboard[:score_buckets] %>
+<% current_base_url = request.base_url %>
+<% period_label = { "7" => "7 dias", "30" => "30 dias", "90" => "90 dias", "all" => "todo período" }[@dashboard[:period]] %>
+<% percentage = ->(value, total) { total.to_i.positive? ? ((value.to_f / total.to_i) * 100).round : 0 } %>
+<% score_tone = ->(score) { score.to_i >= 80 ? :green : score.to_i >= 60 ? :amber : :red } %>
+<% campaign_tone = ->(status) { { "success" => :green, "primary" => :blue, "info" => :blue, "warning" => :amber, "secondary" => :gray }.fetch(status.to_s, :gray) } %>
+<% chart_payload = {
+     dailyTrend: @dashboard[:daily_trend].last(14).map { |day| { date: day[:date].iso8601, visits: day[:visits], uniqueVisitors: day[:unique_visitors] } },
+     scoreBuckets: score_buckets,
+     pageTypes: @dashboard[:page_type_counts].map { |type, count| { label: SeoSetting.page_type_label_for(type), count: count } }
+   } %>
 
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
-    <div>
-      <h1 class="ax-page-title"><i class="bi bi-graph-up-arrow tw-text-primary"></i> Dashboard SEO</h1>
-      <p class="ax-page-subtitle">Visão de tráfego, oportunidades de campanha e gargalos de SEO.</p>
-    </div>
-    <div class="tw-flex tw-gap-2 tw-flex-wrap tw-justify-end">
-      <div class="tw-flex tw-gap-1" role="group" aria-label="Período do dashboard">
+<div class="seo-dashboard-page"
+     data-controller="seo-dashboard-charts"
+     data-seo-dashboard-charts-chart-url-value="<%= asset_path("chart.umd.min.js") %>"
+     data-seo-dashboard-charts-data-value="<%= json_escape(chart_payload.to_json) %>">
+  <% heading_actions = capture do %>
+    <div class="tw-inline-flex tw-flex-wrap tw-items-center tw-justify-end tw-gap-2">
+      <div class="tw-inline-flex tw-gap-1" role="group" aria-label="Período do dashboard">
         <% [["7", "7d"], ["30", "30d"], ["90", "90d"], ["all", "Tudo"]].each do |value, label| %>
-          <%= link_to label, admin_seo_dashboard_path(period: value), class: "ax-btn ax-btn--sm #{value == @dashboard[:period] ? "ax-btn--primary" : "ax-btn--ghost"}" %>
+          <%= ax_button(label, admin_seo_dashboard_path(period: value), size: :sm, variant: value == @dashboard[:period] ? :primary : :ghost) %>
         <% end %>
       </div>
-      <%= link_to admin_marketing_opportunities_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-        <i class="bi bi-lightbulb"></i>Oportunidades
-      <% end %>
-      <%= link_to admin_marketing_alerts_path, class: "ax-btn ax-btn--danger ax-btn--sm tw-gap-2" do %>
-        <i class="bi bi-exclamation-triangle"></i>Alertas
-      <% end %>
-      <%= link_to admin_marketing_campaigns_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-        <i class="bi bi-bullseye"></i>Campanhas
-      <% end %>
-      <%= link_to admin_seo_settings_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-        <i class="bi bi-list-check"></i>Páginas SEO
-      <% end %>
-      <%= link_to admin_landing_pages_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-        <i class="bi bi-file-earmark-post"></i>Landing Pages
-      <% end %>
+      <%= ax_button("Oportunidades", admin_marketing_opportunities_path, size: :sm, variant: :ghost, icon: "lightbulb") %>
+      <%= ax_button("Alertas", admin_marketing_alerts_path, size: :sm, variant: :danger, icon: "exclamation-triangle") %>
+      <%= ax_button("Campanhas", admin_marketing_campaigns_path, size: :sm, variant: :ghost, icon: "bullseye") %>
+      <%= ax_button("Páginas SEO", admin_seo_settings_path, size: :sm, variant: :ghost, icon: "list-check") %>
+      <%= ax_button("Landing Pages", admin_landing_pages_path, size: :sm, variant: :ghost, icon: "file-earmark-post") %>
     </div>
-  </div>
+  <% end %>
+
+  <%= ax_workspace_heading(
+        eyebrow: "Marketing",
+        icon: "graph-up-arrow",
+        title: "Dashboard SEO",
+        subtitle: "Visão operacional de tráfego, oportunidades de campanha e gargalos de SEO.",
+        pills: [period_label],
+        metrics: [
+          { value: number_with_delimiter(summary[:period_visits]), label: "acessos" },
+          { value: number_with_delimiter(summary[:period_unique_visitors]), label: "únicos" },
+          { value: number_with_delimiter(summary[:period_conversions]), label: "conversões" }
+        ],
+        actions: heading_actions
+      ) %>
 
   <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
     Visitantes únicos são calculados por hash anônimo diário de IP, sessão e navegador. Nenhum IP puro é armazenado.
@@ -41,288 +50,265 @@
 
   <%= ax_field_grid do %>
     <div class="ax-span-3">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <div class="tw-text-ink-muted tw-text-sm">Acessos no período</div>
-          <div class="tw-font-bold" style="font-size:2.5rem"><%= number_with_delimiter(summary[:period_visits]) %></div>
-          <div class="tw-text-sm tw-text-ink-muted"><%= period_label %> · <%= number_with_delimiter(summary[:total_accesses]) %> no total</div>
-        </div>
-      </div>
+      <%= ax_metric_card(
+            label: "Acessos no período",
+            value: number_with_delimiter(summary[:period_visits]),
+            hint: "#{period_label} · #{number_with_delimiter(summary[:total_accesses])} no total",
+            badge: ax_badge("Tráfego", tone: :blue)
+          ) %>
     </div>
+
     <div class="ax-span-3">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <div class="tw-text-ink-muted tw-text-sm">Visitantes únicos</div>
-          <div class="tw-font-bold" style="font-size:2.5rem"><%= number_with_delimiter(summary[:period_unique_visitors]) %></div>
-          <div class="tw-text-sm tw-text-ink-muted"><%= period_label %> · <%= number_with_delimiter(summary[:unique_visitors]) %> no total</div>
-        </div>
-      </div>
+      <%= ax_metric_card(
+            label: "Visitantes únicos",
+            value: number_with_delimiter(summary[:period_unique_visitors]),
+            hint: "#{period_label} · #{number_with_delimiter(summary[:unique_visitors])} no total",
+            badge: ax_badge("Privacidade", tone: :gray)
+          ) %>
     </div>
+
     <div class="ax-span-3">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <div class="tw-text-ink-muted tw-text-sm">SEO fraco</div>
-          <div class="tw-font-bold" style="font-size:2.5rem; color:#dc2626"><%= number_with_delimiter(summary[:weak_pages]) %></div>
-          <div class="tw-text-sm tw-text-ink-muted">score abaixo de 60</div>
-        </div>
-      </div>
+      <%= ax_metric_card(
+            label: "SEO fraco",
+            value: number_with_delimiter(summary[:weak_pages]),
+            hint: "score abaixo de 60",
+            badge: ax_badge("Ação", tone: :red)
+          ) %>
     </div>
+
     <div class="ax-span-3">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <div class="tw-text-ink-muted tw-text-sm">Conversões</div>
-          <div class="tw-font-bold" style="font-size:2.5rem; color:#16a34a"><%= number_with_delimiter(summary[:period_conversions]) %></div>
-          <div class="tw-text-sm tw-text-ink-muted"><%= summary[:active_campaigns] %> campanhas ativas</div>
-        </div>
-      </div>
+      <%= ax_metric_card(
+            label: "Conversões",
+            value: number_with_delimiter(summary[:period_conversions]),
+            hint: "#{summary[:active_campaigns]} campanhas ativas",
+            badge: ax_badge("Meta", tone: :green)
+          ) %>
     </div>
   <% end %>
-  <div class="tw-mb-3"></div>
 
-  <div class="ax-field-grid tw-mb-3">
+  <%= ax_field_grid do %>
     <div class="ax-span-8">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
-            <h2 class="h5 tw-font-bold tw-gap-2" style="margin-bottom:0"><i class="bi bi-trophy" style="color:#d97706"></i>Top 10 páginas mais acessadas</h2>
-            <span class="ax-badge ax-badge--blue">ordenado por únicos</span>
-          </div>
-          <div class="ax-table-wrap">
-            <table class="ax-table">
-              <thead>
+      <% top_pages_actions = ax_badge("ordenado por únicos", tone: :blue) %>
+      <%= ax_operational_panel(eyebrow: "Inventário", title: "Top 10 páginas mais acessadas", actions: top_pages_actions) do %>
+        <div class="ax-table-wrap">
+          <table class="ax-table">
+            <thead>
+              <tr>
+                <th>Página</th>
+                <th class="tw-text-center">Únicos</th>
+                <th class="tw-text-center">Acessos período</th>
+                <th class="tw-text-center">Acessos total</th>
+                <th class="tw-text-center">Score</th>
+                <th>Último acesso</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @dashboard[:top_pages].each do |seo| %>
                 <tr>
-                  <th>Página</th>
-                  <th class="tw-text-center">Únicos</th>
-                  <th class="tw-text-center">Acessos período</th>
-                  <th class="tw-text-center">Acessos total</th>
-                  <th class="tw-text-center">Score</th>
-                  <th>Último acesso</th>
+                  <td>
+                    <div class="tw-font-semibold"><%= truncate(seo.display_name, length: 58) %></div>
+                    <%= link_to seo.sanitized_canonical_path, seo.public_url(current_base_url), target: "_blank", rel: "noopener", class: "tw-text-sm tw-text-ink-muted" %>
+                  </td>
+                  <td class="tw-text-center tw-font-bold"><%= number_with_delimiter(seo.read_attribute(:unique_visitors_count).to_i) %></td>
+                  <td class="tw-text-center tw-font-bold"><%= number_with_delimiter(seo.read_attribute(:period_visits_count).to_i) %></td>
+                  <td class="tw-text-center tw-font-bold"><%= number_with_delimiter(seo.access_count) %></td>
+                  <td class="tw-text-center"><%= ax_badge(seo.seo_score, tone: score_tone.call(seo.seo_score)) %></td>
+                  <td class="tw-text-sm tw-text-ink-muted"><%= seo.last_accessed_at ? l(seo.last_accessed_at, format: :short) : "-" %></td>
                 </tr>
-              </thead>
-              <tbody>
-                <% @dashboard[:top_pages].each do |seo| %>
-                  <tr>
-                    <td>
-                      <div class="tw-font-semibold"><%= truncate(seo.display_name, length: 58) %></div>
-                      <%= link_to seo.sanitized_canonical_path, seo.public_url(current_base_url), target: "_blank", rel: "noopener", class: "tw-text-sm tw-text-ink-muted" %>
-                    </td>
-                    <td class="tw-text-center tw-font-bold"><%= number_with_delimiter(seo.read_attribute(:unique_visitors_count).to_i) %></td>
-                    <td class="tw-text-center tw-font-bold"><%= number_with_delimiter(seo.read_attribute(:period_visits_count).to_i) %></td>
-                    <td class="tw-text-center tw-font-bold"><%= number_with_delimiter(seo.access_count) %></td>
-                    <td class="tw-text-center">
-                      <span class="ax-badge <%= seo.seo_score.to_i >= 80 ? "ax-badge--green" : seo.seo_score.to_i >= 60 ? "ax-badge--amber" : "ax-badge--red" %>"><%= seo.seo_score %></span>
-                    </td>
-                    <td class="tw-text-sm tw-text-ink-muted"><%= seo.last_accessed_at ? l(seo.last_accessed_at, format: :short) : "-" %></td>
-                  </tr>
-                <% end %>
-                <% if @dashboard[:top_pages].blank? %>
-                  <tr><td colspan="6" class="tw-text-center tw-text-ink-muted tw-py-4">Ainda não há páginas com acessos rastreados.</td></tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+              <% end %>
+
+              <% if @dashboard[:top_pages].blank? %>
+                <tr>
+                  <td colspan="6">
+                    <%= ax_empty_state(title: "Sem acessos rastreados", description: "As páginas aparecerão aqui após receberem tráfego monitorado.", icon: "graph-up") %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
-      </div>
+      <% end %>
     </div>
 
     <div class="ax-span-4">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <h2 class="h5 tw-font-bold tw-mb-3 tw-gap-2"><i class="bi bi-speedometer2 tw-text-primary"></i>Saúde do inventário</h2>
-          <div class="tw-mb-3">
+      <%= ax_operational_panel(eyebrow: "Qualidade", title: "Saúde do inventário") do %>
+        <div class="tw-grid tw-gap-3">
+          <div class="seo-dashboard-chart seo-dashboard-chart--score">
+            <canvas id="seoScoreChart"></canvas>
+          </div>
+
+          <div>
             <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1"><span>Bom</span><strong><%= score_buckets[:strong] %></strong></div>
             <%= ax_progress(value: percentage.call(score_buckets[:strong], summary[:total_pages]), tone: :green) %>
           </div>
-          <div class="tw-mb-3">
+
+          <div>
             <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1"><span>Atenção</span><strong><%= score_buckets[:attention] %></strong></div>
             <%= ax_progress(value: percentage.call(score_buckets[:attention], summary[:total_pages]), tone: :amber) %>
           </div>
-          <div class="tw-mb-4">
+
+          <div>
             <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1"><span>Fraco</span><strong><%= score_buckets[:weak] %></strong></div>
             <%= ax_progress(value: percentage.call(score_buckets[:weak], summary[:total_pages]), tone: :red) %>
           </div>
 
-          <h3 class="h6 tw-font-bold tw-text-ink-muted tw-mb-2">Tipos de página</h3>
-          <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <% @dashboard[:page_type_counts].each do |type, count| %>
-              <span class="ax-badge ax-badge--gray"><%= type.presence || "sem tipo" %>: <%= count %></span>
-            <% end %>
+          <div>
+            <strong class="ax-field-caption">Tipos de página</strong>
+            <div class="seo-dashboard-chart seo-dashboard-chart--types tw-mt-2">
+              <canvas id="seoPageTypesChart"></canvas>
+            </div>
           </div>
         </div>
-      </div>
+      <% end %>
     </div>
-  </div>
+  <% end %>
 
-  <div class="ax-field-grid tw-mb-3">
+  <%= ax_field_grid do %>
     <div class="ax-span-12">
-      <div class="ax-card">
-        <div class="ax-card__body">
-          <div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
-            <h2 class="h5 tw-font-bold tw-gap-2" style="margin-bottom:0"><i class="bi bi-activity tw-text-primary"></i>Tendência diária</h2>
-            <span class="ax-badge ax-badge--gray"><%= @dashboard[:period] == "all" ? "últimos 30 dias" : period_label %></span>
-          </div>
-          <div class="ax-field-grid">
-            <% @dashboard[:daily_trend].last(14).each do |day| %>
-              <div class="ax-span-1">
-                <div class="tw-text-sm tw-text-ink-muted tw-mb-1"><%= l(day[:date], format: "%d/%m") %></div>
-                <div style="height: 72px; display:flex; align-items: end; background:#f8f9fa; border-radius:.25rem; overflow:hidden">
-                  <div role="progressbar" style="height: <%= percentage.call(day[:visits], [max_daily_visits, 1].max) %>%; width: 100%; background:var(--ax-primary, var(--admin-primary))" aria-label="Acessos"></div>
-                </div>
-                <div class="tw-text-sm tw-font-semibold tw-mt-1"><%= number_with_delimiter(day[:visits]) %></div>
-                <div class="tw-text-sm tw-text-ink-muted"><%= number_with_delimiter(day[:unique_visitors]) %> únicos</div>
+      <% trend_actions = ax_badge(@dashboard[:period] == "all" ? "últimos 30 dias" : period_label, tone: :gray) %>
+      <%= ax_operational_panel(eyebrow: "Tráfego", title: "Tendência diária", actions: trend_actions) do %>
+        <div class="seo-dashboard-chart seo-dashboard-chart--trend">
+          <canvas id="seoTrendChart"></canvas>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= ax_field_grid do %>
+    <div class="ax-span-6">
+      <%= ax_operational_panel(eyebrow: "Campanhas", title: "Potenciais para campanhas") do %>
+        <div class="tw-grid tw-gap-2">
+          <% @dashboard[:campaign_opportunities].each do |item| %>
+            <% seo = item.seo %>
+            <% actions = capture do %>
+              <%= ax_badge("potencial #{item.score}", tone: :green) %>
+              <div class="tw-mt-2">
+                <%= ax_button("Criar campanha", new_admin_marketing_campaign_path(seo_setting_id: seo.id), size: :sm, variant: :ghost) %>
               </div>
             <% end %>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="ax-field-grid">
-    <div class="ax-span-6">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <h2 class="h5 tw-font-bold tw-mb-3 tw-gap-2"><i class="bi bi-bullseye" style="color:#16a34a"></i>Potenciais para campanhas</h2>
-          <ul style="list-style:none;margin:0;padding:0">
-            <% @dashboard[:campaign_opportunities].each do |item| %>
-              <% seo = item.seo %>
-              <li class="tw-py-2" style="border-bottom:1px solid #e7ebf2">
-                <div class="tw-flex tw-justify-between tw-gap-3">
-                  <div>
-                    <div class="tw-font-semibold"><%= truncate(seo.display_name, length: 60) %></div>
-                    <%= link_to seo.sanitized_canonical_path, seo.public_url(current_base_url), target: "_blank", rel: "noopener", class: "tw-text-sm tw-text-ink-muted" %>
-                    <div class="tw-mt-2 tw-flex tw-flex-wrap tw-gap-1">
-                      <% item.reasons.each do |reason| %>
-                        <span class="ax-badge ax-badge--green"><%= reason %></span>
-                      <% end %>
-                    </div>
-                  </div>
-                  <div class="tw-text-right" style="flex-shrink:0">
-                    <span class="ax-badge ax-badge--green">potencial <%= item.score %></span>
-                    <div class="tw-text-sm tw-text-ink-muted tw-mt-1"><%= item.action_label %></div>
-                    <%= link_to new_admin_marketing_campaign_path(seo_setting_id: seo.id), class: "ax-btn ax-btn--ghost ax-btn--sm tw-mt-2" do %>
-                      Criar campanha
-                    <% end %>
-                  </div>
-                </div>
-              </li>
+            <%= ax_record_item(
+                  title: truncate(seo.display_name, length: 60),
+                  eyebrow: item.action_label,
+                  meta: link_to(seo.sanitized_canonical_path, seo.public_url(current_base_url), target: "_blank", rel: "noopener"),
+                  icon: "bullseye",
+                  actions:
+                ) do %>
+              <div class="tw-mt-2 tw-flex tw-flex-wrap tw-gap-1">
+                <% item.reasons.each do |reason| %>
+                  <%= ax_badge(reason, tone: :green) %>
+                <% end %>
+              </div>
             <% end %>
-            <% if @dashboard[:campaign_opportunities].blank? %>
-              <div class="tw-text-ink-muted tw-text-center tw-py-4">Sem oportunidades suficientes por enquanto.</div>
-            <% end %>
-          </ul>
+          <% end %>
+
+          <% if @dashboard[:campaign_opportunities].blank? %>
+            <%= ax_empty_state(title: "Sem oportunidades suficientes", description: "Novas sugestões aparecem conforme o tráfego e as conversões evoluem.", icon: "lightbulb") %>
+          <% end %>
         </div>
-      </div>
+      <% end %>
     </div>
 
     <div class="ax-span-6">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
-            <h2 class="h5 tw-font-bold tw-gap-2" style="margin-bottom:0"><i class="bi bi-megaphone tw-text-primary"></i>Campanhas em andamento</h2>
-            <%= link_to "Ver todas", admin_marketing_campaigns_path, class: "ax-btn ax-btn--ghost ax-btn--sm" %>
-          </div>
-          <ul style="list-style:none;margin:0;padding:0">
-            <% @dashboard[:active_campaigns].each do |campaign| %>
-              <li class="tw-py-2" style="border-bottom:1px solid #e7ebf2">
-                <div class="tw-flex tw-justify-between tw-gap-3">
-                  <div>
-                    <div class="tw-font-semibold"><%= campaign.name %></div>
-                    <div class="tw-text-sm tw-text-ink-muted"><%= campaign.channel_label %> · prioridade <%= campaign.priority %></div>
-                    <% if campaign.target_url.present? %>
-                      <%= link_to campaign.target_url, campaign.target_url, target: "_blank", rel: "noopener", class: "tw-text-sm tw-text-ink-muted" %>
-                    <% end %>
-                  </div>
-                  <div class="tw-text-right">
-                    <% campaign_tone = { "success" => "green", "primary" => "blue", "info" => "blue", "warning" => "amber", "secondary" => "gray" }[campaign.status_badge_class] || "gray" %>
-                    <span class="ax-badge ax-badge--<%= campaign_tone %>"><%= campaign.status_label %></span>
-                    <div class="tw-text-sm tw-text-ink-muted tw-mt-1"><%= campaign.seo_conversion_events.count %> conversões</div>
-                  </div>
-                </div>
-              </li>
+      <% campaigns_actions = ax_button("Ver todas", admin_marketing_campaigns_path, size: :sm, variant: :ghost) %>
+      <%= ax_operational_panel(eyebrow: "Execução", title: "Campanhas em andamento", actions: campaigns_actions) do %>
+        <div class="tw-grid tw-gap-2">
+          <% @dashboard[:active_campaigns].each do |campaign| %>
+            <% actions = capture do %>
+              <%= ax_badge(campaign.status_label, tone: campaign_tone.call(campaign.status_badge_class)) %>
+              <div class="tw-mt-1 tw-text-sm tw-text-ink-muted"><%= campaign.seo_conversion_events.count %> conversões</div>
             <% end %>
-            <% if @dashboard[:active_campaigns].blank? %>
-              <div class="tw-text-ink-muted tw-text-center tw-py-4">Nenhuma campanha planejada ou ativa.</div>
-            <% end %>
-          </ul>
+
+            <%= ax_record_item(
+                  title: campaign.name,
+                  eyebrow: "#{campaign.channel_label} · prioridade #{campaign.priority}",
+                  meta: (link_to(campaign.target_url, campaign.target_url, target: "_blank", rel: "noopener") if campaign.target_url.present?),
+                  icon: "megaphone",
+                  actions:
+                ) %>
+          <% end %>
+
+          <% if @dashboard[:active_campaigns].blank? %>
+            <%= ax_empty_state(title: "Nenhuma campanha ativa", description: "Campanhas planejadas e em execução serão listadas aqui.", icon: "megaphone") %>
+          <% end %>
         </div>
-      </div>
+      <% end %>
     </div>
 
     <div class="ax-span-6">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <h2 class="h5 tw-font-bold tw-mb-3 tw-gap-2"><i class="bi bi-lightning-charge" style="color:#d97706"></i>Conversões recentes</h2>
-          <div class="ax-table-wrap">
-            <table class="ax-table">
-              <thead>
+      <%= ax_operational_panel(eyebrow: "Conversão", title: "Conversões recentes") do %>
+        <div class="ax-table-wrap">
+          <table class="ax-table">
+            <thead>
+              <tr>
+                <th>Evento</th>
+                <th>Página</th>
+                <th>Campanha</th>
+                <th>Quando</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @dashboard[:recent_conversions].each do |event| %>
                 <tr>
-                  <th>Evento</th>
-                  <th>Página</th>
-                  <th>Campanha</th>
-                  <th>Quando</th>
+                  <td>
+                    <div class="tw-font-semibold"><%= event.event_label %></div>
+                    <div class="tw-text-sm tw-text-ink-muted"><%= event.habitation&.codigo.presence && "Imóvel #{event.habitation.codigo}" %></div>
+                  </td>
+                  <td class="tw-text-sm tw-text-ink-muted"><%= truncate(event.seo_setting&.display_name || event.source_path, length: 36) %></td>
+                  <td class="tw-text-sm tw-text-ink-muted"><%= event.marketing_campaign&.name || "-" %></td>
+                  <td class="tw-text-sm tw-text-ink-muted"><%= l(event.occurred_at, format: :short) %></td>
                 </tr>
-              </thead>
-              <tbody>
-                <% @dashboard[:recent_conversions].each do |event| %>
-                  <tr>
-                    <td>
-                      <div class="tw-font-semibold"><%= event.event_label %></div>
-                      <div class="tw-text-sm tw-text-ink-muted"><%= event.habitation&.codigo.presence && "Imóvel #{event.habitation.codigo}" %></div>
-                    </td>
-                    <td class="tw-text-sm tw-text-ink-muted"><%= truncate(event.seo_setting&.display_name || event.source_path, length: 36) %></td>
-                    <td class="tw-text-sm tw-text-ink-muted"><%= event.marketing_campaign&.name || "-" %></td>
-                    <td class="tw-text-sm tw-text-ink-muted"><%= l(event.occurred_at, format: :short) %></td>
-                  </tr>
-                <% end %>
-                <% if @dashboard[:recent_conversions].blank? %>
-                  <tr><td colspan="4" class="tw-text-center tw-text-ink-muted tw-py-4">Nenhuma conversão registrada ainda.</td></tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+              <% end %>
+
+              <% if @dashboard[:recent_conversions].blank? %>
+                <tr>
+                  <td colspan="4">
+                    <%= ax_empty_state(title: "Nenhuma conversão registrada", description: "Eventos recentes aparecem aqui após campanhas ou ações no site.", icon: "lightning-charge") %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
-      </div>
+      <% end %>
     </div>
 
     <div class="ax-span-6">
-      <div class="ax-card tw-h-full">
-        <div class="ax-card__body">
-          <h2 class="h5 tw-font-bold tw-mb-3 tw-gap-2"><i class="bi bi-tools" style="color:#dc2626"></i>Correções com impacto</h2>
-          <div class="ax-table-wrap">
-            <table class="ax-table">
-              <thead>
+      <%= ax_operational_panel(eyebrow: "Correção", title: "Correções com impacto") do %>
+        <div class="ax-table-wrap">
+          <table class="ax-table">
+            <thead>
+              <tr>
+                <th>Página</th>
+                <th class="tw-text-center">Acessos</th>
+                <th class="tw-text-center">Score</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @dashboard[:seo_issues].each do |seo| %>
                 <tr>
-                  <th>Página</th>
-                  <th class="tw-text-center">Acessos</th>
-                  <th class="tw-text-center">Score</th>
-                  <th></th>
+                  <td>
+                    <div class="tw-font-semibold"><%= truncate(seo.display_name, length: 48) %></div>
+                    <div class="tw-text-sm tw-text-ink-muted"><%= seo.meta_description.present? ? "Descrição ok" : "Sem meta description" %></div>
+                  </td>
+                  <td class="tw-text-center"><%= number_with_delimiter(seo.access_count) %></td>
+                  <td class="tw-text-center"><%= ax_badge(seo.seo_score, tone: :red) %></td>
+                  <td class="tw-text-right"><%= ax_button("Editar", edit_admin_seo_setting_path(seo), size: :sm, variant: :ghost) %></td>
                 </tr>
-              </thead>
-              <tbody>
-                <% @dashboard[:seo_issues].each do |seo| %>
-                  <tr>
-                    <td>
-                      <div class="tw-font-semibold"><%= truncate(seo.display_name, length: 48) %></div>
-                      <div class="tw-text-sm tw-text-ink-muted"><%= seo.meta_description.present? ? "Descrição ok" : "Sem meta description" %></div>
-                    </td>
-                    <td class="tw-text-center"><%= number_with_delimiter(seo.access_count) %></td>
-                    <td class="tw-text-center"><span class="ax-badge ax-badge--red"><%= seo.seo_score %></span></td>
-                    <td class="tw-text-right">
-                      <%= link_to edit_admin_seo_setting_path(seo), class: "ax-btn ax-btn--ghost ax-btn--sm" do %>
-                        Editar
-                      <% end %>
-                    </td>
-                  </tr>
-                <% end %>
-                <% if @dashboard[:seo_issues].blank? %>
-                  <tr><td colspan="4" class="tw-text-center tw-text-ink-muted tw-py-4">Nenhum gargalo relevante agora.</td></tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+              <% end %>
+
+              <% if @dashboard[:seo_issues].blank? %>
+                <tr>
+                  <td colspan="4">
+                    <%= ax_empty_state(title: "Nenhum gargalo relevante", description: "Páginas com baixo score e tráfego significativo aparecem aqui.", icon: "tools") %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
-      </div>
+      <% end %>
     </div>
-  </div>
+  <% end %>
 </div>

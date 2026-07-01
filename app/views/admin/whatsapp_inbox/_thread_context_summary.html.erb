@@ -1,0 +1,41 @@
+<div class="wa-inbox-thread__identity">
+  <span class="wa-inbox-thread__avatar"><%= conversation.display_name.to_s.first&.upcase || "?" %></span>
+  <div class="wa-inbox-thread__identity-copy">
+    <strong><%= conversation.display_name %></strong>
+    <span><%= conversation.contact_phone %></span>
+  </div>
+</div>
+
+<div class="wa-inbox-thread__meta">
+  <% if conversation.lead %>
+    <span class="wa-inbox-thread__meta-link">
+      <i class="bi bi-person-badge"></i>
+      <span class="tw-sr-only">Lead no CRM</span>
+      <%= link_to conversation.lead.name.presence || "Ver lead", admin_lead_path(conversation.lead) %>
+    </span>
+  <% else %>
+    <%= ax_badge("Sem lead", tone: :gray) %>
+  <% end %>
+
+  <% if thread_lead&.status.present? %>
+    <%= ax_badge(thread_lead.status.to_s.humanize, tone: :blue) %>
+  <% end %>
+
+  <% if thread_summary[:pending_count].positive? %>
+    <%= ax_badge("#{thread_summary[:pending_count]} pendente#{'s' if thread_summary[:pending_count] > 1}", tone: :amber) %>
+  <% end %>
+
+  <% if thread_summary[:failed_count].positive? %>
+    <%= ax_badge("#{thread_summary[:failed_count]} falha#{'s' if thread_summary[:failed_count] > 1}", tone: :red) %>
+  <% end %>
+
+  <span class="wa-inbox-thread__meta-activity">Última atividade <%= l(thread_summary[:last_activity_at], format: "%d/%m %H:%M") %></span>
+</div>
+
+<% thread_lead_labels = local_assigns.fetch(:thread_lead_labels, []) %>
+
+<% if thread_lead && thread_lead_labels.any? %>
+  <div class="wa-inbox-thread__labels">
+    <%= render "admin/lead_labels/chips", lead: thread_lead, labels: thread_lead_labels %>
+  </div>
+<% end %>

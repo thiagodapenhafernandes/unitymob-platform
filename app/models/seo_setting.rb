@@ -2,6 +2,20 @@ require "uri"
 
 class SeoSetting < ApplicationRecord
   AI_STATUSES = %w[pending generating generated failed skipped].freeze
+  PAGE_TYPE_LABELS = {
+    "property_show" => "Imóvel",
+    "property_listing" => "Busca de imóveis",
+    "development_show" => "Empreendimento",
+    "landing_pages_show" => "Landing page",
+    "developments_index" => "Busca de empreendimentos",
+    "empreendimentos_index" => "Busca de empreendimentos",
+    "development_landing" => "Landing de empreendimento",
+    "property_landing" => "Landing de imóveis",
+    "pages_corporativos" => "Página corporativa",
+    "home" => "Home",
+    "home_index" => "Home",
+    "legacy" => "Legado"
+  }.freeze
 
   # ActiveStorage for OG image
   has_one_attached :og_image_file
@@ -32,6 +46,11 @@ class SeoSetting < ApplicationRecord
     find_by(canonical_key: canonical_key)
   end
 
+  def self.page_type_label_for(page_type)
+    type = page_type.to_s.presence
+    PAGE_TYPE_LABELS.fetch(type, type.to_s.tr("_", " ").presence&.humanize || "Sem tipo")
+  end
+
   def public_applicable?
     active? && apply_to_public?
   end
@@ -47,6 +66,10 @@ class SeoSetting < ApplicationRecord
     when 50..69 then "Atenção"
     else "Fraco"
     end
+  end
+
+  def page_type_label
+    self.class.page_type_label_for(page_type)
   end
 
   def register_access!

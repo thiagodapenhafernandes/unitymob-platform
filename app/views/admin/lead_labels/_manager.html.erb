@@ -1,0 +1,75 @@
+<%#
+  Corpo do modal: marca/desmarca etiquetas no lead + CRUD do catálogo privado.
+  locals: lead, labels (coleção do usuário), assigned_ids (ids marcados no lead)
+%>
+<div class="lead-labels">
+  <p class="lead-labels__error" data-lead-labels-target="error" hidden></p>
+
+  <section class="lead-labels__section">
+    <span class="lead-labels__section-title">Aplicar ao lead</span>
+    <div class="lead-labels__toggle-grid">
+      <% if labels.any? %>
+        <% labels.each do |label| %>
+          <% on = assigned_ids.include?(label.id) %>
+          <button type="button"
+                  class="lead-labels__chip lead-labels__chip--<%= label.color %> <%= 'is-on' if on %>"
+                  data-action="lead-labels#toggle"
+                  data-url="<%= toggle_admin_lead_lead_label_path(lead, label) %>"
+                  aria-pressed="<%= on %>">
+            <i class="bi <%= on ? 'bi-check-lg' : 'bi-tag' %>"></i>
+            <span><%= label.name %></span>
+          </button>
+        <% end %>
+      <% else %>
+        <p class="lead-labels__empty">Você ainda não tem etiquetas. Crie a primeira abaixo.</p>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="lead-labels__section">
+    <span class="lead-labels__section-title">Gerenciar catálogo</span>
+
+    <ul class="lead-labels__catalog">
+      <% labels.each do |label| %>
+        <li class="lead-labels__row">
+          <%= form_with url: admin_lead_lead_label_path(lead, label), method: :patch,
+                        data: { action: "submit->lead-labels#submitForm", method: "patch" },
+                        class: "lead-labels__row-form" do %>
+            <input type="text" name="lead_label[name]" value="<%= label.name %>"
+                   class="ax-input ax-input--sm lead-labels__name" maxlength="40" required aria-label="Nome da etiqueta">
+            <div class="lead-labels__colors" role="radiogroup" aria-label="Cor">
+              <% LeadLabel::COLORS.each do |c| %>
+                <label class="lead-labels__color lead-labels__color--<%= c %>" title="<%= c %>">
+                  <input type="radio" name="lead_label[color]" value="<%= c %>" <%= "checked" if c == label.color %>>
+                </label>
+              <% end %>
+            </div>
+            <button type="submit" class="ax-ico-btn" title="Salvar"><i class="bi bi-check-lg"></i></button>
+          <% end %>
+          <button type="button" class="ax-ico-btn lead-labels__delete"
+                  title="Excluir etiqueta"
+                  data-action="lead-labels#deleteLabel"
+                  data-confirm="Excluir a etiqueta “<%= label.name %>”? Ela sairá de todos os leads."
+                  data-url="<%= admin_lead_lead_label_path(lead, label) %>">
+            <i class="bi bi-trash"></i>
+          </button>
+        </li>
+      <% end %>
+    </ul>
+
+    <%= form_with url: admin_lead_lead_labels_path(lead), method: :post,
+                  data: { action: "submit->lead-labels#submitForm", method: "post" },
+                  class: "lead-labels__row lead-labels__row--new" do %>
+      <input type="text" name="lead_label[name]" placeholder="Nova etiqueta"
+             class="ax-input ax-input--sm" maxlength="40" required aria-label="Nome da nova etiqueta">
+      <div class="lead-labels__colors" role="radiogroup" aria-label="Cor">
+        <% LeadLabel::COLORS.each_with_index do |c, i| %>
+          <label class="lead-labels__color lead-labels__color--<%= c %>" title="<%= c %>">
+            <input type="radio" name="lead_label[color]" value="<%= c %>" <%= "checked" if i.zero? %>>
+          </label>
+        <% end %>
+      </div>
+      <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary"><i class="bi bi-plus-lg ax-ico"></i><span>Criar</span></button>
+    <% end %>
+  </section>
+</div>

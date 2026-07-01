@@ -1,0 +1,117 @@
+<%
+  composer_title = local_assigns.fetch(:title)
+  conversation = local_assigns.fetch(:conversation)
+  templates = Array(local_assigns[:templates])
+  return_to = local_assigns[:return_to].presence
+  file_input_id = local_assigns.fetch(:file_input_id)
+  compact_mode = local_assigns[:compact_mode]
+  form_classes = ["wa-inbox-composer"]
+  form_classes << "wa-inbox-composer--compact" if compact_mode
+  form_classes << local_assigns[:class_name]
+  form_class = form_classes.compact.join(" ")
+  supported_media_summary = "JPG/PNG ate 5 MB · MP4/3GP e audio ate 16 MB · documentos ate 100 MB"
+%>
+
+<%= form_with url: send_message_admin_whatsapp_conversation_path(conversation),
+              method: :post,
+              multipart: true,
+              class: form_class,
+              data: {
+                controller: "wa-composer",
+                action: "submit->wa-composer#submit",
+                turbo: false,
+                admin_navigation_ignore: true
+              } do %>
+  <% if return_to.present? %>
+    <input type="hidden" name="return_to" value="<%= return_to %>">
+  <% end %>
+
+  <div class="wa-inbox-composer__toolbar">
+    <div class="wa-inbox-composer__heading">
+      <strong><%= composer_title %></strong>
+      <span class="wa-inbox-composer__support">
+        <%= supported_media_summary %>
+        <% if templates.any? %>
+          · <%= pluralize(templates.size, "modelo aprovado", "modelos aprovados") %>
+        <% end %>
+      </span>
+    </div>
+
+    <span class="wa-inbox-composer__mode" data-wa-composer-target="modeLabel">
+      Mensagem livre
+    </span>
+  </div>
+
+  <div class="wa-inbox-composer__layout">
+    <div class="wa-inbox-composer__row wa-inbox-composer__row--controls">
+      <%= ax_file_upload_button(
+            label: raw('<i class="bi bi-paperclip ax-ico"></i><span>Anexar</span>').html_safe,
+            input_id: file_input_id,
+            form: nil,
+            method: nil,
+            multiple: false,
+            direct_upload: false,
+            accept: Whatsapp::MediaSupport.accept_attribute,
+            class_name: "ax-btn ax-btn--sm wa-inbox-composer__attach"
+          ) %>
+      <input type="file"
+             name="media_file"
+             id="<%= file_input_id %>"
+             class="wa-inbox-composer__file-input"
+             aria-label="Selecionar arquivo para envio"
+             data-action="change->wa-composer#fileChanged"
+             data-wa-composer-target="fileInput"
+             accept="<%= Whatsapp::MediaSupport.accept_attribute %>">
+
+      <% if templates.any? %>
+        <select name="template_name"
+                class="ax-control ax-control--sm wa-inbox-composer__template"
+                title="Enviar modelo aprovado"
+                aria-label="Selecionar modelo aprovado"
+                data-action="change->wa-composer#templateChanged"
+                data-wa-composer-target="template">
+          <option value="">Mensagem livre</option>
+          <% templates.each do |template| %>
+            <option value="<%= template.name %>"><%= template.name %></option>
+          <% end %>
+        </select>
+      <% end %>
+    </div>
+
+    <div class="wa-inbox-composer__file-summary is-hidden"
+         data-wa-composer-target="fileSummary">
+      <div class="wa-inbox-composer__file-pill">
+        <i class="bi bi-paperclip"></i>
+        <span data-wa-composer-target="fileName">Nenhum arquivo</span>
+      </div>
+      <button type="button"
+              class="ax-btn ax-btn--sm ax-btn--ghost"
+              data-action="wa-composer#clearFile">
+        Remover
+      </button>
+    </div>
+
+    <div class="wa-inbox-composer__row wa-inbox-composer__row--message">
+      <textarea name="body"
+                rows="2"
+                class="ax-control ax-control--sm wa-inbox-composer__body"
+                placeholder="Escreva uma mensagem..."
+                aria-label="Escreva uma mensagem"
+                autocomplete="off"
+                data-action="input->wa-composer#bodyChanged keydown->wa-composer#submitOnEnter"
+                data-wa-composer-target="body"></textarea>
+
+      <button type="submit"
+              class="ax-btn ax-btn--sm ax-btn--primary wa-inbox-composer__submit"
+              aria-label="Enviar mensagem"
+              data-wa-composer-target="submit">
+        <i class="bi bi-send ax-ico"></i>
+        <span>Enviar</span>
+      </button>
+    </div>
+
+    <div class="wa-inbox-composer__error is-hidden"
+         role="alert"
+         data-wa-composer-target="error"></div>
+  </div>
+<% end %>

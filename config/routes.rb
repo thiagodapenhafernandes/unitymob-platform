@@ -162,7 +162,12 @@ Rails.application.routes.draw do
       post :log_contact, on: :member
       post :reprocess_interest, on: :member
       post :simulate_interest, on: :member
+      post :open_whatsapp_conversation, on: :member
+      post :activate_whatsapp_template, on: :member
       resources :proposals, only: [:new, :create]
+      resources :lead_labels, only: [:index, :create, :update, :destroy] do
+        post :toggle, on: :member
+      end
     end
 
     # === Comercial (Tarefas, Agenda, Propostas) ===
@@ -235,8 +240,7 @@ Rails.application.routes.draw do
     resources :whatsapp_conversations, only: [:index, :show], path: "atendimento/whatsapp", controller: "whatsapp_inbox" do
       member do
         post :send_message
-        post :assign_lead
-        get :messages
+        get "messages/:message_id/media", action: :media, as: :message_media
       end
       collection do
         post :sync_templates
@@ -467,6 +471,7 @@ Rails.application.routes.draw do
 
   # Mission Control for Jobs
   mount MissionControl::Jobs::Engine => "/jobs"
+  mount ActionCable.server => "/cable"
 
   # Webhooks
   namespace :webhooks do

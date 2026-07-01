@@ -3,6 +3,13 @@ module Whatsapp
   # - mensagens recebidas -> cria/atualiza conversa + mensagem + vincula lead + timeline
   # - status (sent/delivered/read) -> atualiza a mensagem enviada
   class InboundProcessor
+    MESSAGE_STATUS_PROGRESS = {
+      "pending" => 0,
+      "sent" => 1,
+      "delivered" => 2,
+      "read" => 3
+    }.freeze
+
     def self.call(payload)
       new(payload).call
     end
@@ -86,18 +93,23 @@ module Whatsapp
       conversation = find_or_create_conversation(phone: phone, bsuid: bsuid, name: name)
       type = msg["type"].to_s
       body = extract_body(msg, type)
+      media_url = extract_media_url(msg, type)
 
       message = conversation.messages.create!(
         direction: "inbound",
         wa_message_id: msg["id"],
         msg_type: type.presence || "text",
         body: body,
+        media_url: media_url,
         status: "delivered",
         delivered_at: Time.current
       )
 
+      attach_remote_media(message, msg, type, media_url) if media_url.present?
+
       conversation.update_columns(unread_count: conversation.unread_count.to_i + 1, updated_at: Time.current)
       conversation.touch_last_message!(message)
+      Whatsapp::ThreadBroadcaster.message_created(message)
 
       campaign_message = mark_campaign_reply!(conversation, message, raw_message: msg)
 
@@ -191,12 +203,15 @@ module Whatsapp
       return unless message
 
       state = status["status"].to_s
-      attrs = { status: state }
+      return unless WhatsappMessage::STATUSES.include?(state)
+
+      attrs = message_status_attrs(message, state, status)
+      return if attrs.blank?
+
       attrs[:recipient_user_id] = status["recipient_user_id"] if status["recipient_user_id"].present?
-      attrs[:delivered_at] = Time.zone.at(status["timestamp"].to_i) if state == "delivered" && status["timestamp"].present?
-      attrs[:read_at] = Time.zone.at(status["timestamp"].to_i) if state == "read" && status["timestamp"].present?
       attrs[:error_message] = status.dig("errors", 0, "title") if state == "failed"
       message.update_columns(attrs.merge(updated_at: Time.current))
+      Whatsapp::ThreadBroadcaster.message_updated(message)
 
       campaign_message = tenant.whatsapp_campaign_messages.find_by(external_message_id: status["id"])
       return unless campaign_message
@@ -216,6 +231,32 @@ module Whatsapp
       when "failed"
         campaign_message.mark_failed!(attrs[:error_message].presence || "Falha informada pela Meta")
       end
+    end
+
+    def message_status_attrs(message, state, status)
+      current = message.status.to_s
+      timestamp = status_timestamp(status)
+
+      if state == "failed"
+        return if MESSAGE_STATUS_PROGRESS.fetch(current, -1) >= MESSAGE_STATUS_PROGRESS.fetch("delivered")
+
+        return { status: state }
+      end
+
+      next_rank = MESSAGE_STATUS_PROGRESS[state]
+      current_rank = MESSAGE_STATUS_PROGRESS.fetch(current, -1)
+      return if next_rank.blank? || next_rank < current_rank
+
+      attrs = { status: state }
+      attrs[:delivered_at] = timestamp if state == "delivered" && timestamp.present?
+      attrs[:read_at] = timestamp if state == "read" && timestamp.present?
+      attrs
+    end
+
+    def status_timestamp(status)
+      return if status["timestamp"].blank?
+
+      Time.zone.at(status["timestamp"].to_i)
     end
 
     def mark_campaign_reply!(conversation, inbound_message, raw_message:)
@@ -285,6 +326,57 @@ module Whatsapp
       when "image", "document", "audio", "video" then msg.dig(type, "caption")
       else nil
       end.to_s
+    end
+
+    def extract_media_url(msg, type)
+      return unless %w[image document audio video].include?(type.to_s)
+
+      media_id = msg.dig(type, "id").presence
+      return if media_id.blank?
+
+      client = Whatsapp::CloudClient.new(WhatsappBusinessIntegration.current(tenant))
+      result = client.media_url(media_id)
+      return result[:url] if result[:ok]
+
+      Rails.logger.warn("[wa inbound] media fetch failed for #{type} #{media_id}: #{result[:error]}")
+      nil
+    rescue => e
+      Rails.logger.warn("[wa inbound] media fetch exception for #{type}: #{e.message}")
+      nil
+    end
+
+    def attach_remote_media(message, msg, type, media_url)
+      return if message.media_file.attached?
+
+      client = Whatsapp::CloudClient.new(WhatsappBusinessIntegration.current(tenant))
+      download = client.download_media(media_url)
+      return Rails.logger.warn("[wa inbound] media download failed for #{message.wa_message_id}: #{download[:error]}") unless download[:ok]
+
+      metadata = extract_media_metadata(msg, type)
+      filename = metadata[:filename].presence || inferred_media_filename(message, type, download[:content_type])
+      content_type = download[:content_type].presence || metadata[:content_type].presence || "application/octet-stream"
+
+      message.media_file.attach(
+        io: StringIO.new(download[:body]),
+        filename: filename,
+        content_type: content_type
+      )
+    rescue => e
+      Rails.logger.warn("[wa inbound] media attach failed for #{message.wa_message_id}: #{e.message}")
+    end
+
+    def extract_media_metadata(msg, type)
+      payload = msg[type].is_a?(Hash) ? msg[type] : {}
+      {
+        filename: payload["filename"].presence,
+        content_type: payload["mime_type"].presence
+      }
+    end
+
+    def inferred_media_filename(message, type, content_type)
+      extension = Rack::Mime::MIME_TYPES.invert[content_type.to_s]&.delete_prefix(".")
+      base = [type.presence || "media", message.wa_message_id.presence || message.id].compact.join("-")
+      extension.present? ? "#{base}.#{extension}" : base
     end
 
     def find_or_create_conversation(phone:, bsuid:, name:)

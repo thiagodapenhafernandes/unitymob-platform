@@ -1,0 +1,9 @@
+<% if thread_actions_summary[:tasks].positive? %>
+  <%= ax_badge("#{thread_actions_summary[:tasks]} tarefas", tone: :blue) %>
+<% end %>
+<% if thread_actions_summary[:appointments].positive? %>
+  <%= ax_badge("#{thread_actions_summary[:appointments]} compromissos", tone: :cyan) %>
+<% end %>
+<% if thread_actions_summary[:proposals].positive? %>
+  <%= ax_badge("#{thread_actions_summary[:proposals]} propostas", tone: :purple) %>
+<% end %>

@@ -1,0 +1,33 @@
+<%#
+  Gatilho + modal do gerenciador de etiquetas de um lead.
+  locals: lead (obrigatório), trigger_label, trigger_class, icon_only
+%>
+<%
+  lead = local_assigns.fetch(:lead)
+  trigger_label = local_assigns.fetch(:trigger_label, "Etiquetas")
+  trigger_class = local_assigns.fetch(:trigger_class, "ax-btn ax-btn--sm")
+  icon_only = local_assigns.fetch(:icon_only, false)
+%>
+<div class="tw-inline-block"
+     data-controller="lead-labels ax-modal"
+     data-lead-labels-index-url-value="<%= admin_lead_lead_labels_path(lead) %>"
+     data-lead-labels-lead-id-value="<%= lead.id %>">
+  <button type="button"
+          class="<%= trigger_class %>"
+          data-action="lead-labels#open ax-modal#open"
+          <%= icon_only ? "aria-label=\"Etiquetas\" title=\"Etiquetas\"".html_safe : "" %>>
+    <i class="bi bi-tags ax-ico"></i><% unless icon_only %><span><%= trigger_label %></span><% end %>
+  </button>
+
+  <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+    <div class="ax-modal-panel lead-labels-modal" role="dialog" aria-modal="true">
+      <div class="tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3" style="border-bottom:1px solid #e6e8eb">
+        <strong><i class="bi bi-tags ax-ico tw-text-primary"></i> Etiquetas do lead</strong>
+        <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="lead-labels__body" data-lead-labels-target="body">
+        <div class="lead-labels__loading">Carregando…</div>
+      </div>
+    </div>
+  </div>
+</div>

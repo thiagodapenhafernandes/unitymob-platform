@@ -1,7 +1,7 @@
 class Admin::LeadsController < Admin::BaseController
   before_action -> { check_permission!(:view, :leads) }
-  before_action :set_lead, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest]
-  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest]
+  before_action :set_lead, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
+  before_action :authorize_lead_access!, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
   before_action :load_origin_options, only: [:index, :show, :update]
 
   def index
@@ -43,7 +43,7 @@ class Admin::LeadsController < Admin::BaseController
     @status_counts = stats_scope.group(:status).count
     @origin_counts = lead_scope_for_current_user.reorder(nil).where.not(origin: [nil, ""]).group(:origin).count
 
-    lead_scope = lead_scope.includes(:admin_user).order(created_at: :desc)
+    lead_scope = lead_scope.includes(:admin_user, lead_labelings: :lead_label).order(created_at: :desc)
 
     @lead_statuses = if @status.present?
                         [Lead.status_value(@status)]
@@ -78,6 +78,7 @@ class Admin::LeadsController < Admin::BaseController
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
     @funnel_statuses = Lead.status_options
+    load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)
     load_interest_intelligence
   end
@@ -167,6 +168,41 @@ class Admin::LeadsController < Admin::BaseController
     load_show_context
     @interest_simulation = true
     render :show
+  end
+
+  def open_whatsapp_conversation
+    check_permission!(:view, :whatsapp_inbox)
+
+    conversation = find_or_create_whatsapp_conversation_for!(@lead)
+    destination = params[:workspace].to_s == "focus" ? admin_whatsapp_conversation_path(conversation, workspace: "focus") : admin_whatsapp_conversation_path(conversation)
+    redirect_to destination
+  rescue ArgumentError => e
+    redirect_to admin_lead_path(@lead), alert: e.message
+  end
+
+  def activate_whatsapp_template
+    check_permission!(:manage, :whatsapp_inbox)
+    return_path = safe_return_path(params[:return_to])
+
+    template = current_tenant.whatsapp_templates.approved.find_by(id: params[:whatsapp_template_id])
+    return redirect_to(return_path || admin_lead_path(@lead), alert: "Selecione um template aprovado.") unless template
+
+    conversation = find_or_create_whatsapp_conversation_for!(@lead)
+    message = conversation.messages.create!(
+      direction: "outbound",
+      status: "pending",
+      msg_type: "template",
+      template_name: template.name,
+      body: template.body,
+      admin_user: current_admin_user
+    )
+    conversation.touch_last_message!(message)
+    Whatsapp::SendMessageJob.dispatch(message.id, tenant_id: message.tenant_id)
+    LeadActivity.log!(lead: @lead, kind: "whatsapp_out", metadata: { body: message.preview, by: current_admin_user&.name })
+
+    redirect_to(return_path || admin_whatsapp_conversation_path(conversation), notice: "Template enviado e conversa ativada no inbox.")
+  rescue ArgumentError => e
+    redirect_to(return_path || admin_lead_path(@lead), alert: e.message)
   end
 
   def destroy
@@ -270,6 +306,68 @@ class Admin::LeadsController < Admin::BaseController
 
   def set_lead
     @lead = current_tenant.leads.find(params[:id])
+  end
+
+  def existing_whatsapp_conversation_for(lead)
+    current_tenant.whatsapp_conversations.find_by(lead: lead) ||
+      begin
+        recipient = lead.whatsapp_recipient
+        if recipient.is_a?(Hash)
+          current_tenant.whatsapp_conversations.find_by(business_scoped_user_id: recipient[:user_id].to_s)
+        elsif recipient.present?
+          current_tenant.whatsapp_conversations.find_by(contact_phone: normalize_whatsapp_phone(recipient))
+        end
+      end
+  end
+
+  def find_or_create_whatsapp_conversation_for!(lead)
+    recipient = lead.whatsapp_recipient
+    raise ArgumentError, "Este lead não possui telefone ou BSUID para abrir conversa no WhatsApp." if recipient.blank?
+
+    conversation = existing_whatsapp_conversation_for(lead)
+    conversation ||= if recipient.is_a?(Hash)
+                       current_tenant.whatsapp_conversations.find_or_initialize_by(business_scoped_user_id: recipient[:user_id].to_s)
+                     else
+                       current_tenant.whatsapp_conversations.find_or_initialize_by(contact_phone: normalize_whatsapp_phone(recipient))
+                     end
+
+    conversation.contact_phone ||= normalize_whatsapp_phone(recipient) unless recipient.is_a?(Hash)
+    conversation.business_scoped_user_id ||= recipient[:user_id].to_s if recipient.is_a?(Hash)
+    conversation.contact_name ||= lead.display_name
+    conversation.lead ||= lead
+    conversation.status ||= "open"
+    conversation.save!
+    conversation
+  end
+
+  def normalize_whatsapp_phone(value)
+    digits = value.to_s.gsub(/\D/, "")
+    return "" if digits.blank?
+
+    digits.length <= 11 ? "55#{digits}" : digits
+  end
+
+  def load_lead_whatsapp_context
+    @whatsapp_conversation = existing_whatsapp_conversation_for(@lead)
+    @whatsapp_templates = current_tenant.whatsapp_templates.approved.ordered.limit(50)
+    @whatsapp_messages = @whatsapp_conversation ? @whatsapp_conversation.messages.ordered.last(12) : []
+    snapshot = @whatsapp_conversation ? Whatsapp::ThreadContextSnapshot.new(
+      conversation: @whatsapp_conversation,
+      messages: @whatsapp_messages,
+      focus_mode: false,
+      tenant: current_tenant
+    ) : nil
+    @whatsapp_summary = snapshot ? snapshot.to_h.fetch(:thread_summary) : { pending_count: 0, failed_count: 0, media_count: 0, last_activity_at: nil }
+    @whatsapp_thread_context_locals = snapshot ? snapshot.to_h : {}
+  end
+
+  def safe_return_path(value)
+    path = value.to_s
+    return nil if path.blank?
+    return nil unless path.start_with?("/")
+    return nil if path.start_with?("//")
+
+    path
   end
 
   # O lead ainda pertence ao corretor que clicou (não expirou/redistribuiu)?
@@ -419,6 +517,7 @@ class Admin::LeadsController < Admin::BaseController
     @appointments = @lead.appointments.upcoming.limit(20)
     @proposals = @lead.proposals.ordered.limit(20)
     @funnel_statuses = Lead.status_options
+    load_lead_whatsapp_context
     @push_delivery_events = push_delivery_events_for(@lead)
     load_origin_options
     load_interest_intelligence

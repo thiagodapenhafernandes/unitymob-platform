@@ -1,7 +1,7 @@
 # Admin Analytics Builder Design System
 
-Este documento é a fonte de verdade para implementar telas do admin no padrão
-Analytics Builder / Dense Enterprise Workspace.
+Este documento é a fonte de verdade e o ponto de entrada para implementar telas
+do admin no padrão Analytics Builder / Dense Enterprise Workspace.
 
 O arquivo visual de referência é:
 
@@ -13,6 +13,27 @@ Use esse design system como referência de conceito, tokens e densidade. Não co
 mock literalmente para todos os módulos. A aplicação Rails deve usar componentes
 `ax-*` próprios, reutilizáveis, preservando comportamento, permissões, parâmetros,
 submits e auditoria existentes.
+
+## Ponto De Entrada Operacional
+
+Antes de mexer em uma tela admin, consulte nesta ordem:
+
+1. Este contrato.
+2. `public/analytics-builder-design-system/` para direção visual e tokens.
+3. `app/views/admin/shared/ui/` para partials compartilhadas.
+4. `app/helpers/admin/ui_helper.rb` para helpers `ax_*`.
+5. `app/javascript/controllers/ax_*.js` para comportamentos compartilhados.
+
+Sinais de dívida visual que pedem leitura crítica antes de migrar:
+
+```text
+row, col-*, card, form-group, alert, badge, btn, form-control, d-none, style=
+```
+
+O ranking inicial por volume no estado atual aponta como próximos lotes mais
+relevantes: `admin/habitations/index`, SEO (`seo_settings` e `seo_dashboard`) e
+Captações. O volume não prova erro sozinho; apenas indica onde vale auditar com
+mais cuidado antes de mexer.
 
 ## Objetivo
 
@@ -409,7 +430,7 @@ Regras:
 | --- | --- |
 | `ax_button` | botão padrão do admin |
 | `ax_icon_button` | botão só com ícone e tooltip/title |
-| `ax_badge` | status compacto |
+| `ax_badge` / `_badge.html.erb` | status compacto |
 | `ax_metric_card` | KPIs compactos |
 | `ax_panel` | painel genérico |
 | `ax_operational_panel` | painel operacional com header denso |
@@ -419,6 +440,39 @@ Regras:
 | `ax_error_summary` | resumo de validação |
 | `ax_filter_form` | formulário de filtro |
 | `ax-confirm-submit` | confirmação inline para submit destrutivo |
+| `lead_whatsapp_panel` | bloco de conversa WhatsApp dentro do lead |
+| `whatsapp_composer` | composer compartilhado de texto/mídia/template |
+
+## Regra De Componentização
+
+Quando surgir oportunidade clara de componentizar um elemento recorrente,
+eliminar conflito de CSS espalhado ou substituir markup manual equivalente a uma
+primitive `ax-*`, isso deve ser feito no mesmo fluxo de trabalho, sem depender
+de confirmação extra.
+
+Ordem esperada:
+
+1. identificar o padrão repetido ou o conflito;
+2. promover para primitive compartilhada (`shared/ui` + helper + CSS global);
+3. aplicar o componente novo na tela atual;
+4. ao tocar em legado adjacente da mesma área, substituir o legado pelo
+   componente em vez de manter duas versões.
+
+Em área migrada, markup manual equivalente a primitive existente deve ser
+tratado como dívida a remover, não como atalho aceitável. Se o componente ainda
+não cobre o caso, a prioridade é evoluir o componente compartilhado, depois
+substituir o uso local.
+
+Guardrail operacional: rode `bin/rails admin:verify_ui_contract` ao fechar uma
+fatia migrada. O verificador inicial cobre áreas já migradas de SEO, inbox
+WhatsApp e disparos WhatsApp e falha
+quando encontra:
+
+- `<span class="ax-badge ...">` manual em vez de `ax_badge`;
+- classes Bootstrap residuais (`row`, `col-*`, `form-group`, `card*`, `badge*`,
+  `btn*`, `form-control`) dentro dessas áreas;
+- override local de `.ax-badge` por seletor de tela, quando a correção deveria
+  acontecer na primitive compartilhada.
 
 Exemplo de confirmação inline:
 
@@ -441,7 +495,7 @@ Exemplo de confirmação inline:
 | --- | --- |
 | `ax_page_header` | cabeçalho simples de página (título, subtítulo, ações) |
 | `ax_workspace_heading` | cabeçalho operacional do `ax-main`: eyebrow + título com pills, subtítulo, métricas e ações (ex.: listagem de leads/imóveis) |
-| `ax_operational_panel` | **card padrão de conteúdo** (estilo dashboard): eyebrow + título (h2 13px/800) + ações + body. Header `#f8fafc`. Body sem padding por design — embrulhar em wrapper com `padding:12px`. É o card a usar em telas de configuração, seções e painéis informativos |
+| `ax_operational_panel` | **card padrão de conteúdo** (estilo dashboard): eyebrow + título (h2 13px/800) + ações + body. Header `#f8fafc`. O body já controla respiro interno com `padding` e `gap`; não adicionar wrapper só para separar header de tabela/lista. É o card a usar em telas de configuração, seções e painéis informativos |
 | `ax_panel` | painel genérico com `title/subtitle/actions/body` quando não precisar do eyebrow do operational |
 | `ax_metric_card` | KPI compacto (label, value, badge, hint, progress) |
 | `ax_board` | container do kanban (grid de colunas com scroll horizontal); `data:` recebe o controller do consumidor |
@@ -455,6 +509,67 @@ Cards de conteúdo, colunas de kanban e KPIs **nunca** devem ser markup solto: u
 sempre `ax_operational_panel`, `ax_board_column` e `ax_metric_card`. O header desses
 componentes já resolve fundo destacado (`#f8fafc`) e título compacto (13px/800)
 vencendo a regra global `.ax-app h2`.
+
+Quando uma tabela, gráfico ou lista entra dentro de `ax_operational_panel`, a
+distância entre header e conteúdo pertence ao componente compartilhado. Não
+colar `ax-table-wrap` no header e não criar `tw-mt-*` local para cada tela.
+Se uma tabela parecer colada no header do painel, corrija o componente/variação
+do painel ou o wrapper compartilhado, não a tela com margem avulsa. O padrão
+visual esperado é: header compacto, linha divisória sutil, body com respiro
+interno previsível e tabela/lista começando como conteúdo do body.
+
+Badges de contagem dentro de painéis operacionais precisam ser curtos e densos:
+prefira `Avaliadas 39`, `Criadas 0`, `Indexáveis 37` em vez de textos longos
+com dois-pontos pesados. Use `ax_badge` puro antes de qualquer classe local,
+mantendo a mesma escala visual dos KPIs, regras automáticas e coluna Score. Se o
+badge compartilhado não atender uma necessidade real, evolua o componente
+compartilhado em vez de criar variação local para uma tela. O peso do texto do
+badge pertence ao `.ax-badge` global; não compensar com CSS por tela.
+Não escrever `<span class="ax-badge ...">` manualmente em tela migrada: use o
+helper para manter API, tons, dot e classes em uma única primitive.
+
+Textos visíveis nunca devem expor nomes técnicos de banco/controller, como
+`property_show`, `landing_pages_show`, `home_index` ou fallback `Seo settings`.
+Crie mapas de apresentação no model/helper ou `content_for`/títulos explícitos
+na contextbar. URL, params e `href` podem manter nomes técnicos; labels,
+breadcrumbs, gráficos, legendas, badges e células visíveis devem estar em pt-BR.
+
+## Componentes De WhatsApp
+
+O atendimento WhatsApp é produto operacional, não um CRUD comum. A conversa deve
+usar os componentes compartilhados abaixo em todos os pontos de entrada:
+
+- inbox dedicado: `app/views/admin/whatsapp_inbox/index.html.erb`;
+- thread reutilizável: `app/views/admin/whatsapp_inbox/_thread_workspace.html.erb`;
+- bolha/mídia: `app/views/admin/whatsapp_inbox/_message_bubble.html.erb`;
+- bloco dentro do lead: `app/views/admin/shared/ui/_lead_whatsapp_panel.html.erb`;
+- composer: `app/views/admin/shared/ui/_whatsapp_composer.html.erb`.
+
+Regras:
+
+- não criar cards de conversa paralelos dentro de telas de lead, inbox ou campanha;
+- reaproveitar `thread_workspace`, `message_bubble` e `whatsapp_composer` sempre
+  que uma tela precisar mostrar ou responder uma conversa;
+- o composer compacto deve ser uma barra única: anexar/modelo à esquerda, texto
+  no centro e enviar à direita, sem toolbar explicativa ocupando altura;
+- a timeline deve ter rolagem interna; a página não deve crescer além da viewport
+  no inbox operacional;
+- imagem, vídeo, áudio e documento devem abrir no viewer inline da conversa, sem
+  navegar para outra página;
+- áudio não deve carregar metadata nem tocar sozinho ao entrar na tela; carregar
+  `src` apenas por ação explícita do usuário;
+- ActionCable é o caminho principal para novas mensagens e status. Qualquer
+  reconciliação HTTP deve ser manual/fallback, nunca polling visual que pisca,
+  troca seleção ou exibe overlay de carregamento;
+- status de mensagem (`pending`, `sent`, `delivered`, `read`, `failed`) deve
+  atualizar na bolha existente sem refresh e sem re-renderizar a fila inteira;
+- ações redundantes como "Abrir inbox" ou "Abrir WhatsApp" não devem aparecer
+  quando a própria fila/thread já resolve seleção e navegação.
+
+Se uma diferença visual aparecer entre `/admin/atendimento/whatsapp/:id`,
+`/admin/atendimento/whatsapp/:id?workspace=focus` e `/admin/leads/:id`, corrija
+o componente compartilhado ou sua variação (`compact_mode`) em vez de CSS local
+por tela.
 
 ## Botões
 
@@ -588,6 +703,24 @@ Compatibilidade temporária pode existir dentro do componente somente enquanto o
 comportamento legado ainda estiver sendo substituído. Ela não deve aparecer como
 contrato público da tela migrada.
 
+Tamanhos oficiais:
+
+| Classe | Uso | Largura alvo |
+| --- | --- | --- |
+| `ax-quick-modal--sm` | confirmação, ajuste simples, escolha curta | `460px` |
+| `ax-quick-modal--md` | cadastro rápido comum | `620px` |
+| `ax-quick-modal--lg` | estratégia, exportação, configurações com textarea/tabela | `920px` |
+
+Controles dentro de quick modal devem ser compactos e específicos do contexto.
+Não reutilizar `.custom-checkbox-card` legado quando ele inflar padding, altura
+ou quebrar labels. Para opções booleanas em modal, preferir um grid curto com
+labels clicáveis, checkbox nativo preservado e classes escopadas da tela; se o
+padrão aparecer em duas telas, promover para um componente `ax_*`.
+
+Textarea técnico em modal (prompt, estratégia, JSON, observação longa) deve ter
+altura explícita, `resize: vertical`, fonte menor e line-height confortável. Não
+usar a escala gigante herdada de editor/campo legado.
+
 ## Aside Reutilizável
 
 Todo painel direito deve reutilizar a mesma estrutura:
@@ -688,6 +821,9 @@ Não fazer:
 - criar input group manual com bordas duplicadas;
 - usar `row`, `col`, `form-group`, `card`, `alert`, `badge`, `btn` Bootstrap em
   área já migrada;
+- manter markup manual equivalente a primitive `ax-*` já existente;
+- criar CSS local para resolver elemento que deveria virar componente
+  compartilhado;
 - criar controller Stimulus específico de tela quando um controller `ax-*`
   genérico resolve;
 - usar nomes de marca/imobiliária específica em código genérico do sistema;
@@ -714,6 +850,16 @@ Não fazer:
 - `ax-main` e `ax-aside` continuam irmãos dentro de `ax-workspace`?
 - A tela usa `--admin-primary: #365f8f` como default?
 - Não houve impacto no site público?
+- Textos visíveis, breadcrumbs, gráficos, badges e células estão em pt-BR?
+- A tela não expõe nomes técnicos (`controller_name`, `page_type`, params ou
+  fallback `humanize`) como label de usuário?
+- Painéis com tabela/lista/gráfico têm respiro entre header e body sem margem
+  local improvisada?
+- Badges e chips estão compactos o suficiente para tela operacional?
+- Quick modals usam controles compactos e não herdaram cards/inputs legados
+  inflados?
+- Houve chance clara de componentizar ou substituir legado equivalente e isso
+  foi feito no mesmo ciclo?
 - Uma aba/pane aparece por vez?
 - Inputs, selects, TomSelect e input groups têm mesma altura/radius/foco?
 - Avisos explicativos viraram tooltips ou `ax_inline_notice`?
@@ -729,6 +875,7 @@ Não fazer:
 app/views/admin/shared/ui
 ├── _aside_panel.html.erb
 ├── _attachment_item.html.erb
+├── _badge.html.erb
 ├── _chip_grid.html.erb
 ├── _currency_field.html.erb
 ├── _date_field.html.erb
@@ -746,6 +893,7 @@ app/views/admin/shared/ui
 ├── _info_badge.html.erb
 ├── _inline_notice.html.erb
 ├── _input_group.html.erb
+├── _lead_whatsapp_panel.html.erb
 ├── _measure_field.html.erb
 ├── _media_grid.html.erb
 ├── _media_source_notice.html.erb
@@ -767,6 +915,7 @@ app/views/admin/shared/ui
 ├── _sticky_action_footer.html.erb
 ├── _text_field.html.erb
 ├── _toggle_chip.html.erb
+├── _whatsapp_composer.html.erb
 └── _workspace_shell.html.erb
 ```
 

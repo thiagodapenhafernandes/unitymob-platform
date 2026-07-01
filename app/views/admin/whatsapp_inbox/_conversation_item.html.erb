@@ -1,0 +1,39 @@
+<% active = local_assigns.fetch(:active, false) %>
+<% focus_mode = local_assigns.fetch(:focus_mode, false) %>
+<% compact_mode = local_assigns.fetch(:compact_mode, false) %>
+<% lead_labels = local_assigns.key?(:lead_labels) ? local_assigns[:lead_labels] : (conv.lead ? conv.lead.preloaded_labels_for(current_admin_user) : []) %>
+<% conversation_actions = capture do %>
+  <div class="wa-inbox-conversation__metrics">
+    <% if conv.unread_count.to_i.positive? %>
+      <span class="wa-inbox-conversation__unread"><%= conv.unread_count %></span>
+    <% end %>
+    <span class="wa-inbox-conversation__time"><%= conv.last_message_at&.strftime("%d/%m %H:%M") || "-" %></span>
+  </div>
+<% end %>
+
+<%= link_to (focus_mode ? admin_whatsapp_conversation_path(conv, workspace: "focus") : admin_whatsapp_conversation_path(conv)),
+      class: ["wa-inbox-conversation", ("wa-inbox-conversation--compact" if compact_mode), ("is-active" if active)].compact.join(" "),
+      data: {
+        conversation_id: conv.id,
+        conversation_default_href: admin_whatsapp_conversation_path(conv),
+        conversation_focus_href: admin_whatsapp_conversation_path(conv, workspace: "focus"),
+        unread: conv.unread_count.to_i.positive?,
+        lead: conv.lead.present?,
+        search: [conv.contact_phone, conv.display_name, conv.lead&.name, conv.last_message_preview].compact.join(" ").downcase
+      } do %>
+  <%= ax_record_item(
+        title: conv.display_name,
+        eyebrow: conv.lead&.name.presence || "Sem lead vinculado",
+        meta: conv.contact_phone,
+        icon: "person-circle",
+        class_name: "wa-inbox-conversation__card",
+        actions: conversation_actions
+      ) do %>
+    <span class="wa-inbox-conversation__preview"><%= conv.last_message_preview.presence || "Sem mensagem recente." %></span>
+    <% if conv.lead && lead_labels.any? %>
+      <div class="wa-inbox-conversation__labels">
+        <%= render "admin/lead_labels/chips", lead: conv.lead, labels: lead_labels %>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

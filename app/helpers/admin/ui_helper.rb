@@ -4,7 +4,9 @@ module Admin::UiHelper
     green: "ax-badge--green",
     amber: "ax-badge--amber",
     red: "ax-badge--red",
-    blue: "ax-badge--blue"
+    blue: "ax-badge--blue",
+    purple: "ax-badge--purple",
+    cyan: "ax-badge--cyan"
   }.freeze
 
   AX_BUTTON_VARIANTS = {
@@ -26,7 +28,7 @@ module Admin::UiHelper
     classes << "ax-badge--dot" if dot
     classes << class_name if class_name.present?
 
-    tag.span(label, class: classes.join(" "))
+    render "admin/shared/ui/badge", label:, classes:
   end
 
   def ax_button(label = nil, url = nil, variant: :secondary, size: nil, icon: nil, class_name: nil, **options, &block)

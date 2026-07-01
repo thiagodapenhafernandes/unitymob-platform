@@ -1,0 +1,18 @@
+<%
+  conversation = local_assigns[:conversation] || @conversation
+  thread_lead = local_assigns[:thread_lead] || @thread_lead
+  thread_summary = local_assigns[:thread_summary] || @thread_summary
+  thread_lead_labels = if local_assigns.key?(:thread_lead_labels)
+    local_assigns[:thread_lead_labels]
+  else
+    thread_lead ? thread_lead.labels_for(current_admin_user) : []
+  end
+%>
+
+<div class="wa-inbox-thread__summary" data-wa-thread-target="contextSummary">
+  <%= render "admin/whatsapp_inbox/thread_context_summary",
+        conversation: conversation,
+        thread_lead: thread_lead,
+        thread_summary: thread_summary,
+        thread_lead_labels: thread_lead_labels %>
+</div>

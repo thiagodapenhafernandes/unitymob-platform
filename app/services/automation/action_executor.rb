@@ -124,7 +124,7 @@ module Automation
         end
 
       conversation.touch_last_message!(message)
-      Whatsapp::SendMessageJob.perform_later(message.id, tenant_id: message.tenant_id)
+      Whatsapp::SendMessageJob.dispatch(message.id, tenant_id: message.tenant_id)
       LeadActivity.log!(lead: @lead, kind: "whatsapp_out", metadata: { body: message.preview, by: "Automação" })
     end
 

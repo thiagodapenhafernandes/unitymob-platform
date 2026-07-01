@@ -1,0 +1,10 @@
+<%#
+  Tira read-only com as etiquetas aplicadas ao lead (visão do corretor atual).
+  locals: lead (obrigatório), labels (coleção de LeadLabel já filtrada)
+  O data-attribute permite ao Stimulus atualizar a tira ao vivo após marcar.
+%>
+<span class="lead-labels-chips" data-lead-labels-chips="<%= lead.id %>">
+  <% labels.each do |label| %>
+    <span class="ax-badge ax-badge--<%= label.color %> lead-label-chip"><%= label.name %></span>
+  <% end %>
+</span>

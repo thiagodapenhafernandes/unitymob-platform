@@ -26,6 +26,17 @@ module Whatsapp
       post_message(to: to, type: "template", template: template)
     end
 
+    def send_media(to:, type:, media_id: nil, link: nil, caption: nil, filename: nil)
+      media_type = type.to_s.presence || "image"
+      media_payload = {}
+      media_payload[:id] = media_id if media_id.present?
+      media_payload[:link] = link if link.present?
+      media_payload[:caption] = caption if caption.present? && media_type != "audio"
+      media_payload[:filename] = filename if filename.present? && media_type == "document"
+
+      post_message(to: to, type: media_type, media_type.to_sym => media_payload)
+    end
+
     def upload_message_media(file_name:, content_type:, type:, io:)
       return error_result("Integração não configurada") unless configured?
 
@@ -136,6 +147,43 @@ module Whatsapp
       return error_result("Não foi possível concluir o envio da mídia de exemplo.") if handle.blank?
 
       upload.merge(handle: handle)
+    rescue => e
+      error_result(e.message)
+    end
+
+    def media_url(media_id)
+      return error_result("Integração não configurada") unless configured?
+      return error_result("Mídia não informada") if media_id.blank?
+
+      response = HTTParty.get("#{base}/#{media_id}", headers: auth_headers, timeout: 15)
+      result = parse(response)
+      return result unless result[:ok]
+
+      url = result.dig(:data, "url").presence
+      return error_result("Meta não retornou a URL da mídia.") if url.blank?
+
+      result.merge(url: url)
+    rescue => e
+      error_result(e.message)
+    end
+
+    def download_media(url)
+      return error_result("Integração não configurada") unless configured?
+      return error_result("URL da mídia não informada") if url.blank?
+
+      response = HTTParty.get(url, headers: auth_headers.except("Content-Type"), timeout: 30)
+      success = response.respond_to?(:success?) ? response.success? : response.code.to_i.between?(200, 299)
+      return parse(response) unless success
+
+      {
+        ok: true,
+        status: response.code,
+        data: {},
+        body: response.body,
+        content_type: response.headers["content-type"].to_s.presence,
+        content_length: response.headers["content-length"].to_i,
+        disposition: response.headers["content-disposition"].to_s.presence
+      }
     rescue => e
       error_result(e.message)
     end

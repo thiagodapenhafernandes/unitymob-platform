@@ -67,18 +67,31 @@
         <% end %>
       </div>
     </div>
-    <% if can?(:manage, :comercial) %>
-      <div class="tw-flex tw-flex-wrap tw-gap-2">
+    <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+      <%= render "admin/lead_labels/chips", lead: @lead, labels: @lead.labels_for(current_admin_user) %>
+      <%= render "admin/lead_labels/button", lead: @lead, trigger_label: "Etiquetas", trigger_class: "ax-btn ax-btn--sm" %>
+      <% if can?(:manage, :comercial) %>
         <%= render "admin/tasks/form_modal", modal_id: "newTaskLead", lead: @lead, trigger_label: "Tarefa", trigger_class: "ax-btn ax-btn--sm" %>
         <%= render "admin/appointments/form_modal", lead: @lead, trigger_label: "Agendar visita", trigger_class: "ax-btn ax-btn--sm" %>
         <%= render "admin/leads/log_contact_modal", lead: @lead %>
         <%= link_to new_admin_lead_proposal_path(@lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
           <i class="bi bi-file-earmark-text ax-ico"></i><span>Nova proposta</span>
         <% end %>
-      </div>
-    <% end %>
+      <% end %>
+    </div>
   </div>
 </div>
+
+<% if can?(:view, :whatsapp_inbox) %>
+  <%= render "admin/shared/ui/lead_whatsapp_panel",
+        lead: @lead,
+        conversation: @whatsapp_conversation,
+        templates: @whatsapp_templates,
+        summary: @whatsapp_summary,
+        thread_context_locals: @whatsapp_thread_context_locals,
+        messages: @whatsapp_messages,
+        return_to: request.fullpath %>
+<% end %>
 
 <div class="lead-mobile-priority" aria-label="Resumo operacional do lead">
   <section class="lead-mobile-priority__identity">

@@ -1,393 +1,367 @@
-<% content_for :admin_contextbar_title, "Disparos WhatsApp" %>
+<%
+  selected_sender_status = if @selected_sender_number&.messaging_ready?
+    "Conectado"
+  else
+    @selected_sender_number&.status.to_s.humanize
+  end
 
-<% content_for :admin_contextbar_breadcrumb do %>
-  <div class="whatsapp-campaigns-contextbar">
-    <%= link_to admin_contextbar_root_label, tenant_owner? ? admin_root_path : field_root_path %>
-    <i class="bi bi-chevron-right"></i>
-    <strong>Disparos WhatsApp</strong>
-    <% if @selected_sender_number %>
-      <span class="whatsapp-campaigns-contextbar__number">
-        <i class="bi bi-whatsapp"></i>
-        <span><%= @selected_sender_number.formatted_phone %></span>
-        <small><%= @selected_sender_number.messaging_ready? ? "Conectado" : @selected_sender_number.status.humanize %></small>
-      </span>
-    <% end %>
-  </div>
-<% end %>
+  heading_title = @selected_sender_number.present? ? "Disparos WhatsApp" : "Campanhas por número"
+  heading_subtitle = if @selected_sender_number.present?
+    "Operação por remetente, com visão de volume, filtros comerciais e acompanhamento das campanhas enviadas."
+  else
+    "Escolha o número usado para criar, acompanhar e governar as campanhas de WhatsApp."
+  end
 
-<% content_for :admin_contextbar_actions do %>
-  <%= link_to admin_whatsapp_integration_path, class: "ax-contextbar__button" do %>
-    <i class="bi bi-layout-text-window ax-ico"></i><span>Integração</span>
-  <% end %>
-  <%= link_to admin_whatsapp_templates_path(whatsapp_sender_number_id: @selected_sender_number&.id), class: "ax-contextbar__button" do %>
-    <i class="bi bi-grid-3x2-gap ax-ico"></i><span>Templates</span>
-  <% end %>
-  <% if @selected_sender_number %>
-    <% if system_admin? %>
-      <%= link_to admin_whatsapp_campaign_unsubscribes_path(whatsapp_sender_number_id: @selected_sender_number.id), class: "ax-contextbar__button" do %>
-        <i class="bi bi-person-dash ax-ico"></i><span>Descadastros</span>
+  heading_metrics = if @selected_sender_number.present?
+    [
+      { value: number_with_delimiter(@campaigns.total_entries), label: "campanhas" },
+      { value: number_with_delimiter(@dashboard[:sent].to_i), label: "enviadas" },
+      { value: number_with_delimiter(@dashboard[:replied].to_i), label: "respostas" }
+    ]
+  else
+    [
+      { value: number_with_delimiter(@sender_numbers.size), label: "números" }
+    ]
+  end
+
+  heading_pills = if @selected_sender_number.present?
+    [
+      @selected_sender_number.formatted_phone,
+      selected_sender_status
+    ]
+  else
+    []
+  end
+
+  heading_actions = capture do %>
+    <div class="tw-inline-flex tw-flex-wrap tw-items-center tw-justify-end tw-gap-2">
+      <%= ax_button("Integração", admin_whatsapp_integration_path, size: :sm, variant: :ghost, icon: "layout-text-window") %>
+      <%= ax_button("Templates", admin_whatsapp_templates_path(whatsapp_sender_number_id: @selected_sender_number&.id), size: :sm, variant: :ghost, icon: "grid-3x2-gap") %>
+
+      <% if @selected_sender_number %>
+        <% if system_admin? %>
+          <%= ax_button("Descadastros", admin_whatsapp_campaign_unsubscribes_path(whatsapp_sender_number_id: @selected_sender_number.id), size: :sm, variant: :ghost, icon: "person-dash") %>
+        <% end %>
+
+        <%= ax_button("Documentação", documentation_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number.id), size: :sm, variant: :ghost, icon: "filetype-pdf", target: "_blank", rel: "noopener") %>
+        <%= ax_button("Trocar número", admin_whatsapp_campaigns_path, size: :sm, variant: :ghost, icon: "arrow-left") %>
+        <%= ax_button("Nova campanha", new_admin_whatsapp_campaign_path(whatsapp_sender_number_id: @selected_sender_number.id, return_to: request.fullpath), size: :sm, variant: :primary, icon: "plus-lg") %>
       <% end %>
-    <% end %>
-    <%= link_to documentation_admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number.id),
-                class: "ax-contextbar__button",
-                target: "_blank",
-                rel: "noopener" do %>
-      <i class="bi bi-filetype-pdf ax-ico"></i><span>Documentação</span>
-    <% end %>
-    <%= link_to admin_whatsapp_campaigns_path, class: "ax-contextbar__button" do %>
-      <i class="bi bi-arrow-left ax-ico"></i><span>Trocar número</span>
-    <% end %>
-    <%= link_to new_admin_whatsapp_campaign_path(whatsapp_sender_number_id: @selected_sender_number.id, return_to: request.fullpath), class: "ax-contextbar__button ax-contextbar__button--primary" do %>
-      <i class="bi bi-plus-lg ax-ico"></i><span>Nova campanha</span>
-    <% end %>
+    </div>
   <% end %>
-<% end %>
 
-<style>
-  .whatsapp-campaigns-contextbar { display:inline-flex; align-items:center; min-width:0; gap:7px; }
-  .whatsapp-campaigns-contextbar > a { color:#365f8f; text-decoration:none; }
-  .whatsapp-campaigns-contextbar > a:hover { color:#24486f; }
-  .whatsapp-campaigns-contextbar > i { color:#98a2b3; font-size:11px; }
-  .whatsapp-campaigns-contextbar > strong { color:#172033; font-size:13px; font-weight:850; white-space:nowrap; }
-  .whatsapp-campaigns-contextbar__number {
-    display:inline-flex;
-    align-items:center;
-    min-width:0;
-    gap:6px;
-    height:26px;
-    padding:0 9px;
-    border:1px solid #bfe7d5;
-    border-radius:999px;
-    background:#ecfdf5;
-    color:#0f766e;
-    font-size:12px;
-    font-weight:800;
-    white-space:nowrap;
-  }
-  .whatsapp-campaigns-contextbar__number i { color:#059669; font-size:13px; }
-  .whatsapp-campaigns-contextbar__number small {
-    color:#047857;
-    font-size:10px;
-    font-weight:850;
-    letter-spacing:.04em;
-    text-transform:uppercase;
-  }
-  .whatsapp-campaigns .whatsapp-selected-group .ax-btn--primary,
-  .whatsapp-campaigns .whatsapp-selected-group .ax-btn--primary span,
-  .whatsapp-campaigns .whatsapp-selected-group .ax-btn--primary i { color: #fff !important; }
-  .whatsapp-campaigns .whatsapp-table-section { display: grid; gap: 6px; }
-  .whatsapp-campaigns .whatsapp-table-section__header { display: grid; gap: 2px; padding: 0 4px; }
-  .whatsapp-campaigns .whatsapp-table-section__header span { color: #667085; font-size: 10px; font-weight: 800; text-transform: uppercase; }
-  .whatsapp-campaigns .whatsapp-table-section__header strong { color: #172033; font-size: 14px; line-height: 1.15; }
-  .whatsapp-campaigns .whatsapp-table-section .ax-table-wrap { border: 1px solid #d8dee8; border-radius: 8px; background: #fff; box-shadow: 0 6px 16px rgba(23,32,51,.04); }
-  .whatsapp-campaigns .whatsapp-cpl-settings > summary::-webkit-details-marker { display: none; }
-  .whatsapp-campaigns .whatsapp-dashboard-card__tool { display:grid; width:34px; height:34px; place-items:center; border:0; border-radius:8px; color:#fff; background:rgba(255,255,255,.18); cursor:pointer; }
-  .whatsapp-campaigns .whatsapp-dashboard-card__tool:hover { background:rgba(255,255,255,.28); }
-  .whatsapp-cpl-modal .ax-quick-modal__body { display:grid; gap:12px; }
-  .whatsapp-cpl-modal__context { display:grid; gap:3px; padding:10px; border:1px solid #d8dee8; border-radius:8px; background:#f8fafc; }
-  .whatsapp-cpl-modal__context span { color:#667085; font-size:10px; font-weight:850; text-transform:uppercase; }
-  .whatsapp-cpl-modal__context strong { color:#172033; font-size:14px; }
-  .whatsapp-campaign-table__title { color:#172033; text-decoration:none; }
-  .whatsapp-campaign-table__title:hover { color:#365f8f; text-decoration:underline; text-underline-offset:3px; }
-  .whatsapp-campaign-table__quick-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; font-size:12px; font-weight:850; }
-  .whatsapp-campaign-table__quick-actions a { display:inline-flex; align-items:center; gap:4px; color:#365f8f; text-decoration:none; }
-  .whatsapp-campaign-table__quick-actions a:hover { color:#24486f; text-decoration:underline; text-underline-offset:3px; }
-</style>
+<%= ax_workspace_heading(
+      eyebrow: "WhatsApp",
+      icon: "megaphone",
+      title: heading_title,
+      pills: heading_pills,
+      subtitle: heading_subtitle,
+      metrics: heading_metrics,
+      actions: heading_actions
+    ) %>
 
 <div class="whatsapp-campaigns whatsapp-campaigns--index">
   <% unless @selected_sender_number %>
-    <section class="whatsapp-campaign-hero">
-      <div class="whatsapp-campaign-hero__icon"><i class="bi bi-megaphone"></i></div>
-      <div>
-        <h1>Campanhas por número</h1>
-        <p>Escolha o número que será usado para criar e gerenciar campanhas.</p>
-      </div>
-      <details class="whatsapp-sender-create">
-        <summary><i class="bi bi-plus-circle ax-ico"></i><span>Adicionar número</span></summary>
-        <%= form_with url: admin_whatsapp_sender_numbers_path, scope: :whatsapp_sender_number, local: true, class: "whatsapp-sender-create__form" do |f| %>
+    <% sender_panel_actions = capture do %>
+      <%= ax_button("Adicionar número", nil, variant: :success, size: :sm, icon: "plus-circle", data: { ax_modal_open: "#whatsappSenderNumberModal" }) %>
+    <% end %>
+
+    <%= ax_operational_panel(
+          eyebrow: "Números de envio",
+          title: "Selecione um remetente para abrir a operação de disparos. Se necessário, cadastre um novo número antes.",
+          actions: sender_panel_actions,
+          class_name: "whatsapp-sender-panel"
+        ) do %>
+      <section class="whatsapp-sender-grid" aria-label="Números de envio">
+        <% @sender_numbers.each do |number| %>
+          <article class="whatsapp-sender-card">
+            <div class="whatsapp-sender-card__head">
+              <span>Número</span>
+              <%= ax_badge(number.messaging_ready? ? "Conectado" : number.status.humanize, tone: number.messaging_ready? ? :green : :amber, dot: true) %>
+            </div>
+            <strong><%= number.formatted_phone %></strong>
+            <p><%= number.label %></p>
+            <dl>
+              <div><dt>Qualidade</dt><dd><%= number.quality_rating.presence || "Não informada" %></dd></div>
+              <div><dt>Nome verificado</dt><dd><%= number.verified_name.presence || "Pendente" %></dd></div>
+            </dl>
+            <div class="whatsapp-sender-card__actions">
+              <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: number.id), class: "ax-btn ax-btn--sm whatsapp-sender-card__open" do %>
+                <i class="bi bi-megaphone ax-ico"></i><span>Abrir campanhas</span>
+              <% end %>
+              <% unless number.whatsapp_campaigns.exists? %>
+                <%= button_to admin_whatsapp_sender_number_path(number), method: :delete, class: "ax-btn ax-btn--sm", data: { turbo_confirm: "Desativar este número?" } do %>
+                  <i class="bi bi-trash ax-ico"></i><span>Desativar</span>
+                <% end %>
+              <% end %>
+            </div>
+          </article>
+        <% end %>
+
+        <% if @sender_numbers.empty? %>
+          <div class="whatsapp-sender-card whatsapp-sender-card--empty">
+            <strong>Nenhum número cadastrado</strong>
+            <p>Adicione ou conecte um número para direcionar campanhas por remetente.</p>
+          </div>
+        <% end %>
+      </section>
+    <% end %>
+
+    <%= ax_quick_modal(id: "whatsappSenderNumberModal", title: "Adicionar número", size: :sm, class_name: "whatsapp-sender-modal") do %>
+      <%= form_with url: admin_whatsapp_sender_numbers_path, scope: :whatsapp_sender_number, local: true, class: "whatsapp-sender-modal__form" do |f| %>
+        <div class="ax-field">
+          <%= f.label :label, "Nome interno", class: "ax-label" %>
+          <%= f.text_field :label, class: "ax-control", placeholder: "Ex: Vendas principal" %>
+        </div>
+        <div class="ax-field">
+          <%= f.label :display_phone_number, "Número WhatsApp", class: "ax-label" %>
+          <%= f.telephone_field :display_phone_number, class: "ax-control", placeholder: "5511999990000" %>
+        </div>
+        <details class="whatsapp-sender-modal__advanced">
+          <summary>Configuração avançada</summary>
           <div class="ax-field">
-            <%= f.label :label, "Nome interno", class: "ax-label" %>
-            <%= f.text_field :label, class: "ax-control", placeholder: "Ex: Vendas principal" %>
+            <%= f.label :phone_number_id, "Identificador do número", class: "ax-label" %>
+            <%= f.text_field :phone_number_id, class: "ax-control", placeholder: "Preenchido pela integração quando disponível" %>
           </div>
           <div class="ax-field">
-            <%= f.label :display_phone_number, "Número WhatsApp", class: "ax-label" %>
-            <%= f.telephone_field :display_phone_number, class: "ax-control", placeholder: "5511999990000" %>
+            <%= f.label :waba_id, "Conta WhatsApp Business", class: "ax-label" %>
+            <%= f.text_field :waba_id, class: "ax-control", placeholder: "Opcional" %>
           </div>
-          <details class="whatsapp-sender-create__advanced">
-            <summary>Configuração avançada</summary>
-            <div class="ax-field">
-              <%= f.label :phone_number_id, "Identificador do número", class: "ax-label" %>
-              <%= f.text_field :phone_number_id, class: "ax-control", placeholder: "Preenchido pela integração quando disponível" %>
-            </div>
-            <div class="ax-field">
-              <%= f.label :waba_id, "Conta WhatsApp Business", class: "ax-label" %>
-              <%= f.text_field :waba_id, class: "ax-control", placeholder: "Opcional" %>
-            </div>
-          </details>
+        </details>
+        <div class="whatsapp-sender-modal__actions">
+          <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
           <button type="submit" class="ax-btn ax-btn--primary">
             <i class="bi bi-check2 ax-ico"></i><span>Salvar número</span>
           </button>
-        <% end %>
-      </details>
-    </section>
-  <% end %>
-
-  <% unless @selected_sender_number %>
-    <section class="whatsapp-sender-grid" aria-label="Números de envio">
-      <% @sender_numbers.each do |number| %>
-        <article class="whatsapp-sender-card">
-          <div class="whatsapp-sender-card__head">
-            <span>Número</span>
-            <%= ax_badge(number.messaging_ready? ? "Conectado" : number.status.humanize, tone: number.messaging_ready? ? :green : :yellow, dot: true) %>
-          </div>
-          <strong><%= number.formatted_phone %></strong>
-          <p><%= number.label %></p>
-          <dl>
-            <div><dt>Qualidade</dt><dd><%= number.quality_rating.presence || "Não informada" %></dd></div>
-            <div><dt>Nome verificado</dt><dd><%= number.verified_name.presence || "Pendente" %></dd></div>
-          </dl>
-          <div class="whatsapp-sender-card__actions">
-            <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: number.id), class: "ax-btn ax-btn--sm whatsapp-sender-card__open" do %>
-              <i class="bi bi-megaphone ax-ico"></i><span>Abrir campanhas</span>
-            <% end %>
-            <% unless number.whatsapp_campaigns.exists? %>
-              <%= button_to admin_whatsapp_sender_number_path(number), method: :delete, class: "ax-btn ax-btn--sm", data: { turbo_confirm: "Desativar este número?" } do %>
-                <i class="bi bi-trash ax-ico"></i><span>Desativar</span>
-              <% end %>
-            <% end %>
-          </div>
-        </article>
-      <% end %>
-      <% if @sender_numbers.empty? %>
-        <div class="whatsapp-sender-card whatsapp-sender-card--empty">
-          <strong>Nenhum número cadastrado</strong>
-          <p>Adicione ou conecte um número para direcionar campanhas por remetente.</p>
         </div>
       <% end %>
-    </section>
+    <% end %>
   <% end %>
 
   <% if @selected_sender_number %>
-  <% dashboard_cards = [
-    ["Total", @dashboard[:total], "mensagens no escopo filtrado", "bi-envelope", "slate"],
-    ["Enviadas", @dashboard[:sent], "mensagens enviadas", "bi-send", "purple"],
-    ["Falhas", @dashboard[:failed], "mensagens com falha", "bi-x-circle", "red"],
-    ["Respostas", @dashboard[:replied], "respostas recebidas", "bi-chat-dots", "cyan"],
-    ["Atendido", @dashboard[:attended], "fluxos com atendimento", "bi-person-check", "green"],
-    ["Não atendido", @dashboard[:unattended], "sem atendimento", "bi-person-x", "blue"],
-    ["CPL", number_to_currency(@dashboard[:cpl], unit: "R$", separator: ",", delimiter: "."), "custo por atendimento", "bi-calculator", "orange"],
-    ["Gasto total", number_to_currency(@dashboard[:cost], unit: "R$", separator: ",", delimiter: "."), "estimativa do período", "bi-wallet2", "teal"]
-  ] %>
-  <section class="whatsapp-dashboard-grid" aria-label="Indicadores">
-    <% dashboard_cards.each do |label, value, hint, icon, tone| %>
-      <article class="whatsapp-dashboard-card whatsapp-dashboard-card--<%= tone %>">
-        <div class="whatsapp-dashboard-card__top" style="display:flex;align-items:center;justify-content:space-between;min-height:34px;position:relative;z-index:2;">
-          <i class="bi <%= icon %>"></i>
-          <% if label == "CPL" %>
-            <button type="button"
-                    class="whatsapp-dashboard-card__tool"
-                    aria-label="Editar parâmetros do CPL"
-                    title="Parâmetros do CPL"
-                    data-ax-modal-open="#whatsappCplSettingsModal">
-              <i class="bi bi-sliders"></i>
-            </button>
-          <% end %>
+    <%= ax_operational_panel(eyebrow: "Número", title: "Indicadores do número") do %>
+      <% dashboard_cards = [
+        ["Total", @dashboard[:total], "mensagens no escopo filtrado", "bi-envelope", "slate"],
+        ["Enviadas", @dashboard[:sent], "mensagens enviadas", "bi-send", "purple"],
+        ["Falhas", @dashboard[:failed], "mensagens com falha", "bi-x-circle", "red"],
+        ["Respostas", @dashboard[:replied], "respostas recebidas", "bi-chat-dots", "cyan"],
+        ["Atendido", @dashboard[:attended], "fluxos com atendimento", "bi-person-check", "green"],
+        ["Não atendido", @dashboard[:unattended], "sem atendimento", "bi-person-x", "blue"],
+        ["CPL", number_to_currency(@dashboard[:cpl], unit: "R$", separator: ",", delimiter: "."), "custo por atendimento", "bi-calculator", "orange"],
+        ["Gasto total", number_to_currency(@dashboard[:cost], unit: "R$", separator: ",", delimiter: "."), "estimativa do período", "bi-wallet2", "teal"]
+      ] %>
+
+      <section class="whatsapp-dashboard-grid" aria-label="Indicadores">
+        <% dashboard_cards.each do |label, value, hint, icon, tone| %>
+          <article class="whatsapp-dashboard-card whatsapp-dashboard-card--<%= tone %>">
+            <div class="whatsapp-dashboard-card__top">
+              <i class="bi <%= icon %>"></i>
+              <% if label == "CPL" %>
+                <button type="button"
+                        class="whatsapp-dashboard-card__tool"
+                        aria-label="Editar parâmetros do CPL"
+                        title="Parâmetros do CPL"
+                        data-ax-modal-open="#whatsappCplSettingsModal">
+                  <i class="bi bi-sliders"></i>
+                </button>
+              <% end %>
+            </div>
+            <span><%= label %></span>
+            <strong><%= value %></strong>
+            <small><%= hint %></small>
+          </article>
+        <% end %>
+      </section>
+
+      <%= ax_quick_modal(id: "whatsappCplSettingsModal", title: "Parâmetros do CPL", size: :sm, class_name: "whatsapp-cpl-modal") do %>
+        <div class="whatsapp-cpl-modal__context">
+          <span>Número</span>
+          <strong><%= @selected_sender_number.formatted_phone %></strong>
         </div>
-        <span><%= label %></span>
-        <strong><%= value %></strong>
-        <small><%= hint %></small>
-      </article>
-    <% end %>
-  </section>
-
-  <%= ax_quick_modal(id: "whatsappCplSettingsModal", title: "Parâmetros do CPL", size: :sm, class_name: "whatsapp-cpl-modal") do %>
-    <div class="whatsapp-cpl-modal__context">
-      <span>Número</span>
-      <strong><%= @selected_sender_number.formatted_phone %></strong>
-    </div>
-    <%= form_with model: [:admin, @selected_sender_number],
-                  url: admin_whatsapp_sender_number_path(@selected_sender_number),
-                  method: :patch,
-                  local: true,
-                  class: "whatsapp-cpl-settings__form" do |f| %>
-      <div class="ax-field">
-        <%= f.label :cpl_sent_unit_price, "Valor por enviada", class: "ax-label" %>
-        <%= f.text_field :cpl_sent_unit_price,
-                         value: number_with_precision(@selected_sender_number.cpl_sent_unit_price, precision: 2, separator: ",", delimiter: "."),
-                         class: "ax-control",
-                         inputmode: "decimal" %>
-      </div>
-      <div class="ax-field">
-        <%= f.label :cpl_fla_unit_price, "Valor por FLA", class: "ax-label" %>
-        <%= f.text_field :cpl_fla_unit_price,
-                         value: number_with_precision(@selected_sender_number.cpl_fla_unit_price, precision: 2, separator: ",", delimiter: "."),
-                         class: "ax-control",
-                         inputmode: "decimal" %>
-      </div>
-      <div class="whatsapp-cpl-settings__actions">
-        <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
-        <button type="submit" class="ax-btn ax-btn--primary">
-          <i class="bi bi-check2 ax-ico"></i><span>Salvar</span>
-        </button>
-      </div>
-    <% end %>
-  <% end %>
-
-  <%= form_with url: admin_whatsapp_campaigns_path, method: :get, local: true, class: "whatsapp-campaign-filters" do %>
-    <div class="ax-field">
-      <%= label_tag :status, "Status", class: "ax-label" %>
-      <%= select_tag :status, options_for_select([["Todas", ""]] + @filter_options[:statuses], @filters[:status]), class: "ax-control" %>
-    </div>
-    <div class="ax-field">
-      <%= label_tag :created_by_id, "Criada por", class: "ax-label" %>
-      <%= select_tag :created_by_id, options_for_select([["Todos", ""]] + @filter_options[:creators], @filters[:created_by_id]), class: "ax-control" %>
-    </div>
-    <%= hidden_field_tag :whatsapp_sender_number_id, @selected_sender_number.id %>
-    <div class="ax-field">
-      <%= label_tag :group_name, "Grupo", class: "ax-label" %>
-      <%= select_tag :group_name, options_for_select([["Todos", ""]] + @filter_options[:groups].map { |group| [group, group] }, @filters[:group_name]), class: "ax-control" %>
-    </div>
-    <div class="ax-field">
-      <%= label_tag :query, "Campanha", class: "ax-label" %>
-      <%= text_field_tag :query, @filters[:query], class: "ax-control", placeholder: "Nome da campanha" %>
-    </div>
-    <div class="ax-field">
-      <%= label_tag :started_on, "Data inicial", class: "ax-label" %>
-      <%= date_field_tag :started_on, @filters[:started_on], class: "ax-control" %>
-    </div>
-    <div class="ax-field">
-      <%= label_tag :ended_on, "Data final", class: "ax-label" %>
-      <%= date_field_tag :ended_on, @filters[:ended_on], class: "ax-control" %>
-    </div>
-    <div class="whatsapp-campaign-filters__actions">
-      <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number.id), class: "ax-btn ax-btn--sm" do %>
-        <i class="bi bi-x ax-ico"></i><span>Limpar</span>
+        <%= form_with model: [:admin, @selected_sender_number],
+                      url: admin_whatsapp_sender_number_path(@selected_sender_number),
+                      method: :patch,
+                      local: true,
+                      class: "whatsapp-cpl-settings__form" do |f| %>
+          <div class="ax-field">
+            <%= f.label :cpl_sent_unit_price, "Valor por enviada", class: "ax-label" %>
+            <%= f.text_field :cpl_sent_unit_price,
+                             value: number_with_precision(@selected_sender_number.cpl_sent_unit_price, precision: 2, separator: ",", delimiter: "."),
+                             class: "ax-control",
+                             inputmode: "decimal" %>
+          </div>
+          <div class="ax-field">
+            <%= f.label :cpl_fla_unit_price, "Valor por FLA", class: "ax-label" %>
+            <%= f.text_field :cpl_fla_unit_price,
+                             value: number_with_precision(@selected_sender_number.cpl_fla_unit_price, precision: 2, separator: ",", delimiter: "."),
+                             class: "ax-control",
+                             inputmode: "decimal" %>
+          </div>
+          <div class="whatsapp-cpl-settings__actions">
+            <button type="button" class="ax-btn ax-btn--ghost" data-action="ax-modal#close">Cancelar</button>
+            <button type="submit" class="ax-btn ax-btn--primary">
+              <i class="bi bi-check2 ax-ico"></i><span>Salvar</span>
+            </button>
+          </div>
+        <% end %>
       <% end %>
-      <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">
-        <i class="bi bi-funnel ax-ico"></i><span>Filtrar</span>
-      </button>
-    </div>
-  <% end %>
+    <% end %>
 
-  <% if @filters[:group_name].present? %>
-    <section class="whatsapp-selected-group">
-      <div>
-        <strong>Grupo selecionado: <%= @filters[:group_name] %></strong>
-        <span>Você está visualizando apenas as campanhas deste grupo.</span>
-      </div>
-      <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number.id), class: "ax-btn" do %>
-        <i class="bi bi-arrow-left ax-ico"></i><span>Voltar para listagem geral</span>
+    <%= ax_operational_panel(eyebrow: "Filtros", title: "Refinar campanhas") do %>
+      <%= form_with url: admin_whatsapp_campaigns_path, method: :get, local: true, class: "whatsapp-campaign-filters" do %>
+        <div class="ax-field">
+          <%= label_tag :status, "Status", class: "ax-label" %>
+          <%= select_tag :status, options_for_select([["Todas", ""]] + @filter_options[:statuses], @filters[:status]), class: "ax-control" %>
+        </div>
+        <div class="ax-field">
+          <%= label_tag :created_by_id, "Criada por", class: "ax-label" %>
+          <%= select_tag :created_by_id, options_for_select([["Todos", ""]] + @filter_options[:creators], @filters[:created_by_id]), class: "ax-control" %>
+        </div>
+        <%= hidden_field_tag :whatsapp_sender_number_id, @selected_sender_number.id %>
+        <div class="ax-field">
+          <%= label_tag :group_name, "Grupo", class: "ax-label" %>
+          <%= select_tag :group_name, options_for_select([["Todos", ""]] + @filter_options[:groups].map { |group| [group, group] }, @filters[:group_name]), class: "ax-control" %>
+        </div>
+        <div class="ax-field">
+          <%= label_tag :query, "Campanha", class: "ax-label" %>
+          <%= text_field_tag :query, @filters[:query], class: "ax-control", placeholder: "Nome da campanha" %>
+        </div>
+        <div class="ax-field">
+          <%= label_tag :started_on, "Data inicial", class: "ax-label" %>
+          <%= date_field_tag :started_on, @filters[:started_on], class: "ax-control" %>
+        </div>
+        <div class="ax-field">
+          <%= label_tag :ended_on, "Data final", class: "ax-label" %>
+          <%= date_field_tag :ended_on, @filters[:ended_on], class: "ax-control" %>
+        </div>
+        <div class="whatsapp-campaign-filters__actions">
+          <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number.id), class: "ax-btn ax-btn--sm" do %>
+            <i class="bi bi-x ax-ico"></i><span>Limpar</span>
+          <% end %>
+          <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">
+            <i class="bi bi-funnel ax-ico"></i><span>Filtrar</span>
+          </button>
+        </div>
       <% end %>
-    </section>
-  <% else %>
-    <section class="whatsapp-table-section">
-      <header class="whatsapp-table-section__header">
-        <span>Agrupamento</span>
-        <strong>Grupos de campanhas</strong>
-      </header>
+    <% end %>
+
+    <% if @filters[:group_name].present? %>
+      <%= ax_operational_panel(eyebrow: "Agrupamento", title: "Grupo selecionado") do %>
+        <section class="whatsapp-selected-group">
+          <div>
+            <strong>Grupo selecionado: <%= @filters[:group_name] %></strong>
+            <span>Você está visualizando apenas as campanhas deste grupo.</span>
+          </div>
+          <div class="whatsapp-selected-group__actions">
+            <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number.id), class: "ax-btn" do %>
+              <i class="bi bi-arrow-left ax-ico"></i><span>Voltar para listagem geral</span>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+    <% else %>
+      <%= ax_operational_panel(eyebrow: "Agrupamento", title: "Grupos de campanhas") do %>
+        <div class="ax-table-wrap">
+          <table class="ax-table whatsapp-group-table">
+            <thead>
+              <tr>
+                <th>Grupo</th>
+                <th>Campanhas</th>
+                <th>Indicadores</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @campaign_groups.each do |group| %>
+                <tr>
+                  <td>
+                    <strong><i class="bi bi-folder2-open"></i> <%= group.group_name %></strong>
+                  </td>
+                  <td><%= pluralize(group.campaigns_count.to_i, "campanha", "campanhas") %></td>
+                <td>
+                  <div class="whatsapp-group-metrics">
+                    <%= ax_badge("Total #{number_with_delimiter(group.total_recipients_sum.to_i)}") %>
+                    <%= ax_badge("Enviadas #{number_with_delimiter(group.sent_count_sum.to_i)}", tone: :purple) %>
+                    <%= ax_badge("Falhas #{number_with_delimiter(group.failed_count_sum.to_i)}", tone: :red) %>
+                    <%= ax_badge("Respostas #{number_with_delimiter(group.replied_count_sum.to_i)}", tone: :cyan) %>
+                  </div>
+                </td>
+                  <td class="ax-table__actions">
+                    <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number.id, group_name: group.group_name), class: "ax-btn ax-btn--sm" do %>
+                      <i class="bi bi-folder2-open ax-ico"></i><span>Abrir</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+              <% if @campaign_groups.empty? %>
+                <tr><td colspan="4" class="ax-table__empty">Nenhum grupo criado ainda. Preencha o grupo ao criar ou editar uma campanha.</td></tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: pluralize(@campaigns.total_entries, "campanha", "campanhas"), title: "Suas campanhas") do %>
       <div class="ax-table-wrap">
-        <table class="ax-table whatsapp-group-table">
+        <table class="ax-table whatsapp-campaign-table">
           <thead>
             <tr>
+              <th>Campanha</th>
+              <th>Status</th>
+              <th>Número</th>
               <th>Grupo</th>
-              <th>Campanhas</th>
-              <th>Indicadores</th>
-              <th>Ações</th>
+              <th>Template</th>
+              <th>Progresso</th>
+              <th>Criada por</th>
+              <th>Data</th>
             </tr>
           </thead>
           <tbody>
-            <% @campaign_groups.each do |group| %>
+            <% @campaigns.each do |campaign| %>
               <tr>
                 <td>
-                  <strong><i class="bi bi-folder2-open"></i> <%= group.group_name %></strong>
+                  <strong>
+                    <i class="bi bi-megaphone"></i>
+                    <%= link_to campaign.name, admin_whatsapp_campaign_path(campaign, return_to: request.fullpath), class: "whatsapp-campaign-table__title" %>
+                  </strong>
+                  <span><%= campaign.description.presence || "Sem descrição" %></span>
+                  <div class="whatsapp-campaign-table__quick-actions">
+                    <%= link_to admin_whatsapp_campaign_path(campaign, return_to: request.fullpath) do %>
+                      <i class="bi bi-eye"></i><span>Detalhes</span>
+                    <% end %>
+                    <%= link_to edit_admin_whatsapp_campaign_path(campaign, return_to: request.fullpath) do %>
+                      <i class="bi bi-pencil"></i><span>Editar</span>
+                    <% end %>
+                  </div>
                 </td>
-                <td><%= pluralize(group.campaigns_count.to_i, "campanha", "campanhas") %></td>
+                <td><%= ax_badge(campaign.status.humanize, tone: campaign.failed? ? :red : (campaign.completed? ? :green : :gray)) %></td>
+                <td><%= campaign.whatsapp_sender_number&.formatted_phone.presence || "Padrão" %></td>
+                <td><%= campaign.group_name.presence || "-" %></td>
                 <td>
-                  <span class="whatsapp-chip">Total: <%= number_with_delimiter(group.total_recipients_sum.to_i) %></span>
-                  <span class="whatsapp-chip whatsapp-chip--purple">Enviadas: <%= number_with_delimiter(group.sent_count_sum.to_i) %></span>
-                  <span class="whatsapp-chip whatsapp-chip--red">Falhas: <%= number_with_delimiter(group.failed_count_sum.to_i) %></span>
-                  <span class="whatsapp-chip whatsapp-chip--cyan">Respostas: <%= number_with_delimiter(group.replied_count_sum.to_i) %></span>
+                  <strong><%= campaign.whatsapp_template.name %></strong>
+                  <span><%= campaign.whatsapp_template.language %></span>
                 </td>
-                <td class="ax-table__actions">
-                  <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @selected_sender_number.id, group_name: group.group_name), class: "ax-btn ax-btn--sm" do %>
-                    <i class="bi bi-folder2-open ax-ico"></i><span>Abrir</span>
-                  <% end %>
+                <td>
+                  <% progress = campaign.total_recipients.to_i.positive? ? ((campaign.sent_count.to_f / campaign.total_recipients.to_f) * 100).round : 0 %>
+                  <div class="whatsapp-progress">
+                    <span><%= campaign.sent_count %> / <%= campaign.total_recipients %></span>
+                    <small><%= progress %>%</small>
+                    <meter min="0" max="100" value="<%= progress %>"></meter>
+                  </div>
                 </td>
+                <td><%= campaign.created_by&.name || "-" %></td>
+                <td><%= l(campaign.created_at, format: :short) %></td>
               </tr>
             <% end %>
-            <% if @campaign_groups.empty? %>
-              <tr><td colspan="4" class="ax-table__empty">Nenhum grupo criado ainda. Preencha o grupo ao criar ou editar uma campanha.</td></tr>
+            <% if @campaigns.empty? %>
+              <tr><td colspan="8" class="ax-table__empty">Nenhuma campanha encontrada para os filtros atuais.</td></tr>
             <% end %>
           </tbody>
         </table>
       </div>
-    </section>
-  <% end %>
+    <% end %>
 
-  <section class="whatsapp-table-section">
-    <header class="whatsapp-table-section__header">
-      <span><%= pluralize(@campaigns.total_entries, "campanha", "campanhas") %></span>
-      <strong>Suas campanhas</strong>
-    </header>
-    <div class="ax-table-wrap">
-      <table class="ax-table whatsapp-campaign-table">
-        <thead>
-          <tr>
-            <th>Campanha</th>
-            <th>Status</th>
-            <th>Número</th>
-            <th>Grupo</th>
-            <th>Template</th>
-            <th>Progresso</th>
-            <th>Criada por</th>
-            <th>Data</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @campaigns.each do |campaign| %>
-            <tr>
-              <td>
-                <strong>
-                  <i class="bi bi-megaphone"></i>
-                  <%= link_to campaign.name, admin_whatsapp_campaign_path(campaign, return_to: request.fullpath), class: "whatsapp-campaign-table__title" %>
-                </strong>
-                <span><%= campaign.description.presence || "Sem descrição" %></span>
-                <div class="whatsapp-campaign-table__quick-actions">
-                  <%= link_to admin_whatsapp_campaign_path(campaign, return_to: request.fullpath) do %>
-                    <i class="bi bi-eye"></i><span>Detalhes</span>
-                  <% end %>
-                  <%= link_to edit_admin_whatsapp_campaign_path(campaign, return_to: request.fullpath) do %>
-                    <i class="bi bi-pencil"></i><span>Editar</span>
-                  <% end %>
-                </div>
-              </td>
-              <td><%= ax_badge(campaign.status.humanize, tone: campaign.failed? ? :red : (campaign.completed? ? :green : :gray)) %></td>
-              <td><%= campaign.whatsapp_sender_number&.formatted_phone.presence || "Padrão" %></td>
-              <td><%= campaign.group_name.presence || "-" %></td>
-              <td>
-                <strong><%= campaign.whatsapp_template.name %></strong>
-                <span><%= campaign.whatsapp_template.language %></span>
-              </td>
-              <td>
-                <% progress = campaign.total_recipients.to_i.positive? ? ((campaign.sent_count.to_f / campaign.total_recipients.to_f) * 100).round : 0 %>
-                <div class="whatsapp-progress">
-                  <span><%= campaign.sent_count %> / <%= campaign.total_recipients %></span>
-                  <small><%= progress %>%</small>
-                  <meter min="0" max="100" value="<%= progress %>"></meter>
-                </div>
-              </td>
-              <td><%= campaign.created_by&.name || "-" %></td>
-              <td><%= l(campaign.created_at, format: :short) %></td>
-            </tr>
-          <% end %>
-          <% if @campaigns.empty? %>
-            <tr><td colspan="8" class="ax-table__empty">Nenhuma campanha encontrada para os filtros atuais.</td></tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <%= ax_pagination @campaigns %>
+    <%= ax_pagination @campaigns %>
   <% end %>
 </div>

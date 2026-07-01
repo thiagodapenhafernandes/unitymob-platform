@@ -13,26 +13,26 @@
         <div class="tw-px-4 tw-py-4 tw-grid tw-gap-3">
           <% if local_assigns[:lead] %><%= hidden_field_tag "task[lead_id]", lead.id %><% end %>
           <div>
-            <label class="ax-label">Título</label>
-            <%= text_field_tag "task[title]", nil, class: "ax-input", required: true, placeholder: "Ex.: Ligar para confirmar visita" %>
+            <label class="ax-label" for="task_title">Título</label>
+            <%= text_field_tag "task[title]", nil, id: "task_title", class: "ax-input", required: true, placeholder: "Ex.: Ligar para confirmar visita" %>
           </div>
           <div class="tw-grid tw-grid-cols-2 tw-gap-3">
             <div>
-              <label class="ax-label">Tipo</label>
-              <%= select_tag "task[kind]", options_for_select(Task::KINDS.map { |k, v| [v, k] }, "follow_up"), class: "ax-select" %>
+              <label class="ax-label" for="task_kind">Tipo</label>
+              <%= select_tag "task[kind]", options_for_select(Task::KINDS.map { |k, v| [v, k] }, "follow_up"), id: "task_kind", class: "ax-select" %>
             </div>
             <div>
-              <label class="ax-label">Prioridade</label>
-              <%= select_tag "task[priority]", options_for_select(Task::PRIORITIES.map { |k, v| [v, k] }, "normal"), class: "ax-select" %>
+              <label class="ax-label" for="task_priority">Prioridade</label>
+              <%= select_tag "task[priority]", options_for_select(Task::PRIORITIES.map { |k, v| [v, k] }, "normal"), id: "task_priority", class: "ax-select" %>
             </div>
           </div>
           <div>
-            <label class="ax-label">Prazo</label>
-            <input type="datetime-local" name="task[due_at]" class="ax-input">
+            <label class="ax-label" for="task_due_at">Prazo</label>
+            <input type="datetime-local" name="task[due_at]" id="task_due_at" class="ax-input">
           </div>
           <div>
-            <label class="ax-label">Descrição</label>
-            <%= text_area_tag "task[description]", nil, class: "ax-textarea", rows: 2 %>
+            <label class="ax-label" for="task_description">Descrição</label>
+            <%= text_area_tag "task[description]", nil, id: "task_description", class: "ax-textarea", rows: 2 %>
           </div>
         </div>
         <div class="tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3" style="border-top:1px solid #e6e8eb">

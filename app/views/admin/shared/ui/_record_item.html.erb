@@ -3,7 +3,6 @@
 %>
 
 <%= tag.div class: item_classes, data: data do %>
-  <%= body %>
   <div class="ax-record-item__main">
     <% if icon.present? %>
       <span class="ax-record-item__icon" aria-hidden="true">
@@ -17,6 +16,11 @@
       <strong class="ax-record-item__title"><%= title %></strong>
       <% if meta.present? %>
         <span class="ax-record-item__meta"><%= meta %></span>
+      <% end %>
+      <% if body.present? %>
+        <div class="ax-record-item__body">
+          <%= body %>
+        </div>
       <% end %>
     </div>
   </div>

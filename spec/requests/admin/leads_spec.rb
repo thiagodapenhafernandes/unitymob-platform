@@ -159,6 +159,10 @@ RSpec.describe "Admin::Leads", type: :request do
   end
 
   describe "PATCH /admin/leads/:id" do
+    before do
+      allow_any_instance_of(Admin::LeadsController).to receive(:verified_request?).and_return(true)
+    end
+
     it "atualiza status dinamico via json" do
       lead = create(:lead, status: "Novo")
 
@@ -274,6 +278,118 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("origem geral, campanha, webhook ou atendimento")
       expect(response.body).to include("Voltar")
       expect(response.body).not_to include("name=\"lead[origin]\"")
+    end
+  end
+
+  describe "WhatsApp no lead" do
+    before do
+      allow_any_instance_of(Admin::LeadsController).to receive(:verified_request?).and_return(true)
+      allow_any_instance_of(Admin::LeadsController).to receive(:can?).and_call_original
+      allow_any_instance_of(Admin::LeadsController).to receive(:can?).with(:view, :whatsapp_inbox).and_return(true)
+      allow_any_instance_of(Admin::LeadsController).to receive(:can?).with(:manage, :whatsapp_inbox).and_return(true)
+    end
+
+    it "exibe ações de conversa individual no detalhe do lead" do
+      lead = create(:lead, status: "Novo", phone: "47999990000")
+      template = WhatsappTemplate.create!(tenant: admin.tenant, name: "lead_boas_vindas", language: "pt_BR", status: "APPROVED", body: "Olá")
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("WhatsApp individual")
+      expect(response.body).to match(/(Abrir|Continuar) conversa/)
+      expect(response.body).to satisfy { |body| body.include?("Enviar template") || body.include?("Responder sem sair do lead") }
+      expect(response.body).to include(template.name)
+    end
+
+    it "mostra histórico recente quando o lead já possui thread ativa" do
+      lead = create(:lead, status: "Novo", phone: "47999990009")
+      conversation = WhatsappConversation.create!(tenant: admin.tenant, lead: lead, contact_phone: "5547999990009", contact_name: "Lead WhatsApp", status: "open", last_message_at: Time.current, last_message_preview: "Tudo certo")
+      conversation.messages.create!(tenant: admin.tenant, direction: "inbound", body: "Olá, quero atendimento", status: "delivered")
+      conversation.messages.create!(tenant: admin.tenant, direction: "outbound", body: "Perfeito, posso ajudar", status: "sent")
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Atendimento sem sair do lead")
+      expect(response.body).to include('data-lead-whatsapp-panel="true"')
+      expect(response.body).to include("Responder sem sair do lead")
+      expect(response.body).to include("Olá, quero atendimento")
+      expect(response.body).to include("Perfeito, posso ajudar")
+      expect(response.body).to include("Escreva uma mensagem...")
+      expect(response.body).to include("Tela dedicada")
+      expect(response.body).to include("wa-inbox-thread__workspace--compact")
+      expect(response.body).to include("wa-inbox-composer--compact")
+      expect(response.body).to include("wa-inbox-bubble--compact")
+    end
+
+    it "reutiliza o preview de áudio dentro do lead sem autoplay" do
+      lead = create(:lead, status: "Novo", phone: "47999990029")
+      conversation = WhatsappConversation.create!(tenant: admin.tenant, lead: lead, contact_phone: "5547999990029", contact_name: "Lead Audio", status: "open", last_message_at: Time.current, last_message_preview: "[áudio]")
+      message = conversation.messages.create!(tenant: admin.tenant, direction: "outbound", msg_type: "audio", status: "sent")
+      message.media_file.attach(io: StringIO.new("fake-audio"), filename: "follow-up.mp3", content_type: "audio/mpeg")
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("wa-inbox-bubble__surface")
+      expect(response.body).to include("wa-inbox-bubble--compact")
+      expect(response.body).to include("wa-audio-preview")
+      expect(response.body).to include("follow-up.mp3")
+      expect(response.body).to include('data-controller="wa-audio-preview"')
+      expect(response.body).to include('preload="none"')
+      expect(response.body).to include("data-src=")
+      expect(response.body).to include('data-inline-viewer-media="true"')
+      expect(response.body).not_to include("autoplay")
+    end
+
+    it "abre a thread individual do inbox para o lead" do
+      lead = create(:lead, status: "Novo", phone: "47999990001")
+
+      expect {
+        post open_whatsapp_conversation_admin_lead_path(lead)
+      }.to change(WhatsappConversation, :count).by(1)
+
+      conversation = WhatsappConversation.last
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation))
+      expect(conversation.lead).to eq(lead)
+      expect(conversation.contact_phone).to eq("5547999990001")
+    end
+
+    it "abre a thread individual do lead em modo foco quando solicitado" do
+      lead = create(:lead, status: "Novo", phone: "47999990021")
+
+      post open_whatsapp_conversation_admin_lead_path(lead), params: { workspace: "focus" }
+
+      conversation = WhatsappConversation.last
+      expect(response).to redirect_to(admin_whatsapp_conversation_path(conversation, workspace: "focus"))
+      expect(conversation.lead).to eq(lead)
+    end
+
+    it "ativa o lead com template aprovado e enfileira envio" do
+      allow(Whatsapp::SendMessageJob).to receive(:perform_later)
+      lead = create(:lead, status: "Novo", phone: "47999990002")
+      template = WhatsappTemplate.create!(tenant: admin.tenant, name: "lead_template", language: "pt_BR", status: "APPROVED", body: "Olá do template")
+
+      expect {
+        post activate_whatsapp_template_admin_lead_path(lead), params: { whatsapp_template_id: template.id, return_to: admin_lead_path(lead) }
+      }.to change(WhatsappMessage, :count).by(1)
+
+      message = WhatsappMessage.last
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(message.template_name).to eq("lead_template")
+      expect(message.msg_type).to eq("template")
+      expect(Whatsapp::SendMessageJob).to have_received(:perform_later).with(message.id, tenant_id: message.tenant_id)
+    end
+
+    it "bloqueia abertura de conversa quando o lead não possui telefone ou BSUID" do
+      lead = create(:lead, status: "Novo", phone: "47999990003")
+      lead.update_columns(phone: nil, business_scoped_user_id: nil)
+
+      post open_whatsapp_conversation_admin_lead_path(lead)
+
+      expect(response).to redirect_to(admin_lead_path(lead))
+      expect(flash[:alert]).to eq("Este lead não possui telefone ou BSUID para abrir conversa no WhatsApp.")
     end
   end
 

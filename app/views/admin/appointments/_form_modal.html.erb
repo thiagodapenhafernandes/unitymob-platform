@@ -16,26 +16,26 @@
             <% if lead.property_id.present? %><%= hidden_field_tag "appointment[habitation_id]", lead.property_id %><% end %>
           <% end %>
           <div>
-            <label class="ax-label">Título</label>
-            <%= text_field_tag "appointment[title]", (local_assigns[:lead] ? "Visita — #{lead.display_name}" : nil), class: "ax-input", required: true, placeholder: "Visita ao imóvel" %>
+            <label class="ax-label" for="appointment_title">Título</label>
+            <%= text_field_tag "appointment[title]", (local_assigns[:lead] ? "Visita — #{lead.display_name}" : nil), id: "appointment_title", class: "ax-input", required: true, placeholder: "Visita ao imóvel" %>
           </div>
           <div class="tw-grid tw-grid-cols-2 tw-gap-3">
             <div>
-              <label class="ax-label">Tipo</label>
-              <%= select_tag "appointment[kind]", options_for_select(Appointment::KINDS.map { |k, v| [v, k] }, "visita"), class: "ax-select" %>
+              <label class="ax-label" for="appointment_kind">Tipo</label>
+              <%= select_tag "appointment[kind]", options_for_select(Appointment::KINDS.map { |k, v| [v, k] }, "visita"), id: "appointment_kind", class: "ax-select" %>
             </div>
             <div>
-              <label class="ax-label">Início</label>
-              <input type="datetime-local" name="appointment[starts_at]" class="ax-input" required>
+              <label class="ax-label" for="appointment_starts_at">Início</label>
+              <input type="datetime-local" name="appointment[starts_at]" id="appointment_starts_at" class="ax-input" required>
             </div>
           </div>
           <div>
-            <label class="ax-label">Local</label>
-            <%= text_field_tag "appointment[location]", nil, class: "ax-input", placeholder: "Endereço do imóvel / link da reunião" %>
+            <label class="ax-label" for="appointment_location">Local</label>
+            <%= text_field_tag "appointment[location]", nil, id: "appointment_location", class: "ax-input", placeholder: "Endereço do imóvel / link da reunião" %>
           </div>
           <div>
-            <label class="ax-label">Observações</label>
-            <%= text_area_tag "appointment[notes]", nil, class: "ax-textarea", rows: 2 %>
+            <label class="ax-label" for="appointment_notes">Observações</label>
+            <%= text_area_tag "appointment[notes]", nil, id: "appointment_notes", class: "ax-textarea", rows: 2 %>
           </div>
         </div>
         <div class="tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3" style="border-top:1px solid #e6e8eb">

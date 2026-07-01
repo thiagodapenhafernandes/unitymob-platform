@@ -1,0 +1,232 @@
+<% status_icon = { "read" => "bi-check2-all", "delivered" => "bi-check2-all", "sent" => "bi-check2", "pending" => "bi-clock", "failed" => "bi-exclamation-circle" }[message.status] %>
+<% status_label = { "read" => "Lida", "delivered" => "Entregue", "sent" => "Enviada", "pending" => "Enviando", "failed" => "Falhou" }[message.status] || message.status.to_s.humanize %>
+<% media_url = local_assigns[:media_url].presence || (message.media? ? message_media_admin_whatsapp_conversation_path(message.whatsapp_conversation, message_id: message.id) : (message.media_file.attached? ? rails_blob_path(message.media_file, disposition: "inline") : message.media_url)) %>
+<% media_meta = [] %>
+<% media_label = { "image" => "Imagem", "video" => "Vídeo", "audio" => "Áudio", "document" => "Documento" }[message.msg_type] || message.msg_type.to_s.humanize %>
+<% media_meta << message.media_format_label if message.media_format_label.present? %>
+<% media_meta << message.media_size_label if message.media_size_label.present? %>
+<% media_message = message.media? %>
+<% document_message = message.document? %>
+<% media_group = "wa-thread-media" %>
+<% viewer_id = "wa-message-viewer-#{message.id}" %>
+<% previous_message = local_assigns[:previous_message] %>
+<% next_message = local_assigns[:next_message] %>
+<% compact_mode = local_assigns.fetch(:compact_mode, false) %>
+<% starts_day = previous_message.blank? || previous_message.created_at.to_date != message.created_at.to_date %>
+<% grouped_with_previous = Whatsapp::MessageRenderContext.grouped_with_previous?(message, previous_message) %>
+<% grouped_with_next = Whatsapp::MessageRenderContext.grouped_with_next?(message, next_message) %>
+<% day_label = I18n.l(message.created_at.to_date, format: "%A, %d/%m") %>
+<% row_classes = ["wa-inbox-bubble-row", "wa-inbox-bubble-row--#{message.direction}"] %>
+<% row_classes << "wa-inbox-bubble-row--grouped" if grouped_with_previous %>
+<% bubble_classes = ["wa-inbox-bubble", "wa-inbox-bubble--#{message.direction}"] %>
+<% bubble_classes << "wa-inbox-bubble--media" if media_message %>
+<% bubble_classes << "wa-inbox-bubble--document" if document_message %>
+<% bubble_classes << "wa-inbox-bubble--continued" if grouped_with_previous %>
+<% bubble_classes << "wa-inbox-bubble--group-tail" if grouped_with_next %>
+<% bubble_classes << "wa-inbox-bubble--compact" if compact_mode %>
+<% bubble_meta_classes = ["wa-inbox-bubble__meta"] %>
+<% bubble_meta_classes << "wa-inbox-bubble__meta--muted" if grouped_with_next %>
+<% if starts_day %>
+  <div class="wa-inbox-thread__day-separator">
+    <span><%= day_label %></span>
+  </div>
+<% end %>
+<div class="<%= row_classes.join(' ') %>" data-message-id="<%= message.id %>" data-message-direction="<%= message.direction %>">
+  <div class="<%= bubble_classes.join(' ') %>">
+    <div class="wa-inbox-bubble__surface">
+      <% if message.msg_type == "template" %>
+        <div class="wa-inbox-bubble__eyebrow"><i class="bi bi-file-text"></i> modelo <%= message.template_name %></div>
+      <% end %>
+
+      <% if message.image? && media_url.present? %>
+        <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--image">
+          <a href="#<%= "#{viewer_id}-image" %>"
+             class="wa-inbox-media-frame wa-inbox-media-frame--image wa-inbox-media wa-inbox-media--image-link"
+             data-fancybox="<%= media_group %>"
+             data-fancybox-type="inline"
+             data-turbo="false"
+             data-admin-navigation-ignore="true"
+             data-caption="<%= [message.media_name.presence || media_label, media_meta.join(' · '), message.body.presence].compact.join(' — ') %>">
+            <img src="<%= media_url %>" alt="Imagem recebida no WhatsApp" class="wa-inbox-media wa-inbox-media--image">
+          </a>
+
+          <div id="<%= "#{viewer_id}-image" %>" class="wa-fancybox-visual wa-fancybox-visual--image" hidden>
+            <div class="wa-fancybox-visual__head">
+              <div class="wa-fancybox-visual__meta">
+                <strong class="wa-fancybox-visual__title"><%= message.media_name.presence || "Imagem" %></strong>
+                <% if media_meta.any? %>
+                  <span class="wa-fancybox-visual__copy"><%= media_meta.join(" · ") %></span>
+                <% end %>
+              </div>
+              <a href="<%= media_url %>" class="wa-fancybox-visual__download" target="_blank" rel="noopener">
+                <i class="bi bi-download"></i>
+                <span>Baixar</span>
+              </a>
+            </div>
+            <div class="wa-fancybox-visual__canvas wa-fancybox-visual__canvas--image">
+              <img src="<%= media_url %>" alt="Imagem recebida no WhatsApp" class="wa-fancybox-visual__image">
+            </div>
+          </div>
+        </div>
+      <% elsif message.video? && media_url.present? %>
+        <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--video">
+          <a href="#<%= "#{viewer_id}-video" %>"
+             class="wa-inbox-media-frame wa-inbox-media-frame--video wa-inbox-media wa-inbox-media--video-link"
+             data-fancybox="<%= media_group %>"
+             data-fancybox-type="inline"
+             data-turbo="false"
+             data-admin-navigation-ignore="true"
+             data-caption="<%= [message.media_name.presence || media_label, media_meta.join(' · '), message.body.presence].compact.join(' — ') %>">
+            <video src="<%= media_url %>" class="wa-inbox-media wa-inbox-media--video" muted playsinline preload="metadata"></video>
+            <span class="wa-inbox-media__play" aria-hidden="true">
+              <i class="bi bi-play-fill"></i>
+            </span>
+          </a>
+
+          <div id="<%= "#{viewer_id}-video" %>" class="wa-fancybox-visual wa-fancybox-visual--video" hidden>
+            <div class="wa-fancybox-visual__head">
+              <div class="wa-fancybox-visual__meta">
+                <strong class="wa-fancybox-visual__title"><%= message.media_name.presence || "Vídeo" %></strong>
+                <% if media_meta.any? %>
+                  <span class="wa-fancybox-visual__copy"><%= media_meta.join(" · ") %></span>
+                <% end %>
+              </div>
+              <a href="<%= media_url %>" class="wa-fancybox-visual__download" target="_blank" rel="noopener">
+                <i class="bi bi-download"></i>
+                <span>Baixar</span>
+              </a>
+            </div>
+            <div class="wa-fancybox-visual__canvas wa-fancybox-visual__canvas--video">
+              <video src="<%= media_url %>" class="wa-fancybox-visual__video" controls playsinline preload="metadata"></video>
+            </div>
+          </div>
+        </div>
+      <% elsif message.audio? && media_url.present? %>
+        <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--audio"
+             data-controller="wa-audio-preview">
+          <a href="#<%= "#{viewer_id}-audio" %>"
+             class="wa-inbox-bubble__viewer-link"
+             data-fancybox="<%= media_group %>"
+             data-fancybox-type="inline"
+             data-turbo="false"
+             data-admin-navigation-ignore="true"
+             data-caption="<%= [message.media_name.presence || media_label, media_meta.join(' · '), message.body.presence].compact.join(' — ') %>"
+             hidden></a>
+          <div class="wa-audio-preview wa-audio-preview--message">
+            <button type="button"
+                    class="wa-audio-preview__toggle"
+                    aria-label="Reproduzir áudio"
+                    data-action="wa-audio-preview#toggle"
+                    data-wa-audio-preview-target="toggle">
+              <i class="bi bi-play-fill" data-wa-audio-preview-target="icon"></i>
+            </button>
+
+            <div class="wa-audio-preview__body" data-gallery-open>
+              <div class="wa-audio-preview__meta">
+                <strong class="wa-audio-preview__title"><%= message.media_name.presence || "Áudio do WhatsApp" %></strong>
+              </div>
+
+              <% if media_meta.any? %>
+                <div class="wa-audio-preview__summary"><%= media_meta.join(" · ") %></div>
+              <% end %>
+
+              <button type="button"
+                      class="wa-audio-preview__track"
+                      aria-label="Posição do áudio"
+                      data-action="wa-audio-preview#seek">
+                <span class="wa-audio-preview__track-fill" data-wa-audio-preview-target="fill"></span>
+              </button>
+
+              <div class="wa-audio-preview__footer">
+                <span class="wa-audio-preview__time">
+                  <span data-wa-audio-preview-target="current">0:00</span>
+                  <span>/</span>
+                  <span data-wa-audio-preview-target="duration">0:00</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <audio data-src="<%= media_url %>"
+                 class="wa-audio-preview__audio"
+                 preload="none"
+                 data-wa-audio-preview-target="audio"
+                 data-action="loadedmetadata->wa-audio-preview#syncDuration timeupdate->wa-audio-preview#syncProgress play->wa-audio-preview#handlePlay pause->wa-audio-preview#syncState ended->wa-audio-preview#syncState"></audio>
+
+          <div id="<%= "#{viewer_id}-audio" %>" class="wa-fancybox-audio" hidden>
+            <div class="wa-fancybox-audio__head">
+              <span class="wa-fancybox-audio__eyebrow"><%= media_label %></span>
+              <strong class="wa-fancybox-audio__title"><%= message.media_name.presence || "Áudio do WhatsApp" %></strong>
+              <% if media_meta.any? %>
+                <span class="wa-fancybox-audio__meta"><%= media_meta.join(" · ") %></span>
+              <% end %>
+            </div>
+            <audio src="<%= media_url %>"
+                   class="wa-fancybox-audio__player"
+                   controls
+                   preload="none"
+                   data-inline-viewer-media="true"></audio>
+          </div>
+        </div>
+      <% elsif message.document? && media_url.present? %>
+        <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--document">
+          <a href="#<%= "#{viewer_id}-document" %>"
+             class="wa-inbox-media-card wa-inbox-media-card--document wa-inbox-media-card--message"
+             data-fancybox="<%= media_group %>"
+             data-fancybox-type="inline"
+             data-turbo="false"
+             data-admin-navigation-ignore="true"
+             data-caption="<%= [message.media_name.presence || media_label, media_meta.join(' · '), message.body.presence].compact.join(' — ') %>">
+            <span class="wa-inbox-media-card__icon">
+              <i class="bi bi-file-earmark-text"></i>
+            </span>
+            <span class="wa-inbox-media-card__copy">
+              <span class="wa-inbox-media-card__title"><%= message.media_name.presence || "Abrir documento" %></span>
+              <% if media_meta.any? %>
+                <span class="wa-inbox-media-card__meta"><%= media_meta.join(" · ") %></span>
+              <% end %>
+            </span>
+            <span class="wa-inbox-media-card__action" aria-hidden="true">
+              <i class="bi bi-chevron-right"></i>
+            </span>
+          </a>
+
+          <div id="<%= "#{viewer_id}-document" %>" class="wa-fancybox-document" hidden>
+            <div class="wa-fancybox-document__head">
+              <div class="wa-fancybox-document__meta">
+                <span class="wa-fancybox-document__eyebrow"><%= media_label %></span>
+                <strong class="wa-fancybox-document__title"><%= message.media_name.presence || "Documento" %></strong>
+                <% if media_meta.any? %>
+                  <span class="wa-fancybox-document__copy"><%= media_meta.join(" · ") %></span>
+                <% end %>
+              </div>
+              <a href="<%= media_url %>" class="wa-fancybox-document__download" target="_blank" rel="noopener">
+                <i class="bi bi-download"></i>
+                <span>Baixar</span>
+              </a>
+            </div>
+            <iframe src="<%= media_url %>" class="wa-fancybox-document__frame" title="<%= message.media_name.presence || "Documento do WhatsApp" %>" loading="lazy"></iframe>
+          </div>
+        </div>
+      <% end %>
+
+      <% if media_message && message.body.present? %>
+        <div class="wa-inbox-bubble__body wa-inbox-bubble__body--media"><%= message.body %></div>
+      <% elsif !media_message && message.body.present? %>
+        <div class="wa-inbox-bubble__body wa-inbox-bubble__body--text"><%= message.body %></div>
+      <% end %>
+    </div>
+
+    <div class="<%= bubble_meta_classes.join(' ') %>" data-wa-message-status="<%= message.status %>">
+      <div class="wa-inbox-bubble__time <%= 'wa-inbox-bubble__time--muted' if grouped_with_next %>">
+        <%= message.created_at.strftime("%H:%M") %>
+        <% if message.outbound? && status_icon.present? %>
+          <i class="bi <%= status_icon %> <%= 'is-read' if message.status == 'read' %> <%= 'is-failed' if message.failed? %>"
+             title="<%= status_label %>"
+             aria-label="<%= status_label %>"
+             data-wa-message-status-icon></i>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

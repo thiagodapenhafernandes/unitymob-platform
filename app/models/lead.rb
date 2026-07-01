@@ -38,7 +38,26 @@ class Lead < ApplicationRecord
   has_many :tasks, dependent: :nullify
   has_many :appointments, dependent: :nullify
   has_many :proposals, dependent: :destroy
-  
+  has_many :lead_labelings, dependent: :destroy
+  has_many :lead_labels, through: :lead_labelings
+
+  # Etiquetas são privadas por corretor: só retorna as marcações cujo label
+  # pertence ao usuário informado.
+  def labels_for(admin_user)
+    return LeadLabel.none if admin_user.blank?
+
+    lead_labels.for_user(admin_user).ordered
+  end
+
+  # Versão em memória para listas/kanban: usa a associação já pré-carregada
+  # (includes) e evita N+1. Retorna um Array de LeadLabel do usuário.
+  def preloaded_labels_for(admin_user)
+    return [] if admin_user.blank?
+
+    lead_labels.select { |label| label.admin_user_id == admin_user.id }
+               .sort_by { |label| [label.position, label.name] }
+  end
+
   after_create :record_audit_create
   after_update :record_audit_update
   after_destroy :record_audit_destroy

@@ -1,4 +1,4 @@
-\restrict fkQsWClk0o1OVcyKm7xx9MeWO8IPhxH5t71lfD4zUROyixFELso5va3cfC2sFhd
+\restrict gYYQsTU9jabHpZeh66BUSLjwEQBoZKlG2opvkdGi7Ru3wkUL2qAFljGdPUpNc92
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -630,7 +630,6 @@ CREATE TABLE public.admin_users (
     leads_view_mode character varying,
     tenant_id bigint,
     horizontal_profile_id bigint,
-    CONSTRAINT admin_users_profile_required_unless_system_admin CHECK (((super_admin = true) OR (profile_id IS NOT NULL))),
     CONSTRAINT admin_users_system_admin_outside_tenant CHECK (((super_admin = false) OR ((tenant_id IS NULL) AND (profile_id IS NULL) AND (horizontal_profile_id IS NULL) AND (manager_id IS NULL)))),
     CONSTRAINT admin_users_tenant_required_unless_system_admin CHECK (((super_admin = true) OR (tenant_id IS NOT NULL)))
 );
@@ -2870,6 +2869,74 @@ ALTER SEQUENCE public.lead_audit_logs_id_seq OWNED BY public.lead_audit_logs.id;
 
 
 --
+-- Name: lead_labelings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_labelings (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    lead_label_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_labelings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_labelings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_labelings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_labelings_id_seq OWNED BY public.lead_labelings.id;
+
+
+--
+-- Name: lead_labels; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_labels (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    name character varying NOT NULL,
+    color character varying DEFAULT 'gray'::character varying NOT NULL,
+    "position" integer NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_labels_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_labels_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_labels_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_labels_id_seq OWNED BY public.lead_labels.id;
+
+
+--
 -- Name: lead_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3348,9 +3415,7 @@ CREATE TABLE public.profiles (
     axis character varying DEFAULT 'vertical'::character varying NOT NULL,
     vertical_profile_id bigint,
     "position" integer,
-    locked boolean DEFAULT false NOT NULL,
-    CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY ((ARRAY['vertical'::character varying, 'horizontal'::character varying])::text[]))),
-    CONSTRAINT profiles_axis_shape CHECK (((((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)) OR (((axis)::text = 'horizontal'::text) AND (vertical_profile_id IS NOT NULL) AND ("position" IS NULL))))
+    locked boolean DEFAULT false NOT NULL
 );
 
 
@@ -5731,6 +5796,20 @@ ALTER TABLE ONLY public.lead_audit_logs ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- Name: lead_labelings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_labelings ALTER COLUMN id SET DEFAULT nextval('public.lead_labelings_id_seq'::regclass);
+
+
+--
+-- Name: lead_labels id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_labels ALTER COLUMN id SET DEFAULT nextval('public.lead_labels_id_seq'::regclass);
+
+
+--
 -- Name: lead_settings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6215,6 +6294,14 @@ ALTER TABLE ONLY public.admin_users
 
 
 --
+-- Name: admin_users admin_users_profile_required_unless_system_admin; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_users
+    ADD CONSTRAINT admin_users_profile_required_unless_system_admin CHECK (((super_admin = true) OR (profile_id IS NOT NULL))) NOT VALID;
+
+
+--
 -- Name: ai_property_suggestions ai_property_suggestions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6591,6 +6678,22 @@ ALTER TABLE ONLY public.lead_audit_logs
 
 
 --
+-- Name: lead_labelings lead_labelings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_labelings
+    ADD CONSTRAINT lead_labelings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lead_labels lead_labels_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_labels
+    ADD CONSTRAINT lead_labels_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: lead_settings lead_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6679,11 +6782,27 @@ ALTER TABLE ONLY public.portal_listing_states
 
 
 --
+-- Name: profiles profiles_axis_allowed; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.profiles
+    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY (ARRAY[('vertical'::character varying)::text, ('horizontal'::character varying)::text]))) NOT VALID;
+
+
+--
+-- Name: profiles profiles_axis_shape; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.profiles
+    ADD CONSTRAINT profiles_axis_shape CHECK (((((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)) OR (((axis)::text = 'horizontal'::text) AND (vertical_profile_id IS NOT NULL) AND ("position" IS NULL)))) NOT VALID;
+
+
+--
 -- Name: profiles profiles_builtin_axis_governance; Type: CHECK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) OR (((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) OR (((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
 
 
 --
@@ -6691,7 +6810,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])))) NOT VALID;
+    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])))) NOT VALID;
 
 
 --
@@ -6707,7 +6826,7 @@ ALTER TABLE ONLY public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
 
 
 --
@@ -9350,6 +9469,62 @@ CREATE INDEX index_lead_audit_logs_on_tenant_id ON public.lead_audit_logs USING 
 
 
 --
+-- Name: index_lead_labelings_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_labelings_on_lead_id ON public.lead_labelings USING btree (lead_id);
+
+
+--
+-- Name: index_lead_labelings_on_lead_id_and_lead_label_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_lead_labelings_on_lead_id_and_lead_label_id ON public.lead_labelings USING btree (lead_id, lead_label_id);
+
+
+--
+-- Name: index_lead_labelings_on_lead_label_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_labelings_on_lead_label_id ON public.lead_labelings USING btree (lead_label_id);
+
+
+--
+-- Name: index_lead_labelings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_labelings_on_tenant_id ON public.lead_labelings USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_labels_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_labels_on_admin_user_id ON public.lead_labels USING btree (admin_user_id);
+
+
+--
+-- Name: index_lead_labels_on_admin_user_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_lead_labels_on_admin_user_id_and_name ON public.lead_labels USING btree (admin_user_id, name);
+
+
+--
+-- Name: index_lead_labels_on_admin_user_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_labels_on_admin_user_id_and_position ON public.lead_labels USING btree (admin_user_id, "position");
+
+
+--
+-- Name: index_lead_labels_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_labels_on_tenant_id ON public.lead_labels USING btree (tenant_id);
+
+
+--
 -- Name: index_leads_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11132,6 +11307,14 @@ ALTER TABLE ONLY public.profiles
 
 
 --
+-- Name: lead_labels fk_rails_0318289c3b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_labels
+    ADD CONSTRAINT fk_rails_0318289c3b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: store_shifts fk_rails_0416b68456; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11668,6 +11851,14 @@ ALTER TABLE ONLY public.client_property_interests
 
 
 --
+-- Name: lead_labelings fk_rails_570d08d6e8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_labelings
+    ADD CONSTRAINT fk_rails_570d08d6e8 FOREIGN KEY (lead_label_id) REFERENCES public.lead_labels(id);
+
+
+--
 -- Name: whatsapp_campaigns fk_rails_570e00c34f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11809,6 +12000,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_messages
 
 ALTER TABLE ONLY public.whatsapp_templates
     ADD CONSTRAINT fk_rails_737f4f7e1b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: lead_labelings fk_rails_738b0d3086; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_labelings
+    ADD CONSTRAINT fk_rails_738b0d3086 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
 
 
 --
@@ -12033,6 +12232,14 @@ ALTER TABLE ONLY public.checkin_audit_logs
 
 ALTER TABLE ONLY public.footer_stores
     ADD CONSTRAINT fk_rails_937ebd4dbd FOREIGN KEY (footer_setting_id) REFERENCES public.footer_settings(id);
+
+
+--
+-- Name: lead_labelings fk_rails_947f90c152; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_labelings
+    ADD CONSTRAINT fk_rails_947f90c152 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -12420,6 +12627,14 @@ ALTER TABLE ONLY public.store_shifts
 
 
 --
+-- Name: lead_labels fk_rails_cd877c6e53; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_labels
+    ADD CONSTRAINT fk_rails_cd877c6e53 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: automation_rules fk_rails_cf6a0dd51b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12751,11 +12966,13 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict fkQsWClk0o1OVcyKm7xx9MeWO8IPhxH5t71lfD4zUROyixFELso5va3cfC2sFhd
+\unrestrict gYYQsTU9jabHpZeh66BUSLjwEQBoZKlG2opvkdGi7Ru3wkUL2qAFljGdPUpNc92
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260701000002'),
+('20260701000001'),
 ('20260628255000'),
 ('20260628254500'),
 ('20260628254400'),
@@ -12812,6 +13029,7 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20260623170000'),
 ('20260623160000'),
 ('20260623120000'),
+('20260622162257'),
 ('20260622150000'),
 ('20260622103000'),
 ('20260621220500'),

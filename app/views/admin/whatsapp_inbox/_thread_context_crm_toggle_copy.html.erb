@@ -1,0 +1,36 @@
+<%
+  crm_owner_label = if thread_lead&.admin_user
+    thread_lead.admin_user.name
+  elsif thread_lead
+    "Sem corretor"
+  else
+    "Sem lead"
+  end
+  crm_property_label = if thread_property
+    thread_property.display_title
+  elsif thread_lead&.property_id.present?
+    "Imóvel indisponível"
+  elsif thread_lead
+    "Sem imóvel"
+  else
+    "Sem contexto"
+  end
+  crm_next_label = if thread_next_task
+    thread_next_task.title
+  elsif thread_lead
+    "Sem próxima ação"
+  else
+    "Sem contexto comercial"
+  end
+
+  headline, supporting_copy = if focus_mode
+    ["CRM", "#{crm_owner_label} · #{crm_next_label}"]
+  elsif thread_lead
+    ["CRM comercial", "#{crm_owner_label} · #{crm_property_label}"]
+  else
+    ["Sem lead vinculado", "Vincule esta conversa ao CRM para abrir contexto e ações comerciais."]
+  end
+%>
+
+<strong><%= headline %></strong>
+<small><%= supporting_copy %></small>

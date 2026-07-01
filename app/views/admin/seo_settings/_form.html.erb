@@ -25,125 +25,103 @@
 
   <div class="seo-editor-grid">
     <div class="seo-editor-main">
-      <div class="ax-card tw-mb-3">
-        <div class="ax-card__body">
-          <div class="tw-flex tw-justify-between tw-items-start tw-gap-3 tw-mb-3">
-            <div>
-              <h2 class="ax-card__title tw-mb-1">Identificação técnica</h2>
-              <p class="tw-text-sm tw-text-ink-muted">Chaves, URL canônica e tipo da página.</p>
-            </div>
-            <span class="ax-badge <%= seo_setting.auto_discovered? ? "ax-badge--blue" : "ax-badge--gray" %>">
-              <%= seo_setting.auto_discovered? ? "auto descoberta" : "manual" %>
-            </span>
-          </div>
+      <% technical_actions = ax_badge(seo_setting.auto_discovered? ? "Auto descoberta" : "Manual", tone: seo_setting.auto_discovered? ? :blue : :gray) %>
+      <%= ax_operational_panel(eyebrow: "Base técnica", title: "Identificação técnica", actions: technical_actions) do %>
+        <p class="seo-editor-section-intro">Chaves, URL canônica e tipo estrutural da página monitorada.</p>
 
-          <%= ax_field_grid do %>
-            <div class="ax-span-6">
-              <%= f.label :page_name, "Nome interno", class: "ax-label" %>
-              <%= f.text_field :page_name, class: "ax-control ax-control--sm" %>
+        <%= ax_field_grid do %>
+          <div class="ax-span-6">
+            <%= f.label :page_name, "Nome interno", class: "ax-label" %>
+            <%= f.text_field :page_name, class: "ax-control ax-control--sm" %>
+          </div>
+          <div class="ax-span-6">
+            <%= f.label :canonical_key, "Chave canônica", class: "ax-label" %>
+            <%= f.text_field :canonical_key, class: "ax-control ax-control--sm" %>
+          </div>
+          <div class="ax-span-4">
+            <%= f.label :page_type, "Tipo", class: "ax-label" %>
+            <%= f.text_field :page_type, class: "ax-control ax-control--sm" %>
+          </div>
+          <div class="ax-span-8">
+            <%= f.label :canonical_url, "Canonical URL", class: "ax-label" %>
+            <%= f.text_field :canonical_url, class: "ax-control ax-control--sm", data: { seo_field: "canonical" } %>
+          </div>
+        <% end %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Buscadores", title: "Snippet para buscadores", actions: ax_badge("Score #{seo_setting.seo_score.to_i}", tone: :gray)) do %>
+        <p class="seo-editor-section-intro">Título, descrição, keywords foco e texto introdutório usados na busca orgânica.</p>
+
+        <%= ax_field_grid do %>
+          <div class="ax-span-12">
+            <div class="seo-editor-field-head">
+              <%= f.label :meta_title, "Meta title", class: "ax-label" %>
+              <span class="seo-editor-counter"><span data-seo-count="title"><%= title_length %></span>/65</span>
             </div>
-            <div class="ax-span-6">
-              <%= f.label :canonical_key, "Chave canônica", class: "ax-label" %>
-              <%= f.text_field :canonical_key, class: "ax-control ax-control--sm" %>
+            <%= f.text_field :meta_title, class: "ax-control", data: { seo_field: "title" } %>
+          </div>
+          <div class="ax-span-12">
+            <div class="seo-editor-field-head">
+              <%= f.label :meta_description, "Meta description", class: "ax-label" %>
+              <span class="seo-editor-counter"><span data-seo-count="description"><%= description_length %></span>/160</span>
             </div>
+            <%= f.text_area :meta_description, rows: 3, class: "ax-control", data: { seo_field: "description" } %>
+          </div>
+          <div class="ax-span-12">
+            <%= f.label :meta_keywords, "Keywords e foco", class: "ax-label" %>
+            <%= f.text_area :meta_keywords, rows: 2, class: "ax-control", placeholder: "Separe por vírgulas. A primeira keyword será tratada como foco principal.", data: { seo_field: "keywords" } %>
+          </div>
+          <div class="ax-span-12">
+            <%= f.label :focus_keyword_list, "Keywords foco persistidas", class: "ax-label" %>
+            <%= f.text_field :focus_keyword_list,
+                value: seo_setting.focus_keyword_list.presence || seo_setting.meta_keywords,
+                class: "ax-control",
+                placeholder: "Até 5 termos, separados por vírgula",
+                data: { seo_field: "focusKeywords" } %>
+            <div class="seo-editor-note">Essas keywords alimentam a análise, sugestões de links internos e futuras gerações com IA.</div>
+          </div>
+          <div class="ax-span-12">
+            <div class="seo-editor-field-head">
+              <%= f.label :intro_text, "Texto introdutório da página", class: "ax-label" %>
+              <span class="seo-editor-counter"><span data-seo-count="intro"><%= intro_word_count %></span> palavras</span>
+            </div>
+            <%= f.text_area :intro_text, rows: 5, class: "ax-control", placeholder: "Use 150 a 250 palavras para páginas de listagem estratégicas. Esse texto aparece acima dos imóveis/empreendimentos.", data: { seo_field: "intro", listing: listing_page } %>
+            <div class="seo-editor-note">Para listagens indexáveis, explique intenção da busca, diferenciais da região e caminhos para filtros relacionados.</div>
+          </div>
+        <% end %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Social", title: "Compartilhamento social") do %>
+        <p class="seo-editor-section-intro">Open Graph e imagem usados nos compartilhamentos externos.</p>
+
+        <%= ax_field_grid do %>
+          <div class="ax-span-6">
+            <%= f.label :og_title, "Open Graph title", class: "ax-label" %>
+            <%= f.text_field :og_title, class: "ax-control", data: { seo_field: "ogTitle" } %>
+          </div>
+          <div class="ax-span-6">
+            <%= f.label :og_image_file, "Imagem OG", class: "ax-label" %>
+            <%= f.file_field :og_image_file, class: "ax-control" %>
+            <div class="seo-editor-note">Fallback automático: primeira imagem do imóvel ou logo quadrada da Salute.</div>
+          </div>
+          <div class="ax-span-12">
+            <%= f.label :og_description, "Open Graph description", class: "ax-label" %>
+            <%= f.text_area :og_description, rows: 2, class: "ax-control", data: { seo_field: "ogDescription" } %>
+          </div>
+        <% end %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Publicação", title: "Controle público") do %>
+        <p class="seo-editor-section-intro">Flags operacionais que definem ativação, exposição pública e indexação.</p>
+
+        <%= ax_field_grid(class_name: "seo-editor-toggle-grid") do %>
+          <% [["active", "Ativo"], ["apply_to_public", "Usar na página pública"], ["manual_mode", "Manual"], ["robots_index", "Index"], ["robots_follow", "Follow"]].each do |field, label| %>
             <div class="ax-span-4">
-              <%= f.label :page_type, "Tipo", class: "ax-label" %>
-              <%= f.text_field :page_type, class: "ax-control ax-control--sm" %>
-            </div>
-            <div class="ax-span-8">
-              <%= f.label :canonical_url, "Canonical URL", class: "ax-label" %>
-              <%= f.text_field :canonical_url, class: "ax-control ax-control--sm", data: { seo_field: "canonical" } %>
+              <%= ax_toggle_chip(f, field.to_sym, label:, class_name: "ax-toggle-chip--full", input_data: { seo_field: field }) %>
             </div>
           <% end %>
-        </div>
-      </div>
-
-      <div class="ax-card tw-mb-3">
-        <div class="ax-card__body">
-          <div class="tw-flex tw-justify-between tw-items-start tw-gap-3 tw-mb-3">
-            <div>
-              <h2 class="ax-card__title tw-mb-1">Snippet para buscadores</h2>
-              <p class="tw-text-sm tw-text-ink-muted">Título, descrição, palavras-chave e texto introdutório público.</p>
-            </div>
-            <span class="ax-badge ax-badge--gray">score <%= seo_setting.seo_score.to_i %></span>
-          </div>
-
-          <%= ax_field_grid do %>
-            <div class="ax-span-12">
-              <div class="tw-flex tw-justify-between tw-items-center">
-                <%= f.label :meta_title, "Meta title", class: "ax-label" %>
-                <span class="tw-text-sm tw-text-ink-muted"><span data-seo-count="title"><%= title_length %></span>/65</span>
-              </div>
-              <%= f.text_field :meta_title, class: "ax-control", data: { seo_field: "title" } %>
-            </div>
-            <div class="ax-span-12">
-              <div class="tw-flex tw-justify-between tw-items-center">
-                <%= f.label :meta_description, "Meta description", class: "ax-label" %>
-                <span class="tw-text-sm tw-text-ink-muted"><span data-seo-count="description"><%= description_length %></span>/160</span>
-              </div>
-              <%= f.text_area :meta_description, rows: 3, class: "ax-control", data: { seo_field: "description" } %>
-            </div>
-            <div class="ax-span-12">
-              <%= f.label :meta_keywords, "Keywords e foco", class: "ax-label" %>
-              <%= f.text_area :meta_keywords, rows: 2, class: "ax-control", placeholder: "Separe por vírgulas. A primeira keyword será tratada como foco principal.", data: { seo_field: "keywords" } %>
-            </div>
-            <div class="ax-span-12">
-              <%= f.label :focus_keyword_list, "Keywords foco persistidas", class: "ax-label" %>
-              <%= f.text_field :focus_keyword_list,
-                  value: seo_setting.focus_keyword_list.presence || seo_setting.meta_keywords,
-                  class: "ax-control",
-                  placeholder: "Até 5 termos, separados por vírgula",
-                  data: { seo_field: "focusKeywords" } %>
-              <div class="tw-text-sm tw-text-ink-muted tw-mt-1">Essas keywords alimentam a análise, sugestões de links internos e futuras gerações com IA.</div>
-            </div>
-            <div class="ax-span-12">
-              <div class="tw-flex tw-justify-between tw-items-center">
-                <%= f.label :intro_text, "Texto introdutório da página", class: "ax-label" %>
-                <span class="tw-text-sm tw-text-ink-muted"><span data-seo-count="intro"><%= intro_word_count %></span> palavras</span>
-              </div>
-              <%= f.text_area :intro_text, rows: 5, class: "ax-control", placeholder: "Use 150 a 250 palavras para páginas de listagem estratégicas. Esse texto aparece acima dos imóveis/empreendimentos.", data: { seo_field: "intro", listing: listing_page } %>
-              <div class="tw-text-sm tw-text-ink-muted tw-mt-1">Para listagens indexáveis, explique intenção da busca, diferenciais da região e caminhos para filtros relacionados.</div>
-            </div>
-          <% end %>
-        </div>
-      </div>
-
-      <div class="ax-card tw-mb-3">
-        <div class="ax-card__body">
-          <h2 class="ax-card__title tw-mb-3">Compartilhamento social</h2>
-          <%= ax_field_grid do %>
-            <div class="ax-span-6">
-              <%= f.label :og_title, "Open Graph title", class: "ax-label" %>
-              <%= f.text_field :og_title, class: "ax-control", data: { seo_field: "ogTitle" } %>
-            </div>
-            <div class="ax-span-6">
-              <%= f.label :og_image_file, "Imagem OG", class: "ax-label" %>
-              <%= f.file_field :og_image_file, class: "ax-control" %>
-              <div class="tw-text-sm tw-text-ink-muted tw-mt-1">Fallback automático: primeira imagem do imóvel ou logo quadrada da Salute.</div>
-            </div>
-            <div class="ax-span-12">
-              <%= f.label :og_description, "Open Graph description", class: "ax-label" %>
-              <%= f.text_area :og_description, rows: 2, class: "ax-control", data: { seo_field: "ogDescription" } %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-
-      <div class="ax-card tw-mb-4">
-        <div class="ax-card__body">
-          <h2 class="ax-card__title tw-mb-3">Controle público</h2>
-          <div class="tw-flex tw-flex-wrap tw-gap-2">
-            <% [["active", "Ativo"], ["apply_to_public", "Usar na página pública"], ["manual_mode", "Manual"], ["robots_index", "Index"], ["robots_follow", "Follow"]].each do |field, label| %>
-              <div class="tw-flex-1">
-                <label class="custom-checkbox-card w-100 justify-content-between">
-                  <span><%= label %></span>
-                  <%= f.check_box field, class: "form-check-input", data: { seo_field: field } %>
-                </label>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
+        <% end %>
+      <% end %>
 
       <% if seo_setting.ai_insights.present? %>
         <%= ax_inline_notice(tone: :info, icon: "lightbulb") do %>
@@ -152,133 +130,107 @@
         <% end %>
       <% end %>
 
-      <div class="tw-flex tw-justify-end tw-gap-2">
-        <%= link_to "Cancelar", admin_seo_settings_path, class: "ax-btn ax-btn--ghost" %>
+      <%= ax_sticky_action_footer(meta: content_tag(:span, "Salvamento aplica SEO público, leitura de score e prévias desta página.", class: "seo-editor-footer-meta")) do %>
+        <%= ax_button("Cancelar", admin_seo_settings_path, variant: :ghost) %>
         <%= f.submit "Salvar SEO", class: "ax-btn ax-btn--primary" %>
-      </div>
+      <% end %>
     </div>
 
     <aside class="seo-editor-side">
-      <div class="ax-card tw-mb-3 seo-sticky-panel">
-        <div class="ax-card__body">
-          <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
-            <div>
-              <div class="tw-text-sm tw-text-ink-muted">Análise SEO</div>
-              <div class="tw-font-bold" style="font-size:1.5rem; margin-bottom:0"><%= seo_setting.seo_score.to_i %></div>
+      <% analysis_actions = ax_badge(seo_setting.score_label, tone: seo_setting.seo_score.to_i >= 80 ? :green : seo_setting.seo_score.to_i >= 60 ? :amber : :red) %>
+      <%= ax_operational_panel(eyebrow: "Análise SEO", title: seo_setting.seo_score.to_i.to_s, actions: analysis_actions, class_name: "seo-sticky-panel") do %>
+        <div class="seo-checklist">
+          <div class="seo-check" data-seo-check="title"><i class="bi bi-circle-fill"></i><span>Título com tamanho competitivo</span></div>
+          <div class="seo-check" data-seo-check="description"><i class="bi bi-circle-fill"></i><span>Descrição clara para clique</span></div>
+          <div class="seo-check" data-seo-check="keyword"><i class="bi bi-circle-fill"></i><span>Keyword foco presente</span></div>
+          <div class="seo-check" data-seo-check="canonical"><i class="bi bi-circle-fill"></i><span>URL canônica definida</span></div>
+          <div class="seo-check" data-seo-check="intro"><i class="bi bi-circle-fill"></i><span>Texto introdutório em listagens</span></div>
+          <div class="seo-check" data-seo-check="index"><i class="bi bi-circle-fill"></i><span>Página liberada para indexação</span></div>
+        </div>
+
+        <div class="seo-editor-divider"></div>
+
+        <div class="seo-editor-readability-head">
+          <div>
+            <div class="seo-editor-kicker">Legibilidade</div>
+            <div class="seo-editor-readability-score"><%= readability.score %> - <%= readability.label %></div>
+          </div>
+          <i class="bi bi-body-text seo-editor-readability-icon"></i>
+        </div>
+
+        <div class="seo-checklist">
+          <% readability.checks.each do |_key, item| %>
+            <div class="seo-check <%= item[:ok] ? "is-ok" : "is-warning" %>">
+              <i class="bi bi-circle-fill"></i>
+              <span><%= item[:message] %></span>
             </div>
-            <span class="ax-badge <%= seo_setting.seo_score.to_i >= 80 ? "ax-badge--green" : seo_setting.seo_score.to_i >= 60 ? "ax-badge--amber" : "ax-badge--red" %>">
-              <%= seo_setting.score_label %>
-            </span>
-          </div>
+          <% end %>
+        </div>
 
-          <div class="seo-checklist">
-            <div class="seo-check" data-seo-check="title"><i class="bi bi-circle-fill"></i><span>Título com tamanho competitivo</span></div>
-            <div class="seo-check" data-seo-check="description"><i class="bi bi-circle-fill"></i><span>Descrição clara para clique</span></div>
-            <div class="seo-check" data-seo-check="keyword"><i class="bi bi-circle-fill"></i><span>Keyword foco presente</span></div>
-            <div class="seo-check" data-seo-check="canonical"><i class="bi bi-circle-fill"></i><span>URL canônica definida</span></div>
-            <div class="seo-check" data-seo-check="intro"><i class="bi bi-circle-fill"></i><span>Texto introdutório em listagens</span></div>
-            <div class="seo-check" data-seo-check="index"><i class="bi bi-circle-fill"></i><span>Página liberada para indexação</span></div>
-          </div>
+        <div class="seo-editor-divider"></div>
 
-          <hr>
+        <div class="seo-editor-action-stack">
+          <%= ax_button("Abrir página pública", public_url, variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener", class_name: "tw-gap-2") %>
+          <%= ax_button("Ver sitemap", "#{current_base_url}/sitemap.xml", variant: :ghost, size: :sm, icon: "diagram-3", target: "_blank", rel: "noopener", class_name: "tw-gap-2") %>
+        </div>
+      <% end %>
 
-          <div class="tw-flex tw-justify-between tw-items-center tw-mb-2">
-            <div>
-              <div class="tw-text-sm tw-text-ink-muted">Legibilidade</div>
-              <div class="tw-font-bold"><%= readability.score %> - <%= readability.label %></div>
-            </div>
-            <i class="bi bi-body-text tw-text-primary" style="font-size:1.5rem"></i>
+      <%= ax_operational_panel(eyebrow: "Preview", title: "Prévia no Google") do %>
+        <div class="seo-serp-preview">
+          <div class="seo-serp-url"><%= public_url %></div>
+          <div class="seo-serp-title" data-seo-preview="title"><%= meta_title_value.presence || "Título da página" %></div>
+          <div class="seo-serp-description" data-seo-preview="description"><%= meta_description_value.presence || "Descrição que aparecerá nos resultados de busca." %></div>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Preview", title: "Prévia social") do %>
+        <div class="seo-social-preview">
+          <% if effective_og_image.present? %>
+            <%= image_tag effective_og_image, alt: "Imagem atual para compartilhamento", class: "seo-social-image" %>
+          <% end %>
+          <div class="seo-social-copy">
+            <div class="seo-social-domain"><%= URI.parse(current_base_url).host rescue current_base_url %></div>
+            <div class="seo-social-title" data-seo-preview="ogTitle"><%= seo_setting.og_title.presence || meta_title_value.presence || "Título social" %></div>
+            <div class="seo-social-description" data-seo-preview="ogDescription"><%= seo_setting.og_description.presence || meta_description_value.presence || "Descrição social." %></div>
           </div>
-          <div class="seo-checklist">
-            <% readability.checks.each do |_key, item| %>
-              <div class="seo-check <%= item[:ok] ? "is-ok" : "is-warning" %>">
-                <i class="bi bi-circle-fill"></i>
-                <span><%= item[:message] %></span>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Relacionamento", title: "Links internos sugeridos") do %>
+        <% if internal_link_suggestions.any? %>
+          <div class="seo-link-suggestions">
+            <% internal_link_suggestions.each do |suggestion| %>
+              <%= link_to suggestion.url, target: "_blank", rel: "noopener", class: "seo-link-suggestion" do %>
+                <span class="tw-font-semibold tw-truncate"><%= suggestion.title %></span>
+                <small><%= suggestion.reason %></small>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="seo-editor-empty-copy">Adicione keywords foco para receber sugestões melhores.</p>
+        <% end %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Auditoria", title: "Histórico") do %>
+        <% if change_logs.any? %>
+          <div class="seo-history-list">
+            <% change_logs.each do |log| %>
+              <div class="seo-history-item">
+                <div class="tw-flex tw-justify-between tw-gap-2">
+                  <strong><%= log.event_type == "ai_generate" ? "IA" : "Edição" %></strong>
+                  <small class="tw-text-ink-muted"><%= l(log.created_at, format: :short) %></small>
+                </div>
+                <div class="tw-text-sm tw-text-ink-muted">
+                  <%= log.admin_user&.try(:name).presence || log.admin_user&.email.presence || "Sistema" %>
+                  alterou <%= pluralize(log.changed_fields.keys.size, "campo") %>.
+                </div>
               </div>
             <% end %>
           </div>
-
-          <hr>
-
-          <div class="tw-gap-2" style="display:grid">
-            <%= link_to public_url, target: "_blank", rel: "noopener", class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-              <i class="bi bi-box-arrow-up-right"></i>Abrir página pública
-            <% end %>
-            <%= link_to "#{current_base_url}/sitemap.xml", target: "_blank", rel: "noopener", class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-              <i class="bi bi-diagram-3"></i>Ver sitemap
-            <% end %>
-          </div>
-        </div>
-      </div>
-
-      <div class="ax-card tw-mb-3">
-        <div class="ax-card__body">
-          <h3 class="ax-card__title tw-mb-2">Prévia no Google</h3>
-          <div class="seo-serp-preview">
-            <div class="seo-serp-url"><%= public_url %></div>
-            <div class="seo-serp-title" data-seo-preview="title"><%= meta_title_value.presence || "Título da página" %></div>
-            <div class="seo-serp-description" data-seo-preview="description"><%= meta_description_value.presence || "Descrição que aparecerá nos resultados de busca." %></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="ax-card">
-        <div class="ax-card__body">
-          <h3 class="ax-card__title tw-mb-2">Prévia social</h3>
-          <div class="seo-social-preview">
-            <% if effective_og_image.present? %>
-              <%= image_tag effective_og_image, alt: "Imagem atual para compartilhamento", class: "seo-social-image" %>
-            <% end %>
-            <div class="seo-social-copy">
-              <div class="seo-social-domain"><%= URI.parse(current_base_url).host rescue current_base_url %></div>
-              <div class="seo-social-title" data-seo-preview="ogTitle"><%= seo_setting.og_title.presence || meta_title_value.presence || "Título social" %></div>
-              <div class="seo-social-description" data-seo-preview="ogDescription"><%= seo_setting.og_description.presence || meta_description_value.presence || "Descrição social." %></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="ax-card tw-mt-3">
-        <div class="ax-card__body">
-          <h3 class="ax-card__title tw-mb-2">Links internos sugeridos</h3>
-          <% if internal_link_suggestions.any? %>
-            <div class="seo-link-suggestions">
-              <% internal_link_suggestions.each do |suggestion| %>
-                <%= link_to suggestion.url, target: "_blank", rel: "noopener", class: "seo-link-suggestion" do %>
-                  <span class="tw-font-semibold tw-truncate"><%= suggestion.title %></span>
-                  <small><%= suggestion.reason %></small>
-                <% end %>
-              <% end %>
-            </div>
-          <% else %>
-            <p class="tw-text-sm tw-text-ink-muted">Adicione keywords foco para receber sugestões melhores.</p>
-          <% end %>
-        </div>
-      </div>
-
-      <div class="ax-card tw-mt-3">
-        <div class="ax-card__body">
-          <h3 class="ax-card__title tw-mb-2">Histórico</h3>
-          <% if change_logs.any? %>
-            <div class="seo-history-list">
-              <% change_logs.each do |log| %>
-                <div class="seo-history-item">
-                  <div class="tw-flex tw-justify-between tw-gap-2">
-                    <strong><%= log.event_type == "ai_generate" ? "IA" : "Edição" %></strong>
-                    <small class="tw-text-ink-muted"><%= l(log.created_at, format: :short) %></small>
-                  </div>
-                  <div class="tw-text-sm tw-text-ink-muted">
-                    <%= log.admin_user&.try(:name).presence || log.admin_user&.email.presence || "Sistema" %>
-                    alterou <%= pluralize(log.changed_fields.keys.size, "campo") %>.
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          <% else %>
-            <p class="tw-text-sm tw-text-ink-muted">Nenhuma alteração registrada ainda.</p>
-          <% end %>
-        </div>
-      </div>
+        <% else %>
+          <p class="seo-editor-empty-copy">Nenhuma alteração registrada ainda.</p>
+        <% end %>
+      <% end %>
     </aside>
   </div>
 <% end %>

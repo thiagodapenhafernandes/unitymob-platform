@@ -42,6 +42,8 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
   end
 
   describe "POST /webhooks/whatsapp (recebimento)" do
+    let(:incoming_phone) { "5547999#{SecureRandom.random_number(10_000).to_s.rjust(4, "0")}#{SecureRandom.random_number(10_000).to_s.rjust(4, "0")}" }
+
     let(:payload) do
       {
         object: "whatsapp_business_account",
@@ -52,9 +54,9 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
             value: {
               messaging_product: "whatsapp",
               metadata: { phone_number_id: integration.phone_number_id },
-              contacts: [{ profile: { name: "Maria Silva" }, wa_id: "5547999990000" }],
+              contacts: [{ profile: { name: "Maria Silva" }, wa_id: incoming_phone }],
               messages: [{
-                from: "5547999990000",
+                from: incoming_phone,
                 id: "wamid.TEST123",
                 timestamp: "1700000000",
                 type: "text",
@@ -67,19 +69,21 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
     end
 
     it "cria conversa, mensagem, lead e atividade na timeline" do
+      leads_before = Lead.count
+
       expect {
         post "/webhooks/whatsapp", params: payload, as: :json
       }.to change(WhatsappConversation, :count).by(1)
        .and change(WhatsappMessage, :count).by(1)
-       .and change(Lead, :count).by(1)
 
       expect(response).to have_http_status(:ok)
-      conv = WhatsappConversation.last
-      expect(conv.contact_phone).to eq("5547999990000")
+      conv = WhatsappConversation.find_by!(tenant: integration.tenant, contact_phone: incoming_phone)
+      expect(conv.contact_phone).to eq(incoming_phone)
       expect(conv.contact_name).to eq("Maria Silva")
       expect(conv.unread_count).to eq(1)
       expect(conv.lead).to be_present
       expect(conv.lead.origin).to eq("whatsapp")
+      expect(Lead.count).to be > leads_before
       expect(conv.messages.last.body).to include("ap 302")
       expect(conv.lead.activities.where(kind: "whatsapp_in").count).to eq(1)
     end
@@ -91,7 +95,37 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
       }.not_to change(WhatsappMessage, :count)
     end
 
+    it "persiste url de mídia recebida para imagens" do
+      client = instance_double(Whatsapp::CloudClient)
+      allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+      allow(client).to receive(:media_url).with("media-image-1").and_return(ok: true, url: "https://cdn.example.test/wa-image-1.jpg")
+      allow(client).to receive(:download_media).with("https://cdn.example.test/wa-image-1.jpg").and_return(
+        ok: true,
+        body: "fake-image",
+        content_type: "image/jpeg"
+      )
+
+      image_payload = payload.deep_dup
+      image_payload[:entry][0][:changes][0][:value][:messages] = [{
+        from: incoming_phone,
+        id: "wamid.IMAGE123",
+        timestamp: "1700000000",
+        type: "image",
+        image: { id: "media-image-1", caption: "Foto da fachada" }
+      }]
+
+      post "/webhooks/whatsapp", params: image_payload, as: :json
+
+      expect(response).to have_http_status(:ok)
+      message = WhatsappMessage.find_by!(wa_message_id: "wamid.IMAGE123")
+      expect(message.msg_type).to eq("image")
+      expect(message.body).to eq("Foto da fachada")
+      expect(message.media_url).to eq("https://cdn.example.test/wa-image-1.jpg")
+      expect(message.media_file).to be_attached
+    end
+
     it "atualiza status de mensagem enviada" do
+      allow(Whatsapp::ThreadBroadcaster).to receive(:message_updated)
       conv = WhatsappConversation.create!(tenant: integration.tenant, contact_phone: "5547888880000")
       msg = conv.messages.create!(direction: "outbound", wa_message_id: "wamid.OUT1", status: "sent")
 
@@ -102,6 +136,81 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
 
       expect(msg.reload.status).to eq("read")
       expect(msg.read_at).to be_present
+      expect(Whatsapp::ThreadBroadcaster).to have_received(:message_updated)
+        .with(have_attributes(id: msg.id, status: "read"))
+    end
+
+    it "broadcasta status lido para atualizar a conversa em tempo real" do
+      conv = WhatsappConversation.create!(tenant: integration.tenant, contact_phone: "5547888880001")
+      msg = conv.messages.create!(direction: "outbound", wa_message_id: "wamid.OUT1-RT", status: "sent", body: "Teste status")
+      broadcasts = []
+      allow(ActionCable.server).to receive(:broadcast) do |stream, payload|
+        broadcasts << [stream, payload]
+      end
+
+      post "/webhooks/whatsapp", params: {
+        entry: [{ changes: [{ value: { metadata: { phone_number_id: integration.phone_number_id }, statuses: [{ id: "wamid.OUT1-RT", status: "read", timestamp: "1700000500" }] } }] }]
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(msg.reload.status).to eq("read")
+      update_payload = broadcasts.find { |stream, _payload| stream == "whatsapp_conversation:#{conv.tenant_id}:#{conv.id}:default" }&.last
+      expect(update_payload).to be_present
+      expect(update_payload.dig(:updates, 0, :id)).to eq(msg.id)
+      expect(update_payload.dig(:updates, 0, :html)).to include('data-wa-message-status="read"')
+      expect(update_payload.dig(:updates, 0, :html)).to include('title="Lida"')
+    end
+
+    it "não regride status de mensagem quando webhook chega fora de ordem" do
+      allow(Whatsapp::ThreadBroadcaster).to receive(:message_updated)
+      conv = WhatsappConversation.create!(tenant: integration.tenant, contact_phone: "5547888880003")
+      msg = conv.messages.create!(direction: "outbound", wa_message_id: "wamid.OUT-ORDER", status: "read", read_at: 2.minutes.ago)
+
+      post "/webhooks/whatsapp", params: {
+        entry: [{ changes: [{ value: { metadata: { phone_number_id: integration.phone_number_id }, statuses: [{ id: "wamid.OUT-ORDER", status: "delivered", timestamp: "1700000400" }] } }] }]
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(msg.reload.status).to eq("read")
+      expect(Whatsapp::ThreadBroadcaster).not_to have_received(:message_updated)
+    end
+
+    it "não troca entregue/lida por falha atrasada" do
+      allow(Whatsapp::ThreadBroadcaster).to receive(:message_updated)
+      conv = WhatsappConversation.create!(tenant: integration.tenant, contact_phone: "5547888880004")
+      msg = conv.messages.create!(direction: "outbound", wa_message_id: "wamid.LATE-FAIL", status: "delivered", delivered_at: 2.minutes.ago)
+
+      post "/webhooks/whatsapp", params: {
+        entry: [{
+          changes: [{
+            value: {
+              metadata: { phone_number_id: integration.phone_number_id },
+              statuses: [{ id: "wamid.LATE-FAIL", status: "failed", timestamp: "1700000400", errors: [{ title: "Falha atrasada" }] }]
+            }
+          }]
+        }]
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(msg.reload.status).to eq("delivered")
+      expect(msg.error_message).to be_blank
+      expect(Whatsapp::ThreadBroadcaster).not_to have_received(:message_updated)
+    end
+
+    it "permite recuperar mensagem marcada como falha quando chega status posterior válido" do
+      allow(Whatsapp::ThreadBroadcaster).to receive(:message_updated)
+      conv = WhatsappConversation.create!(tenant: integration.tenant, contact_phone: "5547888880005")
+      msg = conv.messages.create!(direction: "outbound", wa_message_id: "wamid.FAIL-RECOVER", status: "failed", error_message: "Falha temporária")
+
+      post "/webhooks/whatsapp", params: {
+        entry: [{ changes: [{ value: { metadata: { phone_number_id: integration.phone_number_id }, statuses: [{ id: "wamid.FAIL-RECOVER", status: "delivered", timestamp: "1700000500" }] } }] }]
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(msg.reload.status).to eq("delivered")
+      expect(msg.delivered_at).to be_present
+      expect(Whatsapp::ThreadBroadcaster).to have_received(:message_updated)
+        .with(have_attributes(id: msg.id, status: "delivered"))
     end
 
     it "registra aceite Meta em mensagem de campanha quando chega status sent" do
@@ -229,7 +338,7 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
       )
       recipient = campaign.campaign_recipients.create!(
         name: "Maria Importada",
-        phone_number: "5547999990000",
+        phone_number: incoming_phone,
         email: "maria@example.com",
         origin: "planilha",
         source: "spreadsheet"
@@ -271,7 +380,7 @@ RSpec.describe "Webhooks::Whatsapp", type: :request do
       expect(converted_lead.distribution_rule).to eq(rule)
       expect(recipient.conversion_status).to eq("converted")
       expect(campaign.campaign_messages.last.reload.lead).to eq(converted_lead)
-      expect(WhatsappConversation.last.lead).to eq(converted_lead)
+      expect(WhatsappConversation.find_by!(tenant: campaign.tenant, contact_phone: recipient.phone_number).lead).to eq(converted_lead)
       expect(converted_lead.activities.where(kind: "whatsapp_campaign_conversion").count).to eq(1)
       expect(converted_lead.activities.where(kind: "whatsapp_in").count).to eq(1)
     end

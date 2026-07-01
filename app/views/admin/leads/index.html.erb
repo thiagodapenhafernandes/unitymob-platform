@@ -750,6 +750,12 @@
                     <% end %>
                     <span><i class="bi bi-clock"></i><%= l(lead.created_at, format: "%d/%m/%Y %H:%M") %></span>
                   </div>
+                  <% row_labels = lead.preloaded_labels_for(current_admin_user) %>
+                  <% if row_labels.any? %>
+                    <div class="lead-list-row__labels">
+                      <%= render "admin/lead_labels/chips", lead: lead, labels: row_labels %>
+                    </div>
+                  <% end %>
                 </div>
               </div>
 
@@ -786,6 +792,7 @@
                     <i class="bi bi-telephone ax-ico"></i><span>Ligar</span>
                   <% end %>
                 <% end %>
+                <%= render "admin/lead_labels/button", lead: lead, trigger_label: "Etiquetas", trigger_class: "ax-btn ax-btn--sm" %>
                 <%= link_to admin_lead_path(lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
                   <i class="bi bi-eye ax-ico"></i><span>Atender</span>
                 <% end %>

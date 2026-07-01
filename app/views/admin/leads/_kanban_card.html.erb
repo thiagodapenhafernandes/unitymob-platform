@@ -41,9 +41,19 @@
     <div class="ax-board__card-section ax-board__card-section--muted">Contato geral</div>
   <% end %>
 
+  <% card_labels = lead.preloaded_labels_for(current_admin_user) %>
+  <% if card_labels.any? %>
+    <div class="ax-board__card-section ax-board__card-section--labels">
+      <%= render "admin/lead_labels/chips", lead: lead, labels: card_labels %>
+    </div>
+  <% end %>
+
   <div class="ax-board__card-footer">
     <small class="ax-board__card-date"><%= l(lead.created_at, format: "%d/%m/%Y %H:%M") %></small>
-    <%= ax_icon_button label: "Ver detalhes", icon: "eye", url: admin_lead_path(lead) %>
+    <div class="tw-flex tw-items-center tw-gap-1">
+      <%= render "admin/lead_labels/button", lead: lead, trigger_class: "ax-ico-btn", icon_only: true %>
+      <%= ax_icon_button label: "Ver detalhes", icon: "eye", url: admin_lead_path(lead) %>
+    </div>
   </div>
 
   <div class="ax-board__card-mobile">

@@ -1,0 +1,9 @@
+<% if thread_lead&.status.present? %>
+  <%= ax_badge(thread_lead.status.to_s.humanize, tone: :blue) %>
+<% end %>
+<% if thread_actions_summary[:tasks].to_i.positive? %>
+  <%= ax_badge("#{thread_actions_summary[:tasks]} tarefas", tone: :blue) %>
+<% end %>
+<% if thread_summary[:pending_count].positive? %>
+  <%= ax_badge("#{thread_summary[:pending_count]} pendente#{'s' if thread_summary[:pending_count] > 1}", tone: :amber) %>
+<% end %>

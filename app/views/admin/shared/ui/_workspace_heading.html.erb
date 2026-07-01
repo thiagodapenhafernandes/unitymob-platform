@@ -32,7 +32,9 @@
       <% if metrics.any? %>
         <div class="ax-workspace-heading__meta" aria-label="Resumo">
           <% metrics.each do |metric| %>
-            <span><strong><%= metric[:value] %></strong> <%= metric[:label] %></span>
+            <span class="<%= metric[:class_name] %>" <%= tag.attributes(data: metric[:data]) if metric[:data].present? %>>
+              <strong><%= metric[:value] %></strong> <%= metric[:label] %>
+            </span>
           <% end %>
         </div>
       <% end %>

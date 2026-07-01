@@ -19,7 +19,9 @@
       admin_rich_text_assets = admin_controller_path == "admin/habitations" && %w[new edit].include?(admin_action_name)
       admin_fancybox_assets = (
         admin_controller_path == "admin/habitations" && %w[new edit show].include?(admin_action_name)
-      ) || admin_controller_path == "admin/habitation_media"
+      ) || admin_controller_path == "admin/habitation_media" ||
+          admin_controller_path == "admin/whatsapp_inbox" ||
+          (admin_controller_path == "admin/leads" && admin_action_name == "show")
     %>
     
     <%# CSS de framework legado removido — substituído pela camada de compatibilidade (admin_compat) + Tailwind admin %>
@@ -224,6 +226,7 @@
           document.documentElement.classList.add("ax-webhook-settings-aside-collapsed-preload");
         }
       } catch (_) {}
+
     </script>
     <meta name="theme-color" content="#ffffff">
 
@@ -240,80 +243,86 @@
   <% habitation_editor_workspace = (controller_name == 'habitations' && %w[edit new].include?(action_name)) || controller_name == 'habitation_media' %>
   <% distribution_rule_editor_workspace = controller_name == 'distribution_rules' && %w[new edit].include?(action_name) %>
   <% webhook_settings_workspace = controller_name == 'webhook_settings' && action_name == 'index' %>
+  <% whatsapp_workspace = controller_name == 'whatsapp_inbox' %>
+  <% whatsapp_focus_workspace = whatsapp_workspace && params[:workspace].to_s == 'focus' %>
   <% admin_metrics = admin_page_render_metrics %>
-  <body class="ax-app admin-layout <%= 'ax-builder-layout' if builder_layout %> <%= 'ax-habitations-workspace' if habitations_workspace %> <%= 'ax-habitation-editor-workspace' if habitation_editor_workspace %> <%= 'ax-distribution-rule-editor-workspace' if distribution_rule_editor_workspace %> <%= 'ax-webhook-settings-workspace' if webhook_settings_workspace %>"
+  <body class="ax-app admin-layout <%= 'ax-builder-layout' if builder_layout %> <%= 'ax-habitations-workspace' if habitations_workspace %> <%= 'ax-habitation-editor-workspace' if habitation_editor_workspace %> <%= 'ax-distribution-rule-editor-workspace' if distribution_rule_editor_workspace %> <%= 'ax-webhook-settings-workspace' if webhook_settings_workspace %> <%= 'ax-whatsapp-workspace' if whatsapp_workspace %> <%= 'ax-whatsapp-focus-workspace' if whatsapp_focus_workspace %>"
         data-controller="ax-drawer admin-navigation"
         data-admin-render-ms="<%= admin_metrics[:duration_ms] %>"
         data-admin-render-page="<%= admin_metrics[:page] %>">
-    <%# ===== Navbar (novo shell Tailwind) ===== %>
-    <nav class="ax-navbar">
-      <button type="button" class="ax-navbar__toggle" data-action="ax-drawer#toggle" aria-label="Abrir menu">
-        <i class="bi bi-list"></i>
-      </button>
-      <% brand_path = current_admin_user&.system_admin? ? admin_system_path : (tenant_owner? ? admin_root_path : field_root_path) %>
-      <%= link_to(brand_path, class: "ax-navbar__brand") do %>
-        <span class="ax-navbar__brand-mark"><i class="bi bi-buildings"></i></span>
-        <span class="ax-navbar__brand-text"><% if current_admin_user&.system_admin? %>Unitymob <span>Plataforma</span><% else %><%= account_site_name %> <span><%= account_admin_area_name %></span><% end %></span>
-      <% end %>
-
-      <%= render "admin/shared/context_items" %>
-
-      <div class="ax-navbar__spacer"></div>
-
-      <div class="ax-navbar__user" data-controller="ax-dropdown">
-        <button type="button" class="ax-navbar__user-trigger" data-action="ax-dropdown#toggle" data-ax-dropdown-target="trigger" aria-expanded="false" aria-label="Menu do usuário">
-          <span class="ax-navbar__avatar"><i class="bi bi-person"></i></span>
-          <span class="tw-hidden sm:tw-inline"><%= current_admin_user&.name.presence || current_admin_user&.email %></span>
-          <i class="bi bi-chevron-down tw-text-xs tw-text-ink-faint"></i>
+    <% unless whatsapp_focus_workspace %>
+      <%# ===== Navbar (novo shell Tailwind) ===== %>
+      <nav class="ax-navbar">
+        <button type="button" class="ax-navbar__toggle" data-action="ax-drawer#toggle" aria-label="Abrir menu">
+          <i class="bi bi-list"></i>
         </button>
-        <div class="ax-menu" data-ax-dropdown-target="menu" hidden style="right:0; left:auto;">
-          <div class="tw-px-2.5 tw-py-1.5 tw-text-xs tw-text-ink-muted tw-truncate"><%= current_admin_user&.email %></div>
-          <div class="ax-menu__sep"></div>
-          <%= link_to destroy_admin_user_session_path, data: { turbo_method: :delete }, class: "ax-menu__item ax-menu__item--danger" do %>
-            <i class="bi bi-box-arrow-right"></i><span>Sair</span>
-          <% end %>
+        <% brand_path = current_admin_user&.system_admin? ? admin_system_path : (tenant_owner? ? admin_root_path : field_root_path) %>
+        <%= link_to(brand_path, class: "ax-navbar__brand") do %>
+          <span class="ax-navbar__brand-mark"><i class="bi bi-buildings"></i></span>
+          <span class="ax-navbar__brand-text"><% if current_admin_user&.system_admin? %>Unitymob <span>Plataforma</span><% else %><%= account_site_name %> <span><%= account_admin_area_name %></span><% end %></span>
+        <% end %>
+
+        <%= render "admin/shared/context_items" %>
+
+        <div class="ax-navbar__spacer"></div>
+
+        <div class="ax-navbar__user" data-controller="ax-dropdown">
+          <button type="button" class="ax-navbar__user-trigger" data-action="ax-dropdown#toggle" data-ax-dropdown-target="trigger" aria-expanded="false" aria-label="Menu do usuário">
+            <span class="ax-navbar__avatar"><i class="bi bi-person"></i></span>
+            <span class="tw-hidden sm:tw-inline"><%= current_admin_user&.name.presence || current_admin_user&.email %></span>
+            <i class="bi bi-chevron-down tw-text-xs tw-text-ink-faint"></i>
+          </button>
+          <div class="ax-menu" data-ax-dropdown-target="menu" hidden style="right:0; left:auto;">
+            <div class="tw-px-2.5 tw-py-1.5 tw-text-xs tw-text-ink-muted tw-truncate"><%= current_admin_user&.email %></div>
+            <div class="ax-menu__sep"></div>
+            <%= link_to destroy_admin_user_session_path, data: { turbo_method: :delete }, class: "ax-menu__item ax-menu__item--danger" do %>
+              <i class="bi bi-box-arrow-right"></i><span>Sair</span>
+            <% end %>
+          </div>
+        </div>
+      </nav>
+
+      <div class="ax-sidebar-contextbar">
+        <span class="ax-contextbar__title"><i class="bi bi-layout-sidebar"></i><span>Explorer</span></span>
+        <div class="ax-contextbar__tools">
+          <button type="button" class="ax-contextbar__tool ax-contextbar__tool--collapse" data-action="ax-drawer#toggleResponsive" aria-label="Menu lateral" title="Menu lateral">
+            <i class="bi bi-arrow-bar-left"></i>
+          </button>
         </div>
       </div>
-    </nav>
 
-    <div class="ax-sidebar-contextbar">
-      <span class="ax-contextbar__title"><i class="bi bi-layout-sidebar"></i><span>Explorer</span></span>
-      <div class="ax-contextbar__tools">
-        <button type="button" class="ax-contextbar__tool ax-contextbar__tool--collapse" data-action="ax-drawer#toggleResponsive" aria-label="Menu lateral" title="Menu lateral">
-          <i class="bi bi-arrow-bar-left"></i>
-        </button>
-      </div>
-    </div>
+      <% unless habitations_workspace || distribution_rule_editor_workspace || webhook_settings_workspace %>
+        <div class="ax-contextbar">
+          <div class="ax-contextbar__main">
+            <nav class="ax-breadcrumb" aria-label="Contexto atual">
+              <%= admin_contextbar_navigation %>
+            </nav>
 
-    <% unless habitations_workspace || distribution_rule_editor_workspace || webhook_settings_workspace %>
-      <div class="ax-contextbar">
-        <div class="ax-contextbar__main">
-          <nav class="ax-breadcrumb" aria-label="Contexto atual">
-            <%= admin_contextbar_navigation %>
-          </nav>
-
-          <div class="ax-contextbar__actions">
-            <%= admin_contextbar_actions %>
+            <div class="ax-contextbar__actions">
+              <%= admin_contextbar_actions %>
+            </div>
           </div>
+        </div>
+      <% end %>
+
+      <%# Backdrop do drawer (mobile) %>
+      <div class="ax-drawer-backdrop lg:tw-hidden" data-ax-drawer-target="backdrop" hidden data-action="click->ax-drawer#close"></div>
+
+      <%# ===== Sidebar (desktop fixa / mobile drawer) ===== %>
+      <aside class="ax-sidebar" data-ax-drawer-target="panel">
+        <%= render 'admin/shared/sidebar' %>
+      </aside>
+    <% end %>
+
+    <% unless whatsapp_focus_workspace %>
+      <!-- Pull-to-refresh indicator -->
+      <div id="admin-ptr" class="admin-ptr">
+        <div class="admin-ptr-pill">
+          <i id="admin-ptr-icon" class="bi bi-arrow-down"></i>
+          <span id="admin-ptr-label">Arraste para atualizar</span>
         </div>
       </div>
     <% end %>
-
-    <%# Backdrop do drawer (mobile) %>
-    <div class="ax-drawer-backdrop lg:tw-hidden" data-ax-drawer-target="backdrop" hidden data-action="click->ax-drawer#close"></div>
-
-    <%# ===== Sidebar (desktop fixa / mobile drawer) ===== %>
-    <aside class="ax-sidebar" data-ax-drawer-target="panel">
-      <%= render 'admin/shared/sidebar' %>
-    </aside>
-
-    <!-- Pull-to-refresh indicator -->
-    <div id="admin-ptr" class="admin-ptr">
-      <div class="admin-ptr-pill">
-        <i id="admin-ptr-icon" class="bi bi-arrow-down"></i>
-        <span id="admin-ptr-label">Arraste para atualizar</span>
-      </div>
-    </div>
 
     <!-- Content -->
     <main class="ax-main">
