@@ -114,8 +114,8 @@ class SeoSetting < ApplicationRecord
 
   def social_image_url(base_url:, page_image: nil)
     base = base_url.to_s.delete_suffix("/")
-    source = attached_og_image_path.presence ||
-             page_image.presence ||
+    source = page_image.presence ||
+             attached_og_image_path.presence ||
              related_habitation_image_url.presence ||
              "/icon.png"
 
