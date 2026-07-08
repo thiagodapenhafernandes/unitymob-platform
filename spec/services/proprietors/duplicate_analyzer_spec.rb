@@ -41,6 +41,33 @@ RSpec.describe Proprietors::DuplicateAnalyzer do
     expect(phone_candidate.risk).to eq("review_required")
   end
 
+  it "classifica mesmo nome e telefone como automático quando duplicados não têm vínculos" do
+    canonical = create_proprietor(name: "A10", phone_primary: "(47) 99242-1044", vista_code: "26010")
+    duplicate = create_proprietor(name: "A10", mobile_phone: "47992421044", vista_code: "27557")
+    create(:habitation, tenant: tenant, proprietor: canonical, codigo: "91#{SecureRandom.random_number(10**8)}")
+
+    candidates = described_class.new(tenant_scope: Tenant.where(id: tenant.id)).call
+    exact_candidate = candidates.find { |candidate| candidate.match_type == "exact_name_phone" && candidate.match_key == "a10|47992421044" }
+
+    expect(exact_candidate).to be_present
+    expect(exact_candidate.risk).to eq("automatic_candidate")
+    expect(exact_candidate.canonical_id).to eq(canonical.id)
+    expect(exact_candidate.duplicate_ids).to contain_exactly(duplicate.id)
+  end
+
+  it "mantém mesmo nome e telefone em revisão quando duplicado tem vínculo" do
+    canonical = create_proprietor(name: "A10", phone_primary: "(47) 99242-1044", vista_code: "26010")
+    duplicate = create_proprietor(name: "A10", mobile_phone: "47992421044", vista_code: "27557")
+    create(:habitation, tenant: tenant, proprietor: canonical, codigo: "90#{SecureRandom.random_number(10**8)}")
+    create(:habitation, tenant: tenant, proprietor: duplicate, codigo: "89#{SecureRandom.random_number(10**8)}")
+
+    candidates = described_class.new(tenant_scope: Tenant.where(id: tenant.id)).call
+    exact_candidate = candidates.find { |candidate| candidate.match_type == "exact_name_phone" && candidate.match_key == "a10|47992421044" }
+
+    expect(exact_candidate).to be_present
+    expect(exact_candidate.risk).to eq("review_required")
+  end
+
   it "agrupa família de nome para casos como A10 e A10 Empreendimentos" do
     plain = create_proprietor(name: "A10")
     company = create_proprietor(name: "A10 Empreendimentos")

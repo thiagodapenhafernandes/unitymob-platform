@@ -62,10 +62,16 @@ module Proprietors
       indexed = {}
 
       tenant.proprietors.find_each do |proprietor|
+        normalized_name_value = normalized_name(proprietor.name)
+        normalized_phones_value = normalized_phones(proprietor)
+
         add_group(indexed, "cpf_cnpj", proprietor.cpf_cnpj_digits, proprietor)
         add_group(indexed, "email", normalized_email(proprietor.email), proprietor)
-        normalized_phones(proprietor).each { |phone| add_group(indexed, "phone", phone, proprietor) }
-        add_group(indexed, "name", normalized_name(proprietor.name), proprietor)
+        normalized_phones_value.each { |phone| add_group(indexed, "phone", phone, proprietor) }
+        if normalized_name_value.present?
+          normalized_phones_value.each { |phone| add_group(indexed, "exact_name_phone", "#{normalized_name_value}|#{phone}", proprietor) }
+        end
+        add_group(indexed, "name", normalized_name_value, proprietor)
         add_group(indexed, "name_family", company_family_name(proprietor.name), proprietor)
       end
 
@@ -83,7 +89,7 @@ module Proprietors
     def build_candidate(tenant, match_type, match_key, proprietors)
       canonical = proprietors.max_by { |proprietor| canonical_score(tenant, proprietor) }
       duplicates = proprietors - [canonical]
-      risk, reason = classify(match_type, match_key, proprietors)
+      risk, reason = classify(match_type, match_key, proprietors, canonical, duplicates)
 
       Candidate.new(
         tenant_id: tenant.id,
@@ -125,8 +131,16 @@ module Proprietors
       end
     end
 
-    def classify(match_type, match_key, proprietors)
+    def classify(match_type, match_key, proprietors, canonical = nil, duplicates = nil)
       return ["automatic_candidate", "Mesmo CPF/CNPJ ou e-mail"] if %w[cpf_cnpj email].include?(match_type)
+
+      if match_type == "exact_name_phone"
+        if safe_exact_name_phone_merge?(proprietors, canonical, duplicates)
+          return ["automatic_candidate", "Mesmo nome e telefone, sem conflitos e sem vínculos nos duplicados"]
+        end
+
+        return ["review_required", "Mesmo nome e telefone, mas exige revisão por vínculo ou conflito cadastral"]
+      end
 
       if match_type == "phone"
         if proprietors.size > 5
@@ -155,6 +169,18 @@ module Proprietors
       match_key.length <= 3 ||
         proprietors.size > 10 ||
         (match_key.exclude?(" ") && match_key !~ COMPANY_TERMS)
+    end
+
+    def safe_exact_name_phone_merge?(proprietors, canonical, duplicates)
+      return false if canonical.blank? || duplicates.blank?
+      return false if proprietors.any? { |proprietor| linked_records_count(proprietor).positive? && proprietor != canonical }
+
+      non_conflicting_values?(proprietors.map(&:cpf_cnpj_digits)) &&
+        non_conflicting_values?(proprietors.map { |proprietor| normalized_email(proprietor.email) })
+    end
+
+    def non_conflicting_values?(values)
+      values.compact_blank.uniq.size <= 1
     end
 
     def snapshot(proprietor)

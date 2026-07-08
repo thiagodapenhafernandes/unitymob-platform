@@ -67,6 +67,23 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(described_class.resolve({ "attachment" => attachment })).to eq("https://cdn.saluteimoveis.com.br/#{attachment.blob.key}")
   end
 
+  it "resolve anexo privado fora de fotos públicas pelo proxy do Active Storage" do
+    setting = HomeSetting.instance
+    setting.hero_background_desktop.attach(
+      io: StringIO.new("image"),
+      filename: "hero.jpg",
+      content_type: "image/jpeg"
+    )
+    attachment = setting.hero_background_desktop.attachment
+
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment).with(attachment).and_return(nil)
+
+    result = described_class.resolve(setting.hero_background_desktop)
+
+    expect(result).to include("/rails/active_storage/blobs/proxy/")
+    expect(result).to end_with("/hero.jpg")
+  end
+
   def address_attributes
     {
       logradouro: "Rua CDN",

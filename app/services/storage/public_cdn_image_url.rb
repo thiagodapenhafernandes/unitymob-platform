@@ -92,7 +92,7 @@ module Storage
 
       variant_url_for(attachment.blob) ||
         Storage::PublicPropertyPhoto.public_url_for_attachment(attachment) ||
-        original_cdn_url_for_blob(attachment.blob)
+        active_storage_path_for_blob(attachment.blob)
     rescue StandardError
       nil
     end
@@ -107,6 +107,17 @@ module Storage
       Storage::PublicPropertyPhoto.public_url_for_blob(blob)
     rescue StandardError
       nil
+    end
+
+    def active_storage_path_for_blob(blob)
+      return if blob.blank?
+
+      routes = Rails.application.routes.url_helpers
+      if options.fetch(:proxy, true) && routes.respond_to?(:rails_storage_proxy_path)
+        routes.rails_storage_proxy_path(blob, only_path: true)
+      else
+        routes.rails_blob_path(blob, only_path: true)
+      end
     end
 
     # Quando a view pede resize, serve o variant já processado via rota de

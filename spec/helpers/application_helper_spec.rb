@@ -35,7 +35,7 @@ RSpec.describe ApplicationHelper, type: :helper do
       expect(helper.public_image_url(blob)).to eq("https://cdn.saluteimoveis.com.br/#{blob.key}")
     end
 
-    it "gera URL de CDN para anexos Active Storage diretos" do
+    it "gera proxy do Active Storage para anexos privados diretos" do
       setting = HomeSetting.instance
       setting.hero_background_desktop.attach(
         io: StringIO.new("image"),
@@ -44,9 +44,11 @@ RSpec.describe ApplicationHelper, type: :helper do
       )
       attachment = setting.hero_background_desktop.attachment
       allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment).with(attachment).and_return(nil)
-      allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(attachment.blob).and_return("https://cdn.saluteimoveis.com.br/#{attachment.blob.key}")
 
-      expect(helper.public_image_url(setting.hero_background_desktop)).to eq("https://cdn.saluteimoveis.com.br/#{attachment.blob.key}")
+      result = helper.public_image_url(setting.hero_background_desktop)
+
+      expect(result).to include("/rails/active_storage/blobs/proxy/")
+      expect(result).to end_with("/hero.jpg")
     end
   end
 end
