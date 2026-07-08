@@ -81,6 +81,23 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).not_to include("Entrega")
     end
 
+    it "uses the first property photo as the social sharing image" do
+      habitation = create(
+        :habitation,
+        codigo: "OG-IMG",
+        slug: "apartamento-og-image",
+        pictures: [
+          { "url" => public_photo_url("first-property.jpg"), "ordem" => 1, "principal" => true }
+        ]
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(property="og:image" content="#{public_photo_url("first-property.jpg")}"))
+      expect(response.body).not_to include(%(property="og:image" content="http://localhost/icon.png"))
+    end
+
     it "does not expose broker phone or direct whatsapp link in the responsible attendant card" do
       broker = create(:admin_user, name: "Eliane Rosa", creci: "CREI24685", phone: "(47) 99905-8447")
       habitation = create(:habitation, codigo: "BROKER-CARD", slug: "apartamento-broker-card")

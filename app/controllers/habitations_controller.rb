@@ -643,7 +643,7 @@ class HabitationsController < ApplicationController
 
   def share_image_url_for(habitation)
     first_photo = habitation.all_images.first
-    image = first_photo.is_a?(Hash) ? (first_photo["url"] || first_photo[:url]) : first_photo
+    image = helpers.public_image_url(first_photo) if first_photo.present?
     image = habitation.primary_image_url if image.blank?
     return nil if image.blank?
 

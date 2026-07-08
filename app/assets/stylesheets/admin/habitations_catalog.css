@@ -1414,17 +1414,23 @@
     color: #2f5d91;
   }
   .habitations-scope-strip--inspector {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-wrap: initial;
     overflow: visible;
     margin-bottom: 0;
     padding-bottom: 0;
   }
   .habitations-scope-strip--inspector .habitations-scope-chip {
-    flex: 1 1 calc(50% - .35rem);
+    width: 100%;
+    flex: initial;
     justify-content: flex-start;
     min-width: 0;
-    white-space: normal;
-    line-height: 1.15;
+    min-height: 34px;
+    overflow: hidden;
+    line-height: 1;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .habitations-scope-strip--inspector .habitations-scope-chip i {
     flex: 0 0 auto;
@@ -1890,7 +1896,10 @@
     }
 
     body.ax-habitations-workspace .habitations-scope-strip--inspector {
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .36rem;
+      flex-wrap: initial;
       margin: 0;
       overflow: visible;
       padding: 0;
@@ -1898,9 +1907,13 @@
     }
 
     body.ax-habitations-workspace .habitations-scope-strip--inspector .habitations-scope-chip {
-      flex: 1 1 calc(50% - .36rem);
-      line-height: 1.15;
-      white-space: normal;
+      width: 100%;
+      min-width: 0;
+      min-height: 34px;
+      line-height: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
 
     body.ax-habitations-workspace .habitations-results-shell,
