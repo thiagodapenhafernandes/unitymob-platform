@@ -1,4 +1,5 @@
 require_relative "boot"
+require "uri"
 
 require "rails"
 # Pick the frameworks you want:
@@ -35,6 +36,16 @@ module UnitymobCrm
     config.hosts << "localhost"
     config.hosts << "127.0.0.1"
     config.hosts << "dev.unitymob.com.br"
+
+    app_host = ENV["APP_HOST"].to_s.strip
+    if app_host.present?
+      parsed_host = URI.parse(app_host).host if app_host.match?(%r{\Ahttps?://}i)
+      config.hosts << (parsed_host.presence || app_host)
+    end
+
+    ENV.fetch("ADDITIONAL_ALLOWED_HOSTS", "").split(/[,\s]+/).each do |host|
+      config.hosts << host.strip if host.strip.present?
+    end
 
     # Configuration for the application, engines, and railties goes here.
     #

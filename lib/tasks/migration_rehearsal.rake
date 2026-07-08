@@ -95,6 +95,7 @@ module MigrationRehearsal
       "tenant" => tenant_ref(user.tenant),
       "email" => user.email,
       "contact_email" => user.try(:contact_email),
+      "vista_id" => user.try(:vista_id),
       "name" => user.name
     }
   end
@@ -187,7 +188,7 @@ module MigrationRehearsal
       "profiles" => Profile.includes(:tenant, :vertical_profile).order(:tenant_id, :axis, :position, :id).map { |profile| export_profile(profile) },
       "admin_users" => AdminUser.includes(:tenant, :profile, :horizontal_profile, :manager).order(:tenant_id, :id).map { |user| export_admin_user(user) },
       "account_memberships" => defined?(AccountMembership) ? AccountMembership.includes(:tenant, :profile, :horizontal_profile, :manager, :rentals_manager, :primary_admin_user, :member_admin_user, :invited_by, :revoked_by).order(:tenant_id, :id).map { |membership| export_account_membership(membership) } : [],
-      "distribution_rules" => []
+      "distribution_rules" => defined?(DistributionRule) ? DistributionRule.includes(distribution_rule_agents: :admin_user).order(:tenant_id, :id).map { |rule| export_distribution_rule(rule) } : []
     }
   end
 
@@ -277,7 +278,7 @@ module MigrationRehearsal
     payload.fetch("profiles", []).select { |attrs| effective_profile_axis(attrs, payload) == "vertical" }.each do |attrs|
       tenant = find_tenant(attrs["tenant"]) || ensure_tenant!(attrs["tenant"])
       profile = if attrs["key"].present?
-                  Profile.where(tenant_id: tenant.id, axis: "vertical").find_by(key: attrs["key"])
+                  Profile.where(tenant_id: tenant.id).find_by(key: attrs["key"])
                 else
                   Profile.where(tenant_id: tenant.id, axis: "vertical").find_by(name: attrs["name"])
                 end
@@ -295,7 +296,11 @@ module MigrationRehearsal
     payload.fetch("profiles", []).select { |attrs| effective_profile_axis(attrs, payload) == "horizontal" }.each do |attrs|
       tenant = find_tenant(attrs["tenant"]) || ensure_tenant!(attrs["tenant"])
       vertical = find_profile(attrs["vertical_profile"], profile_map)
-      profile = Profile.where(tenant_id: tenant.id, axis: "horizontal", name: attrs["name"], vertical_profile_id: vertical&.id).first
+      profile = if attrs["key"].present?
+                  Profile.where(tenant_id: tenant.id).find_by(key: attrs["key"])
+                else
+                  Profile.where(tenant_id: tenant.id, axis: "horizontal", name: attrs["name"], vertical_profile_id: vertical&.id).first
+                end
       profile ||= Profile.new(tenant: tenant, axis: "horizontal")
       profile.assign_attributes(attrs.slice("name", "permissions", "active", "key", "axis", "locked"))
       profile.tenant = tenant
@@ -313,12 +318,16 @@ module MigrationRehearsal
 
     tenant = find_tenant(ref["tenant"])
     emails = [normalized_email(ref["email"]), normalized_email(ref["contact_email"])].compact.uniq
-    return nil if emails.blank?
+    vista_id = ref["vista_id"].to_s.strip.presence
 
     scope = tenant ? AdminUser.where(tenant_id: tenant.id) : AdminUser.all
-    scope.where("lower(email) IN (:emails) OR lower(contact_email) IN (:emails)", emails: emails).first
+    if emails.present?
+      by_email = scope.where("lower(email) IN (:emails) OR lower(contact_email) IN (:emails)", emails: emails).first
+      return by_email if by_email
+    end
+    scope.find_by(vista_id: vista_id) if vista_id.present? && AdminUser.column_names.include?("vista_id")
   rescue ActiveRecord::StatementInvalid
-    scope.where("lower(email) IN (?)", emails).first
+    emails.present? ? scope.where("lower(email) IN (?)", emails).first : nil
   end
 
   def upsert_admin_users!(payload, profile_map)
@@ -394,6 +403,96 @@ module MigrationRehearsal
       end
       rule.distribution_rule_agents.where.not(id: keep_ids).delete_all if keep_ids.any?
     end
+  end
+
+  def apply_admin_user_assignments!(payload, profile_map)
+    report = {
+      matched: 0,
+      updated: 0,
+      skipped_missing_in_target: [],
+      manager_links_updated: 0,
+      manager_links_missing: []
+    }
+
+    payload.fetch("admin_users", []).each do |attrs|
+      user = find_user(attrs)
+      unless user
+        report[:skipped_missing_in_target] << attrs.slice("email", "contact_email", "vista_id", "name")
+        next
+      end
+
+      tenant = attrs["super_admin"] == true ? nil : (find_tenant(attrs["tenant"]) || ensure_tenant!(attrs["tenant"]))
+      profile = find_profile(attrs["profile"], profile_map)
+      horizontal_profile = find_profile(attrs["horizontal_profile"], profile_map)
+
+      updates = {}
+      %i[manager_id rentals_manager_id primary_admin_user_id].each do |column|
+        updates[column] = nil if AdminUser.column_names.include?(column.to_s) && user.public_send(column).present?
+      end
+      updates[:tenant_id] = tenant&.id if AdminUser.column_names.include?("tenant_id") && user.tenant_id != tenant&.id
+      updates[:profile_id] = profile&.id if AdminUser.column_names.include?("profile_id") && user.profile_id != profile&.id
+      if AdminUser.column_names.include?("horizontal_profile_id") && user.horizontal_profile_id != horizontal_profile&.id
+        updates[:horizontal_profile_id] = horizontal_profile&.id
+      end
+      if AdminUser.column_names.include?("hierarchy_position") && attrs.key?("hierarchy_position") && user.hierarchy_position != attrs["hierarchy_position"]
+        updates[:hierarchy_position] = attrs["hierarchy_position"]
+      end
+      if AdminUser.column_names.include?("leads_view_mode") && attrs.key?("leads_view_mode") && user.leads_view_mode != attrs["leads_view_mode"]
+        updates[:leads_view_mode] = attrs["leads_view_mode"]
+      end
+
+      updates[:updated_at] = Time.current if updates.any?
+      user.update_columns(updates) if updates.any?
+      report[:matched] += 1
+      report[:updated] += 1 if updates.any?
+    end
+
+    payload.fetch("admin_users", []).each do |attrs|
+      user = find_user(attrs)
+      next unless user
+
+      updates = {}
+      {
+        manager_id: attrs["manager"],
+        rentals_manager_id: attrs["rentals_manager"],
+        primary_admin_user_id: attrs["primary_admin_user"]
+      }.each do |column, ref|
+        next unless AdminUser.column_names.include?(column.to_s)
+
+        related = find_user(ref)
+        if ref.present? && related.blank?
+          report[:manager_links_missing] << {
+            "user" => attrs.slice("email", "contact_email", "vista_id", "name"),
+            "column" => column.to_s,
+            "target" => ref.slice("email", "contact_email", "name")
+          }
+        end
+        updates[column] = related&.id if user.public_send(column) != related&.id
+      end
+
+      updates[:updated_at] = Time.current if updates.any?
+      user.update_columns(updates) if updates.any?
+      report[:manager_links_updated] += 1 if updates.any?
+    end
+
+    report
+  end
+
+  def apply_production_configuration!(path:, apply:)
+    payload = read_json!(path)
+    puts "[migration_rehearsal:apply_production_configuration] file=#{path} version=#{payload['version']} apply=#{apply}"
+    puts "[migration_rehearsal:apply_production_configuration] tenants=#{payload.fetch('tenants', []).size} profiles=#{payload.fetch('profiles', []).size} admin_users=#{payload.fetch('admin_users', []).size} distribution_rules=#{payload.fetch('distribution_rules', []).size}"
+    return unless apply
+
+    report = nil
+    ActiveRecord::Base.transaction do
+      payload.fetch("tenants", []).each { |attrs| ensure_tenant!(attrs) }
+      profile_map = upsert_profiles!(payload)
+      report = apply_admin_user_assignments!(payload, profile_map)
+      upsert_distribution_rules!(payload)
+      ensure_system_admin!(apply: true)
+    end
+    puts "[migration_rehearsal:apply_production_configuration] report=#{report.to_json}"
   end
 
   def import_hierarchy!(path:, apply:)
@@ -659,6 +758,17 @@ namespace :migration_rehearsal do
     file = ENV["FILE"].presence || abort("[migration_rehearsal:import_hierarchy] informe FILE=tmp/migration_rehearsal/hierarchy-....json")
     apply = MigrationRehearsal.truthy?(ENV.fetch("APPLY", "false"))
     MigrationRehearsal.import_hierarchy!(path: file, apply: apply)
+  end
+
+  desc "Aplica configurações/perfis/hierarquia preservando identidade dos usuários do banco alvo. Use APPLY=true CONFIRM=<database>."
+  task apply_production_configuration: :environment do
+    file = ENV["FILE"].presence || abort("[migration_rehearsal:apply_production_configuration] informe FILE=tmp/migration_rehearsal/hierarchy-....json")
+    apply = MigrationRehearsal.truthy?(ENV.fetch("APPLY", "false"))
+    database = ActiveRecord::Base.connection.current_database
+    if apply && ENV["CONFIRM"].to_s != database
+      abort "[migration_rehearsal:apply_production_configuration] confirme com CONFIRM=#{database}"
+    end
+    MigrationRehearsal.apply_production_configuration!(path: file, apply: apply)
   end
 
   desc "Puxa dump custom format de produção via SSH para tmp/migration_rehearsal"

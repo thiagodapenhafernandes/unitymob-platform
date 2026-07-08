@@ -2,13 +2,16 @@
 
 ## Deploy
 
-- O deploy de produção deste projeto é feito com Mina pela task padrão:
-  `rvm 3.2.3 do bundle exec mina deploy`
-- Não usar `mina production deploy`: este projeto não define uma task/stage `production`.
-- O ambiente de produção já está configurado em `config/deploy.rb`:
+- O deploy de produção deste projeto é feito com Mina multistage.
+- Para a Salute, usar:
+  `rvm 3.2.3 do bundle exec mina saluteimoveis deploy`
+- Para todos os stages configurados, usar:
+  `rvm 3.2.3 do bundle exec mina all deploy`
+- Não usar `mina production deploy`: este projeto não define um stage `production`.
+- O stage `saluteimoveis` está em `config/deploy/saluteimoveis.rb`:
   branch `master`, servidor `143.110.138.67`, path `/home/salute/deploy`.
-- Para o fluxo `$fazer-deploy`, quando estiver em `develop`, seguir:
-  `develop -> master -> mina deploy`.
+- O repositório de deploy é central:
+  `git@github.com:thiagodapenhafernandes/unitymob-platform.git`.
 
 ## Prevenção de regressões
 
