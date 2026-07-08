@@ -1,6 +1,7 @@
 <%
   conversation = local_assigns.fetch(:conversation)
   messages = Array(local_assigns[:messages])
+  quoted_messages = local_assigns[:quoted_messages]
   thread_context_locals = local_assigns.fetch(:thread_context_locals, {})
   focus_mode = local_assigns.fetch(:focus_mode, false)
   compact_mode = local_assigns.fetch(:compact_mode, false)
@@ -30,6 +31,14 @@
           can_manage_comercial: can_manage_comercial %>
   </div>
 
+  <% pinned = messages.find { |m| m.try(:pinned_at).present? && m.try(:hidden_at).blank? } %>
+  <div class="wa-pinned-bar <%= 'is-hidden' unless pinned %>" data-wa-thread-target="pinnedBar">
+    <i class="bi bi-pin-angle-fill"></i>
+    <button type="button" class="wa-pinned-bar__jump" data-wa-quote-jump="<%= pinned&.id %>">
+      <span data-wa-thread-target="pinnedSnippet"><%= pinned&.preview.to_s.truncate(90) %></span>
+    </button>
+  </div>
+
   <div class="wa-inbox-thread__scroll" data-wa-thread-target="scroll">
     <div data-wa-thread-target="list" class="wa-inbox-thread__list">
       <% if messages.any? %>
@@ -37,6 +46,7 @@
           <%= render "admin/whatsapp_inbox/message_bubble",
                 message: message,
                 compact_mode: compact_mode,
+                quoted_messages: quoted_messages,
                 previous_message: (index.positive? ? messages[index - 1] : nil),
                 next_message: (messages[index + 1] if index < messages.length - 1) %>
         <% end %>
@@ -52,11 +62,35 @@
     </div>
   </div>
 
+  <%# Encaminhar: escolha da conversa de destino %>
+  <div class="wa-forward-modal is-hidden" data-wa-thread-target="forwardModal">
+    <div class="wa-forward-modal__panel">
+      <div class="wa-forward-modal__head">
+        <strong><i class="bi bi-arrow-90deg-right"></i> Encaminhar para...</strong>
+        <button type="button" class="ax-ico-btn" data-action="wa-thread#closeForward" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <input type="search" class="ax-input wa-forward-modal__search" placeholder="Buscar conversa..."
+             data-action="input->wa-thread#filterForwardList" data-wa-thread-target="forwardSearch">
+      <div class="wa-forward-modal__list" data-wa-thread-target="forwardList">
+        <% current_tenant.whatsapp_conversations.recent.where.not(id: conversation.id).limit(40).each do |target| %>
+          <button type="button" data-wa-forward-target-id="<%= target.id %>" data-name="<%= target.display_name.to_s.downcase %>">
+            <span class="wa-forward-modal__avatar"><%= wa_initials(target.display_name) %></span>
+            <span class="wa-forward-modal__copy">
+              <strong><%= target.display_name %></strong>
+              <span><%= target.contact_phone.presence || target.business_scoped_user_id %></span>
+            </span>
+          </button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
   <button type="button"
-          class="ax-btn ax-btn--sm ax-btn--primary wa-inbox-thread__jump is-hidden"
+          class="wa-inbox-thread__jump is-hidden"
           data-action="wa-thread#jumpToLatest"
-          data-wa-thread-target="jump">
+          data-wa-thread-target="jump"
+          title="Ir para o fim"
+          aria-label="Ir para o fim">
     <i class="bi bi-arrow-down ax-ico"></i>
-    <span>Ir para o fim</span>
   </button>
 </div>

@@ -1,49 +1,21 @@
-<div class="wa-inbox-thread__crm-card">
-  <span class="wa-inbox-thread__crm-label">Corretor</span>
-  <% if thread_lead&.admin_user %>
-    <strong><%= thread_lead.admin_user.name %></strong>
-    <small>Lead em <%= thread_lead.status.presence || Lead.default_status %></small>
-  <% elsif thread_lead %>
-    <strong>Sem corretor atribuído</strong>
-    <small>Defina o responsável comercial.</small>
-  <% else %>
-    <strong>Sem lead vinculado</strong>
-    <small>Vincule o lead para identificar o responsável.</small>
-  <% end %>
-</div>
-
-<div class="wa-inbox-thread__crm-card">
-  <span class="wa-inbox-thread__crm-label">Imóvel</span>
-  <% if thread_property %>
-    <strong><%= thread_property.display_title %></strong>
-    <small><%= [thread_property.bairro, thread_property.cidade].compact_blank.join(", ").presence || thread_property.codigo %></small>
-    <%= link_to admin_habitation_path(thread_property), class: "wa-inbox-thread__crm-link" do %>
-      <i class="bi bi-box-arrow-up-right ax-ico"></i><span>Abrir imóvel</span>
+<%# Seção "Imóvel de interesse": pin do imóvel principal (property_id do lead,
+    intacto) + chips removíveis de interesses + autocomplete. Sem lead, nada. %>
+<% if thread_lead %>
+  <%= render layout: "admin/whatsapp_inbox/context_section", locals: { label: "Imóvel de interesse" } do %>
+    <% if thread_property %>
+      <div class="ax-context-pin ax-context-pin--property">
+        <%= link_to admin_habitation_path(thread_property), class: "ax-context-pin__link" do %>
+          <i class="bi bi-house-door"></i>
+          <span><%= thread_property.display_title %></span>
+        <% end %>
+      </div>
+    <% elsif thread_lead.property_id.present? %>
+      <div class="ax-context-pin ax-context-pin--property">
+        <span class="ax-context-pin__link"><i class="bi bi-house-door"></i><span>Imóvel indisponível</span></span>
+      </div>
     <% end %>
-  <% elsif thread_lead&.property_id.present? %>
-    <strong>Imóvel indisponível</strong>
-    <small>O imóvel do lead não está mais acessível.</small>
-  <% elsif thread_lead %>
-    <strong>Sem imóvel específico</strong>
-    <small>Lead geral ou conversa sem imóvel associado.</small>
-  <% else %>
-    <strong>Aguardando vínculo</strong>
-    <small>Vincule o lead para carregar o imóvel.</small>
+    <%= render "admin/whatsapp_inbox/thread_property_interests",
+          lead: thread_lead,
+          show_empty: thread_lead.property_id.blank? %>
   <% end %>
-</div>
-
-<div class="wa-inbox-thread__crm-card">
-  <span class="wa-inbox-thread__crm-label">Próxima ação</span>
-  <% if thread_next_task %>
-    <strong><%= thread_next_task.title %></strong>
-    <% badge = task_badge(thread_next_task) %>
-    <small><%= badge[:label] %></small>
-    <%= ax_badge(badge[:label], tone: badge[:color].to_sym) %>
-  <% elsif thread_lead %>
-    <strong>Nenhuma tarefa pendente</strong>
-    <small>Registre o próximo passo pelas ações abaixo.</small>
-  <% else %>
-    <strong>Sem contexto comercial</strong>
-    <small>Vincule o lead para abrir o funil comercial.</small>
-  <% end %>
-</div>
+<% end %>

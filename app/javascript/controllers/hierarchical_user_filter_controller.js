@@ -9,10 +9,26 @@ export default class extends Controller {
     users: Array,
     lockedUserId: String,
     targetSelectId: String,
-    selectionInputId: String
+    selectionInputId: String,
+    mode: { type: String, default: "single" },
+    area: { type: String, default: "" },
+    selectedIds: { type: Array, default: [] }
+  }
+
+  get multi() {
+    return this.modeValue === "multi"
   }
 
   connect() {
+    this.handleAreaBroadcast = (event) => {
+      this.areaValue = String(event.detail?.value || "")
+      this.childrenByManager = this.buildChildrenIndex()
+      this.populateLevels()
+      this.updateSelectionInput()
+      this.updateTargetSelect()
+      this.dispatch("change", { detail: { userIds: this.filteredTargetUsers().map((user) => user.id), selectedUserId: null } })
+    }
+    window.addEventListener("distribution:area", this.handleAreaBroadcast)
     this.userInteracted = false
     this.markUserInteracted = () => { this.userInteracted = true }
     this.element.addEventListener("pointerdown", this.markUserInteracted, { capture: true })
@@ -21,13 +37,16 @@ export default class extends Controller {
     this.users = this.normalizedUsers()
     this.childrenByManager = this.buildChildrenIndex()
     this.restoredValuesByProfile = this.restoredValuesFromInput()
+    this.restoredMultiIds = new Set((this.hasSelectedIdsValue ? this.selectedIdsValue : []).map(String))
     this.populateLevels({ preserveExisting: false })
     this.restoredValuesByProfile = null
+    this.restoredMultiIds = null
     this.updateSelectionInput()
     this.updateTargetSelect()
   }
 
   disconnect() {
+    window.removeEventListener("distribution:area", this.handleAreaBroadcast)
     this.element.removeEventListener("pointerdown", this.markUserInteracted, { capture: true })
     this.element.removeEventListener("keydown", this.markUserInteracted, { capture: true })
   }
@@ -50,6 +69,11 @@ export default class extends Controller {
   }
 
   populateLevels({ preserveExisting = true } = {}) {
+    if (this.multi) {
+      this.populateLevelsMulti({ preserveExisting })
+      return
+    }
+
     let selectedAncestorId = null
     let cascadeOpen = !this.lockedUserIdValue
 
@@ -86,6 +110,81 @@ export default class extends Controller {
         select.tomselect?.disable()
       }
     })
+  }
+
+  // Modo multi (fila de distribuição): cada nível é multi-select SEM "Todos";
+  // a seleção acima filtra as opções abaixo e a união define os subordinados.
+  populateLevelsMulti({ preserveExisting = true } = {}) {
+    let unionAbove = null // null = nenhum filtro herdado (primeiro nível mostra o perfil inteiro)
+
+    this.levelSelectTargets.forEach((select) => {
+      const profileId = String(select.dataset.profileId || "")
+      const restored = !preserveExisting && this.restoredMultiIds ? [...this.restoredMultiIds] : null
+      const previous = preserveExisting ? this.selectValues(select) : (restored || [])
+      const lockedAtThisLevel = this.lockedUser && String(this.lockedUser.profileId) === profileId
+
+      // Gestores também respeitam a área da regra (venda/locação/ambos) —
+      // nunca engessar: o dataset vem completo e o corte é dinâmico aqui.
+      let options = this.users.filter((user) => String(user.profileId) === profileId && this.actingMatchesArea(user))
+      if (unionAbove) options = options.filter((user) => unionAbove.has(user.id))
+      options.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+
+      this.replaceMultiOptions(select, options)
+
+      let kept
+      if (lockedAtThisLevel) {
+        kept = [this.lockedUser.id]
+        this.setMultiValue(select, kept)
+        select.disabled = true
+        select.tomselect?.disable()
+      } else {
+        kept = previous.filter((value) => options.some((user) => user.id === value))
+        this.setMultiValue(select, kept)
+        select.disabled = false
+        select.tomselect?.enable()
+      }
+
+      if (kept.length > 0) {
+        const allowed = new Set()
+        kept.forEach((id) => {
+          allowed.add(String(id))
+          this.descendantIds(id).forEach((descendantId) => allowed.add(descendantId))
+        })
+        unionAbove = allowed
+      }
+    })
+  }
+
+  replaceMultiOptions(select, users) {
+    if (select.tomselect) {
+      select.tomselect.clearOptions()
+      users.forEach((user) => select.tomselect.addOption({ value: user.id, text: user.name }))
+      select.tomselect.refreshOptions(false)
+      return
+    }
+
+    const previous = new Set(this.selectValues(select))
+    select.innerHTML = ""
+    users.forEach((user) => select.add(new Option(user.name, user.id, previous.has(user.id), previous.has(user.id))))
+  }
+
+  setMultiValue(select, values) {
+    if (select.tomselect) {
+      select.tomselect.setValue(values, true)
+      return
+    }
+
+    Array.from(select.options).forEach((option) => { option.selected = values.includes(String(option.value)) })
+  }
+
+  selectValues(select) {
+    if (select.tomselect) return [].concat(select.tomselect.getValue() || []).map(String).filter(Boolean)
+
+    return Array.from(select.selectedOptions || []).map((option) => String(option.value)).filter(Boolean)
+  }
+
+  allSelectedIds() {
+    return this.levelSelectTargets.flatMap((select) => this.selectValues(select))
   }
 
   updateTargetSelect() {
@@ -138,6 +237,19 @@ export default class extends Controller {
   }
 
   filteredTargetUsers() {
+    if (this.multi) {
+      // união das equipes dos gestores selecionados; sem seleção = vazio
+      const selectedIds = this.allSelectedIds()
+      if (selectedIds.length === 0) return []
+
+      const allowedIds = new Set()
+      selectedIds.forEach((id) => {
+        allowedIds.add(String(id))
+        this.descendantIds(id).forEach((descendantId) => allowedIds.add(descendantId))
+      })
+      return this.users.filter((user) => allowedIds.has(user.id) && this.actingMatchesArea(user))
+    }
+
     const selectedUserId = this.deepestSelectedUserId() || this.lockedUserIdValue
     if (!selectedUserId) return this.users
 
@@ -145,7 +257,16 @@ export default class extends Controller {
     return this.users.filter((user) => allowedIds.has(user.id))
   }
 
+  actingMatchesArea(user) {
+    const area = this.hasAreaValue ? this.areaValue : ""
+    if (area === "venda") return user.actingType === "sales" || user.actingType === "both"
+    if (area === "locacao") return user.actingType === "rentals" || user.actingType === "both"
+    return true
+  }
+
   deepestSelectedUserId() {
+    if (this.multi) return this.allSelectedIds().pop() || ""
+
     return this.levelSelectTargets.map((select) => select.value).filter(Boolean).pop()
   }
 
@@ -217,12 +338,16 @@ export default class extends Controller {
   }
 
   buildChildrenIndex() {
+    const area = this.hasAreaValue ? this.areaValue : ""
     return this.users.reduce((index, user) => {
-      if (!user.managerId) return index
+      const links = []
+      if (area !== "locacao" && user.managerId) links.push(user.managerId)
+      if (area !== "venda" && user.rentalsManagerId) links.push(user.rentalsManagerId)
 
-      const managerId = String(user.managerId)
-      if (!index.has(managerId)) index.set(managerId, [])
-      index.get(managerId).push(user)
+      new Set(links.map(String)).forEach((managerId) => {
+        if (!index.has(managerId)) index.set(managerId, [])
+        index.get(managerId).push(user)
+      })
       return index
     }, new Map())
   }
@@ -233,7 +358,9 @@ export default class extends Controller {
       name: user.name || "",
       profileId: String(user.profile_id || user.profileId || ""),
       profileName: user.profile_name || user.profileName || "",
-      managerId: user.manager_id || user.managerId ? String(user.manager_id || user.managerId) : null
+      managerId: user.manager_id || user.managerId ? String(user.manager_id || user.managerId) : null,
+      rentalsManagerId: user.rentals_manager_id || user.rentalsManagerId ? String(user.rentals_manager_id || user.rentalsManagerId) : null,
+      actingType: user.acting_type || user.actingType || ""
     })).filter((user) => user.id && user.profileId)
   }
 

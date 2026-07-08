@@ -10,10 +10,19 @@ module Field
     before_action :authenticate_admin_user!
     before_action :set_current_tenant
     before_action :enforce_access_control_policy!
+    before_action :enforce_two_factor_setup!
     after_action :record_allowed_field_access
     layout "field"
 
     private
+
+    def enforce_two_factor_setup!
+      return unless current_admin_user
+      return unless current_admin_user.two_factor_required? && !current_admin_user.otp_enabled?
+
+      redirect_to admin_two_factor_settings_path,
+                  alert: "Sua conta exige verificação em duas etapas. Configure para continuar."
+    end
 
     def set_current_tenant
       Current.admin_user = current_admin_user
@@ -64,12 +73,12 @@ module Field
 
     # Exigido pelas rotas de check-in/pings/manual (não pela home).
     def ensure_field_agent!
-      return if current_admin_user&.field_agent_enabled?
+      return if FieldFeatureGate.field_agent_allowed?(current_admin_user, tenant: current_tenant)
 
       if request.format.json?
         render json: { error: "not_a_field_agent" }, status: :forbidden
       else
-        redirect_to field_root_path, alert: "Você não está habilitado como corretor de campo."
+        redirect_to field_root_path, alert: "Check-in indisponível para sua operação."
       end
     end
   end

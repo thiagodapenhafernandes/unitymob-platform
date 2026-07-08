@@ -38,27 +38,36 @@
     </div>
   </div>
 <% else %>
-  <div id="field-status" class="field-status-banner status-neutral"
-       data-controller="field-geolocation"
-       data-field-geolocation-discover-url-value="<%= field_stores_discover_path %>">
-    <div data-field-geolocation-target="statusIcon" class="mb-2">
-      <i class="bi bi-geo-alt" style="font-size: 2.5rem;"></i>
+  <div data-controller="field--geolocation field--checkin"
+       data-field--geolocation-discover-url-value="<%= field_stores_discover_path %>"
+       data-field--checkin-mode-value="new"
+       data-field--checkin-create-url-value="<%= field_check_ins_path %>"
+       data-field--checkin-csrf-value="<%= form_authenticity_token %>">
+    <div id="field-status" class="field-status-banner status-neutral"
+         data-field--geolocation-target="statusBox">
+      <div data-field--geolocation-target="statusIcon" class="mb-2">
+        <i class="bi bi-geo-alt" style="font-size: 2.5rem;"></i>
+      </div>
+      <div data-field--geolocation-target="statusTitle" class="fw-bold fs-5 mb-1">Ative sua localização</div>
+      <div data-field--geolocation-target="statusDescription" class="small">
+        Toque no botão para permitir o GPS e encontrar a loja mais próxima.
+      </div>
     </div>
-    <div data-field-geolocation-target="statusTitle" class="fw-bold fs-5 mb-1">Procurando sua localização…</div>
-    <div data-field-geolocation-target="statusDescription" class="small">
-      Permita o acesso ao GPS para continuar.
-    </div>
-  </div>
 
-  <div data-controller="field-checkin"
-       data-field-checkin-mode-value="new"
-       data-field-checkin-create-url-value="<%= field_check_ins_path %>"
-       data-field-checkin-csrf-value="<%= form_authenticity_token %>">
+    <button type="button"
+            class="btn btn-primary w-100 py-3 fw-bold"
+            data-field--geolocation-target="locationButton"
+            data-action="click->field--geolocation#requestGeolocation">
+      <i class="bi bi-crosshair me-2"></i>Ativar localização
+    </button>
+
     <button class="btn btn-primary w-100 py-3 fw-bold"
+            type="button"
             disabled
-            data-field-geolocation-target="checkinButton"
-            data-field-checkin-target="actionButton"
-            data-action="click->field-checkin#checkIn">
+            hidden
+            data-field--geolocation-target="checkinButton"
+            data-field--checkin-target="actionButton"
+            data-action="click->field--checkin#checkIn">
       <i class="bi bi-box-arrow-in-right me-2"></i>Fazer Check-in
     </button>
   </div>

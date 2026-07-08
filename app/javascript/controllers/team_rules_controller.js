@@ -49,6 +49,7 @@ export default class extends Controller {
       plugins: ['remove_button'],
       placeholder: "Busque e selecione corretores…",
       maxOptions: null,
+      dropdownParent: "body",
       onChange: (value) => this.syncQueue(value),
       onItemRemove: (value) => this.markForDestroy(value)
     })

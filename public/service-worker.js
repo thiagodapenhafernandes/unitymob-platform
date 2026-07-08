@@ -1,5 +1,5 @@
-const CACHE = "salute-admin-cache-v2";
-const offlineFallbackPage = "/admin";
+const CACHE = "salute-admin-cache-v3";
+const offlineFallbackPage = "/offline.html";
 const fieldFallbackPage = "/field";
 
 self.addEventListener("install", function (event) {
@@ -9,14 +9,18 @@ self.addEventListener("install", function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
       console.log("[ServiceWorker] Caching offline page");
-      return cache.addAll([offlineFallbackPage, fieldFallbackPage]);
+      return cache.addAll([offlineFallbackPage, fieldFallbackPage]).catch(function () {});
     })
   );
 });
 
 self.addEventListener("activate", function (event) {
   console.log("[ServiceWorker] Activate");
-  event.waitUntil(clients.claim()); // Take control of clients immediately
+  event.waitUntil(
+    caches.keys().then(function (keys) {
+      return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+    }).then(function () { return clients.claim(); })
+  );
 });
 
 self.addEventListener("fetch", function (event) {
@@ -26,7 +30,9 @@ self.addEventListener("fetch", function (event) {
     event.respondWith(
       fetch(event.request).catch(function () {
         const fallback = event.request.url.includes("/admin/captacoes") ? fieldFallbackPage : offlineFallbackPage;
-        return caches.match(fallback);
+        return caches.match(fallback).then(function (cached) {
+          return cached || caches.match(offlineFallbackPage);
+        });
       })
     );
   }

@@ -1,0 +1,26 @@
+<!-- @dsCard group="Spacing" viewport="700x160" name="Shell & control sizing" subtitle="Fixed 48/40/236 shell; 30px controls; 12px gutter" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;background:#fff;font-family:var(--font-sans);color:var(--ink)}
+.wrap{padding:20px;display:grid;gap:14px}
+.metrics{display:flex;gap:10px;flex-wrap:wrap}
+.chip{display:flex;flex-direction:column;gap:2px;padding:8px 12px;background:var(--surface-soft);border:1px solid var(--line);border-radius:var(--radius-sm)}
+.chip b{font-size:16px;font-variant-numeric:tabular-nums}
+.chip small{font-size:10px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.demo{display:flex;gap:8px;align-items:center}
+</style></head>
+<body><div class="wrap">
+  <div class="metrics">
+    <div class="chip"><b>48px</b><small>Navbar</small></div>
+    <div class="chip"><b>40px</b><small>Context bar</small></div>
+    <div class="chip"><b>236px</b><small>Sidebar</small></div>
+    <div class="chip"><b>30px</b><small>Button</small></div>
+    <div class="chip"><b>34px</b><small>Input</small></div>
+    <div class="chip"><b>12px</b><small>Gutter</small></div>
+  </div>
+  <div class="demo">
+    <button class="ax-btn ax-btn--primary">Salvar</button>
+    <button class="ax-btn ax-btn--sm">Sm</button>
+    <input class="ax-input" style="max-width:180px" placeholder="Input 34px">
+  </div>
+</div></body></html>

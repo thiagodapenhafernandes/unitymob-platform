@@ -43,7 +43,11 @@ class SeoSetting < ApplicationRecord
   end
 
   def self.for_canonical_key(canonical_key)
-    find_by(canonical_key: canonical_key)
+    return if canonical_key.blank?
+
+    Rails.cache.fetch("seo_setting_#{canonical_key}", expires_in: 24.hours) do
+      find_by(canonical_key: canonical_key)
+    end
   end
 
   def self.page_type_label_for(page_type)
@@ -149,6 +153,7 @@ class SeoSetting < ApplicationRecord
   def clear_seo_cache
     Rails.cache.delete("seo_setting_#{page_name}")
     Rails.cache.delete("seo_setting_#{canonical_key}")
+    Footer::QuickLinksService.clear_cache if defined?(Footer::QuickLinksService)
   end
 
   def record_change_log

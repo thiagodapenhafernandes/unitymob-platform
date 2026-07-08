@@ -27,6 +27,28 @@ RSpec.describe CheckIns::CheckOutService do
         expect(reloaded.checkout_latitude).to be_within(0.01).of(-26.99)
         expect(reloaded.checkout_accuracy_meters).to eq(5)
       end
+
+      it "retorna as coordenadas de checkout no check_in devolvido (sem zerar pós-reload)" do
+        result = described_class.new(check_in: check_in, lat: -26.99, lng: -48.63, accuracy: 5).call
+        expect(result[:success]).to be true
+        expect(result[:check_in].checkout_latitude).to be_within(0.01).of(-26.99)
+        expect(result[:check_in].checkout_longitude).to be_within(0.01).of(-48.63)
+      end
+
+      it "é idempotente: um segundo check-out no mesmo registro vira no-op :not_active" do
+        first = described_class.new(check_in: check_in).call
+        expect(first[:success]).to be true
+
+        # Segunda instância operando sobre o mesmo registro (double-tap/retry):
+        # sob lock, revalida ativo e não deve refechar nem duplicar auditoria.
+        second_ref = CheckIn.find(check_in.id)
+        audit_before = CheckinAuditLog.where(check_in_id: check_in.id).count
+
+        second = described_class.new(check_in: second_ref).call
+        expect(second[:success]).to be false
+        expect(second[:error]).to eq(:not_active)
+        expect(CheckinAuditLog.where(check_in_id: check_in.id).count).to eq(audit_before)
+      end
     end
 
     context "com check-in já fechado" do

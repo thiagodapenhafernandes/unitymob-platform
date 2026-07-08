@@ -1,6 +1,6 @@
 module Whatsapp
   class CampaignMessageRetryJob < ApplicationJob
-    queue_as :default
+    queue_as :campaigns
 
     def perform(campaign_message_id, tenant_id: nil)
       campaign_message = campaign_message_scope(tenant_id).find_by(id: campaign_message_id)
@@ -19,7 +19,12 @@ module Whatsapp
     private
 
     def campaign_message_scope(tenant_id)
-      return WhatsappCampaignMessage.all if tenant_id.blank?
+      # fail-closed: sem tenant o job no-opa (e avisa) em vez de operar
+      # cross-tenant. O dispatch sempre passa tenant_id.
+      if tenant_id.blank?
+        Rails.logger.warn("[WhatsappCampaignMessage] job sem tenant_id — ignorado")
+        return WhatsappCampaignMessage.none
+      end
 
       tenant = Tenant.find_by(id: tenant_id)
       tenant ? tenant.whatsapp_campaign_messages : WhatsappCampaignMessage.none

@@ -6,6 +6,30 @@ import {
   monitorForElements
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
 
+// Calibração do arraste de reordenação de fotos. Todos os "números mágicos" da
+// detecção/troca vivem aqui para ajuste fino num só lugar.
+const MEDIA_DRAG_TUNING = {
+  // Margem de detecção ao redor de cada foto (o "espaço útil de observação").
+  hitExpandXRatio: 0.36, hitExpandXMin: 28, hitExpandXMax: 64,
+  hitExpandYRatio: 0.32, hitExpandYMin: 22, hitExpandYMax: 58,
+  // Tolerância para detectar "antes da 1ª" / "depois da última" linha.
+  edgeSlackRatio: 0.34, edgeSlackMin: 36,
+  // Fração do tile que o ponteiro precisa ultrapassar para trocar de
+  // "inserir antes" → "inserir depois". Maior = zona morta central maior =
+  // menos oscilação (0.5 = exatamente o meio).
+  insertAfterFraction: 0.55,
+  // Movimento mínimo (px) para registrar intenção de direção do ponteiro.
+  directionThresholdPx: 1,
+  // HYSTERESIS: distância (px) que o ponteiro precisa andar DESDE a última
+  // reordenação para permitir a próxima. É o que mata os "pulos desenfreados":
+  // o reflow move os tiles sob um ponteiro parado; sem a zona morta, isso
+  // re-dispara reorder em cascata. Suba se ainda pular; baixe se ficar "preso".
+  reorderDeadzonePx: 14,
+  // Animação de reacomodação das fotos vizinhas (FLIP).
+  reorderAnimationMs: 170,
+  reorderAnimationEasing: "cubic-bezier(.2, .8, .2, 1)"
+}
+
 // Connects to data-controller="photo-upload"
 export default class extends Controller {
   static targets = [
@@ -148,14 +172,31 @@ export default class extends Controller {
       directionY: 0,
       lastPointerX: null,
       lastPointerY: null,
-      placementKey: null
+      placementKey: null,
+      lastReorderPointer: null
     }
     item.classList.add("sortable-chosen", "sortable-drag")
     this.previewContainerTarget.classList.add("is-sorting")
     this.startSortableAutoScroll()
   }
 
+  // Aplica imediatamente o último movimento coalescido que ainda não rodou no
+  // rAF — garante que o DOM reflita a posição final ANTES de soltar/commitar
+  // (senão o drop poderia gravar a posição defasada em um frame).
+  flushPendingMediaMove() {
+    if (this.mediaMoveFrame) {
+      window.cancelAnimationFrame(this.mediaMoveFrame)
+      this.mediaMoveFrame = null
+    }
+    const pending = this.pendingMediaMove
+    this.pendingMediaMove = null
+    if (pending && this.mediaDragState) {
+      this.applyMediaPointerMove(pending.item, pending.clientX, pending.clientY)
+    }
+  }
+
   finishMediaDrag(item) {
+    this.flushPendingMediaMove()
     item?.classList.remove("sortable-chosen", "sortable-drag")
     this.previewContainerTarget?.classList?.remove("is-sorting")
     this.clearMediaDropTarget()
@@ -172,10 +213,41 @@ export default class extends Controller {
     const item = source.element
     if (!item || !input) return
 
+    // Autoscroll acompanha o ponteiro imediatamente (barato). O recálculo de
+    // posição — caro: getBoundingClientRect em todos os tiles — é coalescido
+    // para 1x por frame de animação. Sem isso, o onDrag disparava esse cálculo
+    // dezenas de vezes por frame (layout thrashing) e o arraste travava.
     this.handleSortableAutoScrollPointer(input)
 
-    this.updateMediaPointerDirection(input.clientX, input.clientY)
-    const placement = this.mediaPlacementForPointer(item, input.clientX, input.clientY)
+    this.pendingMediaMove = { item, clientX: input.clientX, clientY: input.clientY }
+    if (this.mediaMoveFrame) return
+    this.mediaMoveFrame = window.requestAnimationFrame(() => {
+      this.mediaMoveFrame = null
+      const pending = this.pendingMediaMove
+      this.pendingMediaMove = null
+      if (pending && this.mediaDragState) {
+        this.applyMediaPointerMove(pending.item, pending.clientX, pending.clientY)
+      }
+    })
+  }
+
+  applyMediaPointerMove(item, clientX, clientY) {
+    if (!this.hasPreviewContainerTarget) return
+
+    this.updateMediaPointerDirection(clientX, clientY)
+
+    // Zona morta (hysteresis): só reordena de novo depois que o ponteiro andar
+    // MEDIA_DRAG_TUNING.reorderDeadzonePx desde a última reordenação. Como o
+    // reflow move os tiles sob um ponteiro parado, sem isto o alvo recalculado
+    // flip-flopa entre vizinhos e a foto "pula" sem parar (pior com várias
+    // linhas). A âncora só existe após a 1ª reordenação, então ela nunca atrasa.
+    const anchor = this.mediaDragState?.lastReorderPointer
+    if (anchor) {
+      const moved = Math.hypot(clientX - anchor.x, clientY - anchor.y)
+      if (moved < MEDIA_DRAG_TUNING.reorderDeadzonePx) return
+    }
+
+    const placement = this.mediaPlacementForPointer(item, clientX, clientY)
     this.setMediaDropTarget(placement?.target)
     const referenceItem = this.mediaInsertReference(item, placement)
     const placementKey = referenceItem ? `before:${this.mediaItemKey(referenceItem)}` : "append"
@@ -193,7 +265,10 @@ export default class extends Controller {
       this.previewContainerTarget.appendChild(item)
     }
 
-    if (this.mediaDragState) this.mediaDragState.placementKey = placementKey
+    if (this.mediaDragState) {
+      this.mediaDragState.placementKey = placementKey
+      this.mediaDragState.lastReorderPointer = { x: clientX, y: clientY }
+    }
     this.animateMediaReorder(previousRects, item)
   }
 
@@ -213,6 +288,7 @@ export default class extends Controller {
   commitMediaDrop(source) {
     if (!this.isMediaDragSource(source)) return
 
+    this.flushPendingMediaMove()
     this.recentlyReorderedMedia = true
     this.syncNewFilesFromDom()
     this.updateOrder()
@@ -237,8 +313,9 @@ export default class extends Controller {
   closestMediaItemForPointer(items, pointerX, pointerY) {
     return items.reduce((best, item) => {
       const rect = item.getBoundingClientRect()
-      const expandX = Math.max(28, Math.min(64, rect.width * 0.36))
-      const expandY = Math.max(22, Math.min(58, rect.height * 0.32))
+      const t = MEDIA_DRAG_TUNING
+      const expandX = Math.max(t.hitExpandXMin, Math.min(t.hitExpandXMax, rect.width * t.hitExpandXRatio))
+      const expandY = Math.max(t.hitExpandYMin, Math.min(t.hitExpandYMax, rect.height * t.hitExpandYRatio))
 
       if (
         pointerX < rect.left - expandX ||
@@ -265,7 +342,7 @@ export default class extends Controller {
     const last = items[items.length - 1]
     const firstRect = first.getBoundingClientRect()
     const lastRect = last.getBoundingClientRect()
-    const verticalSlack = Math.max(36, firstRect.height * 0.34)
+    const verticalSlack = Math.max(MEDIA_DRAG_TUNING.edgeSlackMin, firstRect.height * MEDIA_DRAG_TUNING.edgeSlackRatio)
 
     if (pointerY < firstRect.top - verticalSlack) return first
     if (pointerY > lastRect.bottom + verticalSlack) return last
@@ -281,14 +358,16 @@ export default class extends Controller {
     const directionX = this.mediaDragState?.directionX || 0
     const directionY = this.mediaDragState?.directionY || 0
     const horizontalIntent = Math.abs(directionX) >= Math.abs(directionY)
+    const dirThreshold = MEDIA_DRAG_TUNING.directionThresholdPx
+    const fraction = MEDIA_DRAG_TUNING.insertAfterFraction
 
-    if (horizontalIntent && Math.abs(directionX) > 1) return directionX > 0
-    if (!horizontalIntent && Math.abs(directionY) > 1) return directionY > 0
+    if (horizontalIntent && Math.abs(directionX) > dirThreshold) return directionX > 0
+    if (!horizontalIntent && Math.abs(directionY) > dirThreshold) return directionY > 0
 
     const sameRow = pointerY >= rect.top && pointerY <= rect.bottom
-    if (sameRow) return pointerX >= rect.left + rect.width * 0.42
+    if (sameRow) return pointerX >= rect.left + rect.width * fraction
 
-    return pointerY >= rect.top + rect.height * 0.42
+    return pointerY >= rect.top + rect.height * fraction
   }
 
   mediaInsertReference(draggedItem, placement) {
@@ -307,13 +386,14 @@ export default class extends Controller {
 
     const lastX = this.mediaDragState.lastPointerX
     const lastY = this.mediaDragState.lastPointerY
+    const dirThreshold = MEDIA_DRAG_TUNING.directionThresholdPx
     if (typeof lastX === "number") {
       const deltaX = pointerX - lastX
-      if (Math.abs(deltaX) > 1) this.mediaDragState.directionX = deltaX
+      if (Math.abs(deltaX) > dirThreshold) this.mediaDragState.directionX = deltaX
     }
     if (typeof lastY === "number") {
       const deltaY = pointerY - lastY
-      if (Math.abs(deltaY) > 1) this.mediaDragState.directionY = deltaY
+      if (Math.abs(deltaY) > dirThreshold) this.mediaDragState.directionY = deltaY
     }
 
     this.mediaDragState.lastPointerX = pointerX
@@ -345,8 +425,8 @@ export default class extends Controller {
           { transform: "translate(0, 0)" }
         ],
         {
-          duration: 170,
-          easing: "cubic-bezier(.2, .8, .2, 1)",
+          duration: MEDIA_DRAG_TUNING.reorderAnimationMs,
+          easing: MEDIA_DRAG_TUNING.reorderAnimationEasing,
           fill: "both"
         }
       )
@@ -408,6 +488,12 @@ export default class extends Controller {
       window.cancelAnimationFrame(this.sortableAutoScrollFrame)
       this.sortableAutoScrollFrame = null
     }
+
+    if (this.mediaMoveFrame) {
+      window.cancelAnimationFrame(this.mediaMoveFrame)
+      this.mediaMoveFrame = null
+    }
+    this.pendingMediaMove = null
 
     this.sortablePointerY = null
     this.mediaDragState = null

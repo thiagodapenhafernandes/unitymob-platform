@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova regra de distribuição — Unitymob (redesign)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ NAVBAR ============ -->
+<header class="chrome-navbar">
+  <div class="chrome-brand">
+    <span class="chrome-brand__mark"><i class="bi bi-chevron-double-up"></i></span>
+    Unitymob
+  </div>
+  <div class="chrome-navbar__spacer"></div>
+  <button class="chrome-navbar__icon" title="Buscar"><i class="bi bi-search"></i></button>
+  <button class="chrome-navbar__icon" title="Notificações"><i class="bi bi-bell"></i></button>
+  <div class="chrome-avatar">TF</div>
+</header>
+
+<!-- ============ CONTEXT BAR ============ -->
+<div class="chrome-contextbar">
+  <nav class="chrome-breadcrumb">
+    <a href="#">Admin</a>
+    <i class="bi bi-chevron-right"></i>
+    <a href="#">Distribuição</a>
+    <i class="bi bi-chevron-right"></i>
+    <strong>Nova regra</strong>
+  </nav>
+  <div class="chrome-contextbar__spacer"></div>
+  <div class="chrome-actions">
+    <button class="ax-btn ax-btn--sm" data-open-modal="objectiveModal"><i class="bi bi-info-circle"></i><span>Objetivo</span></button>
+    <button class="ax-btn ax-btn--sm"><i class="bi bi-x-lg"></i><span>Cancelar</span></button>
+    <button class="ax-btn ax-btn--primary ax-btn--sm" id="saveBtn"><i class="bi bi-check2"></i><span>Salvar</span></button>
+  </div>
+</div>
+
+<!-- ============ WORKSPACE ============ -->
+<div class="workspace" id="workspace">
+
+  <!-- ===== MAIN ===== -->
+  <main class="workspace-main">
+
+    <!-- Command header -->
+    <div class="command">
+      <span class="command__eyebrow">Distribuição de leads</span>
+      <h1>Nova regra de distribuição</h1>
+      <p>Defina origem, destino, fila, equipe, modo de distribuição, aceite e regras de horário. A regra controla a entrega primária do lead ao corretor.</p>
+    </div>
+
+    <!-- Dados gerais -->
+    <section class="panel">
+      <div class="panel__head">
+        <div class="panel__titles">
+          <span class="panel__eyebrow">Identificação</span>
+          <div class="panel__title">Dados gerais</div>
+        </div>
+        <div class="panel__head-actions">
+          <label class="toggle-chip is-checked" data-toggle>
+            <input type="checkbox" checked>
+            <span class="toggle-chip__switch"></span>
+            <span>Regra ativa</span>
+          </label>
+        </div>
+      </div>
+      <div class="panel__body">
+        <div class="grid-name-type">
+          <div class="field">
+            <label class="field__label">Nome da regra</label>
+            <input class="ax-control" id="ruleName" placeholder="Ex: Vendas Zona Sul - Facebook" value="">
+          </div>
+          <div class="field">
+            <label class="field__label">Tipo de negócio <i class="bi bi-info-circle info" title="Leads sem venda ou locação explícita continuam elegíveis. A ordem das regras decide origens ambíguas, como Meta Ads."></i></label>
+            <select class="ax-control">
+              <option>Venda</option>
+              <option>Locação</option>
+              <option>Ambos</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Fontes dos leads -->
+    <section class="panel">
+      <div class="panel__head">
+        <div class="panel__titles">
+          <span class="panel__eyebrow">Origem</span>
+          <div class="panel__title">Fontes dos leads</div>
+        </div>
+      </div>
+      <div class="panel__body source-panel">
+
+        <!-- Meta Ads -->
+        <section class="source-card source-card--primary">
+          <div class="source__head">
+            <span class="source__icon source__icon--meta"><i class="bi bi-facebook"></i></span>
+            <div class="source__copy">
+              <strong>Meta Ads</strong>
+              <span>Leads capturados por formulários do Facebook e Instagram.</span>
+            </div>
+            <div class="source__actions">
+              <span class="ax-badge ax-badge--green hidden" id="metaBadge">Conectado</span>
+              <label class="toggle-chip" data-toggle data-controls="metaSection" data-summary="meta">
+                <input type="checkbox">
+                <span class="toggle-chip__switch"></span>
+                <span>Ativar</span>
+              </label>
+            </div>
+          </div>
+          <div class="source__body hidden" id="metaSection">
+            <div class="grid-2">
+              <div class="field-group">
+                <div class="field-group__head">
+                  <span class="field-group__title">Páginas do Facebook</span>
+                  <span class="field-group__token">Conta Meta</span>
+                </div>
+                <div class="ms-wrap" data-multiselect="pages"></div>
+              </div>
+              <div class="field-group">
+                <div class="field-group__head">
+                  <span class="field-group__title">Formulários específicos</span>
+                  <span class="field-group__token">Filtros</span>
+                </div>
+                <div class="ms-wrap" data-multiselect="forms"></div>
+                <p class="field__hint" id="formCount">Selecione uma página primeiro</p>
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="field-group__head">
+                <span class="field-group__title">Sincronização</span>
+                <span class="field-group__token">Meta</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <label class="toggle-chip" data-toggle>
+                  <input type="checkbox">
+                  <span class="toggle-chip__switch"></span>
+                  <span>Ativar sincronização</span>
+                </label>
+                <button type="button" class="ax-btn ax-btn--sm"><i class="bi bi-arrow-repeat"></i><span>Sincronizar agora</span></button>
+              </div>
+              <p class="field__hint">Quando ativo, novos formulários criados nas páginas selecionadas entram automaticamente nesta regra.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Webhooks -->
+        <section class="source-card">
+          <div class="source__head">
+            <span class="source__icon"><i class="bi bi-share"></i></span>
+            <div class="source__copy">
+              <strong>Webhooks personalizados</strong>
+              <span>Receba leads enviados por integrações externas com tags de roteamento.</span>
+            </div>
+            <div class="source__actions">
+              <label class="toggle-chip" data-toggle data-controls="webhookSection" data-summary="webhook">
+                <input type="checkbox">
+                <span class="toggle-chip__switch"></span>
+                <span>Ativar</span>
+              </label>
+            </div>
+          </div>
+          <div class="source__body hidden" id="webhookSection">
+            <div class="field-group">
+              <div class="field-group__head">
+                <span class="field-group__title">Tags de filtragem</span>
+                <span class="field-group__token">Webhook</span>
+              </div>
+              <div class="ms-wrap" data-multiselect="tags" data-creatable="true"></div>
+              <p class="field__hint">Leads que chegarem via webhook com estas tags serão processados por esta regra.</p>
+            </div>
+            <details class="disclosure">
+              <summary class="disclosure__summary">
+                <span>Exemplo de payload do webhook</span>
+                <i class="bi bi-chevron-down chevron"></i>
+              </summary>
+              <div class="disclosure__body">
+                <div class="code-snippet">
+                  <div class="code-snippet__title">POST JSON</div>
+                  <pre><code>{
+  "name": "Nome do Lead",
+  "email": "lead@email.com",
+  "phone": "47999999999",
+  "keywords": ["tag-exemplo"]
+}</code></pre>
+                </div>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- Site + Portais -->
+        <div class="source-grid">
+          <section class="source-card source-card--compact">
+            <div class="source__head">
+              <span class="source__icon"><i class="bi bi-globe2"></i></span>
+              <div class="source__copy">
+                <strong>Site</strong>
+                <span>WhatsApp, formulários e conversões do site público.</span>
+              </div>
+              <div class="source__actions">
+                <label class="toggle-chip" data-toggle data-summary="site">
+                  <input type="checkbox">
+                  <span class="toggle-chip__switch"></span>
+                  <span>Ativar</span>
+                </label>
+              </div>
+            </div>
+          </section>
+          <section class="source-card source-card--compact">
+            <div class="source__head">
+              <span class="source__icon"><i class="bi bi-buildings"></i></span>
+              <div class="source__copy">
+                <strong>Portais imobiliários</strong>
+                <span>ZAP, VivaReal e integrações de portais cadastrados.</span>
+              </div>
+              <div class="source__actions">
+                <label class="toggle-chip" data-toggle data-summary="portal">
+                  <input type="checkbox">
+                  <span class="toggle-chip__switch"></span>
+                  <span>Ativar</span>
+                </label>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- Equipe -->
+    <section class="panel" id="team">
+      <div class="panel__head">
+        <div class="panel__titles">
+          <span class="panel__eyebrow">Equipe</span>
+          <div class="panel__title">Corretores e fila</div>
+        </div>
+        <div class="panel__head-actions">
+          <span class="ax-badge ax-badge--gray"><span id="agentCount">0</span> na fila</span>
+        </div>
+      </div>
+      <div class="panel__body">
+        <div class="field">
+          <label class="field__label">Filtrar por hierarquia</label>
+          <select class="ax-control">
+            <option>Todos os perfis</option>
+            <option>Gestor — Zona Sul</option>
+            <option>Gestor — Zona Norte</option>
+          </select>
+          <p class="field__hint">Os níveis são criados pelos perfis verticais da conta. Ao escolher um gestor, a busca lista apenas a equipe dele.</p>
+        </div>
+
+        <div class="field">
+          <label class="field__label">Corretores na regra</label>
+          <div class="ms-wrap" data-multiselect="agents"></div>
+          <p class="field__hint">Selecione qualquer corretor. Ao escolher um gestor, a busca passa a listar apenas a equipe dele, preservando quem já estiver na fila.</p>
+        </div>
+
+        <div class="field">
+          <label class="field__label">Fila de distribuição</label>
+          <div class="agent-list is-empty" id="agentList">
+            <div class="agent-empty">Nenhum corretor na fila. Adicione acima para montar a distribuição.</div>
+          </div>
+          <p class="field__hint">Arraste pelo ícone para reordenar. No modo <strong>Performance</strong> defina os ciclos (peso); no <strong>Rotativo</strong> a ordem define a fila.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Notificações -->
+    <section class="panel">
+      <div class="panel__head">
+        <div class="panel__titles">
+          <span class="panel__eyebrow">Avisos</span>
+          <div class="panel__title">Notificações</div>
+        </div>
+      </div>
+      <div class="panel__body">
+        <div class="option-stack">
+          <label class="toggle-chip" data-toggle data-channel="whatsapp" data-configured="true">
+            <input type="checkbox">
+            <span class="toggle-chip__switch"></span>
+            <span><i class="bi bi-whatsapp" style="color:#1da851"></i> WhatsApp</span>
+          </label>
+          <label class="toggle-chip" data-toggle data-channel="email" data-configured="false"
+                 data-channel-label="E-mail" data-config-path="#"
+                 data-config-instructions="Configure o remetente SMTP em Configurações → E-mail antes de ativar avisos por e-mail.">
+            <input type="checkbox">
+            <span class="toggle-chip__switch"></span>
+            <span><i class="bi bi-envelope"></i> E-mail ao corretor</span>
+          </label>
+          <label class="toggle-chip" data-toggle data-channel="push" data-configured="false"
+                 data-channel-label="Push no PWA" data-config-path="#"
+                 data-config-instructions="Habilite as chaves VAPID e o Service Worker em Configurações → Push antes de ativar.">
+            <input type="checkbox">
+            <span class="toggle-chip__switch"></span>
+            <span><i class="bi bi-phone-vibrate"></i> Push no PWA</span>
+          </label>
+          <label class="toggle-chip" data-toggle data-controls="notifyWebhookSection">
+            <input type="checkbox">
+            <span class="toggle-chip__switch"></span>
+            <span><i class="bi bi-broadcast"></i> Webhook externo</span>
+          </label>
+        </div>
+
+        <div class="hidden" id="notifyWebhookSection">
+          <div class="field-group">
+            <div class="field-group__head">
+              <span class="field-group__title">URLs de disparo</span>
+              <span class="field-group__token">Webhook externo</span>
+            </div>
+            <div class="ms-wrap" data-multiselect="notifyUrls" data-creatable="true"></div>
+            <p class="field__hint">Cada lead distribuído é enviado (POST JSON completo) para todas estas URLs, além de cair na fila do corretor. Digite a URL e tecle Enter.</p>
+            <p class="hidden" id="notifyWebhookError" style="color:var(--danger);font-size:12px;font-weight:650;">
+              <i class="bi bi-exclamation-triangle"></i> Adicione ao menos uma URL de disparo ou desative o Webhook externo.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== ASIDE ===== -->
+  <aside class="workspace-aside">
+    <div class="aside-panel">
+      <!-- collapsed rail -->
+      <div class="aside-rail">
+        <button data-aside-toggle title="Expandir configurações"><i class="bi bi-sliders"></i></button>
+        <span class="rail-label">Configurações da regra</span>
+      </div>
+
+      <div class="aside-panel__header">
+        <span class="token">Distribuição</span>
+        <span class="aside-panel__title">Configuração da regra</span>
+        <button class="aside-collapse-btn" data-aside-toggle title="Recolher"><i class="bi bi-chevron-double-right"></i></button>
+      </div>
+
+      <div class="aside-panel__body">
+        <!-- Modo de distribuição -->
+        <div class="panel">
+          <div class="panel__head">
+            <div class="panel__titles">
+              <span class="panel__eyebrow">Lógica</span>
+              <div class="panel__title">Modo de distribuição</div>
+            </div>
+          </div>
+          <div class="panel__body">
+            <div class="mode-stack" id="modeStack">
+              <label class="mode-card is-selected" data-mode="rotary">
+                <input type="radio" name="mode" value="rotary" checked>
+                <i class="bi bi-arrow-repeat"></i>
+                <div class="mode-card__body">
+                  <strong>Rotativo <button type="button" class="mode-info" title="Entrega para um corretor por vez, seguindo a ordem da fila. Depois que recebe um lead, o corretor vai para o fim da fila."><i class="bi bi-info-circle"></i></button></strong>
+                  <small>Fila sequencial</small>
+                </div>
+                <span class="mode-card__radio"></span>
+              </label>
+              <label class="mode-card" data-mode="performance">
+                <input type="radio" name="mode" value="performance">
+                <i class="bi bi-graph-up"></i>
+                <div class="mode-card__body">
+                  <strong>Performance <button type="button" class="mode-info" title="Escolhe um corretor por sorteio ponderado. Peso maior = mais chance, sem fila fixa."><i class="bi bi-info-circle"></i></button></strong>
+                  <small>Baseado em peso</small>
+                </div>
+                <span class="mode-card__radio"></span>
+              </label>
+              <label class="mode-card" data-mode="shark_tank">
+                <input type="radio" name="mode" value="shark_tank">
+                <i class="bi bi-lightning-charge"></i>
+                <div class="mode-card__body">
+                  <strong>Shark Tank <button type="button" class="mode-info" title="Notifica todos os corretores elegíveis. O primeiro que aceitar assume o lead."><i class="bi bi-info-circle"></i></button></strong>
+                  <small>Primeiro a aceitar</small>
+                </div>
+                <span class="mode-card__radio"></span>
+              </label>
+            </div>
+
+            <div class="field" style="margin-top:14px;">
+              <label class="field__label">Preço <i class="bi bi-info-circle info" title="Filtro opcional pela faixa de valor do lead. Vazio = sem filtro."></i></label>
+              <div class="grid-2">
+                <div class="input-group">
+                  <span class="input-group__affix">R$</span>
+                  <input class="ax-control ax-control--sm" placeholder="Mínimo" inputmode="decimal">
+                </div>
+                <div class="input-group">
+                  <span class="input-group__affix">R$</span>
+                  <input class="ax-control ax-control--sm" placeholder="Máximo" inputmode="decimal">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Check-in -->
+        <div class="panel">
+          <div class="panel__head">
+            <div class="panel__titles">
+              <span class="panel__eyebrow">Campo</span>
+              <div class="panel__title">Check-in geolocalizado</div>
+            </div>
+            <div class="panel__head-actions"><span class="ax-badge ax-badge--gray">Opcional</span></div>
+          </div>
+          <div class="panel__body">
+            <div class="inline-notice inline-notice--neutral">
+              <i class="bi bi-geo-alt"></i>
+              <span>Quando ativo, a regra só distribui para corretores com <strong>check-in ativo</strong>. Tudo desligado por padrão.</span>
+            </div>
+            <div class="option-stack">
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Exigir check-in ativo</span></label>
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Exigir corretor dentro do raio da loja agora</span></label>
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Exigir turno ativo no momento</span></label>
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Excluir check-ins suspeitos</span></label>
+            </div>
+            <div class="field">
+              <label class="field__label">Limitar a uma ou mais lojas</label>
+              <div class="ms-wrap" data-multiselect="stores"></div>
+              <p class="field__hint">Vazio = qualquer loja conta. Selecione 1 ou mais para restringir.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Horários e bolsão -->
+        <div class="panel">
+          <div class="panel__head">
+            <div class="panel__titles">
+              <span class="panel__eyebrow">Horários</span>
+              <div class="panel__title">Horários e bolsão</div>
+            </div>
+          </div>
+          <div class="panel__body">
+            <label class="toggle-chip" data-toggle data-controls="represamentoSection">
+              <input type="checkbox">
+              <span class="toggle-chip__switch"></span>
+              <span>Ativar bolsão (represamento fora do horário)</span>
+            </label>
+
+            <div class="hidden" id="represamentoSection">
+              <table class="schedule-table">
+                <thead>
+                  <tr><th>Dia</th><th class="num">Ativo</th><th>Início</th><th>Fim</th></tr>
+                </thead>
+                <tbody id="scheduleBody"></tbody>
+              </table>
+            </div>
+
+            <label class="toggle-chip" data-toggle data-controls="pocketSection">
+              <input type="checkbox">
+              <span class="toggle-chip__switch"></span>
+              <span>Ativar tempo limite (Pocket)</span>
+            </label>
+
+            <div class="hidden" id="pocketSection">
+              <div class="field">
+                <div class="input-group">
+                  <input class="ax-control" placeholder="30" inputmode="numeric">
+                  <span class="input-group__affix">minutos</span>
+                </div>
+                <p class="field__hint">Tempo que o corretor tem para aceitar o lead antes de ser repassado.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live summary -->
+        <div style="padding:12px;">
+          <div class="summary-card">
+            <div class="summary-card__eyebrow"><i class="bi bi-eye"></i> Resumo da regra</div>
+            <div class="summary-line" id="summaryLine">Configure as fontes e a equipe para ver o resumo.</div>
+            <div class="summary-chips" id="summaryChips"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal-overlay" id="objectiveModal">
+  <div class="modal modal--md">
+    <div class="modal__head">
+      <h3>Qual é o objetivo e para que serve</h3>
+      <button class="modal__close" data-close-modal><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal__body">
+      <div class="objective-intro">
+        <span class="objective-intro__icon"><i class="bi bi-diagram-3"></i></span>
+        <div>
+          <div class="objective-intro__eyebrow">Distribuição vertical</div>
+          <p>Esta regra controla a entrega primária do lead ao corretor. Tudo que envolve origem, destino, fila, represamento, aceite, check-in e horário pertence à Distribuição de Leads.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="channelModal">
+  <div class="modal">
+    <div class="modal__head">
+      <h3>Configure a conexão primeiro</h3>
+      <button class="modal__close" data-close-modal><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="modal__body">
+      <p>O canal <strong id="channelModalName">—</strong> ainda não está configurado e não pode ser ativado.</p>
+      <p class="field__hint" id="channelModalInstructions"></p>
+    </div>
+    <div class="modal__foot">
+      <button class="ax-btn" data-close-modal>Agora não</button>
+      <a href="#" class="ax-btn ax-btn--primary" id="channelModalLink"><i class="bi bi-box-arrow-up-right"></i> Ir para configuração</a>
+    </div>
+  </div>
+</div>
+
+<div class="demo-tag">Preview redesenhado · dinâmicas simuladas</div>
+
+<script src="app.js"></script>
+</body>
+</html>

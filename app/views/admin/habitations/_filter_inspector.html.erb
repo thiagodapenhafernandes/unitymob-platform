@@ -6,14 +6,31 @@
     end
   end
 
-  data_filter_keys = %w[codigo q status categoria]
+  data_filter_keys = %w[codigo empreendimento_codigo corretor_id status categoria min_price max_price]
   location_filter_keys = %w[logradouro numero cep cidade bairro bairro_comercial]
-  business_filter_keys = %w[situacao promotion_status accepts_exchange key_location salute_rental_management min_price max_price]
-  people_filter_keys = %w[empreendimento_codigo corretor_id proprietor_id]
+  business_filter_keys = %w[situacao promotion_status accepts_exchange key_location salute_rental_management]
+  people_filter_keys = %w[proprietor_id]
   feature_filter_keys = %w[face ocupacao_status estado_conservacao regiao_foco banheiros dorms suites vagas area_total_min area_total_max area_privativa_min area_privativa_max]
   media_filter_keys = %w[destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo somente_com_imagens somente_sem_imagens somente_dwv foto_classificacao amenities publicar_imovelweb_2 publicar_lais_ai publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync]
   exchange_filter_keys = %w[permuta_vehicle permuta_property permuta_others permuta_min_value permuta_location permuta_min_dorms permuta_min_suites permuta_min_garagens]
   date_filter_keys = %w[captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim]
+  quick_filter_count = filter_active_count.call(%w[q]) + (params[:scope].present? ? 1 : 0)
+  quick_filters = [
+    { key: "destaque_web", label: "Destaque Web", icon: "star-fill" },
+    { key: "super_destaque", label: "Super Destaque", icon: "stars" },
+    { key: "oportunidade", label: "Oportunidade", icon: "lightning-fill" },
+    { key: "frente_mar", label: "Frente Mar", icon: "building" },
+    { key: "lancamento", label: "Lançamento", icon: "rocket-takeoff" },
+    { key: "na_planta", label: "Na Planta", icon: "rulers" },
+    { key: "mobiliado", label: "Mobiliado", icon: "sofa" },
+    { key: "sacada", label: "Sacada", icon: "layout-sidebar" },
+    { key: "dependencia_empregada", label: "Dependência", icon: "door-closed" },
+    { key: "cozinha_gourmet_churrasqueira", label: "Cozinha gourmet", icon: "fire" },
+    { key: "sol_manha", label: "Sol manhã", icon: "sunrise" },
+    { key: "sol_tarde", label: "Sol tarde", icon: "sunset" },
+    { key: "sol_dia_todo", label: "Sol dia todo", icon: "sun" },
+    { key: "decorado", label: "Decorado", icon: "palette" }
+  ]
 
   data_count = filter_active_count.call(data_filter_keys)
   location_count = filter_active_count.call(location_filter_keys)
@@ -66,19 +83,62 @@
       <% end %>
     </div>
 
+    <%= ax_filter_section(title: "Filtros rápidos", icon: "stars", count: quick_filter_count, open: params[:q].present?) do %>
+      <div class="habitations-inspector-keyword">
+        <%= ax_field_label(nil, nil, text: "Palavra-chave") %>
+        <%= ax_input_group(prefix: ax_icon("search", class_name: "ax-text-muted")) do %>
+          <div class="ax-clearable-control ax-clearable-control--group-item" data-controller="ax-clear-field">
+            <%= f.text_field :q,
+                             value: params[:q],
+                             class: "ax-control",
+                             placeholder: "Empreendimento, endereço, bairro...",
+                             autocomplete: "off",
+                             data: { ax_clear_field_target: "control", action: "input->ax-clear-field#update change->ax-clear-field#update" } %>
+            <button class="ax-clearable-control__button"
+                    type="button"
+                    title="Limpar campo"
+                    aria-label="Limpar Palavra-chave"
+                    data-ax-clear-field-target="button"
+                    data-action="click->ax-clear-field#clear"
+                    hidden>
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="habitations-scope-strip habitations-scope-strip--inspector habitations-scopes">
+        <% quick_filters.each do |quick_filter| %>
+          <%= link_to admin_habitations_path(request.query_parameters.except("page").merge(scope: quick_filter[:key])),
+                      class: "habitations-scope-chip #{params[:scope] == quick_filter[:key] ? 'is-active' : ''}",
+                      data: { turbo_frame: "_top" } do %>
+            <i class="bi bi-<%= quick_filter[:icon] %>"></i> <%= quick_filter[:label] %>
+          <% end %>
+        <% end %>
+
+        <% if params[:scope].present? %>
+          <%= link_to admin_habitations_path(request.query_parameters.except("scope", "page")),
+                      class: "habitations-scope-chip",
+                      data: { turbo_frame: "_top" } do %>
+            <i class="bi bi-x-lg"></i> Limpar rápido
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
     <%= ax_filter_section(title: "Dados", icon: "database", count: data_count, open: true) do %>
-      <%= ax_field_grid columns: 2, gap: :compact, class_name: "ax-filter-section__grid" do %>
+      <%= ax_field_grid columns: 2, gap: :compact, class_name: "ax-filter-section__grid habitations-catalog-data-grid" do %>
         <div class="ax-span-2">
           <%= ax_field_label(nil, nil,
-                text: "Código",
+                text: "Código / Referência",
                 for: "admin_habitation_catalog_code_search") %>
-          <%= ax_input_group(prefix: ax_icon("search", class_name: "ax-text-muted")) do %>
+          <%= ax_input_group(prefix: "#") do %>
             <div class="ax-clearable-control ax-clearable-control--group-item" data-controller="ax-clear-field">
               <%= f.text_field :codigo,
                                value: params[:codigo],
                                id: "admin_habitation_catalog_code_search",
                                class: "ax-control",
-                               placeholder: "Ex.: 54",
+                               placeholder: "Ex.: 8615",
                                autocomplete: "off",
                                data: { ax_clear_field_target: "control", action: "input->ax-clear-field#update change->ax-clear-field#update" } %>
               <button class="ax-clearable-control__button"
@@ -94,32 +154,79 @@
           <% end %>
         </div>
         <div class="ax-span-2">
-          <%= ax_field_label(nil, nil, text: "Palavra-chave") %>
-          <%= ax_input_group(prefix: ax_icon("search", class_name: "ax-text-muted")) do %>
-            <div class="ax-clearable-control ax-clearable-control--group-item" data-controller="ax-clear-field">
-              <%= f.text_field :q,
-                               value: params[:q],
-                               class: "ax-control",
-                               placeholder: "Empreendimento, título, endereço...",
-                               autocomplete: "off",
-                               data: { ax_clear_field_target: "control", action: "input->ax-clear-field#update change->ax-clear-field#update" } %>
-              <button class="ax-clearable-control__button"
-                      type="button"
-                      title="Limpar campo"
-                      aria-label="Limpar Palavra-chave"
-                      data-ax-clear-field-target="button"
-                      data-action="click->ax-clear-field#clear"
-                      hidden>
-                <i class="bi bi-x"></i>
-              </button>
-            </div>
-          <% end %>
+          <%= ax_autocomplete_select_field(clearable: true, form: f,
+                                           method: :empreendimento_codigo,
+                                           label: "Empreendimento",
+                                           choices: @filter_empreendimentos,
+                                           select_options: { include_blank: "Todos", selected: params[:empreendimento_codigo] },
+                                           placeholder: "Selecione empreendimento") %>
         </div>
-        <div>
+        <% if can_filter_by_broker? %>
+          <div class="ax-span-2">
+            <%= ax_autocomplete_select_field(clearable: true, form: f,
+                                             method: :corretor_id,
+                                             label: "Corretor",
+                                             choices: @filter_brokers,
+                                             select_options: { include_blank: "Todos", selected: params[:corretor_id] },
+                                             placeholder: "Selecione corretor") %>
+          </div>
+        <% end %>
+        <div class="ax-span-2 habitations-catalog-data-divider">
+          <span>Recorte</span>
+          <strong>Tipo e status</strong>
+        </div>
+        <div class="ax-span-2">
           <%= ax_autocomplete_select_field(clearable: true, form: f, method: :status, label: "Status", choices: @filter_statuses, select_options: { include_blank: "Todos", selected: params[:status] }, placeholder: "Todos") %>
         </div>
-        <div>
+        <div class="ax-span-2">
           <%= ax_autocomplete_select_field(clearable: true, form: f, method: :categoria, label: "Categoria", choices: @filter_categories, select_options: { include_blank: "Todas", selected: params[:categoria] }, placeholder: "Todas") %>
+        </div>
+        <div class="ax-span-2">
+          <%= ax_field_label(nil, nil, text: "Valor") %>
+          <div class="habitations-catalog-price-stack">
+            <%= ax_input_group(prefix: "R$") do %>
+              <div class="ax-clearable-control ax-clearable-control--group-item" data-controller="ax-clear-field">
+                <%= f.text_field :min_price,
+                                 value: params[:min_price],
+                                 class: "ax-control money-mask",
+                                 placeholder: "Mín.",
+                                 autocomplete: "off",
+                                 inputmode: "numeric",
+                                 pattern: "[0-9.]*",
+                                 data: { controller: "currency-mask", ax_clear_field_target: "control", action: "input->currency-mask#format input->ax-clear-field#update change->ax-clear-field#update" } %>
+                <button class="ax-clearable-control__button"
+                        type="button"
+                        title="Limpar campo"
+                        aria-label="Limpar valor mínimo"
+                        data-ax-clear-field-target="button"
+                        data-action="click->ax-clear-field#clear"
+                        hidden>
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+            <% end %>
+            <%= ax_input_group(prefix: "R$") do %>
+              <div class="ax-clearable-control ax-clearable-control--group-item" data-controller="ax-clear-field">
+                <%= f.text_field :max_price,
+                                 value: params[:max_price],
+                                 class: "ax-control money-mask",
+                                 placeholder: "Máx.",
+                                 autocomplete: "off",
+                                 inputmode: "numeric",
+                                 pattern: "[0-9.]*",
+                                 data: { controller: "currency-mask", ax_clear_field_target: "control", action: "input->currency-mask#format input->ax-clear-field#update change->ax-clear-field#update" } %>
+                <button class="ax-clearable-control__button"
+                        type="button"
+                        title="Limpar campo"
+                        aria-label="Limpar valor máximo"
+                        data-ax-clear-field-target="button"
+                        data-action="click->ax-clear-field#clear"
+                        hidden>
+                  <i class="bi bi-x"></i>
+                </button>
+              </div>
+            <% end %>
+          </div>
         </div>
       <% end %>
     <% end %>
@@ -181,73 +288,12 @@
         <div>
           <%= ax_autocomplete_select_field(clearable: true, form: f, method: :salute_rental_management, label: "Adm. locação", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:salute_rental_management] }, placeholder: "Todos") %>
         </div>
-        <div class="ax-span-2">
-          <%= ax_field_label(nil, nil, text: "Preço") %>
-          <%= ax_input_group(prefix: "R$") do %>
-            <div class="ax-clearable-control ax-clearable-control--group-item" data-controller="ax-clear-field">
-              <%= f.text_field :min_price,
-                               value: params[:min_price],
-                               class: "ax-control money-mask",
-                               placeholder: "Mín.",
-                               autocomplete: "off",
-                               inputmode: "numeric",
-                               pattern: "[0-9.]*",
-                               data: { controller: "currency-mask", ax_clear_field_target: "control", action: "input->currency-mask#format input->ax-clear-field#update change->ax-clear-field#update" } %>
-              <button class="ax-clearable-control__button"
-                      type="button"
-                      title="Limpar campo"
-                      aria-label="Limpar preço mínimo"
-                      data-ax-clear-field-target="button"
-                      data-action="click->ax-clear-field#clear"
-                      hidden>
-                <i class="bi bi-x"></i>
-              </button>
-            </div>
-            <div class="ax-clearable-control ax-clearable-control--group-item" data-controller="ax-clear-field">
-              <%= f.text_field :max_price,
-                               value: params[:max_price],
-                               class: "ax-control money-mask",
-                               placeholder: "Máx.",
-                               autocomplete: "off",
-                               inputmode: "numeric",
-                               pattern: "[0-9.]*",
-                               data: { controller: "currency-mask", ax_clear_field_target: "control", action: "input->currency-mask#format input->ax-clear-field#update change->ax-clear-field#update" } %>
-              <button class="ax-clearable-control__button"
-                      type="button"
-                      title="Limpar campo"
-                      aria-label="Limpar preço máximo"
-                      data-ax-clear-field-target="button"
-                      data-action="click->ax-clear-field#clear"
-                      hidden>
-                <i class="bi bi-x"></i>
-              </button>
-            </div>
-          <% end %>
-        </div>
       <% end %>
     <% end %>
 
-    <%= ax_filter_section(title: "Responsáveis", icon: "people", count: people_count, open: people_count.positive?) do %>
-      <%= ax_field_grid columns: 2, gap: :compact, class_name: "ax-filter-section__grid" do %>
-        <div class="ax-span-2">
-          <%= ax_autocomplete_select_field(clearable: true, form: f,
-                                           method: :empreendimento_codigo,
-                                           label: "Empreendimento",
-                                           choices: @filter_empreendimentos,
-                                           select_options: { include_blank: "Todos", selected: params[:empreendimento_codigo] },
-                                           placeholder: "Selecione empreendimento") %>
-        </div>
-        <% if can_filter_by_broker? %>
-          <div class="ax-span-2">
-            <%= ax_autocomplete_select_field(clearable: true, form: f,
-                                             method: :corretor_id,
-                                             label: "Corretor",
-                                             choices: @filter_brokers,
-                                             select_options: { include_blank: "Todos", selected: params[:corretor_id] },
-                                             placeholder: "Selecione corretor") %>
-          </div>
-        <% end %>
-        <% if can_filter_by_proprietor? %>
+    <% if can_filter_by_proprietor? %>
+      <%= ax_filter_section(title: "Responsáveis", icon: "people", count: people_count, open: people_count.positive?) do %>
+        <%= ax_field_grid columns: 2, gap: :compact, class_name: "ax-filter-section__grid" do %>
           <div class="ax-span-2">
             <%= ax_autocomplete_select_field(clearable: true, form: f,
                                              method: :proprietor_id,

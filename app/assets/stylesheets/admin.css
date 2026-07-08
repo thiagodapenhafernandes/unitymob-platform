@@ -1144,14 +1144,10 @@ body.admin-drawer-catalog-layout .admin-sidebar-offcanvas {
   margin-left: -1px;
 }
 
-.ts-wrapper.multi .ts-control>div {
-  background: var(--admin-primary) !important;
-  color: white !important;
-  border-radius: 4px !important;
-  padding: 1px 6px !important;
-  margin: 1px 4px 1px 0 !important;
-  font-size: 0.75rem;
-}
+/* Tag do multiselect agora é componente do design system:
+   .ax-app .ts-wrapper.multi .ts-control > div.item (admin_tailwind.css).
+   A regra legada daqui (primária sólida + branco, com !important) atropelava
+   o componente em todas as telas — removida. */
 
 .ts-dropdown {
   border-radius: 8px !important;
@@ -1848,15 +1844,19 @@ i.spin {
 }
 
 .ax-media-modal__body .media-gallery-scroll {
-  max-height: min(52vh, 540px);
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
   padding-bottom: 28px;
-  scroll-padding-bottom: 42px;
+  padding-right: 0;
 }
 
+.ax-media-modal__body .habitation-form-ui .media-gallery-scroll,
 .ax-media-modal__body:has(.ax-media-manager--compact) .media-gallery-scroll {
   max-height: none;
+  overflow: visible;
   padding-bottom: 52px;
+  padding-right: 0;
+  overscroll-behavior: auto;
 }
 
 .ax-media-modal__footer-meta {
@@ -2001,8 +2001,55 @@ i.spin {
 
 .lead-property-image {
   width: 100%;
+  height: 100%;
   border-radius: 8px;
-  margin-bottom: 0.5rem;
+  object-fit: cover;
+  display: block;
+}
+
+.lead-property-summary {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.lead-property-summary__media {
+  width: 300px;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  min-height: 180px;
+}
+
+.lead-property-summary__content {
+  min-width: 0;
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+}
+
+.lead-property-summary__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.lead-property-summary__actions .ax-btn {
+  width: 100%;
+}
+
+.google-integration-status {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 767.98px) {
+  .lead-property-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lead-property-summary__media {
+    width: 100%;
+    min-height: 160px;
+  }
 }
 
 .lead-proposal-item {

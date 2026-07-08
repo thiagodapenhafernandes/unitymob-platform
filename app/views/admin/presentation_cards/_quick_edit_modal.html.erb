@@ -1,0 +1,178 @@
+<%#
+  Gerenciador de cartões de apresentação DO CORRETOR logado, sem sair da tela
+  (ax-modal): lista os cartões pessoais, cria novos (outras finalidades),
+  edita e exclui — tudo server-side com return_to (volta para esta página).
+  O template da empresa aparece como referência (edição via Configurações).
+  Tudo que estiver ativo entra automaticamente no ⚡ Respostas rápidas.
+  locals opcionais: trigger_label, trigger_block (botão largura total),
+                    trigger_variant (:menu = item de popover)
+%>
+<%
+  pc_integration = WhatsappBusinessIntegration.current(current_tenant)
+  photo_enabled_globally = pc_integration&.allow_photo_presentation?
+  my_cards = current_admin_user.presentation_cards.personal.ordered
+  system_card = PresentationCard.system_templates.where(tenant_id: current_tenant.id).ordered.first
+  default_greeting = system_card&.greeting.presence || PresentationCard::DEFAULT_GREETING
+  trigger_label = local_assigns[:trigger_label]
+  trigger_block = local_assigns.fetch(:trigger_block, false)
+  trigger_variant = local_assigns[:trigger_variant]
+%>
+<div data-controller="ax-modal" class="<%= trigger_block ? 'tw-block tw-w-full' : 'tw-inline-block' %>">
+  <% if trigger_variant == :hidden %>
+    <button type="button" hidden data-pc-manager-trigger data-action="ax-modal#open" aria-hidden="true" tabindex="-1"></button>
+  <% elsif trigger_variant == :menu %>
+    <button type="button" data-action="ax-modal#open">
+      <i class="bi bi-pencil" style="color:#697586"></i><span><%= trigger_label || "Meus cartões" %></span>
+    </button>
+  <% elsif trigger_block %>
+    <button type="button" class="ax-btn ax-btn--block ax-btn--ghost wa-inbox-thread__schedule-button" data-action="ax-modal#open">
+      <i class="bi bi-person-badge ax-ico"></i><span><%= trigger_label || "Meus cartões" %></span>
+    </button>
+  <% else %>
+    <button type="button" class="ax-btn wa-inbox-thread__schedule-button" data-action="ax-modal#open"
+            title="Meus cartões de apresentação" aria-label="Meus cartões de apresentação">
+      <i class="bi bi-pencil ax-ico"></i>
+    </button>
+  <% end %>
+
+  <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
+    <div class="ax-modal-panel" role="dialog" aria-modal="true">
+      <div class="tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3" style="border-bottom:1px solid #e6e8eb">
+        <strong><i class="bi bi-person-badge ax-ico tw-text-primary"></i> Meus cartões de apresentação</strong>
+        <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+      </div>
+
+      <div class="pc-manager">
+        <div class="tw-flex tw-items-center tw-gap-3">
+          <% if current_admin_user.avatar.attached? %>
+            <%= image_tag current_admin_user.avatar, class: "tw-w-10 tw-h-10 tw-rounded-full tw-object-cover", alt: current_admin_user.name %>
+          <% else %>
+            <span class="ax-avatar" style="width:40px;height:40px;font-size:14px"><%= wa_initials(current_admin_user.name) %></span>
+          <% end %>
+          <div class="tw-min-w-0">
+            <strong class="tw-block tw-truncate"><%= current_admin_user.name %></strong>
+            <span class="tw-text-ink-muted tw-text-sm"><%= current_admin_user.creci.present? ? "CRECI #{current_admin_user.creci}" : "CRECI não informado" %></span>
+          </div>
+        </div>
+
+        <%= ax_inline_notice(tone: :neutral, icon: "magic") do %>
+          Variáveis preenchidas na hora do envio: <code>{nome}</code>, <code>{creci}</code> e <code>{empresa}</code>.
+          A foto vem do avatar do perfil. Seu telefone pessoal nunca é enviado.
+        <% end %>
+
+        <div class="pc-manager__list">
+          <% if system_card %>
+            <div class="pc-item pc-item--system">
+              <div class="pc-item__row">
+                <span class="pc-item__icon"><i class="bi bi-building"></i></span>
+                <div class="pc-item__copy">
+                  <span class="pc-item__label"><%= system_card.label %> <%= ax_badge("Empresa", tone: :neutral) %></span>
+                  <span class="pc-item__preview"><%= system_card.greeting %></span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+          <% my_cards.each do |card| %>
+            <div class="pc-item" data-controller="ax-disclosure">
+              <div class="pc-item__row">
+                <span class="pc-item__icon"><i class="bi bi-person-badge"></i></span>
+                <div class="pc-item__copy">
+                  <span class="pc-item__label">
+                    <%= card.label %>
+                    <%= ax_badge("com foto", tone: :green) if card.use_photo? %>
+                    <%= ax_badge("inativo", tone: :amber) unless card.active? %>
+                  </span>
+                  <span class="pc-item__preview"><%= card.greeting %></span>
+                </div>
+                <button type="button" class="ax-ico-btn" title="Editar cartão" aria-label="Editar cartão"
+                        data-action="ax-disclosure#toggle">
+                  <i class="bi bi-pencil"></i>
+                </button>
+              </div>
+
+              <div class="pc-item__panel" hidden data-ax-disclosure-target="content">
+                <%= form_with url: admin_presentation_card_path(card), method: :patch do %>
+                  <input type="hidden" name="return_to" value="<%= request.fullpath %>">
+                  <div class="tw-grid tw-gap-3">
+                    <div>
+                      <label class="ax-label" for="pc_label_<%= card.id %>">Rótulo (finalidade)</label>
+                      <%= text_field_tag "presentation_card[label]", card.label, id: "pc_label_#{card.id}", class: "ax-input", maxlength: 40, required: true %>
+                    </div>
+                    <div>
+                      <label class="ax-label" for="pc_greeting_<%= card.id %>">Saudação</label>
+                      <%= text_area_tag "presentation_card[greeting]", card.greeting, id: "pc_greeting_#{card.id}", rows: 4, maxlength: 600, required: true, class: "ax-textarea" %>
+                    </div>
+                    <input type="hidden" name="presentation_card[use_photo]" value="0">
+                    <%= ax_switch_field(name: "presentation_card[use_photo]", label: "Enviar com minha foto (avatar do perfil)", checked: card.use_photo?) %>
+                    <input type="hidden" name="presentation_card[active]" value="0">
+                    <%= ax_switch_field(name: "presentation_card[active]", label: "Ativo (aparece nas Respostas rápidas)", checked: card.active?) %>
+                    <div class="tw-flex tw-justify-end">
+                      <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Salvar alterações</button>
+                    </div>
+                  </div>
+                <% end %>
+
+                <div class="pc-item__danger">
+                  <%= button_to admin_presentation_card_path(card), method: :delete, class: "ax-btn ax-btn--sm ax-btn--ghost pc-item__delete", params: { return_to: request.fullpath } do %>
+                    <i class="bi bi-trash ax-ico"></i><span>Excluir cartão</span>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+          <% if my_cards.empty? %>
+            <p class="tw-text-ink-muted tw-text-sm tw-m-0">Você ainda não tem cartão pessoal — crie o primeiro abaixo.</p>
+          <% end %>
+        </div>
+
+        <div class="pc-item pc-item--new" data-controller="ax-disclosure">
+          <button type="button" class="pc-item__new-trigger" data-action="ax-disclosure#toggle">
+            <i class="bi bi-plus-lg"></i><span>Criar novo cartão</span>
+          </button>
+
+          <div class="pc-item__panel" hidden data-ax-disclosure-target="content">
+            <%= form_with url: admin_presentation_cards_path, method: :post do %>
+              <input type="hidden" name="return_to" value="<%= request.fullpath %>">
+              <div class="tw-grid tw-gap-3">
+                <div>
+                  <label class="ax-label" for="pc_label_new">Rótulo (finalidade)</label>
+                  <%= text_field_tag "presentation_card[label]", "", id: "pc_label_new", class: "ax-input", maxlength: 40, required: true, placeholder: "Ex.: Lançamentos, Locação, Alto padrão..." %>
+                </div>
+                <div>
+                  <label class="ax-label" for="pc_greeting_new">Saudação</label>
+                  <%= text_area_tag "presentation_card[greeting]", default_greeting, id: "pc_greeting_new", rows: 4, maxlength: 600, required: true, class: "ax-textarea" %>
+                </div>
+                <input type="hidden" name="presentation_card[use_photo]" value="0">
+                <%= ax_switch_field(name: "presentation_card[use_photo]", label: "Enviar com minha foto (avatar do perfil)", checked: true) %>
+                <input type="hidden" name="presentation_card[active]" value="1">
+                <div class="tw-flex tw-justify-end">
+                  <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Criar cartão</button>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <% unless photo_enabled_globally %>
+          <%= ax_inline_notice(tone: :warning, icon: "image") do %>
+            O envio <strong>com foto</strong> está desativado para a conta — cartões "com foto" saem
+            como texto até ativar em <strong>Configurações → Atendimento WhatsApp</strong>
+            (chave "apresentação com foto")<%= current_admin_user.tenant_owner? ? "." : " — peça ao administrador da conta." %>
+          <% end %>
+        <% end %>
+
+        <% unless current_admin_user.avatar.attached? %>
+          <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+            Sem foto no perfil, cartões "com foto" saem como texto até você subir um avatar.
+          <% end %>
+        <% end %>
+      </div>
+
+      <div class="tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3" style="border-top:1px solid #e6e8eb">
+        <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>

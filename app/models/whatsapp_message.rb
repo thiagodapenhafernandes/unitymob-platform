@@ -3,6 +3,9 @@ class WhatsappMessage < ApplicationRecord
 
   belongs_to :whatsapp_conversation
   belongs_to :admin_user, optional: true
+  # Carimbo de origem: presente quando a mensagem veio de um cartão de
+  # apresentação (auditoria consultável, com ou sem lead).
+  belongs_to :presentation_card, optional: true
   has_one_attached :media_file
 
   DIRECTIONS = %w[inbound outbound].freeze
@@ -23,6 +26,16 @@ class WhatsappMessage < ApplicationRecord
   def audio? = msg_type == "audio"
   def video? = msg_type == "video"
   def attachment_present? = media_file.attached?
+
+  # "Apagar para mim": mensagens ocultas somem do thread do CRM
+  scope :visible, -> { column_names.include?("hidden_at") ? where(hidden_at: nil) : all }
+
+  # Mensagem citada (menu Responder) — resolvida dentro da mesma conversa
+  def replied_message
+    return nil if try(:context_wa_message_id).blank?
+
+    @replied_message ||= whatsapp_conversation.messages.find_by(wa_message_id: context_wa_message_id)
+  end
 
   def media_name
     media_file.attached? ? media_file.filename.to_s : template_name.presence

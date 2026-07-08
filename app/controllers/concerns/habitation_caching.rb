@@ -14,6 +14,25 @@ module HabitationCaching
   end
 
   def cache_show_page(habitation)
-    fresh_when(habitation, public: true)
+    fresh_when(
+      etag: [habitation, public_show_asset_cache_key],
+      last_modified: habitation.updated_at,
+      public: true
+    )
+  end
+
+  def public_show_asset_cache_key
+    [
+      asset_cache_path("tailwind.css"),
+      asset_cache_path("application.css"),
+      asset_cache_path("ax_toast.css"),
+      Rails.root.join("app/views/layouts/application.html.erb").mtime.to_i
+    ].join(":")
+  end
+
+  def asset_cache_path(logical_path)
+    helpers.asset_path(logical_path)
+  rescue StandardError
+    logical_path
   end
 end

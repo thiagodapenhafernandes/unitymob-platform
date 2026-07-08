@@ -3,19 +3,22 @@
   criteria = (profile[:criteria] || {}).with_indifferent_access
   signals = (profile[:signals] || {}).with_indifferent_access
   enabled = settings&.enabled?
+  embedded = local_assigns.fetch(:embedded, false)
 %>
 
-<div class="ax-card tw-mb-4 lead-interest-card">
-  <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
-    <span class="ax-card__title"><i class="bi bi-stars ax-ico"></i> Inteligência de Interesse</span>
-    <% if enabled %>
-      <span class="ax-badge ax-badge--blue"><%= profile[:confidence].to_i %>% confiança</span>
-    <% else %>
-      <span class="ax-badge ax-badge--gray">Desativada</span>
-    <% end %>
-  </div>
+<div class="<%= embedded ? 'lead-interest-card' : 'ax-card tw-mb-4 lead-interest-card' %>">
+  <% unless embedded %>
+    <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
+      <span class="ax-card__title"><i class="bi bi-stars ax-ico"></i> Inteligência de Interesse</span>
+      <% if enabled %>
+        <span class="ax-badge ax-badge--blue"><%= profile[:confidence].to_i %>% confiança</span>
+      <% else %>
+        <span class="ax-badge ax-badge--gray">Desativada</span>
+      <% end %>
+    </div>
+  <% end %>
 
-  <div class="ax-card__body tw-grid tw-gap-3">
+  <div class="<%= embedded ? 'tw-grid tw-gap-3' : 'ax-card__body tw-grid tw-gap-3' %>">
     <% if simulation %>
       <div class="lead-interest-notice">
         <i class="bi bi-beaker"></i>

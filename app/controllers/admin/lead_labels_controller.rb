@@ -45,8 +45,14 @@ class Admin::LeadLabelsController < Admin::BaseController
 
   private
 
+  # Corretor só acessa leads DELE (escopo own/team via accessible_owner_ids);
+  # gestor com escopo total (nil) acessa todos os do tenant.
   def set_lead
-    @lead = current_tenant.leads.find_by(id: params[:lead_id])
+    scope = current_tenant.leads
+    owner_ids = accessible_owner_ids(:leads)
+    scope = scope.where(admin_user_id: owner_ids) unless owner_ids.nil?
+
+    @lead = scope.find_by(id: params[:lead_id])
     return if @lead
 
     render json: { error: "lead_unavailable" }, status: :not_found

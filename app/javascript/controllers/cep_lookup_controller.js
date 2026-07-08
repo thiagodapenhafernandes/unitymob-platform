@@ -16,6 +16,7 @@ import { Controller } from "@hotwired/stimulus"
 //   status        — opcional: elemento para mostrar mensagens de status
 export default class extends Controller {
   static targets = ["cep", "address", "neighborhood", "city", "uf", "number", "button", "status"]
+  static values = { geocodeUrl: String }
 
   connect() {
     // Formata CEP enquanto digita (xxxxx-xxx)
@@ -56,14 +57,11 @@ export default class extends Controller {
       }
 
       this.fillFields(data)
-      this.setStatus("success", `${data.logradouro || ''}, ${data.localidade}/${data.uf}`.replace(/^,\s*/, ""))
+      this.setStatus("success", `${data.logradouro || ''}, ${data.localidade}/${data.uf}. Informe o número para localizar o ponto exato.`.replace(/^,\s*/, ""))
 
       if (this.hasNumberTarget) {
         this.numberTarget.focus()
         this.numberTarget.select && this.numberTarget.select()
-
-        // Geocode automático quando usuário terminar de preencher o número
-        this.bindNumberBlur()
       } else {
         // Sem campo número — já tenta geocodar só com CEP+logradouro
         this.triggerGeocode(data)
@@ -76,17 +74,12 @@ export default class extends Controller {
     }
   }
 
-  bindNumberBlur() {
-    if (this._numberBlurBound) return
-    this._numberBlurBound = true
-    if ((this.numberTarget.dataset.action || "").includes("cep-lookup#geocodeFromNumber")) return
-
-    this.numberTarget.addEventListener("blur", () => this.geocodeFromNumber())
-  }
-
   geocodeFromNumber(event) {
     if (event) event.preventDefault()
-    if (!this.hasNumberTarget || !this.numberTarget.value.trim()) return
+    if (!this.hasNumberTarget || !this.numberTarget.value.trim()) {
+      this.setStatus("warn", "Informe o número do endereço para localizar o ponto exato no mapa.")
+      return
+    }
     if (this.hasAddressTarget && !this.addressTarget.value.trim()) return
     if (this.hasCityTarget && !this.cityTarget.value.trim()) return
 
@@ -101,22 +94,24 @@ export default class extends Controller {
   }
 
   async triggerGeocode(cepData = null) {
-    const query = this.buildGeocodeQuery(cepData)
-    if (!query) return
+    const requests = this.buildGeocodeRequests(cepData)
+    if (requests.length === 0) return
 
-    this.setStatus("info", "Localizando no mapa…")
+    const fullAddress = this.fullAddressLabel(cepData)
+    this.setStatus("info", `Consultando no mapa: ${fullAddress}`)
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(query)}`
-      const res = await fetch(url, { headers: { "Accept": "application/json" } })
-      const list = await res.json()
-      if (!Array.isArray(list) || list.length === 0) {
-        this.setStatus("warn", "Endereço não localizado. Clique no mapa para ajustar.")
+      const result = this.hasGeocodeUrlValue ? await this.serverGeocode() : await this.firstGeocodeResult(requests)
+      if (!result) {
+        this.setStatus("warn", `Endereço não localizado para: ${fullAddress}. Clique no mapa para ajustar.`)
         return
       }
-      const { lat, lon, display_name } = list[0]
-      this.setStatus("success", `Localizado: ${display_name}`)
+      const lat = result.lat || result.latitude
+      const lng = result.lng || result.lon || result.longitude
+      const displayName = result.display_name
+      const feedback = this.locationFeedback(result, displayName, fullAddress)
+      this.setStatus(feedback.kind, feedback.message)
       document.dispatchEvent(new CustomEvent("cep-lookup:geocoded", {
-        detail: { lat: parseFloat(lat), lng: parseFloat(lon) }
+        detail: { lat: parseFloat(lat), lng: parseFloat(lng) }
       }))
     } catch (e) {
       console.error("[cep-lookup] geocode falhou:", e)
@@ -124,20 +119,114 @@ export default class extends Controller {
     }
   }
 
-  buildGeocodeQuery(cepData) {
+  async serverGeocode() {
+    const params = new URLSearchParams({
+      address: this.hasAddressTarget ? this.addressTarget.value : "",
+      number: this.hasNumberTarget ? this.numberTarget.value : "",
+      neighborhood: this.hasNeighborhoodTarget ? this.neighborhoodTarget.value : "",
+      city: this.hasCityTarget ? this.cityTarget.value : "",
+      state: this.hasUfTarget ? this.ufTarget.value : "",
+      zip_code: this.hasCepTarget ? this.cepTarget.value : ""
+    })
+
+    const response = await fetch(`${this.geocodeUrlValue}?${params.toString()}`, {
+      headers: { "Accept": "application/json" }
+    })
+    if (!response.ok) return null
+
+    const data = await response.json()
+    return data.ok ? data : null
+  }
+
+  buildGeocodeRequests(cepData) {
     const parts = []
     const addr = this.hasAddressTarget ? this.addressTarget.value : (cepData?.logradouro || "")
     const num  = this.hasNumberTarget  ? this.numberTarget.value  : ""
     const hood = this.hasNeighborhoodTarget ? this.neighborhoodTarget.value : (cepData?.bairro || "")
     const city = this.hasCityTarget ? this.cityTarget.value : (cepData?.localidade || "")
     const st   = this.hasUfTarget ? this.ufTarget.value : (cepData?.uf || "")
+    const cep = this.hasCepTarget ? this.cepTarget.value.replace(/\D/g, "") : ""
 
     if (addr) parts.push(num ? `${addr}, ${num}` : addr)
     if (hood) parts.push(hood)
     if (city) parts.push(city)
     if (st) parts.push(st)
     parts.push("Brasil")
-    return parts.filter(Boolean).join(", ")
+    const fallbackQuery = parts.filter(Boolean).join(", ")
+
+    const requests = []
+    if (addr && num) {
+      requests.push({
+        street: `${num} ${addr}`,
+        city,
+        state: st,
+        postalcode: cep,
+        country: "Brasil"
+      })
+      requests.push({
+        street: `${addr}, ${num}`,
+        city,
+        state: st,
+        postalcode: cep,
+        country: "Brasil"
+      })
+    }
+    if (fallbackQuery) requests.push({ q: fallbackQuery })
+    return requests
+  }
+
+  fullAddressLabel(cepData = null) {
+    const addr = this.hasAddressTarget ? this.addressTarget.value : (cepData?.logradouro || "")
+    const num  = this.hasNumberTarget ? this.numberTarget.value : ""
+    const hood = this.hasNeighborhoodTarget ? this.neighborhoodTarget.value : (cepData?.bairro || "")
+    const city = this.hasCityTarget ? this.cityTarget.value : (cepData?.localidade || "")
+    const st   = this.hasUfTarget ? this.ufTarget.value : (cepData?.uf || "")
+    const cep  = this.hasCepTarget ? this.cepTarget.value : ""
+
+    const streetLine = [addr, num].filter(Boolean).join(", ")
+    const cityLine = [city, st].filter(Boolean).join("/")
+    return [streetLine, hood, cityLine, cep, "Brasil"].filter(Boolean).join(" - ")
+  }
+
+  async firstGeocodeResult(requests) {
+    for (const request of requests) {
+      const params = new URLSearchParams({ format: "json", limit: "1", countrycodes: "br", addressdetails: "1" })
+      Object.entries(request).forEach(([key, value]) => {
+        if (value) params.set(key, value)
+      })
+
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+        headers: { "Accept": "application/json" }
+      })
+      const list = await res.json()
+      if (Array.isArray(list) && list.length > 0) return list[0]
+    }
+    return null
+  }
+
+  locationFeedback(result, displayName, fullAddress) {
+    const requestedNumber = this.hasNumberTarget ? this.numberTarget.value.trim() : ""
+    const foundNumber = (result?.house_number || result?.address?.house_number)?.toString()
+    const provider = result?.provider === "google" ? "Google Maps" : "OpenStreetMap"
+    const precision = result?.precision?.toString()
+
+    if (requestedNumber && foundNumber && foundNumber === requestedNumber && ["rooftop", "house_number"].includes(precision)) {
+      return { kind: "success", message: `Localizado com precisão pelo ${provider}: ${displayName}` }
+    }
+
+    if (requestedNumber && foundNumber && foundNumber === requestedNumber) {
+      return { kind: "success", message: `Localizado no número ${requestedNumber} pelo ${provider}: ${displayName}` }
+    }
+
+    if (requestedNumber && !foundNumber) {
+      return { kind: "warn", message: `Consulta feita com número: ${fullAddress}. A base do ${provider} retornou só a rua, sem confirmar o número ${requestedNumber}. Clique no mapa ou arraste o marcador para o ponto exato.` }
+    }
+
+    if (requestedNumber && foundNumber !== requestedNumber) {
+      return { kind: "warn", message: `Consulta feita com número: ${fullAddress}. A base do ${provider} retornou o número ${foundNumber} em vez de ${requestedNumber}. Clique no mapa ou arraste o marcador para o ponto exato.` }
+    }
+
+    return { kind: "warn", message: `Localizado: ${displayName}. Informe o número para ter ajuste fino.` }
   }
 
   setLoading(isLoading) {

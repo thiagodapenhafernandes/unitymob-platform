@@ -40,7 +40,7 @@ class LeadMailer < ApplicationMailer
     @contact = Leads::ContactLinks.new(@lead, @corretor)
 
     mail(
-      to: @corretor.email,
+      to: @corretor.notification_email,
       subject: "Novo lead atribuído a você: #{@lead.display_name}"
     )
   end

@@ -1,0 +1,280 @@
+.public-development-show {
+  --public-development-primary: var(--blue-three, #053c5e);
+  --public-development-primary-strong: var(--blue-one, #022b3a);
+  --public-development-accent: var(--golden-one, #bfab25);
+  --public-development-accent-strong: var(--golden-two, #d8c63a);
+  --public-development-surface: #ffffff;
+  --public-development-muted: #64748b;
+  --public-development-line: rgba(2, 43, 58, 0.11);
+  background: #f4f7fa;
+  color: #0f172a;
+  font-family: "Open Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.public-development-show .container-custom {
+  max-width: 1180px;
+}
+
+.public-development-show__hero {
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.public-development-show__hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 42%;
+  background: linear-gradient(180deg, rgba(244, 247, 250, 0), #f4f7fa 96%);
+  pointer-events: none;
+}
+
+.public-development-show__hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.public-development-show__breadcrumb {
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.public-development-show__breadcrumb::-webkit-scrollbar {
+  display: none;
+}
+
+.public-development-show__title {
+  max-width: 880px;
+  font-family: Raleway, "Open Sans", sans-serif;
+  letter-spacing: 0;
+  line-height: 1.06;
+}
+
+.public-development-show__hero-meta {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.public-development-show__availability {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 10px;
+}
+
+.public-development-show__hero-actions {
+  align-items: center;
+}
+
+.public-development-show__cta {
+  min-height: 46px;
+  border-radius: 10px;
+  letter-spacing: 0;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.public-development-show__cta:hover {
+  transform: translateY(-1px);
+}
+
+.public-development-show__cta--primary {
+  background: var(--public-development-accent);
+  color: var(--public-development-primary-strong);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.24);
+}
+
+.public-development-show__cta--primary:hover {
+  background: var(--public-development-accent-strong);
+}
+
+.public-development-show__cta--ghost,
+.public-development-show__cta--contact-ghost {
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.public-development-show__stats {
+  border-color: rgba(2, 43, 58, 0.08);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+}
+
+.public-development-show__stats-grid {
+  align-items: stretch;
+}
+
+.public-development-show__stat {
+  min-height: 86px;
+  border: 1px solid rgba(2, 43, 58, 0.08);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045);
+}
+
+.public-development-show__stat > div:first-child {
+  border-radius: 12px;
+}
+
+.public-development-show__content {
+  padding-top: 42px;
+}
+
+.public-development-show__section,
+.public-development-show__contact-card,
+.public-development-show__info-card,
+.public-development-show__share-card,
+.public-development-show .public-habitations-show__broker-card {
+  border: 1px solid var(--public-development-line);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+}
+
+.public-development-show__section {
+  padding: 26px;
+}
+
+.public-development-show__section-title {
+  color: #0b1726;
+  font-family: Raleway, "Open Sans", sans-serif;
+  letter-spacing: 0;
+}
+
+.public-development-show__section-title > div:first-child {
+  width: 4px;
+  border-radius: 999px;
+  background: var(--public-development-accent);
+}
+
+.public-development-show__prose {
+  border-color: rgba(2, 43, 58, 0.09);
+  background: linear-gradient(135deg, rgba(2, 43, 58, 0.045), rgba(255, 255, 255, 0.96));
+  color: #344256;
+  line-height: 1.76;
+}
+
+.public-development-show__gallery-grid {
+  gap: 14px;
+}
+
+.public-development-show__gallery-item {
+  border: 1px solid rgba(2, 43, 58, 0.08);
+  border-radius: 12px;
+  background: #edf2f7;
+}
+
+.public-development-show__chip-list {
+  gap: 10px;
+}
+
+.public-development-show__chip {
+  border-color: rgba(2, 43, 58, 0.11);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #344256;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.045);
+}
+
+.public-development-show__address {
+  border: 1px solid rgba(2, 43, 58, 0.08);
+  border-radius: 14px;
+  background: rgba(2, 43, 58, 0.045);
+}
+
+.public-development-show__units-grid .public-property-card {
+  max-width: 100%;
+}
+
+.public-development-show__aside-stack {
+  top: 96px;
+}
+
+.public-development-show__contact-card {
+  background:
+    linear-gradient(135deg, rgba(2, 43, 58, 0.96), rgba(5, 60, 94, 0.94)),
+    var(--public-development-primary);
+  box-shadow: 0 18px 42px rgba(2, 43, 58, 0.2);
+}
+
+.public-development-show__cta--contact {
+  color: var(--public-development-primary);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.14);
+}
+
+.public-development-show__info-card h3,
+.public-development-show__share-card h3 {
+  color: #0b1726;
+  font-family: Raleway, "Open Sans", sans-serif;
+}
+
+.public-development-show__info-card > div > div {
+  gap: 14px;
+}
+
+.public-development-show__info-card span:last-child {
+  text-align: right;
+}
+
+.public-development-show .public-habitations-show__broker-card {
+  background:
+    linear-gradient(135deg, rgba(2, 43, 58, 0.06), rgba(255, 255, 255, 0.92)),
+    #ffffff;
+}
+
+@media (max-width: 1023px) {
+  .public-development-show__aside-stack {
+    position: static;
+  }
+}
+
+@media (max-width: 767px) {
+  .public-development-show__hero {
+    min-height: 560px;
+  }
+
+  .public-development-show .container-custom {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .public-development-show__title {
+    font-size: 2.1rem;
+    line-height: 1.12;
+  }
+
+  .public-development-show__hero-meta {
+    gap: 14px;
+  }
+
+  .public-development-show__hero-actions,
+  .public-development-show__hero-actions .public-development-show__cta {
+    width: 100%;
+  }
+
+  .public-development-show__hero-actions .public-development-show__cta {
+    justify-content: center;
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .public-development-show__stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .public-development-show__section,
+  .public-development-show__contact-card,
+  .public-development-show__info-card,
+  .public-development-show__share-card,
+  .public-development-show .public-habitations-show__broker-card {
+    border-radius: 14px;
+    padding: 18px;
+  }
+
+  .public-development-show__section-title {
+    align-items: flex-start;
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  .public-development-show__gallery-grid {
+    grid-template-columns: 1fr;
+  }
+}

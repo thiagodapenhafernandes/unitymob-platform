@@ -19,6 +19,7 @@ import MarketingTrackerController from "controllers/marketing_tracker_controller
 import NavbarController from "controllers/navbar_controller"
 import PhotoGalleryController from "controllers/photo_gallery_controller"
 import PropertyCarouselController from "controllers/property_carousel_controller"
+import PublicPropertyMapController from "controllers/public_property_map_controller"
 import SearchFormController from "controllers/search_form_controller"
 import SearchTabsController from "controllers/search_tabs_controller"
 import ShareController from "controllers/share_controller"
@@ -42,6 +43,7 @@ application.register("marketing-tracker", MarketingTrackerController)
 application.register("navbar", NavbarController)
 application.register("photo-gallery", PhotoGalleryController)
 application.register("property-carousel", PropertyCarouselController)
+application.register("public-property-map", PublicPropertyMapController)
 application.register("search-form", SearchFormController)
 application.register("search-tabs", SearchTabsController)
 application.register("share", ShareController)

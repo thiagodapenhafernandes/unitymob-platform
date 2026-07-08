@@ -1,0 +1,96 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_system_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Erros da Aplicação", admin_system_error_events_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong><%= @error_event.exception_class %></strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_system_error_events_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left"></i><span>Voltar</span>
+  <% end %>
+<% end %>
+
+<div class="ax-system">
+  <header class="ax-dashboard-command ax-property-form-command">
+    <div class="ax-dashboard-command__main">
+      <span class="ax-dashboard-command__eyebrow">Admin do Sistema · Erro #<%= @error_event.id %></span>
+      <h1><%= @error_event.exception_class %></h1>
+      <p><%= @error_event.message.to_s.truncate(220) %></p>
+    </div>
+    <div class="ax-dashboard-command__status">
+      <%= @error_event.resolved? ? ax_badge("Resolvido", tone: :green, dot: true) : ax_badge("Aberto", tone: :red, dot: true) %>
+      <%= ax_badge("#{number_with_delimiter(@error_event.occurrences_count)} ocorrências", tone: :blue) %>
+    </div>
+  </header>
+
+  <% resolution_action = capture do %>
+    <% if @error_event.resolved? %>
+      <%= button_to "Reabrir", reopen_admin_system_error_event_path(@error_event), method: :patch, class: "ax-btn ax-btn--ghost" %>
+    <% else %>
+      <%= button_to "Marcar resolvido", resolve_admin_system_error_event_path(@error_event), method: :patch, class: "ax-btn ax-btn--primary" %>
+    <% end %>
+  <% end %>
+
+  <%= ax_operational_panel(
+        eyebrow: "Resumo",
+        title: "Detalhes do erro",
+        actions: resolution_action
+      ) do %>
+    <div class="ax-field-grid">
+      <div class="ax-field ax-span-3">
+        <span class="ax-field__label">Origem</span>
+        <%= ax_badge(@error_event.source.presence || "—", tone: { "request" => :blue, "job" => :purple }.fetch(@error_event.source, :gray)) %>
+      </div>
+      <div class="ax-field ax-span-3">
+        <span class="ax-field__label">Severidade</span>
+        <%= ax_badge(@error_event.severity, tone: { "error" => :red, "warning" => :amber }.fetch(@error_event.severity, :gray)) %>
+      </div>
+      <div class="ax-field ax-span-3">
+        <span class="ax-field__label">Conta</span>
+        <span><%= @error_event.tenant&.name || (@error_event.tenant_id ? "Conta ##{@error_event.tenant_id}" : "Plataforma") %></span>
+      </div>
+      <div class="ax-field ax-span-3">
+        <span class="ax-field__label">Ocorrências</span>
+        <span><%= number_with_delimiter(@error_event.occurrences_count) %></span>
+      </div>
+      <div class="ax-field ax-span-3">
+        <span class="ax-field__label">Primeira vez</span>
+        <span><%= @error_event.first_seen_at ? l(@error_event.first_seen_at, format: :short) : "—" %></span>
+      </div>
+      <div class="ax-field ax-span-3">
+        <span class="ax-field__label">Última vez</span>
+        <span><%= @error_event.last_seen_at ? l(@error_event.last_seen_at, format: :short) : "—" %></span>
+      </div>
+      <div class="ax-field ax-span-3">
+        <span class="ax-field__label">Último alerta</span>
+        <span><%= @error_event.last_alerted_at ? l(@error_event.last_alerted_at, format: :short) : "—" %></span>
+      </div>
+      <div class="ax-field ax-span-3">
+        <span class="ax-field__label">Resolvido em</span>
+        <span><%= @error_event.resolved_at ? l(@error_event.resolved_at, format: :short) : "—" %></span>
+      </div>
+      <div class="ax-field ax-span-12">
+        <span class="ax-field__label">Fingerprint</span>
+        <span class="tw-font-mono tw-text-2xs"><%= @error_event.fingerprint %></span>
+      </div>
+      <div class="ax-field ax-span-12">
+        <span class="ax-field__label">Mensagem completa</span>
+        <span><%= @error_event.message %></span>
+      </div>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Diagnóstico", title: "Contexto da última ocorrência") do %>
+    <pre class="tw-bg-surface-soft tw-border tw-border-line tw-rounded tw-p-2 tw-font-mono tw-text-2xs tw-overflow-auto"><%= JSON.pretty_generate(@error_event.context.presence || {}) %></pre>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Diagnóstico", title: "Backtrace") do %>
+    <% if @error_event.backtrace.present? %>
+      <pre class="tw-bg-surface-soft tw-border tw-border-line tw-rounded tw-p-2 tw-font-mono tw-text-2xs tw-overflow-auto"><%= @error_event.backtrace %></pre>
+    <% else %>
+      <%= ax_empty_state(title: "Sem backtrace", description: "A exceção foi registrada sem stack trace.", icon: "bug") %>
+    <% end %>
+  <% end %>
+</div>

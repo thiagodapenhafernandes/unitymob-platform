@@ -26,6 +26,32 @@ RSpec.describe StoreShift, type: :model do
       expect(shift).not_to be_valid
       expect(shift.errors[:end_time]).to be_present
     end
+
+    describe "escopo de tenant" do
+      it "rejeita corretor de outra conta" do
+        tenant       = Tenant.create!(name: "Conta A", slug: "shift-a-#{SecureRandom.hex(3)}")
+        other_tenant = Tenant.create!(name: "Conta B", slug: "shift-b-#{SecureRandom.hex(3)}")
+        other_profile = Profile.create!(tenant: other_tenant, name: "Operacional", axis: "vertical", position: 50)
+        foreign_agent = create(:admin_user, tenant: other_tenant, profile: other_profile)
+        store = create(:store, tenant: tenant)
+
+        shift = build(:store_shift, tenant: tenant, store: store, admin_user: foreign_agent)
+
+        expect(shift).not_to be_valid
+        expect(shift.errors[:admin_user]).to include("deve pertencer à mesma conta do turno")
+      end
+
+      it "aceita corretor da mesma conta" do
+        tenant  = Tenant.create!(name: "Conta C", slug: "shift-c-#{SecureRandom.hex(3)}")
+        profile = Profile.create!(tenant: tenant, name: "Operacional", axis: "vertical", position: 50)
+        agent   = create(:admin_user, tenant: tenant, profile: profile)
+        store   = create(:store, tenant: tenant)
+
+        shift = build(:store_shift, tenant: tenant, store: store, admin_user: agent)
+
+        expect(shift).to be_valid
+      end
+    end
   end
 
   describe "#day_name" do

@@ -1,0 +1,9 @@
+<%#
+  Seção do painel de contexto: rótulo eyebrow + conteúdo (spec do design system).
+  Uso: render layout: "admin/whatsapp_inbox/context_section", locals: { label: "..." } do ... end
+  locals opcionais: class_name (classes extras no wrapper)
+%>
+<div class="<%= ["wa-inbox-thread__section", local_assigns[:class_name]].compact.join(" ") %>">
+  <span class="wa-inbox-thread__eyebrow"><%= label %></span>
+  <%= yield %>
+</div>

@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<style data-omelette-print-defaults>
+@media print {
+  @page { margin: 0.5in; }
+  h1, h2, h3, h4, h5, h6 { break-after: avoid; }
+  figure, table, pre, blockquote, img, svg, tr, [class~="card" i] { break-inside: avoid; }
+  img, svg { max-width: 100%; }
+  p { orphans: 3; widows: 3; }
+}
+</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arquitetura — Unitymob CRM</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--workspace-bg);
+    font-family: var(--font-sans);
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 40px 24px 56px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .sheet {
+    width: 1440px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 12px 40px rgba(16,24,40,.06);
+    overflow: hidden;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    padding: 30px 40px 26px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #fbfcfe, #fff);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .eyebrow {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-heavy);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: var(--tracking-tight);
+    color: var(--ink);
+    line-height: 1.05;
+  }
+  .subtitle {
+    font-size: var(--text-md);
+    color: var(--ink-muted);
+    margin-top: 8px;
+    max-width: 640px;
+    line-height: var(--leading-normal);
+  }
+  .stack-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+    max-width: 420px;
+  }
+  .stack-chips span {
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: .02em;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--primary-softer);
+    color: var(--primary-ink);
+    border: 1px solid var(--primary-soft);
+    white-space: nowrap;
+  }
+
+  /* ---------- Canvas ---------- */
+  .canvas { padding: 32px 40px 40px; display: flex; flex-direction: column; gap: 16px; }
+
+  .layer {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-soft);
+    padding: 16px 18px 18px;
+    position: relative;
+  }
+  .layer-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .layer-num {
+    width: 24px; height: 24px;
+    flex: none;
+    border-radius: 7px;
+    background: var(--ink);
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 12px;
+    display: grid; place-items: center;
+  }
+  .layer-title {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-heavy);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .layer-note {
+    margin-left: auto;
+    font-size: var(--text-2xs);
+    color: var(--ink-faint);
+    font-family: var(--font-mono);
+  }
+  .row { display: flex; gap: 12px; }
+  .row.wrap { flex-wrap: wrap; }
+
+  /* ---------- Node card ---------- */
+  .node {
+    flex: 1;
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    padding: 13px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .node .ico { font-size: 15px; line-height: 1; color: var(--ink-muted); }
+  .node .n-title {
+    font-size: var(--text-md);
+    font-weight: var(--weight-strong);
+    color: var(--ink);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .node .n-desc {
+    font-size: var(--text-sm);
+    color: var(--ink-muted);
+    line-height: var(--leading-normal);
+  }
+  .node .n-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+  .node .n-tags b {
+    font-size: 10px;
+    font-weight: var(--weight-semibold);
+    font-family: var(--font-mono);
+    color: var(--ink-body);
+    background: var(--surface-header);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 2px 6px;
+  }
+
+  /* accent bar on left */
+  .node[data-accent] { border-left: 3px solid var(--ac, var(--primary)); }
+
+  /* ---------- Connector ---------- */
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--ink-faint);
+    font-size: 15px;
+    height: 4px;
+    margin: -6px 0;
+  }
+  .flow::before, .flow::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, var(--line-strong) 0 6px, transparent 6px 12px);
+  }
+  .flow i { font-style: normal; font-size: 13px; color: var(--ink-faint); }
+
+  /* domain grid */
+  .domains { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .dcard {
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-top: 3px solid var(--ac);
+    border-radius: 9px;
+    padding: 12px 13px 13px;
+  }
+  .dcard h4 {
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
+    color: var(--ink);
+    display: flex; align-items: center; gap: 7px;
+    margin-bottom: 6px;
+  }
+  .dcard h4 .dot { width: 8px; height: 8px; border-radius: 3px; background: var(--ac); flex: none; }
+  .dcard ul { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+  .dcard li {
+    font-size: var(--text-sm);
+    color: var(--ink-body);
+    line-height: 1.35;
+    padding-left: 11px;
+    position: relative;
+  }
+  .dcard li::before {
+    content: "";
+    position: absolute; left: 0; top: 7px;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--ink-faint);
+  }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* footer legend */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 18px 40px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    background: #fbfcfe;
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; }
+  .legend span { display: flex; align-items: center; gap: 6px; font-size: var(--text-sm); color: var(--ink-muted); }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .meta { font-size: var(--text-2xs); color: var(--ink-faint); font-family: var(--font-mono); text-align: right; }
+</style>
+</head>
+<body>
+<div class="sheet" data-screen-label="Arquitetura">
+
+  <header>
+    <div>
+      <div class="eyebrow">Unitymob CRM · Arquitetura do sistema</div>
+      <h1>CRM Imobiliário — Monolito Rails / Hotwire</h1>
+      <p class="subtitle">Aplicação Ruby on Rails multi-tenant server-rendered (HTML-over-the-wire), com integrações de WhatsApp, Meta Leads e portais imobiliários, rodando em DigitalOcean.</p>
+    </div>
+    <div class="stack-chips">
+      <span>Ruby 3.2.3</span>
+      <span>Rails 7.1</span>
+      <span>PostgreSQL + PostGIS</span>
+      <span>Hotwire · Turbo</span>
+      <span>Stimulus</span>
+      <span>Tailwind + Sass</span>
+      <span>Redis</span>
+      <span>Solid Queue</span>
+      <span>Devise</span>
+      <span>ActiveStorage</span>
+    </div>
+  </header>
+
+  <div class="canvas">
+
+    <!-- LAYER 1 — CLIENTS -->
+    <section class="layer">
+      <div class="layer-head">
+        <span class="layer-num">1</span>
+        <span class="layer-title">Clientes</span>
+        <span class="layer-note">navegadores + PWA</span>
+      </div>
+      <div class="row">
+        <div class="node" data-accent style="--ac: var(--entity-owner)">
+          <div class="n-title"><i class="bi bi-window-sidebar ico"></i>Painel Admin</div>
+          <div class="n-desc">Operação interna: imóveis, leads, automações, configurações do site. Sessão via Devise.</div>
+          <div class="n-tags"><b>/admin</b><b>~120 controllers Stimulus</b></div>
+        </div>
+        <div class="node" data-accent style="--ac: var(--entity-property)">
+          <div class="n-title"><i class="bi bi-globe2 ico"></i>Site Público</div>
+          <div class="n-desc">Portal de imóveis, home configurável, landing pages, SEO técnico e captura de leads.</div>
+          <div class="n-tags"><b>SSR</b><b>friendly_id</b><b>meta-tags</b></div>
+        </div>
+        <div class="node" data-accent style="--ac: var(--entity-lead)">
+          <div class="n-title"><i class="bi bi-phone ico"></i>App de Campo (PWA)</div>
+          <div class="n-desc">Corretores em campo: check-in, location pings, captação de fotos. Offline-capable.</div>
+          <div class="n-tags"><b>manifest.json</b><b>service worker</b><b>Web Push</b></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="flow"><i class="bi bi-arrow-down"></i></div>
+
+    <!-- LAYER 2 — DELIVERY / EDGE -->
+    <section class="layer">
+      <div class="layer-head">
+        <span class="layer-num">2</span>
+        <span class="layer-title">Entrega &amp; Front-end</span>
+        <span class="layer-note">HTML-over-the-wire · sem SPA</span>
+      </div>
+      <div class="row wrap">
+        <div class="node">
+          <div class="n-title"><i class="bi bi-hdd-network ico"></i>Puma</div>
+          <div class="n-desc">App server multi-thread por trás de proxy.</div>
+        </div>
+        <div class="node">
+          <div class="n-title"><i class="bi bi-shield-lock ico"></i>Rack Middleware</div>
+          <div class="n-desc">rack-attack (rate limit), rack-cors, MaxMind geo-IP.</div>
+        </div>
+        <div class="node">
+          <div class="n-title"><i class="bi bi-lightning-charge ico"></i>Hotwire</div>
+          <div class="n-desc">Turbo Drive/Frames/Streams + Stimulus. Importmap, sem bundler JS.</div>
+        </div>
+        <div class="node">
+          <div class="n-title"><i class="bi bi-palette ico"></i>Design System <code>ax-*</code></div>
+          <div class="n-desc">Tailwind + Sass. Modais, drawers, tabs, dropdowns como controllers Stimulus.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="flow"><i class="bi bi-arrow-down-up"></i></div>
+
+    <!-- LAYER 3 — RAILS APP -->
+    <section class="layer">
+      <div class="layer-head">
+        <span class="layer-num">3</span>
+        <span class="layer-title">Aplicação Rails — Domínios de Negócio</span>
+        <span class="layer-note">app/controllers · app/models · app/services</span>
+      </div>
+      <div class="domains">
+        <div class="dcard" style="--ac: var(--entity-property)">
+          <h4><span class="dot"></span>Imóveis</h4>
+          <ul>
+            <li>Habitations, proprietors, constructors</li>
+            <li>Captação + agenda de fotografia</li>
+            <li>Atributos dinâmicos, catálogos</li>
+            <li>Publicação em portais</li>
+          </ul>
+        </div>
+        <div class="dcard" style="--ac: var(--entity-lead)">
+          <h4><span class="dot"></span>Leads &amp; CRM</h4>
+          <ul>
+            <li>Kanban, status, labels</li>
+            <li>Distribuição automática</li>
+            <li>Propostas (PDF via Prawn)</li>
+            <li>Interações &amp; auditoria</li>
+          </ul>
+        </div>
+        <div class="dcard" style="--ac: var(--entity-whatsapp)">
+          <h4><span class="dot"></span>WhatsApp</h4>
+          <ul>
+            <li>Conversas &amp; mensagens</li>
+            <li>Campanhas &amp; templates</li>
+            <li>Filas de envio</li>
+            <li>Números remetentes</li>
+          </ul>
+        </div>
+        <div class="dcard" style="--ac: var(--entity-proposal)">
+          <h4><span class="dot"></span>Automações</h4>
+          <ul>
+            <li>Workflows versionados</li>
+            <li>Regras &amp; eventos</li>
+            <li>Execuções &amp; steps</li>
+            <li>Webhooks de saída</li>
+          </ul>
+        </div>
+        <div class="dcard" style="--ac: var(--entity-owner)">
+          <h4><span class="dot"></span>Site &amp; Conteúdo</h4>
+          <ul>
+            <li>Home, seções, banners</li>
+            <li>Landing pages</li>
+            <li>Layout / rodapé white-label</li>
+          </ul>
+        </div>
+        <div class="dcard" style="--ac: var(--info)">
+          <h4><span class="dot"></span>SEO</h4>
+          <ul>
+            <li>Redirects, keywords</li>
+            <li>Sitemap, page visits</li>
+            <li>Conversões &amp; change log</li>
+          </ul>
+        </div>
+        <div class="dcard" style="--ac: var(--cyan)">
+          <h4><span class="dot"></span>Campo &amp; Geo</h4>
+          <ul>
+            <li>Check-ins &amp; auditoria</li>
+            <li>Location pings (PostGIS)</li>
+            <li>Lojas &amp; turnos</li>
+          </ul>
+        </div>
+        <div class="dcard" style="--ac: var(--gray)">
+          <h4><span class="dot"></span>Admin &amp; Acesso</h4>
+          <ul>
+            <li>Usuários, perfis, tenants</li>
+            <li>Regras de acesso &amp; audit log</li>
+            <li>Impersonation, trusted devices</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="flow"><i class="bi bi-arrow-down"></i></div>
+
+    <!-- LAYER 4 — PERSISTENCE + JOBS (split) -->
+    <div class="split">
+      <section class="layer">
+        <div class="layer-head">
+          <span class="layer-num">4</span>
+          <span class="layer-title">Persistência</span>
+        </div>
+        <div class="row wrap">
+          <div class="node">
+            <div class="n-title"><i class="bi bi-database ico"></i>PostgreSQL + PostGIS</div>
+            <div class="n-desc">Fonte da verdade. Tipos geográficos → <code>structure.sql</code>.</div>
+          </div>
+          <div class="node">
+            <div class="n-title"><i class="bi bi-images ico"></i>ActiveStorage</div>
+            <div class="n-desc">Imagens de imóveis → DigitalOcean Spaces / S3, com mirror.</div>
+            <div class="n-tags"><b>fog-aws</b><b>MiniMagick</b></div>
+          </div>
+          <div class="node">
+            <div class="n-title"><i class="bi bi-memory ico"></i>Redis + Dalli</div>
+            <div class="n-desc">Cache e backend do Action Cable / jobs.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="layer">
+        <div class="layer-head">
+          <span class="layer-num">5</span>
+          <span class="layer-title">Jobs em Background</span>
+        </div>
+        <div class="row wrap">
+          <div class="node">
+            <div class="n-title"><i class="bi bi-stack ico"></i>Solid Queue</div>
+            <div class="n-desc">Fila de jobs recorrentes e assíncronos, monitorada por Mission Control.</div>
+          </div>
+          <div class="node">
+            <div class="n-title"><i class="bi bi-arrow-repeat ico"></i>Sincronizações</div>
+            <div class="n-desc">Import Vista Soft, mirror de imagens p/ Spaces, envio WhatsApp, push.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="flow"><i class="bi bi-arrows-angle-expand"></i> <span style="font-size:var(--text-2xs);color:var(--ink-faint);font-family:var(--font-mono)">integrações externas</span></div>
+
+    <!-- LAYER 6 — EXTERNAL -->
+    <section class="layer" style="background: var(--primary-softer); border-color: var(--primary-soft);">
+      <div class="layer-head">
+        <span class="layer-num" style="background: var(--primary)">6</span>
+        <span class="layer-title" style="color: var(--primary-ink)">Serviços &amp; APIs Externas</span>
+      </div>
+      <div class="row wrap">
+        <div class="node">
+          <div class="n-title"><i class="bi bi-whatsapp ico" style="color:var(--entity-whatsapp)"></i>WhatsApp Business</div>
+          <div class="n-desc">Conversas, campanhas e templates.</div>
+        </div>
+        <div class="node">
+          <div class="n-title"><i class="bi bi-meta ico" style="color:#1877f2"></i>Meta / Facebook</div>
+          <div class="n-desc">Lead Ads via Koala + OmniAuth.</div>
+        </div>
+        <div class="node">
+          <div class="n-title"><i class="bi bi-house-gear ico"></i>Vista Soft</div>
+          <div class="n-desc">Importação/sync de imóveis de portal.</div>
+        </div>
+        <div class="node">
+          <div class="n-title"><i class="bi bi-bell ico"></i>Web Push</div>
+          <div class="n-desc">Notificações do PWA de campo.</div>
+        </div>
+        <div class="node">
+          <div class="n-title"><i class="bi bi-envelope ico"></i>Action Mailer</div>
+          <div class="n-desc">E-mails transacionais.</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <div class="legend">
+      <span><i style="background:var(--entity-property)"></i>Imóveis</span>
+      <span><i style="background:var(--entity-lead)"></i>Leads</span>
+      <span><i style="background:var(--entity-whatsapp)"></i>WhatsApp</span>
+      <span><i style="background:var(--entity-proposal)"></i>Automações</span>
+      <span><i style="background:var(--entity-owner)"></i>Site / Admin</span>
+    </div>
+    <div class="meta">
+      Deploy: DigitalOcean · Docker · Mina<br>
+      unitymob.com.br · pt-BR · TZ Brasília
+    </div>
+  </footer>
+
+</div>
+<script>
+(async () => {
+  if (!document.title || !document.title.trim()) document.title = "Arquitetura Unitymob CRM";
+  // Prepend so page-supplied @page / break rules (deck-stage's margin:0,
+  // author CSS) keep source-order precedence over the baseline.
+  const baseCss = document.createElement('style');
+  baseCss.textContent = "@media print {\n  figure, table { break-inside: avoid; }\n  *, *::before, *::after {\n    print-color-adjust: exact; -webkit-print-color-adjust: exact;\n    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;\n    animation-delay: -99s !important; animation-duration: .001s !important;\n    animation-iteration-count: 1 !important; animation-fill-mode: both !important;\n    animation-play-state: running !important; transition-duration: 0s !important;\n  }\n}";
+  document.head.prepend(baseCss);
+  if (document.readyState === 'loading') {
+    await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true }));
+  }
+  let ds = document.querySelector('deck-stage');
+  // whenDefined never resolves when nothing registers the element, so only
+  // await it when a <deck-stage> tag exists (and race a timeout regardless).
+  if (ds && !customElements.get('deck-stage')) {
+    try {
+      await Promise.race([
+        customElements.whenDefined('deck-stage'),
+        new Promise((r) => setTimeout(r, 3000)),
+      ]);
+    } catch (e) {}
+    ds = document.querySelector('deck-stage');
+  }
+  // dc-runtime assigns window.DCLogic at init and mounts into #dc-root on
+  // DOMContentLoaded; settle on that subtree so React has rendered before
+  // print(). Non-DC pages fall through to weighing body.
+  const isDc = !ds && 'DCLogic' in window;
+  const settleRoot = ds || (isDc ? document.getElementById('dc-root') : null) || document.body;
+  if (settleRoot) {
+    // Weigh only content children — skip script/style/template so inline
+    // Babel/CSS doesn't register as stable "content" before the framework
+    // has mounted anything.
+    const MEDIA = 'img,svg,canvas,video,picture,iframe,embed,object';
+    const weigh = () => {
+      let text = 0, media = 0;
+      for (const c of settleRoot.children) {
+        const t = c.tagName;
+        if (t === 'SCRIPT' || t === 'STYLE' || t === 'TEMPLATE') continue;
+        text += (c.textContent || '').trim().length;
+        media += c.querySelectorAll(MEDIA).length + (c.matches(MEDIA) ? 1 : 0);
+      }
+      return text + media * 100;
+    };
+    // "Non-zero and stable" alone is not sufficient to mean rendered: generic
+    // body can carry a static shell while async main content is pending, and
+    // #dc-root can carry the root DC's static text while child refs are still
+    // .sc-placeholder boxes. Gate generic on readyState 'complete', and never
+    // accept stability while a dc-runtime placeholder is present.
+    const isGeneric = settleRoot === document.body;
+    const deadline = Date.now() + 15000;
+    let last = -1, stable = 0;
+    while (Date.now() < deadline) {
+      const n = weigh();
+      const ready =
+        (!isGeneric || document.readyState === 'complete') &&
+        !settleRoot.querySelector('.sc-placeholder');
+      if (n > 0 && n === last && ready) { if (++stable >= 2) break; } else { stable = 0; }
+      last = n;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+  // Project support.js may predate runtime default-seeding; push via bridge.
+  if (isDc && window.__dcSetProps && window.__dcRootName) {
+    try {
+      const dpEl = document.querySelector('script[data-dc-script]');
+      const meta = JSON.parse((dpEl && dpEl.getAttribute('data-props')) || '{}');
+      const bag = {};
+      for (const k in meta)
+        if (k[0] !== '$' && meta[k] && meta[k].default !== undefined)
+          bag[k] = meta[k].default;
+      if (Object.keys(bag).length) {
+        window.__dcSetProps(window.__dcRootName(), bag);
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    } catch (e) {}
+  }
+  // Reveal content gated on scroll or visibility before printing. Lazy <img>,
+  // IntersectionObserver fade-ins, and collapsed <details> don't render while
+  // off-screen, so a long page would print with them blank or closed. Open
+  // every <details>, force native-lazy images eager, and scroll the document
+  // through its full height to trip lazy-load + IO; then wait (bounded) for the
+  // newly-triggered images. Inert for deck-stage (slides aren't scroll-gated).
+  try {
+    for (const d of document.querySelectorAll('details')) d.open = true;
+    for (const img of document.querySelectorAll('img[loading="lazy"]'))
+      img.loading = 'eager';
+    const scroller = document.scrollingElement || document.documentElement;
+    const full = Math.max(scroller.scrollHeight, document.body.scrollHeight);
+    const step = window.innerHeight || 800;
+    for (let y = 0; y <= full; y += step) {
+      window.scrollTo(0, y);
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    window.scrollTo(0, 0);
+    await Promise.race([
+      Promise.all(
+        [...document.images].map((img) =>
+          img.complete
+            ? null
+            : new Promise((res) => {
+                img.addEventListener('load', res, { once: true });
+                img.addEventListener('error', res, { once: true });
+              })
+        )
+      ),
+      new Promise((r) => setTimeout(r, 4000)),
+    ]);
+  } catch (e) {}
+  try { await document.fonts.ready; } catch (e) {}
+  // Jump every animation to its end state so print() never captures a slide
+  // mid-entrance. Ordering matters: the 0s-transition style must be live
+  // BEFORE data-deck-active is set so attribute-keyed transitions don't
+  // start a (now-0s) run from the pre-active base.
+  const st = document.createElement('style');
+  st.textContent = '*,*::before,*::after{animation-delay:-99s !important;animation-duration:.001s !important;animation-iteration-count:1 !important;animation-fill-mode:both !important;animation-play-state:running !important;transition-duration:0s !important}';
+  document.head.appendChild(st);
+  for (const d of document.querySelectorAll('deck-stage')) {
+    for (const c of d.children) {
+      const t = c.tagName;
+      if (t === 'SCRIPT' || t === 'STYLE' || t === 'TEMPLATE') continue;
+      c.setAttribute('data-deck-active', '');
+    }
+  }
+  // Re-append deck-stage's @page last so no author @page can add a margin and
+  // spill each full-bleed slide onto two sheets. Backstop for old copies.
+  if (ds) {
+    let pg = document.getElementById('deck-stage-print-page');
+    if (!pg) {
+      pg = document.createElement('style');
+      pg.textContent = '@page{size:' + (+ds.getAttribute('width') || 1920) +
+        'px ' + (+ds.getAttribute('height') || 1080) + 'px;margin:0}';
+    }
+    document.body.appendChild(pg);
+  }
+  try {
+    const sweep = () => {
+      for (const a of document.getAnimations()) {
+        try { a.finish(); } catch (e) {
+          try { a.currentTime = (a.effect && a.effect.getComputedTiming().duration) || 0; a.pause(); } catch (e2) {}
+        }
+      }
+    };
+    sweep();
+    await new Promise((r) => requestAnimationFrame(r));
+    sweep();
+    await new Promise((r) => requestAnimationFrame(r));
+  } catch (e) {}
+  // Size the PDF page to the rendered design unless the file opted into
+  // standard paper via @page{size:letter|A4|…}. Decks own their own @page.
+  // Wrappers (body, …) lose padding+margin so the frame sits at (0,0); the
+  // frame itself loses only margin — its padding is INSIDE the measured
+  // rect and must stay, or content shifts and leaves a gap at bottom/right.
+  var __m = null;
+  try { __m = (() => {
+  var STAMP = true;
+  var docEl = document.documentElement;
+  var doc = { width: docEl.scrollWidth, height: docEl.scrollHeight };
+
+  var ds = document.querySelector('deck-stage');
+  if (ds) {
+    var dw = Number(ds.getAttribute('width')) || 1920;
+    var dh = Number(ds.getAttribute('height')) || 1080;
+    var n = typeof ds.length === 'number' ? ds.length : ds.children.length;
+    var idx = typeof ds.index === 'number' ? ds.index : 0;
+    var frames = [];
+    for (var i = 0; i < n; i++) frames.push({ left: 0, top: 0, width: dw, height: dh });
+    return { kind: 'deck', source: 'declared', doc: doc, frames: frames,
+      authored: frames.map(function(){return{width:true,height:true}}),
+      deck: { width: dw, height: dh, slideCount: n, index: idx },
+      signals: { paperPage: false, pxPage: false } };
+  }
+
+  // Declared kind: a doc-page tag names the kind outright, so no signal
+  // heuristics run (like the deck branch above, signals report false —
+  // they describe inferred classifications only). The tag alone is not
+  // trusted: the element must have upgraded (shadowRoot present), so a
+  // leftover tag whose script was deleted falls through to the heuristics
+  // that handle plain markup.
+  var stageSx = window.scrollX || 0, stageSy = window.scrollY || 0;
+  var dp = document.querySelector('doc-page');
+  if (dp && dp.shadowRoot) {
+    // Crop to the sheet, not the host — the desk around it is screen-only
+    // chrome that must not land in PNG exports.
+    var sheet = dp.shadowRoot.querySelector('.sheet');
+    var sr = (sheet || dp).getBoundingClientRect();
+    return { kind: 'paper-doc', source: 'declared', doc: doc,
+      frames: [{ left: sr.left + stageSx, top: sr.top + stageSy,
+        width: sr.width, height: sr.height }],
+      authored: [{ width: false, height: false }],
+      signals: { paperPage: false, pxPage: false } };
+  }
+  var paperPage = false, pxPage = false;
+  var eachRule = function (fn) {
+    for (var s = 0; s < document.styleSheets.length; s++) {
+      var rs; try { rs = document.styleSheets[s].cssRules; } catch (e) { continue; }
+      for (var r = 0; r < rs.length; r++) {
+        fn(rs[r]);
+        if (rs[r].cssRules) for (var n = 0; n < rs[r].cssRules.length; n++) fn(rs[r].cssRules[n]);
+      }
+    }
+  };
+  eachRule(function (r) {
+    if (r.type !== 6) return;
+    var m = /\bsize\s*:\s*([^;}]+)/i.exec(r.cssText || '');
+    if (!m) return;
+    if (/\b(letter|a[3-5]|legal|ledger)\b/i.test(m[1])) paperPage = true;
+    if (/\d+(?:\.\d+)?px\b/i.test(m[1])) pxPage = true;
+  });
+  var signals = { paperPage: paperPage, pxPage: pxPage };
+
+  var pxVal = function (v) {
+    var m = /^(\d+(?:\.\d+)?)px$/.exec(v || ''); return m ? +m[1] : 0;
+  };
+  var authoredPx = function (el, prop) {
+    if (pxVal(el.style[prop])) return true;
+    var attr = el.getAttribute(prop);
+    if (attr && /^\d+$/.test(attr)) return true;
+    var hit = false;
+    eachRule(function (r) {
+      if (hit || r.type !== 1 || !r.style) return;
+      try { if (el.matches(r.selectorText) && pxVal(r.style[prop])) hit = true; } catch (e) {}
+    });
+    return hit;
+  };
+
+  var el = document.body, rootPxW = false;
+  for (;;) {
+    var kids = [];
+    for (var c = 0; c < el.children.length; c++) {
+      var t = el.children[c].tagName;
+      if (t !== 'SCRIPT' && t !== 'STYLE' && t !== 'TEMPLATE') kids.push(el.children[c]);
+    }
+    if (kids.length !== 1 || !(kids[0] instanceof HTMLElement)) break;
+    if (STAMP) el.setAttribute('data-om-frame-wrap', '');
+    el = kids[0];
+    rootPxW = authoredPx(el, 'width');
+    if (rootPxW) break;
+  }
+  if (!rootPxW) rootPxW = authoredPx(el, 'width');
+
+  // @page{size:letter} alone is a flowing doc; with a px-width root it's a
+  // fixed sheet pretending to be paper — fall through and size to render.
+  if (paperPage && !rootPxW) {
+    return { kind: 'paper-doc', source: 'inferred', doc: doc, signals: signals,
+      frames: [{ left: 0, top: 0, width: doc.width, height: doc.height }],
+      authored: [{ width: false, height: false }] };
+  }
+
+  var sx = window.scrollX || 0, sy = window.scrollY || 0;
+  var rectOf = function (e) {
+    var r = e.getBoundingClientRect();
+    var oy; try { oy = getComputedStyle(e).overflowY; } catch (err) {}
+    var h = oy === 'visible' ? Math.max(r.height, e.scrollHeight || 0) : r.height;
+    return { left: r.left + sx, top: r.top + sy, width: r.width, height: h };
+  };
+
+  // Multi-frame: ≥2 visible non-fixed children, each with authored px width
+  // AND height, all within ±2px of each other. Off unless the page opts in
+  // via data-om-multi-frame on the stop element — guards against card grids
+  // and pricing tables that match the geometry but aren't separate canvases.
+  if (el.hasAttribute('data-om-multi-frame')) {
+    var cands = [];
+    for (var k = 0; k < el.children.length; k++) {
+      var ch = el.children[k];
+      var cs; try { cs = getComputedStyle(ch); } catch (e) { continue; }
+      if (cs.display === 'none' || cs.visibility === 'hidden' || cs.position === 'fixed') continue;
+      var rc = rectOf(ch);
+      if (rc.width < 2 || rc.height < 2) continue;
+      if (!authoredPx(ch, 'width') || !authoredPx(ch, 'height')) continue;
+      cands.push(rc);
+    }
+    if (cands.length >= 2) {
+      var w0 = cands[0].width, h0 = cands[0].height, ok = true;
+      for (var q = 1; q < cands.length; q++)
+        if (Math.abs(cands[q].width - w0) > 2 || Math.abs(cands[q].height - h0) > 2) ok = false;
+      if (ok) return { kind: 'multi-frame', source: 'inferred', doc: doc, signals: signals,
+        frames: cands, authored: cands.map(function(){return{width:true,height:true}}) };
+    }
+  }
+
+  if (STAMP) el.setAttribute('data-om-frame', '');
+  return { kind: 'single-canvas', source: 'inferred', doc: doc, signals: signals,
+    frames: [rectOf(el)],
+    authored: [{ width: rootPxW, height: authoredPx(el, 'height') }] };
+})(); } catch (e) {}
+  var frame = null;
+  if (__m && __m.kind === 'single-canvas') {
+    var f = __m.frames && __m.frames[0];
+    if (f && f.width >= 200 && f.height >= 200) {
+      frame = f;
+      var fst = document.createElement('style');
+      fst.textContent = '@media print{@page{size:' + Math.ceil(f.width) + 'px ' +
+        Math.ceil(f.height) + 'px;margin:0}' +
+        'html,body,[data-om-frame-wrap]{padding:0!important;margin:0!important;background:none!important}' +
+        '[data-om-frame]{margin:0!important}}';
+      document.body.appendChild(fst);
+    }
+  }
+  // Relax break-inside on oversized elements. An element taller than a
+  // printable page can't honor break-inside: avoid — browsers either overflow
+  // it or push it whole to the next page, leaving a blank gap, then break it
+  // anyway at an arbitrary point. After the final layout (content revealed,
+  // animations jumped), find elements taller than a page that still compute
+  // break-inside: avoid and reset them to auto, so the browser breaks them at
+  // their children's boundaries instead (children keep their own avoid). PAGE_PX
+  // is a conservative portrait estimate at 96 CSS px/in — Letter/A4 usable
+  // height minus our 0.5in margins — so only clearly-oversized elements are
+  // touched and under-page elements still stay whole. Skipped for decks (slides
+  // are sized to the page) and for fixed-size canvases (frame set, or an author
+  // px-based @page) — runs as before for flowing docs on letter/A4.
+  try {
+    if (!ds && !frame && !(__m && __m.signals && __m.signals.pxPage)) {
+      const PAGE_PX = 1024;
+      // Our print defaults add a real @page margin only when the source has
+      // no @page of its own; computed style can't tell us (it reports screen
+      // media), so read the injected rule directly.
+      const defaults = document.querySelector('style[data-omelette-print-defaults]');
+      const pageInset = /@page\s*\{[^}]*margin/.test(defaults ? defaults.textContent || '' : '');
+      const SEL = 'section,article,figure,table,pre,blockquote,[class~="card" i],[class~="page" i],[class~="sheet" i]';
+      for (const el of document.body.querySelectorAll(SEL)) {
+        if (el instanceof HTMLElement && el.offsetHeight > PAGE_PX) {
+          el.setAttribute('data-om-oversized', '');
+          // Fake-paged docs simulate sheets with over-tall break-after:page
+          // boxes; honoring the break spills half-blank pages and ends a
+          // colored box mid-sheet. Flow them, and (only when we own the page
+          // inset) drop the redundant padding/background via the rule below.
+          const cs = getComputedStyle(el);
+          if (cs.breakAfter === 'page' || cs.pageBreakAfter === 'always') {
+            el.setAttribute('data-om-fakepage', '');
+          }
+        }
+      }
+      const ost = document.createElement('style');
+      ost.textContent = '@media print{' +
+        '[data-om-oversized]{break-inside:auto !important;page-break-inside:auto !important}' +
+        '[data-om-fakepage]{break-after:auto !important;page-break-after:auto !important}' +
+        (pageInset ? '[data-om-fakepage]{padding:0 !important;background:none !important}' : '') +
+        '}';
+      document.head.appendChild(ost);
+    }
+  } catch (e) {}
+  // macOS Preview renders Skia-PDF Luminosity soft-masks as opaque grey boxes;
+  // swap the CSS that triggers them for Preview-safe forms.
+  try {
+    for (const el of document.body.querySelectorAll('*')) {
+      const cs = getComputedStyle(el);
+
+      if (cs.boxShadow !== 'none' && cs.filter === 'none') {
+        const outs = [], kept = [];
+        for (const s of cs.boxShadow.split(/,(?![^(]*[)])/)) {
+          const t = s.trim();
+          const m = t.match(/^(rgba?[(][^)]+[)]) (-?[0-9.]+px) (-?[0-9.]+px) ([0-9.]+px) -?[0-9.]+px$/);
+          if (m && parseFloat(m[4]) > 0) outs.push('drop-shadow(' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[1] + ')');
+          else kept.push(t);
+        }
+        if (outs.length) {
+          el.style.setProperty('filter', outs.join(' '), 'important');
+          el.style.setProperty('box-shadow', kept.join(', ') || 'none', 'important');
+        }
+      }
+
+      const mask = cs.maskImage && cs.maskImage !== 'none' ? cs.maskImage : cs.webkitMaskImage;
+      if (mask && mask !== 'none' && cs.filter === 'none') el.style.setProperty('filter', 'opacity(1)', 'important');
+    }
+  } catch (e) {}
+  setTimeout(() => { try { window.print(); } catch (e) {} }, 200);
+})();
+</script>
+</body>
+</html>

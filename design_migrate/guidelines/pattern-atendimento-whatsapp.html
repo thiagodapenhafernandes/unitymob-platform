@@ -1,0 +1,135 @@
+<!-- @dsCard group="Patterns" viewport="960x640" name="Atendimento (WhatsApp inbox)" subtitle="Spec canônico: cores, fonte e tamanhos exatos da tela de atendimento" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  /* Valores CANÔNICOS da tela de Atendimento. Fonte da verdade para qualquer
+     refinamento do inbox. Fonte: Inter em tudo. Tokens abaixo são fixos. */
+  :root{
+    --wa-green:#128c7e; --wa-green-soft:#dcf5ee; --wa-avatar-fg:#0f7a68;
+    --wa-bubble-out:#d9fdd3; --wa-bubble-in:#ffffff;
+    --wa-ink:#1f2733; --wa-muted:#697586; --wa-faint:#98a2b3; --wa-line:#eceef1;
+    --wa-read:#53bdeb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef2f7;font-family:var(--font-sans);color:var(--wa-ink);font-size:13px}
+  .sheet{display:grid;grid-template-columns:300px 300px 1fr;gap:0;height:640px}
+  .col{background:#fff;border-right:1px solid #dfe5ee;overflow:auto}
+  .col--spec{background:#fafbfc;border-right:0;padding:16px 18px}
+  .hd{padding:11px 14px;border-bottom:1px solid var(--wa-line);display:flex;align-items:center;justify-content:space-between}
+  .eyebrow{font-size:10px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;color:var(--wa-muted)}
+
+  /* --- item de conversa (valores exatos) --- */
+  .item{display:block;text-decoration:none;border-left:2px solid transparent}
+  .item.is-active{background:#f5f7fa;border-left-color:var(--wa-green)}
+  .item__card{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--wa-line)}
+  .item__av{flex:none;width:38px;height:38px;border-radius:999px;display:grid;place-items:center;background:var(--wa-green-soft);color:var(--wa-avatar-fg);font-size:13px;font-weight:800}
+  .item__main{min-width:0;flex:1}
+  .item__top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .item__name{font-size:13px;font-weight:700;color:var(--wa-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item__time{flex:none;font-size:11px;color:var(--wa-faint)}
+  .item__bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
+  .item__preview{min-width:0;font-size:12px;color:var(--wa-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item__unread{flex:none;min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--wa-green);color:#fff;font-size:11px;font-weight:700}
+  .item__labels{margin-top:6px;display:flex;gap:4px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;box-shadow:inset 0 0 0 1.5px currentColor}
+  .chip--red{background:#fee4e2;color:#b42318}.chip--cyan{background:#d9f8ff;color:#0e7490}
+  .chip--green{background:#e6f6ec;color:#08875d}.chip--purple{background:#f1e8ff;color:#6d28d9}
+
+  /* --- painel de contexto (valores exatos) --- */
+  .ctx{padding:14px;display:grid;gap:12px;align-content:start}
+  .ctx__id{display:grid;justify-items:center;gap:6px;text-align:center;padding-bottom:12px;border-bottom:1px solid var(--wa-line)}
+  .ctx__av{width:52px;height:52px;border-radius:999px;background:var(--wa-green-soft);color:var(--wa-avatar-fg);display:grid;place-items:center;font-size:18px;font-weight:800}
+  .ctx__name{font-size:14px;font-weight:700}.ctx__phone{font-size:12px;color:var(--wa-muted)}
+  .ctx label{font-size:10px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;color:var(--wa-muted);display:block;margin-bottom:6px}
+  .pin{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid #e2e8f0;border-left:4px solid var(--wa-green);border-radius:7px;background:#f7f8fa;font-weight:680;font-size:13px}
+  .pin--lead{border-left-color:#16a34a}.pin--prop{border-left-color:#ff7043}
+  .ctx__btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;height:34px;border:1px solid #d2d6db;border-radius:6px;background:#fff;color:#475467;font-weight:750;font-size:12.5px}
+
+  /* --- spec text --- */
+  .col--spec h3{margin:0 0 4px;font-size:12px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--wa-ink)}
+  .col--spec .sub{font-size:11px;color:var(--wa-muted);margin:0 0 14px}
+  .spec{display:grid;gap:9px}
+  .spec section{border-top:1px solid #e6e8eb;padding-top:8px}
+  .spec b{font-size:11px;font-weight:800;color:var(--wa-ink);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.03em}
+  .spec p{margin:0;font-size:11px;line-height:1.5;color:#3b4656}
+  .spec code{font-family:var(--font-mono);font-size:10.5px;background:#eef2f7;padding:1px 4px;border-radius:4px;color:#243247}
+  .sw{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:-1px;margin-right:2px;box-shadow:inset 0 0 0 1px rgba(16,24,40,.12)}
+</style></head>
+<body>
+<div class="sheet">
+
+  <!-- Coluna 1: lista de conversas -->
+  <div class="col">
+    <div class="hd"><div><span class="eyebrow">Fila</span></div><span style="font-size:11px;color:var(--wa-faint)">28 conv.</span></div>
+    <a class="item is-active">
+      <div class="item__card"><span class="item__av">MC</span><div class="item__main">
+        <div class="item__top"><span class="item__name">Marina Costa</span><span class="item__time">12:41</span></div>
+        <div class="item__bottom"><span class="item__preview">Perfeito, podemos agendar a visita?</span><span class="item__unread">2</span></div>
+        <div class="item__labels"><span class="chip chip--red">Quente</span></div>
+      </div></div>
+    </a>
+    <a class="item">
+      <div class="item__card"><span class="item__av">EL</span><div class="item__main">
+        <div class="item__top"><span class="item__name">Eduardo Lima</span><span class="item__time">12:08</span></div>
+        <div class="item__bottom"><span class="item__preview">Vou confirmar com o banco e retorno.</span></div>
+        <div class="item__labels"><span class="chip chip--cyan">Financiamento</span></div>
+      </div></div>
+    </a>
+    <a class="item">
+      <div class="item__card"><span class="item__av">RS</span><div class="item__main">
+        <div class="item__top"><span class="item__name">Rafael Souza</span><span class="item__time">10:30</span></div>
+        <div class="item__bottom"><span class="item__preview">Obrigado pelas fotos!</span></div>
+        <div class="item__labels"><span class="chip chip--green">Visita agendada</span></div>
+      </div></div>
+    </a>
+    <a class="item">
+      <div class="item__card"><span class="item__av">UN</span><div class="item__main">
+        <div class="item__top"><span class="item__name">Unitymob</span><span class="item__time">17:37</span></div>
+        <div class="item__bottom"><span class="item__preview">oi</span></div>
+        <div class="item__labels"><span class="chip chip--purple">Investidor</span></div>
+      </div></div>
+    </a>
+  </div>
+
+  <!-- Coluna 2: painel de contexto -->
+  <div class="col">
+    <div class="hd"><span class="eyebrow">Contexto do lead</span></div>
+    <div class="ctx">
+      <div class="ctx__id"><span class="ctx__av">MC</span><span class="ctx__name">Marina Costa</span><span class="ctx__phone">+55 11 98765-4321</span></div>
+      <div><label>Lead vinculado</label><span class="pin pin--lead"><i class="bi bi-person-badge"></i> Marina Costa · Novo</span></div>
+      <div><label>Imóvel de interesse</label><span class="pin pin--prop"><i class="bi bi-house-door"></i> Apto 302 · Vila Mariana</span></div>
+      <div><label>Etiquetas</label><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="chip chip--red">Quente</span><span class="chip chip--green">Visita agendada</span></div></div>
+      <button class="ctx__btn"><i class="bi bi-calendar-event"></i> Agendar visita</button>
+    </div>
+  </div>
+
+  <!-- Coluna 3: valores -->
+  <div class="col col--spec">
+    <h3>Valores canônicos</h3>
+    <p class="sub">Fonte da verdade do inbox. Fonte: <b>Inter</b> em tudo · base 13px.</p>
+    <div class="spec">
+      <section><b>Cores</b><p>
+        <span class="sw" style="background:#128c7e"></span>verde WA <code>#128c7e</code> ·
+        <span class="sw" style="background:#dcf5ee"></span>soft <code>#dcf5ee</code> ·
+        avatar txt <code>#0f7a68</code><br>
+        <span class="sw" style="background:#d9fdd3"></span>balão enviado <code>#d9fdd3</code> ·
+        <span class="sw" style="background:#fff"></span>recebido <code>#fff</code><br>
+        ink <code>#1f2733</code> · muted <code>#697586</code> · faint <code>#98a2b3</code> · linha <code>#eceef1</code> · lida <code>#53bdeb</code>
+      </p></section>
+      <section><b>Item de conversa</b><p>
+        avatar <code>38×38</code> · nome <code>13/700</code> · prévia <code>12/#697586</code> · hora <code>11/#98a2b3</code><br>
+        não lida: pílula <code>18px</code> bg <code>#128c7e</code> · ativo: bg <code>#f5f7fa</code> + barra esq <code>2px #128c7e</code> · hover <code>#f7f8fa</code><br>
+        card padding <code>10px 12px</code>, gap <code>10</code>, borda inferior <code>#eceef1</code>
+      </p></section>
+      <section><b>Etiquetas</b><p>chips <b>preenchidos</b> (bg + anel <code>inset 1.5px</code>): Quente=vermelho · Financiamento=ciano · Visita=verde · Investidor=<b>roxo</b>. Nunca outline.</p></section>
+      <section><b>Filtros (pílula)</b><p>altura <code>26</code>, radius <code>999</code>, borda <code>#e2e6ea</code>, <code>12/650</code>; ativo bg <code>#dcf5ee</code> texto <code>#0f7a68</code></p></section>
+      <section><b>Balões</b><p>padding <code>8px 11px</code> · radius <code>10</code> · sombra <code>0 1px 1px /.08</code> · corpo <code>13/1.4</code> · hora <code>10/#98a2b3</code> · max-width <code>72%</code></p></section>
+      <section><b>Contexto (≥1120px)</b><p>coluna <code>300px</code>, borda-esq <code>#eceef1</code>, <b>altura total</b> (topo→rodapé). Avatar <code>52×52/18</code>, nome <code>14</code>, telefone <code>12/#697586</code>. Rótulos <code>10/800</code> uppercase. Pin altura <code>32</code>, radius <code>7</code>, borda-esq <code>4px</code> (lead #16a34a · imóvel #ff7043 · wa #128c7e).</p></section>
+      <section><b>Composer</b><p>input <b>Inter 13/1.4</b> (nunca mono), borda <code>#d2d6db</code> radius <code>6</code>, foco borda <code>#7f96b5</code> + anel; botão Enviar <code>34</code> primário.</p></section>
+    </div>
+  </div>
+
+</div>
+</body></html>

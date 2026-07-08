@@ -1,18 +1,16 @@
 <span class="tw-hidden" data-dwv-sync-status-state data-sync-status="<%= @loft_sync_status.presence || "idle" %>"></span>
 
-<div class="ax-card tw-mb-4 bg-light">
+<div class="ax-card loft-integration-status-card tw-mb-4">
   <div class="ax-card__body">
-    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-info-circle me-2 text-primary"></i>Status Atual</h6>
-    <ul class="tw-text-sm mb-0 ps-3">
-      <li class="mb-2">Integração ativa: <strong><%= @loft_enabled ? "Sim" : "Não" %></strong></li>
-      <li class="mb-2">Host configurado: <strong><%= @loft_host.present? ? "Sim" : "Não" %></strong></li>
-      <li class="mb-2">Token configurado: <strong><%= @loft_token.present? ? "Sim" : "Não" %></strong></li>
-      <li class="mb-2">Agendamento automático: <strong><%= @loft_schedule_enabled ? "Ativo" : "Inativo" %></strong></li>
-      <li class="mb-2">Preservar campos manuais: <strong><%= @loft_preserve_manual_fields ? "Ativo" : "Inativo" %></strong></li>
-      <li class="mb-2">Agenda: <strong><code><%= @loft_schedule_cron %></code></strong></li>
-      <li class="mb-2">Status atual: <strong><%= @loft_sync_status %></strong></li>
-      <li class="mb-2">Progresso atual: <strong><%= @loft_sync_progress %>%</strong></li>
-      <li class="mb-2">Última execução: <strong><%= @loft_last_sync_time.present? ? l(@loft_last_sync_time, format: :short) : "N/D" %></strong></li>
+    <div class="loft-integration-section-title"><i class="bi bi-info-circle"></i>Status Atual</div>
+    <ul class="loft-integration-status-list">
+      <li class="loft-integration-status-list__item">Integração ativa: <strong><%= @loft_enabled ? "Sim" : "Não" %></strong></li>
+      <li class="loft-integration-status-list__item">Host configurado: <strong><%= @loft_host.present? ? "Sim" : "Não" %></strong></li>
+      <li class="loft-integration-status-list__item">Token configurado: <strong><%= @loft_token.present? ? "Sim" : "Não" %></strong></li>
+      <li class="loft-integration-status-list__item">Preservar campos manuais: <strong><%= @loft_preserve_manual_fields ? "Ativo" : "Inativo" %></strong></li>
+      <li class="loft-integration-status-list__item">Status atual: <strong><%= @loft_sync_status %></strong></li>
+      <li class="loft-integration-status-list__item">Progresso atual: <strong><%= @loft_sync_progress %>%</strong></li>
+      <li class="loft-integration-status-list__item">Última execução: <strong><%= @loft_last_sync_time.present? ? l(@loft_last_sync_time, format: :short) : "N/D" %></strong></li>
       <li>Resumo: <%= @loft_last_sync_message.presence || "Sem execuções registradas." %></li>
     </ul>
 
@@ -21,21 +19,14 @@
         <span>Andamento</span>
         <span><%= @loft_sync_progress %>%</span>
       </div>
-      <div class="progress" style="height: 10px;">
-        <div class="progress-bar <%= @loft_sync_status == 'failed' ? 'bg-danger' : (@loft_sync_status == 'completed' ? 'bg-success' : 'bg-info') %>"
-             role="progressbar"
-             style="width: <%= @loft_sync_progress %>%"
-             aria-valuenow="<%= @loft_sync_progress %>"
-             aria-valuemin="0"
-             aria-valuemax="100"></div>
-      </div>
+      <%= ax_progress(value: @loft_sync_progress, tone: (@loft_sync_status == 'failed' ? :red : (@loft_sync_status == 'completed' ? :green : :blue))) %>
     </div>
   </div>
 </div>
 
 <div class="ax-card tw-mb-4">
   <div class="ax-card__body">
-    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-clock-history me-2 text-info"></i>Últimas 5 Sincronizações</h6>
+    <div class="loft-integration-section-title"><i class="bi bi-clock-history"></i>Últimas 5 Sincronizações</div>
     <% if @loft_sync_history.present? %>
       <div class="ax-table-wrap">
         <table class="ax-table">
@@ -56,7 +47,7 @@
               <% status = item["status"].to_s %>
               <% stats = item["stats"].is_a?(Hash) ? item["stats"] : {} %>
               <tr>
-                <td class="tw-text-sm" style="white-space:nowrap"><%= item_time ? l(item_time, format: :short) : "N/D" %></td>
+                <td class="loft-integration-nowrap"><%= item_time ? l(item_time, format: :short) : "N/D" %></td>
                 <td>
                   <span class="ax-badge <%= status == 'completed' ? 'ax-badge--green' : (status == 'failed' ? 'ax-badge--red' : (status == 'processing' ? 'ax-badge--blue' : 'ax-badge--gray')) %>">
                     <%= status.presence || "N/D" %>
@@ -74,7 +65,7 @@
         </table>
       </div>
     <% else %>
-      <p class="tw-text-sm tw-text-ink-muted mb-0">Ainda não há histórico de sincronizações.</p>
+      <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Ainda não há histórico de sincronizações.</p>
     <% end %>
   </div>
 </div>

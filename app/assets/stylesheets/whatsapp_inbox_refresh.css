@@ -1,0 +1,628 @@
+/* =============================================================================
+   Unitymob · WhatsApp Atendimento — refino de layout (spec canônico)
+   Camada de LAYOUT sobre admin_tailwind.css (carregada depois, no admin layout).
+   Fonte da verdade: design_migrate/whatsapp-inbox. Componentes vêm das classes
+   .ax-* / .lead-label-chip / .ax-context-pin. Tudo escopado em .wa-inbox-page.
+   ============================================================================= */
+
+/* Tokens compartilhados: inbox E o cartão de WhatsApp do lead (mesmo visual). */
+:is(.wa-inbox-page, .lead-whatsapp-card) {
+  --wa-green: #128c7e;
+  --wa-green-soft: #dcf5ee;
+  --wa-green-ink: #0f7a68;
+  --wa-bubble-out: #d9fdd3;
+  --wa-ink: #1f2733;
+  --wa-muted: #697586;
+  --wa-faint: #98a2b3;
+  --wa-line: #eceef1;
+  --wa-border: var(--line-shell, #dfe5ee);
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+}
+.wa-inbox-page {
+  height: calc(100vh - 66px);
+  min-height: 560px;
+  padding: 8px 12px 12px;
+  background: #eef3f7;
+}
+.wa-inbox-page .wa-inbox-page__header { display: none; }
+
+/* ---------- Shell de 2 colunas (fila | conversa) ---------- */
+.wa-inbox-page .wa-inbox-page__shell,
+.wa-inbox-page .wa-inbox-shell { height: 100%; min-height: 0; }
+
+.wa-inbox-page .wa-inbox-shell {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--wa-border);
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+}
+
+.wa-inbox-page turbo-frame#wa-thread {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wa-inbox-page .wa-inbox-panel { height: 100%; min-height: 0; border: 0; border-radius: 0; box-shadow: none; background: #fff; }
+.wa-inbox-page .wa-inbox-panel > .ax-operational-panel__header { display: none; }
+.wa-inbox-page .wa-inbox-panel > .ax-operational-panel__body { height: 100%; min-height: 0; padding: 0; }
+.wa-inbox-page .wa-inbox-panel--list { border-right: 1px solid var(--wa-border); }
+
+/* ---------- Fila: busca + filtros em pílula ---------- */
+.wa-inbox-page .wa-inbox-list-shell { height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.wa-inbox-page .wa-inbox-list-toolbar { display: grid; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--wa-line); background: #fff; }
+.wa-inbox-page .wa-inbox-list-search-shell {
+  display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 11px;
+  border: 1px solid var(--field-border, #d2d6db); border-radius: 6px; background: #fff; color: var(--wa-faint);
+}
+.wa-inbox-page .wa-inbox-list-search { height: 32px; width: 100%; border: 0; outline: 0; background: transparent; color: var(--wa-ink); font-size: 13px; }
+.wa-inbox-page .wa-inbox-list-search::placeholder { color: var(--wa-faint); }
+.wa-inbox-page .wa-inbox-list-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.wa-inbox-page .wa-inbox-list-filter {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px;
+  border: 1px solid #e2e6ea; border-radius: 999px; background: #fff; color: #475467;
+  font-size: 12px; font-weight: 650; cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.wa-inbox-page .wa-inbox-list-filter:hover { border-color: #c4d0df; }
+.wa-inbox-page .wa-inbox-list-filter small { font-weight: 800; font-size: 11px; color: var(--wa-faint); }
+.wa-inbox-page .wa-inbox-list-filter.is-active { background: var(--wa-green-soft); border-color: transparent; color: var(--wa-green-ink); }
+.wa-inbox-page .wa-inbox-list-filter.is-active small { color: var(--wa-green-ink); }
+.wa-inbox-page .wa-inbox-list-actions { display: none; }
+
+/* ---------- Fila: item de conversa ---------- */
+.wa-inbox-page .wa-inbox-list { overflow-y: auto; background: #fff; align-content: start; }
+
+.wa-inbox-page .wa-inbox-conversation {
+  display: block; color: inherit; text-decoration: none; border-radius: 0;
+  border-left: 2px solid transparent; transition: background .12s ease, border-color .12s ease;
+}
+.wa-inbox-page .wa-inbox-conversation:hover { background: #f7f8fa; transform: none; }
+.wa-inbox-page .wa-inbox-conversation[hidden] { display: none; }
+.wa-inbox-page .wa-inbox-conversation.is-active { background: #f5f7fa; border-left-color: var(--wa-green); }
+
+.wa-inbox-page .wa-inbox-conversation__card { display: flex; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--wa-line); }
+.wa-inbox-page .wa-inbox-conversation__avatar {
+  flex: none; width: 38px; height: 38px; display: grid; place-items: center;
+  border-radius: 999px; background: var(--wa-green-soft); color: var(--wa-green-ink);
+  font-size: 13px; font-weight: 800; letter-spacing: .01em;
+}
+.wa-inbox-page .wa-inbox-conversation__main { min-width: 0; flex: 1; }
+.wa-inbox-page .wa-inbox-conversation__top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.wa-inbox-page .wa-inbox-conversation__name {
+  min-width: 0; font-size: 13px; font-weight: 700; color: var(--wa-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wa-inbox-page .wa-inbox-conversation__time { flex: none; font-size: 11px; color: var(--wa-faint); }
+.wa-inbox-page .wa-inbox-conversation__bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.wa-inbox-page .wa-inbox-conversation__preview {
+  min-width: 0; font-size: 12px; color: var(--wa-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wa-inbox-page .wa-inbox-conversation__unread {
+  flex: none; min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center;
+  border-radius: 999px; background: var(--wa-green); color: #fff; font-size: 11px; font-weight: 700; line-height: 1;
+}
+.wa-inbox-page .wa-inbox-conversation__labels { flex: none; display: inline-flex; gap: 4px; margin-top: 0; }
+
+/* ---------- Conversa: painel = COLUNA FLEX (header / mensagens / composer).
+   O composer fica sempre visível na base; o workspace rola no meio. ---------- */
+.wa-inbox-page .wa-inbox-panel--thread {
+  position: relative;
+  display: flex; flex-direction: column;
+  height: 100%; min-height: 0; overflow: hidden;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header, :is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer { flex: none; }
+.wa-inbox-page .wa-inbox-thread__workspace,
+.wa-inbox-page .wa-inbox-thread__workspace--compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.wa-inbox-page .wa-inbox-thread__placeholder { flex: 1; display: grid; place-items: center; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 14px; border-bottom: 1px solid var(--wa-line); background: #fff;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__identity,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__avatar {
+  flex: 0 0 34px; width: 34px; height: 34px; display: grid; place-items: center;
+  border-radius: 999px; background: var(--wa-green-soft); color: var(--wa-green-ink); font-size: 13px; font-weight: 800;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__copy { display: grid; gap: 1px; min-width: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__copy strong {
+  overflow: hidden; color: var(--wa-ink); font-size: 13.5px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__copy span { display: inline-flex; align-items: center; gap: 5px; color: var(--wa-green); font-size: 11.5px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__copy .bi-circle-fill { font-size: 7px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__status {
+  display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px;
+  border-radius: 999px; background: var(--success-bg, #e6f6ec); color: var(--success, #08875d); font-size: 11px; font-weight: 600;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__status .bi-circle-fill { font-size: 6px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__icon { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #667085; cursor: pointer; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__icon:hover { background: #f1f5f9; color: #334155; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__menu { position: relative; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__menu .ax-menu { right: 0; transform: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header__menu .ax-menu .tw-inline-block { display: block; }
+
+.wa-inbox-page .wa-inbox-thread__scroll {
+  grid-column: 1;
+  min-height: 0;
+  min-width: 0;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+}
+.wa-inbox-page .wa-inbox-thread__list { display: flex; flex-direction: column; gap: 8px; min-height: 100%; padding: 0; }
+
+/* ---------- Balões estilo WhatsApp ---------- */
+/* ---------- Responder / Copiar (menu da bolha) ---------- */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble { position: relative; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-actions {
+  position: absolute; top: -12px; right: 6px; z-index: 5;
+  display: flex; gap: 2px; padding: 2px;
+  border: 1px solid var(--wa-line, #eceef1); border-radius: 999px; background: #fff;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, .12);
+  opacity: 0; pointer-events: none; transition: opacity .12s ease;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble:hover .wa-msg-actions,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble:focus-within .wa-msg-actions {
+  opacity: 1; pointer-events: auto;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-actions__btn {
+  display: grid; place-items: center; width: 26px; height: 26px;
+  padding: 0; border: 0; border-radius: 999px; background: transparent;
+  color: #54656f; font-size: 13px; cursor: pointer;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-actions__btn:hover { background: #f1f5f9; color: #1f2733; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-quote {
+  display: grid; gap: 1px; width: 100%; margin: 2px 2px 3px; padding: 6px 9px;
+  border: 0; border-left: 3px solid var(--wa-green, #128c7e); border-radius: 7px;
+  background: rgba(15, 23, 42, .05); text-align: left; cursor: pointer;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-quote__author {
+  color: var(--wa-green-ink, #0f7a68); font-size: 11px; font-weight: 700;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-quote__snippet {
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  color: #54656f; font-size: 11.5px; line-height: 1.3;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble-row.is-highlighted .wa-inbox-bubble__surface {
+  box-shadow: 0 0 0 3px rgba(18, 140, 126, .35); transition: box-shadow .3s ease;
+}
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__reply {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px; border-left: 3px solid var(--wa-green, #128c7e);
+  border-radius: 7px; background: #f5f8fb;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__reply.is-hidden { display: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__reply-copy { flex: 1; min-width: 0; display: grid; gap: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__reply-copy strong {
+  color: var(--wa-green-ink, #0f7a68); font-size: 11px;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__reply-copy span {
+  overflow: hidden; color: #54656f; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__reply-close {
+  display: grid; place-items: center; width: 26px; height: 26px; flex: none;
+  padding: 0; border: 0; border-radius: 999px; background: transparent; color: #667085; cursor: pointer;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__reply-close:hover { background: #e8edf3; }
+
+/* ---------- Selo de apresentação no cabeçalho (icone + tooltip) ---------- */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-presentation-mark {
+  position: relative; display: inline-grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 999px; font-size: 15px; cursor: default;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-presentation-mark--ok { color: var(--wa-green, #128c7e); }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-presentation-mark--pending { color: #d97706; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-presentation-mark:hover { background: #f1f5f9; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-presentation-mark::after {
+  content: attr(data-wa-tooltip);
+  position: absolute; top: calc(100% + 7px); right: -6px; z-index: 50;
+  width: max-content; max-width: 260px; padding: 6px 10px;
+  border-radius: 7px; background: rgba(15, 23, 42, .92); color: #fff;
+  font-size: 11.5px; font-weight: 500; line-height: 1.35; text-align: left; white-space: normal;
+  opacity: 0; pointer-events: none; transform: translateY(-3px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-presentation-mark:hover::after,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-presentation-mark:focus-visible::after,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-presentation-mark:focus::after {
+  opacity: 1; transform: translateY(0);
+}
+
+/* ---------- Menu de mensagem: reações, menu ⌄, fixada, encaminhar ---------- */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-react,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu {
+  position: absolute; bottom: calc(100% + 4px); right: 0; z-index: 30;
+  border: 1px solid var(--wa-line, #eceef1); border-radius: 10px; background: #fff;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, .16);
+}
+/* inbound (lado esquerdo): popover alinha a esquerda para nao estourar a tela */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble-row--inbound .wa-msg-react,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble-row--inbound .wa-msg-menu {
+  right: auto; left: 0;
+}
+/* pill permanece ativa enquanto um popover estiver aberto */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble:has([data-wa-msg-menu]:not([hidden])) .wa-msg-actions,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble:has([data-wa-msg-react]:not([hidden])) .wa-msg-actions {
+  opacity: 1; pointer-events: auto;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-react {
+  display: flex; gap: 2px; padding: 5px; border-radius: 999px;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-react[hidden],
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu[hidden] { display: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-react button {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  padding: 0; border: 0; border-radius: 999px; background: none; font-size: 18px; cursor: pointer;
+  transition: transform .1s ease;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-react button:hover { background: #f1f5f9; transform: scale(1.18); }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-react__remove { color: #98a2b3; font-size: 14px !important; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu {
+  display: grid; gap: 1px; min-width: 190px; padding: 5px;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu button {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px;
+  border: 0; border-radius: 7px; background: none; color: #1f2733;
+  font-size: 12.5px; font-weight: 600; text-align: left; cursor: pointer;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu button:hover { background: #f1f5f9; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu button i { flex: none; font-size: 14px; color: #667085; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu__danger,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu__danger i { color: #d92d20 !important; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu__danger:hover { background: #fef3f2 !important; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-reactions {
+  justify-self: start; margin: -6px 0 0 8px; padding: 2px 7px;
+  border: 1px solid var(--wa-line, #eceef1); border-radius: 999px; background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .1); font-size: 13px; line-height: 1.4;
+  position: relative; z-index: 2; width: fit-content;
+}
+.wa-inbox-bubble-row--outbound .wa-reactions { justify-self: end; margin-right: 8px; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-mark { margin-right: 2px; font-size: 10px; color: #98a2b3; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-pinned-bar {
+  display: flex; align-items: center; gap: 8px; padding: 6px 14px;
+  border-bottom: 1px solid var(--wa-line, #eceef1); background: #f8fafc;
+  color: #54656f; font-size: 12px;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-pinned-bar.is-hidden { display: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-pinned-bar i { color: var(--wa-green-ink, #0f7a68); flex: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-pinned-bar__jump {
+  flex: 1; min-width: 0; overflow: hidden; padding: 0; border: 0; background: none;
+  color: #54656f; font-size: 12px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-pinned-bar__jump:hover { color: #1f2733; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal {
+  position: absolute; inset: 0; z-index: 60; display: grid; place-items: center;
+  background: rgba(15, 23, 42, .4);
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal.is-hidden { display: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal__panel {
+  display: grid; gap: 10px; width: min(360px, calc(100% - 32px)); max-height: min(70%, 480px);
+  padding: 14px; border-radius: 12px; background: #fff; box-shadow: 0 20px 50px rgba(15, 23, 42, .3);
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal__list { display: grid; gap: 2px; overflow-y: auto; min-height: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal__list > button {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px;
+  border: 0; border-radius: 8px; background: none; text-align: left; cursor: pointer;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal__list > button:hover { background: #f1f5f9; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal__avatar {
+  display: grid; place-items: center; width: 32px; height: 32px; flex: none;
+  border-radius: 999px; background: var(--wa-green-soft, #dcf5ee); color: var(--wa-green-ink, #0f7a68);
+  font-size: 12px; font-weight: 800;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal__copy { min-width: 0; display: grid; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal__copy strong { font-size: 13px; color: #1f2733; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-forward-modal__copy span { font-size: 11px; color: #98a2b3; }
+
+.wa-action-toast {
+  position: absolute; left: 50%; bottom: 84px; z-index: 70; transform: translateX(-50%);
+  max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 8px;
+  background: rgba(15, 23, 42, .88); color: #fff; font-size: 12.5px; text-align: center;
+}
+
+/* Legenda de midia nao dita a largura da bolha: width 0 tira o texto do
+   calculo (bolha abraca a midia) e min-width 100% o estica ate ela, quebrando. */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble--media .wa-inbox-bubble__body--media {
+  width: 0; min-width: 100%; box-sizing: border-box;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble-row { display: flex; justify-content: flex-start; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble-row--outbound { justify-content: flex-end; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble { max-width: 72%; min-width: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble__surface { padding: 8px 11px; border: 0; border-radius: 10px; box-shadow: 0 1px 1px rgba(15, 23, 42, .08); }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble--inbound  .wa-inbox-bubble__surface { background: #fff; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble--outbound .wa-inbox-bubble__surface { background: var(--wa-bubble-out); }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble__body { font-size: 13px; line-height: 1.4; color: var(--wa-ink); }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble__meta { margin-top: 2px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble__time { font-size: 10px; color: var(--wa-faint); }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble__time i.is-read { color: #53bdeb; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble__time i.is-failed { color: var(--danger, #b42318); }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__day-separator { text-align: center; margin: 10px 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__day-separator span {
+  display: inline-block; padding: 4px 10px; background: #fff; color: #54656f;
+  font-size: 11px; font-weight: 600; border-radius: 8px; box-shadow: 0 1px 1px rgba(15, 23, 42, .08);
+}
+
+/* ---------- Composer ---------- */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer { padding: 10px; border-top: 1px solid var(--wa-line); background: #fff; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__toolbar,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__template { display: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__layout { display: grid; grid-template-columns: auto auto auto minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__row--controls,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__row--message { display: contents; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__file-summary,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__error { grid-column: 1 / -1; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__tool { width: 34px; min-width: 34px; height: 34px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: #54656f; box-shadow: none; font-size: 18px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__tool:hover { background: #f1f5f9; color: #1f2733; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer { position: relative; }
+.wa-emoji-popover { position: absolute; bottom: calc(100% + 6px); left: 8px; z-index: 40; width: 292px; max-width: calc(100vw - 24px); padding: 8px; border: 1px solid var(--wa-line, #eceef1); border-radius: 10px; background: #fff; box-shadow: 0 12px 32px rgba(16, 24, 40, .16); display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+.wa-emoji-popover button { border: 0; background: none; font-size: 19px; line-height: 1; padding: 5px 0; border-radius: 6px; cursor: pointer; }
+.wa-emoji-popover button:hover { background: #f1f5f9; }
+.wa-composer-popover { position: absolute; bottom: calc(100% + 6px); left: 8px; z-index: 40; min-width: 220px; max-width: calc(100vw - 24px); padding: 6px; border: 1px solid var(--wa-line, #eceef1); border-radius: 10px; background: #fff; box-shadow: 0 12px 32px rgba(16, 24, 40, .16); }
+.wa-composer-popover--menu { display: grid; gap: 1px; max-height: 320px; overflow-y: auto; }
+.wa-composer-popover--menu > button,
+.wa-composer-popover--menu > [data-controller="ax-modal"] > button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 7px; background: none; color: #1f2733; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
+.wa-composer-popover--menu > button:hover,
+.wa-composer-popover--menu > [data-controller="ax-modal"] > button:hover { background: #f1f5f9; }
+.wa-composer-popover--menu > button .bi,
+.wa-composer-popover--menu > [data-controller="ax-modal"] > button .bi { font-size: 16px; flex: none; }
+.wa-composer-popover--menu > button span,
+.wa-composer-popover--menu > [data-controller="ax-modal"] > button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wa-composer-popover__caption { padding: 6px 10px 3px; color: #98a2b3; font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__body { grid-column: 4; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__body:focus {
+  position: absolute; left: 10px; right: 54px; bottom: 10px; width: auto; z-index: 30; background: #fff;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__submit { grid-column: 5; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__body {
+  box-sizing: border-box; height: 34px; min-height: 34px; max-height: 34px; padding: 7px 11px; resize: none;
+  border: 1px solid var(--field-border, #d2d6db); border-radius: 6px;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif; font-size: 13px; line-height: 1.4; color: var(--wa-ink);
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__body::placeholder { font-family: inherit; color: var(--wa-faint); }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__body:focus { border-color: var(--field-focus, #7f96b5); box-shadow: 0 0 0 2px var(--admin-primary-ring, rgba(54, 95, 143, .12)); }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__submit { width: 38px; min-width: 38px; height: 38px; min-height: 38px; padding: 0; border-radius: 999px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__submit span { display: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__submit .ax-ico { margin: 0; font-size: 15px; }
+/* Barra de gravação (estilo WhatsApp): cobre ferramentas+campo; ➤ fica visível */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__recording {
+  position: absolute; left: 10px; right: 54px; bottom: 10px; z-index: 31;
+  display: none; align-items: center; gap: 10px;
+  height: 38px; padding: 0 2px; background: #fff;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer.is-recording-mode .wa-inbox-composer__recording { display: flex; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-delete,
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-pause {
+  display: grid; place-items: center; width: 34px; height: 34px; flex: none;
+  padding: 0; border: 0; border-radius: 999px; background: transparent; cursor: pointer; font-size: 18px;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-delete { color: #667085; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-delete:hover { background: #fef3f2; color: #d92d20; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-pause { color: #d92d20; font-size: 22px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-pause:hover { background: #fef3f2; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-dot {
+  width: 10px; height: 10px; flex: none; border-radius: 999px; background: #d92d20;
+  animation: wa-rec-blink 1.1s ease-in-out infinite;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer.is-recording-paused .wa-inbox-composer__rec-dot { animation: none; opacity: .45; }
+@keyframes wa-rec-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-time {
+  flex: none; color: #1f2733; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-bars {
+  position: relative; flex: 1; display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; overflow: hidden;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-bars .wa-rec-cursor {
+  position: absolute; top: 50%; left: 0; display: none;
+  width: 12px; height: 12px; border-radius: 999px; background: #365f8f;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .35); transform: translate(-50%, -50%);
+  transition: left .15s linear;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer.is-preview-active .wa-rec-cursor { display: block; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-bars i.is-played { background: #365f8f; opacity: 1; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-bars i {
+  width: 3px; height: 4px; border-radius: 2px; background: #98a2b3;
+  transition: height .12s ease; /* altura vem do JS: amplitude real do microfone */
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer.is-recording-paused .wa-inbox-composer__rec-bars i { opacity: .55; }
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-preview {
+  display: grid; place-items: center; width: 34px; height: 34px; flex: none;
+  padding: 0; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+  color: #365f8f; font-size: 20px;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer__rec-preview:hover { background: #f1f5f9; }
+
+/* Fake fullscreen: iOS/PWA nao tem Fullscreen API — simulamos com fixed. */
+.is-fake-fullscreen.lead-whatsapp-card__stage,
+.wa-inbox-page .is-fake-fullscreen {
+  position: fixed !important; inset: 0; z-index: 4000;
+  width: auto; height: auto; max-height: none; min-height: 0;
+  border-radius: 0; border: 0; background: #fff;
+  /* PWA iOS: nao deixa status bar/home indicator cobrirem header e composer.
+     env() zera sem viewport-fit=cover — max() garante a folga minima. */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+}
+html.wa-fullscreen-lock, html.wa-fullscreen-lock body { overflow: hidden !important; height: 100%; }
+
+/* Contexto = coluna real do workspace; o scroll da conversa ocupa a celula livre. */
+@media (min-width: 1120px) {
+  .wa-inbox-page .wa-inbox-thread__workspace,
+  .wa-inbox-page .wa-inbox-thread__workspace--compact {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0;
+  }
+  .wa-inbox-page .wa-pinned-bar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .wa-inbox-page .wa-inbox-thread__scroll {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .wa-inbox-page .wa-inbox-thread__context {
+    position: static;
+    grid-column: 2;
+    grid-row: 1 / -1;
+    width: auto;
+    height: 100%;
+  }
+  .wa-inbox-page .wa-inbox-thread__jump { right: 316px; }
+}
+
+.wa-inbox-page .wa-inbox-thread__context {
+  min-height: 0; height: 100%; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 14px; border-left: 1px solid var(--wa-line); background: #fff;
+}
+
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__summary { display: flex; flex-direction: column; gap: 12px; padding: 0; border: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__identity {
+  display: grid; justify-items: center; gap: 6px; padding-bottom: 12px; text-align: center; border-bottom: 1px solid var(--wa-line);
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__avatar {
+  width: 52px; height: 52px; flex: none; display: grid; place-items: center;
+  border-radius: 999px; background: var(--wa-green-soft); color: var(--wa-green-ink); font-size: 18px; font-weight: 800; line-height: 1;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__identity-copy { display: grid; gap: 3px; text-align: center; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__identity-copy strong { color: var(--wa-ink); font-size: 14px; font-weight: 800; line-height: 1.15; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__identity-copy span { color: var(--wa-muted); font-size: 12px; line-height: 1.15; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__last-activity { color: var(--wa-muted); font-size: 11px; line-height: 1.2; text-align: center; }
+
+/* Seções com eyebrow (Lead vinculado / Imóvel de interesse / Etiquetas) */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__crm-summary { display: block; padding: 0; border: 0; background: transparent; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__crm-summary:empty { display: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__section { display: grid; gap: 6px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__eyebrow {
+  color: var(--wa-muted); font-size: 10px; font-weight: 800; letter-spacing: .055em; line-height: 1.15; text-transform: uppercase;
+}
+
+/* Pins de entidade (.ax-context-pin): fundo soft do spec e largura da coluna */
+:is(.wa-inbox-page, .lead-whatsapp-card, .lead-property-card) .wa-inbox-thread__section .ax-context-pin { max-width: 100%; background: #f7f8fa; }
+:is(.wa-inbox-page, .lead-whatsapp-card, .lead-property-card) .wa-inbox-thread__section .ax-context-pin__link { flex: 1; }
+
+/* Imóveis de interesse: chips removíveis + autocomplete (tom-select) */
+:is(.wa-inbox-page, .lead-whatsapp-card, .lead-property-card) .wa-inbox-thread__interests,
+:is(.wa-inbox-page, .lead-whatsapp-card, .lead-property-card) .wa-inbox-thread__interest-chips { display: grid; gap: 6px; min-width: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card, .lead-property-card) .wa-inbox-thread__interest-chips:empty { display: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card, .lead-property-card) .wa-inbox-thread__interests-error { margin: 0; padding: 5px 8px; border-radius: 6px; background: var(--danger-bg, #fee4e2); color: var(--danger, #b42318); font-size: 12px; }
+/* Card do imóvel na página do lead: mais respiro entre chips e seletor */
+.lead-property-card .wa-inbox-thread__interests, .lead-property-card .wa-inbox-thread__interest-chips { gap: 8px; }
+.lead-property-card .ax-context-pin { max-width: 100%; background: #f7f8fa; }
+.lead-property-card .ax-context-pin__link { flex: 1; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__status-badge { flex: none; align-self: center; margin-right: 8px; }
+
+/* Etiquetas: chips preenchidos (.ax-badge / .lead-label-chip do design system) */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__labels .lead-labels-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* Ações do contexto: .ax-btn largura total, 34px, borda hairline */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__schedule-action { display: grid; gap: 6px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__presentation { display: flex; gap: 6px; min-width: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__presentation.is-required .ax-select { border-color: var(--warning-line, #fedf89); box-shadow: 0 0 0 2px var(--warning-bg, #fef3c7); }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer--gated-banner {
+  flex: none; display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  border-top: 1px solid var(--warning-line, #fedf89); background: var(--warning-bg, #fef3c7);
+  color: var(--warning, #b45309); font-size: 12.5px;
+}
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer--gated-banner .bi { font-size: 15px; flex: none; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__presentation .ax-select { flex: 1; min-width: 0; height: 34px; font-size: 13px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__presentation .wa-inbox-thread__schedule-button { width: auto; flex: none; padding: 0 10px; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__schedule-action .tw-inline-block { display: block; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__schedule-button { width: 100%; height: 34px; min-height: 34px; border-color: var(--field-border, #d2d6db); }
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 1280px) { .wa-inbox-page .wa-inbox-shell { grid-template-columns: 300px minmax(0, 1fr); } }
+
+@media (max-width: 1080px) {
+  .wa-inbox-page { height: auto; min-height: 0; }
+  .wa-inbox-page .wa-inbox-shell { grid-template-columns: 1fr; }
+  .wa-inbox-page .wa-inbox-panel--list { border-right: 0; border-bottom: 1px solid var(--wa-border); }
+  .wa-inbox-page .wa-inbox-thread__context { border-left: 0; border-bottom: 1px solid var(--wa-line); }
+}
+
+/* =============================================================================
+   WhatsApp do LEAD (lead-whatsapp-card__stage): mesma anatomia da tela dedicada
+   — coluna flex (header/thread/composer) + contexto 300px em overlay absoluto.
+   Reusa as regras visuais compartilhadas acima; aqui só a geometria do card.
+   ============================================================================= */
+/* aterrissagem via #whatsapp (botões de atendimento): respira sob o header sticky */
+#whatsapp.lead-whatsapp-card { scroll-margin-top: 76px; }
+
+.lead-whatsapp-card__stage {
+  position: relative; display: flex; flex-direction: column; overflow: hidden;
+  height: min(62vh, 640px); min-height: 420px;
+  border: 1px solid var(--wa-line); border-radius: 8px; background: #fff;
+}
+.lead-whatsapp-card__stage .wa-inbox-thread__workspace,
+.lead-whatsapp-card__stage .wa-inbox-thread__workspace--compact {
+  flex: 1 1 auto; min-height: 0;
+  position: static; border: 0; border-radius: 0; /* o overlay do contexto ancora no stage */
+}
+.lead-whatsapp-card__stage .wa-inbox-thread__scroll { max-height: none; height: 100%; }
+.lead-whatsapp-card__stage .wa-inbox-composer { border: 0; border-radius: 0; }
+/* Sem coluna interna: o contexto fica no DOM (targets do wa-thread p/ real-time)
+   mas oculto — lead vinculado/imóveis/apresentação vivem nos cards da página. */
+.lead-whatsapp-card__stage .wa-inbox-thread__context { display: none; }
+.lead-whatsapp-card__stage .wa-inbox-thread__workspace,
+.lead-whatsapp-card__stage .wa-inbox-thread__workspace--compact {
+  grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 0;
+}
+.lead-whatsapp-card__presentation { display: grid; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--wa-line); background: #fff; }
+/* sem aviso de gate a barra some (o "ja se apresentou" agora e icone no cabecalho) */
+.lead-whatsapp-card__presentation:not(:has(*)) { display: none; }
+
+/* Tela cheia do WhatsApp do lead (wa-workspace no stage) + mobile */
+.lead-whatsapp-card__stage.is-browser-fullscreen {
+  height: 100vh; min-height: 100vh; border: 0; border-radius: 0; background: #fff;
+}
+.lead-whatsapp-card__stage:fullscreen { width: 100vw; }
+/* Blindagem de largura: scroll nunca herda max-content; texto sempre quebra */
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__scroll { min-width: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble { min-width: 0; }
+:is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble__body { overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .wa-composer-popover, .wa-emoji-popover { left: 8px; right: 8px; width: auto; min-width: 0; }
+  .lead-whatsapp-card__stage { height: 74vh; min-height: 360px; }
+  :is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-bubble { max-width: 88%; }
+  :is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-chat-header { padding: 8px 10px; }
+  :is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__scroll { padding: 12px 10px; }
+  .lead-whatsapp-card__presentation { padding: 8px 10px; }
+  :is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer { padding: 8px; }
+}

@@ -31,6 +31,27 @@ RSpec.describe "Admin habitation filter inspector", type: :request do
     expect(response.body).to include("Centro")
   end
 
+  it "organiza os filtros principais conforme o catálogo compacto" do
+    get filter_inspector_admin_habitations_path(q: "praia", min_price: "800000", max_price: "1200000"),
+        headers: { "Turbo-Frame" => "admin_habitations_filter_inspector" }
+
+    expect(response).to have_http_status(:ok)
+
+    document = Nokogiri::HTML(response.body)
+    quick_section = document.css(".ax-filter-section").find { |section| section.text.include?("Filtros rápidos") }
+
+    expect(response.body.index("Filtros rápidos")).to be < response.body.index("Dados")
+    expect(response.body).to include("Palavra-chave")
+    expect(response.body).to include("Código / Referência")
+    expect(response.body).to include("Empreendimento")
+    expect(response.body).to include("Corretor")
+    expect(response.body).to include("Recorte")
+    expect(response.body).to include("Tipo e status")
+    expect(document.at_css(".habitations-catalog-price-stack input[name='min_price']")).to be_present
+    expect(document.at_css(".habitations-catalog-price-stack input[name='max_price']")).to be_present
+    expect(quick_section.to_html).to include('name="q"')
+  end
+
   it "mantém o inspector pesado fora da primeira resposta da listagem" do
     get admin_habitations_path
 

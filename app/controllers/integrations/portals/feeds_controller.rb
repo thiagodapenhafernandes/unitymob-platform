@@ -21,20 +21,37 @@ module Integrations
 
       private
 
+      # O TOKEN identifica unicamente a integração/tenant (feed_token é único
+      # global). Resolvemos a integração PELO TOKEN e só então validamos que o
+      # portal da URL bate com o da integração. Assim cada URL/token serve
+      # exclusivamente o catálogo de UM tenant — nunca o de todos.
       def set_integration
         @portal = params[:portal].to_s.downcase
-        @integration = PortalIntegration.for_portal!(@portal)
-      rescue ActiveRecord::RecordNotFound
-        render json: { error: "Portal inválido" }, status: :not_found
+        @feed_token = feed_token_param
+
+        if @feed_token.blank?
+          return render json: { error: "Não autorizado" }, status: :unauthorized
+        end
+
+        @integration = PortalIntegration.find_by(feed_token: @feed_token)
+
+        if @integration.nil? || @integration.portal.to_s.downcase != @portal || !PortalIntegration::PORTALS.include?(@portal)
+          render json: { error: "Não autorizado" }, status: :unauthorized
+        end
       end
 
       def authenticate_feed_request!
-        token = request.headers["X-Portal-Token"].presence || params[:token].to_s
-        configured = @integration.feed_token.to_s
+        return if performed?
 
-        if configured.blank? || token.blank? || !ActiveSupport::SecurityUtils.secure_compare(token, configured)
+        configured = @integration&.feed_token.to_s
+
+        if configured.blank? || @feed_token.blank? || !ActiveSupport::SecurityUtils.secure_compare(@feed_token.to_s, configured)
           render json: { error: "Não autorizado" }, status: :unauthorized
         end
+      end
+
+      def feed_token_param
+        (request.headers["X-Portal-Token"].presence || params[:token]).to_s
       end
 
       def xml_request?

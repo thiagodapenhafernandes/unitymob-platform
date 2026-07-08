@@ -41,14 +41,37 @@ RSpec.describe AntiFraud::CheckIns::Analyzer do
       expect(result[:reasons]).to include("impossible_speed")
     end
 
-    it "sinaliza streak de precisão perfeita demais" do
-      # 3 pings seguidos com accuracy < 5 (atípico)
-      make_ping(lat: -26.9906, lng: -48.6348, recorded_at: 3.minutes.ago, accuracy: 2)
-      make_ping(lat: -26.9906, lng: -48.6348, recorded_at: 2.minutes.ago, accuracy: 2)
-      ping = make_ping(lat: -26.9906, lng: -48.6348, recorded_at: 1.minute.ago, accuracy: 2)
+    it "NÃO sinaliza alta precisão por si só (aparelho bom não é fraude)" do
+      # accuracy baixa mas com jitter real de coordenada — corretor honesto.
+      make_ping(lat: -26.99060, lng: -48.63480, recorded_at: 3.minutes.ago, accuracy: 2)
+      make_ping(lat: -26.99062, lng: -48.63479, recorded_at: 2.minutes.ago, accuracy: 3)
+      ping = make_ping(lat: -26.99059, lng: -48.63481, recorded_at: 1.minute.ago, accuracy: 2)
 
       result = described_class.analyze_ping(ping)
-      expect(result[:reasons]).to include("suspicious_accuracy_streak")
+      expect(result[:reasons]).not_to include("frozen_gps_streak")
+      expect(result[:reasons]).not_to include("suspicious_accuracy_streak")
+    end
+
+    it "sinaliza GPS congelado: coordenada e accuracy byte-idênticas por vários pings" do
+      # Sem jitter algum (variância zero) por FROZEN_GPS_STREAK pings = spoof.
+      4.times do |i|
+        make_ping(lat: -26.9906, lng: -48.6348, recorded_at: (4 - i).minutes.ago, accuracy: 7)
+      end
+      ping = make_ping(lat: -26.9906, lng: -48.6348, recorded_at: Time.current, accuracy: 7)
+
+      result = described_class.analyze_ping(ping)
+      expect(result[:suspicious]).to be true
+      expect(result[:reasons]).to include("frozen_gps_streak")
+    end
+
+    it "sinaliza teleporte entre a âncora do check-in e o primeiro ping" do
+      # check_in ancorado em BC; primeiro (e único) ping em São Paulo ~600km.
+      # Sem par de pings anterior, só a âncora pega o salto.
+      check_in.update!(checked_in_at: 60.seconds.ago)
+      ping = make_ping(lat: -23.5505, lng: -46.6333, recorded_at: Time.current)
+
+      result = described_class.analyze_ping(ping)
+      expect(result[:reasons]).to include("impossible_speed")
     end
 
     it "sinaliza IP geograficamente distante do ping (>500km)" do

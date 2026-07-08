@@ -15,6 +15,7 @@ module LocationPings
     ERRORS = {
       no_active_check_in:    "Nenhum check-in ativo.",
       missing_coordinates:   "Coordenadas não informadas.",
+      invalid_coordinates:   "Coordenadas inválidas ou fora da faixa geográfica.",
       save_failed:           "Falha ao salvar ping."
     }.freeze
 
@@ -33,6 +34,9 @@ module LocationPings
     def call
       return fail_with(:no_active_check_in) unless @check_in&.active?
       return fail_with(:missing_coordinates) if @lat.blank? || @lng.blank?
+      # Valida plausibilidade ANTES de tocar no PostGIS (contains?): lat/lng
+      # fora da faixa faria o ST_Distance sobre geography levantar exceção.
+      return fail_with(:invalid_coordinates) unless Geo::Coordinates.valid_point?(@lat, @lng)
 
       store = @check_in.store
       inside = store.contains?(@lat, @lng)
@@ -44,7 +48,11 @@ module LocationPings
         longitude: @lng,
         accuracy_meters: @accuracy&.to_i,
         battery_level: @battery_level&.to_f,
-        is_mock_location: !!@is_mock_location,
+        # is_mock_location só é sinal quando o cliente reporta mock de fato
+        # (true). Na web isso é indetectável (ver controller/analyzer): nil ou
+        # false = DESCONHECIDO. A coluna é NOT NULL, então persistimos false,
+        # mas o analyzer nunca trata isso como "limpo" — só true dispara flag.
+        is_mock_location: @is_mock_location == true,
         inside_radius: inside,
         ip: @ip,
         user_agent: @user_agent,

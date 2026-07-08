@@ -12,9 +12,9 @@
   public_photo_publish_running = %w[queued running].include?(public_photo_publish_progress[:status].to_s)
 %>
 
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+<div class="storage-integration-heading">
   <div>
-    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2"><i class="bi bi-cloud-arrow-up" style="color: var(--admin-primary);"></i>Armazenamento</h1>
+    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2"><i class="bi bi-cloud-arrow-up storage-integration-heading__icon"></i>Armazenamento</h1>
     <p class="ax-page-subtitle">Configure onde fotos e documentos serão gravados. Fotos podem ser públicas; documentos permanecem privados.</p>
   </div>
 </div>
@@ -179,7 +179,7 @@
     <div class="ax-card__header tw-flex tw-items-center tw-justify-between tw-gap-3">
       <div>
         <h5 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-images"></i>Fotos públicas/CDN</h5>
-        <p class="tw-m-0 tw-text-sm tw-text-muted">Publique acesso público somente para fotos de imóveis. Documentos ficam fora desta rotina.</p>
+        <p class="storage-integration-help storage-integration-help--flush">Publique acesso público somente para fotos de imóveis. Documentos ficam fora desta rotina.</p>
       </div>
       <div class="tw-flex tw-flex-wrap tw-gap-2 tw-justify-end">
         <%= ax_badge("#{number_with_delimiter(public_photo_stats.total_attachments)} anexos", tone: :gray) %>
@@ -219,7 +219,7 @@
                 <%= link_to "Limpar", admin_storage_integration_path, class: "ax-btn" %>
               <% end %>
             </div>
-            <p class="tw-mt-2 tw-mb-0 tw-text-sm tw-text-muted">Localize um imóvel e publique todas as fotos dele de uma vez.</p>
+            <p class="storage-integration-help">Localize um imóvel e publique todas as fotos dele de uma vez.</p>
           <% end %>
         </div>
 
@@ -239,22 +239,22 @@
                     turbo_confirm: "Republicar acesso público para todas as fotos de imóveis elegíveis?"
                   } %>
           </div>
-          <p class="tw-mt-2 tw-mb-0 tw-text-sm tw-text-muted">A publicação em massa é assíncrona e idempotente: fotos já públicas permanecem como estão.</p>
+          <p class="storage-integration-help">A publicação em massa é assíncrona e idempotente: fotos já públicas permanecem como estão.</p>
         </div>
 
         <div class="ax-span-12">
-          <div class="tw-rounded tw-border tw-border-line tw-bg-surface-soft tw-p-3">
+          <div class="storage-integration-progress-card">
             <div class="tw-flex tw-items-center tw-justify-between tw-gap-3">
               <div>
                 <div class="ax-label tw-mb-1">Progresso da publicação</div>
-                <div class="tw-text-sm tw-text-muted" data-storage-public-photo-publish-target="message"><%= public_photo_publish_progress[:message] %></div>
+                <div class="storage-integration-muted-text" data-storage-public-photo-publish-target="message"><%= public_photo_publish_progress[:message] %></div>
               </div>
               <strong class="tw-text-sm tw-text-ink" data-storage-public-photo-publish-target="percent"><%= number_to_percentage(public_photo_publish_progress[:percent].to_f, precision: 1) %></strong>
             </div>
             <div class="ax-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<%= public_photo_publish_progress[:percent].to_f %>">
               <i data-storage-public-photo-publish-target="bar" style="width:<%= public_photo_publish_progress[:percent].to_f %>%"></i>
             </div>
-            <div class="tw-mt-2 tw-flex tw-flex-wrap tw-gap-3 tw-text-xs tw-text-muted">
+            <div class="storage-integration-progress-meta">
               <span><strong data-storage-public-photo-publish-target="processed"><%= number_with_delimiter(public_photo_publish_progress[:processed].to_i) %></strong> analisadas</span>
               <span><strong data-storage-public-photo-publish-target="total"><%= number_with_delimiter(public_photo_publish_progress[:total].to_i) %></strong> total</span>
               <span><strong data-storage-public-photo-publish-target="published"><%= number_with_delimiter(public_photo_publish_progress[:published].to_i) %></strong> publicadas</span>
@@ -269,7 +269,7 @@
           <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-mb-2">
             <div>
               <div class="ax-label tw-mb-1">Candidatos encontrados</div>
-              <div class="tw-text-sm tw-text-muted">
+              <div class="storage-integration-muted-text">
                 <strong><%= number_with_delimiter(public_photo_pending_summary.total_habitations) %></strong> imóveis com fotos elegíveis,
                 <strong><%= number_with_delimiter(public_photo_pending_summary.total_attachments) %></strong> anexos no total.
               </div>
@@ -283,7 +283,7 @@
           <% else %>
             <div class="tw-flex tw-flex-col tw-gap-2">
               <% public_photo_pending_summary.sample.each do |item| %>
-                <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-rounded tw-border tw-border-line tw-bg-white tw-p-3">
+                <div class="storage-integration-photo-row">
                   <div class="tw-min-w-0">
                     <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
                       <strong class="tw-text-sm tw-text-ink">REF <%= item.habitation.codigo %></strong>
@@ -318,7 +318,7 @@
             <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-mb-2">
               <div>
                 <div class="ax-label tw-mb-1">Fotos do imóvel</div>
-                <div class="tw-text-sm tw-text-muted"><%= pluralize(public_photo_lookup.rows.size, "foto encontrada", "fotos encontradas") %> para <strong><%= public_photo_lookup.term %></strong>.</div>
+                <div class="storage-integration-muted-text"><%= pluralize(public_photo_lookup.rows.size, "foto encontrada", "fotos encontradas") %> para <strong><%= public_photo_lookup.term %></strong>.</div>
               </div>
               <div class="tw-flex tw-flex-wrap tw-gap-2 tw-justify-end">
                 <% public_photo_lookup.habitations.each do |habitation| %>
@@ -337,17 +337,17 @@
 
             <div class="tw-flex tw-flex-col tw-gap-2">
               <% public_photo_lookup.rows.each do |row| %>
-                <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-rounded tw-border tw-border-line tw-bg-white tw-p-3">
+                <div class="storage-integration-photo-row">
                   <div class="tw-min-w-0">
                     <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
                       <strong class="tw-text-sm tw-text-ink"><%= row.habitation&.codigo || "Sem REF" %></strong>
                       <span class="tw-text-sm tw-text-ink-muted"><%= row.habitation&.display_title || "Imóvel não vinculado" %></span>
                       <%= ax_badge(row.source_label, tone: :gray) %>
                     </div>
-                    <div class="tw-mt-1 tw-flex tw-flex-wrap tw-gap-2 tw-text-xs tw-text-muted">
+                    <div class="storage-integration-photo-row__meta">
                       <span><%= row.blob.filename %></span>
                       <% if row.public_url.present? %>
-                        <%= link_to "Abrir URL pública", row.public_url, target: "_blank", rel: "noopener", class: "tw-text-primary" %>
+                        <%= link_to "Abrir URL pública", row.public_url, target: "_blank", rel: "noopener", class: "storage-integration-public-link" %>
                       <% end %>
                     </div>
                   </div>

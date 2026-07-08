@@ -9,9 +9,7 @@
       </h5>
       <%= ax_field_grid do %>
         <div class="ax-span-6">
-          <%= f.label :name, "Nome da loja", class: "ax-label tw-font-semibold" %>
-          <span class="ax-badge ax-badge--red" style="margin-left:.25rem">obrigatório</span>
-          <%= f.text_field :name, class: "ax-control", placeholder: "Ex: Loja Centro" %>
+          <%= ax_text_field(form: f, method: :name, label: "Nome da loja", placeholder: "Ex: Loja Centro") %>
         </div>
         <div class="ax-span-4">
           <%= f.label :active, "Status", class: "ax-label tw-font-semibold" %>
@@ -86,9 +84,10 @@
       <h5 class="tw-font-bold tw-mb-3">
         <i class="bi bi-geo-alt-fill" style="margin-right:.5rem; color:#dc2626"></i>Localização e geofence
       </h5>
-      <p class="tw-text-sm tw-text-ink-muted tw-mb-3">Clique no mapa para definir o centro da loja. Arraste o slider de raio para ajustar.</p>
+      <p class="tw-text-sm tw-text-ink-muted tw-mb-3">Informe o número para localizar o ponto exato. Quando o mapa não confirmar o número, clique ou arraste o marcador para fazer o ajuste fino.</p>
 
-      <div data-controller="cep-lookup">
+      <div data-controller="cep-lookup"
+           data-cep-lookup-geocode-url-value="<%= geocode_admin_stores_path %>">
         <%= ax_field_grid do %>
           <div class="ax-span-6">
             <%= f.label :zip_code, "CEP", class: "ax-label tw-font-semibold" %>
@@ -117,15 +116,23 @@
                              placeholder: "Av. Atlântica",
                              data: { cep_lookup_target: "address" } %>
           </div>
-          <div class="ax-span-2">
+          <div class="ax-span-4">
             <%= f.label :number, "Número", class: "ax-label tw-font-semibold" %>
-            <%= f.text_field :number,
-                             class: "ax-control",
-                             placeholder: "3750",
-                             data: {
-                               cep_lookup_target: "number",
-                               action: "change->cep-lookup#geocodeFromNumber blur->cep-lookup#geocodeFromNumber"
-                             } %>
+            <div class="tw-flex tw-gap-2">
+              <%= f.text_field :number,
+                               class: "ax-control",
+                               placeholder: "3750",
+                               data: {
+                                 cep_lookup_target: "number",
+                                 action: "keydown.enter->cep-lookup#geocodeFromNumber"
+                               } %>
+              <button type="button"
+                      class="ax-btn ax-btn--primary tw-whitespace-nowrap"
+                      data-action="cep-lookup#geocodeFromNumber">
+                Aplicar
+              </button>
+            </div>
+            <small class="tw-text-ink-muted">Necessário para ajuste fino do geofence.</small>
           </div>
 
           <div class="ax-span-6">
@@ -192,7 +199,7 @@
   <div class="ax-card tw-mb-4">
     <div class="ax-card__body">
       <h5 class="tw-font-bold tw-mb-3">
-        <i class="bi bi-stopwatch-fill" style="margin-right:.5rem; color:#d97706"></i>Regras de check-out automático
+        <i class="bi bi-stopwatch-fill" style="margin-right:.5rem; color:#d97706"></i>Presença e tolerância
       </h5>
       <%= ax_field_grid do %>
         <div class="ax-span-6">
@@ -205,14 +212,38 @@
           <small class="tw-text-ink-muted">Se corretor sair do raio, é avisado e tem esse tempo pra voltar antes de check-out automático.</small>
         </div>
         <div class="ax-span-6">
-          <%= f.label :auto_checkout_after_minutes, "Check-out automático após fim do turno", class: "ax-label tw-font-semibold" %>
+          <%= f.label :auto_checkout_after_minutes, "Fallback de check-out automático", class: "ax-label tw-font-semibold" %>
           <div class="tw-flex tw-items-center tw-gap-2">
             <span><i class="bi bi-moon" style="color:var(--admin-primary)"></i></span>
             <%= f.number_field :auto_checkout_after_minutes, min: 0, max: 240, class: "ax-control" %>
             <span>min</span>
           </div>
-          <small class="tw-text-ink-muted">Se esqueceu de fechar, sistema fecha automaticamente após esse tempo do fim do turno.</small>
+          <small class="tw-text-ink-muted">Usado como fallback quando o turno operacional não tiver uma regra própria.</small>
         </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Card 4: Turnos operacionais -->
+  <div class="ax-card tw-mb-4">
+    <div class="ax-card__body">
+      <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
+        <h5 class="tw-font-bold" style="margin-bottom:0">
+          <i class="bi bi-calendar-week-fill tw-text-primary" style="margin-right:.5rem"></i>Turnos operacionais da loja
+        </h5>
+      </div>
+      <%= ax_inline_notice(tone: :neutral, icon: "calendar-week") do %>
+        A loja define as janelas de <strong>Entrada</strong>, <strong>Pós-risca</strong> e <strong>Fora da roleta</strong>. Os corretores participantes continuam sendo definidos nas regras de distribuição.
+      <% end %>
+
+      <div class="tw-mt-3">
+        <% Store::OPERATIONAL_SHIFTS.each do |shift_key| %>
+          <%= render "operational_shift_fields", store: store, shift_key: shift_key %>
+        <% end %>
+      </div>
+
+      <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+        Quando uma regra exigir turno ativo, o sistema consulta estes horários da loja selecionada no check-in. O checkout automático encerra o ponto; remover da fila é opcional e só acontece quando estiver marcado no turno.
       <% end %>
     </div>
   </div>

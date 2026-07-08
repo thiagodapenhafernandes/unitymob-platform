@@ -1,0 +1,25 @@
+<%# Aside "Como o cliente vê": perfil read-only + exemplo de assinatura.
+    locals: greeting_sample (opcional — saudação a pré-visualizar) %>
+<%= ax_operational_panel(eyebrow: "Prévia", title: "Como o cliente vê") do %>
+  <div class="ax-panel-body">
+    <div class="tw-flex tw-items-center tw-gap-3 tw-mb-3">
+      <% if current_admin_user.avatar.attached? %>
+        <%= image_tag current_admin_user.avatar, class: "tw-w-12 tw-h-12 tw-rounded-full tw-object-cover", alt: current_admin_user.name %>
+      <% else %>
+        <span class="ax-avatar" style="width:48px;height:48px;font-size:16px"><%= wa_initials(current_admin_user.name) %></span>
+      <% end %>
+      <div class="tw-min-w-0">
+        <strong class="tw-block tw-truncate"><%= current_admin_user.name %></strong>
+        <span class="tw-text-ink-muted tw-text-sm"><%= current_admin_user.creci.present? ? "CRECI #{current_admin_user.creci}" : "CRECI não informado" %></span>
+      </div>
+    </div>
+
+    <%= ax_inline_notice(tone: :neutral, icon: "chat-quote") do %>
+      <%= local_assigns[:greeting_sample].presence || "Olá! Sou #{current_admin_user.name}, corretor(a) responsável pelo seu atendimento. Como posso ajudar?" %>
+      <br><span class="tw-text-ink-muted">— <%= current_admin_user.name %><%= " · CRECI #{current_admin_user.creci}" if current_admin_user.creci.present? %></span>
+    <% end %>
+
+    <p class="ax-field__hint">Nome, CRECI e foto vêm do seu perfil e assinam o cartão automaticamente.</p>
+    <p class="ax-field__hint tw-mb-0">Seu telefone pessoal <strong>nunca</strong> é incluído — o envio sai sempre pelo número da empresa.</p>
+  </div>
+<% end %>

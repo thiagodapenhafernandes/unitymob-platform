@@ -8,12 +8,16 @@ export default class extends Controller {
     this.definition = this.normalizeDefinition(this.parseJson(this.definitionTarget.value, this.defaultDefinition()))
     this.selectedNodeId = this.definition.nodes?.[0]?.id
     this.webhookMapDraftRows = {}
+    this.redrawConnections = this.redrawConnections.bind(this)
     this.restoreAsideWidth()
+    window.addEventListener("resize", this.redrawConnections)
     this.sync()
     this.render()
   }
 
   disconnect() {
+    window.removeEventListener("resize", this.redrawConnections)
+    if (this.connectionsFrame) window.cancelAnimationFrame(this.connectionsFrame)
     this.stopResizeAside()
   }
 
@@ -211,6 +215,7 @@ export default class extends Controller {
     this.canvasTarget.style.zoom = zoom
     this.canvasTarget.dataset.zoom = `${Math.round(zoom * 100)}%`
     this.updateZoomButtons()
+    this.scheduleConnectionsDraw()
   }
 
   updateZoomButtons() {
@@ -327,24 +332,31 @@ export default class extends Controller {
   renderCanvas() {
     this.canvasTarget.replaceChildren()
 
-    const levels = this.workflowLevels()
-    levels.forEach((nodes, index) => {
+    const layout = this.workflowLayout()
+    layout.levels.forEach((nodes, index) => {
+      const visibleNodes = nodes.filter(Boolean)
       const column = document.createElement("div")
-      column.className = `automation-workflow-builder__column ${nodes.length > 1 ? "automation-workflow-builder__column--parallel" : ""}`
+      column.className = `automation-workflow-builder__column ${visibleNodes.length > 1 ? "automation-workflow-builder__column--parallel" : ""}`
+      column.style.gridTemplateRows = `repeat(${layout.rowCount}, minmax(86px, auto))`
 
       nodes.forEach((node) => {
         const slot = document.createElement("div")
         slot.className = "automation-workflow-builder__slot"
-        slot.appendChild(this.nodeElement(node, nodes))
-        if (!this.endsFlow(node)) slot.appendChild(this.inlineAddElement(node))
+        if (node) {
+          slot.appendChild(this.nodeElement(node, visibleNodes))
+          if (!this.endsFlow(node)) slot.appendChild(this.inlineAddElement(node))
+        } else {
+          slot.classList.add("automation-workflow-builder__slot--empty")
+        }
         column.appendChild(slot)
       })
 
       this.canvasTarget.appendChild(column)
-      if (index < levels.length - 1) this.canvasTarget.appendChild(this.connectorElement())
+      if (index < layout.levels.length - 1) this.canvasTarget.appendChild(this.connectorElement(layout, index))
     })
 
     this.applyCanvasZoom()
+    this.scheduleConnectionsDraw()
   }
 
   renderInspector() {
@@ -825,11 +837,193 @@ export default class extends Controller {
     return button
   }
 
-  connectorElement() {
+  connectorElement(layout = { rowCount: 1, levels: [] }, levelIndex = 0) {
     const connector = document.createElement("div")
     connector.className = "automation-workflow-builder__connector"
-    connector.innerHTML = '<span></span>'
+    connector.style.gridTemplateRows = `repeat(${layout.rowCount || 1}, minmax(86px, auto))`
+
+    for (let row = 0; row < (layout.rowCount || 1); row += 1) {
+      const track = document.createElement("span")
+      connector.appendChild(track)
+    }
+
     return connector
+  }
+
+  scheduleConnectionsDraw() {
+    if (this.connectionsFrame) window.cancelAnimationFrame(this.connectionsFrame)
+    this.connectionsFrame = window.requestAnimationFrame(() => this.redrawConnections())
+  }
+
+  redrawConnections() {
+    this.connectionsFrame = null
+    if (!this.hasCanvasTarget) return
+
+    this.canvasTarget.querySelector(".automation-workflow-builder__connections")?.remove()
+
+    const edges = this.definition.edges || []
+    if (edges.length === 0) return
+
+    const width = Math.max(this.canvasTarget.scrollWidth, this.canvasTarget.offsetWidth)
+    const height = Math.max(this.canvasTarget.scrollHeight, this.canvasTarget.offsetHeight)
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    svg.classList.add("automation-workflow-builder__connections")
+    svg.setAttribute("width", width)
+    svg.setAttribute("height", height)
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`)
+    svg.setAttribute("aria-hidden", "true")
+
+    const selectedPathNodeIds = this.selectedWorkflowPathNodeIds()
+
+    edges.forEach((edge) => {
+      const source = this.nodeConnectionElement(edge.from)
+      const target = this.nodeConnectionElement(edge.to)
+      if (!source || !target) return
+
+      const from = this.connectionPoint(source, "right")
+      const to = this.connectionPoint(target, "left")
+      if (!from || !to) return
+
+      const active = this.edgeInSelectedPath(edge, selectedPathNodeIds)
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path")
+      path.setAttribute("d", this.connectionPath(from, to))
+      path.setAttribute("class", this.connectionPathClass(active))
+      svg.appendChild(path)
+
+      const label = this.connectionLabel(edge)
+      if (label) svg.appendChild(this.connectionLabelElement(label, from, to, active))
+    })
+
+    this.canvasTarget.prepend(svg)
+  }
+
+  nodeConnectionElement(nodeId) {
+    return this.canvasTarget.querySelector(`.automation-workflow-builder__node-wrap[data-node-id="${this.escapeSelectorValue(nodeId)}"]`)
+  }
+
+  escapeSelectorValue(value) {
+    const text = value?.toString() || ""
+    if (window.CSS?.escape) return window.CSS.escape(text)
+
+    return text.replace(/["\\]/g, "\\$&")
+  }
+
+  connectionPoint(element, side) {
+    const position = this.elementPositionInsideCanvas(element)
+    if (!position) return null
+
+    return {
+      x: side === "right" ? position.left + position.width : position.left,
+      y: position.top + (position.height / 2)
+    }
+  }
+
+  elementPositionInsideCanvas(element) {
+    let left = 0
+    let top = 0
+    let current = element
+
+    while (current && current !== this.canvasTarget) {
+      left += current.offsetLeft || 0
+      top += current.offsetTop || 0
+      current = current.offsetParent
+    }
+
+    if (current !== this.canvasTarget) return null
+
+    return {
+      left,
+      top,
+      width: element.offsetWidth,
+      height: element.offsetHeight
+    }
+  }
+
+  connectionPath(from, to) {
+    const gap = Math.max(42, Math.min(140, Math.abs(to.x - from.x) * 0.48))
+    const c1x = from.x + gap
+    const c2x = to.x - gap
+
+    return `M ${from.x} ${from.y} C ${c1x} ${from.y}, ${c2x} ${to.y}, ${to.x} ${to.y}`
+  }
+
+  connectionPathClass(active) {
+    return `automation-workflow-builder__connection${active ? " is-active" : ""}`
+  }
+
+  selectedWorkflowPathNodeIds() {
+    if (!this.selectedNodeId) return new Set()
+
+    const ids = new Set([this.selectedNodeId])
+    this.collectConnectedNodeIds(this.selectedNodeId, ids, "incoming")
+    this.collectConnectedNodeIds(this.selectedNodeId, ids, "outgoing")
+    return ids
+  }
+
+  collectConnectedNodeIds(nodeId, ids, direction) {
+    const edges = direction === "incoming" ? this.incomingEdges(nodeId) : this.outgoingEdges(nodeId)
+
+    edges.forEach((edge) => {
+      const nextId = direction === "incoming" ? edge.from : edge.to
+      if (!nextId || ids.has(nextId)) return
+
+      ids.add(nextId)
+      this.collectConnectedNodeIds(nextId, ids, direction)
+    })
+  }
+
+  edgeInSelectedPath(edge, selectedPathNodeIds) {
+    return selectedPathNodeIds.has(edge.from) && selectedPathNodeIds.has(edge.to)
+  }
+
+  connectionLabel(edge) {
+    const source = this.nodeById(edge.from)
+    const target = this.nodeById(edge.to)
+    if (!source || !target) return null
+
+    if (["response_condition", "response_fallback"].includes(target.type)) {
+      return this.shortConnectionLabel(target.label || this.nodeTitle(target))
+    }
+
+    if (this.outgoingEdges(source.id).length > 1) {
+      return this.shortConnectionLabel(target.label || this.nodeTitle(target))
+    }
+
+    return null
+  }
+
+  shortConnectionLabel(value) {
+    const label = value
+      .toString()
+      .replace(/^se\s+bot[aã]o:\s*/i, "")
+      .replace(/^bot[aã]o:\s*/i, "")
+      .replace(/^se\s+/i, "")
+      .replace(/\s+/g, " ")
+      .trim()
+
+    if (!label) return null
+    return label.length > 26 ? `${label.slice(0, 23).trim()}...` : label
+  }
+
+  connectionLabelElement(label, from, to, active) {
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g")
+    group.setAttribute("class", `automation-workflow-builder__connection-label${active ? " is-active" : ""}`)
+
+    const distance = Math.abs(to.x - from.x)
+    if (distance < 90) return group
+
+    const x = to.x - Math.min(78, Math.max(42, distance * 0.22))
+    const yOffset = to.y >= from.y ? -15 : 15
+    const y = to.y + yOffset
+
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text")
+    text.setAttribute("x", x)
+    text.setAttribute("y", y)
+    text.setAttribute("text-anchor", "middle")
+    text.textContent = label
+
+    group.append(text)
+    return group
   }
 
   field(label, field, value, type = "text", config = {}) {
@@ -3115,6 +3309,85 @@ export default class extends Controller {
     if (unvisited.length > 0) levels.push(unvisited)
 
     return levels
+  }
+
+  workflowLayout() {
+    const compactLevels = this.workflowLevels()
+    const nodeRows = new Map()
+
+    compactLevels.forEach((nodes, levelIndex) => {
+      const usedRows = new Set()
+
+      nodes.forEach((node, nodeIndex) => {
+        const preferredRow = this.preferredWorkflowRow(node, nodeIndex, levelIndex, nodeRows)
+        const row = this.availableWorkflowRow(preferredRow, usedRows)
+        nodeRows.set(node.id, row)
+        usedRows.add(row)
+      })
+    })
+
+    this.centerWorkflowJoinNodes(compactLevels, nodeRows)
+
+    const rowCount = Math.max(
+      1,
+      ...compactLevels.map((nodes) => nodes.length),
+      ...Array.from(nodeRows.values()).map((row) => row + 1)
+    )
+
+    return {
+      rowCount,
+      nodeRows,
+      levels: compactLevels.map((nodes) => {
+        const slots = Array.from({ length: rowCount }, () => null)
+        nodes.forEach((node) => {
+          const row = nodeRows.get(node.id)
+          if (Number.isInteger(row) && row >= 0 && row < rowCount) slots[row] = node
+        })
+        return slots
+      })
+    }
+  }
+
+  preferredWorkflowRow(node, nodeIndex, levelIndex, nodeRows) {
+    const incomingRows = this.incomingEdges(node.id)
+      .map((edge) => nodeRows.get(edge.from))
+      .filter((row) => Number.isInteger(row))
+
+    if (incomingRows.length > 0) return Math.round(incomingRows.reduce((sum, row) => sum + row, 0) / incomingRows.length)
+    if (levelIndex === 0) return 0
+
+    return nodeIndex
+  }
+
+  availableWorkflowRow(preferredRow, usedRows) {
+    const base = Math.max(0, Number.isInteger(preferredRow) ? preferredRow : 0)
+    if (!usedRows.has(base)) return base
+
+    for (let distance = 1; distance < 24; distance += 1) {
+      const down = base + distance
+      if (!usedRows.has(down)) return down
+
+      const up = base - distance
+      if (up >= 0 && !usedRows.has(up)) return up
+    }
+
+    return usedRows.size
+  }
+
+  centerWorkflowJoinNodes(levels, nodeRows) {
+    levels.forEach((nodes) => {
+      if (nodes.length !== 1) return
+
+      const node = nodes[0]
+      const outgoingRows = this.outgoingEdges(node.id)
+        .map((edge) => nodeRows.get(edge.to))
+        .filter((row) => Number.isInteger(row))
+
+      if (outgoingRows.length < 2) return
+
+      const centeredRow = Math.round(outgoingRows.reduce((sum, row) => sum + row, 0) / outgoingRows.length)
+      nodeRows.set(node.id, centeredRow)
+    })
   }
 
   sortNodeIdsByDefinitionOrder(ids) {

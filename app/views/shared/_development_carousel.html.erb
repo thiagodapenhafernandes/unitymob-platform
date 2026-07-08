@@ -6,9 +6,10 @@
         <% 
           # Use pre-calculated counts if available (performance)
           unit_count = local_assigns[:unit_counts] ? unit_counts[development.codigo] : nil 
+          unit_metric = local_assigns[:unit_metrics] ? unit_metrics[development.codigo] : nil
         %>
         <div class="swiper-slide h-auto">
-          <%= render 'shared/tailwind/development_card', development: development, unit_count: unit_count %>
+          <%= render 'shared/tailwind/development_card', development: development, unit_count: unit_count, unit_metric: unit_metric %>
         </div>
       <% end %>
     </div>

@@ -92,22 +92,40 @@ module Whatsapp
 
       conversation = find_or_create_conversation(phone: phone, bsuid: bsuid, name: name)
       type = msg["type"].to_s
+
+      # Reação do cliente: marca a mensagem alvo (não cria bolha nova)
+      if type == "reaction"
+        handle_reaction(conversation, msg)
+        return
+      end
+
       body = extract_body(msg, type)
       media_url = extract_media_url(msg, type)
 
-      message = conversation.messages.create!(
-        direction: "inbound",
-        wa_message_id: msg["id"],
-        msg_type: type.presence || "text",
-        body: body,
-        media_url: media_url,
-        status: "delivered",
-        delivered_at: Time.current
-      )
+      message = begin
+        conversation.messages.create!(
+          direction: "inbound",
+          wa_message_id: msg["id"],
+          msg_type: type.presence || "text",
+          body: body,
+          media_url: media_url,
+          **(WhatsappMessage.column_names.include?("context_wa_message_id") ? { context_wa_message_id: msg.dig("context", "id") } : {}),
+          status: "delivered",
+          delivered_at: Time.current
+        )
+      rescue ActiveRecord::RecordNotUnique
+        # Corrida entre entregas simultâneas da Meta: o índice único
+        # (tenant_id, wa_message_id) garantiu a 1ª gravação — duplicata silenciosa.
+        Rails.logger.info("[wa inbound] mensagem duplicada ignorada wa_message_id=#{msg["id"].inspect}")
+        return
+      end
 
       attach_remote_media(message, msg, type, media_url) if media_url.present?
 
-      conversation.update_columns(unread_count: conversation.unread_count.to_i + 1, updated_at: Time.current)
+      # Incremento atômico no banco (evita lost update entre workers concorrentes);
+      # reload sincroniza o objeto antes do broadcast serializar unread_count.
+      WhatsappConversation.update_counters(conversation.id, unread_count: 1, touch: true)
+      conversation.reload
       conversation.touch_last_message!(message)
       Whatsapp::ThreadBroadcaster.message_created(message)
 
@@ -201,6 +219,8 @@ module Whatsapp
     def handle_status(status)
       message = tenant.whatsapp_messages.find_by(wa_message_id: status["id"])
       return unless message
+
+      backfill_conversation_phone(message.whatsapp_conversation, status["recipient_id"])
 
       state = status["status"].to_s
       return unless WhatsappMessage::STATUSES.include?(state)
@@ -318,6 +338,16 @@ module Whatsapp
         .first
     end
 
+    def handle_reaction(conversation, msg)
+      return unless WhatsappMessage.column_names.include?("client_reaction")
+
+      target = conversation.messages.find_by(wa_message_id: msg.dig("reaction", "message_id"))
+      return if target.blank?
+
+      target.update_columns(client_reaction: msg.dig("reaction", "emoji").presence, updated_at: Time.current)
+      Whatsapp::ThreadBroadcaster.message_updated(target)
+    end
+
     def extract_body(msg, type)
       case type
       when "text" then msg.dig("text", "body")
@@ -377,6 +407,18 @@ module Whatsapp
       extension = Rack::Mime::MIME_TYPES.invert[content_type.to_s]&.delete_prefix(".")
       base = [type.presence || "media", message.wa_message_id.presence || message.id].compact.join("-")
       extension.present? ? "#{base}.#{extension}" : base
+    end
+
+    # Conversas CTWA nascem so com BSUID (telefone oculto no `from`), mas os
+    # STATUSES revelam o numero em recipient_id. Com contact_phone preenchido,
+    # os envios passam a usar o fluxo por telefone — onde a Meta respeita
+    # context (Responder) e reacoes, ignorados silenciosamente no fluxo BSUID.
+    def backfill_conversation_phone(conversation, recipient_phone)
+      return if conversation.blank? || recipient_phone.blank?
+      return if conversation.contact_phone.present?
+      return if tenant.whatsapp_conversations.where(contact_phone: recipient_phone).where.not(id: conversation.id).exists?
+
+      conversation.update_columns(contact_phone: recipient_phone, updated_at: Time.current)
     end
 
     def find_or_create_conversation(phone:, bsuid:, name:)

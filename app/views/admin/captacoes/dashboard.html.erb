@@ -18,7 +18,7 @@
 <div id="captDashboard"
      class="capt-tv-shell capt-dashboard-workspace"
      data-controller="captacoes-dashboard"
-     data-captacoes-dashboard-chart-url-value="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+     data-captacoes-dashboard-chart-url-value="<%= asset_path("chart.umd.min.js") %>"
      data-captacoes-dashboard-data-value="<%= capt_dashboard_chart_payload.to_json %>">
 <%
   dashboard_actions = capture do
@@ -158,7 +158,7 @@
         <div class="ax-card">
           <div class="ax-card__body">
             <div class="tw-flex tw-justify-between tw-mb-2">
-              <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-0">Captação Venda</h6>
+              <div class="capt-panel-title">Captação Venda</div>
               <%= ax_badge("Meta #{@meta_venda}", tone: :blue) %>
             </div>
             <div class="capt-gauge-wrapper">
@@ -180,7 +180,7 @@
         <div class="ax-card">
           <div class="ax-card__body">
             <div class="tw-flex tw-justify-between tw-mb-2">
-              <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-0">Publicado no Site (Venda)</h6>
+              <div class="capt-panel-title">Publicado no Site (Venda)</div>
             </div>
             <div class="capt-gauge-wrapper">
               <canvas id="pubVenda"></canvas>
@@ -194,7 +194,7 @@
         <div class="ax-card">
           <div class="ax-card__body">
             <div class="tw-flex tw-justify-between tw-mb-2">
-              <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-0">Captação Locação</h6>
+              <div class="capt-panel-title">Captação Locação</div>
               <%= ax_badge("Meta #{@meta_locacao}", tone: :amber) %>
             </div>
             <div class="capt-gauge-wrapper">
@@ -216,7 +216,7 @@
         <div class="ax-card">
           <div class="ax-card__body">
             <div class="tw-flex tw-justify-between tw-mb-2">
-              <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-0">Publicado no Site (Locação)</h6>
+              <div class="capt-panel-title">Publicado no Site (Locação)</div>
             </div>
             <div class="capt-gauge-wrapper">
               <canvas id="pubLocacao"></canvas>
@@ -231,10 +231,10 @@
       <div class="ax-span-4">
         <div class="ax-card tw-h-full">
           <div class="ax-card__body">
-            <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Região foco Venda</div>
+            <div class="capt-mini-stat-label">Região foco Venda</div>
             <div class="tw-flex tw-items-end tw-justify-between tw-mt-2">
-              <div class="display-6 tw-font-bold text-success"><%= @regiao_foco_venda %></div>
-              <div class="fs-5 tw-font-bold text-success"><%= @regiao_foco_venda_percent %>%</div>
+              <div class="capt-mini-stat-value capt-mini-stat-value--success"><%= @regiao_foco_venda %></div>
+              <div class="capt-mini-stat-percent capt-mini-stat-value--success"><%= @regiao_foco_venda_percent %>%</div>
             </div>
             <div class="tw-text-ink-muted tw-text-sm">de <%= @total_venda %> captações de venda</div>
           </div>
@@ -243,10 +243,10 @@
       <div class="ax-span-4">
         <div class="ax-card tw-h-full">
           <div class="ax-card__body">
-            <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Região foco Locação</div>
+            <div class="capt-mini-stat-label">Região foco Locação</div>
             <div class="tw-flex tw-items-end tw-justify-between tw-mt-2">
-              <div class="display-6 tw-font-bold text-success"><%= @regiao_foco_locacao %></div>
-              <div class="fs-5 tw-font-bold text-success"><%= @regiao_foco_locacao_percent %>%</div>
+              <div class="capt-mini-stat-value capt-mini-stat-value--success"><%= @regiao_foco_locacao %></div>
+              <div class="capt-mini-stat-percent capt-mini-stat-value--success"><%= @regiao_foco_locacao_percent %>%</div>
             </div>
             <div class="tw-text-ink-muted tw-text-sm">de <%= @total_locacao %> captações de locação</div>
           </div>
@@ -255,10 +255,10 @@
       <div class="ax-span-4">
         <div class="ax-card tw-h-full">
           <div class="ax-card__body">
-            <div class="tw-text-sm tw-text-ink-muted text-uppercase tw-font-semibold">Captação com Adm</div>
+            <div class="capt-mini-stat-label">Captação com Adm</div>
             <div class="tw-flex tw-items-end tw-justify-between tw-mt-2">
-              <div class="display-6 tw-font-bold text-primary"><%= @captacao_adm_locacao %></div>
-              <div class="fs-5 tw-font-bold text-primary"><%= @captacao_adm_locacao_percent %>%</div>
+              <div class="capt-mini-stat-value capt-mini-stat-value--primary"><%= @captacao_adm_locacao %></div>
+              <div class="capt-mini-stat-percent capt-mini-stat-value--primary"><%= @captacao_adm_locacao_percent %>%</div>
             </div>
             <div class="tw-text-ink-muted tw-text-sm">de <%= @total_locacao %> captações de locação</div>
           </div>
@@ -271,12 +271,12 @@
   <div class="tab-pane fade" id="tab-venda">
     <div class="capt-foco-banner tw-mb-3">
       <div>
-        <div class="tw-text-sm text-uppercase opacity-75 tw-font-semibold">Região foco</div>
-        <div class="h4 tw-font-bold tw-mb-0">Captação Venda</div>
+        <div class="capt-foco-banner__label">Região foco</div>
+        <div class="capt-foco-banner__title">Captação Venda</div>
       </div>
       <div class="capt-foco-stat">
-        <div class="h3 tw-font-bold tw-mb-0"><%= @regiao_foco_venda %></div>
-        <div class="tw-text-sm opacity-75"><%= @regiao_foco_venda_percent %>% de <%= @total_venda %></div>
+        <div class="capt-foco-stat__value"><%= @regiao_foco_venda %></div>
+        <div class="capt-foco-stat__meta"><%= @regiao_foco_venda_percent %>% de <%= @total_venda %></div>
       </div>
     </div>
 
@@ -284,7 +284,7 @@
       <div class="ax-span-5">
         <div class="ax-card capt-panel-main">
           <div class="ax-card__body">
-            <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-3">Acompanhamento de Meta</h6>
+            <div class="capt-panel-title capt-panel-title--spaced">Acompanhamento de Meta</div>
             <div class="capt-gauge-wrapper">
               <canvas id="gaugeVendaBig"></canvas>
               <div class="capt-gauge-center">
@@ -321,7 +321,7 @@
       <div class="ax-span-7">
         <div class="ax-card capt-ranking-card capt-panel-main">
           <div class="ax-card__body">
-            <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-3">Ranking de corretores</h6>
+            <div class="capt-panel-title capt-panel-title--spaced">Ranking de corretores</div>
             <div class="capt-ranking-scroll">
               <%= render "ranking_table", rows: @ranking_venda, value_key: :total_value, value_label: "Total Venda" %>
             </div>
@@ -332,13 +332,13 @@
             <div class="ax-span-6">
               <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Captação Venda</div>
-                <div class="fs-2 tw-font-bold"><%= @total_venda %></div>
+                <div class="capt-summary-value"><%= @total_venda %></div>
               </div>
             </div>
             <div class="ax-span-6">
               <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Venda</div>
-                <div class="fs-2 tw-font-bold"><%= number_to_currency(@total_valor_venda, unit: "R$ ", precision: 0) %></div>
+                <div class="capt-summary-value"><%= number_to_currency(@total_valor_venda, unit: "R$ ", precision: 0) %></div>
               </div>
             </div>
           <% end %>
@@ -351,12 +351,12 @@
   <div class="tab-pane fade" id="tab-locacao">
     <div class="capt-foco-banner tw-mb-3">
       <div>
-        <div class="tw-text-sm text-uppercase opacity-75 tw-font-semibold">Região foco</div>
-        <div class="h4 tw-font-bold tw-mb-0">Captação Locação</div>
+        <div class="capt-foco-banner__label">Região foco</div>
+        <div class="capt-foco-banner__title">Captação Locação</div>
       </div>
       <div class="capt-foco-stat">
-        <div class="h3 tw-font-bold tw-mb-0"><%= @regiao_foco_locacao %></div>
-        <div class="tw-text-sm opacity-75"><%= @regiao_foco_locacao_percent %>% de <%= @total_locacao %></div>
+        <div class="capt-foco-stat__value"><%= @regiao_foco_locacao %></div>
+        <div class="capt-foco-stat__meta"><%= @regiao_foco_locacao_percent %>% de <%= @total_locacao %></div>
       </div>
     </div>
 
@@ -364,7 +364,7 @@
       <div class="ax-span-5">
         <div class="ax-card capt-panel-main">
           <div class="ax-card__body">
-            <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-3">Acompanhamento de Meta</h6>
+            <div class="capt-panel-title capt-panel-title--spaced">Acompanhamento de Meta</div>
             <div class="capt-gauge-wrapper">
               <canvas id="gaugeLocacaoBig"></canvas>
               <div class="capt-gauge-center">
@@ -407,7 +407,7 @@
       <div class="ax-span-7">
         <div class="ax-card capt-ranking-card capt-panel-main">
           <div class="ax-card__body">
-            <h6 class="tw-font-bold tw-text-ink-muted text-uppercase tw-text-sm tw-mb-3">Ranking de corretores</h6>
+            <div class="capt-panel-title capt-panel-title--spaced">Ranking de corretores</div>
             <div class="capt-ranking-scroll">
               <%= render "ranking_table", rows: @ranking_locacao, value_key: :total_value, value_label: "Total Locação" %>
             </div>
@@ -418,13 +418,13 @@
             <div class="ax-span-6">
               <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Captação Locação</div>
-                <div class="fs-2 tw-font-bold"><%= @total_locacao %></div>
+                <div class="capt-summary-value"><%= @total_locacao %></div>
               </div>
             </div>
             <div class="ax-span-6">
               <div class="capt-total-card tw-h-full tw-flex tw-flex-col tw-items-center tw-justify-center">
                 <div class="summary-label">Total Locação</div>
-                <div class="fs-2 tw-font-bold"><%= number_to_currency(@total_valor_locacao, unit: "R$ ", precision: 0) %></div>
+                <div class="capt-summary-value"><%= number_to_currency(@total_valor_locacao, unit: "R$ ", precision: 0) %></div>
               </div>
             </div>
           <% end %>

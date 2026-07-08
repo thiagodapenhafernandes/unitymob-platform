@@ -25,6 +25,9 @@ module Admin::ComercialHelper
     "proposal_recusada"  => { icon: "bi-hand-thumbs-down", color: "red",   label: "Proposta recusada" },
     "whatsapp_in"        => { icon: "bi-whatsapp",         color: "green", label: "Mensagem recebida" },
     "whatsapp_out"       => { icon: "bi-whatsapp",         color: "blue",  label: "Mensagem enviada" },
+    "notification_sent"  => { icon: "bi-send-check",       color: "green", label: "Notificação enviada" },
+    "notification_failed"=> { icon: "bi-exclamation-triangle", color: "red", label: "Falha na notificação" },
+    "notification_skipped"=> { icon: "bi-slash-circle",    color: "amber", label: "Notificação ignorada" },
     "automation"         => { icon: "bi-lightning-charge", color: "amber", label: "Automação" },
     "automation_event"   => { icon: "bi-lightning-charge", color: "amber", label: "Evento observado" },
     "interest_reprocessed" => { icon: "bi-stars",          color: "blue",  label: "Interesse reprocessado" }
@@ -32,8 +35,84 @@ module Admin::ComercialHelper
 
   def timeline_entry(activity)
     base = TIMELINE_MAP[activity.kind] || { icon: "bi-dot", color: "gray", label: activity.kind.to_s.humanize }
+    # "Lead recebido" ganha canal de conversão dinâmico (retroativo: lê o lead).
+    if activity.kind.to_s == "received" && activity.lead
+      conv = lead_conversion_summary(activity.lead)
+      base = base.merge(icon: conv[:icon], color: conv[:color], label: conv[:label])
+    end
     detail = timeline_detail(activity)
     base.merge(detail: detail, at: activity.created_at)
+  end
+
+  # Resumo de conversão do lead — canal + origem + detalhes, derivado de
+  # origin/lead_type/other_information. Fonte única para o cabeçalho e a timeline.
+  def lead_conversion_summary(lead)
+    info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
+    origin = lead.origin.to_s.downcase
+    lead_type = lead.lead_type.to_s.downcase
+
+    channel, channel_label, icon, color =
+      if origin.include?("facebook") || origin.include?("instagram") || origin.include?("meta") || info["meta_page_id"].present?
+        [:meta, "Meta Ads", "bi-meta", "blue"]
+      elsif origin == "webhook" || lead_type == "webhook" || info["inbound_webhook_endpoint"].present?
+        [:webhook, "Webhook", "bi-plug", "blue"]
+      elsif origin.include?("compartilh") || lead.share_token.present?
+        [:share, "Link do corretor", "bi-share", "green"]
+      elsif origin.include?("zap") || origin.include?("vivareal") || origin.include?("olx")
+        [:portal, "Portal imobiliário", "bi-buildings", "amber"]
+      elsif origin.include?("whatsapp") || lead_type.include?("whatsapp")
+        [:whatsapp, "WhatsApp", "bi-whatsapp", "green"]
+      elsif lead_type.present? || lead.source_url.present?
+        [:site, "Site", "bi-globe2", "blue"]
+      else
+        [:other, lead.origin.presence || "Origem não informada", "bi-inbox", "gray"]
+      end
+
+    source_url   = lead.source_url.presence || info["source_url"].presence || info["page_url"].presence
+    campaign     = info["utm_campaign"].presence || info["campanha"].presence
+    received_by  = info["inbound_webhook_user_name"].presence
+    webhook_tags = Array(info["webhook_tags"]).compact_blank
+
+    # Campanha de WhatsApp que originou o lead (se veio de resposta a disparo)
+    wa_campaign = (lead.whatsapp_campaign_messages.includes(:whatsapp_campaign).first&.whatsapp_campaign&.name rescue nil)
+
+    sentence =
+      case channel
+      when :meta     then "Convertido via Meta Ads#{" — formulário #{info['meta_form_id']}" if info['meta_form_id'].present?}"
+      when :webhook  then "Convertido via webhook#{" — recebido por #{received_by}" if received_by}"
+      when :share    then "Convertido pelo link compartilhado#{" por #{lead.shared_by_admin_user.name}" if lead.shared_by_admin_user}"
+      when :portal   then "Convertido via portal (#{channel_label})"
+      when :whatsapp then "Convertido respondendo no WhatsApp"
+      when :site     then "Convertido no site#{" (#{lead.product})" if lead.product.present?}"
+      else "Lead recebido de #{channel_label}"
+      end
+
+    # Frase de proveniência (para o bloco no cabeçalho) — literal, "como veio".
+    headline =
+      case channel
+      when :meta     then "Criado por um anúncio no Meta Ads (Facebook/Instagram)"
+      when :webhook  then "Criado via webhook externo#{" · recebido por #{received_by}" if received_by}"
+      when :share    then "Criado pelo link compartilhado#{" por #{lead.shared_by_admin_user.name}" if lead.shared_by_admin_user}"
+      when :portal   then "Criado por um portal imobiliário (#{channel_label})"
+      when :whatsapp then wa_campaign.present? ? "Criado a partir da resposta à campanha de WhatsApp “#{wa_campaign}”" : "Criado a partir de uma conversa no WhatsApp"
+      when :site     then "Criado por um formulário do site"
+      else "Origem: #{channel_label}"
+      end
+
+    {
+      channel: channel,
+      label: sentence,
+      headline: headline,
+      channel_label: channel_label,
+      icon: icon,
+      color: color,
+      origin: lead.origin.presence,
+      source_url: source_url,
+      campaign: campaign,
+      product: lead.product.presence,
+      received_by: received_by,
+      tags: webhook_tags
+    }
   end
 
   def timeline_detail(activity)
@@ -42,10 +121,47 @@ module Admin::ComercialHelper
     when "note"        then meta["body"].presence
     when "task_created", "task_completed", "appointment_created", "appointment_done" then meta["title"].presence
     when "status_change" then [meta["from"], meta["to"]].compact.join(" → ").presence
-    when "automation_event" then meta["label"].presence
+    when "distributed", "assigned_directly"
+      who = meta["admin_user_name"].presence || activity.lead&.admin_user&.name
+      rule = meta["rule_name"].presence
+      [("Para #{who}" if who), ("via regra #{rule}" if rule)].compact.join(" · ").presence
+    when "automation_event"
+      automation_event_detail(activity, meta)
+    when "notification_sent", "notification_failed", "notification_skipped"
+      notification_activity_detail(meta)
     when "interest_reprocessed" then "#{meta['matches_count'].to_i} imóvel(is) compatível(is), #{meta['confidence'].to_i}% de confiança"
     else nil
     end
+  end
+
+  def notification_activity_detail(meta)
+    channel = {
+      "push" => "Push",
+      "whatsapp" => "WhatsApp",
+      "email" => "E-mail",
+      "webhook" => "Webhook"
+    }[meta["channel"].to_s] || meta["channel"].to_s.presence || "Canal"
+
+    status_detail = meta["error"].presence || meta["reason"].presence
+    transport = meta["transport"].present? ? "via #{meta['transport']}" : nil
+    target = meta["target"].present? ? "para #{meta['target']}" : nil
+    [channel, transport, target, status_detail].compact.join(" · ")
+  end
+
+  # Detalhe do "Evento observado": para mudança de etapa, mostra a etapa alvo
+  # (from→to). Retroativo: se a metadata não tiver, lê o payload do evento.
+  def automation_event_detail(activity, meta)
+    if meta["event"].to_s == "lead_stage_changed"
+      to = meta["to"].presence
+      from = meta["from"].presence
+      if to.blank? && meta["automation_event_id"].present?
+        payload = AutomationEvent.find_by(id: meta["automation_event_id"])&.payload_hash || {}
+        to = payload["to"].presence
+        from = payload["from"].presence
+      end
+      return [from, to].compact.join(" → ").presence || meta["label"].presence
+    end
+    meta["label"].presence
   end
 
   # --- Barra de funil -------------------------------------------------------

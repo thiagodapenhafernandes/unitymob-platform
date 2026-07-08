@@ -62,23 +62,23 @@
     "skipped" => "Ignorado"
   }
   tab_titles = {
-    general: "Base",
-    features: "Estrutura",
-    infra: "Empreendimento",
+    general: "Visão geral",
+    features: "Características",
+    infra: "Infraestrutura",
     commercial: "Comercial",
     media: "Mídia",
     documents: "Documentos",
-    seo: "Publicação",
+    seo: "SEO & Controle",
     other: "Outros"
   }
   tab_nav_items = [
-    [:general, "house-door", "Identificação, vínculo e endereço"],
-    [:features, "rulers", "Dimensões e atributos"],
-    [:infra, "building", "Edifício e lazer"],
-    [:commercial, "briefcase", "Valores, negociação e contatos"],
-    [:seo, "globe2", "Site, portais e SEO"],
+    [:general, "house-door", "Identificação, localização, estrutura e valores"],
+    [:features, "tags", "Texto público e atributos do imóvel"],
+    [:infra, "building", "Edifício, empreendimento e lazer"],
+    [:commercial, "briefcase", "Negociação, contatos, portais e operação"],
     [:media, "images", "Fotos, vídeos e tour"],
-    [:documents, "folder2", "Fichas e autorizações"]
+    [:documents, "folder2", "Fichas e autorizações"],
+    [:seo, "google", "Slug, metas e palavras-chave"]
   ]
   grouped_errors = Hash.new { |hash, key| hash[key] = [] }
 
@@ -90,35 +90,34 @@
         :general
       elsif %w[
         codigo codigo_dwv categoria status situacao ocupacao_status estado_conservacao tipo
-        codigo_empreendimento nome_empreendimento data_entrega proprietor_id perfil_construcao
-        agenciador admin_user_id
+        proprietor_id admin_user_id motivo_suspensao
+        exibir_no_site_flag destaque_web_flag festival_salute_flag lancamento_flag tem_placa_flag
+        exclusivo_flag imovel_dwv
+        bloco andar dormitorios_qtd suites_qtd demi_suites_qtd salas_qtd varandas_qtd banheiros_qtd
+        hidromassagem_qtd tipo_vaga vagas_qtd numero_box area_privativa_m2 area_total_m2 area_terreno_m2
+        dimensoes_terreno topografia face
+        valor_venda_formatted valor_locacao_formatted valor_alugado_terceiros_formatted valor_vendido_terceiros_formatted
+        valor_condominio_formatted valor_iptu_formatted valor_por_m2_formatted valor_venda_anterior_formatted
+        valor_locacao_anterior_formatted valor_total_aluguel_cents
+        codigo_empreendimento nome_empreendimento data_entrega perfil_construcao
       ].include?(attribute)
         :general
       elsif %w[
-        bloco andar dormitorios_qtd suites_qtd demi_suites_qtd salas_qtd varandas_qtd banheiros_qtd
-        hidromassagem_qtd tipo_vaga vagas_qtd numero_box area_privativa_m2 area_total_m2 area_terreno_m2
-        dimensoes_terreno topografia face caracteristicas
+        caracteristicas caracteristica_unica titulo_anuncio descricao_web
       ].include?(attribute)
         :features
       elsif %w[
         construtora tipo_fachada descricao_empreendimento andares_qtd ano_construcao aptos_andar
         aptos_edificio elevadores_qtd infra_estrutura
+        agenciador
       ].include?(attribute)
         :infra
       elsif %w[
-        exibir_no_site_flag destaque_web_flag festival_salute_flag lancamento_flag tem_placa_flag
-        exclusivo_flag imovel_dwv caracteristica_unica titulo_anuncio descricao_web
-        publicar_imovelweb_2 publicar_netimoveis_2 publicar_lais_ai publicar_loft publicar_chaves_na_mao
-        publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync tipo_publicacao_imovelweb_2
-        mostrar_mapa_imovelweb_2 destaque_chaves_na_mao periodo_locacao_chaves_na_mao modelo_casa_mineira
-        tipo_publicacao_imovelweb mostrar_mapa_imovelweb tipo_publicacao_viva_real divulgar_endereco_viva_real
         slug meta_title meta_description meta_keywords
       ].include?(attribute)
         :seo
       elsif %w[
-        valor_venda_formatted valor_locacao_formatted valor_alugado_terceiros_formatted valor_vendido_terceiros_formatted
-        valor_condominio_formatted valor_iptu_formatted motivo_suspensao
-        valor_por_m2_formatted valor_venda_anterior_formatted valor_locacao_anterior_formatted matricula_imovel zona
+        matricula_imovel zona
         valor_promocional_formatted proprietario proprietario_codigo proprietario_email proprietario_celular
         proprietario_telefone_comercial proprietario_telefone_residencial captador_commission_percentage
         valor_comissao_formatted valor_livre_proprietario_formatted
@@ -128,6 +127,10 @@
         tipo_veiculo_aceito_permuta ano_minimo_veiculo_aceito_permuta aceita_permuta_veiculo_flag
         aceita_permuta_imovel_flag aceita_permuta_outros_flag permuta_valor_formatted permuta_localizacao
         permuta_dormitorios_qtd permuta_suites_qtd permuta_garagens_qtd
+        publicar_imovelweb_2 publicar_netimoveis_2 publicar_lais_ai publicar_loft publicar_chaves_na_mao
+        publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync tipo_publicacao_imovelweb_2
+        mostrar_mapa_imovelweb_2 destaque_chaves_na_mao periodo_locacao_chaves_na_mao modelo_casa_mineira
+        tipo_publicacao_imovelweb mostrar_mapa_imovelweb tipo_publicacao_viva_real divulgar_endereco_viva_real
       ].include?(attribute)
         :commercial
       elsif %w[photos ordered_photo_ids ordered_picture_indices videos tour_virtual podcast_url foto_classificacao plantas fotos_empreendimento].include?(attribute)
@@ -232,14 +235,6 @@
         Este cadastro entra no fluxo de captações. Use <strong>Enviar para corretor</strong> para repassar a publicação ao captador ou <strong>Salvar interno</strong> para deixar o imóvel disponível no catálogo sem publicar no site.
         <%= link_to "Cadastrar imóvel direto", new_admin_habitation_path, class: "habitation-new-mode-notice__link" %>
       <% end %>
-    <% else %>
-      <%= ax_inline_notice(tone: :neutral, icon: "building", class_name: "habitation-new-mode-notice") do %>
-        <strong>Cadastro direto de imóvel.</strong>
-        Este caminho não passa pelo fluxo de captação/revisão. A publicação no site continua sendo definida pelos campos de publicação do próprio imóvel.
-        <% if can_create_internal_intake? %>
-          <%= link_to "Criar ficha de captação interna", new_admin_habitation_path(intake_mode: "paper"), class: "habitation-new-mode-notice__link" %>
-        <% end %>
-      <% end %>
     <% end %>
   <% end %>
   <% if habitation.errors.any? %>
@@ -264,12 +259,16 @@
            inferred_cadastro_type: inferred_cadastro_type,
            cadastro_tipo_by_type: cadastro_tipo_by_type,
            suspended_status: suspended_status,
-           show_development_context: show_development_context,
            can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
 
-<%= render "admin/habitations/form_tabs/estrutura", f: f %>
+<%= render "admin/habitations/form_tabs/estrutura",
+           f: f,
+           can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
 
-<%= render "admin/habitations/form_tabs/empreendimento", f: f %>
+<%= render "admin/habitations/form_tabs/empreendimento",
+           f: f,
+           habitation: habitation,
+           can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
 
 <%= render "admin/habitations/form_tabs/comercial",
            f: f,
@@ -277,6 +276,7 @@
            can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
 <%= render "admin/habitations/form_tabs/publicacao",
            f: f,
+           intake_waiting_admin_review: intake_waiting_admin_review,
            can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
 
 <%= render "admin/habitations/form_tabs/media", f: f, habitation: habitation %>

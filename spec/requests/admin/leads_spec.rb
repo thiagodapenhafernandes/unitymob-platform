@@ -279,6 +279,29 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Voltar")
       expect(response.body).not_to include("name=\"lead[origin]\"")
     end
+
+    it "exibe a imagem principal do imovel de interesse usando o resolvedor do catalogo" do
+      image_url = "#{Storage::PublicPropertyPhoto.public_base_url}/spec/lead-property.jpg"
+      property = create(
+        :habitation,
+        codigo: "LEAD-IMG",
+        titulo_anuncio: "Apartamento com imagem no lead",
+        pictures: [{ "url_pequena" => image_url }]
+      )
+      lead = create(:lead, status: "Novo", property_id: property.id)
+
+      get admin_lead_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      image = document.at_css("img.lead-property-image")
+      expect(image).to be_present
+      expect(image["src"]).to eq(image_url)
+      expect(image["alt"]).to eq("Imagem principal do imóvel")
+      expect(document.at_css(".lead-property-summary")).to be_present
+      expect(document.at_css(".lead-property-summary__media img.lead-property-image")).to be_present
+      expect(document.at_css(".lead-property-summary__content")).to be_present
+    end
   end
 
   describe "WhatsApp no lead" do

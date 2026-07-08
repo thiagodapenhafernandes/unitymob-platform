@@ -23,6 +23,16 @@ export default class extends Controller {
     this.apply()
   }
 
+  // Destaque otimista: a fila é data-turbo-permanent, então o servidor não
+  // re-renderiza o item ativo na troca de conversa. Sem preventDefault — a
+  // navegação normal do link é quem troca o thread à direita.
+  select(event) {
+    const item = event.currentTarget
+    this.conversationItems.forEach((conversationItem) => {
+      conversationItem.classList.toggle("is-active", conversationItem === item)
+    })
+  }
+
   filter(event) {
     this.activeFilter = event.currentTarget.dataset.filter || "all"
     this.filterButtonTargets.forEach((button) => {
@@ -120,7 +130,7 @@ export default class extends Controller {
     if (!href) return
 
     if (window.Turbo?.visit) {
-      window.Turbo.visit(href)
+      window.Turbo.visit(href, { frame: "wa-thread", action: "advance" })
     } else {
       window.location.href = href
     }

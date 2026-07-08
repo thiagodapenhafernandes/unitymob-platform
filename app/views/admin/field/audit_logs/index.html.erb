@@ -31,7 +31,7 @@
     <div class="ax-card__body tw-grid tw-grid-cols-2 md:tw-grid-cols-4 tw-gap-3 tw-items-end">
       <div><label class="ax-label">Ação</label><%= select_tag :action_filter, options_for_select([["Todas", ""]] + @available_actions.map { |a| [action_meta.dig(a, :label) || a.humanize, a] }, params[:action_filter]), class: "ax-select" %></div>
       <div><label class="ax-label">Corretor</label><%= select_tag :admin_user_id, options_from_collection_for_select(@available_users, :id, ->(u) { "#{u.name} · #{u.email}" }, params[:admin_user_id]), class: "ax-select", include_blank: "Todos" %></div>
-      <div><label class="ax-label">Perfil</label><%= select_tag :profile_id, options_from_collection_for_select(@available_profiles, :id, :name, params[:profile_id]), class: "ax-select", include_blank: "Todos" %></div>
+      <div><label class="ax-label">Perfil</label><%= select_tag :profile_id, options_from_collection_for_select(@available_profiles, :id, ->(profile) { profile_filter_label(profile) }, params[:profile_id]), class: "ax-select", include_blank: "Todos" %></div>
       <div><label class="ax-label">Executado por</label><%= select_tag :actor_admin_user_id, options_from_collection_for_select(@available_actors, :id, ->(u) { "#{u.name} · #{u.email}" }, params[:actor_admin_user_id]), class: "ax-select", include_blank: "Todos" %></div>
       <div><label class="ax-label">Loja</label><%= select_tag :store_id, options_from_collection_for_select(@available_stores, :id, :name, params[:store_id]), class: "ax-select", include_blank: "Todas" %></div>
       <div><label class="ax-label">IP</label><%= text_field_tag :ip, params[:ip], class: "ax-input", placeholder: "000.000.000.000" %></div>

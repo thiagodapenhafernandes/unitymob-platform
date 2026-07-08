@@ -1,7 +1,9 @@
 class AccessAuditLog < ApplicationRecord
   include TenantScoped
 
-  EVENT_TYPES = %w[login logout admin_access access_denied impersonation_start impersonation_stop].freeze
+  EVENT_TYPES = %w[login logout admin_access access_denied impersonation_start impersonation_stop
+                   two_factor_challenge two_factor_success two_factor_failed two_factor_enabled two_factor_disabled
+                   account_switch membership_invited membership_accepted membership_revoked].freeze
   RESULTS = %w[allowed denied].freeze
 
   EVENT_LABELS = {
@@ -10,7 +12,16 @@ class AccessAuditLog < ApplicationRecord
     "admin_access" => "Acesso administrativo",
     "access_denied" => "Acesso negado",
     "impersonation_start" => "Início de impersonação",
-    "impersonation_stop" => "Fim de impersonação"
+    "impersonation_stop" => "Fim de impersonação",
+    "two_factor_challenge" => "Desafio 2FA emitido",
+    "two_factor_success" => "2FA verificado",
+    "two_factor_failed" => "2FA falhou",
+    "two_factor_enabled" => "2FA ativado",
+    "two_factor_disabled" => "2FA desativado",
+    "account_switch" => "Troca de conta",
+    "membership_invited" => "Convite externo enviado",
+    "membership_accepted" => "Convite externo aceito",
+    "membership_revoked" => "Acesso externo revogado"
   }.freeze
 
   RESULT_LABELS = {

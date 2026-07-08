@@ -38,17 +38,18 @@ module Whatsapp
       )
 
       if result[:ok]
-        outbound.update!(status: "sent", wa_message_id: result[:message_id], sent_at: Time.current, error_message: nil)
-        campaign_message.mark_sent!(message_id: result[:message_id], whatsapp_message: outbound)
-        log_outbound_activity(outbound)
+        finalize_accepted!(outbound, result)
       else
         outbound.update!(status: "failed", error_message: result[:error].to_s.truncate(250))
-        campaign_message.mark_failed!(result[:error])
+        campaign_message.mark_failed!(result[:error], source: :local)
         schedule_retry_if_needed
         pause_campaign_for_template_error!(result[:error])
+        pause_campaign_for_auth_error!(result)
       end
     rescue => e
-      campaign_message.mark_failed!(e.message)
+      # Só chega aqui em falha ANTES do aceite da Meta (o pós-aceite é isolado
+      # em finalize_accepted!), então marcar failed + retry não duplica envio.
+      campaign_message.mark_failed!(e.message, source: :local)
       schedule_retry_if_needed
       Rails.logger.warn("[whatsapp campaign sender] message=#{campaign_message&.id} #{e.class}: #{e.message}")
     end
@@ -56,6 +57,36 @@ module Whatsapp
     private
 
     attr_reader :campaign_message, :campaign, :lead, :recipient
+
+    # Códigos de auth da Graph API: 190 (token expirado/revogado) e 102 (sessão).
+    AUTH_ERROR_CODES = [190, 102].freeze
+
+    # Pós-aceite da Meta: o envio JÁ aconteceu (temos wa_message_id), então
+    # falha local aqui NUNCA pode marcar failed nem agendar reenvio — seria
+    # dupla entrega. Persiste o aceite com retry local e apenas loga o resto.
+    def finalize_accepted!(outbound, result)
+      persist_acceptance!(outbound, result)
+      log_outbound_activity(outbound)
+    rescue => e
+      Rails.logger.error(
+        "[whatsapp campaign sender] falha pós-aceite (mensagem enviada, aceite pode não ter sido persistido) " \
+        "message=#{campaign_message&.id} wa_message_id=#{result[:message_id]} #{e.class}: #{e.message}"
+      )
+    end
+
+    def persist_acceptance!(outbound, result)
+      attempts = 0
+      begin
+        outbound.update!(status: "sent", wa_message_id: result[:message_id], sent_at: Time.current, error_message: nil)
+        campaign_message.mark_sent!(message_id: result[:message_id], whatsapp_message: outbound)
+      rescue ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished
+        attempts += 1
+        raise if attempts >= 3
+
+        sleep(0.5 * attempts)
+        retry
+      end
+    end
 
     def unsubscribed_contact?
       WhatsappCampaignUnsubscribe.active_for?(
@@ -69,6 +100,25 @@ module Whatsapp
       return unless text.include?("132015") || text.downcase.include?("template is temporarily unavailable")
 
       campaign.pause_for_template_error!("Template indisponível na Meta: #{text}")
+    end
+
+    # Token expirado/revogado invalida a campanha inteira: pausa em vez de
+    # queimar a fila com milhares de falhas contra a mesma credencial.
+    def pause_campaign_for_auth_error!(result)
+      return unless auth_error_result?(result)
+
+      detail = result[:error].to_s.truncate(300).presence || "credencial recusada pela Meta"
+      campaign.pause_for_auth_error!("Falha de autenticação com a Meta (token expirado ou revogado — reconecte a integração): #{detail}")
+    end
+
+    def auth_error_result?(result)
+      # Atenção: a Cloud API devolve type=OAuthException para MUITOS erros que
+      # não são de token (131026, 132xxx...), então o type sozinho não serve —
+      # só código 190/102 ou HTTP 401 indicam credencial inválida de fato.
+      meta_error = result[:meta_error].is_a?(Hash) ? result[:meta_error] : {}
+      return true if meta_error[:code].present? && AUTH_ERROR_CODES.include?(meta_error[:code].to_i)
+
+      result[:status].to_i == 401
     end
 
     def schedule_retry_if_needed

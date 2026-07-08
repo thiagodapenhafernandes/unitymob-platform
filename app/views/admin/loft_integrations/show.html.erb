@@ -1,4 +1,4 @@
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+<div class="loft-integration-heading">
   <div>
     <h1 class="ax-page-title">Integração Vista Soft</h1>
     <p class="ax-page-subtitle">Configure o acesso, reconcilie imóveis pela API e acompanhe o histórico.</p>
@@ -9,7 +9,7 @@
   <div class="ax-span-6">
     <div class="ax-card tw-mb-4">
       <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key me-2 text-primary"></i>Configuração de Acesso</h5>
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key loft-integration-title-icon"></i>Configuração de Acesso</h5>
       </div>
       <div class="ax-card__body">
         <%= form_with url: admin_loft_integrations_path, method: :patch, scope: :loft, local: true do |f| %>
@@ -18,13 +18,13 @@
           <div class="tw-mb-3">
             <%= f.label :host, "Host da API", class: "ax-label tw-font-semibold" %>
             <%= f.text_field :host, class: "ax-control", value: @loft_host, placeholder: "http://seu-host-rest.vistahost.com.br" %>
-            <div class="form-text">Informe o endereço da API REST da Vista.</div>
+            <div class="loft-integration-help">Informe o endereço da API REST da Vista.</div>
           </div>
 
           <div class="tw-mb-3">
             <%= f.label :token, "Token da API", class: "ax-label tw-font-semibold" %>
             <%= f.password_field :token, class: "ax-control", autocomplete: "off", placeholder: (@loft_token.present? ? "Token já configurado. Preencha apenas para substituir." : "Cole o token da API") %>
-            <div class="form-text">Use o token fornecido para autenticação da integração.</div>
+            <div class="loft-integration-help">Use o token fornecido para autenticação da integração.</div>
           </div>
 
           <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
@@ -58,21 +58,8 @@
             </div>
           <% end %>
 
-          <hr>
-          <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-clock-history me-2 text-primary"></i>Agendamento Automático</h6>
-          <%= ax_switch_field(label: "Ativar sincronização automática", form: f, method: :schedule_enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @loft_schedule_enabled }) %>
-          <%= ax_field_grid do %>
-            <div class="ax-span-6">
-              <%= f.label :schedule_cron, "Agenda automática (cron)", class: "ax-label tw-font-semibold" %>
-              <%= f.text_field :schedule_cron, class: "ax-control", value: @loft_schedule_cron, placeholder: "20 4 * * *" %>
-              <div class="form-text">Ex.: <code>*/30 * * * *</code> ou <code>20 4 * * *</code>.</div>
-            </div>
-            <div class="ax-span-6">
-              <%= f.label :schedule_mode, "Modo", class: "ax-label tw-font-semibold" %>
-              <%= f.select :schedule_mode, options_for_select([["Completa", "full"], ["Lote", "batch"]], @loft_schedule_mode), {}, class: "ax-control" %>
-              <div class="form-text">Último slot: <%= @loft_schedule_last_slot.presence || "N/D" %></div>
-            </div>
-          <% end %>
+          <div class="loft-integration-divider"></div>
+          <%# Agendamento automático removido: sincronização Vista é MANUAL (por código ou total). %>
 
           <div class="tw-flex tw-gap-2">
             <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
@@ -87,7 +74,7 @@
 
     <div class="ax-card">
       <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-arrow-repeat me-2 text-info"></i>Controles de Sincronização</h5>
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-arrow-repeat loft-integration-title-icon loft-integration-title-icon--info"></i>Controles de Sincronização</h5>
       </div>
       <div class="ax-card__body">
         <%= form_with url: sync_property_admin_loft_integrations_path, method: :post, local: true, class: "tw-flex tw-items-center tw-gap-2 tw-mb-4" do |f| %>

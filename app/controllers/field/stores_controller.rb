@@ -17,7 +17,7 @@ module Field
         return
       end
 
-      nearest = Store.by_distance_from(lat, lng).limit(5).map do |s|
+      nearest = current_tenant.stores.by_distance_from(lat, lng).limit(5).map do |s|
         distance = s["distance_meters"].to_f
         {
           id: s.id,

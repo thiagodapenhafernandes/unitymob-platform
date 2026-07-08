@@ -1,6 +1,7 @@
 <% root_classes = ["ax-media-grid__item", root_class].compact_blank.join(" ") %>
 <% tile_classes = ["ax-media-tile__frame media-photo-tile", ("is-site-hidden" if hidden_from_site)].compact.join(" ") %>
 <% image_classes = ["ax-media-tile__image", image_class].compact_blank.join(" ") %>
+<% fallback_image_sources = Array(local_assigns[:fallback_image_sources]).compact_blank %>
 
 <%= tag.div(class: root_classes, data:) do %>
   <%= tag.div(class: tile_classes, data: { site_hidden: hidden_from_site }) do %>
@@ -9,7 +10,18 @@
         title: "Abrir imagem",
         draggable: "false",
         data: { fancybox: "habitation-media-gallery", caption: } do %>
-      <%= image_tag image_source, class: image_classes, alt: caption, draggable: false %>
+      <%= image_tag image_source,
+            class: image_classes,
+            alt: caption,
+            loading: "lazy",
+            decoding: "async",
+            draggable: false,
+            data: (fallback_image_sources.any? ? {
+              controller: "image-fallback",
+              action: "error->image-fallback#hide",
+              image_fallback_container_selector_value: ".ax-media-tile__frame",
+              image_fallback_fallback_urls_value: fallback_image_sources
+            } : {}) %>
     <% end %>
 
     <div class="media-photo-overlay">

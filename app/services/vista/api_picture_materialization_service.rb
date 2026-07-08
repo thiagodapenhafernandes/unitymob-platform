@@ -129,17 +129,21 @@ module Vista
       queue = Queue.new
       ids.each { |habitation_id| queue << habitation_id }
       mutex = Mutex.new
+      # Current é isolado por thread — sem repassar, o tenant se perde dentro do Thread.new.
+      tenant = Current.tenant
 
       threads = Array.new(@workers) do
         Thread.new do
           Thread.current.report_on_exception = false
-          ActiveRecord::Base.connection_pool.with_connection do
-            loop do
-              habitation_id = queue.pop(true)
-              outcome = process_habitation_id(habitation_id)
-              mutex.synchronize { apply_outcome(result, outcome) }
-            rescue ThreadError
-              break
+          Current.set(tenant: tenant) do
+            ActiveRecord::Base.connection_pool.with_connection do
+              loop do
+                habitation_id = queue.pop(true)
+                outcome = process_habitation_id(habitation_id)
+                mutex.synchronize { apply_outcome(result, outcome) }
+              rescue ThreadError
+                break
+              end
             end
           end
         end
@@ -415,7 +419,9 @@ module Vista
 
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = uri.scheme == "https"
-        http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl?
+        # VERIFY_PEER: valida o certificado do servidor (evita MITM). Se um
+        # host específico tiver cert quebrado, trate pontualmente, nunca global.
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER if http.use_ssl?
         http.read_timeout = read_timeout
         http.open_timeout = open_timeout
 

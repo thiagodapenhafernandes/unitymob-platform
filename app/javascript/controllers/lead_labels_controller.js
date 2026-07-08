@@ -16,13 +16,13 @@ export default class extends Controller {
 
   connect() {
     this.loaded = false
+    this.busy = false
   }
 
-  // Lazy-load do corpo na primeira abertura.
+  // Lazy-load do corpo na primeira abertura (refaz se a carga falhou).
   async open() {
     if (this.loaded) return
-    await this.request(this.indexUrlValue, "GET")
-    this.loaded = true
+    this.loaded = Boolean(await this.request(this.indexUrlValue, "GET"))
   }
 
   toggle(event) {
@@ -44,7 +44,19 @@ export default class extends Controller {
     this.request(form.action, method, new FormData(form))
   }
 
+  // Sincroniza o color picker com o radio "cor personalizada" da mesma linha:
+  // escolher uma cor livre marca o radio e usa o hex como valor submetido.
+  pickCustomColor(event) {
+    const wrapper = event.currentTarget.closest(".lead-labels__color--custom")
+    const radio = wrapper?.querySelector('input[type="radio"]')
+    if (!radio) return
+    radio.value = event.currentTarget.value
+    radio.checked = true
+  }
+
   async request(url, method, body = null) {
+    if (this.busy) return
+    this.busy = true
     try {
       const response = await fetch(url, {
         method,
@@ -59,12 +71,16 @@ export default class extends Controller {
 
       if (!response.ok) {
         this.showError(data.error || "Não foi possível concluir a ação.")
-        return
+        return false
       }
 
       this.render(data)
+      return true
     } catch (_error) {
       this.showError("Falha de conexão. Tente novamente.")
+      return false
+    } finally {
+      this.busy = false
     }
   }
 

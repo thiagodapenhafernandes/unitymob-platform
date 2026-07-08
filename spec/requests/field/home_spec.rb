@@ -5,6 +5,31 @@ RSpec.describe "Field::Home", type: :request do
 
   before { host! "localhost" }
 
+  it "mostra o botão de check-in para usuário ativo quando a feature está ligada" do
+    Setting.set("field_checkin_enabled", "true")
+    broker = create(:admin_user, name: "Thiago Dev")
+    sign_in broker
+
+    get field_root_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Fazer check-in agora")
+    expect(response.body).to include("loja mais próxima")
+  end
+
+  it "oculta o botão de check-in para usuário bloqueado pontualmente" do
+    Setting.set("field_checkin_enabled", "true")
+    broker = create(:admin_user, name: "Thiago Dev")
+    FieldFeatureGate.disable_agent!(broker, tenant: broker.tenant)
+    sign_in broker
+
+    get field_root_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Check-in indisponível")
+    expect(response.body).not_to include("Fazer check-in agora")
+  end
+
   it "direciona o atalho Imóveis para a aba Todos" do
     broker = create(:admin_user, :field_agent, name: "Luciana Indalécio")
     sign_in broker

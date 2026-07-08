@@ -29,10 +29,11 @@ class WhatsappTemplate < ApplicationRecord
   }.freeze
 
   has_many :whatsapp_campaigns, dependent: :restrict_with_error
+  has_many :notification_template_settings, dependent: :restrict_with_error
   has_one_attached :header_media_file
   has_many_attached :carousel_card_media_files
 
-  validates :name, presence: true, uniqueness: { scope: [:tenant_id, :language] }
+  validates :name, presence: true, uniqueness: { scope: [:tenant_id, :waba_id, :language] }
   validates :template_type, inclusion: { in: TEMPLATE_TYPES.keys }
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :header_format, inclusion: { in: HEADER_FORMATS.keys }
@@ -497,11 +498,20 @@ class WhatsappTemplate < ApplicationRecord
   end
 
   def header_media_available?
-    header_media_file.attached? || header_media_pending_attachable.present?
+    header_media_file.attached? || header_media_pending_attachable.present? || synced_remote_header_media?
   end
 
   def header_media_pending_attachable
     attachment_changes["header_media_file"]&.attachable
+  end
+
+  def synced_remote_header_media?
+    return false unless meta_id.present?
+
+    Array(components).any? do |component|
+      attrs = normalize_component(component)
+      attrs["type"].to_s.upcase == "HEADER" && attrs["format"].to_s.downcase.in?(%w[image video document])
+    end
   end
 
   def normalize_media_handles

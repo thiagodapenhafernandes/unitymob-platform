@@ -102,7 +102,7 @@
               actions: ax_badge("#{selected_intake_checks.size} ativas", tone: :blue)
             ) do %>
           <div class="review-panel-body">
-            <p class="review-hint">Esses itens são conferidos no momento em que o captador toca em Mandar Análise. Se faltar algo, ele continua na ficha e vê as pendências.</p>
+            <p class="review-hint">Esses itens são conferidos no momento em que o captador toca em Mandar Análise. Se faltar algo, ele continua na ficha e vê as pendências. <strong>Desmarcar todas restaura o conjunto completo</strong> — não é possível enviar sem nenhuma validação.</p>
             <div class="review-field habitation-form-ui">
               <%= hidden_field_tag "property_setting[required_broker_intake_checks][]", "" %>
               <%= ax_multiselect_field(

@@ -7,13 +7,9 @@ module Facebook
     end
 
     def get_user_pages
-      all_pages = []
-      response = @graph.get_connections("me", "accounts", fields: "id,name,access_token,category")
-      while response.present?
-        all_pages.concat(response)
-        response = response.next_page
-      end
-      all_pages
+      pages = paginated_connections(@graph, "me", "accounts", fields: page_fields)
+      pages.concat(business_pages)
+      dedupe_pages(pages)
     rescue Koala::Facebook::APIError => e
       Rails.logger.error "MetaService Error: Failed to get Facebook pages: #{e.message}"
       raise MetaAPIError.new("Não foi possível obter suas páginas do Facebook.")
@@ -60,6 +56,61 @@ module Facebook
     rescue Koala::Facebook::APIError => e
       Rails.logger.error "MetaService Error: Failed to exchange access token: #{e.message}"
       nil
+    end
+
+    private
+
+    def page_fields
+      "id,name,access_token,category"
+    end
+
+    def business_pages
+      businesses = paginated_connections(@graph, "me", "businesses", fields: "id,name")
+      businesses.flat_map do |business|
+        business_id = object_value(business, "id")
+        next [] if business_id.blank?
+
+        business_page_connections(business_id)
+      end
+    rescue Koala::Facebook::APIError => e
+      Rails.logger.warn "MetaService Warning: Failed to get business pages: #{e.message}"
+      []
+    end
+
+    def business_page_connections(business_id)
+      %w[owned_pages client_pages].flat_map do |connection|
+        paginated_connections(@graph, business_id, connection, fields: page_fields)
+      rescue Koala::Facebook::APIError => e
+        Rails.logger.warn "MetaService Warning: Failed to get #{connection} for business #{business_id}: #{e.message}"
+        []
+      end
+    end
+
+    def paginated_connections(graph, object, connection, **options)
+      records = []
+      response = graph.get_connections(object, connection, **options)
+
+      while response.present?
+        records.concat(response)
+        response = response.respond_to?(:next_page) ? response.next_page : nil
+      end
+
+      records
+    end
+
+    def dedupe_pages(pages)
+      pages.each_with_object({}) do |page, result|
+        page_id = object_value(page, "id").to_s
+        next if page_id.blank?
+
+        result[page_id] ||= page
+      end.values
+    end
+
+    def object_value(object, key)
+      return object[key] if object.respond_to?(:[])
+
+      object.public_send(key) if object.respond_to?(key)
     end
   end
 end

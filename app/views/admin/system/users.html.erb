@@ -144,7 +144,7 @@
             <tr>
               <th>Usuário</th>
               <th>Conta</th>
-              <th>Perfil vertical</th>
+              <th>Perfil de acesso</th>
               <th>Função horizontal</th>
               <th>Status</th>
               <th class="ax-num" style="width:130px">Ação</th>
@@ -158,7 +158,7 @@
                   <span class="ax-system-admin-role"><%= user.email %></span>
                 </td>
                 <td><%= user.system_admin? ? "Plataforma" : user.tenant&.name %></td>
-                <td><%= user.system_admin? ? "Admin do Sistema" : user.profile&.name.presence || "Sem perfil" %></td>
+                <td><%= user.system_admin? ? "Admin do Sistema" : user.access_profile_name %></td>
                 <td><%= user.horizontal_profile&.name.presence || "Sem função" %></td>
                 <td>
                   <div class="ax-system-admin-flags">

@@ -1,0 +1,17 @@
+<!-- @dsCard group="Spacing" viewport="700x150" name="Radius scale" subtitle="5px nav → 12px kanban columns; 999px pills" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;background:#fff;font-family:var(--font-sans);color:var(--ink)}
+.wrap{display:flex;gap:18px;padding:22px;align-items:flex-end}
+.item{display:grid;gap:8px;justify-items:center}
+.box{width:72px;height:56px;background:var(--primary-soft);border:1.5px solid var(--primary)}
+.lbl{font-size:11px;font-weight:700}.lbl small{display:block;font-family:var(--font-mono);font-size:10px;color:var(--ink-muted);font-weight:400}
+</style></head>
+<body><div class="wrap">
+  <div class="item"><div class="box" style="border-radius:var(--radius-xs)"></div><span class="lbl">xs<small>5px</small></span></div>
+  <div class="item"><div class="box" style="border-radius:var(--radius-sm)"></div><span class="lbl">sm<small>6px</small></span></div>
+  <div class="item"><div class="box" style="border-radius:var(--radius-md)"></div><span class="lbl">md<small>8px</small></span></div>
+  <div class="item"><div class="box" style="border-radius:var(--radius-lg)"></div><span class="lbl">lg<small>10px</small></span></div>
+  <div class="item"><div class="box" style="border-radius:var(--radius-xl)"></div><span class="lbl">xl<small>12px</small></span></div>
+  <div class="item"><div class="box" style="border-radius:var(--radius-pill)"></div><span class="lbl">pill<small>999px</small></span></div>
+</div></body></html>

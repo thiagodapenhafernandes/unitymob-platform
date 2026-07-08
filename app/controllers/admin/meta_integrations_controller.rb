@@ -24,23 +24,11 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   end
 
   def sync_pages
-    return redirect_to admin_meta_integrations_path, alert: "Conecte-se ao Facebook primeiro." unless @integration
-
-    @integration.update!(sync_status: 'processing', sync_progress: 0)
-    MetaSyncJob.perform_later(@integration.id)
-    redirect_to admin_meta_integrations_path, notice: "A sincronização foi iniciada em segundo plano."
-  rescue => e
-    redirect_to admin_meta_integrations_path, alert: "Erro ao iniciar sincronização: #{e.message}"
+    trigger_sync(notice: "A sincronização foi iniciada em segundo plano.")
   end
 
   def sync_forms
-    return redirect_to admin_meta_integrations_path, alert: "Conecte-se ao Facebook primeiro." unless @integration
-
-    @integration.update!(sync_status: 'processing', sync_progress: 0)
-    MetaSyncJob.perform_later(@integration.id)
-    redirect_to admin_meta_integrations_path, notice: "A sincronização dos formulários foi iniciada."
-  rescue => e
-    redirect_to admin_meta_integrations_path, alert: "Erro ao iniciar sincronização: #{e.message}"
+    trigger_sync(notice: "A sincronização dos formulários foi iniciada.")
   end
 
   def disconnect
@@ -49,6 +37,35 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   end
 
   private
+
+  # Dispara o MetaSyncJob usando SOMENTE a integração do usuário logado —
+  # modelo agência: cada usuário conecta o próprio Facebook e sincroniza as
+  # próprias páginas. Responde JSON para o botão "Sincronizar agora" das
+  # regras de distribuição dar feedback honesto.
+  def trigger_sync(notice:)
+    integration = @integration
+
+    if integration.nil?
+      message = "Você não tem uma conta Meta conectada. Conecte seu Facebook em Configurações → Integrações Meta."
+      respond_to do |format|
+        format.json { render json: { ok: false, message: message }, status: :unprocessable_entity }
+        format.html { redirect_to admin_meta_integrations_path, alert: message }
+      end
+      return
+    end
+
+    integration.update!(sync_status: "processing", sync_progress: 0)
+    MetaSyncJob.perform_later(integration.id)
+    respond_to do |format|
+      format.json { render json: { ok: true, message: notice } }
+      format.html { redirect_to admin_meta_integrations_path, notice: notice }
+    end
+  rescue => e
+    respond_to do |format|
+      format.json { render json: { ok: false, message: "Erro ao iniciar sincronização: #{e.message}" }, status: :internal_server_error }
+      format.html { redirect_to admin_meta_integrations_path, alert: "Erro ao iniciar sincronização: #{e.message}" }
+    end
+  end
 
   def set_integration
     @integration = UserMetaIntegration.find_by(admin_user: current_admin_user)

@@ -1,5 +1,5 @@
 class MetaSyncJob < ApplicationJob
-  queue_as :default
+  queue_as :sync
 
   def perform(integration_id)
     integration = UserMetaIntegration.find(integration_id)
@@ -65,9 +65,11 @@ class MetaSyncJob < ApplicationJob
             facebook_created_at: form_data["created_time"]
           )
 
-          # Auto-add to Distribution Rules if enabled
+          # Auto-add to Distribution Rules if enabled — SÓ do tenant desta
+          # integração (antes varria todos; com páginas duplicadas entre
+          # contas, adicionaria forms em regra de tenant alheio).
           if is_new # Only for new forms effectively found
-            DistributionRule.where(auto_add_forms: true).find_each do |rule|
+            DistributionRule.where(auto_add_forms: true, tenant_id: integration.owner_tenant_id).find_each do |rule|
               Current.set(tenant: rule.tenant) do
                 # Check if the rule is watching this page
                 if rule.meta_page_ids.include?(page.page_id)

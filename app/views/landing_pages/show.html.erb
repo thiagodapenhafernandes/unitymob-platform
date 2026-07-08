@@ -155,7 +155,10 @@
           <div class="prose prose-blue lg:prose-lg text-gray-600">
              <h2 class="text-2xl font-bold text-blue-three mb-6">Mais informações</h2>
              <div class="seo-text-rich">
-                <%= @landing_page.content.html_safe %>
+                <%# sanitize: mantém formatação rica, remove <script>/on*=/javascript: (stored XSS) %>
+                <%= sanitize @landing_page.content,
+                      tags: %w[p br a strong b em i u h1 h2 h3 h4 h5 ul ol li blockquote span div img table thead tbody tr td th hr],
+                      attributes: %w[href title target rel src alt class] %>
              </div>
           </div>
         </div>

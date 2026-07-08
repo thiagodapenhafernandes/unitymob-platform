@@ -123,7 +123,9 @@ module Automation
       trigger_event = trigger_event.to_s
       return [] if trigger_event.blank?
 
-      rule_count = AutomationRule.for_event(trigger_event).count
+      # for_event já filtra por active; escopa por tenant para não contar regras de outras contas.
+      rule_scope = Current.tenant&.automation_rules || AutomationRule
+      rule_count = rule_scope.for_event(trigger_event).count
       workflow_count = Automation::WorkflowDispatcher.active_workflows_for_event(trigger_event).count
       total = rule_count + workflow_count
       return [] if total.zero?

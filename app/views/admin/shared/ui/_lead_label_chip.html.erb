@@ -1,0 +1,11 @@
+<%
+  chip_label = local_assigns.fetch(:label)
+  tone = local_assigns.fetch(:tone, chip_label.respond_to?(:color) ? chip_label.color : :gray).to_s
+  class_name = local_assigns[:class_name]
+  custom = tone.match?(LeadLabel::HEX_COLOR)
+  tone_class = custom ? "lead-label-chip--custom" : "lead-label-chip--#{tone}"
+%>
+
+<%= tag.span chip_label.name,
+      class: ["lead-label-chip", tone_class, class_name].compact.join(" "),
+      style: (custom ? "--label-color: #{tone}" : nil) %>

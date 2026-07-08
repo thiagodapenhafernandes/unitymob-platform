@@ -30,6 +30,45 @@ RSpec.describe "Admin::Habitations", type: :request do
     sign_in admin
   end
 
+  it "exibe de/para no resumo do imóvel quando o preço de venda foi reduzido" do
+    habitation = create(
+      :habitation,
+      codigo: "DISC-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento com valor reduzido",
+      valor_venda_cents: 3_950_000_00,
+      valor_venda_anterior_cents: 4_200_000_00
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Apartamento com valor reduzido")
+    expect(response.body).to include("De")
+    expect(response.body).to include("R$ 4.200.000,00")
+    expect(response.body).to include("R$ 3.950.000,00")
+    expect(response.body).to include("abaixo do valor anterior")
+  end
+
+  it "exibe de/para no resumo do imóvel quando o preço de locação foi reduzido" do
+    habitation = create(
+      :habitation,
+      codigo: "RENT-DISC-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento com aluguel reduzido",
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 8_000_00,
+      valor_locacao_anterior_cents: 10_000_00
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Apartamento com aluguel reduzido")
+    expect(response.body).to include("R$ 10.000,00")
+    expect(response.body).to include("R$ 8.000,00/mês")
+    expect(response.body).to include("Locação com preço reduzido")
+  end
+
   it "separa captações restritas da listagem geral de imóveis" do
     draft = create(:habitation, :broker_intake, admin_user: admin, codigo: "DRAFT-#{SecureRandom.hex(6)}", titulo_anuncio: "Captação em rascunho")
     submitted = create(:habitation, :broker_intake, admin_user: admin, codigo: "REV-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação finalizada")
@@ -40,6 +79,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     get admin_habitations_path
 
     expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Meus imóveis")
+    expect(response.body).to include("Todos")
     expect(response.body).to include("Pendente de revisão")
     expect(response.body).to include(internal.titulo_anuncio)
     expect(response.body).to include(published.titulo_anuncio)
@@ -697,15 +738,14 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(owned_by_other.titulo_anuncio)
   end
 
-  it "ordena imóveis novos no topo quando a data de cadastro CRM está vazia" do
-    old_property = create(:habitation, codigo: "OLD-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel antigo", data_cadastro_crm: 2.days.ago)
-    new_property = create(:habitation, codigo: "NEW-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel novo")
-    new_property.update_column(:data_cadastro_crm, nil)
+  it "ordena 'Mais recentes' pela referência numérica maior" do
+    lower_reference = create(:habitation, codigo: "8826", titulo_anuncio: "Imóvel referência menor", data_cadastro_crm: 1.hour.ago)
+    higher_reference = create(:habitation, codigo: "8882", titulo_anuncio: "Imóvel referência maior", data_cadastro_crm: 10.days.ago)
 
     get admin_habitations_path(sort: "data_cadastro_crm", direction: "desc")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body.index(new_property.titulo_anuncio)).to be < response.body.index(old_property.titulo_anuncio)
+    expect(response.body.index(higher_reference.titulo_anuncio)).to be < response.body.index(lower_reference.titulo_anuncio)
   end
 
   it "filtra por rua considerando endereço estruturado e legado" do
@@ -975,6 +1015,16 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include('data-action="click-&gt;ax-aside#toggle"')
     expect(response.body).not_to include("PROPERTY_QUERY")
     expect(response.body).not_to include(">Inspector<")
+  end
+
+  it "renderiza filtros rápidos dentro do inspector de filtros do catálogo" do
+    get filter_inspector_admin_habitations_path(scope: "frente_mar"), headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Filtros rápidos")
+    expect(response.body).to match(/class="[^"]*\bhabitations-scope-strip--inspector\b[^"]*"/)
+    expect(response.body).to include("Frente Mar")
+    expect(response.body).to include("is-active")
   end
 
   it "mantém o modal de exportação fora do preloader de navegação global" do
@@ -1445,7 +1495,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     uploaded_photo&.unlink
   end
 
-  it "exibe fotos da API junto com fotos anexadas na edição" do
+  it "exibe só as fotos anexadas na edição (fonte única: Vista/API fora do manager)" do
     habitation = create(
       :habitation,
       codigo: "FOTO-MIX-#{SecureRandom.hex(6)}",
@@ -1461,7 +1511,8 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("local.jpg")
-    expect(response.body).to include("https://example.com/api-visivel.jpg")
+    # Vista fora: fotos da API/Vista não são mais renderizadas no manager.
+    expect(response.body).not_to include("https://example.com/api-visivel.jpg")
   end
 
   it "remove fotos anexadas selecionadas ao salvar o imóvel" do

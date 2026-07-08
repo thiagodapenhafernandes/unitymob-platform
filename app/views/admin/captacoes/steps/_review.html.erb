@@ -1,5 +1,10 @@
+<% review_layer_enabled = @property_setting&.broker_capture_layer_enabled? %>
+
 <h1 class="wizard-section-title"><i class="bi bi-check2-circle" style="color:#16a34a;margin-right:.5rem;"></i>Revisão final</h1>
-<p class="wizard-section-subtitle">Confira antes de finalizar. Depois de finalizar, admin pode ajustar se necessário.</p>
+<p class="wizard-section-subtitle">
+  Confira antes de mandar para análise.
+  <%= review_layer_enabled ? "Depois da revisão administrativa, a captação fica disponível para você publicar." : "Depois da validação, a captação fica disponível para você publicar." %>
+</p>
 
 <div class="ax-card wizard-review-card tw-mb-3">
   <div class="ax-card__body">
@@ -12,6 +17,10 @@
       <% if @captacao.edificio_nome.present? %>
         <dt class="ax-span-6">Edifício</dt>
         <dd class="ax-span-6"><%= @captacao.edificio_nome %><%= " · Un. #{@captacao.unidade_numero}" if @captacao.unidade_numero.present? %></dd>
+      <% end %>
+      <% if @captacao.try(:lote).present? || @captacao.try(:quadra).present? %>
+        <dt class="ax-span-6">Lote/Quadra</dt>
+        <dd class="ax-span-6"><%= [@captacao.lote.presence && "Lote #{@captacao.lote}", @captacao.quadra.presence && "Quadra #{@captacao.quadra}"].compact_blank.join(" · ") %></dd>
       <% end %>
       <dt class="ax-span-6">Cidade</dt><dd class="ax-span-6"><%= [@captacao.city, @captacao.state].compact_blank.join("/") %></dd>
       <% if @captacao.area_privativa.present? %>
@@ -79,5 +88,9 @@
 <% end %>
 
 <%= ax_inline_notice(tone: :info, icon: "info-circle-fill") do %>
-  Ao finalizar, a captação fica registrada em seu nome e disponível para publicação no site pelo admin.
+  <% if review_layer_enabled %>
+    Ao mandar análise, a captação vai para revisão administrativa. Depois de aprovada, ela fica disponível para você publicar no site.
+  <% else %>
+    Ao mandar análise, o sistema valida a captação e ela fica disponível para você publicar no site.
+  <% end %>
 <% end %>

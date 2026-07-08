@@ -1,7 +1,14 @@
 class Admin::WhatsappInboxController < Admin::BaseController
   before_action -> { check_permission!(:view, :whatsapp_inbox) }
-  before_action -> { check_permission!(:manage, :whatsapp_inbox) }, only: [:send_message, :sync_templates]
-  before_action :set_conversation, only: [:show, :send_message]
+  MESSAGE_TOOL_ACTIONS = %i[react toggle_pin toggle_star forward_message add_to_notes hide_message].freeze
+  # Janela do thread: últimas N mensagens em ordem cronológica (conversas longas
+  # não carregam o histórico inteiro a cada clique).
+  THREAD_HISTORY_LIMIT = 300
+  # Fila é filtrada/buscada client-side (wa-queue opera sobre o DOM): reduzir o
+  # limite esconde conversas da busca — por isso configurável, default 200.
+  DEFAULT_QUEUE_LIMIT = 200
+  before_action -> { check_permission!(:manage, :whatsapp_inbox) }, only: [:send_message, :sync_templates, *MESSAGE_TOOL_ACTIONS]
+  before_action :set_conversation, only: [:show, :send_message, *MESSAGE_TOOL_ACTIONS]
   before_action :set_message, only: [:media]
 
   def index
@@ -11,13 +18,29 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def show
-    load_inbox
+    if turbo_frame_request?
+      load_thread_dependencies
+    else
+      load_inbox
+    end
+
     unread_before = @conversation.unread_count.to_i
     @conversation.mark_read!
     Whatsapp::ThreadBroadcaster.queue_refreshed(@conversation) if unread_before.positive?
-    @messages = @conversation.messages.ordered
+    load_thread_messages
     load_thread_context
     @page_title = "WhatsApp · #{@conversation.display_name}"
+
+    if turbo_frame_request?
+      return render html: helpers.turbo_frame_tag("wa-thread") {
+        render_to_string(
+          partial: "admin/whatsapp_inbox/thread_panel",
+          formats: [:html],
+          locals: thread_panel_locals
+        )
+      }.html_safe
+    end
+
     render :index
   end
 
@@ -41,12 +64,96 @@ class Admin::WhatsappInboxController < Admin::BaseController
               disposition: disposition
   end
 
+  # ===== Menu de mensagem (Responder ja vive no send_message via reply_to_id) =====
+
+  def react
+    message = @conversation.messages.find(params[:message_id])
+    return render json: { ok: false, error: "Aguarde a mensagem ser entregue para reagir." }, status: :unprocessable_entity if message.wa_message_id.blank?
+
+    emoji = params[:emoji].to_s.strip
+    integration = WhatsappBusinessIntegration.current(current_tenant)
+    client = Whatsapp::CloudClient.new(integration)
+    result = client.send_reaction(to: @conversation.cloud_recipient, message_id: message.wa_message_id, emoji: emoji)
+    return render json: { ok: false, error: result[:error].to_s.presence || "Não foi possível reagir." }, status: :unprocessable_entity unless result[:ok]
+
+    message.update!(agent_reaction: emoji.presence)
+    Whatsapp::ThreadBroadcaster.message_updated(message)
+    render json: { ok: true }
+  end
+
+  def toggle_pin
+    message = @conversation.messages.find(params[:message_id])
+    message.update!(pinned_at: message.pinned_at ? nil : Time.current)
+    Whatsapp::ThreadBroadcaster.message_updated(message)
+    render json: { ok: true, pinned: message.pinned_at.present?, snippet: message.preview.to_s.truncate(90) }
+  end
+
+  def toggle_star
+    message = @conversation.messages.find(params[:message_id])
+    message.update!(starred_at: message.starred_at ? nil : Time.current)
+    Whatsapp::ThreadBroadcaster.message_updated(message)
+    render json: { ok: true, starred: message.starred_at.present? }
+  end
+
+  def forward_message
+    source = @conversation.messages.find(params[:message_id])
+    target = current_tenant.whatsapp_conversations.find(params[:target_conversation_id])
+
+    forwarded = target.messages.new(
+      direction: "outbound",
+      status: "pending",
+      admin_user: current_admin_user,
+      msg_type: source.msg_type == "template" ? "text" : source.msg_type,
+      body: source.body,
+      media_url: source.media_url
+    )
+    forwarded.media_file.attach(source.media_file.blob) if source.media_file.attached?
+    forwarded.save!
+    target.touch_last_message!(forwarded)
+    Whatsapp::ThreadBroadcaster.message_created(forwarded)
+    Whatsapp::SendMessageJob.dispatch(forwarded.id, tenant_id: forwarded.tenant_id)
+
+    render json: { ok: true, target_name: target.display_name }
+  end
+
+  def add_to_notes
+    message = @conversation.messages.find(params[:message_id])
+    lead = @conversation.lead
+    return render json: { ok: false, error: "Conversa sem lead vinculado — vincule um lead primeiro." }, status: :unprocessable_entity if lead.blank?
+
+    stamp = "#{message.outbound? ? 'Atendente' : @conversation.display_name} · WhatsApp · #{I18n.l(message.created_at, format: '%d/%m %H:%M')}"
+    entry = "— #{message.preview.to_s.strip} (#{stamp})"
+    lead.update(notes: [lead.notes.presence, entry].compact.join("
+"))
+    LeadActivity.log!(lead: lead, kind: "note", metadata: { body: message.preview.to_s.truncate(200), source: "whatsapp_message" })
+    render json: { ok: true }
+  end
+
+  def hide_message
+    message = @conversation.messages.find(params[:message_id])
+    message.update!(hidden_at: Time.current)
+    render json: { ok: true }
+  end
+
   def send_message
     @integration = WhatsappBusinessIntegration.current(current_tenant)
     body = params[:body].to_s.strip
     template_name = params[:template_name].to_s.strip
     media_file = params[:media_file]
     return_path = safe_return_path(params[:return_to])
+
+    # Apresentação via composer: o picker preenche o textarea e envia o card_id
+    # num hidden; o envio ganha o carimbo de auditoria (regra de ouro preservada:
+    # o corpo é o texto do composer + o pipeline é o número da empresa).
+    presentation_card = if params[:presentation_card_id].present? && @integration&.presentation_enabled?
+      PresentationCard.available_for(current_admin_user).find_by(id: params[:presentation_card_id])
+    end
+
+    # Gate "exigir apresentação": bloqueia envio livre (texto, modelo ou mídia),
+    # mas NUNCA o próprio envio de apresentação (card presente).
+    if presentation_card.nil? && presentation_pending?(@integration)
+      return respond_send_message_error("Envie sua apresentação primeiro — escolha um cartão no painel ao lado.", return_path:)
+    end
 
     if template_name.present? && media_file.present?
       return respond_send_message_error("Escolha entre modelo aprovado ou arquivo.", return_path:)
@@ -59,23 +166,48 @@ class Admin::WhatsappInboxController < Admin::BaseController
     if template_name.present?
       message = build_outbound(msg_type: "template", template_name: template_name, body: template_body(template_name))
     elsif media_file.present?
-      media_validation = Whatsapp::MediaSupport.validation_for(media_file)
+      media_validation = Whatsapp::MediaSupport.validation_for(media_file, allow_convertible: true)
       return respond_send_message_error(media_validation[:error], return_path:) unless media_validation[:ok]
 
       message = build_outbound(msg_type: media_validation[:type], body: body, media_url: nil)
     elsif body.present?
-      message = build_outbound(msg_type: "text", body: body)
+      # Apresentação com foto: texto vira legenda do avatar (uma única mensagem).
+      if presentation_card && presentation_photo_available?(presentation_card)
+        message = build_outbound(msg_type: "image", body: body)
+        message.media_file.attach(current_admin_user.avatar.blob)
+      else
+        message = build_outbound(msg_type: "text", body: body)
+      end
     else
       return respond_send_message_error("Escreva uma mensagem ou envie um arquivo.", return_path:)
     end
 
-    message.media_file.attach(media_file) if media_file.present?
+    # Responder (citação): amarra a mensagem citada; a Meta renderiza o quote
+    if params[:reply_to_id].present? && message.respond_to?(:context_wa_message_id=)
+      replied = @conversation.messages.find_by(id: params[:reply_to_id])
+      message.context_wa_message_id = replied.wa_message_id if replied&.wa_message_id.present?
+    end
+
+    message.presentation_card = presentation_card if presentation_card
+    if media_file.present?
+      # identify: false para audio — o sniff do Rails reclassifica m4a/ogg como
+      # video/mp4 e dispara PreviewImageJob de frame em arquivo sem stream de video
+      message.media_file.attach(
+        io: media_file.tempfile,
+        filename: media_file.original_filename,
+        content_type: media_validation[:content_type],
+        identify: media_validation[:type] != "audio"
+      )
+    end
     message.save!
     @conversation.touch_last_message!(message)
     Whatsapp::ThreadBroadcaster.message_created(message)
     Whatsapp::SendMessageJob.dispatch(message.id, tenant_id: message.tenant_id)
+    if presentation_card
+      log_presentation_sent(presentation_card, message.msg_type == "image" ? "image" : "text")
+    end
     LeadActivity.log!(lead: @conversation.lead, kind: "whatsapp_out", metadata: { body: message.preview, by: current_admin_user&.name }) if @conversation.lead_id
-    @messages = @conversation.messages.ordered
+    load_thread_messages
     load_thread_context
 
     respond_to do |format|
@@ -92,12 +224,10 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def sync_templates
-    result = Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
-    if result.is_a?(Hash) && result[:ok]
-      redirect_to admin_whatsapp_conversations_path, notice: "#{result[:synced]} modelos sincronizados."
-    else
-      redirect_to admin_whatsapp_conversations_path, alert: "Não foi possível sincronizar os modelos. Verifique a conexão do WhatsApp."
-    end
+    # Em background: a chamada à Meta pode demorar/travar — o request não espera.
+    Whatsapp::SyncTemplatesJob.perform_later(current_tenant.id)
+    redirect_to admin_whatsapp_conversations_path,
+                notice: "Sincronização de modelos iniciada — os modelos aparecem no ⚡ em instantes."
   end
 
   private
@@ -105,10 +235,36 @@ class Admin::WhatsappInboxController < Admin::BaseController
   def load_inbox
     @focus_mode = params[:workspace] == "focus"
     @integration = WhatsappBusinessIntegration.current(current_tenant)
-    @conversations = conversation_scope.recent.limit(200)
+    @conversations = conversation_scope.recent.limit(queue_limit)
     @templates = current_tenant.whatsapp_templates.approved.ordered
     @conversation_count = @conversations.size
     @total_unread = conversation_scope.unread.sum(:unread_count)
+  end
+
+  def load_thread_dependencies
+    @focus_mode = params[:workspace] == "focus"
+    @integration = WhatsappBusinessIntegration.current(current_tenant)
+    @templates = current_tenant.whatsapp_templates.approved.ordered
+  end
+
+  # Últimas mensagens com anexos pré-carregados (sem N+1 de ActiveStorage);
+  # .last sobre a relação ordenada preserva a ordem cronológica do thread.
+  def load_thread_messages
+    @messages = @conversation.messages.visible.ordered.with_attached_media_file.last(THREAD_HISTORY_LIMIT)
+    @quoted_messages = quoted_messages_for(@messages)
+  end
+
+  # Mensagens citadas (Responder) resolvidas em 1 query, dentro da mesma conversa.
+  def quoted_messages_for(messages)
+    context_ids = messages.filter_map { |message| message.try(:context_wa_message_id).presence }.uniq
+    return {} if context_ids.empty?
+
+    @conversation.messages.where(wa_message_id: context_ids).index_by(&:wa_message_id)
+  end
+
+  def queue_limit
+    limit = ENV["WA_INBOX_QUEUE_LIMIT"].to_i
+    limit.positive? ? limit : DEFAULT_QUEUE_LIMIT
   end
 
   def load_thread_context
@@ -144,6 +300,32 @@ class Admin::WhatsappInboxController < Admin::BaseController
 
   def build_outbound(attrs)
     @conversation.messages.new({ direction: "outbound", status: "pending", admin_user: current_admin_user }.merge(attrs))
+  end
+
+  # "Exigir apresentação" com retroatividade (cutoff) — lógica no model.
+  def presentation_pending?(integration)
+    integration&.presentation_required_for?(@conversation, current_admin_user) || false
+  end
+
+  # Foto no envio de apresentação: só com o toggle da conta ligado, cartão com
+  # use_photo e avatar válido no perfil (sem avatar cai para texto).
+  def presentation_photo_available?(card)
+    @integration&.allow_photo_presentation? && card.use_photo? &&
+      current_admin_user.avatar.attached? &&
+      Whatsapp::MediaSupport.validation_for(current_admin_user.avatar.blob)[:ok]
+  end
+
+  # A trilha consultável é a própria WhatsappMessage (presentation_card_id +
+  # admin_user + conversa + created_at), com ou sem lead. O LeadActivity entra
+  # apenas como evento de timeline quando há lead vinculado.
+  def log_presentation_sent(card, format)
+    return unless @conversation.lead_id
+
+    LeadActivity.log!(
+      lead: @conversation.lead,
+      kind: "presentation_sent",
+      metadata: { admin_user_id: current_admin_user.id, card_id: card.id, format: format }
+    )
   end
 
   def template_body(name)
@@ -225,7 +407,8 @@ class Admin::WhatsappInboxController < Admin::BaseController
   end
 
   def thread_status_cursor
-    @messages.maximum(:updated_at)&.iso8601(6)
+    # @messages é Array (janela .last) — mesmo cálculo do _thread_workspace
+    @messages.map(&:updated_at).compact.max&.iso8601(6)
   end
 
   def thread_context_html
@@ -234,6 +417,21 @@ class Admin::WhatsappInboxController < Admin::BaseController
       formats: [:html],
       locals: @thread_context_locals
     )
+  end
+
+  def thread_panel_locals
+    {
+      conversation: @conversation,
+      messages: @messages,
+      quoted_messages: @quoted_messages,
+      thread_context_locals: @thread_context_locals,
+      focus_mode: @focus_mode,
+      integration: @integration,
+      templates: @templates,
+      current_thread_url: @focus_mode ? admin_whatsapp_conversation_path(@conversation, workspace: "focus") : admin_whatsapp_conversation_path(@conversation),
+      thread_compact: true,
+      composer_compact: true
+    }
   end
 
 end

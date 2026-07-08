@@ -1,4 +1,12 @@
 //= link_tree ../images
+//= link_tree ../fonts
+//= link_tree ../stylesheets/vendor
+//= link vendor/bootstrap-icons.css
+//= link vendor/admin-fonts.css
+//= link vendor/fancybox.css
+//= link vendor/tom-select.bootstrap5.min.css
+//= link vendor/bootstrap.min.css
+//= link vendor/trix.css
 //= link_tree ../../javascript .js
 //= link_tree ../../../vendor/javascript .js
 //= link_tree ../builds
@@ -7,4 +15,10 @@
 //= link admin.css
 //= link admin_compat.css
 //= link admin_tailwind.css
+//= link habitations_form_refresh.css
+//= link admin/habitations_catalog.css
+//= link whatsapp_inbox_refresh.css
+//= link public_habitations_index_refresh.css
+//= link public_habitations_show_refresh.css
+//= link public_development_show_refresh.css
 //= link ax_toast.css

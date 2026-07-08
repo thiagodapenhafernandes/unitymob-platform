@@ -4,11 +4,13 @@
   <%= link_to admin_whatsapp_campaigns_path(whatsapp_sender_number_id: @sender_number&.id), class: "ax-contextbar__button" do %>
     <i class="bi bi-arrow-left ax-ico"></i><span>Campanhas</span>
   <% end %>
-  <%= button_to sync_admin_whatsapp_templates_path, method: :post, class: "ax-contextbar__button" do %>
-    <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar</span>
-  <% end %>
-  <%= link_to new_admin_whatsapp_template_path(whatsapp_sender_number_id: @sender_number&.id), class: "ax-contextbar__button ax-contextbar__button--primary" do %>
-    <i class="bi bi-plus-lg ax-ico"></i><span>Novo template</span>
+  <% if @sender_number %>
+    <%= button_to sync_admin_whatsapp_templates_path(whatsapp_sender_number_id: @sender_number.id), method: :post, class: "ax-contextbar__button" do %>
+      <i class="bi bi-arrow-repeat ax-ico"></i><span>Sincronizar</span>
+    <% end %>
+    <%= link_to new_admin_whatsapp_template_path(whatsapp_sender_number_id: @sender_number.id), class: "ax-contextbar__button ax-contextbar__button--primary" do %>
+      <i class="bi bi-plus-lg ax-ico"></i><span>Novo template</span>
+    <% end %>
   <% end %>
 <% end %>
 
@@ -19,7 +21,7 @@
     <div class="whatsapp-template-header__icon"><i class="bi bi-grid-3x2-gap"></i></div>
     <div>
       <strong>Templates WhatsApp</strong>
-      <span>Gerencie modelos aprovados e use-os nas campanhas.</span>
+      <span>Selecione o número para gerenciar os templates da WABA correspondente.</span>
     </div>
     <div class="whatsapp-template-header__status">
       <%= ax_badge("#{@approved_count} aprovados", tone: :green, dot: true) %>
@@ -27,30 +29,55 @@
     </div>
   </section>
 
-  <%= form_with url: admin_whatsapp_templates_path, method: :get, local: true, class: "whatsapp-template-filters" do %>
-    <%= hidden_field_tag :whatsapp_sender_number_id, @sender_number&.id if @sender_number %>
-    <div class="ax-field">
-      <%= label_tag :query, "Buscar", class: "ax-label" %>
-      <%= text_field_tag :query, @filters[:query], class: "ax-control", placeholder: "Nome do template" %>
+  <section class="whatsapp-template-selector">
+    <div>
+      <strong>Número / WABA</strong>
+      <span>Templates são aprovados por WABA. Ao escolher o número, a listagem mostra os modelos dessa conexão.</span>
     </div>
-    <div class="ax-field">
-      <%= label_tag :status, "Status", class: "ax-label" %>
-      <%= select_tag :status, options_for_select([["Todos", ""], ["Aprovado", "APPROVED"], ["Em análise", "PENDING"], ["Rejeitado", "REJECTED"]], @filters[:status]), class: "ax-control" %>
+    <div class="whatsapp-template-selector__options">
+      <% @sender_numbers.each do |number| %>
+        <%= link_to admin_whatsapp_templates_path(whatsapp_sender_number_id: number.id),
+                    class: "whatsapp-template-selector__option #{'is-active' if @sender_number&.id == number.id}" do %>
+          <strong><%= number.formatted_phone %></strong>
+          <span><%= number.label %></span>
+          <small>WABA: <%= number.waba_id.presence || "não informada" %></small>
+        <% end %>
+      <% end %>
+      <% if @sender_numbers.empty? %>
+        <div class="whatsapp-template-selector__empty">
+          Nenhum número ativo cadastrado. Adicione um número na integração WhatsApp antes de gerenciar templates.
+        </div>
+      <% end %>
     </div>
-    <div class="ax-field">
-      <%= label_tag :category, "Categoria", class: "ax-label" %>
-      <%= select_tag :category, options_for_select([["Todas", ""]] + WhatsappTemplate::CATEGORIES.map { |category| [category.titleize, category] }, @filters[:category]), class: "ax-control" %>
-    </div>
-    <div class="ax-field">
-      <%= label_tag :template_type, "Tipo", class: "ax-label" %>
-      <%= select_tag :template_type, options_for_select([["Todos", ""]] + WhatsappTemplate::TEMPLATE_TYPES.map { |key, label| [label, key] }, @filters[:template_type]), class: "ax-control" %>
-    </div>
-    <button type="submit" class="ax-btn ax-btn--primary">
-      <i class="bi bi-funnel ax-ico"></i><span>Filtrar</span>
-    </button>
+  </section>
+
+  <% if @sender_number %>
+    <%= form_with url: admin_whatsapp_templates_path, method: :get, local: true, class: "whatsapp-template-filters" do %>
+      <%= hidden_field_tag :whatsapp_sender_number_id, @sender_number.id %>
+      <div class="ax-field">
+        <%= label_tag :query, "Buscar", class: "ax-label" %>
+        <%= text_field_tag :query, @filters[:query], class: "ax-control", placeholder: "Nome do template" %>
+      </div>
+      <div class="ax-field">
+        <%= label_tag :status, "Status", class: "ax-label" %>
+        <%= select_tag :status, options_for_select([["Todos", ""], ["Aprovado", "APPROVED"], ["Em análise", "PENDING"], ["Rejeitado", "REJECTED"]], @filters[:status]), class: "ax-control" %>
+      </div>
+      <div class="ax-field">
+        <%= label_tag :category, "Categoria", class: "ax-label" %>
+        <%= select_tag :category, options_for_select([["Todas", ""]] + WhatsappTemplate::CATEGORIES.map { |category| [category.titleize, category] }, @filters[:category]), class: "ax-control" %>
+      </div>
+      <div class="ax-field">
+        <%= label_tag :template_type, "Tipo", class: "ax-label" %>
+        <%= select_tag :template_type, options_for_select([["Todos", ""]] + WhatsappTemplate::TEMPLATE_TYPES.map { |key, label| [label, key] }, @filters[:template_type]), class: "ax-control" %>
+      </div>
+      <button type="submit" class="ax-btn ax-btn--primary">
+        <i class="bi bi-funnel ax-ico"></i><span>Filtrar</span>
+      </button>
+    <% end %>
   <% end %>
 
-  <section class="whatsapp-template-table-section">
+  <% if @sender_number %>
+    <section class="whatsapp-template-table-section">
     <table class="ax-table whatsapp-template-table">
       <thead>
         <tr>
@@ -88,6 +115,13 @@
                     <i class="bi bi-megaphone ax-ico"></i><span>Criar campanha</span>
                   <% end %>
                 <% end %>
+                <%= button_to admin_whatsapp_template_path(template),
+                              method: :delete,
+                              class: "ax-btn ax-btn--sm ax-btn--danger",
+                              params: { whatsapp_sender_number_id: @sender_number.id },
+                              form: { data: { turbo_confirm: "Remover este template localmente? Se ele ainda existir na Meta, pode voltar na próxima sincronização." } } do %>
+                  <i class="bi bi-trash ax-ico"></i><span>Excluir</span>
+                <% end %>
               </div>
             </td>
           </tr>
@@ -100,5 +134,6 @@
       </tbody>
     </table>
     <%= will_paginate @templates if @templates.respond_to?(:total_pages) && @templates.total_pages > 1 %>
-  </section>
+    </section>
+  <% end %>
 </div>

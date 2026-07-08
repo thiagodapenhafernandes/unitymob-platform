@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sem conexão</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      display: grid; place-items: center; min-height: 100vh; min-height: 100dvh;
+      padding: 24px; background: #eef2f7; color: #1f2733;
+      font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif; text-align: center;
+    }
+    .card { max-width: 360px; display: grid; gap: 12px; justify-items: center; }
+    .icon {
+      width: 72px; height: 72px; display: grid; place-items: center;
+      border-radius: 20px; background: #fff; box-shadow: 0 8px 24px rgba(15,23,42,.08); font-size: 34px;
+    }
+    h1 { font-size: 19px; }
+    p { color: #667085; font-size: 14px; line-height: 1.5; }
+    button {
+      margin-top: 6px; padding: 11px 22px; border: 0; border-radius: 10px;
+      background: #365f8f; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .hint { font-size: 12px; color: #98a2b3; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📡</div>
+    <h1>Você está sem conexão</h1>
+    <p>Não foi possível carregar a página. Verifique sua internet — reconectando, voltamos automaticamente.</p>
+    <button onclick="location.reload()">Tentar de novo</button>
+    <span class="hint">Esta página recarrega sozinha quando a conexão voltar.</span>
+  </div>
+  <script>
+    window.addEventListener("online", function () { location.reload(); });
+  </script>
+</body>
+</html>

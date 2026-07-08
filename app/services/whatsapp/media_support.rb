@@ -34,11 +34,19 @@ module Whatsapp
       }
     }.freeze
 
+    # Formatos que a Meta NAO aceita mas o servidor converte para um aceito
+    # (iPhone entrega video QuickTime mesmo com accept exato de MP4).
+    CONVERTIBLE_MEDIA = {
+      "video/quicktime" => { type: "video", max_bytes: 80.megabytes },
+      "audio/webm" => { type: "audio", max_bytes: 16.megabytes }
+    }.freeze
+
     EXTENSION_OVERRIDES = {
       ".jpg" => "image/jpeg",
       ".jpeg" => "image/jpeg",
       ".png" => "image/png",
       ".mp4" => "video/mp4",
+      ".mov" => "video/quicktime",
       ".3gp" => "video/3gpp",
       ".aac" => "audio/aac",
       ".amr" => "audio/amr",
@@ -81,6 +89,27 @@ module Whatsapp
       supported_content_types.join(",")
     end
 
+    # accept restrito por categoria: com os MIME exatos (sem video/*), o iOS
+    # converte HEIC->JPEG e MOV->MP4 sozinho ao escolher da galeria.
+    def accept_attribute_for(*types)
+      types = types.map(&:to_s)
+      native = SUPPORTED_MEDIA.values_at(*types).compact.flat_map { |config| config[:content_types] }
+      convertible = CONVERTIBLE_MEDIA.select { |_ct, config| types.include?(config[:type]) }.keys
+      (native + convertible).uniq.join(",")
+    end
+
+    def convertible_content_type?(content_type)
+      CONVERTIBLE_MEDIA.key?(content_type.to_s)
+    end
+
+    # { content_type => max_bytes } para validacao imediata no composer
+    def client_rules_json
+      native = SUPPORTED_MEDIA.values
+        .flat_map { |config| config[:content_types].map { |type| [type, config[:max_bytes]] } }
+      convertible = CONVERTIBLE_MEDIA.map { |content_type, config| [content_type, config[:max_bytes]] }
+      (native + convertible).to_h.to_json
+    end
+
     def supported_content_types
       SUPPORTED_MEDIA.values.flat_map { |config| config[:content_types] }.uniq
     end
@@ -102,9 +131,19 @@ module Whatsapp
       SHORT_CONTENT_LABELS[content_type.to_s]
     end
 
-    def validation_for(upload)
+    def validation_for(upload, allow_convertible: false)
       content_type = resolved_content_type(upload)
       type = type_for(content_type)
+
+      if type.blank? && allow_convertible && convertible_content_type?(content_type)
+        config = CONVERTIBLE_MEDIA.fetch(content_type)
+        byte_size = upload_byte_size(upload)
+        return { ok: false, error: size_error(config[:type], config[:max_bytes]) } if byte_size.positive? && byte_size > config[:max_bytes]
+
+        return { ok: true, convert: true, type: config[:type], content_type: content_type,
+                 max_bytes: config[:max_bytes], byte_size: byte_size, file_name: original_filename(upload) }
+      end
+
       return { ok: false, error: unsupported_error } if type.blank?
 
       byte_size = upload_byte_size(upload)

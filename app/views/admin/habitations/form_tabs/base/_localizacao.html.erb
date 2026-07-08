@@ -1,4 +1,4 @@
-<%= ax_form_section(title: "Endereço e localização", eyebrow: "Localização") do %>
+<%= ax_form_section(title: "Endereço e localização", eyebrow: "Localização", icon: "geo-alt") do %>
   <%= f.fields_for :address do |address_form| %>
     <div data-controller="cep-search">
       <%= ax_field_grid(columns: 12, gap: :compact) do %>

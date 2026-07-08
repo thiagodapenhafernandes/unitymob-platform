@@ -1,8 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 
-const FANCYBOX_SRC = "https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"
-const FANCYBOX_CSS_SRC = "https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css"
 const DEBUG = false
+
+// CSS self-hosted: o layout injeta o link nas telas com galeria e expõe o
+// caminho digerido do asset via <meta name="fancybox-css-path"> para carga sob demanda.
+function fancyboxStylesheetHref() {
+  return document.querySelector('meta[name="fancybox-css-path"]')?.content || null
+}
 
 let fancyboxPromise = null
 let fancyboxStylesheetPromise = null
@@ -41,6 +45,12 @@ export default class extends Controller {
     event.stopPropagation()
     event.stopImmediatePropagation()
 
+    const loadingCard = galleryTrigger.closest?.(".wa-inbox-media-card")
+    if (loadingCard) {
+      loadingCard.classList.add("is-loading")
+      setTimeout(() => loadingCard.classList.remove("is-loading"), 5000)
+    }
+
     this.ensureFancyboxAssets().then((Fancybox) => {
       const links = this.galleryLinks()
       if (links.length === 0) {
@@ -76,12 +86,14 @@ export default class extends Controller {
             }
           },
           on: {
+            ready: () => loadingCard?.classList.remove("is-loading"),
             close: () => this.pauseEmbeddableMedia(),
             destroy: () => this.pauseEmbeddableMedia()
           }
         }
       )
     }).catch((error) => {
+      loadingCard?.classList.remove("is-loading")
       console.error("Failed to open image gallery", error)
       this.debug("open:fallback", { error: error.message, href: galleryTrigger.href })
       if (galleryTrigger.matches("a[data-fancybox]") && galleryTrigger.href) window.open(galleryTrigger.href, "_blank", "noopener")
@@ -190,7 +202,8 @@ export default class extends Controller {
     return {
       src: item.href,
       type: "image",
-      caption
+      caption,
+      thumbSrc: item.dataset.thumbSrc || item.href
     }
   }
 
@@ -212,6 +225,7 @@ export default class extends Controller {
 
   galleryAnchorFor(trigger) {
     if (trigger.matches("a[data-fancybox]")) return trigger
+    if (trigger.matches("[data-gallery-open]")) return this.galleryLinks()[0]
     return trigger.parentElement?.querySelector("a[data-fancybox]") || trigger.closest('[data-controller~="wa-audio-preview"]')?.querySelector("a[data-fancybox]")
   }
 
@@ -229,7 +243,9 @@ export default class extends Controller {
   }
 
   ensureFancyboxStylesheet() {
-    const existing = document.querySelector(`link[href="${FANCYBOX_CSS_SRC}"]`)
+    // Cobre tanto o link renderizado pelo layout (asset local digerido)
+    // quanto um link já injetado por esta rotina.
+    const existing = document.querySelector('link[rel="stylesheet"][href*="fancybox"]')
     if (existing) {
       if (existing.dataset.fancyboxStylesheetLoaded === "true" || existing.sheet) {
         return Promise.resolve(existing)
@@ -239,6 +255,12 @@ export default class extends Controller {
     if (fancyboxStylesheetPromise) return fancyboxStylesheetPromise
 
     fancyboxStylesheetPromise = new Promise((resolve, reject) => {
+      const href = fancyboxStylesheetHref()
+      if (!existing && !href) {
+        reject(new Error("Caminho do CSS do Fancybox indisponível (meta fancybox-css-path ausente)."))
+        return
+      }
+
       const stylesheet = existing || document.createElement("link")
       const timeout = window.setTimeout(() => {
         reject(new Error("Tempo limite ao carregar estilos do Fancybox."))
@@ -258,7 +280,7 @@ export default class extends Controller {
 
       if (!existing) {
         stylesheet.rel = "stylesheet"
-        stylesheet.href = FANCYBOX_CSS_SRC
+        stylesheet.href = href
         document.head.appendChild(stylesheet)
       }
     }).catch((error) => {
@@ -279,55 +301,17 @@ export default class extends Controller {
       return fancyboxPromise
     }
 
-    this.debug("ensure:load-script")
+    this.debug("ensure:import-module")
 
-    fancyboxPromise = new Promise((resolve, reject) => {
-      const timeout = window.setTimeout(() => {
-        reject(new Error("Tempo limite ao carregar Fancybox."))
-      }, 8000)
-
-      const finish = () => {
-        window.clearTimeout(timeout)
-        if (this.fancyboxAvailable()) {
-          this.debug("ensure:loaded")
-          resolve(window.Fancybox)
-        } else {
-          this.debug("ensure:loaded-without-global")
-          reject(new Error("Fancybox carregou, mas não inicializou window.Fancybox."))
-        }
+    // Módulo self-hosted via importmap (vendor/javascript/@fancyapps--ui.js).
+    fancyboxPromise = import("@fancyapps/ui").then(({ Fancybox }) => {
+      if (!Fancybox || typeof Fancybox.show !== "function") {
+        this.debug("ensure:loaded-without-export")
+        throw new Error("Fancybox carregou, mas não expôs Fancybox.show.")
       }
-
-      const existing = document.querySelector(`script[src="${FANCYBOX_SRC}"]`)
-      if (existing) {
-        this.debug("ensure:existing-script", {
-          loaded: existing.dataset.fancyboxLoaded,
-          readyState: existing.readyState
-        })
-        if (existing.dataset.fancyboxLoaded === "true" || existing.readyState === "complete" || existing.readyState === "loaded") {
-          window.queueMicrotask(finish)
-          return
-        }
-
-        existing.addEventListener("load", finish, { once: true })
-        existing.addEventListener("error", (error) => {
-          window.clearTimeout(timeout)
-          reject(error)
-        }, { once: true })
-        return
-      }
-
-      const script = document.createElement("script")
-      script.src = FANCYBOX_SRC
-      script.async = true
-      script.onload = () => {
-        script.dataset.fancyboxLoaded = "true"
-        finish()
-      }
-      script.onerror = (error) => {
-        window.clearTimeout(timeout)
-        reject(error)
-      }
-      document.head.appendChild(script)
+      window.Fancybox = window.Fancybox || Fancybox
+      this.debug("ensure:loaded")
+      return Fancybox
     }).catch((error) => {
       fancyboxPromise = null
       throw error

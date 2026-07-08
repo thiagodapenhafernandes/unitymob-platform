@@ -1,0 +1,27 @@
+<%# Desafio TOTP (2ª etapa do login) — mesmo padrão visual de sessions/new %>
+<h2 class="login-title">Verificação em duas etapas</h2>
+
+<%= form_with url: admin_two_factor_path, method: :post, local: true, html: { class: "login-form" }, data: { turbo: false } do %>
+  <div class="login-field">
+    <label class="login-label" for="otp_code">Código do autenticador</label>
+    <div class="login-control">
+      <i class="bi bi-shield-lock" aria-hidden="true"></i>
+      <input type="text" name="otp_code" id="otp_code" class="login-input"
+             inputmode="numeric" autocomplete="one-time-code" autofocus
+             placeholder="000000" maxlength="12">
+    </div>
+    <p class="login-hint" style="margin:6px 0 0;color:#697586;font-size:12px;">
+      Abra o Google Authenticator e digite o código de 6 dígitos.
+      Sem o aparelho? Use um dos seus <strong>códigos de backup</strong>.
+    </p>
+  </div>
+
+  <div class="login-actions">
+    <button type="submit" class="login-submit">
+      <span>Verificar e entrar</span>
+      <i class="bi bi-arrow-right"></i>
+    </button>
+  </div>
+
+  <%= link_to "Voltar ao login", new_admin_user_session_path, class: "forgot-link" %>
+<% end %>

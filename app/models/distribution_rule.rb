@@ -1,7 +1,24 @@
 class DistributionRule < ApplicationRecord
   include TenantScoped
 
+  AUTO_UPDATE_TRIGGERS = %w[sorteio pos_risca fora_horario].freeze
+  AUTO_UPDATE_TRIGGER_LABELS = {
+    "sorteio" => "Logo após check-in de entrada",
+    "pos_risca" => "Logo após check-in pós-risca",
+    "fora_horario" => "Logo após check-in fora da roleta"
+  }.freeze
+  AUTO_UPDATE_TRIGGER_ALIASES = {
+    "entrada" => "sorteio",
+    "sorteio" => "sorteio",
+    "pos_risca" => "pos_risca",
+    "pos-risca" => "pos_risca",
+    "fora_roleta" => "fora_horario",
+    "fora_horario" => "fora_horario",
+    "fora_hora" => "fora_horario"
+  }.freeze
+
   after_initialize :set_defaults
+  before_validation :ensure_auto_update_trigger_value, if: :has_auto_update_trigger_column?
 
   has_many :distribution_rule_agents, dependent: :destroy
   has_many :admin_users, through: :distribution_rule_agents
@@ -17,6 +34,7 @@ class DistributionRule < ApplicationRecord
   validates :max_price, numericality: { greater_than_or_equal_to: 0, allow_nil: true }
   validate :max_price_greater_than_min_price
   validates :pocket_time, numericality: { greater_than: 0 }, if: :pocket_active?
+  validate :validate_auto_update_triggers, if: :has_auto_update_trigger_column?
 
   scope :active, -> { where(active: true) }
 
@@ -28,18 +46,55 @@ class DistributionRule < ApplicationRecord
     admin_user.present? &&
       admin_user.tenant_id == tenant_id &&
       admin_user.active? &&
-      admin_user.profile&.vertical?
+      admin_user.profile&.vertical? &&
+      !admin_user.profile&.tenant_owner?
   end
 
   def eligible_distribution_rule_agents(candidates = distribution_rule_agents)
     if candidates.respond_to?(:joins)
+      # dono da conta nunca entra no rodizio (mesmo se salvo em regra antiga)
       candidates
         .joins(admin_user: :profile)
         .where(tenant_id: tenant_id)
         .where(admin_users: { tenant_id: tenant_id, active: true, super_admin: false })
         .where(profiles: { tenant_id: tenant_id, axis: Profile::AXES[:vertical] })
+        .where.not(profiles: { key: "tenant_owner" })
     else
       candidates.select { |candidate| eligible_distribution_agent?(candidate.admin_user) }
+    end
+  end
+
+  # ---- Gate de canal de notificação (a regra só marca canal DISPONÍVEL) -------
+  # Disponível = tenant tem o PRÓPRIO configurado OU (tenant opt-in E global
+  # configurado). Usa o TransportResolver/EmailSetting.for pra não duplicar a
+  # regra de fallback. Tolerante: sem tenant no contexto, considera indisponível.
+
+  def whatsapp_channel_available?
+    gate_tenant = tenant.presence || Current.tenant
+    return false if gate_tenant.blank?
+
+    Notifications::TransportResolver.whatsapp(gate_tenant).present?
+  rescue StandardError => e
+    Rails.logger.warn("[DistributionRule] gate whatsapp indisponivel: #{e.message}")
+    false
+  end
+
+  def email_channel_available?
+    gate_tenant = tenant.presence || Current.tenant
+    EmailSetting.for(gate_tenant).present?
+  rescue StandardError => e
+    Rails.logger.warn("[DistributionRule] gate email indisponivel: #{e.message}")
+    false
+  end
+
+  # Disponibilidade por chave de canal (:whatsapp/:email/:push) — push/webhook
+  # inalterados (push via PushSetting global; webhook validado inline no form).
+  def notification_channel_available?(channel)
+    case channel.to_sym
+    when :whatsapp then whatsapp_channel_available?
+    when :email then email_channel_available?
+    when :push then PushSetting.instance.configured?
+    else true
     end
   end
 
@@ -77,6 +132,74 @@ class DistributionRule < ApplicationRecord
     ids.map(&:to_i).uniq
   end
 
+  def self.auto_update_trigger_options
+    AUTO_UPDATE_TRIGGERS.map { |trigger| [AUTO_UPDATE_TRIGGER_LABELS.fetch(trigger), trigger] }
+  end
+
+  def auto_update_agents_enabled?
+    has_attribute?(:auto_update_agents_enabled) && !!self[:auto_update_agents_enabled]
+  end
+
+  def auto_update_shuffle_agents?
+    has_attribute?(:auto_update_shuffle_agents) && !!self[:auto_update_shuffle_agents]
+  end
+
+  def auto_update_trigger
+    return ["sorteio"] unless has_auto_update_trigger_column?
+
+    normalize_auto_update_trigger_values(read_attribute(:auto_update_trigger)).presence || ["sorteio"]
+  end
+
+  def auto_update_trigger=(value)
+    return unless has_auto_update_trigger_column?
+
+    write_attribute(:auto_update_trigger, normalize_auto_update_trigger_values(value))
+  end
+
+  def auto_update_trigger_label
+    auto_update_trigger.map { |trigger| AUTO_UPDATE_TRIGGER_LABELS.fetch(trigger, trigger.humanize) }.to_sentence(two_words_connector: " e ", last_word_connector: " e ")
+  end
+
+  def update_agents_from_store_checkin!(status: nil, date: Date.current)
+    return false unless auto_update_agents_enabled?
+
+    store_ids = checkin_store_id_list
+    return false if store_ids.blank?
+
+    statuses = normalize_auto_update_trigger_values(status.presence || auto_update_trigger)
+    statuses = auto_update_trigger if statuses.blank?
+    checkins = tenant.check_ins
+                    .where(store_id: store_ids, checked_in_at: date.all_day)
+                    .for_arrival_statuses(statuses)
+                    .includes(:admin_user)
+                    .order(:checked_in_at, :id)
+                    .to_a
+
+    selected_users = interleaved_checked_in_agents(checkins, store_ids)
+    selected_users = selected_users.shuffle if auto_update_shuffle_agents?
+
+    eligible_ids = eligible_admin_users_scope.where(id: selected_users.map(&:id)).pluck(:id)
+    selected_ids = selected_users.map(&:id).select { |id| eligible_ids.include?(id) }.uniq
+
+    transaction do
+      current_agents = distribution_rule_agents.index_by(&:admin_user_id)
+
+      current_agents.each do |admin_user_id, agent|
+        agent.destroy! unless selected_ids.include?(admin_user_id)
+      end
+
+      selected_ids.each_with_index do |admin_user_id, index|
+        agent = current_agents[admin_user_id] || distribution_rule_agents.build(admin_user_id: admin_user_id)
+        agent.tenant = tenant if agent.respond_to?(:tenant=)
+        agent.position = index + 1
+        agent.weight = agent.weight.presence || 1
+        agent.save! if agent.new_record? || agent.changed?
+      end
+    end
+
+    true
+  end
+
   # Filtra candidatos pelas regras de check-in geolocalizado.
   # Com flags default false, retorna a relation original (retrocompatibilidade total).
   #
@@ -99,7 +222,7 @@ class DistributionRule < ApplicationRecord
     scope = scope.where(suspicious: false) if exclude_suspicious_checkins?
     scope = scope.where(out_of_radius_since: nil) if require_inside_radius?
 
-    scope = scope.includes(:store_shift, :admin_user)
+    scope = scope.includes(:store, :admin_user)
 
     eligible_user_ids = scope.select { |ci| shift_ok?(ci) }.map(&:admin_user_id)
     eligible_agents.where(admin_user_id: eligible_user_ids)
@@ -113,6 +236,25 @@ class DistributionRule < ApplicationRecord
     urls.reject(&:blank?).uniq
   end
 
+  # Namespace (classid) do advisory lock do rodízio — exclusivo desta feature.
+  ROTATION_ADVISORY_LOCK_KEY = 762_501
+
+  # Serializa seleção+rotação do rodízio entre processos concorrentes (threads
+  # do Puma e do SolidQueue) com advisory lock transacional por regra — sem
+  # FOR UPDATE na linha, pra não esbarrar nos defaults do after_initialize.
+  # Transação curta: nunca coloque chamadas externas (HTTP/notificação) aqui.
+  def with_rotation_lock
+    return yield unless rotary?
+
+    self.class.transaction do
+      self.class.connection.execute(
+        "SELECT pg_advisory_xact_lock(#{ROTATION_ADVISORY_LOCK_KEY}, #{id.to_i})"
+      )
+      yield
+    end
+  end
+
+  # Deve rodar dentro de with_rotation_lock: faz read-modify-write de position.
   def rotate_queue!(just_served_admin_user_id)
     return unless rotary?
 
@@ -145,21 +287,61 @@ class DistributionRule < ApplicationRecord
     self.meta_forms ||= []
     self.notify_webhook_urls ||= []
     ensure_full_schedule
+    self.auto_update_trigger = ["sorteio"] if has_auto_update_trigger_column? && read_attribute(:auto_update_trigger).blank?
   end
 
   def shift_ok?(check_in)
     return true unless require_active_shift?
 
-    if check_in.store_shift_id.present?
-      check_in.store_shift&.active_at?(Time.current)
-    else
-      # Check-in manual (sem turno vinculado) — busca qualquer turno ativo
-      # do corretor naquela loja, dia e horário atuais.
-      now_store_tz = Time.current.in_time_zone(check_in.store.timezone_obj)
-      check_in.admin_user.store_shifts
-              .where(store_id: check_in.store_id, active: true, day_of_week: now_store_tz.wday)
-              .any? { |s| s.active_at?(Time.current) }
+    check_in.store&.operational_shift_active_at?(Time.current)
+  end
+
+  def has_auto_update_trigger_column?
+    has_attribute?(:auto_update_trigger)
+  end
+
+  def normalize_auto_update_trigger_values(value)
+    raw_values = case value
+                 when Array then value
+                 when String then value.split(",")
+                 else Array(value)
+                 end
+
+    raw_values.filter_map do |raw|
+      token = raw.to_s.strip.downcase.tr(" ", "_")
+      AUTO_UPDATE_TRIGGER_ALIASES[token].presence_in(AUTO_UPDATE_TRIGGERS)
+    end.uniq
+  end
+
+  def ensure_auto_update_trigger_value
+    self.auto_update_trigger = auto_update_trigger.presence || ["sorteio"]
+  end
+
+  def validate_auto_update_triggers
+    invalid_values = Array(read_attribute(:auto_update_trigger)).reject { |value| AUTO_UPDATE_TRIGGERS.include?(value.to_s) }
+    return if invalid_values.empty?
+
+    errors.add(:auto_update_trigger, "contém valores inválidos: #{invalid_values.join(', ')}")
+  end
+
+  def interleaved_checked_in_agents(checkins, store_ids)
+    grouped = checkins.group_by(&:store_id).transform_values do |store_checkins|
+      store_checkins.map(&:admin_user).compact.uniq(&:id)
     end
+
+    result = []
+    loop do
+      added = false
+      store_ids.each do |store_id|
+        agent = grouped[store_id]&.shift
+        next if agent.blank?
+
+        result << agent
+        added = true
+      end
+      break unless added
+    end
+    result
   end
 
   def max_price_greater_than_min_price

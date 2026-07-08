@@ -1,0 +1,129 @@
+<% content_for :title, "Acessos externos — Configurações da Conta" %>
+
+<div class="layout-settings-workspace">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+    <div>
+      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+        <i class="bi bi-person-plus" style="color: var(--admin-primary);"></i>Acessos externos
+      </h1>
+      <p class="ax-page-subtitle">Convide pessoas de fora (ex.: agência de marketing) para acessar esta conta com um perfil escolhido — elas alternam de conta sem novo login.</p>
+    </div>
+  </div>
+
+  <div class="layout-settings-grid">
+    <div class="layout-settings-main">
+      <%= ax_operational_panel(eyebrow: "Convidar", title: "Novo acesso externo") do %>
+        <div class="ax-panel-body">
+          <%= form_with model: @membership, url: admin_account_memberships_path, local: true do |f| %>
+            <div class="tw-grid tw-gap-3" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+              <div class="ax-field">
+                <%= ax_field_label(f, :invited_email, text: "E-mail do convidado") %>
+                <%= f.email_field :invited_email, class: "ax-control", required: true, placeholder: "pessoa@agencia.com.br" %>
+              </div>
+              <div class="ax-field">
+                <%= ax_field_label(nil, nil, text: "Perfil de acesso nesta conta") %>
+                <%= select_tag "account_membership[access_profile_id]",
+                      grouped_options_for_select(@access_profile_options),
+                      class: "ax-control", required: true %>
+              </div>
+              <div class="ax-field">
+                <%= ax_field_label(f, :acting_type, text: "Área de atuação") %>
+                <%= f.select :acting_type, AdminUser.acting_types.keys.map { |k| [k == "sales" ? "Venda" : k == "rentals" ? "Locação" : "Ambos", AdminUser.acting_types[k]] }, {}, { class: "ax-control" } %>
+              </div>
+              <div class="ax-field">
+                <%= ax_field_label(f, :manager_id, text: "Gestor de venda (se perfil de hierarquia)") %>
+                <%= f.select :manager_id, @manager_options, { include_blank: "—" }, { class: "ax-control" } %>
+              </div>
+              <div class="ax-field">
+                <%= ax_field_label(f, :rentals_manager_id, text: "Gestor de locação (se atua em locação)") %>
+                <%= f.select :rentals_manager_id, @manager_options, { include_blank: "—" }, { class: "ax-control" } %>
+              </div>
+            </div>
+            <p class="ax-field__hint">Função operacional (perfil horizontal) fica fora da árvore de gestão — os campos de gestor são ignorados nesse caso.</p>
+            <div class="tw-flex tw-justify-end">
+              <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-send ax-ico"></i><span>Enviar convite</span></button>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if flash[:invite_url].present? %>
+        <%= ax_operational_panel(eyebrow: "Link do convite", title: "Envie por onde preferir") do %>
+          <div class="ax-panel-body">
+            <p class="ax-field__hint tw-mt-0">O link abaixo vale por 7 dias — pode mandar por WhatsApp se o e-mail não chegar:</p>
+            <div class="tw-flex tw-items-center tw-gap-2">
+              <input type="text" class="ax-control" readonly value="<%= flash[:invite_url] %>" id="invite-url-field" onclick="this.select()">
+              <button type="button" class="ax-btn ax-btn--sm"
+                      onclick="navigator.clipboard.writeText(document.getElementById('invite-url-field').value).then(() => this.textContent = 'Copiado!')">Copiar</button>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Gestão", title: "Convites e membros externos") do %>
+        <div class="ax-panel-body">
+          <% if @memberships.empty? %>
+            <%= ax_empty_state(title: "Nenhum acesso externo", description: "Convide alguém acima — o convidado recebe um e-mail com o link de aceite.", icon: "person-plus") %>
+          <% else %>
+            <div class="ax-table-wrap">
+              <table class="ax-table">
+                <thead>
+                  <tr>
+                    <th>Convidado</th>
+                    <th>Perfil</th>
+                    <th>Status</th>
+                    <th>Convidado por</th>
+                    <th class="ax-num">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @memberships.each do |m| %>
+                    <tr>
+                      <td class="ax-strong"><%= m.invited_email %></td>
+                      <td><%= (m.horizontal_profile || m.profile)&.name %></td>
+                      <td>
+                        <% if m.active? %>
+                          <%= ax_badge("Ativo", tone: :green, dot: true) %>
+                        <% elsif m.invited? %>
+                          <%= ax_badge(m.invite_expired? ? "Convite expirado" : "Convite pendente", tone: m.invite_expired? ? :amber : :blue, dot: true) %>
+                        <% else %>
+                          <%= ax_badge("Revogado", tone: :gray, dot: true) %>
+                        <% end %>
+                      </td>
+                      <td><%= m.invited_by&.name %></td>
+                      <td class="ax-num">
+                        <% unless m.revoked? %>
+                          <%= button_to admin_account_membership_path(m), method: :delete,
+                                class: "ax-btn ax-btn--sm ax-btn--ghost",
+                                form: { data: { turbo_confirm: "Revogar o acesso de #{m.invited_email} a esta conta?" } } do %>
+                            <i class="bi bi-x-circle ax-ico"></i><span>Revogar</span>
+                          <% end %>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <aside class="layout-settings-inspector">
+      <%= ax_operational_panel(eyebrow: "Como funciona", title: "Acesso externo") do %>
+        <div class="ax-panel-body">
+          <p class="ax-field__hint tw-mt-0">1. O convidado recebe um e-mail com link de aceite (validade de 7 dias).</p>
+          <p class="ax-field__hint">2. Ao aceitar, ele passa a alternar entre as contas dele pelo menu do usuário.</p>
+          <p class="ax-field__hint tw-mb-0">3. Revogar corta o acesso imediatamente — sem afetar a conta de origem da pessoa.</p>
+        </div>
+      <% end %>
+      <%= ax_operational_panel(eyebrow: "Segurança", title: "Limites") do %>
+        <div class="ax-panel-body">
+          <p class="ax-field__hint tw-mt-0">Convites nunca concedem o perfil <strong>Admin da Conta</strong>. As políticas de IP e aparelho confiável desta conta valem também para convidados.</p>
+          <p class="ax-field__hint tw-mb-0"><strong>Pré-requisito:</strong> a troca de contas é exclusiva para quem é <strong>Admin da Conta</strong> na própria conta de origem — convide e-mails de donos/admins de outras contas (ex.: gestor da agência).</p>
+        </div>
+      <% end %>
+    </aside>
+  </div>
+</div>

@@ -15,7 +15,12 @@ export default class extends Controller {
     "schedulePanel",
     "externalScheduleButton",
     "internalScheduleButton",
+    "internalScheduleButtonLabel",
+    "scheduleTitle",
+    "scheduleDescription",
     "scheduledAtGroup",
+    "scheduledAtLabel",
+    "scheduledAtHint",
     "scheduledAtInput",
     "calendarGrid",
     "slotList"
@@ -23,6 +28,8 @@ export default class extends Controller {
 
   static values = {
     scheduleUrl: String,
+    googleCalendarConfigured: Boolean,
+    minDate: String,
     blockedDates: Array,
     bookedSlots: Array
   }
@@ -37,13 +44,8 @@ export default class extends Controller {
 
   filesChanged(event) {
     const incomingFiles = Array.from(event.target.files || [])
-    if (event.currentTarget.dataset.captacaoPhotosAppend === "true") {
-      this.selectedFiles = this.selectedFiles.concat(incomingFiles)
-      event.currentTarget.value = ""
-      this.syncInputFiles()
-    } else {
-      this.selectedFiles = incomingFiles
-    }
+    this.selectedFiles = this.selectedFiles.concat(incomingFiles)
+    this.syncInputFiles()
     this.renderNewFiles()
   }
 
@@ -89,32 +91,36 @@ export default class extends Controller {
   refreshFlow(event) {
     const value = this.hasFlowSelectTarget ? this.flowSelectTarget.value : ""
     const uploadSelected = value === "upload"
+    const googleCalendarSelected = value === "google_calendar"
+    const scheduleSelected = value === "schedule" || googleCalendarSelected
     this.toggle(this.uploadPanelTarget, uploadSelected)
     this.toggle(this.newPhotosPanelTarget, uploadSelected)
     if (this.hasExistingPhotosPanelTarget) {
       this.toggle(this.existingPhotosPanelTarget, uploadSelected)
     }
-    this.toggle(this.schedulePanelTarget, value === "schedule")
+    this.toggle(this.schedulePanelTarget, scheduleSelected)
+    this.refreshScheduleCopy(value)
 
     if (this.hasExternalScheduleButtonTarget) {
       this.toggle(this.externalScheduleButtonTarget, value === "schedule" && this.scheduleUrlValue.length > 0)
     }
 
     if (this.hasInternalScheduleButtonTarget) {
-      this.toggle(this.internalScheduleButtonTarget, value === "schedule" && this.scheduleUrlValue.length === 0)
+      this.toggle(this.internalScheduleButtonTarget, scheduleSelected && (googleCalendarSelected || this.scheduleUrlValue.length === 0))
     }
 
     if (this.hasScheduledAtGroupTarget) {
-      this.toggle(this.scheduledAtGroupTarget, value === "schedule")
+      this.toggle(this.scheduledAtGroupTarget, scheduleSelected)
     }
 
-    if (event && value === "schedule") {
+    if (event && scheduleSelected) {
       this.openScheduler()
     }
   }
 
   openScheduler() {
-    if (this.scheduleUrlValue.length > 0) {
+    const value = this.hasFlowSelectTarget ? this.flowSelectTarget.value : ""
+    if (value === "schedule" && this.scheduleUrlValue.length > 0) {
       window.open(this.scheduleUrlValue, "_blank", "noopener")
       return
     }
@@ -122,6 +128,29 @@ export default class extends Controller {
     const modalElement = document.getElementById("captacaoPhotoSchedulerModal")
     if (!modalElement) return
     modalElement.dispatchEvent(new CustomEvent("ax-modal:open"))
+  }
+
+  refreshScheduleCopy(value) {
+    if (value === "google_calendar") {
+      if (this.hasScheduleTitleTarget) this.scheduleTitleTarget.textContent = "Google Agenda"
+      if (this.hasScheduleDescriptionTarget) {
+        this.scheduleDescriptionTarget.textContent = "Escolha data e horário. Ao avançar, o sistema cria o evento na agenda de fotografia configurada."
+      }
+      if (this.hasScheduledAtLabelTarget) this.scheduledAtLabelTarget.textContent = "Data/hora no Google Agenda"
+      if (this.hasScheduledAtHintTarget) this.scheduledAtHintTarget.textContent = "Obrigatório para criar o evento no Google Agenda."
+      if (this.hasInternalScheduleButtonLabelTarget) this.internalScheduleButtonLabelTarget.textContent = "Escolher horário"
+      return
+    }
+
+    if (this.hasScheduleTitleTarget) this.scheduleTitleTarget.textContent = "Agendamento com fotógrafo"
+    if (this.hasScheduleDescriptionTarget) {
+      this.scheduleDescriptionTarget.textContent = this.scheduleUrlValue.length > 0
+        ? "A agenda integrada será aberta em uma nova aba."
+        : "Escolha um dia e horário disponível no agendador interno."
+    }
+    if (this.hasScheduledAtLabelTarget) this.scheduledAtLabelTarget.textContent = "Data/hora agendada com fotógrafo"
+    if (this.hasScheduledAtHintTarget) this.scheduledAtHintTarget.textContent = "Obrigatório quando a opção for agendar fotógrafo."
+    if (this.hasInternalScheduleButtonLabelTarget) this.internalScheduleButtonLabelTarget.textContent = "Escolher horário"
   }
 
   selectDate(event) {
@@ -233,17 +262,27 @@ export default class extends Controller {
   buildCalendar() {
     if (!this.hasCalendarGridTarget) return
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const today = this.parseLocalDate(this.minDateValue)
     const formatter = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })
     const days = []
     const cursor = new Date(today)
+    const limit = new Date(today)
+    limit.setDate(limit.getDate() + 60)
 
-    while (days.length < 18) {
+    while (days.length < 18 && cursor <= limit) {
       const day = cursor.getDay()
       const isoDate = this.localDateValue(cursor)
-      if (day !== 0 && !this.blockedDatesValue.includes(isoDate)) days.push(new Date(cursor))
+      if (day !== 0 && !this.blockedDatesValue.includes(isoDate) && this.dayHasAvailableSlots(isoDate)) {
+        days.push(new Date(cursor))
+      }
       cursor.setDate(cursor.getDate() + 1)
+    }
+
+    if (days.length === 0) {
+      this.calendarGridTarget.innerHTML = '<div class="captacao-slot-empty">Não há dias disponíveis para os próximos períodos.</div>'
+      this.selectedDate = null
+      this.renderSlots()
+      return
     }
 
     this.calendarGridTarget.innerHTML = days.map((date, index) => {
@@ -257,6 +296,11 @@ export default class extends Controller {
 
   renderSlots() {
     if (!this.hasSlotListTarget) return
+
+    if (!this.selectedDate) {
+      this.slotListTarget.innerHTML = '<div class="captacao-slot-empty">Nenhum horário disponível.</div>'
+      return
+    }
 
     const slots = ["09:00", "09:45", "10:30", "11:15", "14:00", "14:45", "15:30", "16:15"]
     const availableSlots = slots.filter((slot) => !this.bookedSlotsValue.includes(`${this.selectedDate}T${slot}`))
@@ -286,6 +330,23 @@ export default class extends Controller {
     const month = String(date.getMonth() + 1).padStart(2, "0")
     const day = String(date.getDate()).padStart(2, "0")
     return `${year}-${month}-${day}`
+  }
+
+  parseLocalDate(value) {
+    if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [year, month, day] = value.split("-").map((part) => Number(part))
+      return new Date(year, month - 1, day)
+    }
+
+    const tomorrow = new Date()
+    tomorrow.setHours(0, 0, 0, 0)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    return tomorrow
+  }
+
+  dayHasAvailableSlots(isoDate) {
+    const slots = ["09:00", "09:45", "10:30", "11:15", "14:00", "14:45", "15:30", "16:15"]
+    return slots.some((slot) => !this.bookedSlotsValue.includes(`${isoDate}T${slot}`))
   }
 
   escapeHtml(value) {

@@ -51,12 +51,16 @@ export default class extends Controller {
 
     const battery = await this.getBatteryLevel()
 
+    // A plataforma web (navigator.geolocation) NÃO expõe a flag nativa de mock
+    // location do Android — só apps nativos conseguem lê-la. Enviar false aqui
+    // afirmaria um sinal que não temos; por isso OMITIMOS is_mock_location e
+    // deixamos o servidor tratar a ausência como DESCONHECIDO (não "limpo").
+    // Detecção real de mock no web é limitada por design da Web Platform.
     const payload = {
       lat: pos.latitude,
       lng: pos.longitude,
       accuracy: pos.accuracy,
       battery_level: battery,
-      is_mock_location: false,
       fingerprint_hash: window.__fieldFingerprint || null
     }
 

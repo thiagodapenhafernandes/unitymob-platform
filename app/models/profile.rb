@@ -55,7 +55,7 @@ class Profile < ApplicationRecord
   # Catálogo de recursos configuráveis via UI em /admin/profiles.
   # Cada entrada define: label humano, ícone, ações disponíveis e se suporta scope own/all.
   RESOURCES = [
-    { key: "imoveis",            label: "Imóveis",                icon: "bi-houses",           actions: %w[view manage],       scopeable: true,  description: "Catálogo de imóveis (Habitations)" },
+    { key: "imoveis",            label: "Imóveis",                icon: "bi-houses",           actions: %w[view media manage], scopeable: true,  description: "Catálogo de imóveis, mídia e uploads" },
     { key: "leads",              label: "Leads",                  icon: "bi-megaphone",        actions: %w[view manage],       scopeable: true,  description: "Atendimento e gestão de leads" },
     { key: "comercial",          label: "Comercial",              icon: "bi-briefcase",        actions: %w[view manage],       scopeable: true,  description: "Tarefas, agenda e propostas comerciais" },
     { key: "whatsapp_inbox",     label: "Atendimento WhatsApp",   icon: "bi-whatsapp",         actions: %w[view manage],       scopeable: true,  description: "Central de atendimento (inbox) do WhatsApp" },
@@ -79,12 +79,14 @@ class Profile < ApplicationRecord
     { key: "catalogos",          label: "Catálogos dinâmicos",    icon: "bi-tags",             actions: %w[view manage],       scopeable: false, description: "Opções de atributos" },
     { key: "marketing",          label: "Marketing e conteúdo",   icon: "bi-megaphone-fill",   actions: %w[manage],            scopeable: false, description: "Banners, landing, SEO, home, rodapé" },
     { key: "integracoes",        label: "Integrações",            icon: "bi-plug",             actions: %w[manage],            scopeable: false, description: "Meta, DWV, Loft, Portais, Webhooks" },
+    { key: "inbound_webhooks",   label: "Webhook de entrada",     icon: "bi-box-arrow-in-down", actions: %w[manage],           scopeable: false, description: "Token pessoal para receber leads por webhook (independente das integrações da conta)" },
     { key: "dashboard",          label: "Dashboard principal",    icon: "bi-speedometer2",     actions: %w[view],              scopeable: false, description: "Página inicial do admin" }
   ].freeze
 
   # Label human-friendly das ações
   ACTION_LABELS = {
     "view"    => "Visualizar",
+    "media"   => "Mídia",
     "manage"  => "Gerenciar",
     "review"  => "Aprovar",
     "publish" => "Publicar",
@@ -98,7 +100,7 @@ class Profile < ApplicationRecord
     "Corretor" => {
       "admin" => false,
       "dashboard" => { "view" => true },
-      "imoveis" => { "view" => true, "manage" => false, "scope" => "own" },
+      "imoveis" => { "view" => true, "media" => true, "manage" => false, "scope" => "own" },
       "leads" => { "view" => true, "manage" => true, "scope" => "own" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "own" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "own" },
@@ -107,7 +109,7 @@ class Profile < ApplicationRecord
     "Administrativo" => {
       "admin" => false,
       "dashboard" => { "view" => true },
-      "imoveis" => { "view" => true, "manage" => true, "scope" => "all" },
+      "imoveis" => { "view" => true, "media" => true, "manage" => true, "scope" => "all" },
       "leads" => { "view" => true, "manage" => true, "scope" => "all" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "all" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "all" },
@@ -121,7 +123,7 @@ class Profile < ApplicationRecord
     "Gerente" => {
       "admin" => false,
       "dashboard" => { "view" => true },
-      "imoveis" => { "view" => true, "manage" => true, "scope" => "team" },
+      "imoveis" => { "view" => true, "media" => true, "manage" => true, "scope" => "team" },
       "leads" => { "view" => true, "manage" => true, "scope" => "team" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "team" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "team" },
@@ -156,6 +158,21 @@ class Profile < ApplicationRecord
   end
 
   # Predicados de papel baseados no identificador estável `key` (não no nome).
+  # Âncoras podem ser encadeadas (horizontal → horizontal → vertical): a raiz
+  # vertical é o nível de hierarquia efetivo de qualquer função operacional.
+  def root_vertical_profile
+    return self if vertical?
+
+    anchor = vertical_profile
+    steps = 0
+    while anchor.present? && !anchor.vertical? && steps < 6
+      anchor = anchor.vertical_profile
+      steps += 1
+    end
+
+    anchor&.vertical? ? anchor : nil
+  end
+
   def tenant_owner?   = key == "tenant_owner"
   def administrador?  = tenant_owner?
   def diretor?        = key == "diretor"

@@ -1,10 +1,14 @@
-<!-- Tab: Visão Geral -->
+<!-- Tab: Visão geral -->
 <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
   <div class="ax-form-workspace">
     <%= render "admin/habitations/form_tabs/base/identificacao",
                f: f,
                cadastro_reference_at: cadastro_reference_at,
                updated_reference_at: updated_reference_at,
+               intake_waiting_admin_review: intake_waiting_admin_review %>
+
+    <%= render "admin/habitations/form_tabs/shared/exibicao_sinalizadores",
+               f: f,
                intake_waiting_admin_review: intake_waiting_admin_review %>
 
     <%= render "admin/habitations/form_tabs/base/classificacao",
@@ -15,14 +19,19 @@
                cadastro_tipo_by_type: cadastro_tipo_by_type,
                suspended_status: suspended_status %>
 
-    <%= render "admin/habitations/form_tabs/base/relacionamentos",
+    <%= render "admin/habitations/form_tabs/empreendimento/vinculo",
                f: f,
                habitation: habitation,
-               show_development_context: show_development_context,
                can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
+
+    <%= render "admin/habitations/form_tabs/base/relacionamentos", f: f %>
 
     <%= render "admin/habitations/form_tabs/base/localizacao",
                f: f,
                can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
+
+    <%= render "admin/habitations/form_tabs/estrutura/dimensoes", f: f %>
+
+    <%= render "admin/habitations/form_tabs/comercial/financeiro", f: f %>
   </div>
 </div>

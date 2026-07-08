@@ -26,16 +26,25 @@ class HabitationsController < ApplicationController
       end
     end
 
-    @habitations = public_habitation_scope
-      .active
+    filter_params = search_params
+    listing_scope = public_habitation_scope
       .without_developments
-      .advanced_search(search_params)
+      .advanced_search(filter_params)
+
+    total_entries = cached_listing_total_entries(listing_scope, filter_params)
+
+    @habitations = listing_scope
       .with_attached_photos
-      .includes(:constructor, empreendimento: :constructor)
-      .paginate(page: params[:page], per_page: 12)
+      .includes(
+        :address,
+        { constructor: { logo_attachment: :blob } },
+        { empreendimento: { constructor: { logo_attachment: :blob } } }
+      )
+      .paginate(page: params[:page], per_page: 12, total_entries: total_entries)
     
     # SEO page name
     @page_name = 'imoveis'
+    @discounted_results_present = discounted_results_present?
     
     # Definir meta tags para SEO
     @page_title = build_index_title
@@ -179,7 +188,15 @@ class HabitationsController < ApplicationController
     # Detectar se é empreendimento e carregar unidades
     if @habitation.empreendimento?
       @is_development_page = true
-      @development_units = @habitation.development_units.newest_first
+      @development_units = @habitation.development_units
+        .newest_first
+        .with_attached_photos
+        .includes(
+          :address,
+          { constructor: { logo_attachment: :blob } },
+          { empreendimento: { constructor: { logo_attachment: :blob } } }
+        )
+        .to_a
       # Usar template específico para empreendimentos
       render 'empreendimento_show' and return
     end
@@ -197,8 +214,12 @@ class HabitationsController < ApplicationController
         
         @related_properties = public_habitation_scope
           .active
-          .with_photos  # Apenas com fotos
           .with_attached_photos
+          .includes(
+            :address,
+            { constructor: { logo_attachment: :blob } },
+            { empreendimento: { constructor: { logo_attachment: :blob } } }
+          )
           .left_outer_joins(:address)
           .where("COALESCE(addresses.cidade, habitations.cidade) = ?", @habitation.cidade) # Mesma cidade
           .where(dormitorios_qtd: @habitation.dormitorios_qtd)  # Mesmos quartos
@@ -209,6 +230,7 @@ class HabitationsController < ApplicationController
           )
           .newest_first
           .limit(6)
+          .to_a
       end
     end
     
@@ -252,8 +274,8 @@ class HabitationsController < ApplicationController
     identifier = identifier.to_s.strip
     return nil if identifier.blank?
 
-    public_habitation_scope.find_by(slug: identifier) ||
-      public_habitation_scope.find_by(codigo: identifier) ||
+    public_habitation_lookup_scope.find_by(slug: identifier) ||
+      public_habitation_lookup_scope.find_by(codigo: identifier) ||
       find_habitation_by_trailing_code(identifier) ||
       find_habitation_by_friendly_id(identifier)
   end
@@ -262,15 +284,23 @@ class HabitationsController < ApplicationController
     public_tenant.habitations.with_attached_photos
   end
 
+  def public_habitation_lookup_scope
+    public_habitation_scope.includes(
+      :address,
+      { constructor: { logo_attachment: :blob } },
+      { empreendimento: { constructor: { logo_attachment: :blob } } }
+    )
+  end
+
   def find_habitation_by_trailing_code(identifier)
     trailing_code = identifier[/(\d+)\z/, 1]
     return nil if trailing_code.blank? || trailing_code == identifier
 
-    public_habitation_scope.find_by(codigo: trailing_code)
+    public_habitation_lookup_scope.find_by(codigo: trailing_code)
   end
 
   def find_habitation_by_friendly_id(identifier)
-    public_habitation_scope.friendly.find(identifier)
+    public_habitation_lookup_scope.friendly.find(identifier)
   rescue ActiveRecord::RecordNotFound
     nil
   end
@@ -362,11 +392,11 @@ class HabitationsController < ApplicationController
     @selected_categories = normalize_filter_values(params[:category])
     @selected_locations = normalize_filter_values(params[:city])
 
-    @property_types = Rails.cache.fetch("habitations_property_types_v2/tenant/#{public_tenant.id}", expires_in: 12.hours) do
+    @property_types = Rails.cache.fetch(Habitation.public_filter_property_types_cache_key(public_tenant.id), expires_in: 12.hours) do
       public_tenant.habitations.public_property_types
     end
 
-    @location_options = Rails.cache.fetch("habitations_location_options_v2/tenant/#{public_tenant.id}", expires_in: 6.hours) do
+    @location_options = Rails.cache.fetch(Habitation.public_filter_location_options_cache_key(public_tenant.id), expires_in: 6.hours) do
       public_tenant.habitations.public_location_options
     end
   end
@@ -438,8 +468,7 @@ class HabitationsController < ApplicationController
                        end
 
     # Check for specific scenarios
-    is_reduced = params[:characteristics]&.include?('opportunity') || 
-                 @habitations.any? { |h| h.valor_venda_anterior_cents.to_i > h.valor_venda_cents.to_i && h.valor_venda_anterior_cents.to_i > 0 }
+    is_reduced = params[:characteristics]&.include?('opportunity') || @discounted_results_present
     
     is_luxury = params[:min_price].to_i > 2_000_000 || params[:quadra_mar] == '1' || params[:frente_mar] == '1'
     
@@ -508,7 +537,7 @@ class HabitationsController < ApplicationController
     features = []
     features << "frente mar" if params[:vista_frente_mar_flag] == '1'
     features << "mobiliado" if params[:mobiliado_flag] == '1'
-    features << "com valor reduzido" if @habitations.any? { |h| h.valor_venda_anterior_cents.to_i > h.valor_venda_cents.to_i && h.valor_venda_anterior_cents.to_i > 0 }
+    features << "com valor reduzido" if @discounted_results_present
     
     feature_text = features.any? ? " Opções com #{features.join(', ')}." : ""
     
@@ -538,7 +567,7 @@ class HabitationsController < ApplicationController
     keywords << 'apartamento alto padrão' if params[:min_price].to_i > 1_000_000
     
     # Valor reduzido/Oportunidade
-    if @habitations.any? { |h| h.valor_venda_anterior_cents.to_i > h.valor_venda_cents.to_i && h.valor_venda_anterior_cents.to_i > 0 }
+    if @discounted_results_present
       keywords << 'valor reduzido' << 'promoção' << 'oportunidade' << 'desconto'
     end
     
@@ -558,9 +587,23 @@ class HabitationsController < ApplicationController
   end
 
   def public_site_name
-    @layout_setting&.site_name.presence || LayoutSetting.instance.site_name.presence || "Unitymob"
+    @layout_setting&.site_name.presence || "Unitymob"
   rescue StandardError
     "Unitymob"
+  end
+
+  def discounted_results_present?
+    @habitations.any? do |habitation|
+      previous = habitation.valor_venda_anterior_cents.to_i
+      current = habitation.valor_venda_cents.to_i
+      previous.positive? && current.positive? && previous > current
+    end
+  end
+
+  def cached_listing_total_entries(scope, filters)
+    Rails.cache.fetch(Habitation.public_listing_count_cache_key(public_tenant.id, filters), expires_in: 15.minutes) do
+      scope.count
+    end
   end
 
   def selected_categories

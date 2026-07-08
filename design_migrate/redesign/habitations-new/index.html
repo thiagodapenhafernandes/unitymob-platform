@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro de imóvel — Unitymob (redesign)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<header class="chrome-navbar">
+  <button class="chrome-navbar__icon" id="explorerToggle" title="Recolher menu"><i class="bi bi-layout-sidebar"></i></button>
+  <div class="chrome-brand"><span class="chrome-brand__mark"><i class="bi bi-chevron-double-up"></i></span>Unitymob <span style="font-weight:500;color:var(--ink-muted)">Plataforma</span></div>
+  <div class="chrome-navbar__spacer"></div>
+  <button class="chrome-navbar__icon" title="Buscar"><i class="bi bi-search"></i></button>
+  <button class="chrome-navbar__icon" title="Notificações"><i class="bi bi-bell"></i></button>
+  <div class="chrome-avatar">AD</div>
+</header>
+
+<div class="app-shell">
+
+  <!-- ===== LEFT: Explorer (main nav) ===== -->
+  <aside class="explorer" id="explorer">
+    <div class="explorer__head"><strong>Explorer</strong></div>
+    <nav class="explorer__nav">
+      <div class="explorer__label">Produto</div>
+      <div class="explorer__item"><i class="bi bi-speedometer2"></i> Painel</div>
+      <div class="explorer__item active"><i class="bi bi-house-door"></i> Imóveis</div>
+      <div class="explorer__item"><i class="bi bi-people"></i> Leads</div>
+      <div class="explorer__label">Operação</div>
+      <div class="explorer__item"><i class="bi bi-briefcase"></i> Comercial <i class="bi bi-chevron-down caret"></i></div>
+      <div class="explorer__item"><i class="bi bi-whatsapp"></i> WhatsApp <i class="bi bi-chevron-down caret"></i></div>
+      <div class="explorer__item"><i class="bi bi-lightning-charge"></i> Automação</div>
+      <div class="explorer__item"><i class="bi bi-diagram-3"></i> Distribuição de Leads</div>
+      <div class="explorer__item"><i class="bi bi-plus-square"></i> Captações</div>
+      <div class="explorer__item"><i class="bi bi-geo-alt"></i> Check-ins em Campo</div>
+      <div class="explorer__label">Gestão</div>
+      <div class="explorer__item"><i class="bi bi-person-vcard"></i> Proprietários</div>
+      <div class="explorer__item"><i class="bi bi-shop"></i> Lojas</div>
+      <div class="explorer__item"><i class="bi bi-people"></i> Usuários</div>
+      <div class="explorer__label">Configuração</div>
+      <div class="explorer__item"><i class="bi bi-sliders"></i> Configurações <i class="bi bi-chevron-down caret"></i></div>
+    </nav>
+  </aside>
+
+  <!-- ===== CENTER: form ===== -->
+  <div class="center-col">
+    <div class="center-contextbar">
+      <button class="back-link"><i class="bi bi-arrow-left"></i> Voltar</button>
+      <nav class="chrome-breadcrumb">
+        <a href="#">Admin</a><i class="bi bi-chevron-right"></i>
+        <a href="#">Imóveis</a><i class="bi bi-chevron-right"></i>
+        <strong>Novo imóvel</strong>
+      </nav>
+    </div>
+
+    <div class="center-scroll">
+      <div class="workspace" id="workspace">
+        <main class="workspace-main">
+          <div class="top-actions">
+            <button class="ax-btn">Cancelar</button>
+            <button class="ax-btn ax-btn--primary" id="saveBtn"><span>Salvar</span></button>
+            <button class="ax-btn">Salvar e sair</button>
+          </div>
+
+    <div class="inline-notice inline-notice--neutral">
+      <i class="bi bi-building"></i>
+      <span><strong>Cadastro direto de imóvel.</strong> Este caminho não passa pelo fluxo de captação/revisão. A publicação no site é definida pelos sinalizadores da aba Base.</span>
+    </div>
+
+    <!-- ========== TAB: BASE ========== -->
+    <section class="tab-pane active" id="tab-general">
+      <div class="form-stack">
+
+        <!-- Identificação e sinalizadores -->
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-tag"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Base</span><div class="section__title">Identificação e sinalizadores</div></div>
+          </div>
+          <div class="section__body">
+            <div class="info-badges">
+              <div class="info-badge"><div class="info-badge__label">Referência</div><div class="info-badge__value">Gerado automaticamente</div></div>
+              <div class="info-badge"><div class="info-badge__label">Cód. DWV</div><div class="info-badge__value">Não informado</div></div>
+              <div class="info-badge"><div class="info-badge__label">Cadastro</div><div class="info-badge__value">Sem data</div></div>
+              <div class="info-badge"><div class="info-badge__label">Atualização</div><div class="info-badge__value">Sem data</div></div>
+            </div>
+            <div class="toggle-group">
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Site</span></label>
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Destaque</span></label>
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Super destaque</span></label>
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Lançamento</span></label>
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Placa</span></label>
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Exclusivo</span></label>
+              <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Imóvel DWV</span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Definições básicas -->
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-ui-checks-grid"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Classificação</span><div class="section__title">Definições básicas</div></div>
+          </div>
+          <div class="section__body">
+            <div class="grid12 grid12--compact">
+              <div class="sp-6 field">
+                <label class="field__label">Tipo de cadastro</label>
+                <div class="segmented" id="cadastroType" role="radiogroup">
+                  <label class="segmented__opt"><input type="radio" name="cadastro_type" value="apartamentos" checked><span>Apartamentos</span></label>
+                  <label class="segmented__opt"><input type="radio" name="cadastro_type" value="comerciais_industriais"><span>Comerciais e Industriais</span></label>
+                  <label class="segmented__opt"><input type="radio" name="cadastro_type" value="empreendimento"><span>Empreendimento</span></label>
+                  <label class="segmented__opt"><input type="radio" name="cadastro_type" value="imoveis_residenciais"><span>Imóveis Residenciais</span></label>
+                  <label class="segmented__opt"><input type="radio" name="cadastro_type" value="terrenos"><span>Terrenos</span></label>
+                </div>
+              </div>
+              <div class="sp-6 field">
+                <label class="field__label">Categoria</label>
+                <select class="ax-control" id="categorySelect"></select>
+              </div>
+              <div class="sp-3 field">
+                <label class="field__label">Status comercial</label>
+                <select class="ax-control" id="statusSelect">
+                  <option value="">Selecione...</option>
+                  <option>Disponível</option><option>Reservado</option><option>Vendido</option>
+                  <option>Alugado</option><option>Suspenso</option>
+                </select>
+              </div>
+              <div class="sp-3 field hidden" id="suspensionField">
+                <label class="field__label">Motivo de suspensão</label>
+                <input class="ax-control" placeholder="Informe quando Suspenso">
+              </div>
+              <div class="sp-2 field">
+                <label class="field__label">Situação</label>
+                <select class="ax-control"><option value="">Selecione...</option><option>Novo</option><option>Usado</option><option>Em construção</option></select>
+              </div>
+              <div class="sp-2 field">
+                <label class="field__label">Ocupação</label>
+                <select class="ax-control"><option value="">Selecione...</option><option>Desocupado</option><option>Ocupado proprietário</option><option>Ocupado inquilino</option></select>
+              </div>
+              <div class="sp-2 field">
+                <label class="field__label">Estado</label>
+                <select class="ax-control"><option value="">Selecione...</option><option>Excelente</option><option>Bom</option><option>Reformar</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empreendimento e proprietário -->
+        <div class="section section--collapsible" data-section>
+          <div class="section__head" data-section-toggle>
+            <span class="section__icon"><i class="bi bi-person-vcard"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Relacionamentos</span><div class="section__title">Empreendimento e proprietário</div></div>
+            <div class="section__actions"><i class="bi bi-chevron-down section__chevron"></i></div>
+          </div>
+          <div class="section__body">
+            <div class="grid12 grid12--compact">
+              <div class="sp-5 field" data-unit-only>
+                <label class="field__label">Pertence ao empreendimento <i class="bi bi-info-circle info" title="Vincula esta unidade a um empreendimento existente; nome e dados do proprietário são preenchidos."></i></label>
+                <div class="rel-select">
+                  <select class="ax-control" id="developmentSelect">
+                    <option value="">Selecione...</option>
+                    <option value="EMP-1001">Residencial Marina — EMP-1001</option>
+                    <option value="EMP-1002">Edifício Aurora — EMP-1002</option>
+                    <option value="EMP-1003">Condomínio Vista Verde — EMP-1003</option>
+                  </select>
+                  <button type="button" class="rel-select__btn" title="Cadastrar empreendimento"><i class="bi bi-plus"></i></button>
+                </div>
+                <div class="notice-inline notice-inline--success hidden" id="devLinkNotice"><i class="bi bi-check-circle"></i> <span></span></div>
+              </div>
+              <div class="sp-4 field">
+                <label class="field__label" id="devNameLabel">Nome do condomínio</label>
+                <input class="ax-control" id="developmentName" placeholder="Nome do condomínio">
+              </div>
+              <div class="sp-3 field">
+                <label class="field__label">Data entrega</label>
+                <input type="date" class="ax-control" id="deliveryDate">
+              </div>
+              <div class="sp-5 field">
+                <label class="field__label">Proprietário <i class="bi bi-info-circle info" title="Opcional. Pode salvar sem proprietário."></i></label>
+                <div class="rel-select">
+                  <select class="ax-control" id="proprietorSelect">
+                    <option value="">Selecione...</option>
+                    <option value="1">João da Silva</option>
+                    <option value="2">Maria Oliveira</option>
+                    <option value="3">Construtora Horizonte Ltda</option>
+                  </select>
+                  <button type="button" class="rel-select__btn" data-open-modal="proprietorModal" title="Novo proprietário"><i class="bi bi-plus"></i></button>
+                </div>
+              </div>
+              <div class="sp-4 field">
+                <label class="field__label">Captador responsável</label>
+                <select class="ax-control" id="captadorSelect"><option value="">— sem corretor —</option><option value="10">Ana Beatriz</option><option value="11">Carlos Mendes</option></select>
+              </div>
+              <div class="sp-3 field">
+                <label class="field__label">Perfil de construção</label>
+                <select class="ax-control" id="constructionProfile"><option value="">Selecione...</option><option>Alto padrão</option><option>Médio padrão</option><option>Econômico</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Endereço e localização -->
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-geo-alt"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Localização</span><div class="section__title">Endereço e localização</div></div>
+          </div>
+          <div class="section__body">
+            <div class="grid12 grid12--compact">
+              <div class="sp-2 field"><label class="field__label">Endereço</label><select class="ax-control" id="streetType"><option value="">Selecione...</option><option>Rua</option><option>Avenida</option><option>Travessa</option><option>Alameda</option></select></div>
+              <div class="sp-4 field"><label class="field__label">Logradouro</label><input class="ax-control" id="street" placeholder="Rua, Av..."></div>
+              <div class="sp-1 field"><label class="field__label">Nº</label><input class="ax-control" id="streetNumber"></div>
+              <div class="sp-2 field"><label class="field__label">Compl.</label><input class="ax-control"></div>
+              <div class="sp-1 field"><label class="field__label">UF</label><select class="ax-control" id="stateSelect"><option value="">UF</option><option>SP</option><option>RJ</option><option>MG</option><option>PR</option><option>SC</option></select></div>
+              <div class="sp-2 field">
+                <label class="field__label">CEP</label>
+                <div class="input-group">
+                  <input class="ax-control" id="zipCode" placeholder="00000-000" data-mask="cep">
+                  <button class="ax-btn ax-btn--primary" type="button" id="cepSearch" title="Buscar CEP"><i class="bi bi-search"></i></button>
+                </div>
+              </div>
+              <div class="sp-3 field"><label class="field__label">Bairro</label><select class="ax-control" id="neighborhood"><option value="">Selecione...</option><option>Centro</option><option>Jardins</option><option>Vila Nova</option></select></div>
+              <div class="sp-2 field"><label class="field__label">Bairro comercial</label><select class="ax-control"><option value="">Selecione...</option><option>Centro</option></select></div>
+              <div class="sp-3 field"><label class="field__label">Cidade</label><select class="ax-control" id="citySelect"><option value="">Selecione...</option><option>São Paulo</option><option>Rio de Janeiro</option><option>Belo Horizonte</option></select></div>
+              <div class="sp-1 field"><label class="field__label">Bloco</label><input class="ax-control"></div>
+              <div class="sp-12 field">
+                <label class="field__label">Imediações</label>
+                <div class="ms-wrap" data-multiselect="imediacoes" data-creatable="true"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========== TAB: ESTRUTURA ========== -->
+    <section class="tab-pane" id="tab-features">
+      <div class="form-stack">
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-rulers"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Estrutura</span><div class="section__title">Dimensões e estrutura física</div></div>
+          </div>
+          <div class="section__body">
+            <div class="grid12 grid12--compact">
+              <div class="sp-1 field"><label class="field__label">Andar</label><input type="number" class="ax-control"></div>
+              <div class="sp-1 field"><label class="field__label">Dorm.</label><input type="number" class="ax-control"></div>
+              <div class="sp-1 field"><label class="field__label">Suítes</label><input type="number" class="ax-control"></div>
+              <div class="sp-1 field"><label class="field__label">Demi</label><input type="number" class="ax-control"></div>
+              <div class="sp-1 field"><label class="field__label">Salas</label><input type="number" class="ax-control"></div>
+              <div class="sp-1 field"><label class="field__label">Varanda</label><input type="number" class="ax-control"></div>
+              <div class="sp-1 field"><label class="field__label">Banh.</label><input type="number" class="ax-control"></div>
+              <div class="sp-1 field"><label class="field__label">Hidro</label><input type="number" class="ax-control"></div>
+              <div class="sp-2 field"><label class="field__label">Tipo vaga</label><select class="ax-control"><option value="">Selecione...</option><option>Coberta</option><option>Descoberta</option><option>Rotativa</option></select></div>
+              <div class="sp-1 field"><label class="field__label">Vagas</label><input type="number" class="ax-control"></div>
+              <div class="sp-1 field"><label class="field__label">Box</label><input class="ax-control"></div>
+              <div class="sp-2 field"><label class="field__label">Área privativa</label><div class="input-group"><input class="ax-control"><span class="input-group__affix">m²</span></div></div>
+              <div class="sp-2 field"><label class="field__label">Área total</label><div class="input-group"><input class="ax-control"><span class="input-group__affix">m²</span></div></div>
+              <div class="sp-2 field"><label class="field__label">Área terreno</label><div class="input-group"><input class="ax-control"><span class="input-group__affix">m²</span></div></div>
+              <div class="sp-2 field"><label class="field__label">Dimensões terreno</label><input class="ax-control" placeholder="Ex: 12x30"></div>
+              <div class="sp-2 field"><label class="field__label">Topografia</label><select class="ax-control"><option value="">Selecione...</option><option>Plano</option><option>Aclive</option><option>Declive</option></select></div>
+              <div class="sp-2 field"><label class="field__label">Face</label><select class="ax-control"><option value="">Selecione...</option><option>Norte</option><option>Sul</option><option>Leste</option><option>Oeste</option></select></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-stars"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Checklist</span><div class="section__title">Características internas</div></div>
+            <div class="section__actions"><button class="ax-btn ax-btn--ghost ax-btn--sm" data-attr-manager="Características Internas" data-target="featuresGrid"><i class="bi bi-gear"></i>Gerenciar</button></div>
+          </div>
+          <div class="section__body">
+            <div class="chip-grid" id="featuresGrid" data-chip-grid></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB: EMPREENDIMENTO ========== -->
+    <section class="tab-pane" id="tab-infra">
+      <div class="form-stack">
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-building"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Infraestrutura</span><div class="section__title">Dados do edifício</div></div>
+          </div>
+          <div class="section__body">
+            <div class="grid12">
+              <div class="sp-3 field"><label class="field__label">Administradora do condomínio</label><input class="ax-control" placeholder="Ex: Administração XYZ"></div>
+              <div class="sp-3 field"><label class="field__label">Construtora</label><input class="ax-control"></div>
+              <div class="sp-6 field"><label class="field__label">Tipo de fachada</label><input class="ax-control"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-card-text"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Empreendimento</span><div class="section__title">Descrição e capacidade</div></div>
+          </div>
+          <div class="section__body">
+            <div class="grid12">
+              <div class="sp-7 field">
+                <label class="field__label">Descrição do empreendimento</label>
+                <div class="richtext">
+                  <div class="richtext__toolbar"><button type="button"><b>B</b></button><button type="button"><i>I</i></button><button type="button"><i class="bi bi-list-ul"></i></button><button type="button"><i class="bi bi-link-45deg"></i></button></div>
+                  <div class="richtext__area" contenteditable="true" data-placeholder="Descreva o empreendimento..."></div>
+                </div>
+              </div>
+              <div class="sp-5">
+                <div class="grid12">
+                  <div class="sp-4 field"><label class="field__label">Nº andares</label><input type="number" class="ax-control"></div>
+                  <div class="sp-4 field"><label class="field__label">Ano constr.</label><input type="number" class="ax-control"></div>
+                  <div class="sp-4 field"><label class="field__label">Elevadores</label><input type="number" class="ax-control"></div>
+                  <div class="sp-6 field"><label class="field__label">Imóveis / andar</label><input type="number" class="ax-control"></div>
+                  <div class="sp-6 field"><label class="field__label">Total imóveis</label><input type="number" class="ax-control"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-tree"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Checklist</span><div class="section__title">Infraestrutura e lazer</div></div>
+            <div class="section__actions"><button class="ax-btn ax-btn--ghost ax-btn--sm" data-attr-manager="Infraestrutura" data-target="infraGrid"><i class="bi bi-gear"></i>Gerenciar</button></div>
+          </div>
+          <div class="section__body">
+            <div class="chip-grid" id="infraGrid" data-chip-grid></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB: COMERCIAL ========== -->
+    <section class="tab-pane" id="tab-comercial">
+      <div class="form-stack">
+        <!-- Financeiro -->
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-cash-coin"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Negociação</span><div class="section__title">Financeiro e valores</div></div>
+          </div>
+          <div class="section__body">
+            <div class="finance-primary" data-rent-calc>
+              <div class="field"><label class="field__label">Venda</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control" data-mask="currency"></div></div>
+              <div class="field"><label class="field__label">Aluguel</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control" data-mask="currency" data-rent="rent"></div></div>
+              <div class="field"><label class="field__label">Condomínio</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control" data-mask="currency" data-rent="condo"></div></div>
+              <div class="field"><label class="field__label">IPTU</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control" data-mask="currency" data-rent="iptu"></div></div>
+            </div>
+            <div class="finance-secondary">
+              <div class="field"><label class="field__label">Alugado por terceiros</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control" data-mask="currency"></div></div>
+              <div class="field"><label class="field__label">Vendido por terceiros</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control" data-mask="currency"></div></div>
+              <div class="field"><label class="field__label">Venda anterior</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control ax-readonly-input" value="0,00" readonly></div></div>
+              <div class="field"><label class="field__label">Vlr M² — Venda</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control ax-readonly-input" readonly></div></div>
+              <div class="field"><label class="field__label">*Vlr total aluguel</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control ax-readonly-input ax-readonly-input--success" value="0,00" readonly data-rent="total"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="col-stack">
+            <!-- Condições -->
+            <div class="section">
+              <div class="section__head"><span class="section__icon"><i class="bi bi-file-earmark-text"></i></span><div class="section__titles"><span class="section__eyebrow">Contrato</span><div class="section__title">Condições comerciais</div></div></div>
+              <div class="section__body">
+                <div class="grid12"><div class="sp-4 field"><label class="field__label">Nº de matrícula</label><input class="ax-control"></div><div class="sp-4 field"><label class="field__label">Zona</label><input class="ax-control"></div><div class="sp-4 field"><label class="field__label">Inscrição imobiliária</label><input class="ax-control"></div></div>
+                <div class="toggle-group" style="margin:12px 0;">
+                  <label class="toggle-chip toggle-chip--full" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Aceita doação</span></label>
+                  <label class="toggle-chip toggle-chip--full" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Financiamento</span></label>
+                </div>
+                <div class="field"><label class="field__label">Condições de negociação</label><textarea class="ax-control" rows="3"></textarea></div>
+              </div>
+            </div>
+            <!-- Atendimento -->
+            <div class="section">
+              <div class="section__head"><span class="section__icon"><i class="bi bi-headset"></i></span><div class="section__titles"><span class="section__eyebrow">Operação</span><div class="section__title">Atendimento e chaves</div></div></div>
+              <div class="section__body">
+                <div class="grid12">
+                  <div class="sp-6 field"><label class="field__label">Localização das chaves</label><input class="ax-control" placeholder="Ex: Portaria / imobiliária"></div>
+                  <div class="sp-6 field"><label class="field__label">Responsável pela reserva</label><input class="ax-control"></div>
+                  <div class="sp-6 field"><label class="field__label">Zelador</label><input class="ax-control"></div>
+                  <div class="sp-6 field"><label class="field__label">Telefone do zelador</label><input class="ax-control" data-mask="phone"></div>
+                  <div class="sp-12 field"><label class="field__label">Observações de visitas</label><textarea class="ax-control" rows="2"></textarea></div>
+                </div>
+              </div>
+            </div>
+            <!-- Permuta -->
+            <div class="section section--collapsible" data-section>
+              <div class="section__head" data-section-toggle><span class="section__icon"><i class="bi bi-arrow-left-right"></i></span><div class="section__titles"><span class="section__eyebrow">Negociação</span><div class="section__title">Permuta</div></div><div class="section__actions"><i class="bi bi-chevron-down section__chevron"></i></div></div>
+              <div class="section__body">
+                <div class="toggle-group" style="margin-bottom:12px;">
+                  <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Aceita permuta</span></label>
+                  <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Veículo</span></label>
+                  <label class="toggle-chip" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Imóvel</span></label>
+                </div>
+                <div class="grid12"><div class="sp-6 field"><label class="field__label">Valor aceito</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control" data-mask="currency"></div></div><div class="sp-6 field"><label class="field__label">Localização desejada</label><input class="ax-control"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-stack">
+            <!-- Proprietário e comissão -->
+            <div class="section">
+              <div class="section__head"><span class="section__icon"><i class="bi bi-person-lines-fill"></i></span><div class="section__titles"><span class="section__eyebrow">Relacionamento</span><div class="section__title">Proprietário e comissões</div></div></div>
+              <div class="section__body">
+                <div class="field-group" style="margin-bottom:12px;">
+                  <div class="field-group__title">Proprietário e contatos</div>
+                  <div class="grid12 grid12--compact">
+                    <div class="sp-8 field"><label class="field__label">Nome</label><input class="ax-control"></div>
+                    <div class="sp-4 field"><label class="field__label">Cód. Vista</label><input class="ax-control"></div>
+                    <div class="sp-12 field"><label class="field__label">E-mail</label><input class="ax-control" type="email"></div>
+                    <div class="sp-12 field"><label class="field__label">Celular</label><input class="ax-control" data-mask="phone"></div>
+                    <div class="sp-6 field"><label class="field__label">F. Comercial</label><input class="ax-control" data-mask="phone"></div>
+                    <div class="sp-6 field"><label class="field__label">F. Residencial</label><input class="ax-control" data-mask="phone"></div>
+                  </div>
+                </div>
+                <div class="field-group">
+                  <div class="field-group__title">Comissão e operação</div>
+                  <div class="grid12 grid12--compact">
+                    <div class="sp-6 field"><label class="field__label">Proprietário (livre)</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control" data-mask="currency"></div></div>
+                    <div class="sp-6 field"><label class="field__label">Valor da comissão</label><div class="input-group"><span class="input-group__affix">R$</span><input class="ax-control" data-mask="currency"></div></div>
+                    <div class="sp-6 field"><label class="field__label">Comissão captador (%)</label><input type="number" class="ax-control" placeholder="0,00"></div>
+                    <div class="sp-6 field"><label class="field__label">Comissão corretor (%)</label><input type="number" class="ax-control" placeholder="0,00"></div>
+                    <div class="sp-12"><label class="toggle-chip toggle-chip--full" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Administração de locação</span></label></div>
+                    <div class="sp-8"><label class="toggle-chip toggle-chip--full" data-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Vitrine Corporate</span></label></div>
+                    <div class="sp-4 field"><label class="field__label">Posição na Home</label><input type="number" class="ax-control" placeholder="1, 2, 3..."></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Responsáveis -->
+            <div class="section">
+              <div class="section__head"><span class="section__icon"><i class="bi bi-people"></i></span><div class="section__titles"><span class="section__eyebrow">Interno</span><div class="section__title">Responsáveis e observações</div></div></div>
+              <div class="section__body">
+                <div class="field" style="margin-bottom:12px;"><label class="field__label">Região foco</label><input class="ax-control"></div>
+                <div class="field"><label class="field__label">Observações internas</label><textarea class="ax-control" rows="3"></textarea></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB: PUBLICAÇÃO ========== -->
+    <section class="tab-pane" id="tab-seo">
+      <div class="form-stack">
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-megaphone"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Conteúdo</span><div class="section__title">Destaque e texto público</div></div>
+            <div class="section__actions"><button class="ax-btn ax-btn--ghost ax-btn--sm" data-attr-manager="Destaques" data-multiselect-target="badges"><i class="bi bi-gear"></i>Gerenciar</button></div>
+          </div>
+          <div class="section__body">
+            <div class="field" style="margin-bottom:14px;">
+              <label class="field__label">Destaque / Característica única <i class="bi bi-info-circle info" title="Destaques exibidos nos cards do site."></i></label>
+              <div class="ms-wrap" data-multiselect="badges"></div>
+            </div>
+            <div class="field" style="margin-bottom:14px;">
+              <label class="field__label">Título do anúncio</label>
+              <input class="ax-control" placeholder="Usado em sites e portais">
+            </div>
+            <div class="field">
+              <label class="field__label">Descrição do imóvel para internet</label>
+              <div class="richtext">
+                <div class="richtext__toolbar"><button type="button"><b>B</b></button><button type="button"><i>I</i></button><button type="button"><i class="bi bi-list-ul"></i></button><button type="button"><i class="bi bi-list-ol"></i></button><button type="button"><i class="bi bi-link-45deg"></i></button></div>
+                <div class="richtext__area" contenteditable="true" data-placeholder="Escreva a descrição pública..." style="min-height:180px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Portais -->
+        <div class="section section--collapsible" data-section>
+          <div class="section__head" data-section-toggle>
+            <span class="section__icon"><i class="bi bi-diagram-2"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Distribuição</span><div class="section__title">Publicação em portais</div></div>
+            <div class="section__actions"><i class="bi bi-chevron-down section__chevron"></i></div>
+          </div>
+          <div class="section__body">
+            <div class="portal-grid">
+              <div>
+                <div class="portal-opt" data-portal>
+                  <div class="portal-opt__head"><strong>Imovelweb 2</strong><label class="toggle-chip" data-toggle data-portal-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Publicar</span></label></div>
+                  <div class="portal-opt__sub">
+                    <div class="radio-group"><span class="radio-group__label">Tipo de publicação</span><div class="radio-row" data-radio><span class="radio-pill is-active">Simples</span><span class="radio-pill">Destaque</span><span class="radio-pill">Super destaque</span></div></div>
+                    <div class="radio-group"><span class="radio-group__label">Mostrar mapa</span><div class="radio-row" data-radio><span class="radio-pill is-active">Sim</span><span class="radio-pill">Não</span></div></div>
+                  </div>
+                </div>
+                <div class="portal-opt" data-portal><div class="portal-opt__head"><strong>Lais Ai</strong><label class="toggle-chip" data-toggle data-portal-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Publicar</span></label></div></div>
+                <div class="portal-opt" data-portal><div class="portal-opt__head"><strong>Netimóveis 2</strong><label class="toggle-chip" data-toggle data-portal-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Publicar</span></label></div></div>
+                <div class="portal-opt" data-portal>
+                  <div class="portal-opt__head"><strong>Chaves na Mão</strong><label class="toggle-chip" data-toggle data-portal-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Publicar</span></label></div>
+                  <div class="portal-opt__sub"><div class="radio-group"><span class="radio-group__label">Destaque</span><div class="radio-row" data-radio><span class="radio-pill is-active">Padrão</span><span class="radio-pill">Destaque</span></div></div></div>
+                </div>
+              </div>
+              <div>
+                <div class="portal-opt" data-portal>
+                  <div class="portal-opt__head"><strong>Casa Mineira</strong><label class="toggle-chip" data-toggle data-portal-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Publicar</span></label></div>
+                  <div class="portal-opt__sub"><div class="radio-group"><span class="radio-group__label">Modelo</span><div class="radio-row" data-radio><span class="radio-pill is-active">Básico</span><span class="radio-pill">Premium</span></div></div></div>
+                </div>
+                <div class="portal-opt" data-portal>
+                  <div class="portal-opt__head"><strong>Viva Real VRSync</strong><label class="toggle-chip" data-toggle data-portal-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Publicar</span></label></div>
+                  <div class="portal-opt__sub">
+                    <div class="radio-group"><span class="radio-group__label">Tipo de publicação</span><div class="radio-row" data-radio><span class="radio-pill is-active">Padrão</span><span class="radio-pill">Destaque</span></div></div>
+                    <div class="radio-group"><span class="radio-group__label">Divulgar endereço</span><div class="radio-row" data-radio><span class="radio-pill is-active">Completo</span><span class="radio-pill">Só bairro</span></div></div>
+                  </div>
+                </div>
+                <div class="portal-opt" data-portal><div class="portal-opt__head"><strong>Loft</strong><label class="toggle-chip" data-toggle data-portal-toggle><input type="checkbox"><span class="toggle-chip__switch"></span><span>Publicar</span></label></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEO -->
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-search"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">SEO</span><div class="section__title">Otimização para busca</div></div>
+          </div>
+          <div class="section__body">
+            <div class="grid12 grid12--compact">
+              <div class="sp-6 field"><label class="field__label">URL amigável (Slug)</label><input class="ax-control ax-readonly-input" readonly value="gerado-automaticamente"></div>
+              <div class="sp-6 field"><label class="field__label">Meta Title</label><input class="ax-control"></div>
+              <div class="sp-12 field"><label class="field__label">Meta Description (SEO)</label><textarea class="ax-control" rows="3"></textarea></div>
+              <div class="sp-12 field"><label class="field__label">Palavras-chave (Tags)</label><div class="ms-wrap" data-multiselect="keywords" data-creatable="true"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB: MÍDIA ========== -->
+    <section class="tab-pane" id="tab-media">
+      <div class="section">
+        <div class="section__head">
+          <span class="section__icon"><i class="bi bi-images"></i></span>
+          <div class="section__titles"><span class="section__eyebrow">Mídia</span><div class="section__title">Mídia e uploads</div></div>
+          <div class="section__actions"><span class="section__pill">Mídia</span></div>
+        </div>
+        <div class="section__body">
+          <p style="margin:0 0 16px; color:var(--ink-muted); font-size:12.5px;">Organize fotos, vídeos, destaque, ordem e visibilidade no site em um módulo dedicado.</p>
+          <div class="media-entry">
+            <div class="media-metric"><i class="bi bi-images"></i><strong>0</strong><span>mídia(s)<br>vinculada(s)</span></div>
+            <button class="ax-btn ax-btn--primary" data-open-modal="mediaModal"><i class="bi bi-arrows-fullscreen"></i> Abrir organizador de mídia</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TAB: DOCUMENTOS ========== -->
+    <section class="tab-pane" id="tab-documents">
+      <div class="form-stack">
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-cloud-download"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Integração</span><div class="section__title">Documentos do Vista</div></div>
+            <div class="section__actions"><span class="section__pill">1 arquivo</span></div>
+          </div>
+          <div class="section__body">
+            <ul class="file-list">
+              <li class="file-item">
+                <i class="bi bi-file-earmark-arrow-down doc"></i>
+                <div class="file-item__main"><div class="file-item__title">matricula-imovel.pdf</div><div class="file-item__meta">vista/docs/2024/matricula-imovel.pdf</div></div>
+                <span class="status-pill status-pill--success">Baixado</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section__head">
+            <span class="section__icon"><i class="bi bi-folder2-open"></i></span>
+            <div class="section__titles"><span class="section__eyebrow">Anexos</span><div class="section__title">Documentos internos</div></div>
+          </div>
+          <div class="section__body">
+            <div class="grid12 grid12--compact">
+              <div class="sp-6">
+                <div class="field-group field-group--panel">
+                  <div class="field-group__title">Fichas de cadastro <span class="field-group__token">0 arquivos</span></div>
+                  <button class="upload-btn"><i class="bi bi-upload"></i> Adicionar arquivos</button>
+                  <div class="empty-state"><i class="bi bi-file-earmark-text"></i><strong>Nenhuma ficha anexada</strong><span>Anexe PDFs ou imagens da ficha física quando houver.</span></div>
+                </div>
+              </div>
+              <div class="sp-6">
+                <div class="field-group field-group--panel">
+                  <div class="field-group__title">Autorizações de venda <span class="field-group__token">0 arquivos</span></div>
+                  <button class="upload-btn"><i class="bi bi-upload"></i> Adicionar arquivos</button>
+                  <div class="empty-state"><i class="bi bi-shield-check"></i><strong>Nenhuma autorização anexada</strong><span>Anexe autorizações assinadas quando houver.</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RIGHT: Editor do imóvel ===== -->
+  <aside class="editor-aside" id="editorAside">
+    <div class="editor-panel">
+      <div class="editor-panel__head">
+        <span class="editor-panel__title">Editor do imóvel</span>
+        <span class="token">7 áreas</span>
+        <button class="editor-collapse-btn" id="asideToggle" title="Recolher"><i class="bi bi-chevron-double-right"></i></button>
+      </div>
+
+      <div class="aside-rail" id="asideRail"></div>
+
+      <div class="editor-progress">
+        <div class="editor-progress__head"><span>Progresso</span><strong><span id="progCount">2</span>/7</strong></div>
+        <div class="editor-progress__bar"><i id="progBar" style="width:28%"></i></div>
+      </div>
+
+      <nav class="tabs-nav" id="tabsNav"></nav>
+    </div>
+  </aside>
+
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="proprietorModal">
+  <div class="modal">
+    <div class="modal__head"><h3>Novo proprietário</h3><button class="modal__close" data-close-modal><i class="bi bi-x-lg"></i></button></div>
+    <div class="modal__body">
+      <div class="grid12 grid12--compact">
+        <div class="sp-12 field"><label class="field__label">Nome do proprietário</label><input class="ax-control"></div>
+        <div class="sp-6 field"><label class="field__label">Telefone principal</label><input class="ax-control" data-mask="phone"></div>
+        <div class="sp-6 field"><label class="field__label">Celular</label><input class="ax-control" data-mask="phone"></div>
+        <div class="sp-7 field"><label class="field__label">E-mail</label><input class="ax-control" type="email"></div>
+        <div class="sp-5 field"><label class="field__label">CPF/CNPJ</label><input class="ax-control"></div>
+      </div>
+    </div>
+    <div class="modal__foot"><button class="ax-btn" data-close-modal>Cancelar</button><button class="ax-btn ax-btn--primary" data-close-modal>Salvar e selecionar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="mediaModal">
+  <div class="modal modal--md">
+    <div class="modal__head"><h3>Organizador de mídia</h3><button class="modal__close" data-close-modal><i class="bi bi-x-lg"></i></button></div>
+    <div class="modal__body">
+      <div class="empty-state"><i class="bi bi-cloud-arrow-up"></i><strong>Arraste fotos e vídeos aqui</strong><span>Ou clique para selecionar. Organize a ordem, defina a capa e a visibilidade no site.</span></div>
+    </div>
+    <div class="modal__foot"><button class="ax-btn" data-close-modal>Fechar</button><button class="ax-btn ax-btn--primary" data-close-modal>Salvar mídia</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="attrModal">
+  <div class="modal">
+    <div class="modal__head"><h3 id="attrModalTitle">Gerenciar</h3><button class="modal__close" data-close-modal><i class="bi bi-x-lg"></i></button></div>
+    <div class="modal__body">
+      <div class="attr-add"><input class="ax-control" id="attrInput" placeholder="Novo item..."><button class="ax-btn ax-btn--primary" id="attrAdd"><i class="bi bi-plus"></i> Adicionar</button></div>
+      <ul class="attr-list" id="attrList"></ul>
+    </div>
+    <div class="modal__foot"><button class="ax-btn ax-btn--primary" data-close-modal>Concluir</button></div>
+  </div>
+</div>
+
+<div class="demo-tag">Preview redesenhado · dinâmicas simuladas</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -31,6 +31,7 @@ class WhatsappBusinessIntegration < ApplicationRecord
     rent_requires_lead_form
     sale_rent_requires_lead_form
   ].freeze
+  SITE_PHONE_SETTINGS_CACHE_PREFIX = "public_site:whatsapp_phone_settings".freeze
 
   belongs_to :connected_by_admin_user, class_name: "AdminUser", optional: true
   has_many :sender_numbers,
@@ -41,6 +42,7 @@ class WhatsappBusinessIntegration < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validate :connected_user_must_belong_to_tenant
   validate :validate_site_phone_numbers
+  after_commit :clear_site_phone_settings_cache
 
   SITE_PHONE_ATTRIBUTES.each do |attribute_name|
     define_method(attribute_name) do
@@ -67,6 +69,19 @@ class WhatsappBusinessIntegration < ApplicationRecord
     access_token.present? && phone_number_id.present?
   end
 
+  # Cutoff da exigência de apresentação: carimbado quando o toggle liga,
+  # limpo quando desliga — conversas criadas antes do cutoff ficam isentas.
+  before_save :stamp_require_presentation_since
+
+  # Este corretor precisa se apresentar nesta conversa antes de responder?
+  def presentation_required_for?(conversation, admin_user)
+    return false unless presentation_enabled? && require_presentation?
+    return false if conversation.blank? || admin_user.blank?
+    return false if require_presentation_since.blank? || conversation.created_at < require_presentation_since
+
+    conversation.last_presentation_at(admin_user).nil?
+  end
+
   # Token de verificação do webhook (gerado sob demanda; cole no painel da Meta).
   def webhook_verify_token!
     return webhook_verify_token if webhook_verify_token.present?
@@ -84,7 +99,15 @@ class WhatsappBusinessIntegration < ApplicationRecord
   end
 
   def self.site_phone_settings
-    current.site_phone_settings
+    cached_site_phone_settings(Current.tenant)
+  end
+
+  def self.cached_site_phone_settings(tenant = Current.tenant)
+    raise ArgumentError, "Tenant obrigatório para configuração pública do WhatsApp" if tenant.blank?
+
+    Rails.cache.fetch(site_phone_settings_cache_key(tenant), expires_in: 5.minutes) do
+      current(tenant).site_phone_settings
+    end
   end
 
   def site_phone_settings
@@ -160,5 +183,25 @@ class WhatsappBusinessIntegration < ApplicationRecord
     return if connected_by_admin_user.tenant_id == tenant_id
 
     errors.add(:connected_by_admin_user, "deve pertencer ao mesmo Tenant")
+  end
+
+  def stamp_require_presentation_since
+    return unless will_save_change_to_require_presentation?
+
+    self.require_presentation_since = require_presentation? ? Time.current : nil
+  end
+
+  def clear_site_phone_settings_cache
+    Rails.cache.delete(self.class.site_phone_settings_cache_key(tenant))
+  end
+
+  def self.site_phone_settings_cache_key(tenant)
+    "#{SITE_PHONE_SETTINGS_CACHE_PREFIX}:tenant:#{tenant.id}"
+  end
+
+  def self.clear_all_site_phone_settings_cache
+    Rails.cache.delete_matched("#{SITE_PHONE_SETTINGS_CACHE_PREFIX}:tenant:*")
+  rescue NotImplementedError
+    Tenant.find_each { |tenant| Rails.cache.delete(site_phone_settings_cache_key(tenant)) }
   end
 end

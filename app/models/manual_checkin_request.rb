@@ -14,6 +14,8 @@ class ManualCheckinRequest < ApplicationRecord
 
   validates :justification, presence: true, length: { minimum: 10, maximum: 1000 }
 
+  validate :store_belongs_to_same_tenant
+
   scope :recent, -> { order(created_at: :desc) }
 
   def review!(reviewer:, approve:, notes: nil)
@@ -22,5 +24,13 @@ class ManualCheckinRequest < ApplicationRecord
     else
       update!(status: :rejected, reviewed_by_admin_user: reviewer, reviewed_at: Time.current, review_notes: notes)
     end
+  end
+
+  private
+
+  def store_belongs_to_same_tenant
+    return if store.blank? || tenant.blank? || store.tenant_id == tenant_id
+
+    errors.add(:store, "deve pertencer à mesma conta")
   end
 end

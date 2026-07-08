@@ -7,6 +7,33 @@ module Admin
       @vertical_profiles = current_tenant.profiles.ordered_vertical.includes(:horizontal_profiles)
       @horizontal_profiles = current_tenant.profiles.ordered_horizontal.includes(:vertical_profile)
       @profiles = @vertical_profiles + @horizontal_profiles
+
+      # "Submetido a": vertical → vertical imediatamente acima na cadeia (menor
+      # position acima); horizontal → o vertical em que está ancorado.
+      ordered = @vertical_profiles.to_a
+      @superior_profile = {}
+      ordered.each_with_index do |profile, index|
+        @superior_profile[profile.id] = index.positive? ? ordered[index - 1] : nil
+      end
+      @horizontal_profiles.each { |profile| @superior_profile[profile.id] = profile.vertical_profile }
+
+      # Ordem final: TODOS os verticais primeiro (por posição, topo→base) e os
+      # horizontais por último. Entre horizontais, âncora antes de quem depende
+      # dela (Gestão Interna antes de Administrativo).
+      horizontals = @horizontal_profiles.sort_by { |p| p.name.to_s.downcase }
+      ordered_horizontals = []
+      placed = {}
+      remaining = horizontals.dup
+      until remaining.empty?
+        batch = remaining.select do |profile|
+          superior = @superior_profile[profile.id]
+          superior.nil? || superior.vertical? || placed[superior.id]
+        end
+        batch = remaining.first(1) if batch.empty? # anti-loop defensivo
+        batch.each { |profile| ordered_horizontals << profile; placed[profile.id] = true }
+        remaining -= batch
+      end
+      @ordered_profiles = ordered + ordered_horizontals
     end
 
     def show
@@ -50,11 +77,13 @@ module Admin
         return
       end
 
-      if @profile.admin_users.any? || @profile.horizontal_admin_users.any?
-        redirect_to admin_profiles_path, alert: "Não é possível excluir: há corretores vinculados a este perfil."
-      else
-        @profile.destroy
+      blocking_message = profile_destroy_blocking_message
+      if blocking_message.present?
+        redirect_to admin_profiles_path, alert: blocking_message
+      elsif @profile.destroy
         redirect_to admin_profiles_path, notice: "Perfil excluído."
+      else
+        redirect_to admin_profiles_path, alert: @profile.errors.full_messages.to_sentence.presence || "Não foi possível excluir o perfil."
       end
     end
 
@@ -190,6 +219,21 @@ module Admin
     def render_profile_position_error(template)
       @profile.errors.add(:position, @profile_position_error)
       render template, status: :unprocessable_entity
+    end
+
+    def profile_destroy_blocking_message
+      if @profile.admin_users.exists? || @profile.horizontal_admin_users.exists?
+        return "Não é possível excluir: há usuários vinculados a este perfil."
+      end
+
+      linked_horizontal_profiles = @profile.horizontal_profiles.order(:name)
+      return unless linked_horizontal_profiles.exists?
+
+      names = linked_horizontal_profiles.limit(4).pluck(:name)
+      remaining = linked_horizontal_profiles.count - names.size
+      listed_names = names.to_sentence
+      listed_names = "#{listed_names} e mais #{remaining}" if remaining.positive?
+      "Não é possível excluir: este perfil é base das funções horizontais #{listed_names}. Edite essas funções e altere o campo “Vinculado a” para outro perfil, ou exclua essas funções primeiro."
     end
 
     def update_profile_with_structural_reconciliation(attrs)

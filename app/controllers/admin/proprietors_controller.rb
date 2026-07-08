@@ -280,7 +280,12 @@ module Admin
       end
 
       if filters[:cpf_cnpj].present?
-        scope = scope.where("proprietors.cpf_cnpj ILIKE ?", like(filters[:cpf_cnpj]))
+        # CPF cifrado: busca é por documento COMPLETO (igualdade nos dígitos).
+        if Proprietor.cpf_digits_searchable?
+          scope = scope.where(cpf_cnpj_digits: Proprietor.normalized_cpf_cnpj(filters[:cpf_cnpj]))
+        else
+          scope = scope.where("proprietors.cpf_cnpj ILIKE ?", like(filters[:cpf_cnpj]))
+        end
       end
 
       if filters[:capture_vehicle].present?
@@ -304,7 +309,11 @@ module Admin
       end
 
       if filters[:spouse_cpf_cnpj].present?
-        scope = scope.where("proprietors.spouse_cpf_cnpj ILIKE ?", like(filters[:spouse_cpf_cnpj]))
+        if Proprietor.cpf_digits_searchable?
+          scope = scope.where(spouse_cpf_cnpj_digits: Proprietor.normalized_cpf_cnpj(filters[:spouse_cpf_cnpj]))
+        else
+          scope = scope.where("proprietors.spouse_cpf_cnpj ILIKE ?", like(filters[:spouse_cpf_cnpj]))
+        end
       end
 
       if filters[:habitation_reference].present?

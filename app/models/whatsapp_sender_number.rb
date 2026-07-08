@@ -15,14 +15,22 @@ class WhatsappSenderNumber < ApplicationRecord
             numericality: { greater_than_or_equal_to: 0, less_than: 1_000_000 }
   validate :display_phone_number_must_be_valid
   validate :integration_must_belong_to_tenant
+  before_save :clear_other_notification_sender, if: :active_notification_sender?
 
   scope :active, -> { where(active: true) }
+  scope :for_notifications, -> { where(use_for_notifications: true) }
   scope :ordered, -> { order(active: :desc, label: :asc, display_phone_number: :asc) }
 
   def self.default_for_campaign(tenant = Current.tenant)
     raise ArgumentError, "Tenant obrigatório para número de envio WhatsApp" if tenant.blank?
 
     tenant.whatsapp_sender_numbers.active.ordered.first || sync_from_current_integration!(tenant)
+  end
+
+  def self.default_for_notifications(tenant = Current.tenant)
+    raise ArgumentError, "Tenant obrigatório para número de notificação WhatsApp" if tenant.blank?
+
+    tenant.whatsapp_sender_numbers.active.for_notifications.ordered.first
   end
 
   def self.sync_from_current_integration!(tenant = Current.tenant)
@@ -39,6 +47,7 @@ class WhatsappSenderNumber < ApplicationRecord
       number.label = number.verified_name
       number.status = integration.messaging_ready? ? "connected" : "pending"
       number.active = true
+      number.use_for_notifications = false if number.has_attribute?(:use_for_notifications)
     end
   end
 
@@ -76,5 +85,18 @@ class WhatsappSenderNumber < ApplicationRecord
     return if whatsapp_business_integration.tenant_id == tenant_id
 
     errors.add(:whatsapp_business_integration, "deve pertencer ao mesmo Tenant")
+  end
+
+  def active_notification_sender?
+    active? && use_for_notifications?
+  end
+
+  def clear_other_notification_sender
+    return if tenant_id.blank?
+
+    self.class
+      .where(tenant_id: tenant_id, use_for_notifications: true)
+      .where.not(id: id)
+      .update_all(use_for_notifications: false, updated_at: Time.current)
   end
 end

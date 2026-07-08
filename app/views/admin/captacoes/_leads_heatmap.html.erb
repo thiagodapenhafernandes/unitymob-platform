@@ -1,7 +1,7 @@
 <div class="ax-card capt-heatmap-card">
   <div class="ax-card__body">
     <div class="capt-heatmap-toolbar">
-      <h6 class="tw-font-bold tw-flex tw-items-center tw-gap-2"><i class="bi bi-grid-3x3-gap-fill tw-text-primary"></i>Leads por Corretor</h6>
+      <div class="capt-heatmap-title"><i class="bi bi-grid-3x3-gap-fill"></i>Leads por Corretor</div>
       <%= form_with url: dashboard_admin_captacoes_path, method: :get, local: true, class: "capt-heatmap-filters", data: { controller: "auto-submit" } do %>
         <%= hidden_field_tag :start_date, @period_start %>
         <%= hidden_field_tag :end_date,   @period_end %>
@@ -68,7 +68,7 @@
                 <td><%= col_total.zero? ? "·" : col_total %></td>
               <% end %>
               <% grand_total = @heatmap_corretores.sum { |u| @heatmap_matrix[u.id].values.sum } %>
-              <td class="tw-text-primary"><%= grand_total %></td>
+              <td class="capt-primary-text"><%= grand_total %></td>
             </tr>
           </tfoot>
         </table>

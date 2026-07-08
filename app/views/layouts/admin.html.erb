@@ -7,6 +7,11 @@
     %>
     <title><%= current_admin_user&.system_admin? ? 'Unitymob Plataforma' : "#{account_site_name} - #{account_admin_area_name}" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+    <link rel="manifest" href="<%= admin_manifest_path(format: :json) %>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="<%= (defined?(LayoutSetting) ? LayoutSetting.instance.site_name.presence : nil) || 'Plataforma' %>">
+    <link rel="apple-touch-icon" href="/pwa-icon-192">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
@@ -25,17 +30,20 @@
     %>
     
     <%# CSS de framework legado removido — substituído pela camada de compatibilidade (admin_compat) + Tailwind admin %>
+    <%# Vendors self-hosted (sem CDN de terceiros em runtime) %>
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <%= stylesheet_link_tag "vendor/bootstrap-icons", media: "all" %>
     <!-- Tom Select -->
-    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <%= stylesheet_link_tag "vendor/tom-select.bootstrap5.min", media: "all" %>
     <% if admin_rich_text_assets %>
-      <!-- Trix Editor -->
-      <link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.0.8/dist/trix.css">
+      <!-- Trix Editor (CSS 2.0.8 self-hosted, mesmo arquivo antes servido pelo unpkg) -->
+      <%= stylesheet_link_tag "vendor/trix", media: "all" %>
     <% end %>
+    <%# Caminho do CSS do Fancybox para carga sob demanda pelo fancybox_gallery_controller %>
+    <meta name="fancybox-css-path" content="<%= stylesheet_path("vendor/fancybox") %>">
     <% if admin_fancybox_assets %>
       <!-- Fancybox -->
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css">
+      <%= stylesheet_link_tag "vendor/fancybox", media: "all" %>
     <% end %>
     
     <%= stylesheet_link_tag "admin", media: "all" %>
@@ -43,6 +51,8 @@
     <%= stylesheet_link_tag "admin_compat", media: "all" %>
     <%# Novo design system da plataforma interna (Tailwind, prefixo tw-, namespaced .ax-*) %>
     <%= stylesheet_link_tag "admin_tailwind", media: "all" %>
+    <%= stylesheet_link_tag "habitations_form_refresh", media: "all" %>
+    <%= stylesheet_link_tag "whatsapp_inbox_refresh", media: "all" %>
     <%# Toast compartilhado (mesma identidade em todo o sistema) %>
     <%= stylesheet_link_tag "ax_toast", media: "all" %>
     <%# Tema white-label da plataforma interna, independente dos tokens do site público. %>
@@ -230,10 +240,8 @@
     </script>
     <meta name="theme-color" content="#ffffff">
 
-    <!-- Google Fonts: Inter & Outfit -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Fontes Inter & Outfit self-hosted (antes Google Fonts) -->
+    <%= stylesheet_link_tag "vendor/admin-fonts", media: "all" %>
     <%# JS de framework legado removido — comportamento data-* legado tratado em application.js %>
     <%= javascript_importmap_tags %>
   </head>
@@ -256,7 +264,7 @@
         <button type="button" class="ax-navbar__toggle" data-action="ax-drawer#toggle" aria-label="Abrir menu">
           <i class="bi bi-list"></i>
         </button>
-        <% brand_path = current_admin_user&.system_admin? ? admin_system_path : (tenant_owner? ? admin_root_path : field_root_path) %>
+        <% brand_path = current_admin_user&.system_admin? ? admin_system_path : (current_admin_user&.tenant_owner? ? admin_root_path : field_root_path) %>
         <%= link_to(brand_path, class: "ax-navbar__brand") do %>
           <span class="ax-navbar__brand-mark"><i class="bi bi-buildings"></i></span>
           <span class="ax-navbar__brand-text"><% if current_admin_user&.system_admin? %>Unitymob <span>Plataforma</span><% else %><%= account_site_name %> <span><%= account_admin_area_name %></span><% end %></span>
@@ -273,7 +281,35 @@
             <i class="bi bi-chevron-down tw-text-xs tw-text-ink-faint"></i>
           </button>
           <div class="ax-menu" data-ax-dropdown-target="menu" hidden style="right:0; left:auto;">
-            <div class="tw-px-2.5 tw-py-1.5 tw-text-xs tw-text-ink-muted tw-truncate"><%= current_admin_user&.email %></div>
+            <div class="tw-px-2.5 tw-py-1.5 tw-text-xs tw-text-ink-muted tw-truncate"><%= current_admin_user&.notification_email %></div>
+            <%# Multi-conta: troca sem relogin (só fora de impersonação e com 2+ contas) %>
+            <%# Troca de contas: recurso de ADMIN DE CONTAS — só aparece quando a
+                identidade primária é Admin da Conta (tenant_owner) na conta natal. %>
+            <% if current_admin_user && !current_admin_user.system_admin? && session[:impersonator_admin_user_id].blank? &&
+                  (current_admin_user.login_identity.tenant_owner? rescue false) %>
+              <% accounts = current_admin_user.switchable_accounts rescue [] %>
+              <% if accounts.size > 1 %>
+                <div class="ax-menu__sep"></div>
+                <div class="tw-px-2.5 tw-py-1 tw-text-[10px] tw-font-extrabold tw-uppercase tw-tracking-wide tw-text-ink-muted">Contas</div>
+                <% accounts.each do |entry| %>
+                  <% is_current = entry[:admin_user].id == current_admin_user.id %>
+                  <% if is_current %>
+                    <div class="ax-menu__item" style="cursor:default;opacity:.7">
+                      <i class="bi bi-check2"></i><span><%= entry[:tenant].name %></span>
+                    </div>
+                  <% else %>
+                    <%= button_to admin_account_switch_path(tenant_id: entry[:tenant].id), method: :post,
+                          class: "ax-menu__item", form: { class: "tw-block tw-w-full", data: { turbo: false } } do %>
+                      <i class="bi bi-arrow-left-right"></i><span><%= entry[:tenant].name %></span>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              <% end %>
+            <% end %>
+            <div class="ax-menu__sep"></div>
+            <%= link_to admin_two_factor_settings_path, class: "ax-menu__item" do %>
+              <i class="bi bi-shield-lock"></i><span>Verificação em duas etapas</span>
+            <% end %>
             <div class="ax-menu__sep"></div>
             <%= link_to destroy_admin_user_session_path, data: { turbo_method: :delete }, class: "ax-menu__item ax-menu__item--danger" do %>
               <i class="bi bi-box-arrow-right"></i><span>Sair</span>
@@ -355,6 +391,19 @@
 
     <%= render "admin/habitations/media/modal_shell" %>
     
+    <div id="admin-offline-banner" hidden
+         style="position: fixed; top: 0; left: 0; right: 0; z-index: 4090; padding: 8px 14px; background: #b54708; color: #fff; font-size: 12.5px; font-weight: 600; text-align: center;">
+      <i class="bi bi-wifi-off"></i> Sem conexão — suas ações podem não ser salvas até a internet voltar.
+    </div>
+    <script>
+      (function () {
+        var banner = document.getElementById("admin-offline-banner");
+        function sync() { banner.hidden = navigator.onLine; }
+        window.addEventListener("online", sync);
+        window.addEventListener("offline", sync);
+        sync();
+      })();
+    </script>
     <%= render 'layouts/pwa_service_worker' %>
     <%= render 'layouts/admin_push_subscriptions' if current_admin_user %>
     <script>

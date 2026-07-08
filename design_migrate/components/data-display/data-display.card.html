@@ -1,0 +1,46 @@
+<!-- @dsCard group="Components" viewport="700x430" name="Data display" subtitle="Badges, metric cards, avatars, context pins, lead labels" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;background:var(--workspace-bg);font-family:var(--font-sans)}
+#root{padding:20px;display:grid;gap:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.cap{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);width:100%}
+</style></head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { Badge, MetricCard, Avatar, ContextPin, LeadLabelChip } = window.UnitymobDesignSystem_2a309d;
+function Demo(){
+  return (
+    <>
+      <div className="row"><span className="cap">Badges</span>
+        <Badge tone="green" dot>Ativo</Badge><Badge tone="amber">Pendente</Badge><Badge tone="red">Erro sync</Badge>
+        <Badge tone="blue">Novo</Badge><Badge tone="purple">Proposta</Badge><Badge tone="cyan">Vista Soft</Badge><Badge tone="gray">Rascunho</Badge>
+      </div>
+      <div className="grid">
+        <MetricCard label="Imóveis no catálogo" value="1.284" badge={<Badge tone="green" dot>Ativos</Badge>} hint="86 destaques · 12 empreend." />
+        <MetricCard label="Leads hoje" value="128" badge={<Badge tone="gray">+14 em 7d</Badge>} hint="9 represados · 22 novos" />
+        <MetricCard label="Regras de distribuição" value="8/12" badge={<Badge tone="blue">4 c/ check-in</Badge>} progress={66} />
+      </div>
+      <div className="row"><span className="cap">Context pins</span>
+        <ContextPin type="property">Apto 302 · COD-84213</ContextPin>
+        <ContextPin type="lead">Marina Costa</ContextPin>
+        <ContextPin type="whatsapp">+55 11 9•••</ContextPin>
+      </div>
+      <div className="row"><span className="cap">Avatars & labels</span>
+        <Avatar initials="MC" /><Avatar icon="person" />
+        <LeadLabelChip color="red">Quente</LeadLabelChip>
+        <LeadLabelChip color="cyan">Financiamento</LeadLabelChip>
+        <LeadLabelChip color="green">Visita agendada</LeadLabelChip>
+      </div>
+    </>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body></html>

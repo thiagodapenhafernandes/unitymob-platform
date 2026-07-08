@@ -102,7 +102,13 @@ class HabitationDuplicateChecker
     expected = normalize_unit(@unit)
     actual = normalize_unit(habitation.bloco.presence || habitation.complemento)
 
-    expected.present? && actual == expected
+    return false unless expected.present? && actual == expected
+
+    expected_complement = normalize(@complement)
+    actual_complement = normalize(habitation.complemento)
+    return true if expected_complement.blank? || actual_complement.blank?
+
+    expected_complement == actual_complement
   end
 
   def same_condominium_unit?(habitation)

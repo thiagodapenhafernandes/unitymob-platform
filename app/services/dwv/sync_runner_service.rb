@@ -14,12 +14,13 @@ module Dwv
       raise ArgumentError, "Tenant obrigatório para Dwv::SyncRunnerService" if @tenant.blank?
     end
 
-    def call(mode: "full", limit: nil, max_pages: nil, status_service: nil)
+    def call(mode: "full", limit: nil, max_pages: nil, status_service: nil, last_updates: nil)
       ensure_enabled_and_token!
       @status_service = status_service
 
       normalized_limit = normalize_limit(limit || Setting.get("dwv_sync_limit", DEFAULT_LIMIT))
       normalized_max_pages = normalize_max_pages(max_pages || Setting.get("dwv_sync_max_pages", DEFAULT_MAX_PAGES))
+      normalized_last_updates = normalize_last_updates(last_updates)
       @status_service&.mark_processing!(
         mode: mode,
         message: "Sincronização DWV iniciada (modo: #{mode}).",
@@ -31,6 +32,8 @@ module Dwv
         sync_active_properties(limit: normalized_limit, max_pages: normalized_max_pages, deactivate_removed: true)
       when "batch"
         sync_active_properties(limit: normalized_limit, max_pages: normalized_max_pages, deactivate_removed: false)
+      when "incremental"
+        sync_incremental_properties(limit: normalized_limit, max_pages: normalized_max_pages, last_updates: normalized_last_updates)
       when "deactivate_removed"
         { imported: 0, deactivated: deactivate_removed_properties(limit: normalized_limit, max_pages: normalized_max_pages), errors_count: 0 }
       else
@@ -41,6 +44,49 @@ module Dwv
     private
 
     attr_reader :tenant
+
+    def sync_incremental_properties(limit:, max_pages:, last_updates:)
+      client = build_client
+      imported = 0
+      errors_count = 0
+      errors_by_reason = Hash.new(0)
+      filters = { last_updates: last_updates }
+      active_ids = collect_property_ids(client, deleted: nil, limit: limit, max_pages: max_pages, filters: filters)
+      removed_ids = collect_property_ids(client, deleted: true, limit: limit, max_pages: max_pages, filters: filters)
+      total_steps = active_ids.size + removed_ids.size
+      processed_steps = 0
+
+      if total_steps.zero?
+        @status_service&.update_progress!(progress: 100, message: "Sincronização DWV incremental sem imóveis alterados em #{last_updates}.")
+      end
+
+      active_ids.each do |property_id|
+        begin
+          details = client.property_details(property_id)
+          Dwv::PropertyImportService.new(details, tenant: tenant).perform
+          imported += 1
+        rescue => e
+          errors_count += 1
+          errors_by_reason[normalize_error_message(e.message)] += 1
+          Rails.logger.error("[DWV] Falha ao importar incremental property_id=#{property_id}: #{e.message}")
+        ensure
+          processed_steps += 1
+          publish_progress(processed_steps, total_steps, "Importando alterações DWV de #{last_updates} (#{processed_steps}/#{total_steps})...")
+          pause_if_needed
+        end
+      end
+
+      deactivated = deactivate_removed_properties_by_ids(removed_ids)
+      processed_steps += removed_ids.size
+      publish_progress(processed_steps, total_steps, "Sincronização DWV incremental concluída.")
+
+      {
+        imported: imported,
+        deactivated: deactivated,
+        errors_count: errors_count,
+        errors_by_reason: errors_by_reason.sort_by { |_, count| -count }.to_h
+      }
+    end
 
     def sync_active_properties(limit:, max_pages:, deactivate_removed:)
       client = build_client
@@ -107,11 +153,11 @@ module Dwv
       )
     end
 
-    def collect_property_ids(client, deleted:, limit:, max_pages:)
+    def collect_property_ids(client, deleted:, limit:, max_pages:, filters: {})
       ids = Set.new
 
       (1..max_pages).each do |page|
-        response = client.list_properties(limit: limit, page: page, deleted: deleted)
+        response = client.list_properties(limit: limit, page: page, deleted: deleted, **filters)
         collection = Dwv::PropertyImportService.extract_collection(response)
         break if collection.blank?
 
@@ -138,6 +184,33 @@ module Dwv
       value = raw.to_i
       value = DEFAULT_MAX_PAGES if value <= 0
       [value, MAX_PAGES].min
+    end
+
+    def normalize_last_updates(raw)
+      value = raw.to_s.strip
+      return iso_date_range(Time.zone.today, Time.zone.today) if value.blank?
+
+      dates = value.split(",").map { |date| parse_last_update_date(date) }.compact
+      return value if dates.empty?
+
+      iso_date_range(dates.first, dates.second || dates.first)
+    end
+
+    def parse_last_update_date(raw)
+      value = raw.to_s.strip
+      return if value.blank?
+
+      Date.iso8601(value)
+    rescue Date::Error
+      begin
+        Date.strptime(value, "%d/%m/%Y")
+      rescue Date::Error
+        nil
+      end
+    end
+
+    def iso_date_range(start_date, end_date)
+      "#{start_date.iso8601},#{end_date.iso8601}"
     end
 
     def pause_if_needed

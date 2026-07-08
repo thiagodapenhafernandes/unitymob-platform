@@ -1,19 +1,13 @@
 require 'rails_helper'
 
 RSpec.describe CheckIns::CreateService do
-  let(:user) { create(:admin_user, :field_agent) }
+  let(:user) { create(:admin_user) }
   let!(:store) { create(:store, latitude: -26.9906, longitude: -48.6348, geofence_radius_meters: 150) }
 
   before do
     Setting.set("field_checkin_enabled", "true")
-    user.update!(default_store: store)
-    # Cria turno ativo no horário atual
     now = Time.current.in_time_zone(store.timezone_obj)
-    start_time = Time.zone.parse("#{now.strftime('%H:%M')}") - 30.minutes
-    end_time = Time.zone.parse("#{now.strftime('%H:%M')}") + 30.minutes
-    create(:store_shift,
-           store: store, admin_user: user, day_of_week: now.wday,
-           start_time: start_time, end_time: end_time, active: true)
+    store.update!(turnos_config: operational_shift_config_for(now))
   end
 
   describe "#call" do
@@ -26,8 +20,10 @@ RSpec.describe CheckIns::CreateService do
         expect(result[:check_in].active?).to be true
       end
 
-      it "vincula o turno ativo atual" do
-        expect(result[:check_in].store_shift).to be_present
+      it "vincula o turno operacional da loja" do
+        expect(result[:check_in].store_shift).to be_nil
+        expect(result[:check_in].turno).to eq("manha")
+        expect(result[:check_in].status_chegada).to eq("sorteio")
       end
 
       it "retorna distância em metros" do
@@ -45,10 +41,13 @@ RSpec.describe CheckIns::CreateService do
       end
     end
 
-    context "corretor não é field agent" do
+    context "usuário bloqueado pontualmente" do
       it "falha com :not_field_agent" do
-        u = create(:admin_user) # sem :field_agent
+        u = create(:admin_user)
+        FieldFeatureGate.disable_agent!(u, tenant: u.tenant)
+
         result = described_class.new(admin_user: u, lat: -26.99, lng: -48.63).call
+
         expect(result[:error]).to eq(:not_field_agent)
       end
     end
@@ -90,7 +89,7 @@ RSpec.describe CheckIns::CreateService do
 
     context "sem turno ativo" do
       it "falha com :no_active_shift" do
-        user.store_shifts.destroy_all
+        store.update!(turnos_config: operational_shift_config_for(Time.current.in_time_zone(store.timezone_obj), active: false))
         result = described_class.new(admin_user: user, lat: -26.9906, lng: -48.6348, accuracy: 10).call
         expect(result[:error]).to eq(:no_active_shift)
       end
@@ -102,5 +101,105 @@ RSpec.describe CheckIns::CreateService do
         expect(result[:error]).to eq(:missing_coordinates)
       end
     end
+
+    context "coordenadas fora de faixa / trocadas" do
+      it "falha com :invalid_coordinates quando lat fora de -90..90" do
+        result = described_class.new(admin_user: user, lat: 200, lng: -48.6348, accuracy: 10).call
+        expect(result[:success]).to be false
+        expect(result[:error]).to eq(:invalid_coordinates)
+      end
+
+      it "falha com :invalid_coordinates quando lat/lng estão trocados (lng fora de faixa)" do
+        # lat=-48.63 (válido em faixa) mas lng=-260 fora de faixa
+        result = described_class.new(admin_user: user, lat: -48.6348, lng: -260, accuracy: 10).call
+        expect(result[:error]).to eq(:invalid_coordinates)
+      end
+
+      it "falha com :invalid_coordinates para valores não numéricos" do
+        result = described_class.new(admin_user: user, lat: "abc", lng: "-48.6", accuracy: 10).call
+        expect(result[:error]).to eq(:invalid_coordinates)
+      end
+    end
+
+    context "accuracy obrigatória para check-in por GPS" do
+      it "falha com :invalid_accuracy quando accuracy é OMITIDA" do
+        result = described_class.new(admin_user: user, lat: -26.9906, lng: -48.6348).call
+        expect(result[:success]).to be false
+        expect(result[:error]).to eq(:invalid_accuracy)
+      end
+
+      it "falha com :invalid_accuracy quando accuracy <= 0" do
+        result = described_class.new(admin_user: user, lat: -26.9906, lng: -48.6348, accuracy: 0).call
+        expect(result[:error]).to eq(:invalid_accuracy)
+      end
+
+      it "aceita check-in MANUAL sem accuracy (exceção legítima)" do
+        result = described_class.new(
+          admin_user: user, lat: -26.9906, lng: -48.6348,
+          device_info: { "manual" => true }
+        ).call
+        expect(result[:success]).to be true
+      end
+    end
+
+    context "antifraude no create — mock location" do
+      it "marca o check-in como suspeito quando o device reporta mock location" do
+        result = described_class.new(
+          admin_user: user, lat: -26.9906, lng: -48.6348, accuracy: 10,
+          device_info: { "is_mock_location" => true }
+        ).call
+
+        expect(result[:success]).to be true
+        check_in = result[:check_in]
+        expect(check_in.suspicious).to be true
+        expect(Array(check_in.suspicious_reasons)).to include("mock_location")
+      end
+
+      it "persiste o sinal is_mock_location no device_info do check-in" do
+        result = described_class.new(
+          admin_user: user, lat: -26.9906, lng: -48.6348, accuracy: 10,
+          device_info: { "is_mock_location" => "true" }
+        ).call
+
+        expect(result[:check_in].device_info["is_mock_location"]).to be true
+      end
+
+      it "não marca suspeito quando não há mock location" do
+        result = described_class.new(
+          admin_user: user, lat: -26.9906, lng: -48.6348, accuracy: 10,
+          device_info: { "is_mock_location" => false }
+        ).call
+
+        expect(result[:success]).to be true
+        expect(result[:check_in].suspicious).to be false
+      end
+
+      it "audita flagged_suspicious quando mock location" do
+        expect {
+          described_class.new(
+            admin_user: user, lat: -26.9906, lng: -48.6348, accuracy: 10,
+            device_info: { "is_mock_location" => true }
+          ).call
+        }.to change { CheckinAuditLog.where(action: "flagged_suspicious").count }.by(1)
+      end
+    end
+  end
+
+  def operational_shift_config_for(time, active: true)
+    entry_start = (time - 30.minutes).strftime("%H:%M")
+    entry_end = (time + 30.minutes).strftime("%H:%M")
+    pos_end = (time + 60.minutes).strftime("%H:%M")
+    out_end = (time + 90.minutes).strftime("%H:%M")
+
+    Store.default_turnos_config.deep_merge(
+      "manha" => {
+        "ativo" => active,
+        "entrada" => { "inicio" => entry_start, "fim" => entry_end },
+        "pos_risca" => { "inicio" => entry_end, "fim" => pos_end },
+        "fora_roleta" => { "inicio" => pos_end, "fim" => out_end }
+      },
+      "tarde" => { "ativo" => false },
+      "unico" => { "ativo" => false }
+    )
   end
 end

@@ -12,11 +12,12 @@
         <% labels.each do |label| %>
           <% on = assigned_ids.include?(label.id) %>
           <button type="button"
-                  class="lead-labels__chip lead-labels__chip--<%= label.color %> <%= 'is-on' if on %>"
+                  class="lead-labels__chip <%= label.custom_color? ? 'lead-labels__chip--custom' : "lead-labels__chip--#{label.color}" %> <%= 'is-on' if on %>"
+                  style="--label-color: <%= lead_label_css_color(label.color) %>"
                   data-action="lead-labels#toggle"
                   data-url="<%= toggle_admin_lead_lead_label_path(lead, label) %>"
                   aria-pressed="<%= on %>">
-            <i class="bi <%= on ? 'bi-check-lg' : 'bi-tag' %>"></i>
+            <i class="bi <%= on ? 'bi-check-lg' : 'bi-tag-fill' %>"></i>
             <span><%= label.name %></span>
           </button>
         <% end %>
@@ -36,13 +37,21 @@
                         data: { action: "submit->lead-labels#submitForm", method: "patch" },
                         class: "lead-labels__row-form" do %>
             <input type="text" name="lead_label[name]" value="<%= label.name %>"
-                   class="ax-input ax-input--sm lead-labels__name" maxlength="40" required aria-label="Nome da etiqueta">
+                   class="ax-input ax-input--sm lead-labels__name" maxlength="40" required
+                   autocomplete="off" aria-label="Nome da etiqueta">
             <div class="lead-labels__colors" role="radiogroup" aria-label="Cor">
               <% LeadLabel::COLORS.each do |c| %>
-                <label class="lead-labels__color lead-labels__color--<%= c %>" title="<%= c %>">
+                <label class="lead-labels__color lead-labels__color--<%= c %>" title="<%= Admin::UiHelper::LEAD_LABEL_COLOR_NAMES[c] %>">
                   <input type="radio" name="lead_label[color]" value="<%= c %>" <%= "checked" if c == label.color %>>
                 </label>
               <% end %>
+              <% custom_value = label.custom_color? ? label.color : "#7c3aed" %>
+              <label class="lead-labels__color lead-labels__color--custom" title="Cor personalizada">
+                <input type="radio" name="lead_label[color]" value="<%= custom_value %>" <%= "checked" if label.custom_color? %>>
+                <input type="color" value="<%= custom_value %>"
+                       data-action="input->lead-labels#pickCustomColor"
+                       aria-label="Cor personalizada">
+              </label>
             </div>
             <button type="submit" class="ax-ico-btn" title="Salvar"><i class="bi bi-check-lg"></i></button>
           <% end %>
@@ -61,13 +70,20 @@
                   data: { action: "submit->lead-labels#submitForm", method: "post" },
                   class: "lead-labels__row lead-labels__row--new" do %>
       <input type="text" name="lead_label[name]" placeholder="Nova etiqueta"
-             class="ax-input ax-input--sm" maxlength="40" required aria-label="Nome da nova etiqueta">
+             class="ax-input ax-input--sm" maxlength="40" required
+             autocomplete="off" aria-label="Nome da nova etiqueta">
       <div class="lead-labels__colors" role="radiogroup" aria-label="Cor">
         <% LeadLabel::COLORS.each_with_index do |c, i| %>
-          <label class="lead-labels__color lead-labels__color--<%= c %>" title="<%= c %>">
+          <label class="lead-labels__color lead-labels__color--<%= c %>" title="<%= Admin::UiHelper::LEAD_LABEL_COLOR_NAMES[c] %>">
             <input type="radio" name="lead_label[color]" value="<%= c %>" <%= "checked" if i.zero? %>>
           </label>
         <% end %>
+        <label class="lead-labels__color lead-labels__color--custom" title="Cor personalizada">
+          <input type="radio" name="lead_label[color]" value="#7c3aed">
+          <input type="color" value="#7c3aed"
+                 data-action="input->lead-labels#pickCustomColor"
+                 aria-label="Cor personalizada">
+        </label>
       </div>
       <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary"><i class="bi bi-plus-lg ax-ico"></i><span>Criar</span></button>
     <% end %>

@@ -12,7 +12,11 @@ class CheckIn < ApplicationRecord
     closed_manual:              1,
     closed_auto_shift_end:      2,
     closed_auto_out_of_radius:  3,
-    closed_admin_force:         4
+    closed_admin_force:         4,
+    # Fechado por inatividade (sem pings recentes) — NÃO significa "fora do
+    # raio". O PWA só envia pings em foreground, então tela apagada/app em
+    # background gera silêncio sem que o corretor tenha saído do local.
+    closed_auto_no_signal:      5
   }
 
   belongs_to :admin_user
@@ -26,6 +30,7 @@ class CheckIn < ApplicationRecord
   scope :today, -> { where(checked_in_at: Time.current.beginning_of_day..Time.current.end_of_day) }
   scope :suspicious, -> { where(suspicious: true) }
   scope :trustworthy, -> { where(suspicious: false) }
+  scope :for_arrival_statuses, ->(statuses) { where(status_chegada: Array(statuses).compact_blank) }
 
   def flag_suspicious!(reasons:)
     existing = Array(suspicious_reasons)

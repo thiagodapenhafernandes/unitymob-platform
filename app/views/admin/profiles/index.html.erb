@@ -11,25 +11,48 @@
   </div>
 </header>
 
-<div class="ax-table-wrap" style="margin-top:8px">
+<div style="margin-top:12px">
+  <%= ax_inline_notice(tone: :info, icon: "diagram-3") do %>
+    <strong>Hierarquia dinâmica:</strong> os níveis de gestão vêm dos <strong>perfis verticais</strong> desta tela (nada é fixo por nome de perfil).
+    Ao criar um perfil acima dos corretores, todos os usuários abaixo <strong>precisam ser vinculados a um gestor</strong> —
+    quem ficar sem vínculo sai da hierarquia e <strong>não aparece para seleção nas regras de distribuição</strong>.
+  <% end %>
+</div>
+
+<div class="ax-table-wrap" style="margin-top:12px">
   <table class="ax-table">
     <thead>
       <tr>
         <th>Nome do Perfil</th>
+        <th style="width:180px">Submetido a</th>
         <th style="width:130px">Eixo</th>
         <th style="width:180px">Vinculado a</th>
-        <th class="ax-num" style="width:90px">Ordem</th>
         <th class="ax-num" style="width:110px">Usuários</th>
         <th style="width:96px">Status</th>
         <th class="ax-num" style="width:90px">Ações</th>
       </tr>
     </thead>
     <tbody>
-      <% @profiles.each do |profile| %>
+      <% @ordered_profiles.each do |profile| %>
         <tr>
           <td class="ax-strong">
             <%= profile.name %>
             <% if profile.locked? %><span class="ax-badge ax-badge--gray">fixo</span><% end %>
+          </td>
+          <td>
+            <% superior = @superior_profile[profile.id] %>
+            <% if superior %>
+              <span class="ax-badge <%= profile.horizontal? ? 'ax-badge--purple' : 'ax-badge--blue' %>">
+                <i class="bi bi-arrow-right"></i>
+                <%= superior.name %>
+                <% unless profile.horizontal? %>
+                  <%# vertical: seta "sobe" no fim, espelhada (haste à direita) %>
+                  <i class="bi bi-arrow-90deg-up" style="display:inline-block;transform:scaleX(-1)"></i>
+                <% end %>
+              </span>
+            <% else %>
+              <span class="ax-muted">Topo da hierarquia</span>
+            <% end %>
           </td>
           <td>
             <% if profile.vertical? %>
@@ -39,7 +62,6 @@
             <% end %>
           </td>
           <td><%= profile.horizontal? ? profile.vertical_profile&.name : "Hierarquia principal" %></td>
-          <td class="ax-num"><%= profile.vertical? ? profile.position : "—" %></td>
           <td class="ax-num">
             <span class="ax-badge ax-badge--gray">
               <%= profile.vertical? ? profile.admin_users.where(tenant: current_tenant).count : current_tenant.admin_users.where(horizontal_profile_id: profile.id).count %>

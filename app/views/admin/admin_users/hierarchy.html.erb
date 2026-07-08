@@ -36,6 +36,24 @@
     <% end %>
   </div>
 
+  <% if (@internal_unanchored || []).any? %>
+    <div class="ax-panel hier-internal">
+      <div class="hier-internal__head">
+        <strong><i class="bi bi-person-gear"></i> Equipe interna</strong>
+        <span>Funções operacionais — fora da árvore de gestão e da distribuição.</span>
+      </div>
+      <div class="hier-internal__chips">
+        <% @internal_unanchored.each do |member| %>
+          <%= link_to admin_admin_user_path(member), class: "hier-internal__chip", title: member.email do %>
+            <span class="hier-internal__avatar"><%= member.name.to_s.first&.upcase || "?" %></span>
+            <span><%= member.name %></span>
+            <small><%= member.horizontal_profile&.name %></small>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
   <div class="ax-panel">
     <div class="hier__tree<%= ' is-editable' if @can_reorganize %>"
          data-action="click->hierarchy-tree#toggle"
@@ -49,7 +67,9 @@
                   descendant_count: @descendant_count,
                   habitations_count: @habitations_count_by_admin_user,
                   depth: 0,
-                  can_reorganize: @can_reorganize %>
+                  can_reorganize: @can_reorganize,
+                  min_gestor_position: @min_gestor_position,
+                  internal_by_manager: @internal_by_manager %>
           <% end %>
         </ul>
       <% else %>

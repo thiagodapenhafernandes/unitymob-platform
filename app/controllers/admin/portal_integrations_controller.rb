@@ -4,7 +4,7 @@ class Admin::PortalIntegrationsController < Admin::BaseController
 
   def index
     @active_portal = normalize_portal(params[:portal])
-    @integrations = PortalIntegration::PORTALS.index_with { |portal| PortalIntegration.for_portal!(portal) }
+    @integrations = PortalIntegration::PORTALS.index_with { |portal| find_integration!(portal) }
     @status_options = Habitation::STATUS_OPTIONS
     @business_type_options = [["Venda", "venda"], ["Aluguel", "aluguel"]]
     @previews = @integrations.transform_values { |integration| Portal::EligibilityScope.new(integration).preview }
@@ -15,7 +15,7 @@ class Admin::PortalIntegrationsController < Admin::BaseController
         checklist: integration.setup_checklist(eligible_count: eligible)
       }
     end
-    @listing_states = PortalListingState.where(portal: @active_portal).order(last_received_at: :desc).limit(20)
+    @listing_states = scoped_listing_states.where(portal: @active_portal).order(last_received_at: :desc).limit(20)
   end
 
   def preview_feed
@@ -63,9 +63,25 @@ class Admin::PortalIntegrationsController < Admin::BaseController
   def set_portal
     @portal = normalize_portal(params[:portal])
     @portal_title = PortalIntegration::PORTAL_DEFINITIONS.dig(@portal, :title) || @portal.titleize
-    @integration = PortalIntegration.for_portal!(@portal)
+    @integration = find_integration!(@portal)
   rescue ActiveRecord::RecordNotFound
     redirect_to admin_portal_integrations_path, alert: "Portal inválido."
+  end
+
+  # Resolve/cria a integração do portal SEMPRE dentro do tenant corrente, para
+  # que cada conta edite apenas o seu próprio registro.
+  def find_integration!(portal)
+    PortalIntegration.for_portal!(portal, tenant: current_tenant)
+  end
+
+  # Eventos/estados filtrados por tenant corrente — cada conta vê só os seus.
+  # Tolerante pré-migration: sem coluna tenant_id cai no comportamento antigo.
+  def scoped_listing_states
+    if PortalListingState.column_names.include?("tenant_id")
+      PortalListingState.where(tenant: current_tenant)
+    else
+      PortalListingState.all
+    end
   end
 
   def portal_params

@@ -75,6 +75,53 @@ namespace :bundle do
   end
 end
 
+namespace :deploy do
+  desc "Verifica se o manifest de assets aponta apenas para arquivos existentes."
+  task :verify_assets do
+    command %{
+      echo "-----> Verifying compiled assets"
+      ruby -rjson -e '
+        manifest = Dir["public/assets/.sprockets-manifest-*.json"].max_by { |path| File.mtime(path) }
+        abort("asset manifest ausente em public/assets") unless manifest
+
+        data = JSON.parse(File.read(manifest))
+        missing = data.fetch("assets", {}).values
+          .select { |path| path.match?(/\\.(css|js)\\z/) }
+          .reject { |path| File.exist?(File.join("public/assets", path)) }
+
+        if missing.any?
+          warn "Assets ausentes no manifest " + manifest + ":"
+          missing.each { |path| warn "  - " + path }
+          abort "deploy abortado: manifest aponta para assets inexistentes"
+        end
+      '
+    }
+  end
+
+  desc "Recompila assets no release atual para corrigir manifest/assets desalinhados."
+  task :rebuild_current_assets => :remote_environment do
+    command %{
+      echo "-----> Rebuilding current release assets"
+      cd "#{fetch(:deploy_to)}/current"
+      bundle exec rails tmp:cache:clear
+      rm -f public/assets/.sprockets-manifest-*.json
+      RAILS_ENV=production bundle exec rails assets:precompile
+      ruby -rjson -e '
+        manifest = Dir["public/assets/.sprockets-manifest-*.json"].max_by { |path| File.mtime(path) }
+        abort("asset manifest ausente em public/assets") unless manifest
+
+        data = JSON.parse(File.read(manifest))
+        missing = data.fetch("assets", {}).values
+          .select { |path| path.match?(/\\.(css|js)\\z/) }
+          .reject { |path| File.exist?(File.join("public/assets", path)) }
+
+        abort("assets ausentes: " + missing.join(", ")) if missing.any?
+      '
+      sudo systemctl restart puma_unitymob_crm_production
+    }
+  end
+end
+
 # Put any custom commands you need to run at setup
 # All paths in `shared_dirs` and `shared_paths` will be created on their own.
 task :setup do
@@ -93,8 +140,15 @@ task :deploy do
     invoke :'git:clone'
     invoke :'deploy:link_shared_paths'
     invoke :'bundle:install'
-    invoke :'rails:db_migrate'
+    # Migrações fora do statement_timeout de 30s do app (database.yml lê
+    # PG_STATEMENT_TIMEOUT do ambiente). Teto de 10min em vez de 0: um DDL
+    # sem limite segurando ACCESS EXCLUSIVE travaria o release ainda no ar.
+    command %{echo "-----> Migrating database (PG_STATEMENT_TIMEOUT=10min)"}
+    command %{RAILS_ENV=production PG_STATEMENT_TIMEOUT=10min bundle exec rails db:migrate}
+    command %{echo "-----> Clearing Rails tmp cache before assets precompile"}
+    command %{bundle exec rails tmp:cache:clear}
     invoke :'rails:assets_precompile'
+    invoke :'deploy:verify_assets'
     invoke :'deploy:cleanup'
 
     on :launch do
@@ -109,7 +163,9 @@ task :restart => :remote_environment do
   command %(sudo systemctl restart puma_unitymob_crm_production)
   comment 'Restarting Solid Queue...'
   command %(sudo systemctl restart solid_queue_unitymob_crm_production)
-  command %(cd #{fetch(:current_path)} && bundle exec rails runner "Rails.cache.clear")
+  # Sem Rails.cache.clear no deploy: o flush zerava os contadores do
+  # Rack::Attack (janela nova para brute force a cada deploy) e esfriava o
+  # cache inteiro. Fragmentos de view já invalidam por digest/cache key.
 end
 
 

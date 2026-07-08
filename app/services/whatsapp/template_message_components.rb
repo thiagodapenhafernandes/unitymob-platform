@@ -178,18 +178,80 @@ module Whatsapp
       blob = template.header_media_file.blob
       media_type = template.header_format.to_s.downcase
       template.header_media_file.open do |file|
-        upload = client.upload_message_media(
-          file_name: blob.filename.to_s,
-          content_type: blob.content_type,
-          type: media_type,
-          io: file
-        )
+        upload = upload_header_media(file, blob, media_type)
         raise ArgumentError, upload[:error] unless upload[:ok]
 
         @uploaded_header_media_reference = upload[:media_id].presence
       end
 
       @uploaded_header_media_reference
+    end
+
+    def upload_header_media(file, blob, media_type)
+      if media_type == "image" && blob.content_type.to_s == "image/png"
+        upload_jpeg_header_media(file, blob)
+      else
+        client.upload_message_media(
+          file_name: blob.filename.to_s,
+          content_type: blob.content_type,
+          type: media_type,
+          io: file
+        )
+      end
+    end
+
+    def upload_jpeg_header_media(file, blob)
+      require "mini_magick"
+
+      output = Tempfile.new(["whatsapp-template-header-", ".jpg"])
+      output.binmode
+
+      convert_png_to_jpeg(file.path, output.path)
+      output.rewind
+
+      client.upload_message_media(
+        file_name: jpeg_filename(blob.filename.to_s),
+        content_type: "image/jpeg",
+        type: "image",
+        io: output
+      )
+    ensure
+      output&.close
+      output&.unlink
+    end
+
+    def convert_png_to_jpeg(input_path, output_path)
+      MiniMagick::Tool.new("magick") do |command|
+        command << input_path
+        command.auto_orient
+        command.background "white"
+        command.alpha "remove"
+        command.alpha "off"
+        command.strip
+        command.quality "85"
+        command << "jpg:#{output_path}"
+      end
+    rescue MiniMagick::Error
+      return if convert_png_to_jpeg_with_vips(input_path, output_path)
+
+      raise ArgumentError, "A imagem PNG do cabeçalho não pôde ser convertida para JPEG. Anexe uma imagem JPG válida ao template antes de reenviar."
+    end
+
+    def convert_png_to_jpeg_with_vips(input_path, output_path)
+      require "vips"
+
+      image = Vips::Image.new_from_file(input_path, access: :sequential)
+      image = image.flatten(background: [255, 255, 255]) if image.has_alpha?
+      image.jpegsave(output_path, Q: 85, strip: true)
+      true
+    rescue LoadError, StandardError => e
+      Rails.logger.warn("[whatsapp template media] fallback vips indisponivel: #{e.class}: #{e.message}")
+      false
+    end
+
+    def jpeg_filename(filename)
+      base = File.basename(filename.to_s, ".*").presence || "header_media"
+      "#{base}.jpg"
     end
 
     def media_label(type)

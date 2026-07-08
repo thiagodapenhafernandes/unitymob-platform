@@ -144,6 +144,22 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     end
   end
 
+  def sync_notification_templates
+    integration = current_whatsapp_integration
+
+    unless integration.messaging_ready? && integration.waba_id.present?
+      redirect_to admin_whatsapp_integration_path, alert: "Configure o número fixo das notificações antes de sincronizar templates."
+      return
+    end
+
+    result = Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
+    if result[:ok]
+      redirect_to admin_whatsapp_integration_path, notice: "#{result[:synced]} template(s) sincronizado(s) do número das notificações."
+    else
+      redirect_to admin_whatsapp_integration_path, alert: result[:error].presence || "Não foi possível sincronizar os templates das notificações."
+    end
+  end
+
   def disconnect
     current_whatsapp_integration.update!(
       status: "disconnected",
@@ -173,6 +189,9 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
 
   def load_page_state
     @whatsapp_integration = current_whatsapp_integration
+    @whatsapp_transport = Notifications::TransportResolver.whatsapp(current_tenant)
+    @whatsapp_using_global = @whatsapp_transport&.global?
+    @whatsapp_effective_ready = @whatsapp_transport.present?
     @site_phone_settings = @whatsapp_integration.site_phone_settings
     @embedded_signup_config_id = embedded_signup_config_id
     @diagnostics = diagnostics
@@ -180,6 +199,33 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
     @webhook_callback_url = @whatsapp_integration.webhook_callback_url.presence || @default_webhook_callback_url
     @webhook_verify_token = @whatsapp_integration.webhook_verify_token!
     @phone_info = whatsapp_phone_info
+    @whatsapp_sender_numbers = campaign_sender_numbers
+    @new_whatsapp_sender_number = current_tenant.whatsapp_sender_numbers.new
+    @notification_template_settings = current_tenant.notification_template_settings.includes(:whatsapp_template).ordered
+    @new_notification_template_setting = current_tenant.notification_template_settings.new(
+      channel: "whatsapp",
+      purpose: "lead_distribution_broker",
+      active: true
+    )
+    @notification_template_purpose_options = NotificationTemplateSetting.purpose_options
+    @notification_template_options = notification_template_options
+  end
+
+  def notification_template_options
+    scope = current_tenant.whatsapp_templates.approved
+    scope = scope.where(waba_id: @whatsapp_integration.waba_id) if @whatsapp_integration&.waba_id.present?
+
+    scope.ordered.map do |template|
+      label = "#{template.name} · #{template.language.presence || 'pt_BR'} · #{template.variable_count} variáveis"
+      [label, template.id]
+    end
+  end
+
+  def campaign_sender_numbers
+    scope = current_tenant.whatsapp_sender_numbers.active
+    notification_phone_id = @whatsapp_integration.phone_number_id.to_s.presence
+    scope = scope.where.not(phone_number_id: notification_phone_id) if notification_phone_id
+    scope.ordered
   end
 
   # Snapshot do número (display, nome verificado, quality) vindo da Cloud API.
@@ -270,6 +316,7 @@ class Admin::WhatsappIntegrationsController < Admin::BaseController
 
   def phone_settings_params
     params.require(:whatsapp_business_integration).permit(
+      :allow_photo_presentation,
       :default_whatsapp_number,
       :sale_whatsapp_number,
       :rent_whatsapp_number,

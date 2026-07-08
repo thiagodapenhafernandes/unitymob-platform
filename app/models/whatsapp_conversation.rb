@@ -11,7 +11,9 @@ class WhatsappConversation < ApplicationRecord
   validate :phone_or_bsuid_present
 
   scope :open, -> { where(status: "open") }
-  scope :recent, -> { order(Arel.sql("last_message_at DESC NULLS LAST, updated_at DESC")) }
+  # Colunas qualificadas: o inbox faz left_joins(:lead) no escopo por corretor
+  # e "updated_at" ficaria ambíguo (leads também tem a coluna).
+  scope :recent, -> { order(Arel.sql("whatsapp_conversations.last_message_at DESC NULLS LAST, whatsapp_conversations.updated_at DESC")) }
   scope :unread, -> { where("unread_count > 0") }
 
   def display_name
@@ -35,6 +37,24 @@ class WhatsappConversation < ApplicationRecord
     return if digits.blank? # sem telefone (só BSUID) não há link wa.me
 
     "https://wa.me/#{digits}"
+  end
+
+  # Última apresentação DESTE corretor nesta conversa/lead (nil se nunca).
+  # Fontes de auditoria: mensagens carimbadas com presentation_card_id (funciona
+  # sem lead) e, havendo lead, LeadActivity "presentation_sent" do corretor
+  # (cobre apresentação feita ao mesmo lead em outra conversa).
+  def last_presentation_at(admin_user)
+    return nil if admin_user.blank?
+
+    stamps = [
+      messages.outbound.where(admin_user: admin_user).where.not(presentation_card_id: nil).maximum(:created_at)
+    ]
+    if lead_id.present?
+      stamps << LeadActivity.where(lead_id: lead_id, kind: "presentation_sent")
+                            .where("metadata->>'admin_user_id' = ?", admin_user.id.to_s)
+                            .maximum(:created_at)
+    end
+    stamps.compact.max
   end
 
   # Destinatário para a Cloud API: telefone se houver, senão BSUID.

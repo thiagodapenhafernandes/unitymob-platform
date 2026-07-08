@@ -45,6 +45,18 @@ RSpec.describe Leads::DistributorService do
       expect(lead.reload.admin_user_id).to eq(agent_without_checkin.id)
       expect(lead.status).to eq("Aguardando Aceite")
     end
+
+    it "distribui para uma regra explícita sem redescobrir pelos filtros de origem" do
+      rule = create(:distribution_rule, source_site: false, source_webhook: true, require_active_checkin: false)
+      create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
+
+      lead = build_lead(origin: "whatsapp_campaign")
+      described_class.distribute_to(lead, rule)
+
+      expect(lead.reload.admin_user_id).to eq(agent_without_checkin.id)
+      expect(lead.status).to eq("Aguardando Aceite")
+      expect(lead.distribution_rule_id).to eq(rule.id)
+    end
   end
 
   describe "webhook_tags" do
@@ -229,11 +241,11 @@ RSpec.describe Leads::DistributorService do
       expect(rule.candidates_filtered_by_checkin).to be_empty
     end
 
-    context "sem candidatos elegíveis + represamento_active" do
+    context "sem candidatos elegíveis por check-in" do
       it "deixa lead represado com razão no_eligible_agent_with_checkin" do
         rule = create(:distribution_rule,
                       require_active_checkin: true,
-                      represamento_active: true)
+                      represamento_active: false)
         create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
 
         lead = build_lead
@@ -241,6 +253,7 @@ RSpec.describe Leads::DistributorService do
 
         lead.reload
         expect(lead.status).to eq("Represado")
+        expect(lead.distribution_rule_id).to eq(rule.id)
         activity = lead.activities.where(kind: "dammed").last
         expect(activity).to be_present
         expect(activity.metadata["reason"]).to eq("no_eligible_agent_with_checkin")
@@ -301,7 +314,7 @@ RSpec.describe Leads::DistributorService do
       end
     end
 
-    it "nao libera Shark Tank quando exige check-in e nao ha candidato elegivel" do
+    it "represa quando exige check-in e nao ha candidato elegivel" do
       rule = create(:distribution_rule, distribution_mode: :shark_tank, require_active_checkin: true)
       create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_without_checkin)
       allow(Leads::NotificationDispatcher).to receive(:notify_shark_tank)
@@ -309,10 +322,10 @@ RSpec.describe Leads::DistributorService do
       lead = build_lead
       result = described_class.find_and_distribute(lead)
 
-      expect(result).to be_nil
+      expect(result).to eq(rule)
       expect(lead.reload.admin_user_id).to be_nil
-      expect(lead.status).to eq(Lead.default_status)
-      expect(lead.distribution_rule_id).to be_nil
+      expect(lead.status).to eq(Lead.status_value(:represado))
+      expect(lead.distribution_rule_id).to eq(rule.id)
       expect(Leads::NotificationDispatcher).not_to have_received(:notify_shark_tank)
     end
   end
@@ -368,16 +381,8 @@ RSpec.describe Leads::DistributorService do
       before { travel_to Time.zone.local(2026, 6, 29, 12, 0, 0) }
       after { travel_back }
 
-      let(:today_wday) { Time.current.in_time_zone("America/Sao_Paulo").wday }
-
-      it "inclui quando turno vinculado está ativo agora" do
-        shift = create(:store_shift,
-                       admin_user: agent_with_checkin,
-                       store: store,
-                       day_of_week: today_wday,
-                       start_time: "08:00",
-                       end_time: "18:00")
-        agent_with_checkin.active_check_in.update!(store_shift: shift)
+      it "inclui quando o turno operacional da loja está ativo agora" do
+        store.update!(turnos_config: operational_store_shift_config(active: true))
 
         rule = create(:distribution_rule, require_active_checkin: true, require_active_shift: true)
         dra = create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_with_checkin)
@@ -385,15 +390,8 @@ RSpec.describe Leads::DistributorService do
         expect(rule.candidates_filtered_by_checkin.pluck(:id)).to eq([dra.id])
       end
 
-      it "exclui quando turno vinculado já terminou (janela até auto_checkout_after_minutes)" do
-        # Turno começou há 3h e terminou há 1h, mas auto-checkout cron só fechou em até 60min
-        shift = create(:store_shift,
-                       admin_user: agent_with_checkin,
-                       store: store,
-                       day_of_week: today_wday,
-                       start_time: 3.hours.ago.strftime("%H:%M"),
-                       end_time: 1.hour.ago.strftime("%H:%M"))
-        agent_with_checkin.active_check_in.update!(store_shift: shift)
+      it "exclui quando o turno operacional da loja não começou ou já terminou" do
+        store.update!(turnos_config: operational_store_shift_config(active: false))
 
         rule = create(:distribution_rule, require_active_checkin: true, require_active_shift: true)
         create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_with_checkin)
@@ -401,15 +399,9 @@ RSpec.describe Leads::DistributorService do
         expect(rule.candidates_filtered_by_checkin).to be_empty
       end
 
-      it "para check-in manual (sem store_shift), busca turno ativo do corretor na loja" do
-        # Check-in manual → store_shift_id = nil
+      it "check-in manual também segue o turno operacional da loja" do
         agent_with_checkin.active_check_in.update!(store_shift: nil)
-        create(:store_shift,
-               admin_user: agent_with_checkin,
-               store: store,
-               day_of_week: today_wday,
-               start_time: "08:00",
-               end_time: "18:00")
+        store.update!(turnos_config: operational_store_shift_config(active: true))
 
         rule = create(:distribution_rule, require_active_checkin: true, require_active_shift: true)
         dra = create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_with_checkin)
@@ -417,15 +409,28 @@ RSpec.describe Leads::DistributorService do
         expect(rule.candidates_filtered_by_checkin.pluck(:id)).to eq([dra.id])
       end
 
-      it "exclui manual sem nenhum turno ativo agora" do
+      it "exclui check-in manual quando a loja não tem turno operacional ativo" do
         agent_with_checkin.active_check_in.update!(store_shift: nil)
-        agent_with_checkin.store_shifts.destroy_all
-        # Sem nenhum store_shift ativo → nenhum turno ativo
+        store.update!(turnos_config: operational_store_shift_config(active: false))
+
         rule = create(:distribution_rule, require_active_checkin: true, require_active_shift: true)
         create(:distribution_rule_agent, distribution_rule: rule, admin_user: agent_with_checkin)
 
         expect(rule.candidates_filtered_by_checkin).to be_empty
       end
     end
+  end
+
+  def operational_store_shift_config(active:)
+    Store.default_turnos_config.deep_merge(
+      "manha" => {
+        "ativo" => active,
+        "entrada" => { "inicio" => "08:00", "fim" => "12:30" },
+        "pos_risca" => { "inicio" => "12:30", "fim" => "13:00" },
+        "fora_roleta" => { "inicio" => "13:00", "fim" => "18:00" }
+      },
+      "tarde" => { "ativo" => false },
+      "unico" => { "ativo" => false }
+    )
   end
 end

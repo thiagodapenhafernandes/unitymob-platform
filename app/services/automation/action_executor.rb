@@ -162,7 +162,7 @@ module Automation
         @lead ||= campaign_recipient&.convert_to_lead!(distribution_rule: destination)
         raise ArgumentError, "Resultado com atendimento sem destinatário para converter" unless @lead
 
-        @lead.update!(distribution_rule: destination)
+        Leads::DistributorService.distribute_to(@lead, destination)
       elsif @lead.nil? && campaign_recipient
         if result.to_s == "no_attendance"
           campaign_recipient.mark_no_interest!

@@ -147,7 +147,10 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Mandar Análise")
+    expect(response.body).to include("vai para revisão administrativa")
+    expect(response.body).to include("disponível para você publicar no site")
     expect(response.body).not_to include("Finalizar captação")
+    expect(response.body).not_to include("disponível para publicação no site pelo admin")
 
     intake.update!(intake_status: "admin_approved")
     get admin_captacao_path(intake)
@@ -161,6 +164,58 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).not_to include("Publicar Site")
+  end
+
+  it "exibe campo auxiliar para buscar proprietário por código na etapa do PWA" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "proprietario")
+
+    get edit_admin_captacao_path(intake, step: "proprietario")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Código do proprietário")
+    expect(response.body).to include('data-proprietor-lookup-target="code"')
+  end
+
+  it "sugere cidades de proprietários já cadastrados na etapa do PWA" do
+    create(:proprietor, city: "Itajaí")
+    create(:proprietor, city: "Balneário Camboriú")
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "proprietario")
+
+    get edit_admin_captacao_path(intake, step: "proprietario")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("ax-autocomplete-select")
+    expect(response.body).to include('data-controller="tom-select"')
+    expect(response.body).to include('data-tom-select-create-value="true"')
+    expect(response.body).to include('value="Itajaí"')
+    expect(response.body).to include('value="Balneário Camboriú"')
+  end
+
+  it "localiza proprietário pelo código para autocompletar a captação" do
+    proprietor = create(
+      :proprietor,
+      name: "Thiago Proprietário",
+      vista_code: "PROP-9044",
+      cpf_cnpj: "123.456.789-00",
+      mobile_phone: "(21) 99087-2427",
+      email: "thiago@example.com",
+      city: "Itajaí"
+    )
+
+    get proprietor_lookup_admin_captacoes_path, params: { code: "PROP-9044" }, as: :json
+
+    payload = JSON.parse(response.body)
+    expect(response).to have_http_status(:ok)
+    expect(payload).to include("found" => true, "matched_by" => "code")
+    expect(payload.fetch("proprietor")).to include(
+      "id" => proprietor.id,
+      "code" => "PROP-9044",
+      "name" => "Thiago Proprietário",
+      "phone" => "(21) 99087-2427",
+      "cpf_cnpj" => "123.456.789-00",
+      "email" => "thiago@example.com",
+      "city" => "Itajaí"
+    )
   end
 
   it "exporta planilha de captações para perfil administrativo" do
@@ -441,13 +496,28 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
   it "renderiza a etapa de fotos com lista ordenável e agendamento reativo" do
     Setting.set("photography_schedule_url", "https://calendly.com/fotografias-saluteimoveis/30min")
+    GoogleCalendarIntegrationSetting.for(Tenant.default).update!(
+      enabled: true,
+      calendar_id: "fotografias.saluteimoveis@gmail.com",
+      default_duration_minutes: 60,
+      service_account_json: {
+        type: "service_account",
+        client_email: "calendar-sync@example.com",
+        private_key: "-----BEGIN PRIVATE KEY-----\nFAKE\n-----END PRIVATE KEY-----\n"
+      }.to_json
+    )
     intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "fotos")
 
     get edit_admin_captacao_path(intake, step: "fotos")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("data-controller=\"captacao-photos\"")
+    expect(response.body).to include("captacao-submit-progress")
     expect(response.body).to include("Fotos selecionadas agora")
+    expect(response.body).to include("Adicionar fotos")
+    expect(response.body).to include("Agendar no Google Agenda")
+    expect(response.body).to include("data-captacao-photos-google-calendar-configured-value=\"true\"")
+    expect(response.body).to include("Você pode adicionar mais antes de avançar.")
     expect(response.body).to include("Abrir agenda de fotos")
     expect(response.body).to include("https://calendly.com/fotografias-saluteimoveis/30min")
   end

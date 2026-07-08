@@ -1,0 +1,27 @@
+<h2 class="login-title">Convite de acesso</h2>
+
+<div class="login-form">
+  <p style="color:#475467;line-height:1.6;margin:0 0 8px;">
+    <strong><%= @membership.invited_by.name %></strong> convidou
+    <strong><%= @membership.invited_email %></strong> para acessar a conta
+    <strong><%= @membership.tenant.name %></strong> com o perfil
+    <strong><%= (@membership.horizontal_profile || @membership.profile).name %></strong>.
+  </p>
+
+  <% if current_admin_user && current_admin_user.login_identity.email.to_s.downcase != @membership.invited_email.to_s.downcase %>
+    <p style="color:#b42318;font-size:13px;line-height:1.5;">
+      Você está logado como <strong><%= current_admin_user.notification_email %></strong>, mas o convite é para
+      <strong><%= @membership.invited_email %></strong>. Entre com a conta convidada para aceitar.
+    </p>
+    <%= button_to "Sair e trocar de conta", destroy_admin_user_session_path, method: :delete, class: "login-submit" %>
+  <% else %>
+    <%= button_to membership_invitation_path(params[:token]), method: :patch, class: "login-submit" do %>
+      <span>Aceitar convite</span>
+      <i class="bi bi-arrow-right"></i>
+    <% end %>
+  <% end %>
+
+  <p style="color:#697586;font-size:12px;margin-top:14px;">
+    Expira em <%= l(@membership.invite_expires_at, format: "%d/%m/%Y %H:%M") %>.
+  </p>
+</div>

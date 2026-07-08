@@ -1,0 +1,20 @@
+<h2>[ERROR_TRACKER] Erro na aplicação</h2>
+
+<p>
+  <strong><%= @error_event.exception_class %></strong><br>
+  <%= @error_event.message.to_s.truncate(500) %>
+</p>
+
+<p style="color:#6b7280;font-size:13px;">
+  Origem: <%= @error_event.source %> ·
+  Severidade: <%= @error_event.severity %> ·
+  Tenant: <%= @error_event.tenant_id || "—" %> ·
+  Ocorrências: <%= @error_event.occurrences_count %><br>
+  Primeira vez: <%= @error_event.first_seen_at %> ·
+  Última vez: <%= @error_event.last_seen_at %><br>
+  Fingerprint: <%= @error_event.fingerprint %>
+</p>
+
+<hr>
+
+<pre style="font-size:12px;color:#374151;white-space:pre-wrap;"><%= @error_event.backtrace.to_s.lines.first(10).join %></pre>

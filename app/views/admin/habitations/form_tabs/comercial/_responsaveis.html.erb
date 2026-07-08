@@ -2,7 +2,7 @@
   <%= ax_button("Adicionar", variant: :ghost, size: :sm, icon: "person-plus", data: { ax_modal_open: "#addBrokerModal", action: "habitation-brokers#resetModal" }) %>
 <% end %>
 
-<%= ax_form_section(title: "Responsáveis e agenciamento", eyebrow: "Corretores", actions: broker_group_actions) do %>
+<%= ax_form_section(title: "Responsáveis e agenciamento", eyebrow: "Corretores", icon: "people", actions: broker_group_actions) do %>
   <div class="ax-record-list" data-habitation-brokers-target="container">
     <%
       assigned_captador_ids = f.object.broker_assignments

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="design_doc_mode" content="canvas">
+<title>Unitymob — Marca / opções</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body{margin:0;font-family:Inter,system-ui,sans-serif;color:#1f2733;background:transparent}
+  .head{position:absolute;left:60px;top:24px;width:1000px}
+  .head h1{font-family:Outfit,sans-serif;font-weight:800;font-size:25px;letter-spacing:-.02em;margin:0}
+  .head p{font-size:13px;color:#475467;margin:6px 0 0;line-height:1.5;max-width:900px}
+  .rowlabel{position:absolute;font-family:Outfit,sans-serif;font-weight:800;font-size:13px;letter-spacing:.12em;
+    text-transform:uppercase;color:#697586}
+  .rowlabel small{font-family:Inter,sans-serif;font-weight:500;letter-spacing:0;text-transform:none;color:#98a2b3;margin-left:10px}
+
+  .frame{position:absolute;width:520px;background:#fff;border:1px solid #e6e8eb;border-radius:18px;
+    padding:30px 32px 34px;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+  .frame.pref{border-color:#365f8f;box-shadow:0 0 0 3px rgba(54,95,143,.14),0 1px 2px rgba(16,24,40,.05)}
+  .badge{position:absolute;top:-13px;left:26px;background:#1f2733;color:#fff;font-size:12px;font-weight:700;
+    padding:4px 11px;border-radius:999px;letter-spacing:.02em}
+  .pref .badge{background:#365f8f}
+  .star{position:absolute;top:-11px;right:24px;background:#eaf0f8;color:#2d5079;font-size:10.5px;font-weight:700;
+    padding:4px 10px;border-radius:999px;letter-spacing:.04em}
+  .kName{font-family:Outfit,sans-serif;font-weight:800;font-size:16px;letter-spacing:-.01em}
+  .kSub{font-size:12px;color:#697586;margin-top:3px}
+
+  .hero{display:flex;align-items:center;gap:26px;margin:24px 0 22px}
+  .tile{width:98px;height:98px;border-radius:25px;display:grid;place-items:center;flex:none;background:#365f8f;color:#fff}
+  .std{color:#365f8f;flex:none;display:grid;place-items:center}
+
+  .lockup{display:flex;align-items:center;gap:15px;padding:16px 0;border-top:1px solid #eceef1}
+  .lockup .lm{color:#365f8f;flex:none;display:grid;place-items:center}
+  .wm{font-family:Outfit,sans-serif;font-weight:750;font-size:29px;letter-spacing:-.025em;color:#1f2733;line-height:1}
+  .desc{display:flex;flex-direction:column;justify-content:center;padding-left:14px;margin-left:2px;border-left:1.5px solid #d2d6db;height:26px}
+  .desc span{font-size:10.5px;font-weight:600;letter-spacing:.2em;color:#697586;text-transform:uppercase}
+
+  .dark{display:flex;align-items:center;gap:15px;background:#1f2733;border-radius:12px;padding:16px 20px;margin-top:4px}
+  .dark .lm{color:#fff;flex:none;display:grid;place-items:center}
+  .dark .wm{color:#fff;font-size:25px}
+
+  .sizes{display:flex;align-items:flex-end;gap:24px;margin-top:22px;padding-top:20px;border-top:1px solid #eceef1;color:#365f8f}
+  .sizes .s{display:flex;flex-direction:column;align-items:center;gap:9px}
+  .sizes .s small{font-family:var(--font-mono,monospace);font-size:9px;color:#98a2b3;font-weight:500}
+
+  .rat{font-size:12.5px;color:#475467;line-height:1.5;margin-top:22px;padding-top:18px;border-top:1px solid #eceef1}
+  .rat b{color:#1f2733;font-weight:650}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Unitymob — redesign da marca · rodada 2</h1>
+  <p>Foco no <b>admin</b>, paleta azul-plataforma (#365f8f). Dourado descartado (era o tema de um tenant; multi-tema de site público é outro escopo). A partir do que você curtiu na <b>1a</b>, esta rodada traz evoluções do chevron e alternativas próximas — sólidas e legíveis a 16px. A rodada 1 fica abaixo para referência.</p>
+</div>
+
+<div class="rowlabel" id="lbl2"></div>
+<div class="rowlabel" id="lbl1"></div>
+
+<script>
+const marks = {
+  ascent:      `<path d="M22 56 L50 33 L78 56" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/><path d="M31 73 L50 58 L69 73" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>`,
+  gateway:     `<path d="M29 26 L29 53 Q29 74 50 74 Q71 74 71 53 L71 26" fill="none" stroke="currentColor" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>`,
+  converge:    `<g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 28 Q44 28 60 46"/><path d="M18 50 L56 50"/><path d="M20 72 Q44 72 60 54"/></g><circle cx="68" cy="50" r="9" fill="currentColor"/>`,
+  aperture:    `<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M59 17 A35 35 0 1 1 41 17" stroke-width="10"/><path d="M37 59 L50 47 L63 59" stroke-width="9"/></g>`,
+  ascentSolid: `<path d="M50 28 L76 54 L67 63 L50 46 L33 63 L24 54 Z" fill="currentColor"/><path d="M50 52 L72 74 L64 82 L50 68 L36 82 L28 74 Z" fill="currentColor" opacity=".5"/>`,
+  rise:        `<g fill="currentColor"><rect x="24" y="52" width="15" height="24" rx="5"/><rect x="43" y="40" width="15" height="36" rx="5"/><rect x="62" y="26" width="15" height="50" rx="5"/></g><path d="M24 40 L43 30 L62 18" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".35"/>`,
+  uplink:      `<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M30 28 L30 52 Q30 72 50 72 Q70 72 70 52 L70 28" stroke-width="12"/><path d="M39 55 L50 45 L61 55" stroke-width="9"/></g>`,
+  keystone:    `<g fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round"><path d="M38 30 L62 30 L71 72 L29 72 Z" stroke-width="10"/><path d="M40 58 L50 49 L60 58" stroke-width="8"/></g>`,
+  uptrend:     `<g fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M24 68 L44 48 L56 58 L78 34"/><path d="M62 32 L80 32 L80 50"/></g>`,
+  summit:      `<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M24 52 L50 28 L76 52" stroke-width="12"/><path d="M31 70 L69 70" stroke-width="10"/></g>`
+};
+const svg = (m, s) => `<svg viewBox="0 0 100 100" width="${s}" height="${s}">${marks[m]}</svg>`;
+
+const opts = [
+  // ---- round 2 (top) ----
+  {id:'2a', mark:'ascentSolid', name:'Ascent sólido', sub:'1a preenchido — mais peso e presença',
+   rat:'<b>1a com corpo.</b> Mesma leitura de ascensão, agora sólida — lê com mais autoridade em telas densas e imprime melhor em mono.'},
+  {id:'2b', mark:'rise', name:'Rise', sub:'Módulos/andares em ascensão',
+   rat:'<b>Crescimento + estrutura.</b> Barras que sobem = portfólio/módulos da plataforma e curva de resultado. Bem imobiliário-enterprise, distinto de um chevron puro.'},
+  {id:'2c', mark:'uplink', name:'Uplink', sub:'O "U" com o chevron de ascensão dentro',
+   rat:'<b>Une 1a + 1b.</b> Guarda o "U" de Unitymob como recipiente e o chevron que você curtiu no centro. Monograma + movimento num só sinal.'},
+  {id:'2d', mark:'keystone', name:'Keystone', sub:'Bloco/edifício com ascensão interna',
+   rat:'<b>Solidez.</b> Trapézio estável (fundação/edifício) com chevron interno. O mais "tijolo e concreto" — passa confiança enterprise.'},
+  {id:'2e', mark:'uptrend', name:'Uptrend', sub:'Linha de crescimento com seta',
+   rat:'<b>Resultado.</b> Traço de tendência para cima — dialoga direto com o admin analítico (Power BI-grade). Claríssimo em favicon.'},
+  {id:'2f', mark:'summit', name:'Summit', sub:'Chevron sobre base — pico + fundação',
+   rat:'<b>Chevron ancorado.</b> O pico da 1a ganha uma base — sensação de plataforma sólida sob o crescimento. Simples e escalável.'},
+  // ---- round 1 (bottom, reference) ----
+  {id:'1a', mark:'ascent', name:'Ascent', sub:'Chevron duplo refinado', pref:true,
+   rat:'<b>Sua preferida.</b> Evolui o chevron atual num sinal único de ascensão. Base desta rodada.'},
+  {id:'1b', mark:'gateway', name:'Gateway', sub:'Monograma "U" / pórtico',
+   rat:'<b>Arquitetural.</b> O "U" como pórtico/torres. Forte como app-icon isolado.'},
+  {id:'1c', mark:'converge', name:'Converge', sub:'Canais unificados num hub',
+   rat:'<b>Plataforma.</b> Múltiplos canais num só hub (lê um pouco como seta de envio).'},
+  {id:'1d', mark:'aperture', name:'Aperture', sub:'Anel aberto + ascensão',
+   rat:'<b>Amplitude.</b> Anel = alcance; chevron = crescimento.'}
+];
+
+const PITCH = 580, R2Y = 150, R1Y = 900, X0 = 60;
+function place(o, i, y){
+  const s = document.createElement('section');
+  s.className = 'frame' + (o.pref ? ' pref' : '');
+  s.id = o.id;
+  s.style.left = (X0 + i*PITCH) + 'px';
+  s.style.top = y + 'px';
+  s.innerHTML = `
+    <div class="badge">${o.id}</div>${o.pref ? '<div class="star">★ preferida</div>' : ''}
+    <div class="kName">${o.name}</div>
+    <div class="kSub">${o.sub}</div>
+    <div class="hero">
+      <div class="tile">${svg(o.mark,58)}</div>
+      <div class="std">${svg(o.mark,74)}</div>
+    </div>
+    <div class="lockup">
+      <span class="lm">${svg(o.mark,34)}</span>
+      <span class="wm">Unitymob</span>
+      <span class="desc"><span>Plataforma</span></span>
+    </div>
+    <div class="dark">
+      <span class="lm">${svg(o.mark,30)}</span>
+      <span class="wm">Unitymob</span>
+    </div>
+    <div class="sizes">
+      <div class="s">${svg(o.mark,44)}<small>44</small></div>
+      <div class="s">${svg(o.mark,32)}<small>32</small></div>
+      <div class="s">${svg(o.mark,24)}<small>24</small></div>
+      <div class="s">${svg(o.mark,16)}<small>16</small></div>
+    </div>
+    <div class="rat">${o.rat}</div>`;
+  document.body.appendChild(s);
+}
+opts.forEach((o,idx) => {
+  const isR2 = o.id.startsWith('2');
+  const row = isR2 ? opts.filter(x=>x.id.startsWith('2')) : opts.filter(x=>x.id.startsWith('1'));
+  const i = row.indexOf(o);
+  place(o, i, isR2 ? R2Y : R1Y);
+});
+const l2 = document.getElementById('lbl2');
+l2.style.left = X0+'px'; l2.style.top = (R2Y-32)+'px';
+l2.innerHTML = 'Rodada 2 <small>novas opções — foco admin, azul-plataforma</small>';
+const l1 = document.getElementById('lbl1');
+l1.style.left = X0+'px'; l1.style.top = (R1Y-32)+'px';
+l1.innerHTML = 'Rodada 1 <small>referência (dourado removido)</small>';
+</script>
+</body>
+</html>

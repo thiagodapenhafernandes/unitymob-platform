@@ -7,13 +7,18 @@
 
 <ul class="ax-form-tabs tw-mb-4">
   <li>
-    <a class="ax-form-tabs__item active" aria-current="page" href="#google-sheets">
+    <a class="ax-form-tabs__item <%= 'active' if @active_tab == 'sheets' %>" <%= 'aria-current="page"'.html_safe if @active_tab == 'sheets' %> href="<%= admin_google_integration_path(tab: 'sheets') %>">
       <i class="bi bi-table me-2"></i>Google Sheets
+    </a>
+  </li>
+  <li>
+    <a class="ax-form-tabs__item <%= 'active' if @active_tab == 'calendar' %>" <%= 'aria-current="page"'.html_safe if @active_tab == 'calendar' %> href="<%= admin_google_integration_path(tab: 'calendar') %>">
+      <i class="bi bi-calendar2-week me-2"></i>Agenda
     </a>
   </li>
 </ul>
 
-<div id="google-sheets">
+<div id="google-sheets" <%= "hidden" unless @active_tab == "sheets" %>>
   <%= ax_field_grid do %>
   <div class="ax-span-6">
     <div class="ax-card">
@@ -23,7 +28,7 @@
       <div class="ax-card__body">
         <%= ax_error_summary(@google_sheets_setting) %>
 
-        <%= ax_inline_notice(tone: @google_sheets_setting.connected? ? :success : :warning, icon: @google_sheets_setting.connected? ? "check-circle" : "exclamation-triangle") do %>
+        <%= ax_inline_notice(tone: @google_sheets_setting.connected? ? :success : :warning, icon: @google_sheets_setting.connected? ? "check-circle" : "exclamation-triangle", class_name: "google-integration-status") do %>
           <span>
             Status:
             <strong><%= @google_sheets_setting.connected? ? "Credenciais configuradas" : "Aguardando configuração" %></strong>
@@ -86,6 +91,91 @@
           <li class="tw-mb-2">O Apps Script localizará a linha pela coluna-chave configurada.</li>
           <li class="tw-mb-2">Se a chave existir, a linha será atualizada; se não existir, uma nova linha será criada.</li>
           <li>O token evita que a URL pública aceite envios sem autorização.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <% end %>
+</div>
+
+<div id="google-calendar" <%= "hidden" unless @active_tab == "calendar" %>>
+  <%= ax_field_grid do %>
+  <div class="ax-span-6">
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-calendar2-plus me-2 text-primary"></i>Agenda de fotografia</h5>
+      </div>
+      <div class="ax-card__body">
+        <%= ax_error_summary(@google_calendar_setting) %>
+
+        <%= ax_inline_notice(tone: @google_calendar_setting.configured? ? :success : :warning, icon: @google_calendar_setting.configured? ? "check-circle" : "exclamation-triangle", class_name: "google-integration-status") do %>
+          <span>
+            Status:
+            <strong><%= @google_calendar_setting.configured? ? "Agenda pronta para sincronizar" : "Aguardando configuração" %></strong>
+            <% if @google_calendar_setting.missing_configuration_items.any? %>
+              <span class="tw-text-ink-muted">(<%= @google_calendar_setting.missing_configuration_items.to_sentence %>)</span>
+            <% end %>
+          </span>
+        <% end %>
+
+        <%= form_with url: admin_google_integration_path, method: :patch, scope: :google_calendar, local: true do |f| %>
+          <%= ax_switch_field(label: tag.span("Criar evento no Google Calendar quando a captação agendar fotógrafo", class: "tw-font-semibold"), form: f, method: :enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @google_calendar_setting.enabled? }) %>
+
+          <div class="tw-mb-3">
+            <%= f.label :calendar_id, "ID da agenda", class: "ax-label tw-font-semibold" %>
+            <%= f.text_field :calendar_id,
+                class: "ax-control",
+                value: @google_calendar_setting.calendar_id.presence || GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID,
+                placeholder: GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID %>
+            <div class="form-text">Use o e-mail da agenda ou o Calendar ID. Compartilhe essa agenda com o <code>client_email</code> da service account com permissão para alterar eventos.</div>
+          </div>
+
+          <div class="tw-mb-3">
+            <%= f.label :default_duration_minutes, "Duração padrão do evento", class: "ax-label tw-font-semibold" %>
+            <%= f.number_field :default_duration_minutes,
+                class: "ax-control",
+                value: @google_calendar_setting.default_duration_minutes.presence || GoogleCalendarIntegrationSetting::DEFAULT_DURATION_MINUTES,
+                min: GoogleCalendarIntegrationSetting::MIN_DURATION_MINUTES,
+                max: GoogleCalendarIntegrationSetting::MAX_DURATION_MINUTES,
+                step: 15 %>
+          </div>
+
+          <div class="tw-mb-3">
+            <%= f.label :service_account_json, "JSON da service account", class: "ax-label tw-font-semibold" %>
+            <%= f.text_area :service_account_json,
+                class: "ax-control",
+                rows: 8,
+                autocomplete: "off",
+                placeholder: (@google_calendar_setting.service_account_configured? ? "Credencial já configurada. Cole um novo JSON apenas para substituir." : "{\"type\":\"service_account\",...}") %>
+            <div class="form-text">A chave privada fica criptografada no banco. O conteúdo salvo não é exibido novamente.</div>
+          </div>
+
+          <%= f.submit "Salvar Agenda", class: "ax-btn ax-btn--primary" %>
+        <% end %>
+
+        <hr class="tw-my-4">
+
+        <%= button_to test_calendar_admin_google_integration_path,
+              method: :post,
+              class: "ax-btn ax-btn--ghost",
+              disabled: !@google_calendar_setting.configured? do %>
+          <i class="bi bi-calendar-check me-2"></i>Criar evento de teste
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="ax-span-6">
+    <div class="ax-card">
+      <div class="ax-card__header">
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-list-check me-2" style="color:#16a34a"></i>Como a agenda será usada</h5>
+      </div>
+      <div class="ax-card__body">
+        <ul class="tw-text-sm tw-text-ink-muted mb-0">
+          <li class="tw-mb-2">Quando a captação escolher “Agendar fotógrafo” e informar data/hora, o sistema enfileira a criação do evento.</li>
+          <li class="tw-mb-2">Se o imóvel já tiver evento salvo, o próximo salvamento atualiza o mesmo evento.</li>
+          <li class="tw-mb-2">Falhas ficam registradas no imóvel nos campos internos de agenda, sem expor a chave privada.</li>
+          <li>O fuso usado nos eventos é <code>America/Sao_Paulo</code>.</li>
         </ul>
       </div>
     </div>

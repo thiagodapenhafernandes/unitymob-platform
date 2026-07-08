@@ -1,19 +1,25 @@
-<%= ax_form_section(title: "Definições básicas", eyebrow: "Classificação") do %>
+<%= ax_form_section(title: "Definições básicas", eyebrow: "Classificação", icon: "ui-checks-grid") do %>
   <%= ax_field_grid(columns: 12, gap: :compact) do %>
-    <div class="ax-span-6">
+    <div class="ax-span-7">
       <%= ax_field_label(nil, nil, text: "Tipo de cadastro") %>
-      <%= select_tag :ui_cadastro_type,
-          options_for_select(cadastro_type_labels.map { |key, label| [label, key] }, inferred_cadastro_type),
-          class: "ax-control",
-          data: {
-            controller: "tom-select",
-            habitation_form_target: "cadastroType",
-            action: "change->habitation-form#cadastroTypeChanged"
-          } %>
+      <%# Segmented (radios) — o habitation-form#selectedCadastroTypeValue lê o radio marcado. %>
+      <div class="habitation-seg" role="radiogroup" aria-label="Tipo de cadastro">
+        <% cadastro_type_labels.each do |type_key, type_label| %>
+          <label class="habitation-seg__opt">
+            <input type="radio"
+                   name="ui_cadastro_type"
+                   value="<%= type_key %>"
+                   <%= "checked" if type_key == inferred_cadastro_type %>
+                   data-habitation-form-target="cadastroType"
+                   data-action="change->habitation-form#cadastroTypeChanged">
+            <span><%= type_label %></span>
+          </label>
+        <% end %>
+      </div>
       <%= f.hidden_field :tipo, value: (f.object.tipo.presence || cadastro_tipo_by_type[inferred_cadastro_type]), data: { habitation_form_target: "tipo" } %>
     </div>
 
-    <div class="ax-span-6">
+    <div class="ax-span-5">
       <%= ax_select_field(
             form: f,
             method: :categoria,

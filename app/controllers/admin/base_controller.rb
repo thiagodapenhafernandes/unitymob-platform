@@ -5,6 +5,8 @@ class Admin::BaseController < ApplicationController
   before_action :set_current_admin_user
   before_action :ensure_tenant_context_selected!
   before_action :enforce_access_control_policy!
+  before_action :enforce_two_factor_setup!
+  before_action :enforce_mirror_still_active!
   before_action :prevent_search_indexing
   around_action :measure_admin_page_render
   after_action :record_allowed_admin_access
@@ -48,6 +50,50 @@ class Admin::BaseController < ApplicationController
     Current.tenant = resolve_admin_tenant_context
   end
 
+  # Espelho revogado/desativado não permanece logado: volta ao primário no
+  # request seguinte (corte imediato pós-revogação; zero custo p/ usuários comuns).
+  # Defense-in-depth: além de active?, exige membership ATIVA — se a revogação
+  # desativou o espelho mas a flag active ficou dessincronizada, a ausência de
+  # membership viva ainda expulsa o espelho.
+  def enforce_mirror_still_active!
+    return unless current_admin_user.respond_to?(:mirror?) && current_admin_user&.mirror?
+    return unless mirror_access_revoked?
+
+    primary = current_admin_user.primary_admin_user
+    if primary
+      bypass_sign_in(primary, scope: :admin_user)
+      redirect_to admin_root_path, alert: "Seu acesso à conta anterior foi revogado — você voltou para #{primary.tenant&.name}."
+    else
+      sign_out(:admin_user)
+      redirect_to new_admin_user_session_path, alert: "Seu acesso foi revogado."
+    end
+  end
+
+  # Verdadeiro quando o espelho não deve mais ter acesso: espelho inativo OU
+  # sem nenhuma AccountMembership ativa amarrando-o ao tenant. Tolerante
+  # pré-migration (tabela/coluna podem não existir).
+  def mirror_access_revoked?
+    return true unless current_admin_user.active?
+
+    return false unless defined?(AccountMembership) && AccountMembership.table_exists?
+
+    !AccountMembership.where(member_admin_user_id: current_admin_user.id, status: :active).exists?
+  rescue ActiveRecord::StatementInvalid
+    # Coluna/enum ausente pré-migration: não expulsa por falta de infra.
+    false
+  end
+
+  # Conta exige 2FA: quem ainda não ativou é levado à tela de configuração
+  # (não bloqueia o login — sem lockout por design).
+  def enforce_two_factor_setup!
+    return unless current_admin_user
+    return unless current_admin_user.two_factor_required? && !current_admin_user.otp_enabled?
+    return if controller_path == "admin/two_factor_settings"
+
+    redirect_to admin_two_factor_settings_path,
+                alert: "Sua conta exige verificação em duas etapas. Configure para continuar."
+  end
+
   def resolve_admin_tenant_context
     return current_admin_user&.tenant unless current_admin_user&.system_admin?
 
@@ -58,7 +104,10 @@ class Admin::BaseController < ApplicationController
   def ensure_tenant_context_selected!
     return unless current_admin_user&.system_admin?
     return if Current.tenant.present?
-    return if controller_path == "admin/system"
+    return if controller_path == "admin/system" || controller_path.start_with?("admin/system/")
+    # Push/VAPID é config GLOBAL editada pelo Admin do Sistema — precisa ser
+    # alcançável sem contexto de conta (senão ninguém edita: dono vê read-only).
+    return if controller_path == "admin/push_settings"
 
     redirect_to admin_system_path, alert: "Admin do Sistema acessa áreas da conta apenas por impersonação."
   end

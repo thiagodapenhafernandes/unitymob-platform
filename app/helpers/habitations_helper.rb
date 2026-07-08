@@ -17,7 +17,85 @@ module HabitationsHelper
   end
 
   def catalog_image_urls_from(sources, limit:)
-    Array(sources).filter_map { |source| catalog_property_image_url(source) }.uniq.first(limit)
+    Array(sources).flat_map do |source|
+      [
+        catalog_property_image_url(source),
+        *public_image_fallback_urls(source)
+      ]
+    end.compact_blank.uniq.first(limit)
+  end
+
+  def public_gallery_image_class(source)
+    dimensions = public_image_dimensions(source)
+    orientation =
+      if dimensions
+        width, height = dimensions
+        ratio = width.to_f / height.to_f
+
+        if ratio < 0.85
+          "portrait"
+        elsif ratio > 1.2
+          "landscape"
+        else
+          "balanced"
+        end
+      end
+
+    ["public-habitations-show__gallery-image", ("public-habitations-show__gallery-image--#{orientation}" if orientation)].compact.join(" ")
+  end
+
+  def public_gallery_image_style(source, primary: false)
+    dimensions = public_image_dimensions(source)
+    return nil unless dimensions
+
+    width, height = dimensions
+    return nil if width.to_i <= 0 || height.to_i <= 0
+
+    height_ratio = height.to_f / width.to_f
+    position_y = if primary && height_ratio > 1.15
+                   50 + ((height_ratio - 1.0) * 42)
+                 else
+                   50
+                 end
+    position_y = position_y.clamp(50, 86)
+
+    css_position_y = format("%.1f", position_y).sub(/\.0\z/, "")
+    "--public-gallery-object-position-y: #{css_position_y}%;"
+  end
+
+  def public_image_dimensions(source)
+    attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
+    metadata = attachment&.blob&.metadata
+
+    width = metadata&.fetch("width", nil).to_i
+    height = metadata&.fetch("height", nil).to_i
+    return [width, height] if width.positive? && height.positive?
+
+    width = source.try(:[], "width") || source.try(:[], :width)
+    height = source.try(:[], "height") || source.try(:[], :height)
+    width = width.to_i
+    height = height.to_i
+    return [width, height] if width.positive? && height.positive?
+
+    nil
+  end
+
+  def public_property_map_coordinates(property)
+    lat = property&.latitude
+    lng = property&.longitude
+    lat = property&.read_attribute(:latitude) if lat.blank? && property&.has_attribute?(:latitude)
+    lng = property&.read_attribute(:longitude) if lng.blank? && property&.has_attribute?(:longitude)
+
+    lat = lat.to_f
+    lng = lng.to_f
+    return nil unless lat.between?(-90, 90) && lng.between?(-180, 180)
+    return nil if lat.zero? && lng.zero?
+
+    [lat, lng]
+  end
+
+  def public_property_map_place_label(property)
+    [property&.bairro, property&.cidade, property&.uf].compact_blank.join(" - ")
   end
 
   # Características disponíveis para filtros
@@ -48,10 +126,14 @@ module HabitationsHelper
     'varanda' => { label: 'Varanda', icon: 'bi-door-open' }
   }.freeze
   
-  # Retorna contador de imóveis com determinada característica
+  # Retorna contador de imóveis com determinada característica.
+  # Escopado por conta: usa Current.tenant (setado no site público) e inclui o
+  # tenant_id na chave de cache para não vazar contagens entre contas. Sem tenant
+  # resolvido, mantém o comportamento global anterior explicitamente.
   def characteristic_counter(characteristic)
-    Rails.cache.fetch("characteristic_count:#{characteristic}", expires_in: 1.hour) do
-      Habitation.active.with_photos.send(characteristic).count
+    scope = Current.tenant&.habitations || Habitation
+    Rails.cache.fetch("characteristic_count:t#{Current.tenant&.id || 'public'}:#{characteristic}", expires_in: 1.hour) do
+      scope.active.with_photos.send(characteristic).count
     rescue NoMethodError
       0
     end

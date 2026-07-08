@@ -3,6 +3,7 @@ class Tenant < ApplicationRecord
 
   has_many :profiles, dependent: :restrict_with_error
   has_many :admin_users, dependent: :restrict_with_error
+  has_many :account_memberships, dependent: :destroy
   has_many :leads, dependent: :restrict_with_error
   has_many :habitations, dependent: :restrict_with_error
   has_many :tasks, dependent: :restrict_with_error
@@ -11,6 +12,7 @@ class Tenant < ApplicationRecord
   has_many :whatsapp_business_integrations, dependent: :restrict_with_error
   has_many :whatsapp_templates, dependent: :restrict_with_error
   has_many :whatsapp_sender_numbers, dependent: :restrict_with_error
+  has_many :notification_template_settings, dependent: :restrict_with_error
   has_many :whatsapp_campaign_recipients, dependent: :restrict_with_error
   has_many :whatsapp_campaign_messages, dependent: :restrict_with_error
   has_many :whatsapp_campaign_unsubscribes, dependent: :restrict_with_error
@@ -28,6 +30,9 @@ class Tenant < ApplicationRecord
   has_many :store_shifts, dependent: :restrict_with_error
   has_many :attribute_options, dependent: :restrict_with_error
   has_many :check_ins, dependent: :restrict_with_error
+  has_many :portal_integrations, dependent: :destroy
+  has_many :email_settings, dependent: :destroy
+  has_one :google_calendar_integration_setting, dependent: :destroy
   has_many :manual_checkin_requests, dependent: :restrict_with_error
   has_many :proprietors, dependent: :restrict_with_error
   has_many :access_audit_logs, dependent: :restrict_with_error
@@ -42,6 +47,12 @@ class Tenant < ApplicationRecord
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true
+
+  # Expiração de sessão por conta (guard pré-migration 20260707000002)
+  if (column_names.include?("session_timeout_days") rescue false)
+    validates :session_timeout_days, numericality: { only_integer: true, greater_than_or_equal_to: 1, less_than_or_equal_to: 90 }, allow_nil: true
+    validates :session_remember_days, numericality: { only_integer: true, greater_than_or_equal_to: 1, less_than_or_equal_to: 180 }, allow_nil: true
+  end
 
   scope :active, -> { where(active: true) }
 
@@ -58,6 +69,21 @@ class Tenant < ApplicationRecord
       tenant.name = "Conta principal"
       tenant.active = true
     end
+  end
+
+  # Fallback GLOBAL de notificação (opt-in, marcado pelo Admin do Sistema).
+  # Só liga o transporte global quando a conta não tem o próprio configurado.
+  # Guard pré-migration (colunas criadas pela frente migrations): default false.
+  def use_global_whatsapp_fallback?
+    return false unless has_attribute?(:use_global_whatsapp_fallback)
+
+    self[:use_global_whatsapp_fallback] == true
+  end
+
+  def use_global_email_fallback?
+    return false unless has_attribute?(:use_global_email_fallback)
+
+    self[:use_global_email_fallback] == true
   end
 
   def ensure_builtin_profiles!

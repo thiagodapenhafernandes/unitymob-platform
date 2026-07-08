@@ -29,7 +29,10 @@ module Automation
       return if (Thread.current[:automation_depth] || 0) >= Automation::ActionRunner::MAX_DEPTH
 
       if @lead
-        AutomationRule.for_event(@event).ordered.find_each do |rule|
+        # Escopa por tenant para não fazer fan-out de jobs cross-tenant.
+        rule_tenant = @automation_event&.tenant || @lead&.tenant || Current.tenant
+        rule_scope = rule_tenant&.automation_rules || AutomationRule
+        rule_scope.for_event(@event).ordered.find_each do |rule|
           next unless Automation::ConditionMatcher.match?(rule, @lead)
 
           Automation::RunActionsJob.perform_later(rule.id, @lead.id, 0, @automation_event.id)

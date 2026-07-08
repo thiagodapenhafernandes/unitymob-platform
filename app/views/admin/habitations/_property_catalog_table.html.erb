@@ -27,9 +27,10 @@
     <tbody>
       <% habitations.each do |imovel| %>
         <%
-          card_return_to_path = @return_to_path || request.fullpath
+          card_return_to_path = "#{@return_to_path || request.fullpath}#habitation_#{imovel.id}"
           details_path = admin_habitation_path(imovel, return_to: card_return_to_path)
           edit_path = edit_admin_habitation_path(imovel, return_to: card_return_to_path) if admin_can_edit_habitation?(imovel)
+          media_modal_path = modal_admin_habitation_media_path(imovel, return_to: card_return_to_path) if admin_can_manage_habitation_media?(imovel)
           catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
           image_urls = catalog_property_image_urls(imovel)
           image_url = image_urls.first
@@ -45,7 +46,8 @@
                           "Sob consulta"
                         end
         %>
-        <tr class="<%= 'is-muted' if imovel.inactive_for_admin_card? %>"
+        <tr id="habitation_<%= imovel.id %>"
+            class="<%= 'is-muted' if imovel.inactive_for_admin_card? %>"
             data-controller="clickable-card"
             data-clickable-card-url-value="<%= catalog_card_path %>">
           <% if bulk_actions_allowed %>
@@ -59,17 +61,26 @@
           <% end %>
           <td data-column="property">
             <div class="ax-property-table__property">
-              <div class="ax-property-table__thumb">
+              <div class="ax-property-table__thumb" data-controller="fancybox-gallery">
                 <% if image_url.present? %>
-                  <%= image_tag image_url,
-                                alt: display_title,
-                                loading: "lazy",
-                                data: {
-                                  controller: "image-fallback",
-                                  action: "error->image-fallback#hide",
-                                  image_fallback_container_selector_value: ".ax-property-table__thumb",
-                                  image_fallback_fallback_urls_value: fallback_image_urls
-                                } %>
+                  <%= link_to image_url,
+                              class: "ax-property-table__thumb-link",
+                              data: {
+                                controller: "stop-propagation",
+                                action: "click->stop-propagation#stop",
+                                fancybox: "admin-property-row-#{imovel.id}",
+                                caption: display_title
+                              } do %>
+                    <%= image_tag image_url,
+                                  alt: display_title,
+                                  loading: "lazy",
+                                  data: {
+                                    controller: "image-fallback",
+                                    action: "error->image-fallback#hide",
+                                    image_fallback_container_selector_value: ".ax-property-table__thumb",
+                                    image_fallback_fallback_urls_value: fallback_image_urls
+                                  } %>
+                  <% end %>
                 <% else %>
                   <i class="bi bi-image"></i>
                 <% end %>
@@ -128,6 +139,7 @@
                        imovel: imovel,
                        details_path: details_path,
                        edit_path: edit_path,
+                       media_modal_path: media_modal_path,
                        compact: true %>
           </td>
         </tr>

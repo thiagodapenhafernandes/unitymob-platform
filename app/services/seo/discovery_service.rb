@@ -95,7 +95,7 @@ module Seo
 
     def dynamic_property_opportunities
       opportunities = []
-      top_values(:cidade, Habitation.active.without_developments, limit: 8).each do |city, _count|
+      top_values(:cidade, habitation_scope.active.without_developments, limit: 8).each do |city, _count|
         params = { city: [city] }
         opportunities << build_opportunity(
           canonical_key: "properties_discovery:city:#{city.to_s.parameterize}",
@@ -111,7 +111,7 @@ module Seo
         )
       end
 
-      top_values(:bairro, Habitation.active.without_developments, limit: 10).each do |bairro, _count|
+      top_values(:bairro, habitation_scope.active.without_developments, limit: 10).each do |bairro, _count|
         params = { city: [bairro] }
         count = count_properties(params)
         next if count < 3
@@ -134,7 +134,7 @@ module Seo
     end
 
     def dynamic_development_opportunities
-      top_values(:cidade, Habitation.empreendimentos_publicos, limit: 8).map do |city, count|
+      top_values(:cidade, habitation_scope.empreendimentos_publicos, limit: 8).map do |city, count|
         build_opportunity(
           canonical_key: "developments_discovery:city:#{city.to_s.parameterize}",
           page_name: "empreendimentos:city:#{city.to_s.parameterize}",
@@ -225,15 +225,22 @@ module Seo
     end
 
     def count_properties(params)
-      Habitation.active.without_developments.advanced_search(params).count
+      habitation_scope.active.without_developments.advanced_search(params).count
     end
 
     def count_developments(params)
-      scope = Habitation.empreendimentos_publicos.left_outer_joins(:address)
+      scope = habitation_scope.empreendimentos_publicos.left_outer_joins(:address)
       scope = apply_location(scope, Array(params[:city]))
       Array(params[:characteristics]).reduce(scope) do |current_scope, characteristic|
         current_scope.respond_to?(characteristic) ? current_scope.public_send(characteristic) : current_scope
       end.count
+    end
+
+    # Nunca agrega imóveis cross-tenant: usa o tenant do contexto (job/admin)
+    # com fallback no tenant do site público (console/execuções sem contexto).
+    def habitation_scope
+      @seo_tenant ||= Current.tenant || Tenant.public_for
+      @seo_tenant.habitations
     end
 
     def apply_location(scope, locations)

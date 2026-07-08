@@ -129,6 +129,7 @@ RSpec.describe "Admin profile permissions", type: :request do
     permissions = Profile.default_permissions_for("Corretor")
 
     expect(permissions.dig("captacoes", "view")).to be(true)
+    expect(permissions.dig("imoveis", "media")).to be(true)
     expect(permissions["captacao_dashboard"]).to be_nil
     expect(permissions["integracoes"]).to be_nil
   end
@@ -464,5 +465,40 @@ RSpec.describe "Admin profile permissions", type: :request do
     expect(insert_after_field).to be_present
     expect(insert_after_field["hidden"]).to be_nil
     expect(doc.at_css("#profile_insert_after_profile_id")["disabled"]).to be_nil
+  end
+
+  it "não informa sucesso ao tentar excluir perfil vertical com função horizontal vinculada" do
+    admin = create(:admin_user, :admin)
+    tenant = admin.tenant
+    vertical = Profile.create!(tenant: tenant, name: "Coordenação #{SecureRandom.hex(4)}", axis: "vertical", position: 4_200, permissions: {})
+    horizontal = Profile.create!(tenant: tenant, name: "Backoffice #{SecureRandom.hex(4)}", axis: "horizontal", vertical_profile: vertical, permissions: {})
+
+    sign_in admin
+
+    expect do
+      delete admin_profile_path(vertical)
+    end.not_to change(Profile, :count)
+
+    expect(response).to redirect_to(admin_profiles_path)
+    expect(flash[:alert]).to include("este perfil é base das funções horizontais")
+    expect(flash[:alert]).to include(horizontal.name)
+    expect(flash[:alert]).to include("altere o campo “Vinculado a”")
+    expect(flash[:notice]).to be_blank
+    expect(Profile.exists?(vertical.id)).to be(true)
+  end
+
+  it "exclui perfil sem usuários e sem funções vinculadas" do
+    admin = create(:admin_user, :admin)
+    profile = Profile.create!(tenant: admin.tenant, name: "Temporário #{SecureRandom.hex(4)}", axis: "vertical", position: 4_200, permissions: {})
+
+    sign_in admin
+
+    expect do
+      delete admin_profile_path(profile)
+    end.to change(Profile, :count).by(-1)
+
+    expect(response).to redirect_to(admin_profiles_path)
+    expect(flash[:notice]).to eq("Perfil excluído.")
+    expect(Profile.exists?(profile.id)).to be(false)
   end
 end

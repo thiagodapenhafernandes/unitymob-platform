@@ -1,0 +1,7 @@
+<% channels = Array(local_assigns.fetch(:channels)) %>
+
+<% if channels.any? %>
+  <span class="ax-property-chip ax-badge--green" title="Canais marcados para publicação">
+    Publicado em <%= channels.join(" | ") %>
+  </span>
+<% end %>

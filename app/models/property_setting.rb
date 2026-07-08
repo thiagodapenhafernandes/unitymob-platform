@@ -25,13 +25,18 @@ class PropertySetting < ApplicationRecord
     "descricao" => "Descrição do imóvel",
     "area" => "Dimensões e área",
     "vagas" => "Vaga de garagem",
+    "tipo_vaga" => "Tipo de vaga",
+    "box" => "Box da vaga",
     "situacao" => "Situação",
     "ocupacao" => "Ocupação",
     "caracteristicas" => "Mais características",
     "infraestrutura" => "Infraestrutura & lazer",
     "valor_negociacao" => "Valor de venda / locação",
     "financeiro" => "Condomínio e IPTU",
-    "condicoes_negociacao" => "Condições de negociação",
+    "admin_locacao" => "Administração da locação",
+    "garantia_locaticia" => "Garantia locatícia",
+    "permuta" => "Aceita permuta",
+    "parcelamento" => "Quantidade de parcelas",
     "chaves" => "Chaves",
     "visitas" => "Dias de visita",
     "fotos" => "Fotos ou agenda com fotógrafo",
@@ -43,9 +48,10 @@ class PropertySetting < ApplicationRecord
   LEGACY_BROKER_INTAKE_CHECK_MAP = {
     "proprietario" => %w[proprietario proprietario_cidade],
     "endereco" => %w[endereco empreendimento unidade],
-    "caracteristicas" => %w[area vagas situacao ocupacao caracteristicas],
+    "caracteristicas" => %w[area vagas tipo_vaga box situacao ocupacao caracteristicas],
     "infraestrutura" => %w[infraestrutura],
-    "negociacao" => %w[valor_negociacao financeiro condicoes_negociacao],
+    "negociacao" => %w[valor_negociacao financeiro admin_locacao garantia_locaticia permuta parcelamento],
+    "condicoes_negociacao" => %w[admin_locacao garantia_locaticia permuta parcelamento],
     "fotos" => %w[fotos autorizacao],
     "visitas" => %w[chaves visitas],
     "complemento" => %w[definicoes titulo titulo_categoria descricao]
@@ -53,7 +59,7 @@ class PropertySetting < ApplicationRecord
 
   # Chaves que só existem no formato legado (sem equivalente granular de mesmo nome).
   # Servem como marcador inequívoco de que um conjunto ainda está no formato antigo.
-  LEGACY_ONLY_BROKER_INTAKE_KEYS = %w[negociacao complemento].freeze
+  LEGACY_ONLY_BROKER_INTAKE_KEYS = %w[negociacao condicoes_negociacao complemento].freeze
 
   RETURNABLE_INTAKE_EDIT_SECTION_OPTIONS = {
     "proprietario" => "Dados do proprietário",
@@ -271,8 +277,17 @@ class PropertySetting < ApplicationRecord
     !broker_capture_layer_enabled || broker_capture_fallback_admin_user_id.present?
   end
 
-  def self.instance
-    setting = first_or_initialize(watermark_position: "bottom_left")
+  belongs_to :tenant, optional: true
+
+  # Uma configuração POR CONTA (antes era 1 linha global — vazava entre
+  # tenants). Pré-migration (sem coluna) mantém o comportamento antigo.
+  def self.instance(tenant: Current.tenant)
+    setting =
+      if column_names.include?("tenant_id") && tenant
+        where(tenant_id: tenant.id).first_or_initialize(watermark_position: "bottom_left")
+      else
+        first_or_initialize(watermark_position: "bottom_left")
+      end
     setting.initialize_defaults!
     setting.save! if setting.new_record? || setting.changed?
     setting

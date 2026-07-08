@@ -1,5 +1,5 @@
 class LoftImagesSyncJob < ApplicationJob
-  queue_as :default
+  queue_as :sync
 
   def perform(limit: nil, triggered_by_id: nil, tenant_id: nil)
     tenant = resolve_tenant(tenant_id: tenant_id, triggered_by_id: triggered_by_id)

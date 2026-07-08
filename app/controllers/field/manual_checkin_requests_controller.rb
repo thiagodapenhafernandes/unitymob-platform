@@ -15,7 +15,7 @@ module Field
     def create
       @request = current_tenant.manual_checkin_requests.new(
         admin_user: current_admin_user,
-        store_id: params.dig(:manual_checkin_request, :store_id),
+        store: current_tenant.stores.find_by(id: params.dig(:manual_checkin_request, :store_id)),
         justification: params.dig(:manual_checkin_request, :justification),
         status: :pending
       )

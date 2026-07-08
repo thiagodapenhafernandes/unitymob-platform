@@ -1,19 +1,50 @@
 module Whatsapp
   class SyncTemplatesJob < ApplicationJob
     queue_as :default
+    MAX_HEADER_MEDIA_DOWNLOAD_BYTES = 25.megabytes
 
-    def perform(tenant_id = nil)
-      tenant = Tenant.find_by(id: tenant_id) if tenant_id.present?
+    def perform(tenant_id = nil, sender_number_id: nil)
+      # Recorrente (config/recurring.yml) roda sem args: fan-out para os
+      # tenants com integração conectada; chamadas manuais passam tenant_id.
+      return fan_out_all_tenants! if tenant_id.blank?
+
+      tenant = Tenant.find_by(id: tenant_id)
       return { ok: false, error: "Tenant não encontrado." } unless tenant
 
-      Current.tenant = tenant
-      integration = WhatsappBusinessIntegration.current(tenant)
-      result = Whatsapp::CloudClient.new(integration).fetch_templates
+      # Current.set restaura o valor anterior ao sair (o ensure antigo zerava
+      # Current.tenant no resto do request após perform_now).
+      Current.set(tenant: tenant) do
+        sync_templates_for(tenant, sender_number_id: sender_number_id)
+      end
+    end
+
+    private
+
+    def fan_out_all_tenants!
+      tenant_ids = WhatsappBusinessIntegration
+                   .where(status: "connected")
+                   .where.not(waba_id: [nil, ""])
+                   .distinct
+                   .pluck(:tenant_id)
+                   .compact
+      tenant_ids.each { |id| self.class.perform_later(id) }
+      { ok: true, enqueued: tenant_ids.size }
+    end
+
+    def sync_templates_for(tenant, sender_number_id: nil)
+      source = sync_source_for(tenant, sender_number_id)
+      return { ok: false, error: "Selecione um número WhatsApp configurado." } unless source
+
+      result = Whatsapp::CloudClient.new(source).fetch_templates
       return { ok: false, error: result[:error] } unless result[:ok]
 
       synced = 0
       Array(result.dig(:data, "data")).each do |tpl|
-        record = tenant.whatsapp_templates.find_or_initialize_by(name: tpl["name"], language: tpl["language"].presence || "pt_BR")
+        record = tenant.whatsapp_templates.find_or_initialize_by(
+          name: tpl["name"],
+          language: tpl["language"].presence || "pt_BR",
+          waba_id: source.waba_id
+        )
         record.assign_attributes(
           category: normalized_category(tpl["category"]),
           status: tpl["status"].presence || "PENDING",
@@ -23,20 +54,57 @@ module Whatsapp
           template_type: template_type(tpl),
           header_format: header_format(tpl),
           header_text: header_text(tpl),
+          header_media_handle: header_media_handle(tpl),
           footer_text: footer_text(tpl),
           buttons: buttons(tpl),
           carousel_cards: carousel_cards(tpl),
           flow_config: flow_config(tpl)
         )
         record.save!
+        attach_synced_header_media(record)
         synced += 1
       end
       { ok: true, synced: synced }
-    ensure
-      Current.tenant = nil if tenant_id.present?
     end
 
-    private
+    def sync_source_for(tenant, sender_number_id)
+      sender = tenant.whatsapp_sender_numbers.active.find_by(id: sender_number_id) if sender_number_id.present?
+      return sender if sender&.waba_id.present?
+
+      integration = WhatsappBusinessIntegration.current(tenant)
+      return integration if integration.messaging_ready? && integration.waba_id.present?
+
+      nil
+    end
+
+    def attach_synced_header_media(record)
+      return unless record.header_format.in?(%w[image video document])
+      return if record.header_media_file.attached?
+
+      url = record.header_media_handle.to_s
+      return unless url.match?(%r{\Ahttps?://}i)
+
+      response = HTTParty.get(url, timeout: 30)
+      unless response.respond_to?(:success?) && response.success?
+        Rails.logger.warn("[whatsapp templates sync] falha ao baixar midia do template=#{record.id} status=#{response.respond_to?(:code) ? response.code : "unknown"}")
+        return
+      end
+
+      body = response.body.to_s
+      if body.blank? || body.bytesize > MAX_HEADER_MEDIA_DOWNLOAD_BYTES
+        Rails.logger.warn("[whatsapp templates sync] midia ignorada template=#{record.id} bytes=#{body.bytesize}")
+        return
+      end
+
+      content_type = response.headers["content-type"].to_s.split(";").first.presence || content_type_for(record.header_format)
+      record.header_media_file.attach(
+        io: StringIO.new(body),
+        filename: header_media_filename(url, record.header_format),
+        content_type: content_type
+      )
+    rescue => e
+      Rails.logger.warn("[whatsapp templates sync] nao foi possivel anexar midia do template=#{record.id}: #{e.class}: #{e.message}")
+    end
 
     def body_text(tpl)
       component = Array(tpl["components"]).find { |c| c["type"].to_s.upcase == "BODY" }
@@ -57,6 +125,13 @@ module Whatsapp
     def header_text(tpl)
       component = Array(tpl["components"]).find { |c| c["type"].to_s.upcase == "HEADER" }
       component && component["format"].to_s.casecmp("TEXT").zero? ? component["text"].to_s : nil
+    end
+
+    def header_media_handle(tpl)
+      component = Array(tpl["components"]).find { |c| c["type"].to_s.upcase == "HEADER" }
+      return nil unless component && component["format"].to_s.downcase.in?(%w[image video document])
+
+      Array(component.dig("example", "header_handle")).first.to_s.presence
     end
 
     def buttons(tpl)
@@ -126,6 +201,32 @@ module Whatsapp
     def normalized_category(category)
       value = category.to_s.upcase.presence || "MARKETING"
       WhatsappTemplate::CATEGORIES.include?(value) ? value : "MARKETING"
+    end
+
+    def header_media_filename(url, format)
+      path = URI.parse(url).path.to_s
+      basename = File.basename(path)
+      return basename if basename.present? && basename.include?(".")
+
+      "header_media#{extension_for(format)}"
+    rescue URI::InvalidURIError
+      "header_media#{extension_for(format)}"
+    end
+
+    def extension_for(format)
+      {
+        "image" => ".jpg",
+        "video" => ".mp4",
+        "document" => ".pdf"
+      }.fetch(format.to_s, ".bin")
+    end
+
+    def content_type_for(format)
+      {
+        "image" => "image/jpeg",
+        "video" => "video/mp4",
+        "document" => "application/pdf"
+      }.fetch(format.to_s, "application/octet-stream")
     end
   end
 end

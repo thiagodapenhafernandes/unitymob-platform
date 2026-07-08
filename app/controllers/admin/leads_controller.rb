@@ -1,4 +1,7 @@
 class Admin::LeadsController < Admin::BaseController
+  # Kanban nunca renderiza mais que isso por coluna (paginação continua na lista).
+  KANBAN_COLUMN_LIMIT = 75
+
   before_action -> { check_permission!(:view, :leads) }
   before_action :set_lead, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
   before_action :authorize_lead_access!, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
@@ -51,12 +54,27 @@ class Admin::LeadsController < Admin::BaseController
                         (Lead.status_options + lead_scope.reorder(nil).distinct.pluck(:status).compact).uniq
                       end
     @leads_by_status = @lead_statuses.index_with { |status| [] }
-    @kanban_leads = lead_scope.to_a
+    # Teto por coluna DIRETO NO BANCO (janela por status): antes carregava a
+    # base inteira de leads na memória a cada visita ao kanban.
+    ranked = lead_scope.reorder(nil).select(
+      "leads.*, ROW_NUMBER() OVER (PARTITION BY leads.status ORDER BY leads.created_at DESC) AS kanban_rank"
+    )
+    @kanban_leads = Lead.from(ranked, :leads)
+                        .where("kanban_rank <= ?", KANBAN_COLUMN_LIMIT)
+                        .includes(:admin_user, lead_labelings: :lead_label)
+                        .order(created_at: :desc)
+                        .to_a
     @kanban_leads.each do |lead|
       @leads_by_status[Lead.status_value(lead.status)] ||= []
       @leads_by_status[Lead.status_value(lead.status)] << lead
     end
-    @lead_counts_by_status = @leads_by_status.transform_values(&:size)
+    # Contadores da coluna = total REAL (a coluna pode estar truncada no teto).
+    @lead_counts_by_status = Hash.new(0)
+    lead_scope.reorder(nil).group(:status).count.each do |status, count|
+      @lead_counts_by_status[Lead.status_value(status)] += count
+    end
+    @lead_statuses.each { |status| @lead_counts_by_status[status] ||= 0 }
+    @kanban_column_limit = KANBAN_COLUMN_LIMIT
     @leads = lead_scope.paginate(page: params[:page], per_page: 20)
     property_ids = (@kanban_leads + @leads.to_a).filter_map(&:property_id).uniq
     @properties_by_id = current_tenant.habitations.where(id: property_ids).index_by(&:id)
@@ -66,6 +84,7 @@ class Admin::LeadsController < Admin::BaseController
 
   def show
     @page_title = "Lead: #{@lead.name}"
+    @return_to_path = safe_return_path(params[:return_to])
     @property = current_tenant.habitations.find_by(id: @lead.property_id)
     @lead_audit_logs = @lead.lead_audit_logs.includes(:admin_user).recent.limit(80)
 
@@ -113,7 +132,13 @@ class Admin::LeadsController < Admin::BaseController
       return render :attend_expired, status: :ok
     end
 
-    accept_lead!(@lead)
+    unless accept_lead!(@lead)
+      # Perdeu a corrida pro PocketExpiration entre a leitura e o clique:
+      # o lead já foi redistribuído — mesma UX do prazo esgotado.
+      @attend_reason = :taken if @lead.admin_user_id.present? && @lead.admin_user_id != current_admin_user&.id
+      return render :attend_expired, status: :ok
+    end
+
     open_attended_lead(@lead)
   end
 
@@ -350,7 +375,8 @@ class Admin::LeadsController < Admin::BaseController
   def load_lead_whatsapp_context
     @whatsapp_conversation = existing_whatsapp_conversation_for(@lead)
     @whatsapp_templates = current_tenant.whatsapp_templates.approved.ordered.limit(50)
-    @whatsapp_messages = @whatsapp_conversation ? @whatsapp_conversation.messages.ordered.last(12) : []
+    # 100 e nao 12: com 12 o historico (videos/audios de dias atras) sumia do painel
+    @whatsapp_messages = @whatsapp_conversation ? @whatsapp_conversation.messages.visible.ordered.last(100) : []
     snapshot = @whatsapp_conversation ? Whatsapp::ThreadContextSnapshot.new(
       conversation: @whatsapp_conversation,
       messages: @whatsapp_messages,
@@ -383,7 +409,13 @@ class Admin::LeadsController < Admin::BaseController
 
   # Abre o destino conforme a config (WhatsApp do lead ou tela do lead).
   def open_attended_lead(lead)
-    if PushSetting.instance.open_whatsapp_on_click? && lead.direct_whatsapp_url.present?
+    integration = WhatsappBusinessIntegration.current(current_tenant)
+    inbox_attendance = integration.present? && integration.try(:inbox_attendance_enabled?) &&
+      integration.messaging_ready? && can?(:view, :whatsapp_inbox)
+
+    if inbox_attendance && lead.whatsapp_recipient.present?
+      redirect_to admin_lead_path(lead, anchor: "whatsapp")
+    elsif PushSetting.instance.open_whatsapp_on_click? && lead.direct_whatsapp_url.present?
       redirect_to lead.direct_whatsapp_url, allow_other_host: true
     else
       redirect_to admin_lead_path(lead)
@@ -392,11 +424,27 @@ class Admin::LeadsController < Admin::BaseController
 
   # Aceita o lead ao abrir: passa de "Aguardando Aceite" para "Em Atendimento",
   # travando o PocketExpirationJob (que só redistribui se ainda waiting_acceptance).
+  # Transição atômica: revalida dono+status sob with_lock (mesma linha que o
+  # PocketExpirationService trava), sem sobrescrever um lead já redistribuído.
+  # Retorna false apenas quando o corretor perdeu a corrida.
   def accept_lead!(lead)
-    return unless Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance)
+    return true unless Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance)
 
-    lead.update(status: Lead.status_value(:em_atendimento))
-    lead.activities.create(kind: "accepted", metadata: { by: current_admin_user&.name }.compact)
+    accepted = false
+    lead.with_lock do
+      still_mine = lead.admin_user_id.present? && lead.admin_user_id == current_admin_user&.id
+      still_waiting = Lead.status_value(lead.status) == Lead.status_value(:waiting_acceptance)
+      accepted = still_mine && still_waiting && lead.update(status: Lead.status_value(:em_atendimento))
+    end
+
+    if accepted
+      lead.activities.create(kind: "accepted", metadata: { by: current_admin_user&.name }.compact)
+      return true
+    end
+
+    # Sem transição, mas o lead continua deste corretor (ex.: clique repetido
+    # já em atendimento) — segue o fluxo normal de abertura.
+    lead.admin_user_id.present? && lead.admin_user_id == current_admin_user&.id
   end
 
   def authorize_lead_access!
@@ -418,7 +466,9 @@ class Admin::LeadsController < Admin::BaseController
 
   def lead_params
     permitted = [:status, :notes]
-    permitted << :admin_user_id if can?(:manage, :leads)
+    # Reatribuir corretor: só gestores (escopo team/all em Leads); corretor
+    # com escopo "own" edita o lead, mas não troca o dono.
+    permitted << :admin_user_id if can?(:manage, :leads) && current_admin_user.scope_for(:leads) != "own"
     attributes = params.require(:lead).permit(permitted)
 
     if attributes[:admin_user_id].present? && permitted_admin_user_ids_for_leads.exclude?(attributes[:admin_user_id].to_i)

@@ -71,4 +71,30 @@ RSpec.describe "Sync job tenant actor resolution" do
       Loft::ScheduledSyncService.new.call(now: Time.zone.local(2026, 6, 29, 9, 0, 0))
     }.to have_enqueued_job(LoftSyncJob).exactly(Tenant.active.count).times
   end
+
+  it "agenda sync DWV incremental apenas para tenants com integração habilitada" do
+    enabled_tenant = Tenant.create!(name: "Tenant agenda DWV #{SecureRandom.hex(3)}", slug: "tenant-agenda-dwv-#{SecureRandom.hex(3)}")
+    disabled_tenant = Tenant.create!(name: "Outro agenda DWV #{SecureRandom.hex(3)}", slug: "outro-agenda-dwv-#{SecureRandom.hex(3)}")
+    Setting.set("dwv_enabled", "true", "teste", tenant: enabled_tenant)
+    Setting.set("dwv_api_token", "token-dwv", "teste", tenant: enabled_tenant)
+    Setting.set("dwv_enabled", "false", "teste", tenant: disabled_tenant)
+
+    expect {
+      DwvSyncAllTenantsJob.perform_now(mode: "incremental", last_updates: "07/07/2026")
+    }.to have_enqueued_job(DwvSyncJob).with(
+      hash_including(
+        mode: "incremental",
+        last_updates: "07/07/2026",
+        tenant_id: enabled_tenant.id
+      )
+    ).once
+  end
+
+  it "mantém compatibilidade com o recurring legado do DWV incremental" do
+    expect(DwvSyncAllTenantsJob).to receive(:perform_now).with(
+      hash_including(mode: "incremental", last_updates: "07/07/2026")
+    )
+
+    DwvIncrementalSyncJob.perform_now(last_updates: "07/07/2026")
+  end
 end

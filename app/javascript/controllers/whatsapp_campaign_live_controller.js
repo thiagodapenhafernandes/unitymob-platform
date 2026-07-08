@@ -21,11 +21,20 @@ export default class extends Controller {
   connect() {
     this.timer = null
     this.fetching = false
+    this.boundVisibilityChange = this.handleVisibilityChange.bind(this)
+    document.addEventListener("visibilitychange", this.boundVisibilityChange)
     this.refresh()
   }
 
   disconnect() {
+    document.removeEventListener("visibilitychange", this.boundVisibilityChange)
     this.stop()
+  }
+
+  handleVisibilityChange() {
+    if (document.hidden) return
+
+    this.refresh() // refresh imediato ao voltar para a aba
   }
 
   start() {
@@ -50,6 +59,12 @@ export default class extends Controller {
 
   async refresh() {
     if (this.fetching || !this.hasStatusUrlValue) return
+
+    if (document.hidden) {
+      // Aba oculta: não busca; só re-checa em cadência lenta até voltar.
+      this.schedule(this.intervalValue * 5)
+      return
+    }
 
     this.stop()
     this.fetching = true

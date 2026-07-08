@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 // Polling do painel de progresso da sincronização Vista.
 // Enquanto status == "processing", busca a cada 2s.
+// Pausa em aba oculta (document.hidden) e retoma com refresh imediato ao voltar.
 // Quando finaliza (completed/failed), para e faz 1 refresh final.
 export default class extends Controller {
   static values = {
@@ -11,13 +12,22 @@ export default class extends Controller {
   }
 
   connect() {
+    this.boundVisibilityChange = this.handleVisibilityChange.bind(this)
+    document.addEventListener("visibilitychange", this.boundVisibilityChange)
+
     if (this.statusValue === "processing") {
       this.startPolling()
     }
   }
 
   disconnect() {
+    document.removeEventListener("visibilitychange", this.boundVisibilityChange)
     this.stopPolling()
+  }
+
+  handleVisibilityChange() {
+    if (document.hidden) return
+    if (this.pollId) this.refresh() // refresh imediato ao voltar para a aba
   }
 
   startPolling() {
@@ -33,6 +43,8 @@ export default class extends Controller {
   }
 
   async refresh() {
+    if (document.hidden) return // pausa o polling em aba oculta
+
     try {
       const res = await fetch(this.urlValue, {
         headers: { "Accept": "text/html", "X-Requested-With": "XMLHttpRequest" },

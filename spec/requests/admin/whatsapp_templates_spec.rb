@@ -5,6 +5,14 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
 
   let(:admin) { create(:admin_user, :admin, email: "wa-template-#{SecureRandom.hex(6)}@salute.test") }
 
+  around do |example|
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = false
+    example.run
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+  end
+
   before do
     host! "localhost"
     sign_in admin
@@ -12,14 +20,42 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
 
   describe "GET index" do
     it "lista templates e acoes de campanha para aprovados" do
-      WhatsappTemplate.create!(name: "convite", language: "pt_BR", status: "APPROVED", category: "MARKETING", body: "Olá")
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant, waba_id: "waba-listagem")
+      admin.tenant.whatsapp_templates.create!(name: "convite", language: "pt_BR", status: "APPROVED", category: "MARKETING", body: "Olá", waba_id: sender.waba_id)
 
-      get admin_whatsapp_templates_path
+      get admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Templates WhatsApp")
       expect(response.body).to include("convite")
       expect(response.body).to include("Criar campanha")
+    end
+
+    it "pede selecao do numero antes de listar templates" do
+      create(:whatsapp_sender_number, tenant: admin.tenant, waba_id: "waba-selecao")
+
+      get admin_whatsapp_templates_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Número / WABA")
+      expect(response.body).not_to include("<table")
+    end
+
+    it "nao lista o numero fixo das notificacoes como numero de campanha" do
+      WhatsappBusinessIntegration.current(admin.tenant).update!(
+        status: "connected",
+        phone_number_id: "phone-notificacoes",
+        waba_id: "waba-notificacoes",
+        access_token: "token"
+      )
+      create(:whatsapp_sender_number, tenant: admin.tenant, phone_number_id: "phone-notificacoes", display_phone_number: "554721228669", waba_id: "waba-notificacoes", label: "Notificações")
+      create(:whatsapp_sender_number, tenant: admin.tenant, phone_number_id: "phone-campanhas", display_phone_number: "554733111067", waba_id: "waba-campanhas", label: "Campanhas")
+
+      get admin_whatsapp_templates_path
+
+      expect(response.body).to include("Campanhas")
+      expect(response.body).to include("554733111067")
+      expect(response.body).not_to include("554721228669")
     end
   end
 
@@ -89,7 +125,8 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
         }
       }
 
-      expect(response).to redirect_to(admin_whatsapp_templates_path)
+      expect(response).to have_http_status(:redirect)
+      expect(response.location).to include("/admin/whatsapp/templates?whatsapp_sender_number_id=")
       template = WhatsappTemplate.find_by!(name: "convite_video")
       expect(template.status).to eq("PENDING")
       expect(template.meta_id).to eq("123")
@@ -113,7 +150,8 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
         }
       }
 
-      expect(response).to redirect_to(admin_whatsapp_templates_path)
+      expect(response).to have_http_status(:redirect)
+      expect(response.location).to include("/admin/whatsapp/templates?whatsapp_sender_number_id=")
       expect(client).to have_received(:create_template).with(hash_including(name: "campanha_fake"))
       expect(WhatsappTemplate.find_by!(name: "campanha_fake").status).to eq("PENDING")
     end
@@ -170,7 +208,8 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
         }
       }
 
-      expect(response).to redirect_to(admin_whatsapp_templates_path)
+      expect(response).to have_http_status(:redirect)
+      expect(response.location).to include("/admin/whatsapp/templates?whatsapp_sender_number_id=")
       template = WhatsappTemplate.find_by!(name: "carrossel_lancamento")
       expect(template.meta_id).to eq("carousel-123")
       expect(template.carousel_cards.map { |card| card["media_handle"] }).to eq(%w[card-handle-1 card-handle-2])
@@ -200,7 +239,8 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
         }
       }
 
-      expect(response).to redirect_to(admin_whatsapp_templates_path)
+      expect(response).to have_http_status(:redirect)
+      expect(response.location).to include("/admin/whatsapp/templates?whatsapp_sender_number_id=")
       template = WhatsappTemplate.find_by!(name: "flow_agendamento")
       expect(template.meta_id).to eq("flow-123")
       expect(template.components.last["buttons"].first).to include(
@@ -240,6 +280,48 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
 
       expect(response).to have_http_status(:unprocessable_entity)
       expect(JSON.parse(response.body)["error"]).to include("Formato incompatível")
+    end
+  end
+
+  describe "DELETE destroy" do
+    it "remove template sem vinculos" do
+      template = admin.tenant.whatsapp_templates.create!(
+        name: "template_removivel",
+        language: "pt_BR",
+        status: "APPROVED",
+        category: "UTILITY",
+        body: "Olá",
+        template_type: "text",
+        header_format: "none"
+      )
+
+      delete admin_whatsapp_template_path(template)
+
+      expect(response).to redirect_to(admin_whatsapp_templates_path)
+      expect(admin.tenant.whatsapp_templates.where(id: template.id)).not_to exist
+    end
+
+    it "bloqueia template usado em notificacoes automaticas" do
+      admin.tenant.notification_template_settings.destroy_all
+      template = admin.tenant.whatsapp_templates.create!(
+        name: "template_notificacao",
+        language: "pt_BR",
+        status: "APPROVED",
+        category: "UTILITY",
+        body: "Lead {{1}}",
+        template_type: "text",
+        header_format: "none"
+      )
+      admin.tenant.notification_template_settings.create!(
+        purpose: "lead_distribution_broker",
+        whatsapp_template: template,
+        variable_mapping: { "1" => "lead_name" }
+      )
+
+      delete admin_whatsapp_template_path(template)
+
+      expect(response).to redirect_to(admin_whatsapp_templates_path)
+      expect(admin.tenant.whatsapp_templates.where(id: template.id)).to exist
     end
   end
 end

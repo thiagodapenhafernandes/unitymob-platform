@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unitymob — Design System</title>
+<style>
+  :root{
+    --bg:#1b1a19; --panel:#232120; --line:#332f2d; --ink:#ece8e3;
+    --muted:#9b938c; --faint:#6f6862; --accent:#d98a63;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    --serif:Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);display:flex}
+  a{color:inherit;text-decoration:none}
+
+  /* Sidebar */
+  aside{
+    position:sticky;top:0;align-self:flex-start;
+    width:260px;height:100vh;overflow-y:auto;flex:none;
+    padding:26px 18px 60px;border-right:1px solid var(--line);
+  }
+  aside .grp{margin-top:20px}
+  aside .grp:first-child{margin-top:0}
+  aside .grp > .g-title{
+    display:flex;align-items:center;gap:7px;
+    font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px;
+  }
+  aside .grp > .g-title::before{content:"⌄";color:var(--faint);font-size:12px}
+  aside .item{
+    display:block;padding:5px 10px 5px 22px;border-radius:7px;
+    font-size:13.5px;color:var(--muted);
+  }
+  aside .item:hover{background:var(--panel);color:var(--ink)}
+
+  /* Main */
+  main{flex:1;min-width:0;padding:34px 48px 120px;max-width:1360px}
+  h1.page{font-family:var(--serif);font-size:38px;font-weight:400;margin:0 0 22px;letter-spacing:-.01em}
+  .intro{
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:34px;
+  }
+  .intro .top{padding:20px 24px;color:var(--muted);font-size:15px;line-height:1.55}
+  .intro .bot{display:flex;align-items:center;justify-content:space-between;
+    padding:16px 24px;border-top:1px solid var(--line);font-size:15px}
+  .intro .bot .pill{border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:13.5px;color:var(--muted)}
+
+  .readme{color:var(--muted);font-size:14.5px;line-height:1.6;margin-bottom:14px;max-width:900px}
+  .readme h2{color:var(--ink);font-size:20px;margin:26px 0 10px;font-weight:600}
+  .readme code{background:var(--panel);border-radius:4px;padding:1px 6px;font-size:12.5px;color:#d8cfc7;font-family:ui-monospace,Menlo,monospace}
+  .readme strong{color:var(--ink)}
+
+  .grouplabel{color:var(--faint);font-size:15px;margin:44px 0 4px}
+  .card-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:22px 0 12px}
+  .card-head h3{margin:0;font-size:22px;font-weight:600}
+  .card-head p{margin:4px 0 0;color:var(--muted);font-size:14.5px}
+  .card-frame{
+    border:1px solid var(--line);border-radius:12px;background:#fff;overflow:auto;
+    box-shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+  .card-frame iframe{display:block;border:0;background:#fff}
+  .hint{color:var(--faint);font-size:12.5px;margin-top:8px}
+  .warn{background:#2a211c;border:1px solid #4a3a2e;color:#e7b892;border-radius:10px;padding:12px 16px;margin-bottom:24px;font-size:13.5px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<aside id="nav"></aside>
+
+<main>
+  <h1 class="page">Design system</h1>
+
+  <div class="intro">
+    <div class="top">Manual navegável do <strong style="color:var(--ink)">Unitymob Design System</strong> — CRM imobiliário white-label. Cada card abaixo é renderizado do arquivo real do kit (mesmas imagens, cores e componentes).</div>
+    <div class="bot"><span style="color:var(--muted)">Fonte da verdade para prompts de refinamento</span><span class="pill">tokens · components · guidelines · patterns</span></div>
+  </div>
+
+  <div class="warn" id="fileWarn" hidden>
+    ⚠️ Você abriu via <code>file://</code> e os cards podem não carregar (o navegador bloqueia iframes locais).
+    Rode um servidor na pasta e abra por <code>http://localhost:8000/index.html</code>:<br>
+    <code>cd design_migrate &amp;&amp; python3 -m http.server 8000</code>
+  </div>
+
+  <div class="readme">
+    <h2>Unitymob Design System</h2>
+    <p>Design system do <strong>Unitymob</strong> — CRM imobiliário multi-tenant, white-label (a primária é injetada por tenant via <code>--admin-primary</code>). Duas superfícies: <strong>Admin CRM</strong> (<code>/admin</code>, o foco) e <strong>Field PWA</strong> (<code>/field</code>). Fonte de UI <strong>Inter</strong> (+ <strong>Outfit</strong> display), <strong>Bootstrap Icons</strong>, cinzas neutros frios, primária única <code>#365f8f</code>.</p>
+    <p>Tudo é derivado do código real (<code>admin_tailwind.css</code>, camada <code>.ax-*</code>), não inventado. Idioma: <strong>pt-BR</strong>.</p>
+  </div>
+
+  <div id="cards"></div>
+</main>
+
+<script>
+  const CARDS = [
+    {group:"Admin CRM", name:"Admin CRM", sub:"Interactive shell — dashboard, imóveis, leads funnel, WhatsApp inbox", w:1440, h:820, path:"ui_kits/admin-crm/index.html"},
+    {group:"Brand", name:"Marks", sub:"Unitymob platform mark — double up-chevron · app icon", w:700, h:150, path:"guidelines/brand-marks.html"},
+    {group:"Brand", name:"Platform lockup", sub:"Navbar brand lockup — chevron mark + Unitymob wordmark", w:700, h:150, path:"guidelines/brand-wordmark.html"},
+    {group:"Colors", name:"Entity accents", sub:"Fixed accent per CRM object — context pins & kanban", w:700, h:150, path:"guidelines/color-entities.html"},
+    {group:"Colors", name:"Ink & text", sub:"Cool neutral text ramp — headings through disabled", w:700, h:150, path:"guidelines/color-ink.html"},
+    {group:"Colors", name:"Primary (white-label)", sub:"Tenant-injected corporate blue — default #365f8f", w:700, h:150, path:"guidelines/color-primary.html"},
+    {group:"Colors", name:"Semantic status", sub:"Badge fill/text pairs — success, warning, danger, info, purple, cyan", w:700, h:160, path:"guidelines/color-semantic.html"},
+    {group:"Colors", name:"Surfaces & lines", sub:"Cards, workspace, headers, zebra rows and dividers", w:700, h:150, path:"guidelines/color-surfaces.html"},
+    {group:"Components", name:"Buttons & icon buttons", sub:"", w:700, h:230, path:"components/actions/actions.card.html"},
+    {group:"Components", name:"Data display", sub:"", w:700, h:430, path:"components/data-display/data-display.card.html"},
+    {group:"Components", name:"Feedback", sub:"", w:700, h:300, path:"components/feedback/feedback.card.html"},
+    {group:"Components", name:"Form controls", sub:"", w:700, h:330, path:"components/forms/forms.card.html"},
+    {group:"Components", name:"Navigation", sub:"", w:700, h:340, path:"components/navigation/navigation.card.html"},
+    {group:"Patterns", name:"Atendimento (WhatsApp inbox)", sub:"Spec canônico: cores, fonte e tamanhos exatos da tela de atendimento", w:960, h:640, path:"guidelines/pattern-atendimento-whatsapp.html"},
+    {group:"Spacing", name:"Elevation", sub:"", w:700, h:170, path:"guidelines/spacing-elevation.html"},
+    {group:"Spacing", name:"Radius scale", sub:"", w:700, h:150, path:"guidelines/spacing-radius.html"},
+    {group:"Spacing", name:"Shell & control sizing", sub:"", w:700, h:160, path:"guidelines/spacing-shell.html"},
+    {group:"Type", name:"Body & UI scale", sub:"", w:700, h:200, path:"guidelines/type-body.html"},
+    {group:"Type", name:"Font families", sub:"", w:700, h:180, path:"guidelines/type-families.html"},
+    {group:"Type", name:"Headings & titles", sub:"", w:700, h:200, path:"guidelines/type-headings.html"},
+  ];
+
+  const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+
+  // Sidebar
+  const nav = document.getElementById("nav");
+  const groups = [...new Set(CARDS.map(c=>c.group))];
+  nav.innerHTML = '<div class="grp"><a class="g-title" href="#top">Readme</a></div>' +
+    groups.map(g=>{
+      const items = CARDS.filter(c=>c.group===g)
+        .map(c=>`<a class="item" href="#${slug(g)}-${slug(c.name)}">${c.name}</a>`).join("");
+      return `<div class="grp"><div class="g-title">${g}</div>${items}</div>`;
+    }).join("");
+
+  // Cards
+  const wrap = document.getElementById("cards");
+  let html = "";
+  let lastGroup = null;
+  for(const c of CARDS){
+    if(c.group!==lastGroup){ html += `<div class="grouplabel">${c.group}</div>`; lastGroup=c.group; }
+    const id = `${slug(c.group)}-${slug(c.name)}`;
+    html += `
+      <section id="${id}">
+        <div class="card-head">
+          <div><h3>${c.name}</h3>${c.sub?`<p>${c.sub}</p>`:""}</div>
+        </div>
+        <div class="card-frame" style="max-width:100%">
+          <iframe src="${c.path}" width="${c.w}" height="${c.h}" loading="lazy" scrolling="no"></iframe>
+        </div>
+      </section>`;
+  }
+  wrap.innerHTML = html;
+
+  if(location.protocol==="file:") document.getElementById("fileWarn").hidden=false;
+</script>
+</body>
+</html>

@@ -7,7 +7,7 @@
 //
 // NOTE: Keep this file minimal and dependency-free. Bumps cache version when shipping changes.
 
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v7";
 const SHELL_CACHE = `field-shell-${CACHE_VERSION}`;
 const PING_QUEUE_DB = "field-ping-queue";
 const PING_QUEUE_STORE = "pings";
@@ -214,6 +214,14 @@ self.addEventListener("push", (event) => {
       .catch((err) => console.error("[push] showNotification FAILED", err)),
     refreshPushSubscription("push")
   ]));
+});
+
+// Renovação proativa (Chrome/Android com PWA instalado): a cada ~12h o SW
+// valida/re-registra a subscription mesmo sem nenhum push chegar.
+self.addEventListener("periodicsync", (event) => {
+  if (event.tag === "push-subscription-refresh") {
+    event.waitUntil(refreshPushSubscription("periodicsync"));
+  }
 });
 
 self.addEventListener("pushsubscriptionchange", (event) => {

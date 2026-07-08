@@ -1,5 +1,6 @@
 <% status_icon = { "read" => "bi-check2-all", "delivered" => "bi-check2-all", "sent" => "bi-check2", "pending" => "bi-clock", "failed" => "bi-exclamation-circle" }[message.status] %>
 <% status_label = { "read" => "Lida", "delivered" => "Entregue", "sent" => "Enviada", "pending" => "Enviando", "failed" => "Falhou" }[message.status] || message.status.to_s.humanize %>
+<% status_label = "Falhou: #{message.error_message}" if message.failed? && message.try(:error_message).present? %>
 <% media_url = local_assigns[:media_url].presence || (message.media? ? message_media_admin_whatsapp_conversation_path(message.whatsapp_conversation, message_id: message.id) : (message.media_file.attached? ? rails_blob_path(message.media_file, disposition: "inline") : message.media_url)) %>
 <% media_meta = [] %>
 <% media_label = { "image" => "Imagem", "video" => "Vídeo", "audio" => "Áudio", "document" => "Documento" }[message.msg_type] || message.msg_type.to_s.humanize %>
@@ -12,6 +13,8 @@
 <% previous_message = local_assigns[:previous_message] %>
 <% next_message = local_assigns[:next_message] %>
 <% compact_mode = local_assigns.fetch(:compact_mode, false) %>
+<%# citações pré-resolvidas em lote pelo controller; sem o local (broadcaster, JSON do envio) cai no lookup por mensagem %>
+<% quoted_messages = local_assigns[:quoted_messages] %>
 <% starts_day = previous_message.blank? || previous_message.created_at.to_date != message.created_at.to_date %>
 <% grouped_with_previous = Whatsapp::MessageRenderContext.grouped_with_previous?(message, previous_message) %>
 <% grouped_with_next = Whatsapp::MessageRenderContext.grouped_with_next?(message, next_message) %>
@@ -33,7 +36,55 @@
 <% end %>
 <div class="<%= row_classes.join(' ') %>" data-message-id="<%= message.id %>" data-message-direction="<%= message.direction %>">
   <div class="<%= bubble_classes.join(' ') %>">
+    <%# ações da mensagem (hover): reagir / responder / menu — delegadas no wa-thread %>
+    <div class="wa-msg-actions" aria-hidden="true">
+      <button type="button" class="wa-msg-actions__btn" title="Reagir" data-wa-react-open>
+        <i class="bi bi-emoji-smile"></i>
+      </button>
+      <button type="button" class="wa-msg-actions__btn" title="Responder"
+              data-wa-reply
+              data-reply-id="<%= message.id %>"
+              data-reply-author="<%= message.outbound? ? 'Você' : message.whatsapp_conversation.display_name %>"
+              data-reply-snippet="<%= message.preview.to_s.truncate(90) %>">
+        <i class="bi bi-reply-fill"></i>
+      </button>
+      <button type="button" class="wa-msg-actions__btn" title="Mais opções" data-wa-menu-open>
+        <i class="bi bi-chevron-down"></i>
+      </button>
+
+      <div class="wa-msg-react" hidden data-wa-msg-react>
+        <% %w[👍 ❤️ 😂 😮 😢 🙏].each do |emoji| %>
+          <button type="button" data-wa-react="<%= emoji %>" data-message-id="<%= message.id %>"><%= emoji %></button>
+        <% end %>
+        <% if message.try(:agent_reaction).present? %>
+          <button type="button" class="wa-msg-react__remove" title="Remover reação" data-wa-react="" data-message-id="<%= message.id %>"><i class="bi bi-x-circle"></i></button>
+        <% end %>
+      </div>
+
+      <div class="wa-msg-menu" hidden data-wa-msg-menu>
+        <% if message.body.present? %>
+          <button type="button" data-wa-copy data-copy-text="<%= message.body %>"><i class="bi bi-copy"></i><span>Copiar</span></button>
+        <% end %>
+        <button type="button" data-wa-forward data-message-id="<%= message.id %>"><i class="bi bi-arrow-90deg-right"></i><span>Encaminhar</span></button>
+        <button type="button" data-wa-pin data-message-id="<%= message.id %>">
+          <i class="bi bi-pin-angle"></i><span><%= message.try(:pinned_at) ? "Desafixar" : "Fixar" %></span>
+        </button>
+        <button type="button" data-wa-star data-message-id="<%= message.id %>">
+          <i class="bi bi-star"></i><span><%= message.try(:starred_at) ? "Desfavoritar" : "Favoritar" %></span>
+        </button>
+        <% if message.whatsapp_conversation.lead_id && message.preview.present? %>
+          <button type="button" data-wa-note data-message-id="<%= message.id %>"><i class="bi bi-journal-plus"></i><span>Adicionar às notas</span></button>
+        <% end %>
+        <button type="button" class="wa-msg-menu__danger" data-wa-hide data-message-id="<%= message.id %>"><i class="bi bi-trash"></i><span>Apagar para mim</span></button>
+      </div>
+    </div>
     <div class="wa-inbox-bubble__surface">
+      <% if (replied = quoted_messages ? quoted_messages[message.try(:context_wa_message_id)] : message.replied_message) %>
+        <button type="button" class="wa-quote" data-wa-quote-jump="<%= replied.id %>">
+          <span class="wa-quote__author"><%= replied.outbound? ? "Você" : message.whatsapp_conversation.display_name %></span>
+          <span class="wa-quote__snippet"><%= replied.preview.to_s.truncate(110) %></span>
+        </button>
+      <% end %>
       <% if message.msg_type == "template" %>
         <div class="wa-inbox-bubble__eyebrow"><i class="bi bi-file-text"></i> modelo <%= message.template_name %></div>
       <% end %>
@@ -45,24 +96,13 @@
              data-fancybox="<%= media_group %>"
              data-fancybox-type="inline"
              data-turbo="false"
-             data-admin-navigation-ignore="true"
-             data-caption="<%= [message.media_name.presence || media_label, media_meta.join(' · '), message.body.presence].compact.join(' — ') %>">
+             data-admin-navigation-ignore="true">
             <img src="<%= media_url %>" alt="Imagem recebida no WhatsApp" class="wa-inbox-media wa-inbox-media--image">
           </a>
 
           <div id="<%= "#{viewer_id}-image" %>" class="wa-fancybox-visual wa-fancybox-visual--image" hidden>
-            <div class="wa-fancybox-visual__head">
-              <div class="wa-fancybox-visual__meta">
-                <strong class="wa-fancybox-visual__title"><%= message.media_name.presence || "Imagem" %></strong>
-                <% if media_meta.any? %>
-                  <span class="wa-fancybox-visual__copy"><%= media_meta.join(" · ") %></span>
-                <% end %>
-              </div>
-              <a href="<%= media_url %>" class="wa-fancybox-visual__download" target="_blank" rel="noopener">
-                <i class="bi bi-download"></i>
-                <span>Baixar</span>
-              </a>
-            </div>
+            <a href="<%= media_url %>" class="wa-fancybox-visual__save" target="_blank" rel="noopener"
+               title="Baixar" aria-label="Baixar imagem"><i class="bi bi-download"></i></a>
             <div class="wa-fancybox-visual__canvas wa-fancybox-visual__canvas--image">
               <img src="<%= media_url %>" alt="Imagem recebida no WhatsApp" class="wa-fancybox-visual__image">
             </div>
@@ -75,43 +115,25 @@
              data-fancybox="<%= media_group %>"
              data-fancybox-type="inline"
              data-turbo="false"
-             data-admin-navigation-ignore="true"
-             data-caption="<%= [message.media_name.presence || media_label, media_meta.join(' · '), message.body.presence].compact.join(' — ') %>">
-            <video src="<%= media_url %>" class="wa-inbox-media wa-inbox-media--video" muted playsinline preload="metadata"></video>
+             data-admin-navigation-ignore="true">
+            <%# #t=0.001: iOS Safari so renderiza o 1o frame com um fragmento de tempo %>
+            <video src="<%= media_url %>#t=0.001" class="wa-inbox-media wa-inbox-media--video" muted playsinline preload="metadata"></video>
             <span class="wa-inbox-media__play" aria-hidden="true">
               <i class="bi bi-play-fill"></i>
             </span>
           </a>
 
           <div id="<%= "#{viewer_id}-video" %>" class="wa-fancybox-visual wa-fancybox-visual--video" hidden>
-            <div class="wa-fancybox-visual__head">
-              <div class="wa-fancybox-visual__meta">
-                <strong class="wa-fancybox-visual__title"><%= message.media_name.presence || "Vídeo" %></strong>
-                <% if media_meta.any? %>
-                  <span class="wa-fancybox-visual__copy"><%= media_meta.join(" · ") %></span>
-                <% end %>
-              </div>
-              <a href="<%= media_url %>" class="wa-fancybox-visual__download" target="_blank" rel="noopener">
-                <i class="bi bi-download"></i>
-                <span>Baixar</span>
-              </a>
-            </div>
+            <a href="<%= media_url %>" class="wa-fancybox-visual__save" target="_blank" rel="noopener"
+               title="Baixar" aria-label="Baixar vídeo"><i class="bi bi-download"></i></a>
             <div class="wa-fancybox-visual__canvas wa-fancybox-visual__canvas--video">
-              <video src="<%= media_url %>" class="wa-fancybox-visual__video" controls playsinline preload="metadata"></video>
+              <video src="<%= media_url %>#t=0.001" class="wa-fancybox-visual__video" controls playsinline preload="metadata"></video>
             </div>
           </div>
         </div>
       <% elsif message.audio? && media_url.present? %>
         <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--audio"
              data-controller="wa-audio-preview">
-          <a href="#<%= "#{viewer_id}-audio" %>"
-             class="wa-inbox-bubble__viewer-link"
-             data-fancybox="<%= media_group %>"
-             data-fancybox-type="inline"
-             data-turbo="false"
-             data-admin-navigation-ignore="true"
-             data-caption="<%= [message.media_name.presence || media_label, media_meta.join(' · '), message.body.presence].compact.join(' — ') %>"
-             hidden></a>
           <div class="wa-audio-preview wa-audio-preview--message">
             <button type="button"
                     class="wa-audio-preview__toggle"
@@ -121,15 +143,7 @@
               <i class="bi bi-play-fill" data-wa-audio-preview-target="icon"></i>
             </button>
 
-            <div class="wa-audio-preview__body" data-gallery-open>
-              <div class="wa-audio-preview__meta">
-                <strong class="wa-audio-preview__title"><%= message.media_name.presence || "Áudio do WhatsApp" %></strong>
-              </div>
-
-              <% if media_meta.any? %>
-                <div class="wa-audio-preview__summary"><%= media_meta.join(" · ") %></div>
-              <% end %>
-
+            <div class="wa-audio-preview__body">
               <button type="button"
                       class="wa-audio-preview__track"
                       aria-label="Posição do áudio"
@@ -143,51 +157,64 @@
                   <span>/</span>
                   <span data-wa-audio-preview-target="duration">0:00</span>
                 </span>
+                <% if media_meta.any? %>
+                  <span class="wa-audio-preview__summary"><%= media_meta.join(" · ") %></span>
+                <% end %>
               </div>
             </div>
+
+            <span class="wa-audio-preview__badge" aria-hidden="true">
+              <i class="bi bi-headphones"></i>
+            </span>
           </div>
 
           <audio data-src="<%= media_url %>"
                  class="wa-audio-preview__audio"
-                 preload="none"
+                 preload="metadata"
                  data-wa-audio-preview-target="audio"
                  data-action="loadedmetadata->wa-audio-preview#syncDuration timeupdate->wa-audio-preview#syncProgress play->wa-audio-preview#handlePlay pause->wa-audio-preview#syncState ended->wa-audio-preview#syncState"></audio>
-
-          <div id="<%= "#{viewer_id}-audio" %>" class="wa-fancybox-audio" hidden>
-            <div class="wa-fancybox-audio__head">
-              <span class="wa-fancybox-audio__eyebrow"><%= media_label %></span>
-              <strong class="wa-fancybox-audio__title"><%= message.media_name.presence || "Áudio do WhatsApp" %></strong>
-              <% if media_meta.any? %>
-                <span class="wa-fancybox-audio__meta"><%= media_meta.join(" · ") %></span>
-              <% end %>
-            </div>
-            <audio src="<%= media_url %>"
-                   class="wa-fancybox-audio__player"
-                   controls
-                   preload="none"
-                   data-inline-viewer-media="true"></audio>
-          </div>
         </div>
       <% elsif message.document? && media_url.present? %>
+        <% doc_kind = message.media_format_label.to_s.upcase %>
+        <% doc_icon, doc_tone = case doc_kind
+             when "PDF" then ["bi-file-earmark-pdf-fill", "pdf"]
+             when "DOC", "DOCX" then ["bi-file-earmark-word-fill", "word"]
+             when "XLS", "XLSX" then ["bi-file-earmark-excel-fill", "excel"]
+             when "PPT", "PPTX" then ["bi-file-earmark-slides-fill", "ppt"]
+             else ["bi-file-earmark-text-fill", "generic"]
+           end %>
+        <%# thumbnail da 1a pagina (ActiveStorage previewer/poppler) — so PDF e previewavel %>
+        <% doc_preview_url = begin
+             message.media_file.attached? && message.media_file.previewable? ? rails_representation_path(message.media_file.preview(resize_to_limit: [560, 400]), disposition: "inline") : nil
+           rescue StandardError
+             nil
+           end %>
         <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--document">
           <a href="#<%= "#{viewer_id}-document" %>"
-             class="wa-inbox-media-card wa-inbox-media-card--document wa-inbox-media-card--message"
+             class="wa-inbox-media-card wa-inbox-media-card--document wa-inbox-media-card--message wa-inbox-media-card--<%= doc_tone %>"
              data-fancybox="<%= media_group %>"
              data-fancybox-type="inline"
              data-turbo="false"
              data-admin-navigation-ignore="true"
              data-caption="<%= [message.media_name.presence || media_label, media_meta.join(' · '), message.body.presence].compact.join(' — ') %>">
-            <span class="wa-inbox-media-card__icon">
-              <i class="bi bi-file-earmark-text"></i>
-            </span>
-            <span class="wa-inbox-media-card__copy">
-              <span class="wa-inbox-media-card__title"><%= message.media_name.presence || "Abrir documento" %></span>
-              <% if media_meta.any? %>
-                <span class="wa-inbox-media-card__meta"><%= media_meta.join(" · ") %></span>
-              <% end %>
-            </span>
-            <span class="wa-inbox-media-card__action" aria-hidden="true">
-              <i class="bi bi-chevron-right"></i>
+            <% if doc_preview_url %>
+              <span class="wa-inbox-media-card__thumb">
+                <img src="<%= doc_preview_url %>" alt="" loading="lazy">
+              </span>
+            <% end %>
+            <span class="wa-inbox-media-card__row">
+              <span class="wa-inbox-media-card__icon">
+                <i class="bi <%= doc_icon %>"></i>
+              </span>
+              <span class="wa-inbox-media-card__copy">
+                <span class="wa-inbox-media-card__title"><%= message.media_name.presence || "Abrir documento" %></span>
+                <% if media_meta.any? %>
+                  <span class="wa-inbox-media-card__meta"><%= media_meta.join(" · ") %></span>
+                <% end %>
+              </span>
+              <span class="wa-inbox-media-card__action" aria-hidden="true">
+                <i class="bi bi-download"></i>
+              </span>
             </span>
           </a>
 
@@ -205,7 +232,17 @@
                 <span>Baixar</span>
               </a>
             </div>
-            <iframe src="<%= media_url %>" class="wa-fancybox-document__frame" title="<%= message.media_name.presence || "Documento do WhatsApp" %>" loading="lazy"></iframe>
+            <% if doc_kind == "PDF" %>
+              <iframe src="<%= media_url %>" class="wa-fancybox-document__frame" title="<%= message.media_name.presence || "Documento do WhatsApp" %>" loading="lazy"></iframe>
+            <% elsif doc_preview_url %>
+              <div class="wa-fancybox-document__canvas"><img src="<%= doc_preview_url %>" alt="Pré-visualização do documento"></div>
+            <% else %>
+              <div class="wa-fancybox-document__empty">
+                <i class="bi <%= doc_icon %>"></i>
+                <strong>Sem pré-visualização para <%= doc_kind.presence || "este formato" %></strong>
+                <span>Use o botão Baixar acima para abrir o arquivo no aplicativo.</span>
+              </div>
+            <% end %>
           </div>
         </div>
       <% end %>
@@ -217,8 +254,15 @@
       <% end %>
     </div>
 
+    <% reactions = [message.try(:client_reaction), message.try(:agent_reaction)].compact_blank %>
+    <% if reactions.any? %>
+      <div class="wa-reactions"><%= reactions.uniq.join(" ") %></div>
+    <% end %>
+
     <div class="<%= bubble_meta_classes.join(' ') %>" data-wa-message-status="<%= message.status %>">
       <div class="wa-inbox-bubble__time <%= 'wa-inbox-bubble__time--muted' if grouped_with_next %>">
+        <% if message.try(:pinned_at) %><i class="bi bi-pin-angle-fill wa-mark" title="Fixada"></i><% end %>
+        <% if message.try(:starred_at) %><i class="bi bi-star-fill wa-mark" title="Favorita"></i><% end %>
         <%= message.created_at.strftime("%H:%M") %>
         <% if message.outbound? && status_icon.present? %>
           <i class="bi <%= status_icon %> <%= 'is-read' if message.status == 'read' %> <%= 'is-failed' if message.failed? %>"

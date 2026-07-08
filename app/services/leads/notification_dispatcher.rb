@@ -57,7 +57,9 @@ module Leads
     def self.push_to(corretor, title:, body:, url:)
       return unless corretor
 
-      Notifications::PushDispatcher.deliver(admin_user_id: corretor.id, title: title, body: body, url: url)
+      # high: com urgency normal o Android em Doze (aparelho parado) segura a
+      # entrega — exatamente o "push parou de chegar" com o celular na mesa.
+      Notifications::PushDispatcher.deliver(admin_user_id: corretor.id, title: title, body: body, url: url, urgency: "high", ttl: 3600)
     rescue => e
       Rails.logger.warn("[LeadNotify] push de evento falhou pro corretor #{corretor&.id}: #{e.message}")
     end
@@ -108,24 +110,28 @@ module Leads
       begin
         deliver_push if @rule.notify_push
       rescue => e
+        log_notification(:push, :failed, error: e.message)
         Rails.logger.warn("[LeadNotify] push falhou: #{e.message}")
       end
 
       begin
         deliver_whatsapp if @rule.notify_whatsapp
       rescue => e
+        log_notification(:whatsapp, :failed, error: e.message)
         Rails.logger.warn("[LeadNotify] whatsapp falhou: #{e.message}")
       end
 
       begin
         deliver_email if @rule.notify_email
       rescue => e
+        log_notification(:email, :failed, error: e.message)
         Rails.logger.warn("[LeadNotify] email falhou: #{e.message}")
       end
 
       begin
         deliver_webhook if @rule.notify_webhook
       rescue => e
+        log_notification(:webhook, :failed, error: e.message)
         Rails.logger.warn("[LeadNotify] webhook falhou: #{e.message}")
       end
     end
@@ -168,7 +174,12 @@ module Leads
         ttl: 900,
         require_interaction: true
       )
-      Rails.logger.warn("[LeadNotify] push nao enviado lead=#{@lead.id} corretor=#{@corretor.id}") if sent.to_i.zero?
+      if sent.to_i.zero?
+        log_notification(:push, :skipped, reason: "no_active_subscription")
+        Rails.logger.warn("[LeadNotify] push nao enviado lead=#{@lead.id} corretor=#{@corretor.id}")
+      else
+        log_notification(:push, :sent, target: @corretor.id, count: sent.to_i)
+      end
     end
 
     def admin_attend_url
@@ -181,51 +192,104 @@ module Leads
     WHATSAPP_LEAD_TEMPLATE = "lead_agent_v4".freeze
 
     # Notifica o corretor recém-atribuído via WhatsApp Business (Cloud API) usando
-    # o template aprovado — funciona dentro e fora da janela de 24h.
+    # o template aprovado — funciona dentro e fora da janela de 24h. O TRANSPORTE
+    # (integração do tenant OU sender global opt-in) vem do TransportResolver; o
+    # ALVO continua sendo o corretor do tenant.
     def deliver_whatsapp
-      integration = WhatsappBusinessIntegration.current(@lead.tenant)
-      return unless integration.messaging_ready?
+      transport = Notifications::TransportResolver.whatsapp(@lead.tenant)
+      return log_notification(:whatsapp, :skipped, reason: "transport_unavailable") unless transport
+
+      sender = transport.sender
 
       phone = @corretor.phone.presence
-      return if phone.blank?
+      return log_notification(:whatsapp, :skipped, reason: "broker_phone_blank") if phone.blank?
 
-      result = Whatsapp::CloudClient.new(integration).send_template(
+      template_setting = whatsapp_template_setting
+      template_params = whatsapp_template_params(template_setting)
+      components = template_params.present? ? [{ type: "body", parameters: template_params }] : []
+
+      result = Whatsapp::CloudClient.new(sender).send_template(
         to: phone,
-        name: WHATSAPP_LEAD_TEMPLATE,
+        name: whatsapp_template_name(sender, template_setting),
         language: "pt_BR",
-        components: [{ type: "body", parameters: whatsapp_template_params }]
+        components: components
       )
 
-      unless result[:ok]
+      if result[:ok]
+        log_notification(:whatsapp, :sent, transport: transport.source, target: normalized_target(phone), message_id: result[:message_id])
+      else
+        log_notification(:whatsapp, :failed, transport: transport.source, target: normalized_target(phone), error: result[:error], status: result[:status], meta_error: result[:meta_error])
         Rails.logger.warn("[LeadNotify] whatsapp template falhou pro corretor #{@corretor.id}: #{result[:error]}")
       end
     end
 
-    # Parâmetros do corpo do template lead_agent_v4, na ordem:
-    # {{1}} cliente · {{2}} origem · {{3}} nome · {{4}} telefone · {{5}} email · {{6}} outros dados
+    # Template do aviso de lead: usa a configuração por finalidade da conta.
+    # O sender global ainda pode trazer template_name próprio; o fallback evita
+    # quebrar instalações antigas até configurarem a tela de integrações.
+    def whatsapp_template_setting
+      NotificationTemplateSetting.setting_for(
+        tenant: @lead.tenant,
+        purpose: "lead_distribution_broker"
+      )
+    end
+
+    def whatsapp_template_name(sender, setting = nil)
+      setting&.whatsapp_template&.name.presence ||
+        (sender.respond_to?(:template_name) && sender.template_name.presence) ||
+        WHATSAPP_LEAD_TEMPLATE
+    end
+
+    # Parâmetros do corpo do template configurado para a finalidade.
+    # Sem configuração, mantém a ordem histórica do lead_agent_v4:
+    # {{1}} cliente · {{2}} origem · {{3}} nome · {{4}} telefone · {{5}} email · {{6}} outros dados.
     # Com "link seguro" ligado, telefone/email/dados viram links /s/token (só o nome
     # fica visível) e o clique vira o evento de atendimento (sistema intermediário).
-    def whatsapp_template_params
+    def whatsapp_template_params(setting = nil)
+      return default_whatsapp_template_params unless setting&.whatsapp_template
+
+      count = setting.whatsapp_template.variable_count
+      return [] if count.zero?
+
+      mapping = setting.variable_mapping
+      (1..count).map do |index|
+        whatsapp_text_param(whatsapp_variable_value(mapping[index.to_s]))
+      end
+    end
+
+    def default_whatsapp_template_params
+      %w[
+        lead_name
+        lead_origin
+        lead_name
+        lead_phone_or_link
+        lead_email_or_link
+        lead_other_or_link
+      ].map { |source| whatsapp_text_param(whatsapp_variable_value(source)) }
+    end
+
+    def whatsapp_variable_value(source)
       links = Leads::ContactLinks.new(@lead, @corretor)
 
-      if links.secure?(:whatsapp)
-        phone_p = links.url(:phone)
-        email_p = links.url(:email)
-        other_p = links.url(:view)
+      case source.to_s
+      when "lead_name"
+        @lead.display_name
+      when "lead_origin"
+        @lead.origin
+      when "lead_phone_or_link"
+        links.secure?(:whatsapp) ? links.url(:phone) : @lead.display_phone
+      when "lead_email_or_link"
+        links.secure?(:whatsapp) ? links.url(:email) : @lead.display_email
+      when "lead_other_or_link"
+        links.secure?(:whatsapp) ? links.url(:view) : (@lead.product.presence || @lead.origin)
+      when "broker_name"
+        @corretor.name
+      when "broker_phone"
+        @corretor.phone
+      when "broker_email"
+        @corretor.notification_email
       else
-        phone_p = @lead.display_phone
-        email_p = @lead.display_email
-        other_p = (@lead.product.presence || @lead.origin)
+        nil
       end
-
-      [
-        @lead.display_name,
-        @lead.origin,
-        @lead.display_name,
-        phone_p,
-        email_p,
-        other_p
-      ].map { |value| whatsapp_text_param(value) }
     end
 
     # A Cloud API rejeita parâmetros vazios ou com quebra de linha / espaços longos.
@@ -235,11 +299,15 @@ module Leads
       { type: "text", text: text }
     end
 
+    # TRANSPORTE de e-mail resolvido por conta (SMTP próprio ou global opt-in);
+    # o ALVO continua sendo o corretor do tenant. Sem SMTP disponível, não envia.
     def deliver_email
-      return unless EmailSetting.instance.configured?
-      return if @corretor.email.blank?
+      transport = Notifications::TransportResolver.email(@lead.tenant)
+      return log_notification(:email, :skipped, reason: "transport_unavailable") unless transport
+      return log_notification(:email, :skipped, reason: "broker_email_blank") if @corretor.notification_email.blank?
 
-      LeadMailer.with(lead: @lead, corretor: @corretor).lead_assigned.deliver_later
+      job = LeadMailer.with(lead: @lead, corretor: @corretor).lead_assigned.deliver_later
+      log_notification(:email, :sent, transport: transport.source, target: @corretor.notification_email, job_id: job&.job_id)
     end
 
     # Dispara o lead COMPLETO (dados + histórico + corretor + gestor) para todas as
@@ -256,6 +324,25 @@ module Leads
 
       payload = event_payload("webhook").as_json
       urls.each { |url| Leads::WebhookDeliveryJob.perform_later(url, payload) }
+      log_notification(:webhook, :sent, count: urls.size)
+    end
+
+    def log_notification(channel, status, metadata = {})
+      LeadActivity.log!(
+        lead: @lead,
+        kind: "notification_#{status}",
+        metadata: {
+          channel: channel.to_s,
+          rule_id: @rule&.id,
+          rule_name: @rule&.name,
+          admin_user_id: @corretor&.id,
+          admin_user_name: @corretor&.name
+        }.merge(metadata.compact)
+      )
+    end
+
+    def normalized_target(value)
+      value.to_s.gsub(/\D/, "")
     end
 
     def event_payload(channel)
@@ -297,7 +384,7 @@ module Leads
         id: @corretor.id,
         name: @corretor.name,
         phone: @corretor.phone,
-        email: @corretor.email,
+        email: @corretor.notification_email,
         role: @corretor.role,
         manager_id: @corretor.manager_id
       }
@@ -312,7 +399,7 @@ module Leads
         id: manager.id,
         name: manager.name,
         phone: manager.phone,
-        email: manager.email
+        email: manager.notification_email
       }
     end
 

@@ -1,19 +1,21 @@
+<%# ---------------------------------------------------------------------------
+    app/views/admin/whatsapp_inbox/_conversation_item.html.erb
+    Refatorado para o visual do design system: avatar com iniciais, nome + hora,
+    prévia e etiquetas do lead. Mantém TODOS os data-* usados pelo controller
+    Stimulus wa-queue (busca/filtros) e pelo broadcaster (data-conversation-id).
+    --------------------------------------------------------------------------- %>
 <% active = local_assigns.fetch(:active, false) %>
 <% focus_mode = local_assigns.fetch(:focus_mode, false) %>
 <% compact_mode = local_assigns.fetch(:compact_mode, false) %>
 <% lead_labels = local_assigns.key?(:lead_labels) ? local_assigns[:lead_labels] : (conv.lead ? conv.lead.preloaded_labels_for(current_admin_user) : []) %>
-<% conversation_actions = capture do %>
-  <div class="wa-inbox-conversation__metrics">
-    <% if conv.unread_count.to_i.positive? %>
-      <span class="wa-inbox-conversation__unread"><%= conv.unread_count %></span>
-    <% end %>
-    <span class="wa-inbox-conversation__time"><%= conv.last_message_at&.strftime("%d/%m %H:%M") || "-" %></span>
-  </div>
-<% end %>
+<% initials = wa_initials(conv.display_name) %>
 
 <%= link_to (focus_mode ? admin_whatsapp_conversation_path(conv, workspace: "focus") : admin_whatsapp_conversation_path(conv)),
       class: ["wa-inbox-conversation", ("wa-inbox-conversation--compact" if compact_mode), ("is-active" if active)].compact.join(" "),
       data: {
+        action: "click->wa-queue#select",
+        turbo_frame: "wa-thread",
+        turbo_action: "advance",
         conversation_id: conv.id,
         conversation_default_href: admin_whatsapp_conversation_path(conv),
         conversation_focus_href: admin_whatsapp_conversation_path(conv, workspace: "focus"),
@@ -21,19 +23,22 @@
         lead: conv.lead.present?,
         search: [conv.contact_phone, conv.display_name, conv.lead&.name, conv.last_message_preview].compact.join(" ").downcase
       } do %>
-  <%= ax_record_item(
-        title: conv.display_name,
-        eyebrow: conv.lead&.name.presence || "Sem lead vinculado",
-        meta: conv.contact_phone,
-        icon: "person-circle",
-        class_name: "wa-inbox-conversation__card",
-        actions: conversation_actions
-      ) do %>
-    <span class="wa-inbox-conversation__preview"><%= conv.last_message_preview.presence || "Sem mensagem recente." %></span>
-    <% if conv.lead && lead_labels.any? %>
-      <div class="wa-inbox-conversation__labels">
-        <%= render "admin/lead_labels/chips", lead: conv.lead, labels: lead_labels %>
+  <div class="wa-inbox-conversation__card">
+    <span class="wa-inbox-conversation__avatar" aria-hidden="true"><%= initials %></span>
+    <div class="wa-inbox-conversation__main">
+      <div class="wa-inbox-conversation__top">
+        <strong class="wa-inbox-conversation__name"><%= conv.display_name %></strong>
+        <span class="wa-inbox-conversation__time"><%= conv.last_message_at&.strftime("%d/%m %H:%M") || "-" %></span>
       </div>
-    <% end %>
-  <% end %>
+      <div class="wa-inbox-conversation__bottom">
+        <span class="wa-inbox-conversation__preview"><%= conv.last_message_preview.presence || "Sem mensagem recente." %></span>
+        <% if conv.lead && lead_labels.any? %>
+          <span class="wa-inbox-conversation__labels"><%= render "admin/lead_labels/chips", lead: conv.lead, labels: lead_labels %></span>
+        <% end %>
+        <% if conv.unread_count.to_i.positive? %>
+          <span class="wa-inbox-conversation__unread"><%= conv.unread_count %></span>
+        <% end %>
+      </div>
+    </div>
+  </div>
 <% end %>

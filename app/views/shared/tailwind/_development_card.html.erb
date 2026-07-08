@@ -3,10 +3,11 @@
   title = development.nome_empreendimento.presence || development.titulo_anuncio.presence || development.display_title
   location = [development.bairro, development.cidade].compact_blank.join(" - ")
   units_count = local_assigns[:unit_count].presence || development.available_units_count
-  area_label = development.card_area_text
-  suites_label = development.card_suites_text
-  dorms_label = development.card_dormitorios_text
-  vagas_label = development.card_vagas_text
+  unit_metric = local_assigns[:unit_metric]
+  area_label = unit_metric ? unit_metric[:area_label] : development.card_area_text
+  suites_label = unit_metric ? unit_metric[:suites_label] : development.card_suites_text
+  dorms_label = unit_metric ? unit_metric[:dorms_label] : development.card_dormitorios_text
+  vagas_label = unit_metric ? unit_metric[:vagas_label] : development.card_vagas_text
   metrics = [
     area_label,
     suites_label.present? ? "#{suites_label} suítes" : (dorms_label.present? ? "#{dorms_label} quartos" : nil),

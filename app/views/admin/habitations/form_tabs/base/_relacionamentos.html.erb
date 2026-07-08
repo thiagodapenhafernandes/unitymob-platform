@@ -1,88 +1,9 @@
-<%= ax_form_section(title: "Empreendimento e proprietário", eyebrow: "Relacionamentos", collapse_id: "developmentContextCollapse", collapsed: !show_development_context) do %>
-  <%= ax_field_grid(columns: 12, gap: :compact) do %>
-    <div class="ax-span-5" data-habitation-form-target="unitOnly">
-      <% development_action = capture do %>
-        <% if can_edit_protected_habitation_fields %>
-          <% if habitation.persisted? %>
-            <%= link_to new_admin_habitation_path(
-                  habitation: { tipo: "Empreendimento", categoria: "Empreendimento" },
-                  source_habitation_id: habitation.id,
-                  return_to: @return_to_path
-                ),
-                class: "ax-btn ax-btn--ghost",
-                title: "Cadastrar empreendimento e vincular esta unidade",
-                target: "_blank",
-                rel: "noopener" do %>
-              <i class="bi bi-plus"></i>
-            <% end %>
-          <% else %>
-            <button type="button"
-                    class="ax-btn ax-btn--ghost"
-                    disabled
-                    title="Salve o imóvel antes de criar e vincular um empreendimento.">
-              <i class="bi bi-plus"></i>
-            </button>
-          <% end %>
-        <% end %>
-      <% end %>
-
-      <%= ax_relationship_select(
-            form: f,
-            method: :codigo_empreendimento,
-            label: "Pertence ao empreendimento",
-            collection: @developments,
-            value_method: :codigo,
-            text_method: :nome_empreendimento,
-            select_options: { include_blank: true },
-            html_options: {
-              disabled: !can_edit_protected_habitation_fields,
-              data: {
-                controller: "tom-select",
-                placeholder: "Selecione...",
-                habitation_form_target: "developmentSelect",
-                action: "change->habitation-form#developmentChanged"
-              }
-            },
-            action: development_action,
-            tooltip: "Vincula esta unidade a um empreendimento existente. Ao vincular uma unidade, nome do empreendimento e dados do proprietário podem ser ajustados manualmente."
-          ) %>
-
-      <% linked_dev = f.object.empreendimento %>
-      <% if f.object.codigo_empreendimento.present? %>
-        <% if linked_dev.present? %>
-          <%= ax_inline_notice(tone: :success, icon: "check-circle", class_name: "ax-relationship-select__notice") do %>
-            Vínculo ativo: <strong><%= linked_dev.nome_empreendimento.presence || linked_dev.codigo %></strong>
-          <% end %>
-        <% else %>
-          <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle", class_name: "ax-relationship-select__notice") do %>
-            Código sem empreendimento válido. Ajuste antes de salvar.
-          <% end %>
-        <% end %>
-      <% end %>
-    </div>
-
-    <div class="ax-span-4">
-      <%= ax_text_field(
-            form: f,
-            method: :nome_empreendimento,
-            label: (f.object.tipo == "Empreendimento" ? "Nome do empreendimento" : "Nome do condomínio"),
-            tooltip: (f.object.tipo == "Empreendimento" ? "Nome público e interno do cadastro de empreendimento." : "Campo gerenciado automaticamente para unidades vinculadas."),
-            label_options: { data: { habitation_form_target: "developmentNameLabel" } },
-            readonly: !can_edit_protected_habitation_fields || f.object.codigo_empreendimento.present?,
-            data: {
-              habitation_form_target: "developmentName",
-              habitation_duplicate_check_target: "building",
-              action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
-            }
-          ) %>
-    </div>
-
-    <div class="ax-span-3">
-      <%= ax_date_field(form: f, method: :data_entrega, label: "Data entrega", data: { habitation_form_target: "deliveryDate" }) %>
-    </div>
-
-    <% if can_export_proprietor_data? %>
-      <div class="ax-span-5">
+<%# O vínculo de empreendimento mora na aba Empreendimento
+    (form_tabs/empreendimento/_vinculo). Aqui ficam os vínculos da unidade. %>
+<% if can_export_proprietor_data? %>
+  <%= ax_form_section(title: "Proprietário e captação", eyebrow: "Cadastro", icon: "person-vcard") do %>
+    <%= ax_field_grid(columns: 12, gap: :compact) do %>
+      <div class="ax-span-6">
         <% proprietor_action = capture do %>
           <%= link_to "#quickProprietorModal",
               class: "ax-btn ax-btn--ghost",
@@ -108,7 +29,7 @@
             ) %>
       </div>
 
-      <div class="ax-span-4">
+      <div class="ax-span-6">
         <%= ax_relationship_select(
               form: f,
               method: :admin_user_id,
@@ -124,16 +45,5 @@
             ) %>
       </div>
     <% end %>
-
-    <div class="ax-span-3">
-      <%= ax_select_field(
-            form: f,
-            method: :perfil_construcao,
-            label: "Perfil de construção",
-            choices: Habitation::CONSTRUCTION_PROFILES,
-            select_options: { include_blank: true },
-            html_options: { data: { controller: "tom-select", placeholder: "Selecione...", habitation_form_target: "constructionProfileSelect" } }
-          ) %>
-    </div>
   <% end %>
 <% end %>

@@ -12,6 +12,7 @@ class LocationPing < ApplicationRecord
   belongs_to :admin_user
 
   validates :recorded_at, presence: true
+  validate  :coordinates_within_range
 
   scope :recent, -> { order(recorded_at: :desc) }
 
@@ -25,6 +26,15 @@ class LocationPing < ApplicationRecord
   end
 
   private
+
+  # Rejeita coordenadas ausentes/malformadas ou fora da faixa geográfica
+  # (lat∈[-90,90], lng∈[-180,180]) antes de montar a geografia — evita
+  # gravar POINTs inválidos e barra spoof malformado / lat-lng trocados.
+  def coordinates_within_range
+    return if Geo::Coordinates.valid_point?(latitude, longitude)
+
+    errors.add(:base, "Coordenadas inválidas ou fora da faixa geográfica.")
+  end
 
   def extract_coordinates
     row = self.class.connection.select_one(

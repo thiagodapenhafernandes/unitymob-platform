@@ -1,0 +1,33 @@
+<%#
+  Card padrão (.ax-card com header) colapsável via ax-disclosure.
+  locals: title (req), collapse_id (req), icon, badge, actions, collapsed,
+          class_name, body
+%>
+<%
+  collapsed = local_assigns.fetch(:collapsed, false)
+  badge = local_assigns[:badge]
+  actions = local_assigns[:actions]
+%>
+<section class="ax-card ax-collapse-card <%= 'is-open' unless collapsed %> <%= local_assigns[:class_name] %>"
+         data-controller="ax-disclosure"
+         data-ax-disclosure-open-value="<%= !collapsed %>">
+  <header class="ax-card__header ax-collapse-card__header">
+    <button type="button"
+            class="ax-collapse-card__trigger"
+            data-action="ax-disclosure#toggle"
+            data-ax-disclosure-target="trigger"
+            aria-expanded="<%= !collapsed %>"
+            aria-controls="<%= collapse_id %>">
+      <span class="ax-card__title">
+        <% if local_assigns[:icon].present? %><i class="bi bi-<%= icon %> ax-ico"></i><% end %>
+        <%= title %>
+      </span>
+      <% if badge.present? %><span class="ax-badge ax-badge--gray"><%= badge %></span><% end %>
+      <i class="bi bi-chevron-down ax-collapse-card__chevron" aria-hidden="true"></i>
+    </button>
+    <% if actions.present? %><div class="ax-collapse-card__actions"><%= actions %></div><% end %>
+  </header>
+  <div class="ax-card__body" id="<%= collapse_id %>" data-ax-disclosure-target="content" <%= "hidden" if collapsed %>>
+    <%= local_assigns[:body] %>
+  </div>
+</section>

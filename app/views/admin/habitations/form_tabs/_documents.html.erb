@@ -4,6 +4,7 @@
       <% vista_documents_actions = ax_badge("#{vista_document_assets.size} arquivo(s)", tone: :gray) %>
       <%= ax_form_section(title: "Documentos do Vista",
                           eyebrow: "Integração",
+                          icon: "cloud-download",
                           actions: vista_documents_actions,
                           tooltip: "Arquivos identificados na integração. Estes itens são rastreáveis pela importação e não devem ser removidos manualmente por aqui.") do %>
         <% if vista_document_assets.any? %>
@@ -57,6 +58,7 @@
     <%= ax_form_section(
           title: "Documentos internos",
           eyebrow: "Anexos",
+          icon: "folder2-open",
           tooltip: "Administrador e Administrativo podem anexar/remover documentos. Captadores visualizam sem trocar nem apagar."
         ) do %>
       <%= ax_field_grid(columns: 12, gap: :compact, class_name: "ax-field-grid--spaced") do %>

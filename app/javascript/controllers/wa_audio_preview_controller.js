@@ -115,8 +115,12 @@ export default class extends Controller {
     const source = this.audioTarget.dataset.src || this.audioTarget.getAttribute("src") || this.audioTarget.currentSrc
     if (source) this.audioTarget.dataset.src = source
     this.audioTarget.autoplay = false
-    this.audioTarget.preload = "none"
-    this.audioTarget.removeAttribute("src")
+    // metadata: duracao real aparece sem baixar o arquivo (era 0:00/0:00 ate o play)
+    this.audioTarget.preload = "metadata"
+    if (source && !this.audioTarget.getAttribute("src")) {
+      this.audioTarget.src = source
+      this.audioTarget.dataset.loaded = "true"
+    }
     this.audioTarget.load()
   }
 

@@ -4,9 +4,17 @@ Rails.application.routes.draw do
     omniauth_callbacks: 'admin/omniauth_callbacks'
   }
 
+  # 2FA: desafio TOTP entre a senha e o sign_in (Admin::SessionsController)
+  devise_scope :admin_user do
+    get  "admin/two_factor", to: "admin/sessions#two_factor", as: :admin_two_factor
+    post "admin/two_factor", to: "admin/sessions#verify_two_factor"
+  end
+
   resources :navigation_events, only: [:create], controller: "public_navigation_events"
   
   # Admin Panel
+  get "pwa-icon-:size", to: "pwa_icons#show", as: :pwa_icon, constraints: { size: /192|512/ }
+
   namespace :admin do
     delete "context_items", to: "context_items#clear", as: :context_items
     delete "context_items/:id", to: "context_items#destroy", as: :context_item, constraints: { id: /[^\/]+/ }
@@ -62,7 +70,22 @@ Rails.application.routes.draw do
     post "system/tenants/:tenant_id/impersonate_owner",
          to: "system#impersonate_owner",
          as: :system_tenant_owner_impersonation
-    
+    # Erros da aplicação (rastreador interno) — visão do Admin do Sistema.
+    namespace :system do
+      resources :error_events, only: [:index, :show] do
+        member do
+          patch :resolve
+          patch :reopen
+        end
+      end
+
+      # Notificações Globais: transportes globais (WhatsApp/SMTP/VAPID) usados
+      # como fallback opt-in pelas contas + toggles de opt-in por Tenant.
+      resource :notification_settings, only: [:edit, :update], controller: "notification_settings" do
+        patch :update_tenant_fallbacks
+      end
+    end
+
     resource :home_setting, only: [:edit, :update]
     resource :contact_setting, only: [:edit, :update]
     resource :layout_setting, only: [:show, :edit, :update]
@@ -80,6 +103,11 @@ Rails.application.routes.draw do
       end
     end
     resource :whatsapp_integration, only: [:show, :update]
+    resource :whatsapp_service_setting, only: [:edit, :update]
+    get "manifest", to: "manifests#show", as: :manifest, defaults: { format: :json }
+    get "configuracoes-da-conta", to: "account_settings#show", as: :account_settings
+    patch "configuracoes-da-conta", to: "account_settings#update"
+    resources :presentation_cards, except: [:show]
     resource :email_setting, only: [:edit, :update] do
       post :test
     end
@@ -90,7 +118,9 @@ Rails.application.routes.draw do
     resource :ai_integration, only: [:show, :update] do
       post :generate_batch
     end
-    resource :google_integration, only: [:show, :update]
+    resource :google_integration, only: [:show, :update] do
+      post :test_calendar
+    end
     resource :tracking_integration, only: [:show, :update]
     resource :storage_integration, only: [:show, :update] do
       post :test_connection
@@ -133,6 +163,7 @@ Rails.application.routes.draw do
       resources :home_section_items, only: [:new, :create, :edit, :update, :destroy]
     end
     resources :admin_users, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      post :reset_two_factor, on: :member
       collection do
         get   :hierarchy
         patch :move_hierarchy
@@ -149,6 +180,9 @@ Rails.application.routes.draw do
         post :upload
         patch :reorder
         patch :visibility
+        patch :ambiente
+        post :organize
+        post :share
         delete :destroy_photo
       end
       post :sync, on: :member
@@ -167,6 +201,9 @@ Rails.application.routes.draw do
       resources :proposals, only: [:new, :create]
       resources :lead_labels, only: [:index, :create, :update, :destroy] do
         post :toggle, on: :member
+      end
+      resources :property_interests, only: [:create, :destroy] do
+        get :search, on: :collection
       end
     end
 
@@ -234,13 +271,22 @@ Rails.application.routes.draw do
       end
     end
     resources :whatsapp_campaign_recipients, path: "whatsapp/importados", only: [:index]
-    resources :whatsapp_sender_numbers, path: "whatsapp/numeros", only: [:create, :update, :destroy]
+    resources :whatsapp_sender_numbers, path: "whatsapp/numeros", only: [:create, :update, :destroy] do
+      post :test_connection, on: :member
+    end
+    resources :notification_template_settings, path: "notificacoes/templates", only: [:create, :update, :destroy]
 
     # === Atendimento WhatsApp (inbox) ===
     resources :whatsapp_conversations, only: [:index, :show], path: "atendimento/whatsapp", controller: "whatsapp_inbox" do
       member do
         post :send_message
         get "messages/:message_id/media", action: :media, as: :message_media
+        post "messages/:message_id/react", action: :react
+        post "messages/:message_id/toggle_pin", action: :toggle_pin
+        post "messages/:message_id/toggle_star", action: :toggle_star
+        post "messages/:message_id/forward", action: :forward_message
+        post "messages/:message_id/add_to_notes", action: :add_to_notes
+        post "messages/:message_id/hide", action: :hide_message
       end
       collection do
         post :sync_templates
@@ -255,7 +301,13 @@ Rails.application.routes.draw do
 
     resources :access_audit_logs, only: [:index]
     resources :data_export_audit_logs, only: [:index]
+    resources :presentation_audit_logs, only: [:index]
     resource :access_security, only: [:show, :update], controller: "access_security"
+    resource :two_factor_settings, only: [:show, :create, :destroy], controller: "two_factor_settings" do
+      post :regenerate_backup_codes
+    end
+    resources :account_memberships, only: [:index, :create, :destroy]
+    resource :account_switch, only: [:create]
     resources :access_control_rules, only: [:create, :update, :destroy]
     resources :trusted_devices, only: [:update, :destroy]
     resources :distribution_rules do
@@ -275,6 +327,7 @@ Rails.application.routes.draw do
       delete :disconnect
       patch :phone_settings
       patch :manual_connection
+      post :sync_notification_templates
       post :test_connection
       post :send_test
     end
@@ -308,7 +361,9 @@ Rails.application.routes.draw do
     end
 
     # === Lojas físicas (módulo field) ===
-    resources :stores
+    resources :stores do
+      get :geocode, on: :collection
+    end
 
     # === Captação (wizard + dashboard) ===
     resources :captacoes, controller: "habitation_intakes" do
@@ -316,6 +371,7 @@ Rails.application.routes.draw do
         get :dashboard, to: "captacoes#dashboard"
         patch :dashboard_title, to: "captacoes#update_dashboard_title"
         get :export
+        get :proprietor_lookup
       end
       member do
         post :publish
@@ -328,7 +384,10 @@ Rails.application.routes.draw do
     resources :captacao_goals
 
     # === Field settings (toggle da feature flag) ===
-    resource :field_settings, only: [:edit, :update]
+    resource :field_settings, only: [:edit, :update] do
+      patch :block_agent
+      patch :unblock_agent
+    end
 
     # === Field (check-in geolocalizado de corretores) ===
     namespace :field do
@@ -347,7 +406,7 @@ Rails.application.routes.draw do
 
   # === Rotas do PWA de corretores em campo ===
   # Flag Setting.field_checkin_enabled decide se respondem (retorna 404 com flag off).
-  # Corretor precisa estar autenticado via Devise + ter field_agent_enabled=true.
+  # Usuário ativo pode fazer check-in por padrão; bloqueios pontuais ficam nas configurações de campo.
   namespace :field do
     get "up", to: "health#up"
     get "manifest", to: "manifests#show", as: :manifest, defaults: { format: :json }
@@ -454,6 +513,8 @@ Rails.application.routes.draw do
   
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check
+  # Health profundo: banco + cache Rails + worker SolidQueue (aponte o uptime monitor aqui).
+  get "healthz" => "health#check", as: :health_check
   
   # Public Leads creation
   resources :leads, only: [:create] do
@@ -466,11 +527,23 @@ Rails.application.routes.draw do
   get "p/:token", to: "proposals#show", as: :public_proposal
   post "p/:token/decidir", to: "proposals#decide", as: :decide_public_proposal
 
+  # Aceite público de convite multi-conta: o token do e-mail é a credencial de
+  # entrada; o aceite em si exige login com o e-mail convidado.
+  get   "convites/:token", to: "membership_invitations#show",   as: :membership_invitation
+  patch "convites/:token", to: "membership_invitations#update"
+
   # Links seguros de lead (notificação WhatsApp): token é a credencial.
   get "s/:token", to: "secure_links#show", as: :secure_link
 
-  # Mission Control for Jobs
-  mount MissionControl::Jobs::Engine => "/jobs"
+  # Galeria pública de fotos selecionadas do imóvel (compartilhamento por WhatsApp).
+  get "fotos/:token", to: "habitation_photo_shares#show", as: :habitation_photo_share
+
+  # Mission Control for Jobs — restrito a Admin do Sistema logado.
+  # Sem isso, /jobs expõe filas, argumentos de jobs (com PII) e ações
+  # de retry/descarte para qualquer visitante.
+  authenticate :admin_user, ->(user) { user.system_admin? } do
+    mount MissionControl::Jobs::Engine => "/jobs"
+  end
   mount ActionCable.server => "/cable"
 
   # Webhooks

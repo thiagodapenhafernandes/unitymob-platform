@@ -61,12 +61,26 @@
 
           <div class="au-row au-row--2">
             <div class="au-field">
+              <% if admin_user.respond_to?(:mirror?) && admin_user.mirror? %>
+                <p class="ax-field__hint" style="margin:0">Usuário externo (espelho): e-mail e senha são da conta de origem — <%= admin_user.notification_email %>.</p>
+              <% else %>
               <%= ax_field_label(f, :password, text: admin_user.persisted? ? "Senha (em branco = não alterar)" : "Senha") %>
               <%= f.password_field :password, class: "ax-control", autocomplete: "new-password" %>
             </div>
             <div class="au-field">
               <%= ax_field_label(f, :password_confirmation, text: "Confirmar senha") %>
               <%= f.password_field :password_confirmation, class: "ax-control", autocomplete: "new-password" %>
+              <% end %>
+              <% if admin_user.persisted? && admin_user.respond_to?(:otp_enabled?) && admin_user.otp_enabled? && current_admin_user.tenant_owner? %>
+                <div class="tw-mt-2">
+                  <%= link_to reset_two_factor_admin_admin_user_path(admin_user),
+                        data: { turbo_method: :post,
+                                turbo_confirm: "Resetar a verificação em duas etapas de #{admin_user.name}? A pessoa volta a entrar só com a senha e precisará reconfigurar o app autenticador." },
+                        class: "ax-btn ax-btn--sm ax-btn--ghost" do %>
+                    <i class="bi bi-shield-x ax-ico"></i><span>Resetar 2FA (perdeu o aparelho)</span>
+                  <% end %>
+                </div>
+              <% end %>
             </div>
           </div>
         </div>
@@ -75,41 +89,33 @@
 
     <div class="au-form-side">
       <%= ax_operational_panel(eyebrow: "Acesso", title: "Acesso e equipe") do %>
-        <div class="au-body">
+        <div class="au-body" data-controller="admin-user-access">
           <% if current_admin_user&.can?(:manage, :corretores) %>
-            <div data-controller="admin-user-access">
             <div class="au-field">
-              <%= ax_field_label(f, :profile_id, text: "Perfil de acesso", tooltip: "Define o que o usuário pode ver e fazer no painel.") %>
-              <%= f.collection_select :profile_id,
-                                      @assignable_vertical_profiles || [],
-                                      :id,
-                                      :name,
-                                      { prompt: "Selecione um perfil vertical..." },
-                                      { class: "ax-control", data: { admin_user_access_target: "vertical", action: "change->admin-user-access#sync" } } %>
-              <p class="au-hint">Perfil vertical define hierarquia e escopo máximo de visão.</p>
-            </div>
-
-            <div class="au-field">
-              <%= ax_field_label(f, :horizontal_profile_id, text: "Função operacional", tooltip: "Opcional. Especializa permissões sem alterar a hierarquia principal.") %>
-              <select name="admin_user[horizontal_profile_id]"
-                      id="admin_user_horizontal_profile_id"
-                      class="ax-control"
-                      data-admin-user-access-target="horizontal">
-                <option value="">Nenhuma função horizontal</option>
-                <% (@assignable_horizontal_profiles || []).group_by(&:vertical_profile).each do |vertical_profile, profiles| %>
-                  <optgroup label="<%= vertical_profile&.name || "Sem vínculo" %>">
-                    <% profiles.each do |horizontal_profile| %>
-                      <option value="<%= horizontal_profile.id %>"
-                              data-vertical-profile-id="<%= horizontal_profile.vertical_profile_id %>"
-                              <%= "selected" if admin_user.horizontal_profile_id == horizontal_profile.id %>>
-                        <%= horizontal_profile.name %>
+              <%= ax_field_label(nil, nil, text: "Perfil de acesso", for: "admin_user_access_profile_id") %>
+              <%
+                current_access_id = admin_user.horizontal_profile_id.presence || admin_user.profile_id
+              %>
+              <select name="admin_user[access_profile_id]" id="admin_user_access_profile_id" class="ax-control"
+                      data-admin-user-access-target="accessSelect"
+                      data-action="change->admin-user-access#sync">
+                <option value="">Selecione um perfil...</option>
+                <optgroup label="Hierarquia">
+                  <% (@assignable_vertical_profiles || []).each do |profile| %>
+                    <option value="<%= profile.id %>" data-axis="vertical" <%= "selected" if current_access_id == profile.id %>><%= profile.name %></option>
+                  <% end %>
+                </optgroup>
+                <% if (@assignable_horizontal_profiles || []).any? %>
+                  <optgroup label="Funções operacionais">
+                    <% @assignable_horizontal_profiles.each do |horizontal_profile| %>
+                      <option value="<%= horizontal_profile.id %>" data-axis="horizontal" <%= "selected" if current_access_id == horizontal_profile.id %>>
+                        <%= horizontal_profile.name %><%= " · #{horizontal_profile.root_vertical_profile.name}" if horizontal_profile.root_vertical_profile %>
                       </option>
                     <% end %>
                   </optgroup>
                 <% end %>
               </select>
-              <p class="au-hint">Funções horizontais atuam dentro do limite do perfil vertical.</p>
-            </div>
+              <p class="au-hint">O eixo é decidido pelo perfil: hierarquia define escopo e equipe; função operacional já carrega a hierarquia a que pertence.</p>
             </div>
           <% else %>
             <div class="au-field">
@@ -120,22 +126,28 @@
 
           <div class="au-switches">
             <%= ax_toggle_chip(f, :active, label: "Ativo no sistema", id: "admin_user_active") %>
-            <%= ax_toggle_chip(f, :display_on_site, label: "Exibir perfil no site", id: "admin_user_display_on_site") %>
+            <span data-admin-user-access-target="verticalOnly">
+              <%= ax_toggle_chip(f, :display_on_site, label: "Exibir perfil no site", id: "admin_user_display_on_site") %>
+            </span>
           </div>
           <p class="au-hint">Usuários inativos não recebem leads e ficam fora da distribuição. O status é sincronizado a cada importação do Vista.</p>
 
-          <div class="au-field">
-            <%= ax_field_label(f, :acting_type, text: "Área de atuação", tooltip: "Venda, Locação ou Ambos.") %>
-            <%= f.select :acting_type, AdminUser.acting_types.keys.map { |k| [I18n.t("enums.admin_user.acting_type.#{k}", default: k.humanize), k] }, { prompt: "Selecione..." }, { class: "ax-control" } %>
+          <div class="au-field" data-admin-user-access-target="verticalOnly">
+            <%= ax_field_label(f, :acting_type, text: "Área de atuação", tooltip: "Venda, Locação ou Ambos. Define quais gestores o usuário precisa.") %>
+            <%= f.select :acting_type, AdminUser.acting_types.keys.map { |k| [I18n.t("enums.admin_user.acting_type.#{k}", default: k.humanize), k] }, { prompt: "Selecione..." }, { class: "ax-control", data: { admin_user_access_target: "actingSelect", action: "change->admin-user-access#sync" } } %>
           </div>
 
           <% if current_admin_user&.can?(:manage, :corretores) %>
-            <div class="au-field">
-              <%= ax_field_label(f, :manager_id, text: "Gestor imediato", tooltip: "Organiza equipes e regras de distribuição.") %>
-              <% manager_options = @assignable_manager_options || [] %>
+            <% manager_options = @assignable_manager_options || [] %>
+            <div class="au-field" data-admin-user-access-target="verticalOnly salesManagerField">
+              <%= ax_field_label(f, :manager_id, text: "Gestor de Venda", tooltip: "Equipe de venda: hierarquia e regras de distribuição de venda.") %>
               <%= f.collection_select :manager_id, manager_options, :id, :name, { prompt: "Nenhum (topo da hierarquia)" }, { class: "ax-control" } %>
-              <p class="au-hint">O gestor precisa estar em um perfil vertical acima do usuário.</p>
             </div>
+            <div class="au-field" data-admin-user-access-target="verticalOnly rentalsManagerField">
+              <%= ax_field_label(f, :rentals_manager_id, text: "Gestor de Locação", tooltip: "Equipe de locação: hierarquia e regras de distribuição de locação.") %>
+              <%= f.collection_select :rentals_manager_id, manager_options, :id, :name, { prompt: "Nenhum (topo da hierarquia)" }, { class: "ax-control" } %>
+            </div>
+            <p class="au-hint" data-admin-user-access-target="verticalOnly">Cada área de atuação exige o gestor correspondente — <strong>"Ambos" pede os dois</strong>. O gestor precisa estar em um perfil vertical acima do usuário; sem o vínculo da área, o usuário fica fora daquela hierarquia e <strong>não aparece nas regras de distribuição da área</strong>.</p>
           <% end %>
 
           <% if current_admin_user&.tenant_owner? %>

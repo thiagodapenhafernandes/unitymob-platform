@@ -1,3 +1,9 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Leads", @return_to_path.presence || admin_leads_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong><%= @lead.display_name %></strong>
+<% end %>
+
 <div class="lead-show-workspace" data-controller="attribute-manager" data-attribute-manager-modal-id-value="attributeManagerModalLead">
 
 <%# ===== Cabeçalho ===== %>
@@ -5,6 +11,9 @@
 <% open_tasks = (@actionable_tasks || @tasks).reject(&:concluida?) %>
 
 <% @lead_heading_actions = capture do %>
+    <%= link_to @return_to_path.presence || admin_leads_path, class: "ax-btn ax-btn--sm" do %>
+      <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
+    <% end %>
     <button type="button" class="ax-btn ax-btn--sm" data-ax-modal-open="#leadAuditHistoryModal">
       <i class="bi bi-clock-history ax-ico"></i><span>Histórico</span>
     </button>
@@ -12,21 +21,22 @@
 
 <%
   lead_heading_subtitle = [
-    @lead.origin.presence || "Origem não informada",
-    @lead.created_at.strftime("%d/%m/%Y %H:%M")
-  ]
-  lead_heading_subtitle << @lead.admin_user.name if @lead.admin_user
-  lead_heading_subtitle = lead_heading_subtitle.join(" · ")
+    @lead.display_email.presence,
+    @lead.display_phone.presence,
+    @lead.admin_user&.name.presence
+  ].compact.join(" · ")
 %>
 
 <%= ax_workspace_heading(
       title: @lead.display_name,
-      eyebrow: "Lead",
+      eyebrow: "Contato",
       icon: "person",
       subtitle: lead_heading_subtitle,
       pills: [sla[:label], @lead.status.presence || Lead.default_status],
       actions: @lead_heading_actions
     ) %>
+
+<%= render "admin/leads/origin_line", lead: @lead %>
 
 <%# ===== Barra de funil (bate o olho e entende a etapa) ===== %>
 <div class="ax-card tw-mb-3">
@@ -46,298 +56,48 @@
   </div>
 </div>
 
-<div class="lead-desktop-hint">
-  <%= render "admin/shared/hint", key: "lead_workspace", icon: "bi-stars",
-        text: "Esta é a central do lead: a <strong>barra acima</strong> mostra a etapa do funil (clique para avançar). Tudo que você fizer — tarefa, visita, proposta, WhatsApp — aparece na <strong>linha do tempo</strong> abaixo." %>
-</div>
-
-<%# ===== Próxima ação + ações rápidas ===== %>
-<div class="ax-card tw-mb-4 lead-next-action-card">
-  <div class="ax-card__body tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
-    <div class="tw-flex tw-items-center tw-gap-2">
-    <i class="bi bi-flag-fill tw-text-lg lead-next-action-icon"></i>
-      <div>
-        <div class="ax-stat-label">Próxima ação</div>
-        <% if @next_task %>
-          <div class="ax-strong"><%= @next_task.title %>
-            <% b = task_badge(@next_task) %><span class="ax-badge ax-badge--<%= b[:color] %> tw-ml-1"><%= b[:label] %></span>
-          </div>
-        <% else %>
-          <div class="ax-page-subtitle">Nenhuma tarefa pendente. Defina o próximo passo →</div>
-        <% end %>
-      </div>
-    </div>
-    <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
-      <%= render "admin/lead_labels/chips", lead: @lead, labels: @lead.labels_for(current_admin_user) %>
-      <%= render "admin/lead_labels/button", lead: @lead, trigger_label: "Etiquetas", trigger_class: "ax-btn ax-btn--sm" %>
-      <% if can?(:manage, :comercial) %>
-        <%= render "admin/tasks/form_modal", modal_id: "newTaskLead", lead: @lead, trigger_label: "Tarefa", trigger_class: "ax-btn ax-btn--sm" %>
-        <%= render "admin/appointments/form_modal", lead: @lead, trigger_label: "Agendar visita", trigger_class: "ax-btn ax-btn--sm" %>
-        <%= render "admin/leads/log_contact_modal", lead: @lead %>
-        <%= link_to new_admin_lead_proposal_path(@lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-          <i class="bi bi-file-earmark-text ax-ico"></i><span>Nova proposta</span>
-        <% end %>
-      <% end %>
-    </div>
-  </div>
-</div>
-
-<% if can?(:view, :whatsapp_inbox) %>
-  <%= render "admin/shared/ui/lead_whatsapp_panel",
-        lead: @lead,
-        conversation: @whatsapp_conversation,
-        templates: @whatsapp_templates,
-        summary: @whatsapp_summary,
-        thread_context_locals: @whatsapp_thread_context_locals,
-        messages: @whatsapp_messages,
-        return_to: request.fullpath %>
-<% end %>
-
-<div class="lead-mobile-priority" aria-label="Resumo operacional do lead">
-  <section class="lead-mobile-priority__identity">
-    <div>
-      <span>Contato</span>
-      <strong><%= @lead.display_name %></strong>
-      <small><%= [@lead.origin.presence || "Origem não informada", @lead.admin_user&.name.presence || "Sem corretor"].join(" · ") %></small>
-    </div>
-    <span class="ax-badge ax-badge--blue"><%= @lead.status.presence || Lead.default_status %></span>
-  </section>
-
-  <div class="lead-mobile-priority__actions" aria-label="Ações rápidas">
-    <% if @lead.direct_whatsapp_url.present? %>
-      <%= link_to @lead.direct_whatsapp_url, target: "_blank", class: "lead-mobile-priority__action" do %>
-        <i class="bi bi-whatsapp"></i><span>WhatsApp</span>
-      <% end %>
-    <% end %>
-    <% if @lead.display_phone.present? %>
-      <%= link_to "tel:#{@lead.display_phone.to_s.gsub(/[^0-9+]/, '')}", class: "lead-mobile-priority__action" do %>
-        <i class="bi bi-telephone"></i><span>Ligar</span>
-      <% end %>
-    <% end %>
-    <% if @lead.display_email.present? %>
-      <%= mail_to @lead.display_email, class: "lead-mobile-priority__action" do %>
-        <i class="bi bi-envelope"></i><span>E-mail</span>
-      <% end %>
-    <% end %>
-  </div>
-
-  <section class="lead-mobile-priority__next">
-    <span><%= @next_task ? "Próxima ação" : "Situação" %></span>
-    <% if @next_task %>
-      <% b = task_badge(@next_task) %>
-      <strong><%= @next_task.title %></strong>
-      <small><%= b[:label] %></small>
-    <% elsif @lead.admin_user.present? %>
-      <strong>Lead atribuído</strong>
-      <small><%= @lead.admin_user.name %> já recebeu esta oportunidade.</small>
-    <% else %>
-      <strong>Sem corretor atribuído</strong>
-      <small>Defina um responsável antes de avançar o atendimento.</small>
-    <% end %>
-  </section>
-
-  <section class="lead-mobile-priority__property">
-    <div>
-      <span>Imóvel de interesse</span>
-      <% if @property %>
-        <strong><%= @property.display_title %></strong>
-        <small><%= [@property.bairro, @property.cidade].compact_blank.join(", ") %></small>
-      <% elsif @lead.property_id.present? %>
-        <strong>Imóvel não disponível</strong>
-        <small>O lead aponta para um imóvel que não está mais acessível no catálogo.</small>
-      <% else %>
-        <strong>Sem imóvel específico</strong>
-        <small>Este lead chegou por origem geral ou campanha, sem propriedade atrelada.</small>
-      <% end %>
-    </div>
-    <% if @property %>
-      <%= link_to admin_habitation_path(@property), class: "ax-ico-btn", title: "Abrir imóvel" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
-    <% end %>
-  </section>
-
-  <div class="lead-mobile-priority__metrics">
-    <span><strong><%= open_tasks.size %></strong><small>tarefas</small></span>
-    <span><strong><%= @proposals.size %></strong><small>propostas</small></span>
-    <span><strong><%= @appointments.size %></strong><small>visitas</small></span>
-  </div>
-</div>
+<%
+  # Timeline: mensagens cruas de WhatsApp ficam fora do padrão (já vivem no
+  # painel de conversa acima); aqui entram só os marcos.
+  wa_timeline_kinds = %w[whatsapp_in whatsapp_out]
+  timeline_milestones = @timeline.reject do |act|
+    wa_timeline_kinds.include?(act.kind.to_s) ||
+      # "Lead atribuído" (automação) é espelho do "Distribuído" — não duplicar
+      (act.kind.to_s == "automation_event" && act.metadata.to_h["event"].to_s == "lead_assigned")
+  end
+  timeline_wa_events = @timeline.select { |act| wa_timeline_kinds.include?(act.kind.to_s) }
+  timeline_visible = timeline_milestones.first(15)
+  timeline_rest = timeline_milestones.drop(15)
+%>
 
 <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-[minmax(0,1fr)_380px] tw-gap-4">
   <%# ===== Coluna esquerda ===== %>
   <div>
-    <%# Contato + status/notas (form original preservado) %>
-    <div class="ax-card tw-mb-4">
-      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-person ax-ico"></i> Contato & Atendimento</span></div>
-      <div class="ax-card__body">
-        <div class="tw-grid tw-grid-cols-[120px_minmax(0,1fr)] tw-gap-2 tw-mb-3">
-          <div class="ax-page-subtitle">E-mail</div>
-          <div><%= @lead.display_email.presence || "—" %></div>
-        </div>
-        <div class="tw-grid tw-grid-cols-[120px_minmax(0,1fr)] tw-gap-2 tw-mb-3">
-          <div class="ax-page-subtitle">Telefone</div>
-          <div><%= @lead.display_phone.presence || "—" %></div>
-        </div>
-        <% if @lead.source_url.present? %>
-          <div class="tw-grid tw-grid-cols-[120px_minmax(0,1fr)] tw-gap-2 tw-mb-3">
-            <div class="ax-page-subtitle">URL de origem</div>
-            <div><%= link_to @lead.source_url, @lead.source_url, target: "_blank", class: "tw-text-primary" %></div>
-          </div>
-        <% end %>
-
-        <div class="lead-view-divider"></div>
-
-        <%= form_with(model: [:admin, @lead], local: true) do |f| %>
-          <div class="mb-3">
-            <%= f.label :notes, "Observações internas", class: "ax-label" %>
-            <%= f.text_area :notes, rows: 4, class: "ax-textarea", placeholder: "Histórico de conversas, preferências do cliente..." %>
-          </div>
-          <div class="tw-flex tw-flex-wrap tw-items-end tw-gap-3 tw-justify-between">
-            <div class="tw-flex tw-flex-wrap tw-items-end tw-gap-3">
-              <div class="tw-min-w-[160px]">
-                <label class="ax-label">Status</label>
-                <div class="tw-flex tw-items-center tw-gap-2">
-                  <%= f.select :status, @status_options, {}, class: "ax-select tw-flex-1", id: "lead_status" %>
-                  <% if can?(:manage, :catalogos) %>
-                    <button type="button" class="ax-btn ax-btn--sm"
-                            data-attribute-manager-context-value="lead"
-                            data-attribute-manager-category-value="status"
-                            data-attribute-manager-field-name-value="lead[status]"
-                            data-attribute-manager-modal-id-value="attributeManagerModalLead"
-                            data-action="click->attribute-manager#open"
-                            title="Gerenciar status">
-                      <i class="bi bi-gear"></i>
-                    </button>
-                  <% end %>
-                </div>
-              </div>
-              <div class="tw-min-w-[160px]">
-                <span class="ax-label">Origem</span>
-                <div class="lead-readonly-field"><%= @lead.origin.presence || "Origem não informada" %></div>
-              </div>
-              <% if can?(:manage, :leads) %>
-                <div class="tw-min-w-[200px]">
-                  <label class="ax-label">Corretor</label>
-                  <%= f.select :admin_user_id, @broker_options, { include_blank: "Sem corretor" }, class: "ax-select" %>
-                </div>
-              <% else %>
-                <div class="tw-min-w-[200px]">
-                  <span class="ax-label">Corretor</span>
-                  <div class="lead-readonly-field"><%= @lead.admin_user&.name.presence || "Sem corretor" %></div>
-                </div>
-              <% end %>
-            </div>
-            <%= f.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-
-    <%# Timeline unificada %>
-    <div class="ax-card lead-timeline-card">
-      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-activity ax-ico"></i> Linha do tempo</span></div>
-      <div class="ax-card__body">
-        <% if @timeline.any? %>
-          <div class="tw-grid tw-gap-0">
-            <% @timeline.each_with_index do |act, i| %>
-              <% e = timeline_entry(act) %>
-              <div class="tw-flex tw-gap-3">
-                <div class="tw-flex tw-flex-col tw-items-center">
-                  <span class="lead-timeline-marker">
-                    <i class="bi <%= e[:icon] %>"></i>
-                  </span>
-                  <% unless i == @timeline.size - 1 %><span class="lead-timeline-rail"></span><% end %>
-                </div>
-                <div class="tw-pb-4 tw-flex-1">
-                  <div class="tw-flex tw-items-center tw-gap-2">
-                    <span class="ax-strong"><%= e[:label] %></span>
-                    <span class="ax-page-subtitle"><%= time_ago_in_words(act.created_at) %> atrás</span>
-                  </div>
-                  <% if e[:detail].present? %><div class="ax-page-subtitle"><%= e[:detail] %></div><% end %>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        <% else %>
-          <div class="ax-empty tw-py-6">
-            <i class="bi bi-activity tw-text-2xl tw-text-ink-faint"></i>
-            <p class="tw-mt-1">Sem atividades ainda.</p>
-            <p class="ax-page-subtitle">Registre um contato, crie uma tarefa ou envie uma proposta — tudo aparece aqui.</p>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  </div>
-
-  <%# ===== Coluna direita ===== %>
-  <div>
-    <%= render "admin/leads/interest_intelligence",
-          lead: @lead,
-          profile: @interest_profile,
-          profile_incomplete: @interest_profile_incomplete,
-          matches: @interest_matches,
-          navigation_events: @interest_navigation_events,
-          property_interests: @interest_property_interests,
-          settings: @interest_settings,
-          simulation: @interest_simulation %>
-
-    <div class="ax-card tw-mb-4">
-      <div class="ax-card__header">
-        <span class="ax-card__title"><i class="bi bi-bell ax-ico"></i> Provas do push</span>
-      </div>
-      <div class="ax-card__body tw-grid tw-gap-2">
-        <% if @push_delivery_events.any? %>
-          <% @push_delivery_events.each do |event| %>
-            <div class="tw-flex tw-items-start tw-justify-between tw-gap-3">
-              <div class="tw-min-w-0">
-                <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
-                  <span class="ax-badge ax-badge--<%= push_delivery_event_tone(event.event_type) %>">
-                    <%= push_delivery_event_label(event.event_type) %>
-                  </span>
-                  <span class="ax-page-subtitle"><%= l(event.created_at, format: :short) %></span>
-                </div>
-                <div class="tw-mt-1 tw-text-sm tw-text-slate-600 tw-truncate">
-                  <%= push_delivery_event_device(event) %>
-                  <% if event.endpoint_host.present? %>
-                    · <%= event.endpoint_host %>
-                  <% end %>
-                  <% if event.push_subscription_id.present? %>
-                    · sub #<%= event.push_subscription_id %>
-                  <% end %>
-                </div>
-                <% if event.error_message.present? %>
-                  <div class="tw-mt-1 tw-text-xs tw-text-red-600 tw-truncate">
-                    <%= [event.error_class, event.error_message].compact.join(": ") %>
-                  </div>
-                <% end %>
-              </div>
-              <div class="tw-flex tw-shrink-0 tw-flex-col tw-items-end tw-gap-1 tw-text-xs tw-text-slate-500">
-                <% if event.provider_status.present? %>
-                  <span>HTTP <%= event.provider_status %></span>
-                <% end %>
-                <% if event.urgency.present? || event.ttl.present? %>
-                  <span><%= [event.urgency.presence, ("TTL #{event.ttl}" if event.ttl.present?)].compact.join(" · ") %></span>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-        <% else %>
-          <p class="ax-page-subtitle">Nenhuma tentativa de push registrada para este lead ainda.</p>
-        <% end %>
-      </div>
-    </div>
-
+    <%# Imóvel de interesse: pin principal + vínculos de interesse (add/remover). %>
     <div class="ax-card tw-mb-4 lead-property-card">
       <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-house ax-ico"></i> Imóvel de interesse</span></div>
       <div class="ax-card__body">
         <% if @property %>
-          <% if @property.primary_image.present? %>
-          <img src="<%= @property.primary_image['url'] %>" class="lead-property-image" alt="Imagem principal do imóvel">
-          <% end %>
-          <div class="ax-strong"><%= @property.display_title %></div>
-          <div class="ax-page-subtitle tw-mb-2"><%= @property.bairro %>, <%= @property.cidade %></div>
-          <div class="tw-grid tw-gap-2">
-            <%= link_to "Gerenciar imóvel", admin_habitation_path(@property), class: "ax-btn ax-btn--sm" %>
-            <%= link_to "Ver no site", habitation_path(@property), target: "_blank", class: "ax-btn ax-btn--sm" %>
+          <div class="lead-property-summary">
+            <% property_image_url = catalog_property_image_urls(@property, limit: 1).first %>
+            <% if property_image_url.present? %>
+              <div class="lead-property-summary__media">
+                <%= image_tag property_image_url,
+                      class: "lead-property-image",
+                      alt: "Imagem principal do imóvel",
+                      loading: "lazy" %>
+              </div>
+            <% end %>
+            <div class="lead-property-summary__content">
+              <div>
+                <div class="ax-strong"><%= @property.display_title %></div>
+                <div class="ax-page-subtitle"><%= @property.bairro %>, <%= @property.cidade %></div>
+              </div>
+              <div class="lead-property-summary__actions">
+                <%= link_to "Gerenciar imóvel", admin_habitation_path(@property, return_to: request.fullpath), class: "ax-btn ax-btn--sm" %>
+                <%= link_to "Ver no site", habitation_path(@property), target: "_blank", class: "ax-btn ax-btn--sm" %>
+              </div>
+            </div>
           </div>
         <% elsif @lead.property_id.present? %>
           <div class="lead-property-empty">
@@ -356,73 +116,274 @@
             </div>
           </div>
         <% end %>
+
+        <div class="lead-view-divider"></div>
+        <div class="ax-stat-label tw-mb-2">Imóveis de interesse</div>
+        <%= render "admin/whatsapp_inbox/thread_property_interests",
+              lead: @lead, show_empty: false %>
       </div>
     </div>
 
-    <%# Propostas %>
-    <div class="ax-card tw-mb-4">
-      <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
-        <span class="ax-card__title"><i class="bi bi-file-earmark-text ax-ico"></i> Propostas</span>
-        <% if @proposals.any? && can?(:manage, :comercial) %>
-          <%= link_to new_admin_lead_proposal_path(@lead), class: "ax-ico-btn", title: "Nova proposta" do %><i class="bi bi-plus-lg"></i><% end %>
+    <% if can?(:view, :whatsapp_inbox) %>
+      <%= render "admin/shared/ui/lead_whatsapp_panel",
+            lead: @lead,
+            conversation: @whatsapp_conversation,
+            templates: @whatsapp_templates,
+            summary: @whatsapp_summary,
+            thread_context_locals: @whatsapp_thread_context_locals,
+            messages: @whatsapp_messages,
+            return_to: request.fullpath %>
+    <% end %>
+
+    <%# Linha do tempo — colapsada; só marcos por padrão (WhatsApp tem toggle) %>
+    <%= ax_collapsible_card(
+          title: "Linha do tempo",
+          icon: "activity",
+          badge: "#{timeline_milestones.size} atividade#{'s' if timeline_milestones.size != 1}",
+          collapsed: true,
+          collapse_id: "leadTimelineSection",
+          class_name: "lead-timeline-card"
+        ) do %>
+      <% if timeline_milestones.any? %>
+        <%= render "admin/leads/timeline_entries", entries: timeline_visible %>
+
+        <% if timeline_rest.any? %>
+          <div data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
+            <div hidden data-ax-disclosure-target="content">
+              <%= render "admin/leads/timeline_entries", entries: timeline_rest %>
+            </div>
+            <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost"
+                    data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="false">
+              <i class="bi bi-chevron-expand ax-ico"></i><span>Ver mais (<%= timeline_rest.size %>)</span>
+            </button>
+          </div>
         <% end %>
+      <% else %>
+        <%= ax_empty_state(
+              title: "Sem atividades ainda",
+              description: "Registre um contato, crie uma tarefa ou envie uma proposta — tudo aparece aqui.",
+              icon: "activity"
+            ) %>
+      <% end %>
+
+      <% if timeline_wa_events.any? %>
+        <div class="tw-mt-2 tw-pt-2" style="border-top: 1px dashed #e6e8eb" data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
+          <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost"
+                  data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="false">
+            <i class="bi bi-whatsapp ax-ico"></i><span>Mostrar mensagens do WhatsApp (<%= timeline_wa_events.size %>)</span>
+          </button>
+          <div hidden data-ax-disclosure-target="content" class="tw-mt-3">
+            <%= render "admin/leads/timeline_entries", entries: timeline_wa_events %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <%# ===== Coluna direita ===== %>
+  <div>
+    <%# ===== Card único: atendimento & contexto (seções com divisor) ===== %>
+    <%
+      interest_signals = ((@interest_profile || {}).with_indifferent_access[:signals] || {})
+      interest_signal_count = interest_signals.values.sum(&:to_i)
+      interest_enabled = @interest_settings&.enabled?
+      interest_badge = if !interest_enabled
+        "Desativada"
+      elsif interest_signal_count.positive?
+        "#{(@interest_profile || {}).with_indifferent_access[:confidence].to_i}% confiança · #{interest_signal_count} sinais"
+      else
+        "Sem sinais"
+      end
+    %>
+    <div class="ax-card lead-next-action-card">
+      <div class="ax-card__header">
+        <span class="ax-card__title"><i class="bi bi-flag-fill ax-ico"></i> Próxima ação</span>
       </div>
-      <div class="ax-card__body tw-grid tw-gap-2">
-        <% if @proposals.any? %>
-          <% @proposals.each do |p| %>
-            <div class="lead-proposal-item">
-              <div class="tw-min-w-0">
-                <div class="ax-strong tw-truncate">R$ <%= number_with_precision(p.valor, precision: 2, delimiter: ".", separator: ",") %></div>
-                <div><span class="ax-badge ax-badge--<%= proposal_badge_color(p) %>"><%= p.status_label %></span></div>
+      <div class="ax-card__body">
+        <% if @next_task %>
+          <div class="ax-strong"><%= @next_task.title %>
+            <% b = task_badge(@next_task) %><span class="ax-badge ax-badge--<%= b[:color] %> tw-ml-1"><%= b[:label] %></span>
+          </div>
+        <% else %>
+          <div class="ax-page-subtitle">Nenhuma tarefa pendente. Defina o próximo passo →</div>
+        <% end %>
+        <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-mt-2">
+          <%= render "admin/lead_labels/chips", lead: @lead, labels: @lead.labels_for(current_admin_user) %>
+          <%= render "admin/lead_labels/button", lead: @lead, trigger_label: "Etiquetas", trigger_class: "ax-btn ax-btn--sm" %>
+          <%= render "admin/leads/log_contact_modal", lead: @lead %>
+          <% if can?(:manage, :comercial) %>
+            <%= render "admin/tasks/form_modal", modal_id: "newTaskLead", lead: @lead, trigger_label: "Tarefa", trigger_class: "ax-btn ax-btn--sm" %>
+            <%= render "admin/appointments/form_modal", lead: @lead, trigger_label: "Agendar visita", trigger_class: "ax-btn ax-btn--sm" %>
+            <%= link_to new_admin_lead_proposal_path(@lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+              <i class="bi bi-file-earmark-text ax-ico"></i><span>Nova proposta</span>
+            <% end %>
+          <% end %>
+        </div>
+
+
+        <div class="lead-view-divider"></div>
+
+        <div class="ax-stat-label tw-mb-2">Corretor & observações</div>
+        <%= form_with(model: [:admin, @lead], local: true) do |f| %>
+          <div class="mb-3">
+            <%= f.label :notes, "Observações internas", class: "ax-label" %>
+            <%= f.text_area :notes, rows: 3, class: "ax-textarea", placeholder: "Histórico de conversas, preferências do cliente..." %>
+          </div>
+          <div class="tw-grid tw-gap-3">
+            <%# Status sai daqui: o funil no topo da página já troca a etapa. %>
+            <% if can?(:manage, :leads) && current_admin_user.scope_for(:leads) != "own" %>
+              <div>
+                <label class="ax-label">Corretor</label>
+                <%= f.select :admin_user_id, @broker_options, { include_blank: "Sem corretor" }, class: "ax-select" %>
               </div>
-              <div class="tw-flex tw-gap-1">
-                <%= link_to public_proposal_path(p.public_token), target: "_blank", class: "ax-ico-btn", title: "Abrir link" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
-                <%= link_to pdf_admin_proposal_path(p), target: "_blank", class: "ax-ico-btn", title: "PDF" do %><i class="bi bi-filetype-pdf"></i><% end %>
-                <% if can?(:manage, :comercial) && p.status == "rascunho" %>
-                  <%= button_to send_proposal_admin_proposal_path(p), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Marcar enviada" do %><i class="bi bi-send"></i><% end %>
-                <% end %>
+            <% else %>
+              <div>
+                <span class="ax-label">Corretor</span>
+                <div class="lead-readonly-field"><%= @lead.admin_user&.name.presence || "Sem corretor" %></div>
               </div>
+            <% end %>
+            <div class="tw-flex tw-justify-end">
+              <%= f.submit "Salvar", class: "ax-btn ax-btn--sm ax-btn--primary" %>
             </div>
-          <% end %>
-        <% else %>
-          <p class="ax-page-subtitle">Nenhuma proposta. <%= link_to "Criar a primeira", new_admin_lead_proposal_path(@lead), class: "tw-text-primary" if can?(:manage, :comercial) %></p>
+          </div>
         <% end %>
-      </div>
-    </div>
 
-    <%# Tarefas %>
-    <div class="ax-card tw-mb-4">
-      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-check2-square ax-ico"></i> Tarefas</span></div>
-      <div class="ax-card__body tw-grid tw-gap-2">
-        <% if open_tasks.any? %>
-          <% open_tasks.first(6).each do |t| %>
-            <% b = task_badge(t) %>
-            <div class="tw-flex tw-items-center tw-gap-2">
-              <%= button_to complete_admin_task_path(t), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir" do %><i class="bi bi-circle"></i><% end %>
-              <span class="tw-flex-1 tw-truncate"><%= t.title %></span>
-              <span class="ax-badge ax-badge--<%= b[:color] %>"><%= b[:label] %></span>
-            </div>
-          <% end %>
-        <% else %>
-          <p class="ax-page-subtitle">Nenhuma tarefa pendente.</p>
-        <% end %>
-      </div>
-    </div>
+        <div class="lead-view-divider"></div>
 
-    <%# Compromissos %>
-    <div class="ax-card">
-      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-calendar-event ax-ico"></i> Próximos compromissos</span></div>
-      <div class="ax-card__body tw-grid tw-gap-2">
-        <% if @appointments.any? %>
-          <% @appointments.first(6).each do |a| %>
-            <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
-              <span class="tw-truncate"><%= a.title %></span>
-              <span class="ax-page-subtitle tw-whitespace-nowrap"><%= a.starts_at.strftime("%d/%m %H:%M") %></span>
-            </div>
+        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+          <span class="ax-stat-label">Inteligência de Interesse</span>
+          <span class="ax-badge ax-badge--gray"><%= interest_badge %></span>
+        </div>
+        <%= render "admin/leads/interest_intelligence",
+              lead: @lead,
+              profile: @interest_profile,
+              profile_incomplete: @interest_profile_incomplete,
+              matches: @interest_matches,
+              navigation_events: @interest_navigation_events,
+              property_interests: @interest_property_interests,
+              settings: @interest_settings,
+              simulation: @interest_simulation,
+              embedded: true %>
+
+        <div class="lead-view-divider"></div>
+
+        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+          <span class="ax-stat-label">Propostas</span>
+          <span class="tw-inline-flex tw-items-center tw-gap-1">
+            <span class="ax-badge ax-badge--gray"><%= @proposals.size %></span>
+            <% if can?(:manage, :comercial) %>
+              <%= link_to new_admin_lead_proposal_path(@lead), class: "ax-ico-btn", title: "Nova proposta" do %><i class="bi bi-plus-lg"></i><% end %>
+            <% end %>
+          </span>
+        </div>
+        <div class="tw-grid tw-gap-2">
+          <% if @proposals.any? %>
+            <% @proposals.each do |p| %>
+              <div class="lead-proposal-item">
+                <div class="tw-min-w-0">
+                  <div class="ax-strong tw-truncate">R$ <%= number_with_precision(p.valor, precision: 2, delimiter: ".", separator: ",") %></div>
+                  <div><span class="ax-badge ax-badge--<%= proposal_badge_color(p) %>"><%= p.status_label %></span></div>
+                </div>
+                <div class="tw-flex tw-gap-1">
+                  <%= link_to public_proposal_path(p.public_token), target: "_blank", class: "ax-ico-btn", title: "Abrir link" do %><i class="bi bi-box-arrow-up-right"></i><% end %>
+                  <%= link_to pdf_admin_proposal_path(p), target: "_blank", class: "ax-ico-btn", title: "PDF" do %><i class="bi bi-filetype-pdf"></i><% end %>
+                  <% if can?(:manage, :comercial) && p.status == "rascunho" %>
+                    <%= button_to send_proposal_admin_proposal_path(p), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Marcar enviada" do %><i class="bi bi-send"></i><% end %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="ax-page-subtitle tw-m-0">Nenhuma proposta. <%= link_to "Criar a primeira", new_admin_lead_proposal_path(@lead), class: "tw-text-primary" if can?(:manage, :comercial) %></p>
           <% end %>
-        <% else %>
-          <p class="ax-page-subtitle">Nada agendado.</p>
-        <% end %>
+        </div>
+
+        <div class="lead-view-divider"></div>
+
+        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+          <span class="ax-stat-label">Tarefas</span>
+          <span class="ax-badge ax-badge--gray"><%= open_tasks.size %></span>
+        </div>
+        <div class="tw-grid tw-gap-2">
+          <% if open_tasks.any? %>
+            <% open_tasks.first(6).each do |t| %>
+              <% b = task_badge(t) %>
+              <div class="tw-flex tw-items-center tw-gap-2">
+                <%= button_to complete_admin_task_path(t), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: "Concluir" do %><i class="bi bi-circle"></i><% end %>
+                <span class="tw-flex-1 tw-truncate"><%= t.title %></span>
+                <span class="ax-badge ax-badge--<%= b[:color] %>"><%= b[:label] %></span>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="ax-page-subtitle tw-m-0">Nenhuma tarefa pendente.</p>
+          <% end %>
+        </div>
+
+        <div class="lead-view-divider"></div>
+
+        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+          <span class="ax-stat-label">Próximos compromissos</span>
+          <span class="ax-badge ax-badge--gray"><%= @appointments.size %></span>
+        </div>
+        <div class="tw-grid tw-gap-2">
+          <% if @appointments.any? %>
+            <% @appointments.first(6).each do |a| %>
+              <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
+                <span class="tw-truncate"><%= a.title %></span>
+                <span class="ax-page-subtitle tw-whitespace-nowrap"><%= a.starts_at.strftime("%d/%m %H:%M") %></span>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="ax-page-subtitle tw-m-0">Nada agendado.</p>
+          <% end %>
+        </div>
+
+        <div class="lead-view-divider"></div>
+
+        <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
+          <span class="ax-stat-label">Provas do push</span>
+          <span class="ax-badge ax-badge--gray"><%= @push_delivery_events.size %> tentativa<%= 's' if @push_delivery_events.size != 1 %></span>
+        </div>
+        <div class="tw-grid tw-gap-2">
+          <% if @push_delivery_events.any? %>
+            <% @push_delivery_events.each do |event| %>
+              <div class="tw-flex tw-items-start tw-justify-between tw-gap-3">
+                <div class="tw-min-w-0">
+                  <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+                    <span class="ax-badge ax-badge--<%= push_delivery_event_tone(event.event_type) %>">
+                      <%= push_delivery_event_label(event.event_type) %>
+                    </span>
+                    <span class="ax-page-subtitle"><%= l(event.created_at, format: :short) %></span>
+                  </div>
+                  <div class="tw-mt-1 tw-text-sm tw-text-slate-600 tw-truncate">
+                    <%= push_delivery_event_device(event) %>
+                    <% if event.endpoint_host.present? %>
+                      · <%= event.endpoint_host %>
+                    <% end %>
+                    <% if event.push_subscription_id.present? %>
+                      · sub #<%= event.push_subscription_id %>
+                    <% end %>
+                  </div>
+                  <% if event.error_message.present? %>
+                    <div class="tw-mt-1 tw-text-xs tw-text-red-600 tw-truncate">
+                      <%= [event.error_class, event.error_message].compact.join(": ") %>
+                    </div>
+                  <% end %>
+                </div>
+                <div class="tw-flex tw-shrink-0 tw-flex-col tw-items-end tw-gap-1 tw-text-xs tw-text-slate-500">
+                  <% if event.provider_status.present? %>
+                    <span>HTTP <%= event.provider_status %></span>
+                  <% end %>
+                  <% if event.urgency.present? || event.ttl.present? %>
+                    <span><%= [event.urgency.presence, ("TTL #{event.ttl}" if event.ttl.present?)].compact.join(" · ") %></span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="ax-page-subtitle tw-m-0">Nenhuma tentativa de push registrada para este lead ainda.</p>
+          <% end %>
+        </div>
       </div>
     </div>
   </div>

@@ -1,0 +1,42 @@
+<%
+  habitation = local_assigns.fetch(:habitation)
+  foto_ambientes = local_assigns.fetch(:foto_ambientes, [])
+%>
+
+<% modal_footer = capture do %>
+  <button type="button" class="ax-btn ax-btn--ghost" data-action="media-tools#closeSettings">Cancelar</button>
+  <button type="button" class="ax-btn ax-btn--primary" data-media-tools-target="ambienteSaveButton" data-action="media-tools#saveAmbiente">Salvar ambiente</button>
+<% end %>
+
+<%= ax_quick_modal(
+      id: "habitationPhotoSettingsModal",
+      title: "Configurar ambiente da foto",
+      size: :sm,
+      footer: modal_footer,
+      data: { media_tools_target: "modal" }
+    ) do %>
+  <div class="wizard-field-group">
+    <label class="ax-label" for="habitationPhotoAmbienteSelect">Ambiente</label>
+    <select id="habitationPhotoAmbienteSelect"
+            class="ax-control"
+            data-media-tools-target="ambienteSelect">
+      <option value="">Sem ambiente</option>
+      <% foto_ambientes.each do |ambiente| %>
+        <option value="<%= ambiente %>"><%= ambiente %></option>
+      <% end %>
+    </select>
+  </div>
+  <div class="wizard-field-group">
+    <label class="ax-label" for="habitationPhotoAmbientePositionInput">Posição no ambiente</label>
+    <input id="habitationPhotoAmbientePositionInput"
+           class="ax-control"
+           type="number"
+           min="1"
+           step="1"
+           inputmode="numeric"
+           placeholder="Automática"
+           data-media-tools-target="ambientePositionInput">
+  </div>
+
+  <div class="ax-media-share-result" data-media-tools-target="shareResult" hidden></div>
+<% end %>

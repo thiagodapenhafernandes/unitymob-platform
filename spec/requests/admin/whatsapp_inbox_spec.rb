@@ -19,19 +19,49 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Atendimento WhatsApp")
       expect(response.body).to include("Maria")
-      expect(response.body).to include("ax-workspace-heading")
       expect(response.body).to include("wa-inbox-shell")
-      expect(response.body).to include("ax-operational-panel")
+      expect(response.body).to include("wa-inbox-panel--list")
+      expect(response.body).to include("wa-inbox-panel--thread")
       expect(response.body).to include("wa-inbox-panel--compact")
       expect(response.body).to include("wa-inbox-conversation--compact")
+      expect(response.body).to include("whatsapp_inbox_refresh")
+      expect(response.body).to include("wa-inbox-conversation__avatar")
+      expect(response.body).to include(">M</span>")
+      expect(response.body).not_to include("wa-inbox-conversation__card ax-record-item")
       expect(response.body).not_to include("wa-inbox-page__guide-note")
       expect(response.body).to include('data-wa-inbox-heading-metric="conversations"')
       expect(response.body).to include('data-wa-inbox-heading-metric="unread"')
       expect(response.body).to include('data-wa-inbox-filter-count="all"')
       expect(response.body).to include('data-wa-inbox-filter-count="unread"')
       expect(response.body).to include('data-wa-inbox-filter-count="unlinked"')
+      expect(response.body).to include('turbo-frame id="wa-thread"')
+      expect(response.body).to include('id="wa-inbox-queue"')
+      expect(response.body).to include("data-turbo-permanent")
       expect(response.body).not_to include('data-wa-inbox-total-unread-badge')
       expect(response.body).not_to include(".wa-shell {")
+    end
+
+    it "mantém fila fora do frame e links mirando o detalhe" do
+      conv = WhatsappConversation.create!(contact_phone: "5547999990038", contact_name: "Maria", last_message_preview: "Olá")
+
+      get admin_whatsapp_conversations_path
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      frame = document.at_css("turbo-frame#wa-thread")
+      queue = document.at_css("#wa-inbox-queue")
+      conversation = document.at_css(%(.wa-inbox-conversation[data-conversation-id="#{conv.id}"]))
+
+      expect(frame).to be_present
+      expect(queue).to be_present
+      expect(frame.css("#wa-inbox-queue")).to be_empty
+      expect(conversation["data-turbo-frame"]).to eq("wa-thread")
+      expect(conversation["data-turbo-action"]).to eq("advance")
+      expect(conversation["data-action"]).to include("click->wa-queue#select")
+      expect(conversation["data-conversation-default-href"]).to eq(admin_whatsapp_conversation_path(conv))
+      expect(conversation["data-unread"]).to eq("false")
+      expect(conversation["data-lead"]).to eq("false")
+      expect(conversation["data-search"]).to include("maria")
     end
 
     it "pode abrir em modo foco com workspace dedicado" do
@@ -76,9 +106,23 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response.body).to include("wa-inbox-thread__workspace--compact")
       expect(response.body).to include("multipart/form-data")
       expect(response.body).to include("Responder no CRM")
-      expect(response.body).to include("Sem lead vinculado")
+      expect(response.body).to include("Sem lead")
+      expect(response.body).to include('turbo-frame id="wa-thread"')
       expect(conv.reload.unread_count).to eq(0)
       expect(Whatsapp::ThreadBroadcaster).to have_received(:queue_refreshed).with(conv)
+    end
+
+    it "responde ao Turbo Frame sem renderizar a fila inteira" do
+      conv = WhatsappConversation.create!(contact_phone: "5547999990039", contact_name: "Maria Frame")
+      conv.messages.create!(direction: "inbound", body: "Mensagem do frame", status: "delivered")
+
+      get admin_whatsapp_conversation_path(conv), headers: { "Turbo-Frame" => "wa-thread" }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('turbo-frame id="wa-thread"')
+      expect(response.body).to include("Mensagem do frame")
+      expect(response.body).not_to include('id="wa-inbox-queue"')
+      expect(response.body).not_to include("wa-inbox-panel--list")
     end
 
     it "renderiza composer compacto no workspace dedicado" do
@@ -214,9 +258,8 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Lead no CRM")
-      expect(response.body).to include("Tarefa")
-      expect(response.body).to include("Agendar")
-      expect(response.body).to include("Proposta")
+      expect(response.body).to include("Agendar visita")
+      expect(response.body).to include("wa-inbox-thread__schedule-button")
       expect(response.body).to include(admin_lead_path(lead))
     end
 
@@ -226,7 +269,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       get admin_whatsapp_conversation_path(conv)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Sem lead vinculado")
+      expect(response.body).to include("Sem lead")
       expect(response.body).not_to include("whatsappInboxTask")
       expect(response.body).not_to include("Agendar")
     end

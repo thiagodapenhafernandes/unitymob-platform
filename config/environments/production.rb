@@ -71,8 +71,24 @@ Rails.application.configure do
   # want to log everything, set the level to "debug".
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 
-  # Use a different cache store in production.
-  config.cache_store = :redis_cache_store, { url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0") }
+  # Lograge: 1 linha JSON por request (método, path, status, duração, db/view).
+  # request_id correlaciona com os demais logs; host identifica o tenant no
+  # white-label sem custar query.
+  config.lograge.enabled = true
+  config.lograge.formatter = Lograge::Formatters::Json.new
+  config.lograge.custom_payload do |controller|
+    {
+      request_id: controller.request.request_id,
+      host: controller.request.host
+    }
+  end
+
+  # Cache em memória por processo. Solid Queue continua sendo a fila de jobs;
+  # o cache aqui é apenas para leituras síncronas curtas do site público.
+  config.cache_store = :memory_store, {
+    size: ENV.fetch("RAILS_MEMORY_CACHE_SIZE_MB", 64).to_i.megabytes,
+    expires_in: 1.day
+  }
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
   config.active_job.queue_adapter = :solid_queue

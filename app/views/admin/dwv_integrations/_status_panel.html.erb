@@ -1,14 +1,14 @@
 <span class="tw-hidden" data-dwv-sync-status-state data-sync-status="<%= @dwv_sync_status.presence || "idle" %>"></span>
 
-<div class="ax-card tw-mb-4 bg-light">
-  <div class="ax-card__body p-4">
-    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-info-circle" style="color:var(--admin-primary);"></i> Status Atual</h6>
-    <ul class="tw-text-sm tw-mb-0 tw-pl-4">
+<div class="ax-card dwv-integration-status-card tw-mb-4">
+  <div class="ax-card__body dwv-integration-panel-body">
+    <div class="dwv-integration-section-title"><i class="bi bi-info-circle"></i>Status Atual</div>
+    <ul class="dwv-integration-status-list">
       <li class="tw-mb-2">Integração ativa: <strong><%= @dwv_enabled ? "Sim" : "Não" %></strong></li>
       <li class="tw-mb-2">Conexão: <strong><%= @dwv_connected ? "Conectado" : "Desconectado" %></strong></li>
       <li class="tw-mb-2">
         Processamento automático:
-        <strong style="color: <%= @dwv_worker_health[:online] ? "#16a34a" : "#dc2626" %>;">
+        <strong class="<%= @dwv_worker_health[:online] ? "dwv-integration-state--ok" : "dwv-integration-state--danger" %>">
           <%= @dwv_worker_health[:online] ? "Disponível" : "Indisponível" %>
         </strong>
       </li>
@@ -34,7 +34,7 @@
     </div>
 
     <div class="tw-mt-3">
-      <h6 class="tw-font-semibold tw-text-sm tw-mb-2">Resumo de Erros (última execução)</h6>
+      <div class="dwv-integration-subtitle">Resumo de Erros (última execução)</div>
       <% if @dwv_last_error_summary.present? %>
         <ul class="tw-text-sm tw-mb-0 tw-pl-4">
           <% @dwv_last_error_summary.first(5).each do |error_message, error_count| %>
@@ -85,8 +85,8 @@
 <% end %>
 
 <div class="ax-card tw-mb-4">
-  <div class="ax-card__body p-4">
-    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-clock-history" style="color:var(--admin-primary);"></i> Últimas 5 Atualizações</h6>
+  <div class="ax-card__body dwv-integration-panel-body">
+    <div class="dwv-integration-section-title"><i class="bi bi-clock-history"></i>Últimas 5 Atualizações</div>
     <% if @dwv_sync_history.present? %>
       <div class="ax-table-wrap">
         <table class="ax-table">
@@ -103,7 +103,7 @@
               <% item_time = (Time.zone.parse(item["at"].to_s) rescue nil) %>
               <% status = item["status"].to_s %>
               <tr>
-                <td class="tw-text-sm" style="white-space:nowrap"><%= item_time ? l(item_time, format: :short) : "N/D" %></td>
+                <td class="dwv-integration-nowrap"><%= item_time ? l(item_time, format: :short) : "N/D" %></td>
                 <td>
                   <span class="ax-badge <%= status == 'completed' ? 'ax-badge--green' : (status == 'failed' ? 'ax-badge--red' : (status == 'processing' ? 'ax-badge--blue' : 'ax-badge--gray')) %>">
                     <%= status.presence || "N/D" %>
@@ -123,8 +123,8 @@
 </div>
 
 <div class="ax-card">
-  <div class="ax-card__body p-4">
-    <h6 class="tw-font-bold tw-mb-3"><i class="bi bi-shield-check" style="color:#16a34a;"></i> Observações Importantes</h6>
+  <div class="ax-card__body dwv-integration-panel-body">
+    <div class="dwv-integration-section-title"><i class="bi bi-shield-check dwv-integration-state--ok"></i>Observações Importantes</div>
     <p class="tw-text-sm tw-text-ink-muted tw-mb-2">Esta integração busca os dados na DWV e atualiza o cadastro de imóveis neste sistema.</p>
     <p class="tw-text-sm tw-text-ink-muted tw-mb-2">Os dados do imóvel dentro da DWV não são alterados por esta tela.</p>
     <p class="tw-text-sm tw-text-ink-muted tw-mb-0">A remoção de imóveis continua sendo uma ação manual.</p>

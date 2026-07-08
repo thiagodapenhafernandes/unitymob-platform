@@ -4,7 +4,7 @@
     <title>Salute Imóveis — Campo</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0d6efd">
+    <meta name="theme-color" content="<%= (defined?(LayoutSetting) ? LayoutSetting.instance.admin_primary_color.presence : nil) || '#365F8F' %>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Salute Campo">
@@ -14,12 +14,13 @@
     <%= render 'layouts/no_zoom' %>
 
     <link rel="manifest" href="<%= field_manifest_path(format: :json) %>">
-    <link rel="apple-touch-icon" href="/field-icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/pwa-icon-192">
     <link rel="icon" type="image/png" sizes="192x192" href="/field-icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/field-icons/icon-512.png">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <%# Bootstrap e ícones self-hosted (antes jsdelivr) %>
+    <%= stylesheet_link_tag "vendor/bootstrap.min" %>
+    <%= stylesheet_link_tag "vendor/bootstrap-icons" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
@@ -119,6 +120,12 @@
             applicationServerKey: urlBase64ToUint8Array(public_key)
           });
 
+          try {
+            if ("periodicSync" in registration) {
+              await registration.periodicSync.register("push-subscription-refresh", { minInterval: 12 * 60 * 60 * 1000 });
+            }
+          } catch (_e) { /* sem suporte: renovação segue pelos outros gatilhos */ }
+
           const csrfToken = document.querySelector("[name=csrf-token]")?.content;
           await fetch("/field/push_subscriptions", {
             method: "POST",
@@ -162,7 +169,8 @@
     <script type="module">
       // FingerprintJS open-source — hash estável por dispositivo/browser.
       // Usado como sinal de antifraude (detecção de fingerprint duplicado).
-      import FingerprintJS from "https://openfpcdn.io/fingerprintjs/v4";
+      // Self-hosted via importmap (vendor/javascript/@fingerprintjs--fingerprintjs.js).
+      import FingerprintJS from "@fingerprintjs/fingerprintjs";
       (async function () {
         try {
           const fp = await FingerprintJS.load();
@@ -242,11 +250,16 @@
           <button id="field-install-btn" class="field-install-btn-primary">
             <i class="bi bi-download"></i> Instalar agora
           </button>
+          <ol id="field-install-android-manual" style="display:none">
+            <li>Toque em <i class="bi bi-three-dots-vertical"></i> (menu do navegador)</li>
+            <li>Escolha <strong>"Instalar app"</strong> ou <strong>"Adicionar à tela inicial"</strong></li>
+            <li>Confirme em "Instalar"</li>
+          </ol>
         </div>
 
         <div id="field-install-ios" class="field-install-section">
           <ol>
-            <li>Toque em <i class="bi bi-box-arrow-up"></i> <strong>Compartilhar</strong> no Safari</li>
+            <li>Toque em <i class="bi bi-box-arrow-up"></i> <strong>Compartilhar</strong> na barra do navegador</li>
             <li>Escolha <strong>"Adicionar à Tela de Início"</strong></li>
             <li>Confirme em "Adicionar"</li>
           </ol>
@@ -345,7 +358,13 @@
         }
 
         function isIos() {
-          return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+          // iPadOS moderno se anuncia como "Macintosh" — o toque entrega
+          return (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream)
+              || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+        }
+
+        function isAndroid() {
+          return /Android/i.test(navigator.userAgent);
         }
 
         function shouldShow() {
@@ -361,9 +380,17 @@
           androidBox.classList.remove("active");
           iosBox.classList.remove("active");
           fallback.classList.remove("active");
-          if (mode === "android") androidBox.classList.add("active");
-          else if (mode === "ios") iosBox.classList.add("active");
-          else fallback.classList.add("active");
+          if (mode === "android" || mode === "android-manual") {
+            androidBox.classList.add("active");
+            const manual = mode === "android-manual";
+            const manualSteps = document.getElementById("field-install-android-manual");
+            if (installBtn) installBtn.style.display = manual ? "none" : "";
+            if (manualSteps) manualSteps.style.display = manual ? "block" : "none";
+          } else if (mode === "ios") {
+            iosBox.classList.add("active");
+          } else {
+            fallback.classList.add("active");
+          }
           overlay.style.display = "block";
         }
 
@@ -375,11 +402,18 @@
         window.addEventListener("beforeinstallprompt", function (e) {
           e.preventDefault();
           deferredPrompt = e;
-          showOverlay("android");
+          // so incomoda em celular/tablet — no desktop o app de campo nao faz sentido
+          if (isAndroid() && shouldShow()) showOverlay("android");
         });
 
-        if (isIos() && shouldShow()) {
-          setTimeout(() => showOverlay("ios"), 800);
+        if (shouldShow()) {
+          if (isIos()) {
+            setTimeout(() => showOverlay("ios"), 800);
+          } else if (isAndroid()) {
+            // Chrome dispara beforeinstallprompt (instala em 1 toque); navegadores
+            // sem o evento (Samsung Internet, Firefox...) recebem o passo a passo
+            setTimeout(() => { if (!deferredPrompt) showOverlay("android-manual"); }, 2500);
+          }
         }
 
         if (installBtn) {

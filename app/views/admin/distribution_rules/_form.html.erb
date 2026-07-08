@@ -1,4 +1,4 @@
-<%= form_with(model: [:admin, distribution_rule], local: true, data: { controller: "distribution-rule", action: "submit->distribution-rule#validateBeforeSubmit" }, html: { class: "distribution-rule-form distribution-rule-form--workspace" }) do |f| %>
+<%= form_with(model: [:admin, distribution_rule], local: true, data: { controller: "distribution-rule distribution-rule-summary", action: "submit->distribution-rule#validateBeforeSubmit" }, html: { class: "distribution-rule-form distribution-rule-form--workspace" }) do |f| %>
   <%
     form_title = local_assigns.fetch(:form_title) do
       distribution_rule.persisted? ? "Editar regra: #{distribution_rule.name}" : "Nova regra de distribuição"
@@ -37,7 +37,14 @@
                     method: :business_type,
                     label: "Tipo de negócio",
                     choices: DistributionRule.business_types.keys.map { |k| [k.humanize, k] },
-                    tooltip: "Leads sem venda ou locação explícita continuam elegíveis para regras específicas. A ordem das regras decide origens ambíguas, como Meta Ads."
+                    html_options: {
+                      data: {
+                        controller: "broadcast-change",
+                        broadcast_change_event_value: "distribution:area",
+                        action: "change->broadcast-change#change"
+                      }
+                    },
+                    tooltip: "Define também a área do filtro de gestores e quem pode receber: regra de venda distribui a quem atua em venda/ambos; locação idem. Leads sem venda ou locação explícita continuam elegíveis para regras específicas."
                   ) %>
             </div>
           </div>
@@ -45,7 +52,8 @@
       <% end %>
 
       <%# Fontes dos leads %>
-      <div data-controller="meta-rules" data-meta-rules-structure-value="<%= @meta_structure.to_json %>">
+      <div data-controller="meta-rules" data-meta-rules-structure-value="<%= @meta_structure.to_json %>"
+           data-meta-rules-sync-url-value="<%= sync_forms_admin_meta_integrations_path %>">
         <%= ax_operational_panel(eyebrow: "Origem", title: "Fontes dos leads") do %>
           <div class="ax-panel-body distribution-rule-source-panel">
             <%# Meta Ads %>
@@ -77,7 +85,7 @@
                           title: "Páginas do Facebook",
                           token: "Conta Meta",
                           class_name: "distribution-rule-source-config",
-                          tooltip: "Selecione as páginas Meta que podem alimentar esta regra. Deixe vazio apenas quando quiser controlar a origem por outro filtro da regra."
+                          tooltip: "Selecione as páginas Meta que alimentam esta regra: leads de OUTRAS páginas não entram. Vazio = aceita leads de qualquer página Meta."
                         ) do %>
                       <div class="ax-field">
                         <%= f.select :meta_page_ids, @all_page_options || [], {},
@@ -91,7 +99,7 @@
                           title: "Formulários específicos",
                           token: "Filtros",
                           class_name: "distribution-rule-source-config",
-                          tooltip: "Selecione uma página primeiro. Depois filtre os formulários dessa página. Se nenhum formulário for selecionado, a regra pode considerar todos os formulários elegíveis conforme a configuração Meta."
+                          tooltip: "Selecione uma página primeiro e filtre os formulários dela: com formulários selecionados, só leads DESSES formulários entram. Vazio = todos os formulários das páginas escolhidas."
                         ) do %>
                       <div class="ax-field">
                         <%= f.select :meta_forms, options_for_select(selected_meta_form_options, distribution_rule.meta_forms), {},
@@ -208,7 +216,9 @@
       <%# Equipe %>
       <div id="team" data-controller="team-rules"
            data-team-rules-all-agents-value="<%= (@all_agents || []).to_json %>">
-        <%= ax_operational_panel(eyebrow: "Equipe", title: "Corretores e fila") do %>
+        <% initial_agent_count = Array(distribution_rule.distribution_rule_agents).reject(&:marked_for_destruction?).map(&:admin_user_id).compact.size %>
+        <%= ax_operational_panel(eyebrow: "Equipe", title: "Corretores e fila",
+              actions: raw(%(<span class="ax-badge ax-badge--gray"><span data-distribution-rule-summary-target="agentCount">#{initial_agent_count}</span> na fila</span>))) do %>
           <div class="ax-panel-body">
             <%= render "admin/shared/hierarchical_user_filter",
                   component_id: "distribution_rule_hierarchy_filter",
@@ -216,8 +226,12 @@
                   users: @all_agents || [],
                   target_select_id: "agent_select",
                   locked_user_id: @distribution_hierarchy_locked_user_id,
-                  label: "Filtrar por hierarquia",
-                  hint: "Os níveis são criados dinamicamente pelos perfis verticais da conta. Usuários sem Tenant Owner ficam travados no próprio perfil e filtram apenas subordinados." %>
+                  mode: :multi,
+                  area: distribution_rule.business_type,
+                  field_name: "distribution_rule[hierarchy_manager_ids][]",
+                  selected_ids: (distribution_rule.respond_to?(:hierarchy_manager_ids) ? distribution_rule.hierarchy_manager_ids : []),
+                  label: "Filtrar por gestor",
+                  hint: "Escolha um ou mais gestores — a busca de corretores lista a união das equipes selecionadas. Sem gestor selecionado, nenhum corretor é listado." %>
 
             <div class="ax-field">
               <%= ax_field_label(nil, nil, text: "Corretores na regra", for: "agent_select") %>
@@ -258,12 +272,21 @@
       <%= ax_operational_panel(eyebrow: "Avisos", title: "Notificações") do %>
         <div class="ax-panel-body">
           <div class="ax-option-stack">
-            <%= ax_toggle_chip(f, :notify_whatsapp, label: raw("<i class='bi bi-whatsapp' style='color:#1da851'></i> WhatsApp"),
-                  input_data: notify_channel_guard_data(:whatsapp, channel_states[:whatsapp])) %>
+            <%# WhatsApp e Push só aparecem quando o canal está disponível para a conta:
+                WhatsApp = conta tem o próprio OU o Admin do Sistema liberou o global;
+                Push = o Admin do Sistema ativou o transporte global (VAPID). Quando
+                indisponível, o toggle some (o valor atual da regra é preservado no save,
+                pois o param ausente não altera o atributo). %>
+            <% if channel_states[:whatsapp][:configured] %>
+              <%= ax_toggle_chip(f, :notify_whatsapp, label: raw("<i class='bi bi-whatsapp' style='color:#1da851'></i> WhatsApp"),
+                    input_data: notify_channel_guard_data(:whatsapp, channel_states[:whatsapp])) %>
+            <% end %>
             <%= ax_toggle_chip(f, :notify_email, label: raw("<i class='bi bi-envelope'></i> E-mail ao corretor"),
                   input_data: notify_channel_guard_data(:email, channel_states[:email])) %>
-            <%= ax_toggle_chip(f, :notify_push, label: raw("<i class='bi bi-phone-vibrate'></i> Push no PWA"),
-                  input_data: notify_channel_guard_data(:push, channel_states[:push])) %>
+            <% if channel_states[:push][:configured] %>
+              <%= ax_toggle_chip(f, :notify_push, label: raw("<i class='bi bi-phone-vibrate'></i> Push no PWA"),
+                    input_data: notify_channel_guard_data(:push, channel_states[:push])) %>
+            <% end %>
             <%= ax_toggle_chip(f, :notify_webhook, label: raw("<i class='bi bi-broadcast'></i> Webhook externo"),
                   input_data: { action: "change->distribution-rule#toggleNotifyWebhook" }) %>
           </div>

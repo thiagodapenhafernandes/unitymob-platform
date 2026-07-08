@@ -32,7 +32,18 @@ class Admin::DashboardController < Admin::BaseController
     @field_feature_enabled = Setting.get("field_checkin_enabled", "false").to_s == "true"
   end
 
+  # Os ~18 counts do overview rodavam em TODA visita ao dashboard. KPIs de
+  # visão geral toleram 45s de atraso — cache curto por conta+usuário (o escopo
+  # visível depende do usuário). As seções (charts/funnel/...) seguem ao vivo.
   def load_overview_slice
+    metrics = Rails.cache.fetch(
+      ["dashboard-overview", current_tenant.id, current_admin_user.id],
+      expires_in: 45.seconds
+    ) { compute_overview_metrics }
+    metrics.each { |name, value| instance_variable_set("@#{name}", value) }
+  end
+
+  def compute_overview_metrics
     active_habitations = @habitation_scope.active
     beginning = Date.current.beginning_of_day
 
@@ -60,6 +71,13 @@ class Admin::DashboardController < Admin::BaseController
     @today_captacoes = @captacao_scope.where(created_at: beginning..).count
     @today_new_habitations = @habitation_scope.where("COALESCE(data_atualizacao_crm, created_at) >= ?", beginning).count
     @drafts_count = @captacao_scope.draft.count
+
+    %i[properties_count featured_count developments_count brokers_active stores_active_count
+       active_checkins_count today_checkins_count suspicious_checkins pending_manual_requests
+       new_leads leads_today leads_last_7_days holding_leads
+       distribution_rules_total distribution_rules_active rules_with_checkin
+       sync_errors_count today_captacoes today_new_habitations drafts_count]
+      .index_with { |name| instance_variable_get("@#{name}") }
   end
 
   def load_charts_slice

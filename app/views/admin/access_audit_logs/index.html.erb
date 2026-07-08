@@ -100,7 +100,7 @@
       <div class="ax-span-2">
         <label class="ax-label">Perfil</label>
         <%= select_tag :profile_id,
-                       options_from_collection_for_select(@available_profiles, :id, :name, params[:profile_id]),
+                       options_from_collection_for_select(@available_profiles, :id, ->(profile) { profile_filter_label(profile) }, params[:profile_id]),
 	                       include_blank: "Todos",
 	                       class: "ax-control ax-control--sm",
 	                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." }, action: "change->auto-submit#submit" } %>

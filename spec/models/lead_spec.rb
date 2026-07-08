@@ -59,6 +59,31 @@ RSpec.describe Lead, type: :model do
     end
   end
 
+  describe "#preloaded_labels_for" do
+    it "usa lead_labelings pre-carregadas sem consultar lead_labels novamente" do
+      admin = create(:admin_user)
+      other_admin = create(:admin_user, email: "lead-label-other-#{SecureRandom.hex(6)}@salute.test")
+      lead = create(:lead)
+      label = create(:lead_label, admin_user: admin, tenant: admin.tenant, name: "Quente", position: 2)
+      other_label = create(:lead_label, admin_user: other_admin, tenant: other_admin.tenant, name: "Outro", position: 1)
+      lead.lead_labelings.create!(lead_label: label, tenant: lead.tenant)
+      lead.lead_labelings.create!(lead_label: other_label, tenant: lead.tenant)
+
+      preloaded = described_class.includes(lead_labelings: :lead_label).find(lead.id)
+
+      sql = []
+      subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |_name, _started, _finished, _unique_id, payload|
+        next if payload[:name] == "SCHEMA"
+        sql << payload[:sql]
+      end
+
+      expect(preloaded.preloaded_labels_for(admin)).to eq([label])
+      expect(sql.grep(/FROM "lead_labels"/)).to be_empty
+    ensure
+      ActiveSupport::Notifications.unsubscribe(subscriber) if subscriber
+    end
+  end
+
   describe "destroy" do
     it "keeps SEO conversion events and clears the lead reference" do
       lead = create(:lead)

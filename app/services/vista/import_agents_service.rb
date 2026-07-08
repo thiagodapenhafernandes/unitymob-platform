@@ -241,7 +241,7 @@ module Vista
 
       begin
         user.avatar.purge if user.avatar.attached?
-        downloaded_image = URI.open(url)
+        downloaded_image = URI.open(url, open_timeout: 10, read_timeout: 30)
         user.avatar.attach(io: downloaded_image, filename: "vista_avatar_#{user.vista_id}.jpg")
       rescue => e
         puts "\nErro ao baixar foto para #{user.email}: #{e.message}"

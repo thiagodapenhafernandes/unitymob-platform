@@ -1,0 +1,60 @@
+<%# locals: card %>
+<div class="layout-settings-grid">
+  <div class="layout-settings-main">
+    <%= form_with model: [:admin, card], class: "layout-settings-form" do |f| %>
+      <% if card.errors.any? %>
+        <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle") do %>
+          <%= card.errors.full_messages.to_sentence %>
+        <% end %>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Apresentação", title: card.persisted? ? "Editar cartão" : "Novo cartão") do %>
+        <div class="ax-panel-body">
+          <%= ax_field_grid(columns: 12) do %>
+            <div class="ax-span-6">
+              <%= ax_text_field(form: f, method: :label, label: "Rótulo do modelo",
+                    hint: "Só para você identificar (ex.: Venda, Locação).", maxlength: 40, required: true) %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_field_label(f, :greeting, text: "Saudação",
+                    tooltip: "Texto enviado ao cliente. A assinatura com seu nome e CRECI é adicionada automaticamente.") %>
+              <%= f.text_area :greeting, rows: 4, maxlength: 600, required: true, class: "ax-textarea",
+                    placeholder: "Olá! Eu sou o corretor responsável pelo seu atendimento..." %>
+            </div>
+          <% end %>
+
+          <% if card.system? %>
+            <%= ax_inline_notice(tone: :neutral, icon: "buildings", class_name: "tw-mt-3") do %>
+              Template da empresa: use <code>{nome}</code> e <code>{creci}</code> na saudação — são substituídos pelos dados de quem envia. Sempre ativo para toda a equipe.
+            <% end %>
+          <% end %>
+
+          <div class="tw-grid tw-gap-2 tw-mt-3">
+            <%= ax_switch_field(form: f, method: :use_photo,
+                  label: card.system? ? "Enviar com a foto do corretor (avatar do perfil)" : "Enviar com minha foto (avatar do perfil)",
+                  checked: card.use_photo?) %>
+            <% unless card.system? %>
+              <%= ax_switch_field(form: f, method: :active, label: "Cartão ativo (aparece no atendimento)",
+                    checked: card.active?) %>
+            <% end %>
+          </div>
+
+          <% unless current_admin_user.avatar.attached? %>
+            <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", class_name: "tw-mt-3") do %>
+              Você ainda não tem foto no perfil — cartões com foto serão enviados como texto até você subir um avatar.
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <div class="ax-form-actions">
+        <%= link_to "Cancelar", admin_presentation_cards_path, class: "ax-btn" %>
+        <%= f.submit(card.persisted? ? "Salvar cartão" : "Criar cartão", class: "ax-btn ax-btn--primary") %>
+      </div>
+    <% end %>
+  </div>
+
+  <aside class="layout-settings-aside">
+    <%= render "profile_preview", greeting_sample: card.greeting.presence %>
+  </aside>
+</div>

@@ -96,7 +96,9 @@ module Vista
 
         http = Net::HTTP.new(uri.host, uri.port)
         http.use_ssl = uri.scheme == "https"
-        http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl?
+        # VERIFY_PEER: valida o certificado do servidor (evita MITM). Se um
+        # host específico tiver cert quebrado, trate pontualmente, nunca global.
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER if http.use_ssl?
         http.read_timeout = read_timeout
         http.open_timeout = open_timeout
 

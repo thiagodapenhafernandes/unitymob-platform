@@ -90,7 +90,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     @meta_structure = {}
     @meta_form_options_by_page = {}
 
-    active_pages = MetaFacebookPage.where(active: true).includes(:meta_lead_forms).order(:name)
+    active_pages = tenant_meta_pages.where(active: true).includes(:meta_lead_forms).order(:name)
     active_pages.each do |page|
       forms = page.meta_lead_forms.sort_by { |form| form.name.to_s.downcase }
       forms_list = forms.map { |form| { id: form.form_id, name: form.name } }
@@ -104,8 +104,14 @@ class Admin::DistributionRulesController < Admin::BaseController
   def load_team_structure
     eligible_users = eligible_distribution_admin_users.to_a
     @all_users_options = eligible_users.map { |u| [ u.name, u.id ] }
-    @all_agents = eligible_users.map { |u| distribution_hierarchy_user_payload(u) }
-    @distribution_hierarchy_profiles = distribution_hierarchy_profiles
+    # Payload do filtro leva TODOS os elegíveis (sem corte de área): a área é
+    # dinâmica na tela (Tipo de negócio) e quem filtra reativamente é o front.
+    # No save, sync_agents revalida com a área submetida (fail-closed).
+    @all_agents = eligible_distribution_admin_users(area_scope: false).map { |u| distribution_hierarchy_user_payload(u) }
+    # Filtro de hierarquia só faz sentido para NÍVEIS INTERMEDIÁRIOS (gestores):
+    # o dono da conta é o topo fixo (estamos dentro da conta dele) e o nível
+    # folha ("Corretor") duplicaria o próprio campo "Corretores na regra".
+    @distribution_hierarchy_profiles = distribution_hierarchy_profiles.reject { |p| p.tenant_owner? || p.agent? }
     @distribution_hierarchy_locked_user_id = tenant_owner? ? nil : current_admin_user.id
   end
 
@@ -115,7 +121,7 @@ class Admin::DistributionRulesController < Admin::BaseController
     @distribution_rule.meta_forms = []
     return if page_ids.blank?
 
-    pages = MetaFacebookPage.where(page_id: page_ids)
+    pages = tenant_meta_pages.where(page_id: page_ids)
     @distribution_rule.meta_forms = MetaLeadForm.where(meta_facebook_page_id: pages.select(:id)).pluck(:form_id)
   end
 
@@ -150,16 +156,42 @@ class Admin::DistributionRulesController < Admin::BaseController
     end
   end
 
-  def eligible_distribution_admin_users
+  def eligible_distribution_admin_users(area_scope: true)
+    # Dono da conta fica fora da fila de distribuição: ele já enxerga e pode
+    # assumir qualquer lead (escopo total) — participação é implícita, não
+    # precisa (nem deve) aparecer como opção selecionável.
     scope = current_tenant.admin_users.active.includes(:profile).where.not(profile_id: nil)
                           .where(profiles: { axis: Profile::AXES[:vertical] })
+                          .where.not(profiles: { key: "tenant_owner" })
                           .references(:profile)
+
+    # Área da regra (business_type) restringe por atuação do corretor:
+    # regra de venda só distribui a quem atua em venda/ambos; locação idem.
+    # area_scope: false → dataset completo para o filtro reativo do front.
+    if area_scope
+      case rule_business_type_for_eligibility
+      when "venda"   then scope = scope.where(acting_type: [AdminUser.acting_types[:sales], AdminUser.acting_types[:both]])
+      when "locacao" then scope = scope.where(acting_type: [AdminUser.acting_types[:rentals], AdminUser.acting_types[:both]])
+      end
+    end
 
     unless tenant_owner?
       scope = scope.where(id: current_admin_user.team_scope_ids)
     end
 
     scope.order(:name)
+  end
+
+  def rule_business_type_for_eligibility
+    params.dig(:distribution_rule, :business_type).presence || @distribution_rule&.business_type
+  end
+
+  # Páginas Meta pertencem à integração de um admin (UserMetaIntegration) —
+  # o escopo da conta vem do tenant desse admin. Sem isso, o select de páginas
+  # vazava páginas de OUTRAS contas.
+  def tenant_meta_pages
+    MetaFacebookPage.joins(user_meta_integration: :admin_user)
+                    .where(admin_users: { tenant_id: current_tenant.id })
   end
 
   def distribution_hierarchy_profiles
@@ -176,7 +208,9 @@ class Admin::DistributionRulesController < Admin::BaseController
       name: user.name,
       profile_id: user.profile_id,
       profile_name: user.profile&.name,
-      manager_id: user.manager_id
+      manager_id: user.manager_id,
+      rentals_manager_id: (user.rentals_manager_id if user.class.column_names.include?("rentals_manager_id")),
+      acting_type: user.acting_type
     }
   end
 
@@ -209,6 +243,7 @@ class Admin::DistributionRulesController < Admin::BaseController
       :notify_whatsapp, :notify_email, :notify_webhook, :notify_push,
       :webhook_url,
       :require_active_checkin, :require_inside_radius, :require_active_shift, :exclude_suspicious_checkins,
+      :auto_update_agents_enabled, :auto_update_shuffle_agents,
       admin_user_ids: [],
       meta_forms: [],
       meta_page_ids: [],
@@ -216,6 +251,8 @@ class Admin::DistributionRulesController < Admin::BaseController
       neighborhoods: [],
       notify_webhook_urls: [],
       checkin_store_ids: [],
+      auto_update_trigger: [],
+      hierarchy_manager_ids: [],
       represamento_schedule: {},
       custom_filters: {}
     ).tap do |perms|
@@ -224,8 +261,29 @@ class Admin::DistributionRulesController < Admin::BaseController
       %i[meta_forms meta_page_ids webhook_tags neighborhoods notify_webhook_urls].each do |key|
         perms[key] = Array(perms[key]).compact_blank if perms[key].is_a?(Array)
       end
+
+      # Gestores do filtro: só ids de usuários reais DESTA conta (anti-injeção).
+      # Antes da migration (coluna ausente), descarta em vez de estourar.
+      if !DistributionRule.column_names.include?("hierarchy_manager_ids")
+        perms.delete(:hierarchy_manager_ids)
+      elsif perms[:hierarchy_manager_ids].is_a?(Array)
+        requested_ids = perms[:hierarchy_manager_ids].compact_blank.map(&:to_i).uniq
+        perms[:hierarchy_manager_ids] = current_tenant.admin_users.where(id: requested_ids).pluck(:id)
+      end
       if perms[:checkin_store_ids].is_a?(Array)
         perms[:checkin_store_ids] = perms[:checkin_store_ids].compact_blank.map(&:to_i)
+      end
+      unless DistributionRule.column_names.include?("auto_update_agents_enabled")
+        perms.delete(:auto_update_agents_enabled)
+      end
+      unless DistributionRule.column_names.include?("auto_update_shuffle_agents")
+        perms.delete(:auto_update_shuffle_agents)
+      end
+      unless DistributionRule.column_names.include?("auto_update_trigger")
+        perms.delete(:auto_update_trigger)
+      end
+      if perms[:auto_update_trigger].is_a?(Array)
+        perms[:auto_update_trigger] = perms[:auto_update_trigger].compact_blank
       end
       %i[min_price max_price].each do |key|
         perms[key] = parse_brl_decimal(perms[key]) if perms[key].present?

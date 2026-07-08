@@ -25,7 +25,7 @@ module Admin
         if result[:success]
           redirect_to admin_field_manual_checkin_requests_path, notice: "Solicitação aprovada."
         else
-          redirect_to admin_field_manual_checkin_requests_path, alert: "Falha: #{result[:error]}"
+          redirect_to admin_field_manual_checkin_requests_path, alert: "Falha: #{result[:message] || result[:error]}"
         end
       end
 

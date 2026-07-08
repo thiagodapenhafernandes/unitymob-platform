@@ -1,0 +1,14 @@
+[ERROR_TRACKER] Erro na aplicação
+
+Classe: <%= @error_event.exception_class %>
+Mensagem: <%= @error_event.message.to_s.truncate(500) %>
+Origem: <%= @error_event.source %>
+Severidade: <%= @error_event.severity %>
+Tenant: <%= @error_event.tenant_id || "—" %>
+Ocorrências: <%= @error_event.occurrences_count %>
+Primeira vez: <%= @error_event.first_seen_at %>
+Última vez: <%= @error_event.last_seen_at %>
+Fingerprint: <%= @error_event.fingerprint %>
+
+Backtrace (top):
+<%= @error_event.backtrace.to_s.lines.first(10).join %>

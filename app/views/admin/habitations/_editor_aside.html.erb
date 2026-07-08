@@ -3,6 +3,26 @@
   tab_nav_items = local_assigns.fetch(:tab_nav_items)
   tab_titles = local_assigns.fetch(:tab_titles)
   tab_error_badge = local_assigns.fetch(:tab_error_badge)
+  tab_error_count = lambda do |tab_key|
+    badge = tab_error_badge.call(tab_key)
+    badge.present? ? badge.to_s[/>(\d+)</, 1].to_i : 0
+  end
+  tab_indicator_tone = lambda do |tab_key|
+    next :danger if tab_error_count.call(tab_key).positive?
+
+    case tab_key
+    when :general
+      :success
+    when :features
+      :success
+    when :seo
+      habitation.exibir_no_site_flag? ? :success : :warning
+    else
+      :neutral
+    end
+  end
+  completed_tabs_count = tab_nav_items.count { |(tab_key, _icon, _description)| tab_indicator_tone.call(tab_key) == :success }
+  progress_percent = ((completed_tabs_count.to_f / tab_nav_items.size) * 100).round
 
   editor_rail_body = capture do
 %>
@@ -40,8 +60,14 @@
       actions_class: "habitation-editor-panel-head__actions",
       toggle_class: "habitation-editor-panel-head__toggle"
     ) do %>
-  <div class="habitation-editor-identity">
-    <%= render "admin/habitations/identity_card", habitation: habitation %>
+  <div class="habitation-editor-progress" aria-label="Progresso do cadastro">
+    <div class="habitation-editor-progress__head">
+      <span>Progresso</span>
+      <strong><%= completed_tabs_count %>/<%= tab_nav_items.size %></strong>
+    </div>
+    <div class="habitation-editor-progress__bar" aria-hidden="true">
+      <i style="width:<%= progress_percent %>%"></i>
+    </div>
   </div>
   <nav class="ax-form-tabs habitation-tabs-bar"
        aria-label="Seções do cadastro"
@@ -66,7 +92,18 @@
               <strong><%= tab_titles[tab_key] %></strong>
               <span class="ax-form-tabs__description"><%= description %></span>
             </span>
-            <%= tab_error_badge.call(tab_key) %>
+            <span class="habitation-tabs-bar__status">
+              <% tone = tab_indicator_tone.call(tab_key) %>
+              <% if tab_error_count.call(tab_key).positive? %>
+                <%= tab_error_badge.call(tab_key) %>
+              <% elsif tone == :success %>
+                <i class="bi bi-check-circle-fill habitation-tabs-bar__ind habitation-tabs-bar__ind--success" title="Completo" aria-hidden="true"></i>
+              <% elsif tone == :warning %>
+                <i class="bi bi-exclamation-circle-fill habitation-tabs-bar__ind habitation-tabs-bar__ind--warning" title="Atenção" aria-hidden="true"></i>
+              <% else %>
+                <span class="habitation-tabs-bar__ind--neutral" title="Vazio" aria-hidden="true"></span>
+              <% end %>
+            </span>
           </button>
         </li>
       <% end %>

@@ -259,4 +259,56 @@ RSpec.describe HabitationDuplicateChecker do
     expect(result.complete).to be(true)
     expect(result.matches).not_to include(development)
   end
+
+  it "não trata apartamentos diferentes da mesma torre como duplicados" do
+    existing = create(:habitation, categoria: "Apartamento", status: "Venda", bloco: "B")
+    existing.create_address!(
+      logradouro: "Avenida Brasil",
+      numero: "70",
+      complemento: "801",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+
+    result = described_class.new(
+      street: "Avenida Brasil",
+      number: "70",
+      building: "Residencial Paris",
+      unit: "B",
+      complement: "401",
+      category: "Apartamento",
+      status: "Venda",
+      comparison: :unit
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.matches).not_to include(existing)
+  end
+
+  it "bloqueia apartamento realmente duplicado na mesma torre e unidade" do
+    existing = create(:habitation, categoria: "Apartamento", status: "Venda", bloco: "B")
+    existing.create_address!(
+      logradouro: "Avenida Brasil",
+      numero: "70",
+      complemento: "801",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+
+    result = described_class.new(
+      street: "Avenida Brasil",
+      number: "70",
+      building: "Residencial Paris",
+      unit: "B",
+      complement: "801",
+      category: "Apartamento",
+      status: "Venda",
+      comparison: :unit
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.matches).to include(existing)
+  end
 end

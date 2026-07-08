@@ -12,9 +12,9 @@
     <% if can?(:manage, :lojas) %>
       <%= button_to admin_store_path(@store),
                     method: :delete,
-                    data: { turbo_confirm: "Remover a loja '#{@store.name}'? Esta ação não pode ser desfeita." },
+                    data: { turbo_confirm: "Arquivar a loja '#{@store.name}'? Ela deixa de aparecer nos fluxos de check-in, mas o histórico é preservado." },
                     class: "ax-btn ax-btn--danger ax-btn--sm tw-gap-2" do %>
-        <i class="bi bi-trash"></i>Remover
+        <i class="bi bi-archive"></i>Arquivar
       <% end %>
     <% end %>
   </div>

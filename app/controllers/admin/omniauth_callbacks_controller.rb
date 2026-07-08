@@ -2,7 +2,8 @@ class Admin::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   def facebook
     auth = request.env["omniauth.auth"]
     
-    # Busca ou cria a integração para o AdminUser atual
+    # Busca ou cria a integração para o AdminUser atual (uma por usuário/conta;
+    # o tenant_id entra pelo before_validation do model quando a coluna existir)
     integration = UserMetaIntegration.find_or_initialize_by(admin_user: current_admin_user)
     
     # Trocar token de curto prazo por longo prazo (opcional, mas recomendado)

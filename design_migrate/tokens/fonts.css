@@ -1,0 +1,11 @@
+/* ============================================================
+   Unitymob — Web fonts
+   The admin app loads Inter (UI) and Outfit (display) from Google Fonts,
+   plus Bootstrap Icons for iconography. All are referenced from CDN
+   exactly as production.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap");
+
+/* Bootstrap Icons — the platform's icon font. Load in any consuming page. */
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css");

@@ -124,6 +124,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
       ok: true,
       body: preview.body,
       values: preview.values,
+      media: template_preview_media(template),
       variable_count: template.variable_count,
       suggested_variables: suggestions,
       variables_schema: template_variables_schema(template, effective_variables),
@@ -222,7 +223,7 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
     @template_options = current_tenant.whatsapp_templates.approved.ordered.pluck(:name, :id)
     @status_options = Lead.status_options
     @origin_options = Lead.origin_options
-    @tag_options = Lead.tag_options
+    @tag_options = Lead.tag_options(scope: current_tenant.leads)
     @broker_options = current_tenant.admin_users.active.order(:name).pluck(:name, :id)
     @sender_number_options = current_tenant.whatsapp_sender_numbers.active.ordered.map { |number| [number.display_label, number.id] }
     @group_options = current_tenant.whatsapp_campaigns.where.not(group_name: [nil, ""]).distinct.order(:group_name).pluck(:group_name)
@@ -399,6 +400,46 @@ class Admin::WhatsappCampaignsController < Admin::BaseController
         "message" => decision[:message].to_s
       )
     end
+  end
+
+  def template_preview_media(template)
+    header = Array(template.components).find { |component| template_component_value(component, "type").to_s.upcase == "HEADER" }
+    format = template_component_value(header, "format").to_s.downcase.presence
+    format = template.header_format.to_s if format.blank? || format == "text"
+    return nil if format.blank? || format == "none" || format == "text"
+
+    url = template_preview_media_url(template, header)
+    {
+      type: format,
+      label: template_preview_media_label(format),
+      url: url,
+      available: url.present?
+    }
+  end
+
+  def template_preview_media_label(format)
+    {
+      "image" => "Imagem",
+      "video" => "Vídeo",
+      "audio" => "Áudio",
+      "document" => "Documento"
+    }[format] || WhatsappTemplate::HEADER_FORMATS[format] || format.humanize
+  end
+
+  def template_preview_media_url(template, header)
+    return Rails.application.routes.url_helpers.rails_blob_path(template.header_media_file, only_path: true) if template.header_media_file.attached?
+
+    example = template_component_value(header, "example")
+    handle = template.header_media_handle.presence || Array(template_component_value(example, "header_handle")).first.to_s
+    return handle if handle.match?(%r{\Ahttps?://}i)
+
+    nil
+  end
+
+  def template_component_value(component, key)
+    return nil if component.blank?
+
+    component[key] || component[key.to_sym]
   end
 
   def default_response_action_for(text)

@@ -8,6 +8,7 @@ class TrackingIntegrationSetting
   GTM_CONTAINER_ID_KEY = "#{PREFIX}.google_tag_manager.container_id".freeze
   META_PIXEL_ENABLED_KEY = "#{PREFIX}.meta_pixel.enabled".freeze
   META_PIXEL_ID_KEY = "#{PREFIX}.meta_pixel.pixel_id".freeze
+  CACHE_KEY = "public_site:tracking_integration_setting".freeze
 
   HUMAN_ATTRIBUTES = {
     "google_tag_manager_enabled" => "Google Tag Manager ativo",
@@ -25,6 +26,12 @@ class TrackingIntegrationSetting
   validate :validate_meta_pixel
 
   def self.current
+    Rails.cache.fetch(CACHE_KEY, expires_in: 5.minutes) do
+      build_current
+    end
+  end
+
+  def self.build_current
     new(
       google_tag_manager_enabled: Setting.get(GTM_ENABLED_KEY, "false") == "true",
       google_tag_manager_container_id: Setting.get(GTM_CONTAINER_ID_KEY, ""),
@@ -68,8 +75,13 @@ class TrackingIntegrationSetting
     Setting.set(GTM_CONTAINER_ID_KEY, normalized_google_tag_manager_container_id, "ID do container Google Tag Manager")
     Setting.set(META_PIXEL_ENABLED_KEY, meta_pixel_enabled? ? "true" : "false", "Ativa Pixel da Meta no site público")
     Setting.set(META_PIXEL_ID_KEY, normalized_meta_pixel_id, "ID do Pixel da Meta")
+    self.class.clear_cache
 
     true
+  end
+
+  def self.clear_cache
+    Rails.cache.delete(CACHE_KEY)
   end
 
   def google_tag_manager_enabled?

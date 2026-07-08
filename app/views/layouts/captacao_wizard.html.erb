@@ -17,16 +17,19 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/field-icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/field-icons/icon-512.png">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <%# Bootstrap e ícones self-hosted (antes jsdelivr) %>
+    <%= stylesheet_link_tag "vendor/bootstrap.min" %>
+    <%= stylesheet_link_tag "vendor/bootstrap-icons" %>
+    <%= stylesheet_link_tag "vendor/tom-select.bootstrap5.min", media: "all" %>
     <%= stylesheet_link_tag "admin", media: "all" %>
     <%= stylesheet_link_tag "admin_tailwind", media: "all" %>
     <%= stylesheet_link_tag "ax_toast", media: "all" %>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <%# Fonte Inter self-hosted (antes Google Fonts) %>
+    <%= stylesheet_link_tag "vendor/admin-fonts" %>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <%# Bootstrap 5.3.0 bundle self-hosted (vendor/javascript/bootstrap-bundle.min.js, antes jsdelivr) %>
+    <%= javascript_include_tag "bootstrap-bundle.min" %>
     <%= javascript_importmap_tags %>
 
     <style>
@@ -76,11 +79,106 @@
         font-size: .68rem;
         white-space: nowrap;
       }
+      .wizard-back-link {
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        border-color: #cbd5e1;
+        border-radius: 10px;
+        color: #334155;
+        text-decoration: none;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, .10);
+      }
+      .wizard-back-link:hover {
+        border-color: #aab8ca;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+      .wizard-back-link:focus-visible {
+        outline: 3px solid rgba(54, 95, 143, .22);
+        outline-offset: 2px;
+      }
+      .wizard-back-link i {
+        font-size: 1.12rem;
+        line-height: 1;
+      }
       .wizard-progress { height: 5px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
       .wizard-progress-bar {
         height: 100%;
         background: linear-gradient(90deg, #0d6efd, #0a58ca);
         transition: width .3s ease;
+      }
+      .captacao-submit-progress {
+        position: sticky;
+        bottom: 82px;
+        z-index: 1015;
+        margin: .75rem 0 .4rem;
+        padding: .72rem .78rem;
+        border: 1px solid #bfd0e6;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, .98);
+        box-shadow: 0 10px 28px rgba(15, 23, 42, .16);
+      }
+      .captacao-submit-progress__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .7rem;
+        margin-bottom: .42rem;
+      }
+      .captacao-submit-progress__header strong {
+        color: #1f2937;
+        font-size: .84rem;
+        font-weight: 850;
+        line-height: 1.1;
+      }
+      .captacao-submit-progress__header span {
+        flex: 0 0 auto;
+        color: var(--admin-primary, #365f8f);
+        font-size: .78rem;
+        font-weight: 850;
+      }
+      .captacao-submit-progress__track {
+        height: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e5edf7;
+      }
+      .captacao-submit-progress__bar {
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--admin-primary, #365f8f);
+        transition: width .18s ease;
+      }
+      .captacao-submit-progress p {
+        margin: .4rem 0 0;
+        color: #64748b;
+        font-size: .74rem;
+        font-weight: 650;
+        line-height: 1.25;
+      }
+      .captacao-submit-progress.is-indeterminate .captacao-submit-progress__bar {
+        width: 45%;
+        animation: captacao-progress-sweep 1.05s ease-in-out infinite;
+      }
+      .captacao-submit-progress.is-error {
+        border-color: #fecdd3;
+        background: #fff7f8;
+      }
+      .captacao-submit-progress.is-error .captacao-submit-progress__header span,
+      .captacao-submit-progress.is-error .captacao-submit-progress__header strong {
+        color: #be123c;
+      }
+      .captacao-submit-progress.is-error .captacao-submit-progress__bar {
+        width: 100%;
+        background: #e11d48;
+        animation: none;
+      }
+      @keyframes captacao-progress-sweep {
+        0% { transform: translateX(-120%); }
+        50% { transform: translateX(35%); }
+        100% { transform: translateX(145%); }
       }
       .wizard-content { padding: .6rem .75rem 1rem; }
       .wizard-bottom-nav {
@@ -218,6 +316,68 @@
       .wizard-field-group .is-invalid,
       .wizard-field-group .server-invalid {
         border-color: #e11d48 !important;
+      }
+
+      /* Autocomplete reutilizável (ax_autocomplete_select_field / Tom Select) com a
+         mesma pele dos demais campos do wizard — fora do admin não há body.ax-app,
+         então a pele do componente é aplicada aqui. */
+      .wizard-field-group .ax-field-label {
+        color: #374151;
+        font-size: .76rem;
+        font-weight: 600;
+        letter-spacing: normal;
+        line-height: 1.15;
+        margin-bottom: .22rem;
+        text-transform: none;
+      }
+      .wizard-field-group .ts-wrapper { width: 100%; }
+      .wizard-field-group .ts-wrapper .ts-control {
+        min-height: 36px;
+        padding: .38rem .55rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background-color: #fff;
+        box-shadow: inset 0 1px 1px rgba(15, 23, 42, .04);
+        color: #1f2937;
+        font-size: .84rem;
+      }
+      .wizard-field-group .ts-wrapper .ts-control input {
+        color: #1f2937;
+        font-size: inherit;
+      }
+      .wizard-field-group .ts-wrapper .ts-control input::placeholder {
+        color: #9aa4b2;
+      }
+      .wizard-field-group .ts-wrapper.focus .ts-control,
+      .wizard-field-group .ts-wrapper.dropdown-active .ts-control {
+        border-color: #365f8f;
+        box-shadow: 0 0 0 2px rgba(54, 95, 143, .16), inset 0 1px 1px rgba(15, 23, 42, .04);
+      }
+      /* Single com busca: uma linha só (mesmo comportamento do admin/ax-app).
+         Com o dropdown aberto o item selecionado some e o input ocupa a linha;
+         fechado, o vendor esconde o input e sobra só o item. */
+      .wizard-field-group .ts-wrapper.single .ts-control {
+        flex-wrap: nowrap;
+      }
+      .wizard-field-group .ts-wrapper.single .ts-control > input {
+        min-width: 0;
+      }
+      .wizard-field-group .ts-wrapper.ax-ts-single-search.single.dropdown-active .ts-control > div.item {
+        display: none !important;
+      }
+      .wizard-field-group .ts-wrapper.ax-ts-single-search.single.dropdown-active .ts-control > input {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        opacity: 1 !important;
+      }
+      .wizard-field-group .ts-wrapper.ax-ts-single-search.single.has-items.dropdown-active .ts-control {
+        cursor: text;
+      }
+      .wizard-field-group .ts-wrapper.is-invalid .ts-control,
+      .wizard-field-group .ts-wrapper.server-invalid .ts-control {
+        border-color: #e11d48;
       }
       .wizard-switch-grid {
         align-items: stretch;
@@ -742,6 +902,7 @@
         border-color: #0d6efd;
       }
       .captacao-slot-empty {
+        grid-column: 1 / -1;
         min-height: 36px;
         padding: .52rem .6rem;
         border: 1px solid #fed7aa;
@@ -848,6 +1009,17 @@
         .wizard-admin-content {
           margin-left: 220px;
           width: calc(100% - 220px);
+        }
+      }
+      @media (max-width: 767.98px) {
+        /* iOS dá zoom automático ao focar input com fonte < 16px; o zoom desloca a
+           página e o dropdown do autocomplete some atrás do teclado. */
+        .wizard-field-group .ax-control,
+        .wizard-field-group .form-control,
+        .wizard-field-group .form-select,
+        .wizard-field-group .ts-wrapper .ts-control,
+        .wizard-field-group .ts-wrapper .ts-control input {
+          font-size: 16px;
         }
       }
       @media (max-width: 620px) {

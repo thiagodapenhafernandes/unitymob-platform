@@ -3,7 +3,7 @@ import consumer from "channels/consumer"
 
 // Inbox WhatsApp: ActionCable primeiro, com sync de reconciliação só quando necessário.
 export default class extends Controller {
-  static targets = ["context", "scroll", "list", "jump"]
+  static targets = ["context", "scroll", "list", "jump", "pinnedBar", "pinnedSnippet", "forwardModal", "forwardSearch", "forwardList"]
   static values = {
     last: Number,
     conversationId: Number,
@@ -32,6 +32,14 @@ export default class extends Controller {
     if (this.hasScrollTarget) {
       this.scrollTarget.addEventListener("scroll", this.handleScroll, { passive: true })
     }
+    this.handleListClick = this.handleListClick.bind(this)
+    this.handleDocClick = this.handleDocClick.bind(this)
+    if (this.hasListTarget) this.listTarget.addEventListener("click", this.handleListClick)
+    this.handleForwardPick = this.handleForwardPick.bind(this)
+    if (this.hasForwardListTarget) this.forwardListTarget.addEventListener("click", this.handleForwardPick)
+    this.handlePinnedJump = this.handlePinnedJump.bind(this)
+    if (this.hasPinnedBarTarget) this.pinnedBarTarget.addEventListener("click", this.handlePinnedJump)
+    document.addEventListener("click", this.handleDocClick)
     this.scrollBottom({ force: true })
     this.updateJumpButton()
     this.refreshInboxCounters()
@@ -47,8 +55,219 @@ export default class extends Controller {
     if (this.hasScrollTarget) {
       this.scrollTarget.removeEventListener("scroll", this.handleScroll)
     }
+    if (this.hasListTarget) this.listTarget.removeEventListener("click", this.handleListClick)
+    document.removeEventListener("click", this.handleDocClick)
     this.disconnectCable()
     this.clearRecoverySync()
+  }
+
+  // fecha popovers de reação/menu quando clica fora
+  handleDocClick(event) {
+    if (event.target.closest(".wa-msg-actions")) return
+
+    this.closeBubblePopovers()
+  }
+
+  closeBubblePopovers() {
+    this.element.querySelectorAll("[data-wa-msg-menu]:not([hidden]), [data-wa-msg-react]:not([hidden])")
+      .forEach((el) => { el.hidden = true })
+  }
+
+  messageActionUrl(messageId, action) {
+    return `/admin/atendimento/whatsapp/${this.conversationIdValue}/messages/${messageId}/${action}`
+  }
+
+  postMessageAction(messageId, action, extra = {}) {
+    return fetch(this.messageActionUrl(messageId, action), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || ""
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(extra)
+    }).then((response) => response.json().catch(() => ({})))
+  }
+
+  flashActionError(payload) {
+    // toast efêmero (alert nativo derrubaria o fullscreen)
+    const toast = document.createElement("div")
+    toast.className = "wa-action-toast"
+    toast.textContent = payload?.error || "Não foi possível concluir a ação."
+    this.element.appendChild(toast)
+    setTimeout(() => toast.remove(), 3200)
+  }
+
+  // Ações das bolhas (responder/copiar/ir à citada): um listener só, delegado.
+  handleListClick(event) {
+    // popovers de reação e menu
+    const reactOpen = event.target.closest("[data-wa-react-open]")
+    if (reactOpen) {
+      const strip = reactOpen.closest(".wa-msg-actions").querySelector("[data-wa-msg-react]")
+      const wasHidden = strip.hidden
+      this.closeBubblePopovers()
+      strip.hidden = !wasHidden
+      return
+    }
+
+    const menuOpen = event.target.closest("[data-wa-menu-open]")
+    if (menuOpen) {
+      const menu = menuOpen.closest(".wa-msg-actions").querySelector("[data-wa-msg-menu]")
+      const wasHidden = menu.hidden
+      this.closeBubblePopovers()
+      menu.hidden = !wasHidden
+      return
+    }
+
+    const reactBtn = event.target.closest("[data-wa-react]")
+    if (reactBtn) {
+      this.closeBubblePopovers()
+      this.postMessageAction(reactBtn.dataset.messageId, "react", { emoji: reactBtn.dataset.waReact })
+        .then((payload) => { if (!payload.ok) this.flashActionError(payload) })
+      return
+    }
+
+    const pinBtn = event.target.closest("[data-wa-pin]")
+    if (pinBtn) {
+      this.closeBubblePopovers()
+      this.postMessageAction(pinBtn.dataset.messageId, "toggle_pin").then((payload) => {
+        if (!payload.ok) return this.flashActionError(payload)
+
+        if (this.hasPinnedBarTarget) {
+          this.pinnedBarTarget.classList.toggle("is-hidden", !payload.pinned)
+          if (payload.pinned) {
+            if (this.hasPinnedSnippetTarget) this.pinnedSnippetTarget.textContent = payload.snippet || ""
+            this.pinnedBarTarget.querySelector("[data-wa-quote-jump]")?.setAttribute("data-wa-quote-jump", pinBtn.dataset.messageId)
+          }
+        }
+      })
+      return
+    }
+
+    const starBtn = event.target.closest("[data-wa-star]")
+    if (starBtn) {
+      this.closeBubblePopovers()
+      this.postMessageAction(starBtn.dataset.messageId, "toggle_star")
+        .then((payload) => { if (!payload.ok) this.flashActionError(payload) })
+      return
+    }
+
+    const noteBtn = event.target.closest("[data-wa-note]")
+    if (noteBtn) {
+      this.closeBubblePopovers()
+      this.postMessageAction(noteBtn.dataset.messageId, "add_to_notes").then((payload) => {
+        if (!payload.ok) return this.flashActionError(payload)
+
+        const icon = noteBtn.querySelector("i")
+        if (icon) { icon.className = "bi bi-check2"; setTimeout(() => { icon.className = "bi bi-journal-plus" }, 1200) }
+      })
+      return
+    }
+
+    const hideBtn = event.target.closest("[data-wa-hide]")
+    if (hideBtn) {
+      this.closeBubblePopovers()
+      this.postMessageAction(hideBtn.dataset.messageId, "hide").then((payload) => {
+        if (!payload.ok) return this.flashActionError(payload)
+
+        this.listTarget.querySelector(`[data-message-id="${hideBtn.dataset.messageId}"]`)?.remove()
+      })
+      return
+    }
+
+    const forwardBtn = event.target.closest("[data-wa-forward]")
+    if (forwardBtn) {
+      this.closeBubblePopovers()
+      this.forwardMessageId = forwardBtn.dataset.messageId
+      if (this.hasForwardModalTarget) {
+        this.forwardModalTarget.classList.remove("is-hidden")
+        if (this.hasForwardSearchTarget) { this.forwardSearchTarget.value = ""; this.filterForwardList(); this.forwardSearchTarget.focus() }
+      }
+      return
+    }
+
+    const replyBtn = event.target.closest("[data-wa-reply]")
+    if (replyBtn) {
+      window.dispatchEvent(new CustomEvent("wa:reply", {
+        detail: {
+          id: replyBtn.dataset.replyId,
+          author: replyBtn.dataset.replyAuthor,
+          snippet: replyBtn.dataset.replySnippet
+        }
+      }))
+      return
+    }
+
+    const copyBtn = event.target.closest("[data-wa-copy]")
+    if (copyBtn) {
+      const text = copyBtn.dataset.copyText || ""
+      const done = () => {
+        const icon = copyBtn.querySelector("i")
+        if (!icon) return
+        icon.className = "bi bi-check2"
+        setTimeout(() => { icon.className = "bi bi-copy" }, 1200)
+      }
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => {})
+      } else {
+        const area = document.createElement("textarea")
+        area.value = text
+        document.body.append(area)
+        area.select()
+        document.execCommand("copy")
+        area.remove()
+        done()
+      }
+      return
+    }
+
+    const jump = event.target.closest("[data-wa-quote-jump]")
+    if (jump) {
+      const target = this.listTarget.querySelector(`[data-message-id="${jump.dataset.waQuoteJump}"]`)
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" })
+        target.classList.add("is-highlighted")
+        setTimeout(() => target.classList.remove("is-highlighted"), 1600)
+      }
+    }
+  }
+
+  handleForwardPick(event) {
+    const target = event.target.closest("[data-wa-forward-target-id]")
+    if (!target || !this.forwardMessageId) return
+
+    this.postMessageAction(this.forwardMessageId, "forward", { target_conversation_id: target.dataset.waForwardTargetId }).then((payload) => {
+      if (!payload.ok) return this.flashActionError(payload)
+
+      this.closeForward()
+    })
+  }
+
+  handlePinnedJump(event) {
+    const jump = event.target.closest("[data-wa-quote-jump]")
+    if (!jump) return
+
+    const target = this.listTarget.querySelector(`[data-message-id="${jump.dataset.waQuoteJump}"]`)
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" })
+      target.classList.add("is-highlighted")
+      setTimeout(() => target.classList.remove("is-highlighted"), 1600)
+    }
+  }
+
+  closeForward() {
+    if (this.hasForwardModalTarget) this.forwardModalTarget.classList.add("is-hidden")
+    this.forwardMessageId = null
+  }
+
+  filterForwardList() {
+    if (!this.hasForwardListTarget) return
+
+    const query = (this.hasForwardSearchTarget ? this.forwardSearchTarget.value : "").toLowerCase().trim()
+    this.forwardListTarget.querySelectorAll("[data-wa-forward-target-id]").forEach((item) => {
+      item.hidden = query.length > 0 && !item.dataset.name.includes(query)
+    })
   }
 
   scrollBottom({ force = false } = {}) {
@@ -78,6 +297,19 @@ export default class extends Controller {
 
     const emptyState = this.listTarget.querySelector(".wa-inbox-thread__empty")
     if (emptyState) emptyState.remove()
+
+    // Mensagem real outbound chegando via broadcast: assume o LUGAR da bolha
+    // otimista mais antiga em vez de appendar ao lado — sem isso a mensagem
+    // duplica por um instante (otimista + real) até o fetch remover a otimista.
+    if (m.id && m.html.includes("wa-inbox-bubble-row--outbound")) {
+      const optimistic = this.listTarget.querySelector(".is-optimistic[data-wa-temp-id]")
+      if (optimistic) {
+        optimistic.insertAdjacentHTML("beforebegin", m.html)
+        optimistic.remove()
+        return
+      }
+    }
+
     this.listTarget.insertAdjacentHTML("beforeend", m.html)
   }
 
@@ -175,7 +407,7 @@ export default class extends Controller {
         return
       }
       current.replaceWith(next)
-      if (list?.contains(next) && !wasActive) {
+      if (list?.contains(next) && list.firstElementChild !== next) {
         list.prepend(next)
       }
       this.flashQueueItem(next, { silent: wasActive })
@@ -268,6 +500,11 @@ export default class extends Controller {
   }
 
   replaceStatusOnly(current, next) {
+    // reações/fixada/favorita vivem fora do surface — mudou, troca a bolha inteira
+    const currentExtras = (current.querySelector(".wa-reactions")?.outerHTML || "") + (current.querySelector(".wa-mark")?.outerHTML || "")
+    const nextExtras = (next.querySelector(".wa-reactions")?.outerHTML || "") + (next.querySelector(".wa-mark")?.outerHTML || "")
+    if (currentExtras !== nextExtras) return false
+
     const currentStatus = current.querySelector("[data-wa-message-status]")
     const nextStatus = next.querySelector("[data-wa-message-status]")
     if (!currentStatus || !nextStatus) return false

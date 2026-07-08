@@ -2,10 +2,13 @@
   status_value = lead.status.presence || Lead.default_status
   tone = status_tone.call(lead.status)
   property = local_assigns[:property]
+  lead_return_to_path = "#{request.fullpath}#lead_#{lead.id}"
+  lead_details_path = admin_lead_path(lead, return_to: lead_return_to_path)
 %>
 <article class="ax-board__card lead-kanban-card"
+         id="lead_<%= lead.id %>"
          data-lead-id="<%= lead.id %>"
-         data-lead-url="<%= admin_lead_path(lead) %>"
+         data-lead-url="<%= lead_details_path %>"
          data-update-url="<%= admin_lead_path(lead) %>"
          data-current-status="<%= status_value %>">
   <div class="ax-board__card-top">
@@ -32,7 +35,7 @@
 
   <% if property.present? %>
     <div class="ax-board__card-section">
-      <%= link_to property.display_title, admin_habitation_path(property), class: "ax-board__card-link" %>
+      <%= link_to property.display_title, admin_habitation_path(property, return_to: lead_return_to_path), class: "ax-board__card-link" %>
       <div class="ax-board__card-subtle"><%= property.codigo %></div>
     </div>
   <% elsif lead.property_id.present? %>
@@ -52,7 +55,7 @@
     <small class="ax-board__card-date"><%= l(lead.created_at, format: "%d/%m/%Y %H:%M") %></small>
     <div class="tw-flex tw-items-center tw-gap-1">
       <%= render "admin/lead_labels/button", lead: lead, trigger_class: "ax-ico-btn", icon_only: true %>
-      <%= ax_icon_button label: "Ver detalhes", icon: "eye", url: admin_lead_path(lead) %>
+      <%= ax_icon_button label: "Ver detalhes", icon: "eye", url: lead_details_path %>
     </div>
   </div>
 

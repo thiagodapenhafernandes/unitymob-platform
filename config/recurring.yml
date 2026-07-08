@@ -9,6 +9,20 @@
 #     priority: 2
 #     schedule: at 5am every day
 
+development:
+  dwv_daily_sync:
+    class: DwvSyncAllTenantsJob
+    queue: dwv
+    args:
+      - mode: "full"
+    schedule: every day at 4:20am
+  dwv_incremental_sync:
+    class: DwvSyncAllTenantsJob
+    queue: dwv
+    args:
+      - mode: "incremental"
+    schedule: every 5 minutes
+
 production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
@@ -16,22 +30,28 @@ production:
   habitations_hierarchy_audit:
     command: "result = Habitations::HierarchyAuditService.new(strict: false).call; Rails.logger.info(\"[HierarchyAudit] #{result.to_json}\")"
     schedule: every day at 3:40am
+  # Fan-out: um DwvSyncJob por tenant com integração DWV habilitada (o job
+  # exige tenant_id; agendar DwvSyncJob direto sem args falhava 100%).
   dwv_daily_sync:
-    class: DwvSyncJob
+    class: DwvSyncAllTenantsJob
     queue: dwv
     args:
       - mode: "full"
     schedule: every day at 4:20am
+  # A API DWV não envia push/webhook; este incremental consulta apenas os
+  # imóveis alterados no dia via last_updates para aproximar o tempo real.
+  dwv_incremental_sync:
+    class: DwvSyncAllTenantsJob
+    queue: dwv
+    args:
+      - mode: "incremental"
+    schedule: every 5 minutes
   seo_discovery:
     class: SeoDiscoveryJob
-    queue: default
+    queue: sync
     args:
       - generate_ai: true
     schedule: every day at 5:10am
-  loft_schedule_tick:
-    class: LoftScheduleTickJob
-    queue: default
-    schedule: every minute
   field_auto_checkout_shift_end:
     class: CheckIns::AutoCheckoutShiftEndJob
     queue: checkin
@@ -40,6 +60,13 @@ production:
     class: CheckIns::StaleActiveCheckinJob
     queue: checkin
     schedule: every 5 minutes
+  # Retenção da trilha de GPS dos corretores (LGPD): apaga location_pings com
+  # recorded_at anterior a 90 dias (período PADRÃO ajustável — ver
+  # CheckIns::LocationPingRetentionJob::RETENTION_PERIOD). 1x/dia, fila checkin.
+  field_location_ping_retention:
+    class: CheckIns::LocationPingRetentionJob
+    queue: checkin
+    schedule: every day at 4:35am
   lead_pocket_sweep:
     class: Leads::PocketSweepJob
     queue: default
@@ -48,7 +75,25 @@ production:
     class: Automation::TickJob
     queue: default
     schedule: every 15 minutes
+  # Sem args: o job faz fan-out para os tenants com integração conectada.
   whatsapp_templates_sync:
     class: Whatsapp::SyncTemplatesJob
     queue: default
     schedule: every 5 minutes
+  # Watchdog de campanha: destrava mensagens 'queued' órfãs e correntes de
+  # BulkSendJob mortas em crash/deploy.
+  whatsapp_campaign_stuck_sweep:
+    class: Whatsapp::CampaignStuckSweepJob
+    queue: campaigns
+    schedule: every 5 minutes
+  # Alerta de fila degradada (failed acumulando, ready envelhecendo, worker
+  # sem heartbeat). Fila checkin: não depende da fila default monitorada.
+  queue_health_check:
+    class: QueueHealthCheckJob
+    queue: checkin
+    schedule: every 5 minutes
+  # Retenção do rastreador interno de erros: apaga eventos parados há 90 dias.
+  error_events_cleanup:
+    class: ErrorEventsCleanupJob
+    queue: default
+    schedule: every day at 4:50am

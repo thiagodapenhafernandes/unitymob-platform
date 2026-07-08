@@ -45,18 +45,16 @@
 
 <div class="wa-inbox-page <%= 'wa-inbox-page--focus' if @focus_mode %>"
      data-controller="wa-workspace">
-  <div class="wa-inbox-page__header">
-    <%= ax_workspace_heading(
-          eyebrow: (@focus_mode ? "Workspace dedicado" : "Atendimento"),
-          icon: "whatsapp",
-          title: "Atendimento WhatsApp",
-          subtitle: (@focus_mode ? "Tela de operação contínua para fila, thread e resposta." : "Fila, thread e resposta."),
-          metrics: [
-            { value: number_with_delimiter(@conversation_count.to_i), label: "conv.", data: { wa_inbox_heading_metric: "conversations" } },
-            { value: number_with_delimiter(@total_unread.to_i), label: "n. lidas", data: { wa_inbox_heading_metric: "unread" } }
-          ],
-          actions: heading_actions
-        ) %>
+  <div class="wa-inbox-page__header ax-whatsapp-focus-workspace">
+    <div class="wa-inbox-page__title">
+      <span>Atendimento WhatsApp</span>
+      <% if @focus_mode %>
+        <em>Tela de operação contínua para fila, thread e resposta.</em>
+      <% end %>
+      <strong data-wa-inbox-heading-metric="conversations"><%= number_with_delimiter(@conversation_count.to_i) %> conversas</strong>
+      <strong data-wa-inbox-heading-metric="unread"><%= number_with_delimiter(@total_unread.to_i) %> não lidas</strong>
+    </div>
+    <%= heading_actions %>
 
     <% unless @integration&.messaging_ready? %>
       <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", class_name: "wa-inbox__integration-notice") do %>
@@ -80,8 +78,11 @@
   <% unread_conversation_count = @conversations.count { |conv| conv.unread_count.to_i.positive? } %>
   <% unlinked_conversation_count = @conversations.count { |conv| conv.lead.blank? } %>
 
-  <%= ax_operational_panel(eyebrow: "Fila", title: "Conversas", actions: list_actions, class_name: "wa-inbox-panel wa-inbox-panel--list #{'wa-inbox-panel--compact' if queue_compact}") do %>
-    <div class="wa-inbox-list-shell" data-controller="wa-queue">
+  <section class="wa-inbox-panel wa-inbox-panel--list wa-inbox-panel--compact" aria-label="Conversas do WhatsApp">
+    <div id="wa-inbox-queue"
+         class="wa-inbox-list-shell"
+         data-controller="wa-queue"
+         data-turbo-permanent>
       <div class="wa-inbox-list-toolbar">
         <label class="wa-inbox-list-search-shell" for="wa-inbox-search">
           <i class="bi bi-search"></i>
@@ -90,7 +91,7 @@
                  id="wa-inbox-search"
                  name="queue_search"
                  class="ax-control ax-control--sm wa-inbox-list-search"
-                 placeholder="Buscar"
+                 placeholder="Buscar conversa..."
                  aria-label="Buscar conversas"
                  autocomplete="off"
                  data-action="input->wa-queue#search"
@@ -124,7 +125,9 @@
         </div>
       </div>
 
-      <div class="wa-inbox-list" data-wa-queue-list data-wa-queue-target="list">
+      <div class="wa-inbox-list"
+           data-wa-queue-list
+           data-wa-queue-target="list">
       <% if @conversations.any? %>
         <% @conversations.each do |conv| %>
           <%= render "conversation_item", conv: conv, active: @conversation&.id == conv.id, focus_mode: @focus_mode, compact_mode: queue_compact %>
@@ -140,54 +143,20 @@
       <% end %>
       </div>
     </div>
-  <% end %>
+  </section>
 
-  <% if @conversation %>
-    <% thread_lead = @thread_context_locals[:thread_lead] %>
-    <% can_manage_comercial = @thread_context_locals[:can_manage_comercial] %>
-    <% thread_actions = capture do %>
-      <div class="wa-inbox-thread-actions">
-        <% if thread_lead %>
-          <%= render "admin/lead_labels/button", lead: thread_lead, trigger_label: "Etiquetas", trigger_class: "ax-btn ax-btn--sm" %>
-        <% end %>
-        <% if can_manage_comercial && thread_lead %>
-          <%= render "admin/tasks/form_modal", modal_id: "whatsappInboxTask", lead: thread_lead, trigger_label: "Tarefa", trigger_class: "ax-btn ax-btn--sm" %>
-          <%= render "admin/appointments/form_modal", lead: thread_lead, trigger_label: "Agendar", trigger_class: "ax-btn ax-btn--sm" %>
-          <%= link_to new_admin_lead_proposal_path(thread_lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-            <i class="bi bi-file-earmark-text ax-ico"></i><span>Proposta</span>
-          <% end %>
-        <% end %>
-      </div>
-    <% end %>
-
-    <%= ax_operational_panel(eyebrow: "Thread", title: "Conversa ativa", actions: thread_actions, class_name: "wa-inbox-panel wa-inbox-panel--thread #{'wa-inbox-panel--compact' if thread_panel_compact}") do %>
-      <%= render "thread_workspace",
-            conversation: @conversation,
-            messages: @messages,
-            thread_context_locals: @thread_context_locals,
-            focus_mode: @focus_mode,
-            compact_mode: thread_compact %>
-
-      <% if can?(:manage, :whatsapp_inbox) %>
-        <%= render "admin/shared/ui/whatsapp_composer",
-              title: "Responder no CRM",
-              conversation: @conversation,
-              templates: @templates,
-              return_to: current_thread_url,
-              file_input_id: "wa-inbox-media-file",
-              compact_mode: composer_compact %>
-      <% end %>
-    <% end %>
-  <% else %>
-    <%= ax_operational_panel(eyebrow: "Thread", title: "Selecione uma conversa", class_name: "wa-inbox-panel wa-inbox-panel--thread") do %>
-      <div class="wa-inbox-thread__placeholder">
-        <%= ax_empty_state(
-              title: "Selecione uma conversa",
-              description: "Escolha um contato à esquerda para ver o histórico e responder.",
-              icon: "whatsapp"
-            ) %>
-      </div>
-    <% end %>
+  <%= turbo_frame_tag "wa-thread" do %>
+    <%= render "thread_panel",
+          conversation: @conversation,
+          messages: @messages,
+          quoted_messages: @quoted_messages,
+          thread_context_locals: @thread_context_locals,
+          focus_mode: @focus_mode,
+          integration: @integration,
+          templates: @templates,
+          current_thread_url: current_thread_url,
+          thread_compact: thread_compact,
+          composer_compact: composer_compact %>
   <% end %>
 </div>
 </div>

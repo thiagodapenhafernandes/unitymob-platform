@@ -4,28 +4,31 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
   before_action :set_template, only: [:show, :edit, :update, :destroy, :new_campaign]
 
   def index
+    @sender_numbers = sender_number_scope.active.ordered
+    @sender_number = selected_sender_number(allow_default: false)
     @filters = template_filters
-    @templates = apply_filters(template_scope.ordered).paginate(page: params[:page], per_page: 25)
-    @approved_count = template_scope.where(status: "APPROVED").count
-    @pending_count = template_scope.where(status: "PENDING").count
-    @sender_number = sender_number_scope.active.find_by(id: params[:whatsapp_sender_number_id])
+    @templates = selected_template_scope ? apply_filters(selected_template_scope.ordered).paginate(page: params[:page], per_page: 25) : WhatsappTemplate.none.paginate(page: params[:page], per_page: 25)
+    @approved_count = selected_template_scope&.where(status: "APPROVED")&.count || 0
+    @pending_count = selected_template_scope&.where(status: "PENDING")&.count || 0
     @page_title = "Templates WhatsApp"
   end
 
   def sync
-    result = Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id)
+    @sender_number = selected_sender_number
+    result = Whatsapp::SyncTemplatesJob.perform_now(current_tenant.id, sender_number_id: @sender_number&.id)
     if result[:ok]
-      redirect_to admin_whatsapp_templates_path, notice: "#{result[:synced]} template(s) sincronizado(s)."
+      redirect_to admin_whatsapp_templates_path(whatsapp_sender_number_id: @sender_number&.id), notice: "#{result[:synced]} template(s) sincronizado(s)."
     else
-      redirect_to admin_whatsapp_templates_path, alert: result[:error].presence || "Não foi possível sincronizar templates."
+      redirect_to admin_whatsapp_templates_path(whatsapp_sender_number_id: @sender_number&.id), alert: result[:error].presence || "Não foi possível sincronizar templates."
     end
   end
 
   def upload_media
+    @sender_number = selected_sender_number
     upload = Whatsapp::TemplateMediaHandleUploader.upload_attachable(
       attachable: params[:file],
       media_type: params[:media_type],
-      client: Whatsapp::CloudClient.new(WhatsappBusinessIntegration.current(current_tenant))
+      client: Whatsapp::CloudClient.new(@sender_number || WhatsappBusinessIntegration.current(current_tenant))
     )
 
     if upload[:ok]
@@ -45,18 +48,20 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
 
   def create
     @template = template_scope.new(template_params)
+    @sender_number = selected_sender_number
+    @template.waba_id = @sender_number&.waba_id
     @template.status = "PENDING"
     @template.buttons = @template.clean_buttons
     @template.carousel_cards = @template.clean_carousel_cards
     @template.flow_config = @template.clean_flow_config
-    result = Whatsapp::TemplateSubmission.call(template: @template)
+    result = Whatsapp::TemplateSubmission.call(template: @template, client: Whatsapp::CloudClient.new(@sender_number || WhatsappBusinessIntegration.current(current_tenant)))
 
     if result[:ok]
-      redirect_to admin_whatsapp_templates_path(whatsapp_sender_number_id: selected_sender_number&.id),
+      redirect_to admin_whatsapp_templates_path(whatsapp_sender_number_id: @sender_number&.id),
                   notice: "Modelo enviado para aprovação. Acompanhe o status retornado pela Meta nesta listagem."
     else
       @template_type = @template.template_type
-      @sender_number = selected_sender_number
+      @sender_numbers = sender_number_scope.active.ordered
       @template.errors.add(:base, result[:error]) if @template.errors.empty? && result[:error].present?
       flash.now[:alert] = result[:error]
       render :new, status: :unprocessable_entity
@@ -88,12 +93,20 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
 
   def destroy
     if @template.whatsapp_campaigns.exists?
-      redirect_to admin_whatsapp_templates_path, alert: "Este template já está vinculado a campanhas."
+      redirect_to admin_whatsapp_templates_path(whatsapp_sender_number_id: params[:whatsapp_sender_number_id].presence), alert: "Este template já está vinculado a campanhas."
       return
     end
 
-    @template.destroy
-    redirect_to admin_whatsapp_templates_path, notice: "Template removido."
+    if @template.notification_template_settings.exists?
+      redirect_to admin_whatsapp_templates_path(whatsapp_sender_number_id: params[:whatsapp_sender_number_id].presence), alert: "Este template está configurado em notificações automáticas."
+      return
+    end
+
+    if @template.destroy
+      redirect_to admin_whatsapp_templates_path(whatsapp_sender_number_id: params[:whatsapp_sender_number_id].presence), notice: "Template removido."
+    else
+      redirect_to admin_whatsapp_templates_path(whatsapp_sender_number_id: params[:whatsapp_sender_number_id].presence), alert: @template.errors.full_messages.to_sentence.presence || "Não foi possível remover o template."
+    end
   end
 
   def new_campaign
@@ -133,8 +146,18 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
     template
   end
 
-  def selected_sender_number
-    sender_number_scope.active.find_by(id: params[:whatsapp_sender_number_id]) || sender_number_scope.active.order(:label, :display_phone_number).first
+  def selected_sender_number(allow_default: true)
+    selected = sender_number_scope.active.find_by(id: params[:whatsapp_sender_number_id])
+    return selected if selected
+    return nil unless allow_default
+
+    sender_number_scope.active.order(:label, :display_phone_number).first
+  end
+
+  def selected_template_scope
+    return nil unless @sender_number&.waba_id.present?
+
+    template_scope.where(waba_id: @sender_number.waba_id)
   end
 
   def template_filters
@@ -160,7 +183,10 @@ class Admin::WhatsappTemplatesController < Admin::BaseController
   end
 
   def sender_number_scope
-    current_tenant.whatsapp_sender_numbers
+    scope = current_tenant.whatsapp_sender_numbers
+    notification_phone_id = WhatsappBusinessIntegration.current(current_tenant).phone_number_id.to_s.presence
+    scope = scope.where.not(phone_number_id: notification_phone_id) if notification_phone_id
+    scope
   end
 
   def template_params

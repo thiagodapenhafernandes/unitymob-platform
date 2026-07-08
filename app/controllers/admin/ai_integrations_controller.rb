@@ -40,8 +40,12 @@ class Admin::AiIntegrationsController < Admin::BaseController
     @batch_progress = Setting.get("openai_batch_progress", "0").to_i.clamp(0, 100)
     @batch_message = Setting.get("openai_batch_message", "Nenhum lote executado ainda.")
     @batch_last_at = Time.zone.parse(Setting.get("openai_batch_last_at").to_s) rescue nil
-    @pending_suggestions_count = AiPropertySuggestion.pending.count
-    @failed_suggestions_count = AiPropertySuggestion.where(status: "failed").count
+    # Escopado pelo tenant via habitation (AiPropertySuggestion não é TenantScoped)
+    # — antes contava sugestões de TODAS as contas no painel.
+    tenant_suggestions = AiPropertySuggestion.joins(:habitation)
+                                             .where(habitations: { tenant_id: current_tenant.id })
+    @pending_suggestions_count = tenant_suggestions.pending.count
+    @failed_suggestions_count = tenant_suggestions.where(status: "failed").count
   end
 
   def ai_params

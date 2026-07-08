@@ -1,10 +1,12 @@
 <%
-  field_classes = ["ax-field", field_class].compact.join(" ")
+  has_error = form.object.respond_to?(:errors) && form.object.errors[method].present?
+  field_classes = ["ax-field", field_class, ("is-invalid" if has_error)].compact.join(" ")
   clearable = local_assigns.fetch(:clearable, false)
   options = (options || {}).dup
   options[:autocomplete] = "off" unless options.key?(:autocomplete)
   control_class = ["ax-control", options.delete(:class)].compact.join(" ")
   html_options = options.merge(class: control_class)
+  html_options[:"aria-invalid"] = "true" if has_error
 %>
 
 <div class="<%= field_classes %>">

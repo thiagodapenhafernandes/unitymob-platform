@@ -49,19 +49,30 @@ class WhatsappCampaign < ApplicationRecord
   end
 
   def start!
-    return if processing?
+    return false if processing?
     raise ArgumentError, "Campanha cancelada não pode ser iniciada." if cancelled?
+    raise ArgumentError, "Modelo WhatsApp precisa estar aprovado para disparo." unless whatsapp_template&.approved?
 
-    transaction do
-      update!(status: "processing", started_at: Time.current, failure_reason: nil)
-      Whatsapp::CampaignProcessorJob.perform_later(id, tenant_id: tenant_id)
-    end
+    # Gate atômico: cliques duplos e CampaignStartJobs duplicados (re-agendamentos)
+    # disputam este UPDATE condicional e só um enfileira o processamento.
+    claimed = self.class.where(id: id, status: %w[draft scheduled paused failed]).update_all(
+      status: "processing",
+      started_at: Time.current,
+      failure_reason: nil,
+      updated_at: Time.current
+    )
+    return false if claimed.zero?
+
+    reload
+    Whatsapp::CampaignProcessorJob.perform_later(id, tenant_id: tenant_id)
+    true
   end
 
   def pause!
     return unless processing? || scheduled?
 
     update!(status: "paused", paused_at: Time.current)
+    refresh_counters!
   end
 
   def resume!
@@ -81,6 +92,7 @@ class WhatsappCampaign < ApplicationRecord
     return unless processing?
     return if campaign_messages.pending_or_queued.exists?
 
+    refresh_counters!
     update!(status: "completed", completed_at: Time.current)
     emit_event!("whatsapp_campaign_completed", payload: metrics_payload)
   end
@@ -96,6 +108,21 @@ class WhatsappCampaign < ApplicationRecord
       paused_at: Time.current,
       failure_reason: reason.to_s.truncate(500)
     )
+    refresh_counters!
+  end
+
+  # Erro de autenticação com a Meta (token expirado/revogado): pausar preserva
+  # a fila para retomada após reconectar, em vez de queimar todos os envios
+  # pendentes como failed com a mesma credencial inválida.
+  def pause_for_auth_error!(reason)
+    return unless processing?
+
+    update!(
+      status: "paused",
+      paused_at: Time.current,
+      failure_reason: reason.to_s.truncate(500)
+    )
+    refresh_counters!
   end
 
   def cancel_pending_messages!
@@ -128,6 +155,7 @@ class WhatsappCampaign < ApplicationRecord
     )
     return 0 if count.zero?
 
+    refresh_counters!
     update!(status: "processing", paused_at: nil, completed_at: nil, failure_reason: nil) unless processing?
     Whatsapp::BulkSendJob.perform_later(id, tenant_id: tenant_id)
     count

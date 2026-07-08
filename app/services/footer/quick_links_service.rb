@@ -3,13 +3,23 @@ module Footer
     Link = Struct.new(:label, :url, keyword_init: true)
 
     LIMIT = 10
-    CACHE_KEY = "footer_quick_links_v1"
+    CACHE_KEY = "footer_quick_links_v2"
 
     class << self
       def call(limit: LIMIT)
-        Rails.cache.fetch("#{CACHE_KEY}:#{limit}", expires_in: 30.minutes) do
+        # Inclui o tenant na chave: os candidatos de Habitation são escopados por
+        # conta, então o cache não pode ser global sob pena de vazar entre tenants.
+        Rails.cache.fetch("#{CACHE_KEY}:t#{Current.tenant&.id || 'public'}:#{limit}", expires_in: 30.minutes) do
           new(limit: limit).call
         end
+      end
+
+      def clear_cache
+        return unless Rails.cache.respond_to?(:delete_matched)
+
+        Rails.cache.delete_matched("#{CACHE_KEY}:*")
+      rescue NotImplementedError
+        nil
       end
     end
 
@@ -18,8 +28,13 @@ module Footer
     end
 
     def call
-      links = most_accessed_links + strategic_links + fallback_links
-      links.uniq { |link| normalize_url(link.url) }.first(limit)
+      links = []
+      append_links(links, most_accessed_links)
+      append_links(links, property_link_candidates) if links.size < limit
+      append_links(links, general_link_candidates) if links.size < limit
+      append_links(links, development_link_candidates) if links.size < limit
+      append_links(links, fallback_links) if links.size < limit
+      links
     end
 
     private
@@ -41,8 +56,43 @@ module Footer
         end
     end
 
-    def strategic_links
-      property_links + general_links + development_links
+    def append_links(links, candidates)
+      candidates.each do |link|
+        next if links.any? { |existing| normalize_url(existing.url) == normalize_url(link.url) }
+
+        links << link
+        break if links.size >= limit
+      end
+    end
+
+    def property_link_candidates
+      Enumerator.new do |yielder|
+        Seo::StrategicLanding.property_links.each do |link|
+          next unless property_link_available?(link)
+
+          yielder << Link.new(label: link[:label].to_s.titleize, url: link[:path])
+        end
+      end
+    end
+
+    def development_link_candidates
+      Enumerator.new do |yielder|
+        Seo::StrategicLanding.development_links.each do |link|
+          next unless development_link_available?(link)
+
+          yielder << Link.new(label: "Empreendimentos #{link[:label]}", url: link[:path])
+        end
+      end
+    end
+
+    def general_link_candidates
+      Enumerator.new do |yielder|
+        general_link_definitions.each do |link|
+          next unless general_link_available?(link.url)
+
+          yielder << link
+        end
+      end
     end
 
     def property_links
@@ -62,11 +112,19 @@ module Footer
     end
 
     def general_links
+      general_link_definitions.select { |link| general_link_available?(link.url) }
+    end
+
+    def strategic_links
+      property_links + general_links + development_links
+    end
+
+    def general_link_definitions
       [
         Link.new(label: "Imóveis para locação", url: "/aluguel"),
         Link.new(label: "Empreendimentos", url: "/empreendimentos"),
         Link.new(label: "Corporativos", url: "/corporativos")
-      ].select { |link| general_link_available?(link.url) }
+      ]
     end
 
     def fallback_links
@@ -120,29 +178,36 @@ module Footer
         .truncate(42)
     end
 
+    # Escopa por conta quando há tenant resolvido (site público seta Current.tenant
+    # via ApplicationController#set_current_public_tenant). Sem tenant, mantém o
+    # comportamento anterior (global) explicitamente para não quebrar contextos
+    # sem resolução de conta.
+    def habitations
+      Current.tenant&.habitations || Habitation
+    end
+
     def property_link_available?(link)
-      Habitation.active
-                .without_developments
-                .advanced_search(link[:params])
-                .exists?
+      habitations.without_developments
+                 .advanced_search(link[:params])
+                 .exists?
     end
 
     def development_link_available?(link)
-      Habitation.empreendimentos_publicos
-                .advanced_search(link[:params])
-                .exists?
+      habitations.empreendimentos_publicos
+                 .advanced_search(link[:params])
+                 .exists?
     rescue ActiveRecord::StatementInvalid
-      Habitation.empreendimentos_publicos.exists?
+      habitations.empreendimentos_publicos.exists?
     end
 
     def general_link_available?(path)
       case path
       when "/aluguel"
-        Habitation.active.without_developments.for_rent.exists?
+        habitations.active.without_developments.for_rent.exists?
       when "/empreendimentos"
-        Habitation.empreendimentos_publicos.exists?
+        habitations.empreendimentos_publicos.exists?
       when "/corporativos"
-        Habitation.active.without_developments.home_corporate.exists?
+        habitations.active.without_developments.home_corporate.exists?
       else
         true
       end

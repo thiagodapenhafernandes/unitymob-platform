@@ -1,0 +1,21 @@
+<div style="font-family: Inter, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2733;">
+  <h2 style="font-size: 20px; margin: 24px 0 8px;">Você foi convidado para a conta <%= @tenant.name %></h2>
+  <p style="color: #475467; line-height: 1.6;">
+    <strong><%= @invited_by.name %></strong> convidou você (<%= @membership.invited_email %>)
+    para acessar a conta <strong><%= @tenant.name %></strong> com o perfil
+    <strong><%= @membership.profile.name %></strong>.
+  </p>
+  <p style="color: #475467; line-height: 1.6;">
+    Ao aceitar, você poderá alternar entre suas contas pelo menu do sistema, sem precisar de outro login.
+  </p>
+  <p style="margin: 28px 0;">
+    <a href="<%= @invite_url %>"
+       style="background: #365f8f; color: #ffffff; padding: 12px 22px; border-radius: 8px; text-decoration: none; font-weight: 700;">
+      Aceitar convite
+    </a>
+  </p>
+  <p style="color: #697586; font-size: 12px; line-height: 1.6;">
+    O convite expira em <%= I18n.l(@membership.invite_expires_at, format: "%d/%m/%Y %H:%M") %>.
+    Se você não esperava este convite, ignore este e-mail.
+  </p>
+</div>

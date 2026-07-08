@@ -16,9 +16,15 @@ module Automation
           source = rule.conditions_hash[:source]
           scope = scope.where("origin ILIKE ?", source) if source.present?
 
-          # Dedup: não reprocessar leads que esta regra já tocou.
-          processed = AutomationRun.where(automation_rule_id: rule.id).where.not(lead_id: nil).pluck(:lead_id).uniq
-          scope = scope.where.not(id: processed) if processed.any?
+          # Dedup: não reprocessar leads que esta regra já tocou — anti-join no
+          # banco (NOT EXISTS) em vez de materializar todos os ids em memória;
+          # runs com lead_id nulo ficam de fora naturalmente.
+          scope = scope.where(
+            "NOT EXISTS (SELECT 1 FROM automation_runs " \
+            "WHERE automation_runs.automation_rule_id = ? " \
+            "AND automation_runs.lead_id = leads.id)",
+            rule.id
+          )
 
           scope.limit(200).find_each do |lead|
             Automation::Dispatcher.dispatch(

@@ -2,11 +2,18 @@
   conversation = local_assigns[:conversation] || @conversation
   thread_lead = local_assigns[:thread_lead] || @thread_lead
   thread_summary = local_assigns[:thread_summary] || @thread_summary
+  thread_property = local_assigns[:thread_property] || @thread_property
+  thread_next_task = local_assigns[:thread_next_task] || @thread_next_task
+  can_manage_comercial = local_assigns.key?(:can_manage_comercial) ? local_assigns[:can_manage_comercial] : can?(:manage, :comercial)
   thread_lead_labels = if local_assigns.key?(:thread_lead_labels)
     local_assigns[:thread_lead_labels]
   else
     thread_lead ? thread_lead.labels_for(current_admin_user) : []
   end
+  # Variante "lead": na página do lead, etiquetas e ações já vivem fora do chat
+  # (Próxima ação) — o contexto mostra só identidade/lead/imóvel + apresentação.
+  show_labels = local_assigns.fetch(:show_labels, true)
+  actions_variant = local_assigns.fetch(:actions_variant, :full)
 %>
 
 <div class="wa-inbox-thread__summary" data-wa-thread-target="contextSummary">
@@ -16,3 +23,26 @@
         thread_summary: thread_summary,
         thread_lead_labels: thread_lead_labels %>
 </div>
+
+<div class="wa-inbox-thread__crm-summary" data-wa-thread-target="contextCrmSummary">
+  <%= render "admin/whatsapp_inbox/thread_context_crm_summary",
+        thread_lead: thread_lead,
+        thread_property: thread_property,
+        thread_next_task: thread_next_task %>
+</div>
+
+<% if show_labels && thread_lead && thread_lead_labels.present? %>
+  <%= render layout: "admin/whatsapp_inbox/context_section",
+        locals: { label: "Etiquetas", class_name: "wa-inbox-thread__labels" } do %>
+    <%= render "admin/lead_labels/chips", lead: thread_lead, labels: thread_lead_labels %>
+  <% end %>
+<% end %>
+
+<%# Ações comerciais exigem :comercial; a APRESENTAÇÃO segue a permissão de
+    responder no inbox (corretor comum precisa se apresentar). %>
+<% if actions_variant != :none && thread_lead && (can_manage_comercial || can?(:manage, :whatsapp_inbox)) %>
+  <%= render "admin/whatsapp_inbox/thread_context_actions",
+        lead: thread_lead, conversation: conversation,
+        can_manage_comercial: can_manage_comercial,
+        only_presentation: (actions_variant == :presentation) %>
+<% end %>

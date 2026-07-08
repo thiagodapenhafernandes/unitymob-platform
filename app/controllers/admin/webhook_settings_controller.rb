@@ -2,6 +2,8 @@ class Admin::WebhookSettingsController < Admin::BaseController
   OUTBOUND_ACTIONS = %w[new create edit update destroy test share_tracking].freeze
 
   before_action :authorize_webhook_settings!
+  # Actions de SAÍDA continuam exclusivas de manage :integracoes (só-inbound não entra).
+  before_action :require_outbound_permission!, only: [:new, :create, :edit, :update, :destroy, :test, :share_tracking]
   before_action :set_webhook_setting, only: [:edit, :update, :destroy, :test]
   before_action :set_inbound_webhook_token, only: [:update_inbound_token, :regenerate_inbound_token]
 
@@ -89,6 +91,15 @@ class Admin::WebhookSettingsController < Admin::BaseController
   private
 
   def authorize_webhook_settings!
+    # Saída = manage :integracoes (conta inteira). Entrada = token pessoal, com
+    # permissão própria manage :inbound_webhooks (liberada por perfil).
+    return if current_admin_user&.can?(:manage, :integracoes)
+    return if current_admin_user&.can?(:manage, :inbound_webhooks)
+
+    check_permission!(:manage, :integracoes)
+  end
+
+  def require_outbound_permission!
     check_permission!(:manage, :integracoes)
   end
 

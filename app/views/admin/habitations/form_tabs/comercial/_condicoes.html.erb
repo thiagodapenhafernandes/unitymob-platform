@@ -1,4 +1,4 @@
-<%= ax_form_section(title: "Condições comerciais", eyebrow: "Contrato") do %>
+<%= ax_form_section(title: "Condições comerciais", eyebrow: "Contrato", icon: "file-earmark-text") do %>
   <div class="ax-conditions-top-grid">
     <div>
       <%= ax_text_field(form: f, method: :matricula_imovel, label: "Nº de matrícula") %>
@@ -12,7 +12,6 @@
   </div>
 
   <div class="ax-conditions-chip-grid">
-    <%= ax_toggle_chip(f, :aceita_doacao_flag, label: "Aceita doação", class_name: "ax-toggle-chip--full") %>
     <%= ax_toggle_chip(f, :aceita_financiamento_flag, label: "Financiamento", class_name: "ax-toggle-chip--full") %>
   </div>
 

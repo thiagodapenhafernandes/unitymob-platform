@@ -7,13 +7,18 @@ module Admin
     before_action :load_access_options, only: %i[new edit create update]
 
     def sync_from_vista
+      if current_tenant.blank?
+        redirect_to admin_admin_users_path, alert: "Selecione uma conta para sincronizar corretores do Vista."
+        return
+      end
+
       status = Vista::SyncStatusService.new.snapshot
       if status[:status] == "processing"
         redirect_to admin_admin_users_path, alert: "Uma sincronização já está em andamento."
         return
       end
 
-      Vista::ImportAgentsJob.perform_later
+      Vista::ImportAgentsJob.perform_later(tenant_id: current_tenant.id)
       redirect_to admin_admin_users_path,
                   notice: "Sincronização de corretores do Vista iniciada em background."
     end
@@ -24,13 +29,18 @@ module Admin
     end
 
     def backfill_brokers
+      if current_tenant.blank?
+        redirect_to admin_admin_users_path, alert: "Selecione uma conta para executar o backfill de corretores."
+        return
+      end
+
       status = Vista::SyncStatusService.new(namespace: "brokers_backfill").snapshot
       if status[:status] == "processing"
         redirect_to admin_admin_users_path, alert: "Backfill já está em andamento."
         return
       end
 
-      Vista::BackfillBrokersJob.perform_later
+      Vista::BackfillBrokersJob.perform_later(tenant_id: current_tenant.id)
       redirect_to admin_admin_users_path,
                   notice: "Backfill de corretores nos imóveis iniciado em background."
     end
@@ -41,7 +51,7 @@ module Admin
     end
 
     def index
-      @admin_users = manageable_admin_users_scope.includes(:profile, :horizontal_profile, :manager).with_attached_avatar
+      @admin_users = manageable_admin_users_scope.includes(:profile, :horizontal_profile, :manager, :rentals_manager).with_attached_avatar
 
       if params[:query].present?
         q = "%#{params[:query]}%"
@@ -49,7 +59,8 @@ module Admin
       end
 
       if params[:profile_id].present?
-        @admin_users = @admin_users.where(profile_id: params[:profile_id])
+        selected_profile = current_tenant.profiles.find_by(id: params[:profile_id])
+        @admin_users = @admin_users.matching_access_profile(selected_profile) if selected_profile
       end
 
       if params[:acting_type].present? && AdminUser.acting_types.key?(params[:acting_type])
@@ -71,10 +82,12 @@ module Admin
       @active_admin_users = stats_scope.active.count
       @inactive_admin_users = stats_scope.inactive.count
       @displayed_admin_users = stats_scope.displayed_on_site.count
-      @available_profiles = assignable_vertical_profiles
-      @manager_options = current_tenant.admin_users.account_members
-        .where(id: current_tenant.admin_users.where.not(manager_id: nil).select(:manager_id))
-        .order(:name)
+      @available_profiles = assignable_access_profiles
+      manager_ids = current_tenant.admin_users.where.not(manager_id: nil).pluck(:manager_id)
+      if AdminUser.column_names.include?("rentals_manager_id")
+        manager_ids += current_tenant.admin_users.where.not(rentals_manager_id: nil).pluck(:rentals_manager_id)
+      end
+      @manager_options = current_tenant.admin_users.account_members.where(id: manager_ids.compact.uniq).order(:name)
       @manager_options = @manager_options.where(id: visible_admin_user_ids) unless visible_admin_user_ids.nil?
       @vista_sync_status = Vista::SyncStatusService.new.snapshot
       @brokers_backfill_status = Vista::SyncStatusService.new(namespace: "brokers_backfill").snapshot
@@ -91,19 +104,53 @@ module Admin
     # Admins do Sistema ficam fora da conta; todos os perfis verticais do Tenant entram
     # no organograma, inclusive perfis customizados entre Tenant Owner e Agent.
     def hierarchy
-      @all_users = manageable_admin_users_scope.includes(:profile, :horizontal_profile).with_attached_avatar
-        .joins(:profile)
-        .where(profiles: { axis: Profile::AXES[:vertical] })
+      # Hierarquia mostra APENAS usuários ativos (inativo já está fora da
+      # operação); left_joins mantém os sem perfil vertical visíveis, marcados
+      # como fora da hierarquia/distribuição.
+      @all_users = manageable_admin_users_scope.where(active: true)
+        .includes(:profile, :horizontal_profile).with_attached_avatar
+        .left_joins(:profile)
+        .where("profiles.axis = :vertical OR admin_users.profile_id IS NULL", vertical: Profile::AXES[:vertical])
         .order(Arel.sql("admin_users.hierarchy_position ASC NULLS LAST, admin_users.name ASC")).to_a
+
+      # Regra dinâmica da distribuição: existindo perfil vertical acima do
+      # perfil do usuário (além do dono), o vínculo com gestor é obrigatório.
+      vertical_positions = current_tenant.profiles.vertical.where.not(key: "tenant_owner")
+                                         .where.not(position: nil).order(:position).pluck(:position)
+      @min_gestor_position = vertical_positions.first
       @can_reorganize = tenant_owner? || current_admin_user.can?(:manage, :corretores)
+
+      # Funções operacionais (perfil horizontal) não são nós de gestão: viram
+      # chips no nó do gestor (se tiverem um) ou no bloco "Equipe interna".
+      @internal_users, @all_users = @all_users.partition { |u| u.horizontal_profile_id.present? }
+
       present_ids = @all_users.map(&:id).to_set
-      @children_by_manager = @all_users.group_by { |u| present_ids.include?(u.manager_id) ? u.manager_id : nil }
-      @roots = @children_by_manager[nil] || []
+      @internal_by_manager = @internal_users.select { |u| u.manager_id.present? && present_ids.include?(u.manager_id) }
+                                            .group_by(&:manager_id)
+      @internal_unanchored = @internal_users - @internal_by_manager.values.flatten
+      rentals_ready = AdminUser.column_names.include?("rentals_manager_id")
+
+      # Vínculos POR ÁREA: quem atua em Ambos aparece nas duas equipes
+      # (venda sob manager_id, locação sob rentals_manager_id).
+      @children_by_manager = Hash.new { |h, k| h[k] = [] }
+      @all_users.each do |u|
+        links = []
+        links << [u.manager_id, :venda] if u.manager_id.present? && present_ids.include?(u.manager_id)
+        if rentals_ready && u.rentals_manager_id.present? && present_ids.include?(u.rentals_manager_id) && u.rentals_manager_id != u.manager_id
+          links << [u.rentals_manager_id, :locacao]
+        end
+        links = [[nil, nil]] if links.empty?
+        links.each { |manager_id, area| @children_by_manager[manager_id] << { user: u, area: area } }
+      end
+      @roots = (@children_by_manager[nil] || []).map { |entry| entry[:user] }
 
       @descendant_count = {}
       count_desc = lambda do |uid|
+        return @descendant_count[uid] if @descendant_count.key?(uid)
+
+        @descendant_count[uid] = 0 # guarda anti-reentrância
         kids = @children_by_manager[uid] || []
-        total = kids.sum { |kid| 1 + count_desc.call(kid.id) }
+        total = kids.sum { |entry| 1 + count_desc.call(entry[:user].id) }
         @descendant_count[uid] = total
         total
       end
@@ -115,8 +162,8 @@ module Admin
         .count
       @habitations_count_by_admin_user.default = 0
 
-      @total_users = @all_users.size
-      @active_users = @all_users.count(&:active)
+      @total_users = @all_users.size + @internal_users.size
+      @active_users = @all_users.count(&:active) + @internal_users.count(&:active)
       @manager_count = @children_by_manager.keys.compact.size
     end
 
@@ -141,8 +188,17 @@ module Admin
 
       sibling_ids = Array(params[:sibling_ids]).map(&:to_i)
 
+      # Área decide o vínculo gravado: quem atua só em Locação é ancorado via
+      # rentals_manager_id (o alinhamento gestor×área zeraria manager_id).
+      manager_field =
+        if user.acting_type.to_s == "rentals" && user.has_attribute?(:rentals_manager_id)
+          :rentals_manager_id
+        else
+          :manager_id
+        end
+
       ActiveRecord::Base.transaction do
-        user.update!(manager_id: new_manager&.id)
+        user.update!(manager_field => new_manager&.id)
         sibling_ids.each_with_index do |sid, idx|
           current_tenant.admin_users.where(id: sid).update_all(hierarchy_position: idx)
         end
@@ -255,8 +311,14 @@ module Admin
       scope = current_tenant.profiles.horizontal.where(active: true).includes(:vertical_profile).order(:name)
       return scope if tenant_owner?
 
-      allowed_vertical_ids = assignable_vertical_profiles.select(:id)
-      scope.where(vertical_profile_id: allowed_vertical_ids)
+      # âncoras podem ser encadeadas: o que vale é a RAIZ vertical da função
+      allowed_vertical_ids = assignable_vertical_profiles.pluck(:id).to_set
+      scope.select { |profile| allowed_vertical_ids.include?(profile.root_vertical_profile&.id) }
+    end
+
+    def assignable_access_profiles
+      profiles = assignable_vertical_profiles.to_a + Array(assignable_horizontal_profiles)
+      profiles.sort_by { |profile| [profile.vertical? ? 0 : 1, profile.vertical? ? profile.position.to_i : profile.root_vertical_profile&.position.to_i || 10_000, profile.name.to_s.downcase] }
     end
 
     def load_access_options
@@ -270,15 +332,66 @@ module Admin
       end
     end
 
+    public
+
+    # Dono da conta pode RESETAR o 2FA de um usuário que perdeu o aparelho e os
+    # backup codes (antes: só via console). O usuário volta a logar só com senha
+    # e reativa o 2FA no perfil (ou é forçado, se a conta exigir).
+    def reset_two_factor
+      unless tenant_owner?
+        redirect_to admin_admin_users_path, alert: "Apenas o Dono da conta pode resetar a verificação em duas etapas."
+        return
+      end
+
+      user = current_tenant.admin_users.find(params[:id])
+      user.update!(otp_secret: nil, otp_enabled_at: nil, otp_backup_codes: [], otp_consumed_timestep: nil)
+      AccessAuditLog.log!(event_type: "two_factor_disabled", result: "allowed", request: request,
+                          admin_user: user, reason: "2FA resetado pelo Dono da conta",
+                          metadata: { reset_by: current_admin_user.id }) rescue nil
+      redirect_to edit_admin_admin_user_path(user), notice: "Verificação em duas etapas resetada — #{user.name} volta a entrar só com a senha."
+    end
+
+    private
+
     def admin_user_params
       permitted = [:email, :password, :password_confirmation, :name, :creci, :phone, :biography, :birth_date, :city, :avatar, :acting_type, :active, :display_on_site, :field_agent_enabled, :default_store_id]
-      permitted.concat([:profile_id, :horizontal_profile_id, :manager_id]) if current_admin_user&.can?(:manage, :corretores)
+      permitted.concat([:profile_id, :horizontal_profile_id, :access_profile_id, :manager_id, :rentals_manager_id]) if current_admin_user&.can?(:manage, :corretores)
       permitted.concat([:require_ip_allowlist, :require_trusted_device]) if tenant_owner?
       attrs = params.require(:admin_user).permit(*permitted)
+      # Usuário espelho (multi-conta): e-mail sintético e senha pertencem ao
+      # primário — nunca editáveis por esta conta (UI esconde; aqui é a trava real).
+      if @admin_user&.respond_to?(:mirror?) && @admin_user&.mirror?
+        attrs.delete(:email)
+        attrs.delete(:password)
+        attrs.delete(:password_confirmation)
+      end
       restrict_profile_params_to_current_tenant(attrs)
     end
 
+    # Select único "Perfil de acesso": o EIXO é decidido aqui. Perfil vertical
+    # define a hierarquia (e limpa a função); perfil horizontal carrega junto o
+    # vertical-pai a que pertence — o usuário nunca escolhe os dois.
+    def resolve_access_profile!(attrs)
+      raw_id = attrs.delete(:access_profile_id)
+      return if raw_id.blank?
+
+      profile = current_tenant.profiles.find_by(id: raw_id)
+      return if profile.nil?
+
+      if profile.vertical?
+        attrs[:profile_id] = profile.id
+        attrs[:horizontal_profile_id] = nil
+      else
+        attrs[:profile_id] = profile.root_vertical_profile&.id
+        attrs[:horizontal_profile_id] = profile.id
+        attrs[:manager_id] = nil # função operacional fica fora da árvore de gestão
+        attrs[:rentals_manager_id] = nil
+      end
+    end
+
     def restrict_profile_params_to_current_tenant(attrs)
+      resolve_access_profile!(attrs)
+
       selected_profile = attrs[:profile_id].present? ? assignable_vertical_profiles.find_by(id: attrs[:profile_id]) : nil
 
       if attrs[:profile_id].present? && selected_profile.blank?
@@ -286,13 +399,13 @@ module Admin
         selected_profile = nil
       end
 
-      if attrs[:horizontal_profile_id].present? && !assignable_horizontal_profiles.exists?(id: attrs[:horizontal_profile_id])
+      if attrs[:horizontal_profile_id].present? && assignable_horizontal_profiles.none? { |p| p.id == attrs[:horizontal_profile_id].to_i }
         attrs.delete(:horizontal_profile_id)
       end
 
       if attrs[:horizontal_profile_id].present? && selected_profile
-        horizontal = assignable_horizontal_profiles.find_by(id: attrs[:horizontal_profile_id])
-        attrs.delete(:horizontal_profile_id) if horizontal&.vertical_profile_id != selected_profile.id
+        horizontal = assignable_horizontal_profiles.find { |p| p.id == attrs[:horizontal_profile_id].to_i }
+        attrs.delete(:horizontal_profile_id) if horizontal&.root_vertical_profile&.id != selected_profile.id
       end
 
       manager_scope = current_tenant.admin_users.account_members
@@ -300,6 +413,10 @@ module Admin
 
       if attrs[:manager_id].present? && !manager_scope.exists?(id: attrs[:manager_id])
         attrs.delete(:manager_id)
+      end
+
+      if attrs[:rentals_manager_id].present? && !manager_scope.exists?(id: attrs[:rentals_manager_id])
+        attrs.delete(:rentals_manager_id)
       end
 
       if attrs[:manager_id].present? && selected_profile

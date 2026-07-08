@@ -59,5 +59,14 @@ RSpec.describe LocationPings::CreateService do
         expect(result[:error]).to eq(:missing_coordinates)
       end
     end
+
+    context "coordenadas fora da faixa geográfica" do
+      it "rejeita lat/lng implausíveis com :invalid_coordinates (antes do PostGIS)" do
+        result = described_class.new(check_in: check_in, lat: 999, lng: -48.63).call
+        expect(result[:success]).to be false
+        expect(result[:error]).to eq(:invalid_coordinates)
+        expect(LocationPing.where(check_in_id: check_in.id)).to be_empty
+      end
+    end
   end
 end

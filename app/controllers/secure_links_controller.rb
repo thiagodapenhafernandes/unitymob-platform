@@ -137,11 +137,25 @@ class SecureLinksController < ApplicationController
         @lead.reload
       end
     else
-      @lead.update(status: Lead.status_value(:em_atendimento))
-      @lead.activities.create(
-        kind: "accepted",
-        metadata: { by: @lead.admin_user&.name, via: via, secure_link: true }.compact
-      )
+      owner_id = @lead.admin_user_id
+      accepted = false
+      # Transição atômica: revalida dono+status sob with_lock (mesma linha que
+      # o PocketExpirationService trava) pra não sobrescrever um lead que
+      # acabou de ser redistribuído a outro corretor.
+      @lead.with_lock do
+        accepted = @lead.admin_user_id == owner_id &&
+          Lead.status_value(@lead.status) == Lead.status_value(:waiting_acceptance) &&
+          @lead.update(status: Lead.status_value(:em_atendimento))
+      end
+
+      if accepted
+        @lead.activities.create(
+          kind: "accepted",
+          metadata: { by: @lead.admin_user&.name, via: via, secure_link: true }.compact
+        )
+      end
+      # Corrida perdida: @lead já foi recarregado pelo with_lock, então o
+      # recheck link_no_longer_available? do caller renderiza lost_turn.
     end
   end
 

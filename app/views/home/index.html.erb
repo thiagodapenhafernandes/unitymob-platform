@@ -71,7 +71,7 @@
     
   <% when 'developments' %>
     <% if @recent_properties.present? %>
-      <% cache ['developments_v3', @recent_properties.map(&:id), @recent_properties.map(&:updated_at).max] do %>
+      <% cache ['developments_v4', @recent_properties.map(&:id), @recent_properties.map(&:updated_at).max, @dev_unit_counts, @dev_unit_metrics] do %>
         <section class="home-deferred-section py-16 <%= bg_class %>">
           <div class="container-custom">
             <div class="text-center mb-12">
@@ -85,7 +85,7 @@
               <% end %>
             </div>
 
-            <%= render 'shared/development_carousel', developments: @recent_properties, unit_counts: @dev_unit_counts %>
+            <%= render 'shared/development_carousel', developments: @recent_properties, unit_counts: @dev_unit_counts, unit_metrics: @dev_unit_metrics %>
 
             <div class="text-center mt-8">
               <%= link_to empreendimentos_path, class: "inline-block px-10 py-4 bg-blue-three text-white font-bold rounded-lg hover:bg-golden-one hover:text-blue-three transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5" do %>

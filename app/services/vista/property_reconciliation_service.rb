@@ -121,6 +121,35 @@ module Vista
       result
     end
 
+    def document_diagnostics(codigo)
+      api = fetch_api(codigo)
+      raw = api["Anexo"]
+      documents = document_rows(raw)
+
+      {
+        codigo: codigo,
+        anexo_present: !raw.nil?,
+        raw_count: raw.is_a?(Array) ? raw.size : (raw.nil? ? 0 : 1),
+        parsed_count: documents.size,
+        documents: documents.each_with_index.map do |document, index|
+          source_url = document_source_url(document)
+          filename = (document_filename(document, nil, source_url) rescue nil)
+          {
+            index: index,
+            keys: document.keys,
+            descricao: value(document["Descricao"]),
+            anexo: value(document["Anexo"]),
+            arquivo: value(document["Arquivo"]),
+            url_like: value(document["URL"]) || value(document["Url"]) || value(document["Link"]),
+            source_url: source_url,
+            filename: filename,
+            target: "autorizacoes_venda",
+            importable: source_url.present?
+          }
+        end
+      }
+    end
+
     private
 
     def tenant
@@ -140,19 +169,26 @@ module Vista
       queue = Queue.new
       @codigos.each { |codigo| queue << codigo }
 
+      # Current (CurrentAttributes) é isolado por thread: captura o tenant na
+      # thread principal e repropaga dentro de cada worker, senão toda chamada
+      # a `tenant` dentro das threads levantaria ArgumentError.
+      parent_tenant = tenant
+
       @workers.times.map do
         Thread.new do
-          loop do
-            begin
-              codigo = queue.pop(true)
-            rescue ThreadError
-              break
-            end
+          Current.set(tenant: parent_tenant) do
+            loop do
+              begin
+                codigo = queue.pop(true)
+              rescue ThreadError
+                break
+              end
 
-            begin
-              process_codigo(codigo, result, result_mutex, started_at)
-            ensure
-              ActiveRecord::Base.connection_handler.clear_active_connections!
+              begin
+                process_codigo(codigo, result, result_mutex, started_at)
+              ensure
+                ActiveRecord::Base.connection_handler.clear_active_connections!
+              end
             end
           end
         end
@@ -947,7 +983,7 @@ module Vista
 
     def create_blob_from_url(url, filename, content_type, service_name:)
       Storage::ActiveStorageRegistry.fetch!(service_name) unless service_name.to_sym == :local
-      io = URI.open(url)
+      io = URI.open(url, read_timeout: 30, open_timeout: 10)
       ActiveStorage::Blob.create_and_upload!(
         io: io,
         filename: filename,
@@ -984,7 +1020,18 @@ module Vista
         return proprietor
       end
 
-      tenant.proprietors.create!(attrs.merge(vista_code: code, name: attrs[:name].presence || "Proprietário #{code}"))
+      # Reuso por NOME antes de criar: o Vista duplica o mesmo proprietário sob
+      # vários códigos — depois da fusão local, códigos antigos não podem
+      # recriar duplicatas. Canônico sem código adota o código do Vista.
+      name = attrs[:name].presence || "Proprietário #{code}"
+      existing = tenant.proprietors.where("lower(trim(name)) = ?", name.strip.downcase).order(:id).first
+      if existing
+        adoption = existing.vista_code.blank? ? { vista_code: code } : {}
+        existing.update!(attrs.compact_blank.except(:name).merge(adoption))
+        return existing
+      end
+
+      tenant.proprietors.create!(attrs.merge(vista_code: code, name: name))
     end
 
     def owner_data(api)

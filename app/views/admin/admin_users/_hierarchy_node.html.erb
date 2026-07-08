@@ -1,19 +1,49 @@
 <%
-  # kids já vêm ordenados por hierarchy_position/name (ordenação feita no controller).
+  # kids: entradas { user:, area: } — quem atua em Ambos aparece nas duas equipes.
   kids = children_by_manager[user.id] || []
   total_desc = descendant_count[user.id] || 0
   acting = { "sales" => ["Venda", :blue], "rentals" => ["Locação", :amber], "both" => ["Ambos", :green] }[user.acting_type.to_s]
   has_kids = kids.any?
   can_reorg = local_assigns.fetch(:can_reorganize, false)
+  link_area = local_assigns[:link_area] # :venda/:locacao quando o nó vem de um vínculo por área
+  internal_by_manager = local_assigns[:internal_by_manager] || {}
+  internal_members = internal_by_manager[user.id] || []
+  # só o nó-espelho de locação de quem atua em AMBOS fica sem arrastar (evita
+  # ambiguidade); quem atua SÓ em locação aparece uma vez e arrasta normalmente
+  mirrored_both = link_area == :locacao && user.acting_type.to_s == "both"
+  draggable = can_reorg && !mirrored_both
+
+  # Fora da distribuição (aviso POR USUÁRIO): motivo pelo qual este usuário
+  # não aparece para seleção nas regras de distribuição.
+  min_gestor_position = local_assigns[:min_gestor_position]
+  needs_manager = min_gestor_position && user.profile && user.profile.position.to_i > min_gestor_position
+  missing_areas = []
+  if needs_manager
+    acting_key = user.acting_type.to_s
+    missing_areas << "venda" if %w[sales both].include?(acting_key) && user.manager_id.blank?
+    missing_areas << "locação" if %w[rentals both].include?(acting_key) && user.try(:rentals_manager_id).blank? && user.class.column_names.include?("rentals_manager_id")
+  end
+  dist_out_reason =
+    if user.profile&.tenant_owner?
+      nil # dono é o topo: participação implícita, nunca selecionável
+    elsif user.profile.nil? || !user.profile.vertical?
+      "sem perfil vertical"
+    elsif !user.active
+      "inativo"
+    elsif missing_areas.any?
+      "sem gestor de #{missing_areas.join(' e ')}"
+    end
 %>
 <li class="hier-node" data-hierarchy-node data-user-id="<%= user.id %>">
   <div class="hier-row<%= ' is-root' if depth.zero? %>">
-    <% if can_reorg %>
+    <% if draggable %>
       <span class="hier-row__handle" title="Arraste para mover de gestor ou reordenar"><i class="bi bi-grip-vertical"></i></span>
+    <% elsif can_reorg %>
+      <span class="hier-row__handle" style="visibility:hidden"><i class="bi bi-grip-vertical"></i></span>
     <% end %>
 
     <button type="button" class="hier-row__toggle" data-hier-toggle
-            aria-expanded="<%= depth.zero? %>" <%= "data-hier-leaf" unless has_kids %>
+            aria-expanded="false" <%= "data-hier-leaf" unless has_kids %>
             aria-label="<%= has_kids ? 'Expandir/recolher' : '' %>">
       <% if has_kids %><i class="bi bi-chevron-right"></i><% end %>
     </button>
@@ -32,10 +62,21 @@
     </div>
 
     <div class="hier-row__tags">
-      <% if user.profile %><%= ax_badge(user.profile.name, tone: :blue) %><% else %><%= ax_badge(user.role.humanize, tone: :gray) %><% end %>
-      <% if user.horizontal_profile %><span class="hier-row__horizontal"><%= ax_badge("Função: #{user.horizontal_profile.name}", tone: :gray) %></span><% end %>
+      <%= ax_badge(user.access_profile_name, tone: user.access_profile ? :blue : :gray) %>
+      <% if link_area && user.try(:rentals_manager_id).present? && user.manager_id.present? %>
+        <%= ax_badge(link_area == :venda ? "Equipe de venda" : "Equipe de locação", tone: link_area == :venda ? :blue : :amber) %>
+      <% end %>
       <%= ax_badge(user.active ? "Ativo" : "Inativo", tone: user.active ? :green : :red, dot: true) %>
       <% if acting %><%= ax_badge(acting[0], tone: acting[1]) %><% end %>
+      <% if dist_out_reason %>
+        <span title="Este usuário NÃO aparece para ser escolhido nas regras de distribuição (<%= dist_out_reason %>).">
+          <%= ax_badge("Fora da distribuição · #{dist_out_reason}", tone: :red) %>
+        </span>
+      <% elsif user.profile&.tenant_owner? %>
+        <span title="Dono da conta: acesso total implícito — não entra no rodízio de distribuição.">
+          <%= ax_badge("Topo da conta", tone: :gray) %>
+        </span>
+      <% end %>
     </div>
 
     <div class="hier-row__counts">
@@ -46,6 +87,16 @@
       <span title="Imóveis"><i class="bi bi-house-door"></i> <strong><%= habitations_count[user.id] %></strong></span>
     </div>
 
+    <% if internal_members.any? %>
+      <div class="hier-row__internal">
+        <% internal_members.each do |member| %>
+          <%= link_to admin_admin_user_path(member), class: "hier-internal__chip hier-internal__chip--inline", title: "#{member.name} · #{member.horizontal_profile&.name}" do %>
+            <i class="bi bi-person-gear"></i><span><%= member.name %></span><small><%= member.horizontal_profile&.name %></small>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+
     <div class="hier-row__actions">
       <%= link_to admin_admin_user_path(user), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
       <%= link_to edit_admin_admin_user_path(user), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
@@ -54,15 +105,18 @@
 
   <%# Nós com filhos: lista normal. %>
   <% if has_kids %>
-    <ul class="hier-list hier-children" data-hierarchy-list data-manager-id="<%= user.id %>"<%= " hidden" unless depth.zero? %>>
-      <% kids.each do |kid| %>
+    <ul class="hier-list hier-children" data-hierarchy-list data-manager-id="<%= user.id %>" hidden>
+      <% kids.each do |entry| %>
         <%= render "hierarchy_node",
-              user: kid,
+              user: entry[:user],
               children_by_manager: children_by_manager,
               descendant_count: descendant_count,
               habitations_count: habitations_count,
               depth: depth + 1,
-              can_reorganize: can_reorg %>
+              can_reorganize: can_reorg,
+              min_gestor_position: min_gestor_position,
+              link_area: entry[:area],
+              internal_by_manager: internal_by_manager %>
       <% end %>
     </ul>
   <% elsif can_reorg %>

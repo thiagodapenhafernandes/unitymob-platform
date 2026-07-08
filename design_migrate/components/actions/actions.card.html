@@ -1,0 +1,43 @@
+<!-- @dsCard group="Components" viewport="700x230" name="Buttons & icon buttons" subtitle="Variants, sizes, icons, disabled, icon-only" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;background:#fff;font-family:var(--font-sans)}
+#root{padding:22px;display:grid;gap:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cap{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);width:100%}
+</style></head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { Button, IconButton } = window.UnitymobDesignSystem_2a309d;
+function Demo(){
+  return (
+    <>
+      <div className="row"><span className="cap">Variants</span>
+        <Button variant="primary" icon="plus-lg">Novo imóvel</Button>
+        <Button>Exportar</Button>
+        <Button variant="ghost" icon="funnel">Filtros</Button>
+        <Button variant="danger" icon="trash">Excluir</Button>
+        <Button variant="success" icon="check2">Publicar</Button>
+      </div>
+      <div className="row"><span className="cap">Sizes & state</span>
+        <Button variant="primary">Padrão 30px</Button>
+        <Button variant="primary" size="sm">Compacto 28px</Button>
+        <Button disabled icon="lock">Desabilitado</Button>
+      </div>
+      <div className="row"><span className="cap">Icon only</span>
+        <IconButton icon="pencil" label="Editar" />
+        <IconButton icon="three-dots-vertical" label="Mais" />
+        <IconButton icon="star" variant="outlined" label="Favoritar" />
+        <IconButton icon="trash" variant="outlined" label="Excluir" />
+      </div>
+    </>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body></html>

@@ -83,6 +83,25 @@
     </div>
   <% end %>
 
+  <% if @captacao.requires_parking_info? %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-6">
+        <div class="wizard-field-group">
+          <%= f.label :tipo_vaga, "Tipo de vaga", class: "ax-label" %>
+          <%= f.select :tipo_vaga, Habitation::VAGA_TYPES, { include_blank: "—" }, class: field_state.call(:tipo_vaga, "ax-control") %>
+          <% if field_invalid.call(:tipo_vaga) %><div class="invalid-feedback d-block">Informe o tipo de vaga.</div><% end %>
+        </div>
+      </div>
+      <div class="ax-span-6">
+        <div class="wizard-field-group">
+          <%= f.label :numero_box, "Box", class: "ax-label" %>
+          <%= f.text_field :numero_box, class: field_state.call(:numero_box), placeholder: "Ex.: 12" %>
+          <% if field_invalid.call(:numero_box) %><div class="invalid-feedback d-block">Informe o box da vaga.</div><% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+
   <%= ax_field_grid do %>
     <div class="ax-span-4">
       <div class="wizard-field-group">
@@ -133,9 +152,7 @@
     <div class="ax-span-4">
       <div class="wizard-field-group">
         <%= f.label :vagas_garagem, "Vagas", class: "ax-label" %>
-        <span class="required-star">*</span>
         <%= f.number_field :vagas_garagem, min: 0, inputmode: "numeric", class: field_state.call(:vagas_garagem) %>
-        <% if field_invalid.call(:vagas_garagem) %><div class="invalid-feedback d-block">Informe a quantidade de vagas.</div><% end %>
       </div>
     </div>
   <% end %>

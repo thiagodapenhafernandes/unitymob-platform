@@ -1,0 +1,34 @@
+<!-- @dsCard group="Components" viewport="700x330" name="Form controls" subtitle="Fields, input, select, textarea, search, checkbox, switch" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;background:#fff;font-family:var(--font-sans)}
+#root{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:16px 22px}
+.full{grid-column:1/-1;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+</style></head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { Field, Input, Select, Textarea, SearchInput, Checkbox, Switch } = window.UnitymobDesignSystem_2a309d;
+function Demo(){
+  return (
+    <>
+      <Field label="Código do imóvel" required><Input placeholder="COD-84213" /></Field>
+      <Field label="Transação"><Select defaultValue="venda"><option value="venda">Venda</option><option value="locacao">Locação</option></Select></Field>
+      <Field label="Busca global" className="full"><SearchInput placeholder="Buscar imóveis, leads, proprietários…" /></Field>
+      <Field label="Observações internas" className="full" hint="Visível apenas para a equipe"><Textarea rows={3} placeholder="Anotações sobre o imóvel…" /></Field>
+      <div className="full">
+        <Checkbox label="Somente destaques" defaultChecked />
+        <Checkbox label="Com foto" />
+        <Switch label="Campo ativo" defaultChecked />
+        <Switch label="Publicar no portal" />
+      </div>
+    </>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body></html>

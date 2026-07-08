@@ -1,3 +1,3 @@
 class Current < ActiveSupport::CurrentAttributes
-  attribute :admin_user, :tenant, :request_ip, :request_user_agent, :request_metadata
+  attribute :admin_user, :tenant, :request_ip, :request_user_agent, :request_metadata, :setting_values_cache
 end

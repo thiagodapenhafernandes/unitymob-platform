@@ -727,19 +727,20 @@
         <div class="lead-list" role="list">
           <% @leads.each do |lead| %>
             <%
+              lead_return_to_path = "#{request.fullpath}#lead_#{lead.id}"
               property = @properties_by_id[lead.property_id] if lead.property_id.present?
               display_name = lead.display_name.presence || lead.name
               contact_parts = [lead.display_email, lead.display_phone].compact_blank
               phone_digits = lead.display_phone.to_s.gsub(/[^0-9+]/, "")
             %>
-            <article class="lead-list-row" role="listitem">
+            <article id="lead_<%= lead.id %>" class="lead-list-row" role="listitem">
               <div class="lead-list-row__identity">
                 <div class="lead-list-row__avatar" aria-hidden="true">
                   <%= display_name.to_s.first.to_s.upcase.presence || "L" %>
                 </div>
                 <div class="lead-list-row__contact">
                   <div class="lead-list-row__topline">
-                    <%= link_to display_name, admin_lead_path(lead), class: "lead-list-row__name" %>
+                    <%= link_to display_name, admin_lead_path(lead, return_to: lead_return_to_path), class: "lead-list-row__name" %>
                     <%= ax_badge(lead.status.presence || Lead.default_status, tone: ax_status_tone.call(lead.status), class_name: "lead-list-row__status") %>
                   </div>
                   <div class="lead-list-row__meta">
@@ -768,7 +769,7 @@
                   <% if property.present? %>
                     <i class="bi bi-house-door"></i>
                     <span>
-                      <%= link_to property.display_title, admin_habitation_path(property) %>
+                      <%= link_to property.display_title, admin_habitation_path(property, return_to: lead_return_to_path) %>
                       <small><%= property.codigo %></small>
                     </span>
                   <% elsif lead.property_id.present? %>
@@ -782,7 +783,11 @@
               </div>
 
               <div class="lead-list-row__actions">
-                <% if lead.direct_whatsapp_url.present? %>
+                <% if whatsapp_inbox_attendance? && lead.whatsapp_recipient.present? %>
+                  <%= link_to admin_lead_path(lead, return_to: lead_return_to_path, anchor: "whatsapp"), class: "ax-btn ax-btn--sm lead-list-row__primary-action" do %>
+                    <i class="bi bi-whatsapp ax-ico"></i><span>WhatsApp</span>
+                  <% end %>
+                <% elsif lead.direct_whatsapp_url.present? %>
                   <%= link_to lead.direct_whatsapp_url, target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm lead-list-row__primary-action" do %>
                     <i class="bi bi-whatsapp ax-ico"></i><span>WhatsApp</span>
                   <% end %>
@@ -793,7 +798,7 @@
                   <% end %>
                 <% end %>
                 <%= render "admin/lead_labels/button", lead: lead, trigger_label: "Etiquetas", trigger_class: "ax-btn ax-btn--sm" %>
-                <%= link_to admin_lead_path(lead), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+                <%= link_to admin_lead_path(lead, return_to: lead_return_to_path), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
                   <i class="bi bi-eye ax-ico"></i><span>Atender</span>
                 <% end %>
                 <%= form_with url: admin_lead_path(lead), method: :delete,

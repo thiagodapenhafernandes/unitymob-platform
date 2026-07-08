@@ -2,14 +2,20 @@
   habitation = local_assigns.fetch(:habitation)
   linked_development = local_assigns[:linked_development]
   attached_media_photos = local_assigns.fetch(:attached_media_photos)
-  api_media_pictures = local_assigns.fetch(:api_media_pictures)
+  api_media_pictures = local_assigns.fetch(:api_media_pictures, [])
+  can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:manage, :imoveis))
 %>
 
 <% if attached_media_photos.any? %>
   <% attached_media_photos.each_with_index do |photo, index| %>
     <% photo_hidden_from_site = Array(habitation.site_hidden_photo_ids).map(&:to_i).include?(photo.id) %>
-    <% photo_public_url = public_image_url({ attachment: photo }).presence || rails_blob_path(photo, only_path: true) %>
+    <% photo_source = { attachment: photo } %>
+    <% photo_public_url = public_image_url(photo_source).presence || rails_blob_path(photo, only_path: true) %>
+    <% photo_fallback_urls = public_image_fallback_urls(photo_source) %>
     <% next if photo_public_url.blank? %>
+    <% photo_ambiente = habitation.respond_to?(:photo_ambiente) ? habitation.photo_ambiente(photo) : nil %>
+    <% photo_ambiente_position = habitation.respond_to?(:photo_ambiente_position) ? habitation.photo_ambiente_position(photo) : nil %>
+    <% photo_ambiente_label = habitation.respond_to?(:photo_ambiente_label) ? habitation.photo_ambiente_label(photo) : nil %>
     <% site_toggle = capture do %>
       <button type="button"
               class="media-photo-site-toggle ax-media-action <%= photo_hidden_from_site ? 'ax-media-action--neutral' : 'ax-media-action--published' %>"
@@ -43,6 +49,18 @@
         <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar">
           <i class="bi bi-grip-vertical"></i>
         </button>
+        <% if can_edit_media %>
+          <button type="button"
+                  class="media-photo-action-button ax-media-action ax-media-action--neutral"
+                  title="Configurar ambiente"
+                  aria-label="Configurar ambiente"
+                  data-action="media-tools#openSettings"
+                  data-media-tools-photo-id-param="<%= photo.id %>"
+                  data-media-tools-ambiente-param="<%= photo_ambiente %>"
+                  data-media-tools-ambiente-position-param="<%= photo_ambiente_position %>">
+            <i class="bi bi-gear"></i>
+          </button>
+        <% end %>
         <button type="button"
                 class="media-photo-action-button ax-media-action ax-media-action--danger"
                 title="Remover foto"
@@ -52,14 +70,32 @@
         </button>
       </span>
     <% end %>
+    <% select_control = capture do %>
+      <% if can_edit_media %>
+        <label class="ax-media-select-check" title="Selecionar foto para envio">
+          <input type="checkbox"
+                 data-action="media-tools#toggleSelect"
+                 data-media-tools-photo-id-param="<%= photo.id %>">
+          <span aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+        </label>
+      <% end %>
+    <% end %>
+    <% ambiente_badge = capture do %>
+      <% if photo_ambiente_label.present? %>
+        <span class="ax-media-tag ax-media-tag--info" data-media-tools-ambiente-badge title="Ambiente da foto"><%= photo_ambiente_label %></span>
+      <% end %>
+    <% end %>
     <%= ax_media_tile(
           link_url: photo_public_url,
           image_source: photo_public_url,
+          fallback_image_sources: photo_fallback_urls,
           caption: "Foto ativa #{index + 1} - #{photo.filename}",
           position: index + 1,
           root_class: "draggable-item attached-photo-item",
           data: { id: photo.id },
           hidden_from_site: photo_hidden_from_site,
+          top_right: select_control,
+          center: ambiente_badge.presence,
           bottom_left: featured_control,
           bottom_right: photo_actions
         ) %>
@@ -67,9 +103,14 @@
 <% end %>
 
 <% if api_media_pictures.any? %>
-  <% api_media_pictures.each_with_index do |(pic, original_index, pic_url), index| %>
-    <% display_index = attached_media_photos.size + index %>
+  <% api_media_pictures.each_with_index do |(pic, original_index, pic_url), api_position| %>
+    <% display_position = attached_media_photos.size + api_position + 1 %>
     <% picture_hidden_from_site = habitation.picture_hidden_from_site?(pic) %>
+    <% picture_public_url = public_image_url(pic).presence || pic_url %>
+    <% next if picture_public_url.blank? %>
+    <% picture_ambiente = habitation.respond_to?(:picture_ambiente) ? habitation.picture_ambiente(pic) : nil %>
+    <% picture_ambiente_position = habitation.respond_to?(:picture_ambiente_position) ? habitation.picture_ambiente_position(pic) : nil %>
+    <% picture_ambiente_label = habitation.respond_to?(:picture_ambiente_label) ? habitation.picture_ambiente_label(pic, index: original_index) : nil %>
     <% site_toggle = capture do %>
       <button type="button"
               class="media-photo-site-toggle ax-media-action <%= picture_hidden_from_site ? 'ax-media-action--neutral' : 'ax-media-action--published' %>"
@@ -82,7 +123,7 @@
     <% end %>
     <% featured_control = capture do %>
       <span data-photo-featured-control>
-        <% if display_index.zero? %>
+        <% if display_position == 1 %>
           <span class="ax-media-action ax-media-action--featured is-active" title="Foto em destaque" aria-label="Foto em destaque">
             <i class="bi bi-star-fill"></i>
           </span>
@@ -103,25 +144,41 @@
         <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar">
           <i class="bi bi-grip-vertical"></i>
         </button>
+        <% if can_edit_media %>
+          <button type="button"
+                  class="media-photo-action-button ax-media-action ax-media-action--neutral"
+                  title="Configurar ambiente"
+                  aria-label="Configurar ambiente"
+                  data-action="media-tools#openSettings"
+                  data-media-tools-picture-index-param="<%= original_index %>"
+                  data-media-tools-ambiente-param="<%= picture_ambiente %>"
+                  data-media-tools-ambiente-position-param="<%= picture_ambiente_position %>">
+            <i class="bi bi-gear"></i>
+          </button>
+        <% end %>
         <button type="button"
                 class="media-photo-action-button ax-media-action ax-media-action--danger"
-                title="Remover foto da API"
-                aria-label="Remover foto da API"
+                title="Remover foto"
+                aria-label="Remover foto"
                 data-action="photo-upload#removeApiPicture">
           <i class="bi bi-trash"></i>
         </button>
       </span>
     <% end %>
+    <% ambiente_badge = capture do %>
+      <% if picture_ambiente_label.present? %>
+        <span class="ax-media-tag ax-media-tag--info" data-media-tools-ambiente-badge title="Ambiente da foto"><%= picture_ambiente_label %></span>
+      <% end %>
+    <% end %>
     <%= ax_media_tile(
-          link_url: pic_url,
-          image_source: pic_url,
-          caption: "Foto API/Vista #{display_index + 1}",
-          position: display_index + 1,
+          link_url: picture_public_url,
+          image_source: picture_public_url,
+          caption: "Foto ativa #{display_position}",
+          position: display_position,
           root_class: "draggable-item api-picture-item",
           data: { api_index: original_index },
           hidden_from_site: picture_hidden_from_site,
-          image_class: "opacity-75",
-          center: tag.span("API/Vista", class: "ax-media-tag ax-media-tag--source", title: "Vindo da Integração API"),
+          center: ambiente_badge.presence,
           bottom_left: featured_control,
           bottom_right: picture_actions
         ) %>

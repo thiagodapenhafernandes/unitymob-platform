@@ -22,6 +22,9 @@
 <%= tag.section(**section_options) do %>
   <header class="ax-form-section__header">
     <h3 class="ax-form-section__title">
+      <% if local_assigns[:icon].present? %>
+        <i class="bi bi-<%= icon %> ax-form-section__icon" aria-hidden="true"></i>
+      <% end %>
       <span><%= title %></span>
       <% if local_assigns[:tooltip].present? %>
         <button type="button"

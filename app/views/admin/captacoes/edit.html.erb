@@ -22,7 +22,10 @@
 <div class="wizard-top-bar">
   <div class="wizard-shell">
     <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
-      <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost ax-btn--sm text-decoration-none", style: "padding:0;" do %>
+      <%= link_to admin_captacoes_path,
+                  class: "ax-icon-btn wizard-back-link",
+                  title: "Voltar para captações",
+                  aria: { label: "Voltar para captações" } do %>
         <i class="bi bi-arrow-left"></i>
       <% end %>
       <div class="tw-text-sm tw-text-ink-muted" style="flex-grow:1;">
@@ -73,7 +76,8 @@
                 html: {
                   id: "wizard-form",
                   data: {
-                    controller: "habitation-duplicate-check",
+                    controller: "habitation-duplicate-check captacao-submit-progress",
+                    action: "submit->captacao-submit-progress#submit",
                     habitation_duplicate_check_url_value: check_admin_habitation_duplicate_path,
                     habitation_duplicate_check_ignored_id_value: @captacao.id
                   }
@@ -87,6 +91,17 @@
                          data: { habitation_duplicate_check_target: "comparison" } %>
 
     <%= render "admin/captacoes/steps/#{@step}", f: f, field_state: field_state, field_invalid: field_invalid %>
+
+    <div class="captacao-submit-progress" data-captacao-submit-progress-target="panel" hidden role="status" aria-live="polite">
+      <div class="captacao-submit-progress__header">
+        <strong data-captacao-submit-progress-target="title">Enviando dados</strong>
+        <span data-captacao-submit-progress-target="percent">0%</span>
+      </div>
+      <div class="captacao-submit-progress__track" aria-hidden="true">
+        <div class="captacao-submit-progress__bar" data-captacao-submit-progress-target="bar"></div>
+      </div>
+      <p data-captacao-submit-progress-target="message">Mantenha esta tela aberta até o avanço concluir.</p>
+    </div>
 
     <div class="wizard-bottom-nav">
       <div class="wizard-shell tw-flex tw-gap-2">

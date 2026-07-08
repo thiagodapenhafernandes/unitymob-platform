@@ -56,11 +56,11 @@ module AccessControl
     end
 
     def trusted_device_required?
-      admin_user.require_trusted_device? || AccessControl::Settings.broker_trusted_devices_enabled? && broker?
+      admin_user.require_trusted_device? || AccessControl::Settings.broker_trusted_devices_enabled?(tenant: admin_user.tenant) && broker?
     end
 
     def broker_global_rule_enabled?
-      AccessControl::Settings.broker_ip_allowlist_enabled? && broker?
+      AccessControl::Settings.broker_ip_allowlist_enabled?(tenant: admin_user.tenant) && broker?
     end
 
     def broker?

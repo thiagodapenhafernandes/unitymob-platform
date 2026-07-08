@@ -7,6 +7,8 @@ class Admin::HabitationMediaController < Admin::BaseController
   def show
     @page_title = "Mídia do Imóvel: #{@habitation.codigo}"
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
+    @media_tools_can_edit = can_manage_media_tools?
+    @media_tools_ambientes = Habitation::FOTO_AMBIENTES
   end
 
   def modal
@@ -16,7 +18,8 @@ class Admin::HabitationMediaController < Admin::BaseController
            layout: false,
            locals: {
              habitation: @habitation,
-             return_to_path: @return_to_path
+             return_to_path: @return_to_path,
+             can_edit_media: can_manage_media_tools?
            }
   end
 
@@ -138,7 +141,124 @@ class Admin::HabitationMediaController < Admin::BaseController
     end
   end
 
+  # PATCH /admin/habitations/:habitation_id/media/ambiente
+  # Grava o ambiente da foto. Para ActiveStorage usa blob.metadata; para fotos
+  # externas (DWV/API) grava no próprio payload de pictures.
+  def ambiente
+    return render_media_forbidden unless can_manage_media_tools?
+
+    photo_id = numeric_param(:photo_id) || media_tools_param_id(:photo_id)
+    picture_index = numeric_param(:picture_index) || media_tools_param_id(:picture_index)
+    if photo_id.blank? && picture_index.blank?
+      respond_with_media_error("Informe a foto que deve receber o ambiente.")
+      return
+    end
+
+    ambiente_value = params.dig(:habitation, :ambiente).to_s.strip
+    if ambiente_value.present? && !Habitation::FOTO_AMBIENTES.include?(ambiente_value)
+      respond_with_media_error("Ambiente inválido.")
+      return
+    end
+
+    if photo_id.present?
+      attachment = @habitation.photos.attachments.includes(:blob).find_by(id: photo_id)
+      if attachment.blank?
+        respond_with_media_error("Foto não encontrada.")
+        return
+      end
+
+      @habitation.set_photo_ambiente!(
+        attachment,
+        ambiente_value,
+        position: params.dig(:habitation, :ambiente_position)
+      )
+    elsif !@habitation.set_picture_ambiente!(
+      picture_index,
+      ambiente_value,
+      position: params.dig(:habitation, :ambiente_position)
+    )
+      respond_with_media_error("Foto externa não encontrada.")
+      return
+    end
+
+    respond_with_media_success("Ambiente atualizado.")
+  end
+
+  # POST /admin/habitations/:habitation_id/media/organize
+  # Reordena as fotos pela ordem canônica de ambientes. Re-renderiza a galeria.
+  def organize
+    return render_media_forbidden unless can_manage_media_tools?
+
+    @habitation.organize_photos_by_ambiente!
+    respond_with_media_success("Fotos organizadas por ambiente.")
+  end
+
+  # POST /admin/habitations/:habitation_id/media/share
+  # Gera um link público com as fotos selecionadas + URL de WhatsApp.
+  def share
+    return render_media_forbidden unless can_manage_media_tools?
+
+    photo_ids = share_photo_ids_param
+    if photo_ids.blank?
+      respond_with_media_error("Selecione ao menos uma foto para enviar.")
+      return
+    end
+
+    valid_ids = @habitation.photos.attachments.where(id: photo_ids).ids
+    if valid_ids.blank?
+      respond_with_media_error("Nenhuma das fotos selecionadas está disponível.")
+      return
+    end
+
+    share = HabitationPhotoShare.create_for(
+      habitation: @habitation,
+      admin_user: current_admin_user,
+      photo_ids: valid_ids
+    )
+
+    share_url = habitation_photo_share_url(share.token)
+    whatsapp_text = "Confira as fotos do imóvel #{@habitation.codigo}: #{share_url}"
+
+    render json: {
+      ok: true,
+      share_url: share_url,
+      whatsapp_url: "https://wa.me/?text=#{ERB::Util.url_encode(whatsapp_text)}"
+    }
+  end
+
   private
+
+  def can_manage_media_tools?
+    return false unless current_admin_user
+    return false unless current_admin_user.can?(:media, :imoveis) || current_admin_user.can?(:manage, :imoveis)
+    return true if owns_all_resource?(:imoveis)
+    return true if property_belongs_to_current_user?(@habitation)
+    return true if current_admin_user&.can_view_team?(:imoveis) && property_owned_by_team?(@habitation)
+
+    catalog_media_visible?(@habitation)
+  end
+
+  def render_media_forbidden
+    respond_to do |format|
+      format.json { render json: { ok: false, error: "forbidden" }, status: :forbidden }
+      format.html { redirect_to admin_habitation_media_path(@habitation), alert: "Você não tem permissão para editar as fotos deste imóvel." }
+    end
+  end
+
+  def media_tools_param_id(key)
+    value = params.dig(:habitation, key).to_s.strip
+    value.match?(/\A\d+\z/) ? value.to_i : nil
+  end
+
+  def share_photo_ids_param
+    raw = params.dig(:habitation, :photo_ids)
+    Array(raw)
+      .flat_map { |id| id.to_s.split(",") }
+      .map(&:strip)
+      .select { |id| id.match?(/\A\d+\z/) }
+      .map(&:to_i)
+      .uniq
+  end
 
   def habitation_media_params
     permitted = params.require(:habitation).permit(
@@ -259,7 +379,11 @@ class Admin::HabitationMediaController < Admin::BaseController
   end
 
   def media_gallery_locals
-    Habitations::MediaGallery.new(@habitation).locals
+    # can_edit_media explícito no re-render (ambiente/organize): o partial tem
+    # fallback, mas passamos para garantir engrenagem/checkbox/ambiente pós-ação.
+    Habitations::MediaGallery.new(@habitation).locals.merge(
+      can_edit_media: can_manage_media_tools?
+    )
   end
 
   def set_habitation
@@ -284,10 +408,16 @@ class Admin::HabitationMediaController < Admin::BaseController
   end
 
   def scope_habitation_by_permission
-    return if owns_all_resource?(:imoveis)
-    return if property_belongs_to_current_user?(@habitation)
+    return if can_manage_media_tools?
 
     redirect_to admin_habitations_path, alert: "Você não tem acesso a este imóvel."
+  end
+
+  def property_owned_by_team?(habitation)
+    ids = current_admin_user.team_scope_ids
+    return true if ids.include?(habitation.admin_user_id)
+
+    habitation.broker_assignments.exists?(admin_user_id: ids)
   end
 
   def property_belongs_to_current_user?(habitation)
@@ -297,6 +427,14 @@ class Admin::HabitationMediaController < Admin::BaseController
 
     broker_name = current_admin_user.name.to_s.strip
     broker_name.present? && habitation.corretor_nome.to_s.downcase.include?(broker_name.downcase)
+  end
+
+  def catalog_media_visible?(habitation)
+    return false unless habitation
+    return false if current_tenant.present? && habitation.tenant_id != current_tenant.id
+    return true unless habitation.broker_intake?
+
+    Habitation::CATALOG_VISIBLE_INTAKE_STATUSES.include?(habitation.intake_status)
   end
 
   def load_property_setting

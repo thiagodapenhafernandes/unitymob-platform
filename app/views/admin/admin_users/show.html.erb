@@ -34,8 +34,8 @@
       <div class="ax-dashboard-command__title-row">
         <h1><%= u.name %></h1>
         <%= ax_badge(u.active ? "Ativo" : "Inativo", tone: u.active ? :green : :red, dot: true) %>
-        <% if u.profile %><%= ax_badge(u.profile.name, tone: :blue) %><% end %>
-        <% if u.horizontal_profile %><%= ax_badge(u.horizontal_profile.name, tone: :gray) %><% end %>
+        <%= ax_badge(u.access_profile_name, tone: :blue) %>
+        <% if u.horizontal_profile && u.profile %><%= ax_badge("Hierarquia: #{u.profile.name}", tone: :gray) %><% end %>
         <% if acting %><%= ax_badge(acting[0], tone: acting[1]) %><% end %>
       </div>
       <p><%= u.email %><%= " · CRECI #{u.creci}" if u.creci.present? %></p>
@@ -70,8 +70,8 @@
       <%= ax_operational_panel(eyebrow: "Acesso", title: "Acesso e segurança") do %>
         <div class="aus__body">
           <dl class="aus__defs">
-            <div class="aus__def"><dt>Perfil vertical</dt><dd><%= u.profile&.name.presence || u.role.humanize %></dd></div>
-            <div class="aus__def"><dt>Função horizontal</dt><dd><%= u.horizontal_profile&.name.presence || "—" %></dd></div>
+            <div class="aus__def"><dt>Perfil de acesso</dt><dd><%= u.access_profile_name %></dd></div>
+            <div class="aus__def"><dt>Hierarquia (raiz)</dt><dd><%= u.profile&.name.presence || "—" %></dd></div>
             <div class="aus__def"><dt>Atuação</dt><dd><%= acting ? acting[0] : "—" %></dd></div>
             <div class="aus__def"><dt>Exibe no site</dt><dd><%= ax_badge(u.display_on_site ? "Sim" : "Não", tone: u.display_on_site ? :green : :gray) %></dd></div>
             <div class="aus__def"><dt>Exige IP permitido</dt><dd><%= ax_badge(u.require_ip_allowlist ? "Sim" : "Não", tone: u.require_ip_allowlist ? :amber : :gray) %></dd></div>
@@ -101,7 +101,7 @@
                   </span>
                   <span class="aus__member-main">
                     <strong><%= sub.name %></strong>
-                    <span><%= sub.profile&.name.presence || sub.email %></span>
+                    <span><%= sub.access_profile_name.presence || sub.email %></span>
                   </span>
                   <%= ax_badge(sub.active ? "Ativo" : "Inativo", tone: sub.active ? :green : :red, dot: true) %>
                 <% end %>

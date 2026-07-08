@@ -1,0 +1,34 @@
+<%#
+  Sinalização da apresentação do corretor.
+  variant :icon — check sutil no cabeçalho com tooltip (apresentado) ou alerta (pendente)
+  variant :bar (default) — apenas o aviso de gate (pendente); o "já se apresentou"
+  vive no cabeçalho como ícone para não ocupar uma linha inteira.
+  locals: conversation (obrigatório), variant (opcional)
+%>
+<% conversation = local_assigns.fetch(:conversation) %>
+<% variant = local_assigns.fetch(:variant, :bar) %>
+<% integration = WhatsappBusinessIntegration.current(current_tenant) %>
+<% if conversation && integration&.presentation_enabled? && can?(:manage, :whatsapp_inbox) %>
+  <% last_presented_at = conversation.last_presentation_at(current_admin_user) %>
+  <% presentation_pending = integration.presentation_required_for?(conversation, current_admin_user) %>
+
+  <% if variant == :icon %>
+    <% if last_presented_at %>
+      <span class="wa-presentation-mark wa-presentation-mark--ok" tabindex="0"
+            data-wa-tooltip="Você já se apresentou · <%= l(last_presented_at, format: '%d/%m %H:%M') %>"
+            aria-label="Você já se apresentou em <%= l(last_presented_at, format: '%d/%m %H:%M') %>">
+        <i class="bi bi-patch-check-fill"></i>
+      </span>
+    <% elsif presentation_pending %>
+      <span class="wa-presentation-mark wa-presentation-mark--pending" tabindex="0"
+            data-wa-tooltip="Apresentação pendente — envie seu cartão (⚡) para liberar as respostas"
+            aria-label="Apresentação pendente">
+        <i class="bi bi-shield-exclamation"></i>
+      </span>
+    <% end %>
+  <% elsif presentation_pending %>
+    <%= ax_inline_notice(tone: :warning, icon: "shield-check", class_name: "wa-inbox-thread__presentation-cta") do %>
+      Envie sua apresentação primeiro para liberar as respostas.
+    <% end %>
+  <% end %>
+<% end %>

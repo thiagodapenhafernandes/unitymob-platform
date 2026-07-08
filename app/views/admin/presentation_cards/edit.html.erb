@@ -1,0 +1,14 @@
+<% content_for :title, "Editar cartão de apresentação" %>
+
+<div class="layout-settings-workspace">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+    <div>
+      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+        <i class="bi bi-person-badge" style="color: var(--admin-primary);"></i>Editar cartão: <%= @card.label %>
+      </h1>
+      <p class="ax-page-subtitle">A assinatura com nome e CRECI é automática; o telefone pessoal nunca é incluído.</p>
+    </div>
+    <%= link_to "Voltar", admin_presentation_cards_path, class: "ax-btn" %>
+  </div>
+  <%= render "form", card: @card %>
+</div>

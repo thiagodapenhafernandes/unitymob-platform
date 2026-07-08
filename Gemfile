@@ -36,6 +36,7 @@ gem "prawn-table"
 # API & External Services
 gem "rest-client"
 gem "httparty"
+gem "google-apis-calendar_v3", "~> 0.55"
 gem "koala", "~> 3.0"
 gem "omniauth-facebook"
 gem "omniauth-rails_csrf_protection"
@@ -87,5 +88,9 @@ group :production do
 end
 
 gem "devise", "~> 4.9"
+
+# 2FA TOTP (Google Authenticator): rotp gera/valida códigos, rqrcode desenha o QR
+gem "rotp", "~> 6.3"
+gem "rqrcode", "~> 2.2"
 
 gem "dartsass-rails", "~> 0.5.1"

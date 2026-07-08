@@ -1,0 +1,60 @@
+/* ============================================================
+   Unitymob — Color tokens
+   Extracted from the admin CRM design system (.ax-*, admin_tailwind.css).
+   Palette is a cool corporate "Power BI" grey system with a single
+   white-label primary. Semantic status colors come from the badge/button set.
+   ============================================================ */
+
+:root {
+  /* ---- Brand / white-label primary --------------------------------
+     In production the primary is injected per-tenant via --admin-primary.
+     #365f8f is the platform default (a desaturated corporate blue). */
+  --primary: #365f8f;
+  --primary-fg: #ffffff;
+  --primary-hover: #2d5079;                 /* ~86% primary + black */
+  --primary-soft: #e4ebf3;                  /* ~12% primary tint */
+  --primary-softer: #f1f5f9;                /* ~7% primary tint */
+  --primary-ring: rgba(54, 95, 143, 0.35);
+  --primary-ink: #245486;                   /* active nav text */
+
+  /* ---- Ink (text) — cool neutral ---------------------------------- */
+  --ink: #1f2733;          /* headings, primary text */
+  --ink-soft: #3b4656;     /* secondary text */
+  --ink-body: #475467;     /* body / table cells */
+  --ink-muted: #697586;    /* captions, subtitles */
+  --ink-faint: #98a2b3;    /* placeholders, disabled */
+  --ink-label: #344054;    /* form labels, button text */
+
+  /* ---- Surfaces --------------------------------------------------- */
+  --surface: #ffffff;              /* cards, panels, sidebar */
+  --surface-soft: #f7f8fa;         /* subtle fills, hovers */
+  --surface-header: #eef2f7;       /* table/section headers, context bar */
+  --surface-zebra: #fafbfc;        /* zebra table rows */
+  --workspace-bg: #eef2f7;         /* app background */
+  --panel-head: #f8fafc;           /* kanban / card headers */
+
+  /* ---- Lines / borders -------------------------------------------- */
+  --line: #e6e8eb;
+  --line-soft: #eceef1;
+  --line-strong: #d2d6db;
+  --line-shell: #dfe5ee;           /* navbar / sidebar dividers */
+  --field-border: #d2d6db;
+  --field-focus: #7f96b5;
+
+  /* ---- Semantic status (badge fill / text pairs) ------------------ */
+  --success: #08875d;   --success-bg: #e6f6ec;   --success-line: #abefc6;
+  --warning: #b45309;   --warning-bg: #fef3c7;   --warning-line: #fedf89;
+  --danger:  #b42318;   --danger-bg:  #fee4e2;   --danger-line:  #fda4af;
+  --info:    #175cd3;   --info-bg:    #eff8ff;   --info-line:    #b2ddff;
+  --purple:  #6d28d9;   --purple-bg:  #f1e8ff;
+  --cyan:    #0e7490;   --cyan-bg:    #d9f8ff;
+  --gray:    #475467;   --gray-bg:    #eceef1;
+
+  /* ---- Entity accent colors (context pins, kanban, pills) ---------
+     Each core CRM object carries a fixed accent used on left-border pins. */
+  --entity-property: #ff7043;   /* Imóvel */
+  --entity-owner:    #365f8f;   /* Proprietário */
+  --entity-lead:     #16a34a;   /* Lead */
+  --entity-proposal: #7c3aed;   /* Proposta */
+  --entity-whatsapp: #128c7e;   /* WhatsApp */
+}

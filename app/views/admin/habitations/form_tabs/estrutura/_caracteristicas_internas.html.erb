@@ -11,7 +11,7 @@
   </button>
 <% end %>
 
-<%= ax_form_section(title: "Características internas", eyebrow: "Checklist", actions: feature_actions) do %>
+<%= ax_form_section(title: "Características internas", eyebrow: "Checklist", icon: "stars", actions: feature_actions) do %>
   <% current_chars = f.object.caracteristicas.is_a?(Hash) ? f.object.caracteristicas.keys : Array(f.object.caracteristicas) %>
   <%= ax_chip_grid(id: "features-checkbox-list") do %>
     <% @internal_features.to_a.each do |feature| %>

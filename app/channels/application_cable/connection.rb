@@ -9,7 +9,11 @@ module ApplicationCable
     private
 
     def find_verified_admin_user
-      env["warden"]&.user(:admin_user) || reject_unauthorized_connection
+      # catch(:warden): os hooks de timeoutable/epoch fazem throw(:warden) ao
+      # derrubar sessão — fora do Warden::Manager (aqui é thread do cable) isso
+      # viraria UncaughtThrowError e o socket ficaria em loop de reconexão.
+      user = catch(:warden) { env["warden"]&.user(:admin_user) }
+      user.is_a?(AdminUser) ? user : reject_unauthorized_connection
     end
   end
 end

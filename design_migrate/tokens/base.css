@@ -1,0 +1,49 @@
+/* ============================================================
+   Unitymob — Base layer
+   Minimal, scoped reset. The admin app disables Tailwind preflight and
+   applies base type on the .ax-app shell, so we mirror that: the reset is
+   light and app defaults live on .ax-app.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.ax-app {
+  margin: 0;
+  background: var(--workspace-bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.ax-app h1, .ax-app h2, .ax-app h3, .ax-app h4 {
+  margin: 0;
+  color: var(--ink);
+  font-weight: var(--weight-heavy);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Page title / subtitle */
+.ax-page-title {
+  color: var(--ink);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+.ax-page-subtitle { color: var(--ink-muted); font-size: var(--text-base); }
+
+/* Eyebrow — uppercase micro-label used above headings everywhere */
+.ax-eyebrow {
+  display: block;
+  color: var(--ink-muted);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-heavy);
+  letter-spacing: var(--tracking-caps);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ax-app a { color: var(--primary); text-decoration: none; }
+.ax-num { font-variant-numeric: tabular-nums; }

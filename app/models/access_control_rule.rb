@@ -50,7 +50,7 @@ class AccessControlRule < ApplicationRecord
     when "global"
       true
     when "profile"
-      profile_id.present? && profile_id == user&.profile_id
+      profile.present? && user.present? && AdminUser.where(id: user.id).matching_access_profile(profile).exists?
     when "user"
       admin_user_id.present? && admin_user_id == user&.id
     else

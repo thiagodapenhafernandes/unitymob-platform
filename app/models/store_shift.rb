@@ -22,6 +22,7 @@ class StoreShift < ApplicationRecord
   validates :day_of_week, inclusion: { in: 0..6 }
   validates :start_time, :end_time, presence: true
   validate :end_time_after_start_time
+  validate :associations_belong_to_same_tenant
 
   scope :active, -> { where(active: true) }
   scope :for_day, ->(dow) { where(day_of_week: dow) }
@@ -68,5 +69,19 @@ class StoreShift < ApplicationRecord
     return if start_time.blank? || end_time.blank?
 
     errors.add(:end_time, "deve ser depois do horário inicial") if end_time <= start_time
+  end
+
+  # Espelha CheckIn#associations_belong_to_same_tenant: impede escalar corretor
+  # (ou loja) de outra conta num turno, evitando vazamento cross-tenant no
+  # dropdown/salvamento nested vindo de store_params.
+  def associations_belong_to_same_tenant
+    return if tenant.blank?
+
+    %i[store admin_user].each do |association_name|
+      record = public_send(association_name)
+      next if record.blank? || record.tenant_id == tenant_id
+
+      errors.add(association_name, "deve pertencer à mesma conta do turno")
+    end
   end
 end

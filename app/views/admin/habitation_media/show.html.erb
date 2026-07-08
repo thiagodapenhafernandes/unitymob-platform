@@ -54,7 +54,8 @@
       <%= render "admin/habitations/media/manager",
                  f: f,
                  habitation: @habitation,
-                 upload_input_id: "habitation_media_photos" %>
+                 upload_input_id: "habitation_media_photos",
+                 can_edit_media: @media_tools_can_edit %>
     </div>
 
     <%= ax_sticky_action_footer(

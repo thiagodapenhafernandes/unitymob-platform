@@ -1,4 +1,4 @@
-\restrict gYYQsTU9jabHpZeh66BUSLjwEQBoZKlG2opvkdGi7Ru3wkUL2qAFljGdPUpNc92
+\restrict yhxVB10BhdBTOnxhfExv1Juj3pjrDeS3p8rye8e0GKj4VqPiDgAVJWfWVgdmmu0
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -94,7 +94,7 @@ DECLARE
   user_profile_axis text;
   user_profile_position integer;
   horizontal_axis text;
-  horizontal_vertical_profile_id bigint;
+  horizontal_root_vertical_id bigint;
   manager_profile_position integer;
   cycle_found boolean;
 BEGIN
@@ -117,8 +117,8 @@ BEGIN
         USING ERRCODE = '23514';
     END IF;
 
-    SELECT axis, vertical_profile_id
-      INTO horizontal_axis, horizontal_vertical_profile_id
+    SELECT axis
+      INTO horizontal_axis
     FROM profiles
     WHERE id = NEW.horizontal_profile_id
       AND tenant_id = NEW.tenant_id;
@@ -128,7 +128,28 @@ BEGIN
         USING ERRCODE = '23514';
     END IF;
 
-    IF horizontal_vertical_profile_id IS DISTINCT FROM NEW.profile_id THEN
+    -- Sobe a cadeia de âncoras (função → função → ... → vertical) e
+    -- compara a RAIZ vertical com o perfil do usuário.
+    WITH RECURSIVE anchor_chain AS (
+      SELECT p.id, p.axis, p.vertical_profile_id, 0 AS depth
+      FROM profiles p
+      WHERE p.id = NEW.horizontal_profile_id
+        AND p.tenant_id = NEW.tenant_id
+      UNION ALL
+      SELECT parent.id, parent.axis, parent.vertical_profile_id, chain.depth + 1
+      FROM profiles parent
+      JOIN anchor_chain chain ON parent.id = chain.vertical_profile_id
+      WHERE chain.axis = 'horizontal'
+        AND chain.depth < 6
+        AND parent.tenant_id = NEW.tenant_id
+    )
+    SELECT id
+      INTO horizontal_root_vertical_id
+    FROM anchor_chain
+    WHERE axis = 'vertical'
+    LIMIT 1;
+
+    IF horizontal_root_vertical_id IS DISTINCT FROM NEW.profile_id THEN
       RAISE EXCEPTION 'admin user horizontal profile must be attached to the user vertical profile'
         USING ERRCODE = '23514';
     END IF;
@@ -396,6 +417,53 @@ ALTER SEQUENCE public.access_control_rules_id_seq OWNED BY public.access_control
 
 
 --
+-- Name: account_memberships; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_memberships (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    invited_email character varying NOT NULL,
+    primary_admin_user_id bigint,
+    member_admin_user_id bigint,
+    profile_id bigint NOT NULL,
+    horizontal_profile_id bigint,
+    manager_id bigint,
+    rentals_manager_id bigint,
+    acting_type integer,
+    status integer DEFAULT 0 NOT NULL,
+    invited_by_id bigint NOT NULL,
+    invite_token_digest character varying,
+    invite_sent_at timestamp(6) without time zone,
+    invite_expires_at timestamp(6) without time zone,
+    accepted_at timestamp(6) without time zone,
+    revoked_at timestamp(6) without time zone,
+    revoked_by_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: account_memberships_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.account_memberships_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: account_memberships_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.account_memberships_id_seq OWNED BY public.account_memberships.id;
+
+
+--
 -- Name: action_text_rich_texts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -630,8 +698,16 @@ CREATE TABLE public.admin_users (
     leads_view_mode character varying,
     tenant_id bigint,
     horizontal_profile_id bigint,
+    rentals_manager_id bigint,
+    otp_secret character varying,
+    otp_enabled_at timestamp(6) without time zone,
+    otp_backup_codes jsonb DEFAULT '[]'::jsonb NOT NULL,
+    otp_consumed_timestep integer,
+    primary_admin_user_id bigint,
+    contact_email character varying,
     CONSTRAINT admin_users_system_admin_outside_tenant CHECK (((super_admin = false) OR ((tenant_id IS NULL) AND (profile_id IS NULL) AND (horizontal_profile_id IS NULL) AND (manager_id IS NULL)))),
-    CONSTRAINT admin_users_tenant_required_unless_system_admin CHECK (((super_admin = true) OR (tenant_id IS NOT NULL)))
+    CONSTRAINT admin_users_tenant_required_unless_system_admin CHECK (((super_admin = true) OR (tenant_id IS NOT NULL))),
+    CONSTRAINT chk_admin_users_mirror_not_super_admin CHECK (((primary_admin_user_id IS NULL) OR (super_admin = false)))
 );
 
 
@@ -757,6 +833,7 @@ CREATE TABLE public.attribute_options (
     context character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    property_kinds jsonb DEFAULT '[]'::jsonb NOT NULL,
     "position" integer,
     description character varying,
     tenant_id bigint NOT NULL
@@ -1290,7 +1367,9 @@ CREATE TABLE public.check_ins (
     suspicious boolean DEFAULT false NOT NULL,
     suspicious_reasons jsonb DEFAULT '[]'::jsonb,
     fingerprint_hash character varying,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    turno character varying,
+    status_chegada character varying
 );
 
 
@@ -1771,7 +1850,11 @@ CREATE TABLE public.distribution_rules (
     checkin_store_ids bigint[] DEFAULT '{}'::bigint[] NOT NULL,
     notify_push boolean DEFAULT false NOT NULL,
     notify_webhook_urls jsonb DEFAULT '[]'::jsonb NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    hierarchy_manager_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    auto_update_agents_enabled boolean DEFAULT false NOT NULL,
+    auto_update_trigger character varying[] DEFAULT '{sorteio}'::character varying[] NOT NULL,
+    auto_update_shuffle_agents boolean DEFAULT false NOT NULL
 );
 
 
@@ -1812,7 +1895,8 @@ CREATE TABLE public.email_settings (
     from_email character varying,
     reply_to character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint
 );
 
 
@@ -1833,6 +1917,49 @@ CREATE SEQUENCE public.email_settings_id_seq
 --
 
 ALTER SEQUENCE public.email_settings_id_seq OWNED BY public.email_settings.id;
+
+
+--
+-- Name: error_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.error_events (
+    id bigint NOT NULL,
+    fingerprint character varying NOT NULL,
+    exception_class character varying,
+    message text,
+    backtrace text,
+    source character varying,
+    severity character varying DEFAULT 'error'::character varying NOT NULL,
+    tenant_id bigint,
+    context jsonb DEFAULT '{}'::jsonb NOT NULL,
+    occurrences_count integer DEFAULT 1 NOT NULL,
+    first_seen_at timestamp(6) without time zone,
+    last_seen_at timestamp(6) without time zone,
+    last_alerted_at timestamp(6) without time zone,
+    resolved_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: error_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.error_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: error_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.error_events_id_seq OWNED BY public.error_events.id;
 
 
 --
@@ -2067,8 +2194,16 @@ CREATE TABLE public.habitations (
     dwv_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
     rental_guarantee_method character varying,
     permuta_valor_percentual integer,
+    frente_terreno_m numeric(10,2),
+    fundo_terreno_m numeric(10,2),
+    photo_environment_assignments jsonb DEFAULT '{}'::jsonb NOT NULL,
+    photo_calendar_provider character varying,
+    photo_calendar_event_id character varying,
+    photo_calendar_error text,
+    photo_calendar_synced_at timestamp(6) without time zone,
     admin_review_return_reason text,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    quadra character varying
 );
 
 
@@ -2282,6 +2417,42 @@ ALTER SEQUENCE public.friendly_id_slugs_id_seq OWNED BY public.friendly_id_slugs
 
 
 --
+-- Name: google_calendar_integration_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.google_calendar_integration_settings (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    calendar_id character varying,
+    default_duration_minutes integer DEFAULT 60 NOT NULL,
+    service_account_json text,
+    last_synced_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: google_calendar_integration_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.google_calendar_integration_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: google_calendar_integration_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.google_calendar_integration_settings_id_seq OWNED BY public.google_calendar_integration_settings.id;
+
+
+--
 -- Name: habitation_audit_logs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2461,6 +2632,43 @@ CREATE SEQUENCE public.habitation_interactions_id_seq
 --
 
 ALTER SEQUENCE public.habitation_interactions_id_seq OWNED BY public.habitation_interactions.id;
+
+
+--
+-- Name: habitation_photo_shares; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.habitation_photo_shares (
+    id bigint NOT NULL,
+    habitation_id bigint NOT NULL,
+    admin_user_id bigint,
+    token character varying NOT NULL,
+    photo_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    expires_at timestamp(6) without time zone,
+    last_viewed_at timestamp(6) without time zone,
+    views_count integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: habitation_photo_shares_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.habitation_photo_shares_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: habitation_photo_shares_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.habitation_photo_shares_id_seq OWNED BY public.habitation_photo_shares.id;
 
 
 --
@@ -2937,6 +3145,39 @@ ALTER SEQUENCE public.lead_labels_id_seq OWNED BY public.lead_labels.id;
 
 
 --
+-- Name: lead_property_interests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lead_property_interests (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    lead_id bigint NOT NULL,
+    habitation_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: lead_property_interests_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.lead_property_interests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: lead_property_interests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.lead_property_interests_id_seq OWNED BY public.lead_property_interests.id;
+
+
+--
 -- Name: lead_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3247,6 +3488,42 @@ ALTER SEQUENCE public.meta_lead_forms_id_seq OWNED BY public.meta_lead_forms.id;
 
 
 --
+-- Name: notification_template_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notification_template_settings (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    whatsapp_template_id bigint,
+    channel character varying DEFAULT 'whatsapp'::character varying NOT NULL,
+    purpose character varying NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: notification_template_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.notification_template_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: notification_template_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.notification_template_settings_id_seq OWNED BY public.notification_template_settings.id;
+
+
+--
 -- Name: photography_schedule_blocks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3295,7 +3572,8 @@ CREATE TABLE public.portal_integration_events (
     source_ip character varying,
     raw_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint
 );
 
 
@@ -3338,7 +3616,8 @@ CREATE TABLE public.portal_integrations (
     last_feed_at timestamp(6) without time zone,
     last_webhook_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint
 );
 
 
@@ -3376,7 +3655,8 @@ CREATE TABLE public.portal_listing_states (
     last_received_at timestamp(6) without time zone NOT NULL,
     last_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint
 );
 
 
@@ -3397,6 +3677,44 @@ CREATE SEQUENCE public.portal_listing_states_id_seq
 --
 
 ALTER SEQUENCE public.portal_listing_states_id_seq OWNED BY public.portal_listing_states.id;
+
+
+--
+-- Name: presentation_cards; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.presentation_cards (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint,
+    label character varying NOT NULL,
+    greeting text NOT NULL,
+    use_photo boolean DEFAULT false NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    system boolean DEFAULT false NOT NULL
+);
+
+
+--
+-- Name: presentation_cards_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.presentation_cards_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: presentation_cards_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.presentation_cards_id_seq OWNED BY public.presentation_cards.id;
 
 
 --
@@ -3491,7 +3809,8 @@ CREATE TABLE public.property_settings (
     broker_capture_fallback_admin_user_id bigint,
     notify_internal_review_events boolean DEFAULT true NOT NULL,
     notify_email_review_events boolean DEFAULT false NOT NULL,
-    review_notification_emails text
+    review_notification_emails text,
+    tenant_id bigint
 );
 
 
@@ -3611,7 +3930,9 @@ CREATE TABLE public.proprietors (
     show_email_to_client boolean DEFAULT false NOT NULL,
     show_phone_on_web boolean DEFAULT false NOT NULL,
     spouse_birth_date date,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    cpf_cnpj_digits character varying,
+    spouse_cpf_cnpj_digits character varying
 );
 
 
@@ -4130,7 +4451,8 @@ CREATE TABLE public.settings (
     value text,
     description character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint
 );
 
 
@@ -4633,7 +4955,8 @@ CREATE TABLE public.stores (
     location public.geography(Point,4326),
     number character varying,
     neighborhood character varying,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    turnos_config jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -4654,6 +4977,43 @@ CREATE SEQUENCE public.stores_id_seq
 --
 
 ALTER SEQUENCE public.stores_id_seq OWNED BY public.stores.id;
+
+
+--
+-- Name: system_notification_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.system_notification_settings (
+    id bigint NOT NULL,
+    whatsapp_enabled boolean DEFAULT false NOT NULL,
+    whatsapp_access_token text,
+    whatsapp_phone_number_id character varying,
+    whatsapp_business_account_id character varying,
+    whatsapp_template_name character varying,
+    facebook_app_secret text,
+    whatsapp_app_secret text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: system_notification_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.system_notification_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: system_notification_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.system_notification_settings_id_seq OWNED BY public.system_notification_settings.id;
 
 
 --
@@ -4707,7 +5067,16 @@ CREATE TABLE public.tenants (
     slug character varying NOT NULL,
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    require_two_factor boolean DEFAULT false NOT NULL,
+    enforce_broker_ip_allowlist boolean DEFAULT false NOT NULL,
+    enforce_broker_trusted_devices boolean DEFAULT false NOT NULL,
+    session_timeout_enabled boolean DEFAULT false NOT NULL,
+    session_timeout_days integer DEFAULT 7,
+    session_remember_days integer,
+    session_epoch_at timestamp(6) without time zone,
+    use_global_whatsapp_fallback boolean DEFAULT false NOT NULL,
+    use_global_email_fallback boolean DEFAULT false NOT NULL
 );
 
 
@@ -4790,7 +5159,8 @@ CREATE TABLE public.user_meta_integrations (
     sync_status character varying,
     sync_progress integer,
     last_synced_at timestamp(6) without time zone,
-    sync_message character varying
+    sync_message character varying,
+    tenant_id bigint
 );
 
 
@@ -5008,7 +5378,12 @@ CREATE TABLE public.whatsapp_business_integrations (
     webhook_verify_token character varying,
     app_secret character varying,
     webhook_callback_url character varying,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    allow_photo_presentation boolean DEFAULT false NOT NULL,
+    presentation_enabled boolean DEFAULT true NOT NULL,
+    require_presentation boolean DEFAULT false NOT NULL,
+    require_presentation_since timestamp(6) without time zone,
+    inbox_attendance_enabled boolean DEFAULT false NOT NULL
 );
 
 
@@ -5301,7 +5676,14 @@ CREATE TABLE public.whatsapp_messages (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     recipient_user_id character varying,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    presentation_card_id bigint,
+    context_wa_message_id character varying,
+    client_reaction character varying,
+    agent_reaction character varying,
+    pinned_at timestamp(6) without time zone,
+    starred_at timestamp(6) without time zone,
+    hidden_at timestamp(6) without time zone
 );
 
 
@@ -5344,7 +5726,9 @@ CREATE TABLE public.whatsapp_sender_numbers (
     updated_at timestamp(6) without time zone NOT NULL,
     cpl_sent_unit_price numeric(10,2) DEFAULT 0.59 NOT NULL,
     cpl_fla_unit_price numeric(10,2) DEFAULT 0.12 NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    use_for_campaigns boolean DEFAULT true NOT NULL,
+    use_for_notifications boolean DEFAULT false NOT NULL
 );
 
 
@@ -5394,7 +5778,8 @@ CREATE TABLE public.whatsapp_templates (
     submission_error text,
     carousel_cards jsonb DEFAULT '[]'::jsonb NOT NULL,
     flow_config jsonb DEFAULT '{}'::jsonb NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    waba_id character varying
 );
 
 
@@ -5429,6 +5814,13 @@ ALTER TABLE ONLY public.access_audit_logs ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.access_control_rules ALTER COLUMN id SET DEFAULT nextval('public.access_control_rules_id_seq'::regclass);
+
+
+--
+-- Name: account_memberships id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships ALTER COLUMN id SET DEFAULT nextval('public.account_memberships_id_seq'::regclass);
 
 
 --
@@ -5656,6 +6048,13 @@ ALTER TABLE ONLY public.email_settings ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: error_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.error_events ALTER COLUMN id SET DEFAULT nextval('public.error_events_id_seq'::regclass);
+
+
+--
 -- Name: footer_links id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5691,6 +6090,13 @@ ALTER TABLE ONLY public.friendly_id_slugs ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
+-- Name: google_calendar_integration_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_calendar_integration_settings ALTER COLUMN id SET DEFAULT nextval('public.google_calendar_integration_settings_id_seq'::regclass);
+
+
+--
 -- Name: habitation_audit_logs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5716,6 +6122,13 @@ ALTER TABLE ONLY public.habitation_exports ALTER COLUMN id SET DEFAULT nextval('
 --
 
 ALTER TABLE ONLY public.habitation_interactions ALTER COLUMN id SET DEFAULT nextval('public.habitation_interactions_id_seq'::regclass);
+
+
+--
+-- Name: habitation_photo_shares id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_photo_shares ALTER COLUMN id SET DEFAULT nextval('public.habitation_photo_shares_id_seq'::regclass);
 
 
 --
@@ -5810,6 +6223,13 @@ ALTER TABLE ONLY public.lead_labels ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: lead_property_interests id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_interests ALTER COLUMN id SET DEFAULT nextval('public.lead_property_interests_id_seq'::regclass);
+
+
+--
 -- Name: lead_settings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5859,6 +6279,13 @@ ALTER TABLE ONLY public.meta_lead_forms ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- Name: notification_template_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_template_settings ALTER COLUMN id SET DEFAULT nextval('public.notification_template_settings_id_seq'::regclass);
+
+
+--
 -- Name: photography_schedule_blocks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5884,6 +6311,13 @@ ALTER TABLE ONLY public.portal_integrations ALTER COLUMN id SET DEFAULT nextval(
 --
 
 ALTER TABLE ONLY public.portal_listing_states ALTER COLUMN id SET DEFAULT nextval('public.portal_listing_states_id_seq'::regclass);
+
+
+--
+-- Name: presentation_cards id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.presentation_cards ALTER COLUMN id SET DEFAULT nextval('public.presentation_cards_id_seq'::regclass);
 
 
 --
@@ -6111,6 +6545,13 @@ ALTER TABLE ONLY public.stores ALTER COLUMN id SET DEFAULT nextval('public.store
 
 
 --
+-- Name: system_notification_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_notification_settings ALTER COLUMN id SET DEFAULT nextval('public.system_notification_settings_id_seq'::regclass);
+
+
+--
 -- Name: tasks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6243,6 +6684,14 @@ ALTER TABLE ONLY public.access_audit_logs
 
 ALTER TABLE ONLY public.access_control_rules
     ADD CONSTRAINT access_control_rules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: account_memberships account_memberships_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT account_memberships_pkey PRIMARY KEY (id);
 
 
 --
@@ -6518,6 +6967,14 @@ ALTER TABLE ONLY public.email_settings
 
 
 --
+-- Name: error_events error_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.error_events
+    ADD CONSTRAINT error_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: footer_links footer_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6558,6 +7015,14 @@ ALTER TABLE ONLY public.friendly_id_slugs
 
 
 --
+-- Name: google_calendar_integration_settings google_calendar_integration_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_calendar_integration_settings
+    ADD CONSTRAINT google_calendar_integration_settings_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: habitation_audit_logs habitation_audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6587,6 +7052,14 @@ ALTER TABLE ONLY public.habitation_exports
 
 ALTER TABLE ONLY public.habitation_interactions
     ADD CONSTRAINT habitation_interactions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: habitation_photo_shares habitation_photo_shares_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_photo_shares
+    ADD CONSTRAINT habitation_photo_shares_pkey PRIMARY KEY (id);
 
 
 --
@@ -6694,6 +7167,14 @@ ALTER TABLE ONLY public.lead_labels
 
 
 --
+-- Name: lead_property_interests lead_property_interests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_interests
+    ADD CONSTRAINT lead_property_interests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: lead_settings lead_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6750,6 +7231,14 @@ ALTER TABLE ONLY public.meta_lead_forms
 
 
 --
+-- Name: notification_template_settings notification_template_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_template_settings
+    ADD CONSTRAINT notification_template_settings_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: photography_schedule_blocks photography_schedule_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6782,11 +7271,19 @@ ALTER TABLE ONLY public.portal_listing_states
 
 
 --
+-- Name: presentation_cards presentation_cards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.presentation_cards
+    ADD CONSTRAINT presentation_cards_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: profiles profiles_axis_allowed; Type: CHECK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY (ARRAY[('vertical'::character varying)::text, ('horizontal'::character varying)::text]))) NOT VALID;
+    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY ((ARRAY['vertical'::character varying, 'horizontal'::character varying])::text[]))) NOT VALID;
 
 
 --
@@ -6802,7 +7299,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) OR (((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) OR (((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
 
 
 --
@@ -6810,7 +7307,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])))) NOT VALID;
+    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])))) NOT VALID;
 
 
 --
@@ -6826,7 +7323,7 @@ ALTER TABLE ONLY public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
 
 
 --
@@ -7086,6 +7583,14 @@ ALTER TABLE ONLY public.stores
 
 
 --
+-- Name: system_notification_settings system_notification_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_notification_settings
+    ADD CONSTRAINT system_notification_settings_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: tasks tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7222,6 +7727,27 @@ ALTER TABLE ONLY public.whatsapp_templates
 
 
 --
+-- Name: idx_account_memberships_live_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_account_memberships_live_email ON public.account_memberships USING btree (tenant_id, lower((invited_email)::text)) WHERE (status <> 2);
+
+
+--
+-- Name: idx_account_memberships_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_account_memberships_on_token_digest ON public.account_memberships USING btree (invite_token_digest);
+
+
+--
+-- Name: idx_admin_users_one_mirror_per_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_admin_users_one_mirror_per_tenant ON public.admin_users USING btree (primary_admin_user_id, tenant_id) WHERE (primary_admin_user_id IS NOT NULL);
+
+
+--
 -- Name: idx_automation_events_lead_name_occurred_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7257,6 +7783,13 @@ CREATE UNIQUE INDEX idx_automation_workflow_versions_unique_number ON public.aut
 
 
 --
+-- Name: idx_checkins_store_turno_status_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_checkins_store_turno_status_date ON public.check_ins USING btree (store_id, turno, status_chegada, checked_in_at);
+
+
+--
 -- Name: idx_cpi_client_habitation_codes; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7268,6 +7801,20 @@ CREATE INDEX idx_cpi_client_habitation_codes ON public.client_property_interests
 --
 
 CREATE UNIQUE INDEX idx_dist_rule_agents_on_rule_and_admin ON public.distribution_rule_agents USING btree (distribution_rule_id, admin_user_id);
+
+
+--
+-- Name: idx_distribution_rules_tenant_auto_update; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_distribution_rules_tenant_auto_update ON public.distribution_rules USING btree (tenant_id, auto_update_agents_enabled);
+
+
+--
+-- Name: idx_email_settings_on_tenant_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_email_settings_on_tenant_unique ON public.email_settings USING btree (tenant_id) WHERE (tenant_id IS NOT NULL);
 
 
 --
@@ -7338,6 +7885,34 @@ CREATE INDEX idx_hba_on_vista_payload ON public.habitation_broker_assignments US
 --
 
 CREATE UNIQUE INDEX idx_hba_vista_batch_source_key ON public.habitation_broker_assignments USING btree (vista_import_batch_id, vista_source_key) WHERE (vista_source_key IS NOT NULL);
+
+
+--
+-- Name: idx_meta_forms_on_page_and_form_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_meta_forms_on_page_and_form_id ON public.meta_lead_forms USING btree (meta_facebook_page_id, form_id);
+
+
+--
+-- Name: idx_meta_pages_on_integration_and_page_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_meta_pages_on_integration_and_page_id ON public.meta_facebook_pages USING btree (user_meta_integration_id, page_id);
+
+
+--
+-- Name: idx_meta_pages_on_page_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_meta_pages_on_page_id ON public.meta_facebook_pages USING btree (page_id);
+
+
+--
+-- Name: idx_notification_template_settings_unique_purpose; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_notification_template_settings_unique_purpose ON public.notification_template_settings USING btree (tenant_id, channel, purpose);
 
 
 --
@@ -7460,17 +8035,45 @@ CREATE INDEX idx_on_whatsapp_conversation_id_created_at_858d582181 ON public.wha
 
 
 --
--- Name: idx_portal_listing_states_portal_code; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_portal_integrations_on_tenant_and_portal; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_portal_listing_states_portal_code ON public.portal_listing_states USING btree (portal, habitation_code);
+CREATE UNIQUE INDEX idx_portal_integrations_on_tenant_and_portal ON public.portal_integrations USING btree (tenant_id, portal);
 
 
 --
--- Name: idx_portal_listing_states_portal_external; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_portal_listing_states_tenant_portal_code; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_portal_listing_states_portal_external ON public.portal_listing_states USING btree (portal, external_listing_id) WHERE (external_listing_id IS NOT NULL);
+CREATE UNIQUE INDEX idx_portal_listing_states_tenant_portal_code ON public.portal_listing_states USING btree (tenant_id, portal, habitation_code);
+
+
+--
+-- Name: idx_portal_listing_states_tenant_portal_external; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_portal_listing_states_tenant_portal_external ON public.portal_listing_states USING btree (tenant_id, portal, external_listing_id) WHERE (external_listing_id IS NOT NULL);
+
+
+--
+-- Name: idx_property_settings_on_tenant_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_property_settings_on_tenant_unique ON public.property_settings USING btree (tenant_id) WHERE (tenant_id IS NOT NULL);
+
+
+--
+-- Name: idx_proprietors_on_tenant_cpf_digits; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_proprietors_on_tenant_cpf_digits ON public.proprietors USING btree (tenant_id, cpf_cnpj_digits);
+
+
+--
+-- Name: idx_proprietors_on_tenant_lower_trim_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_proprietors_on_tenant_lower_trim_name ON public.proprietors USING btree (tenant_id, lower(TRIM(BOTH FROM name)));
 
 
 --
@@ -7495,6 +8098,20 @@ CREATE INDEX idx_public_nav_events_session_time ON public.public_navigation_even
 
 
 --
+-- Name: idx_settings_global_key_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_settings_global_key_unique ON public.settings USING btree (key) WHERE (tenant_id IS NULL);
+
+
+--
+-- Name: idx_settings_tenant_key_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_settings_tenant_key_unique ON public.settings USING btree (tenant_id, key) WHERE (tenant_id IS NOT NULL);
+
+
+--
 -- Name: idx_store_shifts_agent_day_active; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7506,6 +8123,13 @@ CREATE INDEX idx_store_shifts_agent_day_active ON public.store_shifts USING btre
 --
 
 CREATE UNIQUE INDEX idx_unique_active_checkin_per_user ON public.check_ins USING btree (admin_user_id) WHERE (status = 0);
+
+
+--
+-- Name: idx_user_meta_integrations_on_user_and_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_user_meta_integrations_on_user_and_tenant ON public.user_meta_integrations USING btree (admin_user_id, tenant_id);
 
 
 --
@@ -7555,6 +8179,41 @@ CREATE INDEX idx_wa_campaign_messages_on_recipient ON public.whatsapp_campaign_m
 --
 
 CREATE UNIQUE INDEX idx_wa_campaign_recipients_on_campaign_phone ON public.whatsapp_campaign_recipients USING btree (whatsapp_campaign_id, phone_number);
+
+
+--
+-- Name: idx_wa_conversations_on_tenant_recent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_conversations_on_tenant_recent ON public.whatsapp_conversations USING btree (tenant_id, last_message_at DESC NULLS LAST, updated_at DESC);
+
+
+--
+-- Name: idx_wa_conversations_on_tenant_unread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_conversations_on_tenant_unread ON public.whatsapp_conversations USING btree (tenant_id, unread_count) WHERE (unread_count > 0);
+
+
+--
+-- Name: idx_wa_sender_numbers_campaign_usage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_sender_numbers_campaign_usage ON public.whatsapp_sender_numbers USING btree (tenant_id, active, use_for_campaigns);
+
+
+--
+-- Name: idx_wa_sender_numbers_notification_usage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_wa_sender_numbers_notification_usage ON public.whatsapp_sender_numbers USING btree (tenant_id, active, use_for_notifications);
+
+
+--
+-- Name: idx_wa_sender_numbers_on_tenant_and_phone_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_wa_sender_numbers_on_tenant_and_phone_number ON public.whatsapp_sender_numbers USING btree (tenant_id, phone_number_id);
 
 
 --
@@ -7618,6 +8277,20 @@ CREATE INDEX idx_wa_unsub_sender ON public.whatsapp_campaign_unsubscribes USING 
 --
 
 CREATE INDEX idx_wa_unsub_unsubscribed_at ON public.whatsapp_campaign_unsubscribes USING btree (unsubscribed_at);
+
+
+--
+-- Name: idx_whatsapp_templates_on_tenant_waba_name_language; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_whatsapp_templates_on_tenant_waba_name_language ON public.whatsapp_templates USING btree (tenant_id, waba_id, name, language);
+
+
+--
+-- Name: idx_whatsapp_templates_on_tenant_waba_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_whatsapp_templates_on_tenant_waba_status ON public.whatsapp_templates USING btree (tenant_id, waba_id, status);
 
 
 --
@@ -7733,6 +8406,69 @@ CREATE INDEX index_access_rules_on_type_scope_enabled ON public.access_control_r
 
 
 --
+-- Name: index_account_memberships_on_horizontal_profile_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_account_memberships_on_horizontal_profile_id ON public.account_memberships USING btree (horizontal_profile_id);
+
+
+--
+-- Name: index_account_memberships_on_invited_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_account_memberships_on_invited_by_id ON public.account_memberships USING btree (invited_by_id);
+
+
+--
+-- Name: index_account_memberships_on_manager_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_account_memberships_on_manager_id ON public.account_memberships USING btree (manager_id);
+
+
+--
+-- Name: index_account_memberships_on_member_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_account_memberships_on_member_admin_user_id ON public.account_memberships USING btree (member_admin_user_id);
+
+
+--
+-- Name: index_account_memberships_on_primary_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_account_memberships_on_primary_admin_user_id ON public.account_memberships USING btree (primary_admin_user_id);
+
+
+--
+-- Name: index_account_memberships_on_profile_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_account_memberships_on_profile_id ON public.account_memberships USING btree (profile_id);
+
+
+--
+-- Name: index_account_memberships_on_rentals_manager_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_account_memberships_on_rentals_manager_id ON public.account_memberships USING btree (rentals_manager_id);
+
+
+--
+-- Name: index_account_memberships_on_revoked_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_account_memberships_on_revoked_by_id ON public.account_memberships USING btree (revoked_by_id);
+
+
+--
+-- Name: index_account_memberships_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_account_memberships_on_tenant_id ON public.account_memberships USING btree (tenant_id);
+
+
+--
 -- Name: index_action_text_rich_texts_uniqueness; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7838,10 +8574,24 @@ CREATE INDEX index_admin_users_on_manager_id_and_hierarchy_position ON public.ad
 
 
 --
+-- Name: index_admin_users_on_primary_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_admin_users_on_primary_admin_user_id ON public.admin_users USING btree (primary_admin_user_id);
+
+
+--
 -- Name: index_admin_users_on_profile_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_admin_users_on_profile_id ON public.admin_users USING btree (profile_id);
+
+
+--
+-- Name: index_admin_users_on_rentals_manager_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_admin_users_on_rentals_manager_id ON public.admin_users USING btree (rentals_manager_id);
 
 
 --
@@ -8720,6 +9470,13 @@ CREATE INDEX index_distribution_rule_agents_on_tenant_id ON public.distribution_
 
 
 --
+-- Name: index_distribution_rules_on_auto_update_trigger; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_distribution_rules_on_auto_update_trigger ON public.distribution_rules USING gin (auto_update_trigger);
+
+
+--
 -- Name: index_distribution_rules_on_checkin_store_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8745,6 +9502,34 @@ CREATE INDEX index_distribution_rules_on_tenant_id ON public.distribution_rules 
 --
 
 CREATE INDEX index_distribution_rules_on_tenant_id_and_active ON public.distribution_rules USING btree (tenant_id, active);
+
+
+--
+-- Name: index_email_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_email_settings_on_tenant_id ON public.email_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_error_events_on_fingerprint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_error_events_on_fingerprint ON public.error_events USING btree (fingerprint);
+
+
+--
+-- Name: index_error_events_on_last_seen_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_error_events_on_last_seen_at ON public.error_events USING btree (last_seen_at);
+
+
+--
+-- Name: index_error_events_on_tenant_id_and_last_seen_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_error_events_on_tenant_id_and_last_seen_at ON public.error_events USING btree (tenant_id, last_seen_at);
 
 
 --
@@ -8808,6 +9593,13 @@ CREATE UNIQUE INDEX index_friendly_id_slugs_on_slug_and_sluggable_type_and_scope
 --
 
 CREATE INDEX index_friendly_id_slugs_on_sluggable_type_and_sluggable_id ON public.friendly_id_slugs USING btree (sluggable_type, sluggable_id);
+
+
+--
+-- Name: index_google_calendar_integration_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_google_calendar_integration_settings_on_tenant_id ON public.google_calendar_integration_settings USING btree (tenant_id);
 
 
 --
@@ -8930,13 +9722,6 @@ CREATE INDEX index_habitation_interactions_on_habitation_id ON public.habitation
 
 
 --
--- Name: index_habitation_interactions_on_metadata; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_habitation_interactions_on_metadata ON public.habitation_interactions USING gin (metadata);
-
-
---
 -- Name: index_habitation_interactions_on_proprietor_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8955,6 +9740,27 @@ CREATE UNIQUE INDEX index_habitation_interactions_on_source_table_and_source_key
 --
 
 CREATE INDEX index_habitation_interactions_on_vista_import_batch_id ON public.habitation_interactions USING btree (vista_import_batch_id);
+
+
+--
+-- Name: index_habitation_photo_shares_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitation_photo_shares_on_admin_user_id ON public.habitation_photo_shares USING btree (admin_user_id);
+
+
+--
+-- Name: index_habitation_photo_shares_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitation_photo_shares_on_habitation_id ON public.habitation_photo_shares USING btree (habitation_id);
+
+
+--
+-- Name: index_habitation_photo_shares_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_habitation_photo_shares_on_token ON public.habitation_photo_shares USING btree (token);
 
 
 --
@@ -9070,13 +9876,6 @@ CREATE INDEX index_habitations_on_dormitorios_qtd ON public.habitations USING bt
 
 
 --
--- Name: index_habitations_on_dwv_payload; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_habitations_on_dwv_payload ON public.habitations USING gin (dwv_payload);
-
-
---
 -- Name: index_habitations_on_frente_mar_avenida_atlantica_flag; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9151,6 +9950,13 @@ CREATE INDEX index_habitations_on_lancamento_flag ON public.habitations USING bt
 --
 
 CREATE INDEX index_habitations_on_lavabo_flag ON public.habitations USING btree (lavabo_flag);
+
+
+--
+-- Name: index_habitations_on_photo_calendar_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_habitations_on_photo_calendar_event_id ON public.habitations USING btree (photo_calendar_event_id);
 
 
 --
@@ -9350,13 +10156,6 @@ CREATE INDEX index_habitations_on_vista_import_batch_id ON public.habitations US
 
 
 --
--- Name: index_habitations_on_vista_payload; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_habitations_on_vista_payload ON public.habitations USING gin (vista_payload);
-
-
---
 -- Name: index_habitations_on_vista_referencia_externa; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9525,6 +10324,34 @@ CREATE INDEX index_lead_labels_on_tenant_id ON public.lead_labels USING btree (t
 
 
 --
+-- Name: index_lead_property_interests_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_property_interests_on_habitation_id ON public.lead_property_interests USING btree (habitation_id);
+
+
+--
+-- Name: index_lead_property_interests_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_property_interests_on_lead_id ON public.lead_property_interests USING btree (lead_id);
+
+
+--
+-- Name: index_lead_property_interests_on_lead_id_and_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_lead_property_interests_on_lead_id_and_habitation_id ON public.lead_property_interests USING btree (lead_id, habitation_id);
+
+
+--
+-- Name: index_lead_property_interests_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_property_interests_on_tenant_id ON public.lead_property_interests USING btree (tenant_id);
+
+
+--
 -- Name: index_leads_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9574,10 +10401,45 @@ CREATE INDEX index_leads_on_shared_by_admin_user_id ON public.leads USING btree 
 
 
 --
+-- Name: index_leads_on_status_waiting_acceptance; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_status_waiting_acceptance ON public.leads USING btree (status) WHERE ((status)::text = 'Aguardando Aceite'::text);
+
+
+--
 -- Name: index_leads_on_tags; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_leads_on_tags ON public.leads USING gin (tags);
+
+
+--
+-- Name: index_leads_on_tenant_and_client_email_lower; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_client_email_lower ON public.leads USING btree (tenant_id, lower((COALESCE(client_email, ''::character varying))::text));
+
+
+--
+-- Name: index_leads_on_tenant_and_client_phone_digits; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_client_phone_digits ON public.leads USING btree (tenant_id, regexp_replace((COALESCE(client_phone, ''::character varying))::text, '\D'::text, ''::text, 'g'::text));
+
+
+--
+-- Name: index_leads_on_tenant_and_email_lower; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_email_lower ON public.leads USING btree (tenant_id, lower((COALESCE(email, ''::character varying))::text));
+
+
+--
+-- Name: index_leads_on_tenant_and_phone_digits; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_phone_digits ON public.leads USING btree (tenant_id, regexp_replace((COALESCE(phone, ''::character varying))::text, '\D'::text, ''::text, 'g'::text));
 
 
 --
@@ -9592,6 +10454,34 @@ CREATE INDEX index_leads_on_tenant_id ON public.leads USING btree (tenant_id);
 --
 
 CREATE INDEX index_leads_on_tenant_id_and_admin_user_id ON public.leads USING btree (tenant_id, admin_user_id);
+
+
+--
+-- Name: index_leads_on_tenant_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_id_and_created_at ON public.leads USING btree (tenant_id, created_at);
+
+
+--
+-- Name: index_leads_on_tenant_id_and_property_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_id_and_property_id ON public.leads USING btree (tenant_id, property_id);
+
+
+--
+-- Name: index_leads_on_tenant_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_id_and_status ON public.leads USING btree (tenant_id, status);
+
+
+--
+-- Name: index_leads_on_tenant_meta_leadgen; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_leads_on_tenant_meta_leadgen ON public.leads USING btree (tenant_id, ((other_information ->> 'meta_leadgen_id'::text))) WHERE ((other_information ->> 'meta_leadgen_id'::text) IS NOT NULL);
 
 
 --
@@ -9735,13 +10625,6 @@ CREATE INDEX index_marketing_campaigns_on_utm_campaign ON public.marketing_campa
 
 
 --
--- Name: index_meta_facebook_pages_on_page_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_meta_facebook_pages_on_page_id ON public.meta_facebook_pages USING btree (page_id);
-
-
---
 -- Name: index_meta_facebook_pages_on_user_meta_integration_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9749,17 +10632,31 @@ CREATE INDEX index_meta_facebook_pages_on_user_meta_integration_id ON public.met
 
 
 --
--- Name: index_meta_lead_forms_on_form_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_meta_lead_forms_on_form_id ON public.meta_lead_forms USING btree (form_id);
-
-
---
 -- Name: index_meta_lead_forms_on_meta_facebook_page_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_meta_lead_forms_on_meta_facebook_page_id ON public.meta_lead_forms USING btree (meta_facebook_page_id);
+
+
+--
+-- Name: index_notification_template_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_notification_template_settings_on_tenant_id ON public.notification_template_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_notification_template_settings_on_tenant_id_and_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_notification_template_settings_on_tenant_id_and_active ON public.notification_template_settings USING btree (tenant_id, active);
+
+
+--
+-- Name: index_notification_template_settings_on_whatsapp_template_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_notification_template_settings_on_whatsapp_template_id ON public.notification_template_settings USING btree (whatsapp_template_id);
 
 
 --
@@ -9798,6 +10695,13 @@ CREATE INDEX index_portal_integration_events_on_portal_and_received_at ON public
 
 
 --
+-- Name: index_portal_integration_events_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_integration_events_on_tenant_id ON public.portal_integration_events USING btree (tenant_id);
+
+
+--
 -- Name: index_portal_integrations_on_enabled; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9812,10 +10716,10 @@ CREATE UNIQUE INDEX index_portal_integrations_on_feed_token ON public.portal_int
 
 
 --
--- Name: index_portal_integrations_on_portal; Type: INDEX; Schema: public; Owner: -
+-- Name: index_portal_integrations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_portal_integrations_on_portal ON public.portal_integrations USING btree (portal);
+CREATE INDEX index_portal_integrations_on_tenant_id ON public.portal_integrations USING btree (tenant_id);
 
 
 --
@@ -9823,6 +10727,34 @@ CREATE UNIQUE INDEX index_portal_integrations_on_portal ON public.portal_integra
 --
 
 CREATE INDEX index_portal_listing_states_on_habitation_id ON public.portal_listing_states USING btree (habitation_id);
+
+
+--
+-- Name: index_portal_listing_states_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_portal_listing_states_on_tenant_id ON public.portal_listing_states USING btree (tenant_id);
+
+
+--
+-- Name: index_presentation_cards_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_presentation_cards_on_admin_user_id ON public.presentation_cards USING btree (admin_user_id);
+
+
+--
+-- Name: index_presentation_cards_on_admin_user_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_presentation_cards_on_admin_user_id_and_position ON public.presentation_cards USING btree (admin_user_id, "position");
+
+
+--
+-- Name: index_presentation_cards_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_presentation_cards_on_tenant_id ON public.presentation_cards USING btree (tenant_id);
 
 
 --
@@ -9886,6 +10818,13 @@ CREATE UNIQUE INDEX index_property_pages_on_slug ON public.property_pages USING 
 --
 
 CREATE INDEX index_property_settings_on_broker_capture_layer_enabled ON public.property_settings USING btree (broker_capture_layer_enabled);
+
+
+--
+-- Name: index_property_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_property_settings_on_tenant_id ON public.property_settings USING btree (tenant_id);
 
 
 --
@@ -10323,10 +11262,10 @@ CREATE INDEX index_seo_settings_on_seo_score ON public.seo_settings USING btree 
 
 
 --
--- Name: index_settings_on_key_unique; Type: INDEX; Schema: public; Owner: -
+-- Name: index_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_settings_on_key_unique ON public.settings USING btree (key);
+CREATE INDEX index_settings_on_tenant_id ON public.settings USING btree (tenant_id);
 
 
 --
@@ -10596,6 +11535,13 @@ CREATE INDEX index_stores_on_tenant_id_and_active ON public.stores USING btree (
 
 
 --
+-- Name: index_stores_on_turnos_config; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_stores_on_turnos_config ON public.stores USING gin (turnos_config);
+
+
+--
 -- Name: index_tasks_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10708,6 +11654,13 @@ CREATE INDEX index_user_meta_integrations_on_admin_user_id ON public.user_meta_i
 
 
 --
+-- Name: index_user_meta_integrations_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_user_meta_integrations_on_tenant_id ON public.user_meta_integrations USING btree (tenant_id);
+
+
+--
 -- Name: index_vista_file_assets_on_active_storage_attachment_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10733,13 +11686,6 @@ CREATE INDEX index_vista_file_assets_on_codigo_imovel_and_kind ON public.vista_f
 --
 
 CREATE INDEX index_vista_file_assets_on_habitation_id ON public.vista_file_assets USING btree (habitation_id);
-
-
---
--- Name: index_vista_file_assets_on_metadata; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_vista_file_assets_on_metadata ON public.vista_file_assets USING gin (metadata);
 
 
 --
@@ -11114,10 +12060,38 @@ CREATE INDEX index_whatsapp_messages_on_admin_user_id ON public.whatsapp_message
 
 
 --
+-- Name: index_whatsapp_messages_on_context_wa_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_messages_on_context_wa_message_id ON public.whatsapp_messages USING btree (context_wa_message_id);
+
+
+--
+-- Name: index_whatsapp_messages_on_conversation_pinned; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_messages_on_conversation_pinned ON public.whatsapp_messages USING btree (whatsapp_conversation_id, pinned_at);
+
+
+--
+-- Name: index_whatsapp_messages_on_presentation_card_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_whatsapp_messages_on_presentation_card_id ON public.whatsapp_messages USING btree (presentation_card_id);
+
+
+--
 -- Name: index_whatsapp_messages_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_whatsapp_messages_on_tenant_id ON public.whatsapp_messages USING btree (tenant_id);
+
+
+--
+-- Name: index_whatsapp_messages_on_tenant_id_and_wa_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_whatsapp_messages_on_tenant_id_and_wa_message_id ON public.whatsapp_messages USING btree (tenant_id, wa_message_id) WHERE (wa_message_id IS NOT NULL);
 
 
 --
@@ -11139,13 +12113,6 @@ CREATE INDEX index_whatsapp_messages_on_whatsapp_conversation_id ON public.whats
 --
 
 CREATE INDEX index_whatsapp_sender_numbers_on_active ON public.whatsapp_sender_numbers USING btree (active);
-
-
---
--- Name: index_whatsapp_sender_numbers_on_phone_number_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_whatsapp_sender_numbers_on_phone_number_id ON public.whatsapp_sender_numbers USING btree (phone_number_id);
 
 
 --
@@ -11195,13 +12162,6 @@ CREATE INDEX index_whatsapp_templates_on_template_type ON public.whatsapp_templa
 --
 
 CREATE INDEX index_whatsapp_templates_on_tenant_id ON public.whatsapp_templates USING btree (tenant_id);
-
-
---
--- Name: index_whatsapp_templates_on_tenant_id_and_name_and_language; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_whatsapp_templates_on_tenant_id_and_name_and_language ON public.whatsapp_templates USING btree (tenant_id, name, language);
 
 
 --
@@ -11339,6 +12299,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
 
 
 --
+-- Name: email_settings fk_rails_09c40e8cf2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.email_settings
+    ADD CONSTRAINT fk_rails_09c40e8cf2 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: whatsapp_sender_numbers fk_rails_0b40b13075; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11376,6 +12344,14 @@ ALTER TABLE ONLY public.habitation_share_links
 
 ALTER TABLE ONLY public.leads
     ADD CONSTRAINT fk_rails_0ed786c31e FOREIGN KEY (shared_by_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: presentation_cards fk_rails_1053763516; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.presentation_cards
+    ADD CONSTRAINT fk_rails_1053763516 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -11427,6 +12403,14 @@ ALTER TABLE ONLY public.ai_property_suggestions
 
 
 --
+-- Name: admin_users fk_rails_18edaf9350; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_users
+    ADD CONSTRAINT fk_rails_18edaf9350 FOREIGN KEY (rentals_manager_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: stores fk_rails_19c4970b14; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11464,6 +12448,14 @@ ALTER TABLE ONLY public.leads
 
 ALTER TABLE ONLY public.client_interactions
     ADD CONSTRAINT fk_rails_217d5c3605 FOREIGN KEY (crm_contact_id) REFERENCES public.crm_contacts(id);
+
+
+--
+-- Name: whatsapp_messages fk_rails_2263286ba5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.whatsapp_messages
+    ADD CONSTRAINT fk_rails_2263286ba5 FOREIGN KEY (presentation_card_id) REFERENCES public.presentation_cards(id);
 
 
 --
@@ -11635,6 +12627,14 @@ ALTER TABLE ONLY public.check_ins
 
 
 --
+-- Name: account_memberships fk_rails_3925c6af0c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT fk_rails_3925c6af0c FOREIGN KEY (primary_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: solid_queue_failed_executions fk_rails_39bbc7a631; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11648,6 +12648,14 @@ ALTER TABLE ONLY public.solid_queue_failed_executions
 
 ALTER TABLE ONLY public.public_navigation_events
     ADD CONSTRAINT fk_rails_39c3972f50 FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
+-- Name: settings fk_rails_3a7e6495d2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.settings
+    ADD CONSTRAINT fk_rails_3a7e6495d2 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -11672,6 +12680,14 @@ ALTER TABLE ONLY public.leads
 
 ALTER TABLE ONLY public.automation_webhook_deliveries
     ADD CONSTRAINT fk_rails_3e8969d1cd FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: account_memberships fk_rails_3fbff27fad; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT fk_rails_3fbff27fad FOREIGN KEY (member_admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -11883,11 +12899,35 @@ ALTER TABLE ONLY public.appointments
 
 
 --
+-- Name: account_memberships fk_rails_5911c0386d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT fk_rails_5911c0386d FOREIGN KEY (horizontal_profile_id) REFERENCES public.profiles(id);
+
+
+--
 -- Name: admin_users fk_rails_591ae579ef; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.admin_users
     ADD CONSTRAINT fk_rails_591ae579ef FOREIGN KEY (profile_id) REFERENCES public.profiles(id);
+
+
+--
+-- Name: notification_template_settings fk_rails_5a780d873b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_template_settings
+    ADD CONSTRAINT fk_rails_5a780d873b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: account_memberships fk_rails_5bb672184e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT fk_rails_5bb672184e FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -11979,6 +13019,22 @@ ALTER TABLE ONLY public.seo_page_visits
 
 
 --
+-- Name: lead_property_interests fk_rails_6d086c5d31; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_interests
+    ADD CONSTRAINT fk_rails_6d086c5d31 FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
+-- Name: habitation_photo_shares fk_rails_6dc09f5171; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_photo_shares
+    ADD CONSTRAINT fk_rails_6dc09f5171 FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
 -- Name: habitation_interactions fk_rails_6e8270cc0c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11995,6 +13051,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_messages
 
 
 --
+-- Name: portal_integrations fk_rails_70282156d0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.portal_integrations
+    ADD CONSTRAINT fk_rails_70282156d0 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: whatsapp_templates fk_rails_737f4f7e1b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12008,6 +13072,14 @@ ALTER TABLE ONLY public.whatsapp_templates
 
 ALTER TABLE ONLY public.lead_labelings
     ADD CONSTRAINT fk_rails_738b0d3086 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: account_memberships fk_rails_7548887bd0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT fk_rails_7548887bd0 FOREIGN KEY (invited_by_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -12035,6 +13107,22 @@ ALTER TABLE ONLY public.footer_social_links
 
 
 --
+-- Name: account_memberships fk_rails_7f2e532adc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT fk_rails_7f2e532adc FOREIGN KEY (revoked_by_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: admin_users fk_rails_7f39c6a643; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_users
+    ADD CONSTRAINT fk_rails_7f39c6a643 FOREIGN KEY (primary_admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: proposals fk_rails_7f76a65270; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12048,6 +13136,22 @@ ALTER TABLE ONLY public.proposals
 
 ALTER TABLE ONLY public.habitations
     ADD CONSTRAINT fk_rails_80a7cb3f5d FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: lead_property_interests fk_rails_814c4c7079; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_interests
+    ADD CONSTRAINT fk_rails_814c4c7079 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: notification_template_settings fk_rails_8197357a6f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_template_settings
+    ADD CONSTRAINT fk_rails_8197357a6f FOREIGN KEY (whatsapp_template_id) REFERENCES public.whatsapp_templates(id);
 
 
 --
@@ -12136,6 +13240,14 @@ ALTER TABLE ONLY public.seo_redirects
 
 ALTER TABLE ONLY public.distribution_rule_agents
     ADD CONSTRAINT fk_rails_89af5b0a07 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: account_memberships fk_rails_89ba2cac91; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT fk_rails_89ba2cac91 FOREIGN KEY (profile_id) REFERENCES public.profiles(id);
 
 
 --
@@ -12323,6 +13435,14 @@ ALTER TABLE ONLY public.solid_queue_claimed_executions
 
 
 --
+-- Name: account_memberships fk_rails_9de42ef7be; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT fk_rails_9de42ef7be FOREIGN KEY (rentals_manager_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: tasks fk_rails_9df5232373; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12443,6 +13563,14 @@ ALTER TABLE ONLY public.photography_schedule_blocks
 
 
 --
+-- Name: user_meta_integrations fk_rails_b94a922717; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_meta_integrations
+    ADD CONSTRAINT fk_rails_b94a922717 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: client_property_interests fk_rails_b98e81d5c7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12483,6 +13611,14 @@ ALTER TABLE ONLY public.automation_workflows
 
 
 --
+-- Name: google_calendar_integration_settings fk_rails_bd34034ff6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_calendar_integration_settings
+    ADD CONSTRAINT fk_rails_bd34034ff6 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: client_property_interests fk_rails_bd88596118; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12496,6 +13632,14 @@ ALTER TABLE ONLY public.client_property_interests
 
 ALTER TABLE ONLY public.whatsapp_campaigns
     ADD CONSTRAINT fk_rails_bded8a2aaa FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: property_settings fk_rails_be2f13cf01; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_settings
+    ADD CONSTRAINT fk_rails_be2f13cf01 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -12627,6 +13771,14 @@ ALTER TABLE ONLY public.store_shifts
 
 
 --
+-- Name: presentation_cards fk_rails_cb854d1c50; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.presentation_cards
+    ADD CONSTRAINT fk_rails_cb854d1c50 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: lead_labels fk_rails_cd877c6e53; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12640,6 +13792,14 @@ ALTER TABLE ONLY public.lead_labels
 
 ALTER TABLE ONLY public.automation_rules
     ADD CONSTRAINT fk_rails_cf6a0dd51b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: account_memberships fk_rails_d11605f7e1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_memberships
+    ADD CONSTRAINT fk_rails_d11605f7e1 FOREIGN KEY (manager_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -12923,11 +14083,27 @@ ALTER TABLE ONLY public.automation_executions
 
 
 --
+-- Name: lead_property_interests fk_rails_f209bd58a6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_property_interests
+    ADD CONSTRAINT fk_rails_f209bd58a6 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: leads fk_rails_f3159e7558; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.leads
     ADD CONSTRAINT fk_rails_f3159e7558 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: habitation_photo_shares fk_rails_f8257292ce; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.habitation_photo_shares
+    ADD CONSTRAINT fk_rails_f8257292ce FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -12966,13 +14142,69 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict gYYQsTU9jabHpZeh66BUSLjwEQBoZKlG2opvkdGi7Ru3wkUL2qAFljGdPUpNc92
+\unrestrict yhxVB10BhdBTOnxhfExv1Juj3pjrDeS3p8rye8e0GKj4VqPiDgAVJWfWVgdmmu0
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709000009'),
+('20260709000008'),
+('20260709000007'),
+('20260709000006'),
+('20260709000005'),
+('20260709000004'),
+('20260709000003'),
+('20260709000002'),
+('20260709000001'),
+('20260708000007'),
+('20260708000006'),
+('20260708000005'),
+('20260708000004'),
+('20260708000003'),
+('20260708000002'),
+('20260708000001'),
+('20260707000002'),
+('20260707000001'),
+('20260706120000'),
+('20260706000007'),
+('20260706000006'),
+('20260706000005'),
+('20260706000004'),
+('20260706000003'),
+('20260706000002'),
+('20260706000001'),
+('20260705120000'),
+('20260705000011'),
+('20260705000010'),
+('20260705000009'),
+('20260705000008'),
+('20260705000007'),
+('20260705000006'),
+('20260705000005'),
+('20260705000004'),
+('20260705000003'),
+('20260705000002'),
+('20260705000001'),
+('20260704000006'),
+('20260704000005'),
+('20260704000004'),
+('20260704000003'),
+('20260704000002'),
+('20260704000001'),
+('20260702000010'),
+('20260702000009'),
+('20260702000008'),
+('20260702000007'),
+('20260702000006'),
+('20260702000005'),
+('20260702000004'),
+('20260702000003'),
+('20260702000002'),
+('20260702000001'),
 ('20260701000002'),
 ('20260701000001'),
+('20260630140000'),
+('20260630120000'),
 ('20260628255000'),
 ('20260628254500'),
 ('20260628254400'),

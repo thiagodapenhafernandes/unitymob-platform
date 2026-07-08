@@ -1,0 +1,75 @@
+/* ============================================================
+   Unitymob — Spacing, radius, elevation & motion tokens
+   The admin shell is a fixed 3-zone layout (48px navbar, 40px context
+   bar, 236px sidebar) with a tight 12px gutter. Controls are 30px tall.
+
+   CORE PRINCIPLE — DENSITY / COMPACTION (spreadsheet-grade, Excel Web /
+   Google Sheets). Maximize information per screen; minimize chrome and
+   whitespace. Use the --density-* tokens below for tables/grids/rows.
+   ============================================================ */
+
+:root {
+  /* ---- Spacing scale (px) ----------------------------------------- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;    /* shell gutter, card padding */
+  --space-7: 16px;    /* card body padding */
+  --space-8: 18px;
+  --space-9: 24px;
+
+  --shell-gutter: 12px;
+  --shell-gutter-sm: 8px;
+
+  /* ---- Shell dimensions ------------------------------------------- */
+  --navbar-h: 48px;
+  --contextbar-h: 40px;
+  --sidebar-w: 236px;
+  --sidebar-compact-w: 60px;
+
+  /* ---- Control sizing --------------------------------------------- */
+  --control-h: 34px;      /* inputs, search */
+  --control-h-sm: 28px;   /* dense/compact inputs */
+  --btn-h: 30px;
+  --btn-h-sm: 28px;
+  --btn-px: 10px;
+  --btn-px-sm: 9px;
+  --btn-icon: 30px;
+
+  /* ---- Density (spreadsheet-grade: Excel Web / Google Sheets) ------ */
+  /* The compaction default. Reach for these on tables, grids and dense
+     forms before adding any padding. Denser = more on screen. */
+  --density-row-h: 34px;         /* standard data-table row */
+  --density-row-h-compact: 30px; /* compact grid / spreadsheet row */
+  --density-cell-py: 6px;        /* vertical cell padding */
+  --density-cell-px: 10px;       /* horizontal cell padding */
+  --density-grid-gap: 12px;      /* field-grid gap (10px when tighter) */
+  --density-grid-gap-tight: 10px;
+  --density-section-gap: 12px;   /* gap between stacked sections */
+  --density-label-size: 12px;    /* field labels stay small */
+
+  /* ---- Radius ----------------------------------------------------- */
+  --radius-xs: 5px;    /* nav links */
+  --radius-sm: 6px;    /* buttons, inputs, small controls */
+  --radius-md: 8px;    /* cards, panels, alerts */
+  --radius-lg: 10px;   /* modals, kanban cards */
+  --radius-xl: 12px;   /* kanban columns */
+  --radius-pill: 999px;
+
+  /* ---- Elevation -------------------------------------------------- */
+  --shadow-hairline: 0 1px 1px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-raised: 0 1px 2px rgba(16, 24, 40, 0.12);
+  --shadow-pop: 0 8px 24px rgba(16, 24, 40, 0.12);   /* dropdown menus */
+  --shadow-card-lift: 0 8px 22px rgba(15, 23, 42, 0.08); /* kanban cards */
+  --shadow-modal: 0 24px 48px rgba(16, 24, 40, 0.28);
+  --shadow-focus: 0 0 0 2px var(--primary-ring);
+
+  /* ---- Motion ----------------------------------------------------- */
+  --motion-fast: 120ms;  /* @kind other */
+  --motion-base: 180ms;  /* @kind other */
+  --motion-slow: 240ms;  /* @kind other */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);  /* @kind other */
+}

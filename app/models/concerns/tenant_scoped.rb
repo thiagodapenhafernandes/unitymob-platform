@@ -35,6 +35,7 @@ module TenantScoped
       whatsapp_business_integration
       whatsapp_template
       whatsapp_sender_number
+      notification_template_setting
       distribution_rule
       store
       store_shift

@@ -1,0 +1,133 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_system_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Erros da Aplicação</strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_system_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-hdd-stack"></i><span>Painel</span>
+  <% end %>
+<% end %>
+
+<div class="ax-system">
+  <header class="ax-dashboard-command ax-property-form-command">
+    <div class="ax-dashboard-command__main">
+      <span class="ax-dashboard-command__eyebrow">Admin do Sistema</span>
+      <h1>Erros da aplicação</h1>
+      <p>Rastreador interno cross-tenant: requests, jobs e reportes manuais agrupados por fingerprint. Ocorrências repetidas só incrementam o contador.</p>
+    </div>
+    <div class="ax-dashboard-command__status">
+      <% if @storage_ready %>
+        <%= ax_badge("#{@error_events.total_entries} erros", tone: :blue) %>
+      <% end %>
+    </div>
+  </header>
+
+  <% unless @storage_ready %>
+    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+      A tabela de erros ainda não existe neste ambiente — rode as migrations pendentes para ativar o rastreador.
+    <% end %>
+  <% else %>
+    <%= ax_operational_panel(
+          eyebrow: "Filtro",
+          title: "Localizar erro",
+          actions: ax_badge("visão cross-tenant", tone: :gray)
+        ) do %>
+      <%= form_with url: admin_system_error_events_path, method: :get, local: true, class: "ax-filter-form", data: { controller: "auto-submit" } do |f| %>
+        <div class="ax-field-grid">
+          <div class="ax-field ax-span-4">
+            <%= f.label :exception_class, "Classe", class: "ax-field__label" %>
+            <%= f.select :exception_class,
+                  options_for_select(@exception_classes, @exception_class),
+                  { include_blank: "Todas as classes" },
+                  class: "ax-input",
+                  data: { action: "change->auto-submit#submit" } %>
+          </div>
+          <div class="ax-field ax-span-2">
+            <%= f.label :source, "Origem", class: "ax-field__label" %>
+            <%= f.select :source,
+                  options_for_select([["Request", "request"], ["Job", "job"], ["Manual", "manual"]], @source),
+                  { include_blank: "Todas" },
+                  class: "ax-input",
+                  data: { action: "change->auto-submit#submit" } %>
+          </div>
+          <div class="ax-field ax-span-3">
+            <%= f.label :tenant_id, "Conta", class: "ax-field__label" %>
+            <%= f.select :tenant_id,
+                  options_from_collection_for_select(@tenants, :id, :name, @tenant_id),
+                  { include_blank: "Todas as contas" },
+                  class: "ax-input",
+                  data: { action: "change->auto-submit#submit" } %>
+          </div>
+          <div class="ax-field ax-span-3">
+            <%= f.label :status, "Status", class: "ax-field__label" %>
+            <%= f.select :status,
+                  options_for_select([["Todos", "all"], ["Abertos", "open"], ["Resolvidos", "resolved"]], @status),
+                  {},
+                  class: "ax-input",
+                  data: { action: "change->auto-submit#submit" } %>
+          </div>
+          <div class="ax-field ax-span-12 ax-system-filter-actions">
+            <%= f.button type: "submit", class: "ax-btn ax-btn--primary" do %>
+              <i class="bi bi-search"></i><span>Filtrar</span>
+            <% end %>
+            <%= link_to admin_system_error_events_path, class: "ax-btn ax-btn--ghost" do %>
+              <i class="bi bi-x-circle"></i><span>Limpar</span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= ax_operational_panel(
+          eyebrow: "Rastreador",
+          title: "Erros agrupados por fingerprint",
+          actions: ax_badge("retenção de 90 dias", tone: :gray)
+        ) do %>
+      <% if @error_events.any? %>
+        <div class="ax-table-wrap">
+          <table class="ax-table">
+            <thead>
+              <tr>
+                <th>Erro</th>
+                <th>Origem</th>
+                <th>Severidade</th>
+                <th>Conta</th>
+                <th class="ax-num">Ocorrências</th>
+                <th>Última vez</th>
+                <th>Status</th>
+                <th class="ax-num" style="width:90px">Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @error_events.each do |event| %>
+                <tr>
+                  <td class="ax-strong">
+                    <%= link_to event.exception_class, admin_system_error_event_path(event) %>
+                    <span class="ax-system-admin-role"><%= event.message.to_s.truncate(90) %></span>
+                  </td>
+                  <td><%= ax_badge(event.source.presence || "—", tone: { "request" => :blue, "job" => :purple }.fetch(event.source, :gray)) %></td>
+                  <td><%= ax_badge(event.severity, tone: { "error" => :red, "warning" => :amber }.fetch(event.severity, :gray)) %></td>
+                  <td><%= event.tenant&.name || (event.tenant_id ? "Conta ##{event.tenant_id}" : "Plataforma") %></td>
+                  <td class="ax-num"><%= number_with_delimiter(event.occurrences_count) %></td>
+                  <td><%= event.last_seen_at ? l(event.last_seen_at, format: :short) : "—" %></td>
+                  <td><%= event.resolved? ? ax_badge("Resolvido", tone: :green, dot: true) : ax_badge("Aberto", tone: :red, dot: true) %></td>
+                  <td class="ax-num">
+                    <%= link_to "Detalhes", admin_system_error_event_path(event), class: "ax-dashboard-panel__link" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="ax-pagination">
+          <%= will_paginate @error_events %>
+        </div>
+      <% else %>
+        <%= ax_empty_state(title: "Nenhum erro encontrado", description: "Ajuste os filtros — ou está tudo saudável por aqui.", icon: "bug") %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

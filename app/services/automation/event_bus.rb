@@ -64,7 +64,7 @@ module Automation
           event: event.name,
           label: event.name_label,
           source: event.source
-        }
+        }.merge(event.payload_hash.slice("from", "to", "admin_user_name").compact)
       )
     end
 

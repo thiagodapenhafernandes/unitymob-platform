@@ -43,7 +43,9 @@
       <% if @field_feature_enabled %>
         <%= ax_badge("Campo ativo", tone: :green, dot: true) %>
       <% else %>
-        <%= ax_badge("Campo pausado", tone: :amber) %>
+        <%= link_to edit_admin_field_settings_path, title: "Configurar módulo Campo" do %>
+          <%= ax_badge("Campo pausado", tone: :amber) %>
+        <% end %>
       <% end %>
     </div>
   </header>

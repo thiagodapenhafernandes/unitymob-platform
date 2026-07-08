@@ -1,0 +1,31 @@
+<%#
+  Chips (pins removíveis) dos imóveis de interesse do lead. Re-renderizado via
+  fetch pelo property-interests controller. locals: lead (obrigatório),
+  show_empty (opcional; default: lead sem property_id principal)
+%>
+<%
+  interests = lead.property_interests.includes(:habitation).order(:created_at)
+  show_empty = local_assigns.key?(:show_empty) ? local_assigns[:show_empty] : lead.property_id.blank?
+%>
+<% interests.each do |interest| %>
+  <% habitation = interest.habitation %>
+  <div class="ax-context-pin ax-context-pin--property">
+    <%= link_to admin_habitation_path(habitation), class: "ax-context-pin__link" do %>
+      <i class="bi bi-house-door"></i>
+      <span><%= [habitation.codigo, habitation.display_title.presence].compact_blank.join(" · ") %></span>
+    <% end %>
+    <button type="button"
+            class="ax-context-pin__remove"
+            title="Remover imóvel de interesse"
+            aria-label="Remover <%= habitation.codigo %> dos interesses"
+            data-action="property-interests#remove"
+            data-url="<%= admin_lead_property_interest_path(lead, interest) %>">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+<% end %>
+<% if interests.empty? && show_empty %>
+  <div class="ax-context-pin ax-context-pin--property">
+    <span class="ax-context-pin__link"><i class="bi bi-house-door"></i><span>Sem imóvel específico</span></span>
+  </div>
+<% end %>

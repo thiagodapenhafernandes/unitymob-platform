@@ -1,7 +1,8 @@
-<% gtm_container_id = TrackingIntegrationSetting.google_tag_manager_container_id %>
-<% meta_pixel_id = TrackingIntegrationSetting.meta_pixel_id %>
+<% tracking_setting ||= TrackingIntegrationSetting.current %>
+<% gtm_container_id = tracking_setting.normalized_google_tag_manager_container_id %>
+<% meta_pixel_id = tracking_setting.normalized_meta_pixel_id %>
 
-<% if TrackingIntegrationSetting.google_tag_manager_enabled? %>
+<% if tracking_setting.google_tag_manager_enabled? && gtm_container_id.present? %>
   <script>
     (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -11,7 +12,7 @@
   </script>
 <% end %>
 
-<% if TrackingIntegrationSetting.meta_pixel_enabled? %>
+<% if tracking_setting.meta_pixel_enabled? && meta_pixel_id.present? %>
   <script>
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?

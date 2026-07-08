@@ -62,6 +62,7 @@ class ApplicationController < ActionController::Base
   end
 
   def set_current_request_context
+    Thread.current[:setting_values_cache] = nil
     Current.request_ip = request.remote_ip
     Current.request_user_agent = request.user_agent.to_s.first(255)
     Current.request_metadata = {
@@ -76,8 +77,13 @@ class ApplicationController < ActionController::Base
     return unless request.get? || request.head?
     return if request.path.start_with?("/admin", "/rails/active_storage", "/assets", "/packs")
 
-    redirect_record = SeoRedirect.active.find_by(from_path: seo_redirect_lookup_path) ||
-                      SeoRedirect.active.find_by(from_path: request.path)
+    lookup_path = seo_redirect_lookup_path
+    lookup_paths = [lookup_path, request.path].uniq
+    redirect_record = SeoRedirect
+      .active
+      .where(from_path: lookup_paths)
+      .order(Arel.sql(SeoRedirect.sanitize_sql_array(["CASE from_path WHEN ? THEN 0 ELSE 1 END", lookup_path])))
+      .first
     return if redirect_record.blank?
 
     redirect_record.register_hit!
@@ -96,14 +102,18 @@ class ApplicationController < ActionController::Base
   end
 
   def load_layout_settings
-    @layout_setting = LayoutSetting.instance
+    @layout_setting = LayoutSetting.with_attached_logo.with_attached_favicon.first || LayoutSetting.instance
     return if request.path.start_with?("/admin")
 
     @home_setting = HomeSetting.instance
     @footer_setting = FooterSetting.instance
     @footer_links = Footer::QuickLinksService.call
-    @footer_stores = public_tenant.stores.active.order(:id)
-    @footer_stores = FooterStore.all if @footer_stores.empty?
-    @footer_social_links = FooterSocialLink.where(enabled: true)
+    @footer_stores = public_tenant.stores.active.order(:id).to_a
+    @footer_stores = FooterStore.all.to_a if @footer_stores.empty?
+    @footer_social_links = FooterSocialLink.where(enabled: true).to_a
+    @lead_capture_enabled = WebhookSetting.lead_capture_enabled?
+    @site_phone_settings = WhatsappBusinessIntegration.cached_site_phone_settings(public_tenant)
+    @interest_settings = InterestIntelligence::Settings.new(@layout_setting)
+    @tracking_setting = TrackingIntegrationSetting.current
   end
 end

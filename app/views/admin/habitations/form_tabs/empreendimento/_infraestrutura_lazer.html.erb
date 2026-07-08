@@ -11,7 +11,7 @@
   </button>
 <% end %>
 
-<%= ax_form_section(title: "Infraestrutura e lazer", eyebrow: "Checklist", actions: infrastructure_actions) do %>
+<%= ax_form_section(title: "Infraestrutura e lazer", eyebrow: "Checklist", icon: "tree", actions: infrastructure_actions) do %>
   <% current_infra = f.object.infra_estrutura.is_a?(Array) ? f.object.infra_estrutura : [] %>
   <%= ax_chip_grid(id: "infra-checkbox-list") do %>
     <% @external_features.to_a.each do |feature| %>

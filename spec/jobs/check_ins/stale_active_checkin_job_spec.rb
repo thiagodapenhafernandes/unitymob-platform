@@ -1,15 +1,17 @@
 require 'rails_helper'
 
 RSpec.describe CheckIns::StaleActiveCheckinJob do
-  before { Setting.set("field_checkin_enabled", "true") }
+  # A flag field_checkin_enabled é POR-TENANT: o job avalia dentro de
+  # Current.set(tenant:), então precisa estar setada no tenant dos registros.
+  before { Setting.set("field_checkin_enabled", "true", tenant: Tenant.default) }
 
   let(:user) { create(:admin_user, :field_agent) }
   let(:store) { create(:store) }
 
-  it "fecha check-ins ativos sem ping há mais de 10min" do
+  it "fecha check-ins ativos sem ping há mais de 10min como :closed_auto_no_signal" do
     old = create(:check_in, admin_user: user, store: store, status: :active, checked_in_at: 30.minutes.ago)
     described_class.new.perform
-    expect(old.reload.closed_auto_out_of_radius?).to be true
+    expect(old.reload.closed_auto_no_signal?).to be true
   end
 
   it "NÃO fecha check-ins com ping recente" do
@@ -20,7 +22,7 @@ RSpec.describe CheckIns::StaleActiveCheckinJob do
   end
 
   it "não faz nada com flag desligada" do
-    Setting.set("field_checkin_enabled", "false")
+    Setting.set("field_checkin_enabled", "false", tenant: Tenant.default)
     old = create(:check_in, admin_user: user, store: store, status: :active, checked_in_at: 30.minutes.ago)
     described_class.new.perform
     expect(old.reload.active?).to be true
@@ -29,6 +31,8 @@ RSpec.describe CheckIns::StaleActiveCheckinJob do
   it "quando recebe tenant_id fecha apenas check-ins daquele tenant" do
     current_tenant = Tenant.create!(name: "Tenant stale #{SecureRandom.hex(3)}", slug: "tenant-stale-#{SecureRandom.hex(3)}")
     other_tenant = Tenant.create!(name: "Outro stale #{SecureRandom.hex(3)}", slug: "outro-stale-#{SecureRandom.hex(3)}")
+    Setting.set("field_checkin_enabled", "true", tenant: current_tenant)
+    Setting.set("field_checkin_enabled", "true", tenant: other_tenant)
     current_user = create(:admin_user, :field_agent, tenant: current_tenant)
     other_user = create(:admin_user, :field_agent, tenant: other_tenant)
     current_store = create(:store, tenant: current_tenant)
@@ -38,7 +42,7 @@ RSpec.describe CheckIns::StaleActiveCheckinJob do
 
     described_class.new.perform(tenant_id: current_tenant.id)
 
-    expect(current_check_in.reload.closed_auto_out_of_radius?).to be true
+    expect(current_check_in.reload.closed_auto_no_signal?).to be true
     expect(other_check_in.reload.active?).to be true
   end
 end

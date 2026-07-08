@@ -58,6 +58,69 @@
   .field-hero__title { font-size: 1.16rem; font-weight: 850; line-height: 1.15; }
   .field-hero__subtitle { font-size: .82rem; line-height: 1.35; opacity: .86; }
 
+  .field-checkin-cta {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #dbe4f0;
+    border-radius: 16px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
+    color: inherit;
+    display: flex;
+    gap: .8rem;
+    margin: -.15rem 0 .75rem;
+    padding: .9rem 1rem;
+    text-decoration: none;
+  }
+  .field-checkin-cta--primary {
+    background: linear-gradient(135deg, #16a34a 0%, #0f8a3d 100%);
+    border-color: #0f8a3d;
+    color: #fff;
+  }
+  .field-checkin-cta--active {
+    background: linear-gradient(135deg, #0f6bf2 0%, #0b56c5 100%);
+    border-color: #0b56c5;
+    color: #fff;
+  }
+  .field-checkin-cta--paused {
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #9a3412;
+  }
+  .field-checkin-cta__icon {
+    align-items: center;
+    background: rgba(255, 255, 255, .18);
+    border-radius: 14px;
+    display: inline-flex;
+    flex: 0 0 48px;
+    height: 48px;
+    justify-content: center;
+    width: 48px;
+  }
+  .field-checkin-cta--paused .field-checkin-cta__icon {
+    background: #ffedd5;
+  }
+  .field-checkin-cta__icon i { font-size: 1.55rem; }
+  .field-checkin-cta__copy {
+    display: grid;
+    gap: .18rem;
+    min-width: 0;
+  }
+  .field-checkin-cta__title {
+    font-size: 1rem;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+  .field-checkin-cta__subtitle {
+    font-size: .74rem;
+    line-height: 1.25;
+    opacity: .85;
+  }
+  .field-checkin-cta__chevron {
+    font-size: 1.15rem;
+    margin-left: auto;
+    opacity: .8;
+  }
+
   .field-kpi-grid {
     display: grid;
     gap: .5rem;
@@ -239,6 +302,31 @@
   <% end %>
 </div>
 
+<%# Multi-conta no PWA: mesma regra do admin — SÓ Admin de Contas alterna. %>
+<% if (@admin_user.login_identity.tenant_owner? rescue false) %>
+  <% accounts = (@admin_user.switchable_accounts rescue []) %>
+  <% if accounts.size > 1 %>
+    <section style="margin:0 0 10px;background:#fff;border:1px solid #e6e8eb;border-radius:10px;padding:10px 12px;">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#697586;margin-bottom:6px;">
+        <i class="bi bi-arrow-left-right"></i> Minhas contas
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        <% accounts.each do |entry| %>
+          <% if entry[:admin_user].id == @admin_user.id %>
+            <span class="ax-badge ax-badge--blue"><i class="bi bi-check2"></i> <%= entry[:tenant].name %></span>
+          <% else %>
+            <%= button_to admin_account_switch_path(tenant_id: entry[:tenant].id, context: "field"), method: :post,
+                  form: { data: { turbo: false }, style: "display:inline" },
+                  style: "border:1px solid #d2d6db;background:#fff;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;color:#344054;" do %>
+              <%= entry[:tenant].name %>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+<% end %>
+
 <section class="field-hero">
   <div class="field-hero__top">
     <span class="field-hero__date"><i class="bi bi-calendar3 me-1"></i><%= l(Date.current, format: :long) %></span>
@@ -257,6 +345,42 @@
     </div>
   </div>
 </section>
+
+<% if @active_check_in %>
+  <%= link_to new_field_check_in_path, class: "field-checkin-cta field-checkin-cta--active" do %>
+    <span class="field-checkin-cta__icon"><i class="bi bi-broadcast-pin"></i></span>
+    <span class="field-checkin-cta__copy">
+      <span class="field-checkin-cta__title">Check-in ativo</span>
+      <span class="field-checkin-cta__subtitle"><%= @active_check_in.store.name %> · toque para ver ou fazer check-out</span>
+    </span>
+    <i class="bi bi-chevron-right field-checkin-cta__chevron"></i>
+  <% end %>
+<% elsif @field_enabled && @field_agent_allowed %>
+  <%= link_to new_field_check_in_path, class: "field-checkin-cta field-checkin-cta--primary" do %>
+    <span class="field-checkin-cta__icon"><i class="bi bi-geo-alt-fill"></i></span>
+    <span class="field-checkin-cta__copy">
+      <span class="field-checkin-cta__title">Fazer check-in agora</span>
+      <span class="field-checkin-cta__subtitle">Usar GPS para entrar na loja mais próxima</span>
+    </span>
+    <i class="bi bi-chevron-right field-checkin-cta__chevron"></i>
+  <% end %>
+<% elsif !@field_enabled %>
+  <div class="field-checkin-cta field-checkin-cta--paused" role="status">
+    <span class="field-checkin-cta__icon"><i class="bi bi-pause-circle"></i></span>
+    <span class="field-checkin-cta__copy">
+      <span class="field-checkin-cta__title">Check-in indisponível</span>
+      <span class="field-checkin-cta__subtitle">A operação de check-in não está aberta no momento.</span>
+    </span>
+  </div>
+<% else %>
+  <div class="field-checkin-cta field-checkin-cta--paused" role="status">
+    <span class="field-checkin-cta__icon"><i class="bi bi-person-lock"></i></span>
+    <span class="field-checkin-cta__copy">
+      <span class="field-checkin-cta__title">Check-in indisponível</span>
+      <span class="field-checkin-cta__subtitle">Sua operação ainda não está liberada para check-in.</span>
+    </span>
+  </div>
+<% end %>
 
 <div class="field-kpi-grid">
   <%= link_to admin_leads_path(status: Lead.status_value(:novo)), class: "field-kpi" do %>
@@ -338,7 +462,7 @@
     </span>
   <% end %>
 
-  <% if @field_enabled %>
+  <% if @field_enabled && @field_agent_allowed %>
     <%= link_to new_field_check_in_path, class: "field-action-card" do %>
       <span class="field-action-card__icon bg-danger-subtle text-danger"><i class="bi bi-geo-alt-fill"></i></span>
       <span>
@@ -377,7 +501,11 @@
               <div class="field-lead__time"><%= time_ago_in_words(lead.created_at) %></div>
             </div>
             <div class="field-lead__actions">
-              <% if lead.direct_whatsapp_url.present? %>
+              <% if whatsapp_inbox_attendance? && lead.whatsapp_recipient.present? %>
+                <%= link_to admin_lead_path(lead, anchor: "whatsapp"), class: "field-contact-btn field-contact-btn--whatsapp" do %>
+                  <i class="bi bi-whatsapp"></i>WhatsApp
+                <% end %>
+              <% elsif lead.direct_whatsapp_url.present? %>
                 <%= link_to lead.direct_whatsapp_url, target: "_blank", rel: "noopener", class: "field-contact-btn field-contact-btn--whatsapp" do %>
                   <i class="bi bi-whatsapp"></i>WhatsApp
                 <% end %>

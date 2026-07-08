@@ -135,7 +135,11 @@ export default class extends Controller {
       config.createOnBlur = true
     }
 
+    // dropdown no <body>: escapa de qualquer card/painel com overflow hidden
+    if (config.dropdownParent === undefined) config.dropdownParent = "body"
+
     this.tomSelect = new TomSelect(this.element, config)
+    this.bindDropdownViewportSync()
     if (!isMultiple) {
       this.tomSelect.wrapper.classList.add("ax-ts-single-search")
     }
@@ -176,6 +180,38 @@ export default class extends Controller {
     }
   }
 
+  // Com dropdownParent: body o dropdown é posicionado uma única vez ao abrir; se a
+  // página rolar depois (teclado do celular abrindo, scroll do usuário), ele fica
+  // órfão fora da tela. Enquanto aberto, reancora a cada scroll/resize e, no mobile,
+  // rola o campo para o meio da área visível acima do teclado.
+  bindDropdownViewportSync() {
+    this.repositionDropdown = () => this.tomSelect?.positionDropdown()
+
+    this.tomSelect.on("dropdown_open", () => {
+      window.addEventListener("scroll", this.repositionDropdown, true)
+      window.addEventListener("resize", this.repositionDropdown)
+      window.visualViewport?.addEventListener("resize", this.repositionDropdown)
+
+      if (window.matchMedia("(max-width: 767.98px)").matches) {
+        clearTimeout(this.mobileScrollTimeout)
+        this.mobileScrollTimeout = setTimeout(() => {
+          this.tomSelect?.control.scrollIntoView({ block: "center", behavior: "smooth" })
+          this.repositionDropdown()
+        }, 250) // espera o teclado terminar de abrir
+      }
+    })
+
+    this.tomSelect.on("dropdown_close", () => this.unbindDropdownViewportSync())
+  }
+
+  unbindDropdownViewportSync() {
+    clearTimeout(this.mobileScrollTimeout)
+    if (!this.repositionDropdown) return
+    window.removeEventListener("scroll", this.repositionDropdown, true)
+    window.removeEventListener("resize", this.repositionDropdown)
+    window.visualViewport?.removeEventListener("resize", this.repositionDropdown)
+  }
+
   unbindDeferredInitialization() {
     if (this.deferredInitHandler) {
       this.element.removeEventListener("focus", this.deferredInitHandler)
@@ -200,6 +236,7 @@ export default class extends Controller {
 
   disconnect() {
     this.unbindDeferredInitialization()
+    this.unbindDropdownViewportSync()
     if (this.tomSelect) {
       this.tomSelect.destroy()
     }

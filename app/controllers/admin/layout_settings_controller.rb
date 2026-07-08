@@ -1,6 +1,7 @@
 module Admin
-  class LayoutSettingsController < ApplicationController
-    layout 'admin'
+  # Herda a base do admin: helpers do layout/sidebar (tenant_owner?,
+  # current_tenant, can?) e as políticas padrão de acesso.
+  class LayoutSettingsController < BaseController
     before_action :authenticate_admin_user!
     before_action :set_layout_setting
 

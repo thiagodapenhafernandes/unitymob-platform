@@ -1,6 +1,12 @@
 module Whatsapp
   # Cliente da WhatsApp Cloud API (Graph) para enviar mensagens e sincronizar templates.
   # Reusa as credenciais de WhatsappBusinessIntegration.current (waba_id, phone_number_id, access_token).
+  #
+  # Aceita QUALQUER objeto que responda a essa interface (duck-typing):
+  #   access_token, phone_number_id e (para templates) waba_id. Além da
+  #   WhatsappBusinessIntegration do tenant, isso inclui o sender GLOBAL de
+  #   Notifications::TransportResolver (GlobalWhatsappSender), usado no fallback
+  #   global do Admin do Sistema — envio de texto/template funciona igual.
   class CloudClient
     GRAPH_HOST = "https://graph.facebook.com".freeze
 
@@ -16,8 +22,15 @@ module Whatsapp
       @integration&.access_token.present? && @integration&.phone_number_id.present?
     end
 
-    def send_text(to:, body:)
-      post_message(to: to, type: "text", text: { preview_url: true, body: body.to_s })
+    def send_text(to:, body:, context_message_id: nil)
+      payload = { type: "text", text: { preview_url: true, body: body.to_s } }
+      payload[:context] = { message_id: context_message_id } if context_message_id.present?
+      post_message(to: to, **payload)
+    end
+
+    # Reação a uma mensagem (emoji vazio remove a reação)
+    def send_reaction(to:, message_id:, emoji:)
+      post_message(to: to, type: "reaction", reaction: { message_id: message_id, emoji: emoji.to_s })
     end
 
     def send_template(to:, name:, language: "pt_BR", components: [])
@@ -26,7 +39,7 @@ module Whatsapp
       post_message(to: to, type: "template", template: template)
     end
 
-    def send_media(to:, type:, media_id: nil, link: nil, caption: nil, filename: nil)
+    def send_media(to:, type:, media_id: nil, link: nil, caption: nil, filename: nil, context_message_id: nil)
       media_type = type.to_s.presence || "image"
       media_payload = {}
       media_payload[:id] = media_id if media_id.present?
@@ -34,7 +47,9 @@ module Whatsapp
       media_payload[:caption] = caption if caption.present? && media_type != "audio"
       media_payload[:filename] = filename if filename.present? && media_type == "document"
 
-      post_message(to: to, type: media_type, media_type.to_sym => media_payload)
+      payload = { type: media_type, media_type.to_sym => media_payload }
+      payload[:context] = { message_id: context_message_id } if context_message_id.present?
+      post_message(to: to, **payload)
     end
 
     def upload_message_media(file_name:, content_type:, type:, io:)
@@ -46,6 +61,10 @@ module Whatsapp
       response = Faraday.new(url: base) do |faraday|
         faraday.request :multipart
         faraday.request :url_encoded
+        # Timeouts explícitos (default do Net::HTTP é 60s renovável por pacote):
+        # alinhado ao timeout: 60 do upload de template media abaixo.
+        faraday.options.open_timeout = 10
+        faraday.options.timeout = 120
         faraday.adapter Faraday.default_adapter
       end.post("#{@integration.phone_number_id}/media") do |request|
         request.headers["Authorization"] = "Bearer #{token}"

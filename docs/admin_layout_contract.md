@@ -303,6 +303,20 @@ Regras:
 - Componentes internos (`ax_form_section`, `ax_field_grid`, cards de catálogo,
   filtros do inspector) controlam o espaçamento dentro do seu próprio limite,
   mas não definem a distância entre sidebar/contextbar/main/aside.
+- **Régua de 12px**: o espaçamento padrão entre main ↔ header/sidebar/aside e
+  entre cards empilhados é **12px em todos os lados** (`.layout-settings-*`
+  usam `gap: 12px`).
+- **Campos de formulário são flat**: inputs, selects, textareas, controls e
+  autocompletes (tom-select) não levam `box-shadow: inset` — a antiga
+  microssombra `inset 0 1px 0 rgba(15,23,42,.03)` foi banida do sistema
+  (inclusive nos estados de foco/validação, que usam apenas o ring externo).
+  Insets continuam permitidos onde são relevo proposital: trilho de switch,
+  barras laterais de item ativo em menus.
+- **Todo contêiner que empilha cards (`ax_operational_panel`/`ax-card`) DEVE
+  ser `display: grid` (ou flex column) com `gap: 12px`** — em especial a
+  coluna menor/aside (`.layout-settings-inspector`). Cards nunca dependem de
+  `margin-bottom` próprio para se separar; se dois cards aparecem colados, o
+  erro está no contêiner sem gap, não nos cards.
 
 ## Quando Usar Cada Área
 

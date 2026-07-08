@@ -70,6 +70,37 @@ export default class extends Controller {
       .catch((error) => this.showTestResult("danger", error.message))
   }
 
+  testSenderConnection(event) {
+    const button = event.currentTarget
+    const url = button.dataset.testUrl
+    const resultTarget = button.closest(".wa-number-row")?.querySelector("[data-wa-number-test-result]")
+    if (!url || !resultTarget) return
+
+    button.disabled = true
+    this.paintNotice(resultTarget, "info")
+    resultTarget.textContent = "Testando número..."
+
+    this.post(url).then((response) => {
+      const json = response.json || {}
+      const send = json.send || {}
+      const receive = json.receive || {}
+      const sendLine = send.ok
+        ? `<strong>Envio pronto</strong> - número ${this.escapeHtml(send.label || "válido")}`
+        : `<strong>Envio:</strong> ${this.escapeHtml(send.error || json.message || "falha ao validar credenciais")}`
+      const receiveLine = receive.ok
+        ? `<strong>Recebimento pronto</strong>${receive.apps?.length ? ` - ${receive.apps.map((app) => this.escapeHtml(app)).join(", ")}` : ""}`
+        : `<strong>Recebimento:</strong> ${this.escapeHtml(receive.error || "nenhum app inscrito no webhook da WABA")}`
+
+      this.paintNotice(resultTarget, send.ok && receive.ok ? "success" : "warning")
+      resultTarget.innerHTML = `${sendLine}<br>${receiveLine}`
+    }).catch((error) => {
+      this.paintNotice(resultTarget, "danger")
+      resultTarget.textContent = error.message
+    }).finally(() => {
+      button.disabled = false
+    })
+  }
+
   receiveMetaMessage(event) {
     if (!event.origin.endsWith("facebook.com")) return
 

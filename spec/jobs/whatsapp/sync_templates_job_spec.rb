@@ -2,6 +2,14 @@ require "rails_helper"
 
 RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
   let(:tenant) { Tenant.create!(name: "Tenant templates #{SecureRandom.hex(3)}", slug: "tenant-templates-#{SecureRandom.hex(3)}") }
+  let!(:integration) do
+    tenant.whatsapp_business_integrations.create!(
+      status: "connected",
+      waba_id: "waba-sync",
+      phone_number_id: "phone-sync",
+      access_token: "token-sync"
+    )
+  end
 
   it "normaliza templates sincronizados com cabecalho de texto" do
     client = instance_double(Whatsapp::CloudClient)
@@ -32,6 +40,80 @@ RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
     expect(template.header_format).to eq("text")
     expect(template.header_text).to eq("Hello")
     expect(template.template_type).to eq("text")
+  end
+
+  it "sincroniza template aprovado com cabecalho de midia sem exigir anexo local" do
+    client = instance_double(Whatsapp::CloudClient)
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    allow(client).to receive(:fetch_templates).and_return(
+      ok: true,
+      data: {
+        "data" => [
+          {
+            "id" => "tpl_image_123",
+            "name" => "sample_image_template",
+            "language" => "pt_BR",
+            "category" => "MARKETING",
+            "status" => "APPROVED",
+            "components" => [
+              { "type" => "HEADER", "format" => "IMAGE", "example" => { "header_handle" => ["meta-image-handle"] } },
+              { "type" => "BODY", "text" => "Veja o imóvel {{1}}" }
+            ]
+          }
+        ]
+      }
+    )
+
+    result = described_class.perform_now(tenant.id)
+
+    expect(result).to eq(ok: true, synced: 1)
+    template = tenant.whatsapp_templates.find_by!(name: "sample_image_template", language: "pt_BR")
+    expect(template).to have_attributes(
+      status: "APPROVED",
+      meta_id: "tpl_image_123",
+      header_format: "image",
+      header_media_handle: "meta-image-handle"
+    )
+    expect(template.header_media_file).not_to be_attached
+  end
+
+  it "baixa e anexa a midia de exemplo quando o cabecalho sincronizado vem com URL" do
+    client = instance_double(Whatsapp::CloudClient)
+    media_response = instance_double(
+      HTTParty::Response,
+      success?: true,
+      body: "fake-image-content",
+      headers: { "content-type" => "image/png" }
+    )
+
+    allow(Whatsapp::CloudClient).to receive(:new).and_return(client)
+    allow(client).to receive(:fetch_templates).and_return(
+      ok: true,
+      data: {
+        "data" => [
+          {
+            "id" => "tpl_image_url_123",
+            "name" => "sample_image_url_template",
+            "language" => "pt_BR",
+            "category" => "MARKETING",
+            "status" => "APPROVED",
+            "components" => [
+              { "type" => "HEADER", "format" => "IMAGE", "example" => { "header_handle" => ["https://scontent.whatsapp.net/media/header.png?oh=123"] } },
+              { "type" => "BODY", "text" => "Veja o imóvel {{1}}" }
+            ]
+          }
+        ]
+      }
+    )
+    allow(HTTParty).to receive(:get).with("https://scontent.whatsapp.net/media/header.png?oh=123", timeout: 30).and_return(media_response)
+
+    result = described_class.perform_now(tenant.id)
+
+    expect(result).to eq(ok: true, synced: 1)
+    template = tenant.whatsapp_templates.find_by!(name: "sample_image_url_template", language: "pt_BR")
+    expect(template.header_media_file).to be_attached
+    expect(template.header_media_file.blob.filename.to_s).to eq("header.png")
+    expect(template.header_media_file.blob).to have_attributes(content_type: "image/png", byte_size: "fake-image-content".bytesize)
   end
 
   it "usa defaults seguros quando a API retornar formato inesperado" do
@@ -123,12 +205,13 @@ RSpec.describe Whatsapp::SyncTemplatesJob, type: :job do
     expect(flow.flow_config).to include("flow_id" => "123", "button_text" => "Abrir", "screen" => "START")
   end
 
-  it "não sincroniza no Tenant default quando nenhum contexto é informado" do
+  it "agenda fan-out para integrações conectadas quando nenhum tenant é informado" do
     allow(Whatsapp::CloudClient).to receive(:new)
 
     result = described_class.perform_now
 
-    expect(result).to eq(ok: false, error: "Tenant não encontrado.")
+    expect(result[:ok]).to be(true)
+    expect(result[:enqueued]).to be >= 1
     expect(Whatsapp::CloudClient).not_to have_received(:new)
   end
 end

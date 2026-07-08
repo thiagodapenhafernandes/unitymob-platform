@@ -80,54 +80,63 @@
 
 <% if @captacao.requires_intake_development_name? || @captacao.requires_intake_address_complement? %>
   <hr class="my-3">
-  <%= ax_field_grid do %>
-    <% if @captacao.requires_intake_development_name? %>
-      <div class="<%= @captacao.requires_intake_address_complement? ? 'ax-span-8' : 'ax-span-12' %>">
-        <div class="wizard-field-group">
-          <%= f.label :edificio_nome, "Edifício / Condomínio", class: "ax-label" %>
-          <span class="required-star">*</span>
-          <%= f.text_field :edificio_nome,
-                           class: field_state.call(:edificio_nome),
-                           placeholder: "Ex.: Edifício Mirante do Atlântico",
-                           data: {
-                             habitation_duplicate_check_target: "building",
-                             action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
-                           } %>
-          <% if field_invalid.call(:edificio_nome) %><div class="invalid-feedback d-block">Informe o nome do condomínio/empreendimento.</div><% end %>
-        </div>
-      </div>
-    <% end %>
-    <% if @captacao.requires_unit_number? %>
-      <div class="ax-span-4">
-        <div class="wizard-field-group">
-          <%= f.label :unidade_numero, @captacao.intake_address_complement_label, class: "ax-label" %>
-          <span class="required-star">*</span>
-          <%= f.text_field :unidade_numero,
-                           class: field_state.call(:unidade_numero),
-                           placeholder: @captacao.intake_address_complement_placeholder,
-                           data: {
-                             habitation_duplicate_check_target: "unit",
-                             action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
-                           } %>
-          <% if field_invalid.call(:unidade_numero) %><div class="invalid-feedback d-block">Informe o número da unidade.</div><% end %>
-        </div>
-      </div>
-    <% elsif @captacao.requires_intake_address_complement? %>
-      <div class="<%= @captacao.requires_intake_development_name? ? 'ax-span-4' : 'ax-span-12' %>">
-        <div class="wizard-field-group">
-          <%= f.label :complemento, @captacao.intake_address_complement_label, class: "ax-label" %>
-          <span class="required-star">*</span>
-          <%= f.text_field :complemento,
-                           class: field_state.call(:complemento),
-                           placeholder: @captacao.intake_address_complement_placeholder,
-                           data: {
-                             habitation_duplicate_check_target: "complement",
-                             action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
-                           } %>
-          <% if field_invalid.call(:complemento) %><div class="invalid-feedback d-block">Informe o complemento.</div><% end %>
-        </div>
-      </div>
-    <% end %>
+  <%# Campos condicionais ao tipo do imóvel, empilhados em largura total (mobile-first). %>
+  <% if @captacao.requires_intake_development_name? %>
+    <div class="wizard-field-group">
+      <%= f.label :edificio_nome, "Edifício / Condomínio", class: "ax-label" %>
+      <span class="required-star">*</span>
+      <%= f.text_field :edificio_nome,
+                       class: field_state.call(:edificio_nome),
+                       placeholder: "Ex.: Edifício Mirante do Atlântico",
+                       data: {
+                         habitation_duplicate_check_target: "building",
+                         action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                       } %>
+      <% if field_invalid.call(:edificio_nome) %><div class="invalid-feedback d-block">Informe o nome do condomínio/empreendimento.</div><% end %>
+    </div>
+  <% end %>
+  <% if @captacao.requires_unit_number? %>
+    <div class="wizard-field-group">
+      <%= f.label :unidade_numero, @captacao.intake_address_complement_label, class: "ax-label" %>
+      <span class="required-star">*</span>
+      <%= f.text_field :unidade_numero,
+                       class: field_state.call(:unidade_numero),
+                       placeholder: @captacao.intake_address_complement_placeholder,
+                       data: {
+                         habitation_duplicate_check_target: "unit",
+                         action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                       } %>
+      <% if field_invalid.call(:unidade_numero) %><div class="invalid-feedback d-block">Informe o número da unidade.</div><% end %>
+    </div>
+  <% elsif @captacao.requires_intake_address_complement? %>
+    <div class="wizard-field-group">
+      <%= f.label :complemento, @captacao.intake_address_complement_label, class: "ax-label" %>
+      <span class="required-star">*</span>
+      <%= f.text_field :complemento,
+                       class: field_state.call(:complemento),
+                       placeholder: @captacao.intake_address_complement_placeholder,
+                       data: {
+                         habitation_duplicate_check_target: "complement",
+                         action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                       } %>
+      <% if field_invalid.call(:complemento) %><div class="invalid-feedback d-block">Informe o complemento.</div><% end %>
+    </div>
+  <% end %>
+  <% if @captacao.requires_intake_lot_block? %>
+    <div class="wizard-field-group">
+      <%= f.label :lote, "Lote", class: "ax-label" %>
+      <%= f.text_field :lote,
+                       class: field_state.call(:lote),
+                       placeholder: "Ex.: 12" %>
+      <% if field_invalid.call(:lote) %><div class="invalid-feedback d-block">Informe o lote.</div><% end %>
+    </div>
+    <div class="wizard-field-group">
+      <%= f.label :quadra, "Quadra", class: "ax-label" %>
+      <%= f.text_field :quadra,
+                       class: field_state.call(:quadra),
+                       placeholder: "Ex.: B" %>
+      <% if field_invalid.call(:quadra) %><div class="invalid-feedback d-block">Informe a quadra.</div><% end %>
+    </div>
   <% end %>
   <div data-habitation-duplicate-check-target="status"></div>
 <% else %>

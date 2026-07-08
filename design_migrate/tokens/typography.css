@@ -1,0 +1,46 @@
+/* ============================================================
+   Unitymob — Typography tokens
+   The admin app runs on Inter (UI) with Outfit available for display.
+   Bootstrap Icons is the icon typeface. Scale is deliberately COMPACT
+   and dense — a data tool, not a marketing page. Base UI size is 13px.
+   ============================================================ */
+
+:root {
+  /* ---- Families --------------------------------------------------- */
+  --font-sans: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: Outfit, Inter, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ---- Size scale (px, compact) ----------------------------------- */
+  --text-2xs: 10px;     /* eyebrows, section labels, uppercase micro */
+  --text-xs: 11px;      /* badges, table head, stat labels */
+  --text-sm: 12px;      /* captions, sub-nav, secondary */
+  --text-base: 12.5px;  /* buttons, table cells, dense body */
+  --text-md: 13px;      /* default UI text, inputs, nav */
+  --text-lg: 13.5px;    /* card titles */
+  --text-xl: 15px;      /* modal titles */
+  --text-2xl: 18px;     /* page titles */
+  --text-3xl: 20px;     /* dashboard command h1 */
+  --text-4xl: 22px;     /* stat values */
+
+  /* ---- Weights ---------------------------------------------------- */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-body: 620;    /* nav links, dense body emphasis */
+  --weight-semibold: 650;
+  --weight-strong: 700;
+  --weight-bold: 750;    /* buttons */
+  --weight-heavy: 800;   /* eyebrows, headings, counts */
+
+  /* ---- Line heights ----------------------------------------------- */
+  --leading-tight: 1.1;
+  --leading-snug: 1.2;
+  --leading-normal: 1.45;
+  --leading-relaxed: 1.6;
+
+  /* ---- Letter spacing --------------------------------------------- */
+  --tracking-tight: -0.01em;   /* page titles, headings */
+  --tracking-normal: 0;
+  --tracking-wide: 0.03em;     /* stat labels */
+  --tracking-caps: 0.055em;    /* uppercase eyebrows / section headers */
+}

@@ -23,12 +23,62 @@ module Admin::UiHelper
     tag.i(class: ["bi", "bi-#{name}", class_name].compact.join(" "))
   end
 
+  # Iniciais para avatares (WhatsApp inbox e afins): 2 primeiras letras do nome.
+  # Botões "WhatsApp" de atendimento apontam para o inbox interno quando o
+  # admin da conta ativa em Configurações → Atendimento WhatsApp (e o usuário
+  # pode ver o inbox). Caso contrário, caem no wa.me externo.
+  def whatsapp_inbox_attendance?
+    return @_whatsapp_inbox_attendance if defined?(@_whatsapp_inbox_attendance)
+
+    tenant = respond_to?(:current_tenant) ? current_tenant : Current.tenant
+    user = respond_to?(:current_admin_user) ? current_admin_user : nil
+    integration = tenant.present? ? WhatsappBusinessIntegration.current(tenant) : nil
+    # can? direto no model: o layout de campo nao expoe o helper can? do admin
+    @_whatsapp_inbox_attendance = integration.present? &&
+      integration.try(:inbox_attendance_enabled?) &&
+      integration.messaging_ready? &&
+      user&.can?(:view, :whatsapp_inbox).present?
+  end
+
+  def wa_initials(name)
+    name.to_s.split.map { |part| part[0] }.first(2).join.upcase.presence || "?"
+  end
+
+  # Cor CSS de uma etiqueta: hex livre é usado direto; tons do design system
+  # mapeiam para a mesma paleta dos radios do catálogo (lead-labels__color--*).
+  LEAD_LABEL_CSS_COLORS = {
+    "gray" => "#667085", "green" => "#08875d", "amber" => "#d97706",
+    "red" => "#e0402f", "blue" => "var(--admin-primary)",
+    "purple" => "#7c3aed", "cyan" => "#0e9bb8"
+  }.freeze
+
+  LEAD_LABEL_COLOR_NAMES = {
+    "red" => "Vermelho", "amber" => "Âmbar", "green" => "Verde", "blue" => "Azul",
+    "cyan" => "Ciano", "purple" => "Roxo", "gray" => "Cinza"
+  }.freeze
+
+  def lead_label_css_color(color)
+    color = color.to_s
+    return color if color.match?(LeadLabel::HEX_COLOR)
+
+    LEAD_LABEL_CSS_COLORS.fetch(color, LEAD_LABEL_CSS_COLORS["gray"])
+  end
+
   def ax_badge(label, tone: :gray, dot: false, class_name: nil)
     classes = ["ax-badge", AX_BADGE_TONES.fetch(tone.to_sym, AX_BADGE_TONES[:gray])]
     classes << "ax-badge--dot" if dot
     classes << class_name if class_name.present?
 
     render "admin/shared/ui/badge", label:, classes:
+  end
+
+  def ax_lead_label_chip(label, class_name: nil)
+    tone = ax_lead_label_tone(label)
+    render "admin/shared/ui/lead_label_chip", label:, tone:, class_name:
+  end
+
+  def ax_lead_label_chips(labels, class_name: nil)
+    safe_join(Array(labels).map { |label| ax_lead_label_chip(label, class_name:) })
   end
 
   def ax_button(label = nil, url = nil, variant: :secondary, size: nil, icon: nil, class_name: nil, **options, &block)
@@ -126,11 +176,28 @@ module Admin::UiHelper
     )
   end
 
-  def ax_form_section(title:, eyebrow: nil, actions: nil, collapsed: false, collapse_id: nil, class_name: nil, tooltip: nil, body: nil, &block)
+  # Card padrão com header colapsável (chevron) — para telas de trabalho, onde
+  # o ax_form_section (contexto de formulário) ficaria sem o chrome de card.
+  def ax_collapsible_card(title:, collapse_id:, icon: nil, badge: nil, actions: nil, collapsed: false, class_name: nil, body: nil, &block)
+    render(
+      "admin/shared/ui/collapsible_card",
+      title:,
+      collapse_id:,
+      icon:,
+      badge:,
+      actions:,
+      collapsed:,
+      class_name:,
+      body: block_given? ? capture(&block) : body
+    )
+  end
+
+  def ax_form_section(title:, eyebrow: nil, icon: nil, actions: nil, collapsed: false, collapse_id: nil, class_name: nil, tooltip: nil, body: nil, &block)
     render(
       "admin/shared/ui/form_section",
       eyebrow:,
       title:,
+      icon:,
       actions:,
       collapsed:,
       collapse_id:,
@@ -327,7 +394,7 @@ module Admin::UiHelper
            checked_value:, unchecked_value:, id:, class_name:, input_html:
   end
 
-  def ax_toggle_chip(form, method, label:, checked_value: "1", unchecked_value: "0", disabled: false, class_name: nil, id: nil, input_data: {})
+  def ax_toggle_chip(form = nil, method = nil, label:, checked_value: "1", unchecked_value: "0", disabled: false, class_name: nil, id: nil, input_data: {}, name: nil, checked: false)
     render(
       "admin/shared/ui/toggle_chip",
       form:,
@@ -338,7 +405,9 @@ module Admin::UiHelper
       disabled:,
       class_name:,
       id:,
-      input_data:
+      input_data:,
+      name:,
+      checked:
     )
   end
 
@@ -504,7 +573,7 @@ module Admin::UiHelper
     )
   end
 
-  def ax_media_tile(link_url:, image_source:, caption:, position:, root_class: nil, data: {}, hidden_from_site: false, image_class: nil, top_right: nil, center: nil, bottom_left: nil, bottom_right: nil)
+  def ax_media_tile(link_url:, image_source:, caption:, position:, root_class: nil, data: {}, hidden_from_site: false, image_class: nil, fallback_image_sources: [], top_right: nil, center: nil, bottom_left: nil, bottom_right: nil)
     render(
       "admin/shared/ui/media_tile",
       link_url:,
@@ -515,6 +584,7 @@ module Admin::UiHelper
       data:,
       hidden_from_site:,
       image_class:,
+      fallback_image_sources:,
       top_right:,
       center:,
       bottom_left:,
@@ -730,6 +800,10 @@ module Admin::UiHelper
   end
 
   private
+
+  def ax_lead_label_tone(label)
+    label.color.to_s.presence || "gray"
+  end
 
   def ax_merge_class_options(options, classes)
     merged = options.dup

@@ -28,6 +28,10 @@
     end.presence || "Não informado"
   end
 
+  rich_text_value = lambda do |value|
+    ActionView::Base.full_sanitizer.sanitize(value.to_s).squish.presence
+  end
+
   array_value = lambda do |value|
     rendered = show_value.call(value)
     rendered == "Não informado" ? [] : rendered.split(", ").compact_blank
@@ -102,7 +106,23 @@
   sale_price = money.call(@habitation.valor_venda_cents)
   rent_price = money.call(@habitation.valor_locacao_cents)
   total_rent_price = money.call(@habitation.valor_total_aluguel_cents)
-  main_price = sale_price || total_rent_price || (rent_price.present? ? "#{rent_price}/mês" : nil) || "Sob consulta"
+  has_sale_discount = @habitation.sale_discount?
+  has_rent_discount = @habitation.rent_discount?
+  previous_sale_price = has_sale_discount ? money.call(@habitation.valor_venda_anterior_cents) : nil
+  previous_rent_price = has_rent_discount ? money.call(@habitation.valor_locacao_anterior_cents) : nil
+  previous_price = previous_sale_price || previous_rent_price
+  current_price_cents = has_sale_discount ? @habitation.valor_venda_cents : @habitation.valor_locacao_cents
+  previous_price_cents = has_sale_discount ? @habitation.valor_venda_anterior_cents : @habitation.valor_locacao_anterior_cents
+  discount_percent = if previous_price_cents.to_i.positive? && current_price_cents.to_i.positive?
+                       (((previous_price_cents.to_i - current_price_cents.to_i).to_f / previous_price_cents.to_i) * 100).round(1)
+                     end
+  discount_label = discount_percent.present? ? number_with_precision(discount_percent, precision: 1, strip_insignificant_zeros: true) : nil
+  reduction_label = if has_sale_discount && discount_label.present?
+                      "#{discount_label}% abaixo do valor anterior"
+                    elsif has_rent_discount && discount_label.present?
+                      "Locação com preço reduzido · #{discount_label}% de desconto"
+                    end
+  main_price = sale_price || (has_rent_discount && rent_price.present? ? "#{rent_price}/mês" : nil) || total_rent_price || (rent_price.present? ? "#{rent_price}/mês" : nil) || "Sob consulta"
   price_context = if sale_price.present?
                     "Venda"
                   elsif total_rent_price.present?
@@ -127,43 +147,201 @@
 
   summary_fields = [
     ["Referência", @habitation.codigo],
+    ["Cód. DWV", @habitation.codigo_dwv],
     ["Tipo", @habitation.tipo],
     ["Categoria", @habitation.categoria],
     ["Modalidade", @habitation.status],
+    ["Situação", @habitation.situacao],
+    ["Status da captação", @habitation.intake_status],
+    ["Motivo de suspensão", @habitation.motivo_suspensao],
     ["Captador", @habitation.primary_captador_name],
     ["Empreendimento", @habitation.nome_empreendimento],
-    ["Ocupação", @habitation.ocupacao_status]
+    ["Ocupação", @habitation.ocupacao_status],
+    ["Estado", @habitation.estado_conservacao],
+    ["Cadastro", @habitation.data_cadastro_crm],
+    ["Atualização", @habitation.data_atualizacao_crm]
   ].select { |_label, value| value.present? }
 
   address_fields = [
+    ["Tipo endereço", @habitation.tipo_endereco],
     ["Logradouro", @habitation.endereco],
     ["Número", @habitation.numero],
     ["Complemento", @habitation.complemento],
     ["Bairro", @habitation.bairro],
+    ["Bairro comercial", @habitation.bairro_comercial],
     ["Cidade", @habitation.cidade],
     ["UF", @habitation.uf],
-    ["CEP", @habitation.cep]
+    ["CEP", @habitation.cep],
+    ["Bloco", @habitation.bloco],
+    ["Imediações", @habitation.imediacoes]
   ].select { |_label, value| value.present? }
 
   feature_fields = [
     ["Dormitórios", @habitation.dormitorios_qtd],
     ["Suítes", @habitation.suites_qtd],
+    ["Demi-suítes", @habitation.demi_suites_qtd],
+    ["Salas", @habitation.salas_qtd],
     ["Banheiros", @habitation.banheiros_qtd],
     ["Vagas", @habitation.vagas_qtd],
+    ["Andar", @habitation.andar],
+    ["Varandas", @habitation.varandas_qtd],
+    ["Hidromassagem", @habitation.hidromassagem_qtd],
+    ["Tipo de vaga", @habitation.tipo_vaga],
+    ["Box garagem", @habitation.numero_box],
     ["Área privativa", @habitation.area_privativa_m2.present? ? "#{@habitation.area_privativa_m2} m²" : nil],
     ["Área total", @habitation.area_total_m2.present? ? "#{@habitation.area_total_m2} m²" : nil],
+    ["Área terreno", @habitation.area_terreno_m2.present? ? "#{@habitation.area_terreno_m2} m²" : nil],
+    ["Dimensões terreno", @habitation.dimensoes_terreno],
+    ["Topografia", @habitation.topografia],
     ["Face", @habitation.face]
   ].select { |_label, value| value.present? }
 
   value_fields = [
     ["Venda", sale_price],
+    ["Venda anterior", previous_sale_price],
     ["Locação", rent_price],
+    ["Locação anterior", previous_rent_price],
     ["Total aluguel", total_rent_price],
     ["Condomínio", money.call(@habitation.valor_condominio_cents)],
     ["IPTU", money.call(@habitation.valor_iptu_cents)],
     ["Aceita financiamento", yes_no.call(@habitation.aceita_financiamento_flag)],
     ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)]
   ].select { |_label, value| value.present? }
+
+  commercial_fields = [
+    ["Nº de matrícula", @habitation.matricula_imovel],
+    ["Zona", @habitation.zona],
+    ["Inscrição imobiliária", @habitation.inscricao_imobiliaria],
+    ["Valor promocional", money.call(@habitation.valor_promocional_cents)],
+    ["Condições de negociação", @habitation.condicoes_negociacao]
+  ].select { |_label, value| value.present? }
+
+  attendance_fields = [
+    ["Responsável por reserva", @habitation.responsavel_reserva],
+    ["Onde estão as chaves", @habitation.key_location],
+    ["Detalhe das chaves", @habitation.key_location_notes],
+    ["Senha da portaria", @habitation.senha_portaria],
+    ["Senha do imóvel/apartamento", @habitation.senha_imovel],
+    ["Observações para visitas", @habitation.observacoes_visitas],
+    ["Zelador", @habitation.zelador_nome],
+    ["Telefone do zelador", @habitation.zelador_telefone],
+    ["Região foco", @habitation.regiao_foco],
+    ["Saldo devedor", money.call(@habitation.saldo_devedor_cents)],
+    ["Nº de prestações", @habitation.numero_prestacoes]
+  ].select { |_label, value| value.present? }
+
+  exchange_fields = [
+    ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)],
+    ["Valor aceito na permuta", money.call(@habitation.valor_aceito_permuta_cents)],
+    ["Aceita veículo", yes_no.call(@habitation.aceita_permuta_veiculo_flag)],
+    ["Aceita imóvel", yes_no.call(@habitation.aceita_permuta_imovel_flag)],
+    ["Aceita outros", yes_no.call(@habitation.aceita_permuta_outros_flag)],
+    ["Tipo de veículo aceito", @habitation.tipo_veiculo_aceito_permuta],
+    ["Ano mínimo veículo", @habitation.ano_minimo_veiculo_aceito_permuta],
+    ["Valor do imóvel aceito", money.call(@habitation.permuta_valor_cents)],
+    ["Localização do imóvel aceito", @habitation.permuta_localizacao],
+    ["Dormitórios do imóvel aceito", @habitation.permuta_dormitorios_qtd],
+    ["Suítes do imóvel aceito", @habitation.permuta_suites_qtd],
+    ["Garagens do imóvel aceito", @habitation.permuta_garagens_qtd]
+  ].select { |_label, value| value.present? }
+
+  building_fields = [
+    ["Administradora do condomínio", @habitation.agenciador],
+    ["Construtora", @habitation.construtora],
+    ["Perfil de construção", @habitation.perfil_construcao],
+    ["Tipo de fachada", @habitation.tipo_fachada],
+    ["Data entrega", @habitation.data_entrega],
+    ["Nº de andares", @habitation.andares_qtd],
+    ["Ano construção", @habitation.ano_construcao],
+    ["Elevadores", @habitation.elevadores_qtd],
+    ["Imóveis / andar", @habitation.aptos_andar],
+    ["Total imóveis", @habitation.aptos_edificio],
+    ["Descrição do empreendimento", rich_text_value.call(@habitation.descricao_empreendimento)]
+  ].select { |_label, value| value.present? }
+
+  seo_fields = [
+    ["URL amigável", @habitation.slug],
+    ["Meta title", @habitation.meta_title],
+    ["Meta description", rich_text_value.call(@habitation.meta_description)],
+    ["Palavras-chave", @habitation.meta_keywords]
+  ].select { |_label, value| value.present? }
+
+  publication_fields = [
+    ["Site público", yes_no.call(@habitation.exibir_no_site_flag)],
+    ["Destaque web", yes_no.call(@habitation.destaque_web_flag)],
+    ["Super destaque", yes_no.call(@habitation.festival_salute_flag)],
+    ["Lançamento", yes_no.call(@habitation.lancamento_flag)],
+    ["Tem placa", yes_no.call(@habitation.tem_placa_flag)],
+    ["Exclusivo", yes_no.call(@habitation.exclusivo_flag)],
+    ["Imóvel DWV", @habitation.imovel_dwv],
+    ["Zapimóveis", yes_no.call(@habitation.publicar_zapimoveis)],
+    ["Imovelweb", yes_no.call(@habitation.publicar_imovelweb)],
+    ["Tipo publicação Imovelweb", @habitation.tipo_publicacao_imovelweb],
+    ["Mostrar mapa Imovelweb", @habitation.mostrar_mapa_imovelweb],
+    ["Imovelweb 2", yes_no.call(@habitation.publicar_imovelweb_2)],
+    ["Tipo publicação Imovelweb 2", @habitation.tipo_publicacao_imovelweb_2],
+    ["Mostrar mapa Imovelweb 2", @habitation.mostrar_mapa_imovelweb_2],
+    ["Viva Real VRSync", yes_no.call(@habitation.publicar_viva_real_vrsync)],
+    ["Tipo publicação Viva Real", @habitation.tipo_publicacao_viva_real],
+    ["Divulgar endereço Viva Real", @habitation.divulgar_endereco_viva_real],
+    ["Loft", yes_no.call(@habitation.publicar_loft)],
+    ["Netimóveis 2", yes_no.call(@habitation.publicar_netimoveis_2)],
+    ["Lais AI", yes_no.call(@habitation.publicar_lais_ai)],
+    ["Chaves na Mão", yes_no.call(@habitation.publicar_chaves_na_mao)],
+    ["Destaque Chaves na Mão", @habitation.destaque_chaves_na_mao],
+    ["Período locação Chaves na Mão", @habitation.periodo_locacao_chaves_na_mao],
+    ["Casa Mineira", yes_no.call(@habitation.publicar_casa_mineira)],
+    ["Modelo Casa Mineira", @habitation.modelo_casa_mineira]
+  ].select { |_label, value| value.present? }
+
+  owner_fields = if can_view_proprietor_data?(@habitation)
+    [
+      ["Proprietário", @habitation.proprietario],
+      ["Cód. Vista", @habitation.proprietario_codigo],
+      ["E-mail", @habitation.proprietario_email],
+      ["Celular", @habitation.proprietario_celular],
+      ["F. Comercial", @habitation.proprietario_telefone_comercial],
+      ["F. Residencial", @habitation.proprietario_telefone_residencial]
+    ].select { |_label, value| value.present? }
+  else
+    []
+  end
+
+  commission_fields = if can_view_habitation_show_sensitive_data?(@habitation)
+    [
+      ["Comissão captador (%)", @habitation.captador_commission_percentage],
+      ["Comissão corretor (%)", @habitation.broker_commission_percentage],
+      ["Administração de locação", yes_no.call(@habitation.salute_rental_management_flag)],
+      ["Vitrine Corporate", yes_no.call(@habitation.home_corporate_flag)],
+      ["Posição na Home", @habitation.home_corporate_position]
+    ].select { |_label, value| value.present? }
+  else
+    []
+  end
+
+  broker_assignment_fields = @habitation.broker_assignments.includes(:admin_user).filter_map do |assignment|
+    next if assignment.marked_for_destruction?
+
+    role_label = assignment.role.to_s.presence
+    broker_name = assignment.admin_user&.name
+    commission_label = [assignment.commission_type, assignment.commission_value].compact_blank.join(": ")
+    value = [broker_name, commission_label].compact_blank.join(" · ")
+    [role_label || "Responsável", value] if value.present?
+  end
+
+  internal_document_groups = if can_view_internal_documents?(@habitation)
+    [
+      ["Fichas de cadastro", @habitation.fichas_cadastro.attachments],
+      ["Autorizações de venda", @habitation.autorizacoes_venda.attachments]
+    ].filter_map do |label, attachments|
+      persisted_attachments = attachments.select { |attachment| attachment.persisted? && attachment.blob&.persisted? }
+      [label, persisted_attachments] if persisted_attachments.any?
+    end
+  else
+    []
+  end
+
+  vista_document_assets = can_view_habitation_show_sensitive_data?(@habitation) ? Array(@habitation_vista_document_assets) : []
 
   public_flags = [
     ["Mobiliado", @habitation.mobiliado_flag],
@@ -175,6 +353,15 @@
     ["Frente mar Av. Atlântica", @habitation.frente_mar_avenida_atlantica_flag]
   ].select { |_label, value| value.present? && value != false }
 
+  internal_note_fields = if can_view_habitation_show_sensitive_data?(@habitation)
+    [
+      ["Observações internas", @habitation.observacoes],
+      ["Descrição interna", @habitation.descricao_interna]
+    ].select { |_label, value| value.present? }
+  else
+    []
+  end
+
   media_links = [
     ["Tour virtual", @habitation.tour_virtual, "bi-badge-vr"],
     ["Podcast", @habitation.podcast_url, "bi-soundwave"],
@@ -185,7 +372,20 @@
     [label, link, icon] if link.present?
   end
 
+  description_section_class = media_links.any? && description.present? ? "ax-property-show-bottom__body--wide" : "ax-property-show-bottom__body--description-only"
   item_names = (feature_names + infrastructure_names + unique_feature_names).compact_blank.uniq
+  operational_panels = [
+    { eyebrow: "Comercial", title: "Condições e negociação", fields: commercial_fields },
+    { eyebrow: "Atendimento", title: "Chaves e visitas", fields: attendance_fields },
+    { eyebrow: "Permuta", title: "Condição especial", fields: exchange_fields },
+    { eyebrow: "Empreendimento", title: "Edifício e capacidade", fields: building_fields },
+    { eyebrow: "Proprietário", title: "Contatos", fields: owner_fields },
+    { eyebrow: "Comissão", title: "Operação", fields: commission_fields },
+    { eyebrow: "Responsáveis", title: "Agenciamento", fields: broker_assignment_fields },
+    { eyebrow: "SEO", title: "Busca e metadados", fields: seo_fields },
+    { eyebrow: "Comercial", title: "Observações internas", fields: internal_note_fields }
+  ].select { |panel| panel[:fields].present? }
+  has_document_panel = internal_document_groups.any? || vista_document_assets.any?
 %>
 
 <% content_for :admin_contextbar_breadcrumb do %>
@@ -234,7 +434,7 @@
         <%= link_to safe_join([
               image_tag(primary_photo[:thumb], class: "ax-property-gallery__hero", alt: primary_photo[:caption]),
               tag.span(safe_join([tag.i(class: "bi bi-clock"), updated_label]), class: "ax-property-gallery__status")
-            ]), primary_photo[:url], class: "ax-property-gallery__hero-link", data: { fancybox: "admin-habitation-show-gallery", caption: primary_photo[:caption] } %>
+            ]), primary_photo[:url], class: "ax-property-gallery__hero-link", data: { fancybox: "admin-habitation-show-gallery", caption: primary_photo[:caption], thumb_src: primary_photo[:thumb] } %>
       <% else %>
         <div class="ax-property-gallery__hero ax-property-gallery__empty">
           <i class="bi bi-image"></i>
@@ -258,7 +458,7 @@
         <% if photo_sources.many? %>
           <div class="ax-property-gallery__hidden-links" aria-hidden="true">
             <% photo_sources.drop(1).each do |photo| %>
-              <%= link_to photo[:url], photo[:caption], data: { fancybox: "admin-habitation-show-gallery", caption: photo[:caption] }, tabindex: "-1" %>
+              <%= link_to photo[:caption], photo[:url], data: { fancybox: "admin-habitation-show-gallery", caption: photo[:caption], thumb_src: photo[:thumb] }, tabindex: "-1" %>
             <% end %>
           </div>
         <% end %>
@@ -270,9 +470,15 @@
     <div class="ax-property-show-stack">
       <% summary_panel_body = capture do %>
         <div class="ax-property-record-panel__body">
-          <div class="ax-property-show-price">
+          <div class="ax-property-show-price <%= 'ax-property-show-price--discounted' if previous_price.present? %>">
             <span>Valor do imóvel</span>
+            <% if previous_price.present? %>
+              <em class="ax-property-show-price__previous">De <s><%= previous_price %></s></em>
+            <% end %>
             <strong><%= main_price %></strong>
+            <% if reduction_label.present? %>
+              <small class="ax-property-show-price__discount"><i class="bi bi-arrow-down-right"></i><%= reduction_label %></small>
+            <% end %>
             <% if sale_price.present? && total_rent_price.present? %>
               <small>Locação: <%= total_rent_price %></small>
             <% elsif sale_price.present? && rent_price.present? %>
@@ -370,7 +576,95 @@
     <% end %>
   </section>
 
-  <section class="ax-property-show-bottom__body ax-property-show-bottom__body--wide">
+  <% operational_panels.each_slice(2) do |panel_pair| %>
+    <section class="ax-property-show-bottom__body">
+      <% panel_pair.each do |panel| %>
+        <% panel_body = capture do %>
+          <div class="ax-property-data-grid">
+            <% panel[:fields].each do |label, value| %>
+              <div class="ax-property-data-cell">
+                <span><%= label %></span>
+                <strong><%= show_value.call(value) %></strong>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        <%= ax_operational_panel(
+              eyebrow: panel[:eyebrow],
+              title: panel[:title],
+              class_name: "ax-property-detail-panel",
+              body: panel_body
+            ) %>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% if has_document_panel %>
+    <section class="ax-property-show-bottom__body ax-property-show-bottom__body--wide">
+      <% document_panel_body = capture do %>
+        <% if internal_document_groups.any? %>
+          <% internal_document_groups.each do |group_label, attachments| %>
+            <div class="ax-field-group ax-field-group--panel">
+              <div class="ax-property-record-section__head">
+                <span><%= group_label %></span>
+                <strong><%= pluralize(attachments.size, "arquivo", "arquivos") %></strong>
+              </div>
+              <ul class="ax-file-list">
+                <% attachments.each do |attachment| %>
+                  <%= ax_attachment_item(
+                        attachment:,
+                        url: rails_blob_path(attachment, disposition: "attachment"),
+                        meta: number_to_human_size(attachment.byte_size)
+                      ) %>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+        <% end %>
+
+        <% if vista_document_assets.any? %>
+          <div class="ax-field-group ax-field-group--panel">
+            <div class="ax-property-record-section__head">
+              <span>Documentos do Vista</span>
+              <strong><%= pluralize(vista_document_assets.size, "arquivo", "arquivos") %></strong>
+            </div>
+            <ul class="ax-file-list">
+              <% vista_document_assets.each do |asset| %>
+                <% attachment = asset.active_storage_attachment %>
+                <% link_target = attachment&.blob&.persisted? ? rails_blob_path(attachment, disposition: "attachment") : asset.source_url %>
+                <li class="ax-file-list__item">
+                  <div class="ax-file-list__main">
+                    <i class="bi bi-file-earmark-arrow-down"></i>
+                    <div class="ax-file-list__content">
+                      <% if link_target.present? %>
+                        <%= link_to asset.filename, link_target, target: "_blank", rel: "noopener", class: "ax-file-list__title" %>
+                      <% else %>
+                        <span class="ax-file-list__title"><%= asset.filename %></span>
+                      <% end %>
+                      <div class="ax-file-list__meta"><%= asset.source_path %></div>
+                    </div>
+                  </div>
+                  <div class="ax-file-list__status">
+                    <span class="ax-status-pill <%= asset.status == "downloaded" ? 'ax-status-pill--success' : 'ax-status-pill--muted' %>">
+                      <%= asset.status.to_s.presence || "Sem status" %>
+                    </span>
+                  </div>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+      <% end %>
+      <%= ax_operational_panel(
+            eyebrow: "Documentos",
+            title: "Anexos internos e integração",
+            class_name: "ax-property-detail-panel",
+            body: document_panel_body
+          ) %>
+    </section>
+  <% end %>
+
+  <section class="ax-property-show-bottom__body <%= description_section_class %>">
     <% if description.present? %>
       <% description_panel_body = capture do %>
         <div class="ax-property-description"><%= formatted_habitation_description(description) %></div>

@@ -1,0 +1,31 @@
+<%#
+  Ações rápidas do painel de contexto (spec: botões .ax-btn largura total, 34px).
+  Reusa os modais/gatilhos existentes de agendamento, etiquetas e tarefas.
+  locals: lead (obrigatório), conversation, only_presentation (variante do lead:
+  só o bloco de apresentação — as ações já vivem em "Próxima ação" na página)
+%>
+<% lead = local_assigns.fetch(:lead) %>
+<% only_presentation = local_assigns.fetch(:only_presentation, false) %>
+<% can_manage_comercial = local_assigns.key?(:can_manage_comercial) ? local_assigns[:can_manage_comercial] : can?(:manage, :comercial) %>
+<div class="wa-inbox-thread__schedule-action">
+  <% unless only_presentation || !can_manage_comercial %>
+    <%= render "admin/appointments/form_modal",
+          lead: lead,
+          trigger_label: "Agendar visita",
+          trigger_class: "ax-btn ax-btn--block wa-inbox-thread__schedule-button" %>
+    <%= render "admin/lead_labels/button",
+          lead: lead,
+          trigger_label: "Gerenciar etiquetas",
+          trigger_class: "ax-btn ax-btn--block wa-inbox-thread__schedule-button" %>
+    <%= render "admin/tasks/form_modal",
+          lead: lead,
+          trigger_label: "Tarefas",
+          trigger_class: "ax-btn ax-btn--block wa-inbox-thread__schedule-button" %>
+  <% end %>
+
+  <%# Bloco de apresentação (badge/gate/seletor/lápis) — partial compartilhado. %>
+  <% conversation = local_assigns[:conversation] %>
+  <% if conversation %>
+    <%= render "admin/whatsapp_inbox/presentation_tools", conversation: conversation %>
+  <% end %>
+</div>

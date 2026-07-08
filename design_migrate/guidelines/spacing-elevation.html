@@ -1,0 +1,15 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Elevation" subtitle="Hairline borders, near-flat cards, one pop shadow for overlays" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;background:var(--workspace-bg);font-family:var(--font-sans);color:var(--ink)}
+.wrap{display:flex;gap:20px;padding:26px;align-items:center}
+.item{display:grid;gap:10px;justify-items:center}
+.box{width:100px;height:64px;background:#fff;border:1px solid var(--line);border-radius:var(--radius-md)}
+.lbl{font-size:11px;font-weight:700;text-align:center}.lbl small{display:block;font-family:var(--font-mono);font-size:9px;color:var(--ink-muted);font-weight:400}
+</style></head>
+<body><div class="wrap">
+  <div class="item"><div class="box" style="box-shadow:var(--shadow-card)"></div><span class="lbl">card<small>0 1px 2px /.05</small></span></div>
+  <div class="item"><div class="box" style="box-shadow:var(--shadow-raised)"></div><span class="lbl">raised<small>0 1px 2px /.12</small></span></div>
+  <div class="item"><div class="box" style="box-shadow:var(--shadow-card-lift)"></div><span class="lbl">card-lift<small>0 8px 22px /.08</small></span></div>
+  <div class="item"><div class="box" style="box-shadow:var(--shadow-pop)"></div><span class="lbl">pop<small>0 8px 24px /.12</small></span></div>
+</div></body></html>

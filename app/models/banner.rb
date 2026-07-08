@@ -22,18 +22,12 @@ class Banner < ApplicationRecord
   scope :by_position, ->(pos) { where("? = ANY(positions)", pos).order(:display_order) }
   scope :ordered, -> { order(:display_order, :created_at) }
 
-  after_commit :clear_banner_cache
+  # Sem callback de cache: banners são renderizados ao vivo via display_banner
+  # (consulta o banco a cada render, fora dos fragments cacheados da home).
+  # O antigo delete_matched("views/*") varria o keyspace inteiro do Redis a
+  # cada save e apagava fragments de todos os tenants sem necessidade.
 
   def displayable?
     image_desktop.attached? || image_mobile.attached? || title.present? || description.present?
-  end
-
-  private
-
-  def clear_banner_cache
-    Rails.cache.delete_matched("views/*") if Rails.cache.respond_to?(:delete_matched)
-    Rails.cache.delete("home_sections_active_v2")
-  rescue NotImplementedError
-    Rails.cache.clear
   end
 end

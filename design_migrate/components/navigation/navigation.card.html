@@ -1,0 +1,44 @@
+<!-- @dsCard group="Components" viewport="700x340" name="Navigation" subtitle="Sidebar nav links & segmented tabs" -->
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{margin:0;background:var(--workspace-bg);font-family:var(--font-sans)}
+#root{padding:20px;display:grid;grid-template-columns:230px 1fr;gap:20px;align-items:start}
+.side{background:#fff;border:1px solid var(--line-shell);border-radius:10px;padding:8px}
+.cap{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
+</style></head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { NavLink, Tabs } = window.UnitymobDesignSystem_2a309d;
+function Demo(){
+  const [view, setView] = React.useState("funil");
+  return (
+    <>
+      <div className="side">
+        <div className="ax-nav__section">Produto</div>
+        <NavLink icon="speedometer2" active>Painel</NavLink>
+        <NavLink icon="houses">Imóveis</NavLink>
+        <NavLink icon="person-badge">Leads</NavLink>
+        <div className="ax-nav__section">Operação</div>
+        <NavLink icon="whatsapp">WhatsApp</NavLink>
+        <NavLink icon="lightning-charge">Automação</NavLink>
+      </div>
+      <div>
+        <div className="cap">Segmented tabs</div>
+        <Tabs value={view} onChange={setView} tabs={[
+          { value: "funil", label: "Funil", icon: "kanban" },
+          { value: "lista", label: "Lista", icon: "list-ul" },
+          { value: "mapa", label: "Mapa", icon: "geo-alt" },
+        ]} />
+        <p style={{color:"var(--ink-muted)",fontSize:13,marginTop:14}}>Visualização atual: <b style={{color:"var(--ink)"}}>{view}</b></p>
+      </div>
+    </>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body></html>

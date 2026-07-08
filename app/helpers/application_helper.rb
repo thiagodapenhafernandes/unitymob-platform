@@ -34,6 +34,38 @@ module ApplicationHelper
     )
   end
 
+  def public_image_fallback_urls(source)
+    [
+      development_signed_public_image_url(source)
+    ].compact_blank
+  end
+
+  def development_signed_public_image_url(source)
+    return unless Rails.env.development?
+
+    blob =
+      if defined?(ActiveStorage::Attachment) && source.is_a?(ActiveStorage::Attachment)
+        source.blob
+      elsif defined?(ActiveStorage::Blob) && source.is_a?(ActiveStorage::Blob)
+        source
+      elsif source.is_a?(Hash)
+        attachment = source[:attachment] || source["attachment"]
+        explicit_blob = source[:blob] || source["blob"]
+
+        if defined?(ActiveStorage::Attachment) && attachment.is_a?(ActiveStorage::Attachment)
+          attachment.blob
+        elsif defined?(ActiveStorage::Blob) && explicit_blob.is_a?(ActiveStorage::Blob)
+          explicit_blob
+        end
+      end
+
+    return if blob.blank? || blob.key.blank?
+
+    Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
+  rescue StandardError
+    nil
+  end
+
   def json_ld_tag(payload)
     tag.script(json_escape(payload.to_json).html_safe, type: "application/ld+json")
   end
@@ -83,7 +115,7 @@ module ApplicationHelper
 
   def real_estate_listing_schema(habitation)
     price_cents = habitation.valor_venda_cents.to_i.positive? ? habitation.valor_venda_cents : habitation.valor_locacao_cents
-    image_urls = habitation.public_image_sources.filter_map { |source| absolute_public_url(public_image_url(source)) }
+    image_urls = habitation.public_image_sources.first(8).filter_map { |source| absolute_public_url(public_image_url(source)) }
 
     {
       "@context" => "https://schema.org",

@@ -210,7 +210,7 @@
           <div class="distribution-rule-show__body">
             <% if enabled_notifications.any? %>
               <div class="distribution-rule-show__chips">
-                <% enabled_notifications.each do |notification| %><%= ax_badge(notification, tone: :red) %><% end %>
+                <% enabled_notifications.each do |notification| %><%= ax_badge(notification, tone: :green) %><% end %>
               </div>
             <% else %>
               <p class="distribution-rule-show__muted">Nenhum canal de notificação ativo.</p>

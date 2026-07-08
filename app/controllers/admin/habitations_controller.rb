@@ -49,7 +49,7 @@ class Admin::HabitationsController < Admin::BaseController
   # Fonte única dos campos de exportação vive no service (reusado pelo job async).
   EXPORT_FIELDS = Habitations::CsvExporter::FIELDS
   SORT_OPTIONS = {
-    "data_cadastro_crm" => { label: "Mais recentes", column: "COALESCE(habitations.data_cadastro_crm, habitations.created_at)", default_direction: "desc" },
+    "data_cadastro_crm" => { label: "Mais recentes", column: "(CASE WHEN habitations.codigo ~ '^[0-9]+$' THEN habitations.codigo::bigint END)", default_direction: "desc" },
     "codigo" => { label: "Referência", column: "codigo", default_direction: "asc" },
     "categoria" => { label: "Categoria", column: "categoria", default_direction: "asc" },
     "endereco" => { label: "Endereço", column: "endereco", default_direction: "asc" },
@@ -128,10 +128,24 @@ class Admin::HabitationsController < Admin::BaseController
     proprietors =
       if query.present?
         term = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
-        scope.where(
-          "proprietors.name ILIKE :term OR proprietors.phone_primary ILIKE :term OR proprietors.mobile_phone ILIKE :term OR proprietors.cpf_cnpj ILIKE :term OR proprietors.email ILIKE :term",
+        text_matches = scope.where(
+          "proprietors.name ILIKE :term OR proprietors.phone_primary ILIKE :term OR proprietors.mobile_phone ILIKE :term OR proprietors.email ILIKE :term",
           term:
-        ).order(:name).limit(20)
+        )
+        # CPF cifrado: casa por documento completo digitado (com ou sem máscara)
+        digits = Proprietor.normalized_cpf_cnpj(query)
+        matches =
+          if Proprietor.cpf_digits_searchable? && digits.length >= 11
+            text_matches.or(scope.where(cpf_cnpj_digits: digits))
+          elsif Proprietor.cpf_digits_searchable?
+            text_matches
+          else
+            scope.where(
+              "proprietors.name ILIKE :term OR proprietors.phone_primary ILIKE :term OR proprietors.mobile_phone ILIKE :term OR proprietors.cpf_cnpj ILIKE :term OR proprietors.email ILIKE :term",
+              term:
+            )
+          end
+        matches.order(:name).limit(20)
       elsif selected_ids.any?
         scope.where(id: selected_ids).order(:name).limit(20)
       else
@@ -474,8 +488,21 @@ class Admin::HabitationsController < Admin::BaseController
   def edit
     @page_title = "Editar Imóvel: #{@habitation.codigo}"
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
+    preload_habitation_form_associations
     load_ai_suggestion
     load_habitation_audit_logs
+  end
+
+  # Pré-carrega as associações que o form de responsáveis acessa por item
+  # (habitation.admin_user + broker_assignments.admin_user) — sem isso o render
+  # dispara N+1 em admin_users. Best-effort: nunca derruba a edição.
+  def preload_habitation_form_associations
+    ActiveRecord::Associations::Preloader.new(
+      records: [@habitation],
+      associations: [:admin_user, { broker_assignments: :admin_user }]
+    ).call
+  rescue StandardError => e
+    Rails.logger.warn("[habitations#edit] preload de associações falhou: #{e.message}")
   end
 
   def update
@@ -761,10 +788,19 @@ class Admin::HabitationsController < Admin::BaseController
                               .order(nome_empreendimento: :asc)
     @brokers = habitation_visible_admin_users.select(:id, :name).order(name: :asc)
 
-    cached = Rails.cache.fetch("admin/habitations/form_options/v1/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
+    cached = Rails.cache.fetch("admin/habitations/form_options/v2/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
       base_address_scope = tenant_habitations.left_outer_joins(:address)
 
       {
+        categories: (
+          Habitation::CATEGORIES +
+          tenant_habitations.where("NULLIF(TRIM(categoria), '') IS NOT NULL AND categoria != '.'").distinct.pluck(:categoria) +
+          ["Empreendimento"]
+        ).compact.uniq.sort,
+        status_options: (
+          Habitation::STATUS_OPTIONS +
+          tenant_habitations.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'").distinct.pluck(:status)
+        ).compact.uniq,
         cities: base_address_scope
           .where("NULLIF(TRIM(COALESCE(addresses.cidade, habitations.cidade)), '') IS NOT NULL AND COALESCE(addresses.cidade, habitations.cidade) != '.'")
           .distinct
@@ -794,15 +830,8 @@ class Admin::HabitationsController < Admin::BaseController
     @imediacoes_options = cached[:imediacoes_options]
     @internal_features = cached[:internal_features]
     @external_features = cached[:external_features]
-    @categories = (
-      Habitation::CATEGORIES +
-      tenant_habitations.where("NULLIF(TRIM(categoria), '') IS NOT NULL AND categoria != '.'").distinct.pluck(:categoria) +
-      ["Empreendimento"]
-    ).compact.uniq.sort
-    @status_options = (
-      Habitation::STATUS_OPTIONS +
-      tenant_habitations.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'").distinct.pluck(:status)
-    ).compact.uniq
+    @categories = cached[:categories]
+    @status_options = cached[:status_options]
   end
 
   def load_filter_data
@@ -1532,12 +1561,19 @@ class Admin::HabitationsController < Admin::BaseController
 
     uri = URI.parse(path)
     return nil if uri.scheme.present? || uri.host.present?
-    return nil unless uri.path == admin_habitations_path
+    return nil unless safe_admin_habitation_return_path?(uri.path)
 
     query = compact_return_query(uri.query)
-    [uri.path, query].compact.join("?")
+    path_with_query = [uri.path, query].compact.join("?")
+    uri.fragment.present? ? "#{path_with_query}##{uri.fragment}" : path_with_query
   rescue URI::InvalidURIError
     nil
+  end
+
+  def safe_admin_habitation_return_path?(path)
+    path == admin_habitations_path ||
+      path == admin_leads_path ||
+      path.match?(%r{\A/admin/leads/\d+\z})
   end
 
   def compact_return_query(query)
@@ -2199,8 +2235,7 @@ class Admin::HabitationsController < Admin::BaseController
       :corretor_nome, :corretor_telefone, :corretor_email, :proprietario_codigo,
       :proprietario, :proprietario_celular, :proprietario_telefone_comercial,
       :proprietario_telefone_residencial, :proprietario_email,
-      :exibir_no_site_flag, :destaque_web_flag, :lancamento_flag, :aceita_permuta_flag, 
-      :aceita_doacao_flag,
+      :exibir_no_site_flag, :destaque_web_flag, :lancamento_flag, :aceita_permuta_flag,
       :aceita_permuta_veiculo_flag, :aceita_permuta_imovel_flag, :aceita_permuta_outros_flag,
       :aceita_financiamento_flag, :mobiliado_flag, :data_entrega, :status_vista, 
       :meta_title, :meta_description, :meta_keywords, 
@@ -2234,7 +2269,7 @@ class Admin::HabitationsController < Admin::BaseController
       :agenciador, :captador_commission_percentage, :broker_commission_percentage,
       :salute_rental_management_answer,
       :salute_rental_management_flag, :home_corporate_flag, :home_corporate_position,
-      :key_location, :key_location_notes, :ordered_photo_ids, :ordered_picture_indices, :site_hidden_photo_ids, :site_hidden_picture_urls, :intake_status,
+      :key_location, :key_location_notes, :senha_portaria, :senha_imovel, :ordered_photo_ids, :ordered_picture_indices, :site_hidden_photo_ids, :site_hidden_picture_urls, :intake_status,
       :use_development_photos_flag,
       rental_guarantee_method: [],
       videos: [], plantas: [], fotos_empreendimento: [], photos: [],
@@ -2337,9 +2372,13 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def habitation_visible_admin_users
-    ids = accessible_owner_ids(:imoveis)
-    scope = current_tenant.admin_users.account_members
-    ids.nil? ? scope : scope.where(id: ids)
+    # Memoizado: era reconstruído (e reexecutava accessible_owner_ids) a cada
+    # chamada — usado em @brokers, @filter_brokers e por corretor no form.
+    @habitation_visible_admin_users ||= begin
+      ids = accessible_owner_ids(:imoveis)
+      scope = current_tenant.admin_users.account_members
+      ids.nil? ? scope : scope.where(id: ids)
+    end
   end
 
   def visible_habitation_admin_user_id(value)

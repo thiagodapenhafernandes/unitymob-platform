@@ -25,6 +25,16 @@
         <i class="bi bi-people"></i><span>Usuários</span>
       <% end %>
     </li>
+    <li class="ax-nav__item">
+      <%= link_to admin_system_error_events_path, class: "ax-nav__link #{'active' if controller_name == 'error_events'}" do %>
+        <i class="bi bi-bug"></i><span>Erros da Aplicação</span>
+      <% end %>
+    </li>
+    <li class="ax-nav__item">
+      <%= link_to edit_admin_system_notification_settings_path, class: "ax-nav__link #{'active' if controller_name == 'notification_settings'}" do %>
+        <i class="bi bi-broadcast-pin"></i><span>Notificações Globais</span>
+      <% end %>
+    </li>
     <li class="ax-nav__caption">Contas</li>
     <li class="ax-nav__hint">Acesse áreas operacionais apenas por impersonação.</li>
   <% else %>
@@ -85,7 +95,6 @@
           <i class="bi bi-chevron-down ax-nav__chevron"></i>
         </button>
         <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless comercial_open %>>
-          <li><%= link_to admin_leads_path, class: "ax-nav__link #{'active' if controller_name == 'leads'}" do %><i class="bi bi-kanban"></i><span>Funil de Leads</span><% end %></li>
           <li><%= link_to admin_tasks_path, class: "ax-nav__link #{'active' if controller_name == 'tasks'}" do %><i class="bi bi-check2-square"></i><span>Minhas Tarefas</span><% end %></li>
           <li><%= link_to admin_appointments_path, class: "ax-nav__link #{'active' if controller_name == 'appointments'}" do %><i class="bi bi-calendar-event"></i><span>Agenda</span><% end %></li>
         </ul>
@@ -246,9 +255,11 @@
         </button>
         <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless public_site_open %>>
           <li class="ax-nav__caption">SEO</li>
+          <li class="ax-nav__caption">SEO</li>
           <li><%= link_to admin_seo_dashboard_path, class: "ax-nav__link #{'active' if controller_name == 'seo_dashboard'}" do %><i class="bi bi-graph-up-arrow"></i><span>Dashboard SEO</span><% end %></li>
           <li><%= link_to admin_seo_settings_path, class: "ax-nav__link #{'active' if controller_name == 'seo_settings'}" do %><i class="bi bi-search"></i><span>Páginas SEO</span><% end %></li>
           <li><%= link_to admin_seo_redirects_path, class: "ax-nav__link #{'active' if controller_name == 'seo_redirects'}" do %><i class="bi bi-signpost-split"></i><span>Redirecionamentos SEO</span><% end %></li>
+          <li class="ax-nav__caption">Conteúdo</li>
           <li class="ax-nav__caption">Conteúdo</li>
           <li><%= link_to admin_landing_pages_path, class: "ax-nav__link #{'active' if controller_name == 'landing_pages'}" do %><i class="bi bi-file-earmark-post"></i><span>Landing Pages</span><% end %></li>
           <li><%= link_to admin_banners_path, class: "ax-nav__link #{'active' if controller_name == 'banners'}" do %><i class="bi bi-image"></i><span>Banners</span><% end %></li>
@@ -261,15 +272,64 @@
       </li>
     <% end %>
 
+    <%# Integrações técnicas %>
+    <% schedule_context = can_access.call(:view, :agenda_fotografia) || can_access.call(:manage, :agenda_fotografia) || can_access.call(:manage, :integracoes) %>
+    <% if can_access.call(:manage, :integracoes) || schedule_context %>
+      <li class="ax-nav__section">Integrações</li>
+      <% integ_open = ['meta_integrations', 'whatsapp_integrations', 'webhook_settings', 'dwv_integrations', 'loft_integrations', 'portal_integrations', 'scheduling_integrations', 'image_migration_status', 'ai_integrations', 'google_integrations', 'tracking_integrations', 'storage_integrations'].include?(controller_name) || vista_soft_context %>
+      <li class="ax-nav__group <%= 'is-open' if integ_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= integ_open %>">
+        <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= integ_open %>">
+          <i class="bi bi-plug"></i><span>Integrações</span>
+          <i class="bi bi-chevron-down ax-nav__chevron"></i>
+        </button>
+        <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless integ_open %>>
+          <% if can_access.call(:manage, :integracoes) %>
+            <li><%= link_to admin_portal_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'portal_integrations'}" do %><i class="bi bi-building"></i><span>Portais</span><% end %></li>
+            <li><%= link_to admin_loft_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'loft_integrations'}" do %><i class="bi bi-hdd-rack"></i><span>Loft Soft</span><% end %></li>
+            <li><%= link_to admin_dwv_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'dwv_integrations'}" do %><i class="bi bi-hdd-network"></i><span>DWV</span><% end %></li>
+            <li><%= link_to admin_whatsapp_integration_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_integrations'}" do %><i class="bi bi-whatsapp"></i><span>WhatsApp</span><% end %></li>
+            <li><%= link_to admin_meta_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'meta_integrations'}" do %><i class="bi bi-meta"></i><span>Meta Leads</span><% end %></li>
+            <li><%= link_to admin_google_integration_path, class: "ax-nav__link #{'active' if controller_name == 'google_integrations'}" do %><i class="bi bi-google"></i><span>Google</span><% end %></li>
+            <li><%= link_to admin_tracking_integration_path, class: "ax-nav__link #{'active' if controller_name == 'tracking_integrations'}" do %><i class="bi bi-bullseye"></i><span>Trackeamento</span><% end %></li>
+            <li><%= link_to admin_storage_integration_path, class: "ax-nav__link #{'active' if controller_name == 'storage_integrations'}" do %><i class="bi bi-cloud-arrow-up"></i><span>Armazenamento</span><% end %></li>
+          <% end %>
+          <% if schedule_context %>
+            <li><%= link_to admin_scheduling_integration_path, class: "ax-nav__link #{'active' if controller_name == 'scheduling_integrations'}" do %><i class="bi bi-calendar2-check"></i><span>Agendamento</span><% end %></li>
+          <% end %>
+          <% if can_access.call(:manage, :integracoes) %>
+            <li><%= link_to admin_webhook_settings_path, class: "ax-nav__link #{'active' if controller_name == 'webhook_settings'}" do %><i class="bi bi-broadcast"></i><span>Webhooks</span><% end %></li>
+            <li><%= link_to admin_ai_integration_path, class: "ax-nav__link #{'active' if controller_name == 'ai_integrations'}" do %><i class="bi bi-stars"></i><span>IA</span><% end %></li>
+            <li><%= link_to admin_habitations_path(sort: "last_sync_at", direction: "desc"), class: "ax-nav__link #{'active' if vista_soft_context}" do %><i class="bi bi-arrow-repeat"></i><span>Imóveis sincronizados</span><% end %></li>
+            <li><%= link_to admin_image_migration_status_path, class: "ax-nav__link #{'active' if controller_name == 'image_migration_status'}" do %><i class="bi bi-images"></i><span>Migração de Imagens</span><% end %></li>
+          <% end %>
+        </ul>
+      </li>
+    <% end %>
+
+    <%# Webhook de entrada pessoal — item próprio para quem tem a permissão mas
+        NÃO tem manage :integracoes (o grupo Integrações não aparece pra ele). %>
+    <% if can_access.call(:manage, :inbound_webhooks) && !can_access.call(:manage, :integracoes) %>
+      <li class="ax-nav__item">
+        <%= link_to admin_webhook_settings_path(tab: "inbound"), class: "ax-nav__link #{'active' if controller_name == 'webhook_settings'}" do %>
+          <i class="bi bi-box-arrow-in-down"></i><span>Webhook de entrada</span>
+        <% end %>
+      </li>
+    <% end %>
+
     <%# Configurações internas %>
     <%
-      settings_controllers = ['layout_settings', 'attribute_options', 'property_settings', 'field_settings', 'lead_settings']
+      settings_controllers = ['attribute_options', 'property_settings', 'field_settings', 'lead_settings', 'whatsapp_service_settings']
       settings_open = settings_controllers.include?(controller_name)
-      settings_visible = can_access.call(:manage, :marketing) ||
-                         can_access.call(:view, :catalogos) ||
+      # "Atendimento WhatsApp" só aparece com o número da empresa conectado.
+      sidebar_tenant = respond_to?(:current_tenant) ? current_tenant : Current.tenant
+      whatsapp_service_visible = sidebar_tenant.present? &&
+                                 can_access.call(:manage, :whatsapp_inbox) &&
+                                 WhatsappBusinessIntegration.current(sidebar_tenant)&.messaging_ready?
+      settings_visible = can_access.call(:view, :catalogos) ||
                          tenant_owner? ||
                          can_access.call(:manage, :distribution_rules) ||
-                         can_access.call(:manage, :field_settings)
+                         can_access.call(:manage, :field_settings) ||
+                         whatsapp_service_visible
     %>
     <% if settings_visible %>
       <li class="ax-nav__section">Configuração</li>
@@ -279,11 +339,11 @@
           <i class="bi bi-chevron-down ax-nav__chevron"></i>
         </button>
         <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless settings_open %>>
-          <% if can_access.call(:manage, :marketing) %>
-            <li><%= link_to edit_admin_layout_setting_path, class: "ax-nav__link #{'active' if controller_name == 'layout_settings'}" do %><i class="bi bi-palette"></i><span>Identidade e Marca</span><% end %></li>
-          <% end %>
           <% if can_access.call(:manage, :distribution_rules) %>
             <li><%= link_to edit_admin_lead_setting_path, class: "ax-nav__link #{'active' if controller_name == 'lead_settings'}" do %><i class="bi bi-person-check"></i><span>Configurações de Leads</span><% end %></li>
+          <% end %>
+          <% if whatsapp_service_visible %>
+            <li><%= link_to edit_admin_whatsapp_service_setting_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_service_settings'}" do %><i class="bi bi-whatsapp"></i><span>Atendimento WhatsApp</span><% end %></li>
           <% end %>
           <% if can_access.call(:view, :catalogos) %>
             <li><%= link_to admin_attribute_options_path, class: "ax-nav__link #{'active' if controller_name == 'attribute_options'}" do %><i class="bi bi-tags"></i><span>Catálogos Dinâmicos</span><% end %></li>
@@ -300,60 +360,35 @@
       </li>
     <% end %>
 
-    <%# Integrações técnicas %>
-    <% schedule_context = can_access.call(:view, :agenda_fotografia) || can_access.call(:manage, :agenda_fotografia) || can_access.call(:manage, :integracoes) %>
-    <% if can_access.call(:manage, :integracoes) || schedule_context %>
-      <li class="ax-nav__section">Integrações</li>
-      <% integ_open = ['meta_integrations', 'whatsapp_integrations', 'email_settings', 'push_settings', 'webhook_settings', 'dwv_integrations', 'loft_integrations', 'portal_integrations', 'scheduling_integrations', 'image_migration_status', 'ai_integrations', 'google_integrations', 'tracking_integrations', 'storage_integrations'].include?(controller_name) || vista_soft_context %>
-      <li class="ax-nav__group <%= 'is-open' if integ_open %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= integ_open %>">
-        <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= integ_open %>">
-          <i class="bi bi-plug"></i><span>Integrações</span>
-          <i class="bi bi-chevron-down ax-nav__chevron"></i>
-        </button>
-        <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless integ_open %>>
-          <% if can_access.call(:manage, :integracoes) %>
-            <li><%= link_to admin_portal_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'portal_integrations'}" do %><i class="bi bi-building"></i><span>Portais</span><% end %></li>
-            <li><%= link_to admin_loft_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'loft_integrations'}" do %><i class="bi bi-hdd-rack"></i><span>Loft Soft</span><% end %></li>
-            <li><%= link_to admin_dwv_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'dwv_integrations'}" do %><i class="bi bi-hdd-network"></i><span>DWV</span><% end %></li>
-            <li><%= link_to admin_whatsapp_integration_path, class: "ax-nav__link #{'active' if controller_name == 'whatsapp_integrations'}" do %><i class="bi bi-whatsapp"></i><span>WhatsApp</span><% end %></li>
-            <li><%= link_to edit_admin_email_setting_path, class: "ax-nav__link #{'active' if controller_name == 'email_settings'}" do %><i class="bi bi-envelope-at"></i><span>E-mail (SMTP)</span><% end %></li>
-            <li><%= link_to edit_admin_push_setting_path, class: "ax-nav__link #{'active' if controller_name == 'push_settings'}" do %><i class="bi bi-phone-vibrate"></i><span>Push (PWA)</span><% end %></li>
-            <li><%= link_to admin_meta_integrations_path, class: "ax-nav__link #{'active' if controller_name == 'meta_integrations'}" do %><i class="bi bi-meta"></i><span>Meta Leads</span><% end %></li>
-            <li><%= link_to admin_google_integration_path, class: "ax-nav__link #{'active' if controller_name == 'google_integrations'}" do %><i class="bi bi-google"></i><span>Google</span><% end %></li>
-            <li><%= link_to admin_tracking_integration_path, class: "ax-nav__link #{'active' if controller_name == 'tracking_integrations'}" do %><i class="bi bi-bullseye"></i><span>Trackeamento</span><% end %></li>
-            <li><%= link_to admin_storage_integration_path, class: "ax-nav__link #{'active' if controller_name == 'storage_integrations'}" do %><i class="bi bi-cloud-arrow-up"></i><span>Armazenamento</span><% end %></li>
-          <% end %>
-          <% if schedule_context %>
-            <li><%= link_to admin_scheduling_integration_path, class: "ax-nav__link #{'active' if controller_name == 'scheduling_integrations'}" do %><i class="bi bi-calendar2-check"></i><span>Agendamento</span><% end %></li>
-          <% end %>
-          <% if can_access.call(:manage, :integracoes) %>
-            <li><%= link_to admin_webhook_settings_path, class: "ax-nav__link #{'active' if controller_name == 'webhook_settings'}" do %><i class="bi bi-broadcast"></i><span>Webhooks</span><% end %></li>
-            <li><%= link_to admin_ai_integration_path, class: "ax-nav__link #{'active' if controller_name == 'ai_integrations'}" do %><i class="bi bi-stars"></i><span>IA</span><% end %></li>
-            <li><%= link_to admin_habitations_path(sort: "last_sync_at", direction: "desc"), class: "ax-nav__link #{'active' if vista_soft_context}" do %><i class="bi bi-arrow-repeat"></i><span>Vista Soft</span><% end %></li>
-            <li><%= link_to admin_image_migration_status_path, class: "ax-nav__link #{'active' if controller_name == 'image_migration_status'}" do %><i class="bi bi-images"></i><span>Migração de Imagens</span><% end %></li>
-          <% end %>
-        </ul>
-      </li>
-    <% end %>
-
-    <%# Administração (submenu) %>
+    <%# Configurações da Conta (ex-Administração + marca + notificações) %>
     <%
-      admin_controllers = ['profiles', 'access_security', 'access_audit_logs', 'data_export_audit_logs', 'whatsapp_campaign_recipients', 'whatsapp_campaign_unsubscribes']
+      admin_controllers = ['account_settings', 'layout_settings', 'email_settings', 'push_settings', 'profiles', 'access_security', 'access_audit_logs', 'data_export_audit_logs', 'presentation_audit_logs', 'whatsapp_campaign_recipients', 'whatsapp_campaign_unsubscribes']
       admin_context = admin_controllers.include?(controller_name) || controller_path == 'admin/field/audit_logs'
       audit_menu_visible = can_access.call(:view, :field_audit) || can_access.call(:view, :access_audit) || can_access.call(:view, :data_export_audit)
       security_menu_visible = can_access.call(:manage, :access_security)
       whatsapp_admin_menu_visible = can_access.call(:view, :whatsapp_campaigns)
+      brand_menu_visible = can_access.call(:manage, :marketing)
+      notif_menu_visible = can_access.call(:manage, :integracoes)
     %>
-    <% if tenant_owner? || security_menu_visible || audit_menu_visible || whatsapp_admin_menu_visible %>
-      <li class="ax-nav__section">Administração</li>
+    <% if tenant_owner? || security_menu_visible || audit_menu_visible || whatsapp_admin_menu_visible || brand_menu_visible || notif_menu_visible %>
+      <li class="ax-nav__section">Conta</li>
       <li class="ax-nav__group <%= 'is-open' if admin_context %>" data-controller="ax-disclosure" data-ax-disclosure-open-value="<%= admin_context %>">
         <button type="button" class="ax-nav__link ax-nav__link--group" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="<%= admin_context %>">
-          <i class="bi bi-shield-lock-fill"></i><span>Administração</span>
+          <i class="bi bi-building-gear"></i><span>Configurações da Conta</span>
           <i class="bi bi-chevron-down ax-nav__chevron"></i>
         </button>
         <ul class="ax-nav__sub" data-ax-disclosure-target="content" <%= 'hidden' unless admin_context %>>
+          <li><%= link_to admin_account_settings_path, class: "ax-nav__link #{'active' if controller_name == 'account_settings'}" do %><i class="bi bi-grid-1x2"></i><span>Visão geral</span><% end %></li>
+          <% if brand_menu_visible %>
+            <li><%= link_to edit_admin_layout_setting_path, class: "ax-nav__link #{'active' if controller_name == 'layout_settings'}" do %><i class="bi bi-palette"></i><span>Identidade e Marca</span><% end %></li>
+          <% end %>
           <% if tenant_owner? %>
             <li><%= link_to admin_profiles_path, class: "ax-nav__link #{'active' if controller_name == 'profiles'}" do %><i class="bi bi-shield-lock"></i><span>Perfis</span><% end %></li>
+          <% end %>
+          <% if notif_menu_visible %>
+            <li class="ax-nav__caption">Notificações</li>
+            <li><%= link_to edit_admin_email_setting_path, class: "ax-nav__link #{'active' if controller_name == 'email_settings'}" do %><i class="bi bi-envelope-at"></i><span>Meu SMTP</span><% end %></li>
+            <%# Push (VAPID) é global, administrado pelo Admin do Sistema em Notificações Globais — fora dos perfis de conta. %>
           <% end %>
           <% if whatsapp_admin_menu_visible %>
             <li class="ax-nav__caption">WhatsApp</li>
@@ -376,6 +411,9 @@
           <% if can_access.call(:view, :data_export_audit) %>
             <li><%= link_to admin_data_export_audit_logs_path, class: "ax-nav__link #{'active' if controller_name == 'data_export_audit_logs'}" do %><i class="bi bi-file-earmark-arrow-down"></i><span>Auditoria de Exportações</span><% end %></li>
           <% end %>
+          <% if can_access.call(:view, :access_audit) %>
+            <li><%= link_to admin_presentation_audit_logs_path, class: "ax-nav__link #{'active' if controller_name == 'presentation_audit_logs'}" do %><i class="bi bi-person-badge"></i><span>Apresentações WhatsApp</span><% end %></li>
+          <% end %>
         </ul>
       </li>
     <% end %>
@@ -386,6 +424,16 @@
       <li class="ax-nav__item">
         <%= link_to admin_system_path, class: "ax-nav__link #{'active' if controller_name == 'system'}" do %>
           <i class="bi bi-hdd-stack"></i><span>Painel do Sistema</span>
+        <% end %>
+      </li>
+      <li class="ax-nav__item">
+        <%= link_to admin_system_error_events_path, class: "ax-nav__link #{'active' if controller_name == 'error_events'}" do %>
+          <i class="bi bi-bug"></i><span>Erros da Aplicação</span>
+        <% end %>
+      </li>
+      <li class="ax-nav__item">
+        <%= link_to edit_admin_system_notification_settings_path, class: "ax-nav__link #{'active' if controller_name == 'notification_settings'}" do %>
+          <i class="bi bi-broadcast-pin"></i><span>Notificações Globais</span>
         <% end %>
       </li>
     <% end %>

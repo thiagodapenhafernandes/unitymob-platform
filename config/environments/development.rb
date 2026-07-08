@@ -76,6 +76,10 @@ Rails.application.configure do
   # Compila assets dinamicamente em dev (evita servir digests obsoletos do manifest/public/assets).
   config.assets.compile = true
   config.assets.check_precompiled_asset = false
+  # DEV sempre resolve assets AO VIVO (ignora manifest/public/assets stale).
+  # Sem isso, qualquer precompile local congela CSS/JS até apagar public/assets
+  # e reiniciar — foi fonte de horas de debug fantasma.
+  config.assets.resolve_with = [:environment]
   # Dev: não cachear assets estáticos no navegador (mudanças aparecem na hora, sem precisar de anônimo).
   config.public_file_server.headers = { "Cache-Control" => "no-cache, no-store, must-revalidate" }
 

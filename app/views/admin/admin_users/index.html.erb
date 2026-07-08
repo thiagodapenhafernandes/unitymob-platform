@@ -41,8 +41,9 @@
       <i class="bi bi-search"></i>
       <%= f.text_field :query, value: params[:query], class: "ax-control", placeholder: "Buscar por nome, e-mail, CRECI ou ID..." %>
     </div>
-    <%= f.collection_select :profile_id, @available_profiles, :id, :name,
-          { selected: params[:profile_id], prompt: "Todos os perfis" },
+    <%= f.select :profile_id,
+          options_from_collection_for_select(@available_profiles, :id, ->(profile) { profile_filter_label(profile) }, params[:profile_id]),
+          { include_blank: "Todos os perfis" },
           { class: "ax-control", data: { action: "change->auto-submit#submit" } } %>
     <%= f.select :acting_type, acting_options,
           { selected: params[:acting_type], prompt: "Todas as atuações" },
@@ -66,8 +67,7 @@
       <thead>
         <tr>
           <th>Usuário</th>
-          <th>Perfil vertical</th>
-          <th>Função</th>
+          <th>Perfil de acesso</th>
           <th class="ax-num">Status</th>
           <th class="ax-num">Atuação</th>
           <th>Gestor</th>
@@ -100,18 +100,7 @@
                 </div>
               </td>
               <td>
-                <% if user.profile %>
-                  <%= ax_badge(user.profile.name, tone: :blue) %>
-                <% else %>
-                  <%= ax_badge(user.role.humanize, tone: :gray) %>
-                <% end %>
-              </td>
-              <td>
-                <% if user.horizontal_profile %>
-                  <%= ax_badge(user.horizontal_profile.name, tone: :gray) %>
-                <% else %>
-                  <span class="au-muted">—</span>
-                <% end %>
+                <%= ax_badge(user.access_profile_name, tone: user.access_profile ? :blue : :gray) %>
               </td>
               <td class="ax-num">
                 <%= ax_badge(user.active ? "Ativo" : "Inativo", tone: user.active ? :green : :red, dot: true) %>
@@ -124,8 +113,8 @@
                 <% end %>
               </td>
               <td>
-                <% if user.manager %>
-                  <span class="au-strong"><%= user.manager.name %></span>
+                <% if user.manager_display_name.present? %>
+                  <span class="au-strong"><%= user.manager_display_name %></span>
                 <% else %>
                   <span class="au-muted">—</span>
                 <% end %>

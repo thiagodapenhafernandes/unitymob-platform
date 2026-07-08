@@ -3,8 +3,17 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["overlay", "title", "detail"]
 
+  // Só mostra o overlay se a navegação passar deste tempo (evita flash em
+  // navegação rápida servida do cache do Turbo).
+  static SHOW_DELAY_MS = 150
+  // Failsafe: se turbo:load/render nunca chegar (visit cancelado/erro/lento),
+  // esconde o overlay sozinho em vez de deixá-lo preso até o reload.
+  static FAILSAFE_MS = 10000
+
   connect() {
     this.showTimer = null
+    this.failsafeTimer = null
+    this.pendingFrameResumes = []
     this.navigationStartedAt = null
     this.boundClick = this.handleClick.bind(this)
     this.boundSubmit = this.handleSubmit.bind(this)
@@ -13,6 +22,7 @@ export default class extends Controller {
     this.boundLoad = this.handlePageReady.bind(this)
     this.boundBeforeCache = this.hideNow.bind(this)
     this.boundPageShow = this.handlePageReady.bind(this)
+    this.boundNavError = this.hideNow.bind(this)
 
     document.addEventListener("click", this.boundClick, true)
     document.addEventListener("submit", this.boundSubmit, true)
@@ -21,6 +31,10 @@ export default class extends Controller {
     document.addEventListener("turbo:load", this.boundLoad)
     document.addEventListener("turbo:render", this.boundLoad)
     document.addEventListener("turbo:before-cache", this.boundBeforeCache)
+    // Falhas/abortos de navegação que NÃO disparam turbo:load — sem estes, o
+    // overlay ficava preso ("Preparando workspace administrativo").
+    document.addEventListener("turbo:fetch-request-error", this.boundNavError)
+    document.addEventListener("turbo:frame-missing", this.boundNavError)
     window.addEventListener("pageshow", this.boundPageShow)
 
     this.handlePageReady()
@@ -34,6 +48,8 @@ export default class extends Controller {
     document.removeEventListener("turbo:load", this.boundLoad)
     document.removeEventListener("turbo:render", this.boundLoad)
     document.removeEventListener("turbo:before-cache", this.boundBeforeCache)
+    document.removeEventListener("turbo:fetch-request-error", this.boundNavError)
+    document.removeEventListener("turbo:frame-missing", this.boundNavError)
     window.removeEventListener("pageshow", this.boundPageShow)
     this.hideNow()
   }
@@ -63,7 +79,14 @@ export default class extends Controller {
     if (!document.documentElement.classList.contains("ax-admin-is-loading")) return
     if (!event.target?.id?.startsWith("admin_dashboard_")) return
 
-    event.preventDefault()
+    // Adia o render do frame do dashboard durante a navegação, MAS guarda o
+    // resume: sem chamá-lo, o Turbo deixaria o frame preso pra sempre. É
+    // retomado no hideNow (fim da navegação / failsafe).
+    const resume = event.detail?.resume
+    if (typeof resume === "function") {
+      event.preventDefault()
+      this.pendingFrameResumes.push(resume)
+    }
   }
 
   handlePageReady() {
@@ -74,7 +97,7 @@ export default class extends Controller {
   showSoon(message) {
     window.clearTimeout(this.showTimer)
     this.navigationStartedAt = performance.now()
-    this.show(message)
+    this.showTimer = window.setTimeout(() => this.show(message), this.constructor.SHOW_DELAY_MS)
   }
 
   show(message) {
@@ -86,11 +109,16 @@ export default class extends Controller {
     this.overlayTarget.hidden = false
     this.overlayTarget.classList.add("is-visible")
     document.documentElement.classList.add("ax-admin-is-loading")
+
+    window.clearTimeout(this.failsafeTimer)
+    this.failsafeTimer = window.setTimeout(() => this.hideNow(), this.constructor.FAILSAFE_MS)
   }
 
   hideNow() {
     window.clearTimeout(this.showTimer)
+    window.clearTimeout(this.failsafeTimer)
     this.showTimer = null
+    this.failsafeTimer = null
 
     if (this.hasOverlayTarget) {
       this.overlayTarget.classList.remove("is-visible")
@@ -98,6 +126,13 @@ export default class extends Controller {
     }
 
     document.documentElement.classList.remove("ax-admin-is-loading")
+
+    // Libera frames do dashboard que foram adiados durante a navegação.
+    if (this.pendingFrameResumes && this.pendingFrameResumes.length) {
+      const resumes = this.pendingFrameResumes
+      this.pendingFrameResumes = []
+      resumes.forEach((resume) => { try { resume() } catch (_e) { /* frame já resolvido */ } })
+    }
   }
 
   updateMetrics() {

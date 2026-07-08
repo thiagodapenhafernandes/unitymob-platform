@@ -1,3 +1,22 @@
+<%
+  distribution_rule_action_label = lambda do |text, tooltip|
+    safe_join([
+      text,
+      tag.span(
+        tag.i(class: "bi bi-info-circle", aria: { hidden: true }),
+        class: "ax-field-label__info distribution-rule-action-tooltip",
+        role: "img",
+        aria: { label: "Ajuda: #{text}" },
+        data: {
+          controller: "ax-tooltip",
+          ax_tooltip_text_value: tooltip,
+          action: "click->distribution-rule#stopTooltipClick"
+        }
+      )
+    ], " ")
+  end
+%>
+
 <%= ax_aside_panel(
       title: "Configuração da regra",
       token: "Distribuição",
@@ -69,21 +88,82 @@
 
     <%= ax_operational_panel(eyebrow: "Campo", title: "Check-in geolocalizado", actions: ax_badge("Opcional", tone: :gray)) do %>
       <div class="ax-panel-body">
-        <%= ax_inline_notice(tone: :neutral, icon: "geo-alt") do %>
-          Quando ativo, a regra só distribui para corretores com <strong>check-in ativo</strong>. Tudo desligado por padrão.
-        <% end %>
-        <div class="ax-option-stack">
-          <%= ax_toggle_chip(f, :require_active_checkin, label: "Exigir check-in ativo") %>
-          <%= ax_toggle_chip(f, :require_inside_radius, label: "Exigir corretor dentro do raio da loja agora") %>
-          <%= ax_toggle_chip(f, :require_active_shift, label: "Exigir turno ativo no momento") %>
-          <%= ax_toggle_chip(f, :exclude_suspicious_checkins, label: "Excluir check-ins suspeitos") %>
+        <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
+          <%= ax_field_label(f, :checkin_store_ids, text: "Vinculação com lojas") %>
+          <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" data-ax-modal-open="#distributionRuleStoreRotationModal">
+            <i class="bi bi-info-circle"></i>Como funciona?
+          </button>
         </div>
         <div class="ax-field">
-          <%= ax_field_label(f, :checkin_store_ids, text: "Limitar a uma ou mais lojas") %>
-          <%= f.collection_select :checkin_store_ids, Store.active.order(:name), :id, :name, {},
+          <%= f.collection_select :checkin_store_ids, current_tenant.stores.active.order(:name), :id, :name, { selected: f.object.checkin_store_id_list },
                 multiple: true, class: "ax-control",
-                data: { controller: "tom-select", placeholder: "Selecione lojas (vazio = todas)" } %>
-          <p class="ax-field__hint">Vazio = qualquer loja conta. Selecione 1 ou mais para restringir.</p>
+                data: {
+                  controller: "tom-select",
+                  placeholder: "Selecione lojas (vazio = todas)",
+                  distribution_rule_target: "checkinStoreSelect",
+                  action: "change->distribution-rule#toggleStoreContext"
+                } %>
+          <p class="ax-field__hint">Selecione uma ou mais lojas para a regra acompanhar check-ins. Vazio = qualquer loja ativa.</p>
+        </div>
+
+        <div class="section-toggle-container<%= ' tw-hidden' if f.object.checkin_store_id_list.blank? %>" data-distribution-rule-target="storeContextSection">
+          <%= ax_inline_notice(tone: :success, icon: "arrow-repeat") do %>
+            Com múltiplas lojas, a fila pode ser atualizada intercalando corretores por loja, preservando o rodízio entre unidades.
+          <% end %>
+
+          <div class="ax-option-stack">
+            <%= ax_toggle_chip(f, :require_active_checkin,
+                  label: distribution_rule_action_label.call(
+                    "Exigir check-in ativo",
+                    "Só considera corretores com check-in ativo no campo. Sem check-in válido, a regra fica sem candidatos elegíveis por este critério."
+                  )) %>
+            <%= ax_toggle_chip(f, :require_inside_radius,
+                  label: distribution_rule_action_label.call(
+                    "Exigir corretor dentro do raio da loja agora",
+                    "Além do check-in ativo, remove corretores que já saíram do raio da loja e têm saída de raio registrada."
+                  )) %>
+            <%= ax_toggle_chip(f, :require_active_shift,
+                  label: distribution_rule_action_label.call(
+                    "Exigir turno ativo no momento",
+                    "O check-in só conta quando a loja vinculada está em uma janela operacional ativa no horário atual."
+                  )) %>
+            <%= ax_toggle_chip(f, :exclude_suspicious_checkins,
+                  label: distribution_rule_action_label.call(
+                    "Excluir check-ins suspeitos",
+                    "Remove da regra os check-ins marcados pela análise antifraude como suspeitos antes de montar a lista de corretores elegíveis."
+                  )) %>
+          </div>
+
+          <hr class="ax-separator">
+
+          <div class="ax-option-stack">
+            <%= ax_toggle_chip(f, :auto_update_agents_enabled,
+                  label: distribution_rule_action_label.call(
+                    "Atualizar corretores automaticamente pelos check-ins",
+                    "Quando um check-in entra em uma loja vinculada e no evento selecionado, a fila de corretores da regra é recalculada automaticamente."
+                  )) %>
+            <%= ax_toggle_chip(f, :auto_update_shuffle_agents,
+                  label: distribution_rule_action_label.call(
+                    "Embaralhar corretores antes de atualizar",
+                    "Randomiza a ordem dos corretores elegíveis antes de salvar a fila automática. Desligado, preserva a ordem encontrada por loja e horário."
+                  )) %>
+          </div>
+          <div class="ax-field">
+            <%= ax_field_label(f, :auto_update_trigger,
+                  text: "Quando atualizar a fila",
+                  tooltip: "Define quais eventos de check-in disparam a atualização automática da fila desta regra." ) %>
+            <%= f.select :auto_update_trigger,
+                  options_for_select(DistributionRule.auto_update_trigger_options, f.object.auto_update_trigger),
+                  {},
+                  multiple: true,
+                  class: "ax-control",
+                  data: { controller: "tom-select", placeholder: "Selecione os eventos de check-in" } %>
+            <p class="ax-field__hint">A atualização usa os corretores com check-in na loja, na janela escolhida.</p>
+          </div>
+
+          <%= ax_inline_notice(tone: :warning, icon: "clock") do %>
+            Execução: <strong><%= f.object.auto_update_trigger_label %></strong>.
+          <% end %>
         </div>
       </div>
     <% end %>
@@ -142,5 +222,25 @@
         </div>
       </div>
     <% end %>
+
+    <%= ax_quick_modal(id: "distributionRuleStoreRotationModal", title: "Como funciona o rodízio entre lojas?", size: :md) do %>
+      <p class="tw-text-ink-muted">
+        Quando a regra acompanha mais de uma loja, os corretores encontrados nos check-ins são reunidos em uma fila única.
+        A ordem intercala as lojas para evitar que uma unidade com muitos check-ins ocupe toda a fila.
+      </p>
+
+      <%= ax_inline_notice(tone: :success, icon: "arrow-repeat") do %>
+        <strong>Exemplo prático</strong><br>
+        Se as lojas A, B e C tiverem A1, A2, B1, B2 e C1, a fila fica:
+        <code>A1 -&gt; B1 -&gt; C1 -&gt; A2 -&gt; B2</code>.
+      <% end %>
+
+      <p class="tw-text-sm tw-text-ink-muted tw-mt-3" style="margin-bottom:0">
+        Lojas sem corretores naquele evento são puladas. A regra ainda respeita filtros de disponibilidade,
+        perfil, canais e demais critérios configurados.
+      </p>
+    <% end %>
+
+    <%= render "admin/distribution_rules/form_summary" %>
   </div>
 <% end %>

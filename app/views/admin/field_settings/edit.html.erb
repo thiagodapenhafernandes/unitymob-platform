@@ -27,10 +27,88 @@
 
 <div class="ax-card tw-mt-3">
   <div class="ax-card__body">
+    <div class="tw-flex tw-items-start tw-justify-between tw-gap-3 tw-mb-3">
+      <div>
+        <h5 class="tw-font-bold tw-mb-1 tw-flex tw-items-center tw-gap-2">
+          <i class="bi bi-person-dash-fill" style="color:var(--admin-primary)"></i>Bloqueios pontuais de check-in
+        </h5>
+        <p class="ax-page-subtitle tw-mb-0">
+          Com o check-in ativado, todos os usuários ativos podem usar o botão no PWA. Use esta lista apenas para bloquear exceções.
+          A loja é definida pela proximidade real do usuário com as lojas configuradas.
+        </p>
+      </div>
+      <%= ax_badge("#{@blocked_agents_count} bloqueado(s)", tone: @blocked_agents_count.positive? ? :amber : :green) %>
+    </div>
+
+    <% if @stores.empty? %>
+      <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+        Cadastre uma loja ativa antes de usar check-in. O fluxo depende de loja com coordenadas, raio e horário operacional.
+        <%= link_to "Cadastrar loja", new_admin_store_path, class: "tw-font-bold" %>
+      <% end %>
+    <% end %>
+
+    <div class="ax-table-shell">
+      <table class="ax-table">
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th>Acesso ao check-in</th>
+            <th>Regra aplicada</th>
+            <th class="tw-text-right">Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @field_users.each do |user| %>
+            <% blocked = @blocked_agent_ids.include?(user.id) %>
+            <tr>
+              <td>
+                <strong><%= user.name %></strong>
+                <div class="tw-text-xs tw-text-ink-muted"><%= user.email %></div>
+              </td>
+              <td>
+                <%= ax_badge(blocked ? "Bloqueado" : "Liberado por padrão", tone: blocked ? :amber : :green, dot: !blocked) %>
+              </td>
+              <td>
+                Loja mais próxima dentro do raio e horário configurados
+              </td>
+              <td class="tw-text-right">
+                <% if blocked %>
+                  <%= button_to unblock_agent_admin_field_settings_path,
+                        method: :patch,
+                        params: { admin_user_id: user.id },
+                        class: "ax-btn ax-btn--sm ax-btn--primary" do %>
+                    Liberar
+                  <% end %>
+                <% else %>
+                  <%= button_to block_agent_admin_field_settings_path,
+                        method: :patch,
+                        params: { admin_user_id: user.id },
+                        class: "ax-btn ax-btn--sm ax-btn--ghost",
+                        data: { turbo_confirm: "Bloquear check-in de #{user.name}?" } do %>
+                    Bloquear
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          <% if @field_users.empty? %>
+            <tr>
+              <td colspan="4"><div class="ax-empty">Nenhum usuário ativo encontrado.</div></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="ax-card tw-mt-3">
+  <div class="ax-card__body">
     <h6 class="tw-font-bold tw-flex tw-items-center tw-gap-2"><i class="bi bi-info-circle-fill" style="color:var(--admin-primary)"></i>Checklist antes de ativar</h6>
     <ul class="tw-text-sm" style="margin-bottom:0">
       <li>Lojas cadastradas em <%= link_to "/admin/stores", admin_stores_path %> com coordenadas, raio e turnos.</li>
-      <li>Corretores com <code>field_agent_enabled = true</code> + <code>default_store</code> + turnos vinculados.</li>
+      <li>Regras de distribuição configuradas para exigir check-in quando esse filtro fizer parte da operação.</li>
+      <li>Bloqueios pontuais revisados apenas para usuários que não devem usar o check-in.</li>
       <li>Worker <code>solid_queue</code> rodando com scheduler ativo (cron <code>recurring.yml</code>).</li>
       <li>PostGIS habilitado no Postgres.</li>
     </ul>

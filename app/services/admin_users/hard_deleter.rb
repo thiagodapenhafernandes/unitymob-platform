@@ -20,7 +20,11 @@ module AdminUsers
       "habitation_share_links" => %w[admin_user_id],  # dependent: :destroy
       "store_shifts"          => %w[admin_user_id],   # dependent: :destroy
       "stores"                => %w[director_admin_user_id], # directed_stores dependent: :nullify
-      "trusted_devices"       => %w[admin_user_id]    # dependent: :destroy
+      "trusted_devices"       => %w[admin_user_id],   # dependent: :destroy
+      # Perna secundária da FK COMPOSTA (manager_id, tenant_id) → admin_users:
+      # a introspecção desdobra as duas colunas; o NULLIFY de manager_id resolve
+      # a constraint — tenant_id jamais é alterado aqui.
+      "admin_users"           => %w[tenant_id]
     }.freeze
 
     # Propriedade/carteira de trabalho → transferida para o admin destino.
@@ -33,15 +37,24 @@ module AdminUsers
       "leads"                      => %w[admin_user_id],
       "marketing_campaigns"        => %w[admin_user_id],
       "proposals"                  => %w[admin_user_id],
-      "tasks"                      => %w[admin_user_id]
+      "tasks"                      => %w[admin_user_id],
+      "whatsapp_campaigns"         => %w[created_by_id] # campanha é ativo da conta
     }.freeze
 
     # Dados pessoais/operacionais do usuário → apagados.
     DESTROY = {
+      # Convite multi-conta: a associação morre com o titular (primary) OU com o
+      # espelho (member) — sem qualquer dos dois lados ela não faz sentido. Os
+      # refs de auditoria (invited_by/revoked_by) e manager são NULLIFY abaixo.
+      "account_memberships"          => %w[primary_admin_user_id member_admin_user_id],
       "distribution_rule_agents"     => %w[admin_user_id],
       "habitation_broker_assignments" => %w[admin_user_id],
+      "habitation_exports"           => %w[admin_user_id], # arquivos de export do usuário (auditoria própria não tem FK)
+      "inbound_webhook_tokens"       => %w[admin_user_id], # credencial pessoal: morre com o usuário
+      "lead_labels"                  => %w[admin_user_id], # etiquetas privadas (labelings limpas antes)
       "location_pings"               => %w[admin_user_id],
       "manual_checkin_requests"      => %w[admin_user_id],
+      "push_delivery_events"         => %w[admin_user_id], # telemetria de push
       "push_subscriptions"           => %w[admin_user_id],
       "user_meta_integrations"       => %w[admin_user_id]
     }.freeze
@@ -49,7 +62,13 @@ module AdminUsers
     # Referências secundárias/atores → nulificadas (histórico preservado sem dono).
     NULLIFY = {
       "access_control_rules"          => %w[created_by_id],
-      "admin_users"                   => %w[manager_id],
+      # primary_admin_user_id (auto-ref do espelho): nulificar orfaniza os
+      # espelhos do usuário excluído em OUTRAS contas com segurança — DESTROY
+      # deletaria o admin_user espelho e orfanaria os dados dele no tenant
+      # convidado (fora do alcance da reatribuição, que é single-tenant).
+      "admin_users"                   => %w[manager_id rentals_manager_id primary_admin_user_id],
+      # Convite multi-conta: snapshot do gestor + atores de auditoria do convite.
+      "account_memberships"           => %w[manager_id rentals_manager_id invited_by_id revoked_by_id],
       "ai_property_suggestions"       => %w[admin_user_id],
       "client_interactions"           => %w[admin_user_id],
       "habitation_interactions"       => %w[admin_user_id],
@@ -63,7 +82,14 @@ module AdminUsers
       "trusted_devices"               => %w[created_by_id],
       "whatsapp_business_integrations" => %w[connected_by_admin_user_id],
       "whatsapp_conversations"        => %w[assigned_admin_user_id],
-      "whatsapp_messages"             => %w[admin_user_id]
+      "whatsapp_messages"             => %w[admin_user_id],
+      "automation_workflows"          => %w[created_by_id],
+      "automation_workflow_versions"  => %w[created_by_id published_by_id],
+      # cartões pessoais viram órfãos invisíveis (available_for exige dono ou
+      # system); DELETE quebraria a FK de whatsapp_messages.presentation_card_id
+      "presentation_cards"            => %w[admin_user_id],
+      "whatsapp_campaign_recipients"  => %w[admin_user_id],
+      "whatsapp_campaign_unsubscribes" => %w[reenabled_by_id]
     }.freeze
 
     def self.call(user:, target:)
@@ -84,6 +110,7 @@ module AdminUsers
       ActiveRecord::Base.transaction do
         REASSIGN.each { |table, cols| cols.each { |col| update_col(table, col, @target.id) } }
         NULLIFY.each  { |table, cols| cols.each { |col| update_col(table, col, nil) } }
+        delete_lead_labelings_of_user_labels # antes de lead_labels (FK sem cascade)
         DESTROY.each  { |table, cols| cols.each { |col| delete_rows(table, col) } }
         @user.destroy!
       end
@@ -101,6 +128,14 @@ module AdminUsers
       conn.update(
         "UPDATE #{conn.quote_table_name(table)} SET #{conn.quote_column_name(col)} = #{value_sql} " \
         "WHERE #{conn.quote_column_name(col)} = #{conn.quote(@user.id)}"
+      )
+    end
+
+    # lead_labelings referencia lead_labels sem ON DELETE CASCADE: limpa as
+    # aplicações das etiquetas privadas do usuário antes de apagar as etiquetas.
+    def delete_lead_labelings_of_user_labels
+      conn.delete(
+        "DELETE FROM lead_labelings WHERE lead_label_id IN "         "(SELECT id FROM lead_labels WHERE admin_user_id = #{conn.quote(@user.id)})"
       )
     end
 

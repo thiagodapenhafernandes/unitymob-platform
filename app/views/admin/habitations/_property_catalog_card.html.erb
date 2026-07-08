@@ -1,13 +1,15 @@
 <%
-  card_return_to_path = @return_to_path || request.fullpath
+  card_return_to_path = "#{@return_to_path || request.fullpath}#habitation_#{imovel.id}"
   details_path = admin_habitation_path(imovel, return_to: card_return_to_path)
   edit_path = edit_admin_habitation_path(imovel, return_to: card_return_to_path) if admin_can_edit_habitation?(imovel)
+  media_modal_path = modal_admin_habitation_media_path(imovel, return_to: card_return_to_path) if admin_can_manage_habitation_media?(imovel)
   catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
   image_urls = catalog_property_image_urls(imovel)
   image_url = image_urls.first
   fallback_image_urls = image_urls.drop(1)
   display_title = imovel.display_title
   has_photo = image_urls.any? || imovel.has_any_photo?
+  publication_channels = admin_habitation_publication_channels(imovel)
   captador_name = imovel.primary_captador_name
   data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
   seconds_since_update = [Time.current - data_referencia, 0].max
@@ -44,20 +46,30 @@
   ]
 %>
 
-<article class="ax-property-card ax-property-card--catalog <%= 'is-muted property-card--inactive' if imovel.inactive_for_admin_card? %>"
+<article id="habitation_<%= imovel.id %>"
+         class="ax-property-card ax-property-card--catalog <%= 'is-muted property-card--inactive' if imovel.inactive_for_admin_card? %>"
          data-controller="clickable-card"
          data-clickable-card-url-value="<%= catalog_card_path %>">
-  <div class="ax-property-card__media">
+  <div class="ax-property-card__media" data-controller="fancybox-gallery">
     <% if image_url.present? %>
-      <%= image_tag image_url,
-                    alt: display_title,
-                    loading: "lazy",
-                    data: {
-                      controller: "image-fallback",
-                      action: "error->image-fallback#hide",
-                      image_fallback_container_selector_value: ".ax-property-card__media",
-                      image_fallback_fallback_urls_value: fallback_image_urls
-                    } %>
+      <%= link_to image_url,
+                  class: "ax-property-card__media-link",
+                  data: {
+                    controller: "stop-propagation",
+                    action: "click->stop-propagation#stop",
+                    fancybox: "admin-property-card-#{imovel.id}",
+                    caption: display_title
+                  } do %>
+        <%= image_tag image_url,
+                      alt: display_title,
+                      loading: "lazy",
+                      data: {
+                        controller: "image-fallback",
+                        action: "error->image-fallback#hide",
+                        image_fallback_container_selector_value: ".ax-property-card__media",
+                        image_fallback_fallback_urls_value: fallback_image_urls
+                      } %>
+      <% end %>
     <% else %>
       <div class="ax-property-card__empty-media">
         <i class="bi bi-image"></i>
@@ -81,8 +93,8 @@
       <% end %>
       <% if !has_photo %>
         <span class="ax-property-badge ax-property-badge--danger">Sem fotos</span>
-      <% elsif !imovel.exibir_no_site_flag? %>
-        <span class="ax-property-badge ax-property-badge--danger">Fora site</span>
+      <% elsif publication_channels.blank? %>
+        <span class="ax-property-badge ax-property-badge--danger">Não publicado</span>
       <% end %>
     </div>
 
@@ -106,7 +118,9 @@
             <span class="ax-property-chip ax-property-chip--dark" title="<%= imovel.codigo_dwv.present? ? "Código DWV: #{imovel.codigo_dwv}" : "Imóvel sincronizado via DWV" %>">DWV</span>
           <% end %>
           <span class="ax-property-chip ax-property-card__identity-status"><%= imovel.status.presence || "Status" %></span>
-          <% if imovel.broker_intake? %>
+          <% if publication_channels.any? %>
+            <%= render "admin/habitations/publication_channels", channels: publication_channels %>
+          <% elsif imovel.broker_intake? %>
             <span class="ax-property-chip ax-property-chip--warning"><%= imovel.intake_status_label %></span>
           <% end %>
           <span class="ax-property-card__identity-category"><%= imovel.categoria.presence || "Sem categoria" %></span>
@@ -116,7 +130,8 @@
       <%= render "admin/habitations/property_catalog_actions",
                  imovel: imovel,
                  details_path: details_path,
-                 edit_path: edit_path %>
+                 edit_path: edit_path,
+                 media_modal_path: media_modal_path %>
     </header>
 
     <div class="ax-property-card__meta">

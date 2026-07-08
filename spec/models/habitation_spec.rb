@@ -107,6 +107,157 @@ RSpec.describe Habitation, type: :model do
     end
   end
 
+  describe "photo environment ordering" do
+    it "uses manual environment positions before current gallery order" do
+      habitation = create(:habitation, codigo: "PHOTO-ENV-#{SecureRandom.hex(6)}")
+      habitation.photos.attach(io: StringIO.new("quarto dois"), filename: "quarto-2.jpg", content_type: "image/jpeg")
+      habitation.photos.attach(io: StringIO.new("quarto um"), filename: "quarto-1.jpg", content_type: "image/jpeg")
+      habitation.photos.attach(io: StringIO.new("quarto sem posicao"), filename: "quarto-auto.jpg", content_type: "image/jpeg")
+      habitation.photos.attach(io: StringIO.new("banheiro um"), filename: "banheiro-1.jpg", content_type: "image/jpeg")
+      attachments = habitation.photos.attachments.order(:id).to_a
+
+      habitation.set_photo_ambiente!(attachments[0], "Quartos", position: 2)
+      habitation.set_photo_ambiente!(attachments[1], "Quartos", position: 1)
+      habitation.set_photo_ambiente!(attachments[2], "Quartos")
+      habitation.set_photo_ambiente!(attachments[3], "Banheiros", position: 1)
+
+      habitation.organize_photos_by_ambiente!
+
+      expect(habitation.reload.photo_ids_order).to eq([
+        attachments[1].id,
+        attachments[3].id,
+        attachments[0].id,
+        attachments[2].id
+      ])
+    end
+
+    it "clears manual position when the environment is cleared" do
+      habitation = create(:habitation, codigo: "PHOTO-ENV-CLEAR-#{SecureRandom.hex(6)}")
+      habitation.photos.attach(io: StringIO.new("foto"), filename: "foto.jpg", content_type: "image/jpeg")
+      attachment = habitation.photos.attachments.first
+
+      habitation.set_photo_ambiente!(attachment, "Quartos", position: 3)
+      habitation.set_photo_ambiente!(attachment, "")
+
+      metadata = attachment.blob.reload.metadata
+      expect(metadata).not_to have_key("ambiente")
+      expect(metadata).not_to have_key("ambiente_position")
+    end
+
+    it "stores and organizes environments for external API pictures" do
+      habitation = create(
+        :habitation,
+        codigo: "PIC-ENV-#{SecureRandom.hex(6)}",
+        pictures: [
+          { "url" => "https://example.com/quarto-2.jpg" },
+          { "url" => "https://example.com/fachada.jpg" },
+          { "url" => "https://example.com/quarto-1.jpg" },
+          { "url" => "https://example.com/banheiro-1.jpg" }
+        ]
+      )
+
+      habitation.set_picture_ambiente!(0, "Quartos", position: 2)
+      habitation.set_picture_ambiente!(1, "Fachada")
+      habitation.set_picture_ambiente!(2, "Quartos", position: 1)
+      habitation.set_picture_ambiente!(3, "Banheiros", position: 1)
+
+      habitation.organize_photos_by_ambiente!
+
+      expect(habitation.reload.pictures.map { |picture| picture["url"] }).to eq([
+        "https://example.com/fachada.jpg",
+        "https://example.com/quarto-1.jpg",
+        "https://example.com/banheiro-1.jpg",
+        "https://example.com/quarto-2.jpg"
+      ])
+      expect(habitation.picture_ambiente_label(habitation.pictures.second, index: 1)).to eq("Quarto 1")
+      expect(habitation.picture_ambiente_label(habitation.pictures.third, index: 2)).to eq("Banheiro 1")
+    end
+  end
+
+  describe "inactive commercial status publication rules" do
+    it "requires suspension reason and disables site and portal publication" do
+      habitation = build(
+        :habitation,
+        status: "Suspenso",
+        motivo_suspensao: nil,
+        exibir_no_site_flag: true,
+        publicar_lais_ai: true,
+        publicar_imovelweb: true,
+        publicar_imovelweb_2: true,
+        publicar_chaves_na_mao: true,
+        publicar_casa_mineira: true,
+        publicar_viva_real_vrsync: true,
+        publicar_loft: true
+      )
+
+      expect(habitation).not_to be_valid
+      expect(habitation.errors[:motivo_suspensao]).to include("deve ser informado quando o status estiver Suspenso")
+      expect(habitation.exibir_no_site_flag).to be(false)
+      expect(habitation.publicar_lais_ai).to be(false)
+      expect(habitation.publicar_imovelweb).to be(false)
+      expect(habitation.publicar_imovelweb_2).to be(false)
+      expect(habitation.publicar_chaves_na_mao).to be(false)
+      expect(habitation.publicar_casa_mineira).to be(false)
+      expect(habitation.publicar_viva_real_vrsync).to be(false)
+      expect(habitation.publicar_loft).to be(false)
+    end
+
+    it "requires rented value for rented statuses" do
+      habitation = build(:habitation, status: "Alugado terceiros", valor_alugado_terceiros_cents: nil)
+
+      expect(habitation).not_to be_valid
+      expect(habitation.errors[:valor_alugado_terceiros_cents]).to include("deve ser informado quando o status estiver Alugado")
+    end
+
+    it "requires sold value for sold statuses" do
+      habitation = build(:habitation, status: "Vendido terceiros", valor_vendido_terceiros_cents: nil)
+
+      expect(habitation).not_to be_valid
+      expect(habitation.errors[:valor_vendido_terceiros_cents]).to include("deve ser informado quando o status estiver Vendido")
+    end
+  end
+
+  describe "#intake_missing_requirements" do
+    it "does not force owner city when the operational checklist does not require it" do
+      habitation = build(:habitation, :broker_intake, observacoes_visitas: nil)
+
+      missing = habitation.intake_missing_requirements(required_checks: %w[proprietario], require_owner_city: true)
+
+      expect(missing).not_to include("Cidade do proprietário")
+    end
+
+    it "keeps exchange acceptance controlled by its own operational check" do
+      habitation = build(:habitation, :broker_intake, aceita_permuta_answer: nil)
+
+      expect(habitation.intake_missing_requirements(required_checks: %w[valor_negociacao])).not_to include("Aceita permuta")
+      expect(habitation.intake_missing_requirements(required_checks: %w[permuta])).to include("Aceita permuta")
+    end
+
+    it "checks parking type and box only when those operational checks are active" do
+      habitation = build(
+        :habitation,
+        :broker_intake,
+        categoria: "Apartamento",
+        tipo_vaga: nil,
+        vagas_qtd: 1,
+        numero_box: nil
+      )
+
+      missing = habitation.intake_missing_requirements(required_checks: %w[vagas tipo_vaga box])
+
+      expect(missing).not_to include("Vaga de garagem")
+      expect(missing).to include("Tipo de vaga", "Box")
+    end
+
+    it "does not require situation and occupation for land even when checks are active" do
+      habitation = build(:habitation, :broker_intake, categoria: "Terreno", situacao: nil, ocupacao_status: nil)
+
+      missing = habitation.intake_missing_requirements(required_checks: %w[situacao ocupacao])
+
+      expect(missing).not_to include("Situação", "Ocupação")
+    end
+  end
+
   describe "#capture_price_reductions" do
     it "stores previous sale price and promotional value when sale price decreases" do
       habitation = create(:habitation, valor_venda_cents: 1_000_000_00, valor_promocional_cents: nil)
@@ -128,6 +279,16 @@ RSpec.describe Habitation, type: :model do
         valor_locacao_anterior_cents: 6_000_00,
         valor_promocional_cents: 5_500_00
       )
+    end
+  end
+
+  describe "#taxes_included_indicator?" do
+    it "only shows included taxes for rental properties" do
+      rental = build(:habitation, valor_venda_cents: 0, valor_locacao_cents: 5_000_00, valor_condominio_cents: 1, valor_iptu_cents: 100)
+      sale = build(:habitation, valor_venda_cents: 900_000_00, valor_locacao_cents: 0, valor_condominio_cents: 1, valor_iptu_cents: 100)
+
+      expect(rental).to be_taxes_included_indicator
+      expect(sale).not_to be_taxes_included_indicator
     end
   end
 end

@@ -1,0 +1,82 @@
+<% content_for :title, "Cartões de apresentação" %>
+
+<div class="layout-settings-workspace">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+    <div>
+      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+        <i class="bi bi-person-badge" style="color: var(--admin-primary);"></i>Cartões de apresentação
+      </h1>
+      <p class="ax-page-subtitle">Modelos de saudação para se apresentar no atendimento WhatsApp — enviados pelo número da empresa, sem expor seu contato pessoal.</p>
+    </div>
+    <%= ax_button("Novo cartão", new_admin_presentation_card_path, variant: :primary, icon: "plus-lg") %>
+  </div>
+
+  <div class="layout-settings-grid">
+    <div class="layout-settings-main">
+      <%= ax_operational_panel(eyebrow: "Empresa", title: "Template da empresa") do %>
+        <div class="ax-panel-body">
+          <p class="ax-field__hint tw-mt-0">Disponível para todos os corretores no atendimento; nome, CRECI e foto entram automaticamente de quem envia (<code>{nome}</code> e <code>{creci}</code> no texto são substituídos). Não pode ser excluído nem desativado.</p>
+          <div class="ax-table-wrap">
+            <table class="ax-table">
+              <thead><tr><th>Rótulo</th><th>Saudação</th><th>Formato</th><th class="tw-text-right"><%= "Ações" if current_admin_user.tenant_owner? %></th></tr></thead>
+              <tbody>
+                <% @system_cards.each do |card| %>
+                  <tr>
+                    <td class="ax-strong"><%= card.label %> <%= ax_badge("Sistema", tone: :blue) %></td>
+                    <td class="tw-max-w-[340px] tw-truncate" title="<%= card.greeting %>"><%= truncate(card.greeting, length: 80) %></td>
+                    <td><%= card.use_photo? ? ax_badge("Foto + texto", tone: :blue) : ax_badge("Só texto", tone: :gray) %></td>
+                    <td class="tw-text-right">
+                      <% if current_admin_user.tenant_owner? %>
+                        <%= link_to "Editar", edit_admin_presentation_card_path(card), class: "ax-btn ax-btn--sm" %>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Atendimento", title: "Meus cartões", class_name: "tw-mt-4") do %>
+        <div class="ax-panel-body">
+          <% if @cards.any? %>
+            <div class="ax-table-wrap">
+              <table class="ax-table">
+                <thead>
+                  <tr><th>Rótulo</th><th>Saudação</th><th>Formato</th><th>Status</th><th class="tw-text-right">Ações</th></tr>
+                </thead>
+                <tbody>
+                  <% @cards.each do |card| %>
+                    <tr>
+                      <td class="ax-strong"><%= card.label %></td>
+                      <td class="tw-max-w-[340px] tw-truncate" title="<%= card.greeting %>"><%= truncate(card.greeting, length: 80) %></td>
+                      <td><%= card.use_photo? ? ax_badge("Foto + texto", tone: :blue) : ax_badge("Só texto", tone: :gray) %></td>
+                      <td><%= card.active? ? ax_badge("Ativo", tone: :green, dot: true) : ax_badge("Inativo", tone: :gray) %></td>
+                      <td class="tw-text-right tw-whitespace-nowrap">
+                        <%= link_to "Editar", edit_admin_presentation_card_path(card), class: "ax-btn ax-btn--sm" %>
+                        <%= button_to "Excluir", admin_presentation_card_path(card), method: :delete,
+                              form: { data: { turbo_confirm: "Excluir o cartão “#{card.label}”?" }, class: "tw-inline" },
+                              class: "ax-btn ax-btn--sm ax-btn--danger" %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <%= ax_empty_state(
+                  title: "Nenhum cartão ainda",
+                  description: "Crie um modelo por contexto (ex.: Venda, Locação) para se apresentar com um clique no atendimento.",
+                  icon: "person-badge"
+                ) %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <aside class="layout-settings-aside">
+      <%= render "profile_preview" %>
+    </aside>
+  </div>
+</div>

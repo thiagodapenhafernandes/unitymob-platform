@@ -33,6 +33,22 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(city_keys.count("balneario camboriu")).to eq(1)
       expect(neighborhood_keys.count("centro - balneario camboriu")).to eq(1)
     end
+
+    it "normalizes city and neighborhood labels to pt-BR title case" do
+      habitation = create(:habitation, cidade: nil, bairro: nil)
+      habitation.create_address!(
+        logradouro: "Rua 1200",
+        numero: "30",
+        bairro: "praia brava de itajaí",
+        cidade: "BALNEÁRIO CAMBORIÚ",
+        uf: "SC"
+      )
+
+      options = Habitation.public_location_options
+
+      expect(options).to include(hash_including(type: "city", label: "Balneário Camboriú"))
+      expect(options).to include(hash_including(type: "neighborhood", label: "Praia Brava de Itajaí - Balneário Camboriú"))
+    end
   end
 
   describe "price sorting" do

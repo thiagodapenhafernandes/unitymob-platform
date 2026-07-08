@@ -17,6 +17,17 @@ class WhatsappCampaignMessage < ApplicationRecord
   VIRTUAL_STATUS_LABELS = {
     DELIVERY_UNCONFIRMED_STATUS => "Sem retorno de entrega"
   }.freeze
+  # Colunas cumulativas de contadores da campanha às quais cada status pertence
+  # (espelha a semântica do recount em WhatsappCampaign#refresh_counters!:
+  # sent_count inclui delivered/read/replied; delivered_count inclui read/replied...).
+  CAMPAIGN_COUNTER_COLUMNS = {
+    "sent" => %i[sent_count],
+    "delivered" => %i[sent_count delivered_count],
+    "read" => %i[sent_count delivered_count read_count],
+    "replied" => %i[sent_count delivered_count read_count replied_count],
+    "failed" => %i[failed_count],
+    "cancelled" => %i[failed_count]
+  }.freeze
   FAILURE_CODE_PATTERNS = [
     /c[oó]digo[:\s]+(\d{5,6})/i,
     /codigo[:\s]+(\d{5,6})/i,
@@ -93,6 +104,11 @@ class WhatsappCampaignMessage < ApplicationRecord
       .where("next_retry_at IS NULL OR next_retry_at <= ?", Time.current)
   }
 
+  # Contadores da campanha por transição de status (O(1) por evento) no lugar
+  # do recount da campanha inteira a cada mensagem; o recount completo fica
+  # para os marcos (conclusão, pausa, retry/cancel em massa e sweep periódico).
+  after_update :apply_campaign_counter_delta, if: :saved_change_to_status?
+
   STATUSES.each do |value|
     define_method("#{value}?") { status == value }
   end
@@ -156,7 +172,13 @@ class WhatsappCampaignMessage < ApplicationRecord
     )
   end
 
-  def mark_failed!(reason)
+  # source :meta (default) = webhook de status da Meta, autoritativo: pode
+  # regredir uma mensagem aceita para failed (falha real de entrega).
+  # source :local = sender/pipeline: NUNCA regride mensagem já aceita — a
+  # marcação failed habilitaria reenvio (automático/manual) e dupla entrega.
+  def mark_failed!(reason, source: :meta)
+    return if source == :local && (sent? || delivered? || read? || replied?)
+
     next_retry = calculate_next_retry_at(reason)
     update!(
       status: "failed",
@@ -331,8 +353,22 @@ class WhatsappCampaignMessage < ApplicationRecord
   end
 
   def refresh_campaign_and_emit!(event_name, payload: {})
-    whatsapp_campaign.refresh_counters!
+    # Contadores já foram ajustados via apply_campaign_counter_delta; o reload
+    # (SELECT por PK) garante metrics_payload fresco no evento/broadcast.
+    whatsapp_campaign.reload
     whatsapp_campaign.emit_event!(event_name, lead: lead, payload: self.payload.merge(payload))
+  end
+
+  def apply_campaign_counter_delta
+    previous_status, new_status = saved_change_to_status
+    previous_columns = CAMPAIGN_COUNTER_COLUMNS.fetch(previous_status.to_s, [])
+    new_columns = CAMPAIGN_COUNTER_COLUMNS.fetch(new_status.to_s, [])
+    deltas = {}
+    (new_columns - previous_columns).each { |column| deltas[column] = 1 }
+    (previous_columns - new_columns).each { |column| deltas[column] = -1 }
+    return if deltas.empty?
+
+    WhatsappCampaign.update_counters(whatsapp_campaign_id, deltas.merge(touch: true))
   end
 
   def inbound_payload(inbound_message)

@@ -3,7 +3,8 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["represamentoSection", "pocketSection", "metaSection", "webhookSection", "notifyWebhookSection",
                     "notifyWebhookSelect", "notifyWebhookError",
-                    "channelModal", "channelModalName", "channelModalInstructions", "channelModalLink"]
+                    "channelModal", "channelModalName", "channelModalInstructions", "channelModalLink",
+                    "checkinStoreSelect", "storeContextSection"]
 
   connect() {
     this.toggleRepresamento()
@@ -13,6 +14,7 @@ export default class extends Controller {
     this.toggleWebhook()
     this.toggleNotifyWebhook()
     this.toggleMode()
+    this.toggleStoreContext()
   }
 
   // Rails f.check_box renderiza 2 inputs (hidden "0" + checkbox "1") com mesmo name,
@@ -120,6 +122,33 @@ export default class extends Controller {
 
     performanceFields.forEach(el => this.setVisible(el, selectedMode === 'performance'))
     rotaryFields.forEach(el => this.setVisible(el, selectedMode === 'rotary'))
+  }
+
+  toggleStoreContext() {
+    if (!this.hasStoreContextSectionTarget) return
+
+    const hasSelectedStore = this.selectedCheckinStoreIds().length > 0
+    this.setVisible(this.storeContextSectionTarget, hasSelectedStore)
+  }
+
+  selectedCheckinStoreIds() {
+    const select = this.hasCheckinStoreSelectTarget
+      ? this.checkinStoreSelectTarget
+      : this.element.querySelector('select[name="distribution_rule[checkin_store_ids][]"]')
+
+    if (!select) return []
+
+    const tomSelectValues = select.tomselect?.items || select.tomSelect?.items
+    if (tomSelectValues) return tomSelectValues.map(value => value.toString()).filter(Boolean)
+
+    return Array.from(select.selectedOptions || [])
+      .map(option => option.value)
+      .filter(Boolean)
+  }
+
+  stopTooltipClick(event) {
+    event.preventDefault()
+    event.stopPropagation()
   }
 
   setVisible(element, visible) {

@@ -1,0 +1,57 @@
+<% unique_feature_actions = capture do %>
+  <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm"
+          data-attribute-manager-context-value="habitation"
+          data-attribute-manager-category-value="unique_feature"
+          data-attribute-manager-field-name-value="habitation[caracteristica_unica][]"
+          data-attribute-manager-modal-id-value="attributeManagerModal"
+          data-action="click->attribute-manager#open"
+          data-title="Gerenciar Destaques"
+          data-select-id="habitation_caracteristica_unica">
+    <i class="bi bi-gear ax-ico"></i>Gerenciar
+  </button>
+<% end %>
+
+<%= ax_form_section(title: "Destaque e texto público", eyebrow: "Conteúdo", icon: "megaphone", actions: unique_feature_actions) do %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-12">
+      <div class="ax-field-group">
+        <%= ax_multiselect_field(
+              form: f,
+              method: :caracteristica_unica,
+              label: "Destaque / Característica única",
+              choices: @badges,
+              selected: f.object.caracteristica_unica,
+              id: "habitation_caracteristica_unica",
+              placeholder: "Selecione...",
+              tooltip: "Selecione destaques principais para exibir nos cards do site.",
+              data: { tom_select_create_value: "false", tom_select_tags_value: false }
+            ) %>
+      </div>
+    </div>
+    <div class="ax-span-12">
+      <% if f.object.persisted? %>
+        <%= render "admin/habitations/ai_content_preview",
+            habitation: f.object,
+            suggestion: @ai_property_suggestion,
+            failed_suggestion: @ai_failed_suggestion %>
+      <% end %>
+
+      <div class="ax-field-group ax-field-group--spaced">
+        <%= ax_text_field(
+              form: f,
+              method: :titulo_anuncio,
+              label: "Título do anúncio",
+              tooltip: "Usado em sites e portais.",
+              readonly: !can_edit_protected_habitation_fields
+            ) %>
+      </div>
+      <div class="ax-field-group">
+        <%= ax_field_label(f, :descricao_web, text: "Descrição do imóvel para internet") %>
+        <%= f.rich_text_area :descricao_web,
+            class: "ax-control ax-rich-text-control",
+            style: "min-height: 250px;",
+            disabled: !can_edit_protected_habitation_fields %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

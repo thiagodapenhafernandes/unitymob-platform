@@ -1,4 +1,4 @@
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+<div class="dwv-integration-heading">
   <div>
     <h1 class="ax-page-title">Integração DWV</h1>
     <p class="ax-page-subtitle">Lançamentos e estoque de empreendimentos das principais incorporadoras parceiras.</p>
@@ -11,42 +11,42 @@
 </div>
 
 <!-- Card "Sobre o produto DWV" -->
-<div class="ax-card tw-mb-4" style="background: linear-gradient(135deg, #e7f5ff 0%, #f8f9fa 100%);">
+<div class="ax-card dwv-integration-overview tw-mb-4">
   <div class="ax-card__body">
     <%= ax_field_grid do %>
       <div class="ax-span-6">
-        <h5 class="tw-font-bold tw-mb-3"><i class="bi bi-stars text-info me-2"></i>Sobre a DWV</h5>
+        <div class="dwv-integration-section-title"><i class="bi bi-stars"></i>Sobre a DWV</div>
         <p class="tw-text-sm tw-mb-2">
           A <strong>DWV</strong> é uma plataforma B2B de imobiliárias que centraliza o estoque
           de <strong>lançamentos imobiliários</strong> das principais incorporadoras do Brasil.
           Quando uma imobiliária parceira (como nós) seleciona empreendimentos no painel da DWV,
           essa integração traz os imóveis selecionados automaticamente para o nosso CRM e site.
         </p>
-        <p class="tw-text-sm tw-text-ink-muted mb-0">
+        <p class="tw-text-sm tw-text-ink-muted tw-mb-0">
           Os imóveis trazidos pela DWV são identificados internamente com a flag
           <code>imovel_dwv = "Sim"</code> e código no formato <code>DWV-XXXXXX</code>.
         </p>
       </div>
 
       <div class="ax-span-6">
-        <h6 class="tw-font-semibold tw-text-sm text-uppercase tw-text-ink-muted tw-mb-2"><i class="bi bi-clock-history me-1"></i>Frequência de atualização</h6>
-        <ul class="list-unstyled tw-text-sm mb-0">
-          <li class="tw-mb-2 tw-flex tw-items-start tw-gap-2">
-            <i class="bi bi-arrow-clockwise mt-1" style="color:#16a34a"></i>
+        <div class="dwv-integration-kicker"><i class="bi bi-clock-history"></i>Frequência de atualização</div>
+        <ul class="dwv-integration-list">
+          <li class="dwv-integration-list__item">
+            <i class="bi bi-arrow-clockwise dwv-integration-list__icon dwv-integration-list__icon--ok"></i>
             <div>
               <strong>Sincronização diária — todo dia às 04:20</strong><br>
               <span class="tw-text-ink-muted">Importa novos imóveis ativos e desativa imóveis removidos da DWV. Job: <code>DwvSyncJob</code> (modo full).</span>
             </div>
           </li>
-          <li class="tw-mb-2 tw-flex tw-items-start tw-gap-2">
-            <i class="bi bi-hand-index text-primary mt-1"></i>
+          <li class="dwv-integration-list__item">
+            <i class="bi bi-hand-index dwv-integration-list__icon dwv-integration-list__icon--primary"></i>
             <div>
               <strong>Sincronização manual sob demanda</strong><br>
               <span class="tw-text-ink-muted">Use os controles abaixo para forçar atualização imediata (imóvel único, 1 página ou tudo).</span>
             </div>
           </li>
-          <li class="tw-flex tw-items-start tw-gap-2">
-            <i class="bi bi-shield-check mt-1" style="color:#d97706"></i>
+          <li class="dwv-integration-list__item">
+            <i class="bi bi-shield-check dwv-integration-list__icon dwv-integration-list__icon--warn"></i>
             <div>
               <strong>Limite da API: 100 req/min</strong><br>
               <span class="tw-text-ink-muted">Pausa entre requisições configurada para respeitar o rate limit.</span>
@@ -56,15 +56,15 @@
       </div>
     <% end %>
 
-    <hr class="my-4">
+    <div class="dwv-integration-divider"></div>
 
     <%= ax_field_grid do %>
       <div class="ax-span-12">
-        <h6 class="tw-font-semibold tw-text-sm text-uppercase tw-text-ink-muted tw-mb-3"><i class="bi bi-arrow-down-up me-1"></i>O que esta integração faz</h6>
+        <div class="dwv-integration-kicker dwv-integration-kicker--spaced"><i class="bi bi-arrow-down-up"></i>O que esta integração faz</div>
       </div>
       <div class="ax-span-3">
         <div class="tw-flex tw-items-start tw-gap-2">
-          <i class="bi bi-cloud-download" style="color:#16a34a;font-size:1.5rem"></i>
+          <i class="bi bi-cloud-download dwv-integration-feature__icon dwv-integration-feature__icon--ok"></i>
           <div>
             <div class="tw-font-semibold tw-text-sm">Importa imóveis</div>
             <small class="tw-text-ink-muted">Empreendimentos selecionados na DWV viram imóveis no nosso CRM com fotos, plantas, valores e características.</small>
@@ -73,7 +73,7 @@
       </div>
       <div class="ax-span-3">
         <div class="tw-flex tw-items-start tw-gap-2">
-          <i class="bi bi-arrow-repeat text-info" style="font-size:1.5rem"></i>
+          <i class="bi bi-arrow-repeat dwv-integration-feature__icon dwv-integration-feature__icon--info"></i>
           <div>
             <div class="tw-font-semibold tw-text-sm">Atualiza valores e disponibilidade</div>
             <small class="tw-text-ink-muted">Em cada sync, valores de venda/locação e flags de exibição são atualizados sem sobrescrever edições manuais.</small>
@@ -82,7 +82,7 @@
       </div>
       <div class="ax-span-3">
         <div class="tw-flex tw-items-start tw-gap-2">
-          <i class="bi bi-x-circle" style="color:#dc2626;font-size:1.5rem"></i>
+          <i class="bi bi-x-circle dwv-integration-feature__icon dwv-integration-feature__icon--danger"></i>
           <div>
             <div class="tw-font-semibold tw-text-sm">Desativa imóveis removidos</div>
             <small class="tw-text-ink-muted">Quando a DWV marca <code>deleted=true</code> ou <code>status=inactive</code>, o imóvel vira <strong>Suspenso</strong> e some do site.</small>
@@ -91,7 +91,7 @@
       </div>
       <div class="ax-span-3">
         <div class="tw-flex tw-items-start tw-gap-2">
-          <i class="bi bi-bag-check" style="color:#d97706;font-size:1.5rem"></i>
+          <i class="bi bi-bag-check dwv-integration-feature__icon dwv-integration-feature__icon--warn"></i>
           <div>
             <div class="tw-font-semibold tw-text-sm">Detecta vendas</div>
             <small class="tw-text-ink-muted">Quando a DWV marca <code>auto_inactive</code> (sistema confirmou venda), o imóvel vira <strong>Vendido terceiros</strong>.</small>
@@ -100,25 +100,25 @@
       </div>
     <% end %>
 
-    <hr class="my-4">
+    <div class="dwv-integration-divider"></div>
 
     <%= ax_field_grid do %>
       <div class="ax-span-4">
-        <div class="tw-text-center p-3 bg-white rounded border">
-          <div class="display-6 tw-font-bold text-info"><%= Habitation.where(imovel_dwv: "Sim").count %></div>
-          <small class="tw-text-ink-muted text-uppercase">Total importados</small>
+        <div class="dwv-integration-stat">
+          <div class="dwv-integration-stat__value dwv-integration-stat__value--info"><%= current_tenant.habitations.where(imovel_dwv: "Sim").count %></div>
+          <small class="dwv-integration-stat__label">Total importados</small>
         </div>
       </div>
       <div class="ax-span-4">
-        <div class="tw-text-center p-3 bg-white rounded border">
-          <div class="display-6 tw-font-bold" style="color:#16a34a"><%= Habitation.where(imovel_dwv: "Sim", exibir_no_site_flag: true).count %></div>
-          <small class="tw-text-ink-muted text-uppercase">Ativos no site</small>
+        <div class="dwv-integration-stat">
+          <div class="dwv-integration-stat__value dwv-integration-stat__value--ok"><%= current_tenant.habitations.where(imovel_dwv: "Sim", exibir_no_site_flag: true).count %></div>
+          <small class="dwv-integration-stat__label">Ativos no site</small>
         </div>
       </div>
       <div class="ax-span-4">
-        <div class="tw-text-center p-3 bg-white rounded border">
-          <div class="display-6 tw-font-bold text-secondary"><%= Habitation.where(imovel_dwv: "Sim", exibir_no_site_flag: false).count %></div>
-          <small class="tw-text-ink-muted text-uppercase">Desativados</small>
+        <div class="dwv-integration-stat">
+          <div class="dwv-integration-stat__value dwv-integration-stat__value--muted"><%= current_tenant.habitations.where(imovel_dwv: "Sim", exibir_no_site_flag: false).count %></div>
+          <small class="dwv-integration-stat__label">Desativados</small>
         </div>
       </div>
     <% end %>
@@ -130,7 +130,7 @@
     <div class="ax-card tw-mb-4">
       <div class="ax-card__header">
         <div class="tw-flex tw-justify-between tw-items-center">
-          <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key me-2 text-primary"></i>Configuração de Acesso</h5>
+          <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key dwv-integration-title-icon"></i>Configuração de Acesso</h5>
           <span class="ax-badge <%= @dwv_connected ? 'ax-badge--green' : 'ax-badge--gray' %>">
             <%= @dwv_connected ? "Conectado" : "Desconectado" %>
           </span>
@@ -143,7 +143,7 @@
           <div class="tw-mb-3">
             <%= f.label :base_url, "URL base da API", class: "ax-label tw-font-semibold" %>
             <%= f.text_field :base_url, class: "ax-control", value: @dwv_base_url, placeholder: "https://agencies.dwvapp.com.br" %>
-            <div class="form-text">Use produção (`https://agencies.dwvapp.com.br`) ou sandbox (`https://apisandbox.dwvapp.com.br`).</div>
+            <div class="dwv-integration-help">Use produção (`https://agencies.dwvapp.com.br`) ou sandbox (`https://apisandbox.dwvapp.com.br`).</div>
           </div>
 
           <div class="tw-mb-3">
@@ -166,7 +166,7 @@
             <div class="ax-span-6">
               <%= f.label :request_pause_seconds, "Pausa entre requisições (s)", class: "ax-label tw-font-semibold" %>
               <%= f.number_field :request_pause_seconds, class: "ax-control", min: 0.2, max: 2.0, step: 0.05, value: @dwv_request_pause_seconds %>
-              <div class="form-text">Recomendado: 0.70 para alto desempenho com segurança no limite da API.</div>
+              <div class="dwv-integration-help">Recomendado: 0.70 para alto desempenho com segurança no limite da API.</div>
             </div>
           <% end %>
 
@@ -197,7 +197,7 @@
 
     <div class="ax-card">
       <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-arrow-repeat me-2 text-info"></i>Controles de Sincronização</h5>
+        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-arrow-repeat dwv-integration-title-icon dwv-integration-title-icon--info"></i>Controles de Sincronização</h5>
       </div>
       <div class="ax-card__body">
         <%= form_with url: sync_property_admin_dwv_integrations_path, method: :post, local: true, class: "tw-flex tw-items-center tw-gap-2 tw-mb-4" do |f| %>

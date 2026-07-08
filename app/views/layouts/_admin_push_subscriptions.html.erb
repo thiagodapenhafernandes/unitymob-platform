@@ -1,9 +1,19 @@
-<%# Inscreve o PWA admin no Web Push em Android/mobile. Desktop fica inalterado. %>
+<%# Inscreve o PWA admin no Web Push em Android/mobile e iOS instalado.
+    No Safari iOS (não instalado) o push nem existe — orienta a instalar. %>
 <script>
   (function () {
+    const ua = navigator.userAgent;
+    const isAndroid = /Android/i.test(ua);
+    const isIosDevice = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+
+    // iOS no navegador: sem PushManager fora do app instalado. Instalação e
+    // push no celular vivem no /field (o login mobile já aterrissa lá).
+    if (isIosDevice && !isStandalone) return;
+
     if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
-    if (!/Android/i.test(navigator.userAgent)) return;
-    if (!window.matchMedia("(max-width: 767.98px)").matches) return;
+    // Android mobile OU iOS com o PWA instalado (Web Push iOS exige app na tela de início)
+    if (!(isAndroid && window.matchMedia("(max-width: 767.98px)").matches) && !(isIosDevice && isStandalone)) return;
 
     const bannerId = "admin-push-banner";
 
@@ -26,7 +36,7 @@
       banner.id = bannerId;
       banner.style.cssText = "position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:6000;display:flex;align-items:center;gap:10px;padding:11px 12px;background:#0f172a;color:#fff;border-radius:12px;box-shadow:0 12px 32px rgba(15,23,42,.28);font-size:13px;font-weight:700;";
       banner.innerHTML =
-        '<span style="flex:1;line-height:1.25;">Ative notificações para receber novos leads neste Android.</span>' +
+        '<span style="flex:1;line-height:1.25;">Ative notificações para receber novos leads neste aparelho.</span>' +
         '<button type="button" id="admin-push-enable" style="background:#22c55e;color:#052e16;border:0;border-radius:8px;padding:8px 11px;font-weight:900;">Ativar</button>' +
         '<button type="button" id="admin-push-dismiss" aria-label="Dispensar" style="background:transparent;color:#cbd5e1;border:0;font-size:18px;line-height:1;padding:4px;">&times;</button>';
       document.body.appendChild(banner);
@@ -66,6 +76,12 @@
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(data.public_key)
         });
+
+        try {
+          if ("periodicSync" in registration) {
+            await registration.periodicSync.register("push-subscription-refresh", { minInterval: 12 * 60 * 60 * 1000 });
+          }
+        } catch (_e) { /* sem suporte/permissão: renovação fica pelos outros gatilhos */ }
 
         const csrfToken = document.querySelector("[name=csrf-token]")?.content;
         await fetch("/field/push_subscriptions", {

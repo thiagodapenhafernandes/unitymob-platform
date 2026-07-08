@@ -5,7 +5,9 @@ module Portal
     end
 
     def eligible_scope
-      scope = Habitation.left_outer_joins(:address)
+      return Habitation.none if tenant_habitations.nil?
+
+      scope = tenant_habitations.left_outer_joins(:address)
       scope = apply_portal_publication_filter(scope)
       scope = scope.where(status: @integration.allowed_statuses) if @integration.allowed_statuses.present?
       scope = apply_business_type(scope)
@@ -17,7 +19,11 @@ module Portal
     end
 
     def preview
-      base = Habitation.left_outer_joins(:address)
+      if tenant_habitations.nil?
+        return { eligible_count: 0, rejected_count: 0, top_reasons: {} }
+      end
+
+      base = tenant_habitations.left_outer_joins(:address)
       reasons = Hash.new(0)
 
       reasons["sem_codigo"] = base.where(codigo: [nil, ""]).count
@@ -49,6 +55,21 @@ module Portal
     end
 
     private
+
+    # Base de imóveis SEMPRE escopada ao tenant da integração — impede que o
+    # feed de um portal sirva habitations de outros tenants.
+    # - Pré-migration (sem coluna tenant_id): Habitation global, preservando o
+    #   comportamento antigo até a migration rodar.
+    # - Pós-migration com tenant presente: tenant.habitations (isolamento).
+    # - Pós-migration com tenant ausente (registro órfão): nil -> resultado vazio.
+    def tenant_habitations
+      return Habitation.all unless @integration.has_attribute?(:tenant_id)
+
+      tenant = @integration.tenant
+      return nil if tenant.nil?
+
+      tenant.habitations
+    end
 
     def apply_business_type(scope)
       types = @integration.allowed_business_types

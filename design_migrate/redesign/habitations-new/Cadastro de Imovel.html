@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro de Imóvel — Redesign</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#365f8f;--primary-fg:#fff;--primary-hover:#2d5079;--primary-soft:#e4ebf3;--primary-softer:#f1f5f9;--primary-ring:rgba(54,95,143,.35);--primary-ink:#245486;
+  --ink:#1f2733;--ink-body:#475467;--ink-muted:#697586;--ink-faint:#98a2b3;--ink-label:#344054;
+  --surface:#fff;--surface-soft:#f7f8fa;--surface-header:#eef2f7;--panel-head:#f8fafc;--workspace-bg:#eef2f7;
+  --line:#e6e8eb;--line-soft:#eceef1;--line-strong:#d2d6db;--line-shell:#dfe5ee;--field-border:#d2d6db;
+  --success:#08875d;--success-bg:#e6f6ec;--warning:#b45309;--warning-bg:#fef3c7;--danger:#b42318;--danger-bg:#fee4e2;
+  --radius-sm:6px;--radius-md:8px;--radius-xs:5px;
+  --navbar-h:48px;--contextbar-h:40px;--rail-w:248px;--sidebar-w:236px;--sidebar-cw:52px;
+  --font:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--workspace-bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.45}
+.ax-eyebrow{display:block;color:var(--ink-muted);font-size:10px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;line-height:1}
+.ax-num{font-variant-numeric:tabular-nums}
+
+/* Navbar */
+.nav{position:fixed;inset:0 0 auto 0;height:var(--navbar-h);z-index:40;display:flex;align-items:center;gap:8px;padding:0 12px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line-shell);box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.brand{display:inline-flex;align-items:center;gap:8px;color:#1f2937;font-size:13.5px;font-weight:760;text-decoration:none}
+.brand .mark{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:6px;background:var(--primary);color:#fff;font-size:15px}
+.brand span{color:var(--ink-muted);font-weight:650}
+.nav .spacer{flex:1}
+.nav .search{display:inline-flex;align-items:center;gap:6px;height:30px;width:min(28vw,320px);padding:0 9px;border:1px solid #d6deea;border-radius:6px;color:#8591a3}
+.nav .search input{flex:1;border:0;outline:0;background:transparent;font:inherit;font-size:12.5px;color:#263241}
+.nav .user{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 8px;border:1px solid var(--line-shell);border-radius:6px;color:var(--ink-label);font-size:12.5px;font-weight:650;cursor:pointer}
+.avatar{display:inline-grid;place-items:center;border-radius:999px;background:var(--primary-soft);color:var(--primary-hover);font-weight:800}
+
+/* Context bar */
+.topbar{position:fixed;top:var(--navbar-h);left:0;right:0;height:var(--contextbar-h);z-index:38;display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr) var(--rail-w)}
+.expl{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;background:var(--surface-header);border-right:1px solid var(--line-shell);border-bottom:1px solid var(--line-shell)}
+.expl__t{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;color:var(--ink-label);white-space:nowrap;overflow:hidden}
+.expl__t .bi{color:#7b8797;font-size:13px}
+.railhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;background:var(--surface-header);border-left:1px solid var(--line-shell);border-bottom:1px solid var(--line-shell)}
+.ctxbar{display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--surface);border-bottom:1px solid var(--line-shell);min-width:0}
+.side{background:#fff;border-right:1px solid var(--line-shell);overflow-y:auto;padding:8px 7px}
+.side__sec{padding:10px 8px 4px;color:#7b8797;font-size:10px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;white-space:nowrap}
+.side__lk{display:flex;align-items:center;gap:10px;min-height:31px;padding:5px 8px;border:1px solid transparent;border-radius:5px;color:var(--ink-body);font-size:12.5px;font-weight:620;text-decoration:none;cursor:pointer}
+.side__lk .bi{width:18px;text-align:center;font-size:14px;color:#8490a1;flex:none}
+.side__lk:hover{background:#eef3f9;border-color:#dbe3ee;color:var(--ink)}
+.side__lk.active{background:#e8f0fb;border-color:#c7d8ee;color:var(--primary-ink);font-weight:700;box-shadow:inset 2px 0 0 var(--primary)}
+.side__lk.active .bi{color:var(--primary)}
+.side__lk .chev{margin-left:auto;font-size:11px;color:#98a2b3;width:auto}
+body.collapsed{--sidebar-w:var(--sidebar-cw)}
+body.collapsed .side__sec,body.collapsed .side__lk span,body.collapsed .side__lk .chev,body.collapsed .expl__t{display:none}
+body.collapsed .side__lk{justify-content:center;padding:5px}
+body.collapsed .expl{justify-content:center;padding:0}
+.crumb{display:inline-flex;align-items:center;gap:8px;color:var(--ink-muted);font-size:13px}
+.crumb a{color:var(--ink-muted);text-decoration:none}
+.crumb .bi{color:#a5afbf;font-size:10px}
+.crumb strong{color:var(--ink);font-weight:760}
+.ctxbar .actions{margin-left:auto;display:inline-flex;gap:6px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:30px;padding:0 10px;border:1px solid var(--field-border);border-radius:6px;background:var(--surface);color:var(--ink-label);font-family:var(--font);font-size:12.5px;font-weight:750;line-height:1;white-space:nowrap;cursor:pointer;box-shadow:0 1px 1px rgba(15,23,42,.04);text-decoration:none}
+.btn:hover{background:var(--surface-soft);border-color:#c4d0df;color:#202a37}
+.btn--primary{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 1px 2px rgba(16,24,40,.12)}
+.btn--primary:hover{background:var(--primary-hover);border-color:var(--primary-hover);color:#fff}
+.btn--ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--ink-body)}
+.btn--ghost:hover{background:var(--surface-soft)}
+.btn--sm{height:28px;padding:0 9px;font-size:12px}
+.icobtn{display:inline-grid;place-items:center;width:30px;height:30px;border:1px solid var(--line-shell);background:#fff;border-radius:6px;color:#667085;cursor:pointer}
+.icobtn:hover{background:var(--surface-soft);color:var(--ink)}
+
+/* Shell: editor rail + main */
+.shell{position:fixed;top:calc(var(--navbar-h) + var(--contextbar-h));left:0;right:0;bottom:0;display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr) var(--rail-w)}
+.side{order:1}.main{order:2}.rail{order:3}
+
+/* Rail */
+.rail{background:#fff;border-left:1px solid var(--line-shell);overflow-y:auto;padding:10px 8px}
+.rail__head{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 10px;color:var(--ink-label)}
+.rail__head .t{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;letter-spacing:.055em;text-transform:uppercase}
+.rail__head .t .bi{color:#7b8797;font-size:13px}
+.rail__prog{margin:2px 6px 12px}
+.rail__prog small{display:flex;justify-content:space-between;color:var(--ink-muted);font-size:11px;font-weight:700;margin-bottom:5px}
+.prog{height:5px;border-radius:999px;background:#edf1f6;overflow:hidden}
+.prog>i{display:block;height:100%;background:var(--primary);border-radius:inherit}
+.tab{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:9px;width:100%;text-align:left;padding:7px 8px;margin-bottom:3px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--ink-body);cursor:pointer;font-family:var(--font)}
+.tab:hover{background:#eef3f9;border-color:#dbe3ee}
+.tab.is-active{background:#e8f0fb;border-color:#c7d8ee;box-shadow:inset 2px 0 0 var(--primary)}
+.tab__ic{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:6px;background:var(--surface-soft);color:#8490a1;font-size:14px}
+.tab.is-active .tab__ic{background:var(--primary-soft);color:var(--primary)}
+.tab__tx b{display:block;font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.15}
+.tab.is-active .tab__tx b{color:var(--primary-ink)}
+.tab__tx span{display:block;font-size:11px;color:var(--ink-muted);line-height:1.2;margin-top:1px}
+.dot{width:7px;height:7px;border-radius:999px;background:#d2d6db}
+.dot--ok{background:var(--success)}
+.dot--warn{background:var(--warning)}
+.tab__err{display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--danger-bg);color:var(--danger);font-size:10px;font-weight:800}
+
+/* Main */
+.main{overflow-y:auto;display:flex;flex-direction:column}
+.main__scroll{flex:1;overflow-y:auto;padding:14px 16px 90px}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.head h1{margin:2px 0 0;font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--ink)}
+.head p{margin:3px 0 0;color:var(--ink-muted);font-size:12.5px}
+.head .obj{display:flex;gap:9px;align-items:flex-start;padding:8px 11px;background:var(--primary-softer);border:1px solid var(--line);border-left:3px solid var(--primary);border-radius:8px;max-width:420px}
+.head .obj .bi{color:var(--primary);font-size:15px;margin-top:1px}
+.head .obj b{font-size:12px;color:var(--ink);display:block}
+.head .obj span{font-size:11.5px;color:var(--ink-muted)}
+
+/* Section card */
+.card{background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 1px 2px rgba(16,24,40,.04);margin-bottom:12px}
+.card__h{display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--line-soft);background:var(--panel-head);border-radius:8px 8px 0 0}
+.card__h .bi{color:var(--primary);font-size:14px}
+.card__h b{font-size:12.5px;font-weight:700;color:var(--ink)}
+.card__h .hint{margin-left:auto;font-size:11px;color:var(--ink-faint)}
+.card__b{padding:12px}
+
+/* Field grid (12 col, compact) */
+.fg{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:9px 10px}
+.f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.c1{grid-column:span 1}.c2{grid-column:span 2}.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}
+.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c9{grid-column:span 9}.c12{grid-column:span 12}
+label.lb{font-size:12px;font-weight:600;color:var(--ink-label)}
+label.lb .req{color:var(--danger);margin-left:2px}
+label.lb .op{color:var(--ink-faint);font-weight:500;margin-left:4px}
+.inp,.sel,.ta{width:100%;height:34px;padding:0 11px;border:1px solid var(--field-border);border-radius:6px;background:#fff;color:var(--ink);font-family:var(--font);font-size:13px;box-shadow:inset 0 1px 0 rgba(15,23,42,.03);outline:none;transition:border-color .12s,box-shadow .12s}
+.ta{height:auto;min-height:72px;padding:8px 11px;resize:vertical}
+.inp:focus,.sel:focus,.ta:focus{border-color:#7f96b5;box-shadow:0 0 0 2px rgba(54,95,143,.12)}
+.sel{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23697586' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 9px center;padding-right:30px}
+.inp[readonly]{background:var(--surface-soft);color:var(--ink-muted)}
+.ig{display:flex}
+.ig .inp{border-radius:6px 0 0 6px}
+.ig .btn{border-radius:0 6px 6px 0;border-left:0}
+.pre{display:inline-flex;align-items:center;padding:0 10px;border:1px solid var(--field-border);border-right:0;border-radius:6px 0 0 6px;background:var(--surface-soft);color:var(--ink-muted);font-size:12.5px}
+.pre + .inp{border-radius:0 6px 6px 0}
+.hint{font-size:11px;color:var(--ink-muted)}
+
+/* segmented */
+.seg{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--surface-soft);flex-wrap:wrap}
+.seg button{height:26px;padding:0 11px;border:0;border-radius:5px;background:transparent;color:var(--ink-muted);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 1px rgba(15,23,42,.06)}
+
+/* switch */
+.sw{display:inline-flex;align-items:center;gap:8px;color:var(--ink-label);font-size:12.5px;font-weight:550;cursor:pointer}
+.sw input{position:absolute;opacity:0;width:1px;height:1px}
+.sw .tr{position:relative;width:34px;height:20px;flex:none;border:1px solid #cbd5e1;border-radius:999px;background:#e7edf5;box-shadow:inset 0 1px 2px rgba(15,23,42,.08);transition:background .12s,border-color .12s}
+.sw .tr::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.25);transition:transform .12s}
+.sw input:checked + .tr{background:var(--primary);border-color:var(--primary)}
+.sw input:checked + .tr::after{transform:translateX(14px)}
+.swrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.swrow small{display:block;color:var(--ink-muted);font-size:11px;font-weight:400}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border:1px solid #e2e6ea;border-radius:999px;background:#fff;color:#475467;font-size:12px;font-weight:600;cursor:pointer;user-select:none}
+.chip:hover{border-color:#c4d0df}
+.chip.on{background:var(--primary-soft);border-color:transparent;color:var(--primary-hover)}
+.chip.on::before{content:"\F633";font-family:"bootstrap-icons";font-size:11px}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600}
+.badge--blue{background:var(--primary-soft);color:var(--primary-hover)}
+.badge--green{background:var(--success-bg);color:var(--success)}
+.badge--amber{background:var(--warning-bg);color:var(--warning)}
+.badge--dot::before{content:"";width:6px;height:6px;border-radius:999px;background:currentColor}
+
+/* media dropzone */
+.drop{display:grid;place-items:center;gap:6px;padding:26px;border:1.5px dashed var(--line-strong);border-radius:8px;background:var(--surface-soft);color:var(--ink-muted);text-align:center}
+.drop .bi{font-size:26px;color:var(--ink-faint)}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px}
+.mtile{position:relative;aspect-ratio:4/3;border-radius:7px;overflow:hidden;border:1px solid var(--line);background:var(--surface-header);display:grid;place-items:center;color:var(--ink-faint)}
+.mtile.cover{outline:2px solid var(--primary);outline-offset:-2px}
+.mtile .tag{position:absolute;top:5px;left:5px}
+.upl{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:#fff}
+.upl .l{display:flex;align-items:center;gap:10px;min-width:0}
+.upl .ic{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:7px;background:var(--danger-bg);color:var(--danger);font-size:16px;flex:none}
+
+/* sticky footer */
+.foot{position:fixed;left:var(--sidebar-w);right:var(--rail-w);bottom:0;z-index:20;display:flex;align-items:center;gap:10px;padding:9px 14px;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line-shell);box-shadow:0 -2px 14px rgba(15,23,42,.06)}
+.foot .meta{display:inline-flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:12px}
+.foot .grow{flex:1}
+
+.tabpane{display:none}
+.tabpane.on{display:block}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media(max-width:1080px){.two{grid-template-columns:1fr}.head .obj{display:none}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="brand" href="#"><span class="mark"><svg viewBox="0 0 100 100" width="17" height="17" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M22 56 L50 33 L78 56"></path><path d="M31 73 L50 58 L69 73" opacity="0.5"></path></svg></span>Unitymob <span>Plataforma</span></a>
+  <div class="spacer"></div>
+  <div class="search"><i class="bi bi-search" style="font-size:13px"></i><input placeholder="Buscar imóveis, leads, código…"></div>
+  <button class="user"><span class="avatar" style="width:22px;height:22px;font-size:12px">MC</span>Marina Costa <i class="bi bi-chevron-down" style="font-size:11px;color:var(--ink-faint)"></i></button>
+</nav>
+
+<div class="topbar">
+  <div class="expl"><span class="expl__t"><i class="bi bi-layout-sidebar"></i> Explorer</span><button class="icobtn" id="explBtn" style="width:26px;height:26px"><i class="bi bi-arrow-bar-left"></i></button></div>
+  <div class="ctxbar">
+    <button class="btn btn--sm"><i class="bi bi-arrow-left"></i> Voltar</button>
+    <nav class="crumb"><a href="#">Admin</a><i class="bi bi-chevron-right"></i><a href="#">Imóveis</a><i class="bi bi-chevron-right"></i><strong>Novo imóvel</strong></nav>
+    <span class="badge badge--blue">Rascunho</span>
+  </div>
+  <div class="railhead"><span class="expl__t"><i class="bi bi-layout-sidebar-reverse"></i> Editor do imóvel</span><small class="hint" style="font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">7 áreas</small></div>
+</div>
+
+<div class="shell">
+  <!-- Left admin sidebar (Explorer) -->
+  <aside class="side">
+    <div class="side__sec">Produto</div>
+    <a class="side__lk"><i class="bi bi-speedometer2"></i><span>Painel</span></a>
+    <a class="side__lk active"><i class="bi bi-houses"></i><span>Imóveis</span></a>
+    <a class="side__lk"><i class="bi bi-person-badge"></i><span>Leads</span></a>
+    <div class="side__sec">Operação</div>
+    <a class="side__lk"><i class="bi bi-briefcase"></i><span>Comercial</span><i class="bi bi-chevron-down chev"></i></a>
+    <a class="side__lk"><i class="bi bi-whatsapp"></i><span>WhatsApp</span><i class="bi bi-chevron-down chev"></i></a>
+    <a class="side__lk"><i class="bi bi-lightning-charge"></i><span>Automação</span></a>
+    <a class="side__lk"><i class="bi bi-diagram-3"></i><span>Distribuição de Leads</span></a>
+    <a class="side__lk"><i class="bi bi-journal-plus"></i><span>Captações</span></a>
+    <a class="side__lk"><i class="bi bi-bullseye"></i><span>Dashboard Captação</span></a>
+    <a class="side__lk"><i class="bi bi-geo-fill"></i><span>Check-ins em Campo</span></a>
+    <a class="side__lk"><i class="bi bi-hand-index-thumb"></i><span>Pedidos manuais</span></a>
+    <div class="side__sec">Gestão</div>
+    <a class="side__lk"><i class="bi bi-person-vcard"></i><span>Proprietários</span></a>
+    <a class="side__lk"><i class="bi bi-shop"></i><span>Lojas</span></a>
+    <a class="side__lk"><i class="bi bi-people"></i><span>Usuários</span></a>
+    <a class="side__lk"><i class="bi bi-bullseye"></i><span>Metas de Captação</span></a>
+    <div class="side__sec">Crescimento</div>
+    <a class="side__lk"><i class="bi bi-megaphone"></i><span>Marketing</span><i class="bi bi-chevron-down chev"></i></a>
+    <div class="side__sec">Site público</div>
+    <a class="side__lk"><i class="bi bi-globe2"></i><span>Site público</span><i class="bi bi-chevron-down chev"></i></a>
+    <div class="side__sec">Configuração</div>
+    <a class="side__lk"><i class="bi bi-sliders"></i><span>Configurações</span><i class="bi bi-chevron-down chev"></i></a>
+    <div class="side__sec">Integrações</div>
+    <a class="side__lk"><i class="bi bi-plug"></i><span>Integrações</span><i class="bi bi-chevron-down chev"></i></a>
+    <div class="side__sec">Administração</div>
+    <a class="side__lk"><i class="bi bi-shield-lock-fill"></i><span>Administração</span><i class="bi bi-chevron-down chev"></i></a>
+  </aside>
+  <!-- Editor rail -->
+  <aside class="rail">
+    <div class="rail__prog"><small><span>Progresso</span><span class="ax-num">2/7</span></small><div class="prog"><i style="width:28%"></i></div></div>
+    <button class="tab is-active" data-tab="base"><span class="tab__ic"><i class="bi bi-house-door"></i></span><span class="tab__tx"><b>Base</b><span>Identificação, vínculo e endereço</span></span><span class="dot dot--ok"></span></button>
+    <button class="tab" data-tab="estrutura"><span class="tab__ic"><i class="bi bi-rulers"></i></span><span class="tab__tx"><b>Estrutura</b><span>Dimensões e atributos</span></span><span class="dot dot--ok"></span></button>
+    <button class="tab" data-tab="empreendimento"><span class="tab__ic"><i class="bi bi-building"></i></span><span class="tab__tx"><b>Empreendimento</b><span>Edifício e lazer</span></span><span class="dot"></span></button>
+    <button class="tab" data-tab="comercial"><span class="tab__ic"><i class="bi bi-briefcase"></i></span><span class="tab__tx"><b>Comercial</b><span>Valores e negociação</span></span><span class="tab__err">2</span></button>
+    <button class="tab" data-tab="publicacao"><span class="tab__ic"><i class="bi bi-globe2"></i></span><span class="tab__tx"><b>Publicação</b><span>Site, portais e SEO</span></span><span class="dot dot--warn"></span></button>
+    <button class="tab" data-tab="midia"><span class="tab__ic"><i class="bi bi-images"></i></span><span class="tab__tx"><b>Mídia</b><span>Fotos, vídeos e tour</span></span><span class="dot"></span></button>
+    <button class="tab" data-tab="documentos"><span class="tab__ic"><i class="bi bi-folder2"></i></span><span class="tab__tx"><b>Documentos</b><span>Fichas e autorizações</span></span><span class="dot"></span></button>
+  </aside>
+
+  <!-- Main -->
+  <section class="main">
+    <div class="main__scroll">
+
+      <!-- BASE -->
+      <div class="tabpane on" data-pane="base">
+        <div class="head">
+          <div><span class="ax-eyebrow">Cadastro de imóvel · Novo</span><h1>Base</h1><p>Identificação, vínculo com proprietário/empreendimento e endereço.</p></div>
+          <div class="obj"><i class="bi bi-info-circle"></i><div><b>Cadastro direto</b><span>Não passa pelo fluxo de captação. A publicação é definida na aba Publicação.</span></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card__h"><i class="bi bi-tag"></i><b>Identificação</b><span class="hint">Código gerado automaticamente ao salvar</span></div>
+          <div class="card__b">
+            <div class="f c12" style="margin-bottom:10px"><label class="lb">Tipo de cadastro</label>
+              <div class="seg"><button class="on">Unitário</button><button>Empreendimento</button></div>
+            </div>
+            <div class="fg">
+              <div class="f c3"><label class="lb">Código</label><input class="inp" value="AUTO" readonly></div>
+              <div class="f c5"><label class="lb">Categoria<span class="req">*</span></label>
+                <select class="sel"><option>Apartamento</option><option>Cobertura</option><option>Casa</option><option>Casa em Condomínio</option><option>Sobrado</option><option>Terreno</option><option>Sala Comercial</option><option>Galpão</option></select></div>
+              <div class="f c4"><label class="lb">Status<span class="req">*</span></label>
+                <select class="sel"><option>Disponível</option><option>Reservado</option><option>Vendido</option><option>Suspenso</option></select></div>
+              <div class="f c4"><label class="lb">Situação</label><select class="sel"><option>Novo</option><option>Usado</option><option>Em construção</option><option>Na planta</option></select></div>
+              <div class="f c4"><label class="lb">Ocupação</label><select class="sel"><option>Desocupado</option><option>Ocupado — proprietário</option><option>Ocupado — inquilino</option></select></div>
+              <div class="f c4"><label class="lb">Conservação</label><select class="sel"><option>Excelente</option><option>Bom</option><option>Regular</option><option>Reformar</option></select></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__h"><i class="bi bi-person-vcard"></i><b>Vínculo</b></div>
+          <div class="card__b">
+            <div class="fg">
+              <div class="f c6"><label class="lb">Proprietário</label>
+                <div class="ig"><input class="inp" placeholder="Buscar proprietário…"><button class="btn"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
+              <div class="f c3"><label class="lb">Agenciador</label><select class="sel"><option>Rafael Menezes</option><option>Bianca Toledo</option></select></div>
+              <div class="f c3"><label class="lb">Responsável</label><select class="sel"><option>Marina Costa</option></select></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__h"><i class="bi bi-geo-alt"></i><b>Endereço</b><span class="hint">CEP preenche automaticamente</span></div>
+          <div class="card__b">
+            <div class="fg">
+              <div class="f c3"><label class="lb">CEP</label><div class="ig"><input class="inp" placeholder="00000-000"><button class="btn"><i class="bi bi-search"></i></button></div></div>
+              <div class="f c7"><label class="lb">Logradouro</label><input class="inp" placeholder="Rua, avenida…"></div>
+              <div class="f c2"><label class="lb">Número</label><input class="inp" placeholder="Nº"></div>
+              <div class="f c4"><label class="lb">Bairro</label><input class="inp"></div>
+              <div class="f c3"><label class="lb">Bairro comercial</label><input class="inp"></div>
+              <div class="f c3"><label class="lb">Cidade</label><input class="inp"></div>
+              <div class="f c2"><label class="lb">UF</label><select class="sel"><option>SP</option><option>RJ</option><option>MG</option><option>SC</option><option>PR</option></select></div>
+              <div class="f c12"><label class="sw" style="margin-top:2px"><input type="checkbox"><span class="tr"></span> Divulgar endereço completo no site</label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ESTRUTURA -->
+      <div class="tabpane" data-pane="estrutura">
+        <div class="head"><div><span class="ax-eyebrow">Cadastro de imóvel · Novo</span><h1>Estrutura</h1><p>Dimensões, cômodos, vagas e características do imóvel.</p></div></div>
+        <div class="two">
+          <div class="card">
+            <div class="card__h"><i class="bi bi-rulers"></i><b>Dimensões</b><span class="hint">m²</span></div>
+            <div class="card__b"><div class="fg">
+              <div class="f c6"><label class="lb">Área privativa</label><div class="ig"><input class="inp ax-num" placeholder="0,00"><span class="pre" style="border:1px solid var(--field-border);border-left:0;border-radius:0 6px 6px 0">m²</span></div></div>
+              <div class="f c6"><label class="lb">Área total</label><div class="ig"><input class="inp ax-num" placeholder="0,00"><span class="pre" style="border:1px solid var(--field-border);border-left:0;border-radius:0 6px 6px 0">m²</span></div></div>
+              <div class="f c6"><label class="lb">Área do terreno</label><div class="ig"><input class="inp ax-num" placeholder="0,00"><span class="pre" style="border:1px solid var(--field-border);border-left:0;border-radius:0 6px 6px 0">m²</span></div></div>
+              <div class="f c6"><label class="lb">Dimensões do terreno</label><input class="inp" placeholder="Ex.: 12 x 30"></div>
+            </div></div>
+          </div>
+          <div class="card">
+            <div class="card__h"><i class="bi bi-door-closed"></i><b>Cômodos</b></div>
+            <div class="card__b"><div class="fg">
+              <div class="f c4"><label class="lb">Dormitórios</label><input class="inp ax-num" value="0"></div>
+              <div class="f c4"><label class="lb">Suítes</label><input class="inp ax-num" value="0"></div>
+              <div class="f c4"><label class="lb">Banheiros</label><input class="inp ax-num" value="0"></div>
+              <div class="f c4"><label class="lb">Salas</label><input class="inp ax-num" value="0"></div>
+              <div class="f c4"><label class="lb">Varandas</label><input class="inp ax-num" value="0"></div>
+              <div class="f c4"><label class="lb">Demi-suítes</label><input class="inp ax-num" value="0"></div>
+            </div></div>
+          </div>
+          <div class="card">
+            <div class="card__h"><i class="bi bi-car-front"></i><b>Garagem</b></div>
+            <div class="card__b"><div class="fg">
+              <div class="f c5"><label class="lb">Tipo de vaga</label><select class="sel"><option>Coberta</option><option>Descoberta</option><option>Rotativa</option></select></div>
+              <div class="f c3"><label class="lb">Vagas</label><input class="inp ax-num" value="0"></div>
+              <div class="f c4"><label class="lb">Nº do box</label><input class="inp"></div>
+            </div></div>
+          </div>
+          <div class="card">
+            <div class="card__h"><i class="bi bi-compass"></i><b>Terreno</b></div>
+            <div class="card__b"><div class="fg">
+              <div class="f c6"><label class="lb">Topografia</label><select class="sel"><option>Plano</option><option>Aclive</option><option>Declive</option></select></div>
+              <div class="f c6"><label class="lb">Face / posição solar</label><select class="sel"><option>Norte</option><option>Sul</option><option>Leste</option><option>Oeste</option></select></div>
+            </div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-stars"></i><b>Características</b><span class="hint">Selecione as que se aplicam</span></div>
+          <div class="card__b"><div class="chips">
+            <span class="chip on">Mobiliado</span><span class="chip on">Ar-condicionado</span><span class="chip">Piscina privativa</span><span class="chip">Churrasqueira</span><span class="chip">Varanda gourmet</span><span class="chip">Closet</span><span class="chip">Lavabo</span><span class="chip">Aquecimento solar</span><span class="chip">Vista para o mar</span><span class="chip">Pet friendly</span>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- EMPREENDIMENTO -->
+      <div class="tabpane" data-pane="empreendimento">
+        <div class="head"><div><span class="ax-eyebrow">Cadastro de imóvel · Novo</span><h1>Empreendimento</h1><p>Dados do edifício, construção e lazer.</p></div></div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-building"></i><b>Edifício</b></div>
+          <div class="card__b"><div class="fg">
+            <div class="f c5"><label class="lb">Construtora</label><input class="inp"></div>
+            <div class="f c3"><label class="lb">Ano de construção</label><input class="inp ax-num" placeholder="AAAA"></div>
+            <div class="f c4"><label class="lb">Tipo de fachada</label><select class="sel"><option>Revestimento</option><option>Pastilha</option><option>Pintura</option><option>Vidro</option></select></div>
+            <div class="f c3"><label class="lb">Andares</label><input class="inp ax-num" value="0"></div>
+            <div class="f c3"><label class="lb">Aptos por andar</label><input class="inp ax-num" value="0"></div>
+            <div class="f c3"><label class="lb">Aptos no edifício</label><input class="inp ax-num" value="0"></div>
+            <div class="f c3"><label class="lb">Elevadores</label><input class="inp ax-num" value="0"></div>
+            <div class="f c12"><label class="lb">Descrição do empreendimento</label><textarea class="ta" placeholder="Diferenciais do edifício…"></textarea></div>
+          </div></div>
+        </div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-tree"></i><b>Infraestrutura e lazer</b></div>
+          <div class="card__b"><div class="chips">
+            <span class="chip on">Piscina</span><span class="chip on">Academia</span><span class="chip on">Salão de festas</span><span class="chip">Playground</span><span class="chip">Quadra</span><span class="chip">Espaço gourmet</span><span class="chip">Sauna</span><span class="chip">Portaria 24h</span><span class="chip">Coworking</span><span class="chip">Pet place</span><span class="chip">Bicicletário</span>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- COMERCIAL -->
+      <div class="tabpane" data-pane="comercial">
+        <div class="head"><div><span class="ax-eyebrow">Cadastro de imóvel · Novo</span><h1>Comercial</h1><p>Valores, negociação, comissões e contatos do proprietário.</p></div></div>
+        <div class="two">
+          <div class="card">
+            <div class="card__h"><i class="bi bi-cash-coin"></i><b>Valores</b></div>
+            <div class="card__b"><div class="fg">
+              <div class="f c6"><label class="lb">Valor de venda<span class="req">*</span></label><div class="ig"><span class="pre">R$</span><input class="inp ax-num" placeholder="0,00"></div></div>
+              <div class="f c6"><label class="lb">Valor de locação</label><div class="ig"><span class="pre">R$</span><input class="inp ax-num" placeholder="0,00"></div></div>
+              <div class="f c6"><label class="lb">Condomínio</label><div class="ig"><span class="pre">R$</span><input class="inp ax-num" placeholder="0,00"></div></div>
+              <div class="f c6"><label class="lb">IPTU (anual)</label><div class="ig"><span class="pre">R$</span><input class="inp ax-num" placeholder="0,00"></div></div>
+              <div class="f c6"><label class="lb">Valor por m²</label><div class="ig"><span class="pre">R$</span><input class="inp ax-num" placeholder="0,00" readonly></div></div>
+              <div class="f c6"><label class="lb">Valor promocional</label><div class="ig"><span class="pre">R$</span><input class="inp ax-num" placeholder="0,00"></div></div>
+            </div></div>
+          </div>
+          <div class="card">
+            <div class="card__h"><i class="bi bi-percent"></i><b>Negociação</b></div>
+            <div class="card__b"><div class="fg">
+              <div class="f c6"><label class="lb">Comissão captador</label><div class="ig"><input class="inp ax-num" placeholder="0"><span class="pre" style="border:1px solid var(--field-border);border-left:0;border-radius:0 6px 6px 0">%</span></div></div>
+              <div class="f c6"><label class="lb">Comissão corretor</label><div class="ig"><input class="inp ax-num" placeholder="0"><span class="pre" style="border:1px solid var(--field-border);border-left:0;border-radius:0 6px 6px 0">%</span></div></div>
+              <div class="f c12"><div class="swrow"><label class="sw"><input type="checkbox"><span class="tr"></span> Aceita permuta</label><small>Imóvel, veículo ou outros</small></div></div>
+              <div class="f c12"><div class="swrow"><label class="sw"><input type="checkbox" checked><span class="tr"></span> Gestão de locação</label><span class="badge badge--green badge--dot">Ativo</span></div></div>
+            </div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-person-lines-fill"></i><b>Proprietário — contato</b><span class="hint">Não exibido no site</span></div>
+          <div class="card__b"><div class="fg">
+            <div class="f c5"><label class="lb">Nome</label><input class="inp"></div>
+            <div class="f c4"><label class="lb">Celular</label><input class="inp" placeholder="(11) 90000-0000"></div>
+            <div class="f c3"><label class="lb">Código</label><input class="inp"></div>
+            <div class="f c5"><label class="lb">E-mail</label><input class="inp" type="email"></div>
+            <div class="f c4"><label class="lb">Tel. residencial</label><input class="inp"></div>
+            <div class="f c3"><label class="lb">Tel. comercial</label><input class="inp"></div>
+            <div class="f c12"><label class="lb">Observações internas</label><textarea class="ta" placeholder="Chaves, horários de visita, particularidades…"></textarea></div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- PUBLICAÇÃO -->
+      <div class="tabpane" data-pane="publicacao">
+        <div class="head"><div><span class="ax-eyebrow">Cadastro de imóvel · Novo</span><h1>Publicação</h1><p>Visibilidade no site próprio, anúncio, portais e SEO.</p></div></div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-toggles"></i><b>Visibilidade no site</b></div>
+          <div class="card__b"><div class="fg">
+            <div class="f c6"><div class="swrow"><label class="sw"><input type="checkbox" checked><span class="tr"></span> Exibir no site</label></div></div>
+            <div class="f c6"><div class="swrow"><label class="sw"><input type="checkbox"><span class="tr"></span> Destaque na home</label></div></div>
+            <div class="f c6"><div class="swrow"><label class="sw"><input type="checkbox"><span class="tr"></span> Lançamento</label></div></div>
+            <div class="f c6"><div class="swrow"><label class="sw"><input type="checkbox"><span class="tr"></span> Exclusivo</label></div></div>
+          </div></div>
+        </div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-megaphone"></i><b>Anúncio</b></div>
+          <div class="card__b"><div class="fg">
+            <div class="f c12"><label class="lb">Título do anúncio<span class="req">*</span></label><input class="inp" placeholder="Ex.: Apartamento 2 dormitórios na Vila Mariana"></div>
+            <div class="f c12"><label class="lb">Descrição web</label><textarea class="ta" style="min-height:100px" placeholder="Texto do anúncio para o site e portais…"></textarea></div>
+            <div class="f c12"><label class="lb">Slug (URL)<span class="op">opcional</span></label><div class="ig"><span class="pre">/imovel/</span><input class="inp" placeholder="apartamento-2q-vila-mariana"></div></div>
+          </div></div>
+        </div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-diagram-3"></i><b>Portais</b><span class="hint">3 conectados</span></div>
+          <div class="card__b"><div class="fg">
+            <div class="f c4"><div class="swrow"><label class="sw"><input type="checkbox" checked><span class="tr"></span> Viva Real</label></div></div>
+            <div class="f c4"><div class="swrow"><label class="sw"><input type="checkbox" checked><span class="tr"></span> ImovelWeb</label></div></div>
+            <div class="f c4"><div class="swrow"><label class="sw"><input type="checkbox"><span class="tr"></span> Chaves na Mão</label></div></div>
+            <div class="f c4"><div class="swrow"><label class="sw"><input type="checkbox"><span class="tr"></span> Loft</label></div></div>
+            <div class="f c4"><div class="swrow"><label class="sw"><input type="checkbox" checked><span class="tr"></span> Net Imóveis</label></div></div>
+            <div class="f c4"><div class="swrow"><label class="sw"><input type="checkbox"><span class="tr"></span> Casa Mineira</label></div></div>
+          </div></div>
+        </div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-search"></i><b>SEO</b></div>
+          <div class="card__b"><div class="fg">
+            <div class="f c12"><label class="lb">Meta title</label><input class="inp"></div>
+            <div class="f c12"><label class="lb">Meta description</label><textarea class="ta" placeholder="Resumo para buscadores…"></textarea></div>
+            <div class="f c12"><label class="lb">Palavras-chave</label><input class="inp" placeholder="apartamento, vila mariana, 2 dormitórios"></div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- MÍDIA -->
+      <div class="tabpane" data-pane="midia">
+        <div class="head"><div><span class="ax-eyebrow">Cadastro de imóvel · Novo</span><h1>Mídia</h1><p>Fotos, vídeos, tour virtual e plantas.</p></div></div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-images"></i><b>Fotos</b><span class="hint">Arraste para reordenar · a 1ª é a capa</span></div>
+          <div class="card__b">
+            <div class="drop"><i class="bi bi-cloud-arrow-up"></i><div><b>Arraste as fotos aqui</b> ou <a href="#" style="color:var(--primary)">selecione</a></div><span class="hint">JPG/PNG até 5 MB cada</span></div>
+            <div class="mgrid">
+              <div class="mtile cover"><span class="tag badge badge--blue">Capa</span><i class="bi bi-image" style="font-size:22px"></i></div>
+              <div class="mtile"><i class="bi bi-image" style="font-size:22px"></i></div>
+              <div class="mtile"><i class="bi bi-image" style="font-size:22px"></i></div>
+              <div class="mtile"><i class="bi bi-image" style="font-size:22px"></i></div>
+              <div class="mtile"><i class="bi bi-image" style="font-size:22px"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="two">
+          <div class="card"><div class="card__h"><i class="bi bi-play-btn"></i><b>Vídeo</b></div><div class="card__b"><div class="f c12"><label class="lb">URL do vídeo (YouTube/Vimeo)</label><input class="inp" placeholder="https://"></div></div></div>
+          <div class="card"><div class="card__h"><i class="bi bi-badge-3d"></i><b>Tour virtual</b></div><div class="card__b"><div class="f c12"><label class="lb">URL do tour 360°</label><input class="inp" placeholder="https://"></div></div></div>
+        </div>
+        <div class="card"><div class="card__h"><i class="bi bi-easel"></i><b>Plantas</b></div><div class="card__b"><div class="drop" style="padding:18px"><i class="bi bi-file-earmark-image"></i><span class="hint">Adicione as plantas do imóvel</span></div></div></div>
+      </div>
+
+      <!-- DOCUMENTOS -->
+      <div class="tabpane" data-pane="documentos">
+        <div class="head"><div><span class="ax-eyebrow">Cadastro de imóvel · Novo</span><h1>Documentos</h1><p>Fichas de cadastro e autorizações de venda (uso interno).</p></div></div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-folder2-open"></i><b>Fichas de cadastro</b></div>
+          <div class="card__b" style="display:grid;gap:8px">
+            <div class="upl"><div class="l"><span class="ic"><i class="bi bi-file-earmark-pdf"></i></span><div><b style="font-size:12.5px">ficha-proprietario.pdf</b><div class="hint">240 KB · enviado agora</div></div></div><button class="btn btn--sm btn--ghost"><i class="bi bi-trash"></i></button></div>
+            <div class="drop" style="padding:16px"><i class="bi bi-cloud-arrow-up"></i><span class="hint">Enviar ficha (PDF, até 100 MB)</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card__h"><i class="bi bi-file-earmark-check"></i><b>Autorizações de venda</b></div>
+          <div class="card__b"><div class="drop" style="padding:16px"><i class="bi bi-cloud-arrow-up"></i><span class="hint">Enviar autorização assinada</span></div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sticky footer -->
+    <div class="foot">
+      <span class="meta"><i class="bi bi-clock-history"></i> Não salvo</span>
+      <span class="grow"></span>
+      <button class="btn">Cancelar</button>
+      <button class="btn btn--primary"><i class="bi bi-check-lg"></i> Salvar</button>
+      <button class="btn">Salvar e sair</button>
+    </div>
+  </section>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('is-active')});
+      t.classList.add('is-active');
+      var k = t.getAttribute('data-tab');
+      document.querySelectorAll('.tabpane').forEach(function(p){p.classList.toggle('on', p.getAttribute('data-pane')===k)});
+      document.querySelector('.main__scroll').scrollTop = 0;
+    });
+  });
+  document.querySelectorAll('.chip').forEach(function(c){c.addEventListener('click',function(){c.classList.toggle('on')})});
+  document.querySelectorAll('.seg button').forEach(function(b){b.addEventListener('click',function(){
+    b.parentElement.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');
+  })});
+  var eb=document.getElementById('explBtn');
+  if(eb){eb.addEventListener('click',function(){document.body.classList.toggle('collapsed');var ic=eb.querySelector('.bi');ic.className=document.body.classList.contains('collapsed')?'bi bi-arrow-bar-right':'bi bi-arrow-bar-left';});}
+</script>
+</body>
+</html>

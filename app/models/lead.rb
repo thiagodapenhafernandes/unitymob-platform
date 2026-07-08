@@ -39,6 +39,8 @@ class Lead < ApplicationRecord
   has_many :appointments, dependent: :nullify
   has_many :proposals, dependent: :destroy
   has_many :lead_labelings, dependent: :destroy
+  has_many :property_interests, class_name: "LeadPropertyInterest", dependent: :destroy
+  has_many :interest_properties, through: :property_interests, source: :habitation
   has_many :lead_labels, through: :lead_labelings
 
   # Etiquetas são privadas por corretor: só retorna as marcações cujo label
@@ -54,8 +56,13 @@ class Lead < ApplicationRecord
   def preloaded_labels_for(admin_user)
     return [] if admin_user.blank?
 
-    lead_labels.select { |label| label.admin_user_id == admin_user.id }
-               .sort_by { |label| [label.position, label.name] }
+    labels = if association(:lead_labelings).loaded?
+      lead_labelings.filter_map { |labeling| labeling.lead_label if labeling.lead_label&.admin_user_id == admin_user.id }
+    else
+      lead_labels.for_user(admin_user)
+    end
+
+    labels.sort_by { |label| [label.position, label.name] }
   end
 
   after_create :record_audit_create
@@ -169,8 +176,14 @@ class Lead < ApplicationRecord
   end
 
   def self.tag_options(scope: all)
-    scope.where.not(tags: [nil, []])
-      .pluck(:tags)
+    # Agrega no banco (DISTINCT dos elementos do jsonb) em vez de puxar o array
+    # de tags de todos os leads pro Ruby: transfere só o conjunto distinto.
+    # A normalização Ruby roda apenas sobre esse conjunto pequeno, preservando
+    # o tratamento de dados legados (aspas, JSON aninhado, split por ;/,).
+    scope.reorder(nil)
+      .where("jsonb_typeof(leads.tags) = 'array'")
+      .where("leads.tags <> '[]'::jsonb")
+      .pluck(Arel.sql("DISTINCT jsonb_array_elements_text(leads.tags)"))
       .flat_map { |value| normalize_tags_value(value) }
       .uniq
       .sort_by(&:downcase)

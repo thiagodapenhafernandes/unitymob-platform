@@ -58,6 +58,7 @@ class Habitation < ApplicationRecord
   }.freeze
 
   PUBLIC_STATUSES = ['Venda', 'Aluguel', 'Locação', 'Locacao'].freeze
+  INACTIVE_STATUS_KEYWORDS = %w[suspenso alugado vendido].freeze
   NUMERIC_CODIGO_SQL = "codigo ~ '^[0-9]+$'".freeze
   VISTA_REFERENCE_CODIGO_SQL = "#{NUMERIC_CODIGO_SQL} AND COALESCE(imovel_dwv, '') <> 'Sim'".freeze
   STANDALONE_CATEGORIES_WITHOUT_DEVELOPMENT_NAME = %w[casa sobrado rural chacara sitio].freeze
@@ -106,7 +107,8 @@ class Habitation < ApplicationRecord
   SITE_RELEASABLE_INTAKE_STATUSES = %w[admin_approved returned_to_broker internal].freeze
   PHOTO_FLOW_CHOICES = {
     "upload" => "Enviar fotos",
-    "schedule" => "Agendar fotógrafo"
+    "schedule" => "Agendar fotógrafo",
+    "google_calendar" => "Agendar no Google Agenda"
   }.freeze
   YES_NO_ANSWERS = {
     "sim" => "Sim",
@@ -126,16 +128,86 @@ class Habitation < ApplicationRecord
       .sort
   end
 
+  def self.public_filter_property_types_cache_key(tenant_id)
+    "public_filter_property_types_v1/tenant/#{tenant_id}"
+  end
+
+  def self.public_filter_location_options_cache_key(tenant_id)
+    "public_filter_location_options_v1/tenant/#{tenant_id}"
+  end
+
+  def self.public_listing_count_cache_key(tenant_id, filters)
+    digest = ActiveSupport::Digest.hexdigest(normalized_public_listing_count_filters(filters).to_json)
+    "public_listing_count_v1/tenant/#{tenant_id}/#{digest}"
+  end
+
+  def self.clear_public_filter_cache_for_tenant(tenant_id)
+    return if tenant_id.blank?
+
+    Rails.cache.delete(public_filter_property_types_cache_key(tenant_id))
+    Rails.cache.delete(public_filter_location_options_cache_key(tenant_id))
+    clear_public_listing_count_cache_for_tenant(tenant_id)
+    clear_public_home_cache_for_tenant(tenant_id)
+    Footer::QuickLinksService.clear_cache if defined?(Footer::QuickLinksService)
+  end
+
+  def self.clear_public_listing_count_cache_for_tenant(tenant_id)
+    return if tenant_id.blank?
+    return unless Rails.cache.respond_to?(:delete_matched)
+
+    Rails.cache.delete_matched("public_listing_count_v1/tenant/#{tenant_id}/*")
+  rescue NotImplementedError
+    nil
+  end
+
+  def self.clear_public_home_cache_for_tenant(tenant_id)
+    return if tenant_id.blank?
+    return unless Rails.cache.respond_to?(:delete_matched)
+
+    Rails.cache.delete_matched("public_home/tenant/#{tenant_id}/*")
+  rescue NotImplementedError
+    nil
+  end
+
   def self.photography_schedule_url
     Setting.get("photography_schedule_url", "").to_s.strip
   end
 
+  def self.normalized_public_listing_count_filters(filters)
+    raw = if filters.respond_to?(:to_unsafe_h)
+            filters.to_unsafe_h
+          elsif filters.respond_to?(:to_h)
+            filters.to_h
+          else
+            {}
+          end
+
+    normalize_public_listing_count_value(raw.deep_stringify_keys.except("action", "controller", "page", "sort"))
+  end
+
+  def self.normalize_public_listing_count_value(value)
+    case value
+    when Hash
+      value.sort.to_h.transform_values { |item| normalize_public_listing_count_value(item) }
+    when Array
+      value
+        .map { |item| normalize_public_listing_count_value(item) }
+        .sort_by { |item| item.to_json }
+    else
+      value.to_s
+    end
+  end
+
   def inactive_for_admin_card?
-    status.to_s.match?(/suspenso|vendido|alugado/i)
+    inactive_commercial_status?
   end
 
   def unavailable_for_duplicate_check?
     !exibir_no_site_flag? || inactive_for_admin_card?
+  end
+
+  def inactive_commercial_status?
+    inactive_status_key.present?
   end
 
   # INTERNAL_FEATURES = [ ... ] (Deprecated in favor of AttributeOption)
@@ -171,6 +243,18 @@ class Habitation < ApplicationRecord
   ESTADO_CONSERVACAO = ["Novo", "Ótimo", "Bom", "Regular", "Seminovo", "Usado", "Reformado", "Original", "Em Obras", "Na Planta"].freeze
   TOPOGRAFIA_OPTIONS = ["Plano", "Aclive", "Declive", "Irregular"].freeze
   FOTO_CLASSIFICACAO = ["Profissionais", "Boas", "Aceitáveis", "Amadoras", "Não tem fotos"].freeze
+  # Ambientes das fotos do imóvel (armazenados em blob.metadata["ambiente"]).
+  # A ordem também é a ordem de exibição no select do modal de configuração.
+  FOTO_AMBIENTES = [
+    "Fachada", "Sala de estar", "Sala de jantar", "Sacada", "Cozinha",
+    "Lavanderia", "Lavabo", "Quartos", "Banheiros", "Área externa", "Garagem", "Planta"
+  ].freeze
+  # Ordem canônica de organização das fotos por ambiente. Quartos/Banheiros são
+  # intercalados (Quarto1, Banheiro1, Quarto2, ...) por organize_photos_by_ambiente!.
+  FOTO_AMBIENTE_ORDER = [
+    "Fachada", "Sala de estar", "Sala de jantar", "Sacada", "Cozinha",
+    "Lavanderia", "Lavabo", "Quartos", "Banheiros", "Área externa", "Garagem", "Planta"
+  ].freeze
   KEY_LOCATION_OPTIONS = ["Imobiliária", "Corretor(a)", "Proprietário", "Zelador", "Portaria", "Inquilino", "Outro"].freeze
   RENTAL_GUARANTEE_METHOD_OPTIONS = ["Seguro fiança", "Caução", "Fiador", "Título de capitalização", "Garantidora", "A combinar"].freeze
   REGIAO_FOCO_OPTIONS = ["Sim", "Não"].freeze
@@ -289,8 +373,10 @@ class Habitation < ApplicationRecord
   validate :codigo_empreendimento_must_exist, if: :validate_codigo_empreendimento?
   validate :codigo_empreendimento_cannot_reference_self
   validate :key_location_notes_required_for_other
+  validate :inactive_commercial_status_details_required
   
   # Callbacks
+  before_validation :unpublish_when_commercial_status_inactive
   before_validation :clear_category_mismatched_slug, prepend: true
   before_validation :assign_codigo_automaticamente, on: :create
   before_validation :set_data_cadastro_crm, on: :create
@@ -410,8 +496,16 @@ class Habitation < ApplicationRecord
     categoria.to_s.match?(/apartamento|cobertura|loft|studio/i)
   end
 
+  def requires_parking_info?
+    property_kind_apartment_unit?
+  end
+
   def condominium_house?
     categoria.to_s.match?(/casa.*condom[ií]nio|condom[ií]nio.*casa/i)
+  end
+
+  def condominium_land?
+    categoria.to_s.match?(/terreno.*condom[ií]nio|condom[ií]nio.*terreno/i)
   end
 
   def requires_unit_number?
@@ -419,11 +513,11 @@ class Habitation < ApplicationRecord
   end
 
   def uses_building_infrastructure?
-    property_kind_apartment_unit?
+    property_kind_apartment_unit? || condominium_house?
   end
 
   def requires_intake_development_name?
-    property_kind_apartment_unit? || condominium_house?
+    property_kind_apartment_unit? || condominium_house? || condominium_land?
   end
 
   def requires_intake_address_complement?
@@ -432,6 +526,11 @@ class Habitation < ApplicationRecord
       property_kind_sala_comercial? ||
       property_kind_galpao? ||
       property_kind_terreno?
+  end
+
+  # Casa em condomínio localiza a unidade por lote/quadra dentro do empreendimento.
+  def requires_intake_lot_block?
+    condominium_house?
   end
 
   def intake_address_complement_label
@@ -444,7 +543,7 @@ class Habitation < ApplicationRecord
 
   def intake_address_complement_placeholder
     return "1203" if requires_unit_number?
-    return "Ex.: Casa 12, Quadra B" if condominium_house?
+    return "Ex.: Casa 12" if condominium_house?
     return "Ex.: Sala 402" if property_kind_sala_comercial?
     return "Ex.: Galpão B, fundos" if property_kind_galpao?
     return "Ex.: Lote 12, Quadra B" if property_kind_terreno?
@@ -460,6 +559,14 @@ class Habitation < ApplicationRecord
     return area_total_m2.to_f.positive? if property_kind_terreno?
 
     area_privativa_m2.to_f.positive?
+  end
+
+  def requires_intake_expense_amount?
+    !property_kind_terreno? && !property_kind_sala_comercial? && !property_kind_galpao?
+  end
+
+  def requires_intake_key_location?
+    !property_kind_terreno?
   end
 
   def duplicate_identity_scope
@@ -585,7 +692,8 @@ class Habitation < ApplicationRecord
   end
 
   def taxes_included_indicator?
-    displayable_condominio_cents.blank? && displayable_iptu_cents.blank?
+    valor_locacao_cents.to_i.positive? &&
+      displayable_condominio_cents.blank? && displayable_iptu_cents.blank?
   end
 
   def rent_discount?
@@ -624,6 +732,15 @@ class Habitation < ApplicationRecord
   end
   def senha_imovel = captacao_note_value("Senha do imóvel")
   def senha_portaria = captacao_note_value("Senha da portaria")
+
+  def senha_imovel=(value)
+    set_captacao_note_value("Senha do imóvel", value)
+  end
+
+  def senha_portaria=(value)
+    set_captacao_note_value("Senha da portaria", value)
+  end
+
   def ocupacao = ocupacao_status
   def estado_imovel = estado_conservacao
   def situacao_imovel = situacao
@@ -844,11 +961,12 @@ class Habitation < ApplicationRecord
   end
 
   def intake_missing_requirements(required_checks: nil, require_owner_city: false)
+    operational_checks = Array(required_checks).present?
     required_checks = Array(required_checks).presence || PropertySetting.default_broker_capture_checks
     # Aceita tanto o formato granular atual quanto blocos legados (expande quando necessário).
     required_checks = PropertySetting.normalize_intake_checks(required_checks)
     check = ->(key) { required_checks.include?(key) }
-    owner_city_required = require_owner_city || check.call("proprietario_cidade")
+    owner_city_required = check.call("proprietario_cidade") || (!operational_checks && require_owner_city)
 
     missing = []
     missing << "Dados do proprietário" if check.call("proprietario") && intake_owner_data_missing?(require_owner_city: false)
@@ -872,22 +990,26 @@ class Habitation < ApplicationRecord
         missing << "Dimensões e estrutura física"
       end
     end
-    missing << "Vaga de garagem" if check.call("vagas") && vagas_qtd.nil?
-    missing << "Situação" if check.call("situacao") && situacao.blank?
-    missing << "Ocupação" if check.call("ocupacao") && ocupacao_status.blank?
+    if requires_parking_info?
+      missing << "Tipo de vaga" if check.call("tipo_vaga") && tipo_vaga.blank?
+      missing << "Vaga de garagem" if check.call("vagas") && vagas_qtd.nil?
+      missing << "Box" if check.call("box") && vagas_qtd.to_i.positive? && numero_box.blank?
+    end
+    missing << "Situação" if check.call("situacao") && !property_kind_terreno? && situacao.blank?
+    missing << "Ocupação" if check.call("ocupacao") && !property_kind_terreno? && ocupacao_status.blank?
     missing << "Mais características" if check.call("caracteristicas") && caracteristicas.blank?
     missing << "Infraestrutura & Lazer" if check.call("infraestrutura") && uses_building_infrastructure? && infra_estrutura.blank?
     missing << intake_sale_price_requirement_message if check.call("valor_negociacao") && requires_sale_price? && !valid_intake_sale_price?
     missing << intake_rent_price_requirement_message if check.call("valor_negociacao") && requires_rent_price? && !valid_intake_rent_price?
-    missing << "Financeiro e valores" if check.call("financeiro") && valor_condominio_cents.blank? && valor_iptu_cents.blank?
-    missing << "Administração da locação" if check.call("condicoes_negociacao") && rental_intake? && salute_rental_management_answer.blank?
-    missing << "Meio de garantia locatícia" if check.call("condicoes_negociacao") && rental_intake? && rental_guarantee_method.blank?
-    missing << "Aceita permuta" if check.call("condicoes_negociacao") && sale_intake? && aceita_permuta_answer.blank?
-    missing << "Quantidade de parcelas" if check.call("condicoes_negociacao") && aceita_parcelamento_flag? && numero_prestacoes.blank?
-    missing << "Chaves" if check.call("chaves") && key_location.blank?
+    missing << "Financeiro e valores" if check.call("financeiro") && requires_intake_expense_amount? && valor_condominio_cents.blank? && valor_iptu_cents.blank?
+    missing << "Administração da locação" if check.call("admin_locacao") && rental_intake? && salute_rental_management_answer.blank?
+    missing << "Meio de garantia locatícia" if check.call("garantia_locaticia") && rental_intake? && rental_guarantee_method.blank?
+    missing << "Aceita permuta" if check.call("permuta") && sale_intake? && aceita_permuta_answer.blank?
+    missing << "Quantidade de parcelas" if check.call("parcelamento") && aceita_parcelamento_flag? && numero_prestacoes.blank?
+    missing << "Chaves" if check.call("chaves") && requires_intake_key_location? && key_location.blank?
     missing << "Dias de visita" if check.call("visitas") && !skip_visitas? && !intake_visit_days_present?
     missing << "Fotos ou agenda com fotógrafo" if check.call("fotos") && photo_flow_choice == "upload" && !has_any_photo?
-    missing << "Agenda com fotógrafo" if check.call("fotos") && photo_flow_choice == "schedule" && photo_session_requested_at.blank?
+    missing << "Agenda com fotógrafo" if check.call("fotos") && photo_flow_choice.in?(%w[schedule google_calendar]) && photo_session_requested_at.blank?
     missing << "Fotos ou agenda com fotógrafo" if check.call("fotos") && photo_flow_choice.blank? && !has_any_photo?
     missing << "Anexo da autorização do proprietário" if check.call("autorizacao") && !autorizacoes_venda.attached?
     missing
@@ -1097,6 +1219,68 @@ class Habitation < ApplicationRecord
     self.pictures = ordered_pictures + remaining_pictures
   end
 
+  def picture_ambiente(picture)
+    value = picture.try(:[], "ambiente") || picture.try(:[], :ambiente)
+    value.to_s.presence
+  end
+
+  def picture_ambiente_position(picture)
+    value = picture.try(:[], "ambiente_position") || picture.try(:[], :ambiente_position)
+    value = value.to_i
+    value.positive? ? value : nil
+  end
+
+  def picture_ambiente_label(picture, index: nil)
+    ambiente = picture_ambiente(picture)
+    return nil if ambiente.blank?
+
+    unless %w[Quartos Banheiros].include?(ambiente)
+      return ambiente
+    end
+
+    singular = ambiente == "Quartos" ? "Quarto" : "Banheiro"
+    position = 0
+    pictures.to_a.each_with_index do |entry, entry_index|
+      next unless picture_ambiente(entry) == ambiente
+
+      position += 1
+      return "#{singular} #{position}" if index.present? ? entry_index == index.to_i : picture_url_for_visibility(entry) == picture_url_for_visibility(picture)
+    end
+
+    ambiente
+  end
+
+  def set_picture_ambiente!(index, value, position: nil)
+    return false unless pictures.is_a?(Array)
+
+    picture_index = index.to_i
+    return false unless picture_index >= 0 && picture_index < pictures.length
+
+    normalized = value.to_s.strip
+    normalized_position = position.to_s.strip
+
+    self.pictures = pictures.each_with_index.map do |picture, current_index|
+      next picture unless current_index == picture_index
+
+      payload = picture.is_a?(Hash) ? picture.deep_dup : { "url" => picture.to_s }
+      if normalized.blank?
+        payload.delete("ambiente")
+        payload.delete("ambiente_position")
+      else
+        payload["ambiente"] = normalized
+        if normalized_position.match?(/\A\d+\z/) && normalized_position.to_i.positive?
+          payload["ambiente_position"] = normalized_position.to_i
+        else
+          payload.delete("ambiente_position")
+        end
+      end
+      payload
+    end
+
+    save!(validate: false)
+    true
+  end
+
   def ordered_photos
     attached_photos = attached_photos_for_display
     return attached_photos unless photo_ids_order.present? && attached_photos.any?
@@ -1112,6 +1296,164 @@ class Habitation < ApplicationRecord
   def public_ordered_photos
     hidden_ids = Array(site_hidden_photo_ids).map(&:to_i)
     ordered_photos.reject { |photo| hidden_ids.include?(photo.id) }
+  end
+
+  # --- Fotos por ambiente (metadata do blob) ---
+
+  # Lê o ambiente gravado no metadata do blob da foto. String ∈ FOTO_AMBIENTES ou nil.
+  def photo_ambiente(attachment)
+    return nil unless attachment&.blob
+
+    value = attachment.blob.metadata.to_h["ambiente"]
+    value.presence
+  end
+
+  def photo_ambiente_position(attachment)
+    return nil unless attachment&.blob
+
+    value = attachment.blob.metadata.to_h["ambiente_position"].to_i
+    value.positive? ? value : nil
+  end
+
+  # Grava o ambiente no metadata do blob (merge, preservando o resto). Valor nil/""
+  # limpa o ambiente. Persiste o blob.
+  def set_photo_ambiente!(attachment, value, position: nil)
+    return unless attachment&.blob
+
+    blob = attachment.blob
+    metadata = blob.metadata.to_h
+    normalized = value.to_s.strip
+    normalized_position = position.to_s.strip
+
+    if normalized.blank?
+      metadata.delete("ambiente")
+      metadata.delete("ambiente_position")
+    else
+      metadata["ambiente"] = normalized
+      if normalized_position.match?(/\A\d+\z/) && normalized_position.to_i.positive?
+        metadata["ambiente_position"] = normalized_position.to_i
+      else
+        metadata.delete("ambiente_position")
+      end
+    end
+
+    blob.update!(metadata: metadata)
+    association(:photos_attachments).reset if attached_photos_loaded?
+  end
+
+  # Rótulo de exibição com numeração automática de Quartos/Banheiros. Entre as fotos
+  # (na ordem atual) com ambiente "Quartos", esta é a Nª => "Quarto N"; idem
+  # "Banheiros" => "Banheiro N". Demais ambientes => o próprio nome; nil => nil.
+  def photo_ambiente_label(attachment)
+    ambiente = photo_ambiente(attachment)
+    return nil if ambiente.blank?
+
+    unless %w[Quartos Banheiros].include?(ambiente)
+      return ambiente
+    end
+
+    singular = ambiente == "Quartos" ? "Quarto" : "Banheiro"
+    position = 0
+    ordered_photos.each do |photo|
+      next unless photo_ambiente(photo) == ambiente
+
+      position += 1
+      return "#{singular} #{position}" if photo.id == attachment.id
+    end
+
+    ambiente
+  end
+
+  # Reordena photo_ids_order pela FOTO_AMBIENTE_ORDER, intercalando Quarto N com
+  # Banheiro N. Fotos sem ambiente vão para o fim, preservando a ordem relativa
+  # atual. Persiste a nova ordem.
+  def organize_photos_by_ambiente!
+    association(:photos_attachments).reset if attached_photos_loaded?
+    photos_in_order = ordered_photos
+    organize_pictures_by_ambiente!
+    return if photos_in_order.blank?
+
+    grouped = Hash.new { |hash, key| hash[key] = [] }
+    unassigned = []
+
+    photos_in_order.each do |photo|
+      ambiente = photo_ambiente(photo)
+      if ambiente.present? && FOTO_AMBIENTE_ORDER.include?(ambiente)
+        grouped[ambiente] << [photo, photo_ambiente_position(photo)]
+      else
+        unassigned << photo
+      end
+    end
+
+    ordered = []
+    FOTO_AMBIENTE_ORDER.each do |ambiente|
+      if ambiente == "Quartos"
+        # Intercala Quarto N / Banheiro N (pares), depois sobras de cada um.
+        quartos = ordered_ambiente_photos(grouped["Quartos"])
+        banheiros = ordered_ambiente_photos(grouped["Banheiros"])
+        [quartos.size, banheiros.size].max.times do |index|
+          ordered << quartos[index] if quartos[index]
+          ordered << banheiros[index] if banheiros[index]
+        end
+      elsif ambiente == "Banheiros"
+        next # já intercalado junto de "Quartos"
+      else
+        ordered.concat(ordered_ambiente_photos(grouped[ambiente]))
+      end
+    end
+
+    ordered.concat(unassigned)
+
+    self.photo_ids_order = ordered.map(&:id)
+    save!(validate: false)
+  end
+
+  def organize_pictures_by_ambiente!
+    return unless pictures.is_a?(Array)
+    return if pictures.blank?
+
+    grouped = Hash.new { |hash, key| hash[key] = [] }
+    unassigned = []
+
+    pictures.each do |picture|
+      ambiente = picture_ambiente(picture)
+      if ambiente.present? && FOTO_AMBIENTE_ORDER.include?(ambiente)
+        grouped[ambiente] << [picture, picture_ambiente_position(picture)]
+      else
+        unassigned << picture
+      end
+    end
+
+    ordered = []
+    FOTO_AMBIENTE_ORDER.each do |ambiente|
+      if ambiente == "Quartos"
+        quartos = ordered_ambiente_pictures(grouped["Quartos"])
+        banheiros = ordered_ambiente_pictures(grouped["Banheiros"])
+        [quartos.size, banheiros.size].max.times do |index|
+          ordered << quartos[index] if quartos[index]
+          ordered << banheiros[index] if banheiros[index]
+        end
+      elsif ambiente == "Banheiros"
+        next
+      else
+        ordered.concat(ordered_ambiente_pictures(grouped[ambiente]))
+      end
+    end
+
+    self.pictures = ordered + unassigned
+    save!(validate: false)
+  end
+
+  def ordered_ambiente_photos(entries)
+    entries.each_with_index
+      .sort_by { |(_photo, position), index| [position.present? ? 0 : 1, position || index, index] }
+      .map { |(photo, _position), _index| photo }
+  end
+
+  def ordered_ambiente_pictures(entries)
+    entries.each_with_index
+      .sort_by { |(_picture, position), index| [position.present? ? 0 : 1, position || index, index] }
+      .map { |(picture, _position), _index| picture }
   end
 
   def attached_photos_loaded?
@@ -1569,6 +1911,42 @@ class Habitation < ApplicationRecord
     self.motivo_suspensao = nil
   end
 
+  def inactive_commercial_status_details_required
+    case inactive_status_key
+    when "suspenso"
+      errors.add(:motivo_suspensao, "deve ser informado quando o status estiver Suspenso") if motivo_suspensao.blank?
+    when "alugado"
+      if valor_alugado_terceiros_cents.to_i <= 0
+        errors.add(:valor_alugado_terceiros_cents, "deve ser informado quando o status estiver Alugado")
+      end
+    when "vendido"
+      if valor_vendido_terceiros_cents.to_i <= 0
+        errors.add(:valor_vendido_terceiros_cents, "deve ser informado quando o status estiver Vendido")
+      end
+    end
+  end
+
+  def unpublish_when_commercial_status_inactive
+    return unless inactive_commercial_status?
+
+    self.exibir_no_site_flag = false
+    portal_publication_attribute_names.each do |attribute|
+      public_send("#{attribute}=", false) if respond_to?("#{attribute}=")
+    end
+  end
+
+  def inactive_status_key
+    normalized_status = self.class.normalize_status(status).to_s.parameterize
+    INACTIVE_STATUS_KEYWORDS.find { |keyword| normalized_status.include?(keyword) }
+  end
+
+  def portal_publication_attribute_names
+    portal_columns = self.class::PORTAL_PUBLICATION_FIELDS.values
+    dynamic_columns = self.class.column_names.grep(/\Apublicar_/).map(&:to_sym)
+
+    (portal_columns + dynamic_columns).uniq
+  end
+
   def assign_codigo_automaticamente
     return if codigo.present?
 
@@ -1710,6 +2088,7 @@ class Habitation < ApplicationRecord
     Rails.cache.delete(cache_key)
     Rails.cache.delete([self.class.name, id])
     Rails.cache.delete("habitation_#{id}")
+    self.class.clear_public_filter_cache_for_tenant(tenant_id)
     
     # Limpar cache da view materializada se for um imóvel em destaque
     if destaque_web_flag_changed? || exibir_no_site_flag_changed?

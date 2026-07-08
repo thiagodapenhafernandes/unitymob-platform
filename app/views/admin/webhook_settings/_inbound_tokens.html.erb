@@ -18,7 +18,10 @@
                 local: true,
                 class: "webhook-token-actions__switch",
                 data: { controller: "auto-submit" } do |f| %>
-            <span>Recebimento</span>
+            <span class="webhook-token-switch-label <%= 'is-on' if token.enabled? %>">
+              <i class="bi bi-<%= token.enabled? ? 'broadcast' : 'pause-circle' %>"></i>
+              <%= token.enabled? ? 'Recebendo' : 'Pausado' %>
+            </span>
             <%= ax_switch_field(form: f,
                   method: :enabled,
                   id: "inbound_webhook_token_#{token.id}_enabled",

@@ -1,4 +1,6 @@
 class PortalIntegration < ApplicationRecord
+  include TenantScoped
+
   PORTAL_DEFINITIONS = {
     "zapimoveis" => { title: "ZapImóveis", feed_strategy: "vrsync_xml" },
     "vivareal_vrsync" => { title: "Viva Real VRSync", feed_strategy: "vrsync_xml" },
@@ -95,24 +97,72 @@ class PortalIntegration < ApplicationRecord
     }
   }.freeze
 
-  validates :portal, presence: true, inclusion: { in: PORTALS }, uniqueness: true
+  validates :portal, presence: true, inclusion: { in: PORTALS }
+  # Unicidade do portal é POR TENANT após a migration (tenant_id + portal).
+  # Antes da migration (coluna ausente), mantém unicidade global — tolerante.
+  if column_names.include?("tenant_id")
+    validates :portal, uniqueness: { scope: :tenant_id }
+  else
+    validates :portal, uniqueness: true
+  end
   validates :allowed_business_types, presence: true
+  # feed_token permanece único GLOBALMENTE: é a chave pública do feed e
+  # identifica sozinho a integração/tenant no lookup público.
   validates :feed_token, presence: true, uniqueness: true
 
-  has_many :portal_integration_events, primary_key: :portal, foreign_key: :portal, inverse_of: :portal_integration, dependent: :delete_all
-  has_many :portal_listing_states, primary_key: :portal, foreign_key: :portal, inverse_of: :portal_integration, dependent: :delete_all
+  # Estados/eventos casam por portal string. Quando há tenant_id nas duas
+  # pontas, escopamos a associação também por tenant para não cruzar registros
+  # de outros tenants que compartilhem o mesmo nome de portal.
+  if column_names.include?("tenant_id") &&
+     (PortalIntegrationEvent.column_names.include?("tenant_id") rescue false)
+    has_many :portal_integration_events,
+             ->(integration) { where(tenant_id: integration.tenant_id) },
+             primary_key: :portal, foreign_key: :portal,
+             inverse_of: :portal_integration, dependent: :delete_all
+  else
+    has_many :portal_integration_events, primary_key: :portal, foreign_key: :portal, inverse_of: :portal_integration, dependent: :delete_all
+  end
+
+  if column_names.include?("tenant_id") &&
+     (PortalListingState.column_names.include?("tenant_id") rescue false)
+    has_many :portal_listing_states,
+             ->(integration) { where(tenant_id: integration.tenant_id) },
+             primary_key: :portal, foreign_key: :portal,
+             inverse_of: :portal_integration, dependent: :delete_all
+  else
+    has_many :portal_listing_states, primary_key: :portal, foreign_key: :portal, inverse_of: :portal_integration, dependent: :delete_all
+  end
 
   before_validation :normalize_values
   before_validation :ensure_feed_token
 
   scope :enabled, -> { where(enabled: true) }
 
-  def self.for_portal!(portal)
+  # Resolve (ou cria) a integração de um portal SEMPRE dentro de um tenant.
+  # Uso escopado: current_tenant.portal_integrations.for_portal!(portal)
+  #   — o tenant é inferido do current_scope da associação.
+  # Uso explícito: PortalIntegration.for_portal!(portal, tenant: current_tenant)
+  #   — tolerante enquanto Tenant não expõe a associação portal_integrations.
+  # Exige um tenant: sem ele o método levanta erro (nunca cria registro global).
+  def self.for_portal!(portal, tenant: nil)
     normalized = portal.to_s.downcase
     raise ActiveRecord::RecordNotFound, "Portal inválido" unless PORTALS.include?(normalized)
 
-    find_or_initialize_by(portal: normalized).tap do |config|
+    tenant ||= scoped_tenant
+    if column_names.include?("tenant_id")
+      raise ActiveRecord::RecordNotFound, "Tenant não informado" if tenant.blank?
+
+      relation = where(tenant_id: tenant.respond_to?(:id) ? tenant.id : tenant)
+    else
+      # Pré-migration: sem coluna tenant_id, opera global (comportamento antigo).
+      relation = all
+    end
+
+    relation.find_or_initialize_by(portal: normalized).tap do |config|
       if config.new_record?
+        # Quando escopado por where(tenant_id:), o novo registro já herda o
+        # tenant_id do escopo. Só reforçamos com o objeto Tenant quando temos um.
+        config.tenant = tenant if config.respond_to?(:tenant=) && tenant.is_a?(Tenant)
         config.allowed_statuses = Habitation::STATUS_OPTIONS
         config.allowed_business_types = BUSINESS_TYPES
         config.require_exibir_no_site = true
@@ -121,6 +171,19 @@ class PortalIntegration < ApplicationRecord
       end
     end
   end
+
+  # Tenant amarrado ao current_scope quando chamado a partir de uma associação
+  # escopada (ex.: current_tenant.portal_integrations). Retorna o id/valor
+  # presente no where do escopo corrente, ou nil.
+  def self.scoped_tenant
+    return nil unless column_names.include?("tenant_id")
+
+    scope = current_scope
+    return nil if scope.nil?
+
+    scope.where_values_hash["tenant_id"]
+  end
+  private_class_method :scoped_tenant
 
   def masked_feed_token
     return nil if feed_token.blank?

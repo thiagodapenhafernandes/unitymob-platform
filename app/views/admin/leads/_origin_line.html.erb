@@ -1,0 +1,25 @@
+<%# Proveniência do lead — frase literal ("como veio") num bloco discreto,
+    seguida dos fatos úteis. Fonte única: lead_conversion_summary. locals: lead %>
+<% conv = lead_conversion_summary(lead) %>
+<div class="lead-origin-block lead-origin-block--<%= conv[:color] %>">
+  <span class="lead-origin-block__icon"><i class="bi <%= conv[:icon] %>"></i></span>
+  <div class="lead-origin-block__body">
+    <strong class="lead-origin-block__headline"><%= conv[:headline] %></strong>
+    <div class="lead-origin-block__facts">
+      <% if conv[:product].present? %>
+        <span class="lead-origin-block__fact"><i class="bi bi-house-door"></i><%= conv[:product] %></span>
+      <% end %>
+      <% if conv[:campaign].present? %>
+        <span class="lead-origin-block__fact"><i class="bi bi-megaphone"></i><%= conv[:campaign] %></span>
+      <% end %>
+      <% conv[:tags].first(4).each do |tag| %>
+        <span class="lead-origin-block__tag"><%= tag %></span>
+      <% end %>
+      <% if conv[:source_url].present? %>
+        <%= link_to conv[:source_url], target: "_blank", rel: "noopener", class: "lead-origin-block__link", title: conv[:source_url] do %>
+          <i class="bi bi-box-arrow-up-right"></i>Página de origem
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

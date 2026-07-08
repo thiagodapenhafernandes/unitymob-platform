@@ -8,50 +8,54 @@ module Whatsapp
 
       def message_created(message)
         conversation = message.whatsapp_conversation
-        broadcast_to_workspaces(conversation) do |focus_mode|
-          {
-            messages: [serialize_message(conversation, message, focus_mode: focus_mode)],
-            updates: affected_neighbor_updates(conversation, message, focus_mode: focus_mode),
-            status_cursor: status_cursor_for(conversation),
-            queue: serialize_conversation(conversation),
-            context_fragments: context_fragments(conversation, focus_mode: focus_mode)
-          }
-        end
+        broadcast_to_workspaces(
+          conversation,
+          messages: [serialize_message(conversation, message)],
+          updates: affected_neighbor_updates(conversation, message),
+          status_cursor: status_cursor_for(conversation),
+          queue: serialize_conversation(conversation)
+        )
       end
 
       def message_updated(message)
         conversation = message.whatsapp_conversation
-        broadcast_to_workspaces(conversation) do |focus_mode|
-          {
-            updates: [serialize_message(conversation, message, focus_mode: focus_mode)],
-            status_cursor: status_cursor_for(conversation),
-            context_fragments: context_fragments(conversation, focus_mode: focus_mode)
-          }
-        end
+        broadcast_to_workspaces(
+          conversation,
+          updates: [serialize_message(conversation, message)],
+          status_cursor: status_cursor_for(conversation)
+        )
       end
 
       def queue_refreshed(conversation)
-        broadcast_to_workspaces(conversation) do |focus_mode|
-          {
-            status_cursor: status_cursor_for(conversation),
-            queue: serialize_conversation(conversation),
-            context_fragments: context_fragments(conversation, focus_mode: focus_mode)
-          }
-        end
+        broadcast_to_workspaces(
+          conversation,
+          status_cursor: status_cursor_for(conversation),
+          queue: serialize_conversation(conversation)
+        )
       end
 
       private
 
-      def broadcast_to_workspaces(conversation)
+      # Payload computado UMA vez por evento: entre os 2 workspaces só o
+      # crm_copy_html varia (focus_mode aparece apenas nesse partial; o
+      # compact_mode dos bubbles é sempre true nos dois).
+      def broadcast_to_workspaces(conversation, base_payload)
+        snapshot = context_snapshot(conversation)
+        shared_fragments = shared_context_fragments(snapshot)
+
         [false, true].each do |focus_mode|
           ActionCable.server.broadcast(
             stream_name(conversation, focus_mode: focus_mode),
-            yield(focus_mode)
+            base_payload.merge(
+              context_fragments: shared_fragments.merge(
+                crm_copy_html: crm_copy_html(snapshot, focus_mode: focus_mode)
+              )
+            )
           )
         end
       end
 
-      def serialize_message(conversation, message, focus_mode:)
+      def serialize_message(conversation, message)
         media_url = media_url_for(conversation, message)
         previous_message = Whatsapp::MessageRenderContext.previous_message_for(message)
         next_message = Whatsapp::MessageRenderContext.next_message_for(message)
@@ -74,19 +78,19 @@ module Whatsapp
               media_url: media_url,
               previous_message: previous_message,
               next_message: next_message,
-              compact_mode: compact_mode_for(focus_mode)
+              compact_mode: true
             }
           )
         }
       end
 
-      def affected_neighbor_updates(conversation, message, focus_mode:)
+      def affected_neighbor_updates(conversation, message)
         [Whatsapp::MessageRenderContext.previous_message_for(message),
          Whatsapp::MessageRenderContext.next_message_for(message)]
           .compact
           .uniq(&:id)
           .reject { |candidate| candidate.id == message.id }
-          .map { |candidate| serialize_message(conversation, candidate, focus_mode: focus_mode) }
+          .map { |candidate| serialize_message(conversation, candidate) }
       end
 
       def serialize_conversation(conversation)
@@ -111,14 +115,29 @@ module Whatsapp
         conversation.messages.maximum(:updated_at)&.iso8601(6)
       end
 
-      def context_fragments(conversation, focus_mode:)
-        snapshot = Whatsapp::ThreadContextSnapshot.new(
+      def context_snapshot(conversation)
+        Whatsapp::ThreadContextSnapshot.new(
           conversation: conversation,
-          messages: conversation.messages.ordered.to_a,
-          focus_mode: focus_mode,
+          messages: [],
+          focus_mode: false,
           tenant: conversation.tenant
-        ).to_h
+        ).to_h.merge(thread_summary: thread_summary_counts(conversation))
+      end
 
+      # Contadores direto no banco — substitui o antigo messages.ordered.to_a
+      # (histórico completo carregado por evento) com a mesma semântica.
+      def thread_summary_counts(conversation)
+        outbound_counts = conversation.messages.outbound.where(status: %w[pending failed]).reorder(nil).group(:status).count
+
+        {
+          pending_count: outbound_counts["pending"].to_i,
+          failed_count: outbound_counts["failed"].to_i,
+          media_count: conversation.messages.where(msg_type: %w[image document audio video]).count,
+          last_activity_at: conversation.last_message_at || conversation.updated_at
+        }
+      end
+
+      def shared_context_fragments(snapshot)
         {
           summary_html: Admin::WhatsappInboxController.render(
             partial: "admin/whatsapp_inbox/thread_context_summary",
@@ -128,16 +147,6 @@ module Whatsapp
               thread_lead: snapshot[:thread_lead],
               thread_summary: snapshot[:thread_summary],
               thread_lead_labels: []
-            }
-          ),
-          crm_copy_html: Admin::WhatsappInboxController.render(
-            partial: "admin/whatsapp_inbox/thread_context_crm_toggle_copy",
-            formats: [:html],
-            locals: {
-              focus_mode: snapshot[:focus_mode],
-              thread_lead: snapshot[:thread_lead],
-              thread_property: snapshot[:thread_property],
-              thread_next_task: snapshot[:thread_next_task]
             }
           ),
           crm_badges_html: Admin::WhatsappInboxController.render(
@@ -168,8 +177,17 @@ module Whatsapp
         }
       end
 
-      def compact_mode_for(_focus_mode)
-        true
+      def crm_copy_html(snapshot, focus_mode:)
+        Admin::WhatsappInboxController.render(
+          partial: "admin/whatsapp_inbox/thread_context_crm_toggle_copy",
+          formats: [:html],
+          locals: {
+            focus_mode: focus_mode,
+            thread_lead: snapshot[:thread_lead],
+            thread_property: snapshot[:thread_property],
+            thread_next_task: snapshot[:thread_next_task]
+          }
+        )
       end
     end
   end

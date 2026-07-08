@@ -4,7 +4,8 @@ import TomSelect from "tom-select"
 export default class extends Controller {
   static targets = ["pageSelect", "formSelect", "autoSync", "formCountLabel"]
   static values = {
-    structure: Object // { page_id: { forms: [{id: 1, name: "Name"}] } }
+    structure: Object, // { page_id: { forms: [{id: 1, name: "Name"}] } }
+    syncUrl: String
   }
 
   connect() {
@@ -28,6 +29,7 @@ export default class extends Controller {
     }
 
     this.formSelectInstance = new TomSelect(this.formSelectTarget, {
+      dropdownParent: "body",
       plugins: ['remove_button'],
       placeholder: "Selecione os formulários...",
       maxOptions: null,
@@ -94,20 +96,40 @@ export default class extends Controller {
     return Array.from(this.formSelectTarget.selectedOptions).map((option) => option.value).filter(Boolean)
   }
 
-  syncNow(event) {
+  // Dispara a sincronização REAL (MetaSyncJob em background via sync_forms).
+  // Antes era um setTimeout com toast de sucesso falso.
+  async syncNow(event) {
     const btn = event.currentTarget
-    const icon = btn.querySelector('i')
+    const icon = btn.querySelector("i")
+    if (!this.hasSyncUrlValue || !this.syncUrlValue) {
+      window.axToast({ message: "Sincronização indisponível: conecte a conta Meta em Integrações.", type: "error" })
+      return
+    }
 
     btn.disabled = true
-    if (icon) icon.classList.add('fa-spin') // or bi-arrow-repeat spin
+    icon?.classList.add("ax-spinner")
 
-    // Simulate sync or call API if available
-    // For now, just a visual feedback
-    setTimeout(() => {
+    try {
+      const token = document.querySelector('meta[name="csrf-token"]')?.content
+      const response = await fetch(this.syncUrlValue, {
+        method: "POST",
+        headers: { "X-CSRF-Token": token, "Accept": "application/json" },
+        credentials: "same-origin"
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.message || `HTTP ${response.status}`)
+      }
+      window.axToast({
+        message: `${payload.message} Recarregue a página em instantes para ver formulários novos.`,
+        type: "success"
+      })
+    } catch (error) {
+      window.axToast({ message: error.message || "Falha ao iniciar a sincronização. Verifique a conexão Meta em Integrações.", type: "error" })
+    } finally {
       btn.disabled = false
-      if (icon) icon.classList.remove('fa-spin')
-      window.axToast({ message: "Sincronização concluída com sucesso!", type: "success" })
-    }, 1500)
+      icon?.classList.remove("ax-spinner")
+    }
   }
 
   toggleAutoSync(event) {
@@ -140,7 +162,7 @@ export default class extends Controller {
     if (enabled) {
       if (!summary) {
         summary = document.createElement("div")
-        summary.className = "meta-auto-summary badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2"
+        summary.className = "meta-auto-summary ax-badge ax-badge--blue"
         control.prepend(summary)
       }
       summary.textContent = "Todos os forms da Meta selecionados automaticamente"

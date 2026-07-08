@@ -1,0 +1,58 @@
+<% content_for :title, "Atendimento WhatsApp — Configurações" %>
+
+<div class="layout-settings-workspace">
+  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
+    <div>
+      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+        <i class="bi bi-whatsapp" style="color: var(--admin-primary);"></i>Atendimento WhatsApp
+      </h1>
+      <p class="ax-page-subtitle">Política do atendimento no inbox: cartão de apresentação do corretor e regras de resposta. A conexão do número fica em <%= link_to "Integrações › WhatsApp", admin_whatsapp_integration_path, class: "tw-text-primary" %>.</p>
+    </div>
+  </div>
+
+  <div class="layout-settings-grid">
+    <div class="layout-settings-main">
+      <%= form_with(model: @integration, url: admin_whatsapp_service_setting_path, method: :patch, local: true,
+            class: "layout-settings-form") do |f| %>
+
+        <%= ax_operational_panel(eyebrow: "Apresentação", title: "Cartão de apresentação do corretor") do %>
+          <div class="ax-panel-body">
+            <%= ax_toggle_chip(f, :presentation_enabled,
+                  label: raw("<i class='bi bi-person-badge'></i> Habilitar cartão de apresentação no atendimento")) %>
+            <p class="ax-field__hint">Mostra o bloco "Enviar apresentação" no painel da conversa. Desligado, o envio também é bloqueado no servidor.</p>
+
+            <%= ax_toggle_chip(f, :require_presentation,
+                  label: raw("<i class='bi bi-shield-check'></i> Exigir apresentação antes de responder")) %>
+            <p class="ax-field__hint">O corretor só consegue enviar mensagens livres (texto, mídia ou modelos) depois de se apresentar na conversa. Vale por corretor: cada um se apresenta uma vez.</p>
+
+            <%= ax_toggle_chip(f, :allow_photo_presentation,
+                  label: raw("<i class='bi bi-image'></i> Permitir cartão com foto do corretor")) %>
+            <p class="ax-field__hint">Com a chave ligada, cartões marcados "com foto" saem como imagem (avatar do perfil) + legenda. Desligada, saem sempre como texto.</p>
+          </div>
+        <% end %>
+
+        <%= ax_operational_panel(eyebrow: "Atendimento", title: "Onde os botões de WhatsApp atendem") do %>
+          <div class="ax-panel-body">
+            <%= ax_toggle_chip(f, :inbox_attendance_enabled,
+                  label: raw("<i class='bi bi-chat-dots'></i> Atender pelo inbox do sistema")) %>
+            <p class="ax-field__hint">Com a chave ligada, os botões "WhatsApp" (lista de leads, app de campo e clique nas notificações) abrem a conversa <strong>no inbox interno</strong> — com histórico, cartão de apresentação e auditoria. Desligada, abrem o WhatsApp externo (wa.me) no aparelho do corretor.</p>
+          </div>
+        <% end %>
+
+        <div class="ax-form-actions">
+          <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
+        </div>
+      <% end %>
+    </div>
+
+    <aside class="layout-settings-aside">
+      <%= ax_operational_panel(eyebrow: "Resumo", title: "Como funciona") do %>
+        <div class="ax-panel-body">
+          <p class="ax-field__hint tw-mt-0">O cartão é enviado <strong>sempre pelo número da empresa</strong>, no mesmo fluxo do inbox. Ele carrega saudação, nome e CRECI do corretor — <strong>nunca o telefone pessoal</strong>.</p>
+          <p class="ax-field__hint">O <strong>template da empresa</strong> fica sempre disponível para toda a equipe (edição em <%= link_to "Cartões de apresentação", admin_presentation_cards_path, class: "tw-text-primary" %>, para o admin da conta); cada corretor pode criar os próprios modelos lá também.</p>
+          <p class="ax-field__hint tw-mb-0">Cada envio fica auditado na própria mensagem (corretor, cartão, conversa e horário) e na timeline do lead.</p>
+        </div>
+      <% end %>
+    </aside>
+  </div>
+</div>

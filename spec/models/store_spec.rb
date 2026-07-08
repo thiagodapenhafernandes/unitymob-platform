@@ -56,6 +56,23 @@ RSpec.describe Store, type: :model do
 
       expect(store).to be_valid
     end
+
+    it "rejeita footer_store_id inexistente" do
+      store = build(:store, footer_store_id: 999_999_999)
+      expect(store).not_to be_valid
+      expect(store.errors[:footer_store_id]).to include("referência de loja de rodapé inválida")
+    end
+
+    it "aceita footer_store_id existente" do
+      footer_setting = FooterSetting.create!
+      footer_store = footer_setting.footer_stores.create!(name: "Loja Rodapé", address: "Rua X, 1")
+      store = build(:store, footer_store_id: footer_store.id)
+      expect(store).to be_valid
+    end
+
+    it "aceita footer_store_id em branco" do
+      expect(build(:store, footer_store_id: nil)).to be_valid
+    end
   end
 
   describe "friendly_id slug" do

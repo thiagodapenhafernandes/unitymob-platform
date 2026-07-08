@@ -1,0 +1,24 @@
+<%#
+  Imóveis de interesse do lead: chips removíveis + autocomplete (tom-select
+  remoto reusando a busca admin de habitations). locals: lead (obrigatório),
+  show_empty (opcional, repassado aos chips)
+%>
+<div class="wa-inbox-thread__interests"
+     data-controller="property-interests"
+     data-property-interests-create-url-value="<%= admin_lead_property_interests_path(lead) %>">
+  <p class="wa-inbox-thread__interests-error" data-property-interests-target="error" hidden></p>
+  <div class="wa-inbox-thread__interest-chips" data-property-interests-target="list">
+    <%= render "admin/whatsapp_inbox/thread_property_interest_chips",
+          lead: lead, **local_assigns.slice(:show_empty) %>
+  </div>
+  <select class="ax-autocomplete-select wa-inbox-thread__interests-select"
+          aria-label="Adicionar imóvel de interesse"
+          data-controller="tom-select"
+          data-property-interests-target="select"
+          data-action="change->property-interests#add"
+          data-tom-select-url-value="<%= search_admin_lead_property_interests_path(lead) %>"
+          data-tom-select-min-length-value="2"
+          data-placeholder="Adicionar imóvel (código, título, bairro...)">
+    <option value=""></option>
+  </select>
+</div>

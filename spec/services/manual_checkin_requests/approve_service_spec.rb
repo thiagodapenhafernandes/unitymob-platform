@@ -44,5 +44,23 @@ RSpec.describe ManualCheckinRequests::ApproveService do
       expect(result[:success]).to be false
       expect(result[:error]).to eq(:invalid_state)
     end
+
+    it "retorna erro tratado (sem 500) quando o check-in é inválido por loja de outra conta" do
+      other_tenant = Tenant.create!(name: "Outro approve #{SecureRandom.hex(3)}", slug: "outro-approve-#{SecureRandom.hex(3)}")
+      foreign_store = create(:store, tenant: other_tenant)
+      # Estado inconsistente pré-existente: loja de outro tenant persistida no pedido,
+      # driblando a validação do model para exercitar o rescue do service.
+      request.update_column(:store_id, foreign_store.id)
+
+      result = nil
+      expect {
+        result = described_class.new(request: request, reviewer: admin).call
+      }.not_to raise_error
+
+      expect(result[:success]).to be false
+      expect(result[:error]).to eq(:save_failed)
+      expect(result[:message]).to be_present
+      expect(request.reload).to be_pending
+    end
   end
 end

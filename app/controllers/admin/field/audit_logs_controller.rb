@@ -13,7 +13,10 @@ module Admin
 
         scope = scope.where(action: params[:action_filter]) if params[:action_filter].present?
         scope = scope.where(admin_user_id: params[:admin_user_id]) if params[:admin_user_id].present?
-        scope = scope.joins(:admin_user).where(admin_users: { profile_id: params[:profile_id] }) if params[:profile_id].present?
+        if params[:profile_id].present?
+          selected_profile = current_tenant.profiles.find_by(id: params[:profile_id])
+          scope = scope.where(admin_user_id: scoped_admin_users(scoped_admin_user_ids).matching_access_profile(selected_profile).select(:id)) if selected_profile
+        end
         scope = scope.where(actor_admin_user_id: params[:actor_admin_user_id]) if params[:actor_admin_user_id].present?
         scope = scope.joins(:check_in).where(check_ins: { store_id: params[:store_id] }) if params[:store_id].present?
         scope = scope.where(ip: params[:ip]) if params[:ip].present?
@@ -39,9 +42,7 @@ module Admin
         @available_actors  = current_tenant.admin_users.account_members
           .where(id: scoped_stats_scope.where.not(actor_admin_user_id: nil).select(:actor_admin_user_id))
           .order(:name)
-        @available_profiles = current_tenant.profiles
-          .where(id: @available_users.reselect(:profile_id))
-          .order(:name)
+        @available_profiles = available_access_profiles_for(@available_users)
         @available_stores = current_tenant.stores.order(:name)
       end
 
@@ -65,6 +66,12 @@ module Admin
       def scoped_admin_users(scoped_admin_user_ids)
         users = current_tenant.admin_users.account_members
         scoped_admin_user_ids ? users.where(id: scoped_admin_user_ids) : users
+      end
+
+      def available_access_profiles_for(users)
+        profile_ids = users.where(horizontal_profile_id: nil).where.not(profile_id: nil).distinct.pluck(:profile_id)
+        profile_ids += users.where.not(horizontal_profile_id: nil).distinct.pluck(:horizontal_profile_id)
+        current_tenant.profiles.where(id: profile_ids.compact.uniq).order(Arel.sql("axis DESC, name ASC"))
       end
     end
   end

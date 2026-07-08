@@ -1,0 +1,30 @@
+<%= ax_portal_publication_section(title: "Publicação em portais", collapse_id: "portalPublicationCollapse", class_name: "ax-portal-publication-section--spaced") do %>
+  <div class="ax-portal-publication-grid">
+    <div class="ax-portal-publication-column">
+      <%= ax_portal_publication_option(form: f, method: :publicar_imovelweb_2, label: "Publicar Imovelweb 2") do %>
+        <%= ax_radio_group(form: f, method: :tipo_publicacao_imovelweb_2, label: "Tipo Publicação Imovelweb 2", choices: Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS) %>
+        <%= ax_radio_group(form: f, method: :mostrar_mapa_imovelweb_2, label: "Mostrar Mapa", choices: Habitation::IMOVELWEB_MOSTRAR_MAPA_OPTIONS) %>
+      <% end %>
+      <%= ax_portal_publication_option(form: f, method: :publicar_lais_ai, label: "Publicar Lais Ai") %>
+      <%= ax_portal_publication_option(form: f, method: :publicar_netimoveis_2, label: "Publicar Netimóveis 2") %>
+      <%= ax_portal_publication_option(form: f, method: :publicar_chaves_na_mao, label: "Publicar Chaves Na Mao") do %>
+        <%= ax_radio_group(form: f, method: :destaque_chaves_na_mao, label: "Destaque Chaves na Mao", choices: Habitation::CHAVES_NA_MAO_DESTAQUE_OPTIONS) %>
+        <%= ax_radio_group(form: f, method: :periodo_locacao_chaves_na_mao, label: "Período Locação", choices: Habitation::CHAVES_NA_MAO_PERIODO_LOCACAO_OPTIONS) %>
+      <% end %>
+    </div>
+    <div class="ax-portal-publication-column">
+      <%= ax_portal_publication_option(form: f, method: :publicar_casa_mineira, label: "Publicar Casa Mineira") do %>
+        <%= ax_radio_group(form: f, method: :modelo_casa_mineira, label: "Modelo Casa Mineira", choices: Habitation::CASA_MINEIRA_MODELO_OPTIONS) %>
+      <% end %>
+      <%= ax_portal_publication_option(form: f, method: :publicar_imovelweb, label: "Publicar Imovelweb") do %>
+        <%= ax_radio_group(form: f, method: :tipo_publicacao_imovelweb, label: "Tipo Publicação Imovelweb", choices: Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS) %>
+        <%= ax_radio_group(form: f, method: :mostrar_mapa_imovelweb, label: "Mostrar Mapa", choices: Habitation::IMOVELWEB_MOSTRAR_MAPA_OPTIONS) %>
+      <% end %>
+      <%= ax_portal_publication_option(form: f, method: :publicar_viva_real_vrsync, label: "Publicar Viva Real VRSync") do %>
+        <%= ax_radio_group(form: f, method: :tipo_publicacao_viva_real, label: "Tipo Publicação Viva Real", choices: Habitation::VIVA_REAL_TIPO_PUBLICACAO_OPTIONS) %>
+        <%= ax_radio_group(form: f, method: :divulgar_endereco_viva_real, label: "Divulgar Endereço Viva Real", choices: Habitation::VIVA_REAL_DIVULGAR_ENDERECO_OPTIONS) %>
+      <% end %>
+      <%= ax_portal_publication_option(form: f, method: :publicar_loft, label: "Publicar Loft") %>
+    </div>
+  </div>
+<% end %>

@@ -16,6 +16,7 @@ module InterestIntelligence
     def call
       return [] unless @settings.enabled?
       return [] if profile_incomplete?
+      return [] if @lead&.tenant_id.blank?
 
       candidate_scope.limit(250).filter_map do |habitation|
         score, reasons = score_for(habitation)
@@ -37,7 +38,9 @@ module InterestIntelligence
     private
 
     def candidate_scope
-      scope = Habitation.active.with_price
+      # Escopo obrigatório por tenant: sem ele a sugestão vazaria imóveis de
+      # outras imobiliárias (Habitation não tem default_scope de tenant).
+      scope = Habitation.for_tenant(@lead.tenant_id).active.with_price
       criteria = @profile[:criteria] || {}
 
       if criteria[:cities].present?

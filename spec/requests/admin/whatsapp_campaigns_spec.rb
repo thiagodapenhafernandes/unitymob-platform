@@ -498,6 +498,71 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       )
     end
 
+    it "retorna midia de cabecalho para o preview do modelo" do
+      media_template = WhatsappTemplate.create!(
+        name: "campanha_com_imagem_preview",
+        language: "pt_BR",
+        status: "APPROVED",
+        template_type: "text",
+        header_format: "image",
+        header_media_handle: "https://cdn.example.test/header.png",
+        body: "Veja a campanha.",
+        components: [
+          {
+            "type" => "HEADER",
+            "format" => "IMAGE",
+            "example" => { "header_handle" => ["https://cdn.example.test/header.png"] }
+          },
+          { "type" => "BODY", "text" => "Veja a campanha." }
+        ]
+      )
+
+      post preview_template_admin_whatsapp_campaigns_path,
+           params: { whatsapp_campaign: { whatsapp_template_id: media_template.id } },
+           headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+      expect(data["media"]).to include(
+        "type" => "image",
+        "label" => "Imagem",
+        "url" => "https://cdn.example.test/header.png",
+        "available" => true
+      )
+    end
+
+    it "retorna audio do componente para o preview quando o template usar midia de audio" do
+      audio_template = WhatsappTemplate.create!(
+        name: "campanha_com_audio_preview",
+        language: "pt_BR",
+        status: "APPROVED",
+        template_type: "text",
+        header_format: "none",
+        body: "Ouça o recado.",
+        components: [
+          {
+            "type" => "HEADER",
+            "format" => "AUDIO",
+            "example" => { "header_handle" => ["https://cdn.example.test/audio.mp3"] }
+          },
+          { "type" => "BODY", "text" => "Ouça o recado." }
+        ]
+      )
+
+      post preview_template_admin_whatsapp_campaigns_path,
+           params: { whatsapp_campaign: { whatsapp_template_id: audio_template.id } },
+           headers: { "ACCEPT" => "application/json" }
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+      expect(data["media"]).to include(
+        "type" => "audio",
+        "label" => "Áudio",
+        "url" => "https://cdn.example.test/audio.mp3",
+        "available" => true
+      )
+    end
+
     it "aceita PATCH quando o formulario de edicao envia _method no FormData" do
       patch preview_template_admin_whatsapp_campaigns_path,
             params: { whatsapp_campaign: { whatsapp_template_id: template.id, template_variables: { "1" => "{{nome}}", "2" => "{{origem}}" } } },

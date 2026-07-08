@@ -1,10 +1,63 @@
 <h1 class="wizard-section-title"><i class="bi bi-person-vcard-fill tw-text-primary" style="margin-right:.5rem;"></i>Dados do proprietário</h1>
 <p class="wizard-section-subtitle">Informações básicas de contato para a captação.</p>
 
+<div data-controller="proprietor-lookup"
+     data-proprietor-lookup-url-value="<%= proprietor_lookup_admin_captacoes_path %>">
+  <%= f.hidden_field :proprietor_id, data: { proprietor_lookup_target: "proprietorId" } %>
+
+  <div class="tw-hidden ax-inline-notice ax-inline-notice--info tw-mb-3"
+       data-proprietor-lookup-target="matchBox">
+    <div class="ax-inline-notice__icon"><i class="bi bi-person-check-fill"></i></div>
+    <div class="ax-inline-notice__content">
+      <strong data-proprietor-lookup-target="matchTitle">Proprietário já cadastrado</strong>
+      <div class="tw-text-sm tw-text-ink-muted" data-proprietor-lookup-target="matchDescription"></div>
+      <div class="tw-flex tw-gap-2 tw-mt-2">
+        <button type="button"
+                class="ax-btn ax-btn--sm ax-btn--primary"
+                data-action="proprietor-lookup#applyMatch">
+          Usar cadastro existente
+        </button>
+        <button type="button"
+                class="ax-btn ax-btn--sm ax-btn--ghost"
+                data-action="proprietor-lookup#dismissMatch">
+          Manter digitado
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tw-hidden ax-inline-notice ax-inline-notice--success tw-mb-3"
+       data-proprietor-lookup-target="linkedBox">
+    <div class="ax-inline-notice__icon"><i class="bi bi-check-circle-fill"></i></div>
+    <div class="ax-inline-notice__content">
+      <strong>Cadastro existente vinculado</strong>
+      <div class="tw-text-sm tw-text-ink-muted" data-proprietor-lookup-target="linkedDescription"></div>
+    </div>
+  </div>
+
+<div class="wizard-field-group">
+  <%= label_tag :proprietario_lookup_codigo, "Código do proprietário", class: "ax-label" %>
+  <%= text_field_tag :proprietario_lookup_codigo,
+        @captacao.proprietor&.vista_code,
+        class: "ax-control",
+        placeholder: "Ex.: código Vista ou código interno",
+        autocomplete: "off",
+        data: {
+          proprietor_lookup_target: "code",
+          action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup"
+        } %>
+</div>
+
 <div class="wizard-field-group">
   <%= f.label :proprietario_nome, "Nome completo", class: "ax-label" %>
   <span class="required-star">*</span>
-  <%= f.text_field :proprietario_nome, class: field_state.call(:proprietario_nome), autocomplete: "name" %>
+  <%= f.text_field :proprietario_nome,
+        class: field_state.call(:proprietario_nome),
+        autocomplete: "name",
+        data: {
+          proprietor_lookup_target: "name",
+          action: "input->proprietor-lookup#handleManualEdit"
+        } %>
   <% if field_invalid.call(:proprietario_nome) %><div class="invalid-feedback d-block">Informe o nome completo do proprietário.</div><% end %>
 </div>
 
@@ -15,7 +68,12 @@
                          class: field_state.call(:proprietario_telefone),
                          placeholder: "(47) 99999-0000",
                          autocomplete: "tel",
-                         data: { controller: "mask", mask_type_value: "phone" } %>
+                         data: {
+                           controller: "mask",
+                           mask_type_value: "phone",
+                           proprietor_lookup_target: "phone",
+                           action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
+                         } %>
   <% if field_invalid.call(:proprietario_telefone) %><div class="invalid-feedback d-block">Informe o telefone/WhatsApp do proprietário.</div><% end %>
 </div>
 
@@ -26,20 +84,48 @@
       <%= f.text_field :proprietario_cpf_cnpj,
                        class: "ax-control",
                        placeholder: "000.000.000-00",
-                       data: { controller: "mask", mask_type_value: "cpf_cnpj" } %>
+                       data: {
+                         controller: "mask",
+                         mask_type_value: "cpf_cnpj",
+                         proprietor_lookup_target: "cpfCnpj",
+                         action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
+                       } %>
     </div>
   </div>
   <div class="ax-span-6">
     <div class="wizard-field-group">
       <%= f.label :proprietario_email, "E-mail", class: "ax-label" %>
-      <%= f.email_field :proprietario_email, class: "ax-control", autocomplete: "email" %>
+      <%= f.email_field :proprietario_email,
+            class: "ax-control",
+            autocomplete: "email",
+            data: {
+              proprietor_lookup_target: "email",
+              action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
+            } %>
     </div>
   </div>
 <% end %>
 
-<div class="wizard-field-group">
-  <%= f.label :proprietario_cidade, "Cidade do proprietário", class: "ax-label" %>
-  <span class="required-star">*</span>
-  <%= f.text_field :proprietario_cidade, class: field_state.call(:proprietario_cidade), placeholder: "Balneário Camboriú" %>
+<%
+  proprietor_city_choices = (@proprietor_city_options.to_a + [@captacao.proprietario_cidade]).compact_blank.uniq
+%>
+<%= ax_autocomplete_select_field(
+      form: f,
+      method: :proprietario_cidade,
+      label: safe_join(["Cidade do proprietário", tag.span("*", class: "required-star")], " "),
+      choices: options_for_select(proprietor_city_choices, @captacao.proprietario_cidade),
+      select_options: { include_blank: true },
+      placeholder: "Balneário Camboriú",
+      create: true,
+      class_name: "wizard-field-group",
+      html_options: {
+        class: field_state.call(:proprietario_cidade),
+        autocomplete: "address-level2",
+        data: {
+          proprietor_lookup_target: "city",
+          action: "change->proprietor-lookup#handleManualEdit"
+        }
+      }
+    ) %>
   <% if field_invalid.call(:proprietario_cidade) %><div class="invalid-feedback d-block">Informe a cidade do proprietário.</div><% end %>
 </div>

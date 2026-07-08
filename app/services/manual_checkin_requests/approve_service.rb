@@ -40,6 +40,8 @@ module ManualCheckinRequests
       end
 
       { success: true, check_in: check_in }
+    rescue ActiveRecord::RecordInvalid => e
+      { success: false, error: :save_failed, message: e.record.errors.full_messages.to_sentence }
     end
   end
 end

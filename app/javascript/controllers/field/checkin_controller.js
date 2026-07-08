@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Ação de check-in e check-out via fetch JSON.
-// Pega lat/lng atuais do field-geolocation controller (na Fase 3 via window.__lastPosition).
+// Pega lat/lng atuais do field--geolocation controller.
 // Valores:
 //   - mode: "new" (form de check-in) ou "active" (botão de check-out)
 //   - createUrl / checkOutUrl
@@ -32,7 +32,7 @@ export default class extends Controller {
     event.preventDefault()
     const position = window.__lastFieldPosition
     if (!position) {
-      this.flashError("Aguarde o GPS localizar você.")
+      this.flashError("Ative a localização para encontrar a loja antes de fazer check-in.")
       return
     }
 

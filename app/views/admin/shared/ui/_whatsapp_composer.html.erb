@@ -5,11 +5,19 @@
   return_to = local_assigns[:return_to].presence
   file_input_id = local_assigns.fetch(:file_input_id)
   compact_mode = local_assigns[:compact_mode]
+  body_placeholder = local_assigns[:placeholder].presence || "Escreva uma mensagem..."
   form_classes = ["wa-inbox-composer"]
   form_classes << "wa-inbox-composer--compact" if compact_mode
   form_classes << local_assigns[:class_name]
   form_class = form_classes.compact.join(" ")
   supported_media_summary = "JPG/PNG ate 5 MB · MP4/3GP e audio ate 16 MB · documentos ate 100 MB"
+  # ⚡ Respostas rápidas: cartões de apresentação (se habilitado) + modelos aprovados.
+  quick_integration = WhatsappBusinessIntegration.current(current_tenant)
+  quick_cards = if quick_integration&.presentation_enabled? && can?(:manage, :whatsapp_inbox)
+    PresentationCard.available_for(current_admin_user)
+  else
+    PresentationCard.none
+  end
 %>
 
 <%= form_with url: send_message_admin_whatsapp_conversation_path(conversation),
@@ -18,13 +26,29 @@
               class: form_class,
               data: {
                 controller: "wa-composer",
-                action: "submit->wa-composer#submit",
+                action: "submit->wa-composer#submit wa-presentation:fill@window->wa-composer#fillPresentation wa:reply@window->wa-composer#setReply",
                 turbo: false,
                 admin_navigation_ignore: true
               } do %>
   <% if return_to.present? %>
     <input type="hidden" name="return_to" value="<%= return_to %>">
   <% end %>
+  <%# Carimbo de apresentação: preenchido via ⚡/seletores; zera se o corretor
+      limpar o texto. Viaja no FormData do envio normal. %>
+  <input type="hidden" name="presentation_card_id" value="" data-wa-composer-target="presentationCard">
+  <input type="hidden" name="reply_to_id" value="" data-wa-composer-target="replyTo">
+
+  <%# Chip de citação (menu Responder da bolha) %>
+  <div class="wa-inbox-composer__reply is-hidden" data-wa-composer-target="replyBar">
+    <div class="wa-inbox-composer__reply-copy">
+      <strong data-wa-composer-target="replyAuthor"></strong>
+      <span data-wa-composer-target="replySnippet"></span>
+    </div>
+    <button type="button" class="wa-inbox-composer__reply-close" title="Cancelar resposta"
+            aria-label="Cancelar resposta" data-action="wa-composer#clearReply">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
 
   <div class="wa-inbox-composer__toolbar">
     <div class="wa-inbox-composer__heading">
@@ -44,16 +68,87 @@
 
   <div class="wa-inbox-composer__layout">
     <div class="wa-inbox-composer__row wa-inbox-composer__row--controls">
-      <%= ax_file_upload_button(
-            label: raw('<i class="bi bi-paperclip ax-ico"></i><span>Anexar</span>').html_safe,
-            input_id: file_input_id,
-            form: nil,
-            method: nil,
-            multiple: false,
-            direct_upload: false,
-            accept: Whatsapp::MediaSupport.accept_attribute,
-            class_name: "ax-btn ax-btn--sm wa-inbox-composer__attach"
-          ) %>
+      <%# [+] anexos estilo WhatsApp: mesmo input, accept dinâmico %>
+      <div data-controller="attach-menu" class="tw-inline-block">
+        <button type="button"
+                class="ax-btn ax-btn--sm wa-inbox-composer__tool"
+                title="Anexar"
+                aria-label="Anexar arquivo"
+                data-action="attach-menu#toggle">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <div class="wa-composer-popover wa-composer-popover--menu" hidden data-attach-menu-target="popover">
+          <button type="button" data-action="attach-menu#pick" data-accept="<%= Whatsapp::MediaSupport.accept_attribute_for(:document) %>">
+            <i class="bi bi-file-earmark-text" style="color:#7c3aed"></i><span>Documento</span>
+          </button>
+          <%# MIME exatos (nunca video/*): o iOS converte MOV->MP4/HEIC->JPEG na escolha %>
+          <button type="button" data-action="attach-menu#pick" data-accept="<%= Whatsapp::MediaSupport.accept_attribute_for(:image, :video) %>">
+            <i class="bi bi-images" style="color:#175cd3"></i><span>Fotos e vídeos</span>
+          </button>
+          <button type="button" data-action="attach-menu#pick" data-accept="<%= Whatsapp::MediaSupport.accept_attribute_for(:image) %>" data-capture="environment">
+            <i class="bi bi-camera" style="color:#e0447a"></i><span>Câmera</span>
+          </button>
+          <button type="button" data-action="attach-menu#pick" data-accept="<%= Whatsapp::MediaSupport.accept_attribute_for(:audio) %>">
+            <i class="bi bi-headphones" style="color:#d97706"></i><span>Áudio</span>
+          </button>
+        </div>
+      </div>
+
+      <%# 😊 emoji %>
+      <div data-controller="emoji-picker" class="tw-inline-block">
+        <button type="button"
+                class="ax-btn ax-btn--sm wa-inbox-composer__tool"
+                title="Inserir emoji"
+                aria-label="Inserir emoji"
+                data-action="emoji-picker#toggle">
+          <i class="bi bi-emoji-smile"></i>
+        </button>
+        <div class="wa-emoji-popover" hidden data-emoji-picker-target="popover"></div>
+      </div>
+
+      <%# ⚡ respostas rápidas: apresentação + modelos aprovados %>
+      <% if quick_cards.any? || templates.any? %>
+        <div data-controller="quick-replies" class="tw-inline-block">
+          <button type="button"
+                  class="ax-btn ax-btn--sm wa-inbox-composer__tool"
+                  title="Respostas rápidas"
+                  aria-label="Respostas rápidas"
+                  data-action="quick-replies#toggle">
+            <i class="bi bi-lightning-charge"></i>
+          </button>
+          <div class="wa-composer-popover wa-composer-popover--menu" hidden data-quick-replies-target="popover">
+            <% if quick_cards.any? %>
+              <div class="wa-composer-popover__caption">Apresentação</div>
+              <% quick_cards.each do |card| %>
+                <button type="button"
+                        data-action="quick-replies#useCard"
+                        data-card-id="<%= card.id %>"
+                        data-body="<%= card.message_body_for(current_admin_user) %>">
+                  <i class="bi bi-person-badge" style="color:#16a34a"></i>
+                  <span><%= card.system? ? "Empresa · " : "" %><%= card.label %><%= " · com foto" if card.use_photo? %></span>
+                </button>
+              <% end %>
+              <%# modal fica FORA deste <form> (forms aninhados sao descartados
+                  pelo parser e os campos required travavam o submit/gravacao) %>
+              <button type="button" data-action="quick-replies#openCards">
+                <i class="bi bi-pencil" style="color:#697586"></i><span>Meus cartões</span>
+              </button>
+            <% end %>
+            <% if templates.any? %>
+              <div class="wa-composer-popover__caption">Modelos aprovados</div>
+              <% templates.each do |template| %>
+                <button type="button"
+                        data-action="quick-replies#useTemplate"
+                        data-template-name="<%= template.name %>">
+                  <i class="bi bi-patch-check" style="color:#175cd3"></i>
+                  <span><%= template.name %></span>
+                </button>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
       <input type="file"
              name="media_file"
              id="<%= file_input_id %>"
@@ -61,7 +156,8 @@
              aria-label="Selecionar arquivo para envio"
              data-action="change->wa-composer#fileChanged"
              data-wa-composer-target="fileInput"
-             accept="<%= Whatsapp::MediaSupport.accept_attribute %>">
+             data-wa-media-rules="<%= Whatsapp::MediaSupport.client_rules_json %>"
+             accept="<%= Whatsapp::MediaSupport.accept_attribute_for(*Whatsapp::MediaSupport::SUPPORTED_MEDIA.keys) %>">
 
       <% if templates.any? %>
         <select name="template_name"
@@ -95,17 +191,18 @@
       <textarea name="body"
                 rows="2"
                 class="ax-control ax-control--sm wa-inbox-composer__body"
-                placeholder="Escreva uma mensagem..."
-                aria-label="Escreva uma mensagem"
+                placeholder="<%= body_placeholder %>"
+                aria-label="<%= body_placeholder %>"
                 autocomplete="off"
                 data-action="input->wa-composer#bodyChanged keydown->wa-composer#submitOnEnter"
                 data-wa-composer-target="body"></textarea>
 
       <button type="submit"
               class="ax-btn ax-btn--sm ax-btn--primary wa-inbox-composer__submit"
+              title="Enviar mensagem"
               aria-label="Enviar mensagem"
               data-wa-composer-target="submit">
-        <i class="bi bi-send ax-ico"></i>
+        <i class="bi bi-send-fill ax-ico"></i>
         <span>Enviar</span>
       </button>
     </div>
@@ -113,5 +210,41 @@
     <div class="wa-inbox-composer__error is-hidden"
          role="alert"
          data-wa-composer-target="error"></div>
+
+    <%# Barra de gravação estilo WhatsApp: excluir · rec/timer · barras · pausar %>
+    <div class="wa-inbox-composer__recording" data-wa-composer-target="recordingBar">
+      <button type="button"
+              class="wa-inbox-composer__rec-delete"
+              title="Descartar gravação"
+              aria-label="Descartar gravação"
+              data-action="wa-composer#discardRecording">
+        <i class="bi bi-trash"></i>
+      </button>
+      <span class="wa-inbox-composer__rec-dot" aria-hidden="true"></span>
+      <span class="wa-inbox-composer__rec-time" data-wa-composer-target="recordTime">0:00</span>
+      <button type="button"
+              class="wa-inbox-composer__rec-preview"
+              hidden
+              title="Ouvir gravação"
+              aria-label="Ouvir gravação"
+              data-action="wa-composer#previewRecording"
+              data-wa-composer-target="recordPreview">
+        <i class="bi bi-play-fill"></i>
+      </button>
+      <span class="wa-inbox-composer__rec-bars" aria-hidden="true" data-wa-composer-target="recordBars"></span>
+      <button type="button"
+              class="wa-inbox-composer__rec-pause"
+              title="Pausar gravação"
+              aria-label="Pausar gravação"
+              data-action="wa-composer#togglePauseRecording"
+              data-wa-composer-target="recordPause">
+        <i class="bi bi-pause-fill"></i>
+      </button>
+    </div>
   </div>
+<% end %>
+
+<%# Gerenciador de cartões: irmão do form do composer (nunca aninhado nele) %>
+<% if quick_cards.any? %>
+  <%= render "admin/presentation_cards/quick_edit_modal", trigger_variant: :hidden %>
 <% end %>

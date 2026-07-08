@@ -15,9 +15,12 @@ module Habitation::SearchScopes
   included do
     # Scopes básicos de visibilidade
     # IMPORTANTE: Apenas imóveis com status válido para exibição pública
-    scope :active, -> { 
+    scope :publicly_listable, -> {
       where(exibir_no_site_flag: true)
         .where(status: Habitation::PUBLIC_STATUSES)
+    }
+    scope :active, -> {
+      publicly_listable
         .with_photos
         .where(
           "(habitations.tipo = 'Empreendimento' AND EXISTS (" \
@@ -109,6 +112,7 @@ module Habitation::SearchScopes
     
     # Scope para imóveis com preço (venda ou locação)
     scope :with_price, -> { where("valor_venda_cents > 0 OR valor_locacao_cents > 0") }
+    scope :with_public_listing_price, -> { where("valor_venda_cents > 0 OR valor_locacao_cents > 0") }
     
     # Scopes por tipo de transação (baseado em preço)
     scope :for_sale, -> { where("valor_venda_cents > 0") }
@@ -599,22 +603,51 @@ module Habitation::SearchScopes
         .left_outer_joins(:address)
         .pluck(Arel.sql("#{LOCATION_CITY_SQL} AS cidade_nome, #{LOCATION_NEIGHBORHOOD_SQL} AS bairro_nome"))
 
-      cities = rows.filter_map do |city, _neighborhood|
-        next if city.blank?
-
-        { type: "city", label: city.to_s.strip, value: city.to_s.strip }
-      end
-
-      neighborhoods = rows.filter_map do |city, neighborhood|
+      city_labels = canonical_location_labels(rows.map(&:first))
+      neighborhood_labels = canonical_location_labels(rows.filter_map do |city, neighborhood|
         next if city.blank? || neighborhood.blank?
 
-        label = "#{neighborhood.to_s.strip} - #{city.to_s.strip}"
-        { type: "neighborhood", label: label, value: label }
-      end
+        "#{neighborhood.to_s.strip} - #{city.to_s.strip}"
+      end)
+
+      cities = city_labels.map { |label| { type: "city", label: label, value: label } }
+      neighborhoods = neighborhood_labels.map { |label| { type: "neighborhood", label: label, value: label } }
 
       (cities + neighborhoods)
         .uniq { |item| [item[:type], normalize_location_value(item[:value])] }
         .sort_by { |item| [item[:type] == "city" ? 0 : 1, normalize_location_value(item[:label])] }
+    end
+
+    def canonical_location_labels(values)
+      values
+        .map(&:to_s)
+        .reject { |value| value.strip.empty? }
+        .group_by { |value| location_normalize_key(value) }
+        .map { |_key, variants| titleize_location(most_common_location_label(variants)) }
+        .uniq
+        .sort_by { |label| location_normalize_key(label) }
+    end
+
+    def titleize_location(value)
+      small_words = %w[de da do das dos e]
+      value.to_s.strip.split(/\s+/).each_with_index.map do |word, index|
+        downcased_word = word.downcase
+        if index.positive? && small_words.include?(downcased_word)
+          downcased_word
+        else
+          downcased_word[0].to_s.upcase + downcased_word[1..].to_s
+        end
+      end.join(" ")
+    end
+
+    def location_normalize_key(value)
+      I18n.transliterate(value.to_s).downcase.gsub(/\s+/, " ").strip
+    end
+
+    def most_common_location_label(values)
+      values
+        .map { |value| value.to_s.strip }
+        .max_by { |value| [values.count(value), value.length] }
     end
 
     def public_price_sort_sql(direction)
@@ -634,7 +667,7 @@ module Habitation::SearchScopes
     # Busca avançada SUPER DINÂMICA combinando múltiplos filtros
     def advanced_search(params = {})
       params = params.to_h.with_indifferent_access
-      query = active.with_photos  # Apenas imóveis com fotos
+      query = active # active já restringe a imóveis públicos com fotos e preço.
       
       # Tipo de transação
       query = query.for_sale if params[:transaction_type] == 'venda'

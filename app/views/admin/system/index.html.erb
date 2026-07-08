@@ -178,7 +178,7 @@
                   <span class="ax-system-admin-role">Sistema</span>
                 </td>
                 <td><%= u.email %></td>
-                <td><%= u.profile&.name.presence || "Sem perfil" %></td>
+                <td><%= u.access_profile_name.presence || "Sem perfil" %></td>
                 <td>
                   <% if last_login.present? %>
                     <%= time_ago_in_words(last_login) %> atrás

@@ -9,8 +9,9 @@
       social_property = defined?(@habitation) ? @habitation : nil
       property_page = social_property.present?
       property_seo_key = "property:#{social_property.codigo.presence || social_property.id}" if property_page
-      property_seo = SeoSetting.for_canonical_key(property_seo_key) if property_seo_key.present?
       seo = current_public_seo_setting
+      property_seo = seo if property_seo_key.present? && seo&.canonical_key == property_seo_key
+      property_seo ||= SeoSetting.for_canonical_key(property_seo_key) if property_seo_key.present?
       seo ||= property_seo if property_seo&.public_applicable? && property_seo.manual_mode?
       seo ||= SeoSetting.for_page(@page_name || 'home') unless property_page
       seo_public = seo&.public_applicable?
@@ -98,7 +99,7 @@
     
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    <%= render "layouts/tracking_head" %>
+    <%= render "layouts/tracking_head", tracking_setting: @tracking_setting %>
     <%= yield :head %>
 
     <%# Critical Third Party Styles %>
@@ -123,17 +124,30 @@
     <%# Theme Styles %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%
+      public_page_stylesheets = []
+      if controller_path == "habitations"
+        if action_name == "index"
+          public_page_stylesheets << "public_habitations_index_refresh"
+        elsif action_name == "show"
+          public_page_stylesheets << "public_development_show_refresh" if @is_development_page
+        end
+      end
+    %>
+    <% public_page_stylesheets.each do |stylesheet| %>
+      <%= stylesheet_link_tag stylesheet, "data-turbo-track": "reload" %>
+    <% end %>
     <%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload" %>
     
     <%# JS with Defer %>
     <%= javascript_importmap_tags "public" %>
   </head>
 
-  <% interest_settings = InterestIntelligence::Settings.current %>
+  <% interest_settings = @interest_settings || InterestIntelligence::Settings.new(@layout_setting || LayoutSetting.instance) %>
   <body class="antialiased"
         data-controller="lead-capture public-interest-tracker"
-        data-lead-capture-enabled-value="<%= WebhookSetting.active.where(lead_capture_enabled: true).exists? %>"
-        data-lead-capture-phone-settings-value="<%= json_escape(WhatsappBusinessIntegration.site_phone_settings.to_json) %>"
+        data-lead-capture-enabled-value="<%= @lead_capture_enabled %>"
+        data-lead-capture-phone-settings-value="<%= json_escape(@site_phone_settings.to_json) %>"
         data-lead-capture-share-token-value="<%= @lead_share_token %>"
         data-public-interest-tracker-enabled-value="<%= interest_settings.enabled? %>"
         data-public-interest-tracker-consent-required-value="<%= interest_settings.enabled_value?("requires_public_tracking_consent") %>"
@@ -145,7 +159,7 @@
         data-public-interest-tracker-property-bedrooms-value="<%= @habitation&.dormitorios_qtd %>"
         data-public-interest-tracker-property-parking-spaces-value="<%= @habitation&.vagas_qtd %>"
         data-public-interest-tracker-property-price-cents-value="<%= @habitation&.valor_venda_cents.presence || @habitation&.valor_locacao_cents %>">
-    <%= render "layouts/tracking_body" %>
+    <%= render "layouts/tracking_body", tracking_setting: @tracking_setting %>
     <%= render 'layouts/header' %>
     
     <main role="main">

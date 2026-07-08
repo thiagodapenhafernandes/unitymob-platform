@@ -1,0 +1,47 @@
+<%# Campos de um turno (StoreShift) — usado tanto na listagem existente quanto
+    no <template> do nested-form. `corretores` é a coleção escopada ao tenant. %>
+<div class="ax-span-12 nested-fields" data-new-record="<%= f.object.new_record? %>">
+  <div class="ax-card bg-light tw-mb-2">
+    <div class="ax-card__body">
+      <div class="tw-flex tw-justify-between tw-items-center tw-mb-2">
+        <label class="ax-label tw-font-bold tw-inline-flex tw-items-center tw-gap-2" style="margin-bottom:0;">
+          <i class="bi bi-clock-history"></i>Turno
+        </label>
+        <button type="button" class="ax-btn ax-btn--danger ax-btn--sm tw-gap-2" data-action="nested-form#remove">
+          <i class="bi bi-trash"></i> Remover
+        </button>
+      </div>
+
+      <%= f.hidden_field :_destroy %>
+
+      <%= ax_field_grid do %>
+        <div class="ax-span-4">
+          <%= f.label :day_of_week, "Dia da semana", class: "ax-label tw-font-semibold tw-text-sm" %>
+          <%= f.select :day_of_week,
+                       options_for_select(StoreShift::DAYS_OF_WEEK.map { |v, name| [name, v] }, f.object.day_of_week),
+                       {},
+                       class: "ax-control ax-control--sm" %>
+        </div>
+        <div class="ax-span-2">
+          <%= f.label :start_time, "Início", class: "ax-label tw-font-semibold tw-text-sm" %>
+          <%= f.time_field :start_time, class: "ax-control ax-control--sm" %>
+        </div>
+        <div class="ax-span-2">
+          <%= f.label :end_time, "Fim", class: "ax-label tw-font-semibold tw-text-sm" %>
+          <%= f.time_field :end_time, class: "ax-control ax-control--sm" %>
+        </div>
+        <div class="ax-span-4">
+          <%= f.label :admin_user_id, "Corretor", class: "ax-label tw-font-semibold tw-text-sm" %>
+          <%= f.select :admin_user_id,
+                       options_for_select(corretores, f.object.admin_user_id),
+                       { include_blank: "— Selecione —" },
+                       class: "ax-control ax-control--sm" %>
+        </div>
+      <% end %>
+
+      <div class="tw-mt-2">
+        <%= ax_switch_field(label: "Turno ativo", form: f, method: :active) %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -77,11 +77,33 @@ class Proprietor < ApplicationRecord
 
   validates :name, presence: true
   validate :cpf_cnpj_must_be_unique
+  # Cadastro MANUAL não pode repetir proprietário existente (a base do Vista
+  # importa o espelho de lá e fica de fora — vista_code presente). Homônimo
+  # legítimo passa informando um CPF diferente dos já cadastrados.
+  validate :name_must_not_duplicate_existing, on: :create
 
   scope :ordered, -> { order(name: :asc) }
 
   def self.normalized_phone(value)
     value.to_s.gsub(/\D/, "")
+  end
+
+  # LGPD: CPF cifrado at-rest; *_digits com cifra determinística p/ busca por
+  # igualdade. Guards mantêm o app funcional pré-migration 20260705000010.
+  if (column_names.include?("cpf_cnpj_digits") rescue false)
+    encrypts :cpf_cnpj
+    encrypts :spouse_cpf_cnpj
+    encrypts :cpf_cnpj_digits, deterministic: true
+    encrypts :spouse_cpf_cnpj_digits, deterministic: true
+
+    before_validation do
+      self.cpf_cnpj_digits = self.class.normalized_cpf_cnpj(cpf_cnpj).presence
+      self.spouse_cpf_cnpj_digits = self.class.normalized_cpf_cnpj(spouse_cpf_cnpj).presence
+    end
+  end
+
+  def self.cpf_digits_searchable?
+    (column_names.include?("cpf_cnpj_digits") rescue false)
   end
 
   def self.normalized_cpf_cnpj(value)
@@ -92,9 +114,13 @@ class Proprietor < ApplicationRecord
     digits = normalized_cpf_cnpj(value)
     return if digits.blank?
 
-    where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: digits)
-      .order(:id)
-      .first
+    if cpf_digits_searchable?
+      where(cpf_cnpj_digits: digits).order(:id).first
+    else
+      where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: digits)
+        .order(:id)
+        .first
+    end
   end
 
   def self.find_by_phone(value)
@@ -102,6 +128,13 @@ class Proprietor < ApplicationRecord
     return if digits.blank?
 
     with_normalized_phone(digits).order(:id).first
+  end
+
+  def self.find_by_email(value)
+    email = value.to_s.strip.downcase
+    return if email.blank?
+
+    where("lower(trim(email)) = ?", email).order(:id).first
   end
 
   scope :with_normalized_phone, ->(digits) {
@@ -139,13 +172,39 @@ class Proprietor < ApplicationRecord
 
   private
 
+  def name_must_not_duplicate_existing
+    return if vista_code.present?
+    return if name.to_s.strip.blank?
+
+    same_name = self.class.where(tenant_id: tenant_id)
+                    .where("lower(trim(name)) = ?", name.to_s.strip.downcase)
+    same_name = same_name.where.not(id: id) if persisted?
+    return unless same_name.exists?
+
+    if cpf_cnpj.present?
+      digits = self.class.normalized_cpf_cnpj(cpf_cnpj)
+      homonimo_legitimo = same_name.none? do |p|
+        existing = self.class.normalized_cpf_cnpj(p.cpf_cnpj)
+        existing.blank? || existing == digits
+      end
+      return if homonimo_legitimo
+    end
+
+    errors.add(:name, "já cadastrado — selecione o proprietário existente na lista. Se for outra pessoa com o mesmo nome, informe o CPF para diferenciar.")
+  end
+
   def cpf_cnpj_must_be_unique
     return if vista_code.present?
 
     digits = self.class.normalized_cpf_cnpj(cpf_cnpj)
     return if digits.blank?
 
-    scope = self.class.where(tenant_id: tenant_id).where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: digits)
+    scope =
+      if self.class.cpf_digits_searchable?
+        self.class.where(tenant_id: tenant_id, cpf_cnpj_digits: digits)
+      else
+        self.class.where(tenant_id: tenant_id).where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: digits)
+      end
     scope = scope.where.not(id: id) if persisted?
 
     errors.add(:cpf_cnpj, "já cadastrado para outro proprietário") if scope.exists?

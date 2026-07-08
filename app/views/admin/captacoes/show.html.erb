@@ -64,7 +64,7 @@
 
   <div class="ax-card tw-mb-3">
     <div class="ax-card__body">
-      <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-clipboard-check"></i>Revisão administrativa</h6>
+      <div class="capt-detail-section-title"><i class="bi bi-clipboard-check"></i>Revisão administrativa</div>
 
       <% if @captacao.admin_reviewed_by.present? %>
         <div class="tw-text-sm tw-text-ink-muted tw-mb-2">
@@ -86,7 +86,7 @@
           <div class="ax-span-6">
             <div class="ax-card">
               <div class="ax-card__body">
-                <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3">Aprovar</h6>
+                <div class="capt-detail-card-title">Aprovar</div>
                 <%= form_with url: approve_admin_captacao_path(@captacao), method: :post, local: true do |f| %>
                   <div class="tw-mb-3">
                     <%= f.label :admin_review_notes, "Nota interna", class: "ax-label" %>
@@ -101,7 +101,7 @@
           <div class="ax-span-6">
             <div class="ax-card">
               <div class="ax-card__body">
-                <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3">Devolver ao corretor</h6>
+                <div class="capt-detail-card-title">Devolver ao corretor</div>
                 <%= form_with url: return_to_broker_admin_captacao_path(@captacao), method: :post, local: true do |f| %>
                   <div class="tw-mb-3">
                     <%= f.label :admin_review_return_reason, "Motivo da devolução", class: "ax-label" %>
@@ -125,7 +125,7 @@
 <% if @review_timeline.present? %>
   <div class="ax-card tw-mb-3">
     <div class="ax-card__body">
-      <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-clock-history"></i>Histórico de revisão</h6>
+      <div class="capt-detail-section-title"><i class="bi bi-clock-history"></i>Histórico de revisão</div>
       <div class="ax-table-wrap">
         <table class="ax-table">
           <thead>
@@ -148,7 +148,7 @@
                 <td><%= log.title %></td>
                 <td>
                   <% if summaries.present? %>
-                    <ul class="tw-text-sm list-unstyled">
+                    <ul class="capt-detail-change-list">
                       <% summaries.each do |change| %>
                         <li>
                           <strong><%= change[:label] %>:</strong>
@@ -175,7 +175,7 @@
   <div class="ax-span-8">
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
-        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-megaphone"></i>Anúncio para publicação</h6>
+        <div class="capt-detail-section-title"><i class="bi bi-megaphone"></i>Anúncio para publicação</div>
         <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
           <dt class="ax-span-3">Categoria</dt>
           <dd class="ax-span-9"><%= @captacao.categoria.presence || "—" %></dd>
@@ -200,13 +200,17 @@
 
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
-        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-geo-alt"></i>Endereço</h6>
+        <div class="capt-detail-section-title"><i class="bi bi-geo-alt"></i>Endereço</div>
         <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
           <dt class="ax-span-3">Logradouro</dt>
           <dd class="ax-span-9"><%= [@captacao.street, @captacao.street_number].compact_blank.join(", ") %></dd>
           <% if @captacao.edificio_nome.present? %>
             <dt class="ax-span-3">Edifício</dt>
             <dd class="ax-span-9"><%= @captacao.edificio_nome %><%= " · Unidade #{@captacao.unidade_numero}" if @captacao.unidade_numero.present? %></dd>
+          <% end %>
+          <% if @captacao.try(:lote).present? || @captacao.try(:quadra).present? %>
+            <dt class="ax-span-3">Lote/Quadra</dt>
+            <dd class="ax-span-9"><%= [@captacao.lote.presence && "Lote #{@captacao.lote}", @captacao.quadra.presence && "Quadra #{@captacao.quadra}"].compact_blank.join(" · ") %></dd>
           <% end %>
           <dt class="ax-span-3">Bairro</dt>
           <dd class="ax-span-9"><%= @captacao.neighborhood.presence || "—" %></dd>
@@ -222,7 +226,7 @@
 
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
-        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-rulers"></i>Características</h6>
+        <div class="capt-detail-section-title"><i class="bi bi-rulers"></i>Características</div>
         <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
           <dt class="ax-span-3">Área total</dt>
           <dd class="ax-span-9"><%= @captacao.area_total %> m²<%= " · privativa #{@captacao.area_privativa} m²" if @captacao.area_privativa.present? %></dd>
@@ -246,7 +250,7 @@
 
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
-        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-cash-stack"></i>Negociação</h6>
+        <div class="capt-detail-section-title"><i class="bi bi-cash-stack"></i>Negociação</div>
         <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
           <% if @captacao.valor_venda.present? %>
             <dt class="ax-span-3">Venda</dt>
@@ -272,7 +276,7 @@
   <div class="ax-span-4">
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
-        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-person"></i>Proprietário</h6>
+        <div class="capt-detail-section-title"><i class="bi bi-person"></i>Proprietário</div>
         <div class="tw-text-sm"><strong><%= @captacao.proprietario_nome %></strong></div>
         <% if @captacao.proprietario_telefone.present? %>
           <div class="tw-text-sm tw-mt-2 tw-flex tw-items-center tw-gap-2"><i class="bi bi-telephone"></i><%= @captacao.proprietario_telefone %></div>
@@ -285,7 +289,7 @@
 
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
-        <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-person-badge"></i>Corretor responsável</h6>
+        <div class="capt-detail-section-title"><i class="bi bi-person-badge"></i>Corretor responsável</div>
         <div class="tw-text-sm"><strong><%= @captacao.corretor.name %></strong></div>
         <div class="tw-text-sm tw-text-ink-muted"><%= @captacao.corretor.email %></div>
       </div>
@@ -295,7 +299,7 @@
     <% if authorization_attachments.attached? %>
       <div class="ax-card tw-mb-3">
         <div class="ax-card__body">
-          <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-2 tw-flex tw-items-center tw-gap-2"><i class="bi bi-file-earmark-pdf"></i>Autorização</h6>
+          <div class="capt-detail-section-title capt-detail-section-title--compact"><i class="bi bi-file-earmark-pdf"></i>Autorização</div>
           <% first_authorization = authorization_attachments.respond_to?(:first) ? authorization_attachments.first : authorization_attachments %>
           <%= link_to rails_blob_path(first_authorization, disposition: "inline"), target: "_blank", class: "ax-btn ax-btn--ghost ax-btn--sm tw-w-full" do %>
             <i class="bi bi-download"></i>Ver autorização
@@ -308,18 +312,23 @@
 
 <% photos_attachment = @captacao.respond_to?(:photos) ? @captacao.photos : @captacao.fotos %>
 <% if photos_attachment.attached? %>
-  <div class="ax-card tw-mb-3">
+  <div class="ax-card capt-detail-photos-card tw-mb-3">
     <div class="ax-card__body">
-      <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-3 tw-flex tw-items-center tw-gap-2"><i class="bi bi-images"></i>Fotos (<%= photos_attachment.count %>)</h6>
-      <%= ax_field_grid do %>
-        <% photos_attachment.each do |photo| %>
-          <div class="ax-span-3">
-            <%= link_to rails_blob_path(photo, disposition: "inline"), target: "_blank" do %>
-              <%= image_tag photo.representation(resize_to_limit: [400, 400]), class: "tw-w-full tw-rounded-lg", style: "height: 160px; object-fit: cover;", loading: "lazy" %>
-            <% end %>
-          </div>
+      <div class="capt-detail-section-title"><i class="bi bi-images"></i>Fotos (<%= photos_attachment.count %>)</div>
+      <div class="capt-detail-photo-grid" data-controller="fancybox-gallery">
+        <% photos_attachment.each_with_index do |photo, index| %>
+          <% full_photo_url = rails_blob_path(photo, disposition: "inline") %>
+          <%= link_to full_photo_url,
+                      class: "capt-detail-photo-link",
+                      data: {
+                        fancybox: "captacao-photos-#{@captacao.id}",
+                        caption: "Foto #{index + 1} - #{@captacao.intake_display_title}"
+                      } do %>
+            <%= image_tag photo.representation(resize_to_fill: [220, 220]), class: "capt-detail-photo", loading: "lazy", decoding: "async" %>
+            <span class="capt-detail-photo-index"><%= index + 1 %></span>
+          <% end %>
         <% end %>
-      <% end %>
+      </div>
     </div>
   </div>
 <% end %>

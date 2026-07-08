@@ -1,0 +1,98 @@
+<%
+  shift_key = shift_key.to_s
+  shift_config = store.operational_turnos_config.fetch(shift_key)
+  shift_title = {
+    "manha" => "Turno manhã",
+    "tarde" => "Turno tarde",
+    "unico" => "Turno único"
+  }.fetch(shift_key)
+  shift_active = ActiveModel::Type::Boolean.new.cast(shift_config["ativo"])
+  checkout_delay_seconds = shift_config.dig("checkout", "delay_seconds").to_i
+  checkout_delay_value = format("%02d:%02d", checkout_delay_seconds / 3600, (checkout_delay_seconds % 3600) / 60)
+%>
+
+<div class="ax-card tw-mb-3" data-controller="store-operational-shift">
+  <div class="ax-card__body">
+    <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-mb-3">
+      <h6 class="tw-font-bold" style="margin:0"><%= shift_title %></h6>
+      <%= hidden_field_tag "store[turnos_config_#{shift_key}_ativo]", "false", id: nil %>
+      <%= ax_switch_field(
+            label: "Ativo",
+            name: "store[turnos_config_#{shift_key}_ativo]",
+            checked: shift_active,
+            checked_value: "true",
+            unchecked_value: "false",
+            id: "store_turnos_config_#{shift_key}_ativo",
+            input_html: {
+              data: {
+                store_operational_shift_target: "active",
+                action: "store-operational-shift#sync"
+              }
+            }
+          ) %>
+    </div>
+
+    <%= ax_field_grid do %>
+      <div class="ax-span-4">
+        <%= ax_field_label(nil, nil,
+              text: "Entrada",
+              tooltip: "Janela principal de chegada. Corretores que fazem check-in neste período entram na roleta normal da regra e podem ser usados para montar a fila automaticamente."
+            ) %>
+        <div class="tw-grid tw-grid-cols-2 tw-gap-2">
+          <%= time_field_tag "store[turnos_config_#{shift_key}_entrada_inicio]", shift_config.dig("entrada", "inicio"), class: "ax-control ax-control--sm", disabled: !shift_active, data: { store_operational_shift_target: "field" } %>
+          <%= time_field_tag "store[turnos_config_#{shift_key}_entrada_fim]", shift_config.dig("entrada", "fim"), class: "ax-control ax-control--sm", disabled: !shift_active, data: { store_operational_shift_target: "field" } %>
+        </div>
+      </div>
+
+      <div class="ax-span-4">
+        <%= ax_field_label(nil, nil,
+              text: "Pós-risca",
+              tooltip: "Janela de tolerância logo após a entrada. Quem chega nesse período pode continuar elegível, mas a regra consegue identificar esse check-in como pós-risca para atualizar a fila separadamente."
+            ) %>
+        <div class="tw-grid tw-grid-cols-2 tw-gap-2">
+          <%= time_field_tag "store[turnos_config_#{shift_key}_pos_risca_inicio]", shift_config.dig("pos_risca", "inicio"), class: "ax-control ax-control--sm", disabled: !shift_active, data: { store_operational_shift_target: "field" } %>
+          <%= time_field_tag "store[turnos_config_#{shift_key}_pos_risca_fim]", shift_config.dig("pos_risca", "fim"), class: "ax-control ax-control--sm", disabled: !shift_active, data: { store_operational_shift_target: "field" } %>
+        </div>
+      </div>
+
+      <div class="ax-span-4">
+        <%= ax_field_label(nil, nil,
+              text: "Fora da roleta",
+              tooltip: "Período em que o check-in ainda pode manter presença/controle operacional, mas o corretor não entra automaticamente na roleta principal de chegada."
+            ) %>
+        <div class="tw-grid tw-grid-cols-2 tw-gap-2">
+          <%= time_field_tag "store[turnos_config_#{shift_key}_fora_roleta_inicio]", shift_config.dig("fora_roleta", "inicio"), class: "ax-control ax-control--sm", disabled: !shift_active, data: { store_operational_shift_target: "field" } %>
+          <%= time_field_tag "store[turnos_config_#{shift_key}_fora_roleta_fim]", shift_config.dig("fora_roleta", "fim"), class: "ax-control ax-control--sm", disabled: !shift_active, data: { store_operational_shift_target: "field" } %>
+        </div>
+      </div>
+
+      <div class="ax-span-6">
+        <%= ax_field_label(nil, nil,
+              text: "Fila após checkout",
+              tooltip: "Quando marcado, o checkout deste turno também remove o corretor das regras vinculadas à loja. Use quando sair do ponto deve pausar o corretor no rodízio."
+            ) %>
+        <div class="tw-mt-1">
+          <%= ax_toggle_chip(
+                label: "Remover corretor da fila",
+                name: "store[turnos_config_#{shift_key}_checkout_remove_from_queue]",
+                checked_value: "true",
+                unchecked_value: "false",
+                checked: ActiveModel::Type::Boolean.new.cast(shift_config.dig("checkout", "remove_from_queue")),
+                disabled: !shift_active,
+                input_data: { store_operational_shift_target: "field" }
+              ) %>
+        </div>
+        <p class="ax-field__hint">Opcional: use para pausar o corretor nas regras da loja após o checkout.</p>
+      </div>
+
+      <div class="ax-span-6">
+        <%= ax_field_label(nil, nil,
+              text: "Checkout automático",
+              tooltip: "Intervalo contado a partir do fim do turno para encerrar automaticamente o check-in. Use 00:00 para encerrar imediatamente no fim da janela."
+            ) %>
+        <%= time_field_tag "store[turnos_config_#{shift_key}_checkout_delay_seconds]", checkout_delay_value, class: "ax-control ax-control--sm", step: 60, min: "00:00", id: "store_turnos_config_#{shift_key}_checkout_delay_seconds", disabled: !shift_active, data: { store_operational_shift_target: "field" } %>
+        <p class="ax-field__hint">Após o fim do turno. Use 00:00 para imediato.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

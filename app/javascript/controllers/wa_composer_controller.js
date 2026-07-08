@@ -1,10 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["body", "fileInput", "fileSummary", "fileName", "template", "modeLabel", "error", "submit"]
+  static targets = ["body", "fileInput", "fileSummary", "fileName", "template", "modeLabel", "error", "submit", "presentationCard", "recordingBar", "recordTime", "recordPause", "recordPreview", "recordBars", "replyTo", "replyBar", "replyAuthor", "replySnippet"]
 
   connect() {
     this.submitting = false
+    this.recording = false
+    this.recorder = null
+    this.recordChunks = []
     this.successTimer = null
     this.pendingMessageId = null
     this.optimisticObjectUrls = new Map()
@@ -13,6 +16,9 @@ export default class extends Controller {
 
   disconnect() {
     if (this.successTimer) clearTimeout(this.successTimer)
+    if (this.recordTimer) clearInterval(this.recordTimer)
+    if (this.waveTimer) clearInterval(this.waveTimer)
+    if (this.recorder?.state === "recording" || this.recorder?.state === "paused") this.recorder.stop()
     this.revokeAllOptimisticObjectUrls()
   }
 
@@ -24,6 +30,14 @@ export default class extends Controller {
       return
     }
 
+    const rejection = this.mediaRejection(file)
+    if (rejection) {
+      this.clearFile()
+      this.showError(rejection)
+      return
+    }
+
+    this.hideError()
     if (this.hasTemplateTarget) this.templateTarget.value = ""
     this.fileNameTarget.textContent = `${this.fileKind(file)} · ${file.name} · ${this.humanSize(file.size)}`
     this.fileSummaryTarget.classList.remove("is-hidden")
@@ -54,7 +68,42 @@ export default class extends Controller {
 
   bodyChanged() {
     this.hideError()
+    // Corretor limpou o texto → a apresentação preenchida deixa de valer.
+    if (this.hasPresentationCardTarget && this.bodyTarget.value.trim() === "") {
+      this.presentationCardTarget.value = ""
+    }
     this.refreshState()
+  }
+
+  // Menu "Responder" da bolha: arma a citação e foca o campo
+  setReply(event) {
+    const { id, author, snippet } = event.detail || {}
+    if (!id) return
+
+    if (this.hasReplyToTarget) this.replyToTarget.value = id
+    if (this.hasReplyAuthorTarget) this.replyAuthorTarget.textContent = author || ""
+    if (this.hasReplySnippetTarget) this.replySnippetTarget.textContent = snippet || ""
+    if (this.hasReplyBarTarget) this.replyBarTarget.classList.remove("is-hidden")
+    this.bodyTarget.focus()
+  }
+
+  clearReply() {
+    if (this.hasReplyToTarget) this.replyToTarget.value = ""
+    if (this.hasReplyBarTarget) this.replyBarTarget.classList.add("is-hidden")
+  }
+
+  // Preenche o composer com um cartão de apresentação (evento do
+  // presentation-picker). NÃO envia: o corretor revisa e usa o Enviar normal.
+  fillPresentation(event) {
+    const { cardId, body } = event.detail || {}
+    if (!body) return
+
+    if (this.hasTemplateTarget) this.templateTarget.value = ""
+    this.bodyTarget.disabled = false
+    this.bodyTarget.value = body
+    if (this.hasPresentationCardTarget) this.presentationCardTarget.value = cardId || ""
+    this.bodyChanged()
+    this.bodyTarget.focus()
   }
 
   submitOnEnter(event) {
@@ -62,11 +111,35 @@ export default class extends Controller {
     if (event.isComposing) return
 
     event.preventDefault()
+    if (!this.hasContentToSend()) return
+
     this.element.requestSubmit()
+  }
+
+  hasContentToSend() {
+    const hasTemplate = this.hasTemplateTarget && this.templateTarget.value.length > 0
+    const hasFile = this.fileInputTarget.files.length > 0
+    const hasBody = this.bodyTarget.value.trim().length > 0
+
+    return hasTemplate || hasFile || hasBody
   }
 
   async submit(event) {
     event.preventDefault()
+
+    if (this.recording) {
+      // ➤ durante a gravação = parar e enviar direto (estilo WhatsApp)
+      this.autoSendAfterRecording = true
+      this.stopRecording()
+      return
+    }
+
+    const mode = this.hasSubmitTarget ? this.submitTarget.dataset.mode : "send"
+    if (mode === "mic") {
+      this.startRecording()
+      return
+    }
+
     if (this.submitting) return
 
     if (this.successTimer) clearTimeout(this.successTimer)
@@ -141,9 +214,276 @@ export default class extends Controller {
     }
 
     if (this.hasSubmitTarget) {
-      this.submitTarget.disabled = this.submitting || !(hasTemplate || hasFile || hasBody)
+      const canSend = hasTemplate || hasFile || hasBody
+      const mode = this.recording || canSend ? "send" : "mic"
+      this.submitTarget.dataset.mode = mode
+      this.submitTarget.disabled = this.submitting
       this.submitTarget.classList.toggle("is-loading", this.submitting)
+
+      const icon = this.submitTarget.querySelector("i")
+      if (icon) {
+        icon.className = mode === "mic" ? "bi bi-mic-fill ax-ico" : "bi bi-send-fill ax-ico"
+      }
+
+      const label = this.recording ? "Enviar áudio" : mode === "mic" ? "Gravar áudio" : "Enviar mensagem"
+      this.submitTarget.title = label
+      this.submitTarget.setAttribute("aria-label", label)
     }
+  }
+
+  // ===== Gravação de voz (estilo WhatsApp): grava, anexa e o corretor revisa =====
+  async startRecording() {
+    if (this.recording) return
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      // sem suporte: cai no seletor de arquivo de áudio
+      this.fileInputTarget.setAttribute("accept", "audio/aac,audio/amr,audio/mpeg,audio/mp4,audio/ogg")
+      this.fileInputTarget.click()
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+        .find((type) => MediaRecorder.isTypeSupported(type))
+      this.recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      this.recordChunks = []
+      this.recorder.addEventListener("dataavailable", (e) => { if (e.data.size) this.recordChunks.push(e.data) })
+      this.recorder.addEventListener("stop", () => this.finishRecording())
+      this.recorder.start()
+      this.recording = true
+      this.discardNext = false
+      this.autoSendAfterRecording = false
+      this.recordElapsedMs = 0
+      this.recordResumedAt = Date.now()
+      this.recordPaused = false
+      this.recordTimer = setInterval(() => this.updateRecordingTimer(), 250)
+      this.bodyTarget.disabled = true
+      this.element.classList.add("is-recording-mode")
+      if (this.hasRecordPauseTarget) {
+        this.recordPauseTarget.hidden = typeof this.recorder.pause !== "function"
+        this.setPauseIcon(false)
+      }
+      if (this.hasRecordPreviewTarget) this.recordPreviewTarget.hidden = true
+      this.startWaveform(stream)
+      this.hideError()
+      this.updateRecordingTimer()
+      this.refreshState()
+    } catch (_error) {
+      this.showError("Não foi possível acessar o microfone. Verifique a permissão do navegador.")
+    }
+  }
+
+  stopRecording() {
+    if (!this.recorder) return
+    if (this.recorder.state === "recording" || this.recorder.state === "paused") this.recorder.stop()
+  }
+
+  discardRecording() {
+    this.discardNext = true
+    this.stopRecording()
+  }
+
+  togglePauseRecording() {
+    if (!this.recorder || typeof this.recorder.pause !== "function") return
+
+    if (this.recorder.state === "paused") {
+      this.stopPreview()
+      this.recorder.resume()
+      this.recordPaused = false
+      this.recordResumedAt = Date.now()
+    } else if (this.recorder.state === "recording") {
+      this.recorder.pause()
+      this.recorder.requestData() // libera os chunks para a pré-escuta
+      this.recordPaused = true
+      this.recordElapsedMs += Date.now() - this.recordResumedAt
+    }
+
+    if (this.hasRecordPreviewTarget) this.recordPreviewTarget.hidden = !this.recordPaused
+    this.element.classList.toggle("is-recording-paused", this.recordPaused)
+    this.setPauseIcon(this.recordPaused)
+  }
+
+  setPauseIcon(paused) {
+    if (!this.hasRecordPauseTarget) return
+
+    // pausado: 🎤 deixa claro que o botão CONTINUA A GRAVAÇÃO (ouvir é o ▶ ao lado)
+    const icon = this.recordPauseTarget.querySelector("i")
+    if (icon) icon.className = paused ? "bi bi-mic-fill" : "bi bi-pause-fill"
+    const label = paused ? "Continuar gravando" : "Pausar gravação"
+    this.recordPauseTarget.title = label
+    this.recordPauseTarget.setAttribute("aria-label", label)
+  }
+
+  // ===== Pré-escuta do trecho gravado (disponível com a gravação pausada) =====
+  previewRecording() {
+    if (this.previewAudio && !this.previewAudio.paused) {
+      this.previewAudio.pause()
+      return
+    }
+
+    // sempre remonta o blob: pode haver trecho novo desde a última pausa
+    this.stopPreview()
+    window.setTimeout(() => {
+      if (!this.recordChunks.length) return
+
+      const type = (this.recorder?.mimeType || "audio/webm").split(";")[0]
+      this.previewUrl = URL.createObjectURL(new Blob(this.recordChunks, { type }))
+      this.previewAudio = new Audio(this.previewUrl)
+      ;["play", "pause", "ended"].forEach((name) => {
+        this.previewAudio.addEventListener(name, () => this.syncPreviewIcon())
+      })
+      this.previewAudio.addEventListener("timeupdate", () => this.updatePreviewProgress())
+      this.previewAudio.addEventListener("ended", () => this.resetPreviewProgress())
+      this.element.classList.add("is-preview-active")
+      this.previewAudio.play().catch(() => {})
+    }, 120)
+  }
+
+  stopPreview() {
+    if (this.previewAudio) {
+      this.previewAudio.pause()
+      this.previewAudio = null
+    }
+    if (this.previewUrl) {
+      URL.revokeObjectURL(this.previewUrl)
+      this.previewUrl = null
+    }
+    this.element.classList.remove("is-preview-active")
+    this.resetPreviewProgress()
+    this.syncPreviewIcon()
+  }
+
+  // Progresso da pré-escuta sobre o wave (bolinha + barras já tocadas).
+  // Duração = tempo gravado conhecido: blob parcial não expõe duration confiável.
+  updatePreviewProgress() {
+    if (!this.hasRecordBarsTarget || !this.previewAudio) return
+
+    const total = this.recordElapsedMs / 1000
+    const progress = total > 0 ? Math.min(1, this.previewAudio.currentTime / total) : 0
+    const cursor = this.recordBarsTarget.querySelector(".wa-rec-cursor")
+    if (cursor) cursor.style.left = `calc(6px + ${(progress * 100).toFixed(1)}% - ${(progress * 12).toFixed(1)}px)`
+
+    const bars = this.recordBarsTarget.querySelectorAll("i")
+    const played = Math.round(progress * bars.length)
+    bars.forEach((bar, index) => bar.classList.toggle("is-played", index < played))
+  }
+
+  resetPreviewProgress() {
+    if (!this.hasRecordBarsTarget) return
+
+    const cursor = this.recordBarsTarget.querySelector(".wa-rec-cursor")
+    if (cursor) cursor.style.left = "0%"
+    this.recordBarsTarget.querySelectorAll("i").forEach((bar) => bar.classList.remove("is-played"))
+    this.syncPreviewIcon()
+  }
+
+  syncPreviewIcon() {
+    if (!this.hasRecordPreviewTarget) return
+
+    const playing = this.previewAudio && !this.previewAudio.paused && !this.previewAudio.ended
+    const icon = this.recordPreviewTarget.querySelector("i")
+    if (icon) icon.className = playing ? "bi bi-pause-fill" : "bi bi-play-fill"
+  }
+
+  // ===== Wave real: amplitude do microfone via AnalyserNode =====
+  startWaveform(stream) {
+    if (!this.hasRecordBarsTarget) return
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext
+    if (!AudioContextClass) return
+
+    try {
+      this.audioCtx = new AudioContextClass()
+      this.audioCtx.resume?.().catch?.(() => {}) // iOS inicia suspenso
+      this.waveAnalyser = this.audioCtx.createAnalyser()
+      this.waveAnalyser.fftSize = 512
+      this.audioCtx.createMediaStreamSource(stream).connect(this.waveAnalyser)
+      this.waveSamples = new Uint8Array(this.waveAnalyser.fftSize)
+      this.waveHistory = []
+      this.recordBarsTarget.replaceChildren(
+        ...Array.from({ length: 28 }, () => document.createElement("i"))
+      )
+      const cursor = document.createElement("b")
+      cursor.className = "wa-rec-cursor"
+      this.recordBarsTarget.append(cursor)
+      this.waveTimer = setInterval(() => this.sampleWave(), 110)
+    } catch (_error) {
+      /* sem wave: gravação segue normal */
+    }
+  }
+
+  sampleWave() {
+    if (!this.waveAnalyser || this.recordPaused) return
+
+    this.waveAnalyser.getByteTimeDomainData(this.waveSamples)
+    let sum = 0
+    for (let i = 0; i < this.waveSamples.length; i++) {
+      const centered = (this.waveSamples[i] - 128) / 128
+      sum += centered * centered
+    }
+    const rms = Math.sqrt(sum / this.waveSamples.length)
+    this.waveHistory.push(Math.min(1, rms * 3.2))
+    if (this.waveHistory.length > 28) this.waveHistory.shift()
+
+    const bars = this.recordBarsTarget.querySelectorAll("i")
+    const offset = bars.length - this.waveHistory.length
+    for (let i = 0; i < bars.length; i++) {
+      const value = i < offset ? 0 : this.waveHistory[i - offset]
+      bars[i].style.height = `${Math.max(4, Math.round(value * 22))}px`
+    }
+  }
+
+  stopWaveform() {
+    if (this.waveTimer) clearInterval(this.waveTimer)
+    this.waveTimer = null
+    this.waveAnalyser = null
+    this.audioCtx?.close?.().catch?.(() => {})
+    this.audioCtx = null
+  }
+
+  finishRecording() {
+    if (this.recordTimer) clearInterval(this.recordTimer)
+    this.stopPreview()
+    this.stopWaveform()
+    this.recorder?.stream?.getTracks()?.forEach((track) => track.stop())
+
+    const type = (this.recorder?.mimeType || "audio/webm").split(";")[0]
+    const extension = type === "audio/mp4" ? "m4a" : type === "audio/ogg" ? "ogg" : "webm"
+    const blob = new Blob(this.recordChunks, { type })
+    const discarded = this.discardNext
+    const autoSend = this.autoSendAfterRecording
+    this.recording = false
+    this.recordPaused = false
+    this.discardNext = false
+    this.autoSendAfterRecording = false
+    this.recorder = null
+    this.recordChunks = []
+    this.bodyTarget.disabled = false
+    this.element.classList.remove("is-recording-mode", "is-recording-paused")
+
+    // descartado no 🗑 ou gravação relâmpago/vazia
+    if (discarded || blob.size < 1200) {
+      this.refreshState()
+      return
+    }
+
+    const stamp = new Date().toTimeString().slice(0, 8).replaceAll(":", "")
+    const file = new File([blob], `audio-${stamp}.${extension}`, { type })
+    const transfer = new DataTransfer()
+    transfer.items.add(file)
+    this.fileInputTarget.files = transfer.files
+    this.fileChanged()
+
+    if (autoSend) requestAnimationFrame(() => this.element.requestSubmit())
+  }
+
+  updateRecordingTimer() {
+    if (!this.hasRecordTimeTarget) return
+
+    const elapsed = this.recordElapsedMs + (this.recordPaused ? 0 : Date.now() - this.recordResumedAt)
+    const seconds = Math.floor(elapsed / 1000)
+    this.recordTimeTarget.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
   }
 
   resetForm() {
@@ -155,6 +495,8 @@ export default class extends Controller {
 
     if (this.hasTemplateTarget) this.templateTarget.value = ""
     if (this.hasFileInputTarget) this.fileInputTarget.value = ""
+    if (this.hasPresentationCardTarget) this.presentationCardTarget.value = ""
+    this.clearReply()
 
     this.hideSummary()
     this.hideError()
@@ -192,6 +534,36 @@ export default class extends Controller {
       this.modeLabelTarget.classList.remove("is-success")
       this.refreshState()
     }, 1800)
+  }
+
+  // Barra o arquivo na hora da escolha, antes do envio ir falhar na Meta.
+  mediaRejection(file) {
+    const rules = this.mediaRules
+    if (!rules || !file.type) return null
+
+    const maxBytes = rules[file.type]
+    if (maxBytes === undefined) {
+      return "Formato não suportado pela WhatsApp Cloud API. Use imagem JPG/PNG, vídeo MP4/3GP, áudio AAC/AMR/MP3/M4A/OGG ou documento TXT/PDF/DOC/DOCX/XLS/XLSX/PPT/PPTX."
+    }
+
+    if (file.size > maxBytes) {
+      const maxMb = Math.round(maxBytes / (1024 * 1024))
+      return `${this.fileKind(file)} excede o limite da WhatsApp Cloud API (${maxMb} MB).`
+    }
+
+    return null
+  }
+
+  get mediaRules() {
+    if (this.parsedMediaRules !== undefined) return this.parsedMediaRules
+
+    try {
+      this.parsedMediaRules = JSON.parse(this.fileInputTarget.dataset.waMediaRules || "null")
+    } catch (_error) {
+      this.parsedMediaRules = null
+    }
+
+    return this.parsedMediaRules
   }
 
   get csrfToken() {
@@ -268,7 +640,7 @@ export default class extends Controller {
           ? `
             <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--video">
               <div class="wa-inbox-media-frame wa-inbox-media-frame--video wa-inbox-media wa-inbox-media--video-link">
-                <video src="${this.escapeHtml(objectUrl)}" class="wa-inbox-media wa-inbox-media--video" muted playsinline preload="metadata"></video>
+                <video src="${this.escapeHtml(objectUrl)}#t=0.001" class="wa-inbox-media wa-inbox-media--video" muted playsinline preload="metadata"></video>
                 <span class="wa-inbox-media__play" aria-hidden="true">
                   <i class="bi bi-play-fill"></i>
                 </span>
@@ -284,29 +656,28 @@ export default class extends Controller {
                 <i class="bi bi-play-fill"></i>
               </button>
               <div class="wa-audio-preview__body">
-                <div class="wa-audio-preview__meta">
-                  <span class="wa-audio-preview__eyebrow">Áudio</span>
-                  <strong class="wa-audio-preview__title">${this.escapeHtml(file.name)}</strong>
-                </div>
-                <div class="wa-audio-preview__summary">${this.escapeHtml(meta)}</div>
                 <button type="button" class="wa-audio-preview__track" aria-label="Áudio pendente" disabled>
                   <span class="wa-audio-preview__track-fill" style="width:0%"></span>
                 </button>
                 <div class="wa-audio-preview__footer">
                   <span class="wa-audio-preview__time"><span>0:00</span><span>/</span><span>0:00</span></span>
-                  <span class="wa-audio-preview__hint">Aguardando envio</span>
+                  <span class="wa-audio-preview__summary">${this.escapeHtml(meta)}</span>
                 </div>
               </div>
+              <span class="wa-audio-preview__badge"><i class="bi bi-headphones"></i></span>
             </div>
           </div>
         `
         : `
           <div class="wa-inbox-bubble__media-block wa-inbox-bubble__media-block--document">
             <div class="wa-inbox-media-card wa-inbox-media-card--document wa-inbox-media-card--message">
-              <span class="wa-inbox-media-card__icon"><i class="bi bi-paperclip"></i></span>
-              <span class="wa-inbox-media-card__copy">
-                <span class="wa-inbox-media-card__title">${this.escapeHtml(file.name)}</span>
-                <span class="wa-inbox-media-card__meta">${this.escapeHtml(meta)}</span>
+              <span class="wa-inbox-media-card__row">
+                <span class="wa-inbox-media-card__icon"><i class="bi bi-file-earmark-text-fill"></i></span>
+                <span class="wa-inbox-media-card__copy">
+                  <span class="wa-inbox-media-card__title">${this.escapeHtml(file.name)}</span>
+                  <span class="wa-inbox-media-card__meta">${this.escapeHtml(meta)}</span>
+                </span>
+                <span class="wa-inbox-media-card__action"><i class="bi bi-clock"></i></span>
               </span>
             </div>
           </div>

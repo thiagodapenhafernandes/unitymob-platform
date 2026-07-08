@@ -1,0 +1,12 @@
+/* ============================================================
+   Unitymob Design System — global entry point
+   Consumers link THIS file only. It is a manifest of @imports; all tokens,
+   fonts and the core .ax-* component layer are pulled in transitively.
+   ============================================================ */
+
+@import "tokens/fonts.css";
+@import "tokens/colors.css";
+@import "tokens/typography.css";
+@import "tokens/spacing.css";
+@import "tokens/base.css";
+@import "tokens/components.css";

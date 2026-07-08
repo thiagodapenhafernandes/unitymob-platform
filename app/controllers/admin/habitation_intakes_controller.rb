@@ -3,7 +3,7 @@ module Admin
     include RentalGuaranteeParamNormalizer
 
     before_action -> { check_permission!(:view, :captacoes) }
-    before_action -> { check_permission!(:manage, :captacoes) }, only: %i[new create edit update destroy submit_for_review release_to_site publish]
+    before_action -> { check_permission!(:manage, :captacoes) }, only: %i[new create edit update destroy submit_for_review release_to_site publish proprietor_lookup]
     before_action :authorize_export!, only: %i[export]
     before_action :set_property_setting, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site publish]
     before_action :set_habitation, only: %i[show edit update destroy submit_for_review approve return_to_broker release_to_site]
@@ -51,6 +51,21 @@ module Admin
       start_new_intake
     end
 
+    def proprietor_lookup
+      match = matching_proprietor_for_lookup
+
+      if match.present?
+        proprietor, matched_by = match
+        render json: {
+          found: true,
+          matched_by: matched_by,
+          proprietor: proprietor_lookup_payload(proprietor)
+        }
+      else
+        render json: { found: false }
+      end
+    end
+
     def show
       @captacao = @habitation
       @review_timeline = HabitationReviewTimeline.new(habitation: @habitation).call
@@ -92,6 +107,8 @@ module Admin
       end
 
       if @habitation.save
+        apply_intake_photo_ambientes!(@habitation)
+        enqueue_photo_calendar_sync_if_needed!(@habitation)
         unless step_requirements_met?(current_step)
           assign_step_errors(current_step)
           @step = current_step
@@ -279,6 +296,89 @@ module Admin
 
     private
 
+    def matching_proprietor_for_lookup
+      scope = current_tenant.proprietors
+
+      code = params[:code].to_s.strip
+      if code.present?
+        proprietor = scope.where("trim(vista_code) = ?", code).order(:id).first
+        return [proprietor, "code"] if proprietor
+      end
+
+      phone_digits = Proprietor.normalized_phone(params[:phone])
+      if phone_digits.length >= 8
+        proprietor = scope.with_normalized_phone(phone_digits).order(:id).first
+        return [proprietor, "phone"] if proprietor
+      end
+
+      cpf_digits = Proprietor.normalized_cpf_cnpj(params[:cpf_cnpj])
+      if cpf_digits.length.in?([11, 14])
+        proprietor =
+          if Proprietor.cpf_digits_searchable?
+            scope.where(cpf_cnpj_digits: cpf_digits).order(:id).first
+          else
+            scope.where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: cpf_digits).order(:id).first
+          end
+        return [proprietor, "cpf_cnpj"] if proprietor
+      end
+
+      email = params[:email].to_s.strip.downcase
+      if email.match?(URI::MailTo::EMAIL_REGEXP)
+        proprietor = scope.where("lower(trim(email)) = ?", email).order(:id).first
+        return [proprietor, "email"] if proprietor
+      end
+
+      nil
+    end
+
+    def proprietor_lookup_payload(proprietor)
+      {
+        id: proprietor.id,
+        code: proprietor.vista_code,
+        name: proprietor.name,
+        phone: proprietor.mobile_phone.presence || proprietor.phone_primary.presence || proprietor.residential_phone.presence || proprietor.business_phone.presence,
+        cpf_cnpj: proprietor.cpf_cnpj,
+        email: proprietor.email,
+        city: proprietor.city,
+        label: proprietor.select_label
+      }
+    end
+
+    # Persiste o ambiente por foto submetido no cadastro (params habitation/captacao
+    # [photo_ambientes][<attachment_id>] => ambiente). Mesmo gate do editor: só quem
+    # pode gerenciar imóveis (corretor não). Best-effort: nunca derruba o save.
+    def apply_intake_photo_ambientes!(record)
+      return unless current_admin_user&.can?(:manage, :imoveis)
+      return unless record.respond_to?(:set_photo_ambiente!)
+
+      raw = params.dig(:habitation, :photo_ambientes) || params.dig(:captacao, :photo_ambientes)
+      return if raw.blank?
+
+      attachments = record.respond_to?(:photos) ? record.photos : record.fotos
+      by_id = attachments.index_by(&:id)
+      raw.to_unsafe_h.each do |photo_id, ambiente|
+        value = ambiente.to_s.strip
+        next unless value.blank? || Habitation::FOTO_AMBIENTES.include?(value)
+
+        attachment = by_id[photo_id.to_i]
+        record.set_photo_ambiente!(attachment, value) if attachment
+      end
+    rescue StandardError => e
+      Rails.logger.warn("[intake] aplicar ambientes das fotos falhou: #{e.message}")
+    end
+
+    def enqueue_photo_calendar_sync_if_needed!(record)
+      return unless record.photo_flow_choice.in?(%w[schedule google_calendar])
+      return if record.photo_session_requested_at.blank?
+
+      setting = GoogleCalendarIntegrationSetting.for(current_tenant)
+      return unless setting.configured?
+
+      GoogleCalendar::PhotoEventSyncJob.perform_later(record.id, tenant_id: current_tenant.id)
+    rescue StandardError => e
+      Rails.logger.warn("[intake] enfileirar agenda Google falhou para imóvel #{record.id}: #{e.class}: #{e.message}")
+    end
+
     def start_new_intake
       habitation = build_intake_preview
       habitation.intake_step = "proprietario"
@@ -336,6 +436,11 @@ module Admin
 
     def active_broker_capture_checks
       @property_setting&.active_broker_capture_checks
+    end
+
+    def intake_check_enabled?(key)
+      @active_broker_capture_check_set ||= PropertySetting.normalize_intake_checks(active_broker_capture_checks)
+      @active_broker_capture_check_set.include?(key.to_s)
     end
 
     def authorize_export!
@@ -540,6 +645,14 @@ module Admin
     def load_form_options
       @brokers = current_tenant.admin_users.account_members.order(:name)
       @proprietors = current_tenant.proprietors.order(:name).limit(300)
+      @proprietor_city_options = current_tenant.proprietors
+        .where.not(city: [nil, ""])
+        .distinct
+        .order(:city)
+        .limit(100)
+        .pluck(:city)
+        .map { |city| city.to_s.strip }
+        .compact_blank
       @internal_features = (
         current_tenant.attribute_options.where(context: "habitation", category: "feature").order(:name).pluck(:name) +
         Admin::HabitationsController::CUSTOM_FEATURE_OPTIONS
@@ -547,14 +660,37 @@ module Admin
       @external_features = current_tenant.attribute_options.where(context: "habitation", category: "infrastructure").order(:name).pluck(:name)
       @badges = current_tenant.attribute_options.where(context: "habitation", category: "unique_feature").order(:name).pluck(:name)
       @sale_reasons = sale_reason_options
+      @google_calendar_setting = GoogleCalendarIntegrationSetting.for(current_tenant)
+      @google_calendar_configured = @google_calendar_setting.configured?
+      @photography_min_date = Date.current + 1.day
       @photography_blocked_dates = PhotographyScheduleBlock.pluck(:date).map(&:iso8601)
-      @photography_booked_slots = current_tenant.habitations
+      @photography_booked_slots = booked_photography_slots
+    end
+
+    def booked_photography_slots
+      local_booked_slots = current_tenant.habitations
         .broker_intakes
-        .where(photo_flow_choice: "schedule")
+        .where(photo_flow_choice: %w[schedule google_calendar])
         .where.not(id: @habitation&.id)
         .where.not(photo_session_requested_at: nil)
         .pluck(:photo_session_requested_at)
         .map { |date| date.strftime("%Y-%m-%dT%H:%M") }
+
+      (local_booked_slots + google_calendar_booked_slots).uniq.sort
+    end
+
+    def google_calendar_booked_slots
+      return [] unless @google_calendar_setting&.configured?
+
+      GoogleCalendar::AvailabilityReader.new(
+        setting: @google_calendar_setting,
+        tenant: current_tenant,
+        start_date: @photography_min_date,
+        days: 30
+      ).busy_slot_values
+    rescue StandardError => e
+      Rails.logger.warn("[intake] consultar disponibilidade Google Calendar falhou: #{e.class}: #{e.message}")
+      []
     end
 
     def resolve_layout
@@ -577,7 +713,7 @@ module Admin
         missing = []
         missing << "Informe o nome do proprietário." if @habitation.proprietario.blank?
         missing << "Informe o telefone/WhatsApp do proprietário." if @habitation.proprietario_celular.blank?
-        missing << "Informe a cidade do proprietário." if @habitation.proprietario_cidade.blank?
+        missing << "Informe a cidade do proprietário." if intake_check_enabled?(:proprietario_cidade) && @habitation.proprietario_cidade.blank?
         missing
       when "endereco"
         missing = []
@@ -587,8 +723,8 @@ module Admin
         missing << "Informe o bairro." if @habitation.bairro.blank?
         missing << "Informe a cidade." if @habitation.cidade.blank?
         missing << "Informe a UF." if @habitation.uf.blank?
-        missing << "Informe o empreendimento/condomínio." if @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
-        missing << "Informe o número da unidade." if @habitation.requires_unit_number? && @habitation.bloco.blank?
+        missing << "Informe o empreendimento/condomínio." if intake_check_enabled?(:empreendimento) && @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
+        missing << "Informe o número da unidade." if intake_check_enabled?(:unidade) && @habitation.requires_unit_number? && @habitation.bloco.blank?
         missing << "Informe o complemento." if @habitation.requires_intake_address_complement? && !@habitation.requires_unit_number? && @habitation.complemento.blank?
         missing
       when "caracteristicas"
@@ -604,9 +740,13 @@ module Admin
         if @habitation.property_kind_residencial? && @habitation.banheiros_qtd.to_i <= 0
           missing << "Informe a quantidade de banheiros."
         end
-        missing << "Informe a quantidade de vagas de garagem." if @habitation.vagas_qtd.nil?
-        missing << "Informe a ocupação do imóvel." if @habitation.ocupacao_status.blank?
-        missing << "Informe a situação do imóvel." if @habitation.situacao.blank?
+        if @habitation.requires_parking_info?
+          missing << "Informe o tipo de vaga." if intake_check_enabled?(:tipo_vaga) && @habitation.tipo_vaga.blank?
+          missing << "Informe a quantidade de vagas de garagem." if intake_check_enabled?(:vagas) && @habitation.vagas_qtd.nil?
+          missing << "Informe o box da vaga." if intake_check_enabled?(:box) && @habitation.vagas_qtd.to_i.positive? && @habitation.numero_box.blank?
+        end
+        missing << "Informe a ocupação do imóvel." if intake_check_enabled?(:ocupacao) && !@habitation.property_kind_terreno? && @habitation.ocupacao_status.blank?
+        missing << "Informe a situação do imóvel." if intake_check_enabled?(:situacao) && !@habitation.property_kind_terreno? && @habitation.situacao.blank?
         missing << "Marque ao menos uma característica do imóvel." if @habitation.caracteristicas.blank?
         missing
       when "infraestrutura"
@@ -621,24 +761,25 @@ module Admin
         if @habitation.requires_rent_price? && !@habitation.valid_intake_rent_price?
           missing << @habitation.intake_rent_price_requirement_message
         end
-        missing << "Informe ao menos condomínio ou IPTU." if @habitation.valor_condominio_cents.blank? && @habitation.valor_iptu_cents.blank?
-        missing << "Informe se aceita permuta." if @habitation.sale_intake? && @habitation.aceita_permuta_answer.blank?
-        if @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
+        missing << "Informe ao menos condomínio ou IPTU." if intake_check_enabled?(:financeiro) && @habitation.requires_intake_expense_amount? && @habitation.valor_condominio_cents.blank? && @habitation.valor_iptu_cents.blank?
+        missing << "Informe se aceita permuta." if intake_check_enabled?(:permuta) && @habitation.sale_intake? && @habitation.aceita_permuta_answer.blank?
+        if intake_check_enabled?(:admin_locacao) && @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
           missing << "Informe se a administração da locação será feita internamente."
         end
-        missing << "Informe o meio de garantia locatícia." if @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
-        missing << "Informe em quantas vezes aceita parcelamento." if @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.blank?
+        missing << "Informe o meio de garantia locatícia." if intake_check_enabled?(:garantia_locaticia) && @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
+        missing << "Informe em quantas vezes aceita parcelamento." if intake_check_enabled?(:parcelamento) && @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.blank?
         missing
       when "fotos"
         missing = []
         missing << "Escolha se vai enviar fotos ou agendar fotógrafo." if @habitation.photo_flow_choice.blank?
         missing << "Envie ao menos uma foto do imóvel." if @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
-        missing << "Informe a data/hora agendada com fotógrafo." if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
+        missing << "Informe a data/hora agendada com fotógrafo." if @habitation.photo_flow_choice.in?(%w[schedule google_calendar]) && @habitation.photo_session_requested_at.blank?
+        missing << "Escolha um horário disponível para a fotografia." if photo_schedule_slot_unavailable?
         missing << "Anexe a autorização do proprietário." unless @habitation.autorizacoes_venda.attached?
         missing
       when "visitas"
         missing = []
-        missing << "Informe onde estão as chaves." if @habitation.key_location.blank?
+        missing << "Informe onde estão as chaves." if intake_check_enabled?(:chaves) && @habitation.requires_intake_key_location? && @habitation.key_location.blank?
         missing << "Informe os melhores dias/horários para visita." if !@habitation.skip_visitas? && !@habitation.intake_visit_days_present?
         missing
       else
@@ -664,7 +805,7 @@ module Admin
       when "proprietario"
         fields[:proprietario_nome] = true if @habitation.proprietario.blank?
         fields[:proprietario_telefone] = true if @habitation.proprietario_celular.blank?
-        fields[:proprietario_cidade] = true if @habitation.proprietario_cidade.blank?
+        fields[:proprietario_cidade] = true if intake_check_enabled?(:proprietario_cidade) && @habitation.proprietario_cidade.blank?
       when "endereco"
         fields[:zip_code] = true if @habitation.cep.blank?
         fields[:street] = true if @habitation.logradouro.blank?
@@ -672,8 +813,8 @@ module Admin
         fields[:neighborhood] = true if @habitation.bairro.blank?
         fields[:city] = true if @habitation.cidade.blank?
         fields[:state] = true if @habitation.uf.blank?
-        fields[:edificio_nome] = true if @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
-        fields[:unidade_numero] = true if @habitation.requires_unit_number? && @habitation.bloco.blank?
+        fields[:edificio_nome] = true if intake_check_enabled?(:empreendimento) && @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
+        fields[:unidade_numero] = true if intake_check_enabled?(:unidade) && @habitation.requires_unit_number? && @habitation.bloco.blank?
         fields[:complemento] = true if @habitation.requires_intake_address_complement? && !@habitation.requires_unit_number? && @habitation.complemento.blank?
       when "caracteristicas"
         if @habitation.property_kind_terreno? && !@habitation.has_required_intake_area?
@@ -683,33 +824,68 @@ module Admin
         end
         fields[:dormitorios] = true if @habitation.property_kind_residencial? && @habitation.dormitorios_qtd.to_i <= 0
         fields[:banheiros] = true if @habitation.property_kind_residencial? && @habitation.banheiros_qtd.to_i <= 0
-        fields[:vagas_garagem] = true if @habitation.vagas_qtd.nil?
-        fields[:ocupacao] = true if @habitation.ocupacao_status.blank?
-        fields[:situacao_imovel] = true if @habitation.situacao.blank?
+        if @habitation.requires_parking_info?
+          fields[:tipo_vaga] = true if intake_check_enabled?(:tipo_vaga) && @habitation.tipo_vaga.blank?
+          fields[:vagas_garagem] = true if intake_check_enabled?(:vagas) && @habitation.vagas_qtd.nil?
+          fields[:numero_box] = true if intake_check_enabled?(:box) && @habitation.vagas_qtd.to_i.positive? && @habitation.numero_box.blank?
+        end
+        fields[:ocupacao] = true if intake_check_enabled?(:ocupacao) && !@habitation.property_kind_terreno? && @habitation.ocupacao_status.blank?
+        fields[:situacao_imovel] = true if intake_check_enabled?(:situacao) && !@habitation.property_kind_terreno? && @habitation.situacao.blank?
         fields[:caracteristicas_imovel] = true if @habitation.caracteristicas.blank?
       when "infraestrutura"
         fields[:caracteristicas_predio] = true if @habitation.uses_building_infrastructure? && @habitation.infra_estrutura.blank?
       when "negociacao"
         fields[:valor_venda] = true if @habitation.requires_sale_price? && !@habitation.valid_intake_sale_price?
         fields[:valor_locacao] = true if @habitation.requires_rent_price? && !@habitation.valid_intake_rent_price?
-        if @habitation.valor_condominio_cents.blank? && @habitation.valor_iptu_cents.blank?
+        if intake_check_enabled?(:financeiro) && @habitation.requires_intake_expense_amount? && @habitation.valor_condominio_cents.blank? && @habitation.valor_iptu_cents.blank?
           fields[:valor_condominio] = true
           fields[:valor_iptu] = true
         end
-        fields[:aceita_permuta_answer] = true if @habitation.sale_intake? && @habitation.aceita_permuta_answer.blank?
-        fields[:salute_rental_management_answer] = true if @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
-        fields[:rental_guarantee_method] = true if @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
-        fields[:numero_prestacoes] = true if @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.blank?
+        fields[:aceita_permuta_answer] = true if intake_check_enabled?(:permuta) && @habitation.sale_intake? && @habitation.aceita_permuta_answer.blank?
+        fields[:salute_rental_management_answer] = true if intake_check_enabled?(:admin_locacao) && @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
+        fields[:rental_guarantee_method] = true if intake_check_enabled?(:garantia_locaticia) && @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
+        fields[:numero_prestacoes] = true if intake_check_enabled?(:parcelamento) && @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.blank?
       when "fotos"
         fields[:photo_flow_choice] = true if @habitation.photo_flow_choice.blank?
         fields[:photos] = true if @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
-        fields[:photo_session_requested_at] = true if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
+        fields[:photo_session_requested_at] = true if @habitation.photo_flow_choice.in?(%w[schedule google_calendar]) && @habitation.photo_session_requested_at.blank?
+        fields[:photo_session_requested_at] = true if photo_schedule_slot_unavailable?
         fields[:autorizacoes_venda] = true unless @habitation.autorizacoes_venda.attached?
       when "visitas"
-        fields[:chaves_com] = true if @habitation.key_location.blank?
+        fields[:chaves_com] = true if intake_check_enabled?(:chaves) && @habitation.requires_intake_key_location? && @habitation.key_location.blank?
         fields[:dias_visitas] = true if !@habitation.skip_visitas? && !@habitation.intake_visit_days_present?
       end
       fields
+    end
+
+    def photo_schedule_slot_unavailable?
+      return false unless @habitation.photo_flow_choice.in?(%w[schedule google_calendar])
+      return false if @habitation.photo_session_requested_at.blank?
+
+      scheduled_at = @habitation.photo_session_requested_at.in_time_zone("America/Sao_Paulo")
+      return true if scheduled_at.to_date <= Date.current
+      return true if PhotographyScheduleBlock.exists?(date: scheduled_at.to_date)
+      return true if local_photo_schedule_conflict?(scheduled_at)
+      return false unless @google_calendar_setting&.configured?
+
+      GoogleCalendar::AvailabilityReader.new(
+        setting: @google_calendar_setting,
+        tenant: current_tenant,
+        start_date: scheduled_at.to_date,
+        days: 1
+      ).busy_at?(scheduled_at)
+    rescue StandardError => e
+      Rails.logger.warn("[intake] validar disponibilidade Google Calendar falhou: #{e.class}: #{e.message}")
+      false
+    end
+
+    def local_photo_schedule_conflict?(scheduled_at)
+      current_tenant.habitations
+        .broker_intakes
+        .where(photo_flow_choice: %w[schedule google_calendar])
+        .where.not(id: @habitation&.id)
+        .where(photo_session_requested_at: scheduled_at.beginning_of_minute)
+        .exists?
     end
 
     def duplicate_address_blocks_intake?(step)
@@ -812,6 +988,7 @@ module Admin
         :dimensoes_terreno, :topografia, :key_location, :key_location_notes,
         :corretor_nome, :corretor_telefone, :corretor_email, :ordered_photo_ids,
         :zip_code, :street, :street_number, :neighborhood, :city, :state, :complemento, :edificio_nome, :unidade_numero,
+        :lote, :quadra,
         :chaves_com, :senha_imovel, :senha_portaria,
         { rental_guarantee_method: [],
           caracteristicas: [], infra_estrutura: [], caracteristica_unica: [],
@@ -823,8 +1000,9 @@ module Admin
       raw = ActionController::Parameters.new
       raw.deep_merge!(params[:habitation].permit(*permitted_keys)) if params[:habitation].present?
       raw.deep_merge!(params[:captacao].permit(*permitted_keys)) if params[:captacao].present?
-      raw.permit!
-      normalize_captacao_params(raw)
+      # Re-aplica o allow-list ao merge (em vez de permit!, que liberava
+      # QUALQUER atributo não listado — ex.: admin_user_id, flags de status).
+      normalize_captacao_params(raw.permit(*permitted_keys))
     end
 
     def normalize_captacao_params(raw)
@@ -1028,7 +1206,9 @@ module Admin
                              []
                            end
       captacao_options = if defined?(Captacao) && Captacao.column_names.include?("motivo_venda")
-                           Captacao.where.not(motivo_venda: [nil, ""]).distinct.pluck(:motivo_venda)
+                           # Captação não tem tenant_id: escopa pela conta via corretor (AdminUser).
+                           Captacao.where(corretor_id: current_tenant.admin_users.select(:id))
+                                   .where.not(motivo_venda: [nil, ""]).distinct.pluck(:motivo_venda)
                          else
                            []
                          end

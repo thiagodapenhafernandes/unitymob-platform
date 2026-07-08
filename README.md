@@ -141,3 +141,24 @@ Reprocesso de falhas registradas:
 ```bash
 bundle exec rake images:retry_failed_habitations_to_spaces
 ```
+
+### Pós-refresh do banco local: fotos de imóveis
+
+Quando o banco local é atualizado com dados de produção, as fotos podem quebrar
+se os registros `active_storage_blobs` apontarem para arquivos que não existem
+no ambiente local. Rode o diagnóstico antes de abrir as telas:
+
+```bash
+bundle exec rake db_refresh:property_photo_health
+```
+
+Para aplicar o reparo pós-refresh:
+
+```bash
+APPLY=true bundle exec rake db_refresh:repair_property_photos
+```
+
+A task registra os serviços de storage dinâmicos, copia arquivos ausentes do
+storage compartilhado de produção quando encontrar blobs `local` e reaproveita
+`images:repair_missing_habitation_photo_blobs` para objetos que tenham origem
+recuperável.

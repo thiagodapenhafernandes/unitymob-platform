@@ -11,10 +11,9 @@ module Field
       end
 
       @admin_user       = current_admin_user
-      @default_store    = @admin_user.default_store
       @field_enabled    = FieldFeatureGate.field_checkin_enabled?
+      @field_agent_allowed = FieldFeatureGate.field_agent_allowed?(@admin_user, tenant: current_tenant)
       @active_check_in  = @field_enabled ? @admin_user.active_check_in : nil
-      @today_shifts     = @field_enabled ? today_shifts_for(@admin_user) : []
 
       lead_scope = current_tenant.leads.where(admin_user_id: @admin_user.id)
       intake_scope = current_tenant.habitations.broker_intakes.where(admin_user_id: @admin_user.id)
@@ -94,11 +93,5 @@ module Field
       items
     end
 
-    def today_shifts_for(user)
-      user.store_shifts
-          .includes(:store)
-          .where(active: true, day_of_week: Time.current.wday)
-          .order(:start_time)
-    end
   end
 end

@@ -29,9 +29,10 @@ module Habitations
 
     def existing_proprietor
       find_by_vista_code ||
+        find_by_cpf_cnpj ||
         find_by_phone ||
         find_by_email ||
-        find_by_name
+        fallback_name_match
     end
 
     def new_proprietor
@@ -53,16 +54,39 @@ module Habitations
       habitation.tenant.proprietors.with_normalized_phone(digits).order(:id).first
     end
 
+    def find_by_cpf_cnpj
+      digits = Proprietor.normalized_cpf_cnpj(owner_document)
+      return if digits.blank?
+
+      if Proprietor.cpf_digits_searchable?
+        habitation.tenant.proprietors.where(cpf_cnpj_digits: digits).order(:id).first
+      else
+        habitation.tenant.proprietors
+                  .where("regexp_replace(COALESCE(cpf_cnpj, ''), '\\D', '', 'g') = :digits", digits: digits)
+                  .order(:id)
+                  .first
+      end
+    end
+
     def find_by_email
       return if email.blank?
 
-      habitation.tenant.proprietors.find_by(email: email)
+      habitation.tenant.proprietors.where("lower(trim(email)) = ?", email.downcase).order(:id).first
     end
 
     def find_by_name
       return if owner_name.blank?
 
-      habitation.tenant.proprietors.find_by(name: owner_name)
+      habitation.tenant.proprietors
+                .where("lower(trim(name)) = ?", owner_name.to_s.strip.downcase)
+                .order(:id)
+                .first
+    end
+
+    def fallback_name_match
+      return if owner_document.present? || primary_phone.present? || email.present?
+
+      find_by_name
     end
 
     def apply_habitation_data_to(proprietor)
@@ -102,6 +126,10 @@ module Habitations
 
     def vista_code
       @vista_code ||= habitation.proprietario_codigo.to_s.strip
+    end
+
+    def owner_document
+      @owner_document ||= habitation.proprietario_codigo.to_s.strip
     end
 
     def owner_city

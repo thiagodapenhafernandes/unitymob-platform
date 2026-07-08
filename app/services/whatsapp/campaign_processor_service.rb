@@ -46,24 +46,29 @@ module Whatsapp
       rows = []
       now = Time.current
 
-      each_new_recipient(recipients) do |recipient|
-        phone = normalize_phone(recipient.display_phone)
-        next if phone.blank?
+      # Lock na campanha torna o check-then-insert atômico: um segundo processor
+      # concorrente relê existing_ids já com as linhas do primeiro e não duplica
+      # o disparo (o start! atômico impede o caso comum; isto fecha o residual).
+      campaign.with_lock do
+        each_new_recipient(recipients) do |recipient|
+          phone = normalize_phone(recipient.display_phone)
+          next if phone.blank?
 
-        rows << {
-          tenant_id: campaign.tenant_id,
-          whatsapp_campaign_id: campaign.id,
-          whatsapp_campaign_recipient_id: recipient.id,
-          lead_id: recipient.respond_to?(:lead_id) ? recipient.lead_id : recipient.id,
-          phone_number: phone,
-          status: "pending",
-          template_variables: template_variables_for(recipient),
-          created_at: now,
-          updated_at: now
-        }
+          rows << {
+            tenant_id: campaign.tenant_id,
+            whatsapp_campaign_id: campaign.id,
+            whatsapp_campaign_recipient_id: recipient.id,
+            lead_id: recipient.respond_to?(:lead_id) ? recipient.lead_id : recipient.id,
+            phone_number: phone,
+            status: "pending",
+            template_variables: template_variables_for(recipient),
+            created_at: now,
+            updated_at: now
+          }
+        end
+
+        WhatsappCampaignMessage.insert_all(rows) if rows.any?
       end
-
-      WhatsappCampaignMessage.insert_all(rows) if rows.any?
     end
 
     def each_new_recipient(recipients, &block)
@@ -112,7 +117,7 @@ module Whatsapp
            .gsub("{{observacoes}}", lead&.respond_to?(:notes) ? lead.notes.to_s : "")
            .gsub("{{corretor}}", recipient.admin_user&.name.to_s)
            .gsub("{{corretor_telefone}}", recipient.admin_user&.try(:phone).to_s.presence || recipient.admin_user&.try(:telefone).to_s)
-           .gsub("{{corretor_email}}", recipient.admin_user&.email.to_s)
+           .gsub("{{corretor_email}}", recipient.admin_user&.notification_email.to_s)
     end
 
     def normalize_phone(phone)

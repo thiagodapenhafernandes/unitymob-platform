@@ -20,10 +20,7 @@ class StorageIntegrationSetting < ApplicationRecord
   after_commit :clear_current_cache
 
   def self.instance
-    cached = ActiveSupport::IsolatedExecutionState[CURRENT_CACHE_KEY]
-    return cached if cached
-
-    ActiveSupport::IsolatedExecutionState[CURRENT_CACHE_KEY] = first || create_from_environment!
+    first || create_from_environment!
   end
 
   def self.current
@@ -31,7 +28,7 @@ class StorageIntegrationSetting < ApplicationRecord
   end
 
   def self.clear_current_cache
-    ActiveSupport::IsolatedExecutionState[CURRENT_CACHE_KEY] = nil
+    nil
   end
 
   def self.create_from_environment!

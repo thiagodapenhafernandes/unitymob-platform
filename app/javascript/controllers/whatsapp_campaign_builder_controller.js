@@ -299,12 +299,102 @@ export default class extends Controller {
         if (!ok) throw new Error(data.error || "Falha ao gerar preview")
         if (shouldRebuildVariables) this.renderVariableMapping(data.variables_schema || [])
         this.renderResponseDecisions(data.buttons || [])
-        if (this.hasTemplatePreviewTarget) this.templatePreviewTarget.textContent = data.body || "Modelo sem corpo"
+        this.renderTemplatePreview(data)
         this.refreshReview()
       })
       .catch((error) => {
         if (this.hasTemplatePreviewTarget) this.templatePreviewTarget.textContent = error.message
       })
+  }
+
+  renderTemplatePreview(data) {
+    if (!this.hasTemplatePreviewTarget) return
+
+    const body = data.body || "Modelo sem corpo"
+    const media = data.media
+    const mediaHtml = media ? this.templatePreviewMediaHtml(media) : ""
+    this.templatePreviewTarget.innerHTML = `
+      ${mediaHtml}
+      <div class="whatsapp-campaign-template-preview__body">${this.escape(body)}</div>
+    `
+  }
+
+  templatePreviewMediaHtml(media) {
+    const type = (media.type || "").toLowerCase()
+    const label = media.label || this.mediaLabel(type)
+    const url = media.url || ""
+    const escapedUrl = this.escapeAttribute(url)
+    const escapedLabel = this.escape(label)
+
+    if (url && type === "image") {
+      return `
+        <figure class="whatsapp-campaign-template-preview__media whatsapp-campaign-template-preview__media--image">
+          <img src="${escapedUrl}" alt="${escapedLabel}" loading="lazy">
+        </figure>
+      `
+    }
+
+    if (url && type === "video") {
+      return `
+        <figure class="whatsapp-campaign-template-preview__media whatsapp-campaign-template-preview__media--video">
+          <video src="${escapedUrl}" controls preload="metadata"></video>
+        </figure>
+      `
+    }
+
+    if (url && type === "audio") {
+      return `
+        <div class="whatsapp-campaign-template-preview__media whatsapp-campaign-template-preview__media--audio">
+          <audio src="${escapedUrl}" controls preload="metadata"></audio>
+        </div>
+      `
+    }
+
+    if (url) {
+      return `
+        <a class="whatsapp-campaign-template-preview__media whatsapp-campaign-template-preview__media--document" href="${escapedUrl}" target="_blank" rel="noopener">
+          <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+          <span>${escapedLabel}</span>
+        </a>
+      `
+    }
+
+    return `
+      <div class="whatsapp-campaign-template-preview__media whatsapp-campaign-template-preview__media--placeholder">
+        <i class="bi ${this.mediaIcon(type)}" aria-hidden="true"></i>
+        <span>${escapedLabel}</span>
+      </div>
+    `
+  }
+
+  mediaLabel(type) {
+    switch (type) {
+      case "image":
+        return "Imagem"
+      case "video":
+        return "Vídeo"
+      case "audio":
+        return "Áudio"
+      case "document":
+        return "Documento"
+      default:
+        return "Mídia"
+    }
+  }
+
+  mediaIcon(type) {
+    switch (type) {
+      case "image":
+        return "bi-image"
+      case "video":
+        return "bi-play-btn"
+      case "audio":
+        return "bi-volume-up"
+      case "document":
+        return "bi-file-earmark-text"
+      default:
+        return "bi-paperclip"
+    }
   }
 
   sendTest(event) {

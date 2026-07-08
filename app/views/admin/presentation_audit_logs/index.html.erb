@@ -1,0 +1,87 @@
+<% content_for :title, "Auditoria · Apresentações no WhatsApp" %>
+
+<div class="tw-flex tw-justify-between tw-items-start tw-mb-4 tw-flex-wrap tw-gap-2">
+  <div>
+    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
+      <i class="bi bi-person-badge tw-text-primary"></i>Adesão de apresentação
+    </h1>
+    <p class="ax-page-subtitle">
+      Envios do cartão de apresentação no atendimento WhatsApp — corretor, conversa/lead, cartão, data e formato. Somente leitura; cobre conversas com e sem lead.
+    </p>
+  </div>
+</div>
+
+<div class="ax-field-grid ax-field-grid--12 tw-mb-3">
+  <div class="ax-span-3"><div class="ax-card"><div class="ax-card__body"><div class="ax-stat-value"><%= @total_sent %></div><div class="ax-stat-label">Apresentações enviadas</div></div></div></div>
+  <div class="ax-span-3"><div class="ax-card"><div class="ax-card__body"><div class="ax-stat-value"><%= @distinct_brokers %></div><div class="ax-stat-label">Corretores distintos</div></div></div></div>
+  <div class="ax-span-3"><div class="ax-card"><div class="ax-card__body"><div class="ax-stat-value"><%= @with_photo %></div><div class="ax-stat-label">Com foto</div></div></div></div>
+  <div class="ax-span-3"><div class="ax-card"><div class="ax-card__body"><div class="ax-stat-value"><%= @without_lead %></div><div class="ax-stat-label">Sem lead vinculado</div></div></div></div>
+</div>
+
+<div class="ax-card">
+  <div class="ax-card__body">
+    <%= form_with url: admin_presentation_audit_logs_path, method: :get, local: true, class: "ax-field-grid ax-field-grid--12 tw-items-end tw-mb-3", data: { controller: "auto-submit" } do %>
+      <div class="ax-span-4">
+        <label class="ax-label">Corretor</label>
+        <%= select_tag :admin_user_id,
+              options_from_collection_for_select(@available_users, :id, :name, params[:admin_user_id]),
+              include_blank: "Todos",
+              class: "ax-control ax-control--sm",
+              data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar corretor..." }, action: "change->auto-submit#submit" } %>
+      </div>
+      <div class="ax-span-3">
+        <label class="ax-label">De</label>
+        <%= date_field_tag :start_date, params[:start_date], class: "ax-control ax-control--sm", data: { action: "change->auto-submit#submit" } %>
+      </div>
+      <div class="ax-span-3">
+        <label class="ax-label">Até</label>
+        <%= date_field_tag :end_date, params[:end_date], class: "ax-control ax-control--sm", data: { action: "change->auto-submit#submit" } %>
+      </div>
+      <div class="ax-span-2">
+        <%= link_to "Limpar", admin_presentation_audit_logs_path, class: "ax-btn ax-btn--sm ax-btn--ghost" %>
+      </div>
+    <% end %>
+
+    <% if @logs.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr><th>Corretor</th><th>Lead / conversa</th><th>Cartão</th><th>Data e hora</th><th>Formato</th></tr>
+          </thead>
+          <tbody>
+            <% @logs.each do |log| %>
+              <% conversation = log.whatsapp_conversation %>
+              <tr>
+                <td class="ax-strong"><%= log.admin_user&.name || "—" %></td>
+                <td>
+                  <% if conversation&.lead %>
+                    <%= link_to conversation.lead.display_name, admin_lead_path(conversation.lead), class: "tw-text-primary" %>
+                  <% else %>
+                    <span class="tw-text-ink-muted">Sem lead</span>
+                  <% end %>
+                  <% if conversation %>
+                    · <%= link_to (conversation.display_name.presence || "conversa ##{conversation.id}"), admin_whatsapp_conversation_path(conversation), class: "tw-text-primary" %>
+                  <% end %>
+                </td>
+                <td>
+                  <%= log.presentation_card&.label || "—" %>
+                  <%= ax_badge("Sistema", tone: :blue) if log.presentation_card&.system? %>
+                </td>
+                <td><%= l(log.created_at, format: "%d/%m/%Y %H:%M") %></td>
+                <td><%= log.msg_type == "image" ? ax_badge("Imagem", tone: :blue) : ax_badge("Texto", tone: :gray) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%= ax_pagination @logs, params: request.query_parameters %>
+    <% else %>
+      <%= ax_empty_state(
+            title: "Nenhuma apresentação no período",
+            description: "Envios do cartão de apresentação aparecem aqui assim que os corretores se apresentarem nas conversas.",
+            icon: "person-badge"
+          ) %>
+    <% end %>
+  </div>
+</div>

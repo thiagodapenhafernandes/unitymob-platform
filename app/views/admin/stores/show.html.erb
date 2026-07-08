@@ -107,6 +107,43 @@
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
         <h5 class="tw-font-bold tw-mb-3">
+          <i class="bi bi-calendar-week-fill tw-text-primary" style="margin-right:.5rem"></i>Turnos operacionais
+        </h5>
+        <% operational_shifts = @store.operational_turnos_config %>
+        <% active_shift = @store.current_operational_shift %>
+        <ul class="list-unstyled tw-text-sm" style="margin-bottom:0">
+          <% Store::OPERATIONAL_SHIFTS.each do |shift_key| %>
+            <% shift_config = operational_shifts[shift_key] %>
+            <% next if shift_config.blank? %>
+            <% title = { "manha" => "Manhã", "tarde" => "Tarde", "unico" => "Único" }.fetch(shift_key) %>
+            <% active_config = ActiveModel::Type::Boolean.new.cast(shift_config["ativo"]) %>
+            <% if active_config %>
+              <li class="tw-mb-2 tw-flex tw-items-center tw-justify-between tw-gap-2">
+                <span>
+                  <i class="bi bi-clock tw-text-ink-muted" style="margin-right:.5rem"></i>
+                  <strong><%= title %></strong>
+                  <span class="tw-text-ink-muted">
+                    <%= shift_config.dig("entrada", "inicio") %> - <%= shift_config.dig("fora_roleta", "fim") %>
+                  </span>
+                </span>
+                <% if active_shift == shift_key %>
+                  <span class="ax-badge ax-badge--green ax-badge--dot">Agora</span>
+                <% else %>
+                  <span class="ax-badge ax-badge--gray ax-badge--dot">Configurado</span>
+                <% end %>
+              </li>
+            <% end %>
+          <% end %>
+        </ul>
+        <p class="tw-text-ink-muted tw-text-sm" style="margin:.5rem 0 0">
+          Corretores participantes são definidos nas regras de distribuição.
+        </p>
+      </div>
+    </div>
+
+    <div class="ax-card tw-mb-3">
+      <div class="ax-card__body">
+        <h5 class="tw-font-bold tw-mb-3">
           <i class="bi bi-info-circle-fill" style="margin-right:.5rem; color:var(--admin-primary)"></i>Informações
         </h5>
         <ul class="list-unstyled tw-text-sm" style="margin-bottom:0">
@@ -126,4 +163,3 @@
   </div>
 <% end %>
 </div>
-

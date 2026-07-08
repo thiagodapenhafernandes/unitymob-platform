@@ -1,6 +1,7 @@
 <% property_title = property.display_title %>
+<% property_constructor = property.effective_constructor %>
 
-<div class="group bg-white rounded-[16px] overflow-hidden shadow-[0_14px_34px_rgba(15,23,42,0.1)] hover:shadow-[0_20px_46px_rgba(15,23,42,0.16)] transition-all duration-300 border border-white/80 ring-1 ring-slate-900/5 flex flex-col relative cursor-pointer"
+<div class="public-property-card group bg-white rounded-[16px] overflow-hidden shadow-[0_14px_34px_rgba(15,23,42,0.1)] hover:shadow-[0_20px_46px_rgba(15,23,42,0.16)] transition-all duration-300 border border-white/80 ring-1 ring-slate-900/5 flex flex-col relative cursor-pointer"
      data-controller="clickable-card"
      data-clickable-card-url-value="<%= habitation_path(property) %>"
      data-property-id="<%= property.id %>">
@@ -22,10 +23,10 @@
         <%= property.codigo %>
       </span>
       
-    <% if property.effective_constructor&.favicon_url.present? %>
-      <div class="w-8 h-8 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm border border-gray-100 flex items-center justify-center transition-transform hover:scale-110" title="<%= property.effective_constructor.name %>">
-        <img src="<%= property.effective_constructor.favicon_url %>" 
-             alt="<%= property.effective_constructor.name %>" 
+    <% if property_constructor&.favicon_url.present? %>
+      <div class="w-8 h-8 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm border border-gray-100 flex items-center justify-center transition-transform hover:scale-110" title="<%= property_constructor.name %>">
+        <img src="<%= property_constructor.favicon_url %>"
+             alt="<%= property_constructor.name %>"
              class="w-full h-full object-contain filter grayscale hover:grayscale-0 transition-all">
       </div>
     <% end %>
@@ -136,7 +137,7 @@
             de <%= number_to_currency(previous_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
           </span>
           <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded">
-            <i class="fas fa-arrow-down"></i>
+            <i class="bi bi-arrow-down"></i>
             <%= desconto_percentual %>%
           </span>
         </div>
@@ -191,7 +192,7 @@
       <% end %>
     </div>
 
-    <!-- Features Grid with Font Awesome Icons -->
+    <!-- Features Grid -->
     <%
       area_label = property.card_area_text
       vagas_label = property.card_vagas_text
@@ -199,15 +200,15 @@
     %>
     <div class="grid grid-cols-3 gap-2 mb-4 border-t border-gray-100 pt-4">
       <div class="flex flex-col items-center justify-center text-center">
-        <i class="fas fa-ruler-combined text-golden-one text-xl mb-1"></i>
+        <i class="bi bi-arrows-fullscreen text-golden-one text-xl mb-1"></i>
         <span class="text-xs text-gray-500 font-medium"><%= area_label.presence || "—" %></span>
       </div>
       <div class="flex flex-col items-center justify-center text-center border-l border-gray-100">
-        <i class="fas fa-car text-golden-one text-xl mb-1"></i>
+        <i class="bi bi-car-front text-golden-one text-xl mb-1"></i>
         <span class="text-xs text-gray-500 font-medium"><%= vagas_label.present? ? "#{vagas_label} Vagas" : "—" %></span>
       </div>
       <div class="flex flex-col items-center justify-center text-center border-l border-gray-100">
-        <i class="fas fa-door-open text-golden-one text-xl mb-1"></i>
+        <i class="bi bi-door-closed text-golden-one text-xl mb-1"></i>
         <span class="text-xs text-gray-500 font-medium"><%= dorms_label.present? ? "#{dorms_label} Quartos" : "—" %></span>
       </div>
     </div>

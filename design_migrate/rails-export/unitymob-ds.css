@@ -1,0 +1,435 @@
+/* ============================================================
+   Unitymob Design System — SINGLE FILE (flattened)
+   Generated from styles.css + tokens/*.css with all LOCAL @imports resolved.
+   Drop into app/assets/stylesheets/ and reference from your layout.
+   Remote @imports (Google Fonts + Bootstrap Icons) are kept at the top.
+   ============================================================ */
+
+/* ============================================================
+   Unitymob — Web fonts
+   The admin app loads Inter (UI) and Outfit (display) from Google Fonts,
+   plus Bootstrap Icons for iconography. All are referenced from CDN
+   exactly as production.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap");
+
+/* Bootstrap Icons — the platform's icon font. Load in any consuming page. */
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css");
+
+/* ============================================================
+   Unitymob — Color tokens
+   Extracted from the admin CRM design system (.ax-*, admin_tailwind.css).
+   Palette is a cool corporate "Power BI" grey system with a single
+   white-label primary. Semantic status colors come from the badge/button set.
+   ============================================================ */
+
+:root {
+  /* ---- Brand / white-label primary --------------------------------
+     In production the primary is injected per-tenant via --admin-primary.
+     #365f8f is the platform default (a desaturated corporate blue). */
+  --primary: #365f8f;
+  --primary-fg: #ffffff;
+  --primary-hover: #2d5079;                 /* ~86% primary + black */
+  --primary-soft: #e4ebf3;                  /* ~12% primary tint */
+  --primary-softer: #f1f5f9;                /* ~7% primary tint */
+  --primary-ring: rgba(54, 95, 143, 0.35);
+  --primary-ink: #245486;                   /* active nav text */
+
+  /* ---- Ink (text) — cool neutral ---------------------------------- */
+  --ink: #1f2733;          /* headings, primary text */
+  --ink-soft: #3b4656;     /* secondary text */
+  --ink-body: #475467;     /* body / table cells */
+  --ink-muted: #697586;    /* captions, subtitles */
+  --ink-faint: #98a2b3;    /* placeholders, disabled */
+  --ink-label: #344054;    /* form labels, button text */
+
+  /* ---- Surfaces --------------------------------------------------- */
+  --surface: #ffffff;              /* cards, panels, sidebar */
+  --surface-soft: #f7f8fa;         /* subtle fills, hovers */
+  --surface-header: #eef2f7;       /* table/section headers, context bar */
+  --surface-zebra: #fafbfc;        /* zebra table rows */
+  --workspace-bg: #eef2f7;         /* app background */
+  --panel-head: #f8fafc;           /* kanban / card headers */
+
+  /* ---- Lines / borders -------------------------------------------- */
+  --line: #e6e8eb;
+  --line-soft: #eceef1;
+  --line-strong: #d2d6db;
+  --line-shell: #dfe5ee;           /* navbar / sidebar dividers */
+  --field-border: #d2d6db;
+  --field-focus: #7f96b5;
+
+  /* ---- Semantic status (badge fill / text pairs) ------------------ */
+  --success: #08875d;   --success-bg: #e6f6ec;   --success-line: #abefc6;
+  --warning: #b45309;   --warning-bg: #fef3c7;   --warning-line: #fedf89;
+  --danger:  #b42318;   --danger-bg:  #fee4e2;   --danger-line:  #fda4af;
+  --info:    #175cd3;   --info-bg:    #eff8ff;   --info-line:    #b2ddff;
+  --purple:  #6d28d9;   --purple-bg:  #f1e8ff;
+  --cyan:    #0e7490;   --cyan-bg:    #d9f8ff;
+  --gray:    #475467;   --gray-bg:    #eceef1;
+
+  /* ---- Entity accent colors (context pins, kanban, pills) ---------
+     Each core CRM object carries a fixed accent used on left-border pins. */
+  --entity-property: #ff7043;   /* Imóvel */
+  --entity-owner:    #365f8f;   /* Proprietário */
+  --entity-lead:     #16a34a;   /* Lead */
+  --entity-proposal: #7c3aed;   /* Proposta */
+  --entity-whatsapp: #128c7e;   /* WhatsApp */
+}
+
+/* ============================================================
+   Unitymob — Typography tokens
+   The admin app runs on Inter (UI) with Outfit available for display.
+   Bootstrap Icons is the icon typeface. Scale is deliberately COMPACT
+   and dense — a data tool, not a marketing page. Base UI size is 13px.
+   ============================================================ */
+
+:root {
+  /* ---- Families --------------------------------------------------- */
+  --font-sans: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: Outfit, Inter, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* ---- Size scale (px, compact) ----------------------------------- */
+  --text-2xs: 10px;     /* eyebrows, section labels, uppercase micro */
+  --text-xs: 11px;      /* badges, table head, stat labels */
+  --text-sm: 12px;      /* captions, sub-nav, secondary */
+  --text-base: 12.5px;  /* buttons, table cells, dense body */
+  --text-md: 13px;      /* default UI text, inputs, nav */
+  --text-lg: 13.5px;    /* card titles */
+  --text-xl: 15px;      /* modal titles */
+  --text-2xl: 18px;     /* page titles */
+  --text-3xl: 20px;     /* dashboard command h1 */
+  --text-4xl: 22px;     /* stat values */
+
+  /* ---- Weights ---------------------------------------------------- */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-body: 620;    /* nav links, dense body emphasis */
+  --weight-semibold: 650;
+  --weight-strong: 700;
+  --weight-bold: 750;    /* buttons */
+  --weight-heavy: 800;   /* eyebrows, headings, counts */
+
+  /* ---- Line heights ----------------------------------------------- */
+  --leading-tight: 1.1;
+  --leading-snug: 1.2;
+  --leading-normal: 1.45;
+  --leading-relaxed: 1.6;
+
+  /* ---- Letter spacing --------------------------------------------- */
+  --tracking-tight: -0.01em;   /* page titles, headings */
+  --tracking-normal: 0;
+  --tracking-wide: 0.03em;     /* stat labels */
+  --tracking-caps: 0.055em;    /* uppercase eyebrows / section headers */
+}
+
+/* ============================================================
+   Unitymob — Spacing, radius, elevation & motion tokens
+   The admin shell is a fixed 3-zone layout (48px navbar, 40px context
+   bar, 236px sidebar) with a tight 12px gutter. Controls are 30px tall.
+   ============================================================ */
+
+:root {
+  /* ---- Spacing scale (px) ----------------------------------------- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;    /* shell gutter, card padding */
+  --space-7: 16px;    /* card body padding */
+  --space-8: 18px;
+  --space-9: 24px;
+
+  --shell-gutter: 12px;
+  --shell-gutter-sm: 8px;
+
+  /* ---- Shell dimensions ------------------------------------------- */
+  --navbar-h: 48px;
+  --contextbar-h: 40px;
+  --sidebar-w: 236px;
+  --sidebar-compact-w: 60px;
+
+  /* ---- Control sizing --------------------------------------------- */
+  --control-h: 34px;      /* inputs, search */
+  --btn-h: 30px;
+  --btn-h-sm: 28px;
+  --btn-px: 10px;
+  --btn-px-sm: 9px;
+  --btn-icon: 30px;
+
+  /* ---- Radius ----------------------------------------------------- */
+  --radius-xs: 5px;    /* nav links */
+  --radius-sm: 6px;    /* buttons, inputs, small controls */
+  --radius-md: 8px;    /* cards, panels, alerts */
+  --radius-lg: 10px;   /* modals, kanban cards */
+  --radius-xl: 12px;   /* kanban columns */
+  --radius-pill: 999px;
+
+  /* ---- Elevation -------------------------------------------------- */
+  --shadow-hairline: 0 1px 1px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-raised: 0 1px 2px rgba(16, 24, 40, 0.12);
+  --shadow-pop: 0 8px 24px rgba(16, 24, 40, 0.12);   /* dropdown menus */
+  --shadow-card-lift: 0 8px 22px rgba(15, 23, 42, 0.08); /* kanban cards */
+  --shadow-modal: 0 24px 48px rgba(16, 24, 40, 0.28);
+  --shadow-focus: 0 0 0 2px var(--primary-ring);
+
+  /* ---- Motion ----------------------------------------------------- */
+  --motion-fast: 120ms;  /* @kind other */
+  --motion-base: 180ms;  /* @kind other */
+  --motion-slow: 240ms;  /* @kind other */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);  /* @kind other */
+}
+
+/* ============================================================
+   Unitymob — Base layer
+   Minimal, scoped reset. The admin app disables Tailwind preflight and
+   applies base type on the .ax-app shell, so we mirror that: the reset is
+   light and app defaults live on .ax-app.
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.ax-app {
+  margin: 0;
+  background: var(--workspace-bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.ax-app h1, .ax-app h2, .ax-app h3, .ax-app h4 {
+  margin: 0;
+  color: var(--ink);
+  font-weight: var(--weight-heavy);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Page title / subtitle */
+.ax-page-title {
+  color: var(--ink);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+.ax-page-subtitle { color: var(--ink-muted); font-size: var(--text-base); }
+
+/* Eyebrow — uppercase micro-label used above headings everywhere */
+.ax-eyebrow {
+  display: block;
+  color: var(--ink-muted);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-heavy);
+  letter-spacing: var(--tracking-caps);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ax-app a { color: var(--primary); text-decoration: none; }
+.ax-num { font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   Unitymob — Core component classes (.ax-*)
+   A faithful recreation of the admin CRM's shipped component layer.
+   Values are copied verbatim from admin_tailwind.css — do not round to a
+   4/8px grid; the source is intentionally off-grid (5px, 12.5px, 30px…).
+   ============================================================ */
+
+/* ---------- Buttons ---------- */
+.ax-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--btn-h); min-height: var(--btn-h);
+  padding: 0 var(--btn-px);
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-label);
+  font-family: var(--font-sans);
+  font-size: var(--text-base); font-weight: var(--weight-bold);
+  line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none;
+  box-shadow: var(--shadow-hairline);
+  transition: background var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease),
+              color var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease);
+}
+.ax-btn:hover { background: var(--surface-soft); border-color: #c4d0df; color: #202a37; box-shadow: 0 1px 2px rgba(16,24,40,.08); }
+.ax-btn:focus-visible { border-color: var(--field-focus); box-shadow: var(--shadow-focus); outline: none; }
+.ax-btn:disabled, .ax-btn.is-disabled { background: #f5f7fa; border-color: #d8dee8; color: var(--ink-faint); cursor: not-allowed; box-shadow: none; }
+.ax-btn .bi { font-size: 15px; }
+
+.ax-btn--primary { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); box-shadow: var(--shadow-raised); }
+.ax-btn--primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: var(--primary-fg); }
+.ax-btn--ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--ink-body); }
+.ax-btn--ghost:hover { background: var(--surface-soft); border-color: transparent; color: #202a37; box-shadow: none; }
+.ax-btn--danger  { background: #fff; border-color: #fda4af; color: #be123c; }
+.ax-btn--danger:hover  { background: #fff1f2; border-color: #fb7185; color: #9f1239; }
+.ax-btn--success { background: var(--success-bg); border-color: var(--success-line); color: #067647; }
+.ax-btn--warning { background: #fffaeb; border-color: var(--warning-line); color: var(--warning); }
+.ax-btn--info    { background: var(--info-bg); border-color: var(--info-line); color: var(--info); }
+.ax-btn--sm { height: var(--btn-h-sm); min-height: var(--btn-h-sm); padding: 0 var(--btn-px-sm); font-size: var(--text-sm); }
+.ax-btn--icon { width: var(--btn-icon); padding: 0; }
+.ax-btn--icon.ax-btn--sm { width: var(--btn-h-sm); }
+.ax-btn--block { width: 100%; }
+
+/* Bare icon button */
+.ax-ico-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: #667085; cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.ax-ico-btn:hover { background: var(--gray-bg); color: var(--ink); }
+
+/* ---------- Badges ---------- */
+.ax-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 20px; padding: 0 8px; border-radius: var(--radius-pill);
+  font-size: var(--text-xs); font-weight: var(--weight-medium); line-height: 1; white-space: nowrap;
+}
+.ax-badge--gray   { background: var(--gray-bg);    color: var(--gray); }
+.ax-badge--green  { background: var(--success-bg); color: var(--success); }
+.ax-badge--amber  { background: var(--warning-bg); color: var(--warning); }
+.ax-badge--red    { background: var(--danger-bg);  color: var(--danger); }
+.ax-badge--blue   { background: var(--primary-soft); color: var(--primary-hover); }
+.ax-badge--purple { background: var(--purple-bg);  color: var(--purple); }
+.ax-badge--cyan   { background: var(--cyan-bg);    color: var(--cyan); }
+.ax-badge--dot::before { content: ""; width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
+
+/* ---------- Cards ---------- */
+.ax-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-card);
+}
+.ax-card__header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line-soft); }
+.ax-card__title { color: var(--ink); font-size: var(--text-lg); font-weight: var(--weight-semibold); }
+.ax-card__body { padding: 16px; }
+
+/* Stat / metric card */
+.ax-stat-label { color: var(--ink-muted); font-size: 11.5px; font-weight: var(--weight-semibold); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.ax-stat-value { color: var(--ink); font-size: var(--text-4xl); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
+
+/* Module objective — the left-accent explainer strip above modules */
+.ax-module-objective {
+  display: flex; gap: 10px; align-items: flex-start; margin: 8px 0 12px; padding: 10px 12px;
+  background: var(--primary-softer); border: 1px solid var(--line); border-left: 3px solid var(--primary);
+  border-radius: var(--radius-md); color: var(--ink);
+}
+.ax-module-objective__icon { display: inline-grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; border-radius: var(--radius-md); background: var(--primary-soft); color: var(--primary); }
+
+/* ---------- Table ---------- */
+.ax-table-wrap { border: 1px solid var(--field-border); border-radius: var(--radius-md); overflow: hidden; background: var(--surface); }
+.ax-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--text-base); }
+.ax-table thead th {
+  padding: 8px 12px; background: #f8fafa; border-bottom: 1px solid var(--line-strong);
+  color: #667085; font-size: var(--text-xs); font-weight: var(--weight-strong);
+  letter-spacing: var(--tracking-wide); text-transform: uppercase; text-align: left; white-space: nowrap;
+}
+.ax-table tbody td { padding: 7px 12px; border-top: 1px solid var(--line-soft); color: var(--ink-body); vertical-align: middle; }
+.ax-table tbody tr:first-child td { border-top: 0; }
+.ax-table tbody tr:nth-child(2n) td { background: var(--surface-zebra); }
+.ax-table tbody tr:hover td { background: var(--primary-softer); }
+.ax-table .ax-strong { color: var(--ink); font-weight: var(--weight-semibold); }
+
+/* ---------- Form controls ---------- */
+.ax-label { display: block; margin-bottom: 3px; color: var(--ink-label); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.ax-input, .ax-select, .ax-textarea {
+  width: 100%; height: var(--control-h); padding: 0 11px;
+  border: 1px solid var(--field-border); border-radius: var(--radius-sm);
+  background: #fff; color: var(--ink); font-family: var(--font-sans); font-size: var(--text-md);
+  box-shadow: inset 0 1px 0 rgba(15,23,42,.03); outline: none;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.ax-textarea { height: auto; min-height: 84px; padding: 8px 11px; resize: vertical; }
+.ax-input:focus, .ax-select:focus, .ax-textarea:focus { border-color: var(--field-focus); box-shadow: 0 0 0 2px rgba(54,95,143,.12), inset 0 1px 0 rgba(15,23,42,.03); }
+.ax-select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23697586' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
+
+/* Search field with leading magnifier */
+.ax-search {
+  height: var(--control-h); max-width: 380px; padding: 0 12px 0 32px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23697586' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'/><path d='m21 21-4.3-4.3'/></svg>") no-repeat 10px center;
+  color: var(--ink); font-size: var(--text-md); outline: none;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+.ax-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
+
+/* Checkbox helper label */
+.ax-check { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-label); font-size: var(--text-md); cursor: pointer; user-select: none; }
+.ax-check input[type="checkbox"], .ax-check input[type="radio"] { width: 15px; height: 15px; margin: 0; accent-color: var(--primary); cursor: pointer; }
+
+/* Switch */
+.ax-switch { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-label); font-size: var(--text-md); font-weight: 550; cursor: pointer; user-select: none; }
+.ax-switch__track { position: relative; display: inline-flex; flex: none; width: 34px; height: 20px; border: 1px solid #cbd5e1; border-radius: var(--radius-pill); background: #e7edf5; box-shadow: inset 0 1px 2px rgba(15,23,42,.08); transition: background var(--motion-fast), border-color var(--motion-fast); }
+.ax-switch__track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: var(--radius-pill); background: #fff; box-shadow: 0 1px 2px rgba(15,23,42,.25); transition: transform var(--motion-fast); }
+.ax-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.ax-switch input:checked + .ax-switch__track { background: var(--primary); border-color: var(--primary); }
+.ax-switch input:checked + .ax-switch__track::after { transform: translateX(14px); }
+
+/* ---------- Alerts ---------- */
+.ax-alert { display: flex; gap: 10px; padding: 12px; margin-bottom: 14px; border: 1px solid #d8dee8; border-radius: var(--radius-md); background: #fff; color: var(--ink-body); }
+.ax-alert--danger  { background: #fff5f6; border-color: #fecdd3; color: #9f1239; }
+.ax-alert--warning { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.ax-alert--success { background: var(--success-bg); border-color: var(--success-line); color: #05603a; }
+.ax-alert__title { color: var(--ink); font-size: var(--text-md); font-weight: var(--weight-bold); }
+
+/* ---------- Dropdown menu ---------- */
+.ax-menu { min-width: 190px; padding: 5px; border: 1px solid var(--line); border-radius: var(--radius-md); background: #fff; box-shadow: var(--shadow-pop); }
+.ax-menu__item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 9px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--ink-label); font-size: var(--text-md); text-align: left; cursor: pointer; }
+.ax-menu__item:hover { background: var(--surface-soft); color: var(--ink); }
+.ax-menu__item--danger { color: #be123c; }
+.ax-menu__item--danger:hover { background: #fff1f2; }
+.ax-menu__sep { height: 1px; margin: 5px 0; background: var(--line-soft); }
+
+/* ---------- Avatar ---------- */
+.ax-avatar { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: var(--radius-pill); background: var(--primary-soft); color: var(--primary-hover); font-size: var(--text-sm); font-weight: var(--weight-heavy); }
+
+/* ---------- Sidebar nav ---------- */
+.ax-nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.ax-nav__section { padding: 10px 10px 4px; color: #7b8797; font-size: var(--text-2xs); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-caps); text-transform: uppercase; }
+.ax-nav__link { display: flex; align-items: center; gap: 10px; min-height: 31px; padding: 5px 8px; border: 1px solid transparent; border-radius: var(--radius-xs); background: transparent; color: var(--ink-body); font-size: var(--text-base); font-weight: var(--weight-body); text-align: left; cursor: pointer; transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast); }
+.ax-nav__link .bi { width: 18px; font-size: 14px; text-align: center; color: #8490a1; flex: none; }
+.ax-nav__link:hover { background: #eef3f9; border-color: #dbe3ee; color: var(--ink); }
+.ax-nav__link.active { background: #e8f0fb; border-color: #c7d8ee; color: var(--primary-ink); font-weight: var(--weight-strong); box-shadow: inset 2px 0 0 var(--primary); }
+.ax-nav__link.active .bi { color: var(--primary); }
+
+/* ---------- Entity context pin ---------- */
+.ax-context-pin { display: inline-flex; align-items: center; gap: 8px; height: 32px; max-width: 240px; padding: 0 10px; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary); border-radius: 7px; background: var(--surface-soft); color: #263241; box-shadow: var(--shadow-hairline); font-size: var(--text-md); font-weight: 680; }
+.ax-context-pin .bi { color: var(--ink); font-size: 15px; }
+.ax-context-pin--property { border-left-color: var(--entity-property); }
+.ax-context-pin--owner    { border-left-color: var(--entity-owner); }
+.ax-context-pin--lead     { border-left-color: var(--entity-lead); }
+.ax-context-pin--proposal { border-left-color: var(--entity-proposal); }
+.ax-context-pin--whatsapp { border-left-color: var(--entity-whatsapp); }
+
+/* ---------- Lead label chip ---------- */
+.lead-label-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: var(--radius-pill); font-size: var(--text-xs); font-weight: var(--weight-strong); box-shadow: inset 0 0 0 1.5px currentColor; }
+.lead-label-chip--gray   { background: var(--gray-bg);    color: var(--gray); }
+.lead-label-chip--green  { background: var(--success-bg); color: var(--success); }
+.lead-label-chip--amber  { background: var(--warning-bg); color: var(--warning); }
+.lead-label-chip--red    { background: var(--danger-bg);  color: var(--danger); }
+.lead-label-chip--blue   { background: var(--primary-soft); color: var(--primary-hover); }
+.lead-label-chip--purple { background: var(--purple-bg);  color: var(--purple); }
+.lead-label-chip--cyan   { background: var(--cyan-bg);    color: var(--cyan); }
+
+/* ---------- Progress ---------- */
+.ax-progress { height: 6px; border-radius: var(--radius-pill); background: var(--gray-bg); overflow: hidden; }
+.ax-progress > i { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
+
+/* ---------- Tabs ---------- */
+.ax-tabs { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-soft); }
+.ax-tab { height: 28px; padding: 0 12px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink-muted); font-size: var(--text-base); font-weight: var(--weight-bold); cursor: pointer; }
+.ax-tab.is-active { background: #fff; color: var(--ink); box-shadow: var(--shadow-hairline); }
+
+/* ---------- Kanban card ---------- */
+.ax-board__card { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-card-lift); cursor: grab; }
+
+/* ---------- Tooltip ---------- */
+.ax-tooltip { max-width: 320px; padding: 5px 8px; border-radius: 5px; background: var(--ink); color: #fff; font-size: 11.5px; line-height: 1.3; box-shadow: 0 4px 12px rgba(16,24,40,.25); }
+
+/* ---------- Empty state ---------- */
+.ax-empty { padding: 40px 16px; text-align: center; color: var(--ink-muted); font-size: var(--text-md); }

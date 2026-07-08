@@ -2,7 +2,7 @@ class DwvSyncJob < ApplicationJob
   queue_as :dwv
   queue_with_priority(-10)
 
-  def perform(mode: "full", limit: nil, max_pages: nil, triggered_by_id: nil, tenant_id: nil)
+  def perform(mode: "full", limit: nil, max_pages: nil, last_updates: nil, triggered_by_id: nil, tenant_id: nil)
     tenant = resolve_tenant(tenant_id: tenant_id, triggered_by_id: triggered_by_id)
     raise ArgumentError, "Tenant obrigatório para sincronização DWV" if tenant.blank?
 
@@ -26,7 +26,7 @@ class DwvSyncJob < ApplicationJob
       dedup_result = Dwv::DeduplicateHabitationLinksService.new(tenant: tenant).call!
     end
 
-    result = runner.call(mode: mode, limit: limit, max_pages: max_pages, status_service: status_service)
+    result = runner.call(mode: mode, limit: limit, max_pages: max_pages, last_updates: last_updates, status_service: status_service)
     errors_by_reason = result[:errors_by_reason].is_a?(Hash) ? result[:errors_by_reason] : {}
     top_error = errors_by_reason.first
 

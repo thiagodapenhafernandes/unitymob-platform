@@ -49,18 +49,34 @@ module Admin::DistributionRulesHelper
     ].select(&:second).map(&:first)
   end
 
+  # Páginas Meta pertencem a UserMetaIntegration (de um admin); o escopo da conta
+  # vem do tenant desse admin. Sem o join a lista vazava páginas de OUTRAS contas.
+  def tenant_scoped_meta_pages(tenant)
+    MetaFacebookPage.joins(user_meta_integration: :admin_user)
+                    .where(admin_users: { tenant_id: tenant&.id })
+  end
+
+  def tenant_scoped_meta_forms(tenant)
+    MetaLeadForm.joins(meta_facebook_page: { user_meta_integration: :admin_user })
+                .where(admin_users: { tenant_id: tenant&.id })
+  end
+
   def distribution_rule_meta_pages(rule)
     page_ids = Array(rule.meta_page_ids).compact_blank.map(&:to_s)
     return MetaFacebookPage.none if page_ids.blank?
 
-    MetaFacebookPage.where(page_id: page_ids).order(:name)
+    tenant = rule.respond_to?(:tenant) ? rule.tenant : current_tenant
+    tenant_scoped_meta_pages(tenant).where(page_id: page_ids).order(:name)
   end
 
   def distribution_rule_meta_forms(rule, limit: 8)
     form_ids = Array(rule.meta_forms).compact_blank.map(&:to_s)
     return MetaLeadForm.none if form_ids.blank?
 
-    MetaLeadForm.includes(:meta_facebook_page).where(form_id: form_ids).order(:name).limit(limit)
+    tenant = rule.respond_to?(:tenant) ? rule.tenant : current_tenant
+    tenant_scoped_meta_forms(tenant)
+      .includes(:meta_facebook_page)
+      .where(form_id: form_ids).order(:name).limit(limit)
   end
 
   def distribution_rule_meta_forms_summary(rule)
@@ -104,15 +120,16 @@ module Admin::DistributionRulesHelper
     {
       whatsapp: {
         label: "WhatsApp",
-        configured: Current.tenant.present? && WhatsappBusinessIntegration.current(Current.tenant).connected?,
+        # Disponível = a conta tem WhatsApp próprio OU optou pelo fallback global.
+        configured: DistributionRule.new.whatsapp_channel_available?,
         path: admin_whatsapp_integration_path,
-        instructions: "Conecte uma conta WhatsApp Business (Cloud API) para enviar avisos de novos leads ao corretor."
+        instructions: "Conecte uma conta WhatsApp Business (Cloud API) — ou peça ao Admin do Sistema para liberar o WhatsApp global — para enviar avisos de novos leads ao corretor."
       },
       email: {
         label: "E-mail ao corretor",
-        configured: EmailSetting.instance.configured?,
+        configured: DistributionRule.new.email_channel_available?,
         path: edit_admin_email_setting_path,
-        instructions: "Configure e ative o servidor SMTP (remetente, host, usuário e senha) para enviar e-mails de novos leads."
+        instructions: "Configure e ative o SMTP da conta — ou peça ao Admin do Sistema para liberar o SMTP global — para enviar e-mails de novos leads."
       },
       push: {
         label: "Push no PWA",

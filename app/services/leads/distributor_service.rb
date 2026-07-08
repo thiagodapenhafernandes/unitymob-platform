@@ -4,6 +4,10 @@ module Leads
       new(lead).distribute
     end
 
+    def self.distribute_to(lead, rule)
+      new(lead).distribute_to(rule)
+    end
+
     def initialize(lead)
       @lead = lead
     end
@@ -11,6 +15,14 @@ module Leads
     def distribute
       rule = find_matching_rule
       return nil unless rule
+
+      distribute_to(rule)
+    end
+
+    def distribute_to(rule)
+      return nil unless rule
+      raise ArgumentError, "Regra de distribuição pertence a outro tenant" if rule.tenant_id != tenant.id
+      return nil unless rule.active?
 
       if rule.represamento_active? && inside_holding_hours?(rule)
         @lead.update(admin_user_id: nil, status: :represado, distribution_rule_id: rule.id)
@@ -21,8 +33,7 @@ module Leads
       if rule.shark_tank?
         candidates = rule.candidates_filtered_by_checkin
         if rule.require_active_checkin? && candidates.empty?
-          return dammed_no_eligible_checkin(rule) if rule.represamento_active?
-          return nil
+          return dammed_no_eligible_checkin(rule)
         end
 
         @lead.update(
@@ -38,8 +49,7 @@ module Leads
 
       candidates = rule.candidates_filtered_by_checkin
       if rule.require_active_checkin? && candidates.empty?
-        return dammed_no_eligible_checkin(rule) if rule.represamento_active?
-        return nil
+        return dammed_no_eligible_checkin(rule)
       end
 
       # Fidelização: pessoa já atendida volta para o mesmo corretor (config global
@@ -50,15 +60,34 @@ module Leads
         return rule
       end
 
-      agent = rule.next_available_agent(candidates)
+      # Seleção+rotação serializadas por regra (lock transacional curto): dois
+      # leads simultâneos não elegem o mesmo corretor nem pulam o próximo da
+      # fila. Nenhuma chamada externa aqui dentro — atribuição e notificações
+      # ficam no finalize_assignment, fora do lock.
+      agent = nil
+      rule.with_rotation_lock do
+        agent = rule.next_available_agent(candidates)
+        rule.rotate_queue!(agent.admin_user_id) if agent
+      end
       return nil unless agent
 
       finalize_assignment(rule, admin_user_id: agent.admin_user_id, admin_user_name: agent.admin_user&.name)
-      rule.rotate_queue!(agent.admin_user_id)
 
       rule
     rescue => e
-      Rails.logger.error "[DistributorService] Erro ao distribuir lead #{@lead.id}: #{e.message}"
+      Rails.logger.error(
+        "[DistributorService] Erro ao distribuir lead #{@lead.id} " \
+        "(tenant_id=#{@lead.tenant_id}, rule_id=#{rule&.id}): #{e.class}: #{e.message}"
+      )
+      Rails.logger.error(e.backtrace.to_a.first(5).join("\n"))
+      # Registra a falha na timeline do lead (log! nunca levanta exceção):
+      # consultável via SQL e visível pro gestor, em vez de evaporar no log.
+      LeadActivity.log!(lead: @lead, kind: "distribution_failed", metadata: {
+        error_class: e.class.name,
+        error_message: e.message,
+        rule_id: rule&.id,
+        rule_name: rule&.name
+      }.compact)
       nil
     end
 
@@ -103,7 +132,9 @@ module Leads
       @lead.activities.create(kind: "dammed", metadata: {
         rule_id: rule.id,
         rule_name: rule.name,
-        reason: "no_eligible_agent_with_checkin"
+        reason: "no_eligible_agent_with_checkin",
+        require_active_shift: rule.require_active_shift?,
+        checkin_store_ids: rule.checkin_store_id_list
       })
       rule
     end
@@ -115,7 +146,7 @@ module Leads
             return rule
           end
         rescue => e
-          Rails.logger.error "[DistributorService] Erro ao verificar regra #{rule.id}: #{e.message}"
+          Rails.logger.error "[DistributorService] Erro ao verificar regra #{rule.id}: #{e.class}: #{e.message}"
           next
         end
       end
@@ -131,6 +162,7 @@ module Leads
 
     def matches_filters?(rule)
       return false unless matches_webhook_tags?(rule)
+      return false unless matches_meta_scope?(rule)
 
       if rule.min_price.present?
          lead_value = @lead.respond_to?(:value) ? @lead.value.to_f : 0.0
@@ -152,6 +184,24 @@ module Leads
         end
       end
       true
+    end
+
+    # Regra Meta com páginas/formulários selecionados só aceita leads DAQUELA
+    # página/formulário (lead carrega meta_page_id/meta_form_id no
+    # other_information). Vazio = aceita qualquer origem Meta (documentado na
+    # UI). Fail-closed: lead meta sem identificação de página não casa com
+    # regra que filtra páginas.
+    def matches_meta_scope?(rule)
+      return true unless rule.source_meta? && meta_origin?(@lead.origin.to_s.downcase)
+
+      page_ids = Array(rule.meta_page_ids).compact_blank.map(&:to_s)
+      form_ids = Array(rule.meta_forms).compact_blank.map(&:to_s)
+      return true if page_ids.empty? && form_ids.empty?
+
+      info = @lead.other_information.is_a?(Hash) ? @lead.other_information : {}
+      page_ok = page_ids.empty? || page_ids.include?(info["meta_page_id"].to_s)
+      form_ok = form_ids.empty? || form_ids.include?(info["meta_form_id"].to_s)
+      page_ok && form_ok
     end
 
     def matches_webhook_tags?(rule)

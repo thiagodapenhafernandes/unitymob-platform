@@ -23,17 +23,17 @@ module Field
         name: "Salute Imóveis — Campo",
         short_name: "Salute Campo",
         description: "Check-in geolocalizado dos corretores em plantão.",
-        start_url: "/field",
+        start_url: "/field/",
         scope: "/field/",
         display: "standalone",
         orientation: "portrait",
         background_color: "#f8f9fa",
-        theme_color: "#0d6efd",
+        theme_color: (LayoutSetting.instance.admin_primary_color.presence rescue nil) || "#365F8F",
         lang: "pt-BR",
         categories: ["business", "productivity"],
         icons: [
-          { src: "/field-icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-          { src: "/field-icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+          { src: "/pwa-icon-192", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+          { src: "/pwa-icon-512", sizes: "512x512", type: "image/png", purpose: "any maskable" }
         ]
       }
     end

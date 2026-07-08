@@ -1,4 +1,4 @@
-<%= ax_form_section(title: "Atendimento, chaves e reservas", eyebrow: "Operação") do %>
+<%= ax_form_section(title: "Atendimento, chaves e reservas", eyebrow: "Operação", icon: "key") do %>
   <%= ax_field_grid(class_name: "ax-attendance-grid") do %>
     <div class="ax-span-6">
       <%= ax_field_group(title: "Observações internas") do %>
@@ -23,6 +23,12 @@
           </div>
           <div class="ax-span-6">
             <%= ax_text_field(form: f, method: :key_location_notes, label: "Detalhe das chaves", placeholder: "Ex: com zelador João") %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :senha_portaria, label: "Senha da portaria") %>
+          </div>
+          <div class="ax-span-6">
+            <%= ax_text_field(form: f, method: :senha_imovel, label: "Senha do imóvel/apartamento") %>
           </div>
           <div class="ax-span-12">
             <%= ax_text_field(form: f, method: :observacoes_visitas, label: "Observações para visitas", type: :textarea, rows: 3) %>

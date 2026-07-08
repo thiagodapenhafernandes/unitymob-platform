@@ -328,6 +328,48 @@ RSpec.describe "WhatsApp campaign builder services" do
         ]
       )
     end
+
+    it "faz upload do anexo local do cabecalho e envia por media_id" do
+      component_template = WhatsappTemplate.create!(
+        name: "campanha_com_anexo",
+        language: "pt_BR",
+        status: "APPROVED",
+        template_type: "text",
+        header_format: "image",
+        header_media_handle: "https://scontent.whatsapp.net/example.png",
+        body: "Veja a campanha.",
+        components: [
+          { "type" => "HEADER", "format" => "IMAGE", "example" => { "header_handle" => ["https://scontent.whatsapp.net/example.png"] } },
+          { "type" => "BODY", "text" => "Veja a campanha." }
+        ]
+      )
+      png_data = Base64.decode64(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQAAAAA3bvkkAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAB3YoTpAAAAAd0SU1FB+oHCBAjJnwdN1cAAAAldEVYdGRhdGU6Y3JlYXRlADIwMjYtMDctMDhUMTY6MzU6MzgrMDA6MDC4AfIcAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDI2LTA3LTA4VDE2OjM1OjM4KzAwOjAwyVxKoAAAACh0RVh0ZGF0ZTp0aW1lc3RhbXAAMjAyNi0wNy0wOFQxNjozNTozOCswMDowMJ5Ja38AAAAKSURBVAjXY2gAAACCAIHdQ2r0AAAAAElFTkSuQmCC"
+      )
+      component_template.header_media_file.attach(
+        io: StringIO.new(png_data),
+        filename: "campanha.png",
+        content_type: "image/png"
+      )
+      client = instance_double(Whatsapp::CloudClient)
+      allow(client).to receive(:upload_message_media).and_return({ ok: true, media_id: "media-123" })
+
+      result = described_class.call(template: component_template, variables: {}, client: client)
+
+      expect(result).to be_ok
+      expect(result.components).to eq(
+        [
+          { type: "header", parameters: [{ type: "image", image: { id: "media-123" } }] }
+        ]
+      )
+      expect(client).to have_received(:upload_message_media).with(
+        hash_including(
+          file_name: "campanha.jpg",
+          content_type: "image/jpeg",
+          type: "image"
+        )
+      )
+    end
   end
 
   describe Whatsapp::CampaignTestSender do
