@@ -1,34 +1,61 @@
 <% items = admin_context_items %>
 <% if items.any? %>
-  <div class="ax-context-pins" aria-label="Acessos rápidos da sessão">
-    <% items.each do |item| %>
-      <div class="ax-context-pin ax-context-pin--<%= item[:tone] %>">
-        <%= link_to item[:path], class: "ax-context-pin__link", title: item[:label] do %>
-          <i class="bi <%= item[:icon] %>"></i>
-          <span><%= item[:label] %></span>
-        <% end %>
-        <%= button_to admin_context_item_path(item[:key]),
-              method: :delete,
-              form_class: "ax-context-pin__remove-form",
-              form: { data: { turbo: false } },
-              class: "ax-context-pin__remove",
-              title: "Remover atalho",
-              aria: { label: "Remover #{item[:label]} dos acessos rápidos" } do %>
-          <i class="bi bi-x-lg"></i>
-        <% end %>
-      </div>
-    <% end %>
+  <div class="ax-context-pins-shell"
+       data-controller="horizontal-overflow"
+       data-action="resize@window->horizontal-overflow#update turbo:load@document->horizontal-overflow#update">
+    <button type="button"
+            class="ax-context-pins__nav ax-context-pins__nav--prev"
+            data-horizontal-overflow-target="previous"
+            data-action="horizontal-overflow#previous"
+            aria-label="Mostrar atalho anterior"
+            title="Atalho anterior"
+            hidden>
+      <i class="bi bi-chevron-left"></i>
+    </button>
 
-    <% if items.size > 1 %>
-      <%= button_to admin_context_items_path,
-            method: :delete,
-            form_class: "ax-context-pins__clear-form",
-            form: { data: { turbo: false } },
-            class: "ax-context-pins__clear",
-            title: "Limpar acessos rápidos",
-            aria: { label: "Limpar acessos rápidos da sessão" } do %>
-        <i class="bi bi-x-circle"></i>
+    <div class="ax-context-pins"
+         aria-label="Acessos rápidos da sessão"
+         data-horizontal-overflow-target="scroller"
+         data-action="scroll->horizontal-overflow#update">
+      <% items.each do |item| %>
+        <div class="ax-context-pin ax-context-pin--<%= item[:tone] %>" data-horizontal-overflow-target="item">
+          <%= link_to item[:path], class: "ax-context-pin__link", title: item[:label] do %>
+            <i class="bi <%= item[:icon] %>"></i>
+            <span><%= item[:label] %></span>
+          <% end %>
+          <%= button_to admin_context_item_path(item[:key]),
+                method: :delete,
+                form_class: "ax-context-pin__remove-form",
+                form: { data: { turbo: false } },
+                class: "ax-context-pin__remove",
+                title: "Remover atalho",
+                aria: { label: "Remover #{item[:label]} dos acessos rápidos" } do %>
+            <i class="bi bi-x-lg"></i>
+          <% end %>
+        </div>
       <% end %>
-    <% end %>
+
+      <% if items.size > 1 %>
+        <%= button_to admin_context_items_path,
+              method: :delete,
+              form_class: "ax-context-pins__clear-form",
+              form: { data: { turbo: false } },
+              class: "ax-context-pins__clear",
+              title: "Limpar acessos rápidos",
+              aria: { label: "Limpar acessos rápidos da sessão" } do %>
+          <i class="bi bi-x-circle"></i>
+        <% end %>
+      <% end %>
+    </div>
+
+    <button type="button"
+            class="ax-context-pins__nav ax-context-pins__nav--next"
+            data-horizontal-overflow-target="next"
+            data-action="horizontal-overflow#next"
+            aria-label="Mostrar próximo atalho"
+            title="Próximo atalho"
+            hidden>
+      <i class="bi bi-chevron-right"></i>
+    </button>
   </div>
 <% end %>

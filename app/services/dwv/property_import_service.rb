@@ -127,6 +127,8 @@ module Dwv
       constructor = find_or_build_constructor
       address_attrs = extract_address
       description = extract_description
+      category = inferred_category
+      development_name = text_value(["building", "title"]) || inferred_condominium_name(category) || habitation.nome_empreendimento
 
       attrs = {
         codigo_dwv: dwv_id,
@@ -139,12 +141,12 @@ module Dwv
         valor_iptu_cents: first_cents(value(["property_tax"], ["valor_iptu"], ["third_party_property", "property_tax"])) || habitation.valor_iptu_cents,
         exibir_no_site_flag: active_on_site?,
         titulo_anuncio: text_value(["advertisement_title"], ["title"], ["name"], ["titulo"], ["third_party_property", "title"], ["unit", "title"]) || habitation.titulo_anuncio,
-        categoria: normalize_category(value(["unit", "floor_plan", "category", "title"], ["unit", "type"], ["unit", "section", "name"], ["third_party_property", "type"], ["type", "name"], ["type"], ["category"], ["categoria"])) || habitation.categoria || DEFAULT_CATEGORY,
+        categoria: category || habitation.categoria || DEFAULT_CATEGORY,
         categoria_grupo: text_value(["unit", "floor_plan", "category", "tag"], ["unit", "additional_category"], ["third_party_property", "additional_category"]) || habitation.categoria_grupo,
         situacao: map_situation(value(["construction_stage_raw"], ["construction_stage"], ["property_condition"], ["situacao"])) || habitation.situacao,
         tipo: detect_record_type || habitation.tipo || "Unitário",
         codigo_empreendimento: local_development_code || habitation.codigo_empreendimento,
-        nome_empreendimento: text_value(["building", "title"]) || habitation.nome_empreendimento,
+        nome_empreendimento: development_name,
         data_entrega: parse_date(value(["building", "delivery_date"], ["third_party_property", "delivery_date"])) || habitation.data_entrega,
         dormitorios_qtd: first_int(value(["bedrooms"], ["unit_bedrooms"], ["quartos"], ["unit", "dorms"], ["third_party_property", "dorms"])) || habitation.dormitorios_qtd,
         suites_qtd: first_int(value(["unit_suites"], ["suites"], ["suites_qtd"], ["unit", "suites"], ["third_party_property", "suites"])) || habitation.suites_qtd,
@@ -237,6 +239,39 @@ module Dwv
       return "Casa" if category.match?(/casa|sobrado/i)
 
       "Apartamento"
+    end
+
+    def inferred_category
+      raw_category = value(
+        ["unit", "floor_plan", "category", "title"],
+        ["unit", "type"],
+        ["unit", "section", "name"],
+        ["third_party_property", "type"],
+        ["type", "name"],
+        ["type"],
+        ["category"],
+        ["categoria"]
+      )
+      category = normalize_category(raw_category)
+      return "Casa em Condomínio" if category == "Casa" && condominium_context?
+
+      category
+    end
+
+    def condominium_context?
+      [
+        text_value(["third_party_property", "unit_info"], ["unit", "unit_info"], ["unit_info"]),
+        text_value(["advertisement_title"], ["title"], ["name"], ["titulo"], ["third_party_property", "title"])
+      ].compact.any? { |text| text.match?(/condom[ií]nio/i) }
+    end
+
+    def inferred_condominium_name(category)
+      return nil unless category == "Casa em Condomínio"
+
+      title = text_value(["advertisement_title"], ["title"], ["name"], ["titulo"], ["third_party_property", "title"])
+      return nil if title.blank?
+
+      title.match(/(condom[ií]nio\s+.+)\z/i)&.[](1)&.squish
     end
 
     def map_status(raw)

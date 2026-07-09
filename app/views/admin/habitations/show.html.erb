@@ -416,6 +416,8 @@
           <% end %>
         </div>
 
+        <%= render "admin/habitations/captador_card", habitation: @habitation, compact: true, class_name: "ax-captador-card--hero" %>
+
         <div class="ax-property-show-actions">
           <%= link_to safe_join([tag.i(class: "bi bi-arrow-left ax-ico"), tag.span("Voltar")]), return_path, class: "ax-btn ax-btn--sm" %>
           <% if can_edit_habitation?(@habitation) %>

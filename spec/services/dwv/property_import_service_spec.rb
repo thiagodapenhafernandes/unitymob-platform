@@ -117,6 +117,22 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.address.numero).to eq("55")
       expect(habitation.address.complemento).to eq("Casa 2")
     end
+
+    it "classifies third party house in gated condominium from DWV unit info" do
+      payload = third_party_payload.deep_dup
+      payload["data"]["third_party_property"].merge!(
+        "title" => "Casa Condomínio Bosque de Taquaras",
+        "type" => "Casa",
+        "unit_info" => "Condomínio Fechado"
+      )
+
+      result = described_class.new(payload, tenant: tenant).perform
+      habitation = result[:habitation]
+
+      expect(habitation.categoria).to eq("Casa em Condomínio")
+      expect(habitation.nome_empreendimento).to eq("Condomínio Bosque de Taquaras")
+      expect(habitation.address.complemento).to eq("Condomínio Fechado")
+    end
   end
 
   def unit_payload

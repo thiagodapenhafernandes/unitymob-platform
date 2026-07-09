@@ -1,13 +1,17 @@
 <%= ax_form_section(title: "Identificação", eyebrow: "Base", icon: "tag") do %>
-  <div class="ax-info-badge-grid ax-info-badge-grid--section">
-    <%= ax_info_badge(label: "Referência", value: f.object.codigo.presence || "Gerado automaticamente") %>
-    <%= ax_info_badge(label: "Cód. DWV", value: f.object.codigo_dwv.presence || "Não informado") %>
-    <%= ax_info_badge(label: "Cadastro", value: cadastro_reference_at ? cadastro_reference_at.strftime("%d/%m/%Y") : "Sem data") %>
-    <%= ax_info_badge(
-          label: "Atualização",
-          value: updated_reference_at ? "#{time_ago_in_words(updated_reference_at)} atrás" : "Sem data",
-          tooltip: updated_reference_at&.strftime("%d/%m/%Y às %H:%M")
-        ) %>
+  <div class="ax-identification-summary">
+    <div class="ax-info-badge-grid ax-info-badge-grid--section">
+      <%= ax_info_badge(label: "Referência", value: f.object.codigo.presence || "Gerado automaticamente") %>
+      <%= ax_info_badge(label: "Cód. DWV", value: f.object.codigo_dwv.presence || "Não informado") %>
+      <%= ax_info_badge(label: "Cadastro", value: cadastro_reference_at ? cadastro_reference_at.strftime("%d/%m/%Y") : "Sem data") %>
+      <%= ax_info_badge(
+            label: "Atualização",
+            value: updated_reference_at ? "#{time_ago_in_words(updated_reference_at)} atrás" : "Sem data",
+            tooltip: updated_reference_at&.strftime("%d/%m/%Y às %H:%M")
+          ) %>
+    </div>
+
+    <%= render "admin/habitations/captador_card", habitation: f.object, compact: true %>
   </div>
 
 <% end %>
