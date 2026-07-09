@@ -146,10 +146,7 @@ module Storage
 
     def variant_transformations
       @variant_transformations ||= begin
-        transformations = options.slice(*TRANSFORMATION_KEYS).compact
-        saver = options[:saver]
-        transformations[:saver] = saver if transformations.present? && saver.present?
-        transformations
+        options.slice(*TRANSFORMATION_KEYS).compact
       end
     end
 

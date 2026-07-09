@@ -267,5 +267,21 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(result).to include(matching)
       expect(result).not_to include(non_matching)
     end
+
+    it "filters sale minimum price without sending infinity to PostgreSQL" do
+      relation = Habitation.advanced_search(transaction_type: "venda", min_price: "10000000")
+
+      expect(relation.to_sql).to include("valor_venda_cents >= 1000000000")
+      expect(relation.to_sql).not_to include("Infinity")
+      expect { relation.count }.not_to raise_error
+    end
+
+    it "filters rent minimum price without sending infinity to PostgreSQL" do
+      relation = Habitation.advanced_search(transaction_type: "aluguel", min_price: "10000")
+
+      expect(relation.to_sql).to include("valor_locacao_cents >= 1000000")
+      expect(relation.to_sql).not_to include("Infinity")
+      expect { relation.count }.not_to raise_error
+    end
   end
 end
