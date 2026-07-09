@@ -697,6 +697,55 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).not_to include("banheiro_social")
   end
 
+  it "vincula empreendimento por busca e mantém o nome na ficha PWA" do
+    development = create(
+      :habitation,
+      codigo: "DEV-PWA-#{SecureRandom.hex(4)}",
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      nome_empreendimento: "Residencial PWA Busca"
+    )
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      categoria: "Apartamento",
+      intake_step: "endereco",
+      nome_empreendimento: nil,
+      codigo_empreendimento: nil
+    )
+
+    get edit_admin_captacao_path(intake, step: "endereco")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Empreendimento cadastrado")
+    expect(response.body).to include("Residencial PWA Busca")
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco",
+      direction: "forward",
+      habitation: {
+        zip_code: "88330-030",
+        street: "Rua 1500",
+        street_number: "123",
+        neighborhood: "Centro",
+        city: "Balneário Camboriú",
+        state: "SC",
+        codigo_empreendimento: development.codigo,
+        unidade_numero: "1201"
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
+    intake.reload
+    expect(intake.codigo_empreendimento).to eq(development.codigo)
+    expect(intake.nome_empreendimento).to eq("Residencial PWA Busca")
+
+    get edit_admin_captacao_path(intake, step: "endereco")
+
+    expect(response.body).to include("Residencial PWA Busca")
+  end
+
   it "aceita valores monetários formatados na negociação" do
     intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "negociacao")
 
@@ -1042,7 +1091,45 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     }
 
     expect(response).to have_http_status(:unprocessable_entity)
-    expect(response.body).to include("Informe o meio de garantia locatícia.")
+    expect(response.body).to include("Informe ao menos um meio de garantia locatícia.")
+  end
+
+  it "permite selecionar mais de uma garantia locatícia na ficha PWA" do
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      status: "Aluguel",
+      intake_modalidade: "locacao_anual",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 8_000_00,
+      valor_condominio_cents: 500_00,
+      valor_iptu_cents: 100_00,
+      salute_rental_management_answer: "sim",
+      rental_guarantee_method: "Seguro fiança",
+      intake_step: "negociacao"
+    )
+
+    get edit_admin_captacao_path(intake, step: "negociacao")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('name="habitation[rental_guarantee_method][]"')
+    expect(response.body).to include("Meios de garantia locatícia")
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "negociacao",
+      direction: "forward",
+      habitation: {
+        valor_locacao: "8.000,00",
+        valor_condominio: "500,00",
+        valor_iptu: "100,00",
+        salute_rental_management_answer: "sim",
+        rental_guarantee_method: ["Seguro fiança", "Caução"]
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "visitas"))
+    expect(intake.reload.rental_guarantee_methods).to contain_exactly("Seguro fiança", "Caução")
   end
 
   it "envia, aprova e libera para o site quando a ficha está completa" do

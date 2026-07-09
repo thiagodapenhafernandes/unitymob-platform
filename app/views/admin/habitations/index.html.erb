@@ -485,7 +485,7 @@
   active_filter_chips << "Dorms permuta ≥ #{params[:permuta_min_dorms]}" if params[:permuta_min_dorms].present?
   active_filter_chips << "Suítes permuta ≥ #{params[:permuta_min_suites]}" if params[:permuta_min_suites].present?
   active_filter_chips << "Garagens permuta ≥ #{params[:permuta_min_garagens]}" if params[:permuta_min_garagens].present?
-  active_filter_chips << "Empreendimento: #{params[:empreendimento_codigo]}" if params[:empreendimento_codigo].present?
+  active_filter_chips << "Empreendimento: #{admin_habitation_development_filter_label(params[:empreendimento_codigo])}" if params[:empreendimento_codigo].present?
   active_filter_chips << "Corretor: #{params[:corretor_id]}" if params[:corretor_id].present?
   active_filter_chips << "Proprietário: #{params[:proprietor_id]}" if can_export_proprietor_data? && params[:proprietor_id].present?
   active_filter_chips << "Região foco?: #{params[:regiao_foco]}" if params[:regiao_foco].present?

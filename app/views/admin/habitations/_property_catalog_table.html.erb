@@ -37,6 +37,7 @@
           image_url = image_urls.first
           fallback_image_urls = image_urls.drop(1)
           display_title = imovel.display_title
+          catalog_title = admin_habitation_catalog_title(imovel)
           captador_name = imovel.primary_captador_name
           data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
           price_label = if imovel.valor_venda_cents.to_i.positive?
@@ -87,7 +88,7 @@
                 <% end %>
               </div>
               <div class="ax-property-table__main">
-                <%= link_to display_title,
+                <%= link_to catalog_title,
                             catalog_card_path,
                             class: "ax-property-table__title" %>
                 <div class="ax-property-table__meta">

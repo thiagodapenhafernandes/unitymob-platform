@@ -36,15 +36,24 @@ class Admin::HabitationsController < Admin::BaseController
     "Sol o dia todo"
   ].freeze
   AMENITY_FILTER_OPTIONS = [
-    "Aquecimento Central", "Ar Central", "Ar Condicionado", "Área de Serviço", "Armários Embutidos",
-    "Bicicletário", "Churrasqueira", "Churrasqueira Coletiva", "Condomínio Fechado", "Cozinha Americana",
-    "Cozinha gourmet com churrasqueira", "Cozinha Planejada", "Diferenciado", "Dormitório com Armários", "Elevador", "Estacionamento",
-    "Frente Mar", "Gás Central", "Guarita", "Hidromassagem", "Jardim", "Mobiliado", "Piscina",
-    "Piscina Coletiva", "Playground", "Portaria", "Porteiro Eletrônico", "Quadra mar",
-    "Quadra de Esportes", "Quintal", "Sacada", "Sacada com Churrasqueira", "Sala com Armários",
-    "Sala de Jantar", "Sala Fitness", "Salão de Festas", "Salão Imobiliário", "Sauna", "Segurança",
-    "Semi Mobiliado", "Terraço", "Vigilância 24h", "Vista Panorâmica", "Vista para o Mar",
-    "Vista frente para o Mar", *CUSTOM_FEATURE_OPTIONS, "Zelador"
+    "Adega", "Alarme", "Ar central", "Ar-condicionado", "Area Servico", "Armário embutido",
+    "Banheiro auxiliar", "Banheiro social", "Bar", "Churrasqueira", "Churrasqueira a gás", "Copa",
+    "Copa/cozinha", "Cozinha", "Cozinha americana", "Cozinha gourmet com churrasqueira", "Cozinha planejada", "Deck",
+    "Dependência de empregada", "Despensa", "Diferenciado", "Dormitório Com Armários", "Duplex", "Edícula",
+    "Elevador", "Escritório", "Espera split", "Estar íntimo", "Forro", "Frente mar",
+    "Garden", "Gradeado", "Hall de entrada", "Hidromassagem", "Home theater", "Jardim de inverno",
+    "Lareira", "Lavabo", "Living", "Living hall", "Mezanino", "Mobiliado",
+    "Mobiliado decorado", "Monitoramento", "Piscina", "Piso elevado", "Quadra mar", "Quadra padel",
+    "Quadra poliesportiva", "Quintal", "Reformado", "Sacada", "Sacada aberta", "Sacada com churrasqueira",
+    "Sacada fechada", "Sacada integrada", "Sala com armários", "Sala de estar", "Sala de jantar", "Sala de tv",
+    "Sauna", "Sem mobília", "Semi mobiliado", "Sol da manhã", "Sol da tarde", "Sol o dia todo",
+    "Split", "Suíte master", "Terraço", "Triplex", "Vigia externo", "Vigia interno",
+    "Vista mar", "Vista panorâmica", "Vitrine", "WC empregada", "Água quente", "Área de serviço",
+    "Aquecimento Central", "Bicicletário", "Churrasqueira Coletiva", "Condomínio Fechado", "Estacionamento",
+    "Gás Central", "Guarita", "Jardim", "Piscina Coletiva", "Playground", "Portaria",
+    "Porteiro Eletrônico", "Quadra de Esportes", "Sala Fitness", "Salão de Festas", "Salão Imobiliário",
+    "Segurança", "Vigilância 24h", "Vista para o Mar", "Vista frente para o Mar", "Zelador",
+    *CUSTOM_FEATURE_OPTIONS
   ].freeze
   # Fonte única dos campos de exportação vive no service (reusado pelo job async).
   EXPORT_FIELDS = Habitations::CsvExporter::FIELDS
@@ -842,7 +851,7 @@ class Admin::HabitationsController < Admin::BaseController
   def load_filter_data
     tenant_habitations = current_tenant.habitations
 
-    cached = Rails.cache.fetch("admin/habitations/filter_data/v4/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
+    cached = Rails.cache.fetch("admin/habitations/filter_data/v5/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
       city_sql = "COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), ''))"
       neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), ''))"
       commercial_neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro_comercial), ''), NULLIF(TRIM(habitations.bairro_comercial), ''))"
@@ -874,6 +883,11 @@ class Admin::HabitationsController < Admin::BaseController
                             .distinct.pluck(:status).sort,
         key_locations: (Habitation::KEY_LOCATION_OPTIONS + existing_key_locations).uniq,
         empreendimentos: filter_empreendimento_options,
+        amenities: (
+          AMENITY_FILTER_OPTIONS +
+          current_tenant.attribute_options.where(context: 'habitation', category: 'feature').order(name: :asc).pluck(:name) +
+          current_tenant.attribute_options.where(context: 'habitation', category: 'infrastructure').order(name: :asc).pluck(:name)
+        ).compact_blank.uniq.sort_by { |name| I18n.transliterate(name.to_s).downcase },
         situacoes: (Habitation::SITUATIONS + tenant_habitations.where("NULLIF(TRIM(situacao), '') IS NOT NULL AND situacao != '.'")
                                                        .distinct
                                                        .pluck(:situacao)).uniq.sort,
@@ -896,7 +910,8 @@ class Admin::HabitationsController < Admin::BaseController
     @filter_statuses = ["Venda", "Locação", "Ambos"] # status = tipo de negócio
     @filter_key_locations = cached[:key_locations]
     @filter_empreendimentos = cached[:empreendimentos]
-    @filter_brokers = habitation_visible_admin_users.order(name: :asc).pluck(:name, :id)
+    @filter_amenity_options = cached[:amenities]
+    @filter_brokers = catalog_filter_admin_users.order(name: :asc).pluck(:name, :id)
     @filter_proprietors = selected_filter_proprietors
     @filter_situacoes = cached[:situacoes]
     @filter_faces = cached[:faces]
@@ -1005,7 +1020,7 @@ class Admin::HabitationsController < Admin::BaseController
     @key_location = params[:key_location]
     @salute_rental_management = params[:salute_rental_management]
     @empreendimento_codigo = params[:empreendimento_codigo]
-    @corretor_id = visible_habitation_admin_user_id(params[:corretor_id])
+    @corretor_id = can_filter_by_broker? ? catalog_filter_admin_user_id(params[:corretor_id]) : nil
     @proprietor_id = can_filter_by_proprietor? ? params[:proprietor_id] : nil
     @destaque_web = params[:destaque_web]
     @festival_salute = params[:festival_salute]
@@ -1881,6 +1896,16 @@ class Admin::HabitationsController < Admin::BaseController
         "(jsonb_typeof(caracteristicas) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(caracteristicas) value WHERE unaccent(lower(value)) ILIKE unaccent('%jardim%'))) OR " \
         "(jsonb_typeof(caracteristicas) = 'object' AND EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%jardim%') OR unaccent(lower(kv.value)) ILIKE unaccent('%jardim%')))"
       )
+    when /garden/
+      scope.garden
+    when /quadra.*mar/
+      scope.quadra_mar
+    when /vista.*mar/
+      scope.vista_mar
+    when /lavabo/
+      scope.lavabo
+    when /depend.*empreg|wc.*empreg/
+      scope.dependencia_empregada
     when /sacada/
       scope.where("varanda_gourmet_flag = true OR " \
                   "(jsonb_typeof(caracteristicas) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(caracteristicas) value WHERE unaccent(lower(value)) ILIKE unaccent('%sacada%'))) OR " \
@@ -2400,12 +2425,27 @@ class Admin::HabitationsController < Admin::BaseController
 
   def habitation_visible_admin_users
     # Memoizado: era reconstruído (e reexecutava accessible_owner_ids) a cada
-    # chamada — usado em @brokers, @filter_brokers e por corretor no form.
+    # chamada — usado em @brokers e por corretor no form.
     @habitation_visible_admin_users ||= begin
       ids = accessible_owner_ids(:imoveis)
       scope = current_tenant.admin_users.account_members
       ids.nil? ? scope : scope.where(id: ids)
     end
+  end
+
+  def catalog_filter_admin_users
+    # O catálogo operacional pode ser filtrado por colegas da mesma conta.
+    # Edição/atribuição de responsáveis continua usando habitation_visible_admin_users.
+    current_tenant.admin_users.account_members
+  end
+
+  def catalog_filter_admin_user_id(value)
+    return nil if value.blank?
+
+    id = value.to_i
+    return nil unless id.positive?
+
+    catalog_filter_admin_users.exists?(id: id) ? id.to_s : nil
   end
 
   def visible_habitation_admin_user_id(value)

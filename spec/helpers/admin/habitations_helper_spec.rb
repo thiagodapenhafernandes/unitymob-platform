@@ -43,6 +43,46 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
     end
   end
 
+  describe "#admin_habitation_catalog_title" do
+    it "uses commercial neighborhood and development name before the property title" do
+      habitation = build(
+        :habitation,
+        bairro: "Centro",
+        bairro_comercial: "Meia Praia",
+        nome_empreendimento: "Residencial Atlântico",
+        titulo_anuncio: "Apartamento aluguel anual 3 suítes"
+      )
+
+      expect(helper.admin_habitation_catalog_title(habitation))
+        .to eq("Meia Praia · Residencial Atlântico · Apartamento aluguel anual 3 suítes")
+    end
+
+    it "falls back to regular neighborhood when commercial neighborhood is blank" do
+      habitation = build(
+        :habitation,
+        bairro: "Centro",
+        bairro_comercial: nil,
+        nome_empreendimento: nil,
+        titulo_anuncio: "Apartamento aluguel anual"
+      )
+
+      expect(helper.admin_habitation_catalog_title(habitation))
+        .to eq("Centro · Apartamento aluguel anual")
+    end
+
+    it "does not duplicate identical title parts" do
+      habitation = build(
+        :habitation,
+        bairro_comercial: "Centro",
+        nome_empreendimento: "Residencial Atlântico",
+        titulo_anuncio: "Residencial Atlântico"
+      )
+
+      expect(helper.admin_habitation_catalog_title(habitation))
+        .to eq("Centro · Residencial Atlântico")
+    end
+  end
+
   describe "#admin_habitation_editor_tab_missing_counts" do
     it "groups operational validation gaps by editor tab" do
       property_setting = instance_double(

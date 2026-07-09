@@ -11,7 +11,8 @@
   business_filter_keys = %w[situacao promotion_status accepts_exchange key_location salute_rental_management]
   people_filter_keys = %w[proprietor_id]
   feature_filter_keys = %w[face ocupacao_status estado_conservacao regiao_foco banheiros dorms suites vagas area_total_min area_total_max area_privativa_min area_privativa_max]
-  media_filter_keys = %w[destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo somente_com_imagens somente_sem_imagens somente_dwv foto_classificacao amenities publicar_imovelweb_2 publicar_lais_ai publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync]
+  amenity_filter_keys = %w[amenities]
+  media_filter_keys = %w[destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo somente_com_imagens somente_sem_imagens somente_dwv foto_classificacao publicar_imovelweb_2 publicar_lais_ai publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync]
   exchange_filter_keys = %w[permuta_vehicle permuta_property permuta_others permuta_min_value permuta_location permuta_min_dorms permuta_min_suites permuta_min_garagens]
   date_filter_keys = %w[captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim]
   quick_filter_count = filter_active_count.call(%w[q]) + (params[:scope].present? ? 1 : 0)
@@ -37,6 +38,7 @@
   business_count = filter_active_count.call(business_filter_keys)
   people_count = filter_active_count.call(people_filter_keys)
   feature_count = filter_active_count.call(feature_filter_keys)
+  amenity_count = filter_active_count.call(amenity_filter_keys)
   media_count = filter_active_count.call(media_filter_keys)
   exchange_count = filter_active_count.call(exchange_filter_keys)
   date_count = filter_active_count.call(date_filter_keys)
@@ -44,7 +46,7 @@
   selected_foto_classificacoes = Array(params[:foto_classificacao]).map(&:to_s)
   selected_amenities = Array(params[:amenities]).map(&:to_s)
   selected_bairros = Array(params[:bairro]).flatten.map(&:to_s).map(&:strip).reject(&:blank?)
-  amenity_options = Admin::HabitationsController::AMENITY_FILTER_OPTIONS
+  amenity_options = @filter_amenity_options.presence || Admin::HabitationsController::AMENITY_FILTER_OPTIONS
 %>
 
 <%= ax_aside_panel(
@@ -351,6 +353,14 @@
       <% end %>
     <% end %>
 
+    <%= ax_filter_section(title: "Características internas e lazer", icon: "stars", count: amenity_count, open: amenity_count.positive?) do %>
+      <div class="ax-filter-checks">
+        <% amenity_options.each_with_index do |opcao, idx| %>
+          <%= ax_filter_check(name: "amenities[]", value: opcao, checked: selected_amenities.include?(opcao), label: opcao, id: "amenity_filter_#{idx}") %>
+        <% end %>
+      </div>
+    <% end %>
+
     <%= ax_filter_section(title: "Imagens e portais", icon: "images", count: media_count, open: media_count.positive?) do %>
       <%= ax_field_grid columns: 2, gap: :compact, class_name: "ax-filter-section__grid" do %>
         <div>
@@ -374,14 +384,6 @@
           <div class="ax-filter-checks">
             <% ["Profissionais", "Boas", "Aceitáveis", "Não tem fotos"].each do |opcao| %>
               <%= ax_filter_check(name: "foto_classificacao[]", value: opcao, checked: selected_foto_classificacoes.include?(opcao), label: opcao, id: "foto_classificacao_#{opcao.parameterize}") %>
-            <% end %>
-          </div>
-        </div>
-        <div class="ax-span-2">
-          <%= ax_field_label(nil, nil, text: "Características e infraestrutura") %>
-          <div class="ax-filter-checks">
-            <% amenity_options.each_with_index do |opcao, idx| %>
-              <%= ax_filter_check(name: "amenities[]", value: opcao, checked: selected_amenities.include?(opcao), label: opcao, id: "amenity_filter_#{idx}") %>
             <% end %>
           </div>
         </div>
