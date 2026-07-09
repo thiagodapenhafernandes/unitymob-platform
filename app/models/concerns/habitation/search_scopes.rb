@@ -698,8 +698,8 @@ module Habitation::SearchScopes
     end
 
     # Busca avançada SUPER DINÂMICA combinando múltiplos filtros
-    def advanced_search(params = {}, base_scope: nil)
-      params = params.to_h.with_indifferent_access
+    def advanced_search(params = {}, base_scope: nil, **filters)
+      params = params.to_h.merge(filters).with_indifferent_access
       query = base_scope || active # active já restringe a imóveis públicos com fotos e preço.
       
       # Tipo de transação
@@ -820,50 +820,19 @@ module Habitation::SearchScopes
       # Características via array (agora com lógica OU para ser aditivo)
       if params[:characteristics].present?
         characteristics = params[:characteristics].is_a?(Array) ? params[:characteristics] : [params[:characteristics]]
-        
-        # Criamos um sub-query que será unido por OR
-        char_conditions = Habitation.none
-        
-        characteristics.each do |char|
-          case char.to_s
-          when 'featured' then char_conditions = char_conditions.or(Habitation.featured)
-          when 'frente_mar' then char_conditions = char_conditions.or(Habitation.frente_mar)
-          when 'quadra_mar' then char_conditions = char_conditions.or(Habitation.quadra_mar)
-          when 'vista_mar' then char_conditions = char_conditions.or(Habitation.vista_mar)
-          when 'churrasqueira' then char_conditions = char_conditions.or(Habitation.churrasqueira)
-          when 'cozinha_gourmet_churrasqueira' then char_conditions = char_conditions.or(Habitation.cozinha_gourmet_churrasqueira)
-          when 'mobiliado' then char_conditions = char_conditions.or(Habitation.mobiliado)
-          when 'sacada' then char_conditions = char_conditions.or(Habitation.sacada)
-          when 'decorado' then char_conditions = char_conditions.or(Habitation.decorado)
-          when 'closet' then char_conditions = char_conditions.or(Habitation.closet)
-          when 'semi_mobiliado' then char_conditions = char_conditions.or(Habitation.semi_mobiliado)
-          when 'lavabo' then char_conditions = char_conditions.or(Habitation.lavabo)
-          when 'lavanderia' then char_conditions = char_conditions.or(Habitation.lavanderia)
-          when 'dependencia_empregada' then char_conditions = char_conditions.or(Habitation.dependencia_empregada)
-          when 'sol_manha' then char_conditions = char_conditions.or(Habitation.sol_manha)
-          when 'sol_tarde' then char_conditions = char_conditions.or(Habitation.sol_tarde)
-          when 'sol_dia_todo' then char_conditions = char_conditions.or(Habitation.sol_dia_todo)
-          when 'hidromassagem' then char_conditions = char_conditions.or(Habitation.hidromassagem)
-          when 'piscina' then char_conditions = char_conditions.or(Habitation.piscina)
-          when 'sala_estar' then char_conditions = char_conditions.or(Habitation.sala_estar)
-          when 'sala_jantar' then char_conditions = char_conditions.or(Habitation.sala_jantar)
-          when 'varanda' then char_conditions = char_conditions.or(Habitation.varanda)
-          when 'lancamento_flag' then char_conditions = char_conditions.or(Habitation.lancamento)
-          when 'aceita_permuta_flag' then char_conditions = char_conditions.or(Habitation.aceita_permuta)
-          when 'aceita_financiamento_flag' then char_conditions = char_conditions.or(Habitation.aceita_financiamento)
-          when 'garden_flag' then char_conditions = char_conditions.or(Habitation.garden)
-          when 'festival_salute_flag' then char_conditions = char_conditions.or(Habitation.festival_salute)
-          when 'exibir_no_site_flag', 'exibir_no_site_salute_flag' then char_conditions = char_conditions.or(Habitation.exibir_site_salute)
-          when 'opportunity' then char_conditions = char_conditions.or(Habitation.opportunity)
-          when 'na_planta' then char_conditions = char_conditions.or(Habitation.na_planta)
-          when 'lancamento' then char_conditions = char_conditions.or(Habitation.lancamento)
-          when 'pronto' then char_conditions = char_conditions.or(Habitation.pronto)
-          when 'em_construcao' then char_conditions = char_conditions.or(Habitation.em_construcao)
+        characteristic_scopes = characteristics.filter_map { |characteristic| characteristic_scope_for(characteristic) }
+
+        if characteristic_scopes.one?
+          query = query.public_send(characteristic_scopes.first)
+        elsif characteristic_scopes.any?
+          char_conditions = Habitation.none
+          characteristic_scopes.each do |scope_name|
+            char_conditions = char_conditions.or(Habitation.public_send(scope_name))
           end
+
+          # Mantém o contrato atual: múltiplas características são aditivas por OR.
+          query = query.where(id: char_conditions.select(:id))
         end
-        
-        # Aplicamos o grupo de ORs à query principal via subseleção de IDs
-        query = query.where(id: char_conditions.select(:id)) if characteristics.any?
       end
       
       # Busca textual geral (título, descrição, endereço, código)
@@ -894,6 +863,45 @@ module Habitation::SearchScopes
 
     def public_property_search(params = {})
       advanced_search(params, base_scope: public_property_listable)
+    end
+
+    def characteristic_scope_for(value)
+      {
+        "featured" => :featured,
+        "frente_mar" => :frente_mar,
+        "quadra_mar" => :quadra_mar,
+        "vista_mar" => :vista_mar,
+        "churrasqueira" => :churrasqueira,
+        "cozinha_gourmet_churrasqueira" => :cozinha_gourmet_churrasqueira,
+        "mobiliado" => :mobiliado,
+        "sacada" => :sacada,
+        "decorado" => :decorado,
+        "closet" => :closet,
+        "semi_mobiliado" => :semi_mobiliado,
+        "lavabo" => :lavabo,
+        "lavanderia" => :lavanderia,
+        "dependencia_empregada" => :dependencia_empregada,
+        "sol_manha" => :sol_manha,
+        "sol_tarde" => :sol_tarde,
+        "sol_dia_todo" => :sol_dia_todo,
+        "hidromassagem" => :hidromassagem,
+        "piscina" => :piscina,
+        "sala_estar" => :sala_estar,
+        "sala_jantar" => :sala_jantar,
+        "varanda" => :varanda,
+        "lancamento_flag" => :lancamento,
+        "aceita_permuta_flag" => :aceita_permuta,
+        "aceita_financiamento_flag" => :aceita_financiamento,
+        "garden_flag" => :garden,
+        "festival_salute_flag" => :festival_salute,
+        "exibir_no_site_flag" => :exibir_site_salute,
+        "exibir_no_site_salute_flag" => :exibir_site_salute,
+        "opportunity" => :opportunity,
+        "na_planta" => :na_planta,
+        "lancamento" => :lancamento,
+        "pronto" => :pronto,
+        "em_construcao" => :em_construcao
+      }[value.to_s]
     end
     
     # Aplica ordenação baseada em parâmetro

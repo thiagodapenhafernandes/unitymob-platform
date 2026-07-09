@@ -284,6 +284,25 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(result).not_to include(non_matching)
     end
 
+    it "applies a single characteristic directly without an id subquery" do
+      relation = Habitation.advanced_search(characteristics: ["frente_mar"])
+
+      expect(relation.to_sql).to include("frente_mar_avenida_atlantica_flag = true")
+      expect(relation.to_sql).not_to match(/"habitations"\."id" IN \(SELECT/i)
+    end
+
+    it "keeps multiple characteristics additive with OR semantics" do
+      front_sea = create(:habitation, frente_mar_avenida_atlantica_flag: true)
+      furnished = create(:habitation, mobiliado_flag: true)
+      non_matching = create(:habitation, frente_mar_avenida_atlantica_flag: false, mobiliado_flag: false)
+
+      result = Habitation.advanced_search(characteristics: ["frente_mar", "mobiliado"])
+
+      expect(result).to include(front_sea, furnished)
+      expect(result).not_to include(non_matching)
+      expect(result.to_sql).to match(/"habitations"\."id" IN \(SELECT/i)
+    end
+
     it "filters by gourmet kitchen with barbecue" do
       matching = create(:habitation, caracteristicas: ["Cozinha Gourmet"], infra_estrutura: ["Churrasqueira"])
       non_matching = create(:habitation, caracteristicas: ["Cozinha Planejada"], infra_estrutura: ["Piscina"])
