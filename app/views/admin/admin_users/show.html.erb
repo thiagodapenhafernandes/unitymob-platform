@@ -55,7 +55,7 @@
         <div class="aus__body">
           <dl class="aus__defs">
             <div class="aus__def"><dt>E-mail</dt><dd><%= u.email %></dd></div>
-            <div class="aus__def"><dt>Telefone</dt><dd><%= u.phone.presence || "—" %></dd></div>
+            <div class="aus__def"><dt>Telefone</dt><dd><%= u.phone.present? ? format_phone(u.phone) : "—" %></dd></div>
             <div class="aus__def"><dt>CRECI</dt><dd><%= u.creci.presence || "—" %></dd></div>
             <div class="aus__def"><dt>Cidade</dt><dd><%= u.city.presence || "—" %></dd></div>
             <div class="aus__def"><dt>Nascimento</dt><dd><%= u.birth_date.present? ? l(u.birth_date) : "—" %></dd></div>

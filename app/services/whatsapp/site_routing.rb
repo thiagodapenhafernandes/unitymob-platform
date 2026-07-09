@@ -26,14 +26,14 @@ module Whatsapp
 
     def update!(params)
       payload = {
-        "default_number" => normalize_phone(params[:default_number]),
+        "default_number" => Phones::Normalizer.call(params[:default_number]).to_s,
         "rules" => {}
       }
 
       NEGOTIATION_TYPES.each_key do |key|
         rule_params = params.dig(:rules, key) || params.dig("rules", key) || {}
         payload["rules"][key] = {
-          "number" => normalize_phone(rule_params[:number] || rule_params["number"]),
+          "number" => Phones::Normalizer.call(rule_params[:number] || rule_params["number"]).to_s,
           "capture_enabled" => truthy?(rule_params[:capture_enabled] || rule_params["capture_enabled"])
         }
       end
@@ -78,7 +78,7 @@ module Whatsapp
     end
 
     def fallback_number
-      normalize_phone(ContactSetting.instance.whatsapp_primary).presence || DEFAULT_PHONE
+      Phones::Normalizer.call(ContactSetting.instance.whatsapp_primary).to_s.presence || DEFAULT_PHONE
     rescue ActiveRecord::StatementInvalid, ActiveRecord::NoDatabaseError
       DEFAULT_PHONE
     end
@@ -104,14 +104,7 @@ module Whatsapp
     end
 
     def build_url(number, message)
-      "https://wa.me/#{normalize_phone(number)}?text=#{ERB::Util.url_encode(message.to_s)}"
-    end
-
-    def normalize_phone(value)
-      digits = value.to_s.gsub(/\D/, "")
-      return "" if digits.blank?
-
-      digits.start_with?("55") ? digits : "55#{digits}"
+      "https://wa.me/#{Phones::Normalizer.call(number)}?text=#{ERB::Util.url_encode(message.to_s)}"
     end
 
     def truthy?(value)

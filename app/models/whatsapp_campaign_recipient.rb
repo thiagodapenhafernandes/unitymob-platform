@@ -75,10 +75,7 @@ class WhatsappCampaignRecipient < ApplicationRecord
   private
 
   def normalize_phone_number
-    digits = phone_number.to_s.gsub(/\D/, "")
-    return self.phone_number = "" if digits.blank?
-
-    self.phone_number = digits.length <= 11 ? "55#{digits}" : digits
+    self.phone_number = Phones::Normalizer.call(phone_number).to_s
   end
 
   def normalize_tags

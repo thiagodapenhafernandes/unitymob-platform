@@ -19,8 +19,6 @@ export default class extends Controller {
   mask() {
     if (this.typeValue === "currency") {
       this.currencyMask()
-    } else if (this.typeValue === "phone") {
-      this.phoneMask()
     } else if (this.typeValue === "cep") {
       this.cepMask()
     } else if (this.typeValue === "cpf_cnpj") {
@@ -53,33 +51,6 @@ export default class extends Controller {
     integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
 
     this.element.value = `${integerPart},${decimalPart}`
-  }
-
-  phoneMask() {
-    let value = this.element.value.replace(/\D/g, "")
-    let formatted = ""
-
-    // Limit to 11 digits
-    if (value.length > 11) value = value.slice(0, 11)
-
-    if (value.length > 10) {
-      // (XX) XXXXX-XXXX
-      formatted = value.replace(/^(\d\d)(\d{5})(\d{4}).*/, "($1) $2-$3")
-    } else if (value.length > 6) {
-      // (XX) XXXX-XXXX
-      if (value.length == 10) {
-        formatted = value.replace(/^(\d\d)(\d{4})(\d{4}).*/, "($1) $2-$3")
-      } else {
-        formatted = value.replace(/^(\d\d)(\d{4})(\d{0,4}).*/, "($1) $2-$3")
-      }
-    } else if (value.length > 2) {
-      formatted = value.replace(/^(\d\d)(\d{0,5}).*/, "($1) $2")
-    } else {
-      if (value.length > 0) {
-        formatted = value.replace(/^(\d*)/, "($1")
-      }
-    }
-    this.element.value = formatted
   }
 
   cepMask() {

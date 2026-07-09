@@ -2,7 +2,7 @@
   <span class="wa-inbox-thread__avatar"><%= wa_initials(conversation.display_name) %></span>
   <div class="wa-inbox-thread__identity-copy">
     <strong><%= conversation.display_name %></strong>
-    <span><%= conversation.contact_phone %></span>
+    <span><%= format_phone(conversation.contact_phone) %></span>
   </div>
 </div>
 

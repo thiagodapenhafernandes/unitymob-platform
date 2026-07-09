@@ -85,12 +85,9 @@ module Leads
 
     # Variações de telefone para tolerar prefixo 55 inconsistente.
     def phone_variants
-      raw = [@lead.client_phone, @lead.phone].map { |p| p.to_s.gsub(/\D/, "") }.reject(&:blank?)
+      raw = [@lead.client_phone, @lead.phone].map { |phone| Phones::Normalizer.call(phone).to_s }.reject(&:blank?)
       variants = raw.flat_map do |digits|
-        out = [digits]
-        out << digits[2..] if digits.start_with?("55") && digits.length > 11
-        out << "55#{digits}" if digits.length <= 11
-        out
+        [digits, digits.delete_prefix("55")]
       end
       variants.reject(&:blank?).uniq
     end

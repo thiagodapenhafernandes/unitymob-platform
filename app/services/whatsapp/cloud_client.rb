@@ -248,8 +248,7 @@ module Whatsapp
     end
 
     def normalize(phone)
-      digits = phone.to_s.gsub(/\D/, "")
-      digits.length <= 11 ? "55#{digits}" : digits
+      Phones::Normalizer.call(phone).to_s
     end
 
     def parse(response)

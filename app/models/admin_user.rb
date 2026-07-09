@@ -1,4 +1,6 @@
 class AdminUser < ApplicationRecord
+  include PhoneNormalizable
+
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :recoverable, :rememberable, :timeoutable,
@@ -55,6 +57,7 @@ class AdminUser < ApplicationRecord
 
   validates :email, presence: true, uniqueness: true
   validates :name, presence: true
+  normalize_phone_fields :phone
   validates :tenant, presence: true, unless: :super_admin?
   validates :profile, presence: true, unless: :super_admin?
   validate :system_admin_outside_tenant

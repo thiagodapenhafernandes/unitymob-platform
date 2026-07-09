@@ -109,7 +109,7 @@ module Whatsapp
 
     def build_row(data, line_number)
       normalized = normalize_data(data)
-      phone = normalize_phone(normalized[:phone])
+      phone = Phones::Normalizer.call(normalized[:phone]).to_s
       admin_user = resolve_admin_user(normalized)
       errors = []
       errors << "telefone ausente" if phone.blank?
@@ -139,13 +139,6 @@ module Whatsapp
            .tr("áàãâäéèêëíìîïóòõôöúùûüç", "aaaaaeeeeiiiiooooouuuuc")
            .gsub(/[^a-z0-9]+/, "_")
            .gsub(/\A_+|_+\z/, "")
-    end
-
-    def normalize_phone(value)
-      digits = value.to_s.gsub(/\D/, "")
-      return "" if digits.blank?
-
-      digits.length <= 11 ? "55#{digits}" : digits
     end
 
     def dedupe_rows(rows)

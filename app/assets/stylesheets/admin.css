@@ -13,6 +13,14 @@
   --admin-navbar-height: 64px;
 }
 
+.iti {
+  width: 100%;
+}
+
+.iti .ax-control {
+  width: 100%;
+}
+
 .broker-share {
   position: relative;
 }

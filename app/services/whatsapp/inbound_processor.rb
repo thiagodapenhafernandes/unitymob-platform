@@ -313,15 +313,8 @@ module Whatsapp
       conversation.update_column(:lead_id, lead.id)
     end
 
-    def normalize_phone(value)
-      digits = value.to_s.gsub(/\D/, "")
-      return "" if digits.blank?
-
-      digits.length <= 11 ? "55#{digits}" : digits
-    end
-
     def campaign_reply_candidate(phone)
-      normalized = normalize_phone(phone)
+      normalized = Phones::Normalizer.call(phone).to_s
       return if normalized.blank?
 
       WhatsappCampaignMessage

@@ -51,7 +51,7 @@ module Whatsapp
       # o disparo (o start! atômico impede o caso comum; isto fecha o residual).
       campaign.with_lock do
         each_new_recipient(recipients) do |recipient|
-          phone = normalize_phone(recipient.display_phone)
+          phone = Phones::Normalizer.call(recipient.display_phone).to_s
           next if phone.blank?
 
           rows << {
@@ -120,11 +120,5 @@ module Whatsapp
            .gsub("{{corretor_email}}", recipient.admin_user&.notification_email.to_s)
     end
 
-    def normalize_phone(phone)
-      digits = phone.to_s.gsub(/\D/, "")
-      return "" if digits.blank?
-
-      digits.length <= 11 ? "55#{digits}" : digits
-    end
   end
 end

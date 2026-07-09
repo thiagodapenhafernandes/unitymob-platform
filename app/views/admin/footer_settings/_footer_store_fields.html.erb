@@ -41,7 +41,7 @@
       <% end %>
 
       <div class="tw-mb-1">
-        <%= f.text_field :phone, class: "ax-control ax-control--sm", placeholder: "Telefone" %>
+        <%= f.text_field :phone, class: "ax-control ax-control--sm", placeholder: "+55 (47) 3311-1067", autocomplete: "tel", data: { controller: "phone-input" } %>
       </div>
     </div>
   </div>

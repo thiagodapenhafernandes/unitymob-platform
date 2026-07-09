@@ -64,7 +64,7 @@
             <%= link_to proprietor.name, edit_admin_proprietor_path(proprietor), class: "ax-strong" %>
             <div class="tw-text-2xs tw-text-ink-faint"><%= proprietor.display_role %> · Código <%= proprietor.vista_code.presence || "—" %></div>
           </td>
-          <td><%= principal_phone.presence || "—" %></td>
+          <td><%= principal_phone.present? ? format_phone(principal_phone) : "—" %></td>
           <td><%= proprietor.cpf_cnpj.presence || "—" %></td>
           <td><%= proprietor.city.presence || "—" %></td>
           <td class="ax-num"><span class="ax-badge ax-badge--gray"><%= @habitations_count_by_proprietor[proprietor.id].to_i %></span></td>

@@ -366,10 +366,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def normalize_whatsapp_phone(value)
-    digits = value.to_s.gsub(/\D/, "")
-    return "" if digits.blank?
-
-    digits.length <= 11 ? "55#{digits}" : digits
+    Phones::Normalizer.call(value).to_s
   end
 
   def load_lead_whatsapp_context

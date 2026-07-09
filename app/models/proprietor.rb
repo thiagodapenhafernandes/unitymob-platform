@@ -1,5 +1,6 @@
 class Proprietor < ApplicationRecord
   include TenantScoped
+  include PhoneNormalizable
 
   CAPTURE_VEHICLES = [
     "Cliente indicado por outro cliente",
@@ -76,6 +77,7 @@ class Proprietor < ApplicationRecord
   has_one_attached :profile_image
 
   validates :name, presence: true
+  normalize_phone_fields :phone_primary, :mobile_phone, :residential_phone, :business_phone, :spouse_phone
   validate :cpf_cnpj_must_be_unique
   # Cadastro MANUAL não pode repetir proprietário existente (a base do Vista
   # importa o espelho de lá e fica de fora — vista_code presente). Homônimo
@@ -85,7 +87,7 @@ class Proprietor < ApplicationRecord
   scope :ordered, -> { order(name: :asc) }
 
   def self.normalized_phone(value)
-    value.to_s.gsub(/\D/, "")
+    Phones::Normalizer.call(value).to_s
   end
 
   # LGPD: CPF cifrado at-rest; *_digits com cifra determinística p/ busca por

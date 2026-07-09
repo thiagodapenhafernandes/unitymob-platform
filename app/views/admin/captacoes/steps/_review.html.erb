@@ -42,7 +42,7 @@
     <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-2">Proprietário</h6>
     <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
       <dt class="ax-span-6">Nome</dt><dd class="ax-span-6"><%= @captacao.proprietario_nome %></dd>
-      <dt class="ax-span-6">Telefone</dt><dd class="ax-span-6"><%= @captacao.proprietario_telefone %></dd>
+      <dt class="ax-span-6">Telefone</dt><dd class="ax-span-6"><%= format_phone(@captacao.proprietario_telefone) %></dd>
       <% if @captacao.proprietario_email.present? %>
         <dt class="ax-span-6">E-mail</dt><dd class="ax-span-6"><%= @captacao.proprietario_email %></dd>
       <% end %>

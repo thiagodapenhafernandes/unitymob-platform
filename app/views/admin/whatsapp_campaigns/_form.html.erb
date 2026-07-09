@@ -184,7 +184,14 @@
           <div class="whatsapp-campaign-test-send">
             <div class="ax-field">
               <%= label_tag :test_phone, "Telefone de teste", class: "ax-label" %>
-              <%= telephone_field_tag :test_phone, nil, class: "ax-control", placeholder: "5547999990000", data: { whatsapp_campaign_builder_target: "testPhone" } %>
+              <%= telephone_field_tag :test_phone,
+                                      nil,
+                                      class: "ax-control",
+                                      placeholder: "5547999990000",
+                                      data: {
+                                        controller: "phone-input",
+                                        whatsapp_campaign_builder_target: "testPhone"
+                                      } %>
             </div>
             <button type="button" class="ax-btn" data-action="whatsapp-campaign-builder#sendTest">
               <i class="bi bi-send-check ax-ico"></i><span>Enviar teste</span>

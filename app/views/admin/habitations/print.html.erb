@@ -589,7 +589,7 @@
                       <td class="nowrap"><%= habitation.codigo %></td>
                       <td><%= habitation.nome_empreendimento.presence || habitation.display_title %></td>
                       <td><%= proprietor_visible ? (habitation.proprietor&.name.presence || habitation.proprietario) : "Captador: #{habitation.admin_user&.name || habitation.corretor_nome}" %></td>
-                      <td><%= proprietor_visible ? (habitation.proprietor&.mobile_phone.presence || habitation.proprietor&.business_phone.presence || habitation.proprietor&.residential_phone.presence || habitation.proprietario_celular) : "Restrito" %></td>
+                      <td><%= proprietor_visible ? format_phone(habitation.proprietor&.mobile_phone.presence || habitation.proprietor&.business_phone.presence || habitation.proprietor&.residential_phone.presence || habitation.proprietario_celular) : "Restrito" %></td>
                       <td><%= proprietor_visible ? (habitation.proprietor&.email.presence || habitation.proprietario_email) : "Restrito" %></td>
                       <td class="right nowrap"><%= number_with_precision(habitation.area_privativa_m2.to_f, precision: 2, separator: ",", delimiter: ".") %></td>
                       <td class="right money"><%= habitation.valor_venda_formatted %></td>

@@ -41,7 +41,7 @@
           <% @rows.each do |proprietor, habitation| %>
             <tr>
               <td><%= proprietor.name %></td>
-              <td class="nowrap"><%= proprietor.phone_primary.presence || proprietor.mobile_phone.presence || "-" %></td>
+              <td class="nowrap"><%= format_phone(proprietor.phone_primary.presence || proprietor.mobile_phone.presence).presence || "-" %></td>
               <td class="nowrap"><%= proprietor.cpf_cnpj.presence || "-" %></td>
               <td class="nowrap"><%= habitation&.codigo || "-" %></td>
               <td><%= habitation&.status || "-" %></td>
@@ -71,7 +71,7 @@
               <td><%= proprietor.name %></td>
               <td><%= proprietor.display_role %></td>
               <td class="nowrap"><%= proprietor.vista_code.presence || "-" %></td>
-              <td class="nowrap"><%= proprietor.phone_primary.presence || proprietor.mobile_phone.presence || "-" %></td>
+              <td class="nowrap"><%= format_phone(proprietor.phone_primary.presence || proprietor.mobile_phone.presence).presence || "-" %></td>
               <td><%= proprietor.email.presence || "-" %></td>
               <td><%= proprietor.city.presence || "-" %></td>
               <td class="text-right"><%= proprietor.habitations.count %></td>

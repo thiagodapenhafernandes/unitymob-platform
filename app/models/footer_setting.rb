@@ -1,7 +1,11 @@
 class FooterSetting < ApplicationRecord
+  include PhoneNormalizable
+
   has_many :footer_links, dependent: :destroy
   has_many :footer_stores, dependent: :destroy
   has_many :footer_social_links, dependent: :destroy
+
+  normalize_phone_fields :whatsapp
 
   accepts_nested_attributes_for :footer_links, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :footer_stores, allow_destroy: true, reject_if: :all_blank

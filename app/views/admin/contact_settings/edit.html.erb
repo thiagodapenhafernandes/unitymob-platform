@@ -30,7 +30,7 @@
                 <span class="bg-success bg-opacity-10">
                   <i class="bi bi-whatsapp" style="color:#16a34a"></i>
                 </span>
-                <%= f.text_field :whatsapp_primary, class: "ax-control", placeholder: "5547991234567" %>
+                <%= f.text_field :whatsapp_primary, class: "ax-control", placeholder: "+55 (47) 99123-4567", autocomplete: "tel", data: { controller: "phone-input" } %>
               </div>
               <small class="tw-text-ink-muted">Formato: código do país + DDD + número (sem espaços)</small>
             </div>
@@ -44,7 +44,7 @@
                 <span class="bg-primary bg-opacity-10">
                   <i class="bi bi-telephone tw-text-primary"></i>
                 </span>
-                <%= f.text_field :phone, class: "ax-control", placeholder: "(47) 3311-1067" %>
+                <%= f.text_field :phone, class: "ax-control", placeholder: "+55 (47) 3311-1067", autocomplete: "tel", data: { controller: "phone-input" } %>
               </div>
               <small class="tw-text-ink-muted">Telefone fixo da empresa</small>
             </div>
@@ -73,7 +73,7 @@
                 <span class="bg-success bg-opacity-10">
                   <i class="bi bi-whatsapp" style="color:#16a34a"></i>
                 </span>
-                <%= f.text_field :whatsapp_secondary, class: "ax-control", placeholder: "5547991234567" %>
+                <%= f.text_field :whatsapp_secondary, class: "ax-control", placeholder: "+55 (47) 99123-4567", autocomplete: "tel", data: { controller: "phone-input" } %>
               </div>
               <small class="tw-text-ink-muted">WhatsApp alternativo (opcional)</small>
             </div>
@@ -164,7 +164,7 @@
               <i class="bi bi-whatsapp" style="color:#16a34a; font-size: 1.75rem;"></i>
               <div>
                 <small class="tw-text-ink-muted d-block">WhatsApp</small>
-                <strong style="color:#16a34a"><%= @contact_setting.whatsapp_primary || "Não configurado" %></strong>
+                <strong style="color:#16a34a"><%= @contact_setting.whatsapp_primary.present? ? format_phone(@contact_setting.whatsapp_primary) : "Não configurado" %></strong>
               </div>
             </div>
           </div>
@@ -173,7 +173,7 @@
               <i class="bi bi-telephone tw-text-primary" style="font-size: 1.75rem;"></i>
               <div>
                 <small class="tw-text-ink-muted d-block">Telefone</small>
-                <strong class="tw-text-primary"><%= @contact_setting.phone || "Não configurado" %></strong>
+                <strong class="tw-text-primary"><%= @contact_setting.phone.present? ? format_phone(@contact_setting.phone) : "Não configurado" %></strong>
               </div>
             </div>
           </div>

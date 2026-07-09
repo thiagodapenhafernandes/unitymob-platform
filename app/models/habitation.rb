@@ -4,10 +4,16 @@
 #
 class Habitation < ApplicationRecord
   include TenantScoped
+  include PhoneNormalizable
 
   REVIEW_RETURN_WARNING_THRESHOLD = 3
 
   attr_accessor :skip_auto_audit, :auto_audit_destroy_snapshot
+  normalize_phone_fields :corretor_telefone,
+                         :proprietario_celular,
+                         :proprietario_telefone_comercial,
+                         :proprietario_telefone_residencial,
+                         :zelador_telefone
 
   # Concerns organizados por responsabilidade
   include Habitation::PriceFormatting

@@ -94,7 +94,7 @@
                     <span><%= user.email %></span>
                     <div class="au-user__meta">
                       <% if user.creci.present? %><span><i class="bi bi-card-heading"></i> CRECI <%= user.creci %></span><% end %>
-                      <% if user.phone.present? %><span><i class="bi bi-whatsapp"></i> <%= user.phone %></span><% end %>
+                      <% if user.phone.present? %><span><i class="bi bi-whatsapp"></i> <%= format_phone(user.phone) %></span><% end %>
                     </div>
                   </div>
                 </div>

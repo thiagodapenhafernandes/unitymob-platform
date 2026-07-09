@@ -4,6 +4,8 @@
 # mobile-first. É um pipeline separado de Habitation (catálogo público);
 # quando aprovada, admin promove manualmente.
 class Captacao < ApplicationRecord
+  include PhoneNormalizable
+
   self.table_name = "captacoes"
 
   belongs_to :corretor, class_name: "AdminUser"
@@ -15,6 +17,8 @@ class Captacao < ApplicationRecord
   enum modalidade:    { venda: 0, locacao_anual: 1, ambos: 2, locacao_diaria: 3 }, _prefix: true
 
   STEPS = %w[intro proprietario endereco caracteristicas infraestrutura negociacao visitas fotos review].freeze
+
+  normalize_phone_fields :proprietario_telefone
 
   # Validações por step — só quando avança pra frente
   with_options on: :intro do

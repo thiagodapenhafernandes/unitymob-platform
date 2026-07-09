@@ -162,7 +162,12 @@
                 <div class="whatsapp-template-carousel-button-extra" data-whatsapp-template-carousel-extra="phone_number" <%= "hidden" unless card["button_kind"] == "phone_number" %>>
                   <div class="ax-field">
                     <%= label_tag "whatsapp_template_carousel_cards_#{index}_button_phone_number", "Telefone", class: "ax-label" %>
-                    <%= text_field_tag "whatsapp_template[carousel_cards][#{index}][button_phone_number]", card["button_phone_number"], id: "whatsapp_template_carousel_cards_#{index}_button_phone_number", class: "ax-control", placeholder: "5511999990000" %>
+                    <%= telephone_field_tag "whatsapp_template[carousel_cards][#{index}][button_phone_number]",
+                                            card["button_phone_number"],
+                                            id: "whatsapp_template_carousel_cards_#{index}_button_phone_number",
+                                            class: "ax-control",
+                                            placeholder: "5511999990000",
+                                            data: { controller: "phone-input" } %>
                   </div>
                 </div>
               </div>
