@@ -121,6 +121,34 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(result).not_to include(unit_without_public_photo)
     end
 
+    it "does not include unit development payload photos unless the fallback is enabled" do
+      development = create(:habitation, codigo: "DEV-PAYLOAD", tipo: "Empreendimento")
+      unit = create(
+        :habitation,
+        tipo: "Unitário",
+        codigo_empreendimento: development.codigo,
+        pictures: [],
+        fotos_empreendimento: [{ "url" => "https://example.com/development-payload.jpg" }],
+        use_development_photos_flag: false
+      )
+
+      expect(Habitation.with_photos).not_to include(unit)
+    end
+
+    it "includes unit development payload photos when the fallback is enabled" do
+      development = create(:habitation, codigo: "DEV-PAYLOAD-FALLBACK", tipo: "Empreendimento")
+      unit = create(
+        :habitation,
+        tipo: "Unitário",
+        codigo_empreendimento: development.codigo,
+        pictures: [],
+        fotos_empreendimento: [{ "url" => "https://example.com/development-payload.jpg" }],
+        use_development_photos_flag: true
+      )
+
+      expect(Habitation.with_photos).to include(unit)
+    end
+
     it "allows development photos for developments" do
       development = create(
         :habitation,
@@ -130,6 +158,44 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       )
 
       expect(Habitation.with_photos).to include(development)
+    end
+
+    it "does not include units from linked development photos unless the fallback is enabled" do
+      development = create(
+        :habitation,
+        codigo: "DEV-WITH-PHOTO",
+        tipo: "Empreendimento",
+        pictures: [{ "url" => "https://example.com/development.jpg" }]
+      )
+      unit = create(
+        :habitation,
+        codigo: "UNIT-NO-FALLBACK",
+        codigo_empreendimento: development.codigo,
+        pictures: [],
+        fotos_empreendimento: [],
+        use_development_photos_flag: false
+      )
+
+      expect(Habitation.with_photos).not_to include(unit)
+    end
+
+    it "includes units from linked development photos when the fallback is enabled" do
+      development = create(
+        :habitation,
+        codigo: "DEV-FALLBACK-PHOTO",
+        tipo: "Empreendimento",
+        pictures: [{ "url" => "https://example.com/development.jpg" }]
+      )
+      unit = create(
+        :habitation,
+        codigo: "UNIT-FALLBACK",
+        codigo_empreendimento: development.codigo,
+        pictures: [],
+        fotos_empreendimento: [],
+        use_development_photos_flag: true
+      )
+
+      expect(Habitation.with_photos).to include(unit)
     end
   end
 
