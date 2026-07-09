@@ -1,5 +1,6 @@
 class WhatsappBusinessIntegration < ApplicationRecord
   include TenantScoped
+  include PhoneNormalizable
 
   STATUSES = %w[disconnected connected pending failed canceled].freeze
   NEGOTIATION_TYPES = {
@@ -40,6 +41,10 @@ class WhatsappBusinessIntegration < ApplicationRecord
            inverse_of: :whatsapp_business_integration
 
   validates :status, inclusion: { in: STATUSES }
+  normalize_phone_fields :default_whatsapp_number,
+                         :sale_whatsapp_number,
+                         :rent_whatsapp_number,
+                         :sale_rent_whatsapp_number
   validate :connected_user_must_belong_to_tenant
   validate :validate_site_phone_numbers
   after_commit :clear_site_phone_settings_cache
@@ -112,12 +117,12 @@ class WhatsappBusinessIntegration < ApplicationRecord
 
   def site_phone_settings
     {
-      default_phone: normalized_phone(default_whatsapp_number.presence || default_contact_whatsapp),
+      default_phone: Phones::Normalizer.call(default_whatsapp_number.presence || default_contact_whatsapp),
       negotiations: NEGOTIATION_TYPES.transform_values do |config|
         phone = public_send(config[:phone_attribute]).presence || default_whatsapp_number.presence || default_contact_whatsapp
         {
           label: config[:label],
-          phone: normalized_phone(phone),
+          phone: Phones::Normalizer.call(phone),
           requires_form: public_send(config[:form_attribute]) != false
         }
       end
@@ -161,20 +166,12 @@ class WhatsappBusinessIntegration < ApplicationRecord
     ContactSetting.first&.whatsapp_primary || "554733111067"
   end
 
-  def normalized_phone(value)
-    digits = value.to_s.gsub(/\D/, "")
-    return "" if digits.blank?
-
-    digits.length <= 11 ? "55#{digits}" : digits
-  end
-
   def validate_site_phone_numbers
     %i[default_whatsapp_number sale_whatsapp_number rent_whatsapp_number sale_rent_whatsapp_number].each do |attribute|
       value = public_send(attribute).to_s
       next if value.blank?
 
-      digits = value.gsub(/\D/, "")
-      errors.add(attribute, "deve ter DDD e número válidos") unless digits.length.between?(10, 13)
+      errors.add(attribute, "deve ter DDD e número válidos") unless Phones::Normalizer.valid?(value)
     end
   end
 

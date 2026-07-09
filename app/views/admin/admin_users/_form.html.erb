@@ -33,7 +33,7 @@
           <div class="au-row au-row--2">
             <div class="au-field">
               <%= ax_field_label(f, :phone, text: "Celular / WhatsApp") %>
-              <%= f.text_field :phone, class: "ax-control", placeholder: "(47) 99999-9999", data: { controller: "mask", mask_type_value: "phone" } %>
+              <%= f.text_field :phone, class: "ax-control", placeholder: "+55 (47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" } %>
             </div>
             <div class="au-field">
               <%= ax_field_label(f, :creci, text: "CRECI") %>

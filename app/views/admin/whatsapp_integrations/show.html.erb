@@ -86,7 +86,8 @@
                   <%= f.telephone_field :default_whatsapp_number,
                         class: "ax-control",
                         placeholder: "5547999999999",
-                        value: @whatsapp_integration.default_whatsapp_number.presence || ContactSetting.first&.whatsapp_primary %>
+                        value: @whatsapp_integration.default_whatsapp_number.presence || ContactSetting.first&.whatsapp_primary,
+                        data: { controller: "phone-input" } %>
                 <% end %>
               </div>
 
@@ -102,7 +103,10 @@
                     </header>
                     <div class="wa-field">
                       <%= ax_field_label(f, config[:phone_attribute], text: "WhatsApp de destino") %>
-                      <%= f.telephone_field config[:phone_attribute], class: "ax-control", placeholder: "Usar número padrão" %>
+                      <%= f.telephone_field config[:phone_attribute],
+                                            class: "ax-control",
+                                            placeholder: "Usar número padrão",
+                                            data: { controller: "phone-input" } %>
                     </div>
                     <%= ax_toggle_chip(f, config[:form_attribute],
                           label: "Captar dados antes de redirecionar",
@@ -549,7 +553,9 @@
                       </div>
                       <div class="ax-field">
                         <%= f.label :display_phone_number, "Número WhatsApp", class: "ax-label" %>
-                        <%= f.telephone_field :display_phone_number, class: "ax-control" %>
+                        <%= f.telephone_field :display_phone_number,
+                                              class: "ax-control",
+                                              data: { controller: "phone-input" } %>
                       </div>
                       <div class="ax-field">
                         <%= f.label :phone_number_id, "Phone Number ID", class: "ax-label" %>
@@ -592,7 +598,10 @@
                 </div>
                 <div class="ax-field">
                   <%= f.label :display_phone_number, "Número WhatsApp", class: "ax-label" %>
-                  <%= f.telephone_field :display_phone_number, class: "ax-control", placeholder: "554721228669" %>
+                  <%= f.telephone_field :display_phone_number,
+                                        class: "ax-control",
+                                        placeholder: "554721228669",
+                                        data: { controller: "phone-input" } %>
                 </div>
                 <div class="ax-field">
                   <%= f.label :phone_number_id, "Phone Number ID", class: "ax-label" %>

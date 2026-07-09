@@ -6,6 +6,7 @@
 # `footer_store_id` quando a mesma loja aparece nos dois lugares.
 class Store < ApplicationRecord
   include TenantScoped
+  include PhoneNormalizable
 
   extend FriendlyId
   friendly_id :name, use: [:slugged, :finders]
@@ -29,6 +30,7 @@ class Store < ApplicationRecord
   accepts_nested_attributes_for :store_shifts, allow_destroy: true, reject_if: :all_blank
 
   validates :name, presence: true
+  normalize_phone_fields :phone
   validates :geofence_radius_meters, numericality: { greater_than: 0, less_than_or_equal_to: 5000 }
   validate :valid_timezone
   validate :valid_coordinates

@@ -1,5 +1,6 @@
 class Lead < ApplicationRecord
   include TenantScoped
+  include PhoneNormalizable
 
   DEFAULT_STATUS = "Novo".freeze
   LEGACY_STATUSES = ["Novo", "Em Atendimento", "Aguardando Aceite", "Represado", "Descartado", "Concluido"].freeze
@@ -74,6 +75,7 @@ class Lead < ApplicationRecord
 
   before_validation :normalize_status
   before_validation :normalize_tags
+  normalize_phone_fields :phone, :client_phone, :agent_phone
 
   scope :novo, -> { where(status: status_value(:novo)) }
   scope :em_atendimento, -> { where(status: status_value(:em_atendimento)) }
@@ -141,12 +143,9 @@ class Lead < ApplicationRecord
   end
 
   def direct_whatsapp_url
-    number = display_phone&.gsub(/\D/, '')
+    number = Phones::Normalizer.call(display_phone)
     return nil if number.blank?
-    
-    # Ensure 55 prefix if not present and sounds like BR
-    number = "55#{number}" if number.length <= 11
-    
+
     "https://wa.me/#{number}"
   end
 

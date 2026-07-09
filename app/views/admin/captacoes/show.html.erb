@@ -279,7 +279,7 @@
         <div class="capt-detail-section-title"><i class="bi bi-person"></i>Proprietário</div>
         <div class="tw-text-sm"><strong><%= @captacao.proprietario_nome %></strong></div>
         <% if @captacao.proprietario_telefone.present? %>
-          <div class="tw-text-sm tw-mt-2 tw-flex tw-items-center tw-gap-2"><i class="bi bi-telephone"></i><%= @captacao.proprietario_telefone %></div>
+          <div class="tw-text-sm tw-mt-2 tw-flex tw-items-center tw-gap-2"><i class="bi bi-telephone"></i><%= format_phone(@captacao.proprietario_telefone) %></div>
         <% end %>
         <% if @captacao.proprietario_email.present? %>
           <div class="tw-text-sm tw-mt-2 tw-flex tw-items-center tw-gap-2"><i class="bi bi-envelope"></i><%= @captacao.proprietario_email %></div>

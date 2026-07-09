@@ -24,7 +24,7 @@
 
   <div class="ax-board__card-lines">
     <% if lead.phone.present? %>
-      <div class="ax-board__card-line"><i class="bi bi-telephone"></i><span><%= lead.phone %></span></div>
+      <div class="ax-board__card-line"><i class="bi bi-telephone"></i><span><%= format_phone(lead.phone) %></span></div>
     <% end %>
     <% if lead.email.present? %>
       <div class="ax-board__card-line"><i class="bi bi-envelope"></i><span><%= lead.email %></span></div>

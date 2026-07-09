@@ -20,7 +20,7 @@
                     label: "Celular",
                     value: habitation.proprietario_telefone,
                     readonly: !can_edit_protected_habitation_fields,
-                    data: { controller: "mask", mask_type_value: "phone" }
+                    data: { controller: "phone-input" }
                   ) %>
             </div>
             <div class="ax-span-6">
@@ -30,7 +30,7 @@
                     label: "F. Comercial",
                     value: habitation.proprietario_telefone_comercial_display,
                     readonly: !can_edit_protected_habitation_fields,
-                    data: { controller: "mask", mask_type_value: "phone" }
+                    data: { controller: "phone-input" }
                   ) %>
             </div>
             <div class="ax-span-6">
@@ -40,7 +40,7 @@
                     label: "F. Residencial",
                     value: habitation.proprietario_telefone_residencial_display,
                     readonly: !can_edit_protected_habitation_fields,
-                    data: { controller: "mask", mask_type_value: "phone" }
+                    data: { controller: "phone-input" }
                   ) %>
             </div>
           <% end %>

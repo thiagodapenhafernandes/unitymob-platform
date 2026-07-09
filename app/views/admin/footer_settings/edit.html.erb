@@ -101,7 +101,10 @@
                       <div class="ax-span-6 tw-mb-3">
                         <%= f.label :whatsapp, "WhatsApp de Contato", class: "ax-label" %>
                         <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp", style: "color: #16a34a;")) do %>
-                          <%= f.text_field :whatsapp, class: "ax-control", placeholder: "(47) 98863-0198" %>
+                          <%= f.telephone_field :whatsapp,
+                                                class: "ax-control",
+                                                placeholder: "(47) 98863-0198",
+                                                data: { controller: "phone-input" } %>
                         <% end %>
                       </div>
                       <div class="ax-span-6 tw-mb-3">

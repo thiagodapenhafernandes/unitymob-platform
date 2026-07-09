@@ -63,12 +63,7 @@ module Whatsapp
     attr_reader :template, :phone, :variables, :sender_number, :admin_user, :tenant
 
     def normalized_phone
-      @normalized_phone ||= begin
-        digits = phone.gsub(/\D/, "")
-        return "" if digits.blank?
-
-        digits.length <= 11 ? "55#{digits}" : digits
-      end
+      @normalized_phone ||= Phones::Normalizer.call(phone).to_s
     end
 
     def template_components(client)

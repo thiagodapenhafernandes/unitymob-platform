@@ -619,10 +619,7 @@ module Automation
     end
 
     def normalized_phone
-      digits = (@lead&.display_phone.presence || campaign_recipient&.display_phone).to_s.gsub(/\D/, "")
-      return "" if digits.blank?
-
-      digits.length <= 11 ? "55#{digits}" : digits
+      Phones::Normalizer.call(@lead&.display_phone.presence || campaign_recipient&.display_phone).to_s
     end
 
     def interest_profile_text(profile)

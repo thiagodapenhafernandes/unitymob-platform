@@ -65,7 +65,15 @@
                 <% if store.zip_code.present? %><li><strong>CEP:</strong> <%= store.zip_code %></li><% end %>
                 <% if store.creci.present? %><li><strong>CRECI:</strong> <%= store.creci %></li><% end %>
                 <% if store.phone.present? %>
-                  <li><strong>Tel:</strong> <a href="tel:+55<%= store.phone.gsub(/\D/, '') %>" class="text-golden-one hover:text-white transition-colors"><%= store.phone %></a></li>
+                  <% store_phone = Phones::Normalizer.call(store.phone) %>
+                  <li>
+                    <strong>Tel:</strong>
+                    <% if store_phone.present? %>
+                      <a href="tel:+<%= store_phone %>" class="text-golden-one hover:text-white transition-colors"><%= format_phone(store.phone) %></a>
+                    <% else %>
+                      <%= store.phone %>
+                    <% end %>
+                  </li>
                 <% end %>
               </ul>
             </div>
@@ -80,11 +88,16 @@
         <h3 class="text-lg font-bold mb-4 text-golden-one"><%= @footer_setting.contact_title %></h3>
         <ul class="space-y-3 text-white/80 mb-6 font-medium">
           <% if @footer_setting.whatsapp.present? %>
+            <% footer_whatsapp = Phones::Normalizer.call(@footer_setting.whatsapp) %>
             <li class="flex items-center">
               <i class="bi bi-whatsapp mr-2 flex-shrink-0 text-golden-one text-lg"></i>
-              <a href="https://wa.me/55<%= @footer_setting.whatsapp.gsub(/\D/, '') %>" target="_blank" class="hover:text-white transition-colors">
+              <% if footer_whatsapp.present? %>
+                <a href="https://wa.me/<%= footer_whatsapp %>" target="_blank" class="hover:text-white transition-colors">
+                  <%= format_phone(@footer_setting.whatsapp) %>
+                </a>
+              <% else %>
                 <%= @footer_setting.whatsapp %>
-              </a>
+              <% end %>
             </li>
           <% end %>
           <% if @footer_setting.email.present? %>

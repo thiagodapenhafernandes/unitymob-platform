@@ -1,5 +1,6 @@
 class WhatsappSenderNumber < ApplicationRecord
   include TenantScoped
+  include PhoneNormalizable
 
   STATUSES = %w[connected pending failed disconnected].freeze
 
@@ -15,6 +16,7 @@ class WhatsappSenderNumber < ApplicationRecord
             numericality: { greater_than_or_equal_to: 0, less_than: 1_000_000 }
   validate :display_phone_number_must_be_valid
   validate :integration_must_belong_to_tenant
+  normalize_phone_fields :display_phone_number
   before_save :clear_other_notification_sender, if: :active_notification_sender?
 
   scope :active, -> { where(active: true) }
@@ -64,7 +66,7 @@ class WhatsappSenderNumber < ApplicationRecord
   end
 
   def formatted_phone
-    display_phone_number.presence
+    Phones::Normalizer.display(display_phone_number).presence || display_phone_number.presence
   end
 
   def campaign_cost(sent_count:, failed_count:)
@@ -74,8 +76,7 @@ class WhatsappSenderNumber < ApplicationRecord
   private
 
   def display_phone_number_must_be_valid
-    digits = display_phone_number.to_s.gsub(/\D/, "")
-    return if digits.length.between?(10, 15)
+    return if Phones::Normalizer.valid?(display_phone_number)
 
     errors.add(:display_phone_number, "deve ter DDD e número válidos")
   end

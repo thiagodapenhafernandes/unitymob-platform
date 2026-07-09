@@ -1,5 +1,8 @@
 class ContactSetting < ApplicationRecord
+  include PhoneNormalizable
+
   after_commit :clear_public_site_cache
+  normalize_phone_fields :whatsapp_primary, :whatsapp_secondary, :phone
 
   # Singleton pattern
   def self.instance

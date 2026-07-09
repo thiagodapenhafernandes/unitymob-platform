@@ -115,7 +115,10 @@
         </div>
         <div class="ax-field">
           <%= f.label :display_phone_number, "Número WhatsApp", class: "ax-label" %>
-          <%= f.telephone_field :display_phone_number, class: "ax-control", placeholder: "5511999990000" %>
+          <%= f.telephone_field :display_phone_number,
+                                class: "ax-control",
+                                placeholder: "5511999990000",
+                                data: { controller: "phone-input" } %>
         </div>
         <details class="whatsapp-sender-modal__advanced">
           <summary>Configuração avançada</summary>

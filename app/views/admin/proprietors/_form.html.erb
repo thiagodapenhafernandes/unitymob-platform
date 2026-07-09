@@ -44,19 +44,19 @@
     </div>
     <div class="ax-span-2">
       <%= f.label :phone_primary, "Telefone", class: "ax-label tw-font-bold tw-text-sm tw-text-ink-muted text-uppercase" %>
-      <%= f.text_field :phone_primary, class: "ax-control", autocomplete: "tel", data: { controller: "mask", mask_type_value: "phone" } %>
+      <%= f.text_field :phone_primary, class: "ax-control", autocomplete: "tel", data: { controller: "phone-input" } %>
     </div>
     <div class="ax-span-2">
       <%= f.label :mobile_phone, "Celular", class: "ax-label tw-font-bold tw-text-sm tw-text-ink-muted text-uppercase" %>
-      <%= f.text_field :mobile_phone, class: "ax-control", autocomplete: "tel-national", data: { controller: "mask", mask_type_value: "phone" } %>
+      <%= f.text_field :mobile_phone, class: "ax-control", autocomplete: "tel", data: { controller: "phone-input" } %>
     </div>
     <div class="ax-span-2">
       <%= f.label :residential_phone, "Residencial", class: "ax-label tw-font-bold tw-text-sm tw-text-ink-muted text-uppercase" %>
-      <%= f.text_field :residential_phone, class: "ax-control", autocomplete: "tel", data: { controller: "mask", mask_type_value: "phone" } %>
+      <%= f.text_field :residential_phone, class: "ax-control", autocomplete: "tel", data: { controller: "phone-input" } %>
     </div>
     <div class="ax-span-2">
       <%= f.label :business_phone, "Comercial", class: "ax-label tw-font-bold tw-text-sm tw-text-ink-muted text-uppercase" %>
-      <%= f.text_field :business_phone, class: "ax-control", autocomplete: "tel", data: { controller: "mask", mask_type_value: "phone" } %>
+      <%= f.text_field :business_phone, class: "ax-control", autocomplete: "tel", data: { controller: "phone-input" } %>
     </div>
 
     <div class="ax-span-3">
@@ -202,7 +202,7 @@
             </div>
             <div class="ax-span-2">
               <%= f.label :spouse_phone, "Telefone", class: "ax-label tw-font-bold tw-text-sm tw-text-ink-muted text-uppercase" %>
-              <%= f.text_field :spouse_phone, class: "ax-control", autocomplete: "section-spouse tel", data: { controller: "mask", mask_type_value: "phone" } %>
+              <%= f.text_field :spouse_phone, class: "ax-control", autocomplete: "section-spouse tel", data: { controller: "phone-input" } %>
             </div>
             <div class="ax-span-2">
               <%= f.label :spouse_cpf_cnpj, "CPF / CNPJ", class: "ax-label tw-font-bold tw-text-sm tw-text-ink-muted text-uppercase" %>

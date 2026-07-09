@@ -50,7 +50,7 @@ module InboundWebhooks
         # other_information (inbound_webhook_user_id/name).
         name: field_value("name", "nome", "client_name", "clientName"),
         email: field_value("email", "client_email", "clientEmail"),
-        phone: field_value("phone", "telefone", "celular", "whatsapp", "client_phone", "clientPhone"),
+        phone: Phones::Normalizer.call(field_value("phone", "telefone", "celular", "whatsapp", "client_phone", "clientPhone")),
         property_id: integer_value("property_id", "propertyId", "habitation_id", "habitationId"),
         source_url: field_value("source_url", "sourceUrl", "page_url", "pageUrl", "url"),
         lead_type: "webhook",

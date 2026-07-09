@@ -148,7 +148,7 @@
         </h5>
         <ul class="list-unstyled tw-text-sm" style="margin-bottom:0">
           <% if @store.phone.present? %>
-            <li class="tw-mb-2"><i class="bi bi-telephone tw-text-ink-muted" style="margin-right:.5rem"></i><%= @store.phone %></li>
+            <li class="tw-mb-2"><i class="bi bi-telephone tw-text-ink-muted" style="margin-right:.5rem"></i><%= format_phone(@store.phone) %></li>
           <% end %>
           <% if @store.creci.present? %>
             <li class="tw-mb-2"><i class="bi bi-award tw-text-ink-muted" style="margin-right:.5rem"></i>CRECI: <strong><%= @store.creci %></strong></li>

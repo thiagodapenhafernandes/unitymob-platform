@@ -26,11 +26,11 @@ class WhatsappCampaignUnsubscribe < ApplicationRecord
   def self.active_for?(sender_number:, phone:)
     return false if sender_number.blank?
 
-    active.exists?(whatsapp_sender_number: sender_number, phone_number: normalize_phone(phone))
+    active.exists?(whatsapp_sender_number: sender_number, phone_number: Phones::Normalizer.call(phone).to_s)
   end
 
   def self.register!(sender_number:, phone:, contact_name: nil, campaign_message: nil, campaign_recipient: nil, inbound_message: nil, source: "campaign_button", reason: nil, metadata: {})
-    normalized_phone = normalize_phone(phone)
+    normalized_phone = Phones::Normalizer.call(phone).to_s
     record = active.find_or_initialize_by(whatsapp_sender_number: sender_number, phone_number: normalized_phone)
     record.assign_attributes(
       whatsapp_campaign: campaign_message&.whatsapp_campaign || campaign_recipient&.whatsapp_campaign || record.whatsapp_campaign,
@@ -45,13 +45,6 @@ class WhatsappCampaignUnsubscribe < ApplicationRecord
     )
     record.save!
     record
-  end
-
-  def self.normalize_phone(value)
-    digits = value.to_s.gsub(/\D/, "")
-    return "" if digits.blank?
-
-    digits.length <= 11 ? "55#{digits}" : digits
   end
 
   def reenabled?
@@ -69,7 +62,7 @@ class WhatsappCampaignUnsubscribe < ApplicationRecord
   private
 
   def normalize_phone_number
-    self.phone_number = self.class.normalize_phone(phone_number)
+    self.phone_number = Phones::Normalizer.call(phone_number).to_s
   end
 
   def set_defaults

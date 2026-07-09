@@ -224,7 +224,7 @@
     ["Senha do imóvel/apartamento", @habitation.senha_imovel],
     ["Observações para visitas", @habitation.observacoes_visitas],
     ["Zelador", @habitation.zelador_nome],
-    ["Telefone do zelador", @habitation.zelador_telefone],
+    ["Telefone do zelador", format_phone(@habitation.zelador_telefone)],
     ["Região foco", @habitation.regiao_foco],
     ["Saldo devedor", money.call(@habitation.saldo_devedor_cents)],
     ["Nº de prestações", @habitation.numero_prestacoes]
@@ -299,9 +299,9 @@
       ["Proprietário", @habitation.proprietario],
       ["Cód. Vista", @habitation.proprietario_codigo],
       ["E-mail", @habitation.proprietario_email],
-      ["Celular", @habitation.proprietario_celular],
-      ["F. Comercial", @habitation.proprietario_telefone_comercial],
-      ["F. Residencial", @habitation.proprietario_telefone_residencial]
+      ["Celular", format_phone(@habitation.proprietario_celular)],
+      ["F. Comercial", format_phone(@habitation.proprietario_telefone_comercial)],
+      ["F. Residencial", format_phone(@habitation.proprietario_telefone_residencial)]
     ].select { |_label, value| value.present? }
   else
     []
