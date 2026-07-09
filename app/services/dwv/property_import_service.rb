@@ -131,6 +131,7 @@ module Dwv
       attrs = {
         codigo_dwv: dwv_id,
         imovel_dwv: "Sim",
+        admin_user: habitation.admin_user || dwv_owner_user,
         status: derived_status,
         valor_venda_cents: effective_sale,
         valor_locacao_cents: effective_rent,
@@ -199,6 +200,10 @@ module Dwv
 
     def pick_best_candidate(scope)
       scope.order(Arel.sql("CASE WHEN codigo_dwv IS NULL OR codigo_dwv = '' THEN 1 ELSE 0 END"), updated_at: :desc).first
+    end
+
+    def dwv_owner_user
+      @dwv_owner_user ||= Dwv::OwnerResolver.call(tenant)
     end
 
     def resolve_codigo_for(habitation)

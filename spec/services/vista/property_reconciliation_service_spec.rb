@@ -103,6 +103,21 @@ RSpec.describe Vista::PropertyReconciliationService do
       expect(attrs).not_to have_key(:codigo_empreendimento)
       expect(attrs[:nome_empreendimento]).to be_nil
     end
+
+    it "preserves Vista development name for apartments even without a development code" do
+      attrs = service.send(
+        :clearable_property_attrs,
+        {
+          "Codigo" => "3186",
+          "Categoria" => "Apartamento",
+          "CodigoEmpreendimento" => "",
+          "Empreendimento" => "Edifício Dom Gabriel"
+        }
+      )
+
+      expect(attrs[:codigo_empreendimento]).to be_nil
+      expect(attrs[:nome_empreendimento]).to eq("Edifício Dom Gabriel")
+    end
   end
 
   describe "publication flag preservation" do
