@@ -197,6 +197,26 @@ RSpec.describe Habitation::SearchScopes, type: :model do
 
       expect(Habitation.with_photos).to include(unit)
     end
+
+    it "does not inherit photos from non-development parent records" do
+      parent = create(
+        :habitation,
+        codigo: "UNIT-PARENT-PHOTO",
+        tipo: "Unitário",
+        pictures: [{ "url" => "https://example.com/parent.jpg" }]
+      )
+      unit = create(
+        :habitation,
+        codigo: "UNIT-WITH-NON-DEV-PARENT",
+        pictures: [],
+        fotos_empreendimento: [],
+        use_development_photos_flag: false
+      )
+      unit.update_columns(codigo_empreendimento: parent.codigo, use_development_photos_flag: true)
+
+      expect(Habitation.with_photos).not_to include(unit)
+      expect(Habitation.public_property_search).not_to include(unit)
+    end
   end
 
   describe ".admin_search_text" do

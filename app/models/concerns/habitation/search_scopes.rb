@@ -110,6 +110,7 @@ module Habitation::SearchScopes
         "    SELECT 1 FROM habitations developments " \
         "    WHERE developments.codigo = habitations.codigo_empreendimento " \
         "      AND developments.tenant_id = habitations.tenant_id " \
+        "      AND COALESCE(developments.tipo, '') = 'Empreendimento' " \
         "      AND (" \
         "        (jsonb_typeof(developments.pictures) = 'array' AND jsonb_array_length(developments.pictures) > 0) OR " \
         "        (jsonb_typeof(developments.fotos_empreendimento) = 'array' AND jsonb_array_length(developments.fotos_empreendimento) > 0) OR " \
@@ -129,6 +130,7 @@ module Habitation::SearchScopes
         "    SELECT 1 FROM habitations developments " \
         "    WHERE developments.codigo = habitations.codigo_empreendimento " \
         "      AND developments.tenant_id = habitations.tenant_id " \
+        "      AND COALESCE(developments.tipo, '') = 'Empreendimento' " \
         "      AND (" \
         "        (jsonb_typeof(developments.pictures) = 'array' AND jsonb_array_length(developments.pictures) > 0) OR " \
         "        (jsonb_typeof(developments.fotos_empreendimento) = 'array' AND jsonb_array_length(developments.fotos_empreendimento) > 0) OR " \
