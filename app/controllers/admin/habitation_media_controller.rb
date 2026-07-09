@@ -1,4 +1,9 @@
 class Admin::HabitationMediaController < Admin::BaseController
+  RETURN_PARAM_DENYLIST = %w[
+    controller action id habitation_id return_to back_anchor authenticity_token _method utf8 commit
+    habitation save_anchor save_navigation save_context
+  ].freeze
+
   before_action -> { check_permission!(:view, :imoveis) }
   before_action :set_habitation
   before_action :scope_habitation_by_permission
@@ -44,7 +49,7 @@ class Admin::HabitationMediaController < Admin::BaseController
 
       respond_to do |format|
         format.html do
-          redirect_to admin_habitation_media_path(@habitation, return_to: @return_to_path),
+          redirect_to admin_path_with_flat_return(admin_habitation_media_path(@habitation.id), @return_to_path),
                       notice: "Mídia atualizada com sucesso."
         end
         format.json do
@@ -241,7 +246,7 @@ class Admin::HabitationMediaController < Admin::BaseController
   def render_media_forbidden
     respond_to do |format|
       format.json { render json: { ok: false, error: "forbidden" }, status: :forbidden }
-      format.html { redirect_to admin_habitation_media_path(@habitation), alert: "Você não tem permissão para editar as fotos deste imóvel." }
+      format.html { redirect_to admin_habitation_media_path(@habitation.id), alert: "Você não tem permissão para editar as fotos deste imóvel." }
     end
   end
 
@@ -313,7 +318,7 @@ class Admin::HabitationMediaController < Admin::BaseController
     @habitation.reload
 
     respond_to do |format|
-      format.html { redirect_to admin_habitation_media_path(@habitation), notice: message }
+      format.html { redirect_to admin_habitation_media_path(@habitation.id), notice: message }
       format.json do
         render json: media_response_payload(message: message)
       end
@@ -322,7 +327,7 @@ class Admin::HabitationMediaController < Admin::BaseController
 
   def respond_with_media_error(message)
     respond_to do |format|
-      format.html { redirect_to admin_habitation_media_path(@habitation), alert: message }
+      format.html { redirect_to admin_habitation_media_path(@habitation.id), alert: message }
       format.json { render json: { ok: false, error: message }, status: :unprocessable_entity }
     end
   end
@@ -343,7 +348,7 @@ class Admin::HabitationMediaController < Admin::BaseController
     {
       ok: true,
       message: message,
-      media_url: admin_habitation_media_path(@habitation),
+      media_url: admin_habitation_media_path(@habitation.id),
       gallery_html: media_gallery_html(gallery_locals),
       counts: {
         photos: photos.size,
@@ -399,7 +404,7 @@ class Admin::HabitationMediaController < Admin::BaseController
     return if identifier.blank?
 
     if identifier.match?(/\A\d+\z/)
-      current_tenant.habitations.find_by(codigo: identifier) || current_tenant.habitations.find_by(id: identifier)
+      current_tenant.habitations.find_by(id: identifier) || current_tenant.habitations.find_by(codigo: identifier)
     else
       current_tenant.habitations.friendly.find(identifier)
     end
@@ -441,7 +446,7 @@ class Admin::HabitationMediaController < Admin::BaseController
     @property_setting = PropertySetting.instance
   end
 
-  def safe_admin_habitations_return_path(value)
+  def safe_admin_habitations_return_path(value, source_params: params)
     path = value.to_s.strip
     return nil if path.blank?
 
@@ -449,8 +454,33 @@ class Admin::HabitationMediaController < Admin::BaseController
     return nil if uri.scheme.present? || uri.host.present?
     return nil unless uri.path == admin_habitations_path
 
-    [uri.path, uri.query.presence].compact.join("?")
+    query_params = Rack::Utils.parse_nested_query(uri.query.to_s)
+    query_params.merge!(flattened_admin_habitations_return_query_params(source_params))
+    query = Rack::Utils.build_nested_query(query_params.compact_blank)
+    path_with_query = [uri.path, query.presence].compact.join("?")
+    fragment = uri.fragment.presence || source_params[:back_anchor].to_s.presence || source_params["back_anchor"].to_s.presence
+    fragment.present? ? "#{path_with_query}##{fragment}" : path_with_query
   rescue URI::InvalidURIError
     nil
+  end
+
+  def admin_path_with_flat_return(path, return_to)
+    helpers.admin_habitation_path_with_query(
+      path,
+      helpers.admin_habitation_flat_return_params(return_to)
+    )
+  end
+
+  def flattened_admin_habitations_return_query_params(source_params)
+    raw_params =
+      if source_params.respond_to?(:to_unsafe_h)
+        source_params.to_unsafe_h
+      else
+        source_params.to_h
+      end
+
+    raw_params
+      .except(*RETURN_PARAM_DENYLIST)
+      .compact_blank
   end
 end

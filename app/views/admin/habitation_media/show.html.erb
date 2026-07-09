@@ -1,4 +1,4 @@
-<% return_path = @return_to_path || edit_admin_habitation_path(@habitation, anchor: "media") %>
+<% return_path = @return_to_path || edit_admin_habitation_path(@habitation.id, anchor: "media") %>
 <% media_count = (@habitation.photos.attached? ? @habitation.photos.attachments.size : 0) + (@habitation.pictures.is_a?(Array) ? @habitation.pictures.size : 0) %>
 
 <% content_for :admin_contextbar_breadcrumb do %>
@@ -6,20 +6,20 @@
   <i class="bi bi-chevron-right"></i>
   <%= link_to "Imóveis", admin_habitations_path %>
   <i class="bi bi-chevron-right"></i>
-  <%= link_to @habitation.codigo.presence || "Cadastro", edit_admin_habitation_path(@habitation) %>
+  <%= link_to @habitation.codigo.presence || "Cadastro", edit_admin_habitation_path(@habitation.id) %>
   <i class="bi bi-chevron-right"></i>
   <strong>Mídia</strong>
 <% end %>
 
 <% content_for :admin_contextbar_actions do %>
   <%= admin_contextbar_link("Voltar", return_path, icon: "arrow-left") %>
-  <%= admin_contextbar_link("Cadastro", edit_admin_habitation_path(@habitation, anchor: "media"), icon: "pencil-square") %>
+  <%= admin_contextbar_link("Cadastro", edit_admin_habitation_path(@habitation.id, anchor: "media"), icon: "pencil-square") %>
   <%= admin_contextbar_link("Ver no site", habitation_path(@habitation), icon: "box-arrow-up-right", primary: true, target: "_blank", rel: "noopener") %>
 <% end %>
 
 <% media_main = capture do %>
   <%= form_with model: [:admin, @habitation],
-                url: admin_habitation_media_path(@habitation),
+                url: admin_habitation_media_path(@habitation.id),
                 method: :patch,
                 local: true,
                 html: {
@@ -93,7 +93,7 @@
     <nav class="ax-form-tabs habitation-tabs-bar" aria-label="Atalhos de mídia">
       <ul class="ax-form-tabs__list" role="list">
         <li>
-          <%= link_to edit_admin_habitation_path(@habitation, anchor: "media"), class: "ax-form-tabs__item active" do %>
+          <%= link_to edit_admin_habitation_path(@habitation.id, anchor: "media"), class: "ax-form-tabs__item active" do %>
             <span class="ax-form-tabs__icon"><i class="bi bi-images"></i></span>
             <span class="ax-form-tabs__copy">
               <strong>Fotos e vídeos</strong>
@@ -102,7 +102,7 @@
           <% end %>
         </li>
         <li>
-          <%= link_to edit_admin_habitation_path(@habitation, anchor: "seo"), class: "ax-form-tabs__item" do %>
+          <%= link_to edit_admin_habitation_path(@habitation.id, anchor: "seo"), class: "ax-form-tabs__item" do %>
             <span class="ax-form-tabs__icon"><i class="bi bi-globe2"></i></span>
             <span class="ax-form-tabs__copy">
               <strong>Publicação</strong>
@@ -111,7 +111,7 @@
           <% end %>
         </li>
         <li>
-          <%= link_to edit_admin_habitation_path(@habitation, anchor: "documents"), class: "ax-form-tabs__item" do %>
+          <%= link_to edit_admin_habitation_path(@habitation.id, anchor: "documents"), class: "ax-form-tabs__item" do %>
             <span class="ax-form-tabs__icon"><i class="bi bi-folder2"></i></span>
             <span class="ax-form-tabs__copy">
               <strong>Documentos</strong>

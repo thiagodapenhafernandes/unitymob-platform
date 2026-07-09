@@ -48,6 +48,10 @@ class Admin::HabitationsController < Admin::BaseController
   ].freeze
   # Fonte única dos campos de exportação vive no service (reusado pelo job async).
   EXPORT_FIELDS = Habitations::CsvExporter::FIELDS
+  RETURN_PARAM_DENYLIST = %w[
+    controller action id habitation_id return_to back_anchor authenticity_token _method utf8 commit
+    habitation save_anchor save_navigation save_context release_to_broker_after_save save_internal_after_save
+  ].freeze
   SORT_OPTIONS = {
     "data_cadastro_crm" => { label: "Mais recentes", column: "(CASE WHEN habitations.codigo ~ '^[0-9]+$' THEN habitations.codigo::bigint END)", default_direction: "desc" },
     "codigo" => { label: "Referência", column: "codigo", default_direction: "asc" },
@@ -168,7 +172,7 @@ class Admin::HabitationsController < Admin::BaseController
       return
     end
 
-    path = can_edit_habitation?(habitation) ? edit_admin_habitation_path(habitation) : admin_habitation_path(habitation)
+    path = can_edit_habitation?(habitation) ? edit_admin_habitation_path(habitation.id) : admin_habitation_path(habitation.id)
     redirect_to path
   end
 
@@ -527,7 +531,7 @@ class Admin::HabitationsController < Admin::BaseController
     saving_internal_intake = save_internal_intake_requested?
     if releasing_to_broker || saving_internal_intake
       unless can_release_intake_to_broker?(@habitation)
-        redirect_to edit_admin_habitation_path(@habitation), alert: "Você não tem permissão para concluir esta revisão."
+        redirect_to edit_admin_habitation_path(@habitation.id), alert: "Você não tem permissão para concluir esta revisão."
         return
       end
 
@@ -590,9 +594,9 @@ class Admin::HabitationsController < Admin::BaseController
     result = SyncPropertyService.new(@habitation.codigo).perform
 
     if result[:success]
-      redirect_to edit_admin_habitation_path(@habitation), notice: "Imóvel sincronizado com o Vista com sucesso!"
+      redirect_to edit_admin_habitation_path(@habitation.id), notice: "Imóvel sincronizado com o Vista com sucesso!"
     else
-      redirect_to edit_admin_habitation_path(@habitation), alert: "Erro na sincronização: #{result[:error]}"
+      redirect_to edit_admin_habitation_path(@habitation.id), alert: "Erro na sincronização: #{result[:error]}"
     end
   end
 
@@ -602,17 +606,17 @@ class Admin::HabitationsController < Admin::BaseController
         return render_ai_content_preview(message: "Configure o token da OpenAI em Integrações > IA antes de gerar a sugestão.", message_type: "warning")
       end
 
-      return redirect_to edit_admin_habitation_path(@habitation, anchor: "features"), alert: "Configure o token da OpenAI em Integrações > IA antes de gerar a sugestão."
+      return redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), alert: "Configure o token da OpenAI em Integrações > IA antes de gerar a sugestão."
     end
 
     suggestion = Ai::PropertyContentService.new(@habitation, admin_user: current_admin_user).generate_suggestion!
     return render_ai_content_preview(suggestion: suggestion, message: "Sugestão com IA gerada para revisão.", message_type: "success") if turbo_frame_request?
 
-    redirect_to edit_admin_habitation_path(@habitation, anchor: "features"), notice: "Sugestão com IA gerada para revisão."
+    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), notice: "Sugestão com IA gerada para revisão."
   rescue => e
     return render_ai_content_preview(message: "Erro ao gerar sugestão com IA: #{e.message}", message_type: "danger") if turbo_frame_request?
 
-    redirect_to edit_admin_habitation_path(@habitation, anchor: "features"), alert: "Erro ao gerar sugestão com IA: #{e.message}"
+    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), alert: "Erro ao gerar sugestão com IA: #{e.message}"
   end
 
   def format_ai_suggestion
@@ -624,15 +628,15 @@ class Admin::HabitationsController < Admin::BaseController
 
     return render_ai_content_preview(suggestion: suggestion, message: "Texto formatado para revisão.", message_type: "success") if turbo_frame_request?
 
-    redirect_to edit_admin_habitation_path(@habitation, anchor: "features"), notice: "Texto formatado para revisão."
+    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), notice: "Texto formatado para revisão."
   rescue ActiveRecord::RecordNotFound
     return render_ai_content_preview(message: "Sugestão não encontrada ou já aplicada.", message_type: "warning") if turbo_frame_request?
 
-    redirect_to edit_admin_habitation_path(@habitation, anchor: "features"), alert: "Sugestão não encontrada ou já aplicada."
+    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), alert: "Sugestão não encontrada ou já aplicada."
   rescue => e
     return render_ai_content_preview(message: "Erro ao formatar texto: #{e.message}", message_type: "danger") if turbo_frame_request?
 
-    redirect_to edit_admin_habitation_path(@habitation, anchor: "features"), alert: "Erro ao formatar texto: #{e.message}"
+    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), alert: "Erro ao formatar texto: #{e.message}"
   end
 
   def apply_ai_suggestion
@@ -641,15 +645,15 @@ class Admin::HabitationsController < Admin::BaseController
 
     return render_ai_content_preview(suggestion: nil, message: "Sugestão aplicada ao título, descrição e SEO do imóvel.", message_type: "success") if turbo_frame_request?
 
-    redirect_to edit_admin_habitation_path(@habitation, anchor: "features"), notice: "Sugestão aplicada ao título, descrição e SEO do imóvel."
+    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), notice: "Sugestão aplicada ao título, descrição e SEO do imóvel."
   rescue ActiveRecord::RecordNotFound
     return render_ai_content_preview(message: "Sugestão não encontrada ou já aplicada.", message_type: "warning") if turbo_frame_request?
 
-    redirect_to edit_admin_habitation_path(@habitation, anchor: "features"), alert: "Sugestão não encontrada ou já aplicada."
+    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), alert: "Sugestão não encontrada ou já aplicada."
   rescue => e
     return render_ai_content_preview(message: "Erro ao aplicar sugestão: #{e.message}", message_type: "danger") if turbo_frame_request?
 
-    redirect_to edit_admin_habitation_path(@habitation, anchor: "features"), alert: "Erro ao aplicar sugestão: #{e.message}"
+    redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), alert: "Erro ao aplicar sugestão: #{e.message}"
   end
 
   # Remove um anexo individual (ficha de cadastro ou autorização) do imóvel.
@@ -748,7 +752,7 @@ class Admin::HabitationsController < Admin::BaseController
     return if identifier.blank?
 
     if identifier.match?(/\A\d+\z/)
-      current_tenant.habitations.find_by(codigo: identifier) || current_tenant.habitations.find_by(id: identifier)
+      current_tenant.habitations.find_by(id: identifier) || current_tenant.habitations.find_by(codigo: identifier)
     else
       current_tenant.habitations.friendly.find(identifier)
     end
@@ -1528,27 +1532,33 @@ class Admin::HabitationsController < Admin::BaseController
     anchor = params[:save_anchor].to_s.presence_in(%w[documents media])
 
     if source_habitation.present? && habitation.empreendimento?
-      redirect_to edit_admin_habitation_path(source_habitation, return_to: safe_admin_habitations_return_path(params[:return_to])), notice: "#{notice} Unidade vinculada ao empreendimento #{habitation.codigo}."
+      redirect_to admin_path_with_flat_return(edit_admin_habitation_path(source_habitation.id), safe_admin_habitations_return_path(params[:return_to])), notice: "#{notice} Unidade vinculada ao empreendimento #{habitation.codigo}."
       return
     end
 
     if params[:save_context].to_s == "media_module"
-      redirect_to admin_habitation_media_path(habitation, return_to: safe_admin_habitations_return_path(params[:return_to])), notice: notice
+      redirect_to admin_path_with_flat_return(admin_habitation_media_path(habitation.id), safe_admin_habitations_return_path(params[:return_to])), notice: notice
       return
     end
 
     if params[:save_navigation].to_s == "stay"
-      redirect_to edit_admin_habitation_path(habitation, return_to: safe_admin_habitations_return_path(params[:return_to]), anchor: anchor), notice: "#{notice} Você permaneceu na ficha de cadastro."
+      redirect_to admin_path_with_flat_return(edit_admin_habitation_path(habitation.id, anchor: anchor), safe_admin_habitations_return_path(params[:return_to])), notice: "#{notice} Você permaneceu na ficha de cadastro."
     else
       redirect_to safe_admin_habitations_return_path(params[:return_to]) || admin_habitations_path, notice: "#{notice} Você saiu para o catálogo."
     end
   end
 
   def edit_habitation_path_with_return(habitation, anchor:)
-    edit_admin_habitation_path(
-      habitation,
-      return_to: safe_admin_habitations_return_path(params[:return_to]),
-      anchor: anchor
+    admin_path_with_flat_return(
+      edit_admin_habitation_path(habitation.id, anchor: anchor),
+      safe_admin_habitations_return_path(params[:return_to])
+    )
+  end
+
+  def admin_path_with_flat_return(path, return_to)
+    helpers.admin_habitation_path_with_query(
+      path,
+      helpers.admin_habitation_flat_return_params(return_to)
     )
   end
 
@@ -1556,7 +1566,7 @@ class Admin::HabitationsController < Admin::BaseController
     habitation.data_atualizacao_crm = Time.current if force || habitation.changed?
   end
 
-  def safe_admin_habitations_return_path(value)
+  def safe_admin_habitations_return_path(value, source_params: params)
     path = value.to_s.strip
     return nil if path.blank?
 
@@ -1564,11 +1574,27 @@ class Admin::HabitationsController < Admin::BaseController
     return nil if uri.scheme.present? || uri.host.present?
     return nil unless safe_admin_habitation_return_path?(uri.path)
 
-    query = compact_return_query(uri.query)
+    query_params = Rack::Utils.parse_nested_query(uri.query.to_s)
+    query_params.merge!(flattened_admin_habitations_return_query_params(source_params))
+    query = compact_return_query(Rack::Utils.build_nested_query(query_params))
     path_with_query = [uri.path, query].compact.join("?")
-    uri.fragment.present? ? "#{path_with_query}##{uri.fragment}" : path_with_query
+    fragment = uri.fragment.presence || source_params[:back_anchor].to_s.presence || source_params["back_anchor"].to_s.presence
+    fragment.present? ? "#{path_with_query}##{fragment}" : path_with_query
   rescue URI::InvalidURIError
     nil
+  end
+
+  def flattened_admin_habitations_return_query_params(source_params)
+    raw_params =
+      if source_params.respond_to?(:to_unsafe_h)
+        source_params.to_unsafe_h
+      else
+        source_params.to_h
+      end
+
+    raw_params
+      .except(*RETURN_PARAM_DENYLIST)
+      .compact_blank
   end
 
   def safe_admin_habitation_return_path?(path)

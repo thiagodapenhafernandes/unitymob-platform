@@ -94,7 +94,7 @@
                 <div class="ax-page-subtitle"><%= @property.bairro %>, <%= @property.cidade %></div>
               </div>
               <div class="lead-property-summary__actions">
-                <%= link_to "Gerenciar imóvel", admin_habitation_path(@property, return_to: request.fullpath), class: "ax-btn ax-btn--sm" %>
+                <%= link_to "Gerenciar imóvel", admin_habitation_path_with_query(admin_habitation_path(@property.id), admin_habitation_flat_return_params(request.fullpath)), class: "ax-btn ax-btn--sm" %>
                 <%= link_to "Ver no site", habitation_path(@property), target: "_blank", class: "ax-btn ax-btn--sm" %>
               </div>
             </div>

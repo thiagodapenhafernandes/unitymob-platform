@@ -4,7 +4,7 @@
   <%= render layout: "admin/whatsapp_inbox/context_section", locals: { label: "Imóvel de interesse" } do %>
     <% if thread_property %>
       <div class="ax-context-pin ax-context-pin--property">
-        <%= link_to admin_habitation_path(thread_property), class: "ax-context-pin__link" do %>
+        <%= link_to admin_habitation_path(thread_property.id), class: "ax-context-pin__link" do %>
           <i class="bi bi-house-door"></i>
           <span><%= thread_property.display_title %></span>
         <% end %>

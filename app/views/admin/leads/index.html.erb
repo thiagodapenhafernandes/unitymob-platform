@@ -769,7 +769,7 @@
                   <% if property.present? %>
                     <i class="bi bi-house-door"></i>
                     <span>
-                      <%= link_to property.display_title, admin_habitation_path(property, return_to: lead_return_to_path) %>
+                      <%= link_to property.display_title, admin_habitation_path_with_query(admin_habitation_path(property.id), admin_habitation_flat_return_params(lead_return_to_path)) %>
                       <small><%= property.codigo %></small>
                     </span>
                   <% elsif lead.property_id.present? %>

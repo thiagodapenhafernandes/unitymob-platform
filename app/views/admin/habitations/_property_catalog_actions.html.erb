@@ -120,7 +120,7 @@
 
       <% if can_destroy_habitation? %>
         <div class="admin-property-menu__sep"></div>
-        <%= button_to admin_habitation_path(imovel),
+        <%= button_to admin_habitation_path(imovel.id),
                       method: :delete,
                       class: "admin-property-menu__item admin-property-menu__item--danger",
                       form: { data: { turbo_confirm: "Tem certeza que deseja excluir este imóvel? Esta ação não pode ser desfeita." } } do %>

@@ -1,4 +1,7 @@
 class HabitationsController < ApplicationController
+  PUBLIC_LISTING_PER_PAGE = 12
+  MAX_PUBLIC_LISTING_PAGE = ENV.fetch("PUBLIC_LISTING_MAX_PAGE", 50).to_i
+
   include HabitationCaching
   include ActionView::Helpers::NumberHelper
   before_action :set_habitation, only: [:show, :schedule_visit, :share_link]
@@ -9,7 +12,7 @@ class HabitationsController < ApplicationController
   # GET /imoveis
   def index
     apply_strategic_landing_params
-    load_filter_options
+    return if reject_invalid_public_listing_page!
 
     # Handle Target Price (Approximate Search ±20%)
     if params[:target_price].present?
@@ -32,6 +35,9 @@ class HabitationsController < ApplicationController
       .advanced_search(filter_params)
 
     total_entries = cached_listing_total_entries(listing_scope, filter_params)
+    return if reject_public_listing_page_beyond_total!(total_entries)
+
+    load_filter_options
 
     @habitations = listing_scope
       .with_attached_photos
@@ -40,7 +46,7 @@ class HabitationsController < ApplicationController
         { constructor: { logo_attachment: :blob } },
         { empreendimento: { constructor: { logo_attachment: :blob } } }
       )
-      .paginate(page: params[:page], per_page: 12, total_entries: total_entries)
+      .paginate(page: requested_public_listing_page, per_page: PUBLIC_LISTING_PER_PAGE, total_entries: total_entries)
     
     # SEO page name
     @page_name = 'imoveis'
@@ -307,6 +313,7 @@ class HabitationsController < ApplicationController
   
   def search_params
     permitted = params.permit(
+      :page,
       :transaction_type,
       :finalidade,
       :category,
@@ -334,6 +341,7 @@ class HabitationsController < ApplicationController
       city: [],
       characteristics: []
     )
+    permitted.delete(:page)
 
     permitted[:transaction_type] = normalize_transaction_type(permitted[:transaction_type].presence || permitted[:finalidade])
     permitted[:category] = permitted[:category].presence || permitted[:tipo]
@@ -399,6 +407,41 @@ class HabitationsController < ApplicationController
     @location_options = Rails.cache.fetch(Habitation.public_filter_location_options_cache_key(public_tenant.id), expires_in: 6.hours) do
       public_tenant.habitations.public_location_options
     end
+  end
+
+  def requested_public_listing_page
+    raw_page = params[:page].presence
+    return 1 if raw_page.blank?
+
+    raw_page = raw_page.to_s
+    return nil unless raw_page.match?(/\A\d+\z/)
+
+    raw_page.to_i
+  end
+
+  def reject_invalid_public_listing_page!
+    page = requested_public_listing_page
+    return false if page.present? && page.between?(1, MAX_PUBLIC_LISTING_PAGE)
+
+    Rails.logger.info(
+      "[PublicListingPageGuard] rejected invalid page=#{params[:page].inspect} " \
+      "ip=#{request.remote_ip} path=#{request.fullpath}"
+    )
+    render plain: "Not Found", status: :not_found
+    true
+  end
+
+  def reject_public_listing_page_beyond_total!(total_entries)
+    page = requested_public_listing_page || 1
+    total_pages = [(total_entries.to_i / PUBLIC_LISTING_PER_PAGE.to_f).ceil, 1].max
+    return false if page <= total_pages
+
+    Rails.logger.info(
+      "[PublicListingPageGuard] rejected empty page=#{page} total_pages=#{total_pages} " \
+      "ip=#{request.remote_ip} path=#{request.fullpath}"
+    )
+    render plain: "Not Found", status: :not_found
+    true
   end
 
   def apply_strategic_landing_params

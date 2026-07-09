@@ -35,7 +35,7 @@
 
   <% if property.present? %>
     <div class="ax-board__card-section">
-      <%= link_to property.display_title, admin_habitation_path(property, return_to: lead_return_to_path), class: "ax-board__card-link" %>
+      <%= link_to property.display_title, admin_habitation_path_with_query(admin_habitation_path(property.id), admin_habitation_flat_return_params(lead_return_to_path)), class: "ax-board__card-link" %>
       <div class="ax-board__card-subtle"><%= property.codigo %></div>
     </div>
   <% elsif lead.property_id.present? %>

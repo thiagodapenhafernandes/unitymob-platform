@@ -248,13 +248,14 @@
 
   <% builder_layout = false %>
   <% habitations_workspace = (controller_name == 'habitations' && %w[index edit new].include?(action_name)) || controller_name == 'habitation_media' %>
+  <% habitation_form_workspace = controller_name == 'habitations' && %w[edit new].include?(action_name) %>
   <% habitation_editor_workspace = (controller_name == 'habitations' && %w[edit new].include?(action_name)) || controller_name == 'habitation_media' %>
   <% distribution_rule_editor_workspace = controller_name == 'distribution_rules' && %w[new edit].include?(action_name) %>
   <% webhook_settings_workspace = controller_name == 'webhook_settings' && action_name == 'index' %>
   <% whatsapp_workspace = controller_name == 'whatsapp_inbox' %>
   <% whatsapp_focus_workspace = whatsapp_workspace && params[:workspace].to_s == 'focus' %>
   <% admin_metrics = admin_page_render_metrics %>
-  <body class="ax-app admin-layout <%= 'ax-builder-layout' if builder_layout %> <%= 'ax-habitations-workspace' if habitations_workspace %> <%= 'ax-habitation-editor-workspace' if habitation_editor_workspace %> <%= 'ax-distribution-rule-editor-workspace' if distribution_rule_editor_workspace %> <%= 'ax-webhook-settings-workspace' if webhook_settings_workspace %> <%= 'ax-whatsapp-workspace' if whatsapp_workspace %> <%= 'ax-whatsapp-focus-workspace' if whatsapp_focus_workspace %>"
+  <body class="ax-app admin-layout <%= 'ax-builder-layout' if builder_layout %> <%= 'ax-habitations-workspace' if habitations_workspace %> <%= 'ax-habitation-form-workspace' if habitation_form_workspace %> <%= 'ax-habitation-editor-workspace' if habitation_editor_workspace %> <%= 'ax-distribution-rule-editor-workspace' if distribution_rule_editor_workspace %> <%= 'ax-webhook-settings-workspace' if webhook_settings_workspace %> <%= 'ax-whatsapp-workspace' if whatsapp_workspace %> <%= 'ax-whatsapp-focus-workspace' if whatsapp_focus_workspace %>"
         data-controller="ax-drawer admin-navigation"
         data-admin-render-ms="<%= admin_metrics[:duration_ms] %>"
         data-admin-render-page="<%= admin_metrics[:page] %>">
@@ -381,7 +382,13 @@
       <%= yield %>
     </main>
 
-    <div class="ax-admin-preloader" data-admin-navigation-target="overlay" hidden aria-live="polite" aria-busy="true">
+    <div id="adminNavigationPreloader"
+         class="ax-admin-preloader"
+         data-admin-navigation-target="overlay"
+         data-turbo-permanent
+         hidden
+         aria-live="polite"
+         aria-busy="true">
       <div class="ax-admin-preloader__panel" role="status">
         <span class="ax-admin-preloader__spinner" aria-hidden="true"></span>
         <strong data-admin-navigation-target="title">Carregando página...</strong>

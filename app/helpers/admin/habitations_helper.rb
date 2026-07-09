@@ -15,14 +15,48 @@ module Admin::HabitationsHelper
   }.freeze
 
   def admin_habitation_internal_path(habitation, return_to: nil)
-    path_params = {}
-    path_params[:return_to] = return_to if return_to.present?
+    route_param = admin_habitation_route_param(habitation)
+    path_params = admin_habitation_flat_return_params(return_to)
 
     if admin_can_edit_habitation?(habitation)
-      edit_admin_habitation_path(habitation, path_params)
+      admin_habitation_path_with_query(edit_admin_habitation_path(route_param), path_params)
     else
-      admin_habitation_path(habitation, path_params)
+      admin_habitation_path_with_query(admin_habitation_path(route_param), path_params)
     end
+  end
+
+  def admin_habitation_route_param(habitation)
+    habitation.respond_to?(:id) ? habitation.id : habitation
+  end
+
+  def admin_habitation_flat_return_params(return_to)
+    path = return_to.to_s.strip
+    return {} if path.blank?
+
+    uri = URI.parse(path)
+    return {} if uri.scheme.present? || uri.host.present? || uri.path.blank?
+
+    query_params = Rack::Utils.parse_nested_query(uri.query.to_s)
+    query_params = query_params.merge("back_anchor" => uri.fragment) if uri.fragment.present?
+    query_params.merge("return_to" => uri.path)
+  rescue URI::InvalidURIError
+    {}
+  end
+
+  def admin_habitation_path_with_query(path, query_params)
+    normalized_params = query_params.to_h.stringify_keys.compact_blank
+    return path if normalized_params.blank?
+
+    return_to = normalized_params.delete("return_to")
+    query_parts = []
+    query_parts << "return_to=#{return_to}" if return_to.present?
+    query_parts << Rack::Utils.build_nested_query(normalized_params) if normalized_params.present?
+
+    path_without_fragment, fragment = path.split("#", 2)
+    separator = path_without_fragment.include?("?") ? "&" : "?"
+    fragment_suffix = fragment.present? ? "##{fragment}" : ""
+
+    "#{path_without_fragment}#{separator}#{query_parts.join("&")}#{fragment_suffix}"
   end
 
   def admin_habitation_internal_action_label(habitation)

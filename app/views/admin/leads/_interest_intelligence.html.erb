@@ -84,7 +84,7 @@
                     <em><%= match.reasons.join(" · ") %></em>
                   <% end %>
                 </div>
-                <%= link_to admin_habitation_path(habitation), class: "ax-ico-btn", title: "Abrir imóvel" do %>
+                <%= link_to admin_habitation_path(habitation.id), class: "ax-ico-btn", title: "Abrir imóvel" do %>
                   <i class="bi bi-box-arrow-up-right"></i>
                 <% end %>
               </div>

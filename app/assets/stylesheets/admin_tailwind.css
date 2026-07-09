@@ -504,6 +504,9 @@ a.ax-btn.ax-btn--primary:focus-visible {
   opacity: 1;
   pointer-events: auto;
 }
+.ax-admin-preloader.has-rendered {
+  background: rgba(248, 250, 252, .88);
+}
 .ax-admin-preloader__panel {
   display: grid;
   justify-items: center;
@@ -537,8 +540,9 @@ a.ax-btn.ax-btn--primary:focus-visible {
 }
 
 html.ax-admin-is-loading body.ax-app .ax-main {
-  opacity: 0;
+  opacity: .42;
   pointer-events: none;
+  transition: opacity 120ms var(--ax-motion-ease, ease);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -16,7 +16,7 @@
     <i class="bi bi-clock-history"></i><span>Timeline</span>
   </button>
   <% if can_destroy_habitation? && @habitation.persisted? %>
-    <%= button_to admin_habitation_path(@habitation),
+    <%= button_to admin_habitation_path(@habitation.id),
         method: :delete,
         class: "ax-contextbar__button ax-contextbar__button--danger",
         form: { class: "tw-m-0" },
