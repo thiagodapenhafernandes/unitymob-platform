@@ -8,6 +8,7 @@ export default class extends Controller {
     const url = window.location.href
 
     navigator.clipboard.writeText(url).then(() => {
+      if (window.axToast) window.axToast({ message: "Link copiado", type: "success", timeout: 2400 })
       // Feedback visual simples
       const originalHtml = this.linkTarget.innerHTML
       this.linkTarget.innerHTML = '<i class="fas fa-check text-green-500"></i>'
@@ -17,6 +18,7 @@ export default class extends Controller {
       }, 2000)
     }).catch(err => {
       console.error('Erro ao copiar URL: ', err)
+      if (window.axToast) window.axToast({ message: "Não foi possível copiar", type: "danger", timeout: 2400 })
     })
   }
 

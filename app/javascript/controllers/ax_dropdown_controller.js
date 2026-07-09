@@ -34,6 +34,8 @@ export default class extends Controller {
     // Force the initial hidden=false styles to apply before the open state.
     this.menuTarget.getBoundingClientRect()
     this.element.classList.add("is-open")
+    this.elevatedContainer = this.element.closest(".ax-property-card")
+    if (this.elevatedContainer) this.elevatedContainer.classList.add("has-open-dropdown")
     if (this.hasTriggerTarget) this.triggerTarget.setAttribute("aria-expanded", "true")
     document.addEventListener("click", this.onDocClick)
     document.addEventListener("keydown", this.onKey)
@@ -41,6 +43,10 @@ export default class extends Controller {
 
   close() {
     this.element.classList.remove("is-open")
+    if (this.elevatedContainer) {
+      this.elevatedContainer.classList.remove("has-open-dropdown")
+      this.elevatedContainer = null
+    }
     if (this.hasTriggerTarget) this.triggerTarget.setAttribute("aria-expanded", "false")
     document.removeEventListener("click", this.onDocClick)
     document.removeEventListener("keydown", this.onKey)

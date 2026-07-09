@@ -36,6 +36,7 @@ export default class extends Controller {
           this.buttonTarget.classList.add("btn-primary")
         }
       }, this.successDurationValue)
+      this.toast(this.successContentValue, "success")
     }
 
     if (navigator.clipboard && window.isSecureContext) {
@@ -56,13 +57,34 @@ export default class extends Controller {
   }
 
   fallback(text, onSuccess) {
-    this.sourceTarget.select()
-    this.sourceTarget.setSelectionRange(0, 99999)
+    const inputLike = typeof this.sourceTarget.select === "function"
+    let temporary = null
+
+    if (inputLike) {
+      this.sourceTarget.select()
+      this.sourceTarget.setSelectionRange?.(0, 99999)
+    } else {
+      temporary = document.createElement("textarea")
+      temporary.value = text
+      temporary.setAttribute("readonly", "")
+      temporary.style.position = "fixed"
+      temporary.style.opacity = "0"
+      document.body.appendChild(temporary)
+      temporary.select()
+    }
+
     try {
       document.execCommand("copy")
       onSuccess()
     } catch (err) {
       console.error("Falha ao copiar para o clipboard:", err)
+      this.toast("Não foi possível copiar", "danger")
+    } finally {
+      temporary?.remove()
     }
+  }
+
+  toast(message, type = "info") {
+    if (window.axToast) window.axToast({ message, type, timeout: 2400 })
   }
 }

@@ -5,17 +5,23 @@ class HabitationPhotoShare < ApplicationRecord
   belongs_to :admin_user, optional: true
 
   validates :token, presence: true, uniqueness: true
-  validates :photo_ids, presence: true
+  validate :at_least_one_photo_source
 
   scope :active, -> { where("expires_at IS NULL OR expires_at > ?", Time.current) }
 
   before_validation :ensure_token, on: :create
   before_validation :ensure_expires_at, on: :create
 
-  # Cria um link público com as fotos (attachment ids) selecionadas.
-  def self.create_for(habitation:, admin_user:, photo_ids:)
+  # Cria um link público com fotos internas (attachment ids) e/ou fotos externas
+  # já resolvidas a partir do próprio imóvel no backend.
+  def self.create_for(habitation:, admin_user:, photo_ids:, picture_urls: [])
     ids = normalize_photo_ids(photo_ids)
-    create!(habitation: habitation, admin_user: admin_user, photo_ids: ids)
+    create!(
+      habitation: habitation,
+      admin_user: admin_user,
+      photo_ids: ids,
+      picture_urls: normalize_picture_urls(picture_urls)
+    )
   end
 
   def self.normalize_photo_ids(photo_ids)
@@ -24,6 +30,14 @@ class HabitationPhotoShare < ApplicationRecord
       .map { |id| id.to_s.strip }
       .select { |id| id.match?(/\A\d+\z/) }
       .map(&:to_i)
+      .uniq
+  end
+
+  def self.normalize_picture_urls(urls)
+    Array(urls)
+      .flat_map { |url| url.to_s.split(",") }
+      .map(&:strip)
+      .select { |url| url.match?(/\Ahttps?:\/\//i) }
       .uniq
   end
 
@@ -43,6 +57,14 @@ class HabitationPhotoShare < ApplicationRecord
     stored_ids.filter_map { |id| attachments[id] }
   end
 
+  def selected_image_urls
+    attachment_urls = selected_attachments.filter_map do |attachment|
+      Storage::PublicCdnImageUrl.resolve("attachment" => attachment)
+    end
+
+    attachment_urls + self.class.normalize_picture_urls(picture_urls)
+  end
+
   def register_view!
     update_columns(last_viewed_at: Time.current, views_count: views_count.to_i + 1)
   end
@@ -60,5 +82,11 @@ class HabitationPhotoShare < ApplicationRecord
 
   def ensure_expires_at
     self.expires_at ||= DEFAULT_EXPIRATION_DAYS.days.from_now
+  end
+
+  def at_least_one_photo_source
+    return if Array(photo_ids).any? || Array(picture_urls).any?
+
+    errors.add(:base, "Selecione ao menos uma foto")
   end
 end

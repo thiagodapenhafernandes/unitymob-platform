@@ -129,6 +129,7 @@ export default class extends Controller {
   }
 
   flashStatus(message) {
+    if (window.axToast) window.axToast({ message, type: message.toLowerCase().includes("erro") ? "danger" : "success", timeout: 2400 })
     if (!this.hasStatusTarget) return
 
     this.statusTarget.textContent = message

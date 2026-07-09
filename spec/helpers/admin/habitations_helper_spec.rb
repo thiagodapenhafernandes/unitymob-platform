@@ -83,6 +83,33 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
     end
   end
 
+  describe "#admin_habitation_catalog_card_title" do
+    it "uses neighborhood and development name without the public ad title" do
+      habitation = build(
+        :habitation,
+        bairro_comercial: "Barra Sul",
+        nome_empreendimento: "Edifício Dom Gabriel",
+        titulo_anuncio: "Apartamento à venda 2 dormitórios na Barra Sul"
+      )
+
+      expect(helper.admin_habitation_catalog_card_title(habitation))
+        .to eq("Barra Sul · Edifício Dom Gabriel")
+    end
+
+    it "falls back to display title when no compact title part is available" do
+      habitation = build(
+        :habitation,
+        bairro: nil,
+        bairro_comercial: nil,
+        nome_empreendimento: nil,
+        titulo_anuncio: "Apartamento aluguel anual"
+      )
+
+      expect(helper.admin_habitation_catalog_card_title(habitation))
+        .to eq("Apartamento aluguel anual")
+    end
+  end
+
   describe "#admin_habitation_editor_tab_missing_counts" do
     it "groups operational validation gaps by editor tab" do
       property_setting = instance_double(

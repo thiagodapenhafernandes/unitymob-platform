@@ -23,11 +23,13 @@ export default class extends Controller {
     this.activePhotoId = null
     this.activePictureIndex = null
     this.selectedPhotoIds = new Set()
+    this.selectedPictureIndices = new Set()
     this.populateAmbienteOptions()
   }
 
   disconnect() {
     this.selectedPhotoIds.clear()
+    this.selectedPictureIndices.clear()
   }
 
   // --- Ambiente por foto -----------------------------------------------------
@@ -124,18 +126,21 @@ export default class extends Controller {
 
   toggleSelect(event) {
     const photoId = event.params?.photoId
-    if (photoId === undefined || photoId === null || photoId === "") return
+    const pictureIndex = event.params?.pictureIndex
+    if ((photoId === undefined || photoId === null || photoId === "") &&
+        (pictureIndex === undefined || pictureIndex === null || pictureIndex === "")) return
 
-    const id = String(photoId)
-    const checked = event.currentTarget?.checked ?? !this.selectedPhotoIds.has(id)
+    const id = String(photoId ?? pictureIndex)
+    const selection = photoId === undefined || photoId === null || photoId === "" ? this.selectedPictureIndices : this.selectedPhotoIds
+    const checked = event.currentTarget?.checked ?? !selection.has(id)
 
     if (checked) {
-      this.selectedPhotoIds.add(id)
+      selection.add(id)
     } else {
-      this.selectedPhotoIds.delete(id)
+      selection.delete(id)
     }
 
-    this.reflectSelectionState(id, checked)
+    this.reflectSelectionState(id, checked, photoId === undefined || photoId === null || photoId === "" ? "picture" : "photo")
   }
 
   async openShare(event) {
@@ -146,8 +151,9 @@ export default class extends Controller {
     // clicaria em "Enviar" e não veria nada.
     this.showModal()
 
-    const ids = Array.from(this.selectedPhotoIds)
-    if (ids.length === 0) {
+    const photoIds = Array.from(this.selectedPhotoIds)
+    const pictureIndices = Array.from(this.selectedPictureIndices)
+    if (photoIds.length === 0 && pictureIndices.length === 0) {
       this.renderShareResult({ error: "Selecione ao menos uma foto para enviar." })
       return
     }
@@ -157,7 +163,7 @@ export default class extends Controller {
     try {
       const payload = await this.requestJson(this.shareUrlValue, {
         method: "POST",
-        json: { habitation: { photo_ids: ids } }
+        json: { habitation: { photo_ids: photoIds, picture_indices: pictureIndices } }
       })
       this.renderShareResult(payload)
     } catch (error) {
@@ -207,33 +213,39 @@ export default class extends Controller {
 
   // --- Estado da seleção -----------------------------------------------------
 
-  reflectSelectionState(id, checked) {
-    const input = this.element.querySelector(
-      `[data-action*="media-tools#toggleSelect"][data-media-tools-photo-id-param="${CSS.escape(id)}"]`
-    )
+  reflectSelectionState(id, checked, kind = "photo") {
+    const attribute = kind === "picture" ? "data-media-tools-picture-index-param" : "data-media-tools-photo-id-param"
+    const input = this.element.querySelector(`[data-action*="media-tools#toggleSelect"][${attribute}="${CSS.escape(id)}"]`)
     input?.closest(".ax-media-grid__item")?.classList?.toggle("is-media-selected", checked)
   }
 
   prunAndReflectSelection() {
     const container = this.previewContainer(this.photoUploadController())
-    const present = new Set()
+    const presentPhotos = new Set()
+    const presentPictures = new Set()
 
     container?.querySelectorAll('[data-action*="media-tools#toggleSelect"]').forEach((input) => {
-      const id = input.getAttribute("data-media-tools-photo-id-param")
-      if (id === null) return
-      present.add(String(id))
+      const photoId = input.getAttribute("data-media-tools-photo-id-param")
+      const pictureIndex = input.getAttribute("data-media-tools-picture-index-param")
+      if (photoId !== null) presentPhotos.add(String(photoId))
+      if (pictureIndex !== null) presentPictures.add(String(pictureIndex))
     })
 
-    if (present.size > 0) {
+    if (presentPhotos.size > 0) {
       Array.from(this.selectedPhotoIds).forEach((id) => {
-        if (!present.has(id)) this.selectedPhotoIds.delete(id)
+        if (!presentPhotos.has(id)) this.selectedPhotoIds.delete(id)
+      })
+    }
+    if (presentPictures.size > 0) {
+      Array.from(this.selectedPictureIndices).forEach((id) => {
+        if (!presentPictures.has(id)) this.selectedPictureIndices.delete(id)
       })
     }
 
     container?.querySelectorAll('[data-action*="media-tools#toggleSelect"]').forEach((input) => {
-      const id = input.getAttribute("data-media-tools-photo-id-param")
-      if (id === null) return
-      const checked = this.selectedPhotoIds.has(String(id))
+      const photoId = input.getAttribute("data-media-tools-photo-id-param")
+      const pictureIndex = input.getAttribute("data-media-tools-picture-index-param")
+      const checked = photoId !== null ? this.selectedPhotoIds.has(String(photoId)) : this.selectedPictureIndices.has(String(pictureIndex))
       if ("checked" in input) input.checked = checked
       input.closest(".ax-media-grid__item")?.classList?.toggle("is-media-selected", checked)
     })
@@ -267,7 +279,7 @@ export default class extends Controller {
     const fragment = document.createDocumentFragment()
     const blank = document.createElement("option")
     blank.value = ""
-    blank.textContent = "Sem ambiente"
+    blank.textContent = "Não informado"
     fragment.appendChild(blank)
 
     ambientes.forEach((ambiente) => {
@@ -330,6 +342,7 @@ export default class extends Controller {
         input.select()
         document.execCommand("copy")
       }
+      this.toast("Link copiado", "success")
       const button = event.currentTarget
       const icon = button?.querySelector("i")
       if (icon) {
@@ -342,7 +355,12 @@ export default class extends Controller {
       }
     } catch (_error) {
       input.select()
+      this.toast("Copie manualmente", "warning")
     }
+  }
+
+  toast(message, type = "info") {
+    if (window.axToast) window.axToast({ message, type, timeout: 2400 })
   }
 
   // --- Infra HTTP (padrão do projeto: fetch + X-CSRF-Token) ------------------

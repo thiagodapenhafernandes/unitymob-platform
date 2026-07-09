@@ -1,4 +1,4 @@
-\restrict 8pwQ6tf9TjB8hniZH1fhH7yfdwkf13EGUWbZH6aO0tVS75mcFoXgBCk92SCZzJ8
+\restrict t2IOeTttOr1rSt6dqA6cNIg6QALRYVDuNusWfxFov12ULF7w8fXS7C2jIdcRf0Z
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -2648,7 +2648,8 @@ CREATE TABLE public.habitation_photo_shares (
     last_viewed_at timestamp(6) without time zone,
     views_count integer DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    picture_urls jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -14163,11 +14164,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 8pwQ6tf9TjB8hniZH1fhH7yfdwkf13EGUWbZH6aO0tVS75mcFoXgBCk92SCZzJ8
+\unrestrict t2IOeTttOr1rSt6dqA6cNIg6QALRYVDuNusWfxFov12ULF7w8fXS7C2jIdcRf0Z
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709114600'),
 ('20260709015000'),
 ('20260709014500'),
 ('20260709013000'),
