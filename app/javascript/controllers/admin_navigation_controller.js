@@ -19,6 +19,7 @@ export default class extends Controller {
     this.boundSubmit = this.handleSubmit.bind(this)
     this.boundBeforeVisit = this.handleTurboBeforeVisit.bind(this)
     this.boundBeforeFrameRender = this.handleTurboBeforeFrameRender.bind(this)
+    this.boundRender = this.handleTurboRender.bind(this)
     this.boundLoad = this.handlePageReady.bind(this)
     this.boundBeforeCache = this.hideNow.bind(this)
     this.boundPageShow = this.handlePageReady.bind(this)
@@ -29,7 +30,7 @@ export default class extends Controller {
     document.addEventListener("turbo:before-visit", this.boundBeforeVisit)
     document.addEventListener("turbo:before-frame-render", this.boundBeforeFrameRender)
     document.addEventListener("turbo:load", this.boundLoad)
-    document.addEventListener("turbo:render", this.boundLoad)
+    document.addEventListener("turbo:render", this.boundRender)
     document.addEventListener("turbo:before-cache", this.boundBeforeCache)
     // Falhas/abortos de navegação que NÃO disparam turbo:load — sem estes, o
     // overlay ficava preso ("Preparando workspace administrativo").
@@ -37,7 +38,9 @@ export default class extends Controller {
     document.addEventListener("turbo:frame-missing", this.boundNavError)
     window.addEventListener("pageshow", this.boundPageShow)
 
-    this.handlePageReady()
+    if (!document.documentElement.classList.contains("ax-admin-is-loading")) {
+      this.handlePageReady()
+    }
   }
 
   disconnect() {
@@ -46,12 +49,14 @@ export default class extends Controller {
     document.removeEventListener("turbo:before-visit", this.boundBeforeVisit)
     document.removeEventListener("turbo:before-frame-render", this.boundBeforeFrameRender)
     document.removeEventListener("turbo:load", this.boundLoad)
-    document.removeEventListener("turbo:render", this.boundLoad)
+    document.removeEventListener("turbo:render", this.boundRender)
     document.removeEventListener("turbo:before-cache", this.boundBeforeCache)
     document.removeEventListener("turbo:fetch-request-error", this.boundNavError)
     document.removeEventListener("turbo:frame-missing", this.boundNavError)
     window.removeEventListener("pageshow", this.boundPageShow)
-    this.hideNow()
+    if (!document.documentElement.classList.contains("ax-admin-is-loading")) {
+      this.hideNow()
+    }
   }
 
   handleClick(event) {
@@ -89,6 +94,12 @@ export default class extends Controller {
     }
   }
 
+  handleTurboRender() {
+    if (document.documentElement.hasAttribute("data-turbo-preview")) return
+
+    this.markRendered()
+  }
+
   handlePageReady() {
     this.hideNow()
     this.updateMetrics()
@@ -97,6 +108,7 @@ export default class extends Controller {
   showSoon(message) {
     window.clearTimeout(this.showTimer)
     this.navigationStartedAt = performance.now()
+    this.pageRendered = false
     this.showTimer = window.setTimeout(() => this.show(message), this.constructor.SHOW_DELAY_MS)
   }
 
@@ -119,9 +131,11 @@ export default class extends Controller {
     window.clearTimeout(this.failsafeTimer)
     this.showTimer = null
     this.failsafeTimer = null
+    this.pageRendered = false
 
     if (this.hasOverlayTarget) {
       this.overlayTarget.classList.remove("is-visible")
+      this.overlayTarget.classList.remove("has-rendered")
       this.overlayTarget.hidden = true
     }
 
@@ -132,6 +146,16 @@ export default class extends Controller {
       const resumes = this.pendingFrameResumes
       this.pendingFrameResumes = []
       resumes.forEach((resume) => { try { resume() } catch (_e) { /* frame já resolvido */ } })
+    }
+  }
+
+  markRendered() {
+    this.pageRendered = true
+    if (this.hasOverlayTarget) {
+      this.overlayTarget.classList.add("has-rendered")
+    }
+    if (this.hasDetailTarget) {
+      this.detailTarget.textContent = "Finalizando interface"
     }
   }
 

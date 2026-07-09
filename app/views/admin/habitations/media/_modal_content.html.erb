@@ -23,7 +23,7 @@
   </div>
 
   <div class="ax-media-modal__actions">
-    <%= link_to admin_habitation_media_path(habitation, return_to: return_to_path),
+    <%= link_to admin_habitation_path_with_query(admin_habitation_media_path(habitation.id), admin_habitation_flat_return_params(return_to_path)),
                 class: "ax-icon-btn",
                 title: "Abrir página completa",
                 aria: { label: "Abrir página completa" } do %>
@@ -36,7 +36,7 @@
 </header>
 
 <%= form_with model: [:admin, habitation],
-              url: admin_habitation_media_path(habitation),
+              url: admin_habitation_media_path(habitation.id),
               method: :patch,
               local: true,
               html: {

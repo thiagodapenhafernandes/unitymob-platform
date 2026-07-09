@@ -1,5 +1,8 @@
 User-agent: *
 Disallow: /admin/
 Disallow: /rails/
+Disallow: /imoveis?page=
+Disallow: /imoveis?*page=
+Crawl-delay: 5
 
 Sitemap: https://saluteimoveis.com.br/sitemap.xml

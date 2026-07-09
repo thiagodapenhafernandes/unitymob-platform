@@ -207,3 +207,560 @@
 }
 .habitation-form-ui .ax-file-list__title { font-size:12.5px; font-weight:650; color:#1f2733; }
 .habitation-form-ui .ax-file-list__meta { font-size:11px; color:#697586; }
+
+/* ---------- Modal de midia ----------
+   O conteudo e carregado por AJAX; o shell precisa existir fora do form. */
+.ax-media-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1450;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgb(15 23 42 / .46);
+  overflow: hidden;
+}
+
+.ax-media-modal[hidden] {
+  display: none;
+}
+
+.ax-media-modal__panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(1120px, calc(100vw - 36px));
+  height: min(780px, calc(100dvh - 36px));
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #d8e1ec;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 28px 76px rgb(15 23 42 / .28);
+}
+
+.ax-media-modal__state {
+  display: grid;
+  grid-row: 1 / -1;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  min-height: 260px;
+  color: #697586;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ax-media-modal__spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #d8e1ec;
+  border-top-color: var(--admin-primary, #365f8f);
+  border-radius: 999px;
+  animation: ax-spin .8s linear infinite;
+}
+
+.ax-media-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #d8e1ec;
+  background: #fff;
+}
+
+.ax-media-modal__title-group {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ax-media-modal__eyebrow {
+  color: var(--admin-primary, #365f8f);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ax-media-modal__title-group h2 {
+  overflow: hidden;
+  margin: 0;
+  color: #1f2733;
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-media-modal__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  color: #697586;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ax-media-modal__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ax-media-modal__form {
+  display: contents;
+}
+
+.ax-media-modal__body {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 10px;
+  background: #eef2f7;
+}
+
+.ax-media-modal__body .ax-form-section {
+  margin: 0;
+}
+
+.ax-media-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 52px;
+  padding: 9px 12px;
+  border-top: 1px solid #d8e1ec;
+  background: #fff;
+}
+
+.ax-media-modal__footer-meta,
+.ax-media-modal__footer-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ax-media-modal__footer-meta {
+  color: #697586;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.ax-media-modal__footer-actions {
+  justify-content: flex-end;
+}
+
+/* ---------- PWA / mobile do cadastro ----------
+   Mantem o desktop intacto: abaixo de 960px o workspace vira uma coluna,
+   o inspector deixa de roubar largura e as abas continuam acessiveis. */
+@media (max-width: 960px) {
+  body.ax-habitation-editor-workspace .ax-main {
+    overflow: hidden;
+  }
+
+  body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
+    justify-content: center;
+    width: 52px;
+    padding: 0;
+  }
+
+  body.ax-habitation-editor-workspace .ax-sidebar-contextbar .ax-contextbar__title,
+  body.ax-habitation-editor-workspace .ax-sidebar-contextbar .ax-contextbar__tools .ax-contextbar__tool:not(.ax-contextbar__tool--collapse) {
+    display: none;
+  }
+
+  body.ax-habitation-form-workspace .ax-sidebar-contextbar {
+    display: none !important;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-property-editor-main,
+  html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace .habitation-property-editor-main,
+  body.ax-habitation-editor-workspace .habitation-property-editor-main.is-inspector-collapsed {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-property-editor-main > .habitation-editor-explorer,
+  body.ax-habitation-editor-workspace .habitation-property-editor-main > .habitation-property-main-pane {
+    grid-column: 1 !important;
+    min-width: 0;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-property-editor-main > .habitation-editor-explorer {
+    grid-row: 1 !important;
+    height: auto;
+    max-height: 62px;
+    border: 0;
+    border-bottom: 1px solid #d8dee8;
+    overflow: hidden;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-property-editor-main > .habitation-property-main-pane {
+    grid-row: 2 !important;
+    grid-template-rows: var(--ax-contextbar-h) minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-editor-inspector-panel,
+  html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace .habitation-editor-inspector-panel,
+  body.ax-habitation-editor-workspace .habitation-property-editor-main.is-inspector-collapsed .habitation-editor-inspector-panel {
+    display: block;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: none !important;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-editor-inspector-rail,
+  body.ax-habitation-editor-workspace .habitation-editor-panel-head,
+  body.ax-habitation-editor-workspace .habitation-editor-progress {
+    display: none !important;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    border: 0;
+    background: #fff;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .ax-form-tabs__list {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+    max-width: 100%;
+    padding: 7px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .ax-form-tabs__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .nav-item {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .ax-form-tabs__item {
+    width: clamp(112px, 28vw, 150px);
+    min-height: 44px;
+    margin: 0;
+    padding: 7px 8px;
+    scroll-snap-align: start;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .ax-form-tabs__icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .ax-form-tabs__description,
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .habitation-tabs-bar__status {
+    display: none;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .ax-form-tabs__copy strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-property-middle-contextbar {
+    gap: 6px;
+    padding-inline: 8px;
+    overflow: hidden;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-property-middle-contextbar .ax-breadcrumb {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-property-middle-contextbar .ax-contextbar__actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 4px;
+    max-width: 52%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-property-main-body {
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-editor-form {
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-editor-main,
+  body.ax-habitation-editor-workspace .habitation-editor-workspace {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-action-bar--top {
+    margin-bottom: 8px !important;
+    padding: 8px !important;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-action-inner {
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-action-meta {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-action-buttons {
+    flex: 0 1 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-action-buttons .ax-btn {
+    flex: 1 1 112px;
+    min-width: 0;
+    max-width: 190px;
+    padding-inline: 8px;
+    white-space: nowrap;
+  }
+
+  body.ax-habitation-form-workspace .habitation-action-buttons {
+    flex-wrap: nowrap;
+  }
+
+  body.ax-habitation-form-workspace .habitation-action-buttons .ax-btn {
+    flex-basis: 0;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-seg {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-form-ui .ax-toggle-chip {
+    min-width: 0;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-form-ui .ax-toggle-chip__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ax-media-modal {
+    padding: 12px;
+  }
+
+  .ax-media-modal__panel {
+    width: min(100%, calc(100vw - 24px));
+    height: min(780px, calc(100dvh - 24px));
+  }
+
+  .ax-media-modal__header {
+    min-height: 52px;
+    padding: 8px 10px;
+  }
+
+  .ax-media-modal__meta {
+    max-width: 100%;
+  }
+
+  .ax-media-modal__meta .ax-badge,
+  .ax-media-modal__meta span:not(:first-child) {
+    display: none;
+  }
+
+  .ax-media-modal__actions {
+    gap: 6px;
+  }
+
+  .ax-media-modal__actions .ax-icon-btn {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+  }
+
+  .ax-media-modal__body {
+    padding: 8px;
+  }
+
+  .ax-media-modal__body .ax-media-manager--compact .ax-media-toolbar {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .ax-media-modal__body .ax-media-manager--compact .ax-media-toolbar__actions {
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 5px;
+  }
+
+  .ax-media-modal__body .ax-media-manager--compact .ax-media-toolbar__actions .ax-btn span {
+    display: none;
+  }
+
+  .ax-media-modal__body .ax-media-upload-panel--minimal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ax-media-modal__body .ax-media-upload-panel--minimal .ax-media-upload-panel__actions {
+    justify-content: stretch;
+  }
+
+  .ax-media-modal__body .ax-media-upload-panel--minimal .ax-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 700px) {
+  body.ax-habitation-editor-workspace .habitation-property-editor-main > .habitation-editor-explorer {
+    max-height: 56px;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .ax-form-tabs__item {
+    width: 104px;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .ax-form-tabs__icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-tabs-bar .ax-form-tabs__copy strong {
+    font-size: 11.5px;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-form-ui .ax-field-grid--12,
+  body.ax-habitation-editor-workspace .habitation-form-ui .ax-field-grid--nested {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.ax-habitation-editor-workspace .habitation-form-ui .ax-field-grid > [class*="ax-span-"] {
+    grid-column: 1 / -1 !important;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-action-inner {
+    flex-direction: column;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-action-meta {
+    text-align: center;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-action-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  body.ax-habitation-editor-workspace .habitation-action-buttons .ax-btn {
+    width: 100%;
+    max-width: none;
+  }
+
+  body.ax-habitation-form-workspace .habitation-action-buttons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .ax-media-modal {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .ax-media-modal__panel {
+    width: 100vw;
+    height: 100dvh;
+    border-width: 0;
+    border-radius: 0;
+  }
+
+  .ax-media-modal__header {
+    padding: 8px;
+  }
+
+  .ax-media-modal__title-group h2 {
+    max-width: 100%;
+    font-size: 13.5px;
+  }
+
+  .ax-media-modal__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ax-media-modal__footer-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .ax-media-modal__footer-actions .ax-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  body.ax-habitation-editor-workspace .habitation-action-buttons {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.ax-habitation-form-workspace .habitation-action-buttons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  body.ax-habitation-form-workspace .habitation-action-buttons .ax-btn {
+    min-height: 34px;
+    padding-inline: 5px;
+    font-size: 12px;
+  }
+}

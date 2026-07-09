@@ -47,7 +47,7 @@
         uf: (development_address&.uf.presence || development.uf).to_s,
         cep: (development_address&.cep.presence || development.cep).to_s
       },
-      edit_url: edit_admin_habitation_path(development)
+      edit_url: edit_admin_habitation_path(development.id)
     }
   end
   intake_waiting_admin_review = habitation.broker_intake? && habitation.intake_submitted_for_admin_review?
@@ -163,7 +163,8 @@
      data-habitation-duplicate-check-url-value="<%= check_admin_habitation_duplicate_path %>"
      data-habitation-duplicate-check-ignored-id-value="<%= habitation.id %>">
   <% form_main = capture do %>
-<%= form_with(model: [:admin, habitation], local: true, class: "needs-validation habitation-form-shell habitation-editor-form", html: { id: "admin_habitation_form", novalidate: true }, data: { controller: "save-state", action: "submit->save-state#confirm submit->save-state#submitting", turbo: false }) do |f| %>
+<% form_url = habitation.persisted? ? admin_habitation_path(habitation.id) : admin_habitations_path %>
+<%= form_with(model: [:admin, habitation], url: form_url, local: true, class: "needs-validation habitation-form-shell habitation-editor-form", html: { id: "admin_habitation_form", novalidate: true }, data: { controller: "save-state", action: "submit->save-state#confirm submit->save-state#submitting", turbo: false }) do |f| %>
   <%= hidden_field_tag :save_navigation, "exit", data: { save_state_target: "choice" } %>
   <%= hidden_field_tag :return_to, @return_to_path if @return_to_path.present? %>
   <%= hidden_field_tag :source_habitation_id, source_habitation.id if source_habitation.present? %>
@@ -394,7 +395,7 @@
      ].each do |association, attachments| %>
     <% attachments.each do |attachment| %>
       <% next unless attachment.persisted? && attachment.blob&.persisted? %>
-      <%= form_with url: purge_attachment_admin_habitation_path(habitation, association: association, attachment_id: attachment.id),
+      <%= form_with url: purge_attachment_admin_habitation_path(habitation.id, association: association, attachment_id: attachment.id),
                     method: :delete,
                     local: true,
                     html: {

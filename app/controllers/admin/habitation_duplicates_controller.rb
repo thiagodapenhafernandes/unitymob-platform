@@ -39,7 +39,7 @@ module Admin
         title: habitation.titulo_anuncio.presence || habitation.display_title,
         status: habitation.intake_status_label.presence || habitation.status,
         broker: habitation.admin_user&.name || habitation.corretor_nome,
-        edit_url: edit_admin_habitation_path(habitation)
+        edit_url: edit_admin_habitation_path(habitation.id)
       }
     end
   end

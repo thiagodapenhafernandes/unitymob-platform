@@ -50,7 +50,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
 
       allow(helper).to receive(:current_admin_user).and_return(admin)
 
-      expect(helper.admin_habitation_internal_path(habitation)).to eq(edit_admin_habitation_path(habitation))
+      expect(helper.admin_habitation_internal_path(habitation)).to eq(edit_admin_habitation_path(habitation.id))
     end
 
     it "returns the internal show path when the current user can only view the property" do
@@ -65,7 +65,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
 
       allow(helper).to receive(:current_admin_user).and_return(current_broker)
 
-      expect(helper.admin_habitation_internal_path(habitation)).to eq(admin_habitation_path(habitation))
+      expect(helper.admin_habitation_internal_path(habitation)).to eq(admin_habitation_path(habitation.id))
     end
 
     it "preserves the return path on internal navigation" do
@@ -75,7 +75,22 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
       allow(helper).to receive(:current_admin_user).and_return(admin)
 
       expect(helper.admin_habitation_internal_path(habitation, return_to: "/admin/habitations?ownership=all"))
-        .to eq(edit_admin_habitation_path(habitation, return_to: "/admin/habitations?ownership=all"))
+        .to eq(edit_admin_habitation_path(habitation.id) + "?return_to=/admin/habitations&ownership=all")
+    end
+
+    it "flattens return query and back anchor on internal navigation" do
+      admin = create(:admin_user, :admin)
+      habitation = create_helper_habitation(admin_user: admin)
+
+      allow(helper).to receive(:current_admin_user).and_return(admin)
+
+      path = helper.admin_habitation_path_with_query(
+        edit_admin_habitation_path(habitation.id, anchor: "features"),
+        helper.admin_habitation_flat_return_params("/admin/habitations?ownership=all&page=3#habitation_#{habitation.id}")
+      )
+
+      expect(path)
+        .to eq("#{edit_admin_habitation_path(habitation.id)}?return_to=/admin/habitations&ownership=all&page=3&back_anchor=habitation_#{habitation.id}#features")
     end
   end
 
@@ -93,7 +108,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
           intake_review: nil,
           return_to: "/admin/habitations?ownership=all"
         )
-      ).to eq(edit_admin_habitation_path(habitation, return_to: "/admin/habitations?ownership=all"))
+      ).to eq(edit_admin_habitation_path(habitation.id) + "?return_to=/admin/habitations&ownership=all")
     end
 
     it "returns the edit path on the mine tab when the user can edit" do
@@ -109,7 +124,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
           intake_review: nil,
           return_to: "/admin/habitations?ownership=mine"
         )
-      ).to eq(edit_admin_habitation_path(habitation, return_to: "/admin/habitations?ownership=mine"))
+      ).to eq(edit_admin_habitation_path(habitation.id) + "?return_to=/admin/habitations&ownership=mine")
     end
   end
 end

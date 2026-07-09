@@ -30,4 +30,16 @@ RSpec.describe "Field rate limiting via rack-attack", type: :request do
       expect(response).to have_http_status(:too_many_requests)
     end
   end
+
+  describe "GET /imoveis deep page limit" do
+    it "retorna 429 após rajada de paginação pública profunda" do
+      (Rack::Attack::PUBLIC_PROPERTY_DEEP_PAGE_RATE_LIMIT + 1).times do
+        get "/imoveis", params: { page: 51 }, headers: { "REMOTE_ADDR" => "203.0.113.10" }
+      end
+
+      expect(response).to have_http_status(:too_many_requests)
+      body = JSON.parse(response.body)
+      expect(body["error"]).to eq("rate_limited")
+    end
+  end
 end

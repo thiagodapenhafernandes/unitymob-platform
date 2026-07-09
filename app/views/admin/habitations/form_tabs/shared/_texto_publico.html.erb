@@ -2,7 +2,7 @@
 
 <% unique_feature_actions = capture do %>
   <% if habitation.persisted? %>
-    <%= link_to generate_ai_preview_admin_habitation_path(habitation),
+    <%= link_to generate_ai_preview_admin_habitation_path(habitation.id),
         class: "ax-btn ax-btn--primary ax-btn--sm",
         data: {
           controller: "ai-preview",

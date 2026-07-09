@@ -196,7 +196,7 @@ module Admin::ContextItems
         type: "habitation",
         id: record.id,
         label: admin_context_habitation_label(record),
-        path: edit_admin_habitation_path(record),
+        path: edit_admin_habitation_path(record.id),
         icon: "bi-building",
         tone: "property"
       }

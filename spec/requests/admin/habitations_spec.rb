@@ -510,7 +510,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(other_property.codigo) }
     expect(card).to be_present
     expect(card["style"].to_s).not_to include("height: 240px")
-    expect(response.body).to include(CGI.escapeHTML(admin_habitation_path(other_property, return_to: request.fullpath)))
+    expect(response.body).to include(CGI.escapeHTML("#{admin_habitation_path(other_property.id)}?return_to=/admin/habitations&ownership=all&q=#{other_property.codigo}&back_anchor=habitation_#{other_property.id}"))
     expect(response.body).not_to include(%(data-clickable-card-url-value="#{CGI.escapeHTML(habitation_path(other_property))}"))
 
     get admin_habitation_path(other_property, return_to: admin_habitations_path(ownership: "all", q: other_property.codigo))
@@ -559,8 +559,8 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(own_property.titulo_anuncio)
-    expect(response.body).to include(CGI.escapeHTML(admin_habitation_path(own_property, return_to: request.fullpath)))
-    expect(response.body).to include(CGI.escapeHTML(edit_admin_habitation_path(own_property, return_to: request.fullpath)))
+    expect(response.body).to include(CGI.escapeHTML("#{admin_habitation_path(own_property.id)}?return_to=/admin/habitations&ownership=all&q=#{own_property.codigo}&back_anchor=habitation_#{own_property.id}"))
+    expect(response.body).to include(CGI.escapeHTML("#{edit_admin_habitation_path(own_property.id)}?return_to=/admin/habitations&ownership=all&q=#{own_property.codigo}&back_anchor=habitation_#{own_property.id}"))
   end
 
   it "não permite que corretor filtre imóveis por outro corretor fora do próprio escopo vertical" do
@@ -874,14 +874,14 @@ RSpec.describe "Admin::Habitations", type: :request do
     get return_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(CGI.escape(return_path))
+    expect(response.body).to include(CGI.escapeHTML("#{edit_admin_habitation_path(habitation.id)}?return_to=/admin/habitations&q=#{habitation.codigo}&status=#{habitation.status}&back_anchor=habitation_#{habitation.id}"))
 
-    get edit_admin_habitation_path(habitation, return_to: return_path)
+    get edit_admin_habitation_path(habitation.id, return_to: return_path)
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(ERB::Util.html_escape(return_path))
 
-    patch admin_habitation_path(habitation), params: {
+    patch admin_habitation_path(habitation.id), params: {
       return_to: return_path,
       save_navigation: "exit",
       habitation: {
@@ -908,7 +908,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     get noisy_return_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(CGI.escapeHTML(edit_admin_habitation_path(habitation, return_to: clean_return_path)))
+    expect(response.body).to include(CGI.escapeHTML("#{edit_admin_habitation_path(habitation.id)}?return_to=/admin/habitations&ownership=all&q=#{habitation.codigo}&back_anchor=habitation_#{habitation.id}"))
     expect(response.body).not_to include(CGI.escapeHTML(edit_admin_habitation_path(habitation, return_to: noisy_return_path)))
 
     get edit_admin_habitation_path(habitation, return_to: noisy_return_path)
@@ -2195,7 +2195,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       delete "/admin/habitations/#{habitation.id}/purge_attachment/autorizacoes_venda/#{attachment.id}", params: { return_to: return_path }
     }.to change(HabitationAuditLog, :count).by(1)
 
-    expect(response).to redirect_to(edit_admin_habitation_path(habitation, return_to: return_path, anchor: "documents"))
+    expect(response).to redirect_to("#{edit_admin_habitation_path(habitation.id)}?return_to=/admin/habitations&ownership=all&q=#{habitation.codigo}#documents")
     remove_log = HabitationAuditLog.last
     expect(remove_log).to have_attributes(action: "attachments_changed")
     expect(remove_log.changed_fields).to include("autorizacoes_venda_attachments")

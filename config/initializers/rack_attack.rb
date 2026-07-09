@@ -10,6 +10,10 @@ require "ipaddr"
 
 class Rack::Attack
   WHATSAPP_WEBHOOK_PATH = "/webhooks/whatsapp".freeze
+  PUBLIC_PROPERTY_RATE_LIMIT = ENV.fetch("PUBLIC_PROPERTY_RATE_LIMIT", 120).to_i
+  PUBLIC_PROPERTY_LISTING_RATE_LIMIT = ENV.fetch("PUBLIC_PROPERTY_LISTING_RATE_LIMIT", 40).to_i
+  PUBLIC_PROPERTY_DEEP_PAGE_RATE_LIMIT = ENV.fetch("PUBLIC_PROPERTY_DEEP_PAGE_RATE_LIMIT", 8).to_i
+  PUBLIC_PROPERTY_DEEP_PAGE_THRESHOLD = ENV.fetch("PUBLIC_PROPERTY_DEEP_PAGE_THRESHOLD", 20).to_i
 
   # Cache store: se Rails.cache for NullStore (default em dev/test), usa um
   # MemoryStore dedicado para o rack-attack funcionar.
@@ -41,6 +45,27 @@ class Rack::Attack
 
   def self.public_webhook_path?(req)
     req.path == WHATSAPP_WEBHOOK_PATH
+  end
+
+  def self.public_property_path?(req)
+    return false unless req.get?
+
+    public_property_listing_path?(req) ||
+      req.path.match?(%r{\A/imoveis/[^/]+(?:\.[\w-]+)?\z}) ||
+      req.path.match?(%r{\A/imovel/[^/]+(?:\.[\w-]+)?\z})
+  end
+
+  def self.public_property_listing_path?(req)
+    return false unless req.get?
+
+    req.path.match?(%r{\A/(?:imoveis|venda|aluguel|imoveis-com-oportunidade)(?:/[^/]+)?(?:\.[\w-]+)?\z})
+  end
+
+  def self.deep_public_property_page?(req)
+    return false unless public_property_listing_path?(req)
+
+    page = req.params["page"].to_s
+    page.match?(/\A\d+\z/) && page.to_i > PUBLIC_PROPERTY_DEEP_PAGE_THRESHOLD
   end
 
   if Rails.env.development?
@@ -126,6 +151,21 @@ class Rack::Attack
     req.ip if req.post? && req.path.match?(%r{\A/leads(?:\.[\w-]+)?\z})
   end
 
+  # --- GET públicos de imóveis — proteção contra crawler/flood de listagem ---
+  # Os limites são intencionalmente mais largos para navegação real e mais
+  # apertados para paginação profunda, que costuma ser padrão de crawler.
+  throttle("public/properties/get/ip", limit: PUBLIC_PROPERTY_RATE_LIMIT, period: 1.minute) do |req|
+    req.ip if Rack::Attack.public_property_path?(req)
+  end
+
+  throttle("public/properties/listing/ip", limit: PUBLIC_PROPERTY_LISTING_RATE_LIMIT, period: 1.minute) do |req|
+    req.ip if Rack::Attack.public_property_listing_path?(req)
+  end
+
+  throttle("public/properties/deep_pages/ip", limit: PUBLIC_PROPERTY_DEEP_PAGE_RATE_LIMIT, period: 1.minute) do |req|
+    req.ip if Rack::Attack.deep_public_property_page?(req)
+  end
+
   # --- Webhooks Meta (leadgen) e WhatsApp Cloud — 300/min por IP ---
   # Limite LARGO de propósito: a Meta envia rajadas legítimas (campanhas,
   # retries). Serve só para conter flood anônimo no endpoint público.
@@ -138,6 +178,12 @@ class Rack::Attack
   # Resposta custom para 429.
   self.throttled_responder = lambda do |request|
     retry_after = (request.env["rack.attack.match_data"] || {})[:period]
+    Rails.logger.warn(
+      "[RackAttack] throttle=#{request.env['rack.attack.matched']} " \
+      "ip=#{request.ip} path=#{request.fullpath} " \
+      "ua=#{request.user_agent.to_s.truncate(180)}"
+    )
+
     [
       429,
       { "Content-Type" => "application/json", "Retry-After" => retry_after.to_s },

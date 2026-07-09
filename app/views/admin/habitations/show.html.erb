@@ -419,7 +419,7 @@
         <div class="ax-property-show-actions">
           <%= link_to safe_join([tag.i(class: "bi bi-arrow-left ax-ico"), tag.span("Voltar")]), return_path, class: "ax-btn ax-btn--sm" %>
           <% if can_edit_habitation?(@habitation) %>
-            <%= link_to safe_join([tag.i(class: "bi bi-pencil-square ax-ico"), tag.span("Editar")]), edit_admin_habitation_path(@habitation, return_to: @return_to_path), class: "ax-btn ax-btn--primary ax-btn--sm" %>
+            <%= link_to safe_join([tag.i(class: "bi bi-pencil-square ax-ico"), tag.span("Editar")]), admin_habitation_path_with_query(edit_admin_habitation_path(@habitation.id), admin_habitation_flat_return_params(@return_to_path)), class: "ax-btn ax-btn--primary ax-btn--sm" %>
           <% end %>
           <%= link_to safe_join([tag.i(class: "bi bi-box-arrow-up-right ax-ico"), tag.span("Ver no site")]), habitation_path(@habitation), target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm" %>
         </div>

@@ -503,6 +503,26 @@ RSpec.describe "Habitation details", type: :request do
       expect(codes).not_to include("9302")
     end
 
+    it "rejects invalid public listing pages before rendering the listing" do
+      get habitations_path(page: "crawler", format: :json)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "rejects public listing pages beyond the configured hard limit" do
+      get habitations_path(page: 51, format: :json)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "rejects public listing pages beyond the available result set" do
+      create(:habitation, codigo: "PAGE-1")
+
+      get habitations_path(page: 2, format: :json)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
     it "filters rent by rental price ranges" do
       matching = create(:habitation, codigo: "9401", status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 7_500_00)
       create(:habitation, codigo: "9402", status: "Aluguel", valor_venda_cents: 0, valor_locacao_cents: 18_000_00)

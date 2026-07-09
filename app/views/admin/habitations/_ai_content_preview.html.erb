@@ -12,7 +12,7 @@
           <i class="bi bi-stars ax-ai-preview__title-icon" aria-hidden="true"></i>
           <span>IA para título e descrição</span>
         </h6>
-        <%= link_to generate_ai_preview_admin_habitation_path(habitation),
+        <%= link_to generate_ai_preview_admin_habitation_path(habitation.id),
             class: "ax-btn ax-btn--ghost ax-btn--sm",
             data: {
               turbo_frame: dom_id(habitation, :ai_content_preview),
@@ -60,7 +60,7 @@
           <% end %>
 
           <div class="ax-ai-preview__actions">
-            <%= link_to format_ai_suggestion_admin_habitation_path(habitation, suggestion_id: suggestion.id),
+            <%= link_to format_ai_suggestion_admin_habitation_path(habitation.id, suggestion_id: suggestion.id),
                 class: "ax-btn ax-btn--ghost ax-btn--sm",
                 data: {
                   turbo_frame: dom_id(habitation, :ai_content_preview),
@@ -71,7 +71,7 @@
               <i class="bi bi-text-paragraph" aria-hidden="true"></i>
               <span>Formatar texto</span>
             <% end %>
-            <%= link_to apply_ai_suggestion_admin_habitation_path(habitation, suggestion_id: suggestion.id),
+            <%= link_to apply_ai_suggestion_admin_habitation_path(habitation.id, suggestion_id: suggestion.id),
                 class: "ax-btn ax-btn--primary ax-btn--sm",
                 data: {
                   turbo_frame: dom_id(habitation, :ai_content_preview),
