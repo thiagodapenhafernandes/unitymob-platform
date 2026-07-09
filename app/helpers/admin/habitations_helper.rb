@@ -107,11 +107,42 @@ module Admin::HabitationsHelper
     label = admin_filter_choice_label(@filter_empreendimentos, selected_value)
     return label if label.present? && label != selected_value.to_s
 
+    parsed = Admin::HabitationDevelopmentFilterOptions.parse(selected_value)
+    if parsed[:type] == :standalone
+      return parsed[:value]
+    end
+
+    lookup_value = parsed[:type] == :development ? parsed[:value] : selected_value
     current_tenant.habitations
       .empreendimentos
-      .where(codigo: selected_value.to_s)
+      .where(codigo: lookup_value.to_s)
       .pick(:nome_empreendimento)
-      .presence || label || selected_value
+      .presence || parsed[:value].presence || label || selected_value
+  end
+
+  def admin_habitation_address_unit_parts(habitation)
+    return [] unless habitation
+
+    parts = []
+    complement = habitation.complemento.to_s.strip.presence
+
+    if habitation.respond_to?(:condominium_house?) && habitation.condominium_house?
+      parts << labeled_unit_value("Casa", complement)
+      parts << labeled_unit_value("Lote", habitation.lote)
+      parts << labeled_unit_value("Quadra", habitation.quadra)
+    elsif habitation.respond_to?(:requires_unit_number?) && habitation.requires_unit_number?
+      parts << labeled_unit_value("Apto.", complement)
+    elsif habitation.respond_to?(:street_house?) && habitation.street_house?
+      parts << labeled_unit_value("Casa", complement)
+    elsif complement.present?
+      parts << complement
+    end
+
+    parts.compact_blank
+  end
+
+  def admin_habitation_address_unit_label(habitation, separator: " · ")
+    admin_habitation_address_unit_parts(habitation).join(separator)
   end
 
   def admin_habitation_publication_channels(habitation)
@@ -313,6 +344,14 @@ module Admin::HabitationsHelper
     when "Anexo da autorização do proprietário"
       { mode: "file_present", names: %w[habitation[autorizacoes_venda][]] }
     end
+  end
+
+  def labeled_unit_value(label, value)
+    clean_value = value.to_s.strip.presence
+    return if clean_value.blank?
+    return clean_value if clean_value.match?(/\A#{Regexp.escape(label.to_s.delete_suffix("."))}\b/i)
+
+    "#{label} #{clean_value}"
   end
 
   def publication_channel_columns

@@ -12,13 +12,21 @@
   </div>
 
   <div class="ax-conditions-chip-grid">
+    <%= ax_toggle_chip(f, :aceita_parcelamento_flag, label: "Aceita parcelamento", class_name: "ax-toggle-chip--full") %>
     <%= ax_toggle_chip(f, :aceita_financiamento_flag, label: "Financiamento", class_name: "ax-toggle-chip--full") %>
   </div>
 
   <%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
     <div class="ax-span-6">
       <%= ax_field_group(title: "Negociação") do %>
-        <%= ax_text_field(form: f, method: :condicoes_negociacao, label: "Condições de negociação", type: :textarea, rows: 3) %>
+        <%= ax_field_grid do %>
+          <div class="ax-span-4">
+            <%= ax_number_field(form: f, method: :numero_prestacoes, label: "Qtd. parcelas", min: 0) %>
+          </div>
+          <div class="ax-span-8">
+            <%= ax_text_field(form: f, method: :condicoes_negociacao, label: "Condições de negociação", type: :textarea, rows: 3) %>
+          </div>
+        <% end %>
       <% end %>
     </div>
     <div class="ax-span-6">

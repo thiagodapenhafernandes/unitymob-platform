@@ -104,9 +104,45 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
         nome_empreendimento: nil,
         titulo_anuncio: "Apartamento aluguel anual"
       )
+      habitation.address.bairro = nil
 
       expect(helper.admin_habitation_catalog_card_title(habitation))
         .to eq("Apartamento aluguel anual")
+    end
+  end
+
+  describe "#admin_habitation_address_unit_label" do
+    it "uses Apto. only for apartment units" do
+      habitation = build(:habitation, categoria: "Apartamento")
+      habitation.address.complemento = "606"
+
+      expect(helper.admin_habitation_address_unit_label(habitation)).to eq("Apto. 606")
+    end
+
+    it "uses Casa for street houses instead of Apto." do
+      habitation = build(:habitation, categoria: "Casa")
+      habitation.address.complemento = "07"
+
+      expect(helper.admin_habitation_address_unit_label(habitation)).to eq("Casa 07")
+    end
+
+    it "uses casa, lote and quadra for condominium houses" do
+      habitation = build(
+        :habitation,
+        categoria: "Casa em Condomínio",
+        lote: "12",
+        quadra: "B"
+      )
+      habitation.address.complemento = "Casa 07"
+
+      expect(helper.admin_habitation_address_unit_label(habitation)).to eq("Casa 07 · Lote 12 · Quadra B")
+    end
+
+    it "does not duplicate Casa when the complement already includes it" do
+      habitation = build(:habitation, categoria: "Casa em Condomínio")
+      habitation.address.complemento = "Casa 09"
+
+      expect(helper.admin_habitation_address_unit_label(habitation)).to eq("Casa 09")
     end
   end
 

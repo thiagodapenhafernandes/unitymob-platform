@@ -69,6 +69,70 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Locação com preço reduzido")
   end
 
+  it "exibe o box da vaga na estrutura do detalhe do imóvel" do
+    habitation = create(
+      :habitation,
+      codigo: "BOX-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento com box identificado",
+      tipo_vaga: "Privativa",
+      numero_box: "G-12"
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Tipo de vaga")
+    expect(response.body).to include("Privativa")
+    expect(response.body).to include(">Box<")
+    expect(response.body).to include("G-12")
+    expect(response.body).not_to include("Box garagem")
+  end
+
+  it "exibe administração de locação no painel de valores" do
+    habitation = create(
+      :habitation,
+      codigo: "ADM-LOC-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento com administração de locação",
+      salute_rental_management_flag: true
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Com Adm")
+    expect(response.body).to include("Sim")
+  end
+
+  it "exibe parcelamento e quantidade de parcelas no painel de valores" do
+    habitation = create(
+      :habitation,
+      codigo: "PARC-SHOW-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento com parcelamento",
+      aceita_financiamento_flag: true,
+      aceita_parcelamento_flag: true,
+      numero_prestacoes: 24
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Aceita parcelamento")
+    expect(response.body).to include("24x")
+    expect(response.body).not_to include("Aceita financiamento")
+  end
+
+  it "exibe campos de parcelamento no cadastro administrativo" do
+    habitation = create(:habitation, codigo: "PARC-FORM-#{SecureRandom.hex(6)}")
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Aceita parcelamento")
+    expect(response.body).to include("Qtd. parcelas")
+    expect(response.body).to include("habitation_aceita_parcelamento_flag")
+    expect(response.body).to include("habitation_numero_prestacoes")
+  end
+
   it "separa captações restritas da listagem geral de imóveis" do
     draft = create(:habitation, :broker_intake, admin_user: admin, codigo: "DRAFT-#{SecureRandom.hex(6)}", titulo_anuncio: "Captação em rascunho")
     submitted = create(:habitation, :broker_intake, admin_user: admin, codigo: "REV-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação finalizada")
@@ -869,6 +933,14 @@ RSpec.describe "Admin::Habitations", type: :request do
       nome_empreendimento: "Residencial Sem Cadastro",
       titulo_anuncio: "Unidade com prédio direto"
     )
+    standalone_unit_same_name = create(
+      :habitation,
+      codigo: "PREDIO-UNIT-#{SecureRandom.hex(6)}",
+      tipo: "Unitário",
+      codigo_empreendimento: nil,
+      nome_empreendimento: "residencial sem cadastro",
+      titulo_anuncio: "Unidade com prédio direto em caixa baixa"
+    )
     other_property = create(
       :habitation,
       codigo: "PREDIO-OTHER-#{SecureRandom.hex(6)}",
@@ -883,20 +955,29 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Residencial Sem Cadastro")
 
+    get admin_habitations_path(empreendimento_codigo: "name:Residencial Sem Cadastro")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(standalone_unit.titulo_anuncio)
+    expect(response.body).to include(standalone_unit_same_name.titulo_anuncio)
+    expect(response.body).not_to include(other_property.titulo_anuncio)
+
     get admin_habitations_path(empreendimento_codigo: "Residencial Sem Cadastro")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(standalone_unit.titulo_anuncio)
+    expect(response.body).to include(standalone_unit_same_name.titulo_anuncio)
     expect(response.body).not_to include(other_property.titulo_anuncio)
   end
 
   it "filtra empreendimento por corretor sem erro de distinct com ordenação" do
     broker = create(:admin_user, name: "Laudi Cardoso")
-    create(:habitation, codigo: "183", tipo: "Empreendimento", nome_empreendimento: "Residencial 183")
+    development_code = "DEV-BROKER-#{SecureRandom.hex(6)}"
+    create(:habitation, codigo: development_code, tipo: "Empreendimento", nome_empreendimento: "Residencial Broker")
     matching = create(
       :habitation,
       codigo: "EMP-BROKER-#{SecureRandom.hex(6)}",
-      codigo_empreendimento: "183",
+      codigo_empreendimento: development_code,
       titulo_anuncio: "Imóvel do corretor filtrado",
       address_attributes: {
         logradouro: "Rua Empreendimento",
@@ -909,7 +990,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     other_property = create(
       :habitation,
       codigo: "EMP-OTHER-#{SecureRandom.hex(6)}",
-      codigo_empreendimento: "183",
+      codigo_empreendimento: development_code,
       titulo_anuncio: "Imóvel de outro corretor",
       address_attributes: {
         logradouro: "Rua Empreendimento",
@@ -921,11 +1002,17 @@ RSpec.describe "Admin::Habitations", type: :request do
     )
     matching.broker_assignments.create!(admin_user: broker, role: "captador")
 
-    get admin_habitations_path(empreendimento_codigo: "183", corretor_id: broker.id)
+    get admin_habitations_path(empreendimento_codigo: "dev:#{development_code}", corretor_id: broker.id)
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(matching.titulo_anuncio)
-    expect(response.body).to include("Empreendimento: Residencial 183")
+    expect(response.body).to include("Empreendimento: Residencial Broker")
+    expect(response.body).not_to include(other_property.titulo_anuncio)
+
+    get admin_habitations_path(empreendimento_codigo: development_code, corretor_id: broker.id)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(matching.titulo_anuncio)
     expect(response.body).not_to include(other_property.titulo_anuncio)
   end
 
