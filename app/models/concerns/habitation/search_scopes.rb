@@ -19,6 +19,11 @@ module Habitation::SearchScopes
       where(exibir_no_site_flag: true)
         .where(status: Habitation::PUBLIC_STATUSES)
     }
+    scope :public_filterable_locations, -> {
+      publicly_listable
+        .without_developments
+        .where("habitations.valor_venda_cents > 0 OR habitations.valor_locacao_cents > 0")
+    }
     scope :active, -> {
       publicly_listable
         .with_photos
@@ -599,8 +604,9 @@ module Habitation::SearchScopes
     end
 
     def public_location_options
-      rows = active
+      rows = public_filterable_locations
         .left_outer_joins(:address)
+        .distinct
         .pluck(Arel.sql("#{LOCATION_CITY_SQL} AS cidade_nome, #{LOCATION_NEIGHBORHOOD_SQL} AS bairro_nome"))
 
       city_labels = canonical_location_labels(rows.map(&:first))

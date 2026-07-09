@@ -31,15 +31,28 @@ export default class extends Controller {
     categoriesByType: Object,
     tipoByType: Object,
     developments: Object,
-    errorFields: Array
+    errorFields: Array,
+    validationRules: Array
   }
 
   connect() {
+    this.refreshValidationBadgesBound = this.refreshValidationBadges.bind(this)
+    this.element.addEventListener("input", this.refreshValidationBadgesBound)
+    this.element.addEventListener("change", this.refreshValidationBadgesBound)
+    this.element.addEventListener("trix-change", this.refreshValidationBadgesBound)
+
     this.activateTabFromHash()
     this.applyCadastroType()
     this.applySuspensionReasonVisibility()
     this.syncFromDevelopmentSelection()
     this.applyServerValidationErrors()
+    this.refreshValidationBadges()
+  }
+
+  disconnect() {
+    this.element.removeEventListener("input", this.refreshValidationBadgesBound)
+    this.element.removeEventListener("change", this.refreshValidationBadgesBound)
+    this.element.removeEventListener("trix-change", this.refreshValidationBadgesBound)
   }
 
   activateTabFromHash() {
@@ -138,6 +151,117 @@ export default class extends Controller {
         wrapper.setAttribute("aria-invalid", "true")
       }
     }
+  }
+
+  refreshValidationBadges() {
+    const counts = this.currentValidationCounts()
+    const statuses = Array.from(this.element.querySelectorAll("[data-habitation-form-tab-status]"))
+
+    statuses.forEach((status) => {
+      const tab = status.dataset.habitationFormTabStatus
+      const count = counts[tab] || 0
+      status.innerHTML = count > 0 ? this.missingBadgeHtml(count) : this.completeIconHtml()
+    })
+
+    this.element.querySelectorAll("[data-habitation-form-tab-rail-status]").forEach((button) => {
+      const tab = button.dataset.habitationFormTabRailStatus
+      const count = counts[tab] || 0
+      button.querySelectorAll(".ax-tab-missing, .ax-tab-error").forEach((badge) => badge.remove())
+      if (count > 0) button.insertAdjacentHTML("beforeend", this.missingBadgeHtml(count))
+    })
+
+    this.refreshProgress(counts, statuses)
+  }
+
+  currentValidationCounts() {
+    const counts = {}
+    const rules = this.hasValidationRulesValue ? this.validationRulesValue : []
+
+    rules.forEach((rule) => {
+      if (this.ruleSatisfied(rule)) return
+
+      const tab = String(rule.tab || "general")
+      counts[tab] = (counts[tab] || 0) + 1
+    })
+
+    return counts
+  }
+
+  ruleSatisfied(rule) {
+    const mode = String(rule.mode || "any_present")
+    if (mode === "all_present") return (rule.names || []).every((name) => this.nameHasValue(name))
+    if (mode === "checked_any") return (rule.names || []).some((name) => this.nameHasCheckedValue(name))
+    if (mode === "positive_any") return (rule.names || []).some((name) => this.nameHasPositiveValue(name))
+    if (mode === "file_present") return (rule.names || []).some((name) => this.nameHasFileValue(name))
+    if (mode === "groups_present") {
+      return (rule.groups || []).every((group) => group.some((name) => this.nameHasValue(name)))
+    }
+
+    return (rule.names || []).some((name) => this.nameHasValue(name))
+  }
+
+  nameHasValue(name) {
+    return this.fieldsForName(name).some((field) => this.fieldValuePresent(field))
+  }
+
+  nameHasCheckedValue(name) {
+    return this.fieldsForName(name).some((field) => field.checked && this.fieldValuePresent(field))
+  }
+
+  nameHasPositiveValue(name) {
+    return this.fieldsForName(name).some((field) => this.numericValue(field) > 0)
+  }
+
+  nameHasFileValue(name) {
+    return this.fieldsForName(name).some((field) => field.files && field.files.length > 0)
+  }
+
+  fieldsForName(name) {
+    const exact = this.escapeAttributeValue(name)
+    return Array.from(this.element.querySelectorAll(`[name="${exact}"]`))
+  }
+
+  fieldValuePresent(field) {
+    if (!field || field.disabled) return false
+    if (field.type === "checkbox" || field.type === "radio") return field.checked
+    if (field.type === "file") return field.files && field.files.length > 0
+
+    return String(field.value || "").replace(/<[^>]*>/g, "").trim() !== ""
+  }
+
+  numericValue(field) {
+    const value = String(field?.value || "")
+      .replace(/[^\d,.-]/g, "")
+      .replace(/\./g, "")
+      .replace(",", ".")
+
+    return Number.parseFloat(value) || 0
+  }
+
+  missingBadgeHtml(count) {
+    return `<span class="ax-tab-missing" title="${count} validação(ões) faltante(s)">${count}</span>`
+  }
+
+  completeIconHtml() {
+    return '<i class="bi bi-check-circle-fill habitation-tabs-bar__ind habitation-tabs-bar__ind--success" title="Completo" aria-hidden="true"></i>'
+  }
+
+  refreshProgress(counts, statuses) {
+    const total = statuses.length
+    if (total === 0) return
+
+    const completed = statuses.filter((status) => {
+      const tab = status.dataset.habitationFormTabStatus
+      return (counts[tab] || 0) === 0
+    }).length
+    const percent = Math.round((completed / total) * 100)
+
+    this.element.querySelectorAll("[data-habitation-form-progress-count]").forEach((node) => {
+      node.textContent = `${completed}/${total}`
+    })
+    this.element.querySelectorAll("[data-habitation-form-progress-bar]").forEach((node) => {
+      node.style.width = `${percent}%`
+    })
   }
 
   focusFirstInvalidField() {

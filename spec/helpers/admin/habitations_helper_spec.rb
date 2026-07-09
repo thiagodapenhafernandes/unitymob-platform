@@ -43,6 +43,43 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
     end
   end
 
+  describe "#admin_habitation_editor_tab_missing_counts" do
+    it "groups operational validation gaps by editor tab" do
+      property_setting = instance_double(
+        PropertySetting,
+        active_broker_capture_checks: %w[titulo infraestrutura chaves fotos autorizacao]
+      )
+      habitation = build(
+        :habitation,
+        :broker_intake,
+        categoria: "Apartamento",
+        titulo_anuncio: nil,
+        infra_estrutura: [],
+        key_location: nil,
+        photo_flow_choice: "upload",
+        pictures: []
+      )
+
+      counts = helper.admin_habitation_editor_tab_missing_counts(habitation, property_setting: property_setting)
+
+      expect(counts[:features]).to eq(1)
+      expect(counts[:infra]).to eq(1)
+      expect(counts[:commercial]).to eq(1)
+      expect(counts[:media]).to eq(1)
+      expect(counts[:documents]).to eq(1)
+    end
+
+    it "does not return a counter for completed sections" do
+      property_setting = instance_double(PropertySetting, active_broker_capture_checks: %w[titulo infraestrutura])
+      habitation = build(:habitation, :broker_intake, titulo_anuncio: "Apartamento pronto", infra_estrutura: ["Piscina"])
+
+      counts = helper.admin_habitation_editor_tab_missing_counts(habitation, property_setting: property_setting)
+
+      expect(counts[:features]).to eq(0)
+      expect(counts[:infra]).to eq(0)
+    end
+  end
+
   describe "#admin_habitation_internal_path" do
     it "returns the edit path when the current user can edit the property" do
       admin = create(:admin_user, :admin)

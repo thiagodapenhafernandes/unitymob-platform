@@ -75,6 +75,11 @@
   display:inline-grid; place-items:center; min-width:17px; height:17px; padding:0 5px;
   border-radius:999px; background:#b42318; color:#fff; font-size:10px; font-weight:800; line-height:1;
 }
+.habitation-form-ui .ax-tab-missing {
+  display:inline-grid; place-items:center; min-width:19px; height:19px; padding:0 6px;
+  border-radius:999px; background:#f59e0b; color:#fff; font-size:10px; font-weight:800; line-height:1;
+  box-shadow:0 0 0 2px #fff;
+}
 
 /* Rail recolhido (só ícones) */
 .habitation-form-ui .ax-aside-rail-nav__item { position:relative; }

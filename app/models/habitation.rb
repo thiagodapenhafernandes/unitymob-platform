@@ -142,6 +142,11 @@ class Habitation < ApplicationRecord
     "public_filter_location_options_v1/tenant/#{tenant_id}"
   end
 
+  def self.public_sitemap_cache_key(tenant_id, base_url = nil)
+    host_digest = ActiveSupport::Digest.hexdigest(base_url.to_s)
+    "public_sitemap_xml_v1/tenant/#{tenant_id}/#{host_digest}"
+  end
+
   def self.public_listing_count_cache_key(tenant_id, filters)
     digest = ActiveSupport::Digest.hexdigest(normalized_public_listing_count_filters(filters).to_json)
     "public_listing_count_v1/tenant/#{tenant_id}/#{digest}"
@@ -152,9 +157,19 @@ class Habitation < ApplicationRecord
 
     Rails.cache.delete(public_filter_property_types_cache_key(tenant_id))
     Rails.cache.delete(public_filter_location_options_cache_key(tenant_id))
+    clear_public_sitemap_cache_for_tenant(tenant_id)
     clear_public_listing_count_cache_for_tenant(tenant_id)
     clear_public_home_cache_for_tenant(tenant_id)
     Footer::QuickLinksService.clear_cache if defined?(Footer::QuickLinksService)
+  end
+
+  def self.clear_public_sitemap_cache_for_tenant(tenant_id)
+    return if tenant_id.blank?
+    return unless Rails.cache.respond_to?(:delete_matched)
+
+    Rails.cache.delete_matched("public_sitemap_xml_v1/tenant/#{tenant_id}/*")
+  rescue NotImplementedError
+    nil
   end
 
   def self.clear_public_listing_count_cache_for_tenant(tenant_id)

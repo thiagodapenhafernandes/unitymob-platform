@@ -6,9 +6,10 @@ module Seo
   class SitemapBuilder
     LIMIT = 45_000
 
-    def initialize(base_url:, url_helpers:)
+    def initialize(base_url:, url_helpers:, habitation_scope: Habitation.all)
       @base_url = base_url.to_s.delete_suffix("/")
       @url_helpers = url_helpers
+      @habitation_scope = habitation_scope
       @seen = Set.new
     end
 
@@ -56,17 +57,19 @@ module Seo
     end
 
     def property_entries
-      Habitation.active.includes(:rich_text_descricao_web).find_each.filter_map do |habitation|
-        next unless habitation.publicly_viewable?
-
-        path = @url_helpers.habitation_path(habitation)
-        add_entry(
-          loc: absolute_url(path),
-          lastmod: habitation.updated_at,
-          changefreq: "weekly",
-          priority: habitation.empreendimento? ? 0.8 : 0.7
-        )
-      end
+      @habitation_scope
+        .active
+        .select(:id, :slug, :tipo, :updated_at)
+        .find_each
+        .filter_map do |habitation|
+          path = @url_helpers.habitation_path(habitation)
+          add_entry(
+            loc: absolute_url(path),
+            lastmod: habitation.updated_at,
+            changefreq: "weekly",
+            priority: habitation.empreendimento? ? 0.8 : 0.7
+          )
+        end
     end
 
     def landing_page_entries
