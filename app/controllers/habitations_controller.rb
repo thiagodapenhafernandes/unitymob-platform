@@ -31,8 +31,7 @@ class HabitationsController < ApplicationController
 
     filter_params = search_params
     listing_scope = public_habitation_scope
-      .without_developments
-      .advanced_search(filter_params)
+      .public_property_search(filter_params)
 
     total_entries = cached_listing_total_entries(listing_scope, filter_params)
     return if reject_public_listing_page_beyond_total!(total_entries)

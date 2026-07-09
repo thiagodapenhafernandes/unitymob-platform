@@ -350,4 +350,24 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect { relation.count }.not_to raise_error
     end
   end
+
+  describe ".public_property_search" do
+    it "uses the public property base without development availability predicates" do
+      relation = Habitation.public_property_search(transaction_type: "venda", category: ["Apartamento"])
+
+      expect(relation.to_sql).to include("COALESCE(habitations.tipo, '') <> 'Empreendimento'")
+      expect(relation.to_sql).to include("valor_venda_cents > 0")
+      expect(relation.to_sql).not_to include("SELECT 1 FROM habitations units")
+    end
+
+    it "keeps advanced filters for public property listings" do
+      matching = create(:habitation, categoria: "Apartamento", valor_venda_cents: 800_000_00, valor_locacao_cents: 0)
+      non_matching = create(:habitation, categoria: "Casa", valor_venda_cents: 800_000_00, valor_locacao_cents: 0)
+
+      result = Habitation.public_property_search(transaction_type: "venda", category: ["Apartamento"])
+
+      expect(result).to include(matching)
+      expect(result).not_to include(non_matching)
+    end
+  end
 end

@@ -187,8 +187,7 @@ module Footer
     end
 
     def property_link_available?(link)
-      habitations.without_developments
-                 .advanced_search(link[:params])
+      habitations.public_property_search(link[:params])
                  .exists?
     end
 

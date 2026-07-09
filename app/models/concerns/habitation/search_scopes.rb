@@ -24,6 +24,12 @@ module Habitation::SearchScopes
         .without_developments
         .where("habitations.valor_venda_cents > 0 OR habitations.valor_locacao_cents > 0")
     }
+    scope :public_property_listable, -> {
+      publicly_listable
+        .without_developments
+        .with_photos
+        .with_public_listing_price
+    }
     scope :active, -> {
       publicly_listable
         .with_photos
@@ -671,9 +677,9 @@ module Habitation::SearchScopes
     end
 
     # Busca avançada SUPER DINÂMICA combinando múltiplos filtros
-    def advanced_search(params = {})
+    def advanced_search(params = {}, base_scope: nil)
       params = params.to_h.with_indifferent_access
-      query = active # active já restringe a imóveis públicos com fotos e preço.
+      query = base_scope || active # active já restringe a imóveis públicos com fotos e preço.
       
       # Tipo de transação
       query = query.for_sale if params[:transaction_type] == 'venda'
@@ -863,6 +869,10 @@ module Habitation::SearchScopes
       query = apply_sorting(query, params[:sort])
       
       query
+    end
+
+    def public_property_search(params = {})
+      advanced_search(params, base_scope: public_property_listable)
     end
     
     # Aplica ordenação baseada em parâmetro
