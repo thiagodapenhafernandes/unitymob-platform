@@ -173,8 +173,14 @@ end
 
 desc "Reinicia o Puma e o Solid Queue"
 task restart: :remote_environment do
-  comment "Restarting Puma..."
-  command %(sudo systemctl restart #{fetch(:puma_service)})
+  comment "Reloading Puma..."
+  command %{
+    if [ -f "#{fetch(:deploy_to)}/shared/.puma_hot_restart_enabled" ]; then
+      sudo systemctl reload #{fetch(:puma_service)} || sudo systemctl restart #{fetch(:puma_service)}
+    else
+      sudo systemctl restart #{fetch(:puma_service)}
+    fi
+  }
   comment "Restarting Solid Queue..."
   command %(sudo systemctl restart #{fetch(:solid_queue_service)})
 end
