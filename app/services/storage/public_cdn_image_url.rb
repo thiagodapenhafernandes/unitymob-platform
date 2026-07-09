@@ -155,7 +155,7 @@ module Storage
     end
 
     def representation_path(variant)
-      Rails.application.routes.url_helpers.rails_representation_path(variant)
+      Rails.application.routes.url_helpers.rails_representation_path(variant, only_path: true)
     end
 
     def enqueue_variant_processing(blob)
