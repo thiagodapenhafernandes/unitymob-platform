@@ -32,6 +32,8 @@
   page_size_params = request.query_parameters.except("page")
   current_per_page = @per_page.to_i.positive? ? @per_page.to_i : @habitations.per_page.to_i
   page_size_options = @page_size_options.presence || [10, 20]
+  catalog_controller_names = ["catalog-anchor-scroll"]
+  catalog_controller_names << "bulk-publish" if bulk_actions_allowed
   filtering_active = params[:codigo].present? ||
                      params[:q].present? ||
                      params[:status].present? ||
@@ -53,7 +55,7 @@
 <% end %>
 
 <% catalog_main = capture do %>
-    <div class="habitations-master-content" <% if bulk_actions_allowed %>data-controller="bulk-publish"
+    <div class="habitations-master-content" data-controller="<%= catalog_controller_names.join(" ") %>" <% if bulk_actions_allowed %>
          data-bulk-publish-url-value="<%= bulk_publish_admin_habitations_path %>"
          data-bulk-publish-csrf-value="<%= form_authenticity_token %>"
          data-bulk-publish-filtered-total-value="<%= @filtered_count %>"

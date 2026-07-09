@@ -1003,8 +1003,9 @@ class Admin::HabitationsController < Admin::BaseController
 
   def should_restore_habitations_filter_session?
     request.get? &&
-      request.query_parameters.except("controller", "action").blank? &&
-      habitations_filter_session_params.present?
+      params[:page].blank? &&
+      habitations_filter_session_params.present? &&
+      meaningful_habitations_filter_params(request.query_parameters).blank?
   end
 
   def store_habitations_filter_session!
@@ -1012,10 +1013,8 @@ class Admin::HabitationsController < Admin::BaseController
       request.query_parameters.slice(*habitations_filter_session_keys).except("page", "clear_filters")
     )
 
-    if filter_params.present? && filter_params.except("ownership", "visualizacao", "sort", "direction", "per_page").present?
+    if meaningful_habitations_filter_params(filter_params).present?
       session[habitations_filter_session_key] = filter_params
-    else
-      clear_habitations_filter_session!
     end
   end
 
@@ -1028,6 +1027,14 @@ class Admin::HabitationsController < Admin::BaseController
 
   def clear_habitations_filter_session!
     session.delete(habitations_filter_session_key)
+  end
+
+  def meaningful_habitations_filter_params(source_params)
+    compact_blank_return_params(
+      source_params.to_h
+        .slice(*habitations_filter_session_keys)
+        .except("ownership", "visualizacao", "sort", "direction", "per_page", "page", "clear_filters")
+    )
   end
 
   def extract_multi_select_integers(param_key)

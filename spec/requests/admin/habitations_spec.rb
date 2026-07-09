@@ -636,9 +636,9 @@ RSpec.describe "Admin::Habitations", type: :request do
       codigo: "GAL-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Apartamento com galeria completa",
       pictures: [
-        { "url" => "https://cdn.saluteimoveis.com.br/spec/galeria-1.jpg" },
-        { "url" => "https://cdn.saluteimoveis.com.br/spec/galeria-2.jpg" },
-        { "url" => "https://cdn.saluteimoveis.com.br/spec/galeria-3.jpg" }
+        { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-1.jpg" },
+        { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-2.jpg" },
+        { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-3.jpg" }
       ]
     )
 
@@ -648,9 +648,9 @@ RSpec.describe "Admin::Habitations", type: :request do
     html = Nokogiri::HTML(response.body)
     gallery_links = html.css(%(a[data-fancybox="admin-property-card-#{habitation.id}"]))
     expect(gallery_links.map { |node| node["href"] }).to contain_exactly(
-      "https://cdn.saluteimoveis.com.br/spec/galeria-1.jpg",
-      "https://cdn.saluteimoveis.com.br/spec/galeria-2.jpg",
-      "https://cdn.saluteimoveis.com.br/spec/galeria-3.jpg"
+      "https://dwvimagesv1.b-cdn.net/spec/galeria-1.jpg",
+      "https://dwvimagesv1.b-cdn.net/spec/galeria-2.jpg",
+      "https://dwvimagesv1.b-cdn.net/spec/galeria-3.jpg"
     )
 
     get admin_habitations_path(q: habitation.codigo, visualizacao: "tabela")
@@ -659,10 +659,30 @@ RSpec.describe "Admin::Habitations", type: :request do
     html = Nokogiri::HTML(response.body)
     gallery_links = html.css(%(a[data-fancybox="admin-property-row-#{habitation.id}"]))
     expect(gallery_links.map { |node| node["href"] }).to contain_exactly(
-      "https://cdn.saluteimoveis.com.br/spec/galeria-1.jpg",
-      "https://cdn.saluteimoveis.com.br/spec/galeria-2.jpg",
-      "https://cdn.saluteimoveis.com.br/spec/galeria-3.jpg"
+      "https://dwvimagesv1.b-cdn.net/spec/galeria-1.jpg",
+      "https://dwvimagesv1.b-cdn.net/spec/galeria-2.jpg",
+      "https://dwvimagesv1.b-cdn.net/spec/galeria-3.jpg"
     )
+  end
+
+  it "não exibe badge de canais publicados no card do catálogo" do
+    habitation = create(
+      :habitation,
+      tenant: admin.tenant,
+      codigo: "PUB-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel publicado sem badge de canais",
+      exibir_no_site_flag: true,
+      publicar_imovelweb: true,
+      publicar_viva_real_vrsync: true
+    )
+
+    get admin_habitations_path(q: habitation.codigo)
+
+    expect(response).to have_http_status(:ok)
+    card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(habitation.codigo) }
+    expect(card).to be_present
+    expect(card.text).not_to include("Publicado em")
+    expect(card.text).not_to include("PUBLICADO EM")
   end
 
   it "não inclui imóveis apenas vinculados como corretor secundário em Meus imóveis" do
@@ -1202,6 +1222,158 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(back_uri.fragment).to eq("habitation_#{habitation.id}")
   end
 
+  it "preserva página e card de origem ao abrir, voltar e salvar saindo do imóvel" do
+    habitations = (1..11).map do |index|
+      create(
+        :habitation,
+        codigo: "RET-PAGE-#{index.to_s.rjust(2, '0')}",
+        titulo_anuncio: "Imóvel paginado #{index}",
+        categoria: "Apartamento",
+        status: "Venda"
+      ).tap do |habitation|
+        habitation.address.update!(
+          logradouro: "Rua Página",
+          numero: index.to_s,
+          bairro: "Centro",
+          cidade: "Balneário Camboriú",
+          uf: "SC"
+        )
+      end
+    end
+    target = habitations.last
+    page_path = admin_habitations_path(
+      ownership: "all",
+      page: 2,
+      per_page: 10,
+      sort: "codigo",
+      direction: "asc"
+    )
+
+    get page_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    card_link = html.at_css(%([data-clickable-card-url-value*="/admin/habitations/#{target.id}/edit"]))
+    expect(card_link).to be_present
+    card_url = CGI.unescapeHTML(card_link["data-clickable-card-url-value"])
+    expect(card_url).to include("return_to=/admin/habitations")
+    expect(card_url).to include("page=2")
+    expect(card_url).to include("per_page=10")
+    expect(card_url).to include("sort=codigo")
+    expect(card_url).to include("direction=asc")
+    expect(card_url).to include("back_anchor=habitation_#{target.id}")
+
+    get admin_habitation_path(
+      target.id,
+      return_to: "/admin/habitations",
+      ownership: "all",
+      page: "2",
+      per_page: "10",
+      sort: "codigo",
+      direction: "asc",
+      back_anchor: "habitation_#{target.id}"
+    )
+
+    expect(response).to have_http_status(:ok)
+    show_html = Nokogiri::HTML(response.body)
+    breadcrumb_back_link = show_html.at_css("a.ax-breadcrumb__back")
+    expect(breadcrumb_back_link).to be_present
+    breadcrumb_back_uri = URI.parse(CGI.unescapeHTML(breadcrumb_back_link["href"]))
+    breadcrumb_back_params = Rack::Utils.parse_nested_query(breadcrumb_back_uri.query)
+    expect(breadcrumb_back_uri.path).to eq(admin_habitations_path)
+    expect(breadcrumb_back_params).to include(
+      "ownership" => "all",
+      "page" => "2",
+      "per_page" => "10",
+      "sort" => "codigo",
+      "direction" => "asc"
+    )
+    expect(breadcrumb_back_uri.fragment).to eq("habitation_#{target.id}")
+
+    back_link = show_html.css("a").select { |node| node.text.squish == "Voltar" }.find do |node|
+      CGI.unescapeHTML(node["href"].to_s).include?("page=2")
+    end
+    expect(back_link).to be_present
+    back_uri = URI.parse(CGI.unescapeHTML(back_link["href"]))
+    back_params = Rack::Utils.parse_nested_query(back_uri.query)
+    expect(back_uri.path).to eq(admin_habitations_path)
+    expect(back_params).to include(
+      "ownership" => "all",
+      "page" => "2",
+      "per_page" => "10",
+      "sort" => "codigo",
+      "direction" => "asc"
+    )
+    expect(back_uri.fragment).to eq("habitation_#{target.id}")
+
+    get edit_admin_habitation_path(
+      target.id,
+      return_to: "/admin/habitations",
+      ownership: "all",
+      page: "2",
+      per_page: "10",
+      sort: "codigo",
+      direction: "asc",
+      back_anchor: "habitation_#{target.id}"
+    )
+    expect(response).to have_http_status(:ok)
+    edit_html = Nokogiri::HTML(response.body)
+    edit_breadcrumb_back_link = edit_html.at_css("a.ax-breadcrumb__back")
+    expect(edit_breadcrumb_back_link).to be_present
+    edit_breadcrumb_back_uri = URI.parse(CGI.unescapeHTML(edit_breadcrumb_back_link["href"]))
+    edit_breadcrumb_back_params = Rack::Utils.parse_nested_query(edit_breadcrumb_back_uri.query)
+    expect(edit_breadcrumb_back_uri.path).to eq(admin_habitations_path)
+    expect(edit_breadcrumb_back_params).to include(
+      "ownership" => "all",
+      "page" => "2",
+      "per_page" => "10",
+      "sort" => "codigo",
+      "direction" => "asc"
+    )
+    expect(edit_breadcrumb_back_uri.fragment).to eq("habitation_#{target.id}")
+
+    authenticity_token =
+      edit_html.at_css(%(input[name="authenticity_token"]))&.[]("value") ||
+      edit_html.at_css(%(meta[name="csrf-token"]))&.[]("content")
+    expect(authenticity_token).to be_present
+
+    patch admin_habitation_path(target.id), params: {
+      authenticity_token: authenticity_token,
+      return_to: "/admin/habitations",
+      ownership: "all",
+      page: "2",
+      per_page: "10",
+      sort: "codigo",
+      direction: "asc",
+      back_anchor: "habitation_#{target.id}",
+      save_navigation: "exit",
+      habitation: {
+        titulo_anuncio: "Imóvel paginado atualizado",
+        address_attributes: {
+          id: target.address.id,
+          logradouro: "Rua Página",
+          numero: target.address.numero,
+          bairro: "Centro",
+          cidade: "Balneário Camboriú",
+          uf: "SC"
+        }
+      }
+    }, headers: { "X-CSRF-Token" => authenticity_token }
+
+    expect(response).to have_http_status(:found)
+    redirect_uri = URI.parse(response.location)
+    redirect_params = Rack::Utils.parse_nested_query(redirect_uri.query)
+    expect(redirect_uri.path).to eq(admin_habitations_path)
+    expect(redirect_params).to include(
+      "ownership" => "all",
+      "page" => "2",
+      "per_page" => "10",
+      "sort" => "codigo",
+      "direction" => "asc"
+    )
+    expect(redirect_uri.fragment).to eq("habitation_#{target.id}")
+  end
+
   it "restaura o último filtro do catálogo ao voltar para imóveis sem query string" do
     habitation = create(
       :habitation,
@@ -1226,6 +1398,50 @@ RSpec.describe "Admin::Habitations", type: :request do
     get admin_habitations_path
 
     expect(response).to redirect_to(filtered_path)
+  end
+
+  it "restaura o último filtro quando a navegação volta para imóveis só com parâmetros neutros" do
+    habitation = create(
+      :habitation,
+      codigo: "RET-NEUTRAL-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel com filtro persistido por navegação",
+      nome_empreendimento: "Vermont",
+      categoria: "Apartamento",
+      status: "Venda"
+    )
+    filtered_path = admin_habitations_path(
+      ownership: "all",
+      empreendimento_codigo: "name:Vermont"
+    )
+
+    get filtered_path
+    expect(response).to have_http_status(:ok)
+
+    get admin_habitation_path(habitation)
+    expect(response).to have_http_status(:ok)
+
+    get admin_habitations_path(ownership: "all")
+
+    expect(response).to redirect_to(filtered_path)
+  end
+
+  it "não restaura o filtro salvo quando a navegação informa uma página específica" do
+    create(
+      :habitation,
+      codigo: "RET-PAGE-SESSION-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel com filtro salvo",
+      nome_empreendimento: "Vermont",
+      categoria: "Apartamento",
+      status: "Venda"
+    )
+    filtered_path = admin_habitations_path(ownership: "all", empreendimento_codigo: "name:Vermont")
+
+    get filtered_path
+    expect(response).to have_http_status(:ok)
+
+    get admin_habitations_path(ownership: "all", page: 2)
+
+    expect(response).to have_http_status(:ok)
   end
 
   it "limpa o último filtro do catálogo quando o usuário pede para limpar filtros" do
