@@ -1953,6 +1953,10 @@
       gap: .72rem;
     }
 
+    body.ax-habitations-workspace [id^="habitation_"] {
+      scroll-margin-top: 160px;
+    }
+
     body.ax-habitations-workspace .ax-property-card--catalog {
       position: relative;
       width: 100%;

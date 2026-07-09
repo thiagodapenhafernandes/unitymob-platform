@@ -15,7 +15,6 @@
   catalog_heading = ["REF: #{imovel.codigo}", catalog_heading_subject].compact_blank.join(" · ")
   has_photo = image_urls.any? || imovel.has_any_photo?
   publication_channels = admin_habitation_publication_channels(imovel)
-  visible_publication_channels = publication_channels.reject { |channel| channel.to_s.casecmp("Site").zero? }
   captador_name = imovel.primary_captador_name
   captador_label = captador_name.presence || "Não informado"
   data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
@@ -135,9 +134,6 @@
           <span class="ax-property-card__identity-category"><%= imovel.categoria.presence || "Sem categoria" %></span>
           <% if imovel.dwv_property? %>
             <span class="ax-property-chip ax-property-chip--dark" title="<%= imovel.codigo_dwv.present? ? "Código DWV: #{imovel.codigo_dwv}" : "Imóvel sincronizado via DWV" %>">DWV</span>
-          <% end %>
-          <% if visible_publication_channels.any? %>
-            <%= render "admin/habitations/publication_channels", channels: visible_publication_channels %>
           <% end %>
         </div>
       </div>

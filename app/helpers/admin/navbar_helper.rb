@@ -153,7 +153,7 @@ module Admin::NavbarHelper
   end
 
   def admin_contextbar_back_path
-    explicit_return_path = safe_admin_contextbar_return_path(params[:return_to])
+    explicit_return_path = safe_admin_contextbar_return_path(params[:return_to], source_params: params)
     return explicit_return_path if explicit_return_path.present?
 
     inferred_return_path = admin_contextbar_inferred_back_path
@@ -256,7 +256,7 @@ module Admin::NavbarHelper
     end
   end
 
-  def safe_admin_contextbar_return_path(value)
+  def safe_admin_contextbar_return_path(value, source_params: nil)
     raw_value = value.to_s.strip
     return nil if raw_value.blank?
 
@@ -265,13 +265,49 @@ module Admin::NavbarHelper
     return nil if uri.host.present? && !same_request_host?(uri)
     return nil unless internal_contextbar_path?(uri.path)
 
-    query = uri.path == admin_habitations_path ? compact_admin_contextbar_return_query(uri.query) : uri.query.presence
+    query = if uri.path == admin_habitations_path
+              compact_admin_contextbar_return_query(
+                admin_contextbar_habitations_return_query(uri, source_params)
+              )
+            else
+              uri.query.presence
+            end
     path = [uri.path, query].compact.join("?")
     return nil if same_contextbar_path?(path)
 
-    uri.fragment.present? ? "#{path}##{uri.fragment}" : path
+    fragment = uri.fragment.presence || admin_contextbar_return_source_params(source_params)["back_anchor"].to_s.presence
+    fragment.present? ? "#{path}##{fragment}" : path
   rescue URI::InvalidURIError
     nil
+  end
+
+  def admin_contextbar_habitations_return_query(uri, source_params)
+    Rack::Utils.build_nested_query(
+      Rack::Utils.parse_nested_query(uri.query.to_s)
+        .merge(admin_contextbar_return_source_params(source_params).except("back_anchor"))
+    )
+  end
+
+  def admin_contextbar_return_source_params(source_params)
+    raw_params =
+      if source_params.respond_to?(:to_unsafe_h)
+        source_params.to_unsafe_h
+      elsif source_params.respond_to?(:to_h)
+        source_params.to_h
+      else
+        {}
+      end
+
+    raw_params
+      .except(*admin_contextbar_return_param_denylist)
+      .compact_blank
+  end
+
+  def admin_contextbar_return_param_denylist
+    %w[
+      controller action id habitation_id return_to authenticity_token _method utf8 commit
+      habitation save_anchor save_navigation save_context release_to_broker_after_save save_internal_after_save
+    ]
   end
 
   def compact_admin_contextbar_return_query(query)
