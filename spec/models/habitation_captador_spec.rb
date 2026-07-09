@@ -26,5 +26,13 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.primary_captador).to be_nil
       expect(habitation.primary_captador_name).to eq("Corretor Vista")
     end
+
+    it "usa o usuário fake da DWV para imóveis DWV sem captador direto" do
+      dwv_user = create(:admin_user, name: "Dwv - Imóveis Pauta", email: "laudicardoso@gmail.com")
+      habitation = build(:habitation, tenant: dwv_user.tenant, admin_user: nil, imovel_dwv: "Sim")
+
+      expect(habitation.primary_captador).to eq(dwv_user)
+      expect(habitation.primary_captador_name).to eq("Dwv - Imóveis Pauta")
+    end
   end
 end

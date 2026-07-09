@@ -472,6 +472,56 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(vista_property.titulo_anuncio)
   end
 
+  it "exibe o usuário fake da DWV como captador no card do catálogo" do
+    create(:admin_user, tenant: admin.tenant, name: "Dwv - Imóveis Pauta", email: "laudicardoso@gmail.com")
+    dwv_property = create(
+      :habitation,
+      tenant: admin.tenant,
+      admin_user: nil,
+      codigo: "DWV-CARD-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel DWV sem captador direto",
+      imovel_dwv: "Sim"
+    )
+
+    get admin_habitations_path(q: dwv_property.codigo)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(dwv_property.titulo_anuncio)
+    expect(response.body).to include("Captador:")
+    expect(response.body).to include("Dwv - Imóveis Pauta")
+  end
+
+  it "exibe o empreendimento abaixo do endereço e acima do captador no card do catálogo" do
+    broker = create(:admin_user, tenant: admin.tenant, name: "Adriana Stark")
+    habitation = create(
+      :habitation,
+      tenant: admin.tenant,
+      admin_user: broker,
+      codigo: "EMP-CARD-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento no edifício",
+      nome_empreendimento: "Atlântica Residence",
+      address_attributes: {
+        logradouro: "Atlântica",
+        numero: "1166",
+        bairro: "Centro",
+        cidade: "Balneário Camboriú",
+        uf: "SC"
+      }
+    )
+
+    get admin_habitations_path(q: habitation.codigo)
+
+    expect(response).to have_http_status(:ok)
+    card_text = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(habitation.codigo) }.text
+    address_index = card_text.index("Atlântica, 1166")
+    development_index = card_text.index("Empreendimento: Atlântica Residence")
+    captador_index = card_text.index("Captador: Adriana Stark")
+
+    expect(address_index).to be_present
+    expect(development_index).to be > address_index
+    expect(captador_index).to be > development_index
+  end
+
   it "não inclui imóveis apenas vinculados como corretor secundário em Meus imóveis" do
     broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Indalécio")

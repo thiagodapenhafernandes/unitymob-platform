@@ -38,7 +38,9 @@
           fallback_image_urls = image_urls.drop(1)
           display_title = imovel.display_title
           catalog_title = admin_habitation_catalog_title(imovel)
+          development_name = admin_habitation_catalog_development_name(imovel)
           captador_name = imovel.primary_captador_name
+          captador_label = captador_name.presence || "Não informado"
           data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
           price_label = if imovel.valor_venda_cents.to_i.positive?
                           number_to_currency(imovel.valor_venda_cents / 100.0)
@@ -112,9 +114,10 @@
             <div class="ax-property-table__stack ax-property-table__location">
               <strong><%= [imovel.endereco, imovel.numero].compact_blank.join(", ").presence || "Sem endereço" %></strong>
               <span><%= [imovel.cidade, imovel.uf].compact_blank.join("/") %><%= " · Apto. #{imovel.complemento}" if imovel.complemento.present? %></span>
-              <% if captador_name.present? %>
-                <span>Captador: <%= captador_name %></span>
+              <% if development_name.present? %>
+                <span>Empreendimento: <%= development_name %></span>
               <% end %>
+              <span>Captador: <%= captador_label %></span>
             </div>
           </td>
           <td class="ax-property-table__money" data-column="price"><%= price_label %></td>

@@ -5,6 +5,7 @@ RSpec.describe Dwv::PropertyImportService do
 
   describe "#perform" do
     it "creates a DWV habitation with the full unit/building mapping" do
+      dwv_user = create(:admin_user, tenant: tenant, name: "Dwv - Imóveis Pauta", email: "laudicardoso@gmail.com")
       create(:habitation, tenant: tenant, codigo: "8628", imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
 
       result = described_class.new(unit_payload, tenant: tenant).perform
@@ -14,6 +15,7 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.codigo).to eq("8629")
       expect(habitation.codigo_dwv).to eq("632439")
       expect(habitation.imovel_dwv).to eq("Sim")
+      expect(habitation.admin_user).to eq(dwv_user)
       expect(habitation.status).to eq("Venda")
       expect(habitation.titulo_anuncio).to eq("Apartamento com vista mar")
       expect(habitation.nome_empreendimento).to eq("Línea")

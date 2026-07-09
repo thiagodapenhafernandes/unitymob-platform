@@ -10,9 +10,11 @@
   fallback_image_urls = image_urls.drop(1)
   display_title = imovel.display_title
   catalog_title = admin_habitation_catalog_title(imovel)
+  development_name = admin_habitation_catalog_development_name(imovel)
   has_photo = image_urls.any? || imovel.has_any_photo?
   publication_channels = admin_habitation_publication_channels(imovel)
   captador_name = imovel.primary_captador_name
+  captador_label = captador_name.presence || "Não informado"
   data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
   seconds_since_update = [Time.current - data_referencia, 0].max
   days_since_update = (seconds_since_update / 1.day).to_i
@@ -145,9 +147,10 @@
         <% end %>
         <%= " - #{[imovel.cidade, imovel.uf].compact_blank.join('/')}" if imovel.cidade.present? || imovel.uf.present? %>
       </span>
-      <% if captador_name.present? %>
-        <span><i class="bi bi-person-badge"></i> Captador: <strong><%= captador_name %></strong></span>
+      <% if development_name.present? %>
+        <span><i class="bi bi-building"></i> Empreendimento: <strong><%= development_name %></strong></span>
       <% end %>
+      <span><i class="bi bi-person-badge"></i> Captador: <strong><%= captador_label %></strong></span>
     </div>
 
     <div class="ax-property-card__features" aria-label="Características do imóvel">

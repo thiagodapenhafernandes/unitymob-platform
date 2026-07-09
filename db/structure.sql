@@ -14168,6 +14168,8 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709015000'),
+('20260709014500'),
 ('20260709013000'),
 ('20260709000009'),
 ('20260709000008'),
@@ -14486,4 +14488,3 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251122130154'),
 ('20251122125348'),
 ('20251122125042');
-

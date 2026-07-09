@@ -470,7 +470,7 @@ class Habitation < ApplicationRecord
   end
 
   def primary_captador
-    primary_captador_assignment&.admin_user || admin_user
+    primary_captador_assignment&.admin_user || admin_user || dwv_owner_user
   end
 
   def primary_captador_name
@@ -1558,6 +1558,12 @@ class Habitation < ApplicationRecord
 
   def dwv_property?
     imovel_dwv.to_s.strip.casecmp("sim").zero?
+  end
+
+  def dwv_owner_user
+    return unless dwv_property?
+
+    @dwv_owner_user ||= Dwv::OwnerResolver.call(tenant)
   end
 
   def publicly_viewable?
