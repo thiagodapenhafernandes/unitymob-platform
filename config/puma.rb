@@ -9,6 +9,8 @@ worker_timeout 3600 if ENV.fetch("RAILS_ENV", "development") == "development"
 environment ENV.fetch("RAILS_ENV", "development")
 
 if ENV.fetch("RAILS_ENV", "development") == "production"
+  directory ENV.fetch("PUMA_DIRECTORY", Dir.pwd)
+
   workers ENV.fetch("WEB_CONCURRENCY", 3)
   preload_app!
 
