@@ -84,6 +84,23 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(result).to end_with("/hero.jpg")
   end
 
+  it "não enfileira saver como transformação do Active Storage" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("image"),
+      filename: "foto.jpg",
+      content_type: "image/jpeg"
+    )
+
+    allow(blob).to receive(:variable?).and_return(true)
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(blob).and_return("https://cdn.saluteimoveis.com.br/#{blob.key}")
+    allow(Rails.cache).to receive(:write).and_return(true)
+    allow(ActiveStorage::TransformJob).to receive(:perform_later)
+
+    described_class.resolve(blob, resize_to_fill: [640, 480], saver: { quality: 82 })
+
+    expect(ActiveStorage::TransformJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480])
+  end
+
   def address_attributes
     {
       logradouro: "Rua CDN",
