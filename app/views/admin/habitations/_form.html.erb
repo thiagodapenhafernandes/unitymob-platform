@@ -145,6 +145,9 @@
   end
 
   tab_error_counts = tab_titles.keys.index_with { |key| grouped_errors[key].size }
+  operational_missing_counts = admin_habitation_editor_tab_missing_counts(habitation, property_setting: @property_setting)
+  tab_missing_counts = tab_titles.keys.index_with { |key| operational_missing_counts[key].to_i }
+  tab_validation_rules = admin_habitation_editor_tab_validation_rules(habitation, property_setting: @property_setting)
   tab_error_badge = lambda do |tab_key|
     count = tab_error_counts[tab_key].to_i
     count.positive? ? tag.span(count, class: "ax-tab-error", title: "#{count} erro(s)") : nil
@@ -160,6 +163,7 @@
      data-habitation-form-tipo-by-type-value="<%= json_escape(cadastro_tipo_by_type.to_json) %>"
      data-habitation-form-developments-value="<%= json_escape(development_lookup.to_json) %>"
      data-habitation-form-error-fields-value="<%= json_escape(habitation.errors.attribute_names.map(&:to_s).uniq.to_json) %>"
+     data-habitation-form-validation-rules-value="<%= json_escape(tab_validation_rules.to_json) %>"
      data-habitation-duplicate-check-url-value="<%= check_admin_habitation_duplicate_path %>"
      data-habitation-duplicate-check-ignored-id-value="<%= habitation.id %>">
   <% form_main = capture do %>
@@ -349,6 +353,8 @@
                habitation: habitation,
                tab_nav_items: tab_nav_items,
                tab_titles: tab_titles,
+               tab_error_counts: tab_error_counts,
+               tab_missing_counts: tab_missing_counts,
                tab_error_badge: tab_error_badge
              },
              aside_first: true,

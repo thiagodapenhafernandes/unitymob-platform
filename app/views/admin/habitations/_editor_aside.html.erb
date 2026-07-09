@@ -2,24 +2,20 @@
   habitation = local_assigns.fetch(:habitation)
   tab_nav_items = local_assigns.fetch(:tab_nav_items)
   tab_titles = local_assigns.fetch(:tab_titles)
+  tab_error_counts = local_assigns.fetch(:tab_error_counts)
+  tab_missing_counts = local_assigns.fetch(:tab_missing_counts)
   tab_error_badge = local_assigns.fetch(:tab_error_badge)
-  tab_error_count = lambda do |tab_key|
-    badge = tab_error_badge.call(tab_key)
-    badge.present? ? badge.to_s[/>(\d+)</, 1].to_i : 0
+  tab_error_count = ->(tab_key) { tab_error_counts[tab_key].to_i }
+  tab_missing_count = ->(tab_key) { tab_missing_counts[tab_key].to_i }
+  tab_pending_count = lambda do |tab_key|
+    [tab_error_count.call(tab_key), tab_missing_count.call(tab_key)].max
+  end
+  tab_missing_badge = lambda do |tab_key|
+    count = tab_missing_count.call(tab_key)
+    count.positive? ? tag.span(count, class: "ax-tab-missing", title: "#{count} validação(ões) faltante(s)") : nil
   end
   tab_indicator_tone = lambda do |tab_key|
-    next :danger if tab_error_count.call(tab_key).positive?
-
-    case tab_key
-    when :general
-      :success
-    when :features
-      :success
-    when :seo
-      habitation.exibir_no_site_flag? ? :success : :warning
-    else
-      :neutral
-    end
+    tab_pending_count.call(tab_key).positive? ? :pending : :success
   end
   completed_tabs_count = tab_nav_items.count { |(tab_key, _icon, _description)| tab_indicator_tone.call(tab_key) == :success }
   progress_percent = ((completed_tabs_count.to_f / tab_nav_items.size) * 100).round
@@ -34,6 +30,7 @@
       <% tab_dom_id = tab_key == :commercial ? "comercial" : tab_key.to_s %>
       <button class="ax-aside-rail-nav__item habitation-editor-rail-nav__item <%= 'active' if index.zero? %>"
               type="button"
+              data-habitation-form-tab-rail-status="<%= tab_key %>"
               data-ax-tabs-target="tab"
               data-ax-tabs-target-param="#<%= tab_dom_id %>"
               data-action="click->ax-tabs#select"
@@ -41,7 +38,11 @@
               aria-selected="<%= index.zero? ? 'true' : 'false' %>"
               title="<%= tab_titles[tab_key] %>">
         <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
-        <%= tab_error_badge.call(tab_key) %>
+        <% if tab_error_count.call(tab_key).positive? %>
+          <%= tab_error_badge.call(tab_key) %>
+        <% else %>
+          <%= tab_missing_badge.call(tab_key) %>
+        <% end %>
       </button>
     <% end %>
   </nav>
@@ -63,10 +64,10 @@
   <div class="habitation-editor-progress" aria-label="Progresso do cadastro">
     <div class="habitation-editor-progress__head">
       <span>Progresso</span>
-      <strong><%= completed_tabs_count %>/<%= tab_nav_items.size %></strong>
+      <strong data-habitation-form-progress-count><%= completed_tabs_count %>/<%= tab_nav_items.size %></strong>
     </div>
     <div class="habitation-editor-progress__bar" aria-hidden="true">
-      <i style="width:<%= progress_percent %>%"></i>
+      <i style="width:<%= progress_percent %>%" data-habitation-form-progress-bar></i>
     </div>
   </div>
   <nav class="ax-form-tabs habitation-tabs-bar"
@@ -92,14 +93,14 @@
               <strong><%= tab_titles[tab_key] %></strong>
               <span class="ax-form-tabs__description"><%= description %></span>
             </span>
-            <span class="habitation-tabs-bar__status">
+            <span class="habitation-tabs-bar__status" data-habitation-form-tab-status="<%= tab_key %>">
               <% tone = tab_indicator_tone.call(tab_key) %>
               <% if tab_error_count.call(tab_key).positive? %>
                 <%= tab_error_badge.call(tab_key) %>
+              <% elsif tab_missing_count.call(tab_key).positive? %>
+                <%= tab_missing_badge.call(tab_key) %>
               <% elsif tone == :success %>
                 <i class="bi bi-check-circle-fill habitation-tabs-bar__ind habitation-tabs-bar__ind--success" title="Completo" aria-hidden="true"></i>
-              <% elsif tone == :warning %>
-                <i class="bi bi-exclamation-circle-fill habitation-tabs-bar__ind habitation-tabs-bar__ind--warning" title="Atenção" aria-hidden="true"></i>
               <% else %>
                 <span class="habitation-tabs-bar__ind--neutral" title="Vazio" aria-hidden="true"></span>
               <% end %>

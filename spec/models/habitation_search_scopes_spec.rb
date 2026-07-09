@@ -49,6 +49,51 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(options).to include(hash_including(type: "city", label: "Balneário Camboriú"))
       expect(options).to include(hash_including(type: "neighborhood", label: "Praia Brava de Itajaí - Balneário Camboriú"))
     end
+
+    it "uses lightweight public listing filters without requiring photo checks" do
+      visible_without_photo = create(
+        :habitation,
+        cidade: "Cidade Sem Foto",
+        bairro: "Centro",
+        pictures: []
+      )
+      without_price = create(
+        :habitation,
+        cidade: "Cidade Sem Preço",
+        bairro: "Centro",
+        valor_venda_cents: 0,
+        valor_locacao_cents: 0
+      )
+      dwv = create(
+        :habitation,
+        cidade: "Cidade DWV",
+        bairro: "Centro",
+        imovel_dwv: "Sim"
+      )
+      unavailable = create(
+        :habitation,
+        :unavailable,
+        cidade: "Cidade Indisponível",
+        bairro: "Centro"
+      )
+
+      [
+        [visible_without_photo, "Cidade Sem Foto"],
+        [without_price, "Cidade Sem Preço"],
+        [dwv, "Cidade DWV"],
+        [unavailable, "Cidade Indisponível"]
+      ].each do |habitation, city|
+        habitation.address.update!(cidade: city, bairro: "Centro")
+      end
+
+      options = Habitation.public_location_options
+      city_labels = options.select { |item| item[:type] == "city" }.map { |item| item[:label] }
+
+      expect(city_labels).to include("Cidade Sem Foto")
+      expect(city_labels).not_to include("Cidade Sem Preço")
+      expect(city_labels).not_to include("Cidade DWV")
+      expect(city_labels).not_to include("Cidade Indisponível")
+    end
   end
 
   describe "price sorting" do

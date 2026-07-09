@@ -1,4 +1,4 @@
-\restrict yhxVB10BhdBTOnxhfExv1Juj3pjrDeS3p8rye8e0GKj4VqPiDgAVJWfWVgdmmu0
+\restrict 8pwQ6tf9TjB8hniZH1fhH7yfdwkf13EGUWbZH6aO0tVS75mcFoXgBCk92SCZzJ8
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -7741,6 +7741,13 @@ CREATE UNIQUE INDEX idx_account_memberships_on_token_digest ON public.account_me
 
 
 --
+-- Name: idx_active_storage_habitation_photo_records; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_active_storage_habitation_photo_records ON public.active_storage_attachments USING btree (record_type, name, record_id) WHERE (((record_type)::text = 'Habitation'::text) AND ((name)::text = 'photos'::text));
+
+
+--
 -- Name: idx_admin_users_one_mirror_per_tenant; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7857,6 +7864,20 @@ CREATE INDEX idx_habitations_home_corporate_order ON public.habitations USING bt
 --
 
 CREATE INDEX idx_habitations_localizacao_status ON public.habitations USING btree (cidade, bairro, status);
+
+
+--
+-- Name: idx_habitations_public_development_units; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_habitations_public_development_units ON public.habitations USING btree (tenant_id, codigo_empreendimento, exibir_no_site_flag, status) WHERE (codigo_empreendimento IS NOT NULL);
+
+
+--
+-- Name: idx_habitations_public_tenant_status_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_habitations_public_tenant_status_order ON public.habitations USING btree (tenant_id, exibir_no_site_flag, status, data_atualizacao_crm DESC, created_at DESC);
 
 
 --
@@ -14142,11 +14163,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict yhxVB10BhdBTOnxhfExv1Juj3pjrDeS3p8rye8e0GKj4VqPiDgAVJWfWVgdmmu0
+\unrestrict 8pwQ6tf9TjB8hniZH1fhH7yfdwkf13EGUWbZH6aO0tVS75mcFoXgBCk92SCZzJ8
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260709013000'),
 ('20260709000009'),
 ('20260709000008'),
 ('20260709000007'),

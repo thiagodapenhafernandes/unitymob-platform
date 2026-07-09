@@ -79,6 +79,24 @@ module Admin::HabitationsHelper
     end
   end
 
+  def admin_habitation_editor_tab_missing_counts(habitation, property_setting: nil)
+    checks = property_setting&.active_broker_capture_checks
+    missing_items = habitation.intake_missing_requirements(required_checks: checks, require_owner_city: true)
+    missing_items.each_with_object(Hash.new(0)) do |message, counts|
+      counts[admin_habitation_editor_tab_for_requirement(message)] += 1
+    end
+  end
+
+  def admin_habitation_editor_tab_validation_rules(habitation, property_setting: nil)
+    checks = property_setting&.active_broker_capture_checks
+    habitation.intake_missing_requirements(required_checks: checks, require_owner_city: true).filter_map do |message|
+      rule = admin_habitation_editor_rule_for_requirement(message)
+      next unless rule
+
+      rule.merge(tab: admin_habitation_editor_tab_for_requirement(message), label: message)
+    end
+  end
+
   def admin_can_edit_habitation?(habitation)
     return false unless current_admin_user && habitation
 
@@ -122,6 +140,103 @@ module Admin::HabitationsHelper
     return true unless habitation.respond_to?(:broker_intake?) && habitation.broker_intake?
 
     Habitation::CATALOG_VISIBLE_INTAKE_STATUSES.include?(habitation.intake_status)
+  end
+
+  def admin_habitation_editor_tab_for_requirement(message)
+    case message.to_s
+    when "Título do anúncio", "Título do anúncio coerente com a categoria", "Descrição do imóvel", "Mais características"
+      :features
+    when "Infraestrutura & Lazer"
+      :infra
+    when "Dados do proprietário", "Cidade do proprietário",
+         "Financeiro e valores", "Administração da locação", "Meio de garantia locatícia",
+         "Aceita permuta", "Quantidade de parcelas", "Chaves", "Dias de visita"
+      :commercial
+    when "Fotos ou agenda com fotógrafo", "Agenda com fotógrafo"
+      :media
+    when "Anexo da autorização do proprietário"
+      :documents
+    else
+      :general
+    end
+  end
+
+  def admin_habitation_editor_rule_for_requirement(message)
+    case message.to_s
+    when "Dados do proprietário"
+      {
+        mode: "groups_present",
+        groups: [
+          %w[habitation[proprietario] habitation[proprietor_id]],
+          %w[habitation[proprietario_celular] habitation[proprietario_telefone_comercial] habitation[proprietario_telefone_residencial] habitation[proprietario_email]]
+        ]
+      }
+    when "Cidade do proprietário"
+      { mode: "any_present", names: %w[habitation[proprietario_cidade]] }
+    when "Endereço e localização"
+      {
+        mode: "all_present",
+        names: %w[
+          habitation[address_attributes][cep]
+          habitation[address_attributes][logradouro]
+          habitation[address_attributes][bairro]
+          habitation[address_attributes][cidade]
+          habitation[address_attributes][uf]
+        ]
+      }
+    when "Empreendimento"
+      { mode: "any_present", names: %w[habitation[nome_empreendimento] habitation[codigo_empreendimento]] }
+    when "Número da unidade"
+      { mode: "any_present", names: %w[habitation[bloco]] }
+    when "Complemento"
+      { mode: "any_present", names: %w[habitation[complemento] habitation[address_attributes][complemento]] }
+    when "Definições básicas"
+      { mode: "all_present", names: %w[habitation[categoria] habitation[status]] }
+    when "Título do anúncio", "Título do anúncio coerente com a categoria"
+      { mode: "any_present", names: %w[habitation[titulo_anuncio]] }
+    when "Descrição do imóvel"
+      { mode: "any_present", names: %w[habitation[descricao_web]] }
+    when "Área privativa"
+      { mode: "positive_any", names: %w[habitation[area_privativa_m2]] }
+    when "Dimensões e estrutura física"
+      { mode: "positive_any", names: %w[habitation[area_privativa_m2] habitation[area_total_m2] habitation[dormitorios_qtd] habitation[suites_qtd] habitation[salas_qtd] habitation[banheiros_qtd] habitation[vagas_qtd]] }
+    when "Tipo de vaga"
+      { mode: "any_present", names: %w[habitation[tipo_vaga]] }
+    when "Vaga de garagem"
+      { mode: "positive_any", names: %w[habitation[vagas_qtd]] }
+    when "Box"
+      { mode: "any_present", names: %w[habitation[numero_box]] }
+    when "Situação"
+      { mode: "any_present", names: %w[habitation[situacao]] }
+    when "Ocupação"
+      { mode: "any_present", names: %w[habitation[ocupacao_status]] }
+    when "Mais características"
+      { mode: "checked_any", names: %w[habitation[caracteristicas][]] }
+    when "Infraestrutura & Lazer"
+      { mode: "checked_any", names: %w[habitation[infra_estrutura][]] }
+    when /\AInforme o valor de venda/, /\AInforme um valor de venda/
+      { mode: "positive_any", names: %w[habitation[valor_venda_formatted]] }
+    when /\AInforme o valor de locação/, /\AInforme um valor de locação/
+      { mode: "positive_any", names: %w[habitation[valor_locacao_formatted]] }
+    when "Financeiro e valores"
+      { mode: "positive_any", names: %w[habitation[valor_condominio_formatted] habitation[valor_iptu_formatted]] }
+    when "Administração da locação"
+      { mode: "any_present", names: %w[habitation[salute_rental_management_answer]] }
+    when "Meio de garantia locatícia"
+      { mode: "any_present", names: %w[habitation[rental_guarantee_method]] }
+    when "Aceita permuta"
+      { mode: "any_present", names: %w[habitation[aceita_permuta_answer]] }
+    when "Quantidade de parcelas"
+      { mode: "positive_any", names: %w[habitation[numero_prestacoes]] }
+    when "Chaves"
+      { mode: "any_present", names: %w[habitation[key_location]] }
+    when "Dias de visita"
+      { mode: "any_present", names: %w[habitation[observacoes_visitas]] }
+    when "Fotos ou agenda com fotógrafo", "Agenda com fotógrafo"
+      { mode: "any_present", names: %w[habitation[photo_flow_choice] habitation[photos][]] }
+    when "Anexo da autorização do proprietário"
+      { mode: "file_present", names: %w[habitation[autorizacoes_venda][]] }
+    end
   end
 
   def publication_channel_columns

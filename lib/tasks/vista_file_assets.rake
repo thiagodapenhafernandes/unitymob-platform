@@ -60,22 +60,34 @@ namespace :vista_files do
 
   desc "Materializa fotos em Habitation.pictures como anexos ActiveStorage, reaproveitando blobs existentes por filename"
   task materialize_api_photos: :environment do
-    scope = Vista::ApiPictureMaterializationService.default_scope
-    scope = scope.where(codigo: ENV["CODIGO"].to_s.split(",").map(&:strip).reject(&:blank?)) if ENV["CODIGO"].present?
-    attached_ids = ActiveStorage::Attachment.where(record_type: "Habitation", name: "photos").select(:record_id)
-    scope = scope.where.not(id: attached_ids) if ActiveModel::Type::Boolean.new.cast(ENV.fetch("ONLY_WITHOUT_ATTACHED", "false"))
+    tenant = if ENV["TENANT_ID"].present?
+               Tenant.find(ENV["TENANT_ID"])
+             elsif ENV["TENANT_SLUG"].present?
+               Tenant.find_by!(slug: ENV["TENANT_SLUG"])
+             else
+               Tenant.find_by(slug: "default") || Tenant.order(:id).first
+             end
+    raise "Tenant não encontrado. Informe TENANT_ID ou TENANT_SLUG." unless tenant
 
-    result = Vista::ApiPictureMaterializationService.new(
-      scope: scope,
-      dry_run: ENV.fetch("DRY_RUN", "true"),
-      replace: ENV.fetch("REPLACE", "false"),
-      limit: ENV["LIMIT"],
-      batch_size: ENV.fetch("BATCH_SIZE", Vista::ApiPictureMaterializationService::DEFAULT_BATCH_SIZE),
-      workers: ENV.fetch("WORKERS", Vista::ApiPictureMaterializationService::DEFAULT_WORKERS)
-    ).call
+    result = Current.set(tenant: tenant) do
+      scope = Vista::ApiPictureMaterializationService.default_scope
+      scope = scope.where(codigo: ENV["CODIGO"].to_s.split(",").map(&:strip).reject(&:blank?)) if ENV["CODIGO"].present?
+      attached_ids = ActiveStorage::Attachment.where(record_type: "Habitation", name: "photos").select(:record_id)
+      scope = scope.where.not(id: attached_ids) if ActiveModel::Type::Boolean.new.cast(ENV.fetch("ONLY_WITHOUT_ATTACHED", "false"))
+
+      Vista::ApiPictureMaterializationService.new(
+        scope: scope,
+        dry_run: ENV.fetch("DRY_RUN", "true"),
+        replace: ENV.fetch("REPLACE", "false"),
+        limit: ENV["LIMIT"],
+        batch_size: ENV.fetch("BATCH_SIZE", Vista::ApiPictureMaterializationService::DEFAULT_BATCH_SIZE),
+        workers: ENV.fetch("WORKERS", Vista::ApiPictureMaterializationService::DEFAULT_WORKERS)
+      ).call
+    end
 
     puts "Vista API pictures materialization"
     puts "  Ambiente: #{Rails.env}"
+    puts "  Tenant: #{tenant.id} #{tenant.name}"
     puts "  ActiveStorage service: #{Rails.application.config.active_storage.service}"
     puts "  Dry run: #{result.dry_run}"
     puts "  Replace: #{result.replace}"

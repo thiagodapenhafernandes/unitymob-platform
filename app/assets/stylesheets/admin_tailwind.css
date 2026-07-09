@@ -10899,6 +10899,12 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
   right: -4px;
 }
 
+.ax-aside-rail-nav__item .ax-tab-missing {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
 .ax-aside-rail--nav > .ax-aside-rail__token {
   display: none;
 }
