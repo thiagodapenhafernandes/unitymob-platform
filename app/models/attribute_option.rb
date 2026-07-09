@@ -12,6 +12,7 @@ class AttributeOption < ApplicationRecord
   validates :context, inclusion: { in: CONTEXTS }
   validates :category, inclusion: { in: CATEGORIES }
   validates :name, uniqueness: { scope: [:tenant_id, :category, :context], case_sensitive: false, message: "já existe nesta categoria" }
+  validate :normalized_name_uniqueness
   validate :context_immutable, on: :update
   validate :category_immutable, on: :update
 
@@ -40,10 +41,36 @@ class AttributeOption < ApplicationRecord
   end
 
   def normalize_fields
-    self.name = name.to_s.strip
+    self.name = self.class.sanitize_name(name)
     self.context = context.to_s.strip
     self.category = category.to_s.strip
     self.name = AttributeOptions::HabitationFeatureNormalizer.label(name, category: category) if context == "habitation" && category.in?(%w[feature infrastructure])
+  end
+
+  def normalized_name_uniqueness
+    return if tenant_id.blank? || context.blank? || category.blank? || name.blank?
+
+    normalized_key = self.class.normalized_name_key(name)
+    return if normalized_key.blank?
+
+    duplicate = self.class
+      .where(tenant_id: tenant_id, context: context, category: category)
+      .where.not(id: id)
+      .select(:id, :name)
+      .find { |option| self.class.normalized_name_key(option.name) == normalized_key }
+
+    errors.add(:name, "já existe nesta categoria") if duplicate && !errors.added?(:name, "já existe nesta categoria")
+  end
+
+  def self.sanitize_name(value)
+    value.to_s
+      .tr("_", " ")
+      .squish
+      .sub(/[[:space:]]*[\.,;:!?]+[[:space:]]*\z/, "")
+  end
+
+  def self.normalized_name_key(value)
+    AttributeOptions::HabitationFeatureNormalizer.key(sanitize_name(value))
   end
 
   def context_immutable

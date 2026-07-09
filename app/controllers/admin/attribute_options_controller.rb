@@ -1,7 +1,7 @@
 module Admin
   class AttributeOptionsController < Admin::BaseController
     before_action -> { check_permission!(:manage, :catalogos) }
-    before_action :set_attribute_option, only: [:update, :destroy]
+    before_action :set_attribute_option, only: [:update]
 
     def index
       # This action serves both the sidebar page (HTML) and modal usage (JSON)
@@ -62,6 +62,13 @@ module Admin
     end
 
     def destroy
+      @attribute_option = current_tenant.attribute_options.find_by(id: params[:id])
+      unless @attribute_option
+        return head :no_content if modal_request?
+
+        return redirect_to admin_attribute_options_path, alert: 'Atributo não encontrado.'
+      end
+
       @attribute_option.destroy
 
       return head :no_content if modal_request?

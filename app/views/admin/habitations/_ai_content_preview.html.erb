@@ -1,22 +1,30 @@
 <%= turbo_frame_tag dom_id(habitation, :ai_content_preview) do %>
-  <div class="ax-ai-preview" data-controller="ai-preview">
-    <div class="ax-ai-preview__header">
-      <h6 class="ax-ai-preview__title">
-        <i class="bi bi-stars ax-ai-preview__title-icon" aria-hidden="true"></i>
-        <span>IA para título e descrição</span>
-      </h6>
-      <%= link_to generate_ai_preview_admin_habitation_path(habitation),
-          class: "ax-btn ax-btn--ghost ax-btn--sm",
-          data: {
-            turbo_method: :post,
-            turbo_frame: dom_id(habitation, :ai_content_preview),
-            action: "click->ai-preview#loading",
-            ai_preview_loading_text: "Gerando..."
-          } do %>
-        <i class="bi bi-magic" aria-hidden="true"></i>
-        <span>Gerar prévia</span>
-      <% end %>
-    </div>
+  <% show_button = local_assigns.fetch(:show_button, true) %>
+  <% has_content = local_assigns[:message].present? ||
+                   local_assigns[:failed_suggestion]&.error_message.present? ||
+                   suggestion.present? ||
+                   show_button %>
+  <% if has_content %>
+    <div class="ax-ai-preview" data-controller="ai-preview">
+    <% if show_button %>
+      <div class="ax-ai-preview__header">
+        <h6 class="ax-ai-preview__title">
+          <i class="bi bi-stars ax-ai-preview__title-icon" aria-hidden="true"></i>
+          <span>IA para título e descrição</span>
+        </h6>
+        <%= link_to generate_ai_preview_admin_habitation_path(habitation),
+            class: "ax-btn ax-btn--ghost ax-btn--sm",
+            data: {
+              turbo_frame: dom_id(habitation, :ai_content_preview),
+              action: "click->ai-preview#submit",
+              ai_preview_method: "POST",
+              ai_preview_loading_text: "Gerando..."
+            } do %>
+          <i class="bi bi-magic" aria-hidden="true"></i>
+          <span>Gerar prévia</span>
+        <% end %>
+      </div>
+    <% end %>
 
     <% if local_assigns[:message].present? %>
       <% message_tone = { "success" => :success, "warning" => :warning, "danger" => :danger, "info" => :neutral }.fetch(local_assigns[:message_type].to_s, :neutral) %>
@@ -55,9 +63,9 @@
             <%= link_to format_ai_suggestion_admin_habitation_path(habitation, suggestion_id: suggestion.id),
                 class: "ax-btn ax-btn--ghost ax-btn--sm",
                 data: {
-                  turbo_method: :patch,
                   turbo_frame: dom_id(habitation, :ai_content_preview),
-                  action: "click->ai-preview#loading",
+                  action: "click->ai-preview#submit",
+                  ai_preview_method: "PATCH",
                   ai_preview_loading_text: "Formatando..."
                 } do %>
               <i class="bi bi-text-paragraph" aria-hidden="true"></i>
@@ -66,10 +74,10 @@
             <%= link_to apply_ai_suggestion_admin_habitation_path(habitation, suggestion_id: suggestion.id),
                 class: "ax-btn ax-btn--primary ax-btn--sm",
                 data: {
-                  turbo_method: :patch,
                   turbo_frame: dom_id(habitation, :ai_content_preview),
-                  turbo_confirm: "Aplicar esta sugestão ao título, descrição e SEO do imóvel?",
-                  action: "click->ai-preview#loading",
+                  action: "click->ai-preview#submit",
+                  ai_preview_method: "PATCH",
+                  ai_preview_confirm_message: "Aplicar esta sugestão ao título, descrição e SEO do imóvel?",
                   ai_preview_loading_text: "Aplicando..."
                 } do %>
               <i class="bi bi-check2-circle" aria-hidden="true"></i>
@@ -78,10 +86,11 @@
           </div>
         </div>
       </div>
-    <% else %>
+    <% elsif show_button %>
       <%= ax_inline_notice(tone: :neutral,
                            icon: "info-circle",
                            body: "Nenhuma prévia pendente para este imóvel. Clique em Gerar prévia para revisar antes de aplicar.") %>
     <% end %>
-  </div>
+    </div>
+  <% end %>
 <% end %>

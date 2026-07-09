@@ -23,8 +23,13 @@ RSpec.describe DataHygiene::WhitespaceSanitizer do
     suffix = SecureRandom.hex(4)
     dirty_name = "Teste  Duplo  #{suffix}"
     clean_name = "Teste Duplo #{suffix}"
-    AttributeOption.create!(tenant: tenant, context: "habitation", category: "imediacoes", name: dirty_name)
-    AttributeOption.create!(tenant: tenant, context: "habitation", category: "imediacoes", name: clean_name)
+    now = Time.current
+    AttributeOption.insert_all!(
+      [
+        { tenant_id: tenant.id, context: "habitation", category: "imediacoes", name: dirty_name, created_at: now, updated_at: now },
+        { tenant_id: tenant.id, context: "habitation", category: "imediacoes", name: clean_name, created_at: now, updated_at: now }
+      ]
+    )
     habitation = create(:habitation, codigo: "83#{SecureRandom.random_number(10**8)}", tenant: tenant)
     habitation.address.update!(imediacoes: [dirty_name])
 
