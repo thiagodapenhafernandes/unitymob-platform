@@ -34,25 +34,4 @@
       </div>
     <% end %>
   </div>
-  <%
-    captador = habitation.primary_captador
-    captador_name = habitation.primary_captador_name
-  %>
-  <% if captador_name.present? %>
-    <aside class="ax-dashboard-command__status ax-property-form-command__owner">
-      <% if captador&.avatar&.attached? %>
-        <%= image_tag captador.avatar,
-                      class: "ax-property-form-command__avatar",
-                      alt: "Foto de #{captador_name}" %>
-      <% else %>
-        <span class="ax-property-form-command__avatar ax-property-form-command__avatar--fallback" aria-hidden="true">
-          <%= captador_name.to_s.split.map { |part| part.first }.join.first(2).presence || "?" %>
-        </span>
-      <% end %>
-      <div class="tw-min-w-0">
-        <span>Captador responsável:</span>
-        <strong class="tw-block tw-truncate"><%= captador_name %></strong>
-      </div>
-    </aside>
-  <% end %>
 </header>

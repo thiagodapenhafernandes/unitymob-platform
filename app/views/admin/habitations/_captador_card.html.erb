@@ -1,0 +1,38 @@
+<%
+  habitation = local_assigns.fetch(:habitation)
+  captador = habitation.primary_captador
+  captador_name = habitation.primary_captador_name.presence
+  initials = captador_name.to_s.split.map { |part| part.first }.join.first(2).presence || "NI"
+  email = captador&.respond_to?(:notification_email) ? captador.notification_email : captador&.email
+  phone = captador&.phone
+  creci = captador&.creci
+  compact = local_assigns[:compact]
+  wrapper_class = ["ax-captador-card", ("ax-captador-card--compact" if compact), local_assigns[:class_name]].compact.join(" ")
+%>
+
+<aside class="<%= wrapper_class %>" aria-label="Captador responsável">
+  <div class="ax-captador-card__avatar">
+    <% if captador&.avatar&.attached? %>
+      <%= image_tag captador.avatar, alt: "Foto de #{captador_name || "captador"}" %>
+    <% else %>
+      <span aria-hidden="true"><%= initials %></span>
+    <% end %>
+  </div>
+
+  <div class="ax-captador-card__body">
+    <span class="ax-captador-card__eyebrow">Captador</span>
+    <strong title="<%= captador_name || "Não informado" %>"><%= captador_name || "Não informado" %></strong>
+    <div class="ax-captador-card__meta">
+      <% if creci.present? %>
+        <span><i class="bi bi-card-text"></i>CRECI <%= creci %></span>
+      <% end %>
+      <% if phone.present? %>
+        <span><i class="bi bi-telephone"></i><%= format_phone(phone) %></span>
+      <% elsif email.present? %>
+        <span><i class="bi bi-envelope"></i><%= email %></span>
+      <% elsif captador_name.blank? %>
+        <span><i class="bi bi-info-circle"></i>Não informado</span>
+      <% end %>
+    </div>
+  </div>
+</aside>

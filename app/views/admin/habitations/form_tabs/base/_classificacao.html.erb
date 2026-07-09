@@ -39,7 +39,7 @@
           ) %>
     </div>
 
-    <div class="ax-span-2">
+    <div class="ax-span-3">
       <%= ax_select_field(
             form: f,
             method: :status,
@@ -88,7 +88,7 @@
       </div>
     <% end %>
 
-    <div class="<%= habitation.broker_intake? ? "ax-span-1" : "ax-span-2" %>">
+    <div class="<%= habitation.broker_intake? ? "ax-span-2" : "ax-span-3" %>">
       <%= ax_select_field(
             form: f,
             method: :situacao,
@@ -99,7 +99,7 @@
           ) %>
     </div>
 
-    <div class="<%= habitation.broker_intake? ? "ax-span-1" : "ax-span-2" %>">
+    <div class="<%= habitation.broker_intake? ? "ax-span-2" : "ax-span-3" %>">
       <%= ax_select_field(
             form: f,
             method: :ocupacao_status,
@@ -110,7 +110,7 @@
           ) %>
     </div>
 
-    <div class="<%= habitation.broker_intake? ? "ax-span-1" : "ax-span-2" %>">
+    <div class="<%= habitation.broker_intake? ? "ax-span-2" : "ax-span-3" %>">
       <%= ax_select_field(
             form: f,
             method: :estado_conservacao,
