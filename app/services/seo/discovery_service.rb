@@ -225,7 +225,7 @@ module Seo
     end
 
     def count_properties(params)
-      habitation_scope.active.without_developments.advanced_search(params).count
+      habitation_scope.public_property_search(params).count
     end
 
     def count_developments(params)
