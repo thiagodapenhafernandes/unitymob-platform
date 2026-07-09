@@ -204,13 +204,15 @@ class Admin::HabitationMediaController < Admin::BaseController
     return render_media_forbidden unless can_manage_media_tools?
 
     photo_ids = share_photo_ids_param
-    if photo_ids.blank?
+    picture_indices = share_picture_indices_param
+    if photo_ids.blank? && picture_indices.blank?
       respond_with_media_error("Selecione ao menos uma foto para enviar.")
       return
     end
 
     valid_ids = @habitation.photos.attachments.where(id: photo_ids).ids
-    if valid_ids.blank?
+    picture_urls = share_picture_urls_for(picture_indices)
+    if valid_ids.blank? && picture_urls.blank?
       respond_with_media_error("Nenhuma das fotos selecionadas está disponível.")
       return
     end
@@ -218,7 +220,8 @@ class Admin::HabitationMediaController < Admin::BaseController
     share = HabitationPhotoShare.create_for(
       habitation: @habitation,
       admin_user: current_admin_user,
-      photo_ids: valid_ids
+      photo_ids: valid_ids,
+      picture_urls: picture_urls
     )
 
     share_url = habitation_photo_share_url(share.token)
@@ -263,6 +266,31 @@ class Admin::HabitationMediaController < Admin::BaseController
       .select { |id| id.match?(/\A\d+\z/) }
       .map(&:to_i)
       .uniq
+  end
+
+  def share_picture_indices_param
+    raw = params.dig(:habitation, :picture_indices)
+    Array(raw)
+      .flat_map { |id| id.to_s.split(",") }
+      .map(&:strip)
+      .select { |id| id.match?(/\A\d+\z/) }
+      .map(&:to_i)
+      .uniq
+  end
+
+  def share_picture_urls_for(indices)
+    return [] if indices.blank?
+
+    indexed_pictures = Habitations::MediaGallery.new(@habitation)
+      .api_media_pictures
+      .index_by { |_picture, original_index, _url| original_index.to_i }
+
+    indices.filter_map do |index|
+      picture, _original_index, _url = indexed_pictures[index]
+      next if picture.blank?
+
+      Storage::PublicCdnImageUrl.resolve(picture).presence
+    end.uniq
   end
 
   def habitation_media_params

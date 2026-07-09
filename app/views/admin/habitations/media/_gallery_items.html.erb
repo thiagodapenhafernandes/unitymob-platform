@@ -170,6 +170,16 @@
         <span class="ax-media-tag ax-media-tag--info" data-media-tools-ambiente-badge title="Ambiente da foto"><%= picture_ambiente_label %></span>
       <% end %>
     <% end %>
+    <% select_control = capture do %>
+      <% if can_edit_media %>
+        <label class="ax-media-select-check" title="Selecionar foto para envio">
+          <input type="checkbox"
+                 data-action="media-tools#toggleSelect"
+                 data-media-tools-picture-index-param="<%= original_index %>">
+          <span aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+        </label>
+      <% end %>
+    <% end %>
     <%= ax_media_tile(
           link_url: picture_public_url,
           image_source: picture_public_url,
@@ -178,6 +188,7 @@
           root_class: "draggable-item api-picture-item",
           data: { api_index: original_index },
           hidden_from_site: picture_hidden_from_site,
+          top_right: select_control,
           center: ambiente_badge.presence,
           bottom_left: featured_control,
           bottom_right: picture_actions

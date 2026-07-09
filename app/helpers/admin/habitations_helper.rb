@@ -81,6 +81,16 @@ module Admin::HabitationsHelper
     deduplicate_catalog_title_parts(parts).join(" · ")
   end
 
+  def admin_habitation_catalog_card_title(habitation)
+    parts = [
+      admin_habitation_catalog_neighborhood(habitation),
+      admin_habitation_catalog_development_name(habitation)
+    ].compact_blank
+
+    compact_title = deduplicate_catalog_title_parts(parts).join(" · ")
+    compact_title.presence || habitation.display_title
+  end
+
   def admin_filter_choice_label(choices, selected_value)
     selected_value = selected_value.to_s
     return if selected_value.blank?

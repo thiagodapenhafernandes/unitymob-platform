@@ -204,9 +204,11 @@ export default class extends Controller {
       const text = copyBtn.dataset.copyText || ""
       const done = () => {
         const icon = copyBtn.querySelector("i")
-        if (!icon) return
-        icon.className = "bi bi-check2"
-        setTimeout(() => { icon.className = "bi bi-copy" }, 1200)
+        if (icon) {
+          icon.className = "bi bi-check2"
+          setTimeout(() => { icon.className = "bi bi-copy" }, 1200)
+        }
+        if (window.axToast) window.axToast({ message: "Copiado", type: "success", timeout: 2200 })
       }
       if (navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(text).then(done).catch(() => {})

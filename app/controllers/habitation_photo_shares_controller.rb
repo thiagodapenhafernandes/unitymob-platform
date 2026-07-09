@@ -11,9 +11,7 @@ class HabitationPhotoSharesController < ApplicationController
     end
 
     @habitation = @share.habitation
-    @photo_urls = @share.selected_attachments.filter_map do |attachment|
-      Storage::PublicCdnImageUrl.resolve("attachment" => attachment)
-    end
+    @photo_urls = @share.selected_image_urls
 
     @share.register_view!
 
