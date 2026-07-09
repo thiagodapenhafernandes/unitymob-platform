@@ -82,17 +82,48 @@
   <hr class="my-3">
   <%# Campos condicionais ao tipo do imóvel, empilhados em largura total (mobile-first). %>
   <% if @captacao.requires_intake_development_name? %>
-    <div class="wizard-field-group">
-      <%= f.label :edificio_nome, "Edifício / Condomínio", class: "ax-label" %>
-      <span class="required-star">*</span>
-      <%= f.text_field :edificio_nome,
-                       class: field_state.call(:edificio_nome),
-                       placeholder: "Ex.: Edifício Mirante do Atlântico",
-                       data: {
-                         habitation_duplicate_check_target: "building",
-                         action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
-                       } %>
-      <% if field_invalid.call(:edificio_nome) %><div class="invalid-feedback d-block">Informe o nome do condomínio/empreendimento.</div><% end %>
+    <%
+      captacao_developments = Array(@developments)
+      captacao_development_lookup = captacao_developments.each_with_object({}) do |development, hash|
+        hash[development.codigo.to_s] = {
+          nome_empreendimento: development.nome_empreendimento.presence || development.titulo_anuncio.to_s
+        }
+      end
+    %>
+    <div data-controller="habitation-form"
+         data-habitation-form-developments-value="<%= json_escape(captacao_development_lookup.to_json) %>">
+      <% if captacao_developments.any? %>
+        <%= ax_autocomplete_select_field(
+              clearable: true,
+              form: f,
+              method: :codigo_empreendimento,
+              label: "Empreendimento cadastrado",
+              choices: captacao_developments.map { |development| [development.nome_empreendimento.presence || development.titulo_anuncio.to_s, development.codigo] },
+              select_options: { include_blank: "Buscar pelo nome...", selected: @captacao.codigo_empreendimento },
+              placeholder: "Buscar pelo nome...",
+              html_options: {
+                data: {
+                  habitation_form_target: "developmentSelect",
+                  action: "change->habitation-form#developmentChanged"
+                }
+              }
+            ) %>
+      <% end %>
+
+      <div class="wizard-field-group">
+        <%= f.label :edificio_nome, "Edifício / Condomínio", class: "ax-label" %>
+        <span class="required-star">*</span>
+        <%= f.text_field :edificio_nome,
+                         class: field_state.call(:edificio_nome),
+                         placeholder: "Ex.: Edifício Mirante do Atlântico",
+                         readonly: @captacao.codigo_empreendimento.present?,
+                         data: {
+                           habitation_form_target: "developmentName",
+                           habitation_duplicate_check_target: "building",
+                           action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
+                         } %>
+        <% if field_invalid.call(:edificio_nome) %><div class="invalid-feedback d-block">Informe o nome do condomínio/empreendimento.</div><% end %>
+      </div>
     </div>
   <% end %>
   <% if @captacao.requires_unit_number? %>

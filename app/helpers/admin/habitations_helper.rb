@@ -71,6 +71,39 @@ module Admin::HabitationsHelper
     admin_habitation_internal_action_label(habitation)
   end
 
+  def admin_habitation_catalog_title(habitation)
+    parts = [
+      admin_habitation_catalog_neighborhood(habitation),
+      admin_habitation_catalog_development_name(habitation),
+      habitation.display_title
+    ].compact_blank
+
+    deduplicate_catalog_title_parts(parts).join(" · ")
+  end
+
+  def admin_filter_choice_label(choices, selected_value)
+    selected_value = selected_value.to_s
+    return if selected_value.blank?
+
+    Array(choices).each do |choice|
+      label, value = choice.is_a?(Array) ? choice : [choice, choice]
+      return label if value.to_s == selected_value
+    end
+
+    selected_value
+  end
+
+  def admin_habitation_development_filter_label(selected_value)
+    label = admin_filter_choice_label(@filter_empreendimentos, selected_value)
+    return label if label.present? && label != selected_value.to_s
+
+    current_tenant.habitations
+      .empreendimentos
+      .where(codigo: selected_value.to_s)
+      .pick(:nome_empreendimento)
+      .presence || label || selected_value
+  end
+
   def admin_habitation_publication_channels(habitation)
     publication_channel_columns.filter_map do |column|
       next unless habitation.respond_to?(column) && BOOLEAN_TYPE.cast(habitation.public_send(column))
@@ -134,6 +167,39 @@ module Admin::HabitationsHelper
   end
 
   private
+
+  def admin_habitation_catalog_neighborhood(habitation)
+    address = habitation.association(:address).loaded? ? habitation.address : nil
+
+    address&.bairro_comercial.presence ||
+      habitation.bairro_comercial.presence ||
+      habitation.read_attribute(:bairro_comercial).presence ||
+      address&.bairro.presence ||
+      habitation.read_attribute(:bairro).presence ||
+      habitation.bairro.presence
+  end
+
+  def admin_habitation_catalog_development_name(habitation)
+    return habitation.nome_empreendimento if habitation.nome_empreendimento.present?
+    return unless habitation.association(:empreendimento).loaded?
+
+    habitation.empreendimento&.nome_empreendimento.presence ||
+      habitation.empreendimento&.titulo_anuncio.presence
+  end
+
+  def deduplicate_catalog_title_parts(parts)
+    parts.each_with_object([]) do |part, unique_parts|
+      normalized_part = normalize_catalog_title_part(part)
+      next if normalized_part.blank?
+      next if unique_parts.any? { |existing| normalize_catalog_title_part(existing) == normalized_part }
+
+      unique_parts << part
+    end
+  end
+
+  def normalize_catalog_title_part(part)
+    I18n.transliterate(part.to_s).squish.downcase
+  end
 
   def admin_habitation_catalog_media_visible?(habitation)
     return false if habitation.respond_to?(:tenant_id) && current_tenant.present? && habitation.tenant_id != current_tenant.id
@@ -223,7 +289,7 @@ module Admin::HabitationsHelper
     when "Administração da locação"
       { mode: "any_present", names: %w[habitation[salute_rental_management_answer]] }
     when "Meio de garantia locatícia"
-      { mode: "any_present", names: %w[habitation[rental_guarantee_method]] }
+      { mode: "any_present", names: %w[habitation[rental_guarantee_method] habitation[rental_guarantee_method][] captacao[rental_guarantee_method] captacao[rental_guarantee_method][]] }
     when "Aceita permuta"
       { mode: "any_present", names: %w[habitation[aceita_permuta_answer]] }
     when "Quantidade de parcelas"

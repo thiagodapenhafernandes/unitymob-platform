@@ -80,13 +80,23 @@
   </div>
 
   <div class="wizard-field-group">
-    <%= f.label :rental_guarantee_method, "Meio de garantia locatícia", class: "ax-label" %>
+    <%= f.label :rental_guarantee_method, "Meios de garantia locatícia", class: "ax-label" %>
     <span class="required-star">*</span>
-    <%= f.select :rental_guarantee_method,
-                 Habitation::RENTAL_GUARANTEE_METHOD_OPTIONS,
-                 { include_blank: "Selecione" },
-                 class: field_state.call(:rental_guarantee_method, "ax-control") %>
-    <% if field_invalid.call(:rental_guarantee_method) %><div class="invalid-feedback d-block">Informe o meio de garantia locatícia.</div><% end %>
+    <% rental_guarantee_field_name = "#{f.object_name}[rental_guarantee_method][]" %>
+    <%= hidden_field_tag rental_guarantee_field_name, "" %>
+    <div class="ax-filter-checks <%= 'is-invalid' if field_invalid.call(:rental_guarantee_method) %>">
+      <% selected_guarantees = @captacao.rental_guarantee_methods %>
+      <% Habitation::RENTAL_GUARANTEE_METHOD_OPTIONS.each do |option| %>
+        <%= ax_filter_check(
+              name: rental_guarantee_field_name,
+              value: option,
+              checked: selected_guarantees.include?(option),
+              label: option,
+              id: "captacao_rental_guarantee_method_#{option.parameterize}"
+            ) %>
+      <% end %>
+    </div>
+    <% if field_invalid.call(:rental_guarantee_method) %><div class="invalid-feedback d-block">Informe ao menos um meio de garantia locatícia.</div><% end %>
   </div>
 <% end %>
 

@@ -52,6 +52,24 @@ RSpec.describe "Admin habitation filter inspector", type: :request do
     expect(quick_section.to_html).to include('name="q"')
   end
 
+  it "renderiza características internas e lazer como bloco próprio do catálogo" do
+    get filter_inspector_admin_habitations_path(amenities: ["Adega", "Garden"]),
+        headers: { "Turbo-Frame" => "admin_habitations_filter_inspector" }
+
+    expect(response).to have_http_status(:ok)
+
+    document = Nokogiri::HTML(response.body)
+    amenity_section = document.css(".ax-filter-section").find { |section| section.text.include?("Características internas e lazer") }
+
+    expect(amenity_section).to be_present
+    expect(amenity_section.to_html).to include('name="amenities[]"')
+    expect(amenity_section.text).to include("Adega")
+    expect(amenity_section.text).to include("Ar-condicionado")
+    expect(amenity_section.text).to include("Garden")
+    expect(amenity_section.text).to include("Quadra mar")
+    expect(response.body.index("Características internas e lazer")).to be < response.body.index("Imagens e portais")
+  end
+
   it "mantém o inspector pesado fora da primeira resposta da listagem" do
     get admin_habitations_path
 

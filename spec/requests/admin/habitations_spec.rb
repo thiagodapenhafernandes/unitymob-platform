@@ -563,10 +563,12 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include(CGI.escapeHTML("#{edit_admin_habitation_path(own_property.id)}?return_to=/admin/habitations&ownership=all&q=#{own_property.codigo}&back_anchor=habitation_#{own_property.id}"))
   end
 
-  it "não permite que corretor filtre imóveis por outro corretor fora do próprio escopo vertical" do
+  it "permite que corretor filtre imóveis por colegas da mesma conta no catálogo" do
     broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Filtro")
     patricia = create(:admin_user, profile: broker_profile, name: "Patrícia Filtro")
+    other_tenant = Tenant.create!(name: "Outra conta filtros #{SecureRandom.hex(4)}", slug: "outra-conta-filtros-#{SecureRandom.hex(4)}")
+    outside_broker = create(:admin_user, tenant: other_tenant, name: "Corretor Outra Conta")
     own_property = create(
       :habitation,
       admin_user: luciana,
@@ -579,6 +581,13 @@ RSpec.describe "Admin::Habitations", type: :request do
       codigo: "FILTRO-OTHER-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Imóvel da Patrícia no filtro"
     )
+    outside_property = create(
+      :habitation,
+      tenant: other_tenant,
+      admin_user: outside_broker,
+      codigo: "FILTRO-OUTSIDE-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel de outra conta no filtro"
+    )
 
     sign_in luciana
     get filter_inspector_admin_habitations_path(ownership: "all"), headers: turbo_frame_headers
@@ -586,17 +595,26 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('name="corretor_id"')
     expect(response.body).to include("Luciana Filtro")
-    expect(response.body).not_to include("Patrícia Filtro")
+    expect(response.body).to include("Patrícia Filtro")
+    expect(response.body).not_to include("Corretor Outra Conta")
     expect(response.body).not_to include('name="proprietor_id"')
 
     get admin_habitations_path(ownership: "mine", corretor_id: patricia.id)
 
     expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include(own_property.titulo_anuncio)
+    expect(response.body).to include(other_property.titulo_anuncio)
+    expect(response.body).not_to include(outside_property.titulo_anuncio)
+
+    get admin_habitations_path(ownership: "mine", corretor_id: outside_broker.id)
+
+    expect(response).to have_http_status(:ok)
     expect(response.body).to include(own_property.titulo_anuncio)
     expect(response.body).not_to include(other_property.titulo_anuncio)
+    expect(response.body).not_to include(outside_property.titulo_anuncio)
   end
 
-  it "limita filtro de corretor de imóveis à subárvore do perfil vertical intermediário" do
+  it "permite filtro de corretor de imóveis por colegas fora da subárvore no catálogo" do
     tenant = admin.tenant
     manager_profile = Profile.create!(
       tenant: tenant,
@@ -623,14 +641,14 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Gestor Imóveis")
     expect(response.body).to include("Subordinado Imóveis")
-    expect(response.body).not_to include("Par Imóveis")
+    expect(response.body).to include("Par Imóveis")
 
     get admin_habitations_path(ownership: "mine", corretor_id: peer.id)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(manager_property.titulo_anuncio)
-    expect(response.body).to include(subordinate_property.titulo_anuncio)
-    expect(response.body).not_to include(peer_property.titulo_anuncio)
+    expect(response.body).not_to include(manager_property.titulo_anuncio)
+    expect(response.body).not_to include(subordinate_property.titulo_anuncio)
+    expect(response.body).to include(peer_property.titulo_anuncio)
   end
 
   it "combina status, categoria e Frente Mar sem trazer imóveis incompatíveis" do
@@ -857,6 +875,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(matching.titulo_anuncio)
+    expect(response.body).to include("Empreendimento: Residencial 183")
     expect(response.body).not_to include(other_property.titulo_anuncio)
   end
 

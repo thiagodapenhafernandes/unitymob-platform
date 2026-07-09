@@ -9,6 +9,7 @@
   image_url = image_urls.first
   fallback_image_urls = image_urls.drop(1)
   display_title = imovel.display_title
+  catalog_title = admin_habitation_catalog_title(imovel)
   has_photo = image_urls.any? || imovel.has_any_photo?
   publication_channels = admin_habitation_publication_channels(imovel)
   captador_name = imovel.primary_captador_name
@@ -110,7 +111,7 @@
   <div class="ax-property-card__body">
     <header class="ax-property-card__head">
       <div class="ax-property-card__title-stack">
-        <%= link_to "#{imovel.bairro.presence || 'Sem bairro'} · #{display_title}",
+        <%= link_to catalog_title,
                     catalog_card_path,
                     class: "ax-property-card__title" %>
         <div class="ax-property-card__identity">

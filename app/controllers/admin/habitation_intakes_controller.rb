@@ -645,6 +645,16 @@ module Admin
     def load_form_options
       @brokers = current_tenant.admin_users.account_members.order(:name)
       @proprietors = current_tenant.proprietors.order(:name).limit(300)
+      @developments = current_tenant.habitations.empreendimentos
+        .includes(:address)
+        .select(
+          :id, :slug, :codigo, :nome_empreendimento, :titulo_anuncio,
+          :constructor_id, :proprietor_id, :admin_user_id, :data_entrega,
+          :perfil_construcao, :tipo_endereco, :endereco, :numero,
+          :bairro, :bairro_comercial, :cidade, :uf, :cep
+        )
+        .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
+        .order(nome_empreendimento: :asc)
       @proprietor_city_options = current_tenant.proprietors
         .where.not(city: [nil, ""])
         .distinct
@@ -963,7 +973,7 @@ module Admin
       normalize_rental_guarantee_method_param!(:captacao)
 
       permitted_keys = [
-        :categoria, :status, :situacao, :tipo, :nome_empreendimento, :titulo_anuncio,
+        :categoria, :status, :situacao, :tipo, :codigo_empreendimento, :nome_empreendimento, :titulo_anuncio,
         :property_kind, :modalidade, :step,
         :dormitorios_qtd, :suites_qtd, :banheiros_qtd, :vagas_qtd, :elevadores_qtd,
         :area_total, :area_privativa, :dormitorios, :suites, :demi_suites, :salas, :banheiros, :vagas_garagem,
