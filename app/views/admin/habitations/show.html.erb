@@ -382,7 +382,6 @@
     { eyebrow: "Proprietário", title: "Contatos", fields: owner_fields },
     { eyebrow: "Comissão", title: "Operação", fields: commission_fields },
     { eyebrow: "Responsáveis", title: "Agenciamento", fields: broker_assignment_fields },
-    { eyebrow: "SEO", title: "Busca e metadados", fields: seo_fields },
     { eyebrow: "Comercial", title: "Observações internas", fields: internal_note_fields }
   ].select { |panel| panel[:fields].present? }
   has_document_panel = internal_document_groups.any? || vista_document_assets.any?
