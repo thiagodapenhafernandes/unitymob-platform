@@ -8,19 +8,30 @@ export default class extends Controller {
   }
 
   connect() {
-    this.loadStylesheet()
     this.prepareInitialValue()
     this.handleSubmit = this.handleSubmit.bind(this)
+    this.initializeOnFocus = this.initializeOnFocus.bind(this)
+
+    this.element.addEventListener("focus", this.initializeOnFocus, { once: true })
     this.element.form?.addEventListener("submit", this.handleSubmit)
-    this.initialize()
   }
 
   disconnect() {
+    this.element.removeEventListener("focus", this.initializeOnFocus)
     this.element.form?.removeEventListener("submit", this.handleSubmit)
     this.iti?.destroy()
   }
 
+  initializeOnFocus() {
+    this.loadStylesheet()
+    this.initialize()
+  }
+
   initialize() {
+    if (this.iti || this.initializing) return
+
+    this.initializing = true
+
     this.loadIntlTelInput()
       .then((intlTelInput) => {
         this.iti = intlTelInput(this.element, {
@@ -33,6 +44,9 @@ export default class extends Controller {
         })
       })
       .catch(() => {})
+      .finally(() => {
+        this.initializing = false
+      })
   }
 
   handleSubmit() {

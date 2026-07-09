@@ -106,7 +106,7 @@ module DataHygiene
       return unless defined?(AttributeOption)
 
       grouped_attribute_options.each_value do |options|
-        canonical = options.map { |option| option.name.to_s.squish }.find(&:present?)
+        canonical = options.map { |option| AttributeOption.sanitize_name(option.name) }.find(&:present?)
         next if canonical.blank?
 
         keeper = options.find { |option| option.name == canonical } || options.min_by(&:id)
@@ -124,22 +124,24 @@ module DataHygiene
       groups = Hash.new { |hash, key| hash[key] = [] }
 
       AttributeOption.order(:id).find_each do |option|
-        canonical = option.name.to_s.squish
+        canonical = AttributeOption.sanitize_name(option.name)
         next if canonical.blank?
         next if option.name == canonical && !attribute_option_duplicate_key?(option, canonical)
 
-        groups[[option.tenant_id, option.context, option.category, canonical.downcase]] << option
+        groups[[option.tenant_id, option.context, option.category, AttributeOption.normalized_name_key(canonical)]] << option
       end
 
       groups
     end
 
     def attribute_option_duplicate_key?(option, canonical)
+      canonical_key = AttributeOption.normalized_name_key(canonical)
+
       AttributeOption
         .where(tenant_id: option.tenant_id, context: option.context, category: option.category)
-        .where("LOWER(name) = LOWER(?) OR LOWER(regexp_replace(btrim(name), E'\\\\s+', ' ', 'g')) = LOWER(?)", canonical, canonical)
         .where.not(id: option.id)
-        .exists?
+        .select(:id, :name)
+        .any? { |candidate| AttributeOption.normalized_name_key(candidate.name) == canonical_key }
     end
 
     def apply_attribute_options_group(keeper, options, canonical)

@@ -88,6 +88,17 @@
 .habitation-form-ui .ax-control,
 .habitation-form-ui .ax-input,
 .habitation-form-ui .ax-select { height: var(--ax-form-control-height); font-size: 13px; }
+.habitation-form-ui trix-editor.ax-rich-text-control,
+.habitation-form-ui .ax-rich-text-control {
+  height: auto;
+  min-height: 160px;
+  padding: 9px 10px;
+  line-height: 1.45;
+}
+.habitation-form-ui trix-toolbar {
+  display: block;
+  margin-bottom: 6px;
+}
 .habitation-form-ui .ax-field-label { font-size:12px; font-weight:600; color:#344054; margin-bottom:3px; }
 
 /* Segmented "Tipo de cadastro" — se estiver com ax-checkbox-chips/ax-toggle-chip,

@@ -1,4 +1,20 @@
+<% habitation = f.object %>
+
 <% unique_feature_actions = capture do %>
+  <% if habitation.persisted? %>
+    <%= link_to generate_ai_preview_admin_habitation_path(habitation),
+        class: "ax-btn ax-btn--primary ax-btn--sm",
+        data: {
+          controller: "ai-preview",
+          turbo_frame: dom_id(habitation, :ai_content_preview),
+          action: "click->ai-preview#submit",
+          ai_preview_method: "POST",
+          ai_preview_loading_text: "Gerando..."
+        } do %>
+      <i class="bi bi-stars ax-ico" aria-hidden="true"></i>Gerar com IA
+    <% end %>
+  <% end %>
+
   <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm"
           data-attribute-manager-context-value="habitation"
           data-attribute-manager-category-value="unique_feature"
@@ -29,11 +45,12 @@
       </div>
     </div>
     <div class="ax-span-12">
-      <% if f.object.persisted? %>
+      <% if habitation.persisted? %>
         <%= render "admin/habitations/ai_content_preview",
-            habitation: f.object,
+            habitation: habitation,
             suggestion: @ai_property_suggestion,
-            failed_suggestion: @ai_failed_suggestion %>
+            failed_suggestion: @ai_failed_suggestion,
+            show_button: false %>
       <% end %>
 
       <div class="ax-field-group ax-field-group--spaced">

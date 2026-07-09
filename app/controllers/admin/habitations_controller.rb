@@ -768,7 +768,8 @@ class Admin::HabitationsController < Admin::BaseController
              suggestion: suggestion || @habitation.ai_property_suggestions.pending.latest_first.first,
              failed_suggestion: @habitation.ai_property_suggestions.where(status: "failed").latest_first.first,
              message: message,
-             message_type: message_type
+             message_type: message_type,
+             show_button: false
            }
   end
 
