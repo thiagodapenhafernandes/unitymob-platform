@@ -101,6 +101,19 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(ActiveStorage::TransformJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480])
   end
 
+  it "gera path relativo para representation sem exigir host default" do
+    variant = instance_double(ActiveStorage::VariantWithRecord)
+
+    expect(Rails.application.routes.url_helpers)
+      .to receive(:rails_representation_path)
+      .with(variant, only_path: true)
+      .and_return("/rails/active_storage/representations/signed/foto.jpg")
+
+    resolver = described_class.new(nil)
+
+    expect(resolver.send(:representation_path, variant)).to eq("/rails/active_storage/representations/signed/foto.jpg")
+  end
+
   def address_attributes
     {
       logradouro: "Rua CDN",
