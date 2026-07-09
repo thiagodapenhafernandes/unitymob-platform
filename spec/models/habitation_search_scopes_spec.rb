@@ -358,6 +358,7 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(relation.to_sql).to include("COALESCE(habitations.tipo, '') <> 'Empreendimento'")
       expect(relation.to_sql).to include("valor_venda_cents > 0")
       expect(relation.to_sql).not_to include("SELECT 1 FROM habitations units")
+      expect(relation.to_sql).not_to include("COALESCE(habitations.tipo, '') = 'Empreendimento'")
     end
 
     it "keeps advanced filters for public property listings" do
