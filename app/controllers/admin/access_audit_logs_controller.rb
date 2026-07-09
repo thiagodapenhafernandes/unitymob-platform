@@ -52,6 +52,7 @@ class Admin::AccessAuditLogsController < Admin::BaseController
   end
 
   def available_access_profiles_for(users)
+    users = users.reorder(nil)
     profile_ids = users.where(horizontal_profile_id: nil).where.not(profile_id: nil).distinct.pluck(:profile_id)
     profile_ids += users.where.not(horizontal_profile_id: nil).distinct.pluck(:horizontal_profile_id)
     current_tenant.profiles.where(id: profile_ids.compact.uniq).order(Arel.sql("axis DESC, name ASC"))
