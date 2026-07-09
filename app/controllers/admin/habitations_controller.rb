@@ -95,6 +95,18 @@ class Admin::HabitationsController < Admin::BaseController
   helper_method :owns_all_resource?
 
   def index
+    if clear_habitations_filter_session_requested?
+      clear_habitations_filter_session!
+      redirect_to admin_habitations_path(ownership: params[:ownership].presence_in(%w[mine all]) || "all"), status: :see_other
+      return
+    end
+
+    if should_restore_habitations_filter_session?
+      redirect_to admin_habitations_path(habitations_filter_session_params), status: :see_other
+      return
+    end
+
+    store_habitations_filter_session!
     load_index_filters
     @return_to_path = safe_admin_habitations_return_path(request.fullpath)
     @sort_column = sort_column
@@ -175,14 +187,25 @@ class Admin::HabitationsController < Admin::BaseController
       return
     end
 
-    habitation = resolve_admin_habitation_param(code) || current_tenant.habitations.find_by(codigo_dwv: code)
+    habitation =
+      current_tenant.habitations.find_by(codigo: code) ||
+      current_tenant.habitations.find_by(codigo_dwv: code) ||
+      resolve_admin_habitation_param(code)
     unless habitation
       redirect_back fallback_location: admin_habitations_path, alert: "Nenhum cadastro encontrado para o código #{code}."
       return
     end
 
+    catalog_code = [habitation.codigo, habitation.codigo_dwv].map(&:to_s).include?(code) ? code : habitation.codigo
+    code_filter_params = {
+      "ownership" => params[:ownership].presence_in(%w[mine all]) || "all",
+      "codigo" => catalog_code
+    }
+    session[habitations_filter_session_key] = compact_blank_return_params(code_filter_params)
+
+    return_to_path = admin_habitations_path(code_filter_params)
     path = can_edit_habitation?(habitation) ? edit_admin_habitation_path(habitation.id) : admin_habitation_path(habitation.id)
-    redirect_to path
+    redirect_to admin_path_with_flat_return(path, return_to_path)
   end
 
   def print
@@ -960,6 +983,51 @@ class Admin::HabitationsController < Admin::BaseController
 
   def clear_extra_filter_params
     request.query_parameters.except(*extra_filter_keys, "page")
+  end
+
+  def habitations_filter_session_key
+    "admin_habitations_last_filter:tenant:#{current_tenant.id}:user:#{current_admin_user.id}"
+  end
+
+  def habitations_filter_session_keys
+    @habitations_filter_session_keys ||= (
+      %w[
+        q status categoria scope ownership intake_review visualizacao sort direction per_page
+      ] + extra_filter_keys
+    ).uniq
+  end
+
+  def clear_habitations_filter_session_requested?
+    params[:clear_filters].to_s == "1"
+  end
+
+  def should_restore_habitations_filter_session?
+    request.get? &&
+      request.query_parameters.except("controller", "action").blank? &&
+      habitations_filter_session_params.present?
+  end
+
+  def store_habitations_filter_session!
+    filter_params = compact_blank_return_params(
+      request.query_parameters.slice(*habitations_filter_session_keys).except("page", "clear_filters")
+    )
+
+    if filter_params.present? && filter_params.except("ownership", "visualizacao", "sort", "direction", "per_page").present?
+      session[habitations_filter_session_key] = filter_params
+    else
+      clear_habitations_filter_session!
+    end
+  end
+
+  def habitations_filter_session_params
+    raw_params = session[habitations_filter_session_key]
+    return {} unless raw_params.respond_to?(:to_h)
+
+    compact_blank_return_params(raw_params.to_h.slice(*habitations_filter_session_keys).except("page", "clear_filters"))
+  end
+
+  def clear_habitations_filter_session!
+    session.delete(habitations_filter_session_key)
   end
 
   def extract_multi_select_integers(param_key)

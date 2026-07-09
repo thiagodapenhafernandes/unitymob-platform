@@ -491,7 +491,50 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     get search_by_code_admin_habitations_path(codigo: "54")
 
-    expect(response).to redirect_to(edit_admin_habitation_path(development))
+    expect(response).to have_http_status(:redirect)
+    redirect_uri = URI.parse(response.location)
+    expect(redirect_uri.path).to eq(edit_admin_habitation_path(development.id))
+    redirect_params = Rack::Utils.parse_nested_query(redirect_uri.query)
+    expect(redirect_params).to include(
+      "return_to" => "/admin/habitations",
+      "ownership" => "all",
+      "codigo" => "54"
+    )
+  end
+
+  it "substitui filtro antigo de empreendimento ao pesquisar pelo código" do
+    old_development = create(
+      :habitation,
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      codigo: "EMP-OLD-#{SecureRandom.hex(4)}",
+      nome_empreendimento: "Edifício Capacidade"
+    )
+    property = create(
+      :habitation,
+      codigo: "RET-CODE-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel localizado por código",
+      nome_empreendimento: "Residencial Correto"
+    )
+
+    get admin_habitations_path(ownership: "all", empreendimento_codigo: "name:#{old_development.nome_empreendimento}")
+    expect(response).to have_http_status(:ok)
+
+    get search_by_code_admin_habitations_path(codigo: property.codigo)
+
+    expect(response).to have_http_status(:redirect)
+    redirect_uri = URI.parse(response.location)
+    expect(redirect_uri.path).to eq(edit_admin_habitation_path(property.id))
+    redirect_params = Rack::Utils.parse_nested_query(redirect_uri.query)
+    expect(redirect_params).to include(
+      "return_to" => "/admin/habitations",
+      "ownership" => "all",
+      "codigo" => property.codigo
+    )
+
+    get admin_habitations_path
+
+    expect(response).to redirect_to(admin_habitations_path(ownership: "all", codigo: property.codigo))
   end
 
   it "filtra código exato no catálogo sem casar códigos parecidos" do
@@ -584,6 +627,42 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(address_index).to be_present
     expect(development_index).to be > address_index
     expect(captador_index).to be > development_index
+  end
+
+  it "renderiza todas as fotos do imóvel no fancybox do card e da tabela" do
+    habitation = create(
+      :habitation,
+      tenant: admin.tenant,
+      codigo: "GAL-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento com galeria completa",
+      pictures: [
+        { "url" => "https://cdn.saluteimoveis.com.br/spec/galeria-1.jpg" },
+        { "url" => "https://cdn.saluteimoveis.com.br/spec/galeria-2.jpg" },
+        { "url" => "https://cdn.saluteimoveis.com.br/spec/galeria-3.jpg" }
+      ]
+    )
+
+    get admin_habitations_path(q: habitation.codigo)
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    gallery_links = html.css(%(a[data-fancybox="admin-property-card-#{habitation.id}"]))
+    expect(gallery_links.map { |node| node["href"] }).to contain_exactly(
+      "https://cdn.saluteimoveis.com.br/spec/galeria-1.jpg",
+      "https://cdn.saluteimoveis.com.br/spec/galeria-2.jpg",
+      "https://cdn.saluteimoveis.com.br/spec/galeria-3.jpg"
+    )
+
+    get admin_habitations_path(q: habitation.codigo, visualizacao: "tabela")
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    gallery_links = html.css(%(a[data-fancybox="admin-property-row-#{habitation.id}"]))
+    expect(gallery_links.map { |node| node["href"] }).to contain_exactly(
+      "https://cdn.saluteimoveis.com.br/spec/galeria-1.jpg",
+      "https://cdn.saluteimoveis.com.br/spec/galeria-2.jpg",
+      "https://cdn.saluteimoveis.com.br/spec/galeria-3.jpg"
+    )
   end
 
   it "não inclui imóveis apenas vinculados como corretor secundário em Meus imóveis" do
@@ -1018,7 +1097,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
   it "preserva filtros da listagem ao editar e salvar saindo" do
     habitation = create(:habitation, codigo: "RET-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel com retorno")
-    habitation.create_address!(
+    habitation.address.update!(
       logradouro: "Rua Retorno",
       numero: "123",
       bairro: "Centro",
@@ -1036,8 +1115,14 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(ERB::Util.html_escape(return_path))
+    edit_html = Nokogiri::HTML(response.body)
+    authenticity_token =
+      edit_html.at_css(%(input[name="authenticity_token"]))&.[]("value") ||
+      edit_html.at_css(%(meta[name="csrf-token"]))&.[]("content")
+    expect(authenticity_token).to be_present
 
     patch admin_habitation_path(habitation.id), params: {
+      authenticity_token: authenticity_token,
       return_to: return_path,
       save_navigation: "exit",
       habitation: {
@@ -1051,9 +1136,115 @@ RSpec.describe "Admin::Habitations", type: :request do
           uf: "SC"
         }
       }
-    }
+    }, headers: { "X-CSRF-Token" => authenticity_token }
 
     expect(response).to redirect_to(return_path)
+  end
+
+  it "preserva filtros avançados ao abrir o imóvel pelo catálogo e voltar" do
+    habitation = create(
+      :habitation,
+      codigo: "RET-ADV-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel com retorno avançado",
+      nome_empreendimento: "Vermont",
+      categoria: "Apartamento",
+      status: "Venda"
+    )
+    return_path = admin_habitations_path(
+      ownership: "all",
+      empreendimento_codigo: "name:Vermont",
+      corretor_id: "",
+      status: "",
+      categoria: "",
+      visualizacao: "tabela"
+    )
+
+    get return_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    card_link = html.at_css(%([data-clickable-card-url-value*="/admin/habitations/#{habitation.id}/edit"]))
+    expect(card_link).to be_present
+    card_url = CGI.unescapeHTML(card_link["data-clickable-card-url-value"])
+    expect(card_url).to include(edit_admin_habitation_path(habitation.id))
+    expect(card_url).to include("return_to=/admin/habitations")
+    expect(card_url).to include("ownership=all")
+    expect(card_url).to include("empreendimento_codigo=name%3AVermont")
+    expect(card_url).to include("visualizacao=tabela")
+    expect(card_url).to include("back_anchor=habitation_#{habitation.id}")
+
+    get admin_habitation_path(
+      habitation.id,
+      return_to: "/admin/habitations",
+      ownership: "all",
+      empreendimento_codigo: "name:Vermont",
+      visualizacao: "tabela",
+      back_anchor: "habitation_#{habitation.id}"
+    )
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    back_link = html.css("a").select { |node| node.text.squish == "Voltar" }.find do |node|
+      CGI.unescapeHTML(node["href"].to_s).include?("empreendimento_codigo=")
+    end
+    expect(back_link).to be_present
+
+    back_href = CGI.unescapeHTML(back_link["href"])
+    back_uri = URI.parse(back_href)
+    back_params = Rack::Utils.parse_nested_query(back_uri.query)
+
+    expect(back_uri.path).to eq(admin_habitations_path)
+    expect(back_params).to include(
+      "ownership" => "all",
+      "empreendimento_codigo" => "name:Vermont",
+      "visualizacao" => "tabela"
+    )
+    expect(back_uri.fragment).to eq("habitation_#{habitation.id}")
+  end
+
+  it "restaura o último filtro do catálogo ao voltar para imóveis sem query string" do
+    habitation = create(
+      :habitation,
+      codigo: "RET-SESSION-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel com filtro persistido",
+      nome_empreendimento: "Vermont",
+      categoria: "Apartamento",
+      status: "Venda"
+    )
+    filtered_path = admin_habitations_path(
+      ownership: "all",
+      empreendimento_codigo: "name:Vermont",
+      visualizacao: "tabela"
+    )
+
+    get filtered_path
+    expect(response).to have_http_status(:ok)
+
+    get admin_habitation_path(habitation)
+    expect(response).to have_http_status(:ok)
+
+    get admin_habitations_path
+
+    expect(response).to redirect_to(filtered_path)
+  end
+
+  it "limpa o último filtro do catálogo quando o usuário pede para limpar filtros" do
+    create(
+      :habitation,
+      codigo: "RET-CLEAR-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel com filtro para limpar",
+      nome_empreendimento: "Vermont"
+    )
+    filtered_path = admin_habitations_path(ownership: "all", empreendimento_codigo: "name:Vermont")
+
+    get filtered_path
+    expect(response).to have_http_status(:ok)
+
+    get admin_habitations_path(ownership: "all", clear_filters: "1")
+    expect(response).to redirect_to(admin_habitations_path(ownership: "all"))
+
+    get admin_habitations_path
+    expect(response).to have_http_status(:ok)
   end
 
   it "remove filtros vazios do retorno para manter a URL do cadastro enxuta" do
