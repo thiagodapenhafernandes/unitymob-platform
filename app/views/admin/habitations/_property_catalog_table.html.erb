@@ -85,6 +85,17 @@
                                     image_fallback_fallback_urls_value: fallback_image_urls
                                   } %>
                   <% end %>
+                  <% fallback_image_urls.each_with_index do |gallery_image_url, gallery_index| %>
+                    <%= link_to "#{display_title} - Foto #{gallery_index + 2}",
+                                gallery_image_url,
+                                class: "visually-hidden",
+                                data: {
+                                  fancybox: "admin-property-row-#{imovel.id}",
+                                  caption: "#{display_title} - Foto #{gallery_index + 2}"
+                                },
+                                tabindex: "-1",
+                                aria: { hidden: "true" } %>
+                  <% end %>
                 <% else %>
                   <i class="bi bi-image"></i>
                 <% end %>

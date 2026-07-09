@@ -562,7 +562,7 @@
     <div class="ax-property-empty__icon"><i class="bi bi-search"></i></div>
     <h5>Nenhum imóvel encontrado</h5>
     <p>Tente ajustar seus filtros ou buscar por outro termo.</p>
-    <%= link_to "Limpar filtros", admin_habitations_path(ownership: "all"), class: "ax-btn" %>
+    <%= link_to "Limpar filtros", admin_habitations_path(ownership: "all", clear_filters: "1"), class: "ax-btn" %>
   </div>
 <% end %>
 
