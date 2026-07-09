@@ -113,7 +113,8 @@
           <td data-column="location">
             <div class="ax-property-table__stack ax-property-table__location">
               <strong><%= [imovel.endereco, imovel.numero].compact_blank.join(", ").presence || "Sem endereço" %></strong>
-              <span><%= [imovel.cidade, imovel.uf].compact_blank.join("/") %><%= " · Apto. #{imovel.complemento}" if imovel.complemento.present? %></span>
+              <% address_unit_label = admin_habitation_address_unit_label(imovel) %>
+              <span><%= [imovel.cidade, imovel.uf].compact_blank.join("/") %><%= " · #{address_unit_label}" if address_unit_label.present? %></span>
               <% if development_name.present? %>
                 <span>Empreendimento: <%= development_name %></span>
               <% end %>

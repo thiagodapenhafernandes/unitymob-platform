@@ -52,9 +52,6 @@
           <div class="ax-span-3">
             <%= ax_currency_field(form: f, method: :saldo_devedor_formatted, label: "Saldo devedor", data: { controller: "mask", mask_type_value: "currency" }) %>
           </div>
-          <div class="ax-span-3">
-            <%= ax_number_field(form: f, method: :numero_prestacoes, label: "Nº de prestações", min: 0) %>
-          </div>
         <% end %>
       <% end %>
     </div>

@@ -142,8 +142,9 @@
       <span>
         <i class="bi bi-geo-alt"></i>
         <%= [imovel.endereco, imovel.numero].compact_blank.join(", ") %>
-        <% if imovel.complemento.present? %>
-          <strong>Apto. <%= imovel.complemento %></strong>
+        <% address_unit_label = admin_habitation_address_unit_label(imovel) %>
+        <% if address_unit_label.present? %>
+          <strong><%= address_unit_label %></strong>
         <% end %>
         <%= " - #{[imovel.cidade, imovel.uf].compact_blank.join('/')}" if imovel.cidade.present? || imovel.uf.present? %>
       </span>

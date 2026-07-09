@@ -2,7 +2,7 @@
   linked_development = @habitation.empreendimento if @habitation.codigo_empreendimento.present?
   title = @habitation.titulo_anuncio.presence || @habitation.display_title || "Detalhes do imóvel"
   return_path = @return_to_path.presence || admin_habitations_path
-  address_parts = [@habitation.endereco, @habitation.numero, @habitation.complemento.presence && "Apto. #{@habitation.complemento}", @habitation.bairro, @habitation.cidade, @habitation.uf].compact_blank
+  address_parts = [@habitation.endereco, @habitation.numero, admin_habitation_address_unit_label(@habitation), @habitation.bairro, @habitation.cidade, @habitation.uf].compact_blank
   description = @habitation.display_description
 
   money = lambda do |cents|
@@ -187,7 +187,7 @@
     ["Varandas", @habitation.varandas_qtd],
     ["Hidromassagem", @habitation.hidromassagem_qtd],
     ["Tipo de vaga", @habitation.tipo_vaga],
-    ["Box garagem", @habitation.numero_box],
+    ["Box", @habitation.numero_box],
     ["Área privativa", @habitation.area_privativa_m2.present? ? "#{@habitation.area_privativa_m2} m²" : nil],
     ["Área total", @habitation.area_total_m2.present? ? "#{@habitation.area_total_m2} m²" : nil],
     ["Área terreno", @habitation.area_terreno_m2.present? ? "#{@habitation.area_terreno_m2} m²" : nil],
@@ -204,8 +204,10 @@
     ["Total aluguel", total_rent_price],
     ["Condomínio", money.call(@habitation.valor_condominio_cents)],
     ["IPTU", money.call(@habitation.valor_iptu_cents)],
-    ["Aceita financiamento", yes_no.call(@habitation.aceita_financiamento_flag)],
-    ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)]
+    ["Aceita parcelamento", yes_no.call(@habitation.aceita_parcelamento_flag)],
+    ["Parcelas", @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.present? ? "#{@habitation.numero_prestacoes}x" : nil],
+    ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)],
+    ["Com Adm", yes_no.call(@habitation.salute_rental_management_flag)]
   ].select { |_label, value| value.present? }
 
   commercial_fields = [
@@ -226,8 +228,7 @@
     ["Zelador", @habitation.zelador_nome],
     ["Telefone do zelador", format_phone(@habitation.zelador_telefone)],
     ["Região foco", @habitation.regiao_foco],
-    ["Saldo devedor", money.call(@habitation.saldo_devedor_cents)],
-    ["Nº de prestações", @habitation.numero_prestacoes]
+    ["Saldo devedor", money.call(@habitation.saldo_devedor_cents)]
   ].select { |_label, value| value.present? }
 
   exchange_fields = [

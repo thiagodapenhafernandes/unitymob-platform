@@ -1154,10 +1154,7 @@ class Admin::HabitationsController < Admin::BaseController
     scope = scope.where("COALESCE(permuta_garagens_qtd, 0) >= ?", @permuta_min_garagens.to_i) if @permuta_min_garagens.present?
     scope = scope.where(key_location: @key_location) if @key_location.present?
     if @empreendimento_codigo.present?
-      scope = scope.where(
-        "codigo_empreendimento = :term OR codigo = :term OR unaccent(nome_empreendimento) = unaccent(:term)",
-        term: @empreendimento_codigo.to_s.strip
-      )
+      scope = apply_development_filter(scope, @empreendimento_codigo)
     end
     if @corretor_id.present?
       broker_name = current_tenant.admin_users.where(id: @corretor_id).pick(:name).to_s
@@ -1232,6 +1229,24 @@ class Admin::HabitationsController < Admin::BaseController
     scope = apply_quick_scope_filter(scope, @scope)
 
     scope
+  end
+
+  def apply_development_filter(scope, raw_value)
+    parsed = Admin::HabitationDevelopmentFilterOptions.parse(raw_value)
+    value = parsed[:value].to_s.strip
+    return scope if value.blank?
+
+    case parsed[:type]
+    when :development
+      scope.where("codigo_empreendimento = :code OR codigo = :code", code: value)
+    when :standalone
+      scope.where("LOWER(unaccent(nome_empreendimento)) = LOWER(unaccent(:name))", name: value)
+    else
+      scope.where(
+        "codigo_empreendimento = :term OR codigo = :term OR LOWER(unaccent(nome_empreendimento)) = LOWER(unaccent(:term))",
+        term: value
+      )
+    end
   end
 
   def index_per_page
@@ -2164,28 +2179,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def filter_empreendimento_options
-    tenant_habitations = current_tenant.habitations
-    development_options = tenant_habitations.empreendimentos
-      .where("NULLIF(TRIM(codigo), '') IS NOT NULL")
-      .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
-      .pluck(:nome_empreendimento, :codigo)
-
-    names_with_development = development_options.map { |name, _code| normalized_filter_text(name) }
-    standalone_options = tenant_habitations
-      .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
-      .where.not(tipo: "Empreendimento")
-      .distinct
-      .pluck(:nome_empreendimento)
-      .reject { |name| names_with_development.include?(normalized_filter_text(name)) }
-      .map { |name| [name, name] }
-
-    (development_options + standalone_options)
-      .uniq { |name, value| [normalized_filter_text(name), value.to_s] }
-      .sort_by { |name, _value| normalized_filter_text(name) }
-  end
-
-  def normalized_filter_text(value)
-    I18n.transliterate(value.to_s).squish.downcase
+    Admin::HabitationDevelopmentFilterOptions.call(current_tenant.habitations)
   end
 
   def record_habitation_created(habitation)
@@ -2289,7 +2283,7 @@ class Admin::HabitationsController < Admin::BaseController
       :proprietario_telefone_residencial, :proprietario_email,
       :exibir_no_site_flag, :destaque_web_flag, :lancamento_flag, :aceita_permuta_flag,
       :aceita_permuta_veiculo_flag, :aceita_permuta_imovel_flag, :aceita_permuta_outros_flag,
-      :aceita_financiamento_flag, :mobiliado_flag, :data_entrega, :status_vista, 
+      :aceita_financiamento_flag, :aceita_parcelamento_flag, :mobiliado_flag, :data_entrega, :status_vista,
       :meta_title, :meta_description, :meta_keywords, 
       :piscina_flag, :lavabo_flag, :varanda_gourmet_flag, :bloco, :lote,
       :banheiro_social_qtd, :decorado_flag, :aptos_andar, :aptos_edificio,
