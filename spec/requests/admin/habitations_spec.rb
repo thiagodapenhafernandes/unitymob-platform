@@ -333,6 +333,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     draft = create(:habitation, :broker_intake, admin_user: admin, codigo: "DRAFT-#{SecureRandom.hex(6)}", titulo_anuncio: "Captação em rascunho")
     submitted = create(:habitation, :broker_intake, admin_user: admin, codigo: "REV-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação finalizada")
     approved = create(:habitation, :broker_intake, admin_user: admin, codigo: "APP-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Captação aprovada")
+    returned = create(:habitation, :broker_intake, admin_user: admin, codigo: "RETURN-#{SecureRandom.hex(6)}", intake_status: "returned_to_broker", titulo_anuncio: "Captação devolvida")
     internal = create(:habitation, :broker_intake, admin_user: admin, codigo: "INT-#{SecureRandom.hex(6)}", intake_status: "internal", titulo_anuncio: "Captação interna")
     published = create(:habitation, :broker_intake, admin_user: admin, codigo: "PUB-#{SecureRandom.hex(6)}", intake_status: "published", titulo_anuncio: "Captação publicada")
 
@@ -347,15 +348,33 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(submitted.titulo_anuncio)
     expect(response.body).not_to include(approved.titulo_anuncio)
     expect(response.body).not_to include(draft.titulo_anuncio)
+    expect(response.body).not_to include(returned.titulo_anuncio)
+    expect(response.body).not_to include("Disponível internamente")
+    expect(response.body).not_to include("Liberado para site")
 
     get admin_habitations_path(intake_review: "pending", ownership: "all")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(submitted.titulo_anuncio)
     expect(response.body).to include(approved.titulo_anuncio)
-    expect(response.body).not_to include(draft.titulo_anuncio)
+    expect(response.body).to include(draft.titulo_anuncio)
+    expect(response.body).to include(returned.titulo_anuncio)
+    expect(response.body).to include("Rascunho")
+    expect(response.body).to include("Em revisão administrativa")
+    expect(response.body).to include("Aguardando aceite do corretor")
+    expect(response.body).to include("Devolvido ao corretor")
     expect(response.body).not_to include(internal.titulo_anuncio)
     expect(response.body).not_to include(published.titulo_anuncio)
+
+    get admin_habitations_path(intake_review: "pending", ownership: "all", visualizacao: "tabela")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Rascunho")
+    expect(response.body).to include("Em revisão administrativa")
+    expect(response.body).to include("Aguardando aceite do corretor")
+    expect(response.body).to include("Devolvido ao corretor")
+    expect(response.body).not_to include("Disponível internamente")
+    expect(response.body).not_to include("Liberado para site")
   end
 
   it "mostra para o administrativo apenas captações enviadas para revisão, não as aguardando aceite do corretor" do
@@ -363,6 +382,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     administrative = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Administrativo Revisão")
     submitted = create(:habitation, :broker_intake, admin_user: admin, codigo: "ADM-SUB-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Revisão do administrativo")
     approved = create(:habitation, :broker_intake, admin_user: admin, codigo: "ADM-APP-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Aguardando corretor aceitar")
+    draft = create(:habitation, :broker_intake, admin_user: admin, codigo: "ADM-DRAFT-#{SecureRandom.hex(6)}", intake_status: "draft", titulo_anuncio: "Rascunho do corretor")
+    returned = create(:habitation, :broker_intake, admin_user: admin, codigo: "ADM-RETURN-#{SecureRandom.hex(6)}", intake_status: "returned_to_broker", titulo_anuncio: "Devolvido ao corretor")
 
     sign_in administrative
     get admin_habitations_path(intake_review: "pending", ownership: "all")
@@ -370,6 +391,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(submitted.titulo_anuncio)
     expect(response.body).not_to include(approved.titulo_anuncio)
+    expect(response.body).not_to include(draft.titulo_anuncio)
+    expect(response.body).not_to include(returned.titulo_anuncio)
   end
 
   it "mostra para o corretor somente suas captações aguardando aceite" do

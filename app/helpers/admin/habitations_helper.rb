@@ -71,6 +71,17 @@ module Admin::HabitationsHelper
     admin_habitation_internal_action_label(habitation)
   end
 
+  def admin_habitation_pending_intake_status(habitation, intake_review:)
+    return unless intake_review == "pending"
+    return unless habitation.broker_intake?
+    return unless habitation.intake_status.in?(Habitation::PENDING_WORKFLOW_INTAKE_STATUSES)
+
+    {
+      label: habitation.intake_status_label,
+      broker_action: habitation.intake_status.in?(%w[draft admin_approved returned_to_broker])
+    }
+  end
+
   def admin_habitation_catalog_title(habitation)
     parts = [
       admin_habitation_catalog_neighborhood(habitation),
