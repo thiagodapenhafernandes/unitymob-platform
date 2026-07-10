@@ -8,6 +8,8 @@ export default class extends Controller {
   }
 
   connect() {
+    this.inputGroup = this.findInputGroup()
+    this.inputGroup?.classList.add("phone-input-group")
     this.prepareInitialValue()
     this.handleSubmit = this.handleSubmit.bind(this)
     this.handleInput = this.handleInput.bind(this)
@@ -25,6 +27,7 @@ export default class extends Controller {
     this.element.removeEventListener("input", this.handleInput)
     this.element.removeEventListener("countrychange", this.handleCountryChange)
     this.iti?.destroy()
+    this.inputGroup?.classList.remove("phone-input-group")
   }
 
   initialize() {
@@ -38,7 +41,7 @@ export default class extends Controller {
           initialCountry: this.initialCountryValue,
           preferredCountries: ["br", "us", "pt"],
           nationalMode: true,
-          separateDialCode: false,
+          separateDialCode: true,
           formatAsYouType: false,
           autoPlaceholder: "aggressive",
           utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@25.12.2/build/js/utils.js"
@@ -74,24 +77,22 @@ export default class extends Controller {
 
     if (digits.length === 0) return
 
-    const normalizedDigits = this.normalizeBrazilianMobileDigits(digits)
-
     if (value.startsWith("+")) {
-      this.element.value = normalizedDigits.startsWith("55") ? this.formatBrazilianNational(normalizedDigits) : `+${normalizedDigits}`
+      this.element.value = digits.startsWith("55") ? this.formatBrazilianNational(digits) : `+${digits}`
       return
     }
 
-    if (this.initialCountryValue === "br" && [10, 11].includes(normalizedDigits.length)) {
-      this.element.value = this.formatBrazilianNational(normalizedDigits)
+    if (this.initialCountryValue === "br" && [10, 11].includes(digits.length)) {
+      this.element.value = this.formatBrazilianNational(digits)
       return
     }
 
-    if (normalizedDigits.startsWith("55") && [12, 13].includes(normalizedDigits.length)) {
-      this.element.value = this.formatBrazilianNational(normalizedDigits)
+    if (digits.startsWith("55") && [12, 13].includes(digits.length)) {
+      this.element.value = this.formatBrazilianNational(digits)
       return
     }
 
-    this.element.value = this.initialCountryValue === "br" ? this.formatBrazilianNational(normalizedDigits) : normalizedDigits
+    this.element.value = this.initialCountryValue === "br" ? this.formatBrazilianNational(digits) : digits
   }
 
   normalizeForSubmit(value) {
@@ -125,11 +126,11 @@ export default class extends Controller {
   }
 
   formatBrazilianNational(value) {
-    const digits = this.normalizeBrazilianMobileDigits(value.toString().replace(/\D/g, ""))
+    const digits = value.toString().replace(/\D/g, "")
     const nationalDigits = digits.startsWith("55") && [12, 13].includes(digits.length) ? digits.slice(2) : digits
     const limitedDigits = nationalDigits.slice(0, 11)
 
-    if (limitedDigits.length < 10) return limitedDigits
+    if (limitedDigits.length < 3) return limitedDigits
 
     const ddd = limitedDigits.slice(0, 2)
     const number = limitedDigits.slice(2)
@@ -137,11 +138,18 @@ export default class extends Controller {
     if (number.length <= 4) return `(${ddd}) ${number}`
     if (number.length <= 8) return `(${ddd}) ${number.slice(0, 4)}-${number.slice(4)}`
 
-    return `(${ddd}) ${number.slice(0, 5)}-${number.slice(5, 9)}`
+    return `(${ddd}) ${number.slice(0, 5)}-${number.slice(5)}`
   }
 
   selectedCountryIso2() {
     return this.iti?.getSelectedCountryData()?.iso2 || this.initialCountryValue
+  }
+
+  findInputGroup() {
+    const explicitGroup = this.element.closest(".ax-input-group, .input-group")
+    if (explicitGroup) return explicitGroup
+
+    return this.element.parentElement?.classList.contains("tw-flex") ? this.element.parentElement : null
   }
 
   normalizeBrazilianMobileDigits(digits) {
@@ -196,8 +204,19 @@ export default class extends Controller {
       .iti input.ax-control,
       .iti input.form-control,
       .iti input[type="tel"] { width: 100%; }
-      .iti__country-container { border-right: 1px solid #d8e0eb; }
-      .iti__selected-country { background: #f6f8fb; }
+      .iti--separate-dial-code .iti__selected-country {
+        background: #f6f8fb;
+        border-right: 1px solid #d8e0eb;
+      }
+      .phone-input-group { align-items: stretch; }
+      .phone-input-group > .iti {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .phone-input-group > .ax-input-group__addon,
+      .phone-input-group > span[class*="bg-"] {
+        display: none;
+      }
     `
     document.head.appendChild(style)
   }
