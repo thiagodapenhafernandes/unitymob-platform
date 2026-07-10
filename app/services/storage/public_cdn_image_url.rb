@@ -199,7 +199,8 @@ module Storage
       return unless uri.is_a?(URI::HTTP)
       return unless allowed_image_hosts.include?(uri.host.to_s.downcase)
 
-      value
+      uri.path = "/#{uri.path.to_s.sub(%r{\A/+}, "")}" if uri.path.start_with?("//")
+      uri.to_s
     rescue URI::InvalidURIError
       nil
     end

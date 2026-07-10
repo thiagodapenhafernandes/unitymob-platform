@@ -29,6 +29,14 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(described_class.resolve(source)).to eq(source)
   end
 
+  it "normaliza barras duplicadas no início do caminho do CDN" do
+    source = "https://dwvimagesv1.b-cdn.net//images/properties/foto.jpg?crop=200,300"
+
+    expect(described_class.resolve(source)).to eq(
+      "https://dwvimagesv1.b-cdn.net/images/properties/foto.jpg?crop=200,300"
+    )
+  end
+
   it "não consulta materialização local para payload que já aponta para o CDN configurado" do
     source = { "url" => "https://cdn.saluteimoveis.com.br/foto.jpg" }
 

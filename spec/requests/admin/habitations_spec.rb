@@ -133,6 +133,185 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("habitation_numero_prestacoes")
   end
 
+  it "renderiza os contextos reativos ativos organizados em painéis" do
+    habitation = create(
+      :habitation,
+      codigo: "REACTIVE-FORM-#{SecureRandom.hex(6)}",
+      aceita_parcelamento_flag: true,
+      numero_prestacoes: 24,
+      home_corporate_flag: true,
+      home_corporate_position: 3,
+      status: "Vendido terceiros",
+      valor_vendido_terceiros_cents: 850_000_00,
+      key_location: "Portaria",
+      vagas_qtd: 2,
+      tipo_vaga: "Privativa",
+      numero_box: "G-12"
+    )
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+
+    html = Nokogiri::HTML(response.body)
+    active_fields = %w[
+      habitation_numero_prestacoes
+      habitation_home_corporate_position
+      habitation_valor_vendido_terceiros_formatted
+      habitation_senha_portaria
+      habitation_tipo_vaga
+      habitation_numero_box
+    ]
+
+    active_fields.each do |field_id|
+      field = html.at_css("##{field_id}")
+      panel = field&.ancestors&.find { |ancestor| ancestor["data-conditional-reveal-target"] == "panel" || ancestor["data-habitation-form-target"].to_s.end_with?("StatusPanel") }
+
+      expect(field).to be_present
+      expect(field.key?("disabled")).to be(false)
+      expect(panel).to be_present
+      expect(panel.key?("hidden")).to be(false)
+    end
+
+    expect(html.at_css('[data-habitation-form-target="rentedStatusPanel"]').key?("hidden")).to be(true)
+  end
+
+  it "preserva contextos legados ambíguos sem ativar o seletor automaticamente" do
+    habitation = create(
+      :habitation,
+      codigo: "REACTIVE-LEGACY-#{SecureRandom.hex(6)}",
+      key_location: nil,
+      key_location_notes: "Retirar com pessoa indicada pelo proprietário",
+      vagas_qtd: 0,
+      tipo_vaga: "Privativa",
+      numero_box: "B-07",
+      publicar_imovelweb_2: false,
+      tipo_publicacao_imovelweb_2: "Destaque"
+    )
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+
+    html = Nokogiri::HTML(response.body)
+    key_panel = html.at_css('#habitation_key_location_notes').ancestors.find { |ancestor| ancestor["data-conditional-reveal-target"] == "panel" }
+    parking_panel = html.at_css('#habitation_numero_box').ancestors.find { |ancestor| ancestor["data-conditional-reveal-target"] == "panel" }
+    portal_group = html.at_css('#habitation_publicar_imovelweb_2').ancestors.find { |ancestor| ancestor["data-controller"].to_s.split.include?("conditional-reveal") }
+    portal_panel = portal_group.at_css('[data-conditional-reveal-target="panel"]')
+
+    expect(key_panel["data-conditional-reveal-preserve"]).to eq("true")
+    expect(key_panel.key?("hidden")).to be(false)
+    expect(parking_panel["data-conditional-reveal-preserve"]).to eq("true")
+    expect(parking_panel.key?("hidden")).to be(false)
+    expect(portal_panel.key?("hidden")).to be(true)
+    expect(habitation.reload.publicar_imovelweb_2).to be(false)
+  end
+
+  it "renderiza contextos cumulativos para os itens aceitos na permuta" do
+    habitation = create(
+      :habitation,
+      codigo: "PERMUTA-FORM-#{SecureRandom.hex(6)}",
+      aceita_permuta_flag: true,
+      aceita_permuta_veiculo_flag: true,
+      aceita_permuta_imovel_flag: true,
+      aceita_permuta_outros_flag: true,
+      permuta_veiculo_valor_cents: 80_000_00,
+      permuta_valor_cents: 500_000_00,
+      permuta_outros_valor_cents: 20_000_00
+    )
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+
+    html = Nokogiri::HTML(response.body)
+    exchange = html.at_css('[data-controller~="habitation-exchange"]')
+
+    expect(exchange).to be_present
+    expect(exchange.at_css('[data-habitation-exchange-target="vehiclePanel"]').key?("hidden")).to be(false)
+    expect(exchange.at_css('[data-habitation-exchange-target="propertyPanel"]').key?("hidden")).to be(false)
+    expect(exchange.at_css('[data-habitation-exchange-target="othersPanel"]').key?("hidden")).to be(false)
+    expect(exchange.css('[data-exchange-required="true"][required]').size).to eq(3)
+    expect(response.body).to include("Valor do veículo", "Valor do imóvel", "Valor dos outros itens")
+  end
+
+  it "persiste os valores e o contexto de cada item da permuta" do
+    habitation = create(:habitation, codigo: "PERMUTA-SAVE-#{SecureRandom.hex(6)}")
+
+    patch admin_habitation_path(habitation), params: {
+      habitation: {
+        aceita_permuta_flag: "1",
+        aceita_permuta_veiculo_flag: "1",
+        aceita_permuta_imovel_flag: "1",
+        aceita_permuta_outros_flag: "1",
+        valor_aceito_permuta_formatted: "R$ 715.000,00",
+        permuta_veiculo_valor_formatted: "R$ 95.000,00",
+        tipo_veiculo_aceito_permuta: "SUV",
+        ano_minimo_veiculo_aceito_permuta: "2022",
+        permuta_valor_formatted: "R$ 600.000,00",
+        permuta_localizacao: "Balneário Camboriú",
+        permuta_dormitorios_qtd: "3",
+        permuta_suites_qtd: "1",
+        permuta_garagens_qtd: "2",
+        permuta_outros_valor_formatted: "R$ 20.000,00",
+        permuta_outros_descricao: "Embarcação"
+      }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(habitation.reload).to have_attributes(
+      aceita_permuta_flag: true,
+      aceita_permuta_veiculo_flag: true,
+      aceita_permuta_imovel_flag: true,
+      aceita_permuta_outros_flag: true,
+      valor_aceito_permuta_cents: 71_500_000,
+      permuta_veiculo_valor_cents: 9_500_000,
+      permuta_valor_cents: 60_000_000,
+      permuta_outros_valor_cents: 2_000_000,
+      permuta_outros_descricao: "Embarcação"
+    )
+  end
+
+  it "não exibe detalhes de tipos de permuta que não estão selecionados" do
+    habitation = create(
+      :habitation,
+      codigo: "PERMUTA-SHOW-#{SecureRandom.hex(6)}",
+      aceita_permuta_flag: true,
+      aceita_permuta_veiculo_flag: true,
+      aceita_permuta_imovel_flag: false,
+      permuta_veiculo_valor_cents: 90_000_00,
+      tipo_veiculo_aceito_permuta: "SUV",
+      permuta_localizacao: "Dado antigo oculto"
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Valor do veículo", "SUV")
+    expect(response.body).not_to include("Dado antigo oculto")
+  end
+
+  it "posiciona a publicação em portais abaixo dos responsáveis na aba comercial" do
+    habitation = create(:habitation, codigo: "PORTAL-FORM-#{SecureRandom.hex(6)}")
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+
+    html = Nokogiri::HTML(response.body)
+    side_column = html.at_css("#comercial .ax-commercial-column--side")
+    responsible_section = side_column.at_xpath("./section[.//span[normalize-space()='Responsáveis e agenciamento']]")
+    portal_section = side_column.at_xpath(
+      "./div[contains(concat(' ', normalize-space(@class), ' '), ' portal-publication-section ')]"
+    )
+
+    expect(responsible_section).to be_present
+    expect(portal_section).to be_present
+    expect(side_column.element_children.index(portal_section)).to eq(
+      side_column.element_children.index(responsible_section) + 1
+    )
+  end
+
   it "separa captações restritas da listagem geral de imóveis" do
     draft = create(:habitation, :broker_intake, admin_user: admin, codigo: "DRAFT-#{SecureRandom.hex(6)}", titulo_anuncio: "Captação em rascunho")
     submitted = create(:habitation, :broker_intake, admin_user: admin, codigo: "REV-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação finalizada")

@@ -62,6 +62,18 @@ RSpec.describe Habitation, type: :model do
     end
   end
 
+  describe "exchange component values" do
+    it "stores vehicle and other item values in cents" do
+      habitation = described_class.new(
+        permuta_veiculo_valor_formatted: "R$ 85.000,00",
+        permuta_outros_valor_formatted: "R$ 12.500,00"
+      )
+
+      expect(habitation.permuta_veiculo_valor_cents).to eq(8_500_000)
+      expect(habitation.permuta_outros_valor_cents).to eq(1_250_000)
+    end
+  end
+
   describe "broker intake address complement rules" do
     it "requires complement for category-specific intakes without treating street houses as mandatory complement" do
       expect(described_class.new(categoria: "Apartamento")).to be_requires_intake_address_complement

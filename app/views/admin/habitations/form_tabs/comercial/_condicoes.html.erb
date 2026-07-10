@@ -1,4 +1,5 @@
 <%= ax_form_section(title: "Condições comerciais", eyebrow: "Contrato", icon: "file-earmark-text") do %>
+  <div data-controller="conditional-reveal" data-conditional-reveal-kind-value="checkbox">
   <div class="ax-conditions-top-grid">
     <div>
       <%= ax_text_field(form: f, method: :matricula_imovel, label: "Nº de matrícula") %>
@@ -12,7 +13,18 @@
   </div>
 
   <div class="ax-conditions-chip-grid">
-    <%= ax_toggle_chip(f, :aceita_parcelamento_flag, label: "Aceita parcelamento", class_name: "ax-toggle-chip--full") %>
+    <div>
+      <%= ax_toggle_chip(
+            f,
+            :aceita_parcelamento_flag,
+            label: "Aceita parcelamento",
+            class_name: "ax-toggle-chip--full",
+            input_data: {
+              conditional_reveal_target: "trigger",
+              action: "change->conditional-reveal#sync"
+            }
+          ) %>
+    </div>
     <%= ax_toggle_chip(f, :aceita_financiamento_flag, label: "Financiamento", class_name: "ax-toggle-chip--full") %>
   </div>
 
@@ -20,10 +32,25 @@
     <div class="ax-span-6">
       <%= ax_field_group(title: "Negociação") do %>
         <%= ax_field_grid do %>
-          <div class="ax-span-4">
-            <%= ax_number_field(form: f, method: :numero_prestacoes, label: "Qtd. parcelas", min: 0) %>
+          <div class="ax-span-12 ax-reactive-inactive-hint"
+               data-conditional-reveal-target="inactiveHint"
+               <%= "hidden" if f.object.aceita_parcelamento_flag? %>>
+            Ative “Aceita parcelamento” para informar a quantidade de parcelas.
           </div>
-          <div class="ax-span-8">
+          <div class="ax-span-5 ax-reactive-context ax-reactive-context--inline"
+               data-conditional-reveal-target="panel"
+               <%= "hidden" unless f.object.aceita_parcelamento_flag? %>>
+            <%= ax_number_field(
+                  form: f,
+                  method: :numero_prestacoes,
+                  label: "Qtd. parcelas",
+                  min: 1,
+                  disabled: !f.object.aceita_parcelamento_flag?,
+                  required: f.object.aceita_parcelamento_flag?,
+                  data: { conditional_required: true }
+                ) %>
+          </div>
+          <div class="ax-span-12">
             <%= ax_text_field(form: f, method: :condicoes_negociacao, label: "Condições de negociação", type: :textarea, rows: 3) %>
           </div>
         <% end %>
@@ -51,4 +78,5 @@
       <% end %>
     </div>
   <% end %>
+  </div>
 <% end %>

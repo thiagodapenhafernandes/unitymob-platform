@@ -8,6 +8,9 @@ export default class extends Controller {
     "statusSelect",
     "suspensionReasonField",
     "suspensionReasonInput",
+    "inactiveStatusHint",
+    "rentedStatusPanel",
+    "soldStatusPanel",
     "unitOnly",
     "developmentSelect",
     "developmentName",
@@ -44,6 +47,7 @@ export default class extends Controller {
     this.activateTabFromHash()
     this.applyCadastroType()
     this.applySuspensionReasonVisibility()
+    this.applyInactiveStatusVisibility()
     this.syncFromDevelopmentSelection()
     this.applyServerValidationErrors()
     this.refreshValidationBadges()
@@ -335,6 +339,7 @@ export default class extends Controller {
 
   statusChanged() {
     this.applySuspensionReasonVisibility(true)
+    this.applyInactiveStatusVisibility()
   }
 
   applySuspensionReasonVisibility(fromUser = false) {
@@ -358,6 +363,30 @@ export default class extends Controller {
       .replace(/[\u0300-\u036f]/g, "")
       .trim()
       .toLowerCase()
+  }
+
+  applyInactiveStatusVisibility() {
+    if (!this.hasStatusSelectTarget) return
+
+    const status = this.normalizedStatusValue()
+    const rented = status.includes("alugado")
+    const sold = status.includes("vendido")
+
+    if (this.hasRentedStatusPanelTarget) this.setConditionalSectionState(this.rentedStatusPanelTarget, rented)
+    if (this.hasSoldStatusPanelTarget) this.setConditionalSectionState(this.soldStatusPanelTarget, sold)
+    if (this.hasInactiveStatusHintTarget) this.setVisible(this.inactiveStatusHintTarget, !rented && !sold)
+  }
+
+  setConditionalSectionState(section, enabled) {
+    this.setVisible(section, enabled)
+    section.querySelectorAll("input, select, textarea, button").forEach((field) => {
+      field.disabled = !enabled
+      if (field.dataset.conditionalRequired === "true") field.required = enabled
+
+      if (field.tomselect) {
+        enabled ? field.tomselect.enable() : field.tomselect.disable()
+      }
+    })
   }
 
   applyCadastroType(fromUser = false) {

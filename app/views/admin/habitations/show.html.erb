@@ -231,20 +231,36 @@
     ["Saldo devedor", money.call(@habitation.saldo_devedor_cents)]
   ].select { |_label, value| value.present? }
 
-  exchange_fields = [
-    ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)],
-    ["Valor aceito na permuta", money.call(@habitation.valor_aceito_permuta_cents)],
-    ["Aceita veículo", yes_no.call(@habitation.aceita_permuta_veiculo_flag)],
-    ["Aceita imóvel", yes_no.call(@habitation.aceita_permuta_imovel_flag)],
-    ["Aceita outros", yes_no.call(@habitation.aceita_permuta_outros_flag)],
-    ["Tipo de veículo aceito", @habitation.tipo_veiculo_aceito_permuta],
-    ["Ano mínimo veículo", @habitation.ano_minimo_veiculo_aceito_permuta],
-    ["Valor do imóvel aceito", money.call(@habitation.permuta_valor_cents)],
-    ["Localização do imóvel aceito", @habitation.permuta_localizacao],
-    ["Dormitórios do imóvel aceito", @habitation.permuta_dormitorios_qtd],
-    ["Suítes do imóvel aceito", @habitation.permuta_suites_qtd],
-    ["Garagens do imóvel aceito", @habitation.permuta_garagens_qtd]
-  ].select { |_label, value| value.present? }
+  exchange_fields = [["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)]]
+  if @habitation.aceita_permuta_flag?
+    exchange_fields << ["Valor total da permuta", money.call(@habitation.valor_aceito_permuta_cents)]
+    if @habitation.aceita_permuta_veiculo_flag?
+      exchange_fields.concat([
+        ["Aceita veículo", "Sim"],
+        ["Valor do veículo", money.call(@habitation.permuta_veiculo_valor_cents)],
+        ["Tipo de veículo aceito", @habitation.tipo_veiculo_aceito_permuta],
+        ["Ano mínimo veículo", @habitation.ano_minimo_veiculo_aceito_permuta]
+      ])
+    end
+    if @habitation.aceita_permuta_imovel_flag?
+      exchange_fields.concat([
+        ["Aceita imóvel", "Sim"],
+        ["Valor do imóvel aceito", money.call(@habitation.permuta_valor_cents)],
+        ["Localização do imóvel aceito", @habitation.permuta_localizacao],
+        ["Dormitórios do imóvel aceito", @habitation.permuta_dormitorios_qtd],
+        ["Suítes do imóvel aceito", @habitation.permuta_suites_qtd],
+        ["Garagens do imóvel aceito", @habitation.permuta_garagens_qtd]
+      ])
+    end
+    if @habitation.aceita_permuta_outros_flag?
+      exchange_fields.concat([
+        ["Aceita outros", "Sim"],
+        ["Valor dos outros itens", money.call(@habitation.permuta_outros_valor_cents)],
+        ["Descrição dos outros itens", @habitation.permuta_outros_descricao]
+      ])
+    end
+  end
+  exchange_fields.select! { |_label, value| value.present? }
 
   building_fields = [
     ["Administradora do condomínio", @habitation.agenciador],

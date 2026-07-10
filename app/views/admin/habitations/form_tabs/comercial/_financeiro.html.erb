@@ -31,22 +31,34 @@
     </div>
 
     <div class="ax-finance-secondary-grid">
-      <div>
+      <div class="ax-reactive-inactive-hint ax-finance-status-context" data-habitation-form-target="inactiveStatusHint"
+           <%= "hidden" if f.object.status.to_s.parameterize.include?("alugado") || f.object.status.to_s.parameterize.include?("vendido") %>>
+        Os valores de baixa serão exibidos quando o status comercial for alugado ou vendido.
+      </div>
+      <div class="ax-reactive-context ax-reactive-context--inline ax-finance-status-context"
+           data-habitation-form-target="rentedStatusPanel"
+           <%= "hidden" unless f.object.status.to_s.parameterize.include?("alugado") %>>
         <%= ax_currency_field(
               form: f,
               method: :valor_alugado_terceiros_formatted,
               label: "Alugado por terceiros",
               tooltip: "Use este valor quando o cadastro estiver como Alugado terceiros.",
-              data: { controller: "mask", mask_type_value: "currency" }
+              disabled: !f.object.status.to_s.parameterize.include?("alugado"),
+              required: f.object.status.to_s.parameterize.include?("alugado"),
+              data: { controller: "mask", mask_type_value: "currency", conditional_required: true }
             ) %>
       </div>
-      <div>
+      <div class="ax-reactive-context ax-reactive-context--inline ax-finance-status-context"
+           data-habitation-form-target="soldStatusPanel"
+           <%= "hidden" unless f.object.status.to_s.parameterize.include?("vendido") %>>
         <%= ax_currency_field(
               form: f,
               method: :valor_vendido_terceiros_formatted,
               label: "Vendido por terceiros",
               tooltip: "Use este valor quando o cadastro estiver como Vendido terceiros.",
-              data: { controller: "mask", mask_type_value: "currency" }
+              disabled: !f.object.status.to_s.parameterize.include?("vendido"),
+              required: f.object.status.to_s.parameterize.include?("vendido"),
+              data: { controller: "mask", mask_type_value: "currency", conditional_required: true }
             ) %>
       </div>
       <div>
