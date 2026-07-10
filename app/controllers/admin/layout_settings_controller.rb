@@ -43,10 +43,18 @@ module Admin
         :admin_area_name,
         :interest_intelligence_enabled,
         :interest_intelligence_instructions,
-        interest_intelligence_settings: {}
+        interest_intelligence_settings: {},
+        admin_menu_section_colors: {}
       )
       normalize_interest_intelligence_params(attributes)
+      normalize_admin_menu_section_colors(attributes)
       attributes
+    end
+
+    def normalize_admin_menu_section_colors(attributes)
+      return unless attributes.key?(:admin_menu_section_colors)
+
+      attributes[:admin_menu_section_colors] = LayoutSetting.normalized_admin_menu_section_styles(attributes[:admin_menu_section_colors])
     end
 
     def normalize_interest_intelligence_params(attributes)

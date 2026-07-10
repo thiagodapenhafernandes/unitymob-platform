@@ -12,7 +12,7 @@ RSpec.describe "Admin sidebar", type: :request do
     get admin_root_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Administração")
+    expect(response.body).to include("Conta")
     expect(response.body).to include("Segurança")
     expect(response.body).to include("Segurança de Acesso")
     expect(response.body).to include("Configurações de Campo")
@@ -39,6 +39,24 @@ RSpec.describe "Admin sidebar", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(CGI.escapeHTML(admin_habitations_path(ownership: "all")))
+  end
+
+  it "agrupa os itens dentro do li de cada seção do menu" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    get admin_root_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    product = html.at_css('.ax-nav__section[data-nav-section="product"]')
+    product_items = product.at_xpath('./ul[contains(concat(" ", normalize-space(@class), " "), " ax-nav__section-items ")]')
+
+    expect(product.at_xpath('./button[@aria-controls="nav-section-product"]')).to be_present
+    expect(product_items.at_css('a[href*="/admin/habitations"]')).to be_present
+    expect(product_items.at_css('a[href*="/admin/leads"]')).to be_present
+    expect(html.css('.ax-nav--sectioned > li[data-nav-section] > .ax-nav__section-items')).not_to be_empty
+    expect(html.at_css('.ax-nav--sectioned > li[data-nav-section] + li:not([data-nav-section])')).to be_nil
   end
 
   it "mantém corretor fora de integrações e dashboard de captação no menu" do
@@ -75,7 +93,7 @@ RSpec.describe "Admin sidebar", type: :request do
     get admin_whatsapp_campaign_recipients_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Administração")
+    expect(response.body).to include("Conta")
     expect(response.body).to include("Importados CSV")
     expect(response.body).to include("Descadastros WhatsApp")
     expect(response.body).to include(admin_whatsapp_campaign_recipients_path)

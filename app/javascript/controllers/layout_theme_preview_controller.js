@@ -65,6 +65,19 @@ export default class extends Controller {
     this.applyToken(token, event.currentTarget.value, { source: event.currentTarget })
   }
 
+  updateMenuSection(event) {
+    const input = event.currentTarget
+    const section = String(input.dataset.menuSectionKey || "").replaceAll("_", "-")
+    const property = input.dataset.menuStyleProperty
+    const value = property === "background-opacity"
+      ? this.normalizedOpacity(input.value)
+      : this.normalizedHex(input.value)
+
+    if (!section || !property || value === null) return
+
+    document.documentElement.style.setProperty(`--admin-nav-${section}-${property}`, value)
+  }
+
   resetDefaults() {
     const tokens = new Set()
 
@@ -119,5 +132,12 @@ export default class extends Controller {
     const candidate = String(value || "").trim()
     if (/^#[0-9a-fA-F]{6}$/.test(candidate)) return candidate
     return null
+  }
+
+  normalizedOpacity(value) {
+    const candidate = Number.parseInt(value, 10)
+    if (Number.isNaN(candidate)) return null
+
+    return `${Math.min(100, Math.max(0, candidate))}%`
   }
 }
