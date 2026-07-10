@@ -112,7 +112,7 @@
                   <% end %>
                   <span class="ax-property-chip"><%= imovel.status.presence || "Status" %></span>
                   <% if pending_intake_status.present? %>
-                    <span class="ax-property-chip <%= 'ax-property-chip--warning' if pending_intake_status[:broker_action] %>"><%= pending_intake_status[:label] %></span>
+                    <span class="ax-property-chip <%= pending_intake_status[:class_name] %>"><%= pending_intake_status[:label] %></span>
                   <% end %>
                   <span><%= imovel.categoria.presence || "Sem categoria" %></span>
                 </div>
