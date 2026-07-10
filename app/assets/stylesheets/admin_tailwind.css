@@ -6615,6 +6615,12 @@ textarea.ax-control,
   min-width: 0;
 }
 
+.ax-toggle-chip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .seo-editor-toggle-grid .ax-toggle-chip__label {
   min-width: 0;
   white-space: normal;
@@ -11221,7 +11227,11 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
 }
 
 .habitation-form-ui textarea.ax-control {
+  height: auto;
   min-height: 72px;
+  padding: 9px 10px;
+  line-height: 1.45;
+  resize: vertical;
 }
 
 .habitation-form-ui .ax-control:focus,
@@ -11666,6 +11676,77 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
+}
+
+.habitation-form-ui .ax-exchange,
+.habitation-form-ui .ax-exchange-configuration {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.habitation-form-ui .ax-exchange-inactive-hint,
+.habitation-form-ui .ax-exchange-total-note {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 1px dashed var(--ax-form-border-soft);
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #697586;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.habitation-form-ui .ax-exchange-context {
+  gap: 6px !important;
+  padding: 6px !important;
+  background: #fbfdff;
+}
+
+.habitation-form-ui .ax-reactive-context {
+  background: #fbfdff;
+}
+
+.habitation-form-ui .ax-reactive-context--inline {
+  gap: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.habitation-form-ui .ax-reactive-inactive-hint {
+  display: flex;
+  align-items: center;
+  min-height: 17px;
+  padding: 1px 3px;
+  border: 0;
+  background: transparent;
+  color: #697586;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.habitation-form-ui .ax-finance-status-context {
+  grid-column: auto;
+}
+
+.habitation-form-ui .ax-reactive-inactive-hint.ax-finance-status-context {
+  grid-column: span 2;
+}
+
+.habitation-form-ui .ax-attendance-grid {
+  gap: 6px 10px;
+}
+
+.habitation-form-ui .ax-exchange [hidden],
+.habitation-form-ui .ax-reactive-context[hidden],
+.habitation-form-ui .ax-reactive-inactive-hint[hidden] {
+  display: none !important;
 }
 
 @media (max-width: 1500px) {
@@ -13856,9 +13937,11 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
 
 .habitation-form-ui .portal-publication-section {
   margin: 0 !important;
-  border: 0 !important;
+  overflow: hidden;
+  border: 1px solid var(--ax-form-border-soft) !important;
+  border-radius: 8px;
   padding: 0 !important;
-  background: transparent !important;
+  background: var(--ax-form-surface) !important;
 }
 
 .habitation-form-ui .ax-portal-publication-section--spaced {
@@ -13870,6 +13953,13 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-height: 42px;
+  padding: 8px 13px;
+  background: var(--ax-form-header, #f8fafc);
+}
+
+.habitation-form-ui .portal-publication-section.is-open .ax-portal-publication-section__header {
+  border-bottom: 1px solid #eceef1;
 }
 
 .habitation-form-ui .ax-portal-publication-section__header .ax-btn {
@@ -13886,20 +13976,25 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
 }
 
 .habitation-form-ui .ax-portal-publication-section__body {
-  padding-top: 8px;
+  padding: 8px 10px;
+  background: var(--ax-form-surface);
 }
 
 .habitation-form-ui .ax-portal-publication-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
+}
+
+.habitation-form-ui .ax-commercial-column--side .ax-portal-publication-grid {
+  grid-template-columns: 1fr;
 }
 
 .habitation-form-ui .ax-portal-publication-column {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -13911,8 +14006,8 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
 
 .habitation-form-ui .portal-publication-section .portal-sub-options {
   display: none;
-  margin-top: 7px;
-  padding: 8px;
+  margin-top: 5px;
+  padding: 6px;
   border: 1px solid var(--ax-form-border-soft);
   border-radius: 7px;
   background: #f8fafc;

@@ -1,35 +1,95 @@
 <%= ax_form_section(title: "Atendimento, chaves e reservas", eyebrow: "Operação", icon: "key") do %>
   <%= ax_field_grid(class_name: "ax-attendance-grid") do %>
     <div class="ax-span-12">
-      <%= ax_field_group(title: "Vista e reservas", class_name: "ax-field-group--spaced") do %>
-        <%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
-          <div class="ax-span-3">
-            <%= ax_text_field(form: f, method: :responsavel_reserva, label: "Responsável por reserva") %>
-          </div>
-          <div class="ax-span-3">
+      <%
+        key_location = f.object.key_location.to_s
+        key_present = key_location.present?
+        key_notes_present = f.object.key_location_notes.present?
+        portaria_present = f.object.senha_portaria.present?
+        zelador_present = f.object.zelador_nome.present? || f.object.zelador_telefone.present?
+      %>
+      <%= ax_field_group(title: "Chaves e acesso", class_name: "ax-field-group--spaced") do %>
+        <div data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
+        <%= ax_field_grid(class_name: "ax-field-grid--compact") do %>
+          <div class="ax-span-4">
             <%= ax_select_field(
                   form: f,
                   method: :key_location,
                   label: "Onde estão as chaves",
                   choices: Habitation::KEY_LOCATION_OPTIONS,
                   select_options: { include_blank: "Selecione..." },
-                  html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+                  html_options: {
+                    data: {
+                      controller: "tom-select",
+                      placeholder: "Selecione...",
+                      conditional_reveal_target: "trigger",
+                      action: "change->conditional-reveal#sync"
+                    }
+                  }
                 ) %>
           </div>
-          <div class="ax-span-3">
-            <%= ax_text_field(form: f, method: :key_location_notes, label: "Detalhe das chaves", placeholder: "Ex: com zelador João") %>
+          <div class="ax-span-8 ax-reactive-inactive-hint"
+               data-conditional-reveal-target="inactiveHint"
+               <%= "hidden" if key_present || key_notes_present || portaria_present || zelador_present %>>
+            Selecione onde estão as chaves para exibir os dados daquele contexto.
           </div>
-          <div class="ax-span-3">
-            <%= ax_text_field(form: f, method: :senha_portaria, label: "Senha da portaria") %>
+
+          <div class="ax-span-5 ax-reactive-context ax-reactive-context--inline"
+               data-conditional-reveal-target="panel"
+               data-conditional-reveal-values="*"
+               data-conditional-reveal-preserve="<%= key_notes_present && !key_present %>"
+               <%= "hidden" unless key_present || key_notes_present %>>
+            <%= ax_text_field(
+                  form: f,
+                  method: :key_location_notes,
+                  label: "Detalhe das chaves",
+                  placeholder: "Ex: procurar João no horário comercial",
+                  disabled: !key_present && !key_notes_present,
+                  required: key_location == "Outro",
+                  data: { conditional_required_values: "Outro" }
+                ) %>
           </div>
+
           <div class="ax-span-3">
             <%= ax_text_field(form: f, method: :senha_imovel, label: "Senha do imóvel") %>
           </div>
-          <div class="ax-span-3">
-            <%= ax_text_field(form: f, method: :zelador_nome, label: "Zelador") %>
+
+          <div class="ax-span-4 ax-reactive-context ax-reactive-context--inline"
+               data-conditional-reveal-target="panel"
+               data-conditional-reveal-values="Portaria"
+               data-conditional-reveal-preserve="<%= portaria_present && key_location != "Portaria" %>"
+               <%= "hidden" unless key_location == "Portaria" || portaria_present %>>
+            <%= ax_text_field(
+                  form: f,
+                  method: :senha_portaria,
+                  label: "Senha da portaria",
+                  disabled: key_location != "Portaria" && !portaria_present
+                ) %>
           </div>
+
+          <div class="ax-span-8 ax-reactive-context ax-reactive-context--inline"
+               data-conditional-reveal-target="panel"
+               data-conditional-reveal-values="Zelador"
+               data-conditional-reveal-preserve="<%= zelador_present && key_location != "Zelador" %>"
+               <%= "hidden" unless key_location == "Zelador" || zelador_present %>>
+            <%= ax_field_grid(class_name: "ax-field-grid--compact") do %>
+              <div class="ax-span-6">
+                <%= ax_text_field(form: f, method: :zelador_nome, label: "Zelador", disabled: key_location != "Zelador" && !zelador_present) %>
+              </div>
+              <div class="ax-span-6">
+                <%= ax_text_field(form: f, method: :zelador_telefone, label: "Telefone do zelador", disabled: key_location != "Zelador" && !zelador_present, data: { controller: "phone-input" }) %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        </div>
+      <% end %>
+    </div>
+    <div class="ax-span-12">
+      <%= ax_field_group(title: "Visitas e reservas", class_name: "ax-field-group--spaced") do %>
+        <%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
           <div class="ax-span-3">
-            <%= ax_text_field(form: f, method: :zelador_telefone, label: "Telefone do zelador", data: { controller: "phone-input" }) %>
+            <%= ax_text_field(form: f, method: :responsavel_reserva, label: "Responsável por reserva") %>
           </div>
           <div class="ax-span-3">
             <%= ax_select_field(

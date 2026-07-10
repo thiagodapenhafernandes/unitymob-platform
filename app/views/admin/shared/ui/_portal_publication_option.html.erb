@@ -1,21 +1,29 @@
 <%
   option_classes = ["portal-option-group", class_name].compact.join(" ")
   current_value = form.object.public_send(method) if form.object.respond_to?(method)
-  chip_classes = ["ax-toggle-chip", "ax-toggle-chip--full", ("is-checked" if current_value == true || current_value.to_s == "1")].compact.join(" ")
+  enabled = current_value == true || current_value.to_s == "1"
+  chip_classes = ["ax-toggle-chip", "ax-toggle-chip--full", ("is-checked" if enabled)].compact.join(" ")
 %>
 
-<div class="<%= option_classes %>">
+<div class="<%= option_classes %>"
+     data-controller="conditional-reveal"
+     data-conditional-reveal-kind-value="checkbox">
   <label class="<%= chip_classes %>" data-controller="ax-checkbox-chips">
     <%= form.check_box method,
                        class: "ax-toggle-chip__input",
-                       data: { action: "change->ax-checkbox-chips#sync" } %>
+                       data: {
+                         conditional_reveal_target: "trigger",
+                         action: "change->ax-checkbox-chips#sync change->conditional-reveal#sync"
+                       } %>
     <span class="ax-toggle-chip__box" aria-hidden="true">
       <i class="bi bi-check-lg"></i>
     </span>
     <span class="ax-toggle-chip__label"><%= label %></span>
   </label>
   <% if body.present? %>
-    <div class="portal-sub-options">
+    <div class="portal-sub-options ax-reactive-context"
+         data-conditional-reveal-target="panel"
+         <%= "hidden" unless enabled %>>
       <%= body %>
     </div>
   <% end %>

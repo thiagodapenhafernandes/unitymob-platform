@@ -65,11 +65,43 @@
           <div class="ax-span-12 ax-field-align-end">
             <%= ax_toggle_chip(f, :salute_rental_management_flag, label: "Administração de locação", class_name: "ax-toggle-chip--full") %>
           </div>
-          <div class="ax-span-8 ax-field-align-end">
-            <%= ax_toggle_chip(f, :home_corporate_flag, label: "Vitrine Corporate", class_name: "ax-toggle-chip--full") %>
-          </div>
-          <div class="ax-span-4">
-            <%= ax_number_field(form: f, method: :home_corporate_position, label: "Posição na Home", min: 1, max: 20, placeholder: "1, 2, 3...") %>
+          <div class="ax-span-12"
+               data-controller="conditional-reveal"
+               data-conditional-reveal-kind-value="checkbox">
+            <%= ax_field_grid do %>
+              <div class="ax-span-5 ax-field-align-end">
+                <%= ax_toggle_chip(
+                      f,
+                      :home_corporate_flag,
+                      label: "Vitrine Corporate",
+                      class_name: "ax-toggle-chip--full",
+                      input_data: {
+                        conditional_reveal_target: "trigger",
+                        action: "change->conditional-reveal#sync"
+                      }
+                    ) %>
+              </div>
+              <div class="ax-span-7 ax-reactive-inactive-hint"
+                   data-conditional-reveal-target="inactiveHint"
+                   <%= "hidden" if f.object.home_corporate_flag? %>>
+                Ative para definir a posição do imóvel na vitrine Corporate.
+              </div>
+              <div class="ax-span-4 ax-reactive-context ax-reactive-context--inline"
+                   data-conditional-reveal-target="panel"
+                   <%= "hidden" unless f.object.home_corporate_flag? %>>
+                <%= ax_number_field(
+                      form: f,
+                      method: :home_corporate_position,
+                      label: "Posição na Home",
+                      min: 1,
+                      max: 20,
+                      placeholder: "1, 2, 3...",
+                      disabled: !f.object.home_corporate_flag?,
+                      required: f.object.home_corporate_flag?,
+                      data: { conditional_required: true }
+                    ) %>
+              </div>
+            <% end %>
           </div>
         <% end %>
       <% end %>

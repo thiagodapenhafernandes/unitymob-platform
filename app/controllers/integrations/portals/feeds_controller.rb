@@ -12,9 +12,14 @@ module Integrations
 
         scope = Portal::EligibilityScope.new(@integration).eligible_scope.includes(:address)
         scope_last_update = scope.maximum(:updated_at)
-        @integration.update_columns(last_feed_at: Time.current, updated_at: Time.current)
+        should_render = stale?(
+          etag: [@portal, @integration.updated_at.to_i, scope_last_update&.to_i],
+          last_modified: scope_last_update,
+          public: false
+        )
+        @integration.update_column(:last_feed_at, Time.current)
 
-        return unless stale?(etag: [@portal, @integration.updated_at.to_i, scope_last_update&.to_i], last_modified: scope_last_update, public: false)
+        return unless should_render
 
         render_feed(scope.limit(feed_limit))
       end

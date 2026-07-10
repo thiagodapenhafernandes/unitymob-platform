@@ -1918,7 +1918,7 @@ class Habitation < ApplicationRecord
       :numero_box, :dimensoes_terreno, :podcast_url,
       :matricula_imovel, :zona, :responsavel_reserva, :zelador_nome, :zelador_telefone, :regiao_foco,
       :construtora, :tipo_fachada,
-      :tipo_veiculo_aceito_permuta, :permuta_localizacao
+      :tipo_veiculo_aceito_permuta, :permuta_localizacao, :permuta_outros_descricao
     ]
     
     fields_to_sanitize.each do |field|

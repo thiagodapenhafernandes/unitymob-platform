@@ -2203,7 +2203,10 @@ CREATE TABLE public.habitations (
     photo_calendar_synced_at timestamp(6) without time zone,
     admin_review_return_reason text,
     tenant_id bigint NOT NULL,
-    quadra character varying
+    quadra character varying,
+    permuta_veiculo_valor_cents integer,
+    permuta_outros_valor_cents integer,
+    permuta_outros_descricao text
 );
 
 
@@ -14169,6 +14172,8 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260710094500'),
+('20260710093000'),
 ('20260709114600'),
 ('20260709015000'),
 ('20260709014500'),

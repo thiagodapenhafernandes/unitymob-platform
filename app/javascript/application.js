@@ -4,7 +4,6 @@ import "controllers"
 import "ax_toast"
 
 let actionTextLoadPromise = null
-let actionTextLazyListenersBound = false
 
 const loadActionText = () => {
   if (actionTextLoadPromise) return actionTextLoadPromise
@@ -20,21 +19,7 @@ const loadActionText = () => {
 }
 
 const maybeLoadActionText = () => {
-  if (!document.querySelector("trix-editor")) return
-  if (actionTextLoadPromise || actionTextLazyListenersBound) return
-
-  actionTextLazyListenersBound = true
-  document.addEventListener("focusin", loadActionTextOnInteraction)
-  document.addEventListener("pointerdown", loadActionTextOnInteraction)
-}
-
-const loadActionTextOnInteraction = (event) => {
-  if (!event.target.closest("trix-editor")) return
-
-  actionTextLazyListenersBound = false
-  document.removeEventListener("focusin", loadActionTextOnInteraction)
-  document.removeEventListener("pointerdown", loadActionTextOnInteraction)
-  loadActionText()
+  if (document.querySelector("trix-editor")) loadActionText()
 }
 
 document.addEventListener("DOMContentLoaded", maybeLoadActionText)

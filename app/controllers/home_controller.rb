@@ -149,13 +149,15 @@ class HomeController < ApplicationController
     ids = Array(ids).compact
     return [] if ids.empty?
 
-    records_by_id = public_property_card_scope(public_habitations.where(id: ids)).index_by(&:id)
+    records = public_property_card_scope(public_habitations.where(id: ids)).to_a
+    photo_records = (records + records.filter_map(&:empreendimento)).uniq(&:id)
+    Home::CardPhotoPreloader.new(photo_records, limit: 5).call
+    records_by_id = records.index_by(&:id)
     ids.filter_map { |id| records_by_id[id] }
   end
 
   def public_property_card_scope(scope)
     scope
-      .with_attached_photos
       .includes(
         :address,
         { constructor: { logo_attachment: :blob } },

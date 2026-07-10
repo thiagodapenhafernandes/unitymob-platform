@@ -1,42 +1,222 @@
+<%
+  exchange_enabled = f.object.aceita_permuta_flag?
+  vehicle_enabled = exchange_enabled && f.object.aceita_permuta_veiculo_flag?
+  property_enabled = exchange_enabled && f.object.aceita_permuta_imovel_flag?
+  others_enabled = exchange_enabled && f.object.aceita_permuta_outros_flag?
+%>
+
 <%= ax_form_section(title: "Permuta", eyebrow: "Condição especial", icon: "arrow-left-right") do %>
-  <%= ax_field_grid(class_name: "ax-field-grid--spaced ax-exchange-summary-grid") do %>
-    <div class="ax-span-3 ax-field-align-end">
-      <%= ax_toggle_chip(f, :aceita_permuta_flag, label: "Aceita permuta") %>
-    </div>
-    <div class="ax-span-3">
-      <%= ax_currency_field(form: f, method: :valor_aceito_permuta_formatted, label: "Valor aceito na permuta", data: { controller: "mask", mask_type_value: "currency" }) %>
-    </div>
-    <div class="ax-span-4">
-      <%= ax_text_field(form: f, method: :tipo_veiculo_aceito_permuta, label: "Tipo de veículo aceito", placeholder: "Ex: SUV, Sedan...") %>
-    </div>
-    <div class="ax-span-2">
-      <%= ax_number_field(form: f, method: :ano_minimo_veiculo_aceito_permuta, label: "Ano mínimo", min: 1900, max: 2100) %>
-    </div>
-  <% end %>
-
-  <%= ax_chip_grid(class_name: "ax-chip-grid--inline") do %>
-    <%= ax_toggle_chip(f, :aceita_permuta_veiculo_flag, label: "Veículo") %>
-    <%= ax_toggle_chip(f, :aceita_permuta_imovel_flag, label: "Imóvel") %>
-    <%= ax_toggle_chip(f, :aceita_permuta_outros_flag, label: "Outros") %>
-  <% end %>
-
-  <%= ax_field_group(title: "Imóvel aceito na permuta") do %>
-    <%= ax_field_grid do %>
-      <div class="ax-span-4">
-        <%= ax_currency_field(form: f, method: :permuta_valor_formatted, label: "Valor", data: { controller: "mask", mask_type_value: "currency" }) %>
+  <div class="ax-exchange" data-controller="habitation-exchange">
+    <%= ax_field_grid(class_name: "ax-field-grid--spaced ax-exchange-master-grid") do %>
+      <div class="ax-span-3 ax-field-align-end">
+        <%= ax_toggle_chip(
+              f,
+              :aceita_permuta_flag,
+              label: "Aceita permuta",
+              input_data: {
+                habitation_exchange_target: "master",
+                action: "change->habitation-exchange#sync"
+              }
+            ) %>
       </div>
-      <div class="ax-span-8">
-        <%= ax_text_field(form: f, method: :permuta_localizacao, label: "Localização", placeholder: "Cidade, bairro ou região de interesse") %>
-      </div>
-      <div class="ax-span-4">
-        <%= ax_number_field(form: f, method: :permuta_dormitorios_qtd, label: "Dormitórios", min: 0) %>
-      </div>
-      <div class="ax-span-4">
-        <%= ax_number_field(form: f, method: :permuta_suites_qtd, label: "Suítes", min: 0) %>
-      </div>
-      <div class="ax-span-4">
-        <%= ax_number_field(form: f, method: :permuta_garagens_qtd, label: "Garagens", min: 0) %>
+      <div class="ax-span-9 ax-exchange-inactive-hint"
+           data-habitation-exchange-target="inactiveHint"
+           <%= "hidden" if exchange_enabled %>>
+        Ative para informar os itens aceitos e compor o valor total da permuta.
       </div>
     <% end %>
-  <% end %>
+
+    <div class="ax-exchange-configuration"
+         data-habitation-exchange-target="configuration"
+         <%= "hidden" unless exchange_enabled %>>
+      <%= ax_field_grid do %>
+        <div class="ax-span-4">
+          <%= ax_currency_field(
+                form: f,
+                method: :valor_aceito_permuta_formatted,
+                label: "Valor total da permuta",
+                input_class: "ax-readonly-input ax-readonly-input--success",
+                readonly: true,
+                disabled: !exchange_enabled,
+                data: {
+                  controller: "mask",
+                  mask_type_value: "currency",
+                  habitation_exchange_target: "total"
+                }
+              ) %>
+        </div>
+        <div class="ax-span-8 ax-exchange-total-note">
+          O total é calculado pela soma dos valores dos itens selecionados.
+        </div>
+      <% end %>
+
+      <%= ax_field_group(title: "Itens aceitos", tooltip: "As opções são cumulativas e podem ser combinadas.") do %>
+        <%= ax_chip_grid(class_name: "ax-chip-grid--inline") do %>
+          <%= ax_toggle_chip(
+                f,
+                :aceita_permuta_veiculo_flag,
+                label: "Veículo",
+                disabled: !exchange_enabled,
+                input_data: {
+                  habitation_exchange_target: "vehicleToggle",
+                  action: "change->habitation-exchange#sync"
+                }
+              ) %>
+          <%= ax_toggle_chip(
+                f,
+                :aceita_permuta_imovel_flag,
+                label: "Imóvel",
+                disabled: !exchange_enabled,
+                input_data: {
+                  habitation_exchange_target: "propertyToggle",
+                  action: "change->habitation-exchange#sync"
+                }
+              ) %>
+          <%= ax_toggle_chip(
+                f,
+                :aceita_permuta_outros_flag,
+                label: "Outros",
+                disabled: !exchange_enabled,
+                input_data: {
+                  habitation_exchange_target: "othersToggle",
+                  action: "change->habitation-exchange#sync"
+                }
+              ) %>
+        <% end %>
+      <% end %>
+
+      <div class="ax-field-group ax-field-group--panel ax-exchange-context"
+           data-habitation-exchange-target="vehiclePanel"
+           <%= "hidden" unless vehicle_enabled %>>
+        <div class="ax-field-group__header">
+          <h6 class="ax-field-group__title">Veículo aceito na permuta</h6>
+          <span class="ax-field-group__token">Valor individual</span>
+        </div>
+        <div class="ax-field-group__body">
+          <%= ax_field_grid do %>
+            <div class="ax-span-4">
+              <%= ax_currency_field(
+                    form: f,
+                    method: :permuta_veiculo_valor_formatted,
+                    label: "Valor do veículo",
+                    disabled: !vehicle_enabled,
+                    required: vehicle_enabled,
+                    data: {
+                      controller: "mask",
+                      mask_type_value: "currency",
+                      exchange_required: true,
+                      habitation_exchange_target: "vehicleValue",
+                      action: "input->habitation-exchange#recalculateTotal"
+                    }
+                  ) %>
+            </div>
+            <div class="ax-span-5">
+              <%= ax_text_field(
+                    form: f,
+                    method: :tipo_veiculo_aceito_permuta,
+                    label: "Tipo de veículo aceito",
+                    placeholder: "Ex: SUV, Sedan...",
+                    disabled: !vehicle_enabled
+                  ) %>
+            </div>
+            <div class="ax-span-3">
+              <%= ax_number_field(
+                    form: f,
+                    method: :ano_minimo_veiculo_aceito_permuta,
+                    label: "Ano mínimo",
+                    min: 1900,
+                    max: 2100,
+                    disabled: !vehicle_enabled
+                  ) %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="ax-field-group ax-field-group--panel ax-exchange-context"
+           data-habitation-exchange-target="propertyPanel"
+           <%= "hidden" unless property_enabled %>>
+        <div class="ax-field-group__header">
+          <h6 class="ax-field-group__title">Imóvel aceito na permuta</h6>
+          <span class="ax-field-group__token">Valor individual</span>
+        </div>
+        <div class="ax-field-group__body">
+          <%= ax_field_grid do %>
+            <div class="ax-span-4">
+              <%= ax_currency_field(
+                    form: f,
+                    method: :permuta_valor_formatted,
+                    label: "Valor do imóvel",
+                    disabled: !property_enabled,
+                    required: property_enabled,
+                    data: {
+                      controller: "mask",
+                      mask_type_value: "currency",
+                      exchange_required: true,
+                      habitation_exchange_target: "propertyValue",
+                      action: "input->habitation-exchange#recalculateTotal"
+                    }
+                  ) %>
+            </div>
+            <div class="ax-span-8">
+              <%= ax_text_field(
+                    form: f,
+                    method: :permuta_localizacao,
+                    label: "Localização",
+                    placeholder: "Cidade, bairro ou região de interesse",
+                    disabled: !property_enabled
+                  ) %>
+            </div>
+            <div class="ax-span-4">
+              <%= ax_number_field(form: f, method: :permuta_dormitorios_qtd, label: "Dormitórios", min: 0, disabled: !property_enabled) %>
+            </div>
+            <div class="ax-span-4">
+              <%= ax_number_field(form: f, method: :permuta_suites_qtd, label: "Suítes", min: 0, disabled: !property_enabled) %>
+            </div>
+            <div class="ax-span-4">
+              <%= ax_number_field(form: f, method: :permuta_garagens_qtd, label: "Garagens", min: 0, disabled: !property_enabled) %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="ax-field-group ax-field-group--panel ax-exchange-context"
+           data-habitation-exchange-target="othersPanel"
+           <%= "hidden" unless others_enabled %>>
+        <div class="ax-field-group__header">
+          <h6 class="ax-field-group__title">Outros itens aceitos na permuta</h6>
+          <span class="ax-field-group__token">Valor individual</span>
+        </div>
+        <div class="ax-field-group__body">
+          <%= ax_field_grid do %>
+            <div class="ax-span-4">
+              <%= ax_currency_field(
+                    form: f,
+                    method: :permuta_outros_valor_formatted,
+                    label: "Valor dos outros itens",
+                    disabled: !others_enabled,
+                    required: others_enabled,
+                    data: {
+                      controller: "mask",
+                      mask_type_value: "currency",
+                      exchange_required: true,
+                      habitation_exchange_target: "othersValue",
+                      action: "input->habitation-exchange#recalculateTotal"
+                    }
+                  ) %>
+            </div>
+            <div class="ax-span-8">
+              <%= ax_text_field(
+                    form: f,
+                    method: :permuta_outros_descricao,
+                    label: "Descrição dos itens",
+                    placeholder: "Ex: terreno, embarcação ou equipamentos",
+                    disabled: !others_enabled
+                  ) %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
 <% end %>

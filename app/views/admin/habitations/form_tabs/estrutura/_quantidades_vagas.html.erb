@@ -1,3 +1,9 @@
+<%
+  parking_active = f.object.vagas_qtd.to_i.positive?
+  parking_details_present = f.object.tipo_vaga.present? || f.object.numero_box.present?
+%>
+
+<div data-controller="conditional-reveal" data-conditional-reveal-kind-value="positive">
 <%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
   <div class="ax-span-1">
     <%= ax_number_field(form: f, method: :andar, label: "Andar") %>
@@ -23,20 +29,51 @@
   <div class="ax-span-1">
     <%= ax_number_field(form: f, method: :hidromassagem_qtd, label: "Hidro") %>
   </div>
-  <div class="ax-span-2">
+  <div class="ax-span-1">
+    <%= ax_number_field(
+          form: f,
+          method: :vagas_qtd,
+          label: "Vagas",
+          min: 0,
+          data: {
+            conditional_reveal_target: "trigger",
+            action: "input->conditional-reveal#sync change->conditional-reveal#sync"
+          }
+        ) %>
+  </div>
+
+  <div class="ax-span-3 ax-reactive-inactive-hint"
+       data-conditional-reveal-target="inactiveHint"
+       <%= "hidden" if parking_active || parking_details_present %>>
+    Informe a quantidade de vagas para detalhar tipo e box.
+  </div>
+
+  <div class="ax-span-2 ax-reactive-context ax-reactive-context--inline"
+       data-conditional-reveal-target="panel"
+       data-conditional-reveal-preserve="<%= parking_details_present && !parking_active %>"
+       <%= "hidden" unless parking_active || parking_details_present %>>
     <%= ax_select_field(
           form: f,
           method: :tipo_vaga,
           label: "Tipo vaga",
           choices: Habitation::VAGA_TYPES,
           select_options: { include_blank: true },
-          html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
+          html_options: {
+            disabled: !parking_active && !parking_details_present,
+            data: { controller: "tom-select", placeholder: "Selecione..." }
+          }
         ) %>
   </div>
-  <div class="ax-span-1">
-    <%= ax_number_field(form: f, method: :vagas_qtd, label: "Vagas") %>
-  </div>
-  <div class="ax-span-1">
-    <%= ax_text_field(form: f, method: :numero_box, label: "Box garagem") %>
+  <div class="ax-span-1 ax-reactive-context ax-reactive-context--inline"
+       data-conditional-reveal-target="panel"
+       data-conditional-reveal-preserve="<%= parking_details_present && !parking_active %>"
+       <%= "hidden" unless parking_active || parking_details_present %>>
+    <%= ax_text_field(
+          form: f,
+          method: :numero_box,
+          label: "Box garagem",
+          disabled: !parking_active && !parking_details_present
+        ) %>
   </div>
 <% end %>
+</div>
