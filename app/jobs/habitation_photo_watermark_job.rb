@@ -1,6 +1,8 @@
 class HabitationPhotoWatermarkJob < ApplicationJob
   queue_as :default
 
+  ORIGINAL_BLOB_PURGE_DELAY = 15.minutes
+
   discard_on ActiveJob::DeserializationError
 
   def perform(habitation_id, attachment_ids, property_setting_id = nil, tenant_id: nil)
@@ -37,8 +39,9 @@ class HabitationPhotoWatermarkJob < ApplicationJob
     return unless result&.attachable.is_a?(Hash)
 
     new_blob = create_watermarked_blob(blob, result.attachable)
+    Storage::PublicPropertyPhoto.publish_blob!(new_blob, raise_errors: true)
     attachment.update!(blob: new_blob)
-    blob.purge_later unless blob.attachments.exists?
+    schedule_original_blob_purge(blob) unless blob.attachments.exists?
   ensure
     result&.tempfile&.close!
   end
@@ -55,6 +58,10 @@ class HabitationPhotoWatermarkJob < ApplicationJob
       content_type: attachable[:content_type].presence || original_blob.content_type,
       metadata: metadata
     )
+  end
+
+  def schedule_original_blob_purge(blob)
+    ActiveStorage::PurgeJob.set(wait: ORIGINAL_BLOB_PURGE_DELAY).perform_later(blob)
   end
 
   class BlobUpload
