@@ -53,8 +53,9 @@
               <input type="tel" name="phone" id="lead_phone" required
                      class="block w-full rounded-lg border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
                      placeholder="(00) 00000-0000"
-                     data-lead-capture-target="phone"
-                     data-action="input->lead-capture#applyMask">
+                     autocomplete="tel"
+                     data-controller="phone-input"
+                     data-lead-capture-target="phone">
             </div>
             <div>
               <label for="email" class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">E-mail</label>

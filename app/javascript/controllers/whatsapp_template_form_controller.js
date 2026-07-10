@@ -144,7 +144,15 @@ export default class extends Controller {
       extra.hidden = !needsExtra
       const input = extra.querySelector("input")
       if (input) {
-        input.placeholder = select.value === "phone_number" ? "5511999990000" : "https://..."
+        const phoneSelected = select.value === "phone_number"
+        input.placeholder = phoneSelected ? "(11) 99999-0000" : "https://..."
+        input.type = phoneSelected ? "tel" : "text"
+        input.autocomplete = phoneSelected ? "tel" : "off"
+        if (phoneSelected) {
+          input.dataset.controller = "phone-input"
+        } else if (input.dataset.controller === "phone-input") {
+          delete input.dataset.controller
+        }
       }
     })
   }
@@ -279,7 +287,7 @@ export default class extends Controller {
                  name="whatsapp_template[buttons][${index}][url]"
                  id="whatsapp_template_buttons_${index}_url"
                  class="ax-control"
-                 placeholder="https://... ou 5511999990000">
+                 placeholder="https://... ou (11) 99999-0000">
         </div>
         <button type="button"
                 class="ax-btn ax-btn--sm whatsapp-template-button-row__remove"
@@ -381,11 +389,13 @@ export default class extends Controller {
             <div class="whatsapp-template-carousel-button-extra" data-whatsapp-template-carousel-extra="phone_number" hidden>
               <div class="ax-field">
                 <label class="ax-label" for="whatsapp_template_carousel_cards_${index}_button_phone_number">Telefone</label>
-                <input type="text"
+                <input type="tel"
                        name="whatsapp_template[carousel_cards][${index}][button_phone_number]"
                        id="whatsapp_template_carousel_cards_${index}_button_phone_number"
                        class="ax-control"
-                       placeholder="5511999990000">
+                       autocomplete="tel"
+                       data-controller="phone-input"
+                       placeholder="(11) 99999-0000">
               </div>
             </div>
           </div>

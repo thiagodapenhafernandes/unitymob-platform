@@ -142,6 +142,30 @@ RSpec.describe "Admin user governance", type: :request do
     expect(user.profile).to eq(agent_profile)
   end
 
+  it "permite salvar telefone secundário normalizado pelo formulário de usuário" do
+    tenant = Tenant.create!(name: "Tenant telefone usuario #{SecureRandom.hex(3)}", slug: "tenant-telefone-usuario-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor)
+    user = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner)
+
+    sign_in owner
+
+    patch admin_admin_user_path(user), params: {
+      admin_user: {
+        name: user.name,
+        email: user.email,
+        profile_id: agent_profile.id,
+        acting_type: user.acting_type,
+        active: "1",
+        secondary_phone: "47 9972-9441"
+      }
+    }
+
+    expect(response).to redirect_to(admin_admin_users_path)
+    expect(user.reload.secondary_phone).to eq("5547999729441")
+  end
+
   it "ignora função horizontal incompatível com o perfil vertical enviado por payload" do
     tenant = Tenant.create!(name: "Tenant horizontal #{SecureRandom.hex(3)}", slug: "tenant-horizontal-#{SecureRandom.hex(3)}")
     owner_profile = tenant.profiles.find_by!(key: "tenant_owner")

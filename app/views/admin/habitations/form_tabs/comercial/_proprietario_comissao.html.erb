@@ -18,7 +18,7 @@
                     form: f,
                     method: :proprietario_celular,
                     label: "Celular",
-                    value: habitation.proprietario_telefone,
+                    value: Phones::Normalizer.display(habitation.proprietario_telefone),
                     readonly: !can_edit_protected_habitation_fields,
                     data: { controller: "phone-input" }
                   ) %>
@@ -28,7 +28,7 @@
                     form: f,
                     method: :proprietario_telefone_comercial,
                     label: "F. Comercial",
-                    value: habitation.proprietario_telefone_comercial_display,
+                    value: Phones::Normalizer.display(habitation.proprietario_telefone_comercial_display),
                     readonly: !can_edit_protected_habitation_fields,
                     data: { controller: "phone-input" }
                   ) %>
@@ -38,7 +38,7 @@
                     form: f,
                     method: :proprietario_telefone_residencial,
                     label: "F. Residencial",
-                    value: habitation.proprietario_telefone_residencial_display,
+                    value: Phones::Normalizer.display(habitation.proprietario_telefone_residencial_display),
                     readonly: !can_edit_protected_habitation_fields,
                     data: { controller: "phone-input" }
                   ) %>

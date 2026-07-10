@@ -164,7 +164,14 @@
             </div>
             <div class="ax-field" data-whatsapp-template-button-extra>
               <%= label_tag "whatsapp_template_buttons_#{index}_url", "URL ou telefone", class: "ax-label" %>
-              <%= text_field_tag "whatsapp_template[buttons][#{index}][url]", button["url"].presence || button["phone_number"], class: "ax-control", placeholder: "https://... ou 5511999990000" %>
+              <% phone_button = button["kind"] == "phone_number" %>
+              <%= text_field_tag "whatsapp_template[buttons][#{index}][url]",
+                                 button["url"].presence || button["phone_number"],
+                                 class: "ax-control",
+                                 placeholder: phone_button ? "(11) 99999-0000" : "https://... ou (11) 99999-0000",
+                                 type: phone_button ? "tel" : "text",
+                                 autocomplete: phone_button ? "tel" : "off",
+                                 data: phone_button ? { controller: "phone-input" } : {} %>
             </div>
             <button type="button"
                     class="ax-btn ax-btn--sm whatsapp-template-button-row__remove"

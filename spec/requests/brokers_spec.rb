@@ -50,4 +50,23 @@ RSpec.describe "Brokers", type: :request do
     expect(response.body).to include(visible.name)
     expect(response.body).not_to include(other_visible.name)
   end
+
+  it "monta link de WhatsApp sem duplicar DDI quando telefone já está normalizado" do
+    broker_profile = Tenant.default.profiles.find_by!(key: "agent")
+    broker = create(
+      :admin_user,
+      name: "Corretor WhatsApp",
+      profile: broker_profile,
+      active: true,
+      display_on_site: true,
+      phone: "5547999729441"
+    )
+
+    get brokers_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(broker.name)
+    expect(response.body).to include("https://wa.me/5547999729441")
+    expect(response.body).not_to include("https://wa.me/555547999729441")
+  end
 end

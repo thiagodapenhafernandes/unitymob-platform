@@ -407,6 +407,7 @@ module Whatsapp
     # os envios passam a usar o fluxo por telefone — onde a Meta respeita
     # context (Responder) e reacoes, ignorados silenciosamente no fluxo BSUID.
     def backfill_conversation_phone(conversation, recipient_phone)
+      recipient_phone = Phones::Normalizer.call(recipient_phone).to_s.presence
       return if conversation.blank? || recipient_phone.blank?
       return if conversation.contact_phone.present?
       return if tenant.whatsapp_conversations.where(contact_phone: recipient_phone).where.not(id: conversation.id).exists?
@@ -415,6 +416,7 @@ module Whatsapp
     end
 
     def find_or_create_conversation(phone:, bsuid:, name:)
+      phone = Phones::Normalizer.call(phone).to_s.presence
       conversation =
         (phone.present? && tenant.whatsapp_conversations.find_by(contact_phone: phone)) ||
         (bsuid.present? && tenant.whatsapp_conversations.find_by(business_scoped_user_id: bsuid)) ||

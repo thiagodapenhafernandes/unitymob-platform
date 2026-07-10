@@ -85,7 +85,7 @@
                 <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp", style: "color:#1da851")) do %>
                   <%= f.telephone_field :default_whatsapp_number,
                         class: "ax-control",
-                        placeholder: "5547999999999",
+                        placeholder: "(47) 99999-9999",
                         value: @whatsapp_integration.default_whatsapp_number.presence || ContactSetting.first&.whatsapp_primary,
                         data: { controller: "phone-input" } %>
                 <% end %>
@@ -338,7 +338,13 @@
                     <i class="bi bi-plug"></i> Testar conexão
                   </button>
                   <div class="wa-test__send">
-                    <input type="text" class="ax-control" data-whatsapp-integration-target="testTo" placeholder="Número p/ teste (5547...)" aria-label="Número para teste">
+                    <input type="tel"
+                           class="ax-control"
+                           autocomplete="tel"
+                           data-controller="phone-input"
+                           data-whatsapp-integration-target="testTo"
+                           placeholder="Número p/ teste"
+                           aria-label="Número para teste">
                     <button type="button" class="ax-btn ax-btn--sm ax-btn--primary" data-action="whatsapp-integration#sendTest">
                       <i class="bi bi-send"></i> Enviar teste
                     </button>
@@ -600,7 +606,7 @@
                   <%= f.label :display_phone_number, "Número WhatsApp", class: "ax-label" %>
                   <%= f.telephone_field :display_phone_number,
                                         class: "ax-control",
-                                        placeholder: "554721228669",
+                                        placeholder: "(47) 2122-8669",
                                         data: { controller: "phone-input" } %>
                 </div>
                 <div class="ax-field">

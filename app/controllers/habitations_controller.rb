@@ -91,8 +91,11 @@ class HabitationsController < ApplicationController
   
   # POST /imoveis/:id/schedule_visit
   def schedule_visit
+    webhook_data = visit_params.to_h
+    webhook_data["phone"] = Phones::Normalizer.call(webhook_data["phone"]).to_s if webhook_data["phone"].present?
+
     # Enviar webhook com dados do formulário + código do imóvel
-    webhook_data = visit_params.to_h.merge(
+    webhook_data = webhook_data.merge(
       property_code: @habitation.codigo,
       property_title: @habitation.display_title,
       property_url: habitation_url(@habitation)

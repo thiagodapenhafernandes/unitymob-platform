@@ -71,6 +71,17 @@ RSpec.describe Habitation, type: :model do
       expect(described_class.new(categoria: "Casa")).not_to be_requires_intake_address_complement
     end
 
+    it "uses complement and block to identify land lots when present" do
+      land_with_complement = described_class.new(categoria: "Terreno")
+      land_with_complement.build_address(complemento: "Lote 106")
+      land_with_block = described_class.new(categoria: "Terreno", bloco: "Quadra B")
+
+      expect(land_with_complement.duplicate_identity_scope).to eq(:condominium_unit)
+      expect(land_with_block.duplicate_identity_scope).to eq(:condominium_unit)
+      expect(described_class.new(categoria: "Terreno").duplicate_identity_scope)
+        .to eq(:street)
+    end
+
     it "allows the owner broker or assigned broker to release a broker intake" do
       owner = create(:admin_user)
       assigned = create(:admin_user)

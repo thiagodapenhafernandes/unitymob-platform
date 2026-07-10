@@ -54,8 +54,9 @@
 
               <!-- Contact Buttons -->
               <div class="space-y-2">
-                <% if broker.phone.present? %>
-                  <%= link_to "https://wa.me/55#{broker.phone.gsub(/\D/, '')}?text=#{url_encode('Olá, gostaria de falar sobre um imóvel')}",
+                <% broker_whatsapp = Phones::Normalizer.call(broker.phone) %>
+                <% if broker_whatsapp.present? %>
+                  <%= link_to "https://wa.me/#{broker_whatsapp}?text=#{url_encode('Olá, gostaria de falar sobre um imóvel')}",
                       target: "_blank",
                       class: "w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-green-500 text-white text-sm font-bold rounded-lg hover:bg-green-600 transition-colors" do %>
                     <i class="fab fa-whatsapp"></i>

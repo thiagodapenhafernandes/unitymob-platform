@@ -13,8 +13,9 @@
         <p><strong>Nome:</strong> <%= @lead.name %></p>
         <p><strong>Email:</strong> <%= @lead.email %></p>
         <p><strong>Telefone:</strong> <%= @lead.phone %> 
-           <% if @lead.phone.present? %>
-             <a href="https://wa.me/55<%= @lead.phone.gsub(/\D/, '') %>" style="color: #25D366; text-decoration: none; font-weight: bold; font-size: 12px; margin-left: 5px;">(WhatsApp)</a>
+           <% lead_whatsapp = Phones::Normalizer.call(@lead.phone) %>
+           <% if lead_whatsapp.present? %>
+             <a href="https://wa.me/<%= lead_whatsapp %>" style="color: #25D366; text-decoration: none; font-weight: bold; font-size: 12px; margin-left: 5px;">(WhatsApp)</a>
            <% end %>
         </p>
         <p><strong>Data:</strong> <%= @lead.created_at.strftime("%d/%m/%Y às %H:%M") %></p>

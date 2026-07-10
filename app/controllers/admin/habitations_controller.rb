@@ -1613,6 +1613,8 @@ class Admin::HabitationsController < Admin::BaseController
     code = duplicated&.codigo.present? ? " ##{duplicated.codigo}" : ""
     message = if habitation.duplicate_identity_scope == :unit
                 "Já existe imóvel cadastrado com esta rua, número, unidade e status comercial#{code}."
+              elsif habitation.duplicate_identity_scope == :condominium_unit && habitation.property_kind_terreno?
+                "Já existe terreno cadastrado com esta rua, número, complemento, bloco e status comercial#{code}."
               elsif habitation.duplicate_identity_scope == :condominium_unit
                 "Já existe casa em condomínio cadastrada com esta rua, número, complemento, bloco e status comercial#{code}."
               else

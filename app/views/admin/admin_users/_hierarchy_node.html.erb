@@ -90,8 +90,15 @@
     <% if internal_members.any? %>
       <div class="hier-row__internal">
         <% internal_members.each do |member| %>
-          <%= link_to admin_admin_user_path(member), class: "hier-internal__chip hier-internal__chip--inline", title: "#{member.name} · #{member.horizontal_profile&.name}" do %>
-            <i class="bi bi-person-gear"></i><span><%= member.name %></span><small><%= member.horizontal_profile&.name %></small>
+          <%= link_to admin_admin_user_path(member),
+                      class: "hier-internal__chip hier-internal__chip--inline",
+                      data: { user_id: member.id },
+                      title: "#{member.name} · #{member.horizontal_profile&.name}" do %>
+            <i class="bi bi-person-gear"></i>
+            <span><%= member.name %></span>
+            <small class="hier-row__horizontal">
+              <%= member.profile&.name %><%= " · Função: #{member.horizontal_profile.name}" if member.horizontal_profile %>
+            </small>
           <% end %>
         <% end %>
       </div>

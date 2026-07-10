@@ -17,6 +17,26 @@ RSpec.describe WhatsappCampaignMessage, type: :model do
   end
   let(:conversation) { WhatsappConversation.create!(contact_phone: "5511999990000", status: "open") }
 
+  it "normaliza telefone antes de validar" do
+    simple_template = WhatsappTemplate.create!(
+      name: "campanha_normaliza_telefone",
+      language: "pt_BR",
+      status: "APPROVED",
+      body: "Mensagem de normalização"
+    )
+    campaign = WhatsappCampaign.create!(
+      name: "Campanha telefone normalizado",
+      whatsapp_template: simple_template,
+      created_by: admin,
+      status: "draft"
+    )
+
+    message = campaign.campaign_messages.build(phone_number: "47 9972-9441", status: "pending")
+
+    expect(message).to be_valid
+    expect(message.phone_number).to eq("5547999729441")
+  end
+
   it "sinaliza mensagem enviada sem retorno de entrega apos a janela operacional" do
     simple_template = WhatsappTemplate.create!(
       name: "campanha_status_entrega",

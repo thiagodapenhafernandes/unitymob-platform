@@ -86,30 +86,39 @@ export default class extends Controller {
   }
 
   comparisonValue() {
-    if (this.condominiumHouseSelected() && (this.targetValue("unit").trim().length > 0 || this.targetValue("complement").trim().length > 0)) {
+    if (this.complementBlockCategorySelected() && (this.targetValue("unit").trim().length > 0 || this.targetValue("complement").trim().length > 0)) {
       return "condominium_unit"
     }
 
     return this.hasComparisonTarget ? this.comparisonTarget.value : ""
   }
 
-  condominiumHouseSelected() {
-    return this.targetValue("category").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes("casa em condominio")
+  complementBlockCategorySelected() {
+    const category = this.normalizedCategory()
+    return category.includes("casa em condominio") || category.includes("terreno")
+  }
+
+  normalizedCategory() {
+    return this.targetValue("category").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
   }
 
   showDuplicate(matches) {
     if (!this.hasStatusTarget) return
 
     this.statusTarget.hidden = false
-    this.statusTarget.className = "ax-duplicate-status ax-duplicate-status--danger"
+    this.statusTarget.className = "ax-duplicate-status ax-duplicate-status--danger ax-span-12"
     const links = matches.map((match) => {
       const code = match.codigo ? `#${match.codigo}` : `ID ${match.id}`
       return `<a href="${match.edit_url}" class="ax-duplicate-status__link" target="_blank" rel="noopener">${this.escapeHtml(code)}</a>`
-    }).join(", ")
+    }).join('<span class="ax-duplicate-status__separator">,</span>')
     const identity = this.comparisonValue() === "unit"
       ? "este endereço, unidade e status comercial"
       : (this.comparisonValue() === "condominium_unit" ? "este endereço, complemento, bloco e status comercial" : "este endereço e status comercial")
-    this.statusTarget.innerHTML = `Já existe imóvel com ${identity}${links ? `: ${links}` : "."}. Ajuste os dados antes de salvar.`
+    this.statusTarget.innerHTML = `
+      <span class="ax-duplicate-status__message">Já existe imóvel com ${identity}${links ? ":" : "."}</span>
+      ${links ? `<span class="ax-duplicate-status__links">${links}</span>` : ""}
+      <span class="ax-duplicate-status__hint">Ajuste os dados antes de salvar.</span>
+    `
   }
 
   showAvailable() {

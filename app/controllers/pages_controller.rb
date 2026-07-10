@@ -11,14 +11,20 @@ class PagesController < ApplicationController
   end
   
   def submit_trabalhe_conosco
+    payload = work_params.to_h
+    payload["phone"] = Phones::Normalizer.call(payload["phone"]).to_s if payload["phone"].present?
+
     # Enviar webhook
-    WebhookService.send_form_data('work_with_us_form', work_params.to_h, request: request)
+    WebhookService.send_form_data('work_with_us_form', payload, request: request)
     
     redirect_to trabalhe_conosco_path, notice: 'Currículo enviado com sucesso! Entraremos em contato em breve.'
   end
 
   def submit_parcerias
-    WebhookService.send_form_data('partnership_form', partnership_params.to_h, request: request)
+    payload = partnership_params.to_h
+    payload["phone"] = Phones::Normalizer.call(payload["phone"]).to_s if payload["phone"].present?
+
+    WebhookService.send_form_data('partnership_form', payload, request: request)
 
     redirect_to parcerias_path, notice: 'Solicitação enviada com sucesso! Nosso time de parcerias entrará em contato.'
   end

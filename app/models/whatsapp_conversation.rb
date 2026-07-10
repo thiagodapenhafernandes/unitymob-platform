@@ -1,9 +1,12 @@
 class WhatsappConversation < ApplicationRecord
   include TenantScoped
+  include PhoneNormalizable
 
   belongs_to :lead, optional: true
   belongs_to :assigned_admin_user, class_name: "AdminUser", optional: true
   has_many :messages, -> { order(:created_at) }, class_name: "WhatsappMessage", dependent: :destroy
+
+  normalize_phone_fields :contact_phone
 
   validates :contact_phone, uniqueness: { scope: :tenant_id }, allow_nil: true
   validates :business_scoped_user_id, uniqueness: { scope: :tenant_id }, allow_nil: true

@@ -57,7 +57,7 @@ class AdminUser < ApplicationRecord
 
   validates :email, presence: true, uniqueness: true
   validates :name, presence: true
-  normalize_phone_fields :phone
+  normalize_phone_fields :phone, :secondary_phone
   validates :tenant, presence: true, unless: :super_admin?
   validates :profile, presence: true, unless: :super_admin?
   validate :system_admin_outside_tenant

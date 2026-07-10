@@ -18,6 +18,7 @@ import LocationFilterController from "controllers/location_filter_controller"
 import MarketingTrackerController from "controllers/marketing_tracker_controller"
 import NavbarController from "controllers/navbar_controller"
 import PhotoGalleryController from "controllers/photo_gallery_controller"
+import PhoneInputController from "controllers/phone_input_controller"
 import PropertyCarouselController from "controllers/property_carousel_controller"
 import PublicPropertyMapController from "controllers/public_property_map_controller"
 import SearchFormController from "controllers/search_form_controller"
@@ -42,6 +43,7 @@ application.register("location-filter", LocationFilterController)
 application.register("marketing-tracker", MarketingTrackerController)
 application.register("navbar", NavbarController)
 application.register("photo-gallery", PhotoGalleryController)
+application.register("phone-input", PhoneInputController)
 application.register("property-carousel", PropertyCarouselController)
 application.register("public-property-map", PublicPropertyMapController)
 application.register("search-form", SearchFormController)

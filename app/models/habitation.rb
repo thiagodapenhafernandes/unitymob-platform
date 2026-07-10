@@ -591,7 +591,9 @@ class Habitation < ApplicationRecord
   end
 
   def duplicate_identity_scope
-    return :condominium_unit if condominium_house? && (complemento.present? || bloco.present?)
+    if (condominium_house? || property_kind_terreno?) && (complemento.present? || bloco.present?)
+      return :condominium_unit
+    end
 
     requires_unit_number? || bloco.present? ? :unit : :street
   end

@@ -441,14 +441,18 @@
         <input type="text"
                class="ax-control"
                id="quick_proprietor_phone"
-               name="proprietor[phone_primary]">
+               name="proprietor[phone_primary]"
+               autocomplete="tel"
+               data-controller="phone-input">
       </div>
       <div class="ax-span-6">
         <%= ax_field_label(nil, nil, text: "Celular", for: "quick_proprietor_mobile") %>
         <input type="text"
                class="ax-control"
                id="quick_proprietor_mobile"
-               name="proprietor[mobile_phone]">
+               name="proprietor[mobile_phone]"
+               autocomplete="tel"
+               data-controller="phone-input">
       </div>
       <div class="ax-span-7">
         <%= ax_field_label(nil, nil, text: "E-mail", for: "quick_proprietor_email") %>

@@ -98,6 +98,26 @@ RSpec.describe WhatsappTemplate, type: :model do
       )
     end
 
+    it "inclui nono dígito em botão de telefone antigo" do
+      template = described_class.new(
+        name: "convite_telefone_antigo",
+        category: "MARKETING",
+        body: "Fale com a gente.",
+        buttons: {
+          "0" => { "kind" => "phone_number", "text" => "Ligar", "url" => "47 9972-9441" }
+        }
+      )
+
+      expect(template.components_payload.last).to eq(
+        {
+          type: "BUTTONS",
+          buttons: [
+            { type: "PHONE_NUMBER", text: "Ligar", phone_number: "+5547999729441" }
+          ]
+        }
+      )
+    end
+
     it "monta carrossel com cards de midia e botao" do
       template = described_class.new(
         name: "carrossel_lancamento",

@@ -13,8 +13,11 @@ class ContactsController < ApplicationController
                 else "c2s_ambos"
                 end
 
+    payload = contact_params.to_h
+    payload["phone"] = Phones::Normalizer.call(payload["phone"]).to_s if payload["phone"].present?
+
     # Enviar webhook
-    WebhookService.send_form_data("contact_form", contact_params.to_h.merge(
+    WebhookService.send_form_data("contact_form", payload.merge(
       c2s_intent: c2s_intent,
       c2s_queue: c2s_queue
     ), request: request)

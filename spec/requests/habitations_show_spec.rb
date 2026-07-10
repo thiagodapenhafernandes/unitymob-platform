@@ -339,6 +339,33 @@ RSpec.describe "Habitation details", type: :request do
     end
   end
 
+  describe "POST /imoveis/:id/schedule_visit" do
+    it "normaliza telefone do agendamento antes de enviar webhook" do
+      habitation = create(:habitation, codigo: "VISIT-PHONE", slug: "imovel-visita-phone")
+
+      expect(WebhookService).to receive(:send_form_data).with(
+        "property_visit_form",
+        hash_including(
+          "phone" => "5547999729441",
+          property_code: "VISIT-PHONE",
+          property_title: habitation.display_title
+        ),
+        request: kind_of(ActionDispatch::Request)
+      )
+
+      post schedule_visit_habitation_path(habitation), params: {
+        name: "Cliente Visita",
+        email: "cliente@example.com",
+        phone: "47 9972-9441",
+        preferred_date: "2026-07-20",
+        preferred_time: "10:00",
+        message: "Quero visitar"
+      }
+
+      expect(response).to redirect_to(habitation_path(habitation))
+    end
+  end
+
   describe "GET /imoveis" do
     it "does not list developments" do
       development = create(

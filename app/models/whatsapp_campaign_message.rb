@@ -91,6 +91,7 @@ class WhatsappCampaignMessage < ApplicationRecord
   validates :phone_number, presence: true
   validates :status, inclusion: { in: STATUSES }
   validates :external_message_id, uniqueness: { scope: :tenant_id }, allow_blank: true
+  before_validation :normalize_phone_number
 
   scope :pending_or_queued, -> { where(status: %w[pending queued]) }
   scope :failed, -> { where(status: "failed") }
@@ -331,6 +332,10 @@ class WhatsappCampaignMessage < ApplicationRecord
   end
 
   private
+
+  def normalize_phone_number
+    self.phone_number = Phones::Normalizer.call(phone_number).to_s if phone_number.present?
+  end
 
   def calculate_next_retry_at(reason)
     code = self.class.extract_failure_code(reason)

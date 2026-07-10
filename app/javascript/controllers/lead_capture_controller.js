@@ -17,13 +17,6 @@ export default class extends Controller {
     })
   }
 
-  applyMask(event) {
-    let value = event.target.value.replace(/\D/g, "")
-    value = value.replace(/^(\d{2})(\d)/g, "($1) $2")
-    value = value.replace(/(\d)(\d{4})$/, "$1-$2")
-    event.target.value = value.substring(0, 15) // Limit length
-  }
-
   async open(event) {
     event.preventDefault()
     event.stopPropagation()
@@ -79,7 +72,7 @@ export default class extends Controller {
 
     const name = this.nameTarget.value.trim()
     const phoneWithMask = this.phoneTarget.value
-    const phone = phoneWithMask.replace(/\D/g, "")
+    const phone = this.normalizePhone(phoneWithMask)
     const email = this.hasEmailTarget ? this.emailTarget.value : ""
 
     // Validation
@@ -89,7 +82,7 @@ export default class extends Controller {
       return
     }
 
-    if (phone.length < 10 || phone.length > 11) {
+    if (!this.validBrazilianPhone(phone)) {
       window.axToast({ message: "Por favor, informe um número de WhatsApp válido com DDD.", type: "warning" })
       this.phoneTarget.focus()
       return
@@ -102,7 +95,7 @@ export default class extends Controller {
 
     const result = await this.sendLeadData({
       name,
-      phone: phoneWithMask,
+      phone,
       email,
       property_id: this.propertyIdTarget.value,
       origin: this.hasOriginTarget ? this.originTarget.value : "",
@@ -124,6 +117,34 @@ export default class extends Controller {
 
     // Optional: Reset form
     event.target.reset()
+  }
+
+  normalizePhone(value) {
+    let digits = value.toString().replace(/\D/g, "")
+
+    if (digits.length === 8 && this.brazilianMobileSubscriberWithoutNinthDigit(digits)) {
+      digits = `9${digits}`
+    } else if (digits.length === 10 && !digits.startsWith("55")) {
+      const ddd = digits.slice(0, 2)
+      const subscriber = digits.slice(2)
+      if (this.brazilianMobileSubscriberWithoutNinthDigit(subscriber)) digits = `${ddd}9${subscriber}`
+    } else if (digits.length === 12 && digits.startsWith("55")) {
+      const ddd = digits.slice(2, 4)
+      const subscriber = digits.slice(4)
+      if (this.brazilianMobileSubscriberWithoutNinthDigit(subscriber)) digits = `55${ddd}9${subscriber}`
+    }
+
+    if ([10, 11].includes(digits.length)) return `55${digits}`
+
+    return digits
+  }
+
+  validBrazilianPhone(digits) {
+    return digits.startsWith("55") && [12, 13].includes(digits.length)
+  }
+
+  brazilianMobileSubscriberWithoutNinthDigit(digits) {
+    return digits.length === 8 && ["6", "7", "8", "9"].includes(digits[0])
   }
 
   async sendLeadData(data) {

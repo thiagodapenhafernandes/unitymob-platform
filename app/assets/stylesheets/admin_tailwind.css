@@ -4486,27 +4486,22 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   gap: 10px;
 }
 
-/* "Observações internas e restritas" preenche a altura da coluna (alinha com
-   a coluna "Vista e reservas" ao lado). */
-.ax-attendance-grid { align-items: stretch; }
-.ax-attendance-grid > .ax-span-6:first-child { min-height: 0; }
-.ax-attendance-grid > .ax-span-6:first-child > .ax-field-group {
-  height: 100%;
-  grid-template-rows: auto minmax(0, 1fr);
+.ax-attendance-grid {
+  align-items: start;
 }
-.ax-attendance-grid > .ax-span-6:first-child > .ax-field-group > .ax-field-group__body {
-  display: flex;
-  min-height: 0;
+
+.ax-attendance-grid .ax-attendance-textarea-field textarea {
+  padding: 10px 12px;
+  line-height: 1.35;
 }
-.ax-attendance-grid > .ax-span-6:first-child .ax-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+
+.ax-attendance-grid .ax-attendance-visit-notes textarea {
+  min-height: 96px;
+  resize: vertical;
 }
-.ax-attendance-grid > .ax-span-6:first-child .ax-field textarea {
-  flex: 1;
-  min-height: 180px;
+
+.ax-attendance-grid .ax-attendance-notes textarea {
+  min-height: 120px;
   resize: vertical;
 }
 
@@ -11509,18 +11504,22 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
 
 .habitation-form-ui .ax-duplicate-status {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 30px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  width: 100%;
+  max-width: 100%;
+  min-height: 38px;
   margin: 2px 0 0;
-  padding: 7px 9px;
+  padding: 10px 12px;
   border: 1px solid var(--ax-form-border-soft);
   border-radius: 7px;
   background: #f8fafc;
   color: #475467;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .habitation-form-ui .ax-duplicate-status[hidden] {
@@ -11537,6 +11536,28 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
   border-color: #fecaca;
   background: #fff5f5;
   color: #b42318;
+}
+
+.habitation-form-ui .ax-duplicate-status__message,
+.habitation-form-ui .ax-duplicate-status__hint {
+  min-width: 0;
+}
+
+.habitation-form-ui .ax-duplicate-status__links {
+  display: inline-flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  min-width: 0;
+}
+
+.habitation-form-ui .ax-duplicate-status__hint {
+  font-weight: 800;
+}
+
+.habitation-form-ui .ax-duplicate-status__separator {
+  color: currentColor;
 }
 
 .habitation-form-ui .ax-duplicate-status__link {

@@ -33,19 +33,26 @@
           <div class="au-row au-row--2">
             <div class="au-field">
               <%= ax_field_label(f, :phone, text: "Celular / WhatsApp") %>
-              <%= f.text_field :phone, class: "ax-control", placeholder: "+55 (47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" } %>
+              <%= f.text_field :phone, class: "ax-control", placeholder: "(47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" } %>
             </div>
             <div class="au-field">
-              <%= ax_field_label(f, :creci, text: "CRECI") %>
-              <%= f.text_field :creci, class: "ax-control", placeholder: "Ex: 12345SC" %>
+              <%= ax_field_label(f, :secondary_phone, text: "Telefone secundário") %>
+              <%= f.text_field :secondary_phone, class: "ax-control", placeholder: "(47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" } %>
             </div>
           </div>
 
           <div class="au-row au-row--2">
             <div class="au-field">
+              <%= ax_field_label(f, :creci, text: "CRECI") %>
+              <%= f.text_field :creci, class: "ax-control", placeholder: "Ex: 12345SC" %>
+            </div>
+            <div class="au-field">
               <%= ax_field_label(f, :birth_date, text: "Data de nascimento") %>
               <%= f.date_field :birth_date, class: "ax-control" %>
             </div>
+          </div>
+
+          <div class="au-row au-row--2">
             <div class="au-field">
               <%= ax_field_label(f, :city, text: "Cidade") %>
               <%= f.text_field :city, class: "ax-control", placeholder: "Ex: Balneário Camboriú" %>
@@ -108,7 +115,10 @@
                 <% if (@assignable_horizontal_profiles || []).any? %>
                   <optgroup label="Funções operacionais">
                     <% @assignable_horizontal_profiles.each do |horizontal_profile| %>
-                      <option value="<%= horizontal_profile.id %>" data-axis="horizontal" <%= "selected" if current_access_id == horizontal_profile.id %>>
+                      <option value="<%= horizontal_profile.id %>"
+                              data-axis="horizontal"
+                              data-vertical-profile-id="<%= horizontal_profile.root_vertical_profile&.id %>"
+                              <%= "selected" if current_access_id == horizontal_profile.id %>>
                         <%= horizontal_profile.name %><%= " · #{horizontal_profile.root_vertical_profile.name}" if horizontal_profile.root_vertical_profile %>
                       </option>
                     <% end %>

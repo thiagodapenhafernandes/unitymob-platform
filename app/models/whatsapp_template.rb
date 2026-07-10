@@ -173,7 +173,7 @@ class WhatsappTemplate < ApplicationRecord
         "url" => attrs["url"].to_s.strip,
         "phone_number" => attrs["phone_number"].presence || attrs["url"].presence
       }.compact_blank
-       .tap { |row| row["phone_number"] = row["phone_number"].to_s.gsub(/[^\d+]/, "") if row["phone_number"].present? }
+       .tap { |row| row["phone_number"] = normalize_template_phone(row["phone_number"]) if row["phone_number"].present? }
     end.first(3)
   end
 
@@ -205,7 +205,7 @@ class WhatsappTemplate < ApplicationRecord
         "button_text" => button_text,
         "button_url" => button_url,
         "button_url_example" => button_url_example,
-        "button_phone_number" => button_phone_number.to_s.gsub(/[^\d+]/, "")
+        "button_phone_number" => normalize_template_phone(button_phone_number)
       }.compact_blank
     end.first(10)
   end
@@ -428,6 +428,11 @@ class WhatsappTemplate < ApplicationRecord
     button[:navigate_screen] = config["screen"].to_s if config["screen"].present? && config["action"] == "navigate"
 
     [body_component, footer_component, { type: "BUTTONS", buttons: [button] }].compact
+  end
+
+  def normalize_template_phone(value)
+    normalized = Phones::Normalizer.call(value)
+    normalized.present? ? "+#{normalized}" : ""
   end
 
   def validate_template_submission
