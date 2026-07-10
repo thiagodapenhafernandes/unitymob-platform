@@ -51,6 +51,16 @@ export default class extends Controller {
     this.syncFromDevelopmentSelection()
     this.applyServerValidationErrors()
     this.refreshValidationBadges()
+    this.resetWorkspaceHorizontalScroll()
+  }
+
+  resetWorkspaceHorizontalScroll() {
+    const workspace = this.element.querySelector(".habitation-editor-workspace")
+    if (!workspace) return
+
+    window.requestAnimationFrame(() => {
+      workspace.scrollLeft = 0
+    })
   }
 
   disconnect() {

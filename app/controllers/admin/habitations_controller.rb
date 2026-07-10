@@ -1390,7 +1390,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def pending_review_visible_statuses
-    return Habitation::PENDING_REVIEW_INTAKE_STATUSES if tenant_owner?
+    return Habitation::PENDING_WORKFLOW_INTAKE_STATUSES if tenant_owner?
     return %w[submitted_for_admin_review] if can_review_intakes?
 
     %w[admin_approved]

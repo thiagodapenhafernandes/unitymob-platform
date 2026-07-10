@@ -50,6 +50,7 @@
     ["Cond.", imovel.valor_condominio_cents.to_i.positive? ? number_to_currency(imovel.valor_condominio_cents / 100.0) : "R$ 0"],
     ["IPTU", imovel.valor_iptu_cents.to_i.positive? ? number_to_currency(imovel.valor_iptu_cents / 100.0) : "R$ 0"]
   ]
+  pending_intake_status = admin_habitation_pending_intake_status(imovel, intake_review: @intake_review)
 %>
 
 <article id="habitation_<%= imovel.id %>"
@@ -105,6 +106,11 @@
 
     <div class="ax-property-card__top-badges">
       <span class="ax-property-badge ax-property-badge--status"><%= imovel.status.presence || "Sem status" %></span>
+      <% if pending_intake_status.present? %>
+        <span class="ax-property-badge <%= pending_intake_status[:broker_action] ? 'ax-property-badge--warning' : 'ax-property-badge--status' %>">
+          <%= pending_intake_status[:label] %>
+        </span>
+      <% end %>
       <% if imovel.destaque_web_flag %>
         <span class="ax-property-badge ax-property-badge--warning" title="Destaque Web"><i class="bi bi-star-fill"></i></span>
       <% end %>

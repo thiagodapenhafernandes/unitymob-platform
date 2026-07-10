@@ -41,6 +41,7 @@
           development_name = admin_habitation_catalog_development_name(imovel)
           captador_name = imovel.primary_captador_name
           captador_label = captador_name.presence || "Não informado"
+          pending_intake_status = admin_habitation_pending_intake_status(imovel, intake_review: @intake_review)
           data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
           price_label = if imovel.valor_venda_cents.to_i.positive?
                           number_to_currency(imovel.valor_venda_cents / 100.0)
@@ -110,6 +111,9 @@
                     <span class="ax-property-chip ax-property-chip--dark">DWV</span>
                   <% end %>
                   <span class="ax-property-chip"><%= imovel.status.presence || "Status" %></span>
+                  <% if pending_intake_status.present? %>
+                    <span class="ax-property-chip <%= 'ax-property-chip--warning' if pending_intake_status[:broker_action] %>"><%= pending_intake_status[:label] %></span>
+                  <% end %>
                   <span><%= imovel.categoria.presence || "Sem categoria" %></span>
                 </div>
                 <div class="ax-property-table__features ax-property-table__features--inline">

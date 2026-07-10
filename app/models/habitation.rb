@@ -110,6 +110,7 @@ class Habitation < ApplicationRecord
   }.freeze
   CATALOG_VISIBLE_INTAKE_STATUSES = %w[internal published].freeze
   PENDING_REVIEW_INTAKE_STATUSES = %w[submitted_for_admin_review admin_approved].freeze
+  PENDING_WORKFLOW_INTAKE_STATUSES = %w[draft submitted_for_admin_review admin_approved returned_to_broker].freeze
   SITE_RELEASABLE_INTAKE_STATUSES = %w[admin_approved returned_to_broker internal].freeze
   PHOTO_FLOW_CHOICES = {
     "upload" => "Enviar fotos",
