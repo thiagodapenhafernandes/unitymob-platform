@@ -61,8 +61,21 @@ class Admin::HabitationsController < Admin::BaseController
     controller action id habitation_id return_to back_anchor authenticity_token _method utf8 commit
     habitation save_anchor save_navigation save_context release_to_broker_after_save save_internal_after_save
   ].freeze
+  LATEST_HUMAN_ACTIVITY_SQL = <<~SQL.squish.freeze
+    COALESCE(
+      (
+        SELECT MAX(habitation_audit_logs.created_at)
+        FROM habitation_audit_logs
+        WHERE habitation_audit_logs.habitation_id = habitations.id
+          AND habitation_audit_logs.tenant_id = habitations.tenant_id
+          AND habitation_audit_logs.source IN ('admin', 'captacao')
+      ),
+      habitations.data_cadastro_crm,
+      habitations.created_at
+    )
+  SQL
   SORT_OPTIONS = {
-    "data_cadastro_crm" => { label: "Mais recentes", column: "(CASE WHEN habitations.codigo ~ '^[0-9]+$' THEN habitations.codigo::bigint END)", default_direction: "desc" },
+    "data_cadastro_crm" => { label: "Mais recentes", column: LATEST_HUMAN_ACTIVITY_SQL, default_direction: "desc" },
     "codigo" => { label: "Referência", column: "codigo", default_direction: "asc" },
     "categoria" => { label: "Categoria", column: "categoria", default_direction: "asc" },
     "endereco" => { label: "Endereço", column: "endereco", default_direction: "asc" },

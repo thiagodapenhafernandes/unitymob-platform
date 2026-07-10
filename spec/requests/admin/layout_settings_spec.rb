@@ -24,13 +24,27 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
           admin_workspace_color: "#F4F6FA",
           admin_sidebar_color: "#FFFFFF",
           admin_primary_color: "#365F8F",
-          admin_ink_color: "#1F2733"
+          admin_ink_color: "#1F2733",
+          admin_menu_section_colors: {
+            product: {
+              background_color: "#123456",
+              background_opacity: "42",
+              text_color: "#234567",
+              border_color: "#345678"
+            }
+          }
         }
       }
 
       expect(response).to redirect_to(edit_admin_layout_setting_path)
       expect(LayoutSetting.instance.reload.admin_workspace_color).to eq("#F4F6FA")
       expect(LayoutSetting.instance.reload.admin_sidebar_color).to eq("#FFFFFF")
+      expect(LayoutSetting.instance.reload.admin_menu_section_styles["product"]).to eq(
+        "background_color" => "#123456",
+        "background_opacity" => 42,
+        "text_color" => "#234567",
+        "border_color" => "#345678"
+      )
     end
 
     it "permite configurar parâmetros objetivos da inteligência de interesse" do

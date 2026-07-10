@@ -10,6 +10,17 @@
   admin_sidebar ||= LayoutSetting::ADMIN_SIDEBAR_DEFAULT
   admin_primary = @layout_setting.admin_primary_color.presence || LayoutSetting::ADMIN_PRIMARY_DEFAULT
   admin_ink ||= LayoutSetting::ADMIN_INK_DEFAULT
+  admin_menu_section_styles = @layout_setting.admin_menu_section_styles
+  admin_menu_sections = [
+    { key: "product", label: "Produto", icon: "grid-1x2" },
+    { key: "operation", label: "Operação", icon: "briefcase" },
+    { key: "management", label: "Gestão", icon: "people" },
+    { key: "growth", label: "Crescimento", icon: "graph-up-arrow" },
+    { key: "public_site", label: "Site público", icon: "globe2" },
+    { key: "integrations", label: "Integrações", icon: "plug" },
+    { key: "settings", label: "Configurações", icon: "sliders" },
+    { key: "account", label: "Conta", icon: "building-gear" }
+  ]
   public_primary = @layout_setting.primary_color.presence || "#022B3A"
   public_secondary = @layout_setting.secondary_color.presence || "#053C5E"
   public_accent = @layout_setting.accent_color.presence || "#BFAB25"
@@ -139,6 +150,71 @@
               <strong><%= account_brand_name %></strong>
               <small>Base usada no login, plataforma e site público.</small>
             </div>
+          </div>
+        <% end %>
+
+        <%= ax_panel(
+              title: "Divisões do menu",
+              subtitle: "Controle fundo, opacidade, texto e borda de cada área. As mudanças aparecem imediatamente na sidebar antes de salvar.",
+              actions: tag.span("navegação", class: "ax-badge ax-badge--gray")
+            ) do %>
+          <div class="layout-settings-menu-style-grid">
+            <% admin_menu_sections.each do |section| %>
+              <% key = section[:key] %>
+              <% style = admin_menu_section_styles.fetch(key) %>
+              <% css_key = key.dasherize %>
+              <section class="layout-settings-menu-style-card">
+                <div class="layout-settings-menu-style-preview"
+                     data-menu-section-preview="<%= key %>"
+                     style="--nav-section-background:var(--admin-nav-<%= css_key %>-background);--nav-section-background-opacity:var(--admin-nav-<%= css_key %>-background-opacity);--nav-section-text:var(--admin-nav-<%= css_key %>-text);--nav-section-border:var(--admin-nav-<%= css_key %>-border);">
+                  <i class="bi bi-<%= section[:icon] %>"></i>
+                  <strong><%= section[:label] %></strong>
+                  <i class="bi bi-chevron-down"></i>
+                </div>
+
+                <div class="layout-settings-menu-style-controls">
+                  <% {
+                    "background_color" => ["Fundo", "background"],
+                    "text_color" => ["Texto", "text"],
+                    "border_color" => ["Borda", "border"]
+                  }.each do |property, (label, css_property)| %>
+                    <div class="ax-field ax-color-field">
+                      <%= label_tag "layout_setting_admin_menu_section_colors_#{key}_#{property}", label %>
+                      <div class="ax-color-control">
+                        <%= color_field_tag "layout_setting[admin_menu_section_colors][#{key}][#{property}]",
+                              style[property],
+                              id: "layout_setting_admin_menu_section_colors_#{key}_#{property}",
+                              class: "ax-color-control__swatch",
+                              title: "Escolha a cor de #{label.downcase} de #{section[:label]}",
+                              oninput: "this.nextElementSibling.value = this.value",
+                              data: { action: "input->layout-theme-preview#updateMenuSection", menu_section_key: key, menu_style_property: css_property } %>
+                        <%= text_field_tag "layout_setting[admin_menu_section_colors][#{key}][#{property}]",
+                              style[property],
+                              class: "ax-color-control__text",
+                              spellcheck: false,
+                              oninput: "this.previousElementSibling.value = this.value",
+                              data: { action: "input->layout-theme-preview#updateMenuSection", menu_section_key: key, menu_style_property: css_property } %>
+                      </div>
+                    </div>
+                  <% end %>
+
+                  <div class="ax-field layout-settings-menu-opacity">
+                    <%= label_tag "layout_setting_admin_menu_section_colors_#{key}_background_opacity", "Opacidade" %>
+                    <div class="layout-settings-menu-opacity__control">
+                      <%= number_field_tag "layout_setting[admin_menu_section_colors][#{key}][background_opacity]",
+                            style["background_opacity"],
+                            id: "layout_setting_admin_menu_section_colors_#{key}_background_opacity",
+                            min: 0,
+                            max: 100,
+                            step: 1,
+                            class: "ax-control",
+                            data: { action: "input->layout-theme-preview#updateMenuSection", menu_section_key: key, menu_style_property: "background-opacity" } %>
+                      <span>%</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            <% end %>
           </div>
         <% end %>
 

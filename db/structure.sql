@@ -3025,7 +3025,8 @@ CREATE TABLE public.layout_settings (
     admin_workspace_color character varying DEFAULT '#EEF2F7'::character varying NOT NULL,
     interest_intelligence_enabled boolean DEFAULT true NOT NULL,
     interest_intelligence_instructions text,
-    interest_intelligence_settings jsonb DEFAULT '{}'::jsonb NOT NULL
+    interest_intelligence_settings jsonb DEFAULT '{}'::jsonb NOT NULL,
+    admin_menu_section_colors jsonb DEFAULT '{"product": {"text_color": "#2563EB", "border_color": "#2563EB", "background_color": "#2563EB", "background_opacity": 30}, "operation": {"text_color": "#0F766E", "border_color": "#0F766E", "background_color": "#0F766E", "background_opacity": 30}, "management": {"text_color": "#7C3AED", "border_color": "#7C3AED", "background_color": "#7C3AED", "background_opacity": 30}, "growth": {"text_color": "#DB2777", "border_color": "#DB2777", "background_color": "#DB2777", "background_opacity": 30}, "public_site": {"text_color": "#0891B2", "border_color": "#0891B2", "background_color": "#0891B2", "background_opacity": 30}, "integrations": {"text_color": "#D97706", "border_color": "#D97706", "background_color": "#D97706", "background_opacity": 30}, "settings": {"text_color": "#64748B", "border_color": "#64748B", "background_color": "#64748B", "background_opacity": 30}, "account": {"text_color": "#475569", "border_color": "#475569", "background_color": "#475569", "background_opacity": 30}}'::jsonb NOT NULL
 );
 
 
@@ -14243,6 +14244,7 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260710134500'),
 ('20260710113000'),
 ('20260710094500'),
 ('20260710093000'),

@@ -26,7 +26,7 @@
    têm a mesma especificidade que [hidden] e venciam por ordem de carga.
    Sem isto, filtros/submenus/dropdowns/modais aparecem sempre abertos. */
 [hidden] { display: none !important; }
-.ax-app ul, .ax-app ol { margin: 0 0 .75rem; padding-left: 1.4rem; }
+.ax-app ul, .ax-app ol { margin: 0 0 .75rem; padding-left: 0.5rem; }
 .ax-app summary { cursor: pointer; }
 
 /* ---------- Grid ---------- */

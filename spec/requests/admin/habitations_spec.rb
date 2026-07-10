@@ -1219,14 +1219,30 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(owned_by_other.titulo_anuncio)
   end
 
-  it "ordena 'Mais recentes' pela referência numérica maior" do
-    lower_reference = create(:habitation, codigo: "8826", titulo_anuncio: "Imóvel referência menor", data_cadastro_crm: 1.hour.ago)
-    higher_reference = create(:habitation, codigo: "8882", titulo_anuncio: "Imóvel referência maior", data_cadastro_crm: 10.days.ago)
+  it "ordena 'Mais recentes' pela última atividade humana e ignora sincronizações técnicas" do
+    human_edited = create(
+      :habitation,
+      codigo: "8826",
+      titulo_anuncio: "Imóvel alterado por humano",
+      data_cadastro_crm: 10.days.ago,
+      updated_at: 2.days.ago
+    )
+    synced_by_dwv = create(
+      :habitation,
+      codigo: "9999",
+      titulo_anuncio: "Imóvel sincronizado pelo DWV",
+      data_cadastro_crm: 1.hour.from_now,
+      data_atualizacao_crm: 3.hours.from_now,
+      last_sync_at: 3.hours.from_now,
+      updated_at: 3.hours.from_now
+    )
+    create(:habitation_audit_log, habitation: human_edited, admin_user: admin, source: "admin", created_at: 2.hours.from_now)
+    create(:habitation_audit_log, habitation: synced_by_dwv, admin_user: admin, source: "integracao", created_at: 3.hours.from_now)
 
     get admin_habitations_path(sort: "data_cadastro_crm", direction: "desc")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body.index(higher_reference.titulo_anuncio)).to be < response.body.index(lower_reference.titulo_anuncio)
+    expect(response.body.index(human_edited.titulo_anuncio)).to be < response.body.index(synced_by_dwv.titulo_anuncio)
   end
 
   it "filtra por rua considerando endereço estruturado e legado" do
