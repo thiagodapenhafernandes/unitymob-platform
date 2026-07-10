@@ -106,11 +106,6 @@
 
     <div class="ax-property-card__top-badges">
       <span class="ax-property-badge ax-property-badge--status"><%= imovel.status.presence || "Sem status" %></span>
-      <% if pending_intake_status.present? %>
-        <span class="ax-property-badge <%= pending_intake_status[:broker_action] ? 'ax-property-badge--warning' : 'ax-property-badge--status' %>">
-          <%= pending_intake_status[:label] %>
-        </span>
-      <% end %>
       <% if imovel.destaque_web_flag %>
         <span class="ax-property-badge ax-property-badge--warning" title="Destaque Web"><i class="bi bi-star-fill"></i></span>
       <% end %>
@@ -138,6 +133,9 @@
         <div class="ax-property-card__identity">
           <span class="ax-property-chip ax-property-card__identity-status"><%= imovel.status.presence || "Status" %></span>
           <span class="ax-property-card__identity-category"><%= imovel.categoria.presence || "Sem categoria" %></span>
+          <% if pending_intake_status.present? %>
+            <span class="ax-property-chip <%= pending_intake_status[:class_name] %>"><%= pending_intake_status[:label] %></span>
+          <% end %>
           <% if imovel.dwv_property? %>
             <span class="ax-property-chip ax-property-chip--dark" title="<%= imovel.codigo_dwv.present? ? "Código DWV: #{imovel.codigo_dwv}" : "Imóvel sincronizado via DWV" %>">DWV</span>
           <% end %>

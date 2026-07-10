@@ -78,7 +78,12 @@ module Admin::HabitationsHelper
 
     {
       label: habitation.intake_status_label,
-      broker_action: habitation.intake_status.in?(%w[draft admin_approved returned_to_broker])
+      class_name: {
+        "draft" => "ax-property-chip--intake-draft",
+        "submitted_for_admin_review" => "ax-property-chip--intake-review",
+        "admin_approved" => "ax-property-chip--intake-approved",
+        "returned_to_broker" => "ax-property-chip--intake-returned"
+      }.fetch(habitation.intake_status)
     }
   end
 

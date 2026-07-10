@@ -240,7 +240,7 @@
 <div class="habitations-workspace-scopebar">
   <div class="habitations-view-toggle habitations-view-toggle--scope" role="group" aria-label="Escopo dos imóveis">
     <%# Catálogo: todos podem navegar todos os imóveis (curadoria). %>
-    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all")), class: "habitations-view-toggle__item #{all_active ? 'is-active' : ''}" do %>
+    <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "all")), class: "habitations-view-toggle__item #{all_active ? 'is-active' : ''}" do %>
       <i class="bi bi-collection"></i>
       <span>Todos</span>
     <% end %>

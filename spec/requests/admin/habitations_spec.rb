@@ -366,6 +366,15 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(internal.titulo_anuncio)
     expect(response.body).not_to include(published.titulo_anuncio)
 
+    html = Nokogiri::HTML(response.body)
+    draft_card = html.at_css("#habitation_#{draft.id}")
+    expect(draft_card.at_css(".ax-property-card__identity").text).to include("Rascunho")
+    expect(draft_card.at_css(".ax-property-chip--intake-draft")).to be_present
+    expect(draft_card.at_css(".ax-property-card__media").text).not_to include("Rascunho")
+    expect(response.body).to include("ax-property-chip--intake-review")
+    expect(response.body).to include("ax-property-chip--intake-approved")
+    expect(response.body).to include("ax-property-chip--intake-returned")
+
     get admin_habitations_path(intake_review: "pending", ownership: "all", visualizacao: "tabela")
 
     expect(response).to have_http_status(:ok)
@@ -373,6 +382,10 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Em revisão administrativa")
     expect(response.body).to include("Aguardando aceite do corretor")
     expect(response.body).to include("Devolvido ao corretor")
+    expect(response.body).to include("ax-property-chip--intake-draft")
+    expect(response.body).to include("ax-property-chip--intake-review")
+    expect(response.body).to include("ax-property-chip--intake-approved")
+    expect(response.body).to include("ax-property-chip--intake-returned")
     expect(response.body).not_to include("Disponível internamente")
     expect(response.body).not_to include("Liberado para site")
   end
@@ -393,6 +406,24 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(approved.titulo_anuncio)
     expect(response.body).not_to include(draft.titulo_anuncio)
     expect(response.body).not_to include(returned.titulo_anuncio)
+  end
+
+  it "permite sair das pendências para Todos sem restaurar o filtro salvo na sessão" do
+    pending = create(:habitation, :broker_intake, admin_user: admin, intake_status: "submitted_for_admin_review", titulo_anuncio: "Pendente da sessão")
+    published = create(:habitation, :broker_intake, admin_user: admin, intake_status: "published", titulo_anuncio: "Publicado em Todos")
+
+    get admin_habitations_path(intake_review: "pending", ownership: "all")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(pending.titulo_anuncio)
+    expect(response.body).to include("intake_review=all")
+
+    get admin_habitations_path(intake_review: "all", ownership: "all")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(published.titulo_anuncio)
+    expect(response.body).not_to include(pending.titulo_anuncio)
+    expect(response.body).to include('habitations-view-toggle__item is-active')
   end
 
   it "mostra para o corretor somente suas captações aguardando aceite" do
