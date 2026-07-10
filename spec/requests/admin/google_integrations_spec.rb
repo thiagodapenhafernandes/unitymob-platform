@@ -24,8 +24,71 @@ RSpec.describe "Admin::GoogleIntegrations", type: :request do
     expect(response.body).to include("Google")
     expect(response.body).to include("Google Sheets")
     expect(response.body).to include("Agenda")
+    expect(response.body).to include("Maps")
     expect(response.body).to include("Coluna-chave para atualização")
     expect(response.body).to include("Cód. imóvel CRM")
+  end
+
+  it "salva a configuração do Google Maps por conta" do
+    patch admin_google_integration_path, params: {
+      google_maps: {
+        enabled: "true",
+        api_key: "maps-key-restrita",
+        default_display_mode: "approximate",
+        approximate_radius_meters: "300",
+        default_zoom: "16",
+        satellite_enabled: "true",
+        street_view_enabled: "false",
+        external_link_enabled: "true"
+      }
+    }
+
+    expect(response).to redirect_to(admin_google_integration_path(tab: "maps"))
+    setting = GoogleMapsIntegrationSetting.find_by!(tenant: admin.tenant)
+    expect(setting).to have_attributes(
+      enabled: true,
+      default_display_mode: "approximate",
+      approximate_radius_meters: 300,
+      default_zoom: 16,
+      satellite_enabled: true,
+      street_view_enabled: false,
+      external_link_enabled: true
+    )
+    expect(setting.api_key).to eq("maps-key-restrita")
+  end
+
+  it "preserva a chave do Maps quando o campo vem em branco" do
+    setting = GoogleMapsIntegrationSetting.for(admin.tenant)
+    setting.update!(enabled: true, api_key: "maps-key-atual")
+
+    patch admin_google_integration_path, params: {
+      google_maps: {
+        enabled: "true",
+        api_key: "",
+        default_display_mode: "exact",
+        approximate_radius_meters: "220",
+        default_zoom: "15",
+        satellite_enabled: "true",
+        street_view_enabled: "false",
+        external_link_enabled: "true"
+      }
+    }
+
+    expect(response).to redirect_to(admin_google_integration_path(tab: "maps"))
+    expect(setting.reload.api_key).to eq("maps-key-atual")
+    expect(setting.default_display_mode).to eq("exact")
+  end
+
+  it "renderiza a prévia somente para a configuração da conta atual" do
+    setting = GoogleMapsIntegrationSetting.for(admin.tenant)
+    setting.update!(enabled: true, api_key: "maps-key-preview")
+
+    get admin_google_integration_path(tab: "maps")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Prévia da integração")
+    expect(response.body).to include("maps-key-preview")
+    expect(response.body).to include("data-public-property-map-provider-value=\"google\"")
   end
 
   it "salva as configuracoes de Apps Script para captacoes" do

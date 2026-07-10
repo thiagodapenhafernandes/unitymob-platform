@@ -1,9 +1,24 @@
 <% property_title = property.display_title %>
 <% property_constructor = property.effective_constructor %>
+<% property_path = habitation_path(property) %>
+<% sale_discount = property.sale_discount? %>
+<% rent_discount = property.rent_discount? %>
+<% available_units_count = property.empreendimento? ? property.available_units_count : 0 %>
+<%
+  card_cache_key = [
+    "public-property-card-v5",
+    public_tenant.id,
+    request.host,
+    property.cache_key_with_version,
+    property_constructor&.cache_key_with_version,
+    current_admin_user.present?
+  ]
+%>
+<% cache card_cache_key, expires_in: 5.minutes do %>
 
 <div class="public-property-card group bg-white rounded-[16px] overflow-hidden shadow-[0_14px_34px_rgba(15,23,42,0.1)] hover:shadow-[0_20px_46px_rgba(15,23,42,0.16)] transition-all duration-300 border border-white/80 ring-1 ring-slate-900/5 flex flex-col relative cursor-pointer"
      data-controller="clickable-card"
-     data-clickable-card-url-value="<%= habitation_path(property) %>"
+     data-clickable-card-url-value="<%= property_path %>"
      data-property-id="<%= property.id %>">
   
   <!-- Image Carousel Area -->
@@ -37,11 +52,11 @@
     </div>
 
     <!-- Development Units Badge (Bottom Left) -->
-    <% if property.empreendimento? && property.available_units_count > 0 %>
+    <% if available_units_count > 0 %>
       <div class="absolute bottom-3 left-3 z-20">
         <span class="px-3 py-1.5 bg-blue-three text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1.5">
           <i class="bi bi-building"></i>
-          <%= property.available_units_count %> <%= property.available_units_count == 1 ? 'unidade' : 'unidades' %>
+          <%= available_units_count %> <%= available_units_count == 1 ? 'unidade' : 'unidades' %>
         </span>
       </div>
     <% end %>
@@ -88,7 +103,7 @@
     
     <!-- Link Overlay -->
     <%= link_to "",
-                habitation_path(property),
+                property_path,
                 class: "absolute inset-0 z-10",
                 data: {
                   controller: "marketing-tracker",
@@ -96,13 +111,13 @@
                   marketing_tracker_event_type_value: "property_card_click",
                   marketing_tracker_placement_value: "property_card_image",
                   marketing_tracker_label_value: property_title,
-                  marketing_tracker_target_url_value: habitation_path(property),
+                  marketing_tracker_target_url_value: property_path,
                   marketing_tracker_habitation_id_value: property.id
                 } %>
   </div>
 
   <!-- Content -->
-  <div class="pt-4 px-5 flex flex-col flex-1 <%= (property.sale_discount? || property.rent_discount?) ? 'pb-0' : 'pb-4' %>">
+  <div class="pt-4 px-5 flex flex-col flex-1 <%= (sale_discount || rent_discount) ? 'pb-0' : 'pb-4' %>">
     
     <!-- Location -->
     <div class="flex items-center gap-1.5 text-gray-500 mb-2 text-xs font-medium uppercase tracking-wide">
@@ -154,7 +169,7 @@
                   data-marketing-tracker-event-type-value="whatsapp_click"
                   data-marketing-tracker-placement-value="property_card"
                   data-marketing-tracker-label-value="<%= property_title %>"
-                  data-marketing-tracker-target-url-value="<%= habitation_path(property) %>"
+                  data-marketing-tracker-target-url-value="<%= property_path %>"
                   data-marketing-tracker-habitation-id-value="<%= property.id %>"
                   data-property-id="<%= property.id %>"
                   data-property-code="<%= property.codigo %>"
@@ -178,7 +193,7 @@
                   data-marketing-tracker-event-type-value="whatsapp_click"
                   data-marketing-tracker-placement-value="property_card"
                   data-marketing-tracker-label-value="<%= property_title %>"
-                  data-marketing-tracker-target-url-value="<%= habitation_path(property) %>"
+                  data-marketing-tracker-target-url-value="<%= property_path %>"
                   data-marketing-tracker-habitation-id-value="<%= property.id %>"
                   data-property-id="<%= property.id %>"
                   data-property-code="<%= property.codigo %>"
@@ -216,79 +231,11 @@
   </div>
 
   <!-- Opportunity Banner (Bottom) - Reduced sale or rent prices -->
-  <% if property.sale_discount? || property.rent_discount? %>
+  <% if sale_discount || rent_discount %>
     <div class="w-full bg-green-600 py-2 px-4 flex items-center justify-center">
-      <span class="text-white text-xs font-bold uppercase tracking-widest"><%= property.rent_discount? ? "LOCAÇÃO COM PREÇO REDUZIDO" : "OPORTUNIDADE" %></span>
+      <span class="text-white text-xs font-bold uppercase tracking-widest"><%= rent_discount ? "LOCAÇÃO COM PREÇO REDUZIDO" : "OPORTUNIDADE" %></span>
     </div>
   <% end %>
 
 </div>
-
-<style>
-/* Força layout correto do mini-carrossel dentro dos cards */
-.card-swiper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.card-swiper .swiper-wrapper {
-  display: flex;
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transition-property: transform;
-}
-
-.card-swiper .swiper-slide {
-  width: 100% !important;
-  height: 100%;
-  flex-shrink: 0;
-  position: relative;
-}
-
-/* Garante que apenas um slide seja visível por vez */
-.card-swiper .swiper-wrapper {
-  transform: translate3d(0px, 0px, 0px);
-}
-
-/* Estiliza botões de navegação do card */
-/* Estiliza botões de navegação do card */
-.card-swiper .swiper-button-next,
-.card-swiper .swiper-button-prev {
-  /* color: #1F7A8C !important; Removed to allow inline class override or default */
-  opacity: 0;
-  transition: all 0.3s;
-  z-index: 40 !important;
-  width: 24px !important; /* Standard size */
-  height: 24px !important;
-}
-
-.card-swiper .swiper-button-next::after,
-.card-swiper .swiper-button-prev::after {
-  font-size: 20px !important; /* Adjust icon size */
-  font-weight: bold;
-}
-
-/* Mostra setas no hover do card inteiro */
-.group:hover .card-swiper .swiper-button-next,
-.group:hover .card-swiper .swiper-button-prev {
-  opacity: 1 !important;
-}
-
-/* Estiliza paginação do card */
-.card-swiper .swiper-pagination {
-  z-index: 30 !important;
-}
-
-.card-swiper .swiper-pagination-bullet {
-  background: white;
-  opacity: 0.7;
-}
-
-.card-swiper .swiper-pagination-bullet-active {
-  opacity: 1;
-  background: white;
-}
-</style>
+<% end %>

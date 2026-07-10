@@ -98,6 +98,16 @@ module HabitationsHelper
     [property&.bairro, property&.cidade, property&.uf].compact_blank.join(" - ")
   end
 
+  def public_property_media_url(property)
+    candidate = Array(property&.videos).compact_blank.first || property&.tour_virtual.to_s.presence
+    uri = URI.parse(candidate.to_s)
+    return unless uri.is_a?(URI::HTTP) && uri.host.present?
+
+    uri.to_s
+  rescue URI::InvalidURIError
+    nil
+  end
+
   # Características disponíveis para filtros
   CHARACTERISTICS = {
     'lancamento' => { label: 'Lançamento', icon: 'bi-stars' },

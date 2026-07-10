@@ -472,6 +472,7 @@ Rails.application.routes.draw do
   
   # Quick search by code
   get 'buscar-codigo', to: 'habitations#search_by_code', as: :search_by_code
+  get 'favoritos', to: 'habitations#favorites', as: :favorite_habitations
   
   # Habitations - SEO friendly routes
   get "imoveis/:seo_slug",

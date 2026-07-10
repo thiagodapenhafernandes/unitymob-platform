@@ -182,4 +182,41 @@
       <% end %>
     </div>
   <% end %>
+
+  <div class="tw-mt-3 tw-pt-3 tw-border-t tw-border-line-soft">
+    <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-mb-2">
+      <div>
+        <p class="ax-label tw-mb-0">Exibição no site</p>
+        <p class="form-text tw-mb-0">Controle a precisão do mapa e a exposição da vista da rua somente para este imóvel.</p>
+      </div>
+      <%= ax_badge("Privacidade", tone: :blue, dot: true) %>
+    </div>
+
+    <%= ax_field_grid(columns: 12, gap: :compact) do %>
+      <div class="ax-span-6">
+        <%= ax_select_field(
+              form: f,
+              method: :public_map_display_mode,
+              label: "Localização pública",
+              choices: Habitation::PUBLIC_MAP_DISPLAY_MODES.map { |value, label| [label, value] },
+              select_options: { selected: f.object.public_map_display_mode },
+              html_options: { disabled: !can_edit_protected_habitation_fields }
+            ) %>
+      </div>
+      <div class="ax-span-6">
+        <%= ax_select_field(
+              form: f,
+              method: :public_street_view_mode,
+              label: "Vista da rua",
+              choices: Habitation::PUBLIC_STREET_VIEW_MODES.map { |value, label| [label, value] },
+              select_options: { selected: f.object.public_street_view_mode },
+              html_options: { disabled: !can_edit_protected_habitation_fields }
+            ) %>
+      </div>
+    <% end %>
+
+    <%= ax_inline_notice(tone: :warning, icon: "shield-exclamation", class_name: "tw-mt-2") do %>
+      <span>Localização exata e vista da rua devem ser liberadas apenas quando houver autorização para divulgar o endereço.</span>
+    <% end %>
+  </div>
 <% end %>

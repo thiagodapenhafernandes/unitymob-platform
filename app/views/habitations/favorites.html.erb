@@ -1,0 +1,25 @@
+<div class="public-favorites min-h-screen bg-gray-50 pb-16 pt-24">
+  <div class="container-custom">
+    <header class="public-favorites__header">
+      <p class="public-favorites__eyebrow">Sua seleção</p>
+      <h1>Imóveis favoritos</h1>
+      <p>Salve imóveis para comparar e revisitar quando quiser.</p>
+    </header>
+
+    <section class="public-favorites__content" data-controller="public-favorites">
+      <div class="public-favorites__summary">
+        <strong data-public-favorites-target="count">0 imóveis</strong>
+        <button type="button" data-action="click->public-favorites#clear" data-public-favorites-target="clear" hidden>Limpar favoritos</button>
+      </div>
+
+      <div class="public-favorites__grid" data-public-favorites-target="list"></div>
+
+      <div class="public-favorites__empty" data-public-favorites-target="empty">
+        <i class="bi bi-bookmark-heart"></i>
+        <h2>Nenhum imóvel salvo ainda</h2>
+        <p>Toque no marcador em qualquer imóvel para criar sua seleção.</p>
+        <%= link_to "Explorar imóveis", habitations_path, class: "public-favorites__primary-link" %>
+      </div>
+    </section>
+  </div>
+</div>

@@ -30,18 +30,20 @@ export default class extends Controller {
     const leadOrigin = trigger.dataset.leadOrigin || ""
     const shareToken = trigger.dataset.shareToken || this.shareTokenValue || ""
     const negotiationType = trigger.dataset.negotiationType || "sale"
+    const forceLeadForm = trigger.dataset.requireLeadForm === "true"
+    const requiresLeadForm = forceLeadForm || this.requiresLeadForm(negotiationType)
 
     // Store message for redirect
     this.whatsappMessage = message
     this.negotiationType = negotiationType
 
-    if (!this.requiresLeadForm(negotiationType)) {
+    if (!requiresLeadForm) {
       window.open(this.whatsappUrlFor(negotiationType, message), "_blank")
       return
     }
 
     const routing = await this.fetchWhatsappRouting(propertyId, message)
-    if (routing && routing.capture_required === false && routing.whatsapp_url) {
+    if (!forceLeadForm && routing && routing.capture_required === false && routing.whatsapp_url) {
       window.location.href = routing.whatsapp_url
       return
     }

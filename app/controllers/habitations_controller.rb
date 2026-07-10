@@ -39,13 +39,13 @@ class HabitationsController < ApplicationController
     load_filter_options
 
     @habitations = listing_scope
-      .with_attached_photos
       .includes(
         :address,
         { constructor: { logo_attachment: :blob } },
         { empreendimento: { constructor: { logo_attachment: :blob } } }
       )
       .paginate(page: requested_public_listing_page, per_page: PUBLIC_LISTING_PER_PAGE, total_entries: total_entries)
+    PublicSite::CardPhotoPreloader.new(@habitations.to_a, limit: 5).call
     
     # SEO page name
     @page_name = 'imoveis'
@@ -87,6 +87,12 @@ class HabitationsController < ApplicationController
       redirect_to habitations_path(search: code), 
                   alert: "Imóvel com código #{code} não encontrado. Veja outros imóveis disponíveis."
     end
+  end
+
+  # A lista é mantida no navegador para visitantes públicos, sem exigir conta.
+  def favorites
+    @page_title = "Imóveis favoritos | #{public_site_name}"
+    @page_description = "Consulte os imóveis que você salvou para revisar depois."
   end
   
   # POST /imoveis/:id/schedule_visit
@@ -179,6 +185,7 @@ class HabitationsController < ApplicationController
     end
 
     load_share_context
+    @public_map = PublicMaps::PropertyPresentation.new(@habitation)
 
     # Incrementar contador de visualizações (em background)
     # increment_view_count(@habitation.id)
@@ -198,13 +205,13 @@ class HabitationsController < ApplicationController
       @is_development_page = true
       @development_units = @habitation.development_units
         .newest_first
-        .with_attached_photos
         .includes(
           :address,
           { constructor: { logo_attachment: :blob } },
           { empreendimento: { constructor: { logo_attachment: :blob } } }
         )
         .to_a
+      PublicSite::CardPhotoPreloader.new(@development_units, limit: 5).call
       # Usar template específico para empreendimentos
       render 'empreendimento_show' and return
     end
@@ -222,7 +229,6 @@ class HabitationsController < ApplicationController
         
         @related_properties = public_habitation_scope
           .active
-          .with_attached_photos
           .includes(
             :address,
             { constructor: { logo_attachment: :blob } },
@@ -239,6 +245,7 @@ class HabitationsController < ApplicationController
           .newest_first
           .limit(6)
           .to_a
+        PublicSite::CardPhotoPreloader.new(@related_properties, limit: 5).call
       end
     end
     
@@ -289,11 +296,11 @@ class HabitationsController < ApplicationController
   end
 
   def public_habitation_scope
-    public_tenant.habitations.with_attached_photos
+    public_tenant.habitations
   end
 
   def public_habitation_lookup_scope
-    public_habitation_scope.includes(
+    public_habitation_scope.with_attached_photos.includes(
       :address,
       { constructor: { logo_attachment: :blob } },
       { empreendimento: { constructor: { logo_attachment: :blob } } }

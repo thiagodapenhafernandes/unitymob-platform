@@ -1,8 +1,10 @@
 import { application } from "controllers/application"
 import { lazyLoadControllersFrom } from "@hotwired/stimulus-loading"
 import FancyboxGalleryController from "controllers/fancybox_gallery_controller"
+import PublicGalleryMobileController from "controllers/public_gallery_mobile_controller"
 
 application.register("fancybox-gallery", FancyboxGalleryController)
+application.register("public-gallery-mobile", PublicGalleryMobileController)
 
 // Composer WhatsApp: registro explicito (com catch) — nao dependemos do
 // lazy-load por MutationObserver, que se mostrou fragil no PWA iOS.

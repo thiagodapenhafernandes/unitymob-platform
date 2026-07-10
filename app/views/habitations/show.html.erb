@@ -8,13 +8,28 @@
 <% has_rent_price = @habitation.valor_locacao_cents.to_i.positive? %>
 <% has_discount = @habitation.sale_discount? %>
 <% has_rent_discount = @habitation.rent_discount? %>
+<% public_media_url = public_property_media_url(@habitation) %>
+<% map_coordinates = @public_map.center_coordinates if @public_map.visible? %>
+<% street_view_coordinates = @public_map.street_view_coordinates if @public_map.street_view_enabled? %>
 
 <% content_for :head do %>
   <%= json_ld_tag(real_estate_listing_schema(@habitation)) %>
 <% end %>
 
-<div class="public-habitations-show bg-gray-50 min-h-screen pb-14 habitation-details" data-property-id="<%= @habitation.id %>">
-  <div class="public-habitations-show__breadcrumb bg-white border-b border-gray-100 py-3 mt-[72px]">
+<div class="public-habitations-show bg-gray-50 min-h-screen pb-14 habitation-details"
+     data-property-id="<%= @habitation.id %>"
+     data-controller="<%= "public-property-map" if @public_map.visible? %>"
+     data-public-property-map-provider-value="<%= @public_map.provider if @public_map.visible? %>"
+     data-public-property-map-api-key-value="<%= @public_map.api_key if @public_map.visible? %>"
+     data-public-property-map-latitude-value="<%= format('%.7f', map_coordinates.first) if map_coordinates %>"
+     data-public-property-map-longitude-value="<%= format('%.7f', map_coordinates.last) if map_coordinates %>"
+     data-public-property-map-street-latitude-value="<%= format('%.7f', street_view_coordinates.first) if street_view_coordinates %>"
+     data-public-property-map-street-longitude-value="<%= format('%.7f', street_view_coordinates.last) if street_view_coordinates %>"
+     data-public-property-map-radius-value="<%= @public_map.radius_meters if @public_map.visible? %>"
+     data-public-property-map-zoom-value="<%= @public_map.zoom if @public_map.visible? %>"
+     data-public-property-map-satellite-enabled-value="<%= @public_map.satellite_enabled? if @public_map.visible? %>"
+     data-public-property-map-street-view-enabled-value="<%= @public_map.street_view_enabled? if @public_map.visible? %>">
+  <div class="public-habitations-show__breadcrumb public-habitations-show__breadcrumb--desktop bg-white border-b border-gray-100 py-3 mt-[72px]">
     <div class="container-custom">
       <div class="public-habitations-show__breadcrumb-list flex items-center gap-2 text-xs text-gray-400 uppercase tracking-wide">
         <%= link_to "Início", root_path, class: "hover:text-blue-three" %>
@@ -26,10 +41,22 @@
     </div>
   </div>
 
-  <div class="container-custom pt-8">
-    <section class="public-habitations-show__gallery relative overflow-hidden rounded-2xl bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]" data-controller="fancybox-gallery">
+  <div class="container-custom pt-8" data-controller="fancybox-gallery">
+    <section class="public-habitations-show__gallery relative overflow-hidden rounded-2xl bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
+             data-controller="public-gallery-mobile"
+             data-public-gallery-mobile-property-id-value="<%= @habitation.id %>"
+             data-public-gallery-mobile-property-url-value="<%= habitation_path(@habitation) %>"
+             data-public-gallery-mobile-property-title-value="<%= title %>"
+             data-public-gallery-mobile-property-image-url-value="<%= image_url.call(images.first) if images.any? %>"
+             data-public-gallery-mobile-property-price-value="<%= number_to_currency((has_rent_price ? @habitation.valor_locacao_cents : @habitation.valor_venda_cents).to_i / 100.0, unit: 'R$ ', separator: ',', delimiter: '.') if (has_rent_price || has_sale_price) %>"
+             data-public-gallery-mobile-property-location-value="<%= address_text %>">
       <% if images.any? %>
-        <div class="public-habitations-show__gallery-grid grid h-[360px] grid-cols-1 gap-2 md:h-[480px] lg:grid-cols-[1.08fr_1fr]">
+        <div class="public-habitations-show__gallery-badges">
+          <% @habitation.display_badges.each do |badge| %>
+            <span class="public-habitations-show__gallery-badge bg-<%= badge[:tailwind_color] %>"><%= badge[:text] %></span>
+          <% end %>
+        </div>
+        <div class="public-habitations-show__gallery-grid grid h-[360px] grid-cols-1 gap-2 md:h-[400px] lg:grid-cols-[1.08fr_1fr]">
           <a href="<%= image_url.call(images.first) %>"
              data-fancybox="property-gallery"
              data-caption="<%= title %> - Foto 1"
@@ -37,6 +64,7 @@
             <%= image_tag public_image_url(images.first, resize_to_limit: [1200, 900]),
                 alt: "#{title} - Foto 1",
                 class: "h-full w-full object-cover transition-transform duration-700 hover:scale-105 #{public_gallery_image_class(images.first)}",
+                data: { public_gallery_mobile_target: "primaryImage" },
                 style: public_gallery_image_style(images.first, primary: true),
                 fetchpriority: "high",
                 loading: "eager",
@@ -73,16 +101,25 @@
              class="hidden"></a>
         <% end %>
 
+        <div class="public-habitations-show__gallery-mobile-toolbar" aria-label="Ações da galeria">
+          <button type="button" class="public-habitations-show__gallery-control" data-action="click->public-gallery-mobile#toggleFavorite" data-public-gallery-mobile-target="favorite" aria-label="Favoritar imóvel" aria-pressed="false">
+            <i class="bi bi-bookmark"></i>
+          </button>
+          <button type="button" class="public-habitations-show__gallery-control" data-action="click->public-gallery-mobile#share" aria-label="Compartilhar imóvel">
+            <i class="bi bi-share"></i>
+          </button>
+        <button type="button" class="public-habitations-show__gallery-control" data-gallery-open aria-label="Abrir galeria em tela cheia">
+            <i class="bi bi-arrows-fullscreen"></i>
+        </button>
+        <span class="public-habitations-show__gallery-status" data-public-gallery-mobile-target="status" aria-live="polite"></span>
+        </div>
+
+        <span class="public-habitations-show__gallery-counter" data-public-gallery-mobile-target="counter">1 / <%= images.size %></span>
+
         <div class="public-habitations-show__share absolute bottom-4 left-4 z-20">
           <%= render "shared/broker_share_menu", property: @habitation %>
         </div>
 
-        <button type="button"
-           data-gallery-open
-           class="public-habitations-show__gallery-button absolute bottom-4 right-4 z-20 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-blue-three shadow-md transition hover:bg-gray-50">
-          <i class="bi bi-images"></i>
-          Ver <%= images.size %> fotos
-        </button>
       <% else %>
         <div class="public-habitations-show__gallery-empty flex h-[360px] items-center justify-center bg-gray-100">
           <div class="text-center text-gray-400">
@@ -93,76 +130,110 @@
       <% end %>
     </section>
 
-    <div class="public-habitations-show__body mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
-      <main class="public-habitations-show__main min-w-0 space-y-8">
-        <section class="public-habitations-show__header">
-          <div class="mb-4 flex flex-wrap items-center gap-2">
-            <span class="public-habitations-show__code rounded bg-blue-three/10 px-2 py-1 text-[11px] font-bold uppercase tracking-widest text-blue-three">
-              <%= @habitation.codigo %>
-            </span>
-            <% @habitation.display_badges.each do |badge| %>
-              <span class="public-habitations-show__badge rounded bg-<%= badge[:tailwind_color] %> px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
-                <%= badge[:text] %>
-              </span>
-            <% end %>
-          </div>
-
-          <h1 class="public-habitations-show__title text-3xl font-extrabold leading-tight text-gray-950 lg:text-4xl">
-            <%= title %>
-          </h1>
-
-          <% if address_text.present? %>
-            <p class="public-habitations-show__address mt-3 flex items-start gap-2 text-sm text-gray-500">
-              <i class="bi bi-geo-alt text-golden-one"></i>
-              <span><%= address_text %><%= "/#{@habitation.uf}" if @habitation.uf.present? %></span>
-            </p>
+    <% if public_media_url.present? || @public_map.visible? || images.any? %>
+      <nav class="public-habitations-show__media-actions" aria-label="Recursos do imóvel">
+        <% if public_media_url.present? %>
+          <%= link_to public_media_url,
+              target: "_blank",
+              rel: "noopener noreferrer",
+              class: "public-habitations-show__media-action" do %>
+            <i class="bi bi-play-circle"></i>
+            <span><%= @habitation.tour_virtual.present? && public_media_url == @habitation.tour_virtual ? "Tour 360" : "Vídeo" %></span>
           <% end %>
+        <% end %>
+
+        <% if @public_map.visible? %>
+          <button type="button" class="public-habitations-show__media-action" data-action="click->public-property-map#showMap">
+            <i class="bi bi-map"></i>
+            <span>Mapa</span>
+          </button>
+        <% end %>
+
+        <% if @public_map.street_view_enabled? %>
+          <button type="button" class="public-habitations-show__media-action" data-action="click->public-property-map#showStreetView">
+            <i class="bi bi-person-standing"></i>
+            <span>Rua</span>
+          </button>
+        <% end %>
+
+        <% if images.any? %>
+          <button type="button" class="public-habitations-show__media-action public-habitations-show__gallery-open-action" data-gallery-open>
+            <i class="bi bi-images"></i>
+            <span>Ver <%= images.size %> fotos</span>
+          </button>
+        <% end %>
+      </nav>
+    <% end %>
+
+    <nav class="public-habitations-show__breadcrumb public-habitations-show__breadcrumb--mobile" aria-label="Navegação estrutural">
+      <%= link_to "Início", root_path %>
+      <% [@habitation.cidade, @habitation.bairro, @habitation.categoria].compact_blank.each do |breadcrumb_item| %>
+        <i class="bi bi-chevron-right"></i>
+        <span><%= breadcrumb_item %></span>
+      <% end %>
+      <i class="bi bi-chevron-right"></i>
+      <strong><%= @habitation.codigo %></strong>
+    </nav>
+
+    <div class="public-habitations-show__body mt-6">
+      <main class="public-habitations-show__main min-w-0">
+        <section class="public-habitations-show__header">
+        <div class="public-habitations-show__identity mb-4 flex flex-wrap items-center gap-2">
+          <span class="public-habitations-show__code rounded bg-blue-three/10 px-2 py-1 text-[11px] font-bold uppercase tracking-widest text-blue-three">
+            <%= @habitation.codigo %>
+          </span>
+          <% @habitation.display_badges.each do |badge| %>
+            <span class="public-habitations-show__badge rounded bg-<%= badge[:tailwind_color] %> px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
+              <%= badge[:text] %>
+            </span>
+          <% end %>
+        </div>
+
+        <h1 class="public-habitations-show__title text-3xl font-extrabold leading-tight text-gray-950 lg:text-4xl">
+          <%= title %>
+        </h1>
+
+        <% if address_text.present? %>
+          <p class="public-habitations-show__address mt-3 flex items-start gap-2 text-sm text-gray-500">
+            <i class="bi bi-geo-alt text-golden-one"></i>
+            <span><%= address_text %><%= "/#{@habitation.uf}" if @habitation.uf.present? %></span>
+          </p>
+        <% end %>
         </section>
 
-        <section class="public-habitations-show__features">
-          <h2 class="public-habitations-show__section-title mb-4 text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Características</h2>
-          <div class="public-habitations-show__feature-grid grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div class="public-habitations-show__feature-card flex min-h-[116px] items-center gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-three/10 text-blue-three">
-                <i class="bi bi-arrows-fullscreen text-lg"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Área</p>
-                <p class="mt-2 text-lg font-extrabold leading-none text-gray-900"><%= area_text.present? ? "#{number_with_precision(area_text, precision: 0)} m²" : "—" %></p>
-              </div>
-            </div>
+        <div class="public-habitations-show__mobile-price">
+          <%= render "price_card",
+              habitation: @habitation,
+              title: title,
+              has_sale_price: has_sale_price,
+              has_rent_price: has_rent_price,
+              has_discount: has_discount,
+              has_rent_discount: has_rent_discount %>
+        </div>
 
-            <div class="public-habitations-show__feature-card flex min-h-[116px] items-center gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-golden-one/15 text-golden-one">
-                <i class="bi bi-door-closed text-lg"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Quartos</p>
-                <p class="mt-2 text-lg font-extrabold leading-none text-gray-900"><%= @habitation.dormitorios_qtd.to_i.positive? ? @habitation.dormitorios_qtd : "—" %></p>
-              </div>
+        <% feature_items = [] %>
+        <% feature_items << { label: "Área", value: "#{number_with_precision(area_text, precision: 0)} m²", icon: "bi-arrows-fullscreen", tone: "blue" } if area_text.to_f.positive? %>
+        <% feature_items << { label: "Quartos", value: @habitation.dormitorios_qtd.to_i, icon: "bi-door-closed", tone: "gold" } if @habitation.dormitorios_qtd.to_i.positive? %>
+        <% feature_items << { label: "Suítes", value: @habitation.suites_qtd.to_i, icon: "bi-stars", tone: "blue" } if @habitation.suites_qtd.to_i.positive? %>
+        <% feature_items << { label: "Vagas", value: @habitation.vagas_qtd.to_i, icon: "bi-car-front", tone: "gold" } if @habitation.vagas_qtd.to_i.positive? %>
+        <% if feature_items.any? %>
+          <section class="public-habitations-show__features">
+            <h2 class="public-habitations-show__section-title mb-4 text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Características</h2>
+            <div class="public-habitations-show__feature-grid grid gap-4 md:grid-cols-4">
+              <% feature_items.each do |feature| %>
+                <div class="public-habitations-show__feature-card flex min-h-[116px] items-center gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                  <div class="public-habitations-show__feature-icon public-habitations-show__feature-icon--<%= feature[:tone] %> flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
+                    <i class="bi <%= feature[:icon] %> text-lg"></i>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400"><%= feature[:label] %></p>
+                    <p class="mt-2 text-lg font-extrabold leading-none text-gray-900"><%= feature[:value] %></p>
+                  </div>
+                </div>
+              <% end %>
             </div>
-
-            <div class="public-habitations-show__feature-card flex min-h-[116px] items-center gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-three/10 text-blue-three">
-                <i class="bi bi-stars text-lg"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Suítes</p>
-                <p class="mt-2 text-lg font-extrabold leading-none text-gray-900"><%= @habitation.suites_qtd.to_i.positive? ? @habitation.suites_qtd : "—" %></p>
-              </div>
-            </div>
-
-            <div class="public-habitations-show__feature-card flex min-h-[116px] items-center gap-4 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-              <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-golden-one/15 text-golden-one">
-                <i class="bi bi-car-front text-lg"></i>
-              </div>
-              <div class="min-w-0">
-                <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Vagas</p>
-                <p class="mt-2 text-lg font-extrabold leading-none text-gray-900"><%= @habitation.vagas_qtd.to_i.positive? ? @habitation.vagas_qtd : "—" %></p>
-              </div>
-            </div>
-          </div>
-        </section>
+          </section>
+        <% end %>
 
         <section class="public-habitations-show__description">
           <h2 class="public-habitations-show__section-title mb-4 text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Descrição</h2>
@@ -209,100 +280,16 @@
         <% end %>
       </main>
 
-      <aside class="public-habitations-show__aside space-y-6 lg:sticky lg:top-[96px] lg:self-start">
-        <section class="public-habitations-show__price-card rounded-2xl bg-white p-6 shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
-          <p class="public-habitations-show__price-label text-xs font-bold uppercase tracking-[0.22em] text-gray-400">
-            <%= has_rent_price ? "Valor de locação" : "Valor de venda" %>
-          </p>
-
-          <% if has_sale_price %>
-            <% if has_discount %>
-              <p class="mt-3 text-sm font-semibold text-gray-400 line-through">
-                <%= number_to_currency(@habitation.valor_venda_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
-              </p>
-            <% end %>
-            <p class="public-habitations-show__price mt-2 text-4xl font-extrabold text-blue-three">
-              <%= number_to_currency(@habitation.valor_venda_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
-            </p>
-            <% if has_discount %>
-              <% discount_percent = ((@habitation.valor_venda_anterior_cents - @habitation.valor_venda_cents).to_f / @habitation.valor_venda_anterior_cents * 100).round(1) %>
-              <p class="mt-2 text-sm font-bold text-golden-one"><%= discount_percent %>% de desconto</p>
-            <% end %>
-          <% elsif has_rent_price %>
-            <% if has_rent_discount %>
-              <p class="mt-3 text-sm font-semibold text-gray-400 line-through">
-                <%= number_to_currency(@habitation.valor_locacao_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
-              </p>
-            <% end %>
-            <p class="public-habitations-show__price mt-2 text-4xl font-extrabold text-blue-three">
-              <%= number_to_currency(@habitation.valor_locacao_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
-            </p>
-            <p class="text-sm font-semibold text-gray-500">/mês</p>
-            <% if has_rent_discount %>
-              <% rent_discount_percent = ((@habitation.valor_locacao_anterior_cents - @habitation.valor_locacao_cents).to_f / @habitation.valor_locacao_anterior_cents * 100).round(1) %>
-              <p class="mt-2 text-sm font-bold text-golden-one">Locação com preço reduzido · <%= rent_discount_percent %>% de desconto</p>
-            <% end %>
-          <% else %>
-            <p class="public-habitations-show__price mt-2 text-3xl font-extrabold text-blue-three">Sob consulta</p>
-          <% end %>
-
-          <div class="my-6 h-px bg-gray-100"></div>
-
-          <dl class="public-habitations-show__facts space-y-3 text-sm">
-            <div class="public-habitations-show__fact flex justify-between gap-4">
-              <dt class="text-gray-500">Status</dt>
-              <dd class="font-bold text-gray-900"><%= @habitation.status.presence || "Disponível" %></dd>
-            </div>
-            <div class="public-habitations-show__fact flex justify-between gap-4">
-              <dt class="text-gray-500">Tipo</dt>
-              <dd class="font-bold text-gray-900"><%= @habitation.categoria %></dd>
-            </div>
-            <% if @habitation.displayable_condominio_cents.present? %>
-              <div class="public-habitations-show__fact flex justify-between gap-4">
-                <dt class="text-gray-500">Condomínio</dt>
-                <dd class="font-bold text-gray-900"><%= number_to_currency(@habitation.displayable_condominio_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
-              </div>
-            <% end %>
-            <% if @habitation.displayable_iptu_cents.present? %>
-              <div class="public-habitations-show__fact flex justify-between gap-4">
-                <dt class="text-gray-500">IPTU</dt>
-                <dd class="font-bold text-gray-900"><%= number_to_currency(@habitation.displayable_iptu_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
-              </div>
-            <% end %>
-            <% if @habitation.taxes_included_indicator? %>
-              <div class="public-habitations-show__fact flex justify-between gap-4">
-                <dt class="text-gray-500">Taxas</dt>
-                <dd class="font-bold text-green-700">Taxas inclusas</dd>
-              </div>
-            <% end %>
-          </dl>
-
-          <button type="button"
-              class="public-habitations-show__cta public-habitations-show__cta--whatsapp mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-three px-4 py-3 font-bold text-white transition hover:bg-blue-one"
-              data-action="click->lead-capture#open"
-              data-property-id="<%= @habitation.id %>"
-              data-property-code="<%= @habitation.codigo %>"
-              data-property-title="<%= title %>"
-              data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
-              data-whatsapp-message="Olá, estou interessado no imóvel <%= title %> (Código: <%= @habitation.codigo %>). Gostaria de mais informações.">
-            <i class="bi bi-whatsapp text-green-400"></i>
-            Falar no WhatsApp
-          </button>
-
-          <button type="button"
-              class="public-habitations-show__cta public-habitations-show__cta--visit mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-blue-three/15 bg-blue-three/5 px-4 py-3 font-bold text-blue-three transition hover:bg-blue-three/10"
-              data-action="click->lead-capture#open"
-              data-property-id="<%= @habitation.id %>"
-              data-property-code="<%= @habitation.codigo %>"
-              data-property-title="<%= title %>"
-              data-negotiation-type="<%= @habitation.whatsapp_negotiation_type %>"
-              data-whatsapp-message="Olá, gostaria de agendar uma visita para o imóvel <%= title %> (Código: <%= @habitation.codigo %>).">
-            <i class="bi bi-calendar-check text-golden-one"></i>
-            Agendar visita
-          </button>
-
-          <p class="mt-4 text-center text-xs text-gray-400">Código: <%= @habitation.codigo %></p>
-        </section>
+      <aside class="public-habitations-show__aside space-y-6">
+        <div class="public-habitations-show__desktop-price">
+          <%= render "price_card",
+              habitation: @habitation,
+              title: title,
+              has_sale_price: has_sale_price,
+              has_rent_price: has_rent_price,
+              has_discount: has_discount,
+              has_rent_discount: has_rent_discount %>
+        </div>
 
         <% if @shared_broker.present? %>
           <%= render "habitations/shared_broker_card",
@@ -334,19 +321,48 @@
           </div>
         </section>
 
-        <% if (map_coordinates = public_property_map_coordinates(@habitation)).present? %>
+        <% if @public_map.visible? %>
           <% map_place_label = public_property_map_place_label(@habitation) %>
-          <section class="public-habitations-show__map-card rounded-2xl bg-white p-6 shadow-sm">
-            <h3 class="public-habitations-show__section-title text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Localização</h3>
-            <p class="public-habitations-show__map-subtitle mt-2 text-sm text-gray-500">Região do imóvel</p>
-            <div class="public-habitations-show__map-shell mt-4"
-                 data-controller="public-property-map"
-                 data-public-property-map-latitude-value="<%= format('%.7f', map_coordinates.first) %>"
-                 data-public-property-map-longitude-value="<%= format('%.7f', map_coordinates.last) %>"
-                 data-public-property-map-radius-value="220">
+          <section id="localizacao-imovel" class="public-habitations-show__map-card rounded-2xl bg-white p-6 shadow-sm">
+            <div class="public-habitations-show__map-heading">
+              <div>
+                <h3 class="public-habitations-show__section-title text-sm font-bold uppercase tracking-[0.22em] text-gray-400">Localização</h3>
+                <p class="public-habitations-show__map-subtitle mt-2 text-sm text-gray-500"><%= @public_map.approximate? ? "Região aproximada do imóvel" : "Localização do imóvel" %></p>
+              </div>
+              <% if @public_map.external_url.present? %>
+                <%= link_to @public_map.external_url, target: "_blank", rel: "noopener noreferrer", class: "public-habitations-show__map-external" do %>
+                  <i class="bi bi-box-arrow-up-right"></i>
+                  <span>Abrir no Google</span>
+                <% end %>
+              <% end %>
+            </div>
+
+            <div class="public-habitations-show__map-tabs mt-4" role="tablist" aria-label="Visualização da localização">
+              <button type="button" class="is-active" role="tab" aria-selected="true" data-public-property-map-target="mapButton" data-action="click->public-property-map#showMap">
+                <i class="bi bi-map"></i>Mapa
+              </button>
+              <% if @public_map.satellite_enabled? %>
+                <button type="button" role="tab" aria-selected="false" data-public-property-map-target="satelliteButton" data-action="click->public-property-map#toggleSatellite">
+                  <i class="bi bi-globe-americas"></i>Satélite
+                </button>
+              <% end %>
+              <% if @public_map.street_view_enabled? %>
+                <button type="button" role="tab" aria-selected="false" data-public-property-map-target="streetViewButton" data-action="click->public-property-map#showStreetView">
+                  <i class="bi bi-person-standing"></i>Rua
+                </button>
+              <% end %>
+            </div>
+
+            <div class="public-habitations-show__map-shell mt-3" data-public-property-map-target="shell">
               <div class="public-habitations-show__map"
                    data-public-property-map-target="map"
-                   aria-label="Mapa com localização aproximada do imóvel"></div>
+                   aria-label="<%= @public_map.approximate? ? "Mapa com região aproximada do imóvel" : "Mapa com localização do imóvel" %>"></div>
+              <% if @public_map.street_view_enabled? %>
+                <div class="public-habitations-show__street-view"
+                     data-public-property-map-target="streetView"
+                     hidden
+                     aria-label="Vista da rua do imóvel"></div>
+              <% end %>
             </div>
             <% if map_place_label.present? %>
               <p class="public-habitations-show__map-place mt-3 text-sm font-semibold text-gray-700"><%= map_place_label %></p>

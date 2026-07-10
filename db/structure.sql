@@ -1,4 +1,4 @@
-\restrict t2IOeTttOr1rSt6dqA6cNIg6QALRYVDuNusWfxFov12ULF7w8fXS7C2jIdcRf0Z
+\restrict i2TCI7f7N0AashqeSviLNsiciVEh4MWQYi88yY8ft1vKxQpSWA2MfFDZ2FAMWzn
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -2206,7 +2206,9 @@ CREATE TABLE public.habitations (
     quadra character varying,
     permuta_veiculo_valor_cents integer,
     permuta_outros_valor_cents integer,
-    permuta_outros_descricao text
+    permuta_outros_descricao text,
+    public_map_display_mode character varying DEFAULT 'inherit'::character varying NOT NULL,
+    public_street_view_mode character varying DEFAULT 'inherit'::character varying NOT NULL
 );
 
 
@@ -2453,6 +2455,45 @@ CREATE SEQUENCE public.google_calendar_integration_settings_id_seq
 --
 
 ALTER SEQUENCE public.google_calendar_integration_settings_id_seq OWNED BY public.google_calendar_integration_settings.id;
+
+
+--
+-- Name: google_maps_integration_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.google_maps_integration_settings (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    api_key text,
+    default_display_mode character varying DEFAULT 'approximate'::character varying NOT NULL,
+    approximate_radius_meters integer DEFAULT 220 NOT NULL,
+    default_zoom integer DEFAULT 15 NOT NULL,
+    satellite_enabled boolean DEFAULT true NOT NULL,
+    street_view_enabled boolean DEFAULT true NOT NULL,
+    external_link_enabled boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: google_maps_integration_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.google_maps_integration_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: google_maps_integration_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.google_maps_integration_settings_id_seq OWNED BY public.google_maps_integration_settings.id;
 
 
 --
@@ -6101,6 +6142,13 @@ ALTER TABLE ONLY public.google_calendar_integration_settings ALTER COLUMN id SET
 
 
 --
+-- Name: google_maps_integration_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_maps_integration_settings ALTER COLUMN id SET DEFAULT nextval('public.google_maps_integration_settings_id_seq'::regclass);
+
+
+--
 -- Name: habitation_audit_logs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7024,6 +7072,14 @@ ALTER TABLE ONLY public.friendly_id_slugs
 
 ALTER TABLE ONLY public.google_calendar_integration_settings
     ADD CONSTRAINT google_calendar_integration_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: google_maps_integration_settings google_maps_integration_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_maps_integration_settings
+    ADD CONSTRAINT google_maps_integration_settings_pkey PRIMARY KEY (id);
 
 
 --
@@ -9625,6 +9681,13 @@ CREATE INDEX index_friendly_id_slugs_on_sluggable_type_and_sluggable_id ON publi
 --
 
 CREATE UNIQUE INDEX index_google_calendar_integration_settings_on_tenant_id ON public.google_calendar_integration_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_google_maps_integration_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_google_maps_integration_settings_on_tenant_id ON public.google_maps_integration_settings USING btree (tenant_id);
 
 
 --
@@ -12892,6 +12955,14 @@ ALTER TABLE ONLY public.client_property_interests
 
 
 --
+-- Name: google_maps_integration_settings fk_rails_55dd38d915; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.google_maps_integration_settings
+    ADD CONSTRAINT fk_rails_55dd38d915 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: lead_labelings fk_rails_570d08d6e8; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14167,11 +14238,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict t2IOeTttOr1rSt6dqA6cNIg6QALRYVDuNusWfxFov12ULF7w8fXS7C2jIdcRf0Z
+\unrestrict i2TCI7f7N0AashqeSviLNsiciVEh4MWQYi88yY8ft1vKxQpSWA2MfFDZ2FAMWzn
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260710113000'),
 ('20260710094500'),
 ('20260710093000'),
 ('20260709114600'),

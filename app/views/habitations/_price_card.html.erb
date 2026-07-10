@@ -1,0 +1,159 @@
+<section class="public-habitations-show__price-card rounded-2xl bg-white p-6 shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
+  <p class="public-habitations-show__price-label text-xs font-bold uppercase tracking-[0.22em] text-gray-400">
+    <%= has_rent_price ? "Valor de locação" : "Valor de venda" %>
+  </p>
+
+  <% if has_sale_price %>
+    <% if has_discount %>
+      <p class="mt-3 text-sm font-semibold text-gray-400 line-through">
+        <%= number_to_currency(habitation.valor_venda_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+      </p>
+    <% end %>
+    <p class="public-habitations-show__price mt-2 text-4xl font-extrabold text-blue-three">
+      <%= number_to_currency(habitation.valor_venda_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+    </p>
+    <% if has_discount %>
+      <% discount_percent = ((habitation.valor_venda_anterior_cents - habitation.valor_venda_cents).to_f / habitation.valor_venda_anterior_cents * 100).round(1) %>
+      <p class="mt-2 text-sm font-bold text-golden-one"><%= discount_percent %>% de desconto</p>
+    <% end %>
+  <% elsif has_rent_price %>
+    <% if has_rent_discount %>
+      <p class="mt-3 text-sm font-semibold text-gray-400 line-through">
+        <%= number_to_currency(habitation.valor_locacao_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+      </p>
+    <% end %>
+    <p class="public-habitations-show__price mt-2 text-4xl font-extrabold text-blue-three">
+      <%= number_to_currency(habitation.valor_locacao_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+    </p>
+    <p class="text-sm font-semibold text-gray-500">/mês</p>
+    <% if has_rent_discount %>
+      <% rent_discount_percent = ((habitation.valor_locacao_anterior_cents - habitation.valor_locacao_cents).to_f / habitation.valor_locacao_anterior_cents * 100).round(1) %>
+      <p class="mt-2 text-sm font-bold text-golden-one">Locação com preço reduzido · <%= rent_discount_percent %>% de desconto</p>
+    <% end %>
+  <% else %>
+    <p class="public-habitations-show__price mt-2 text-3xl font-extrabold text-blue-three">Sob consulta</p>
+  <% end %>
+
+  <div class="public-habitations-show__price-divider my-6 h-px bg-gray-100"></div>
+
+  <dl class="public-habitations-show__facts public-habitations-show__facts--desktop space-y-3 text-sm">
+    <div class="public-habitations-show__fact flex justify-between gap-4">
+      <dt class="text-gray-500">Status</dt>
+      <dd class="font-bold text-gray-900"><%= habitation.status.presence || "Disponível" %></dd>
+    </div>
+    <div class="public-habitations-show__fact flex justify-between gap-4">
+      <dt class="text-gray-500">Tipo</dt>
+      <dd class="font-bold text-gray-900"><%= habitation.categoria %></dd>
+    </div>
+    <% if habitation.displayable_condominio_cents.present? %>
+      <div class="public-habitations-show__fact flex justify-between gap-4">
+        <dt class="text-gray-500">Condomínio</dt>
+        <dd class="font-bold text-gray-900"><%= number_to_currency(habitation.displayable_condominio_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+      </div>
+    <% end %>
+    <% if habitation.displayable_iptu_cents.present? %>
+      <div class="public-habitations-show__fact flex justify-between gap-4">
+        <dt class="text-gray-500">IPTU</dt>
+        <dd class="font-bold text-gray-900"><%= number_to_currency(habitation.displayable_iptu_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+      </div>
+    <% end %>
+    <% if habitation.taxes_included_indicator? %>
+      <div class="public-habitations-show__fact flex justify-between gap-4">
+        <dt class="text-gray-500">Taxas</dt>
+        <dd class="font-bold text-green-700">Taxas inclusas</dd>
+      </div>
+    <% end %>
+  </dl>
+
+  <% commercial_conditions = [] %>
+  <% commercial_conditions << "Financiamento" if habitation.aceita_financiamento_flag? %>
+  <% if habitation.aceita_parcelamento_flag? %>
+    <% commercial_conditions << (habitation.numero_prestacoes.to_i.positive? ? "Até #{habitation.numero_prestacoes} parcelas" : "Parcelamento") %>
+  <% end %>
+  <% commercial_conditions << "Permuta" if habitation.aceita_permuta_flag? %>
+  <% if commercial_conditions.any? %>
+    <div class="public-habitations-show__commercial-conditions mt-5">
+      <p class="public-habitations-show__commercial-title">Condições disponíveis</p>
+      <div class="public-habitations-show__commercial-chips">
+        <% commercial_conditions.each do |condition| %>
+          <span><i class="bi bi-check-circle"></i><%= condition %></span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if habitation.valor_promocional_cents.to_i.positive? %>
+    <div class="public-habitations-show__promotional-price mt-4">
+      <span>Valor promocional</span>
+      <strong><%= number_to_currency(habitation.valor_promocional_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></strong>
+    </div>
+  <% end %>
+
+  <button type="button"
+      class="public-habitations-show__cta public-habitations-show__cta--whatsapp mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-three px-4 py-3 font-bold text-white transition hover:bg-blue-one"
+      data-action="click->lead-capture#open"
+      data-property-id="<%= habitation.id %>"
+      data-property-code="<%= habitation.codigo %>"
+      data-property-title="<%= title %>"
+      data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
+      data-require-lead-form="true"
+      data-whatsapp-message="Olá, estou interessado no imóvel <%= title %> (Código: <%= habitation.codigo %>). Gostaria de mais informações.">
+    <i class="bi bi-whatsapp text-green-400"></i>
+    <span class="public-habitations-show__cta-label--desktop">Falar no WhatsApp</span>
+    <span class="public-habitations-show__cta-label--mobile">Receber informações</span>
+  </button>
+
+  <button type="button"
+      class="public-habitations-show__cta public-habitations-show__cta--visit public-habitations-show__cta--desktop-only mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-blue-three/15 bg-blue-three/5 px-4 py-3 font-bold text-blue-three transition hover:bg-blue-three/10"
+      data-action="click->lead-capture#open"
+      data-property-id="<%= habitation.id %>"
+      data-property-code="<%= habitation.codigo %>"
+      data-property-title="<%= title %>"
+      data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
+      data-require-lead-form="true"
+      data-whatsapp-message="Olá, gostaria de agendar uma visita para o imóvel <%= title %> (Código: <%= habitation.codigo %>).">
+    <i class="bi bi-calendar-check text-golden-one"></i>
+    Agendar visita
+  </button>
+
+  <button type="button"
+      class="public-habitations-show__cta public-habitations-show__cta--conditions public-habitations-show__cta--mobile-only mt-3 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold transition"
+      data-action="click->lead-capture#open"
+      data-property-id="<%= habitation.id %>"
+      data-property-code="<%= habitation.codigo %>"
+      data-property-title="<%= title %>"
+      data-negotiation-type="<%= habitation.whatsapp_negotiation_type %>"
+      data-require-lead-form="true"
+      data-whatsapp-message="Olá, gostaria de conhecer as condições de pagamento do imóvel <%= title %> (Código: <%= habitation.codigo %>).">
+    <i class="bi bi-whatsapp"></i>
+    Condições de pagamento
+  </button>
+
+  <details class="public-habitations-show__mobile-costs">
+    <summary>Ver custos e informações</summary>
+    <dl class="public-habitations-show__facts space-y-3 text-sm">
+      <div class="public-habitations-show__fact flex justify-between gap-4">
+        <dt>Status</dt>
+        <dd><%= habitation.status.presence || "Disponível" %></dd>
+      </div>
+      <div class="public-habitations-show__fact flex justify-between gap-4">
+        <dt>Tipo</dt>
+        <dd><%= habitation.categoria %></dd>
+      </div>
+      <% if habitation.displayable_condominio_cents.present? %>
+        <div class="public-habitations-show__fact flex justify-between gap-4">
+          <dt>Condomínio</dt>
+          <dd><%= number_to_currency(habitation.displayable_condominio_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+        </div>
+      <% end %>
+      <% if habitation.displayable_iptu_cents.present? %>
+        <div class="public-habitations-show__fact flex justify-between gap-4">
+          <dt>IPTU</dt>
+          <dd><%= number_to_currency(habitation.displayable_iptu_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+        </div>
+      <% end %>
+    </dl>
+  </details>
+
+  <p class="public-habitations-show__price-code mt-4 text-center text-xs text-gray-400">Código: <%= habitation.codigo %></p>
+</section>
