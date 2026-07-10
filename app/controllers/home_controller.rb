@@ -150,8 +150,7 @@ class HomeController < ApplicationController
     return [] if ids.empty?
 
     records = public_property_card_scope(public_habitations.where(id: ids)).to_a
-    photo_records = (records + records.filter_map(&:empreendimento)).uniq(&:id)
-    Home::CardPhotoPreloader.new(photo_records, limit: 5).call
+    PublicSite::CardPhotoPreloader.new(records, limit: 5).call
     records_by_id = records.index_by(&:id)
     ids.filter_map { |id| records_by_id[id] }
   end

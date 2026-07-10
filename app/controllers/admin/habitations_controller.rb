@@ -2369,6 +2369,7 @@ class Admin::HabitationsController < Admin::BaseController
       :valor_venda_anterior_cents, :valor_venda_anterior_formatted, :valor_total_aluguel_cents, :valor_promocional_formatted, 
       :proprietario, :inscricao_imobiliaria, :descricao_empreendimento,
       :categoria_grupo, :tour_virtual,
+      :public_map_display_mode, :public_street_view_mode,
       :constructor_id, :proprietor_id, :admin_user_id,
       :terceira_avenida_flag, :arriba_flag, :avenida_brasil_flag, :bairro_fazenda_itajai_flag, 
       :balneario_picarras_flag, :barra_flag, :barra_norte_flag, :barra_sul_flag, 
@@ -2433,6 +2434,8 @@ class Admin::HabitationsController < Admin::BaseController
       titulo_anuncio
       descricao_web
       descricao_interna
+      public_map_display_mode
+      public_street_view_mode
       proprietario
       proprietario_codigo
       proprietario_email

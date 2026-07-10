@@ -24,8 +24,16 @@ class LandingPagesController < ApplicationController
       sort: params[:sort].presence || filters['sort']
     }
 
-    @habitations = public_habitations.active.advanced_search(search_params).with_attached_photos
-    @habitations = @habitations.paginate(page: params[:page], per_page: 12)
+    @habitations = public_habitations
+      .active
+      .advanced_search(search_params)
+      .includes(
+        :address,
+        { constructor: { logo_attachment: :blob } },
+        { empreendimento: { constructor: { logo_attachment: :blob } } }
+      )
+      .paginate(page: params[:page], per_page: 12)
+    PublicSite::CardPhotoPreloader.new(@habitations.to_a, limit: 5).call
     
     # SEO meta tags
     @page_title = @landing_page.meta_title.presence || @landing_page.title

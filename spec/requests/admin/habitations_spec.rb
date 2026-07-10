@@ -291,6 +291,23 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include("Dado antigo oculto")
   end
 
+  it "salva as opções públicas de mapa e vista da rua do imóvel" do
+    habitation = create(:habitation, codigo: "PUBLIC-MAP-#{SecureRandom.hex(6)}")
+
+    patch admin_habitation_path(habitation), params: {
+      habitation: {
+        public_map_display_mode: "exact",
+        public_street_view_mode: "enabled"
+      }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(habitation.reload).to have_attributes(
+      public_map_display_mode: "exact",
+      public_street_view_mode: "enabled"
+    )
+  end
+
   it "posiciona a publicação em portais abaixo dos responsáveis na aba comercial" do
     habitation = create(:habitation, codigo: "PORTAL-FORM-#{SecureRandom.hex(6)}")
 

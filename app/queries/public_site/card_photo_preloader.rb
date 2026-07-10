@@ -1,10 +1,9 @@
-module Home
+module PublicSite
   class CardPhotoPreloader
     ATTACHMENT_NAME = "photos".freeze
-    CANDIDATE_MULTIPLIER = 2
 
     def initialize(records, limit:)
-      @records = Array(records)
+      @records = expand_linked_developments(Array(records))
       @limit = limit.to_i
     end
 
@@ -23,6 +22,14 @@ module Home
 
     attr_reader :records, :limit
 
+    def expand_linked_developments(source_records)
+      developments = source_records.filter_map do |record|
+        record.empreendimento if record.association(:empreendimento).loaded?
+      end
+
+      (source_records + developments).compact.uniq(&:id)
+    end
+
     def candidate_attachments
       candidates = ranked_candidates.to_a
       missing_priority_ids = priority_attachment_ids - candidates.map(&:id)
@@ -31,15 +38,26 @@ module Home
     end
 
     def ranked_candidates
-      ranked = attachments.select(
+      ranked = visible_attachments.select(
         "active_storage_attachments.*",
         "ROW_NUMBER() OVER (PARTITION BY record_id ORDER BY id) AS card_rank"
       )
 
       ActiveStorage::Attachment
         .from("(#{ranked.to_sql}) active_storage_attachments")
-        .where("card_rank <= ?", limit * CANDIDATE_MULTIPLIER)
+        .where("card_rank <= ?", limit)
         .includes(:blob)
+    end
+
+    def visible_attachments
+      table = ActiveStorage::Attachment.arel_table
+      visibility = records.map do |record|
+        condition = table[:record_id].eq(record.id)
+        hidden_ids = normalized_ids(record.site_hidden_photo_ids)
+        hidden_ids.any? ? condition.and(table[:id].not_in(hidden_ids)) : condition
+      end.reduce(&:or)
+
+      attachments.where(visibility)
     end
 
     def attachments
@@ -51,7 +69,10 @@ module Home
     end
 
     def priority_attachment_ids
-      @priority_attachment_ids ||= records.flat_map { |record| normalized_ids(record.photo_ids_order).first(limit) }.uniq
+      @priority_attachment_ids ||= records.flat_map do |record|
+        hidden_ids = normalized_ids(record.site_hidden_photo_ids)
+        (normalized_ids(record.photo_ids_order) - hidden_ids).first(limit)
+      end.uniq
     end
 
     def load_selected_attachments(record, candidates)

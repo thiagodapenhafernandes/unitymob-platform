@@ -16,12 +16,13 @@ export default class extends Controller {
         loop: false,
         effect: 'slide',
         speed: 300,
-        width: this.element.offsetWidth,
-
         // Allow events to bubble
         touchEventsTarget: 'wrapper',
         nested: true,
         passiveListeners: true,
+        observer: true,
+        observeParents: true,
+        resizeObserver: true,
 
         // Navigation arrows
         navigation: {

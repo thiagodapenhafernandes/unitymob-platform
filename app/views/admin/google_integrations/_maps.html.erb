@@ -1,0 +1,111 @@
+<%= ax_error_summary(setting) %>
+
+<%= ax_field_grid(columns: 12, gap: :compact) do %>
+  <div class="ax-span-7">
+    <%= ax_operational_panel(eyebrow: "Site público", title: "Google Maps") do %>
+      <%= ax_inline_notice(
+            tone: setting.configured? ? :success : :warning,
+            icon: setting.configured? ? "check-circle" : "exclamation-triangle",
+            class_name: "tw-mb-3"
+          ) do %>
+        <span>
+          Status:
+          <strong><%= setting.configured? ? "pronto para uso" : "aguardando configuração" %></strong>
+          <% if setting.missing_configuration_items.any? %>
+            <span class="tw-text-ink-muted">(<%= setting.missing_configuration_items.to_sentence %>)</span>
+          <% end %>
+        </span>
+      <% end %>
+
+      <%= form_with url: admin_google_integration_path, method: :patch, scope: :google_maps, local: true do |f| %>
+        <%= ax_switch_field(
+              label: tag.span("Usar Google Maps nas páginas de imóveis", class: "tw-font-semibold"),
+              form: f,
+              method: :enabled,
+              checked_value: "true",
+              unchecked_value: "false",
+              class_name: "tw-mb-3",
+              input_html: { checked: setting.enabled? }
+            ) %>
+
+        <div class="tw-mb-3">
+          <%= f.label :api_key, "Chave da API do Google Maps", class: "ax-label tw-font-semibold" %>
+          <%= f.password_field :api_key,
+              class: "ax-control",
+              autocomplete: "new-password",
+              placeholder: (setting.api_key_configured? ? "Chave já configurada. Preencha apenas para substituir." : "Informe a chave restrita por domínio") %>
+          <div class="form-text">A chave fica criptografada no banco, mas continua visível ao navegador. Restrinja-a por domínio e por API no Google Cloud.</div>
+        </div>
+
+        <%= ax_field_grid(columns: 12, gap: :compact) do %>
+          <div class="ax-span-6">
+            <%= ax_select_field(
+                  form: f,
+                  method: :default_display_mode,
+                  label: "Localização padrão",
+                  choices: [["Ocultar", "hidden"], ["Região aproximada", "approximate"], ["Localização exata", "exact"]],
+                  select_options: { selected: setting.default_display_mode },
+                  html_options: {}
+                ) %>
+          </div>
+          <div class="ax-span-3">
+            <%= ax_text_field(
+                  form: f,
+                  method: :approximate_radius_meters,
+                  label: "Raio aproximado",
+                  type: "number",
+                  min: GoogleMapsIntegrationSetting::MIN_RADIUS_METERS,
+                  max: GoogleMapsIntegrationSetting::MAX_RADIUS_METERS,
+                  step: 10,
+                  value: setting.approximate_radius_meters
+                ) %>
+          </div>
+          <div class="ax-span-3">
+            <%= ax_text_field(
+                  form: f,
+                  method: :default_zoom,
+                  label: "Zoom inicial",
+                  type: "number",
+                  min: GoogleMapsIntegrationSetting::MIN_ZOOM,
+                  max: GoogleMapsIntegrationSetting::MAX_ZOOM,
+                  value: setting.default_zoom
+                ) %>
+          </div>
+        <% end %>
+
+        <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-3 tw-gap-2 tw-my-3">
+          <%= ax_switch_field(label: "Permitir satélite", form: f, method: :satellite_enabled, checked_value: "true", unchecked_value: "false", input_html: { checked: setting.satellite_enabled? }) %>
+          <%= ax_switch_field(label: "Permitir vista da rua", form: f, method: :street_view_enabled, checked_value: "true", unchecked_value: "false", input_html: { checked: setting.street_view_enabled? }) %>
+          <%= ax_switch_field(label: "Link para Google Maps", form: f, method: :external_link_enabled, checked_value: "true", unchecked_value: "false", input_html: { checked: setting.external_link_enabled? }) %>
+        </div>
+
+        <%= ax_inline_notice(tone: :warning, icon: "shield-exclamation", class_name: "tw-mb-3") do %>
+          <span>A vista da rua pode revelar o endereço exato. O padrão seguro é mantê-la desligada e liberar somente nos imóveis autorizados.</span>
+        <% end %>
+
+        <%= f.submit "Salvar configuração", class: "ax-btn ax-btn--primary" %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="ax-span-5">
+    <%= ax_operational_panel(eyebrow: "Validação", title: "Prévia da integração") do %>
+      <% if setting.configured? %>
+        <div class="google-maps-preview"
+             data-controller="public-property-map"
+             data-public-property-map-provider-value="google"
+             data-public-property-map-api-key-value="<%= setting.api_key %>"
+             data-public-property-map-latitude-value="-26.9906000"
+             data-public-property-map-longitude-value="-48.6348000"
+             data-public-property-map-radius-value="<%= setting.approximate_radius_meters %>"
+             data-public-property-map-zoom-value="<%= setting.default_zoom %>"
+             data-public-property-map-satellite-enabled-value="<%= setting.satellite_enabled? %>">
+          <div class="google-maps-preview__canvas" data-public-property-map-target="map" aria-label="Prévia do Google Maps"></div>
+        </div>
+        <p class="form-text tw-mt-2">Prévia técnica em Balneário Camboriú. As páginas públicas carregam o mapa somente quando ele entra na área visível.</p>
+      <% else %>
+        <%= ax_empty_state(icon: "map", title: "Prévia indisponível", description: "Ative a integração e salve uma chave válida para carregar o mapa.") %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

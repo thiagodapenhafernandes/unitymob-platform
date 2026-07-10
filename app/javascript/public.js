@@ -21,6 +21,8 @@ import PhotoGalleryController from "controllers/photo_gallery_controller"
 import PhoneInputController from "controllers/phone_input_controller"
 import PropertyCarouselController from "controllers/property_carousel_controller"
 import PublicPropertyMapController from "controllers/public_property_map_controller"
+import PublicFavoritesController from "controllers/public_favorites_controller"
+import PublicGalleryMobileController from "controllers/public_gallery_mobile_controller"
 import SearchFormController from "controllers/search_form_controller"
 import SearchTabsController from "controllers/search_tabs_controller"
 import ShareController from "controllers/share_controller"
@@ -46,6 +48,8 @@ application.register("photo-gallery", PhotoGalleryController)
 application.register("phone-input", PhoneInputController)
 application.register("property-carousel", PropertyCarouselController)
 application.register("public-property-map", PublicPropertyMapController)
+application.register("public-favorites", PublicFavoritesController)
+application.register("public-gallery-mobile", PublicGalleryMobileController)
 application.register("search-form", SearchFormController)
 application.register("search-tabs", SearchTabsController)
 application.register("share", ShareController)

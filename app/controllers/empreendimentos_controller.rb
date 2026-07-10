@@ -4,7 +4,7 @@ class EmpreendimentosController < ApplicationController
     @strategic_landing = Seo::StrategicLanding.development(params[:seo_slug])
     
     # Base scope: only 'Empreendimento' type
-    @empreendimentos = public_habitations.empreendimentos_publicos.with_attached_photos.left_outer_joins(:address).order(nome_empreendimento: :asc)
+    @empreendimentos = public_habitations.empreendimentos_publicos.left_outer_joins(:address).order(nome_empreendimento: :asc)
     @empreendimentos = apply_strategic_landing_scope(@empreendimentos)
 
     # Filter by search term if present
@@ -15,6 +15,7 @@ class EmpreendimentosController < ApplicationController
 
     # Pagination
     @empreendimentos = @empreendimentos.paginate(page: params[:page], per_page: 20)
+    PublicSite::CardPhotoPreloader.new(@empreendimentos.to_a, limit: 1).call
 
     # Calculate unit counts for the current page to avoid N+1 on the whole table
     # We can do a group count query for all habitations that match these development codes

@@ -49,6 +49,10 @@
           <%= link_to "Blog",
               "https://blog.saluteimoveis.com", target: "_blank",
               class: "px-3 py-2 rounded-md font-semibold transition-colors hover:text-blue-three" %>
+          <%= link_to favorite_habitations_path,
+              class: "px-3 py-2 rounded-md font-semibold transition-colors hover:text-blue-three" do %>
+            <i class="bi bi-bookmark-heart mr-1"></i> Favoritos
+          <% end %>
         </div>
 
         <!-- Code Search Trigger -->
@@ -112,6 +116,7 @@
           <li><%= link_to "Empreendimentos", empreendimentos_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
           <li><%= link_to "Lançamentos", habitations_path(characteristics: ['lancamento']), class: "text-gray-700 hover:text-blue-three py-2" %></li>
           <li><%= link_to "Blog", "https://blog.saluteimoveis.com", target: "_blank", class: "text-gray-700 hover:text-blue-three py-2" %></li>
+          <li><%= link_to "Favoritos", favorite_habitations_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
           <li><%= link_to "Parceria", parcerias_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
           <li><%= link_to "Home", root_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>
           <li><%= link_to "Fale com um corretor", brokers_path, class: "text-gray-700 hover:text-blue-three py-2" %></li>

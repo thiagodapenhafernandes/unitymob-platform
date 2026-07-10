@@ -314,6 +314,116 @@ RSpec.describe "Habitation details", type: :request do
       expect(page_text).to include("R$ 6.000,00")
       expect(page_text).to include("R$ 5.000,00")
     end
+
+    it "posiciona o preço antes das características e da descrição" do
+      habitation = create(:habitation, codigo: "FIRST-FOLD", slug: "primeira-dobra", area_total_m2: 100, dormitorios_qtd: 1)
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      price_position = response.body.index("public-habitations-show__price-card")
+      features_position = response.body.index("public-habitations-show__features")
+      description_position = response.body.index("public-habitations-show__description")
+      expect(price_position).to be < features_position
+      expect(price_position).to be < description_position
+    end
+
+    it "omite características sem valor informado" do
+      habitation = create(:habitation, codigo: "NO-FEATURES", slug: "sem-caracteristicas", area_total_m2: 0, dormitorios_qtd: 0, suites_qtd: 0, vagas_qtd: 0)
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("public-habitations-show__features")
+    end
+
+    it "renderiza a primeira dobra mobile com galeria interativa e ações" do
+      habitation = create(:habitation, codigo: "MOBILE-FOLD", slug: "mobile-fold")
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("public-gallery-mobile")
+      expect(response.body).to include("public-habitations-show__gallery-counter")
+      expect(response.body).not_to include("public-habitations-show__gallery-arrow")
+      expect(response.body).to include("Receber informações")
+      expect(response.body).to include("Condições de pagamento")
+      expect(response.body.scan('data-require-lead-form="true"').size).to eq(6)
+    end
+
+    it "expõe a página pública de favoritos" do
+      get favorite_habitations_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("public-favorites")
+      expect(response.body).to include("Imóveis favoritos")
+    end
+
+    it "não envia as coordenadas exatas no modo aproximado" do
+      habitation = create(
+        :habitation,
+        codigo: "MAP-APPROXIMATE",
+        slug: "mapa-aproximado",
+        address_attributes: {
+          logradouro: "Avenida Brasil",
+          numero: "1000",
+          bairro: "Centro",
+          cidade: "Balneário Camboriú",
+          uf: "SC",
+          latitude: -26.9906000,
+          longitude: -48.6348000
+        }
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Região aproximada do imóvel")
+      expect(response.body).not_to include("-26.9906000")
+      expect(response.body).not_to include("-48.6348000")
+    end
+
+    it "oculta completamente o mapa quando configurado no imóvel" do
+      habitation = create(
+        :habitation,
+        codigo: "MAP-HIDDEN",
+        slug: "mapa-oculto",
+        public_map_display_mode: "hidden",
+        address_attributes: {
+          logradouro: "Avenida Brasil",
+          bairro: "Centro",
+          cidade: "Balneário Camboriú",
+          uf: "SC",
+          latitude: -26.9906000,
+          longitude: -48.6348000
+        }
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("localizacao-imovel")
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('[data-controller~="public-property-map"]')).to be_nil
+    end
+
+    it "exibe condições comerciais compactas junto ao preço" do
+      habitation = create(
+        :habitation,
+        codigo: "CONDITIONS",
+        slug: "condicoes-comerciais",
+        aceita_financiamento_flag: true,
+        aceita_parcelamento_flag: true,
+        numero_prestacoes: 36,
+        aceita_permuta_flag: true,
+        valor_promocional_cents: 900_000_00
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Financiamento", "Até 36 parcelas", "Permuta", "Valor promocional")
+    end
   end
 
   describe "GET /empreendimento/:id" do

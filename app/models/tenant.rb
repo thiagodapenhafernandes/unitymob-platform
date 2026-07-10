@@ -33,6 +33,7 @@ class Tenant < ApplicationRecord
   has_many :portal_integrations, dependent: :destroy
   has_many :email_settings, dependent: :destroy
   has_one :google_calendar_integration_setting, dependent: :destroy
+  has_one :google_maps_integration_setting, dependent: :destroy
   has_many :manual_checkin_requests, dependent: :restrict_with_error
   has_many :proprietors, dependent: :restrict_with_error
   has_many :access_audit_logs, dependent: :restrict_with_error

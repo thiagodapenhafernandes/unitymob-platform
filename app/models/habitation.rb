@@ -124,6 +124,20 @@ class Habitation < ApplicationRecord
   MINIMUM_INTAKE_SALE_PRICE_CENTS = 10_000_00
   MINIMUM_INTAKE_RENT_PRICE_CENTS = 100_00
   STRATEGIC_TAX_PLACEHOLDER_CENTS = [1, 100].freeze
+  PUBLIC_MAP_DISPLAY_MODES = {
+    "inherit" => "Seguir padrão da conta",
+    "hidden" => "Ocultar localização",
+    "approximate" => "Exibir região aproximada",
+    "exact" => "Exibir localização exata"
+  }.freeze
+  PUBLIC_STREET_VIEW_MODES = {
+    "inherit" => "Seguir padrão da conta",
+    "enabled" => "Permitir vista da rua",
+    "disabled" => "Bloquear vista da rua"
+  }.freeze
+
+  validates :public_map_display_mode, inclusion: { in: PUBLIC_MAP_DISPLAY_MODES.keys }
+  validates :public_street_view_mode, inclusion: { in: PUBLIC_STREET_VIEW_MODES.keys }
 
   def self.public_property_types
     (where(exibir_no_site_flag: true).distinct.pluck(:categoria).compact + PUBLIC_FILTER_EXTRA_CATEGORIES)

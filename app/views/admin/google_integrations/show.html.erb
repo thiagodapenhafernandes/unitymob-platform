@@ -16,6 +16,11 @@
       <i class="bi bi-calendar2-week me-2"></i>Agenda
     </a>
   </li>
+  <li>
+    <a class="ax-form-tabs__item <%= 'active' if @active_tab == 'maps' %>" <%= 'aria-current="page"'.html_safe if @active_tab == 'maps' %> href="<%= admin_google_integration_path(tab: 'maps') %>">
+      <i class="bi bi-map me-2"></i>Maps
+    </a>
+  </li>
 </ul>
 
 <div id="google-sheets" <%= "hidden" unless @active_tab == "sheets" %>>
@@ -96,6 +101,10 @@
     </div>
   </div>
   <% end %>
+</div>
+
+<div id="google-maps" <%= "hidden" unless @active_tab == "maps" %>>
+  <%= render "maps", setting: @google_maps_setting %>
 </div>
 
 <div id="google-calendar" <%= "hidden" unless @active_tab == "calendar" %>>

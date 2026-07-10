@@ -25598,3 +25598,17 @@ html.ax-webhook-settings-aside-collapsed-preload body.ax-app .webhook-settings-w
 }
 
 @tailwind utilities;
+/* Google Maps integration preview */
+.google-maps-preview {
+  position: relative;
+  height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--ab-line);
+  border-radius: 10px;
+  background: var(--ab-panel-soft);
+}
+
+.google-maps-preview__canvas {
+  width: 100%;
+  height: 100%;
+}
