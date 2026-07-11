@@ -1,4 +1,6 @@
 class Admin::DashboardController < Admin::BaseController
+  include DeviceRequest
+
   DASHBOARD_SECTIONS = %w[charts funnel status rankings operations support].freeze
   DASHBOARD_PERIODS = [7, 30, 90].freeze
 
@@ -21,6 +23,7 @@ class Admin::DashboardController < Admin::BaseController
 
   def require_dashboard_admin!
     return if tenant_owner? || can?(:view, :dashboard)
+    return if desktop_device_request?
 
     redirect_to field_root_path
   end

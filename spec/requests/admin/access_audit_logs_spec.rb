@@ -49,7 +49,7 @@ RSpec.describe "Admin::AccessAuditLogs", type: :request do
     expect(response).to redirect_to(admin_root_path)
   end
 
-  it "envia usuário sem dashboard para o PWA de campo após login" do
+  it "envia usuário desktop sem dashboard para o workspace administrativo após login" do
     profile = Profile.create!(
       tenant: admin.tenant,
       name: "Operador Campo #{SecureRandom.hex(4)}",
@@ -62,6 +62,23 @@ RSpec.describe "Admin::AccessAuditLogs", type: :request do
     post admin_user_session_path, params: {
       admin_user: { email: field_user.email, password: "password123" }
     }
+
+    expect(response).to redirect_to(admin_root_path)
+  end
+
+  it "envia usuário mobile para o PWA de campo após login" do
+    profile = Profile.create!(
+      tenant: admin.tenant,
+      name: "Operador Mobile #{SecureRandom.hex(4)}",
+      axis: "vertical",
+      position: 801,
+      permissions: {}
+    )
+    field_user = create(:admin_user, tenant: admin.tenant, profile: profile, email: "mobile-login-#{SecureRandom.hex(4)}@example.test")
+
+    post admin_user_session_path,
+         params: { admin_user: { email: field_user.email, password: "password123" } },
+         headers: { "User-Agent" => "Mozilla/5.0 (Linux; Android 15) Mobile" }
 
     expect(response).to redirect_to(field_root_path)
   end

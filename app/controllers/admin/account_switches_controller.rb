@@ -3,6 +3,8 @@ module Admin
   # ativas), roda a política de acesso da CONTA ALVO antes, e troca a
   # identidade do warden (bypass_sign_in — mesmo padrão da impersonação).
   class AccountSwitchesController < Admin::BaseController
+    include DeviceRequest
+
     skip_before_action :enforce_two_factor_setup!, raise: false
 
     def create
@@ -100,8 +102,8 @@ module Admin
 
     def after_switch_path(target)
       # PWA: quem trocou a partir do /field permanece no /field.
-      return field_root_path if params[:context].to_s == "field"
-      return field_root_path unless target.respond_to?(:can?) && target.can?(:view, :dashboard)
+      return field_root_path if mobile_device_request? && params[:context].to_s == "field"
+      return field_root_path if mobile_device_request? && (!target.respond_to?(:can?) || !target.can?(:view, :dashboard))
 
       admin_root_path
     end

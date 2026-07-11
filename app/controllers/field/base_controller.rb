@@ -6,7 +6,9 @@
 module Field
   class BaseController < ApplicationController
     include FieldFeatureGate
+    include DeviceRequest
 
+    prepend_before_action :redirect_desktop_to_admin
     before_action :authenticate_admin_user!
     before_action :set_current_tenant
     before_action :enforce_access_control_policy!
@@ -14,6 +16,16 @@ module Field
     layout "field"
 
     private
+
+    # O Field é a experiência mobile/PWA. Navegação HTML no desktop pertence
+    # ao workspace administrativo, inclusive para corretores.
+    def redirect_desktop_to_admin
+      return unless desktop_device_request?
+      return unless request.get? || request.head?
+      return unless request.format.html?
+
+      redirect_to admin_root_path
+    end
 
     def enforce_two_factor_setup!
       return unless current_admin_user

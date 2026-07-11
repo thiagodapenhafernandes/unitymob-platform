@@ -1,4 +1,6 @@
 class Admin::SessionsController < Devise::SessionsController
+  include DeviceRequest
+
   layout 'admin_login'
 
   def create
@@ -121,16 +123,9 @@ class Admin::SessionsController < Devise::SessionsController
 
     # Celular = PWA: quem loga de iOS/Android aterrissa no app de campo, onde
     # vivem instalação, push e o fluxo mobile (o admin fica para o desktop).
-    return field_root_path if mobile_device_login?
+    return field_root_path if mobile_device_request?
 
-    return admin_root_path if resource.respond_to?(:can?) && resource.can?(:view, :dashboard)
-
-    field_root_path
-  end
-
-  def mobile_device_login?
-    ua = request.user_agent.to_s
-    ua.match?(/Android|iPhone|iPod/i) || ua.match?(/iPad/i)
+    admin_root_path
   end
   
   def after_sign_out_path_for(resource_or_scope)

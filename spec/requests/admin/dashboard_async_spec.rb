@@ -59,7 +59,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).not_to include(admin_profiles_path)
   end
 
-  it "mantém usuário sem permissão dashboard fora do dashboard principal" do
+  it "mantém usuário desktop sem permissão no workspace administrativo" do
     tenant = Tenant.create!(name: "Tenant sem dashboard #{SecureRandom.hex(3)}", slug: "tenant-sem-dashboard-#{SecureRandom.hex(3)}")
     profile = Profile.create!(
       tenant: tenant,
@@ -76,6 +76,19 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     sign_in user
 
     get admin_root_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('id="admin_dashboard_charts"')
+  end
+
+  it "direciona usuário mobile sem permissão de dashboard para o Field" do
+    tenant = Tenant.create!(name: "Tenant mobile #{SecureRandom.hex(3)}", slug: "tenant-mobile-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(tenant: tenant, name: "Field mobile #{SecureRandom.hex(3)}", axis: "vertical", position: 601, permissions: {})
+    user = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+
+    sign_out admin
+    sign_in user
+    get admin_root_path, headers: { "User-Agent" => "Mozilla/5.0 (Linux; Android 15) Mobile" }
 
     expect(response).to redirect_to(field_root_path)
   end
