@@ -28,7 +28,7 @@
                   }
                 ) %>
           </div>
-          <div class="ax-span-8 ax-reactive-inactive-hint"
+          <div class="ax-span-5 ax-reactive-inactive-hint"
                data-conditional-reveal-target="inactiveHint"
                <%= "hidden" if key_present || key_notes_present || portaria_present || zelador_present %>>
             Selecione onde estão as chaves para exibir os dados daquele contexto.
@@ -88,10 +88,10 @@
     <div class="ax-span-12">
       <%= ax_field_group(title: "Visitas e reservas", class_name: "ax-field-group--spaced") do %>
         <%= ax_field_grid(class_name: "ax-field-grid--spaced") do %>
-          <div class="ax-span-3">
+          <div class="ax-span-4">
             <%= ax_text_field(form: f, method: :responsavel_reserva, label: "Responsável por reserva") %>
           </div>
-          <div class="ax-span-3">
+          <div class="ax-span-4">
             <%= ax_select_field(
                   form: f,
                   method: :regiao_foco,
@@ -101,20 +101,18 @@
                   html_options: { data: { controller: "tom-select", placeholder: "Selecione..." } }
                 ) %>
           </div>
-          <div class="ax-span-3">
+          <div class="ax-span-4">
             <%= ax_currency_field(form: f, method: :saldo_devedor_formatted, label: "Saldo devedor", data: { controller: "mask", mask_type_value: "currency" }) %>
           </div>
         <% end %>
       <% end %>
     </div>
-    <div class="ax-span-12">
-      <%= ax_field_group(title: "Observações para visitas", class_name: "ax-field-group--spaced ax-attendance-visit-notes") do %>
-        <%= ax_text_field(form: f, method: :observacoes_visitas, label: "Observações para visitas", type: :textarea, rows: 3, field_class: "ax-attendance-textarea-field") %>
+    <div class="ax-span-12 ax-attendance-notes-grid">
+      <%= ax_field_group(title: "Orientações da visita", class_name: "ax-attendance-visit-notes") do %>
+        <%= ax_text_field(form: f, method: :observacoes_visitas, label: "Informações para quem realizará a visita", type: :textarea, rows: 3, field_class: "ax-attendance-textarea-field") %>
       <% end %>
-    </div>
-    <div class="ax-span-12">
-      <%= ax_field_group(title: "Observações internas", class_name: "ax-field-group--spaced ax-attendance-notes") do %>
-        <%= ax_text_field(form: f, method: :observacoes, label: "Observações internas e restritas", type: :textarea, rows: 4, field_class: "ax-attendance-textarea-field") %>
+      <%= ax_field_group(title: "Registro interno", class_name: "ax-attendance-notes") do %>
+        <%= ax_text_field(form: f, method: :observacoes, label: "Observações internas e restritas", type: :textarea, rows: 3, field_class: "ax-attendance-textarea-field") %>
       <% end %>
     </div>
   <% end %>

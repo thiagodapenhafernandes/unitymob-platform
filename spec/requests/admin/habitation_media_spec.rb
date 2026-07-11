@@ -167,6 +167,18 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(habitation.pictures.second["site_hidden"]).to eq(true)
   end
 
+  it "expõe no modal o botão e a rota assíncrona de visibilidade" do
+    habitation = create_media_habitation
+    habitation.photos.attach(io: StringIO.new("foto local"), filename: "foto-local.jpg", content_type: "image/jpeg")
+
+    get modal_admin_habitation_media_path(habitation), headers: { "X-Requested-With" => "XMLHttpRequest" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('data-action="photo-upload#toggleSiteVisibility"')
+    expect(response.body).to include("data-photo-upload-visibility-url-value")
+    expect(response.body).to include("No site")
+  end
+
   it "renderiza ação de ambiente para imagem externa da API no modal" do
     habitation = create_media_habitation(
       pictures: [

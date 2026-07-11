@@ -662,15 +662,18 @@ export default class extends Controller {
     this.refreshPhotoBadges()
   }
 
-  toggleSiteVisibility(event) {
+  async toggleSiteVisibility(event) {
     event.preventDefault()
     event.stopPropagation()
 
     const button = event.currentTarget
     const tile = button.closest('.media-photo-tile')
-    if (!tile) return
+    if (!tile || button.disabled) return
 
-    const hidden = tile.dataset.siteHidden !== "true"
+    const previousHidden = tile.dataset.siteHidden === "true"
+    const hidden = !previousHidden
+    button.disabled = true
+    button.setAttribute("aria-busy", "true")
     tile.dataset.siteHidden = hidden ? "true" : "false"
     tile.classList.toggle('is-site-hidden', hidden)
 
@@ -683,7 +686,23 @@ export default class extends Controller {
     }
 
     this.setSiteToggleButton(button, hidden)
-    this.syncVisibility()
+    try {
+      await this.syncVisibility()
+      this.showTransientFeedback(hidden ? "Foto removida do site." : "Foto liberada no site.")
+    } catch (_error) {
+      tile.dataset.siteHidden = previousHidden ? "true" : "false"
+      tile.classList.toggle('is-site-hidden', previousHidden)
+      if (button.dataset.photoId && this.hasHiddenPhotoIdsInputTarget) {
+        this.toggleHiddenListValue(this.hiddenPhotoIdsInputTarget, button.dataset.photoId, previousHidden)
+      }
+      if (button.dataset.pictureUrl && this.hasHiddenPictureUrlsInputTarget) {
+        this.toggleHiddenListValue(this.hiddenPictureUrlsInputTarget, button.dataset.pictureUrl, previousHidden)
+      }
+      this.setSiteToggleButton(button, previousHidden)
+    } finally {
+      button.disabled = false
+      button.removeAttribute("aria-busy")
+    }
   }
 
   refreshPhotoBadges() {
@@ -882,7 +901,7 @@ export default class extends Controller {
     }
 
     const label = button.querySelector('span')
-    if (label) label.textContent = hidden ? 'Interna' : 'Site'
+    if (label) label.textContent = hidden ? 'Fora do site' : 'No site'
   }
 
   nextNewFileId() {
@@ -1029,7 +1048,9 @@ export default class extends Controller {
   }
 
   async syncVisibility() {
-    if (!this.canSyncVisibility()) return
+    if (!this.canSyncVisibility()) {
+      throw new Error("Não foi possível localizar a ação de visibilidade desta foto.")
+    }
 
     try {
       const response = await this.requestJson(this.visibilityUrlValue, {
@@ -1044,6 +1065,7 @@ export default class extends Controller {
       this.applyMediaPayload(response, { replaceGallery: false })
     } catch (error) {
       this.showTransientFeedback(error.message || "Não foi possível salvar a visibilidade da foto.", true)
+      throw error
     }
   }
 

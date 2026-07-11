@@ -356,36 +356,21 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(submitted.titulo_anuncio)
-    expect(response.body).to include(approved.titulo_anuncio)
-    expect(response.body).to include(draft.titulo_anuncio)
-    expect(response.body).to include(returned.titulo_anuncio)
-    expect(response.body).to include("Rascunho")
+    expect(response.body).not_to include(approved.titulo_anuncio)
+    expect(response.body).not_to include(draft.titulo_anuncio)
+    expect(response.body).not_to include(returned.titulo_anuncio)
     expect(response.body).to include("Em revisão administrativa")
-    expect(response.body).to include("Aguardando aceite do corretor")
-    expect(response.body).to include("Devolvido ao corretor")
     expect(response.body).not_to include(internal.titulo_anuncio)
     expect(response.body).not_to include(published.titulo_anuncio)
 
     html = Nokogiri::HTML(response.body)
-    draft_card = html.at_css("#habitation_#{draft.id}")
-    expect(draft_card.at_css(".ax-property-card__identity").text).to include("Rascunho")
-    expect(draft_card.at_css(".ax-property-chip--intake-draft")).to be_present
-    expect(draft_card.at_css(".ax-property-card__media").text).not_to include("Rascunho")
     expect(response.body).to include("ax-property-chip--intake-review")
-    expect(response.body).to include("ax-property-chip--intake-approved")
-    expect(response.body).to include("ax-property-chip--intake-returned")
 
     get admin_habitations_path(intake_review: "pending", ownership: "all", visualizacao: "tabela")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Rascunho")
     expect(response.body).to include("Em revisão administrativa")
-    expect(response.body).to include("Aguardando aceite do corretor")
-    expect(response.body).to include("Devolvido ao corretor")
-    expect(response.body).to include("ax-property-chip--intake-draft")
     expect(response.body).to include("ax-property-chip--intake-review")
-    expect(response.body).to include("ax-property-chip--intake-approved")
-    expect(response.body).to include("ax-property-chip--intake-returned")
     expect(response.body).not_to include("Disponível internamente")
     expect(response.body).not_to include("Liberado para site")
   end
@@ -426,7 +411,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include('habitations-view-toggle__item is-active')
   end
 
-  it "mostra para o corretor somente suas captações aguardando aceite" do
+  it "mostra para o corretor somente suas captações em revisão administrativa" do
     broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Indalécio")
     patricia = create(:admin_user, profile: broker_profile, name: "Patrícia Paula")
@@ -438,10 +423,10 @@ RSpec.describe "Admin::Habitations", type: :request do
     get admin_habitations_path(intake_review: "pending", ownership: "all")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(own_waiting.titulo_anuncio)
+    expect(response.body).not_to include(own_waiting.titulo_anuncio)
     expect(response.body).not_to include(other_waiting.titulo_anuncio)
-    expect(response.body).not_to include(submitted.titulo_anuncio)
-    expect(response.body).to include("Aguardando aceite do corretor")
+    expect(response.body).to include(submitted.titulo_anuncio)
+    expect(response.body).to include("Em revisão administrativa")
   end
 
   it "abre novo imóvel como cadastro direto fora do fluxo de revisão" do
@@ -1859,15 +1844,31 @@ RSpec.describe "Admin::Habitations", type: :request do
   it "libera todos os status de imóvel no filtro do catálogo para corretor" do
     agent = create(:admin_user, email: "agent-statuses-#{SecureRandom.hex(6)}@salute.test")
     agent.update!(profile: default_agent_profile)
-    create(:habitation, status: "Status operacional personalizado")
+    create(:habitation, status: "Status operacional personalizado", codigo: "STATUS-FILTER-#{SecureRandom.hex(6)}")
     sign_in agent
 
     get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
-    (Habitation::STATUS_OPTIONS + ["Ambos", "Status operacional personalizado"]).each do |status|
+    expected_statuses = (Habitation::STATUS_OPTIONS - ["Lançamento"]) + ["Todos", "Status operacional personalizado"]
+    expected_statuses.each do |status|
       expect(response.body).to include(status)
     end
+    status_options = Nokogiri::HTML.fragment(response.body).css("select[name='status[]'] option").map(&:text)
+    expect(status_options).to include(*expected_statuses)
+    expect(status_options).not_to include("Ambos", "Lançamento")
+    expect(status_options.first).to eq("Todos")
+    expect(status_options.drop(1)).to eq(status_options.drop(1).sort_by { |status| I18n.transliterate(status).downcase })
+  end
+
+  it "permite selecionar Todos para incluir inclusive imóveis suspensos" do
+    suspended = create(:habitation, status: "Suspenso", motivo_suspensao: "Teste do filtro", codigo: "STATUS-TODOS-SUSPENSO")
+
+    get admin_habitations_path, params: { status: ["Todos"] }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(suspended.codigo)
+    expect(response.body).to include("Status: Todos")
   end
 
   it "permite selecionar e combinar mais de um status no catálogo" do

@@ -291,6 +291,15 @@ class Habitation < ApplicationRecord
     "Lavanderia", "Lavabo", "Quartos", "Banheiros", "Área externa", "Garagem", "Planta"
   ].freeze
   KEY_LOCATION_OPTIONS = ["Imobiliária", "Corretor(a)", "Proprietário", "Zelador", "Portaria", "Inquilino", "Outro"].freeze
+  CAPTACAO_KEY_LOCATION_OPTIONS = {
+    "imobiliaria" => "Imobiliária",
+    "corretor" => "Corretor(a)",
+    "proprietario" => "Proprietário",
+    "zelador" => "Zelador",
+    "portaria" => "Portaria",
+    "inquilino" => "Inquilino",
+    "outro" => "Outro"
+  }.freeze
   RENTAL_GUARANTEE_METHOD_OPTIONS = ["Seguro fiança", "Caução", "Fiador", "Título de capitalização", "Garantidora", "A combinar"].freeze
   REGIAO_FOCO_OPTIONS = ["Sim", "Não"].freeze
   PORTAL_PUBLICATION_FIELDS = {
@@ -760,12 +769,7 @@ class Habitation < ApplicationRecord
     }.compact_blank
   end
   def chaves_com
-    {
-      "Corretor(a)" => "corretor",
-      "Proprietário" => "proprietario",
-      "Portaria" => "portaria",
-      "Outro" => "outro"
-    }[key_location]
+    CAPTACAO_KEY_LOCATION_OPTIONS.key(key_location)
   end
   def senha_imovel = captacao_note_value("Senha do imóvel")
   def senha_portaria = captacao_note_value("Senha da portaria")

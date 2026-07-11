@@ -11546,6 +11546,7 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
 }
 
 .habitation-editor-workspace {
+  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -11553,17 +11554,18 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0;
+  padding: 0 0 24px;
   background: transparent;
   overscroll-behavior: contain;
-  scroll-padding: var(--ax-workspace-gutter);
+  scrollbar-gutter: stable;
+  scroll-padding: var(--ax-workspace-gutter) 0 24px;
 }
 
 .habitation-editor-workspace .habitation-tab-content {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  min-height: 100%;
+  min-height: 0;
 }
 
 .habitation-editor-workspace .habitation-tab-content > .tab-pane {
@@ -11578,7 +11580,20 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
 
 .habitation-editor-workspace .habitation-tab-content > .tab-pane.active {
   display: grid !important;
+  align-content: start;
   gap: 8px;
+}
+
+/* As configuracoes condicionais dos portais aumentam a altura da aba em tempo
+   de uso. Estes containers precisam participar do fluxo da area rolavel; uma
+   altura herdada aqui corta os ultimos portais quando varios ficam abertos. */
+.habitation-editor-workspace #comercial,
+.habitation-editor-workspace #comercial .ax-commercial-workspace,
+.habitation-editor-workspace #comercial .ax-commercial-columns,
+.habitation-editor-workspace #comercial .ax-commercial-column {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
 }
 
 .habitation-editor-form .habitation-action-bar,
@@ -12150,6 +12165,30 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
 
 .habitation-form-ui .ax-attendance-grid {
   gap: 6px 10px;
+}
+
+.habitation-form-ui .ax-attendance-notes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.habitation-form-ui .ax-attendance-notes-grid .ax-field-group {
+  min-width: 0;
+}
+
+.habitation-form-ui .ax-attendance-grid .ax-attendance-textarea-field textarea,
+.habitation-form-ui .ax-attendance-grid .ax-attendance-visit-notes textarea,
+.habitation-form-ui .ax-attendance-grid .ax-attendance-notes textarea {
+  min-height: 78px;
+  max-height: 180px;
+}
+
+@media (max-width: 1180px) {
+  .habitation-form-ui .ax-attendance-notes-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .habitation-form-ui .ax-exchange [hidden],
@@ -15495,6 +15534,35 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
   color: #fff;
   border-color: var(--admin-primary, #365f8f);
   background: var(--admin-primary, #365f8f);
+}
+
+.habitation-form-ui button.ax-media-action,
+.habitation-form-ui .media-photo-site-toggle {
+  cursor: pointer;
+}
+
+.habitation-form-ui .media-photo-site-toggle {
+  width: auto;
+  min-width: 26px;
+  gap: 5px;
+  padding-inline: 7px;
+  white-space: nowrap;
+}
+
+.habitation-form-ui .media-photo-site-toggle span {
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.habitation-form-ui .media-photo-site-toggle[aria-busy="true"] {
+  cursor: wait;
+  opacity: .68;
+}
+
+.habitation-form-ui .media-photo-site-toggle.ax-media-action--neutral {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
 }
 
 .habitation-form-ui .ax-media-action--neutral {
