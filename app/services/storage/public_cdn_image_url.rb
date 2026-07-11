@@ -67,7 +67,7 @@ module Storage
         metadata = blob.reload.metadata.to_h.deep_dup
         failures = metadata.fetch(TRANSFORM_FAILURE_METADATA_KEY, {}).to_h
         failures[digest] = { "error" => error.class.name, "recorded_at" => Time.current.iso8601 }
-        metadata[TRANSFORM_FAILURE_METADATA_KEY] = failures.last(10).to_h
+        metadata[TRANSFORM_FAILURE_METADATA_KEY] = failures.to_a.last(10).to_h
         blob.update!(metadata: metadata)
       end
     end
