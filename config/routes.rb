@@ -577,4 +577,13 @@ Rails.application.routes.draw do
   get '/:slug', to: 'landing_pages#show', constraints: lambda { |req|
     LandingPage.exists?(slug: req.params[:slug])
   }, as: :public_landing_page
+
+  # Fallback público final: recupera URLs conhecidas do site antigo e devolve
+  # 404 normal para bots/scanners, sem levantar RoutingError no Puma.
+  get "/*path", to: "legacy_public_routes#show", constraints: lambda { |req|
+    !req.path.start_with?(
+      "/admin", "/field", "/api", "/webhooks", "/integrations",
+      "/rails", "/assets", "/packs", "/cable", "/jobs"
+    )
+  }
 end
