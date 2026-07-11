@@ -20,6 +20,10 @@ if ENV.fetch("RAILS_ENV", "development") == "production"
     on_worker_boot do
       ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
     end
+  else
+    # O Puma também lê WEB_CONCURRENCY diretamente. Forçar zero evita que
+    # WEB_CONCURRENCY=1 ative cluster com um único worker e processo extra.
+    workers 0
   end
 
   # Produção escuta SOMENTE atrás do nginx. `port` e `bind` ACUMULAM listeners
