@@ -11,19 +11,14 @@ environment ENV.fetch("RAILS_ENV", "development")
 if ENV.fetch("RAILS_ENV", "development") == "production"
   directory ENV.fetch("PUMA_DIRECTORY", Dir.pwd)
 
-  worker_count = ENV.fetch("WEB_CONCURRENCY", 0).to_i
+  worker_count = [ENV.fetch("WEB_CONCURRENCY", 1).to_i, 1].max
 
-  if worker_count > 1
-    workers worker_count
-    preload_app!
+  workers worker_count
+  silence_single_worker_warning if worker_count == 1
+  preload_app!
 
-    on_worker_boot do
-      ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
-    end
-  else
-    # O Puma também lê WEB_CONCURRENCY diretamente. Forçar zero evita que
-    # WEB_CONCURRENCY=1 ative cluster com um único worker e processo extra.
-    workers 0
+  on_worker_boot do
+    ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
   end
 
   # Produção escuta SOMENTE atrás do nginx. `port` e `bind` ACUMULAM listeners

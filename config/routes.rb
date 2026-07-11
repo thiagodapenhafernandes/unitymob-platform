@@ -72,6 +72,7 @@ Rails.application.routes.draw do
          as: :system_tenant_owner_impersonation
     # Erros da aplicação (rastreador interno) — visão do Admin do Sistema.
     namespace :system do
+      resource :health, only: :show, controller: "health"
       resources :error_events, only: [:index, :show] do
         member do
           patch :resolve
@@ -564,19 +565,9 @@ Rails.application.routes.draw do
     end
   end
 
-  # Catch-all route for SEO redirects
-  get "/*path", to: "seo_redirects#show", constraints: lambda { |req|
-    next false if req.path.start_with?("/admin", "/rails/active_storage", "/assets", "/packs")
-
-    lookup = "/#{req.params[:path]}"
-    query_lookup = req.query_string.present? ? "#{lookup}?#{req.query_string}" : lookup
-    SeoRedirect.active.exists?(from_path: query_lookup) || SeoRedirect.active.exists?(from_path: lookup)
-  }
-
-  # Catch-all route for public landing pages
-  get '/:slug', to: 'landing_pages#show', constraints: lambda { |req|
-    LandingPage.exists?(slug: req.params[:slug])
-  }, as: :public_landing_page
+  # A resolução acontece nos controllers. O roteador não deve consultar banco
+  # para cada URL desconhecida (especialmente sob tráfego de bots).
+  get "/:slug", to: "landing_pages#show", as: :public_landing_page
 
   # Fallback público final: recupera URLs conhecidas do site antigo e devolve
   # 404 normal para bots/scanners, sem levantar RoutingError no Puma.

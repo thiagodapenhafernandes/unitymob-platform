@@ -61,7 +61,7 @@ class HabitationPhotoWatermarkJob < ApplicationJob
   end
 
   def schedule_original_blob_purge(blob)
-    ActiveStorage::PurgeJob.set(wait: ORIGINAL_BLOB_PURGE_DELAY).perform_later(blob)
+    Storage::SafePurgeJob.set(wait: ORIGINAL_BLOB_PURGE_DELAY).perform_later(blob.id)
   end
 
   class BlobUpload

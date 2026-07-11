@@ -37,7 +37,7 @@ RSpec.describe HabitationPhotoWatermarkJob, type: :job do
 
     expect do
       described_class.perform_now(habitation.id, [attachment.id], setting.id, tenant_id: tenant.id)
-    end.to have_enqueued_job(ActiveStorage::PurgeJob).with(original_blob).at(
+      end.to have_enqueued_job(Storage::SafePurgeJob).with(original_blob.id).at(
       be_within(2.seconds).of(described_class::ORIGINAL_BLOB_PURGE_DELAY.from_now)
     )
 
