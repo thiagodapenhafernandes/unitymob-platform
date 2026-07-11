@@ -6,7 +6,7 @@
           <span class="ax-dashboard-panel__eyebrow">Captação</span>
           <h2>Últimas captações</h2>
         </div>
-        <%= link_to "Ver todas", admin_captacoes_path, class: "ax-dashboard-panel__link" %>
+        <%= link_to "Ver todas", admin_captacoes_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
       </div>
 
       <div class="ax-dashboard-list">
@@ -15,7 +15,7 @@
             <% captacao_link_content = capture do %>
               <span class="ax-dashboard-list__main">
                 <strong><%= captacao.display_title %></strong>
-                <em><i class="bi bi-person-circle"></i> <%= captacao.corretor&.name || "Sem corretor" %> · <%= captacao.property_kind.humanize %> · <%= captacao.modalidade.humanize %></em>
+                <em><i class="bi bi-person-circle"></i> <%= captacao.admin_user&.name || "Sem corretor" %> · <%= captacao.property_kind.humanize %> · <%= captacao.modalidade.humanize %></em>
               </span>
               <span class="ax-dashboard-list__right">
                 <% if captacao.published_on_site? %>
@@ -28,7 +28,7 @@
                 <small><%= time_ago_in_words(captacao.updated_at) %></small>
               </span>
             <% end %>
-            <%= link_to captacao_link_content, (captacao.completed? ? admin_captacao_path(captacao) : edit_admin_captacao_path(captacao)), class: "ax-dashboard-list__row ax-dashboard-list__row--link" %>
+            <%= link_to captacao_link_content, (captacao.completed? ? admin_captacao_path(captacao) : edit_admin_captacao_path(captacao)), class: "ax-dashboard-list__row ax-dashboard-list__row--link", data: { turbo_frame: "_top" } %>
           <% end %>
         <% else %>
           <div class="ax-dashboard-empty-row">Nenhuma captação registrada ainda.</div>
@@ -43,7 +43,7 @@
             <span class="ax-dashboard-panel__eyebrow">Mix</span>
             <h2>Distribuição por categoria</h2>
           </div>
-          <%= link_to "Ver todos", admin_habitations_path, class: "ax-dashboard-panel__link" %>
+          <%= link_to "Ver todos", admin_habitations_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
         </div>
         <div class="ax-dashboard-category-grid">
           <% max_cat = @habitations_by_category.map(&:last).max.to_f %>
@@ -73,4 +73,22 @@
       <em><i class="bi bi-house-door"></i> Média dos imóveis à venda</em>
     </article>
   </div>
+
+  <article class="ax-dashboard-panel ax-dashboard-supply-demand">
+    <div class="ax-dashboard-panel__header">
+      <div>
+        <span class="ax-dashboard-panel__eyebrow">Inteligência comercial · <%= @dashboard_period %> dias</span>
+        <h2>Oferta versus demanda por categoria</h2>
+      </div>
+    </div>
+    <div class="ax-dashboard-supply-demand__head"><span>Categoria</span><span>Oferta ativa</span><span>Leads vinculados</span><span>Relação</span></div>
+    <% @supply_demand_rows.each do |row| %>
+      <div class="ax-dashboard-supply-demand__row">
+        <strong><%= row[:category] %></strong>
+        <span><%= number_with_delimiter(row[:supply]) %></span>
+        <span><%= number_with_delimiter(row[:demand]) %></span>
+        <b><%= row[:supply].positive? ? number_to_percentage((row[:demand].to_f / row[:supply]) * 100, precision: 1, strip_insignificant_zeros: true) : "—" %></b>
+      </div>
+    <% end %>
+  </article>
 <% end %>

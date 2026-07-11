@@ -1,63 +1,24 @@
-<div class="tw-flex tw-items-center tw-justify-between tw-mb-4">
-  <div>
-    <%= link_to admin_scheduling_integration_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-mb-3 tw-gap-2" do %>
-      <i class="bi bi-arrow-left"></i>Voltar para agenda
-    <% end %>
-    <h1 class="ax-page-title"><%= @habitation.display_title %></h1>
-    <p class="ax-page-subtitle"><%= [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank.join(" - ") %></p>
-  </div>
-</div>
+<div class="integration-workspace scheduling-property-workspace">
+<%= ax_workspace_heading(eyebrow: "Operação · Fotografia", icon: "camera", title: @habitation.display_title, pills: [@habitation.codigo], subtitle: [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank.join(" · "), actions: ax_button("Voltar para agenda", admin_scheduling_integration_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
 
-<%= ax_field_grid do %>
-  <div class="ax-span-6">
-    <div class="ax-card">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-house me-2 text-primary"></i>Dados para fotografia</h5>
-      </div>
-      <div class="ax-card__body">
-        <dl class="mb-0">
-          <div class="tw-flex tw-gap-2 tw-mb-2">
-            <dt style="width:33%">Código</dt>
-            <dd class="tw-w-full mb-0"><%= @habitation.codigo %></dd>
-          </div>
+<div class="scheduling-property-layout">
+  <%= ax_operational_panel(eyebrow: "Imóvel", title: "Dados para fotografia", class_name: "scheduling-property-details") do %>
+    <dl class="scheduling-property-facts">
+      <% [["Código", @habitation.codigo], ["Tipo", [@habitation.categoria, @habitation.status].compact_blank.join(" · ")], ["Endereço", [@habitation.endereco, @habitation.numero, @habitation.bairro, @habitation.cidade].compact_blank.join(" - ")], ["Condomínio", @habitation.nome_empreendimento.presence || "Não informado"], ["Captador", @habitation.admin_user&.name.presence || "Sem captador"]].each do |label, value| %>
+        <div><dt><%= label %></dt><dd><%= value %></dd></div>
+      <% end %>
+    </dl>
+  <% end %>
 
-          <div class="tw-flex tw-gap-2 tw-mb-2">
-            <dt style="width:33%">Tipo</dt>
-            <dd class="tw-w-full mb-0"><%= [@habitation.categoria, @habitation.status].compact_blank.join(" · ") %></dd>
-          </div>
-
-          <div class="tw-flex tw-gap-2 tw-mb-2">
-            <dt style="width:33%">Endereço</dt>
-            <dd class="tw-w-full mb-0"><%= [@habitation.endereco, @habitation.numero, @habitation.bairro, @habitation.cidade].compact_blank.join(" - ") %></dd>
-          </div>
-
-          <div class="tw-flex tw-gap-2 tw-mb-2">
-            <dt style="width:33%">Condomínio</dt>
-            <dd class="tw-w-full mb-0"><%= @habitation.nome_empreendimento.presence || "Não informado" %></dd>
-          </div>
-
-          <div class="tw-flex tw-gap-2">
-            <dt style="width:33%">Captador</dt>
-            <dd class="tw-w-full mb-0"><%= @habitation.admin_user&.name.presence || "Sem captador" %></dd>
-          </div>
-        </dl>
-      </div>
-    </div>
-  </div>
-
-  <div class="ax-span-4">
-    <div class="ax-card">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-calendar2-check me-2 text-primary"></i>Agendamento</h5>
-      </div>
-      <div class="ax-card__body">
+  <%= ax_operational_panel(eyebrow: "Agenda", title: "Horário solicitado", class_name: "scheduling-property-appointment") do %>
+      <div class="scheduling-property-date">
         <% if @habitation.photo_session_requested_at.present? %>
-          <div class="h5 tw-font-bold tw-mb-1"><%= l(@habitation.photo_session_requested_at, format: "%d/%m/%Y") %></div>
-          <div class="tw-text-ink-muted"><%= l(@habitation.photo_session_requested_at, format: "%H:%M") %></div>
+          <strong><%= l(@habitation.photo_session_requested_at, format: "%d/%m/%Y") %></strong>
+          <span><%= l(@habitation.photo_session_requested_at, format: "%H:%M") %></span>
         <% else %>
-          <span class="ax-badge ax-badge--amber">Sem horário definido</span>
+          <%= ax_badge("Sem horário definido", tone: :amber) %>
         <% end %>
       </div>
-    </div>
-  </div>
-<% end %>
+  <% end %>
+</div>
+</div>

@@ -1,18 +1,50 @@
-<div class="container-fluid py-4">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-mb-1"><i class="bi bi-pencil-square"></i> Editar Webhook</h1>
-      <p class="ax-page-subtitle">Alterar configurações da integração #<%= @webhook_setting.id %></p>
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_root_path %><i class="bi bi-chevron-right"></i>
+  <%= link_to "Webhooks", admin_webhook_settings_path %><i class="bi bi-chevron-right"></i>
+  <strong>Editar #<%= @webhook_setting.id %></strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_webhook_settings_path, class: "ax-contextbar__button" do %><i class="bi bi-arrow-left"></i><span>Voltar aos webhooks</span><% end %>
+<% end %>
+
+<% main_content = capture do %>
+  <div class="webhook-settings-main-stack webhook-editor-main-stack">
+    <%= ax_workspace_heading(eyebrow: "Integrações", icon: "pencil-square", title: "Editar webhook", pills: ["##{@webhook_setting.id}", @webhook_setting.enabled? ? "Ativo" : "Inativo"], subtitle: "Ajuste destino, captura e identificação da integração.") %>
+    <%= render "form", webhook_setting: @webhook_setting, main_only: true %>
+  </div>
+<% end %>
+
+<% aside_content = capture do %>
+  <%= ax_aside_panel(title: "Governança", token: @webhook_setting.enabled? ? "ON" : "OFF", rail_label: "Governança", rail_icon: "shield-check", class_name: "webhook-settings-aside-panel") do %>
+    <div class="webhook-settings-aside-body">
+      <%= ax_operational_panel(eyebrow: "Estado", title: "Impacto da configuração") do %>
+        <%= ax_inline_notice(tone: @webhook_setting.enabled? ? :success : :neutral, icon: @webhook_setting.enabled? ? "broadcast" : "pause-circle") do %>
+          <%= @webhook_setting.enabled? ? "Este webhook está habilitado e pode enviar eventos." : "Este webhook está inativo e não envia eventos." %>
+        <% end %>
+        <p class="webhook-settings-help-text">Alterar URLs afeta os próximos envios. Valide o endpoint antes de salvar.</p>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Ação irreversível", title: "Excluir webhook") do %>
+        <p class="webhook-settings-help-text">Remove definitivamente esta configuração. A operação não apaga dados já enviados.</p>
+        <%= button_to admin_webhook_setting_path(@webhook_setting), method: :delete, class: "ax-btn ax-btn--danger tw-w-full", data: { turbo_confirm: "Tem certeza? Esta ação não pode ser desfeita." } do %>
+          <i class="bi bi-trash ax-ico"></i>Excluir webhook
+        <% end %>
+      <% end %>
     </div>
-    <%= link_to 'Voltar', admin_webhook_settings_path, class: 'ax-btn ax-btn--ghost' %>
-  </div>
+  <% end %>
+<% end %>
 
-  <%= render 'form', webhook_setting: @webhook_setting %>
-
-  <div class="mt-5 pt-4 border-top">
-     <h5 class="tw-text-ink-muted tw-mb-3">Zona de Perigo</h5>
-     <%= button_to admin_webhook_setting_path(@webhook_setting), method: :delete, class: "ax-btn ax-btn--danger tw-gap-2", data: { confirm: "Tem certeza? Esta ação não pode ser desfeita." } do %>
-       <i class="bi bi-trash"></i>Excluir este Webhook
-     <% end %>
-  </div>
-</div>
+<%= render "admin/shared/ui/workspace_shell",
+      class_name: "webhook-settings-workspace webhook-editor-shell",
+      main_class: "webhook-settings-main-pane",
+      main_label: "Editar webhook",
+      main_body_class: "webhook-settings-main-body",
+      main: main_content,
+      aside: aside_content,
+      aside_class: "webhook-settings-aside",
+      aside_label: "Governança do webhook",
+      contextbar_class: "webhook-settings-middle-contextbar",
+      controller: "ax-aside",
+      storage_key: "admin-webhook-editor-aside-collapsed",
+      preload_class: "ax-webhook-editor-aside-collapsed-preload" %>

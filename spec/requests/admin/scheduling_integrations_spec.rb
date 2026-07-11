@@ -15,7 +15,10 @@ RSpec.describe "Admin::SchedulingIntegrations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Agenda de fotografia")
-    expect(response.body).to include("scheduling-workspace__layout")
+    expect(response.body).to include("scheduling-settings-workspace")
+    expect(response.body).to include("ax-workspace-main")
+    expect(response.body).to include("ax-workspace-aside")
+    expect(response.body).to include("scheduling-middle-contextbar")
 
     patch admin_scheduling_integration_path, params: {
       scheduling: { photography_schedule_url: "https://calendly.com/fotografias-saluteimoveis/30min" }

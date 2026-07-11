@@ -28,6 +28,7 @@ class Admin::HabitationsController < Admin::BaseController
   }.freeze
   INDEX_PAGE_SIZE_OPTIONS = [10, 20].freeze
   DEFAULT_INDEX_PAGE_SIZE = 10
+  DASHBOARD_QUALITY_FILTERS = %w[missing_address missing_photos missing_price stale].freeze
   REPORT_MAX_PAGES = 100
   CUSTOM_FEATURE_OPTIONS = [
     "Cozinha gourmet com churrasqueira",
@@ -983,6 +984,7 @@ class Admin::HabitationsController < Admin::BaseController
       publicar_imovelweb_2 publicar_lais_ai
       publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
       captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim somente_com_imagens somente_sem_imagens somente_dwv
+      dashboard_quality
       dorms suites vagas banheiros
     ]
   end
@@ -1145,6 +1147,7 @@ class Admin::HabitationsController < Admin::BaseController
     @captacao_fim = params[:captacao_fim]
     @atualizacao_inicio = params[:atualizacao_inicio]
     @atualizacao_fim = params[:atualizacao_fim]
+    @dashboard_quality = params[:dashboard_quality].presence_in(DASHBOARD_QUALITY_FILTERS)
   end
 
   def filtered_habitations_scope
@@ -1311,12 +1314,31 @@ class Admin::HabitationsController < Admin::BaseController
       scope = scope.where("LOWER(TRIM(COALESCE(habitations.imovel_dwv, ''))) = ?", "sim")
     end
 
+    scope = apply_dashboard_quality_filter(scope, @dashboard_quality)
+
     scope = apply_boolean_filter(scope, @tem_placa, :tem_placa_flag)
     scope = apply_boolean_filter(scope, @exclusivo, :exclusivo_flag)
 
     scope = apply_quick_scope_filter(scope, @scope)
 
     scope
+  end
+
+  def apply_dashboard_quality_filter(scope, filter)
+    scope = scope.publicly_listable if filter.present?
+
+    case filter
+    when "missing_address"
+      scope.where("NULLIF(TRIM(COALESCE(addresses.logradouro, habitations.endereco)), '') IS NULL")
+    when "missing_photos"
+      scope.where.not(id: scope.with_photos.select(:id))
+    when "missing_price"
+      scope.where("COALESCE(habitations.valor_venda_cents, 0) <= 0 AND COALESCE(habitations.valor_locacao_cents, 0) <= 0")
+    when "stale"
+      scope.where("COALESCE(habitations.data_atualizacao_crm, habitations.updated_at) < ?", 90.days.ago)
+    else
+      scope
+    end
   end
 
   def apply_development_filter(scope, raw_value)

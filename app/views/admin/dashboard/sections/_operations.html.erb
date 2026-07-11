@@ -6,7 +6,7 @@
           <span class="ax-dashboard-panel__eyebrow">Auditoria</span>
           <h2>Atividade recente</h2>
         </div>
-        <%= link_to "Auditoria completa", admin_field_audit_logs_path, class: "ax-dashboard-panel__link" %>
+        <%= link_to "Auditoria completa", admin_field_audit_logs_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
       </div>
 
       <div class="ax-dashboard-list">
@@ -39,7 +39,20 @@
           <span class="ax-dashboard-panel__eyebrow">Catálogo</span>
           <h2>Últimos imóveis atualizados</h2>
         </div>
-        <%= link_to "Ver todos", admin_habitations_path, class: "ax-dashboard-panel__link" %>
+        <%= link_to "Ver todos", admin_habitations_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
+      </div>
+
+      <div class="ax-dashboard-quality" aria-label="Qualidade da publicação">
+        <% @catalog_quality_metrics.each do |metric| %>
+          <%= link_to admin_habitations_path(ownership: "all", dashboard_quality: metric[:filter]), class: "ax-dashboard-quality__item", data: { turbo_frame: "_top" } do %>
+            <span class="ax-dashboard-quality__icon ax-dashboard-quality__icon--<%= metric[:tone] %>"><i class="bi bi-<%= metric[:icon] %>"></i></span>
+            <span>
+              <strong><%= number_with_delimiter(metric[:value]) %></strong>
+              <small><%= metric[:label] %></small>
+            </span>
+            <i class="bi bi-chevron-right"></i>
+          <% end %>
+        <% end %>
       </div>
 
       <div class="ax-dashboard-table-wrap">
@@ -55,7 +68,7 @@
           <tbody>
             <% @recent_habitations.each do |habitation| %>
               <tr>
-                <td class="ax-strong"><%= link_to habitation.codigo, admin_habitation_internal_path(habitation) %></td>
+                <td class="ax-strong"><%= link_to habitation.codigo, admin_habitation_internal_path(habitation), data: { turbo_frame: "_top" } %></td>
                 <td>
                   <div><%= [habitation.endereco, habitation.numero].compact_blank.join(", ").presence || "—" %></div>
                   <small><%= [habitation.bairro, habitation.cidade].compact_blank.join(" · ") %></small>

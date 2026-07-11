@@ -1,13 +1,6 @@
 <%# Banners — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak %>
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Banners Institucionais</h1>
-    <p class="ax-page-subtitle">Gerencie os banners rotativos e de destaque das páginas. Total: <%= @banners.total_entries rescue @banners.count %>.</p>
-  </div>
-  <%= link_to new_admin_banner_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-    <i class="bi bi-plus-lg ax-ico"></i><span>Novo banner</span>
-  <% end %>
-</div>
+<div class="public-site-workspace">
+<%= ax_workspace_heading(eyebrow: "Site público · Conteúdo", icon: "image", title: "Banners", subtitle: "Gerencie mídia, posição e publicação dos banners.", metrics: [{ value: (@banners.total_entries rescue @banners.count), label: "banners" }], actions: ax_button("Novo banner", new_admin_banner_path, variant: :primary, size: :sm, icon: "plus-lg")) %>
 
 <div class="ax-table-wrap">
   <table class="ax-table">
@@ -64,6 +57,7 @@
       <% end %>
     </tbody>
   </table>
+</div>
 </div>
 
 <% if @banners.respond_to?(:total_pages) && @banners.total_pages > 1 %>

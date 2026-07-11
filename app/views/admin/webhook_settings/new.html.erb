@@ -1,11 +1,69 @@
-<div class="container-fluid py-4">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-mb-1"><i class="bi bi-plus-circle"></i> Novo Webhook</h1>
-      <p class="ax-page-subtitle">Adicionar nova integração</p>
-    </div>
-    <%= link_to 'Voltar', admin_webhook_settings_path, class: 'ax-btn ax-btn--ghost' %>
-  </div>
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_root_path %>
+  <i class="bi bi-chevron-right"></i>
+  <%= link_to "Webhooks", admin_webhook_settings_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Novo</strong>
+<% end %>
 
-  <%= render 'form', webhook_setting: @webhook_setting %>
-</div>
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_webhook_settings_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-left"></i><span>Voltar aos webhooks</span>
+  <% end %>
+<% end %>
+
+<% main_content = capture do %>
+  <div class="webhook-settings-main-stack webhook-editor-main-stack">
+    <%= ax_workspace_heading(
+          eyebrow: "Integrações",
+          icon: "send-plus",
+          title: "Novo webhook",
+          pills: ["Saída"],
+          subtitle: "Configure o destino e os eventos enviados para o sistema externo."
+        ) %>
+
+    <%= render "form", webhook_setting: @webhook_setting, main_only: true %>
+  </div>
+<% end %>
+
+<% aside_content = capture do %>
+  <%= ax_aside_panel(title: "Referência do webhook", token: "POST", rail_label: "Referência", class_name: "webhook-settings-aside-panel") do %>
+    <div class="webhook-settings-aside-body">
+      <%= ax_operational_panel(eyebrow: "Escopo", title: "Eventos monitorados") do %>
+        <p class="webhook-settings-help-text">O webhook é acionado por formulários públicos e pode usar uma URL específica para leads de WhatsApp.</p>
+        <ul class="webhook-editor-reference-list">
+          <li>Contato geral</li>
+          <li>Agendamento de visita</li>
+          <li>Trabalhe conosco</li>
+          <li>Busca de imóveis</li>
+          <li>Captura de leads via WhatsApp</li>
+        </ul>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Contrato", title: "Envio HTTP") do %>
+        <dl class="webhook-settings-kpi-list">
+          <div><dt>Método</dt><dd>POST</dd></div>
+          <div><dt>Conteúdo</dt><dd>application/json</dd></div>
+          <div><dt>URL alternativa</dt><dd>WhatsApp/Leads</dd></div>
+        </dl>
+        <%= ax_inline_notice(tone: :info, icon: "shield-check") do %>
+          Use HTTPS e teste o endpoint antes de ativar a integração em produção.
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<%= render "admin/shared/ui/workspace_shell",
+      class_name: "webhook-settings-workspace webhook-editor-shell",
+      main_class: "webhook-settings-main-pane",
+      main_label: "Novo webhook",
+      main_body_class: "webhook-settings-main-body",
+      main: main_content,
+      aside: aside_content,
+      aside_class: "webhook-settings-aside",
+      aside_label: "Referência do webhook",
+      contextbar_class: "webhook-settings-middle-contextbar",
+      controller: "ax-aside",
+      storage_key: "admin-webhook-editor-aside-collapsed",
+      preload_class: "ax-webhook-editor-aside-collapsed-preload" %>

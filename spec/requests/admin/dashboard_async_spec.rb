@@ -28,6 +28,9 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include(admin_dashboard_section_path("operations"))
     expect(response.body).to include('id="admin_dashboard_support"')
     expect(response.body).to include(admin_dashboard_section_path("support"))
+    expect(response.body).to include("Atenção necessária")
+    expect(response.body).to include("Prioridade operacional")
+    expect(response.body).not_to include("Módulo Campo desativado")
   end
 
   it "permite dashboard principal para usuário operacional com permissão dashboard" do
@@ -86,6 +89,41 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     end
   end
 
+  it "expõe indicadores acionáveis de qualidade do catálogo" do
+    get admin_dashboard_section_path("operations"), headers: { "Turbo-Frame" => "admin_dashboard_operations" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Qualidade da publicação")
+    expect(response.body).to include("Sem endereço")
+    expect(response.body).to include("Sem fotos")
+    expect(response.body).to include("Sem preço")
+    expect(response.body).to include("Desatualizados há 90 dias")
+    expect(response.body).to include("dashboard_quality=missing_address")
+    expect(response.body).to include('data-turbo-frame="_top"')
+  end
+
+  it "usa o slug real da Habitation para abrir captações em rascunho fora do Turbo Frame" do
+    intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin, intake_status: "draft")
+
+    get admin_dashboard_section_path("support"), headers: { "Turbo-Frame" => "admin_dashboard_support" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(CGI.escapeHTML(edit_admin_captacao_path(intake)))
+    expect(response.body).not_to include(CGI.escapeHTML(edit_admin_captacao_path(intake.id))) unless intake.to_param == intake.id.to_s
+    expect(response.body).to include('data-turbo-frame="_top"')
+  end
+
+  it "filtra o catálogo pelo indicador de qualidade selecionado" do
+    missing_price = create(:habitation, valor_venda_cents: 0, valor_locacao_cents: 0)
+    priced = create(:habitation, valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
+
+    get admin_habitations_path(ownership: "all", dashboard_quality: "missing_price")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(missing_price.codigo)
+    expect(response.body).not_to include(priced.codigo)
+  end
+
   it "inclui o funil comercial em slice dedicado" do
     get admin_dashboard_section_path("funnel"), headers: { "Turbo-Frame" => "admin_dashboard_funnel" }
 
@@ -95,6 +133,19 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include("Leads interessados")
     expect(response.body).to include("Oportunidades")
     expect(response.body).to include("Vendas")
+    expect(response.body).to include("Referência:")
+    expect(response.body).to include("%")
+  end
+
+  it "nomeia o ranking como distribuição de carteira e oculta Campo quando pausado" do
+    allow(Setting).to receive(:get).with("field_checkin_enabled", "false").and_return("false")
+
+    get admin_dashboard_section_path("rankings"), headers: { "Turbo-Frame" => "admin_dashboard_rankings" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Carteira de imóveis por corretor")
+    expect(response.body).not_to include("Top corretores por imóveis")
+    expect(response.body).not_to include("Top lojas por check-ins")
   end
 
   it "inclui a pizza de status em slice dedicado" do
@@ -103,6 +154,51 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Leads por status")
     expect(response.body).to include("leadsStatusChart")
+    expect(response.body).to include("Abrir leads por status")
+  end
+
+  it "expõe KPIs como atalhos para as listagens correspondentes" do
+    get admin_root_path
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Ver imóveis no catálogo")
+    expect(response.body).to include("Ver leads recebidos hoje")
+    expect(response.body).to include("Ver regras de distribuição")
+  end
+
+  it "propaga período e corretor para os slices do dashboard" do
+    broker = create(:admin_user, tenant: admin.tenant)
+
+    get admin_root_path(period: 7, broker_id: broker.id)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Escopo do painel")
+    expect(response.body).to include("period=7")
+    expect(response.body).to include("broker_id=#{broker.id}")
+  end
+
+  it "renderiza desempenho comercial no período selecionado" do
+    broker = create(:admin_user, tenant: admin.tenant)
+    create(:lead, tenant: admin.tenant, admin_user: broker, status: "Concluido", created_at: 2.days.ago)
+
+    get admin_dashboard_section_path("rankings", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_rankings" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Desempenho por corretor")
+    expect(response.body).to include(broker.name)
+    expect(response.body).to include("1 concluídos")
+  end
+
+  it "renderiza oferta versus demanda usando leads vinculados a imóveis" do
+    habitation = create(:habitation, tenant: admin.tenant, categoria: "Apartamento")
+    create(:lead, tenant: admin.tenant, property_id: habitation.id, created_at: 2.days.ago)
+
+    get admin_dashboard_section_path("support", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_support" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Oferta versus demanda por categoria")
+    expect(response.body).to include("Apartamento")
+    expect(response.body).to include("Leads vinculados")
   end
 
   it "gera a serie de leads dos ultimos 30 dias incluindo o dia atual" do

@@ -1,11 +1,4 @@
-<div class="mb-4">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><%= link_to "Páginas SEO", admin_landing_pages_path %></li>
-      <li class="breadcrumb-item active" aria-current="page">Editar Página</li>
-    </ol>
-  </nav>
-  <h1 class="h3 mb-0 text-gray-800">Editar Página: <%= @landing_page.title %></h1>
-</div>
-
+<div class="public-site-workspace">
+<%= ax_workspace_heading(eyebrow: "Site público · Landing Pages", icon: "pencil-square", title: @landing_page.title, pills: [@landing_page.active? ? "Ativa" : "Offline"], subtitle: "Edite conteúdo, filtros, publicação e preview.", actions: ax_button("Voltar", admin_landing_pages_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
 <%= render 'form' %>
+</div>

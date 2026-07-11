@@ -3,6 +3,8 @@
   hour = Time.current.hour
   greeting = hour < 12 ? "Bom dia" : (hour < 18 ? "Boa tarde" : "Boa noite")
   first_name = current_admin_user.name.to_s.split.first.presence || current_admin_user.email
+  dashboard_filter_params = { period: @dashboard_period }
+  dashboard_filter_params[:broker_id] = @dashboard_broker_id if @dashboard_broker_id.present?
 
   dashboard_subtitle =
     if @is_admin_view && @field_feature_enabled
@@ -16,15 +18,22 @@
   today_metrics = [
     [@today_new_habitations, "building", "Imóveis atualizados"],
     [@leads_today, "megaphone", "Leads recebidos"],
-    [@today_captacoes, "journal-plus", "Captações criadas"],
-    [@today_checkins_count, "geo-fill", "Check-ins"]
+    [@today_captacoes, "journal-plus", "Captações criadas"]
   ]
+  today_metrics << [@today_checkins_count, "geo-fill", "Check-ins"] if @field_feature_enabled
 
   pending_items = []
-  pending_items << [admin_captacoes_path(status: "draft"), "file-earmark-text", "amber", "Captações em rascunho", @drafts_count] if @drafts_count.to_i.positive?
-  pending_items << [admin_leads_path(status: "represado"), "hourglass-split", "red", "Leads represados", @holding_leads] if @holding_leads.to_i.positive?
-  pending_items << [admin_field_manual_checkin_requests_path, "hand-index-thumb", "amber", "Pedidos manuais pendentes", @pending_manual_requests] if @pending_manual_requests.to_i.positive?
-  pending_items << [admin_habitations_path(status: "error"), "exclamation-triangle-fill", "red", "Imóveis com erro de sync", @sync_errors_count] if @sync_errors_count.to_i.positive?
+  if @drafts_count.to_i.positive?
+    draft_detail = if @stale_drafts_count.to_i.positive?
+      "#{@stale_drafts_count} sem atualização há mais de 30 dias"
+    elsif @oldest_draft_updated_at
+      "mais antiga atualizada há #{time_ago_in_words(@oldest_draft_updated_at)}"
+    end
+    pending_items << { path: admin_captacoes_path(status: "draft"), icon: "file-earmark-text", tone: "amber", label: "Captações em rascunho", count: @drafts_count, detail: draft_detail }
+  end
+  pending_items << { path: admin_leads_path(status: "represado"), icon: "hourglass-split", tone: "red", label: "Leads represados", count: @holding_leads, detail: "aguardando distribuição" } if @holding_leads.to_i.positive?
+  pending_items << { path: admin_field_manual_checkin_requests_path, icon: "hand-index-thumb", tone: "amber", label: "Pedidos manuais pendentes", count: @pending_manual_requests } if @pending_manual_requests.to_i.positive?
+  pending_items << { path: admin_habitations_path(status: "error"), icon: "exclamation-triangle-fill", tone: "red", label: "Imóveis com erro de sync", count: @sync_errors_count, detail: "requerem revisão da integração" } if @sync_errors_count.to_i.positive?
 %>
 
 <section class="ax-dashboard" aria-label="Dashboard operacional">
@@ -36,6 +45,7 @@
         <%= ax_badge(@is_admin_view ? "Admin" : "Meu painel", tone: :blue) %>
       </div>
       <p><%= l(Date.current, format: :long) %> · <%= dashboard_subtitle %></p>
+      <small class="ax-dashboard-command__updated"><i class="bi bi-arrow-clockwise"></i> Atualizado <%= time_ago_in_words(@dashboard_updated_at) %> atrás</small>
     </div>
 
     <div class="ax-dashboard-command__status">
@@ -50,82 +60,78 @@
     </div>
   </header>
 
-  <div class="ax-dashboard-kpis">
-    <%= ax_metric_card(
+  <%= form_with url: admin_root_path, method: :get, class: "ax-dashboard-filters", data: { turbo: false } do |form| %>
+    <span><i class="bi bi-funnel"></i> Escopo do painel</span>
+    <%= form.select :period, [["7 dias", 7], ["30 dias", 30], ["90 dias", 90]], { selected: @dashboard_period }, class: "ax-control", aria: { label: "Período do dashboard" }, onchange: "this.form.requestSubmit()" %>
+    <% if @is_admin_view %>
+      <%= form.select :broker_id, [["Todos os corretores", ""]] + @dashboard_brokers.map { |broker| [broker.name, broker.id] }, { selected: @dashboard_broker_id }, class: "ax-control", aria: { label: "Corretor do dashboard" }, onchange: "this.form.requestSubmit()" %>
+    <% end %>
+  <% end %>
+
+  <div class="ax-dashboard-kpis <%= 'ax-dashboard-kpis--compact' if @is_admin_view && !@field_feature_enabled %>">
+    <%= link_to admin_habitations_path(ownership: "all"), class: "ax-dashboard-kpi-link", aria: { label: "Ver imóveis no catálogo" } do %>
+      <%= ax_metric_card(
           label: "Imóveis no catálogo",
           value: number_with_delimiter(@properties_count),
           badge: ax_badge("Ativos", tone: :green, dot: true),
           hint: "#{@featured_count} destaques · #{@developments_count} empreendimentos",
           class_name: "ax-dashboard-kpi"
-        ) %>
+          ) %>
+    <% end %>
 
-    <%= ax_metric_card(
+    <%= link_to admin_leads_path(start_date: Date.current.iso8601, end_date: Date.current.iso8601, broker_id: @dashboard_broker_id), class: "ax-dashboard-kpi-link", aria: { label: "Ver leads recebidos hoje" } do %>
+      <%= ax_metric_card(
           label: "Leads hoje",
           value: number_with_delimiter(@leads_today),
           badge: ax_badge("#{@leads_last_7_days} em 7d", tone: :gray),
-          hint: "#{@holding_leads} represados · #{@new_leads} novos",
+          hint: ["#{@holding_leads} represados", "#{@new_leads} novos", (@leads_period_change.nil? ? nil : "#{@leads_period_change.positive? ? '+' : ''}#{@leads_period_change}% vs. período anterior")].compact.join(" · "),
           class_name: "ax-dashboard-kpi"
-        ) %>
+          ) %>
+    <% end %>
 
     <% if @is_admin_view %>
-      <%= ax_metric_card(
-            label: "Check-ins ativos",
-            value: @active_checkins_count,
-            badge: @active_checkins_count.positive? ? ax_badge("Ao vivo", tone: :green, dot: true) : ax_badge("Sem ativos", tone: :gray),
-            hint: "#{@today_checkins_count} hoje · #{@suspicious_checkins} suspeitos",
-            class_name: "ax-dashboard-kpi"
-          ) %>
+      <% if @field_feature_enabled %>
+        <%= link_to admin_field_check_ins_path(status: "active"), class: "ax-dashboard-kpi-link", aria: { label: "Ver check-ins ativos" } do %>
+          <%= ax_metric_card(
+              label: "Check-ins ativos",
+              value: @active_checkins_count,
+              badge: @active_checkins_count.positive? ? ax_badge("Ao vivo", tone: :green, dot: true) : ax_badge("Sem ativos", tone: :gray),
+              hint: "#{@today_checkins_count} hoje · #{@suspicious_checkins} suspeitos",
+              class_name: "ax-dashboard-kpi"
+              ) %>
+        <% end %>
+      <% end %>
 
-      <%= ax_metric_card(
+      <%= link_to admin_distribution_rules_path, class: "ax-dashboard-kpi-link", aria: { label: "Ver regras de distribuição" } do %>
+        <%= ax_metric_card(
             label: "Regras de distribuição",
             value: "#{@distribution_rules_active}/#{@distribution_rules_total}",
             badge: ax_badge("#{@rules_with_checkin} c/ check-in", tone: :blue),
             hint: "#{@brokers_active} corretores · #{@stores_active_count} lojas",
             progress: @distribution_rules_total.to_i.positive? ? ((@distribution_rules_active.to_f / @distribution_rules_total) * 100) : 0,
             class_name: "ax-dashboard-kpi"
-          ) %>
+            ) %>
+      <% end %>
     <% end %>
   </div>
 
-  <div class="ax-dashboard-grid ax-dashboard-grid--insights">
-    <%= turbo_frame_tag "admin_dashboard_charts", src: admin_dashboard_section_path("charts") do %>
-      <%= render "admin/dashboard/sections/loading_panel",
-                 title: "Leads - últimos 30 dias",
-                 eyebrow: "Aquisição",
-                 chart: true %>
-    <% end %>
-
-    <%= turbo_frame_tag "admin_dashboard_funnel", src: admin_dashboard_section_path("funnel") do %>
-      <%= render "admin/dashboard/sections/loading_panel", title: "Conversão comercial", eyebrow: "Funil", chart: true, compact: true %>
-    <% end %>
-
-    <%= turbo_frame_tag "admin_dashboard_status", src: admin_dashboard_section_path("status") do %>
-      <%= render "admin/dashboard/sections/loading_panel", title: "Leads por status", eyebrow: "Status", chart: true, compact: true %>
-    <% end %>
-  </div>
-
-  <% if @is_admin_view && !@field_feature_enabled %>
-    <div class="ax-dashboard-alert ax-dashboard-alert--compact">
+  <aside class="ax-dashboard-panel ax-dashboard-attention" aria-labelledby="dashboard-attention-title">
+    <div class="ax-dashboard-panel__header">
       <div>
-        <i class="bi bi-pause-circle"></i>
-        <strong>Módulo Campo desativado</strong>
-        <span>Ative somente quando a operação externa estiver em uso.</span>
+        <span class="ax-dashboard-panel__eyebrow">Prioridade operacional</span>
+        <h2 id="dashboard-attention-title">Atenção necessária</h2>
       </div>
-      <%= ax_button("Ativar campo", edit_admin_field_settings_path, size: :sm, icon: "toggles2") %>
-    </div>
-  <% end %>
-
-  <div class="ax-dashboard-grid ax-dashboard-grid--monitoring">
-    <aside class="ax-dashboard-panel ax-dashboard-panel--today">
-      <div class="ax-dashboard-panel__header">
-        <div>
-          <span class="ax-dashboard-panel__eyebrow">Hoje</span>
-          <h2><%= l(Date.current, format: :short) %></h2>
-        </div>
+      <div class="ax-dashboard-panel__actions">
+        <span class="ax-dashboard-attention__date"><i class="bi bi-calendar3"></i> <%= l(Date.current, format: :short) %></span>
         <%= ax_badge("#{pending_items.size} pend.", tone: pending_items.any? ? :amber : :green) %>
+        <% if @is_admin_view && !@field_feature_enabled %>
+          <%= ax_button("Ativar campo", edit_admin_field_settings_path, size: :sm, icon: "toggles2") %>
+        <% end %>
       </div>
+    </div>
 
-      <div class="ax-dashboard-today-grid">
+    <div class="ax-dashboard-attention__body">
+      <div class="ax-dashboard-today-grid ax-dashboard-today-grid--summary" aria-label="Resumo de hoje">
         <% today_metrics.each do |value, icon, label| %>
           <div class="ax-dashboard-today-cell">
             <strong><%= number_with_delimiter(value) %></strong>
@@ -134,38 +140,61 @@
         <% end %>
       </div>
 
-      <div class="ax-dashboard-list ax-dashboard-list--compact">
-        <div class="ax-dashboard-list__title"><i class="bi bi-kanban"></i> Pendências</div>
+      <div class="ax-dashboard-list ax-dashboard-list--attention">
         <% if pending_items.any? %>
-          <% pending_items.each do |path, icon, color, label, count| %>
+          <% pending_items.each do |item| %>
             <% pending_link_content = capture do %>
-              <span><i class="bi bi-<%= icon %>"></i> <%= label %></span>
-              <span class="ax-badge ax-badge--<%= color == 'red' ? 'red' : 'amber' %>"><%= count %></span>
+              <span class="ax-dashboard-pending-copy">
+                <strong><i class="bi bi-<%= item[:icon] %>"></i> <%= item[:label] %></strong>
+                <% if item[:detail].present? %><small><%= item[:detail] %></small><% end %>
+              </span>
+              <span class="ax-badge ax-badge--<%= item[:tone] == 'red' ? 'red' : 'amber' %>"><%= item[:count] %></span>
             <% end %>
-            <%= link_to pending_link_content, path, class: "ax-dashboard-list__row ax-dashboard-list__row--link" %>
+            <%= link_to pending_link_content, item[:path], class: "ax-dashboard-list__row ax-dashboard-list__row--link" %>
           <% end %>
         <% else %>
           <div class="ax-dashboard-empty-row"><i class="bi bi-check-circle-fill"></i> Nenhuma pendência no momento.</div>
         <% end %>
       </div>
-    </aside>
+    </div>
+  </aside>
 
-    <%= turbo_frame_tag "admin_dashboard_rankings", src: admin_dashboard_section_path("rankings"), loading: "lazy" do %>
-      <div class="ax-dashboard-grid ax-dashboard-grid--rankings">
-        <%= render "admin/dashboard/sections/loading_panel", title: "Top corretores", eyebrow: "Performance", rows: 5, compact: true %>
-        <%= render "admin/dashboard/sections/loading_panel", title: "Top lojas", eyebrow: "Campo", rows: 5, compact: true %>
+  <div class="ax-dashboard-grid ax-dashboard-grid--insights">
+    <%= turbo_frame_tag "admin_dashboard_charts", src: admin_dashboard_section_path("charts", dashboard_filter_params) do %>
+      <%= render "admin/dashboard/sections/loading_panel",
+                 title: "Leads - últimos 30 dias",
+                 eyebrow: "Aquisição",
+                 chart: true %>
+    <% end %>
+
+    <%= turbo_frame_tag "admin_dashboard_funnel", src: admin_dashboard_section_path("funnel", dashboard_filter_params) do %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Conversão comercial", eyebrow: "Funil", chart: true, compact: true %>
+    <% end %>
+
+    <%= turbo_frame_tag "admin_dashboard_status", src: admin_dashboard_section_path("status", dashboard_filter_params) do %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Leads por status", eyebrow: "Status", chart: true, compact: true %>
+    <% end %>
+  </div>
+
+  <div class="ax-dashboard-grid ax-dashboard-grid--monitoring">
+    <%= turbo_frame_tag "admin_dashboard_rankings", src: admin_dashboard_section_path("rankings", dashboard_filter_params), loading: "lazy" do %>
+      <div class="ax-dashboard-grid ax-dashboard-grid--rankings <%= 'ax-dashboard-grid--rankings-single' unless @field_feature_enabled %>">
+        <%= render "admin/dashboard/sections/loading_panel", title: "Carteira por corretor", eyebrow: "Distribuição", rows: 5, compact: true %>
+        <% if @field_feature_enabled %>
+          <%= render "admin/dashboard/sections/loading_panel", title: "Top lojas", eyebrow: "Campo", rows: 5, compact: true %>
+        <% end %>
       </div>
     <% end %>
   </div>
 
-  <%= turbo_frame_tag "admin_dashboard_operations", src: admin_dashboard_section_path("operations"), loading: "lazy" do %>
+  <%= turbo_frame_tag "admin_dashboard_operations", src: admin_dashboard_section_path("operations", dashboard_filter_params), loading: "lazy" do %>
     <div class="ax-dashboard-grid ax-dashboard-grid--operations">
       <%= render "admin/dashboard/sections/loading_panel", title: "Atividade recente", eyebrow: "Auditoria", rows: 6 %>
       <%= render "admin/dashboard/sections/loading_panel", title: "Últimos imóveis atualizados", eyebrow: "Catálogo", table: true, rows: 6 %>
     </div>
   <% end %>
 
-  <%= turbo_frame_tag "admin_dashboard_support", src: admin_dashboard_section_path("support"), loading: "lazy" do %>
+  <%= turbo_frame_tag "admin_dashboard_support", src: admin_dashboard_section_path("support", dashboard_filter_params), loading: "lazy" do %>
     <div class="ax-dashboard-grid ax-dashboard-grid--support">
       <%= render "admin/dashboard/sections/loading_panel", title: "Últimas captações", eyebrow: "Captação", rows: 5 %>
       <%= render "admin/dashboard/sections/loading_panel", title: "Distribuição por categoria", eyebrow: "Mix", rows: 6 %>

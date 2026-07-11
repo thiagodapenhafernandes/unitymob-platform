@@ -14,11 +14,14 @@ RSpec.describe "Admin::TrackingIntegrations", type: :request do
     get admin_tracking_integration_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Trackeamento")
+    expect(response.body).to include("Rastreamento")
     expect(response.body).to include("Google Tag Manager")
     expect(response.body).to include("Pixel da Meta")
     expect(response.body).to include("GTM-XXXXXXX")
     expect(response.body).to include("tracking-workspace__layout")
+    expect(response.body).to include("tracking-tab-panel")
+    expect(response.body).not_to include('class="tab-pane')
+    expect(response.body).not_to include("Onde a tag é instalada")
   end
 
   it "salva as configuracoes de trackeamento" do

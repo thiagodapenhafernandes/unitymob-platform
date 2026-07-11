@@ -12,12 +12,7 @@
   public_photo_publish_running = %w[queued running].include?(public_photo_publish_progress[:status].to_s)
 %>
 
-<div class="storage-integration-heading">
-  <div>
-    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2"><i class="bi bi-cloud-arrow-up storage-integration-heading__icon"></i>Armazenamento</h1>
-    <p class="ax-page-subtitle">Configure onde fotos e documentos serão gravados. Fotos podem ser públicas; documentos permanecem privados.</p>
-  </div>
-</div>
+<%= ax_workspace_heading(eyebrow: "Integrações · Infraestrutura", icon: "cloud-arrow-up", title: "Armazenamento", pills: [@storage_setting.photo_provider.to_s.humanize], subtitle: "Gerencie provedores, publicação de fotos e armazenamento privado de documentos.", metrics: [{ value: number_with_delimiter(public_photo_stats.total_attachments), label: "anexos" }, { value: number_with_delimiter(public_photo_stats.total_blobs), label: "blobs" }]) %>
 
 <%= ax_error_summary(@storage_setting) %>
 

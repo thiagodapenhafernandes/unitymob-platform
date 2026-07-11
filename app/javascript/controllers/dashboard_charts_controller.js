@@ -5,6 +5,7 @@ export default class extends Controller {
     chartUrl: String,
     leads: Array,
     leadsMode: { type: String, default: "daily" },
+    leadsUrls: Array,
     statuses: Object
   }
 
@@ -85,6 +86,14 @@ export default class extends Controller {
         maintainAspectRatio: false,
         resizeDelay: 150,
         animation: { duration: 300 },
+        onClick: (_event, elements) => {
+          const index = elements?.[0]?.index
+          const url = Number.isInteger(index) ? this.leadsUrlsValue[index] : null
+          if (url) window.location.assign(url)
+        },
+        onHover: (event, elements) => {
+          if (event?.native?.target) event.native.target.style.cursor = elements.length ? "pointer" : "default"
+        },
         plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
         scales: {
           y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(15,23,42,0.06)" } },

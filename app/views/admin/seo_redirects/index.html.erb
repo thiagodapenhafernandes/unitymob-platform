@@ -1,13 +1,6 @@
 <%# Redirects SEO — compacto (.ax-*) com forms inline. Original em index.html.erb.bootstrap-bak %>
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Redirects SEO</h1>
-    <p class="ax-page-subtitle">Corrija URLs antigas, evite 404 e preserve autoridade de páginas movidas.</p>
-  </div>
-  <%= link_to admin_seo_settings_path, class: "ax-btn ax-btn--sm" do %>
-    <i class="bi bi-arrow-left ax-ico"></i><span>SEO Técnico</span>
-  <% end %>
-</div>
+<div class="public-site-workspace">
+<%= ax_workspace_heading(eyebrow: "Site público · SEO", icon: "signpost-split", title: "Redirecionamentos", subtitle: "Direcione URLs antigas e preserve a autoridade das páginas.", actions: ax_button("Páginas SEO", admin_seo_settings_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
 
 <div class="ax-card tw-mb-3">
   <div class="ax-card__body">
@@ -35,6 +28,7 @@
       </div>
     <% end %>
   </div>
+</div>
 </div>
 
 <div class="ax-table-wrap">
@@ -84,3 +78,4 @@
 <% if @seo_redirects.respond_to?(:total_pages) && @seo_redirects.total_pages > 1 %>
   <%= ax_pagination @seo_redirects, params: request.query_parameters %>
 <% end %>
+</div>
