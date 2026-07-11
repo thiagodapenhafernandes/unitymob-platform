@@ -116,6 +116,24 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).not_to include(%(property="og:image" content="#{source}"))
     end
 
+    it "uses an optimized social variant for a locally attached property photo" do
+      habitation = create(:habitation, codigo: "OG-LOCAL", slug: "apartamento-og-local")
+      habitation.photos.attach(
+        io: StringIO.new(Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=")),
+        filename: "foto-local.png",
+        content_type: "image/png"
+      )
+      habitation.reload
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(property="og:image" content="https://localhost/rails/active_storage/representations/))
+      expect(response.body).to include(%(property="og:image:type" content="image/jpeg"))
+      expect(response.body).to include(%(property="og:image:width" content="1200"))
+      expect(response.body).to include(%(property="og:image:height" content="630"))
+    end
+
     it "does not expose broker phone or direct whatsapp link in the responsible attendant card" do
       broker = create(:admin_user, name: "Eliane Rosa", creci: "CREI24685", phone: "(47) 99905-8447")
       habitation = create(:habitation, codigo: "BROKER-CARD", slug: "apartamento-broker-card")

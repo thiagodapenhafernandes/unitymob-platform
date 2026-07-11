@@ -75,6 +75,13 @@
     <meta property="og:image" content="<%= final_image %>">
     <meta property="og:image:secure_url" content="<%= final_image.to_s.sub('http://', 'https://') %>">
     <meta property="og:image:alt" content="<%= image_alt %>">
+    <% if @page_image_type.present? %>
+      <meta property="og:image:type" content="<%= @page_image_type %>">
+    <% end %>
+    <% if @page_image_width.present? && @page_image_height.present? %>
+      <meta property="og:image:width" content="<%= @page_image_width %>">
+      <meta property="og:image:height" content="<%= @page_image_height %>">
+    <% end %>
     <% if social_modified_at.present? %>
       <meta property="og:updated_time" content="<%= social_modified_at.iso8601 %>">
     <% end %>

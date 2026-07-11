@@ -198,7 +198,11 @@ class HabitationsController < ApplicationController
     @canonical_url = habitation_url(@habitation)
     
     # Image for social sharing (Open Graph)
-    @page_image = share_image_url_for(@habitation)
+    social_image = share_image_metadata_for(@habitation)
+    @page_image = social_image[:url]
+    @page_image_width = social_image[:width]
+    @page_image_height = social_image[:height]
+    @page_image_type = social_image[:type]
     
     # Detectar se é empreendimento e carregar unidades
     if @habitation.empreendimento?
@@ -693,20 +697,41 @@ class HabitationsController < ApplicationController
     [base, description].reject(&:blank?).join(" - ").truncate(220)
   end
 
-  def share_image_url_for(habitation)
-    first_photo = habitation.all_images.first
-    image = helpers.public_image_url(first_photo) if first_photo.present?
-    image = habitation.primary_image_url if image.blank?
-    return nil if image.blank?
+  def share_image_metadata_for(habitation)
+    source = habitation.primary_image_source
+    attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
 
-    image = image.to_s
-    if image.start_with?("http://")
-      image.sub("http://", "https://")
-    elsif image.start_with?("https://")
-      image
-    else
-      "#{request.base_url}#{image.start_with?('/') ? image : "/#{image}"}"
+    if attachment&.blob&.image?
+      variant = attachment.blob.variant(
+        resize_to_fill: [1200, 630],
+        format: :jpg,
+        saver: { quality: 82, strip: true }
+      )
+      return {
+        url: "#{request.base_url}#{Rails.application.routes.url_helpers.rails_representation_path(variant, only_path: true)}",
+        width: 1200,
+        height: 630,
+        type: "image/jpeg"
+      }
     end
+
+    image = helpers.public_image_url(source) if source.present?
+    image = habitation.primary_image_url if image.blank?
+    return {} if image.blank?
+
+    { url: absolute_social_image_url(image) }
+  rescue StandardError => e
+    Rails.logger.warn("[social_image] habitation_id=#{habitation.id} error=#{e.class}: #{e.message}")
+    image = habitation.primary_image_url
+    image.present? ? { url: absolute_social_image_url(image) } : {}
+  end
+
+  def absolute_social_image_url(image)
+    value = image.to_s
+    return value.sub("http://", "https://") if value.start_with?("http://")
+    return value if value.start_with?("https://")
+
+    "#{request.base_url}#{value.start_with?('/') ? value : "/#{value}"}"
   end
 
 end
