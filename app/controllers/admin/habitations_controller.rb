@@ -105,6 +105,7 @@ class Admin::HabitationsController < Admin::BaseController
   helper_method :can_destroy_habitation?
   helper_method :can_bulk_publish_habitations?
   helper_method :can_edit_protected_habitation_fields?
+  helper_method :broker_restricted_habitation_edit?, :broker_habitation_allowed_fields
   helper_method :active_extra_filters_count, :clear_extra_filter_params
   helper_method :owns_all_resource?
 
@@ -2127,6 +2128,8 @@ class Admin::HabitationsController < Admin::BaseController
     permitted = params.require(:habitation).permit(*permitted_habitation_fields)
     strip_blank_photo_uploads!(permitted)
 
+    permitted = Habitations::BrokerEditPolicy.filter(permitted, habitation: @habitation) if broker_restricted_habitation_edit?
+
     unless can_edit_protected_habitation_fields?
       permitted = permitted.except(*broker_protected_habitation_param_keys)
     end
@@ -2387,7 +2390,7 @@ class Admin::HabitationsController < Admin::BaseController
       :condicoes_negociacao, :observacoes_visitas, :motivo_suspensao,
       :corretor_nome, :corretor_telefone, :corretor_email, :proprietario_codigo,
       :proprietario, :proprietario_celular, :proprietario_telefone_comercial,
-      :proprietario_telefone_residencial, :proprietario_email,
+      :proprietario_telefone_residencial, :proprietario_email, :proprietario_cidade,
       :exibir_no_site_flag, :destaque_web_flag, :lancamento_flag, :aceita_permuta_flag,
       :aceita_permuta_veiculo_flag, :aceita_permuta_imovel_flag, :aceita_permuta_outros_flag,
       :aceita_financiamento_flag, :aceita_parcelamento_flag, :mobiliado_flag, :data_entrega, :status_vista,
@@ -2458,21 +2461,15 @@ class Admin::HabitationsController < Admin::BaseController
     %w[
       admin_user_id
       broker_assignments_attributes
-      codigo_empreendimento
-      nome_empreendimento
-      titulo_anuncio
-      descricao_web
       descricao_interna
       public_map_display_mode
       public_street_view_mode
       proprietario
       proprietario_codigo
-      proprietario_email
       proprietario_celular
       proprietario_telefone_comercial
       proprietario_telefone_residencial
       proprietor_id
-      address_attributes
       fichas_cadastro
       autorizacoes_venda
     ]
@@ -2492,6 +2489,14 @@ class Admin::HabitationsController < Admin::BaseController
 
   def can_edit_protected_habitation_fields?
     tenant_owner? || owns_all_resource?(:imoveis)
+  end
+
+  def broker_restricted_habitation_edit?
+    @habitation&.persisted? && !can_edit_protected_habitation_fields?
+  end
+
+  def broker_habitation_allowed_fields
+    Habitations::BrokerEditPolicy.allowed_fields
   end
 
   def property_belongs_to_current_user?(habitation)

@@ -58,16 +58,14 @@
               form: f,
               method: :titulo_anuncio,
               label: "Título do anúncio",
-              tooltip: "Usado em sites e portais.",
-              readonly: !can_edit_protected_habitation_fields
+              tooltip: "Usado em sites e portais."
             ) %>
       </div>
       <div class="ax-field-group">
         <%= ax_field_label(f, :descricao_web, text: "Descrição do imóvel para internet") %>
         <%= f.rich_text_area :descricao_web,
             class: "ax-control ax-rich-text-control",
-            style: "min-height: 250px;",
-            disabled: !can_edit_protected_habitation_fields %>
+            style: "min-height: 250px;" %>
       </div>
     </div>
   <% end %>

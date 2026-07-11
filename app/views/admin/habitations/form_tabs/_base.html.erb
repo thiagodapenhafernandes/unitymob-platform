@@ -22,13 +22,13 @@
     <%= render "admin/habitations/form_tabs/empreendimento/vinculo",
                f: f,
                habitation: habitation,
-               can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
+               can_edit_protected_habitation_fields: true %>
 
     <%= render "admin/habitations/form_tabs/base/relacionamentos", f: f %>
 
     <%= render "admin/habitations/form_tabs/base/localizacao",
                f: f,
-               can_edit_protected_habitation_fields: can_edit_protected_habitation_fields %>
+               can_edit_protected_habitation_fields: true %>
 
     <%= render "admin/habitations/form_tabs/estrutura/dimensoes", f: f %>
 

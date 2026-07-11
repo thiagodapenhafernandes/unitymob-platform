@@ -156,7 +156,8 @@
   suspended_status = Habitation.normalize_status(habitation.status) == "Suspenso"
 %>
 <div class="habitation-form-ui"
-     data-controller="attribute-manager habitation-form habitation-duplicate-check ax-form-hints ax-checkbox-chips"
+     data-controller="attribute-manager habitation-form habitation-duplicate-check ax-form-hints ax-checkbox-chips<%= ' broker-field-policy' if broker_restricted_habitation_edit? %>"
+     <% if broker_restricted_habitation_edit? %>data-broker-field-policy-allowed-fields-value="<%= json_escape(broker_habitation_allowed_fields.to_json) %>"<% end %>
      data-action="change->ax-checkbox-chips#sync"
      data-attribute-manager-modal-id-value="attributeManagerModal"
      data-habitation-form-categories-by-type-value="<%= json_escape(cadastro_categories.to_json) %>"

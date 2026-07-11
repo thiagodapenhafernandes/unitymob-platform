@@ -1011,6 +1011,66 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include(CGI.escapeHTML("#{edit_admin_habitation_path(own_property.id)}?return_to=/admin/habitations&ownership=all&q=#{own_property.codigo}&back_anchor=habitation_#{own_property.id}"))
   end
 
+  it "permite ao corretor alterar somente os campos autorizados do próprio imóvel" do
+    broker = create(:admin_user, profile: default_agent_profile, name: "Corretor com edição limitada")
+    replacement_owner = create(:admin_user, tenant: broker.tenant)
+    property = create(
+      :habitation,
+      admin_user: broker,
+      titulo_anuncio: "Título anterior",
+      meta_title: "SEO protegido",
+      publicar_imovelweb: false,
+      captador_commission_percentage: 3,
+      regiao_foco: "Norte"
+    )
+    property.create_address!(logradouro: "Rua Antiga", bairro: "Centro", cidade: "Itajaí", uf: "SC")
+
+    sign_in broker
+    patch admin_habitation_path(property), params: {
+      habitation: {
+        tipo: "Comercial",
+        status: "Aluguel",
+        situacao: "Usado",
+        titulo_anuncio: "Título permitido",
+        proprietario_email: "contato@proprietario.test",
+        proprietario_cidade: "Camboriú",
+        regiao_foco: "Sul",
+        meta_title: "SEO adulterado",
+        publicar_imovelweb: true,
+        admin_user_id: replacement_owner.id,
+        captador_commission_percentage: 9,
+        address_attributes: { id: property.address.id, logradouro: "Rua Permitida" }
+      }
+    }
+
+    expect(response).to have_http_status(:redirect)
+    property.reload
+    expect(property).to have_attributes(
+      tipo: "Comercial",
+      status: "Aluguel",
+      situacao: "Usado",
+      titulo_anuncio: "Título permitido",
+      proprietario_email: "contato@proprietario.test",
+      admin_user_id: broker.id,
+      meta_title: "SEO protegido",
+      publicar_imovelweb: false,
+      captador_commission_percentage: 3,
+      regiao_foco: "Norte"
+    )
+    expect(property.proprietario_cidade).to eq("Camboriú")
+    expect(property.address.reload.logradouro).to eq("Rua Permitida")
+
+    patch admin_habitation_path(property), params: {
+      habitation: {
+        proprietario_email: "substituido@indevido.test",
+        proprietario_cidade: "Cidade substituída"
+      }
+    }
+
+    expect(property.reload.proprietario_email).to eq("contato@proprietario.test")
+    expect(property.proprietario_cidade).to eq("Camboriú")
+  end
+
   it "permite que corretor filtre imóveis por colegas da mesma conta no catálogo" do
     broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Filtro")
