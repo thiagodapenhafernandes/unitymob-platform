@@ -1,12 +1,5 @@
-<div class="container-fluid py-4">
-  <!-- Header -->
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-mb-1"><i class="bi bi-telephone-fill"></i> Informações de Contato</h1>
-      <p class="ax-page-subtitle">Configure os canais de comunicação da empresa</p>
-    </div>
-    <%= link_to 'Voltar', admin_root_path, class: 'ax-btn ax-btn--ghost' %>
-  </div>
+<div class="public-site-workspace">
+  <%= ax_workspace_heading(eyebrow: "Site público · Estrutura", icon: "telephone", title: "Contato", subtitle: "Gerencie canais de atendimento e redes sociais exibidos no site.", actions: ax_button("Voltar", admin_root_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
 
   <%= form_with(model: @contact_setting, url: admin_contact_setting_path, method: :patch) do |f| %>
     <%= ax_error_summary(@contact_setting) %>
@@ -149,82 +142,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Preview Section -->
-    <div class="ax-card tw-mt-4">
-      <div class="ax-card__header bg-warning bg-opacity-10">
-        <h5 class="ax-card__title tw-mb-0 tw-flex tw-items-center tw-gap-2" style="color:#d97706">
-          <i class="bi bi-eye-fill"></i>Preview dos Links
-        </h5>
-      </div>
-      <div class="ax-card__body">
-        <%= ax_field_grid do %>
-          <div class="ax-span-3">
-            <div class="tw-flex tw-items-center p-3 bg-light rounded tw-gap-3">
-              <i class="bi bi-whatsapp" style="color:#16a34a; font-size: 1.75rem;"></i>
-              <div>
-                <small class="tw-text-ink-muted d-block">WhatsApp</small>
-                <strong style="color:#16a34a"><%= @contact_setting.whatsapp_primary.present? ? format_phone(@contact_setting.whatsapp_primary) : "Não configurado" %></strong>
-              </div>
-            </div>
-          </div>
-          <div class="ax-span-3">
-            <div class="tw-flex tw-items-center p-3 bg-light rounded tw-gap-3">
-              <i class="bi bi-telephone tw-text-primary" style="font-size: 1.75rem;"></i>
-              <div>
-                <small class="tw-text-ink-muted d-block">Telefone</small>
-                <strong class="tw-text-primary"><%= @contact_setting.phone.present? ? format_phone(@contact_setting.phone) : "Não configurado" %></strong>
-              </div>
-            </div>
-          </div>
-          <div class="ax-span-6">
-            <div class="tw-flex tw-items-center p-3 bg-light rounded tw-gap-3">
-              <i class="bi bi-envelope" style="color:#dc2626; font-size: 1.75rem;"></i>
-              <div class="flex-grow-1">
-                <small class="tw-text-ink-muted d-block">Email</small>
-                <strong class="text-truncate d-block" style="color:#dc2626"><%= @contact_setting.email_primary || "Não configurado" %></strong>
-              </div>
-            </div>
-          </div>
-        <% end %>
-
-        <%= ax_field_grid(class_name: "tw-mt-2") do %>
-          <div class="ax-span-12">
-            <p class="tw-text-ink-muted tw-mb-2 tw-flex tw-items-center tw-gap-2"><i class="bi bi-share"></i>Redes Sociais Configuradas:</p>
-            <div class="tw-flex tw-gap-2 tw-flex-wrap">
-              <% if @contact_setting.facebook_url.present? %>
-                <a href="<%= @contact_setting.facebook_url %>" target="_blank" class="ax-btn ax-btn--ghost ax-btn--sm tw-flex tw-items-center tw-gap-1">
-                  <i class="bi bi-facebook"></i>Facebook
-                </a>
-              <% end %>
-              <% if @contact_setting.instagram_url.present? %>
-                <a href="<%= @contact_setting.instagram_url %>" target="_blank" class="ax-btn ax-btn--danger ax-btn--sm tw-flex tw-items-center tw-gap-1">
-                  <i class="bi bi-instagram"></i>Instagram
-                </a>
-              <% end %>
-              <% if @contact_setting.youtube_url.present? %>
-                <a href="<%= @contact_setting.youtube_url %>" target="_blank" class="ax-btn ax-btn--danger ax-btn--sm tw-flex tw-items-center tw-gap-1">
-                  <i class="bi bi-youtube"></i>YouTube
-                </a>
-              <% end %>
-              <% if @contact_setting.linkedin_url.present? %>
-                <a href="<%= @contact_setting.linkedin_url %>" target="_blank" class="ax-btn ax-btn--ghost ax-btn--sm tw-flex tw-items-center tw-gap-1">
-                  <i class="bi bi-linkedin"></i>LinkedIn
-                </a>
-              <% end %>
-              <% if [@contact_setting.facebook_url, @contact_setting.instagram_url, @contact_setting.youtube_url, @contact_setting.linkedin_url].all?(&:blank?) %>
-                <span class="tw-text-ink-muted fst-italic">Nenhuma rede social configurada</span>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-      </div>
-    </div>
-
-    <!-- Info Alert -->
-    <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
-      <strong>Importante:</strong> Essas informações são exibidas no footer do site e na página de contato. Certifique-se de que todos os links estejam corretos e funcionando.
-    <% end %>
 
     <!-- Save Button -->
     <div class="tw-flex tw-justify-between tw-items-center tw-mt-4 p-4 bg-light rounded tw-gap-2">

@@ -4,14 +4,7 @@
 <% current_status = current_readiness[:status] %>
 <% current_checklist = current_readiness[:checklist] || [] %>
 
-<div class="portal-integrations-heading">
-  <div>
-    <h1 class="ax-page-title">Integrações de Portais</h1>
-    <p class="ax-page-subtitle">
-      Envie automaticamente seus imóveis para os principais portais imobiliários do Brasil.
-    </p>
-  </div>
-</div>
+<%= ax_workspace_heading(eyebrow: "Integrações · Distribuição", icon: "building", title: "Portais", pills: [current_integration.title], subtitle: "Configure publicação, elegibilidade e retorno operacional por portal.", metrics: [{ value: current_preview[:eligible_count].to_i, label: "elegíveis" }]) %>
 
 <%= ax_field_grid(columns: 12, gap: :compact) do %>
   <!-- Sidebar de portais com status visual -->
@@ -47,84 +40,27 @@
 
   <!-- Painel principal -->
   <div class="ax-span-9">
-    <!-- Banner de status agregado -->
-    <div class="ax-card tw-mb-3">
-      <div class="ax-card__body">
-        <div class="tw-flex tw-justify-between tw-items-start tw-gap-2">
-          <div>
-            <div class="portal-integrations-current-title"><%= current_integration.title %></div>
-            <p class="tw-text-ink-muted tw-text-sm tw-mb-0">
-              <%= current_integration.summary || "Configure o envio automático dos imóveis para este portal." %>
-            </p>
-          </div>
-          <% banner_color = current_integration.readiness_color(current_status) %>
-          <span class="ax-badge ax-badge--<%= banner_color == 'success' ? 'green' : banner_color == 'danger' ? 'red' : banner_color == 'warning' ? 'amber' : banner_color == 'primary' ? 'blue' : 'gray' %> tw-gap-1">
-            <i class="bi bi-circle-fill portal-integrations-status-dot"></i>
-            <%= current_integration.readiness_label(current_status) %>
-          </span>
-        </div>
-
-        <% if current_integration.docs_url.present? %>
-          <div class="tw-mt-3">
-            <a href="<%= current_integration.docs_url %>" target="_blank" rel="noopener" class="portal-integrations-doc-link">
-              <i class="bi bi-box-arrow-up-right"></i>
-              Documentação oficial do <%= current_integration.title %>
-            </a>
-          </div>
-        <% end %>
+    <% banner_color = current_integration.readiness_color(current_status) %>
+    <% pending_items = current_checklist.reject { |item| item[:ok] } %>
+    <div class="portal-integrations-commandbar">
+      <div class="portal-integrations-commandbar__identity">
+        <strong><%= current_integration.title %></strong>
+        <span class="ax-badge ax-badge--<%= banner_color == 'success' ? 'green' : banner_color == 'danger' ? 'red' : banner_color == 'warning' ? 'amber' : banner_color == 'primary' ? 'blue' : 'gray' %>"><%= current_integration.readiness_label(current_status) %></span>
       </div>
+      <div class="portal-integrations-commandbar__metrics">
+        <span><strong><%= current_preview[:eligible_count].to_i %></strong> elegíveis</span>
+        <span><strong><%= current_preview[:rejected_count].to_i %></strong> rejeitados</span>
+        <span><strong><%= current_integration.last_feed_at.present? ? l(current_integration.last_feed_at, format: :short) : "Nunca" %></strong> último acesso</span>
+      </div>
+      <% if current_integration.docs_url.present? %><%= ax_button("Documentação", current_integration.docs_url, variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener") %><% end %>
     </div>
 
-    <!-- Como ativar (passo a passo expansível) -->
-    <% if current_integration.setup_steps.any? %>
-      <div class="ax-card tw-mb-3" data-controller="ax-disclosure">
-        <div class="ax-card__header">
-          <button class="ax-btn ax-btn--ghost portal-integrations-disclosure-button"
-                  type="button" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger"
-                  aria-expanded="false" aria-controls="setupSteps">
-            <span class="tw-flex tw-items-center tw-gap-2"><i class="bi bi-lightbulb"></i>Como ativar este portal</span>
-            <i class="bi bi-chevron-down"></i>
-          </button>
-        </div>
-        <div id="setupSteps" data-ax-disclosure-target="content" hidden>
-          <div class="ax-card__body">
-            <ol class="tw-mb-0">
-              <% current_integration.setup_steps.each do |step| %>
-                <li class="tw-mb-2"><%= step %></li>
-              <% end %>
-            </ol>
-          </div>
-        </div>
-      </div>
+    <% if pending_items.any? %>
+      <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", class_name: "tw-mb-3") do %>
+        <strong><%= pending_items.size %> <%= pending_items.size == 1 ? "pendência" : "pendências" %>:</strong>
+        <%= pending_items.map { |item| item[:label] }.to_sentence %>.
+      <% end %>
     <% end %>
-
-    <!-- Checklist de pré-requisitos -->
-    <div class="ax-card tw-mb-3">
-      <div class="ax-card__header">
-        <h6 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-check2-square"></i>Checklist de configuração</h6>
-      </div>
-      <div class="ax-card__body">
-        <ul class="portal-integrations-checklist">
-          <% current_checklist.each do |item| %>
-            <li class="portal-integrations-checklist__item">
-              <% if item[:ok] %>
-                <i class="bi bi-check-circle-fill portal-integrations-checklist__icon portal-integrations-checklist__icon--ok"></i>
-              <% else %>
-                <i class="bi bi-exclamation-circle-fill portal-integrations-checklist__icon portal-integrations-checklist__icon--warn"></i>
-              <% end %>
-              <div class="tw-flex-1">
-                <div class="<%= 'portal-integrations-checklist__label--done' if item[:ok] %>">
-                  <%= item[:label] %>
-                </div>
-                <% if item[:hint] %>
-                  <small class="tw-text-ink-muted tw-block"><%= item[:hint] %></small>
-                <% end %>
-              </div>
-            </li>
-          <% end %>
-        </ul>
-      </div>
-    </div>
 
     <!-- Configuração -->
     <div class="ax-card tw-mb-3">
@@ -282,47 +218,12 @@
       </div>
     </div>
 
-    <!-- Resumo do Feed -->
-    <div class="ax-card tw-mb-3">
-      <div class="ax-card__header">
-        <h6 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-bar-chart"></i>Resumo do Feed</h6>
-      </div>
-      <div class="ax-card__body">
-        <%= ax_field_grid(columns: 12, gap: :compact, class_name: "portal-integrations-summary-grid tw-mb-3") do %>
-          <div class="ax-span-4">
-            <div class="portal-integrations-summary-tile">
-              <div class="portal-integrations-summary-value portal-integrations-summary-value--ok"><%= current_preview[:eligible_count].to_i %></div>
-              <small class="portal-integrations-summary-label">Imóveis elegíveis</small>
-            </div>
-          </div>
-          <div class="ax-span-4">
-            <div class="portal-integrations-summary-tile">
-              <div class="portal-integrations-summary-value portal-integrations-summary-value--warn"><%= current_preview[:rejected_count].to_i %></div>
-              <small class="portal-integrations-summary-label">Rejeitados</small>
-            </div>
-          </div>
-          <div class="ax-span-4">
-            <div class="portal-integrations-summary-tile">
-              <div class="tw-font-bold tw-mt-3">
-                <%= current_integration.last_feed_at.present? ? l(current_integration.last_feed_at, format: :short) : "—" %>
-              </div>
-              <small class="portal-integrations-summary-label">Último acesso</small>
-            </div>
-          </div>
-        <% end %>
-
-        <% if current_preview[:top_reasons].present? %>
-          <div class="portal-integrations-rejection-reasons">
-            <small class="tw-text-ink-muted tw-block tw-mb-2 tw-font-semibold">Principais motivos de rejeição</small>
-            <ul class="tw-text-sm tw-mb-0">
-              <% current_preview[:top_reasons].each do |reason, count| %>
-                <li><%= reason.humanize %>: <strong><%= count %></strong> imóveis</li>
-              <% end %>
-            </ul>
-          </div>
-        <% end %>
-      </div>
-    </div>
+    <% if current_preview[:top_reasons].present? %>
+      <details class="portal-integrations-rejections tw-mb-3">
+        <summary>Ver principais motivos de rejeição</summary>
+        <ul><% current_preview[:top_reasons].each do |reason, count| %><li><span><%= reason.humanize %></span><strong><%= count %></strong></li><% end %></ul>
+      </details>
+    <% end %>
 
     <!-- Tabela de retornos -->
     <div class="ax-card">

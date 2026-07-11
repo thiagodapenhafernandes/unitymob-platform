@@ -1,13 +1,6 @@
 <%# Landing Pages — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak %>
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title"><%= @page_title %></h1>
-    <p class="ax-page-subtitle"><%= @page_subtitle %></p>
-  </div>
-  <%= link_to new_admin_landing_page_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-    <i class="bi bi-plus-lg ax-ico"></i><span>Nova página</span>
-  <% end %>
-</div>
+<div class="public-site-workspace">
+<%= ax_workspace_heading(eyebrow: "Site público · Conteúdo", icon: "file-earmark-post", title: @page_title, subtitle: @page_subtitle, metrics: [{ value: @landing_pages.size, label: "páginas" }], actions: ax_button("Nova página", new_admin_landing_page_path, variant: :primary, size: :sm, icon: "plus-lg")) %>
 
 <div class="ax-table-wrap">
   <table class="ax-table">
@@ -55,6 +48,7 @@
       <% end %>
     </tbody>
   </table>
+</div>
 </div>
 
 <% if @landing_pages.respond_to?(:total_pages) && @landing_pages.total_pages > 1 %>

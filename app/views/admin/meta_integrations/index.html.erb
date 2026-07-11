@@ -1,19 +1,16 @@
 <%# Integração Meta Ads — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Integração Meta Ads</h1>
-    <p class="ax-page-subtitle">Conecte sua conta do Facebook para receber leads automaticamente.</p>
-  </div>
+<div class="integration-workspace meta-integration-workspace">
+<%= ax_workspace_heading(eyebrow: "Integrações · Aquisição", icon: "meta", title: "Meta Leads", pills: [@integration ? "conectada" : "desconectada"], subtitle: "Monitore páginas e formulários que recebem leads automaticamente.", metrics: [{ value: @pages.size, label: "páginas" }], actions: capture do %>
   <% if @integration %>
     <%= turbo_stream_from "meta_sync_#{@integration.id}" %>
     <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Tem certeza? Isso irá parar a importação de leads." } do %>
       <i class="bi bi-box-arrow-right ax-ico"></i><span>Desconectar conta</span>
     <% end %>
   <% end %>
-</div>
+<% end) %>
 
 <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4">
-  <div class="lg:tw-col-span-8">
+  <div class="lg:tw-col-span-12">
     <%= render "sync_status", integration: @integration %>
     <div class="ax-card">
       <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-facebook tw-text-blue-600"></i> Conexão Facebook</span></div>
@@ -83,23 +80,5 @@
     </div>
   </div>
 
-  <div class="lg:tw-col-span-4">
-    <div class="ax-card tw-mb-4" style="background:var(--admin-primary);color:var(--admin-primary-fg);border:0">
-      <div class="ax-card__body">
-        <div class="tw-font-semibold tw-mb-3"><i class="bi bi-info-circle"></i> Como funciona?</div>
-        <ol class="tw-text-2xs tw-pl-4 tw-list-decimal tw-space-y-2 tw-opacity-95">
-          <li>Clique em "Continuar com Facebook" e autorize as permissões.</li>
-          <li>Sincronize as páginas que você deseja monitorar.</li>
-          <li>Sincronize os formulários de cada página.</li>
-          <li>Configure as <strong>Regras de Distribuição</strong> com a fonte "Meta Ads".</li>
-        </ol>
-      </div>
-    </div>
-    <div class="ax-card">
-      <div class="ax-card__body">
-        <div class="ax-strong tw-mb-2"><i class="bi bi-shield-check tw-text-green-600"></i> Segurança</div>
-        <p class="ax-page-subtitle tw-mb-0">Usamos tokens oficiais da Meta Graph API. Seus dados de login não são armazenados — apenas o token de integração.</p>
-      </div>
-    </div>
-  </div>
+</div>
 </div>

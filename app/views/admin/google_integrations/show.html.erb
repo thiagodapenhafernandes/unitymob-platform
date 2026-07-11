@@ -1,9 +1,4 @@
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-  <div>
-    <h1 class="ax-page-title"><i class="bi bi-google me-2 text-primary"></i>Google</h1>
-    <p class="ax-page-subtitle">Configure integrações com produtos Google usadas pelos fluxos administrativos.</p>
-  </div>
-</div>
+<%= ax_workspace_heading(eyebrow: "Integrações · Google", icon: "google", title: "Google", pills: [@active_tab.to_s.humanize], subtitle: "Configure os produtos Google usados pelos fluxos administrativos.") %>
 
 <ul class="ax-form-tabs tw-mb-4">
   <li>
@@ -25,7 +20,7 @@
 
 <div id="google-sheets" <%= "hidden" unless @active_tab == "sheets" %>>
   <%= ax_field_grid do %>
-  <div class="ax-span-6">
+  <div class="ax-span-12">
     <div class="ax-card">
       <div class="ax-card__header">
         <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key me-2 text-primary"></i>Captações para planilha</h5>
@@ -85,21 +80,6 @@
     </div>
   </div>
 
-  <div class="ax-span-6">
-    <div class="ax-card">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-list-check me-2" style="color:#16a34a"></i>Como esta integração será usada</h5>
-      </div>
-      <div class="ax-card__body">
-        <ul class="tw-text-sm tw-text-ink-muted mb-0">
-          <li class="tw-mb-2">O sistema enviará os dados de captação para a URL do Apps Script.</li>
-          <li class="tw-mb-2">O Apps Script localizará a linha pela coluna-chave configurada.</li>
-          <li class="tw-mb-2">Se a chave existir, a linha será atualizada; se não existir, uma nova linha será criada.</li>
-          <li>O token evita que a URL pública aceite envios sem autorização.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
   <% end %>
 </div>
 
@@ -109,7 +89,7 @@
 
 <div id="google-calendar" <%= "hidden" unless @active_tab == "calendar" %>>
   <%= ax_field_grid do %>
-  <div class="ax-span-6">
+  <div class="ax-span-12">
     <div class="ax-card">
       <div class="ax-card__header">
         <h5 class="ax-card__title tw-font-bold"><i class="bi bi-calendar2-plus me-2 text-primary"></i>Agenda de fotografia</h5>
@@ -174,20 +154,5 @@
     </div>
   </div>
 
-  <div class="ax-span-6">
-    <div class="ax-card">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-list-check me-2" style="color:#16a34a"></i>Como a agenda será usada</h5>
-      </div>
-      <div class="ax-card__body">
-        <ul class="tw-text-sm tw-text-ink-muted mb-0">
-          <li class="tw-mb-2">Quando a captação escolher “Agendar fotógrafo” e informar data/hora, o sistema enfileira a criação do evento.</li>
-          <li class="tw-mb-2">Se o imóvel já tiver evento salvo, o próximo salvamento atualiza o mesmo evento.</li>
-          <li class="tw-mb-2">Falhas ficam registradas no imóvel nos campos internos de agenda, sem expor a chave privada.</li>
-          <li>O fuso usado nos eventos é <code>America/Sao_Paulo</code>.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
   <% end %>
 </div>

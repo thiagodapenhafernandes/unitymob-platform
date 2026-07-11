@@ -5,6 +5,7 @@
     data-dashboard-charts-chart-url-value="<%= asset_path("chart.umd.min.js") %>"
     data-dashboard-charts-leads-value="<%= json_escape(@leads_series.to_json) %>"
     data-dashboard-charts-leads-mode-value="<%= @leads_chart_mode %>"
+    data-dashboard-charts-leads-urls-value="<%= json_escape(@leads_drilldown_urls.to_json) %>"
     data-dashboard-charts-statuses-value="<%= json_escape(@leads_by_status.to_json) %>">
     <div class="ax-dashboard-panel__header">
       <div>
@@ -13,12 +14,14 @@
           <% if @selected_lead_date %>
             <%= @is_admin_view ? "Leads por hora" : "Meus leads por hora" %> — <%= l(@selected_lead_date, format: :short) %>
           <% else %>
-            <%= @is_admin_view ? "Leads — últimos 30 dias" : "Meus leads — últimos 30 dias" %>
+            <%= @is_admin_view ? "Leads — últimos #{@dashboard_period} dias" : "Meus leads — últimos #{@dashboard_period} dias" %>
           <% end %>
         </h2>
       </div>
       <div class="ax-dashboard-panel__actions">
         <%= form_with url: admin_dashboard_section_path("charts"), method: :get, class: "ax-dashboard-hour-filter", data: { turbo_frame: "admin_dashboard_charts" } do %>
+          <%= hidden_field_tag :period, @dashboard_period %>
+          <%= hidden_field_tag :broker_id, @dashboard_broker_id if @dashboard_broker_id.present? %>
           <i class="bi bi-calendar3" aria-hidden="true"></i>
           <%= date_field_tag :lead_date,
                 @selected_lead_date&.iso8601,
@@ -29,8 +32,8 @@
                 onchange: "this.form.requestSubmit()" %>
         <% end %>
         <% if @selected_lead_date %>
-          <%= link_to "30 dias",
-                admin_dashboard_section_path("charts"),
+          <%= link_to "#{@dashboard_period} dias",
+                admin_dashboard_section_path("charts", period: @dashboard_period, broker_id: @dashboard_broker_id),
                 class: "ax-btn ax-btn--sm",
                 data: { turbo_frame: "admin_dashboard_charts" } %>
         <% end %>

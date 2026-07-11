@@ -7,14 +7,7 @@
         </span>
         <span class="ax-badge ax-badge--blue"><%= integration.sync_progress || 0 %>%</span>
       </div>
-      <div class="progress" style="height: 10px; border-radius: 5px; background-color: #e9ecef;">
-        <div class="progress-bar progress-bar-striped progress-bar-animated"
-             role="progressbar" 
-             style="width: <%= integration.sync_progress || 0 %>%; background-color: #6366f1;" 
-             aria-valuenow="<%= integration.sync_progress || 0 %>" 
-             aria-valuemin="0" 
-             aria-valuemax="100"></div>
-      </div>
+      <%= ax_progress(value: integration.sync_progress || 0, tone: :blue) %>
       <p class="extra-small tw-text-ink-muted tw-mt-2">Esta operação pode levar alguns minutos. Não feche esta página para acompanhar o progresso.</p>
     </div>
   <% elsif integration&.sync_status == 'completed' %>

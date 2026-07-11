@@ -4,10 +4,31 @@
       <article class="ax-dashboard-panel">
         <div class="ax-dashboard-panel__header">
           <div>
-            <span class="ax-dashboard-panel__eyebrow">Performance</span>
-            <h2>Top corretores por imóveis</h2>
+            <span class="ax-dashboard-panel__eyebrow">Comercial · <%= @dashboard_period %> dias</span>
+            <h2>Desempenho por corretor</h2>
           </div>
-          <%= link_to "Ver todos", admin_admin_users_path, class: "ax-dashboard-panel__link" %>
+          <%= link_to "Ver leads", admin_leads_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
+        </div>
+        <div class="ax-dashboard-performance">
+          <% @broker_performance.each do |row| %>
+            <%= link_to admin_leads_path(broker_id: row[:id], start_date: @dashboard_window_start.to_date.iso8601, end_date: Date.current.iso8601), class: "ax-dashboard-performance__row", data: { turbo_frame: "_top" } do %>
+              <strong><%= row[:name] %></strong>
+              <span><%= row[:total] %> leads</span>
+              <span><%= row[:closed] %> concluídos</span>
+              <b><%= number_to_percentage(row[:conversion], precision: 1, strip_insignificant_zeros: true) %></b>
+            <% end %>
+          <% end %>
+          <% if @broker_performance.empty? %><div class="ax-dashboard-empty-row">Sem leads atribuídos no período.</div><% end %>
+        </div>
+      </article>
+
+      <article class="ax-dashboard-panel">
+        <div class="ax-dashboard-panel__header">
+          <div>
+            <span class="ax-dashboard-panel__eyebrow">Distribuição</span>
+            <h2>Carteira de imóveis por corretor</h2>
+          </div>
+          <%= link_to "Ver todos", admin_admin_users_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
         </div>
         <div class="ax-dashboard-rank">
           <% if @top_brokers.any? %>
@@ -27,13 +48,14 @@
         </div>
       </article>
 
+      <% if @field_feature_enabled %>
       <article class="ax-dashboard-panel">
         <div class="ax-dashboard-panel__header">
           <div>
             <span class="ax-dashboard-panel__eyebrow">Campo</span>
             <h2>Top lojas por check-ins</h2>
           </div>
-          <%= link_to "Ver todas", admin_stores_path, class: "ax-dashboard-panel__link" %>
+          <%= link_to "Ver todas", admin_stores_path, class: "ax-dashboard-panel__link", data: { turbo_frame: "_top" } %>
         </div>
         <div class="ax-dashboard-rank">
           <% if @top_stores.any? %>
@@ -52,6 +74,7 @@
           <% end %>
         </div>
       </article>
+      <% end %>
     <% end %>
   </div>
 <% end %>

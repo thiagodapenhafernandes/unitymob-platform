@@ -1,18 +1,5 @@
-<div class="admin-header">
-  <div class="header-body">
-    <div class="tw-flex tw-items-end tw-justify-between tw-gap-3">
-      <div>
-        <h6 class="header-pretitle">Administração</h6>
-        <h1 class="ax-page-title">Configurações do Rodapé</h1>
-      </div>
-      <div>
-        <%= link_to admin_root_path, class: "ax-btn ax-btn--ghost tw-gap-2" do %>
-          <i class="bi bi-arrow-left"></i> Voltar
-        <% end %>
-      </div>
-    </div>
-  </div>
-</div>
+<div class="public-site-workspace">
+  <%= ax_workspace_heading(eyebrow: "Site público · Estrutura", icon: "layout-sidebar", title: "Rodapé", subtitle: "Gerencie colunas, links, lojas, redes e informações legais.", actions: ax_button("Voltar", admin_root_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
 
   <%# Remove extra admin-content wrapper to avoid redundant margins %>
   <%= form_with(model: [:admin, @footer_setting], local: true, class: "needs-validation") do |f| %>
@@ -204,4 +191,4 @@
       </div>
     </div>
   <% end %>
-<%# Closing tag removed as the wrapper was removed %>
+</div>

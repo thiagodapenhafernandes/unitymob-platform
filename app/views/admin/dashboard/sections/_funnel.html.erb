@@ -5,7 +5,7 @@
         <span class="ax-dashboard-panel__eyebrow">Funil</span>
         <h2>Conversão comercial</h2>
       </div>
-      <%= ax_badge("30 dias", tone: :blue) %>
+      <%= ax_badge("#{@dashboard_period} dias", tone: :blue) %>
     </div>
 
     <div class="ax-dashboard-funnel">
@@ -19,16 +19,18 @@
         <% end %>
       </div>
 
-      <div class="ax-dashboard-funnel__rates" aria-label="Faixas de conversão de referência">
+      <div class="ax-dashboard-funnel__rates" aria-label="Taxas observadas e faixas de referência">
         <% @commercial_funnel_rows.each_cons(2) do |from, to| %>
           <div class="ax-dashboard-funnel__rate">
             <span><%= from[:label].split.first %> -> <%= to[:label].split.first %></span>
-            <strong><%= from[:benchmark] %></strong>
+            <strong><%= number_to_percentage(to[:conversion_rate], precision: 1, strip_insignificant_zeros: true) %></strong>
+            <small>Referência: <%= from[:benchmark] %></small>
           </div>
         <% end %>
         <div class="ax-dashboard-funnel__rate ax-dashboard-funnel__rate--overall">
           <span>Impacto -> venda</span>
-          <strong><%= @commercial_funnel_rows.last[:benchmark] %></strong>
+          <strong><%= number_to_percentage(@commercial_funnel_rows.last[:overall_conversion_rate], precision: 1, strip_insignificant_zeros: true) %></strong>
+          <small>Referência: <%= @commercial_funnel_rows.last[:benchmark] %></small>
         </div>
       </div>
     </div>

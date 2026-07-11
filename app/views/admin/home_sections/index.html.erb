@@ -1,13 +1,6 @@
 <%# Seções da Home — compacto (.ax-*) com reordenação SortableJS. Original em index.html.erb.bootstrap-bak %>
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Seções da Página Inicial</h1>
-    <p class="ax-page-subtitle">Arraste as linhas para reordenar. Use o status para ativar/desativar sem remover.</p>
-  </div>
-  <%= link_to new_admin_home_section_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-    <i class="bi bi-plus-lg ax-ico"></i><span>Nova seção</span>
-  <% end %>
-</div>
+<div class="public-site-workspace">
+<%= ax_workspace_heading(eyebrow: "Site público · Home", icon: "layout-text-sidebar", title: "Seções da Home", subtitle: "Ordene, publique e configure os blocos exibidos na página inicial.", metrics: [{ value: @home_sections.size, label: "seções" }], actions: ax_button("Nova seção", new_admin_home_section_path, variant: :primary, size: :sm, icon: "plus-lg")) %>
 
 <div class="ax-table-wrap">
   <table class="ax-table">
@@ -62,4 +55,5 @@
       <% end %>
     </tbody>
   </table>
+</div>
 </div>

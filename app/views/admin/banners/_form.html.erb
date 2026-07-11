@@ -1,14 +1,5 @@
-<div class="admin-header shadow-sm">
-  <div class="admin-header-title">
-    <h1><%= @banner.persisted? ? "Editar Banner" : "Novo Banner" %></h1>
-    <p><%= @banner.persisted? ? "Atualize as informações e imagens do banner" : "Cadastre um novo banner para o site" %></p>
-  </div>
-  <div class="admin-header-actions">
-    <%= link_to admin_banners_path, class: "ax-btn ax-btn--ghost tw-flex tw-items-center tw-gap-2" do %>
-      <i class="bi bi-arrow-left-circle"></i> Voltar à Lista
-    <% end %>
-  </div>
-</div>
+<div class="public-site-workspace">
+<%= ax_workspace_heading(eyebrow: "Site público · Banners", icon: "image", title: @banner.persisted? ? "Editar banner" : "Novo banner", pills: [(@banner.active? ? "Ativo" : "Inativo")], subtitle: "Gerencie mídia, destino, posição e publicação.", actions: ax_button("Voltar", admin_banners_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
 
 <%= form_with(model: [:admin, @banner], local: true, class: "admin-form") do |f| %>
   <%= ax_error_summary(@banner) %>
@@ -112,3 +103,4 @@
     </div>
   <% end %>
 <% end %>
+</div>

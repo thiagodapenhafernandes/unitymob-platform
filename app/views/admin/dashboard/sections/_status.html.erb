@@ -10,11 +10,21 @@
         <span class="ax-dashboard-panel__eyebrow">Status</span>
         <h2>Leads por status</h2>
       </div>
-      <%= ax_badge("30 dias", tone: :blue) %>
+      <%= ax_badge("#{@dashboard_period} dias", tone: :blue) %>
     </div>
 
     <div class="ax-dashboard-chart ax-dashboard-chart--donut ax-dashboard-chart--status">
       <canvas id="leadsStatusChart"></canvas>
+    </div>
+
+    <div class="ax-dashboard-status-links" aria-label="Abrir leads por status">
+      <% @lead_status_rows.each do |row| %>
+        <%= link_to row[:path], class: "ax-dashboard-status-link", data: { turbo_frame: "_top" } do %>
+          <span><%= row[:label] %></span>
+          <strong><%= number_with_delimiter(row[:count]) %></strong>
+          <i class="bi bi-chevron-right"></i>
+        <% end %>
+      <% end %>
     </div>
   </article>
 <% end %>

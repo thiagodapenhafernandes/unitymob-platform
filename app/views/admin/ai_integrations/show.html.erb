@@ -1,17 +1,19 @@
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-  <div>
-    <h1 class="ax-page-title"><i class="bi bi-stars me-2 text-primary"></i>IA</h1>
-    <p class="ax-page-subtitle">Configure a OpenAI e as instruções usadas para sugerir título e descrição dos imóveis.</p>
-  </div>
-</div>
+<div class="integration-workspace ai-integration-workspace">
+<%= ax_workspace_heading(
+      eyebrow: "Integrações · Conteúdo",
+      icon: "stars",
+      title: "IA",
+      pills: [@openai_connected ? "conectada" : "configuração pendente"],
+      subtitle: "Configure o provedor e acompanhe a geração assistida de conteúdo dos imóveis.",
+      metrics: [
+        { value: number_with_delimiter(@pending_suggestions_count), label: "pendentes" },
+        { value: number_with_delimiter(@failed_suggestions_count), label: "falhas" }
+      ]
+    ) %>
 
-<%= ax_field_grid do %>
-  <div class="ax-span-6">
-    <div class="ax-card tw-mb-4">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key me-2 text-primary"></i>Configuração OpenAI</h5>
-      </div>
-      <div class="ax-card__body">
+<div class="integration-split-layout">
+  <main class="integration-split-layout__main">
+    <%= ax_panel(title: "Configuração do provedor", subtitle: "Credencial, modelo e instrução principal.", actions: ax_badge(@openai_connected ? "conectada" : "aguardando token", tone: @openai_connected ? :green : :amber)) do %>
         <%= ax_inline_notice(tone: @openai_connected ? :success : :warning, icon: @openai_connected ? "check-circle" : "exclamation-triangle") do %>
           <span>
             Status:
@@ -26,13 +28,13 @@
                 class: "ax-control",
                 autocomplete: "off",
                 placeholder: (@openai_connected ? "Token já configurado. Preencha apenas para substituir." : "Cole o token da OpenAI") %>
-            <div class="form-text">Ao salvar um token, o sistema passa a considerar a integração como conectada.</div>
+            <div class="ax-field-hint">Preencha somente para configurar ou substituir a credencial atual.</div>
           </div>
 
           <div class="tw-mb-3">
             <%= f.label :model, "Modelo", class: "ax-label tw-font-semibold" %>
             <%= f.text_field :model, class: "ax-control", value: @openai_model %>
-            <div class="form-text">Padrão: <code><%= Ai::PropertyContentService::DEFAULT_MODEL %></code>.</div>
+            <div class="ax-field-hint">Padrão: <code><%= Ai::PropertyContentService::DEFAULT_MODEL %></code>.</div>
           </div>
 
           <div class="tw-mb-3">
@@ -41,23 +43,18 @@
                 class: "ax-control font-monospace",
                 rows: 18,
                 value: @openai_prompt %>
-            <div class="form-text">
+            <div class="ax-field-hint">
               Este texto é a instrução principal usada pela IA. Alterações aqui passam a valer para as próximas sugestões.
             </div>
           </div>
 
           <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
         <% end %>
-      </div>
-    </div>
-  </div>
+    <% end %>
+  </main>
 
-  <div class="ax-span-6">
-    <div class="ax-card tw-mb-4">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-lightning-charge me-2 text-warning"></i>Geração em lote</h5>
-      </div>
-      <div class="ax-card__body">
+  <aside class="integration-split-layout__aside">
+    <%= ax_operational_panel(eyebrow: "Operação", title: "Geração em lote", actions: ax_badge(@batch_status, tone: @batch_status == "failed" ? :red : :blue)) do %>
         <p class="tw-text-sm tw-text-ink-muted">
           O lote gera sugestões de título e descrição para os imóveis, mas não aplica automaticamente. Cada sugestão precisa ser revisada e confirmada na edição do imóvel.
         </p>
@@ -67,29 +64,23 @@
             <span>Status: <strong><%= @batch_status %></strong></span>
             <span><%= @batch_progress %>%</span>
           </div>
-          <div class="progress" style="height: 10px;">
-            <div class="progress-bar <%= @batch_status == "failed" ? "bg-danger" : "bg-info" %>"
-                 style="width: <%= @batch_progress %>%"
-                 aria-valuenow="<%= @batch_progress %>"
-                 aria-valuemin="0"
-                 aria-valuemax="100"></div>
-          </div>
-          <p class="tw-text-sm tw-text-ink-muted tw-mt-2 mb-0"><%= @batch_message %></p>
+          <%= ax_progress(value: @batch_progress, tone: @batch_status == "failed" ? :red : :blue) %>
+          <p class="tw-text-sm tw-text-ink-muted tw-mt-2 tw-mb-0"><%= @batch_message %></p>
           <% if @batch_last_at.present? %>
-            <p class="tw-text-sm tw-text-ink-muted mb-0">Última atualização: <%= l(@batch_last_at, format: :short) %></p>
+            <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Última atualização: <%= l(@batch_last_at, format: :short) %></p>
           <% end %>
         </div>
 
         <%= ax_field_grid do %>
           <div class="ax-span-6">
-            <div class="border rounded p-3 tw-text-center">
-              <div class="h4 mb-0"><%= number_with_delimiter(@pending_suggestions_count) %></div>
+            <div class="integration-stat-tile">
+              <strong><%= number_with_delimiter(@pending_suggestions_count) %></strong>
               <div class="tw-text-sm tw-text-ink-muted">Sugestões pendentes</div>
             </div>
           </div>
           <div class="ax-span-6">
-            <div class="border rounded p-3 tw-text-center">
-              <div class="h4 mb-0"><%= number_with_delimiter(@failed_suggestions_count) %></div>
+            <div class="integration-stat-tile">
+              <strong><%= number_with_delimiter(@failed_suggestions_count) %></strong>
               <div class="tw-text-sm tw-text-ink-muted">Falhas</div>
             </div>
           </div>
@@ -99,13 +90,13 @@
             method: :post,
             class: "ax-btn ax-btn--ghost tw-w-full",
             data: { turbo_confirm: "Gerar sugestões para todos os imóveis em segundo plano? Nada será aplicado automaticamente." } do %>
-          <i class="bi bi-magic me-2"></i>Gerar sugestões para todos os imóveis
+          <i class="bi bi-magic ax-ico"></i>Gerar sugestões para todos os imóveis
         <% end %>
-      </div>
-    </div>
+    <% end %>
 
     <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
       <strong>Fluxo seguro:</strong> a IA apenas sugere. Para alterar título, descrição e SEO do imóvel, abra a edição do imóvel e confirme a sugestão manualmente.
     <% end %>
-  </div>
-<% end %>
+  </aside>
+</div>
+</div>

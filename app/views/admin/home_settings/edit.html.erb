@@ -1,12 +1,5 @@
-<div class="container-fluid py-4" data-controller="home-settings-preview">
-  <!-- Header -->
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title"><i class="bi bi-house-gear-fill"></i> Configurações da Home</h1>
-      <p class="ax-page-subtitle">Personalize a aparência e conteúdo da página inicial</p>
-    </div>
-    <%= link_to 'Voltar', admin_root_path, class: 'ax-btn ax-btn--ghost' %>
-  </div>
+<div class="public-site-workspace" data-controller="home-settings-preview">
+  <%= ax_workspace_heading(eyebrow: "Site público · Estrutura", icon: "house-gear", title: "Home", subtitle: "Gerencie hero, chamada final e visibilidade das seções.", actions: ax_button("Voltar", admin_root_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
 
   <%= form_with(model: @home_setting, url: admin_home_setting_path, local: true, html: { multipart: true }) do |f| %>
     <%= ax_error_summary(@home_setting) %>
@@ -355,9 +348,6 @@
               </div>
             <% end %>
 
-            <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
-              <strong>Dica:</strong> Esta seção aparece no final da página inicial, incentivando os visitantes a entrarem em contato.
-            <% end %>
           </div>
         </div>
       </div>

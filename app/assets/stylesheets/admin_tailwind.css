@@ -1587,7 +1587,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 }
 
 @media (max-width: 1023.98px) {
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
     margin-left: 52px;
     width: calc(100vw - 52px);
     max-width: calc(100vw - 52px);
@@ -1635,11 +1635,11 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 }
 
 @media (max-width: 767.98px) {
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) {
     --ax-mobile-sidebar-w: min(300px, calc(100vw - 64px));
   }
 
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar {
     top: calc(var(--ax-navbar-h) + 10px);
     bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     left: 8px;
@@ -1653,21 +1653,21 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
     transform: translateX(calc(-100% - 16px));
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar {
     transform: none;
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
     margin-left: 0;
     width: 100vw;
     max-width: 100vw;
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-contextbar {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-contextbar {
     left: 0;
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar {
     top: calc(var(--ax-navbar-h) + 18px);
     left: 16px;
     z-index: 1220;
@@ -1681,7 +1681,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
     box-shadow: none;
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__title {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__title {
     display: inline-flex;
     gap: 7px;
     color: #1f2937;
@@ -1691,15 +1691,15 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
     text-transform: uppercase;
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__title i {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__title i {
     color: var(--admin-primary);
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__tools {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__tools {
     display: inline-flex;
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__tool--collapse {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__tool--collapse {
     width: 32px;
     height: 32px;
     border: 1px solid #d7dee9;
@@ -1708,26 +1708,26 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
     color: #475569;
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__tool--collapse .bi {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__tool--collapse .bi {
     transform: rotate(180deg);
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar {
     padding-top: 48px;
   }
 
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav {
     gap: 2px;
   }
 
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__section {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__section {
     padding: 9px 7px 4px;
     color: #7c8797;
     font-size: .66rem;
     letter-spacing: .055em;
   }
 
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__link {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__link {
     min-height: 38px;
     padding: 7px 9px;
     border-radius: 8px;
@@ -1735,55 +1735,55 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
     font-weight: 760;
   }
 
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__link .bi {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__link .bi {
     width: 22px;
     font-size: 1rem;
   }
 
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__link.active {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__link.active {
     box-shadow: inset 3px 0 0 var(--admin-primary), 0 1px 2px rgba(15, 23, 42, .04);
   }
 
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__sub {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar .ax-nav__sub {
     margin-left: 12px;
   }
 
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-drawer-backdrop {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-drawer-backdrop {
     background: rgba(15, 23, 42, .46);
     backdrop-filter: blur(2px);
   }
 
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
     margin-left: 0;
     width: 100vw;
     max-width: 100vw;
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__title,
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__tools .ax-contextbar__tool:not(.ax-contextbar__tool--collapse) {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__title,
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar .ax-contextbar__tools .ax-contextbar__tool:not(.ax-contextbar__tool--collapse) {
     display: inline-flex;
   }
 }
 
 @media (min-width: 768px) and (max-width: 1023.98px) {
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
     margin-left: var(--ax-sidebar-w);
     width: calc(100vw - var(--ax-sidebar-w));
     max-width: calc(100vw - var(--ax-sidebar-w));
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-contextbar {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-contextbar {
     left: var(--ax-sidebar-w);
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-sidebar-contextbar {
     justify-content: space-between;
     width: var(--ax-sidebar-w);
     padding: 0 var(--ax-shell-gutter);
   }
 
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace) > .ax-sidebar-contextbar .ax-contextbar__title,
-  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace) > .ax-sidebar-contextbar .ax-contextbar__tools .ax-contextbar__tool:not(.ax-contextbar__tool--collapse) {
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace) > .ax-sidebar-contextbar .ax-contextbar__title,
+  body.ax-app.is-open:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace) > .ax-sidebar-contextbar .ax-contextbar__tools .ax-contextbar__tool:not(.ax-contextbar__tool--collapse) {
     display: inline-flex;
   }
 }
@@ -4427,14 +4427,14 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 }
 
 @media (min-width: 1024px) {
-  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
+  body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
     margin-left: var(--ax-sidebar-w);
     width: calc(100vw - var(--ax-sidebar-w));
     max-width: calc(100vw - var(--ax-sidebar-w));
   }
 
-  html.ax-sidebar-compact-preload body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main,
-  body.ax-app.is-compact:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
+  html.ax-sidebar-compact-preload body.ax-app:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main,
+  body.ax-app.is-compact:not(.ax-builder-layout):not(.ax-habitation-editor-workspace):not(.ax-distribution-rule-editor-workspace):not(.ax-webhook-settings-workspace):not(.ax-scheduling-settings-workspace):not(.ax-whatsapp-focus-workspace) > .ax-main {
     margin-left: var(--ax-sidebar-compact-w);
     width: calc(100vw - var(--ax-sidebar-compact-w));
     max-width: calc(100vw - var(--ax-sidebar-compact-w));
@@ -9953,7 +9953,25 @@ textarea.ax-control,
 }
 
 /* Integration workspaces */
+.public-site-workspace { display: grid; gap: 10px; min-width: 0; }
+.public-site-workspace > .ax-workspace-heading { margin-bottom: 0; }
 .loft-workspace, .integration-workspace { display: grid; gap: 12px; min-width: 0; }
+.integration-split-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 38%); gap: 12px; align-items: start; min-width: 0; }
+.integration-split-layout__main, .integration-split-layout__aside { display: grid; gap: 12px; min-width: 0; }
+.integration-split-layout__aside { position: sticky; top: 12px; }
+.integration-stat-tile { display: grid; place-items: center; gap: 2px; min-height: 70px; padding: 9px; border: 1px solid var(--ax-border-soft); border-radius: 7px; background: #f8fafc; text-align: center; }
+.integration-stat-tile > strong { color: var(--admin-ink); font-size: 20px; line-height: 1; }
+.ax-field-hint { margin-top: 4px; color: #697586; font-size: 10.5px; line-height: 1.35; }
+.webhook-editor-workspace { max-width: 1320px; margin-inline: auto; }
+.integration-danger-zone { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #fecaca; border-radius: 8px; background: #fff7f7; }
+.integration-danger-zone > div { display: grid; gap: 2px; }
+.integration-danger-zone strong { color: #991b1b; font-size: 12px; }
+.integration-danger-zone span { color: #7f1d1d; font-size: 10.5px; }
+.webhook-editor-payload { max-height: 420px; margin: 0; padding: 10px; overflow: auto; border: 1px solid var(--ax-border-soft); border-radius: 7px; background: #f8fafc; color: #344054; font-size: 10.5px; line-height: 1.45; }
+.webhook-editor-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--ax-border-soft); }
+.webhook-editor-reference-list { display: grid; gap: 6px; margin: 0; padding: 0; color: #526071; font-size: 11px; list-style: none; }
+.webhook-editor-reference-list li { display: flex; align-items: center; gap: 7px; }
+.webhook-editor-reference-list li::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--admin-primary); }
 .loft-workspace__header, .integration-workspace__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 2px 1px; }
 .loft-workspace__eyebrow, .integration-workspace__eyebrow { display: block; margin-bottom: 2px; color: var(--admin-primary); font-size: 9.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
 .loft-workspace__health, .integration-workspace__status { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
@@ -10005,11 +10023,13 @@ textarea.ax-control,
 .loft-history-card .ax-table { font-size: 10.5px; }
 .loft-history-card__empty { display: grid; place-items: center; gap: 4px; min-height: 120px; color: #697586; font-size: 11px; }
 
-@media (max-width: 1100px) { .loft-workspace__layout { grid-template-columns: 1fr; } .loft-workspace__monitor { position: static; } }
+@media (max-width: 1100px) { .loft-workspace__layout, .integration-split-layout { grid-template-columns: 1fr; } .loft-workspace__monitor, .integration-split-layout__aside { position: static; } }
 @media (max-width: 720px) { .loft-workspace__header, .integration-workspace__header { flex-direction: column; } .loft-command-grid, .loft-monitor-health { grid-template-columns: 1fr; } .loft-sync-property form { grid-template-columns: 1fr; } .loft-settings-form__preservation { align-items: flex-start; flex-direction: column; } .loft-settings-form__preservation > span { text-align: left; } }
 
 .tracking-workspace__tabs { margin: 0; }
-.tracking-workspace__layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 34%); gap: 12px; align-items: start; }
+.tracking-tab-content, .tracking-tab-panel { min-width: 0; }
+.tracking-tab-panel[hidden] { display: none; }
+.tracking-workspace__layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
 .tracking-settings-form { display: grid; gap: 12px; }
 .tracking-guide { overflow: hidden; border: 1px solid var(--ax-border-soft); border-radius: 8px; background: #fff; }
 .tracking-guide > header { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; border-bottom: 1px solid var(--ax-border-soft); background: var(--ax-panel-header); }
@@ -10026,8 +10046,61 @@ textarea.ax-control,
 .scheduling-queue td:first-child strong, .scheduling-queue td:first-child small { display: block; } .scheduling-queue td:first-child small { margin-top: 2px; color: #697586; font-size: 10px; }
 .scheduling-empty { display: grid; place-items: center; gap: 3px; min-height: 220px; color: #697586; } .scheduling-empty i { color: #15803d; font-size: 24px; } .scheduling-empty strong { color: var(--admin-ink); font-size: 12px; } .scheduling-empty span { font-size: 10.5px; }
 .scheduling-settings-form { display: grid; gap: 10px; } .scheduling-settings-form p, .scheduling-readonly { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: #697586; font-size: 10.5px; line-height: 1.4; }
-.scheduling-block-form { display: grid; grid-template-columns: minmax(120px, .65fr) minmax(160px, 1fr) auto; align-items: end; gap: 7px; padding-bottom: 10px; border-bottom: 1px solid var(--ax-border-soft); }
-.scheduling-block-list { margin: 0; padding: 0; list-style: none; } .scheduling-block-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #edf0f4; } .scheduling-block-list li:last-child { border-bottom: 0; } .scheduling-block-list li span { display: grid; } .scheduling-block-list li strong { font-size: 11px; } .scheduling-block-list li small { color: #697586; font-size: 10px; } .scheduling-block-list__empty { padding: 12px 0 2px; color: #697586; font-size: 10.5px; }
+.scheduling-block-form { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: 8px; min-width: 0; padding-bottom: 10px; border-bottom: 1px solid var(--ax-border-soft); }
+.scheduling-block-form > div { min-width: 0; }
+.scheduling-block-form .ax-control { box-sizing: border-box; width: 100%; min-width: 0; }
+.scheduling-block-form > .ax-btn { width: 100%; }
+.scheduling-block-list { min-width: 0; margin: 0; padding: 0; list-style: none; } .scheduling-block-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding: 8px 0; border-bottom: 1px solid #edf0f4; } .scheduling-block-list li:last-child { border-bottom: 0; } .scheduling-block-list li span { display: grid; min-width: 0; } .scheduling-block-list li strong, .scheduling-block-list li small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .scheduling-block-list li strong { font-size: 11px; } .scheduling-block-list li small { color: #697586; font-size: 10px; } .scheduling-block-list li form { flex: 0 0 auto; } .scheduling-block-list__empty { padding: 12px 0 2px; color: #697586; font-size: 10.5px; }
+
+body.ax-scheduling-settings-workspace { height: 100vh; overflow: hidden; }
+body.ax-scheduling-settings-workspace .ax-main { position: fixed; top: var(--ax-navbar-h, 48px); right: 0; bottom: 0; left: 0; height: auto; min-height: 0; margin-top: 0; padding: 0; overflow: hidden; background: var(--admin-workspace-bg, #eef2f7); }
+body.ax-scheduling-settings-workspace .ax-sidebar { top: calc(var(--ax-navbar-h, 48px) + var(--ax-contextbar-h, 48px)); }
+body.ax-scheduling-settings-workspace .ax-sidebar-contextbar { position: fixed; top: var(--ax-navbar-h, 48px); left: 0; z-index: 38; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: var(--ax-sidebar-w); height: var(--ax-contextbar-h); padding: 0 var(--ax-shell-gutter); border-right: 1px solid #dfe5ee; border-bottom: 1px solid #dfe5ee; background: #eef2f7; }
+.scheduling-settings-workspace { --ax-workspace-aside-w: clamp(360px, 29vw, 470px); --ax-workspace-aside-collapsed-w: var(--ax-sidebar-compact-w, 60px); height: 100%; min-height: 0; border: 0; border-radius: 0; background: var(--admin-workspace-bg, #eef2f7); }
+.scheduling-main-pane { grid-template-rows: var(--ax-contextbar-h, 48px) minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.scheduling-middle-contextbar { border: 0; border-bottom: 1px solid #d8dee8; border-radius: 0; }
+.scheduling-main-body { min-height: 0; padding: var(--ax-workspace-gutter, 12px); overflow: auto; background: var(--admin-workspace-bg, #eef2f7); }
+.scheduling-main-stack, .scheduling-aside-body { display: grid; gap: 10px; min-width: 0; }
+.scheduling-aside-body { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px; overflow-x: hidden; background: var(--admin-workspace-bg, #eef2f7); }
+.scheduling-settings-aside { min-height: 0; overflow: hidden; }
+.scheduling-settings-aside-panel { height: 100%; }
+.scheduling-queue-panel .ax-operational-panel__body { padding: 8px; }
+.scheduling-queue-table-wrap { max-height: none; overflow-x: auto; border: 1px solid var(--ax-border-soft); border-radius: 7px; background: #fff; }
+.scheduling-property-cell { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.scheduling-property-cell__icon { display: grid; flex: 0 0 auto; place-items: center; width: 28px; height: 28px; border: 1px solid color-mix(in srgb, var(--admin-primary) 18%, #d8dee8); border-radius: 7px; background: var(--admin-primary-softer, #f3f7fb); color: var(--admin-primary); }
+.scheduling-property-cell > span:last-child { display: grid; min-width: 0; }
+.scheduling-property-cell strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scheduling-property-cell small, .scheduling-table-muted { display: block; color: #697586; font-size: 10px; }
+.scheduling-queue-table .ax-actions { width: 1%; text-align: right; white-space: nowrap; }
+.scheduling-property-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 32%); gap: 10px; align-items: start; }
+.scheduling-property-facts { display: grid; gap: 0; margin: 0; }
+.scheduling-property-facts > div { display: grid; grid-template-columns: minmax(90px, 24%) minmax(0, 1fr); gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--ax-border-soft); }
+.scheduling-property-facts > div:last-child { border-bottom: 0; }
+.scheduling-property-facts dt { color: #697586; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.scheduling-property-facts dd { min-width: 0; margin: 0; color: var(--admin-ink); font-size: 11.5px; font-weight: 650; overflow-wrap: anywhere; }
+.scheduling-property-date { display: grid; place-items: center; gap: 3px; min-height: 110px; text-align: center; }
+.scheduling-property-date strong { font-size: 22px; line-height: 1; }
+.scheduling-property-date span { color: #697586; font-size: 13px; }
+
+@media (min-width: 1024px) {
+  body.ax-scheduling-settings-workspace .ax-main { left: var(--ax-sidebar-w); width: auto; max-width: none; margin-left: 0; }
+  html.ax-sidebar-compact-preload body.ax-scheduling-settings-workspace .ax-main,
+  body.ax-scheduling-settings-workspace.is-compact .ax-main { left: var(--ax-sidebar-compact-w); }
+  html.ax-sidebar-compact-preload body.ax-scheduling-settings-workspace .ax-sidebar-contextbar,
+  body.ax-scheduling-settings-workspace.is-compact .ax-sidebar-contextbar { justify-content: center; width: var(--ax-sidebar-compact-w); padding: 0; }
+  html.ax-sidebar-compact-preload body.ax-scheduling-settings-workspace .ax-sidebar-contextbar .ax-contextbar__title,
+  body.ax-scheduling-settings-workspace.is-compact .ax-sidebar-contextbar .ax-contextbar__title { display: none; }
+}
+
+@media (max-width: 1099.98px) {
+  body.ax-scheduling-settings-workspace { height: auto; overflow: auto; }
+  body.ax-scheduling-settings-workspace .ax-main { position: static; overflow: visible; }
+  .scheduling-settings-workspace { display: block; height: auto; overflow: visible; }
+  .scheduling-main-pane, .scheduling-settings-aside { height: auto; overflow: visible; }
+  .scheduling-main-body { overflow: visible; }
+  .scheduling-settings-aside { margin-top: 8px; border-top: 1px solid #d8dee8; }
+}
+@media (max-width: 760px) { .scheduling-property-layout { grid-template-columns: 1fr; } }
 
 @media (max-width: 1050px) { .tracking-workspace__layout, .scheduling-workspace__layout { grid-template-columns: 1fr; } .scheduling-workspace__settings { position: static; } }
 @media (max-width: 640px) { .scheduling-block-form { grid-template-columns: 1fr; } }
@@ -16007,10 +16080,47 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
   color: #866727;
 }
 
+.ax-dashboard-command__updated {
+  display: block;
+  margin-top: 3px;
+  color: #8a93a3;
+  font-size: 10.5px;
+}
+
+.ax-dashboard-filters {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.ax-dashboard-filters > span {
+  margin-right: auto;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ax-dashboard-filters .ax-control {
+  width: auto;
+  min-width: 112px;
+  height: 30px;
+  min-height: 30px;
+  font-size: 11.5px;
+}
+
 .ax-dashboard-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+.ax-dashboard-kpis--compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .ax-dashboard-kpi {
@@ -16020,6 +16130,29 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
 
 .ax-dashboard-kpi .ax-metric-card__value {
   font-size: 24px;
+}
+
+.ax-dashboard-kpi-link {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ax-dashboard-kpi-link .ax-metric-card {
+  height: 100%;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.ax-dashboard-kpi-link:hover .ax-metric-card {
+  border-color: var(--ab-field-hover, #b8c5d6);
+  box-shadow: 0 3px 8px rgb(16 24 40 / .08);
+  transform: translateY(-1px);
+}
+
+.ax-dashboard-kpi-link:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid var(--admin-primary-ring, #9fb3cc);
+  outline-offset: 2px;
 }
 
 .ax-dashboard-grid {
@@ -16044,7 +16177,7 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
 
 .ax-dashboard-grid--monitoring {
   align-items: start;
-  grid-template-columns: minmax(300px, .62fr) minmax(0, 1.38fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .ax-dashboard-grid--secondary {
@@ -16053,6 +16186,10 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
 
 .ax-dashboard-grid--rankings {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ax-dashboard-grid--rankings-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .ax-dashboard-grid--operations {
@@ -16261,6 +16398,13 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
   font-weight: 850;
 }
 
+.ax-dashboard-funnel__rate small {
+  display: block;
+  margin-top: 2px;
+  color: #697586;
+  font-size: 9.5px;
+}
+
 .ax-dashboard-funnel__rate--overall {
   background: color-mix(in srgb, var(--admin-primary, #365f8f) 7%, #fff);
 }
@@ -16287,8 +16431,51 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
 }
 
 .ax-dashboard-grid--insights .ax-dashboard-chart--status {
-  height: 100%;
-  min-height: 318px;
+  height: 250px;
+  min-height: 250px;
+}
+
+.ax-dashboard-status-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 0 10px 10px;
+}
+
+.ax-dashboard-status-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 6px;
+  color: #344054;
+  font-size: 10.5px;
+  text-decoration: none;
+}
+
+.ax-dashboard-status-link:hover {
+  border-color: var(--ab-field-hover, #b8c5d6);
+  background: #f8fafc;
+}
+
+.ax-dashboard-status-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-dashboard-status-link strong {
+  color: #1f2733;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.ax-dashboard-status-link .bi {
+  color: #98a2b3;
+  font-size: 9px;
 }
 
 .ax-dashboard-today-grid {
@@ -16296,6 +16483,43 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   padding: 10px;
+}
+
+.ax-dashboard-attention__body {
+  display: grid;
+  grid-template-columns: minmax(360px, .85fr) minmax(0, 1.15fr);
+  align-items: stretch;
+}
+
+.ax-dashboard-attention__date {
+  color: #697586;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ax-dashboard-today-grid--summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  border-right: 1px solid var(--ax-border-soft);
+}
+
+.ax-dashboard-list--attention {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 6px;
+  padding: 10px;
+}
+
+.ax-dashboard-list--attention .ax-dashboard-list__row {
+  min-height: 48px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 7px;
+}
+
+.ax-dashboard-list--attention .ax-dashboard-list__row:hover {
+  border-color: var(--ab-field-hover, #b8c5d6);
 }
 
 .ax-dashboard-today-cell {
@@ -16368,6 +16592,25 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
 
 .ax-dashboard-list__row--link:hover {
   background: #f8fafc;
+}
+
+.ax-dashboard-pending-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ax-dashboard-pending-copy strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-dashboard-pending-copy small {
+  color: #8a93a3;
+  font-size: 10.5px;
 }
 
 .ax-dashboard-list__main {
@@ -16536,6 +16779,58 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
   padding: 10px;
 }
 
+.ax-dashboard-performance {
+  display: grid;
+  padding: 8px 10px;
+}
+
+.ax-dashboard-performance__row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto auto 58px;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 4px;
+  border-top: 1px solid var(--ax-border-soft);
+  color: #697586;
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.ax-dashboard-performance__row:first-child { border-top: 0; }
+.ax-dashboard-performance__row:hover { background: #f8fafc; }
+.ax-dashboard-performance__row strong { overflow: hidden; color: #1f2733; text-overflow: ellipsis; white-space: nowrap; }
+.ax-dashboard-performance__row b { color: var(--admin-primary); text-align: right; }
+
+.ax-dashboard-supply-demand {
+  margin-top: 10px;
+}
+
+.ax-dashboard-supply-demand__head,
+.ax-dashboard-supply-demand__row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(90px, .45fr));
+  gap: 10px;
+  align-items: center;
+  padding: 7px 10px;
+}
+
+.ax-dashboard-supply-demand__head {
+  color: #697586;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ax-dashboard-supply-demand__row {
+  border-top: 1px solid var(--ax-border-soft);
+  color: #697586;
+  font-size: 11.5px;
+}
+
+.ax-dashboard-supply-demand__row strong { color: #1f2733; }
+.ax-dashboard-supply-demand__row b { color: var(--admin-primary); }
+
 .ax-dashboard-rank__row {
   display: grid;
   gap: 6px;
@@ -16572,6 +16867,79 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
 
 .ax-dashboard-table-wrap {
   overflow-x: auto;
+}
+
+.ax-dashboard-quality {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid var(--ax-border-soft);
+}
+
+.ax-dashboard-quality__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 7px;
+  color: #344054;
+  text-decoration: none;
+}
+
+.ax-dashboard-quality__item:hover {
+  border-color: var(--ab-field-hover, #b8c5d6);
+  background: #f8fafc;
+}
+
+.ax-dashboard-quality__item > span:nth-child(2) {
+  min-width: 0;
+}
+
+.ax-dashboard-quality__item strong,
+.ax-dashboard-quality__item small {
+  display: block;
+}
+
+.ax-dashboard-quality__item strong {
+  color: #1f2733;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.ax-dashboard-quality__item small {
+  overflow: hidden;
+  color: #697586;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-dashboard-quality__item > .bi {
+  color: #98a2b3;
+  font-size: 10px;
+}
+
+.ax-dashboard-quality__icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.ax-dashboard-quality__icon--red {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.ax-dashboard-quality__icon--amber {
+  background: #fffaeb;
+  color: #b54708;
 }
 
 .ax-dashboard-table {
@@ -16662,6 +17030,10 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .ax-dashboard-kpis--compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .ax-dashboard-grid--secondary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -16681,6 +17053,19 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
   .ax-dashboard-command__actions {
     justify-self: start;
   }
+
+  .ax-dashboard-attention__body {
+    grid-template-columns: 1fr;
+  }
+
+  .ax-dashboard-today-grid--summary {
+    border-right: 0;
+    border-bottom: 1px solid var(--ax-border-soft);
+  }
+
+  .ax-dashboard-quality {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 767px) {
@@ -16696,11 +17081,38 @@ body.ax-app .ax-media-sortable-fallback .ax-media-action {
     flex-direction: column;
   }
 
+  .ax-dashboard-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ax-dashboard-filters .ax-control { width: 100%; }
+
+  .ax-dashboard-performance__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .ax-dashboard-performance__row span { display: none; }
+
+  .ax-dashboard-supply-demand__head,
+  .ax-dashboard-supply-demand__row {
+    grid-template-columns: minmax(120px, 1fr) repeat(2, auto);
+  }
+
+  .ax-dashboard-supply-demand__head span:last-child,
+  .ax-dashboard-supply-demand__row b { display: none; }
+
   .ax-dashboard-kpis,
   .ax-dashboard-grid--rankings,
   .ax-dashboard-grid--secondary,
   .ax-dashboard-value-strip,
   .ax-dashboard-category-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ax-dashboard-today-grid--summary,
+  .ax-dashboard-list--attention,
+  .ax-dashboard-quality {
     grid-template-columns: 1fr;
   }
 
@@ -18320,7 +18732,7 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 
 .portal-integrations-nav__link {
   display: block;
-  padding: .75rem;
+  padding: 8px 9px;
   color: #202a37;
   text-decoration: none;
   transition: background-color 160ms ease, color 160ms ease;
@@ -18332,8 +18744,9 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 }
 
 .portal-integrations-nav__link.is-active {
-  background: var(--admin-primary, #365f8f);
-  color: #fff;
+  box-shadow: inset 3px 0 0 var(--admin-primary, #365f8f);
+  background: var(--admin-primary-softer, #f3f7fb);
+  color: var(--admin-primary, #365f8f);
 }
 
 .portal-integrations-nav__meta {
@@ -18342,7 +18755,25 @@ body.capt-dashboard-tv-active.capt-dashboard-tv-tab-leads .capt-heatmap-card .ax
 }
 
 .portal-integrations-nav__meta.is-active {
-  color: color-mix(in srgb, #fff 76%, transparent);
+  color: #526071;
+}
+
+.portal-integrations-nav__link .ax-badge { padding: 2px 5px; font-size: 9px; }
+
+.portal-integrations-commandbar { display: flex; align-items: center; gap: 12px; min-width: 0; margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--ax-border-soft); border-radius: 8px; background: #fff; }
+.portal-integrations-commandbar__identity { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.portal-integrations-commandbar__identity > strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.portal-integrations-commandbar__metrics { display: flex; flex: 1 1 auto; align-items: center; justify-content: flex-end; gap: 14px; min-width: 0; color: #697586; font-size: 10px; }
+.portal-integrations-commandbar__metrics span { display: inline-flex; align-items: baseline; gap: 3px; white-space: nowrap; }
+.portal-integrations-commandbar__metrics strong { color: var(--admin-ink); font-size: 11.5px; }
+.portal-integrations-rejections { overflow: hidden; border: 1px solid var(--ax-border-soft); border-radius: 7px; background: #fff; }
+.portal-integrations-rejections summary { padding: 8px 10px; color: #526071; font-size: 10.5px; font-weight: 750; cursor: pointer; }
+.portal-integrations-rejections ul { margin: 0; padding: 0 10px 8px; list-style: none; }
+.portal-integrations-rejections li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid #edf0f4; color: #697586; font-size: 10.5px; }
+
+@media (max-width: 900px) {
+  .portal-integrations-commandbar { align-items: flex-start; flex-wrap: wrap; }
+  .portal-integrations-commandbar__metrics { order: 3; flex-basis: 100%; justify-content: flex-start; overflow-x: auto; }
 }
 
 .portal-integrations-current-title,

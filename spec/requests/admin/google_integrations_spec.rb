@@ -27,6 +27,8 @@ RSpec.describe "Admin::GoogleIntegrations", type: :request do
     expect(response.body).to include("Maps")
     expect(response.body).to include("Coluna-chave para atualização")
     expect(response.body).to include("Cód. imóvel CRM")
+    expect(response.body).not_to include("Como esta integração será usada")
+    expect(response.body).not_to include("Como a agenda será usada")
   end
 
   it "salva a configuração do Google Maps por conta" do

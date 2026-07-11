@@ -1,11 +1,5 @@
 <div class="integration-workspace tracking-workspace">
-  <header class="integration-workspace__header">
-    <div><span class="integration-workspace__eyebrow">Integrações · Mensuração</span><h1 class="ax-page-title">Trackeamento</h1><p class="ax-page-subtitle">Gerencie as tags instaladas no site público sem inserir scripts livres.</p></div>
-    <div class="integration-workspace__status">
-      <%= ax_badge(TrackingIntegrationSetting.google_tag_manager_enabled? ? "GTM ativo" : "GTM inativo", tone: TrackingIntegrationSetting.google_tag_manager_enabled? ? :green : :gray) %>
-      <%= ax_badge(TrackingIntegrationSetting.meta_pixel_enabled? ? "Meta ativo" : "Meta inativo", tone: TrackingIntegrationSetting.meta_pixel_enabled? ? :green : :gray) %>
-    </div>
-  </header>
+  <%= ax_workspace_heading(eyebrow: "Integrações · Mensuração", icon: "bullseye", title: "Rastreamento", subtitle: "Gerencie as tags instaladas no site público sem permitir scripts livres.", pills: [@active_tab == "meta_pixel" ? "Meta Pixel" : "Google Tag Manager"], metrics: [{ value: TrackingIntegrationSetting.google_tag_manager_enabled? ? "Ativo" : "Inativo", label: "GTM" }, { value: TrackingIntegrationSetting.meta_pixel_enabled? ? "Ativo" : "Inativo", label: "Meta" }]) %>
 
   <%= ax_error_summary(@tracking_setting) %>
 
@@ -14,8 +8,8 @@
     <li><a class="ax-form-tabs__item <%= @active_tab == 'meta_pixel' ? 'active' : '' %>" href="#meta-pixel" data-ax-tabs-target="tab" data-ax-tabs-target-param="#meta-pixel" data-action="click->ax-tabs#select" role="tab" aria-controls="meta-pixel" aria-selected="<%= @active_tab == 'meta_pixel' %>"><i class="bi bi-meta"></i>Pixel da Meta</a></li>
   </ul>
 
-  <div class="tab-content" id="trackingTabsContent">
-    <div class="tab-pane fade <%= @active_tab == 'google_tag_manager' ? 'show active' : '' %>" id="google-tag-manager" role="tabpanel">
+  <div class="tracking-tab-content" id="trackingTabsContent">
+    <section class="tracking-tab-panel" id="google-tag-manager" role="tabpanel" <%= "hidden" unless @active_tab == "google_tag_manager" %>>
       <div class="tracking-workspace__layout">
         <%= ax_panel(title: "Google Tag Manager", subtitle: "Container carregado em todas as páginas públicas.", actions: ax_badge(TrackingIntegrationSetting.google_tag_manager_enabled? ? "ativo" : "inativo", tone: TrackingIntegrationSetting.google_tag_manager_enabled? ? :green : :gray)) do %>
           <%= form_with url: admin_tracking_integration_path(tab: "google_tag_manager"), method: :patch, scope: :tracking, local: true, class: "tracking-settings-form" do |f| %>
@@ -26,11 +20,10 @@
             <%= f.submit "Salvar Google Tag Manager", class: "ax-btn ax-btn--primary" %>
           <% end %>
         <% end %>
-        <%= render "application_guide", provider: :gtm %>
       </div>
-    </div>
+    </section>
 
-    <div class="tab-pane fade <%= @active_tab == 'meta_pixel' ? 'show active' : '' %>" id="meta-pixel" role="tabpanel">
+    <section class="tracking-tab-panel" id="meta-pixel" role="tabpanel" <%= "hidden" unless @active_tab == "meta_pixel" %>>
       <div class="tracking-workspace__layout">
         <%= ax_panel(title: "Pixel da Meta", subtitle: "Pixel base com PageView automático no site público.", actions: ax_badge(TrackingIntegrationSetting.meta_pixel_enabled? ? "ativo" : "inativo", tone: TrackingIntegrationSetting.meta_pixel_enabled? ? :green : :gray)) do %>
           <%= form_with url: admin_tracking_integration_path(tab: "meta_pixel"), method: :patch, scope: :tracking, local: true, class: "tracking-settings-form" do |f| %>
@@ -41,8 +34,7 @@
             <%= f.submit "Salvar Pixel da Meta", class: "ax-btn ax-btn--primary" %>
           <% end %>
         <% end %>
-        <%= render "application_guide", provider: :meta %>
       </div>
-    </div>
+    </section>
   </div>
 </div>

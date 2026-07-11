@@ -39,14 +39,8 @@
 
   <%= ax_field_grid do %>
     <!-- Configuration -->
-    <div class="ax-span-8">
-      <div class="ax-card">
-        <div class="ax-card__header" style="background:var(--admin-primary-soft)">
-          <h5 class="ax-card__title tw-text-primary tw-inline-flex tw-items-center tw-gap-2">
-            <i class="bi bi-gear-fill"></i>Detalhes da Integração
-          </h5>
-        </div>
-        <div class="ax-card__body">
+    <div class="<%= local_assigns[:main_only] ? 'ax-span-12' : 'ax-span-8' %>">
+      <%= ax_operational_panel(eyebrow: "Configuração", title: "Detalhes da integração", actions: ax_badge(webhook_setting.enabled? ? "ativo" : "inativo", tone: webhook_setting.enabled? ? :green : :gray)) do %>
           <!-- Webhook URL -->
           <div class="tw-mb-4">
             <%= f.label :webhook_url, class: "ax-label tw-inline-flex tw-items-center tw-gap-2" do %>
@@ -90,17 +84,20 @@
             <%= f.label :description, "Descrição / Identificação", class: "ax-label" %>
             <%= f.text_field :description, class: "ax-control", placeholder: "Ex: Integração CRM PipeDrive" %>
           </div>
-        </div>
-      </div>
+
+          <% if local_assigns[:main_only] %>
+            <div class="webhook-editor-actions">
+              <%= link_to "Cancelar", admin_webhook_settings_path, class: "ax-btn ax-btn--ghost" %>
+              <%= f.submit "Salvar webhook", class: "ax-btn ax-btn--primary" %>
+            </div>
+          <% end %>
+      <% end %>
     </div>
 
     <!-- Payload Info (Simplified) -->
+    <% unless local_assigns[:main_only] %>
     <div class="ax-span-4">
-      <div class="ax-card tw-mb-4">
-        <div class="ax-card__header" style="background:var(--admin-primary-soft)">
-          <h5 class="ax-card__title tw-inline-flex tw-items-center tw-gap-2" style="color:var(--admin-primary)"><i class="bi bi-info-circle"></i>Informações</h5>
-        </div>
-        <div class="ax-card__body">
+      <%= ax_operational_panel(eyebrow: "Escopo", title: "Eventos monitorados", class_name: "tw-mb-4") do %>
           <p class="tw-text-ink-muted tw-text-sm">Este webhook disparará sempre que um formulário for preenchido no site.</p>
           <hr>
           <h6>Formulários Monitorados:</h6>
@@ -111,23 +108,18 @@
             <li>Busca de Imóveis</li>
             <li>Captura de Leads (WhatsApp)</li>
           </ul>
-        </div>
-      </div>
+      <% end %>
 
-      <div class="ax-card tw-mb-4">
-        <div class="ax-card__header" style="background:rgba(108,117,125,.1)">
-          <h5 class="ax-card__title tw-inline-flex tw-items-center tw-gap-2 tw-text-ink-muted"><i class="bi bi-braces"></i>Exemplo de Payload</h5>
-        </div>
-        <div class="ax-card__body">
+      <%= ax_operational_panel(eyebrow: "Contrato", title: "Exemplo de payload", class_name: "tw-mb-4") do %>
           <p class="tw-text-ink-muted tw-text-sm tw-mb-3">Envio via <strong>POST</strong> com <code>Content-Type: application/json</code>.</p>
-          <pre class="border rounded tw-text-sm overflow-auto" style="max-height: 420px; background:#f8f9fa; padding:1rem; margin-bottom:0"><code><%= JSON.pretty_generate(sample_webhook_payload) %></code></pre>
-        </div>
-      </div>
+          <pre class="webhook-editor-payload"><code><%= JSON.pretty_generate(sample_webhook_payload) %></code></pre>
+      <% end %>
 
       <div class="tw-grid tw-gap-2">
          <%= f.submit "Salvar Webhook", class: "ax-btn ax-btn--primary" %>
          <%= link_to "Cancelar", admin_webhook_settings_path, class: "ax-btn ax-btn--ghost" %>
       </div>
     </div>
+    <% end %>
   <% end %>
 <% end %>

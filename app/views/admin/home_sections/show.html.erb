@@ -1,7 +1,5 @@
-<div class="container-fluid py-4">
-  <%= link_to admin_home_sections_path, class: "ax-btn ax-btn--ghost tw-mb-4" do %>
-    <i class="bi bi-arrow-left"></i> Voltar
-  <% end %>
+<div class="public-site-workspace">
+  <%= ax_workspace_heading(eyebrow: "Site público · Home", icon: "layout-text-sidebar", title: @home_section.title, pills: [@home_section.active? ? "Ativa" : "Inativa"], subtitle: "Detalhes, filtros e itens desta seção.", actions: safe_join([ax_button("Voltar", admin_home_sections_path, variant: :ghost, size: :sm, icon: "arrow-left"), ax_button("Editar", edit_admin_home_section_path(@home_section), variant: :primary, size: :sm, icon: "pencil-square")])) %>
 
   <div class="ax-card">
     <div class="ax-card__header">
