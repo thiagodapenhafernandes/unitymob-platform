@@ -435,6 +435,11 @@
         <% end %>
       </li>
       <li class="ax-nav__item">
+        <%= link_to admin_system_health_path, class: "ax-nav__link #{'active' if controller_name == 'health'}" do %>
+          <i class="bi bi-activity"></i><span>Saúde do Sistema</span>
+        <% end %>
+      </li>
+      <li class="ax-nav__item">
         <%= link_to admin_system_error_events_path, class: "ax-nav__link #{'active' if controller_name == 'error_events'}" do %>
           <i class="bi bi-bug"></i><span>Erros da Aplicação</span>
         <% end %>

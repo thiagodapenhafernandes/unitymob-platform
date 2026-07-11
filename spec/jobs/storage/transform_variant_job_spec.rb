@@ -26,4 +26,19 @@ RSpec.describe Storage::TransformVariantJob do
 
     expect { described_class.new.perform(blob, transformations) }.to raise_error(ActiveStorage::IntegrityError)
   end
+
+  it "descarta sem falhar quando o arquivo original não existe mais" do
+    blob = instance_double(ActiveStorage::Blob, id: 789)
+    transformations = { "resize_to_fill" => [640, 480] }
+    error = ActiveStorage::FileNotFoundError.new
+
+    allow(blob).to receive(:variant).and_raise(error)
+    expect(Storage::PublicCdnImageUrl).to receive(:mark_transform_failed).with(
+      blob: blob,
+      transformations: transformations,
+      error: error
+    )
+
+    expect(described_class.new.perform(blob, transformations)).to be_nil
+  end
 end

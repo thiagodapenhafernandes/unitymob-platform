@@ -1,0 +1,75 @@
+<% content_for :admin_contextbar_breadcrumb do %>
+  <%= link_to "Plataforma", admin_system_path %>
+  <i class="bi bi-chevron-right"></i>
+  <strong>Saúde do Sistema</strong>
+<% end %>
+
+<% content_for :admin_contextbar_actions do %>
+  <%= link_to admin_system_health_path, class: "ax-contextbar__button" do %>
+    <i class="bi bi-arrow-clockwise"></i><span>Atualizar</span>
+  <% end %>
+<% end %>
+
+<div class="ax-system">
+  <header class="ax-dashboard-command ax-property-form-command">
+    <div class="ax-dashboard-command__main">
+      <span class="ax-dashboard-command__eyebrow">Admin do Sistema · Operação</span>
+      <h1>Saúde do sistema</h1>
+      <p>Aplicação, infraestrutura, filas e erros em uma visão somente leitura.</p>
+    </div>
+    <div class="ax-dashboard-command__status">
+      <%= ax_badge(@health[:status] == "healthy" ? "Operacional" : "Atenção", tone: @health[:status] == "healthy" ? :green : :amber, dot: true) %>
+      <% if @health[:collected_at].present? %>
+        <span>Coletado em <%= l(Time.zone.parse(@health[:collected_at]), format: :short) rescue @health[:collected_at] %></span>
+      <% end %>
+    </div>
+  </header>
+
+  <div class="ax-dashboard-value-strip">
+    <article><span>HTTP</span><strong><%= @health[:http_status] || "—" %></strong><em><%= @health[:http_ms] ? "#{@health[:http_ms]} ms" : "sem amostra" %></em></article>
+    <article><span>Memória disponível</span><strong><%= @health[:memory_available_percent] ? "#{@health[:memory_available_percent]}%" : "—" %></strong><em>Puma <%= @health[:puma_memory_mb] || "—" %> MB</em></article>
+    <article><span>Disco</span><strong><%= @health[:disk_percent] ? "#{@health[:disk_percent]}%" : "—" %></strong><em>Swap <%= @health[:swap_used_mb] || "—" %> MB</em></article>
+    <article><span>Load</span><strong><%= @health[:load_1] || "—" %></strong><em>5 min: <%= @health[:load_5] || "—" %></em></article>
+  </div>
+
+  <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-2 tw-gap-3">
+    <%= ax_operational_panel(eyebrow: "Runtime", title: "Serviços") do %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <tbody>
+            <% { "Puma" => @health[:puma], "Solid Queue" => @health[:solid_queue], "Nginx" => @health[:nginx], "Banco" => @health[:database], "Cache" => @health[:cache] }.each do |label, state| %>
+              <tr><td class="ax-strong"><%= label %></td><td class="ax-num"><%= ax_badge(state.presence || "desconhecido", tone: state.in?(["active", "ok"]) ? :green : :amber, dot: true) %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Processamento", title: "Solid Queue") do %>
+      <div class="ax-table-wrap">
+        <table class="ax-table"><tbody>
+          <tr><td>Prontos</td><td class="ax-num"><%= @queue[:ready] || "—" %></td></tr>
+          <tr><td>Em execução</td><td class="ax-num"><%= @queue[:claimed] || "—" %></td></tr>
+          <tr><td>Agendados</td><td class="ax-num"><%= @queue[:scheduled] || "—" %></td></tr>
+          <tr><td>Falhos</td><td class="ax-num"><%= @queue[:failed] || "—" %></td></tr>
+          <tr><td>Processos com heartbeat</td><td class="ax-num"><%= @queue[:processes] || "—" %></td></tr>
+        </tbody></table>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Observabilidade", title: "Erros da aplicação") do %>
+      <div class="ax-table-wrap">
+        <table class="ax-table"><tbody>
+          <tr><td>Abertos</td><td class="ax-num"><%= @errors[:open] || 0 %></td></tr>
+          <tr><td>Ocorrências na última hora</td><td class="ax-num"><%= @errors[:last_hour] || 0 %></td></tr>
+          <tr><td>Arquivos de mídia ausentes</td><td class="ax-num"><%= @errors[:media_missing] || 0 %></td></tr>
+        </tbody></table>
+      </div>
+      <div class="tw-mt-2"><%= link_to "Abrir rastreador de erros", admin_system_error_events_path, class: "ax-btn ax-btn--ghost" %></div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Capacidade", title: "Coleta histórica") do %>
+      <p class="tw-text-sm tw-text-ink-muted tw-m-0">Sysstat ativo no servidor, com histórico de CPU, memória, carga, swap, disco e I/O. O painel apresenta a última amostra operacional; análises históricas permanecem restritas ao servidor.</p>
+    <% end %>
+  </div>
+</div>
