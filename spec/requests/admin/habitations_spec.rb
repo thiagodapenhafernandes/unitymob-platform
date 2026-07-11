@@ -1856,6 +1856,20 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("is-active")
   end
 
+  it "libera todos os status de imóvel no filtro do catálogo para corretor" do
+    agent = create(:admin_user, email: "agent-statuses-#{SecureRandom.hex(6)}@salute.test")
+    agent.update!(profile: default_agent_profile)
+    create(:habitation, status: "Status operacional personalizado")
+    sign_in agent
+
+    get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+    (Habitation::STATUS_OPTIONS + ["Ambos", "Status operacional personalizado"]).each do |status|
+      expect(response.body).to include(status)
+    end
+  end
+
   it "mantém o modal de exportação fora do preloader de navegação global" do
     export = admin.habitation_exports.create!(
       status: "completed",

@@ -916,8 +916,13 @@ class Admin::HabitationsController < Admin::BaseController
                                       .pluck(Arel.sql(commercial_neighborhood_sql))
                                       .reject { |name| excluded_commercial_neighborhood?(name) }
                                       .sort,
-        statuses: tenant_habitations.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
-                            .distinct.pluck(:status).sort,
+        statuses: (
+          Habitation::STATUS_OPTIONS +
+          tenant_habitations.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
+                             .distinct
+                             .pluck(:status) +
+          ["Ambos"]
+        ).compact_blank.uniq.sort_by { |status| I18n.transliterate(status).downcase },
         key_locations: (Habitation::KEY_LOCATION_OPTIONS + existing_key_locations).uniq,
         empreendimentos: filter_empreendimento_options,
         amenities: (
@@ -944,7 +949,7 @@ class Admin::HabitationsController < Admin::BaseController
     @filter_cities = cached[:cities]
     @filter_bairros = cached[:bairros]
     @filter_bairros_comerciais = cached[:bairros_comerciais]
-    @filter_statuses = ["Venda", "Locação", "Ambos"] # status = tipo de negócio
+    @filter_statuses = cached[:statuses]
     @filter_key_locations = cached[:key_locations]
     @filter_empreendimentos = cached[:empreendimentos]
     @filter_amenity_options = cached[:amenities]

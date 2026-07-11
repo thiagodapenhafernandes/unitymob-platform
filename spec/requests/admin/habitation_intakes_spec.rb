@@ -495,7 +495,6 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "renderiza a etapa de fotos com lista ordenável e agendamento reativo" do
-    Setting.set("photography_schedule_url", "https://calendly.com/fotografias-saluteimoveis/30min")
     GoogleCalendarIntegrationSetting.for(Tenant.default).update!(
       enabled: true,
       calendar_id: "fotografias.saluteimoveis@gmail.com",
@@ -515,11 +514,11 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("captacao-submit-progress")
     expect(response.body).to include("Fotos selecionadas agora")
     expect(response.body).to include("Adicionar fotos")
-    expect(response.body).to include("Agendar no Google Agenda")
-    expect(response.body).to include("data-captacao-photos-google-calendar-configured-value=\"true\"")
+    expect(response.body).to include("Agendar fotógrafo")
+    expect(response.body).not_to include("Agendar no Google Agenda")
     expect(response.body).to include("Você pode adicionar mais antes de avançar.")
-    expect(response.body).to include("Abrir agenda de fotos")
-    expect(response.body).to include("https://calendly.com/fotografias-saluteimoveis/30min")
+    expect(response.body).to include("Escolher horário")
+    expect(response.body).not_to include("Abrir agenda de fotos")
   end
 
   it "bloqueia avanço no próprio step e marca campos obrigatórios" do

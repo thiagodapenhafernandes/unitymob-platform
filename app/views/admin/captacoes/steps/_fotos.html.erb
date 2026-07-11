@@ -1,18 +1,11 @@
 <% photos_attachment = @captacao.respond_to?(:photos) ? @captacao.photos : @captacao.fotos %>
 <% ordered_photos = @captacao.respond_to?(:ordered_photos) ? @captacao.ordered_photos : photos_attachment %>
 <% authorization_attachments = @captacao.respond_to?(:autorizacoes_venda) ? @captacao.autorizacoes_venda : @captacao.autorizacao_pdf %>
-<% schedule_url = Habitation.photography_schedule_url %>
 <% captacao_foto_ambientes = defined?(Habitation::FOTO_AMBIENTES) ? Habitation::FOTO_AMBIENTES : [] %>
 <% captacao_ambiente_editable = @captacao.respond_to?(:photo_ambiente) && captacao_foto_ambientes.any? && can?(:manage, :imoveis) %>
-<% google_calendar_configured = !!@google_calendar_configured %>
-<%
-  photo_flow_options = Habitation::PHOTO_FLOW_CHOICES.map { |key, label| [label, key] }
-  disabled_photo_flow_options = google_calendar_configured ? [] : ["google_calendar"]
-%>
+<% photo_flow_options = Habitation::PHOTO_FLOW_CHOICES.map { |key, label| [label, key] } %>
 
 <section data-controller="captacao-photos"
-         data-captacao-photos-schedule-url-value="<%= schedule_url %>"
-         data-captacao-photos-google-calendar-configured-value="<%= google_calendar_configured %>"
          data-captacao-photos-min-date-value="<%= (@photography_min_date || Date.current + 1.day).iso8601 %>"
          data-captacao-photos-blocked-dates-value="<%= (@photography_blocked_dates || []).to_json %>"
          data-captacao-photos-booked-slots-value="<%= (@photography_booked_slots || []).to_json %>">
@@ -24,8 +17,7 @@
     <%= f.select :photo_flow_choice,
                  options_for_select(
                    photo_flow_options,
-                   selected: @captacao.photo_flow_choice,
-                   disabled: disabled_photo_flow_options
+                   selected: @captacao.photo_flow_choice
                  ),
                  { include_blank: "Selecione" },
                  class: field_state.call(:photo_flow_choice, "ax-control"),
@@ -141,16 +133,9 @@
       <div>
         <strong data-captacao-photos-target="scheduleTitle">Agendamento com fotógrafo</strong>
         <p class="tw-text-sm tw-text-ink-muted tw-mb-2" data-captacao-photos-target="scheduleDescription">
-          <%= schedule_url.present? ? "A agenda integrada será aberta em uma nova aba." : "Escolha um dia e horário disponível no agendador interno." %>
+          Escolha um dia e horário disponível. O compromisso será sincronizado automaticamente quando o Google Calendar estiver configurado.
         </p>
       </div>
-      <button type="button"
-              class="ax-btn ax-btn--ghost ax-btn--sm"
-              hidden
-              data-captacao-photos-target="externalScheduleButton"
-              data-action="captacao-photos#openScheduler">
-        <i class="bi bi-box-arrow-up-right"></i>Abrir agenda de fotos
-      </button>
       <button type="button"
               class="ax-btn ax-btn--primary ax-btn--sm"
               hidden
