@@ -426,7 +426,8 @@
   active_filter_chips = []
   active_filter_chips << "Código: #{params[:codigo]}" if params[:codigo].present?
   active_filter_chips << "Busca: #{params[:q]}" if params[:q].present?
-  active_filter_chips << "Status: #{params[:status]}" if params[:status].present?
+  selected_status_chips = Array(params[:status]).flatten.map(&:to_s).map(&:strip).reject(&:blank?)
+  active_filter_chips << "Status: #{selected_status_chips.join(', ')}" if selected_status_chips.any?
   active_filter_chips << "Categoria: #{params[:categoria]}" if params[:categoria].present?
   active_filter_chips << "Rua: #{params[:logradouro]}" if params[:logradouro].present?
   active_filter_chips << "Número: #{params[:numero]}" if params[:numero].present?

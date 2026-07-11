@@ -1083,7 +1083,8 @@ class Admin::HabitationsController < Admin::BaseController
   def load_index_filters
     @codigo = params[:codigo].to_s.strip
     @q = params[:q]
-    @status = params[:status]
+    @statuses = Array(params[:status]).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
+    @status = @statuses.first
     @categoria = params[:categoria]
     @logradouro = params[:logradouro]
     @numero = params[:numero]
@@ -1172,7 +1173,7 @@ class Admin::HabitationsController < Admin::BaseController
 
     scope = scope.admin_search_text(@q) if @q.present?
 
-    scope = apply_status_filter(scope, @status)
+    scope = apply_status_filter(scope, @statuses)
     scope = apply_category_filter(scope, @categoria)
     scope = scope.where(
       "unaccent(CONCAT_WS(' ', " \
@@ -1894,18 +1895,23 @@ class Admin::HabitationsController < Admin::BaseController
     end
   end
 
-  def apply_status_filter(scope, raw_status)
-    status = raw_status.to_s.squish
-    normalized_status = Habitation.normalize_status(status)
+  def apply_status_filter(scope, raw_statuses)
+    statuses = Array(raw_statuses).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
+    return scope.where.not("unaccent(TRIM(habitations.status)) = unaccent(?)", "Suspenso") if statuses.blank?
 
-    case I18n.transliterate(status).downcase
-    when "", "todos"
-      scope.where.not("unaccent(TRIM(habitations.status)) = unaccent(?)", "Suspenso")
-    when "ambos"
-      scope.where("habitations.valor_venda_cents > 0 AND habitations.valor_locacao_cents > 0")
-    else
-      scope.where("unaccent(TRIM(habitations.status)) = unaccent(?)", normalized_status)
-    end
+    include_both = statuses.any? { |status| I18n.transliterate(status).downcase == "ambos" }
+    normalized_statuses = statuses
+      .reject { |status| I18n.transliterate(status).downcase.in?(%w[todos ambos]) }
+      .map { |status| Habitation.normalize_status(status) }
+      .compact_blank
+      .uniq
+
+    conditions = normalized_statuses.map { "unaccent(TRIM(habitations.status)) = unaccent(?)" }
+    values = normalized_statuses.dup
+    conditions << "(habitations.valor_venda_cents > 0 AND habitations.valor_locacao_cents > 0)" if include_both
+    return scope if conditions.blank?
+
+    scope.where(conditions.join(" OR "), *values)
   end
 
   def apply_category_filter(scope, raw_category)

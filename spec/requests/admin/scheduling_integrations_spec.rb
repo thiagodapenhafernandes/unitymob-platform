@@ -19,6 +19,7 @@ RSpec.describe "Admin::SchedulingIntegrations", type: :request do
     expect(response.body).to include("ax-workspace-main")
     expect(response.body).to include("ax-workspace-aside")
     expect(response.body).to include("scheduling-middle-contextbar")
+    expect(response.body).to match(/class="[^"]*ax-workspace-main__body[^"]*scheduling-main-body[^"]*"/)
 
     patch admin_scheduling_integration_path, params: {
       scheduling: { photography_schedule_url: "https://calendly.com/fotografias-saluteimoveis/30min" }
