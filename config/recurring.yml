@@ -27,6 +27,10 @@ production:
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
+  clear_solid_queue_failed_jobs:
+    class: SolidQueueFailedExecutionsCleanupJob
+    queue: checkin
+    schedule: every day at 4:05am
   habitations_hierarchy_audit:
     command: "result = Habitations::HierarchyAuditService.new(strict: false).call; Rails.logger.info(\"[HierarchyAudit] #{result.to_json}\")"
     schedule: every day at 3:40am

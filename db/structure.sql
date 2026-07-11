@@ -1,4 +1,4 @@
-\restrict b6S2HYSXJ2crF2uhoMjAl7eJ4GP9mEcMojw3mtQEnsaRG5b9CmUsBBReTzkqbTl
+\restrict vWK5oP8NCdkOe5doqsfeRAn9c35UsGajBU4WfuhY8g4w5zBvWB41zZM1muLdIjB
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -11400,6 +11400,13 @@ CREATE INDEX index_solid_queue_dispatch_all ON public.solid_queue_scheduled_exec
 
 
 --
+-- Name: index_solid_queue_failed_executions_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_solid_queue_failed_executions_on_created_at ON public.solid_queue_failed_executions USING btree (created_at);
+
+
+--
 -- Name: index_solid_queue_failed_executions_on_job_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14239,11 +14246,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict b6S2HYSXJ2crF2uhoMjAl7eJ4GP9mEcMojw3mtQEnsaRG5b9CmUsBBReTzkqbTl
+\unrestrict vWK5oP8NCdkOe5doqsfeRAn9c35UsGajBU4WfuhY8g4w5zBvWB41zZM1muLdIjB
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260711120000'),
 ('20260710210000'),
 ('20260710134500'),
 ('20260710113000'),

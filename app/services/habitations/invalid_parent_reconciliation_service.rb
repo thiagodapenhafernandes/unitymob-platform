@@ -20,7 +20,7 @@ module Habitations
       @tenant = tenant || Current.tenant
       raise ArgumentError, "Tenant obrigatório para reconciliar pais de imóveis" if @tenant.blank?
       @now = Time.current
-      @developments_by_code = load_developments_by_code
+      @invalid_parent_codes = invalid_units.distinct.pluck(:codigo_empreendimento).compact.map(&:to_s)
       @any_habitation_by_code = load_any_habitation_by_code
       @developments_by_name = load_developments_by_name
     end
@@ -67,17 +67,17 @@ module Habitations
             .where.not(codigo_empreendimento: tenant.habitations.empreendimentos.select(:codigo))
     end
 
-    def load_developments_by_code
-      tenant.habitations.empreendimentos.where.not(codigo: [nil, ""]).index_by { |row| row.codigo.to_s }
-    end
-
     def load_any_habitation_by_code
-      tenant.habitations.where.not(codigo: [nil, ""]).index_by { |row| row.codigo.to_s }
+      tenant.habitations
+            .where(codigo: @invalid_parent_codes)
+            .select(*parent_columns)
+            .index_by { |row| row.codigo.to_s }
     end
 
     def load_developments_by_name
       tenant.habitations.empreendimentos
             .where.not(nome_empreendimento: [nil, ""])
+            .select(*parent_columns)
             .group_by { |row| normalized(row.nome_empreendimento) }
     end
 
@@ -117,7 +117,6 @@ module Habitations
         updated_at: @now
       )
 
-      @developments_by_code[parent.codigo.to_s] = parent
       key = normalized(parent.nome_empreendimento)
       @developments_by_name[key] ||= []
       @developments_by_name[key] << parent unless @developments_by_name[key].any? { |row| row.id == parent.id }
@@ -170,6 +169,10 @@ module Habitations
 
     def normalized(value)
       I18n.transliterate(value.to_s).downcase.gsub(/\s+/, " ").strip
+    end
+
+    def parent_columns
+      %i[id codigo tipo categoria nome_empreendimento titulo_anuncio constructor_id construtora]
     end
   end
 end

@@ -14,4 +14,19 @@ RSpec.describe Habitations::InvalidParentReconciliationService do
     expect(result.unresolved).to eq(1)
     expect(result.rows.first).to include(unit_id: unit.id, suggested_parent_id: nil)
   end
+
+  it "consulta por código somente os possíveis pais inválidos" do
+    tenant = Tenant.create!(name: "Tenant scoped #{SecureRandom.hex(3)}", slug: "tenant-scoped-#{SecureRandom.hex(3)}")
+    candidate = build(:habitation, tenant: tenant, codigo: "DEV-TARGET", categoria: "Empreendimento")
+    candidate.save!(validate: false)
+    irrelevant = build(:habitation, tenant: tenant, codigo: "DEV-IRRELEVANT", categoria: "Empreendimento")
+    irrelevant.save!(validate: false)
+    unit = build(:habitation, tenant: tenant, codigo: "UNIT", codigo_empreendimento: "DEV-TARGET")
+    unit.save!(validate: false)
+
+    service = described_class.new(tenant: tenant)
+
+    loaded_codes = service.instance_variable_get(:@any_habitation_by_code).keys
+    expect(loaded_codes).to eq(["DEV-TARGET"])
+  end
 end

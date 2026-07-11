@@ -37,7 +37,9 @@ module Seo
       end
 
       seo.assign_attributes(attributes_for(identity, created))
-      seo.save!
+      # Evita callbacks e invalidação do cache global do rodapé quando a
+      # descoberta não alterou metadados. O acesso é registrado separadamente.
+      seo.save! if created || seo.changed?
       record_page_visit(seo)
 
       enqueue_ai_generation(seo) if created && self.class.auto_ai? && Ai::SeoContentService.connected?
