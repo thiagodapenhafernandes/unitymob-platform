@@ -368,11 +368,9 @@ module Admin
     end
 
     def enqueue_photo_calendar_sync_if_needed!(record)
-      return unless record.photo_flow_choice.in?(%w[schedule google_calendar])
-      return if record.photo_session_requested_at.blank?
-
       setting = GoogleCalendarIntegrationSetting.for(current_tenant)
       return unless setting.configured?
+      return unless (record.photo_flow_choice == "schedule" && record.photo_session_requested_at.present?) || record.photo_calendar_event_id.present?
 
       GoogleCalendar::PhotoEventSyncJob.perform_later(record.id, tenant_id: current_tenant.id)
     rescue StandardError => e
@@ -671,7 +669,6 @@ module Admin
       @badges = current_tenant.attribute_options.where(context: "habitation", category: "unique_feature").order(:name).pluck(:name)
       @sale_reasons = sale_reason_options
       @google_calendar_setting = GoogleCalendarIntegrationSetting.for(current_tenant)
-      @google_calendar_configured = @google_calendar_setting.configured?
       @photography_min_date = Date.current + 1.day
       @photography_blocked_dates = PhotographyScheduleBlock.pluck(:date).map(&:iso8601)
       @photography_booked_slots = booked_photography_slots
@@ -680,7 +677,7 @@ module Admin
     def booked_photography_slots
       local_booked_slots = current_tenant.habitations
         .broker_intakes
-        .where(photo_flow_choice: %w[schedule google_calendar])
+        .where(photo_flow_choice: "schedule")
         .where.not(id: @habitation&.id)
         .where.not(photo_session_requested_at: nil)
         .pluck(:photo_session_requested_at)
@@ -783,7 +780,7 @@ module Admin
         missing = []
         missing << "Escolha se vai enviar fotos ou agendar fotógrafo." if @habitation.photo_flow_choice.blank?
         missing << "Envie ao menos uma foto do imóvel." if @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
-        missing << "Informe a data/hora agendada com fotógrafo." if @habitation.photo_flow_choice.in?(%w[schedule google_calendar]) && @habitation.photo_session_requested_at.blank?
+        missing << "Informe a data/hora agendada com fotógrafo." if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
         missing << "Escolha um horário disponível para a fotografia." if photo_schedule_slot_unavailable?
         missing << "Anexe a autorização do proprietário." unless @habitation.autorizacoes_venda.attached?
         missing
@@ -858,7 +855,7 @@ module Admin
       when "fotos"
         fields[:photo_flow_choice] = true if @habitation.photo_flow_choice.blank?
         fields[:photos] = true if @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
-        fields[:photo_session_requested_at] = true if @habitation.photo_flow_choice.in?(%w[schedule google_calendar]) && @habitation.photo_session_requested_at.blank?
+        fields[:photo_session_requested_at] = true if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
         fields[:photo_session_requested_at] = true if photo_schedule_slot_unavailable?
         fields[:autorizacoes_venda] = true unless @habitation.autorizacoes_venda.attached?
       when "visitas"
@@ -869,7 +866,7 @@ module Admin
     end
 
     def photo_schedule_slot_unavailable?
-      return false unless @habitation.photo_flow_choice.in?(%w[schedule google_calendar])
+      return false unless @habitation.photo_flow_choice == "schedule"
       return false if @habitation.photo_session_requested_at.blank?
 
       scheduled_at = @habitation.photo_session_requested_at.in_time_zone("America/Sao_Paulo")
@@ -892,7 +889,7 @@ module Admin
     def local_photo_schedule_conflict?(scheduled_at)
       current_tenant.habitations
         .broker_intakes
-        .where(photo_flow_choice: %w[schedule google_calendar])
+        .where(photo_flow_choice: "schedule")
         .where.not(id: @habitation&.id)
         .where(photo_session_requested_at: scheduled_at.beginning_of_minute)
         .exists?

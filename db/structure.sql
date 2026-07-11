@@ -1,4 +1,4 @@
-\restrict aZwvw7ifDwAY76rAeujDd9nIV7WvKYZx2oFiwAIv0q1PNXsCaZS5GFc0G9JXlKC
+\restrict LcHRbBmm95Kh1OlXZgNoAZ7NRYqKx2dTGj6OMHDHKrlkFBCOGwBehn6ROJuaLiM
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -14285,13 +14285,14 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict aZwvw7ifDwAY76rAeujDd9nIV7WvKYZx2oFiwAIv0q1PNXsCaZS5GFc0G9JXlKC
+\unrestrict LcHRbBmm95Kh1OlXZgNoAZ7NRYqKx2dTGj6OMHDHKrlkFBCOGwBehn6ROJuaLiM
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20260711143000'),
 ('20260711120000'),
+('20260711000000'),
 ('20260710210000'),
 ('20260710134500'),
 ('20260710113000'),

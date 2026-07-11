@@ -14,6 +14,7 @@ module GoogleCalendar
     end
 
     def call
+      return delete_event if should_delete_event?
       return skipped unless syncable?
 
       event = build_event
@@ -45,8 +46,26 @@ module GoogleCalendar
     def syncable?
       tenant.present? &&
         setting.configured? &&
-        habitation.photo_flow_choice.in?(%w[schedule google_calendar]) &&
+        habitation.photo_flow_choice == "schedule" &&
         habitation.photo_session_requested_at.present?
+    end
+
+    def should_delete_event?
+      setting.configured? &&
+        habitation.photo_calendar_event_id.present? &&
+        (habitation.photo_flow_choice != "schedule" || habitation.photo_session_requested_at.blank?)
+    end
+
+    def delete_event
+      calendar_service.delete_event(setting.calendar_id, habitation.photo_calendar_event_id)
+      habitation.update_columns(
+        photo_calendar_provider: nil,
+        photo_calendar_event_id: nil,
+        photo_calendar_error: nil,
+        photo_calendar_synced_at: Time.current,
+        updated_at: Time.current
+      )
+      nil
     end
 
     def skipped

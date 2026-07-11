@@ -13,7 +13,6 @@ export default class extends Controller {
     "existingPhotosPanel",
     "newCount",
     "schedulePanel",
-    "externalScheduleButton",
     "internalScheduleButton",
     "internalScheduleButtonLabel",
     "scheduleTitle",
@@ -27,8 +26,6 @@ export default class extends Controller {
   ]
 
   static values = {
-    scheduleUrl: String,
-    googleCalendarConfigured: Boolean,
     minDate: String,
     blockedDates: Array,
     bookedSlots: Array
@@ -91,8 +88,7 @@ export default class extends Controller {
   refreshFlow(event) {
     const value = this.hasFlowSelectTarget ? this.flowSelectTarget.value : ""
     const uploadSelected = value === "upload"
-    const googleCalendarSelected = value === "google_calendar"
-    const scheduleSelected = value === "schedule" || googleCalendarSelected
+    const scheduleSelected = value === "schedule"
     this.toggle(this.uploadPanelTarget, uploadSelected)
     this.toggle(this.newPhotosPanelTarget, uploadSelected)
     if (this.hasExistingPhotosPanelTarget) {
@@ -101,12 +97,8 @@ export default class extends Controller {
     this.toggle(this.schedulePanelTarget, scheduleSelected)
     this.refreshScheduleCopy(value)
 
-    if (this.hasExternalScheduleButtonTarget) {
-      this.toggle(this.externalScheduleButtonTarget, value === "schedule" && this.scheduleUrlValue.length > 0)
-    }
-
     if (this.hasInternalScheduleButtonTarget) {
-      this.toggle(this.internalScheduleButtonTarget, scheduleSelected && (googleCalendarSelected || this.scheduleUrlValue.length === 0))
+      this.toggle(this.internalScheduleButtonTarget, scheduleSelected)
     }
 
     if (this.hasScheduledAtGroupTarget) {
@@ -119,34 +111,15 @@ export default class extends Controller {
   }
 
   openScheduler() {
-    const value = this.hasFlowSelectTarget ? this.flowSelectTarget.value : ""
-    if (value === "schedule" && this.scheduleUrlValue.length > 0) {
-      window.open(this.scheduleUrlValue, "_blank", "noopener")
-      return
-    }
-
     const modalElement = document.getElementById("captacaoPhotoSchedulerModal")
     if (!modalElement) return
     modalElement.dispatchEvent(new CustomEvent("ax-modal:open"))
   }
 
   refreshScheduleCopy(value) {
-    if (value === "google_calendar") {
-      if (this.hasScheduleTitleTarget) this.scheduleTitleTarget.textContent = "Google Agenda"
-      if (this.hasScheduleDescriptionTarget) {
-        this.scheduleDescriptionTarget.textContent = "Escolha data e horário. Ao avançar, o sistema cria o evento na agenda de fotografia configurada."
-      }
-      if (this.hasScheduledAtLabelTarget) this.scheduledAtLabelTarget.textContent = "Data/hora no Google Agenda"
-      if (this.hasScheduledAtHintTarget) this.scheduledAtHintTarget.textContent = "Obrigatório para criar o evento no Google Agenda."
-      if (this.hasInternalScheduleButtonLabelTarget) this.internalScheduleButtonLabelTarget.textContent = "Escolher horário"
-      return
-    }
-
     if (this.hasScheduleTitleTarget) this.scheduleTitleTarget.textContent = "Agendamento com fotógrafo"
     if (this.hasScheduleDescriptionTarget) {
-      this.scheduleDescriptionTarget.textContent = this.scheduleUrlValue.length > 0
-        ? "A agenda integrada será aberta em uma nova aba."
-        : "Escolha um dia e horário disponível no agendador interno."
+      this.scheduleDescriptionTarget.textContent = "Escolha um dia e horário disponível. O compromisso será sincronizado automaticamente quando o Google Calendar estiver configurado."
     }
     if (this.hasScheduledAtLabelTarget) this.scheduledAtLabelTarget.textContent = "Data/hora agendada com fotógrafo"
     if (this.hasScheduledAtHintTarget) this.scheduledAtHintTarget.textContent = "Obrigatório quando a opção for agendar fotógrafo."

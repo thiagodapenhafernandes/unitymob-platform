@@ -114,8 +114,7 @@ class Habitation < ApplicationRecord
   SITE_RELEASABLE_INTAKE_STATUSES = %w[admin_approved returned_to_broker internal].freeze
   PHOTO_FLOW_CHOICES = {
     "upload" => "Enviar fotos",
-    "schedule" => "Agendar fotógrafo",
-    "google_calendar" => "Agendar no Google Agenda"
+    "schedule" => "Agendar fotógrafo"
   }.freeze
   YES_NO_ANSWERS = {
     "sim" => "Sim",
@@ -1047,7 +1046,7 @@ class Habitation < ApplicationRecord
     missing << "Chaves" if check.call("chaves") && requires_intake_key_location? && key_location.blank?
     missing << "Dias de visita" if check.call("visitas") && !skip_visitas? && !intake_visit_days_present?
     missing << "Fotos ou agenda com fotógrafo" if check.call("fotos") && photo_flow_choice == "upload" && !has_any_photo?
-    missing << "Agenda com fotógrafo" if check.call("fotos") && photo_flow_choice.in?(%w[schedule google_calendar]) && photo_session_requested_at.blank?
+    missing << "Agenda com fotógrafo" if check.call("fotos") && photo_flow_choice == "schedule" && photo_session_requested_at.blank?
     missing << "Fotos ou agenda com fotógrafo" if check.call("fotos") && photo_flow_choice.blank? && !has_any_photo?
     missing << "Anexo da autorização do proprietário" if check.call("autorizacao") && !autorizacoes_venda.attached?
     missing
@@ -1516,7 +1515,6 @@ class Habitation < ApplicationRecord
   def sync_intake_answers
     self.aceita_permuta_flag = aceita_permuta_answer == "sim" if aceita_permuta_answer.present?
     self.salute_rental_management_flag = salute_rental_management_answer == "sim" if salute_rental_management_answer.present?
-    self.photo_session_url = self.class.photography_schedule_url if photo_flow_choice == "schedule" && photo_session_url.blank?
   end
 
   # Dynamic Field Setters (Array handling)

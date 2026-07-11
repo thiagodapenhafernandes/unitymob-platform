@@ -64,8 +64,8 @@ RSpec.describe GoogleCalendar::PhotoEventSyncer do
     expect(habitation.reload.photo_calendar_event_id).to eq("evt_existing")
   end
 
-  it "sincroniza quando a captacao escolhe Google Agenda explicitamente" do
-    habitation.update!(photo_flow_choice: "google_calendar")
+  it "sincroniza automaticamente o agendamento interno com o Google" do
+    habitation.update!(photo_flow_choice: "schedule")
     service = instance_double(Google::Apis::CalendarV3::CalendarService)
     event_response = Google::Apis::CalendarV3::Event.new(id: "evt_google")
     syncer = described_class.new(habitation: habitation, tenant: tenant, setting: setting)
@@ -79,5 +79,25 @@ RSpec.describe GoogleCalendar::PhotoEventSyncer do
     syncer.call
 
     expect(habitation.reload.photo_calendar_event_id).to eq("evt_google")
+  end
+
+  it "remove do Google quando a captacao deixa de ser um agendamento" do
+    habitation.update!(
+      photo_flow_choice: "upload",
+      photo_calendar_provider: "google_calendar",
+      photo_calendar_event_id: "evt_existing"
+    )
+    service = instance_double(Google::Apis::CalendarV3::CalendarService)
+    syncer = described_class.new(habitation: habitation, tenant: tenant, setting: setting)
+
+    allow(syncer).to receive(:calendar_service).and_return(service)
+    expect(service).to receive(:delete_event).with("fotografias.saluteimoveis@gmail.com", "evt_existing")
+
+    syncer.call
+
+    habitation.reload
+    expect(habitation.photo_calendar_event_id).to be_nil
+    expect(habitation.photo_calendar_provider).to be_nil
+    expect(habitation.photo_calendar_error).to be_nil
   end
 end
