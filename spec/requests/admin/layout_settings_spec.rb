@@ -10,6 +10,22 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
     sign_in admin
   end
 
+  it "inicia os blocos de configuração recolhidos" do
+    get edit_admin_layout_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    panels = html.css(".layout-settings-workspace .ax-panel--collapsible")
+
+    expect(panels.size).to eq(7)
+    expect(panels).to all(satisfy do |panel|
+      panel.at_xpath('./div[contains(concat(" ", normalize-space(@class), " "), " ax-panel__body ")]')&.key?("hidden")
+    end)
+    expect(panels).to all(satisfy do |panel|
+      panel.at_xpath('./header[contains(concat(" ", normalize-space(@class), " "), " ax-panel__header ")]//button[contains(concat(" ", normalize-space(@class), " "), " ax-panel__trigger ")]')&.[]("aria-expanded") == "false"
+    end)
+  end
+
   describe "PATCH update" do
     it "permite configurar backgrounds estruturais do workspace administrativo" do
       patch admin_layout_setting_path, params: {
@@ -30,7 +46,8 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
               background_color: "#123456",
               background_opacity: "42",
               text_color: "#234567",
-              border_color: "#345678"
+              border_color: "#345678",
+              box_shadow: "inset 4px 0 0 #456789"
             }
           }
         }
@@ -43,7 +60,8 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
         "background_color" => "#123456",
         "background_opacity" => 42,
         "text_color" => "#234567",
-        "border_color" => "#345678"
+        "border_color" => "#345678",
+        "box_shadow" => "inset 4px 0 0 #456789"
       )
     end
 

@@ -12,7 +12,7 @@
       false
     end
     nav_section_style = lambda do |key|
-      "--nav-section-background:var(--admin-nav-#{key}-background);--nav-section-background-opacity:var(--admin-nav-#{key}-background-opacity);--nav-section-text:var(--admin-nav-#{key}-text);--nav-section-border:var(--admin-nav-#{key}-border);"
+      "--nav-section-background:var(--admin-nav-#{key}-background);--nav-section-background-opacity:var(--admin-nav-#{key}-background-opacity);--nav-section-text:var(--admin-nav-#{key}-text);--nav-section-border:var(--admin-nav-#{key}-border);--nav-section-shadow:var(--admin-nav-#{key}-shadow);"
     end
   %>
 <ul class="ax-nav <%= 'ax-nav--sectioned' unless system_admin_without_tenant %>" data-controller="menu-sections">

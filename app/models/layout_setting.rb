@@ -12,24 +12,18 @@ class LayoutSetting < ApplicationRecord
   ADMIN_INK_DEFAULT = '#1F2733'.freeze
   ADMIN_AREA_NAME_DEFAULT = 'Plataforma'.freeze
   LEGACY_ADMIN_PRIMARY_DEFAULT = '#2563EB'.freeze
-  ADMIN_MENU_SECTION_BASE_COLORS = {
-    "product" => "#2563EB",
-    "operation" => "#0F766E",
-    "management" => "#7C3AED",
-    "growth" => "#DB2777",
-    "public_site" => "#0891B2",
-    "integrations" => "#D97706",
-    "settings" => "#64748B",
-    "account" => "#475569"
-  }.freeze
-  ADMIN_MENU_SECTION_STYLE_DEFAULTS = ADMIN_MENU_SECTION_BASE_COLORS.transform_values do |color|
-    {
-      "background_color" => color,
-      "background_opacity" => 30,
-      "text_color" => color,
-      "border_color" => color
-    }.freeze
-  end.freeze
+  ADMIN_MENU_SECTION_SHADOW_DEFAULT = "inset 2px 0 0 #365F8F".freeze
+  ADMIN_MENU_SECTION_SHADOW_PATTERN = /\A(?:inset\s+)?(?:0|-?\d+(?:\.\d+)?px)\s+(?:0|-?\d+(?:\.\d+)?px)(?:\s+(?:0|\d+(?:\.\d+)?px)){0,2}\s+#[0-9a-fA-F]{6}\z/.freeze
+  ADMIN_MENU_SECTION_STYLE_DEFAULTS = {
+    "product" => { "background_color" => "#E8F0FB", "background_opacity" => 100, "text_color" => "#245486", "border_color" => "#C7D8EE", "box_shadow" => "inset 2px 0 0 #365F8F" },
+    "operation" => { "background_color" => "#EBFFFE", "background_opacity" => 100, "text_color" => "#0F766E", "border_color" => "#C9EEEB", "box_shadow" => "inset 2px 0 0 #0F766E" },
+    "management" => { "background_color" => "#ECE0FF", "background_opacity" => 100, "text_color" => "#7C3AED", "border_color" => "#D2C0F2", "box_shadow" => "inset 2px 0 0 #365F8F" },
+    "growth" => { "background_color" => "#DB2777", "background_opacity" => 10, "text_color" => "#DB2777", "border_color" => "#ECC1D4", "box_shadow" => "inset 2px 0 0 #365F8F" },
+    "public_site" => { "background_color" => "#0891B2", "background_opacity" => 10, "text_color" => "#0891B2", "border_color" => "#BDDDE5", "box_shadow" => "inset 2px 0 0 #365F8F" },
+    "integrations" => { "background_color" => "#D97706", "background_opacity" => 10, "text_color" => "#D97706", "border_color" => "#E2D0BB", "box_shadow" => "inset 2px 0 0 #365F8F" },
+    "settings" => { "background_color" => "#64748B", "background_opacity" => 10, "text_color" => "#64748B", "border_color" => "#AFC3DE", "box_shadow" => "inset 2px 0 0 #365F8F" },
+    "account" => { "background_color" => "#475569", "background_opacity" => 10, "text_color" => "#475569", "border_color" => "#B0C1D8", "box_shadow" => "inset 2px 0 0 #365F8F" }
+  }.transform_values(&:freeze).freeze
 
   validates :primary_color, presence: true
   validates :secondary_color, presence: true
@@ -109,7 +103,8 @@ class LayoutSetting < ApplicationRecord
         "background_color" => normalized_hex(section["background_color"] || legacy_color, defaults["background_color"]),
         "background_opacity" => normalized_opacity(section["background_opacity"], defaults["background_opacity"]),
         "text_color" => normalized_hex(section["text_color"] || legacy_color, defaults["text_color"]),
-        "border_color" => normalized_hex(section["border_color"] || legacy_color, defaults["border_color"])
+        "border_color" => normalized_hex(section["border_color"] || legacy_color, defaults["border_color"]),
+        "box_shadow" => normalized_box_shadow(section["box_shadow"], defaults["box_shadow"])
       }
     end
   end
@@ -124,5 +119,10 @@ class LayoutSetting < ApplicationRecord
     [[number, 0].max, 100].min
   rescue ArgumentError, TypeError
     fallback
+  end
+
+  def self.normalized_box_shadow(value, fallback = ADMIN_MENU_SECTION_SHADOW_DEFAULT)
+    candidate = value.to_s.squish
+    candidate.match?(ADMIN_MENU_SECTION_SHADOW_PATTERN) ? candidate : fallback
   end
 end

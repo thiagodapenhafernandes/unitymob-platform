@@ -1,4 +1,4 @@
-\restrict i2TCI7f7N0AashqeSviLNsiciVEh4MWQYi88yY8ft1vKxQpSWA2MfFDZ2FAMWzn
+\restrict b6S2HYSXJ2crF2uhoMjAl7eJ4GP9mEcMojw3mtQEnsaRG5b9CmUsBBReTzkqbTl
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -3026,7 +3026,7 @@ CREATE TABLE public.layout_settings (
     interest_intelligence_enabled boolean DEFAULT true NOT NULL,
     interest_intelligence_instructions text,
     interest_intelligence_settings jsonb DEFAULT '{}'::jsonb NOT NULL,
-    admin_menu_section_colors jsonb DEFAULT '{"product": {"text_color": "#2563EB", "border_color": "#2563EB", "background_color": "#2563EB", "background_opacity": 30}, "operation": {"text_color": "#0F766E", "border_color": "#0F766E", "background_color": "#0F766E", "background_opacity": 30}, "management": {"text_color": "#7C3AED", "border_color": "#7C3AED", "background_color": "#7C3AED", "background_opacity": 30}, "growth": {"text_color": "#DB2777", "border_color": "#DB2777", "background_color": "#DB2777", "background_opacity": 30}, "public_site": {"text_color": "#0891B2", "border_color": "#0891B2", "background_color": "#0891B2", "background_opacity": 30}, "integrations": {"text_color": "#D97706", "border_color": "#D97706", "background_color": "#D97706", "background_opacity": 30}, "settings": {"text_color": "#64748B", "border_color": "#64748B", "background_color": "#64748B", "background_opacity": 30}, "account": {"text_color": "#475569", "border_color": "#475569", "background_color": "#475569", "background_opacity": 30}}'::jsonb NOT NULL
+    admin_menu_section_colors jsonb DEFAULT '{"growth": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#DB2777", "border_color": "#ECC1D4", "background_color": "#DB2777", "background_opacity": 10}, "account": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#475569", "border_color": "#B0C1D8", "background_color": "#475569", "background_opacity": 10}, "product": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#245486", "border_color": "#C7D8EE", "background_color": "#E8F0FB", "background_opacity": 100}, "settings": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#64748B", "border_color": "#AFC3DE", "background_color": "#64748B", "background_opacity": 10}, "operation": {"box_shadow": "inset 2px 0 0 #0F766E", "text_color": "#0F766E", "border_color": "#C9EEEB", "background_color": "#EBFFFE", "background_opacity": 100}, "management": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#7C3AED", "border_color": "#D2C0F2", "background_color": "#ECE0FF", "background_opacity": 100}, "public_site": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#0891B2", "border_color": "#BDDDE5", "background_color": "#0891B2", "background_opacity": 10}, "integrations": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#D97706", "border_color": "#E2D0BB", "background_color": "#D97706", "background_opacity": 10}}'::jsonb NOT NULL
 );
 
 
@@ -14239,11 +14239,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict i2TCI7f7N0AashqeSviLNsiciVEh4MWQYi88yY8ft1vKxQpSWA2MfFDZ2FAMWzn
+\unrestrict b6S2HYSXJ2crF2uhoMjAl7eJ4GP9mEcMojw3mtQEnsaRG5b9CmUsBBReTzkqbTl
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260710210000'),
 ('20260710134500'),
 ('20260710113000'),
 ('20260710094500'),

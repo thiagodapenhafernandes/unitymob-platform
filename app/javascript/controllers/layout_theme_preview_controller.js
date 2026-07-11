@@ -71,7 +71,9 @@ export default class extends Controller {
     const property = input.dataset.menuStyleProperty
     const value = property === "background-opacity"
       ? this.normalizedOpacity(input.value)
-      : this.normalizedHex(input.value)
+      : property === "shadow"
+        ? this.normalizedBoxShadow(input.value)
+        : this.normalizedHex(input.value)
 
     if (!section || !property || value === null) return
 
@@ -139,5 +141,12 @@ export default class extends Controller {
     if (Number.isNaN(candidate)) return null
 
     return `${Math.min(100, Math.max(0, candidate))}%`
+  }
+
+  normalizedBoxShadow(value) {
+    const candidate = String(value || "").trim().replace(/\s+/g, " ")
+    const pattern = /^(?:inset\s+)?(?:0|-?\d+(?:\.\d+)?px)\s+(?:0|-?\d+(?:\.\d+)?px)(?:\s+(?:0|\d+(?:\.\d+)?px)){0,2}\s+#[0-9a-fA-F]{6}$/
+
+    return pattern.test(candidate) ? candidate : null
   }
 }

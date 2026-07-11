@@ -84,6 +84,9 @@
       <div class="layout-settings-main">
         <%= ax_panel(
               title: "Marca da conta",
+              collapsible: true,
+              collapsed: true,
+              collapse_id: "layout-panel-account-brand",
               subtitle: "Identidade do dono da conta. Aparece no login, no topo da plataforma e no site público quando não houver logo específico.",
               actions: tag.span("conta", class: "ax-badge ax-badge--blue")
             ) do %>
@@ -155,7 +158,10 @@
 
         <%= ax_panel(
               title: "Divisões do menu",
-              subtitle: "Controle fundo, opacidade, texto e borda de cada área. As mudanças aparecem imediatamente na sidebar antes de salvar.",
+              collapsible: true,
+              collapsed: true,
+              collapse_id: "layout-panel-menu-sections",
+              subtitle: "Controle fundo, opacidade, texto, borda e sombra de cada área. As mudanças aparecem imediatamente na sidebar antes de salvar.",
               actions: tag.span("navegação", class: "ax-badge ax-badge--gray")
             ) do %>
           <div class="layout-settings-menu-style-grid">
@@ -166,7 +172,7 @@
               <section class="layout-settings-menu-style-card">
                 <div class="layout-settings-menu-style-preview"
                      data-menu-section-preview="<%= key %>"
-                     style="--nav-section-background:var(--admin-nav-<%= css_key %>-background);--nav-section-background-opacity:var(--admin-nav-<%= css_key %>-background-opacity);--nav-section-text:var(--admin-nav-<%= css_key %>-text);--nav-section-border:var(--admin-nav-<%= css_key %>-border);">
+                     style="--nav-section-background:var(--admin-nav-<%= css_key %>-background);--nav-section-background-opacity:var(--admin-nav-<%= css_key %>-background-opacity);--nav-section-text:var(--admin-nav-<%= css_key %>-text);--nav-section-border:var(--admin-nav-<%= css_key %>-border);--nav-section-shadow:var(--admin-nav-<%= css_key %>-shadow);">
                   <i class="bi bi-<%= section[:icon] %>"></i>
                   <strong><%= section[:label] %></strong>
                   <i class="bi bi-chevron-down"></i>
@@ -212,6 +218,18 @@
                       <span>%</span>
                     </div>
                   </div>
+
+                  <div class="ax-field">
+                    <%= label_tag "layout_setting_admin_menu_section_colors_#{key}_box_shadow", "Box shadow" %>
+                    <%= text_field_tag "layout_setting[admin_menu_section_colors][#{key}][box_shadow]",
+                          style["box_shadow"],
+                          id: "layout_setting_admin_menu_section_colors_#{key}_box_shadow",
+                          class: "ax-control",
+                          placeholder: LayoutSetting::ADMIN_MENU_SECTION_SHADOW_DEFAULT,
+                          spellcheck: false,
+                          data: { action: "input->layout-theme-preview#updateMenuSection", menu_section_key: key, menu_style_property: "shadow" } %>
+                    <small class="ax-hint">Ex.: <code><%= LayoutSetting::ADMIN_MENU_SECTION_SHADOW_DEFAULT %></code></small>
+                  </div>
                 </div>
               </section>
             <% end %>
@@ -220,6 +238,9 @@
 
         <%= ax_panel(
               title: "Plataforma",
+              collapsible: true,
+              collapsed: true,
+              collapse_id: "layout-panel-platform",
               subtitle: "Nome do produto operacional usado pela equipe dentro da conta. Não altera a marca pública.",
               actions: tag.span("operação", class: "ax-badge ax-badge--gray")
             ) do %>
@@ -243,6 +264,9 @@
 
         <%= ax_panel(
               title: "Inteligência de Interesse",
+              collapsible: true,
+              collapsed: true,
+              collapse_id: "layout-panel-interest-intelligence",
               subtitle: "Diretrizes para interpretar navegação, sinais do lead e compatibilidade com imóveis sem criar atrito na operação.",
               actions: tag.span("automação", class: "ax-badge ax-badge--blue")
             ) do %>
@@ -384,6 +408,9 @@
 
         <%= ax_panel(
               title: "Tema da plataforma",
+              collapsible: true,
+              collapsed: true,
+              collapse_id: "layout-panel-admin-theme",
               subtitle: safe_join(["Afeta somente o ambiente interno em ", tag.code("/admin"), ": botões, menu ativo, badges, superfícies e estados de foco."]),
               actions: capture do %>
                 <button type="button"
@@ -466,6 +493,9 @@
 
         <%= ax_panel(
               title: "Tema do site público",
+              collapsible: true,
+              collapsed: true,
+              collapse_id: "layout-panel-public-theme",
               subtitle: "Cores usadas no site, páginas públicas e materiais que visitantes enxergam. Não alteram os tokens da plataforma interna.",
               actions: tag.span("impacto no site", class: "ax-badge ax-badge--amber")
             ) do %>
@@ -503,6 +533,9 @@
       <aside class="layout-settings-inspector">
         <%= ax_panel(
               title: "Mapa de impacto",
+              collapsible: true,
+              collapsed: true,
+              collapse_id: "layout-panel-impact-map",
               subtitle: "Separação entre Unitymob, conta, plataforma interna e site público."
             ) do %>
           <div class="layout-settings-impact-list">
