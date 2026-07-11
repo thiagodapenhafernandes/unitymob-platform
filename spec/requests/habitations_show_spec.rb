@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe "Habitation details", type: :request do
+  include Devise::Test::IntegrationHelpers
+
   before do
     host! "localhost"
   end
@@ -149,6 +151,37 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).not_to include("(47) 99905-8447")
       expect(response.body).not_to include("https://wa.me/5547999058447")
       expect(response.body).not_to include(">WhatsApp<")
+    end
+
+    it "creates a tracked share link for a public property in the authenticated tenant" do
+      admin = create(:admin_user)
+      habitation = create(:habitation, tenant: admin.tenant, codigo: "SHARE-OK", slug: "share-ok")
+      sign_in admin
+
+      post share_link_habitation_path(habitation), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.fetch("url")).to include("share_token=")
+    end
+
+    it "creates a private tracked link for an unavailable property without making its plain URL public" do
+      admin = create(:admin_user)
+      habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-OFF", slug: "share-off")
+      sign_in admin
+
+      post share_link_habitation_path(habitation), as: :json
+
+      expect(response).to have_http_status(:ok)
+      shared_url = response.parsed_body.fetch("url")
+      token = Rack::Utils.parse_query(URI.parse(shared_url).query).fetch("share_token")
+
+      sign_out admin
+      get habitation_path(habitation)
+      expect(response).to redirect_to(habitations_path)
+
+      get habitation_path(habitation, share_token: token)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(habitation.display_title)
     end
 
     it "replaces past delivery dates with ready-to-move status when marked as ready" do

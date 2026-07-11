@@ -9,7 +9,7 @@ export default class extends Controller {
   }
 
   connect() {
-    this.sharedUrl = this.fallbackUrlValue
+    this.sharedUrl = null
     this.onOutsideClick = this.handleOutsideClick.bind(this)
     if (this.hasMenuTarget) {
       document.addEventListener("click", this.onOutsideClick)
@@ -36,6 +36,7 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
     const url = await this.ensureSharedUrl()
+    if (!url) return
 
     if (navigator.share) {
       try {
@@ -58,6 +59,7 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
     const url = await this.ensureSharedUrl()
+    if (!url) return
     await this.copyFromUrl(url)
   }
 
@@ -65,6 +67,7 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
     const url = await this.ensureSharedUrl()
+    if (!url) return
     const text = encodeURIComponent(`${this.propertyTitleValue || "Confira este imóvel"} ${url}`)
     window.open(`https://wa.me/?text=${text}`, "_blank")
   }
@@ -73,6 +76,7 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
     const url = await this.ensureSharedUrl()
+    if (!url) return
     const subject = encodeURIComponent(this.propertyTitleValue || "Imóvel")
     const body = encodeURIComponent(`Confira este imóvel: ${url}`)
     window.location.href = `mailto:?subject=${subject}&body=${body}`
@@ -81,7 +85,9 @@ export default class extends Controller {
   async facebook(event) {
     event.preventDefault()
     event.stopPropagation()
-    const url = encodeURIComponent(await this.ensureSharedUrl())
+    const sharedUrl = await this.ensureSharedUrl()
+    if (!sharedUrl) return
+    const url = encodeURIComponent(sharedUrl)
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "facebook-share-dialog", "width=626,height=436")
   }
 
@@ -89,34 +95,42 @@ export default class extends Controller {
     event.preventDefault()
     event.stopPropagation()
     const rawUrl = await this.ensureSharedUrl()
+    if (!rawUrl) return
     const url = encodeURIComponent(rawUrl)
     const text = encodeURIComponent(this.propertyTitleValue || document.title)
     window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, "twitter-share-dialog", "width=626,height=436")
   }
 
   async ensureSharedUrl() {
-    if (!this.generateUrlValue) return this.fallbackUrlValue || window.location.href
+    if (!this.generateUrlValue) {
+      this.flashStatus("Erro ao gerar link")
+      return null
+    }
     if (this.sharedUrl && this.sharedUrl.includes("share_token=")) return this.sharedUrl
 
     const csrfToken = document.querySelector("[name='csrf-token']")?.content
-    const response = await fetch(this.generateUrlValue, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken,
-        "Accept": "application/json"
+    try {
+      const response = await fetch(this.generateUrlValue, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        }
+      })
+
+      const payload = await response.json()
+      if (!response.ok || !payload?.url) {
+        this.flashStatus(payload?.error || "Erro ao gerar link")
+        return null
       }
-    })
 
-    if (!response.ok) {
+      this.sharedUrl = payload.url
+      return this.sharedUrl
+    } catch (_error) {
       this.flashStatus("Erro ao gerar link")
-      return this.fallbackUrlValue || window.location.href
+      return null
     }
-
-    const payload = await response.json()
-    if (payload?.url) this.sharedUrl = payload.url
-
-    return this.sharedUrl || this.fallbackUrlValue || window.location.href
   }
 
   async copyFromUrl(url) {

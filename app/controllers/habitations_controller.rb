@@ -4,9 +4,10 @@ class HabitationsController < ApplicationController
 
   include HabitationCaching
   include ActionView::Helpers::NumberHelper
-  before_action :set_habitation, only: [:show, :schedule_visit, :share_link]
+  before_action :set_habitation, only: [:show, :schedule_visit]
   before_action :redirect_to_canonical_habitation_url, only: [:show]
   before_action :authenticate_admin_user!, only: [:share_link]
+  before_action :set_shareable_habitation, only: [:share_link]
   
   # GET /habitations
   # GET /imoveis
@@ -279,24 +280,46 @@ class HabitationsController < ApplicationController
   end
   
   private
+
+  def set_shareable_habitation
+    @habitation = find_habitation_in_scope(params[:id], current_admin_user.tenant.habitations)
+    return if @habitation
+
+    render json: { success: false, error: "Imóvel não encontrado nesta conta." }, status: :not_found
+  end
   
   def set_habitation
     @habitation = find_public_habitation(params[:id])
     return if @habitation&.publicly_viewable?
+    return if valid_share_token_for?(@habitation)
 
     reason = @habitation&.public_unavailable_reason || "nao encontrado"
     Rails.logger.info("[HabitationPublicShow] id=#{params[:id].inspect} indisponivel: #{reason}")
     redirect_to habitations_path, alert: 'Imóvel não encontrado ou indisponível no momento.'
   end
 
+  def valid_share_token_for?(habitation)
+    return false unless habitation
+
+    token = params[:share_token].to_s.strip
+    return false if token.blank?
+
+    HabitationShareLink.active.exists?(token: token, habitation_id: habitation.id)
+  end
+
   def find_public_habitation(identifier)
+    find_habitation_in_scope(identifier, public_habitation_lookup_scope)
+  end
+
+  def find_habitation_in_scope(identifier, scope)
     identifier = identifier.to_s.strip
     return nil if identifier.blank?
 
-    public_habitation_lookup_scope.find_by(slug: identifier) ||
-      public_habitation_lookup_scope.find_by(codigo: identifier) ||
-      find_habitation_by_trailing_code(identifier) ||
-      find_habitation_by_friendly_id(identifier)
+    lookup_scope = scope.with_attached_photos.includes(:address)
+    lookup_scope.find_by(slug: identifier) ||
+      lookup_scope.find_by(codigo: identifier) ||
+      find_habitation_by_trailing_code(identifier, lookup_scope) ||
+      find_habitation_by_friendly_id(identifier, lookup_scope)
   end
 
   def public_habitation_scope
@@ -311,15 +334,15 @@ class HabitationsController < ApplicationController
     )
   end
 
-  def find_habitation_by_trailing_code(identifier)
+  def find_habitation_by_trailing_code(identifier, scope = public_habitation_lookup_scope)
     trailing_code = identifier[/(\d+)\z/, 1]
     return nil if trailing_code.blank? || trailing_code == identifier
 
-    public_habitation_lookup_scope.find_by(codigo: trailing_code)
+    scope.find_by(codigo: trailing_code)
   end
 
-  def find_habitation_by_friendly_id(identifier)
-    public_habitation_lookup_scope.friendly.find(identifier)
+  def find_habitation_by_friendly_id(identifier, scope = public_habitation_lookup_scope)
+    scope.friendly.find(identifier)
   rescue ActiveRecord::RecordNotFound
     nil
   end
