@@ -173,14 +173,12 @@ end
 
 desc "Reinicia o Puma e o Solid Queue"
 task restart: :remote_environment do
-  comment "Reloading Puma..."
-  command %{
-    if [ -f "#{fetch(:deploy_to)}/shared/.puma_hot_restart_enabled" ]; then
-      sudo systemctl reload #{fetch(:puma_service)} || sudo systemctl restart #{fetch(:puma_service)}
-    else
-      sudo systemctl restart #{fetch(:puma_service)}
-    fi
-  }
+  # O hot restart (USR2) reutiliza o comando/bundle da release que iniciou o
+  # processo. Como o Mina limpa releases antigas antes do launch, esse caminho
+  # pode deixar de existir e fazer o Puma cair no Restart=always do systemd.
+  # Um restart após a troca do symlink current sempre nasce na release atual.
+  comment "Restarting Puma..."
+  command %(sudo systemctl restart #{fetch(:puma_service)})
   comment "Restarting Solid Queue..."
   command %(sudo systemctl restart #{fetch(:solid_queue_service)})
 end

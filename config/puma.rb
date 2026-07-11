@@ -11,8 +11,16 @@ environment ENV.fetch("RAILS_ENV", "development")
 if ENV.fetch("RAILS_ENV", "development") == "production"
   directory ENV.fetch("PUMA_DIRECTORY", Dir.pwd)
 
-  workers ENV.fetch("WEB_CONCURRENCY", 3)
-  preload_app!
+  worker_count = ENV.fetch("WEB_CONCURRENCY", 0).to_i
+
+  if worker_count > 1
+    workers worker_count
+    preload_app!
+
+    on_worker_boot do
+      ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
+    end
+  end
 
   # Produção escuta SOMENTE atrás do nginx. `port` e `bind` ACUMULAM listeners
   # no Puma — chamar `port` aqui abriria também 0.0.0.0:3000 público,
@@ -21,10 +29,6 @@ if ENV.fetch("RAILS_ENV", "development") == "production"
 
   # pidfile "tmp/pids/puma.pid"
   # state_path "tmp/pids/puma.state"
-  
-  on_worker_boot do
-    ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
-  end
 else
   # Dev/test: porta local de sempre (PORT ou 3000).
   port ENV.fetch("PORT", 3000)
