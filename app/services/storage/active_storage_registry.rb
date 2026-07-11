@@ -16,6 +16,7 @@ module Storage
         services.delete(key)
       end
 
+      registry.instance_variable_set(:@configurations, configurations)
       registry.instance_variable_set(:@configurator, ActiveStorage::Service::Configurator.new(configurations))
       true
     end

@@ -1,6 +1,25 @@
 require "rails_helper"
 
 RSpec.describe Storage::ActiveStorageRegistry do
+  describe ".register!" do
+    it "persiste o alias no registry usado pelo Active Storage" do
+      registry = ActiveStorage::Blob.services
+      original_configurations = registry.instance_variable_get(:@configurations)
+      original_services = registry.instance_variable_get(:@services)
+      registry.instance_variable_set(:@configurations, { do_spaces: { service: "Disk", root: Rails.root.join("tmp/storage") } })
+      registry.instance_variable_set(:@services, {})
+      setting = instance_double(StorageIntegrationSetting, active_storage_configurations: {})
+
+      described_class.register!(setting)
+
+      expect(registry.instance_variable_get(:@configurations)).to have_key(:do_spaces_db)
+    ensure
+      registry.instance_variable_set(:@configurations, original_configurations)
+      registry.instance_variable_set(:@services, original_services)
+      registry.instance_variable_set(:@configurator, ActiveStorage::Service::Configurator.new(original_configurations))
+    end
+  end
+
   describe ".add_static_compatibility_aliases!" do
     it "expõe do_spaces_db usando a configuração estática legada" do
       legacy = { service: "S3", bucket: "legacy-bucket" }
