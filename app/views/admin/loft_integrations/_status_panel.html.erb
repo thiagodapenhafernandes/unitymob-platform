@@ -1,71 +1,53 @@
 <span class="tw-hidden" data-dwv-sync-status-state data-sync-status="<%= @loft_sync_status.presence || "idle" %>"></span>
 
-<div class="ax-card loft-integration-status-card tw-mb-4">
-  <div class="ax-card__body">
-    <div class="loft-integration-section-title"><i class="bi bi-info-circle"></i>Status Atual</div>
-    <ul class="loft-integration-status-list">
-      <li class="loft-integration-status-list__item">Integração ativa: <strong><%= @loft_enabled ? "Sim" : "Não" %></strong></li>
-      <li class="loft-integration-status-list__item">Host configurado: <strong><%= @loft_host.present? ? "Sim" : "Não" %></strong></li>
-      <li class="loft-integration-status-list__item">Token configurado: <strong><%= @loft_token.present? ? "Sim" : "Não" %></strong></li>
-      <li class="loft-integration-status-list__item">Preservar campos manuais: <strong><%= @loft_preserve_manual_fields ? "Ativo" : "Inativo" %></strong></li>
-      <li class="loft-integration-status-list__item">Status atual: <strong><%= @loft_sync_status %></strong></li>
-      <li class="loft-integration-status-list__item">Progresso atual: <strong><%= @loft_sync_progress %>%</strong></li>
-      <li class="loft-integration-status-list__item">Última execução: <strong><%= @loft_last_sync_time.present? ? l(@loft_last_sync_time, format: :short) : "N/D" %></strong></li>
-      <li>Resumo: <%= @loft_last_sync_message.presence || "Sem execuções registradas." %></li>
-    </ul>
-
-    <div class="tw-mt-3">
-      <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1">
-        <span>Andamento</span>
-        <span><%= @loft_sync_progress %>%</span>
-      </div>
-      <%= ax_progress(value: @loft_sync_progress, tone: (@loft_sync_status == 'failed' ? :red : (@loft_sync_status == 'completed' ? :green : :blue))) %>
+<section class="loft-monitor-card">
+  <header>
+    <div><span>Monitoramento</span><strong>Status da integração</strong></div>
+    <% status_tone = @loft_sync_status == "failed" ? :red : (@loft_sync_status == "completed" ? :green : (@loft_sync_status == "processing" ? :blue : :gray)) %>
+    <%= ax_badge(@loft_sync_status.presence || "idle", tone: status_tone) %>
+  </header>
+  <div class="loft-monitor-card__body">
+    <div class="loft-monitor-health">
+      <div class="<%= @loft_enabled ? 'is-ok' : 'is-muted' %>"><i class="bi bi-power"></i><span>Integração<strong><%= @loft_enabled ? "Ativa" : "Desativada" %></strong></span></div>
+      <div class="<%= @loft_host.present? ? 'is-ok' : 'is-warning' %>"><i class="bi bi-hdd-network"></i><span>Host<strong><%= @loft_host.present? ? "Configurado" : "Pendente" %></strong></span></div>
+      <div class="<%= @loft_token.present? ? 'is-ok' : 'is-warning' %>"><i class="bi bi-key"></i><span>Token<strong><%= @loft_token.present? ? "Configurado" : "Pendente" %></strong></span></div>
     </div>
-  </div>
-</div>
 
-<div class="ax-card tw-mb-4">
-  <div class="ax-card__body">
-    <div class="loft-integration-section-title"><i class="bi bi-clock-history"></i>Últimas 5 Sincronizações</div>
-    <% if @loft_sync_history.present? %>
-      <div class="ax-table-wrap">
-        <table class="ax-table">
-          <thead>
-            <tr>
-              <th>Data/Hora</th>
-              <th>Status</th>
-              <th>Modo</th>
-              <th>Criados</th>
-              <th>Atualizados</th>
-              <th>Fotos</th>
-              <th>Erros</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @loft_sync_history.each do |item| %>
-              <% item_time = (Time.zone.parse(item["at"].to_s) rescue nil) %>
-              <% status = item["status"].to_s %>
-              <% stats = item["stats"].is_a?(Hash) ? item["stats"] : {} %>
-              <tr>
-                <td class="loft-integration-nowrap"><%= item_time ? l(item_time, format: :short) : "N/D" %></td>
-                <td>
-                  <span class="ax-badge <%= status == 'completed' ? 'ax-badge--green' : (status == 'failed' ? 'ax-badge--red' : (status == 'processing' ? 'ax-badge--blue' : 'ax-badge--gray')) %>">
-                    <%= status.presence || "N/D" %>
-                  </span>
-                </td>
-                <td class="tw-text-sm"><%= item["mode"].presence || "-" %></td>
-                <td class="tw-text-sm"><%= stats["created"].to_i %></td>
-                <td class="tw-text-sm"><%= stats["updated"].to_i %></td>
-                <% photos_count = stats["images_synced"].presence || (stats["photos_reused"].to_i + stats["photos_downloaded"].to_i + stats["photos_pending_download"].to_i) %>
-                <td class="tw-text-sm" title="Reaproveitadas, baixadas ou pendentes de download"><%= photos_count.to_i %></td>
-                <td class="tw-text-sm"><%= stats["errors_count"].to_i %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% else %>
-      <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Ainda não há histórico de sincronizações.</p>
-    <% end %>
+    <div class="loft-monitor-progress">
+      <div><span>Andamento</span><strong><%= @loft_sync_progress %>%</strong></div>
+      <%= ax_progress(value: @loft_sync_progress, tone: status_tone) %>
+    </div>
+
+    <dl class="loft-monitor-summary">
+      <div><dt>Última execução</dt><dd><%= @loft_last_sync_time.present? ? l(@loft_last_sync_time, format: :short) : "Não executada" %></dd></div>
+      <div><dt>Campos manuais</dt><dd><%= @loft_preserve_manual_fields ? "Preservados" : "Substituídos" %></dd></div>
+    </dl>
+    <p class="loft-monitor-message"><%= @loft_last_sync_message.presence || "Sem execuções registradas." %></p>
   </div>
-</div>
+</section>
+
+<section class="loft-history-card">
+  <header><div><span>Histórico</span><strong>Últimas 5 sincronizações</strong></div><i class="bi bi-clock-history"></i></header>
+  <% if @loft_sync_history.present? %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead><tr><th>Data</th><th>Status</th><th>Modo</th><th>Atual.</th><th>Fotos</th><th>Erros</th></tr></thead>
+        <tbody>
+          <% @loft_sync_history.each do |item| %>
+            <% item_time = (Time.zone.parse(item["at"].to_s) rescue nil) %>
+            <% status = item["status"].to_s %>
+            <% stats = item["stats"].is_a?(Hash) ? item["stats"] : {} %>
+            <% photos_count = stats["images_synced"].presence || (stats["photos_reused"].to_i + stats["photos_downloaded"].to_i + stats["photos_pending_download"].to_i) %>
+            <tr>
+              <td class="loft-integration-nowrap"><%= item_time ? l(item_time, format: :short) : "N/D" %></td>
+              <td><%= ax_badge(status.presence || "N/D", tone: status == "completed" ? :green : (status == "failed" ? :red : (status == "processing" ? :blue : :gray))) %></td>
+              <td><%= item["mode"].presence || "-" %></td><td><%= stats["updated"].to_i %></td><td><%= photos_count.to_i %></td><td><%= stats["errors_count"].to_i %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="loft-history-card__empty"><i class="bi bi-clock"></i><span>Nenhuma sincronização registrada.</span></div>
+  <% end %>
+</section>

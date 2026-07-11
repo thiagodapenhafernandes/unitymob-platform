@@ -27,10 +27,10 @@ RSpec.describe "Admin::System", type: :request do
 
     expect {
       get admin_system_path
-    }.to change { AccessAuditLog.where(event_type: "admin_access", result: "allowed", admin_user: sys).count }.by(1)
+    }.to change { AccessAuditLog.where(event_type: "sensitive_access", result: "allowed", admin_user: sys).count }.by(1)
 
     expect(response).to have_http_status(:ok)
-    expect(AccessAuditLog.where(event_type: "admin_access", result: "allowed", admin_user: sys).last.tenant_id).to be_nil
+    expect(AccessAuditLog.where(event_type: "sensitive_access", result: "allowed", admin_user: sys).last.tenant_id).to be_nil
   end
 
   it "lista usuários para impersonação com filtros de status, tipo e conta" do

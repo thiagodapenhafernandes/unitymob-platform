@@ -18,6 +18,7 @@ RSpec.describe "Admin::TrackingIntegrations", type: :request do
     expect(response.body).to include("Google Tag Manager")
     expect(response.body).to include("Pixel da Meta")
     expect(response.body).to include("GTM-XXXXXXX")
+    expect(response.body).to include("tracking-workspace__layout")
   end
 
   it "salva as configuracoes de trackeamento" do

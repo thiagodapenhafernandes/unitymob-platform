@@ -102,11 +102,33 @@ RSpec.describe Storage::PublicCdnImageUrl do
     allow(blob).to receive(:variable?).and_return(true)
     allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(blob).and_return("https://cdn.saluteimoveis.com.br/#{blob.key}")
     allow(Rails.cache).to receive(:write).and_return(true)
-    allow(ActiveStorage::TransformJob).to receive(:perform_later)
+    allow(Storage::TransformVariantJob).to receive(:perform_later)
 
     described_class.resolve(blob, resize_to_fill: [640, 480], saver: { quality: 82 })
 
-    expect(ActiveStorage::TransformJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480])
+    expect(Storage::TransformVariantJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480])
+  end
+
+  it "não reenfileira variante temporariamente bloqueada por falha de integridade" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("image"),
+      filename: "foto-corrompida.jpg",
+      content_type: "image/jpeg"
+    )
+    transformations = { resize_to_fill: [640, 480] }
+    digest = described_class.transform_digest(transformations)
+    blob.update!(metadata: blob.metadata.merge(
+      described_class::TRANSFORM_FAILURE_METADATA_KEY => {
+        digest => { "error" => "ActiveStorage::IntegrityError" }
+      }
+    ))
+
+    allow(blob).to receive(:variable?).and_return(true)
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(blob).and_return("https://cdn.saluteimoveis.com.br/#{blob.key}")
+    allow(Storage::TransformVariantJob).to receive(:perform_later)
+
+    expect(described_class.resolve(blob, **transformations)).to eq("https://cdn.saluteimoveis.com.br/#{blob.key}")
+    expect(Storage::TransformVariantJob).not_to have_received(:perform_later)
   end
 
   it "gera path relativo para representation sem exigir host default" do

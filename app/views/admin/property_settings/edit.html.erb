@@ -1,228 +1,169 @@
-<div class="container-fluid py-3">
-  <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-flex-wrap tw-mb-4">
+<div class="property-settings-workspace" data-controller="watermark-preview">
+  <header class="property-settings-header">
     <div>
-      <div class="ax-page-subtitle tw-font-semibold" style="text-transform: uppercase;">Administração</div>
-      <h1 class="ax-page-title tw-mb-1">Config Imóveis</h1>
-      <p class="ax-page-subtitle">Configurações específicas para o cadastro e mídia dos imóveis.</p>
+      <span class="property-settings-header__eyebrow">Configuração de imóveis</span>
+      <h1 class="ax-page-title">Mídia e marca d'água</h1>
+      <p class="ax-page-subtitle">Defina como a identidade da conta será aplicada às novas fotos dos imóveis.</p>
     </div>
-  </div>
-
-  <%= form_with model: @property_setting, url: admin_property_setting_path, method: :patch, html: { multipart: true }, class: "tw-grid tw-gap-4", style: "grid-template-columns: repeat(12, minmax(0, 1fr));", data: { controller: "watermark-preview" } do |f| %>
-    <% if @property_setting.errors.any? %>
-      <div class="ax-span-12">
-        <%= ax_error_summary(@property_setting) %>
-      </div>
-    <% end %>
-
-    <div class="ax-span-6">
-      <div class="ax-card h-100">
-        <div class="ax-card__body p-4">
-          <h2 class="tw-text-ink-muted tw-font-semibold tw-mb-3" style="text-transform: uppercase;">Marca d'água das fotos</h2>
-
-          <div class="tw-mb-4">
-            <%= f.label :watermark_image, "Imagem da marca d'água", class: "ax-label tw-font-semibold" %>
-            <%= f.file_field :watermark_image,
-                  class: "ax-control",
-                  accept: "image/png,image/jpeg,image/webp",
-                  data: { action: "change->watermark-preview#loadFile", watermark_preview_target: "fileInput" } %>
-            <div class="form-text">
-              Use preferencialmente PNG com fundo transparente.
-            </div>
-          </div>
-
-          <% if @property_setting.watermark_image.attached? %>
-            <div class="current-watermark-preview tw-flex tw-items-center tw-gap-3 border tw-rounded-lg p-3 tw-mb-4">
-              <div class="current-watermark-thumb rounded border overflow-hidden">
-                <%= image_tag @property_setting.watermark_image, alt: "Imagem atual da marca d'água" %>
-              </div>
-              <div class="tw-text-sm">
-                <div class="tw-font-semibold">Imagem atual</div>
-                <div class="tw-text-ink-muted"><%= @property_setting.watermark_image.filename %></div>
-                <div class="tw-text-ink-muted"><%= number_to_human_size(@property_setting.watermark_image.byte_size) %></div>
-              </div>
-            </div>
-
-            <div class="tw-flex tw-items-center tw-gap-2 tw-mb-4">
-              <%= check_box_tag "property_setting[remove_watermark_image]", "1", false, id: "property_setting_remove_watermark_image" %>
-              <%= label_tag "property_setting_remove_watermark_image", "Remover imagem atual" %>
-            </div>
-          <% end %>
-
-          <div class="tw-mb-4">
-            <%= f.label :watermark_position, "Posição padrão", class: "ax-label tw-font-semibold" %>
-            <%= ax_field_grid do %>
-              <% PropertySetting::WATERMARK_POSITIONS.each do |value, label| %>
-                <div class="ax-span-4">
-                  <label class="border rounded px-3 py-2 tw-flex tw-items-center tw-gap-2 h-100">
-                    <%= f.radio_button :watermark_position, value, class: "m-0", data: { action: "watermark-preview#update", watermark_preview_target: "positionInput" } %>
-                    <span class="tw-text-sm tw-font-semibold"><%= label %></span>
-                  </label>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-
-          <div class="tw-mb-4">
-            <div class="tw-flex tw-items-center tw-justify-between tw-gap-3">
-              <%= f.label :watermark_size_percentage, "Tamanho da marca d'água", class: "ax-label tw-font-semibold tw-mb-1" %>
-              <span class="ax-badge ax-badge--gray border" data-watermark-preview-target="sizeValue"><%= @property_setting.watermark_size_percentage %>%</span>
-            </div>
-            <%= f.range_field :watermark_size_percentage,
-                  min: PropertySetting::WATERMARK_SIZE_RANGE.begin,
-                  max: PropertySetting::WATERMARK_SIZE_RANGE.end,
-                  step: 1,
-                  class: "form-range",
-                  data: { action: "input->watermark-preview#update", watermark_preview_target: "sizeInput" } %>
-            <div class="tw-flex tw-justify-between tw-text-sm tw-text-ink-muted">
-              <span>Menor</span>
-              <span>Maior</span>
-            </div>
-          </div>
-
-          <div class="tw-mb-4">
-            <div class="tw-flex tw-items-center tw-justify-between tw-gap-3">
-              <%= f.label :watermark_opacity_percentage, "Opacidade da marca d'água", class: "ax-label tw-font-semibold tw-mb-1" %>
-              <span class="ax-badge ax-badge--gray border" data-watermark-preview-target="opacityValue"><%= @property_setting.watermark_opacity_percentage %>%</span>
-            </div>
-            <%= f.range_field :watermark_opacity_percentage,
-                  min: PropertySetting::WATERMARK_OPACITY_RANGE.begin,
-                  max: PropertySetting::WATERMARK_OPACITY_RANGE.end,
-                  step: 1,
-                  class: "form-range",
-                  data: { action: "input->watermark-preview#update", watermark_preview_target: "opacityInput" } %>
-            <div class="tw-flex tw-justify-between tw-text-sm tw-text-ink-muted">
-              <span>Mais discreta</span>
-              <span>Mais intensa</span>
-            </div>
-          </div>
-
-          <div class="tw-flex tw-items-center tw-gap-2">
-            <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary tw-font-semibold" %>
-            <%= link_to "Voltar", admin_root_path, class: "ax-btn ax-btn--ghost" %>
-          </div>
-        </div>
-      </div>
-
-      <div class="ax-card tw-mt-4">
-        <div class="ax-card__body p-4">
-          <h2 class="tw-text-ink-muted tw-font-semibold tw-mb-3" style="text-transform: uppercase;">Fluxo de revisão administrativa</h2>
-          <p class="tw-text-ink-muted tw-mb-3">As configurações de revisão foram movidas para a tela dedicada.</p>
-          <%= link_to review_workflow_admin_property_setting_path, class: "ax-btn ax-btn--ghost tw-font-semibold tw-flex tw-items-center tw-gap-2" do %>
-            <i class="bi bi-diagram-3"></i>
-            Ajustar fluxo e regras de revisão
-          <% end %>
-        </div>
-      </div>
+    <div class="property-settings-header__status">
+      <%= ax_badge(@property_setting.watermark_image.attached? ? "Marca configurada" : "Sem marca", tone: @property_setting.watermark_image.attached? ? :green : :gray) %>
+      <%= link_to review_workflow_admin_property_setting_path, class: "ax-btn ax-btn--sm" do %>
+        <i class="bi bi-diagram-3 ax-ico"></i><span>Fluxo de revisão</span>
+      <% end %>
     </div>
+  </header>
 
-    <div class="ax-span-6">
-      <div class="ax-card h-100">
-        <div class="ax-card__body p-4">
-          <h2 class="tw-text-ink-muted tw-font-semibold tw-mb-3" style="text-transform: uppercase;">Prévia</h2>
-          <div class="watermark-preview-frame rounded overflow-hidden position-relative bg-light border"
-               data-watermark-preview-target="frame"
-               style="--watermark-size: <%= @property_setting.watermark_size_percentage %>%; --watermark-opacity: <%= @property_setting.watermark_opacity_percentage.to_f / 100 %>;">
-            <div class="watermark-preview-photo"></div>
-            <% logo_class = "watermark-preview-logo watermark-position-#{@property_setting.watermark_position}" %>
-            <% logo_class = "#{logo_class} tw-hidden" unless @property_setting.watermark_image.attached? %>
+  <%= form_with model: @property_setting,
+        url: admin_property_setting_path,
+        method: :patch,
+        html: { multipart: true },
+        class: "property-settings-form" do |f| %>
+    <%= ax_error_summary(@property_setting) if @property_setting.errors.any? %>
+
+    <div class="property-settings-layout">
+      <main class="property-settings-main">
+        <%= ax_panel(
+              title: "Marca d'água das fotos",
+              subtitle: "Arquivo, posição e intensidade aplicados quando o envio solicitar marca d'água.",
+              actions: ax_badge("novas fotos", tone: :blue)
+            ) do %>
+          <div class="property-settings-fields">
+            <div class="property-settings-upload">
+              <%= ax_field_label(
+                    f,
+                    :watermark_image,
+                    text: "Imagem da marca d'água",
+                    tooltip: "Use preferencialmente PNG transparente. JPEG e WebP também são aceitos."
+                  ) %>
+              <%= f.file_field :watermark_image,
+                    class: "ax-control",
+                    accept: "image/png,image/jpeg,image/webp",
+                    data: { action: "change->watermark-preview#loadFile", watermark_preview_target: "fileInput" } %>
+              <small class="ax-field__hint">PNG transparente oferece o melhor resultado sobre fotos claras e escuras.</small>
+            </div>
+
             <% if @property_setting.watermark_image.attached? %>
-              <%= image_tag @property_setting.watermark_image,
-                    class: logo_class,
-                    data: { watermark_preview_target: "logo" },
-                    alt: "Marca d'água configurada" %>
-            <% else %>
-              <%= tag.img class: logo_class,
-                    data: { watermark_preview_target: "logo" },
-                    alt: "Marca d'água configurada" %>
+              <div class="property-settings-current-file">
+                <div class="property-settings-current-file__thumb">
+                  <%= image_tag @property_setting.watermark_image, alt: "Imagem atual da marca d'água" %>
+                </div>
+                <div class="property-settings-current-file__meta">
+                  <span>Arquivo atual</span>
+                  <strong><%= @property_setting.watermark_image.filename %></strong>
+                  <small><%= number_to_human_size(@property_setting.watermark_image.byte_size) %></small>
+                </div>
+                <label class="property-settings-remove-file">
+                  <%= check_box_tag "property_setting[remove_watermark_image]", "1", false, id: "property_setting_remove_watermark_image" %>
+                  <span>Remover imagem atual</span>
+                </label>
+              </div>
             <% end %>
-            <div class="position-absolute top-50 start-50 translate-middle tw-text-center tw-text-ink-muted px-4 <%= "tw-hidden" if @property_setting.watermark_image.attached? %>"
-                 data-watermark-preview-target="placeholder">
-              <i class="bi bi-image d-block tw-mb-2" style="font-size: 2rem;"></i>
-              Envie uma imagem para visualizar a marca d'água.
+
+            <fieldset class="property-settings-fieldset">
+              <legend>Posição padrão</legend>
+              <div class="property-settings-position-grid">
+                <% PropertySetting::WATERMARK_POSITIONS.each do |value, label| %>
+                  <label class="property-settings-position-option">
+                    <%= f.radio_button :watermark_position,
+                          value,
+                          data: { action: "watermark-preview#update", watermark_preview_target: "positionInput" } %>
+                    <span><i class="bi bi-bounding-box-circles"></i><%= label %></span>
+                  </label>
+                <% end %>
+              </div>
+            </fieldset>
+
+            <div class="property-settings-range-grid">
+              <label class="property-settings-range">
+                <span>
+                  <strong>Tamanho da marca</strong>
+                  <output data-watermark-preview-target="sizeValue"><%= @property_setting.watermark_size_percentage %>%</output>
+                </span>
+                <%= f.range_field :watermark_size_percentage,
+                      min: PropertySetting::WATERMARK_SIZE_RANGE.begin,
+                      max: PropertySetting::WATERMARK_SIZE_RANGE.end,
+                      step: 1,
+                      data: { action: "input->watermark-preview#update", watermark_preview_target: "sizeInput" } %>
+                <small>Proporção ocupada sobre a largura da foto.</small>
+              </label>
+
+              <label class="property-settings-range">
+                <span>
+                  <strong>Opacidade da marca</strong>
+                  <output data-watermark-preview-target="opacityValue"><%= @property_setting.watermark_opacity_percentage %>%</output>
+                </span>
+                <%= f.range_field :watermark_opacity_percentage,
+                      min: PropertySetting::WATERMARK_OPACITY_RANGE.begin,
+                      max: PropertySetting::WATERMARK_OPACITY_RANGE.end,
+                      step: 1,
+                      data: { action: "input->watermark-preview#update", watermark_preview_target: "opacityInput" } %>
+                <small>Equilibre legibilidade e preservação da imagem.</small>
+              </label>
             </div>
           </div>
-          <p class="tw-text-ink-muted tw-text-sm tw-mt-3 tw-mb-0">
-            A marca d'água será aplicada somente nas novas fotos enviadas quando a opção estiver marcada no cadastro do imóvel.
-          </p>
+        <% end %>
+
+        <%= ax_panel(
+              title: "Fluxo de revisão administrativa",
+              subtitle: "Checklist, devolução ao captador, responsável alternativo e notificações vivem em uma tela dedicada.",
+              actions: ax_badge("processo", tone: :gray)
+            ) do %>
+          <div class="property-settings-review-link">
+            <div>
+              <strong>Regra de entrada, revisão e publicação</strong>
+              <span>Ajuste quem revisa e o que precisa estar completo antes da análise.</span>
+            </div>
+            <%= link_to review_workflow_admin_property_setting_path, class: "ax-btn ax-btn--primary ax-btn--sm" do %>
+              <i class="bi bi-arrow-right ax-ico"></i><span>Abrir fluxo</span>
+            <% end %>
+          </div>
+        <% end %>
+      </main>
+
+      <aside class="property-settings-preview-panel">
+        <div class="property-settings-preview-panel__header">
+          <div>
+            <span>Prévia em tempo real</span>
+            <strong>Resultado sobre a foto</strong>
+          </div>
+          <i class="bi bi-eye"></i>
         </div>
-      </div>
+        <div class="property-settings-preview-frame"
+             data-watermark-preview-target="frame"
+             style="--watermark-size: <%= @property_setting.watermark_size_percentage %>%; --watermark-opacity: <%= @property_setting.watermark_opacity_percentage.to_f / 100 %>;">
+          <div class="property-settings-preview-photo"></div>
+          <% logo_class = "property-settings-preview-logo watermark-position-#{@property_setting.watermark_position}" %>
+          <% logo_class = "#{logo_class} tw-hidden" unless @property_setting.watermark_image.attached? %>
+          <% if @property_setting.watermark_image.attached? %>
+            <%= image_tag @property_setting.watermark_image,
+                  class: logo_class,
+                  data: { watermark_preview_target: "logo" },
+                  alt: "Marca d'água configurada" %>
+          <% else %>
+            <%= tag.img class: logo_class,
+                  data: { watermark_preview_target: "logo" },
+                  alt: "Marca d'água configurada" %>
+          <% end %>
+          <div class="property-settings-preview-placeholder <%= "tw-hidden" if @property_setting.watermark_image.attached? %>"
+               data-watermark-preview-target="placeholder">
+            <i class="bi bi-image"></i>
+            <strong>Envie uma imagem</strong>
+            <span>A prévia aparecerá aqui antes de salvar.</span>
+          </div>
+        </div>
+        <div class="property-settings-preview-panel__note">
+          <i class="bi bi-info-circle"></i>
+          <span>A configuração afeta novas fotos quando a aplicação de marca estiver selecionada no imóvel.</span>
+        </div>
+      </aside>
     </div>
+
+    <%= ax_sticky_action_footer(
+          meta: safe_join([tag.i(class: "bi bi-shield-check"), tag.span("Configuração global de mídia da conta")], " "),
+          class_name: "property-settings-action-footer"
+        ) do %>
+      <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
+      <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
+    <% end %>
   <% end %>
 </div>
-
-<style>
-  .watermark-preview-frame {
-    aspect-ratio: 16 / 10;
-    min-height: 260px;
-  }
-
-  .watermark-preview-photo {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at 78% 28%, rgba(255,255,255,.24) 0 7%, transparent 8%),
-      radial-gradient(circle at 69% 66%, rgba(14, 116, 144, .4) 0 9%, transparent 10%),
-      linear-gradient(90deg, rgba(8, 13, 23, .78) 0 27%, transparent 28%),
-      linear-gradient(145deg, #1f2937 0%, #64748b 38%, #d7ded8 72%, #334155 100%);
-  }
-
-  .watermark-preview-photo::after {
-    content: "";
-    position: absolute;
-    inset: 18% 8% 0 38%;
-    background: rgba(255,255,255,.26);
-    transform: skewX(-12deg);
-  }
-
-  .current-watermark-preview {
-    background: #f8fafc;
-  }
-
-  .current-watermark-thumb {
-    width: 132px;
-    height: 74px;
-    flex: 0 0 auto;
-    display: grid;
-    place-items: center;
-    background:
-      linear-gradient(45deg, #334155 25%, transparent 25%),
-      linear-gradient(-45deg, #334155 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #334155 75%),
-      linear-gradient(-45deg, transparent 75%, #334155 75%),
-      #0f172a;
-    background-size: 18px 18px;
-    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
-  }
-
-  .current-watermark-thumb img {
-    max-width: 88%;
-    max-height: 76%;
-    object-fit: contain;
-  }
-
-  .watermark-preview-logo {
-    position: absolute;
-    width: var(--watermark-size, 28%);
-    max-width: none;
-    max-height: none;
-    object-fit: contain;
-    opacity: var(--watermark-opacity, 1);
-    filter: drop-shadow(0 4px 10px rgba(15, 23, 42, .18));
-  }
-
-  .watermark-position-bottom_left {
-    left: 5%;
-    bottom: 7%;
-  }
-
-  .watermark-position-bottom_right {
-    right: 5%;
-    bottom: 7%;
-  }
-
-  .watermark-position-center {
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-  }
-</style>

@@ -1,0 +1,8 @@
+<aside class="tracking-guide">
+  <header><div><span>Aplicação</span><strong>Onde a tag é instalada</strong></div><i class="bi bi-shield-check"></i></header>
+  <ol>
+    <li><i class="bi bi-code-slash"></i><span><strong>Site público</strong><small>O script padrão é inserido no <code>&lt;head&gt;</code>.</small></span></li>
+    <li><i class="bi bi-body-text"></i><span><strong>Fallback seguro</strong><small>O <code>noscript</code> entra após a abertura do <code>&lt;body&gt;</code>.</small></span></li>
+    <li><i class="bi bi-lock"></i><span><strong>Escopo controlado</strong><small><%= provider == :meta ? "Somente o ID e o PageView são gerenciados." : "O painel administrativo não recebe o container." %></small></span></li>
+  </ol>
+</aside>

@@ -120,4 +120,35 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).not_to include("&quot;2026-05-17&quot;")
     expect(response.body).to include("2 total")
   end
+
+  it "permite selecionar um dia e agrupa as conversões pela hora de entrada do lead" do
+    travel_to Time.zone.local(2026, 6, 16, 18, 0, 0) do
+      create(:lead, created_at: Time.zone.local(2026, 6, 15, 9, 10, 0))
+      create(:lead, created_at: Time.zone.local(2026, 6, 15, 9, 55, 0))
+      create(:lead, created_at: Time.zone.local(2026, 6, 15, 17, 20, 0))
+      create(:lead, created_at: Time.zone.local(2026, 6, 16, 9, 0, 0))
+
+      get admin_dashboard_section_path("charts", lead_date: "2026-06-15"),
+          headers: { "Turbo-Frame" => "admin_dashboard_charts" }
+    end
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Leads por hora")
+    expect(response.body).to include("3 total")
+    expect(response.body).to include("&quot;09h&quot;,2")
+    expect(response.body).to include("&quot;17h&quot;,1")
+    expect(response.body).to include('data-dashboard-charts-leads-mode-value="hourly"')
+    expect(response.body).to include('type="date"')
+    expect(response.body).to include('value="2026-06-15"')
+    expect(response.body).to include("30 dias")
+  end
+
+  it "ignora data horária fora da janela de 30 dias" do
+    get admin_dashboard_section_path("charts", lead_date: 31.days.ago.to_date.iso8601),
+        headers: { "Turbo-Frame" => "admin_dashboard_charts" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Leads — últimos 30 dias")
+    expect(response.body).to include('data-dashboard-charts-leads-mode-value="daily"')
+  end
 end

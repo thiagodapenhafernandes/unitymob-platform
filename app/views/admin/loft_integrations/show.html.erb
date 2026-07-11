@@ -1,112 +1,122 @@
-<div class="loft-integration-heading">
-  <div>
-    <h1 class="ax-page-title">Integração Vista Soft</h1>
-    <p class="ax-page-subtitle">Configure o acesso, reconcilie imóveis pela API e acompanhe o histórico.</p>
-  </div>
-</div>
+<div class="loft-workspace">
+  <header class="loft-workspace__header">
+    <div>
+      <span class="loft-workspace__eyebrow">Integrações · Vista</span>
+      <h1 class="ax-page-title">Integração Vista Soft</h1>
+      <p class="ax-page-subtitle">Configure o acesso, execute reconciliações e acompanhe o processamento em um único workspace.</p>
+    </div>
+    <div class="loft-workspace__health">
+      <%= ax_badge(@loft_enabled ? "Integração ativa" : "Integração desativada", tone: @loft_enabled ? :green : :gray) %>
+      <%= ax_badge((@loft_host.present? && @loft_token.present?) ? "Credenciais prontas" : "Configuração incompleta", tone: (@loft_host.present? && @loft_token.present?) ? :blue : :amber) %>
+    </div>
+  </header>
 
-<%= ax_field_grid do %>
-  <div class="ax-span-6">
-    <div class="ax-card tw-mb-4">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key loft-integration-title-icon"></i>Configuração de Acesso</h5>
-      </div>
-      <div class="ax-card__body">
-        <%= form_with url: admin_loft_integrations_path, method: :patch, scope: :loft, local: true do |f| %>
-          <%= ax_switch_field(label: "Ativar integração Vista Soft", form: f, method: :enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @loft_enabled }) %>
-
-          <div class="tw-mb-3">
-            <%= f.label :host, "Host da API", class: "ax-label tw-font-semibold" %>
-            <%= f.text_field :host, class: "ax-control", value: @loft_host, placeholder: "http://seu-host-rest.vistahost.com.br" %>
-            <div class="loft-integration-help">Informe o endereço da API REST da Vista.</div>
+  <div class="loft-workspace__layout">
+    <main class="loft-workspace__main">
+      <%= form_with url: admin_loft_integrations_path, method: :patch, scope: :loft, local: true, class: "loft-settings-form" do |f| %>
+        <%= ax_panel(title: "Acesso à API", subtitle: "Credenciais usadas pelas rotinas manuais de reconciliação.", actions: ax_badge("configuração", tone: :blue)) do %>
+          <div class="loft-settings-form__toggle">
+            <%= ax_switch_field(label: "Ativar integração Vista Soft", form: f, method: :enabled, checked_value: "true", unchecked_value: "false", input_html: { checked: @loft_enabled }) %>
           </div>
 
-          <div class="tw-mb-3">
-            <%= f.label :token, "Token da API", class: "ax-label tw-font-semibold" %>
-            <%= f.password_field :token, class: "ax-control", autocomplete: "off", placeholder: (@loft_token.present? ? "Token já configurado. Preencha apenas para substituir." : "Cole o token da API") %>
-            <div class="loft-integration-help">Use o token fornecido para autenticação da integração.</div>
+          <%= ax_field_grid do %>
+            <div class="ax-span-7">
+              <%= ax_field_label(f, :host, text: "Host da API", tooltip: "Endereço base da API REST Vista, sem barra no final.") %>
+              <%= f.url_field :host, class: "ax-control", value: @loft_host, placeholder: "https://seu-host-rest.vistahost.com.br", autocomplete: "url" %>
+            </div>
+            <div class="ax-span-5">
+              <%= ax_field_label(f, :token, text: "Token da API", tooltip: "O token atual nunca é exibido. Preencha somente para substituí-lo.") %>
+              <%= f.password_field :token, class: "ax-control", autocomplete: "new-password", placeholder: (@loft_token.present? ? "Token configurado · deixe vazio para manter" : "Cole o token da API") %>
+            </div>
+          <% end %>
+
+          <div class="loft-settings-form__preservation">
+            <%= ax_switch_field(label: "Preservar campos editados manualmente", form: f, method: :preserve_manual_fields, checked_value: "true", unchecked_value: "false", input_html: { checked: @loft_preserve_manual_fields }) %>
+            <span>Evita que imóveis já sincronizados percam ajustes feitos pela equipe.</span>
           </div>
 
           <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
-            A reconciliação usa a API Vista como fonte de verdade para dados cadastrais. Nesta etapa ela não baixa arquivos:
-            reaproveita anexos já encontrados, remove mídia incompatível e deixa fotos/documentos pendentes para a rotina de download.
+            A API Vista é a fonte cadastral. Fotos e documentos são reaproveitados quando possível e os arquivos pendentes seguem para uma rotina separada.
           <% end %>
 
-          <%= ax_field_grid do %>
-            <div class="ax-span-6">
-              <%= f.label :sync_batch_size, "Imóveis por lote", class: "ax-label tw-font-semibold" %>
-              <%= f.number_field :sync_batch_size, class: "ax-control", min: 1, max: 1000, value: @loft_sync_batch_size %>
+          <details class="loft-advanced-settings">
+            <summary>
+              <span><i class="bi bi-sliders"></i><strong>Parâmetros avançados</strong></span>
+              <small>Lotes e intervalos de atualização</small>
+              <i class="bi bi-chevron-down"></i>
+            </summary>
+            <div class="loft-advanced-settings__body">
+              <%= ax_field_grid do %>
+                <div class="ax-span-6">
+                  <%= ax_field_label(f, :sync_batch_size, text: "Imóveis por lote") %>
+                  <%= f.number_field :sync_batch_size, class: "ax-control", min: 1, max: 1000, value: @loft_sync_batch_size %>
+                </div>
+                <div class="ax-span-6">
+                  <%= ax_field_label(f, :images_sync_limit, text: "Imóveis por lote de arquivos") %>
+                  <%= f.number_field :images_sync_limit, class: "ax-control", min: 1, max: 500, value: @loft_images_sync_limit %>
+                </div>
+                <div class="ax-span-4">
+                  <%= ax_field_label(f, :poll_processing_interval_ms, text: "Durante sincronização", tooltip: "Intervalo em milissegundos.") %>
+                  <%= f.number_field :poll_processing_interval_ms, class: "ax-control", min: 1000, max: 30000, step: 500, value: @loft_poll_processing_interval_ms %>
+                </div>
+                <div class="ax-span-4">
+                  <%= ax_field_label(f, :poll_idle_interval_ms, text: "Quando inativo", tooltip: "Intervalo em milissegundos.") %>
+                  <%= f.number_field :poll_idle_interval_ms, class: "ax-control", min: 2000, max: 60000, step: 500, value: @loft_poll_idle_interval_ms %>
+                </div>
+                <div class="ax-span-4">
+                  <%= ax_field_label(f, :poll_slow_interval_ms, text: "Em segundo plano", tooltip: "Intervalo em milissegundos.") %>
+                  <%= f.number_field :poll_slow_interval_ms, class: "ax-control", min: 5000, max: 120000, step: 1000, value: @loft_poll_slow_interval_ms %>
+                </div>
+              <% end %>
             </div>
-            <div class="ax-span-6">
-              <%= f.label :images_sync_limit, "Imóveis por lote de arquivos", class: "ax-label tw-font-semibold" %>
-              <%= f.number_field :images_sync_limit, class: "ax-control", min: 1, max: 500, value: @loft_images_sync_limit %>
-            </div>
-          <% end %>
+          </details>
 
-          <%= ax_field_grid do %>
-            <div class="ax-span-4">
-              <%= f.label :poll_processing_interval_ms, "Atualização durante sincronização (ms)", class: "ax-label tw-font-semibold" %>
-              <%= f.number_field :poll_processing_interval_ms, class: "ax-control", min: 1000, max: 30000, step: 500, value: @loft_poll_processing_interval_ms %>
-            </div>
-            <div class="ax-span-4">
-              <%= f.label :poll_idle_interval_ms, "Atualização quando inativo (ms)", class: "ax-label tw-font-semibold" %>
-              <%= f.number_field :poll_idle_interval_ms, class: "ax-control", min: 2000, max: 60000, step: 500, value: @loft_poll_idle_interval_ms %>
-            </div>
-            <div class="ax-span-4">
-              <%= f.label :poll_slow_interval_ms, "Atualização em segundo plano (ms)", class: "ax-label tw-font-semibold" %>
-              <%= f.number_field :poll_slow_interval_ms, class: "ax-control", min: 5000, max: 120000, step: 1000, value: @loft_poll_slow_interval_ms %>
-            </div>
-          <% end %>
-
-          <div class="loft-integration-divider"></div>
-          <%# Agendamento automático removido: sincronização Vista é MANUAL (por código ou total). %>
-
-          <div class="tw-flex tw-gap-2">
-            <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
+          <div class="loft-settings-form__actions">
+            <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
+            <%= button_tag "Testar conexão", type: "submit", form: "loft-test-connection-form", class: "ax-btn" %>
           </div>
         <% end %>
+      <% end %>
+      <%= form_with url: test_connection_admin_loft_integrations_path, method: :post, local: true, id: "loft-test-connection-form", class: "tw-hidden" do %><% end %>
 
-        <div class="tw-mt-2">
-          <%= button_to "Testar Conexão", test_connection_admin_loft_integrations_path, method: :post, class: "ax-btn ax-btn--ghost" %>
+      <%= ax_panel(title: "Comandos de sincronização", subtitle: "Ações manuais com impacto nos imóveis e arquivos.", actions: ax_badge("operação", tone: :gray)) do %>
+        <div class="loft-sync-property">
+          <%= form_with url: sync_property_admin_loft_integrations_path, method: :post, local: true do |f| %>
+            <div>
+              <%= label_tag :property_code, "Reconciliar um imóvel", class: "ax-label" %>
+              <span>Informe o código exato para processar somente um registro.</span>
+            </div>
+            <%= text_field_tag :property_code, nil, class: "ax-control", placeholder: "Ex.: 12345", inputmode: "numeric" %>
+            <%= f.submit "Reconciliar", class: "ax-btn ax-btn--primary" %>
+          <% end %>
         </div>
-      </div>
-    </div>
 
-    <div class="ax-card">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-arrow-repeat loft-integration-title-icon loft-integration-title-icon--info"></i>Controles de Sincronização</h5>
-      </div>
-      <div class="ax-card__body">
-        <%= form_with url: sync_property_admin_loft_integrations_path, method: :post, local: true, class: "tw-flex tw-items-center tw-gap-2 tw-mb-4" do |f| %>
-          <div class="tw-w-full">
-            <%= label_tag :property_code, "Código do imóvel", class: "ax-label tw-font-semibold" %>
-            <%= text_field_tag :property_code, nil, class: "ax-control", placeholder: "Ex: 12345" %>
-          </div>
-          <div>
-            <%= f.submit "Reconciliar Imóvel", class: "ax-btn ax-btn--primary" %>
-          </div>
-        <% end %>
-
-        <div class="tw-flex tw-flex-wrap tw-gap-2">
-          <%= button_to "Reconciliar Tudo pela API", sync_now_admin_loft_integrations_path, method: :post, class: "ax-btn ax-btn--primary" %>
-          <%= button_to "Reconciliar Lote", sync_batch_admin_loft_integrations_path, method: :post, class: "ax-btn ax-btn--ghost" %>
-          <%= button_to "Baixar Arquivos Pendentes", sync_images_now_admin_loft_integrations_path, method: :post, class: "ax-btn ax-btn--ghost" %>
+        <div class="loft-command-grid">
+          <%= button_to sync_now_admin_loft_integrations_path, method: :post, class: "loft-command loft-command--primary" do %>
+            <i class="bi bi-arrow-repeat"></i><span><strong>Reconciliar tudo</strong><small>Processa o catálogo completo em segundo plano.</small></span>
+          <% end %>
+          <%= button_to sync_batch_admin_loft_integrations_path, method: :post, class: "loft-command" do %>
+            <i class="bi bi-collection"></i><span><strong>Reconciliar um lote</strong><small>Executa apenas o tamanho de lote configurado.</small></span>
+          <% end %>
+          <%= button_to sync_images_now_admin_loft_integrations_path, method: :post, class: "loft-command" do %>
+            <i class="bi bi-images"></i><span><strong>Baixar arquivos pendentes</strong><small>Transfere fotos e documentos para o armazenamento.</small></span>
+          <% end %>
         </div>
-      </div>
-    </div>
-  </div>
+      <% end %>
+    </main>
 
-  <div class="ax-span-6">
-    <%= turbo_frame_tag "loft_status_panel",
-                        src: status_admin_loft_integrations_path,
-                        loading: "eager",
-                        data: {
-                          controller: "dwv-sync-status",
-                          dwv_sync_status_processing_interval_value: @loft_poll_processing_interval_ms,
-                          dwv_sync_status_idle_interval_value: @loft_poll_idle_interval_ms,
-                          dwv_sync_status_slow_interval_value: @loft_poll_slow_interval_ms
-                        } do %>
-      <%= render "status_panel" %>
-    <% end %>
+    <aside class="loft-workspace__monitor">
+      <%= turbo_frame_tag "loft_status_panel",
+                          src: status_admin_loft_integrations_path,
+                          loading: "eager",
+                          data: {
+                            controller: "dwv-sync-status",
+                            dwv_sync_status_processing_interval_value: @loft_poll_processing_interval_ms,
+                            dwv_sync_status_idle_interval_value: @loft_poll_idle_interval_ms,
+                            dwv_sync_status_slow_interval_value: @loft_poll_slow_interval_ms
+                          } do %>
+        <%= render "status_panel" %>
+      <% end %>
+    </aside>
   </div>
-<% end %>
+</div>

@@ -12,8 +12,11 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     get edit_admin_property_setting_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Config Imóveis")
-    expect(response.body).to include("Marca d'água das fotos")
+    expect(response.body).to include("Mídia e marca d'água")
+    expect(response.body).to include("property-settings-workspace")
+    expect(response.body).to include("property-settings-preview-panel")
+    expect(response.body).to include("property-settings-action-footer")
+    expect(response.body).to include("Marca d&#39;água das fotos")
     expect(response.body).to include("Tamanho da marca")
     expect(response.body).to include("Opacidade da marca")
     expect(response.body).to include("Prévia")
@@ -46,7 +49,7 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     get edit_admin_property_setting_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Imagem atual")
+    expect(response.body).to include("Arquivo atual")
     expect(response.body).to include("marca-atual.png")
     expect(response.body).to include("Remover imagem atual")
   end

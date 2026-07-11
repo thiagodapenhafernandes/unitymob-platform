@@ -6,7 +6,11 @@ class Admin::AccessAuditLogsController < Admin::BaseController
     scoped_admin_user_ids = accessible_owner_ids(:access_audit)
     scope = scope.where(admin_user_id: scoped_admin_user_ids) if scoped_admin_user_ids
 
-    scope = scope.where(event_type: params[:event_type]) if params[:event_type].present?
+    if params[:event_type].present?
+      scope = scope.where(event_type: params[:event_type])
+    else
+      scope = scope.where.not(event_type: "admin_access")
+    end
     scope = scope.where(result: params[:result]) if params[:result].present?
     scope = scope.where(admin_user_id: params[:admin_user_id]) if params[:admin_user_id].present?
     if params[:profile_id].present?

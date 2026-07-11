@@ -26,6 +26,29 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
     end)
   end
 
+  it "prioriza os blocos por impacto na identidade e na operação" do
+    get edit_admin_layout_setting_path
+
+    expect(response).to have_http_status(:ok)
+    expected_priorities = {
+      "layout-settings-panel--account-brand" => 1,
+      "layout-settings-panel--public-theme" => 2,
+      "layout-settings-panel--platform" => 3,
+      "layout-settings-panel--admin-theme" => 4,
+      "layout-settings-panel--menu-sections" => 5,
+      "layout-settings-panel--interest-intelligence" => 6
+    }
+
+    expected_priorities.each_key do |class_name|
+      expect(response.body).to include(class_name)
+    end
+
+    css = Rails.root.join("app/assets/stylesheets/admin_tailwind.css").read
+    expected_priorities.each do |class_name, priority|
+      expect(css).to include(".#{class_name} { order: #{priority}; }")
+    end
+  end
+
   describe "PATCH update" do
     it "permite configurar backgrounds estruturais do workspace administrativo" do
       patch admin_layout_setting_path, params: {
