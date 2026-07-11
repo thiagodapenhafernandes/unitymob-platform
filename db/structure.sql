@@ -1,4 +1,4 @@
-\restrict vWK5oP8NCdkOe5doqsfeRAn9c35UsGajBU4WfuhY8g4w5zBvWB41zZM1muLdIjB
+\restrict qqTUuzJrqhaiC6gtKUeVEbjqGihmS7BtgEX1ugtAqdC1qwHXAiOyZKzly1s23by
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -14,6 +14,20 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
+
 
 --
 -- Name: postgis; Type: EXTENSION; Schema: -; Owner: -
@@ -262,6 +276,23 @@ BEGIN
 
   RETURN NEW;
 END;
+$$;
+
+
+--
+-- Name: habitation_searchable_features(jsonb, jsonb, text[], text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.habitation_searchable_features(characteristics jsonb, infrastructure jsonb, unique_features text[], description text, orientation text) RETURNS text
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    AS $$
+  SELECT lower(
+    coalesce(characteristics::text, '') || ' ' ||
+    coalesce(infrastructure::text, '') || ' ' ||
+    coalesce(array_to_string(unique_features, ' '), '') || ' ' ||
+    coalesce(description, '') || ' ' ||
+    coalesce(orientation, '')
+  )
 $$;
 
 
@@ -2208,7 +2239,8 @@ CREATE TABLE public.habitations (
     permuta_outros_valor_cents integer,
     permuta_outros_descricao text,
     public_map_display_mode character varying DEFAULT 'inherit'::character varying NOT NULL,
-    public_street_view_mode character varying DEFAULT 'inherit'::character varying NOT NULL
+    public_street_view_mode character varying DEFAULT 'inherit'::character varying NOT NULL,
+    searchable_features text GENERATED ALWAYS AS (public.habitation_searchable_features(caracteristicas, infra_estrutura, caracteristica_unica, descricao_web, (face)::text)) STORED
 );
 
 
@@ -7344,7 +7376,7 @@ ALTER TABLE ONLY public.presentation_cards
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY ((ARRAY['vertical'::character varying, 'horizontal'::character varying])::text[]))) NOT VALID;
+    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY (ARRAY[('vertical'::character varying)::text, ('horizontal'::character varying)::text]))) NOT VALID;
 
 
 --
@@ -7360,7 +7392,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) OR (((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) OR (((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
 
 
 --
@@ -7368,7 +7400,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])))) NOT VALID;
+    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])))) NOT VALID;
 
 
 --
@@ -7384,7 +7416,7 @@ ALTER TABLE ONLY public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
 
 
 --
@@ -7939,6 +7971,13 @@ CREATE INDEX idx_habitations_public_development_units ON public.habitations USIN
 --
 
 CREATE INDEX idx_habitations_public_tenant_status_order ON public.habitations USING btree (tenant_id, exibir_no_site_flag, status, data_atualizacao_crm DESC, created_at DESC);
+
+
+--
+-- Name: idx_habitations_searchable_features_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_habitations_searchable_features_trgm ON public.habitations USING gin (searchable_features public.gin_trgm_ops);
 
 
 --
@@ -14246,11 +14285,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict vWK5oP8NCdkOe5doqsfeRAn9c35UsGajBU4WfuhY8g4w5zBvWB41zZM1muLdIjB
+\unrestrict qqTUuzJrqhaiC6gtKUeVEbjqGihmS7BtgEX1ugtAqdC1qwHXAiOyZKzly1s23by
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260711143000'),
 ('20260711120000'),
 ('20260710210000'),
 ('20260710134500'),
