@@ -70,6 +70,7 @@ export default class extends Controller {
     this.recentlyReorderedMedia = false
 
     this.initMediaDragAndDrop()
+    this.syncSiteVisibilityControls()
 
     // Drag and Drop
     this.element.addEventListener("pointerdown", this.boundCaptureMediaPointerDown, true)
@@ -705,6 +706,15 @@ export default class extends Controller {
     }
   }
 
+  syncSiteVisibilityControls() {
+    this.element.querySelectorAll(".media-photo-site-toggle").forEach((button) => {
+      const tile = button.closest(".media-photo-tile")
+      if (!tile) return
+
+      this.setSiteToggleButton(button, tile.dataset.siteHidden === "true")
+    })
+  }
+
   refreshPhotoBadges() {
     const items = Array.from(this.previewContainerTarget.querySelectorAll('.draggable-item'))
 
@@ -1204,6 +1214,7 @@ export default class extends Controller {
     if (replaceGallery && typeof payload.gallery_html === "string" && this.hasPreviewContainerTarget) {
       this.previewContainerTarget.innerHTML = payload.gallery_html
       this.refreshMediaDragAndDrop()
+      this.syncSiteVisibilityControls()
     }
 
     if (payload.inputs) {

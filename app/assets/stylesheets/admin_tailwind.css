@@ -15542,14 +15542,25 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
 }
 
 .habitation-form-ui .media-photo-site-toggle {
-  width: auto;
-  min-width: 26px;
+  width: auto !important;
+  min-width: 72px;
   gap: 5px;
   padding-inline: 7px;
+  overflow: visible;
   white-space: nowrap;
 }
 
+.habitation-form-ui .media-photo-site-toggle i {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 13px;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .habitation-form-ui .media-photo-site-toggle span {
+  display: inline-block;
+  flex: 0 0 auto;
   font-size: 10px;
   font-weight: 850;
 }
