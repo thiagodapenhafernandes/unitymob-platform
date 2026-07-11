@@ -21,7 +21,7 @@
               class="media-photo-site-toggle ax-media-action <%= photo_hidden_from_site ? 'ax-media-action--neutral' : 'ax-media-action--published' %>"
               title="<%= photo_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
               aria-label="<%= photo_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
-              data-action="photo-upload#toggleSiteVisibility"
+              data-action="click->photo-upload#toggleSiteVisibility"
               data-photo-id="<%= photo.id %>">
         <i class="bi <%= photo_hidden_from_site ? 'bi-eye-slash' : 'bi-globe2' %>"></i>
         <span><%= photo_hidden_from_site ? "Fora do site" : "No site" %></span>
@@ -117,7 +117,7 @@
               class="media-photo-site-toggle ax-media-action <%= picture_hidden_from_site ? 'ax-media-action--neutral' : 'ax-media-action--published' %>"
               title="<%= picture_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
               aria-label="<%= picture_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
-              data-action="photo-upload#toggleSiteVisibility"
+              data-action="click->photo-upload#toggleSiteVisibility"
               data-picture-url="<%= pic_url %>">
         <i class="bi <%= picture_hidden_from_site ? 'bi-eye-slash' : 'bi-globe2' %>"></i>
         <span><%= picture_hidden_from_site ? "Fora do site" : "No site" %></span>

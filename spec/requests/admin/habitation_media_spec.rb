@@ -174,7 +174,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     get modal_admin_habitation_media_path(habitation), headers: { "X-Requested-With" => "XMLHttpRequest" }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('data-action="photo-upload#toggleSiteVisibility"')
+    expect(response.body).to include('data-action="click-&gt;photo-upload#toggleSiteVisibility"')
     expect(response.body).to include("data-photo-upload-visibility-url-value")
     expect(response.body).to include("No site")
   end
