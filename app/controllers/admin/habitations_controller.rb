@@ -1992,14 +1992,12 @@ class Admin::HabitationsController < Admin::BaseController
     when /hidromassagem/
       scope.where(
         "COALESCE(hidromassagem_qtd, 0) > 0 OR " \
-        "(jsonb_typeof(caracteristicas) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(caracteristicas) value WHERE unaccent(lower(value)) ILIKE unaccent('%hidromassagem%'))) OR " \
-        "(jsonb_typeof(caracteristicas) = 'object' AND EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%hidromassagem%') OR unaccent(lower(kv.value)) ILIKE unaccent('%hidromassagem%')))"
+        "searchable_features LIKE '%hidromassagem%'"
       )
     when /jardim/
       scope.where(
         "garden_flag = true OR " \
-        "(jsonb_typeof(caracteristicas) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(caracteristicas) value WHERE unaccent(lower(value)) ILIKE unaccent('%jardim%'))) OR " \
-        "(jsonb_typeof(caracteristicas) = 'object' AND EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%jardim%') OR unaccent(lower(kv.value)) ILIKE unaccent('%jardim%')))"
+        "searchable_features LIKE '%jardim%'"
       )
     when /garden/
       scope.garden
@@ -2013,12 +2011,10 @@ class Admin::HabitationsController < Admin::BaseController
       scope.dependencia_empregada
     when /sacada/
       scope.where("varanda_gourmet_flag = true OR " \
-                  "(jsonb_typeof(caracteristicas) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(caracteristicas) value WHERE unaccent(lower(value)) ILIKE unaccent('%sacada%'))) OR " \
-                  "(jsonb_typeof(caracteristicas) = 'object' AND EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%sacada%') OR unaccent(lower(kv.value)) ILIKE unaccent('%sacada%')))")
+                  "searchable_features LIKE '%sacada%'")
     when /mobiliado/
       scope.where("mobiliado_flag = true OR " \
-                  "(jsonb_typeof(caracteristicas) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(caracteristicas) value WHERE unaccent(lower(value)) ILIKE unaccent('%mobiliado%'))) OR " \
-                  "(jsonb_typeof(caracteristicas) = 'object' AND EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%mobiliado%') OR unaccent(lower(kv.value)) ILIKE unaccent('%mobiliado%')))")
+                  "searchable_features LIKE '%mobiliado%'")
     when /cozinha.*gourmet.*churrasqueir/
       scope.cozinha_gourmet_churrasqueira
     when /sol.*manha/
@@ -2029,12 +2025,8 @@ class Admin::HabitationsController < Admin::BaseController
       scope.sol_dia_todo
     else
       scope.where(
-        "(jsonb_typeof(caracteristicas) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(caracteristicas) value WHERE unaccent(lower(value)) ILIKE unaccent(:pattern))) OR " \
-        "(jsonb_typeof(caracteristicas) = 'object' AND EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent(:pattern) OR unaccent(lower(kv.value)) ILIKE unaccent(:pattern))) OR " \
-        "(jsonb_typeof(infra_estrutura) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(infra_estrutura) value WHERE unaccent(lower(value)) ILIKE unaccent(:pattern))) OR " \
-        "EXISTS (SELECT 1 FROM unnest((#{Habitation::SearchScopes::UNIQUE_FEATURES_ARRAY_SQL})) AS feature WHERE unaccent(lower(feature)) ILIKE unaccent(:pattern)) OR " \
-        "unaccent(lower(COALESCE(descricao_web, ''))) ILIKE unaccent(:pattern)",
-        pattern: pattern
+        "searchable_features LIKE :pattern",
+        pattern: I18n.transliterate(pattern).downcase
       )
     end
   end

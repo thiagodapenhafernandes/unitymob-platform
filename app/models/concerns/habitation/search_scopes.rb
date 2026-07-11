@@ -472,16 +472,10 @@ module Habitation::SearchScopes
     scope :cozinha_gourmet_churrasqueira, -> {
       where(
         "(" \
-        "EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%cozinha%churrasqueir%') OR unaccent(lower(kv.value)) ILIKE unaccent('%cozinha%churrasqueir%')) OR " \
-        "EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%cozinha%gourmet%churrasqueir%') OR unaccent(lower(kv.value)) ILIKE unaccent('%cozinha%gourmet%churrasqueir%')) OR " \
-        "((" \
-        "EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%cozinha%gourmet%') OR unaccent(lower(kv.value)) ILIKE unaccent('%cozinha%gourmet%') OR unaccent(lower(kv.key)) ILIKE unaccent('%gourmet%') OR unaccent(lower(kv.value)) ILIKE unaccent('%gourmet%'))" \
-        ") AND (" \
-        "EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv WHERE unaccent(lower(kv.key)) ILIKE unaccent('%churrasqueir%') OR unaccent(lower(kv.value)) ILIKE unaccent('%churrasqueir%')) OR " \
-        "(jsonb_typeof(infra_estrutura) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(infra_estrutura) value WHERE unaccent(lower(value)) ILIKE unaccent('%churrasqueir%')))" \
-        ")) OR " \
-        "unaccent(lower(COALESCE(descricao_web, ''))) ILIKE unaccent('%cozinha%churrasqueir%') OR " \
-        "unaccent(lower(COALESCE(descricao_web, ''))) ILIKE unaccent('%gourmet%churrasqueir%')" \
+        "searchable_features LIKE '%cozinha%churrasqueir%' OR " \
+        "searchable_features LIKE '%cozinha%gourmet%churrasqueir%' OR " \
+        "((searchable_features LIKE '%cozinha%gourmet%' OR searchable_features LIKE '%gourmet%') " \
+        "AND searchable_features LIKE '%churrasqueir%')" \
         ")"
       )
     }
