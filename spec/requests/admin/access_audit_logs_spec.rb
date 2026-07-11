@@ -158,15 +158,47 @@ RSpec.describe "Admin::AccessAuditLogs", type: :request do
     expect(response.body).not_to include("Par Fora da Árvore")
   end
 
-  it "records allowed administrative page access" do
+  it "registra acesso permitido somente em área administrativa sensível" do
     sign_in admin
 
     expect {
       get admin_access_security_path
-    }.to change { AccessAuditLog.where(event_type: "admin_access", result: "allowed", admin_user: admin).count }.by(1)
+    }.to change { AccessAuditLog.where(event_type: "sensitive_access", result: "allowed", admin_user: admin).count }.by(1)
 
     log = AccessAuditLog.recent.first
     expect(log.path).to eq(admin_access_security_path)
-    expect(log.reason).to eq("Acesso administrativo permitido")
+    expect(log.reason).to eq("Acesso permitido a área sensível")
+  end
+
+  it "não registra navegação administrativa comum" do
+    sign_in admin
+
+    expect {
+      get admin_root_path
+    }.not_to change(AccessAuditLog, :count)
+  end
+
+  it "não registra navegação permitida no Field" do
+    field_user = create(:admin_user, tenant: admin.tenant, profile: admin.tenant.profiles.find_by!(key: "agent"))
+    sign_in field_user
+
+    expect {
+      get field_root_path
+    }.not_to change(AccessAuditLog, :count)
+  end
+
+  it "oculta acessos administrativos legados na visão padrão e permite filtrá-los" do
+    legacy = create(:access_audit_log, admin_user: admin, event_type: "admin_access", reason: "Ruído legado")
+    relevant = create(:access_audit_log, admin_user: admin, event_type: "login", reason: "Evento relevante")
+    sign_in admin
+
+    get admin_access_audit_logs_path
+
+    expect(response.body).to include(relevant.reason)
+    expect(response.body).not_to include(legacy.reason)
+
+    get admin_access_audit_logs_path(event_type: "admin_access")
+
+    expect(response.body).to include(legacy.reason)
   end
 end

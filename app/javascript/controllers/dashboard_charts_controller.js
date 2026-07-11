@@ -4,6 +4,7 @@ export default class extends Controller {
   static values = {
     chartUrl: String,
     leads: Array,
+    leadsMode: { type: String, default: "daily" },
     statuses: Object
   }
 
@@ -51,6 +52,8 @@ export default class extends Controller {
     if (!canvas || !window.Chart) return
 
     const labels = this.leadsValue.map(([date]) => {
+      if (this.leadsModeValue === "hourly") return date.toString()
+
       const [year, month, day] = date.toString().split("-").map((part) => Number.parseInt(part, 10))
       if (year && month && day) return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`
 

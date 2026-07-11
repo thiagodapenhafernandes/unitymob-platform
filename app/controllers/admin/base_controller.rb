@@ -1,6 +1,15 @@
 class Admin::BaseController < ApplicationController
   include Admin::ContextItems
 
+  SENSITIVE_ACCESS_AUDIT_CONTROLLERS = %w[
+    admin/access_security
+    admin/two_factor_settings
+    admin/admin_users
+    admin/profiles
+    admin/account_memberships
+    admin/system
+  ].freeze
+
   before_action :authenticate_admin_user!
   before_action :set_current_admin_user
   before_action :ensure_tenant_context_selected!
@@ -188,13 +197,15 @@ class Admin::BaseController < ApplicationController
     return unless current_admin_user
     return if @access_audit_denied
     return if request.format.json?
+    return unless response.successful? || (!request.get? && response.status < 400)
+    return unless SENSITIVE_ACCESS_AUDIT_CONTROLLERS.include?(controller_path)
 
     AccessAuditLog.log!(
-      event_type: "admin_access",
+      event_type: "sensitive_access",
       result: "allowed",
       request: request,
       admin_user: current_admin_user,
-      reason: "Acesso administrativo permitido",
+      reason: "Acesso permitido a área sensível",
       metadata: {
         response_status: response.status,
         format: request.format&.symbol

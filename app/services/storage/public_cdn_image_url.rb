@@ -2,6 +2,8 @@ require "uri"
 
 module Storage
   class PublicCdnImageUrl
+    TRANSFORM_ENQUEUE_TTL = 15.minutes
+    TRANSFORM_FAILURE_METADATA_KEY = "public_variant_failures".freeze
     SOURCE_URL_KEYS = [
       "url",
       :url,
@@ -47,6 +49,27 @@ module Storage
       source ||= options if options.present?
 
       new(source, **options).resolve
+    end
+
+    def self.transform_digest(transformations)
+      ActiveStorage::Variation.wrap(transformations).digest
+    end
+
+    def self.transform_cache_key(blob_id, transformations)
+      digest = ActiveStorage::Variation.wrap(transformations).digest
+      "storage/public_cdn_image_url/transform/queued/#{blob_id}/#{digest}"
+    end
+
+    def self.mark_transform_failed(blob:, transformations:, error:)
+      digest = transform_digest(transformations)
+
+      blob.with_lock do
+        metadata = blob.reload.metadata.to_h.deep_dup
+        failures = metadata.fetch(TRANSFORM_FAILURE_METADATA_KEY, {}).to_h
+        failures[digest] = { "error" => error.class.name, "recorded_at" => Time.current.iso8601 }
+        metadata[TRANSFORM_FAILURE_METADATA_KEY] = failures.last(10).to_h
+        blob.update!(metadata: metadata)
+      end
     end
 
     def initialize(source, **options)
@@ -123,12 +146,13 @@ module Storage
     # Quando a view pede resize, serve o variant já processado via rota de
     # representation (URL assinada; dispensa ACL pública no bucket para o blob
     # do variant). Variants ainda não processados são enfileirados
-    # (ActiveStorage::TransformJob) e a URL original do CDN segue sendo servida
+    # (Storage::TransformVariantJob) e a URL original do CDN segue sendo servida
     # até o processamento concluir — nunca processa imagem no request.
     def variant_url_for(blob)
       return if blob.blank?
       return unless variant_requested?
       return unless blob.respond_to?(:variable?) && blob.variable?
+      return if transform_failed?(blob)
 
       variant = blob.variant(**variant_transformations)
       return representation_path(variant) if variant_processed?(variant)
@@ -158,14 +182,18 @@ module Storage
       Rails.application.routes.url_helpers.rails_representation_path(variant, only_path: true)
     end
 
+    def transform_failed?(blob)
+      failures = blob.metadata.to_h.fetch(self.class::TRANSFORM_FAILURE_METADATA_KEY, {}).to_h
+      failures.key?(self.class.transform_digest(variant_transformations))
+    end
+
     def enqueue_variant_processing(blob)
-      return unless defined?(ActiveStorage::TransformJob)
+      return unless defined?(Storage::TransformVariantJob)
 
-      digest = ActiveStorage::Variation.wrap(variant_transformations).digest
-      guard_key = "storage/public_cdn_image_url/transform/#{blob.id}/#{digest}"
-      return unless Rails.cache.write(guard_key, "1", unless_exist: true, expires_in: 15.minutes)
+      queued_key = self.class.transform_cache_key(blob.id, variant_transformations)
+      return unless Rails.cache.write(queued_key, "1", unless_exist: true, expires_in: TRANSFORM_ENQUEUE_TTL)
 
-      ActiveStorage::TransformJob.perform_later(blob, variant_transformations)
+      Storage::TransformVariantJob.perform_later(blob, variant_transformations)
     rescue StandardError => e
       Rails.logger.warn("[public_cdn_image_url] transform enqueue blob_id=#{blob&.id} error=#{e.class}: #{e.message}")
       nil

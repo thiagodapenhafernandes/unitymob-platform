@@ -15,13 +15,14 @@ RSpec.describe "Admin::SchedulingIntegrations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Agenda de fotografia")
+    expect(response.body).to include("scheduling-workspace__layout")
 
     patch admin_scheduling_integration_path, params: {
       scheduling: { photography_schedule_url: "https://calendly.com/fotografias-saluteimoveis/30min" }
     }
 
     expect(response).to redirect_to(admin_scheduling_integration_path)
-    expect(Setting.get("photography_schedule_url")).to eq("https://calendly.com/fotografias-saluteimoveis/30min")
+    expect(Setting.get("photography_schedule_url", tenant: Tenant.default)).to eq("https://calendly.com/fotografias-saluteimoveis/30min")
   end
 
   it "bloqueia e libera dias da agenda interna" do
@@ -75,6 +76,6 @@ RSpec.describe "Admin::SchedulingIntegrations", type: :request do
     }
 
     expect(response).to redirect_to(admin_root_path)
-    expect(Setting.get("photography_schedule_url")).not_to eq("https://example.com/agenda")
+    expect(Setting.get("photography_schedule_url", tenant: Tenant.default)).not_to eq("https://example.com/agenda")
   end
 end

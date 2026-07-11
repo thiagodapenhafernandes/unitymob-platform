@@ -1,7 +1,7 @@
 class AccessAuditLog < ApplicationRecord
   include TenantScoped
 
-  EVENT_TYPES = %w[login logout admin_access access_denied impersonation_start impersonation_stop
+  EVENT_TYPES = %w[login logout admin_access sensitive_access access_denied impersonation_start impersonation_stop
                    two_factor_challenge two_factor_success two_factor_failed two_factor_enabled two_factor_disabled
                    account_switch membership_invited membership_accepted membership_revoked].freeze
   RESULTS = %w[allowed denied].freeze
@@ -10,6 +10,7 @@ class AccessAuditLog < ApplicationRecord
     "login" => "Login",
     "logout" => "Logout",
     "admin_access" => "Acesso administrativo",
+    "sensitive_access" => "Acesso sensível",
     "access_denied" => "Acesso negado",
     "impersonation_start" => "Início de impersonação",
     "impersonation_stop" => "Fim de impersonação",

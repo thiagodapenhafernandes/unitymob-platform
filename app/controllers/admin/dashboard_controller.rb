@@ -81,9 +81,20 @@ class Admin::DashboardController < Admin::BaseController
   end
 
   def load_charts_slice
-    @leads_last_30_days = @lead_scope.where("created_at >= ?", dashboard_window_start).count
+    @lead_date_min = dashboard_window_start.to_date
+    @lead_date_max = Date.current
+    @selected_lead_date = selected_lead_date
     @leads_by_status = @lead_scope.group(:status).count
-    @leads_per_day = leads_time_series(30, @lead_scope)
+
+    if @selected_lead_date
+      @leads_series = leads_hourly_series(@selected_lead_date, @lead_scope)
+      @leads_total = @leads_series.sum { |_, count| count }
+      @leads_chart_mode = "hourly"
+    else
+      @leads_series = leads_time_series(30, @lead_scope)
+      @leads_total = @lead_scope.where("created_at >= ?", dashboard_window_start).count
+      @leads_chart_mode = "daily"
+    end
   end
 
   def load_funnel_slice
@@ -158,6 +169,22 @@ class Admin::DashboardController < Admin::BaseController
       d = start_date + i
       [d, rows[d] || 0]
     end
+  end
+
+  def leads_hourly_series(date, scope = Lead)
+    counts = scope
+      .where(created_at: date.beginning_of_day...date.next_day.beginning_of_day)
+      .pluck(:created_at)
+      .each_with_object(Hash.new(0)) { |created_at, grouped| grouped[created_at.in_time_zone.hour] += 1 }
+
+    (0..23).map { |hour| [format("%02dh", hour), counts[hour]] }
+  end
+
+  def selected_lead_date
+    candidate = Date.iso8601(params[:lead_date].to_s)
+    return candidate if candidate.between?(dashboard_window_start.to_date, Date.current)
+  rescue Date::Error
+    nil
   end
 
   def dashboard_window_start

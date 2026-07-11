@@ -11,7 +11,6 @@ module Field
     before_action :set_current_tenant
     before_action :enforce_access_control_policy!
     before_action :enforce_two_factor_setup!
-    after_action :record_allowed_field_access
     layout "field"
 
     private
@@ -50,25 +49,6 @@ module Field
       @access_audit_denied = true
       sign_out(current_admin_user)
       redirect_to new_admin_user_session_path, alert: access_result.reason
-    end
-
-    def record_allowed_field_access
-      return unless current_admin_user
-      return if @access_audit_denied
-      return if request.format.json?
-
-      AccessAuditLog.log!(
-        event_type: "admin_access",
-        result: "allowed",
-        request: request,
-        admin_user: current_admin_user,
-        reason: "Acesso restrito permitido",
-        metadata: {
-          area: "field",
-          response_status: response.status,
-          format: request.format&.symbol
-        }.compact
-      )
     end
 
     # Exigido pelas rotas de check-in/pings/manual (não pela home).

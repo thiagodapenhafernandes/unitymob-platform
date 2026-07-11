@@ -3,14 +3,39 @@
     class="ax-dashboard-panel ax-dashboard-panel--wide"
     data-controller="dashboard-charts"
     data-dashboard-charts-chart-url-value="<%= asset_path("chart.umd.min.js") %>"
-    data-dashboard-charts-leads-value="<%= json_escape(@leads_per_day.to_json) %>"
+    data-dashboard-charts-leads-value="<%= json_escape(@leads_series.to_json) %>"
+    data-dashboard-charts-leads-mode-value="<%= @leads_chart_mode %>"
     data-dashboard-charts-statuses-value="<%= json_escape(@leads_by_status.to_json) %>">
     <div class="ax-dashboard-panel__header">
       <div>
         <span class="ax-dashboard-panel__eyebrow">Aquisição</span>
-        <h2><%= @is_admin_view ? "Leads — últimos 30 dias" : "Meus leads — últimos 30 dias" %></h2>
+        <h2>
+          <% if @selected_lead_date %>
+            <%= @is_admin_view ? "Leads por hora" : "Meus leads por hora" %> — <%= l(@selected_lead_date, format: :short) %>
+          <% else %>
+            <%= @is_admin_view ? "Leads — últimos 30 dias" : "Meus leads — últimos 30 dias" %>
+          <% end %>
+        </h2>
       </div>
-      <%= ax_badge("#{@leads_last_30_days} total", tone: :blue) %>
+      <div class="ax-dashboard-panel__actions">
+        <%= form_with url: admin_dashboard_section_path("charts"), method: :get, class: "ax-dashboard-hour-filter", data: { turbo_frame: "admin_dashboard_charts" } do %>
+          <i class="bi bi-calendar3" aria-hidden="true"></i>
+          <%= date_field_tag :lead_date,
+                @selected_lead_date&.iso8601,
+                class: "ax-control",
+                min: @lead_date_min.iso8601,
+                max: @lead_date_max.iso8601,
+                aria: { label: "Selecionar dia para visualizar conversões por hora" },
+                onchange: "this.form.requestSubmit()" %>
+        <% end %>
+        <% if @selected_lead_date %>
+          <%= link_to "30 dias",
+                admin_dashboard_section_path("charts"),
+                class: "ax-btn ax-btn--sm",
+                data: { turbo_frame: "admin_dashboard_charts" } %>
+        <% end %>
+        <%= ax_badge("#{@leads_total} total", tone: :blue) %>
+      </div>
     </div>
     <div class="ax-dashboard-chart ax-dashboard-chart--line">
       <canvas id="leadsChart"></canvas>
