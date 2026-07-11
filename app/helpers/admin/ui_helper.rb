@@ -154,13 +154,16 @@ module Admin::UiHelper
     )
   end
 
-  def ax_panel(title: nil, subtitle: nil, actions: nil, class_name: nil, body: nil, &block)
+  def ax_panel(title: nil, subtitle: nil, actions: nil, class_name: nil, collapsible: false, collapsed: false, collapse_id: nil, body: nil, &block)
     render(
       "admin/shared/ui/panel",
       title:,
       subtitle:,
       actions:,
       class_name:,
+      collapsible:,
+      collapsed:,
+      collapse_id:,
       body: block_given? ? capture(&block) : body
     )
   end

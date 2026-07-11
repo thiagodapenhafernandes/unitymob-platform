@@ -4004,7 +4004,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   margin: 0 0 8px !important;
   padding: 0 !important;
   border: 1px solid var(--nav-section-border, #7b8797);
-  box-shadow: inset 2px 0 0 var(--nav-section-border,#7b8797);
+  box-shadow: var(--nav-section-shadow, inset 2px 0 0 #365F8F);
   border-radius: 6px;
   background: color-mix(in srgb, var(--nav-section-background, #7b8797) var(--nav-section-background-opacity, 30%), transparent);
   color: var(--nav-section-text, #7b8797);
@@ -4062,7 +4062,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
     border-color 120ms var(--ax-motion-ease);
 }
 .ax-nav__section-items.is-visible {
-  padding: 2px 4px 6px;
+  padding: 2px 4px 2px 5px;
   border-top-color: color-mix(in srgb, var(--nav-section-border, #7b8797) 24%, transparent);
   opacity: 1;
   transform: translateY(0);
@@ -4565,6 +4565,37 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 .ax-panel__body {
   min-width: 0;
   padding: 12px;
+}
+
+.ax-panel--collapsible:not(.is-open) > .ax-panel__header { border-bottom-color: transparent; }
+.ax-panel__trigger {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ax-panel__heading { min-width: 0; flex: 1; }
+.ax-panel__chevron {
+  flex: none;
+  color: #7b8797;
+  font-size: 12px;
+  transition: transform var(--ax-motion-fast) var(--ax-motion-ease);
+}
+.ax-panel--collapsible.is-open .ax-panel__chevron { transform: rotate(180deg); }
+.ax-panel--collapsible > .ax-panel__body {
+  transition: max-height var(--ax-motion-base) var(--ax-motion-ease), opacity var(--ax-motion-fast) var(--ax-motion-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-panel__chevron,
+  .ax-panel--collapsible > .ax-panel__body { transition: none !important; }
 }
 
 .ax-toolbar-compact {
@@ -5315,6 +5346,7 @@ textarea.ax-control,
   border-left: 4px solid var(--nav-section-border, #7b8797);
   border-radius: 6px;
   background: color-mix(in srgb, var(--nav-section-background, #7b8797) var(--nav-section-background-opacity, 30%), transparent);
+  box-shadow: var(--nav-section-shadow, inset 2px 0 0 #365F8F);
   color: var(--nav-section-text, #7b8797);
   font-size: 10px;
   font-weight: 800;

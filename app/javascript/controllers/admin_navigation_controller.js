@@ -21,6 +21,7 @@ export default class extends Controller {
     this.boundBeforeFrameRender = this.handleTurboBeforeFrameRender.bind(this)
     this.boundRender = this.handleTurboRender.bind(this)
     this.boundLoad = this.handlePageReady.bind(this)
+    this.boundSubmitEnd = this.handleTurboSubmitEnd.bind(this)
     this.boundBeforeCache = this.hideNow.bind(this)
     this.boundPageShow = this.handlePageReady.bind(this)
     this.boundNavError = this.hideNow.bind(this)
@@ -31,6 +32,7 @@ export default class extends Controller {
     document.addEventListener("turbo:before-frame-render", this.boundBeforeFrameRender)
     document.addEventListener("turbo:load", this.boundLoad)
     document.addEventListener("turbo:render", this.boundRender)
+    document.addEventListener("turbo:submit-end", this.boundSubmitEnd)
     document.addEventListener("turbo:before-cache", this.boundBeforeCache)
     // Falhas/abortos de navegação que NÃO disparam turbo:load — sem estes, o
     // overlay ficava preso ("Preparando workspace administrativo").
@@ -38,9 +40,10 @@ export default class extends Controller {
     document.addEventListener("turbo:frame-missing", this.boundNavError)
     window.addEventListener("pageshow", this.boundPageShow)
 
-    if (!document.documentElement.classList.contains("ax-admin-is-loading")) {
-      this.handlePageReady()
-    }
+    // O overlay é turbo-permanent e pode chegar ao novo controller ainda com
+    // o estado da página anterior. Ao conectar, o DOM atual já está pronto e
+    // qualquer loading herdado deve ser encerrado imediatamente.
+    this.handlePageReady()
   }
 
   disconnect() {
@@ -50,6 +53,7 @@ export default class extends Controller {
     document.removeEventListener("turbo:before-frame-render", this.boundBeforeFrameRender)
     document.removeEventListener("turbo:load", this.boundLoad)
     document.removeEventListener("turbo:render", this.boundRender)
+    document.removeEventListener("turbo:submit-end", this.boundSubmitEnd)
     document.removeEventListener("turbo:before-cache", this.boundBeforeCache)
     document.removeEventListener("turbo:fetch-request-error", this.boundNavError)
     document.removeEventListener("turbo:frame-missing", this.boundNavError)
@@ -98,6 +102,13 @@ export default class extends Controller {
     if (document.documentElement.hasAttribute("data-turbo-preview")) return
 
     this.markRendered()
+    window.requestAnimationFrame(() => this.handlePageReady())
+  }
+
+  handleTurboSubmitEnd() {
+    // Com redirect, erro de validação ou resposta sem nova visita, o submit já
+    // terminou e não deve manter o workspace bloqueado esperando turbo:load.
+    this.handlePageReady()
   }
 
   handlePageReady() {
