@@ -131,6 +131,26 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(Storage::TransformVariantJob).not_to have_received(:perform_later)
   end
 
+  it "persiste a quarentena no metadata compartilhado do blob" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("image"),
+      filename: "foto-integridade.jpg",
+      content_type: "image/jpeg"
+    )
+    transformations = { resize_to_fill: [640, 480] }
+
+    described_class.mark_transform_failed(
+      blob: blob,
+      transformations: transformations,
+      error: ActiveStorage::IntegrityError.new
+    )
+
+    digest = described_class.transform_digest(transformations)
+    failure = blob.reload.metadata.dig(described_class::TRANSFORM_FAILURE_METADATA_KEY, digest)
+    expect(failure).to include("error" => "ActiveStorage::IntegrityError")
+    expect(failure.fetch("recorded_at")).to be_present
+  end
+
   it "gera path relativo para representation sem exigir host default" do
     variant = instance_double(ActiveStorage::VariantWithRecord)
 
