@@ -1,14 +1,28 @@
 <h1 class="wizard-section-title"><i class="bi bi-key-fill tw-text-primary" style="margin-right:.5rem;"></i>Visitação e chaves</h1>
 <p class="wizard-section-subtitle">Para agendar visitas: onde estão as chaves, senhas, melhores dias.</p>
 
+<div data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
 <div class="wizard-field-group">
   <%= f.label :chaves_com, "Chaves com quem?", class: "ax-label" %>
   <span class="required-star">*</span>
   <%= f.select :chaves_com,
-               [["Com o corretor", "corretor"], ["Com o proprietário", "proprietario"], ["Na portaria", "portaria"], ["Outro", "outro"]],
+               Habitation::CAPTACAO_KEY_LOCATION_OPTIONS.map { |value, label| [label, value] },
                { include_blank: "—" },
-               class: field_state.call(:chaves_com, "ax-control") %>
+               class: field_state.call(:chaves_com, "ax-control"),
+               data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } %>
   <% if field_invalid.call(:chaves_com) %><div class="invalid-feedback d-block">Informe onde estão as chaves.</div><% end %>
+</div>
+
+<div class="wizard-field-group" data-conditional-reveal-target="panel" data-conditional-reveal-values="outro" hidden>
+  <%= f.label :key_location_notes, "Onde estão as chaves?", class: "ax-label" %>
+  <%= f.text_field :key_location_notes, class: "ax-control", placeholder: "Informe com quem ou onde retirar", data: { conditional_required: "true" } %>
+</div>
+
+<div data-conditional-reveal-target="panel" data-conditional-reveal-values="zelador" hidden>
+  <%= ax_field_grid do %>
+    <div class="ax-span-6"><div class="wizard-field-group"><%= f.label :zelador_nome, "Nome do zelador", class: "ax-label" %><%= f.text_field :zelador_nome, class: "ax-control" %></div></div>
+    <div class="ax-span-6"><div class="wizard-field-group"><%= f.label :zelador_telefone, "Telefone do zelador", class: "ax-label" %><%= f.telephone_field :zelador_telefone, class: "ax-control", data: { controller: "phone-input" } %></div></div>
+  <% end %>
 </div>
 
 <div class="wizard-field-group">
@@ -27,7 +41,7 @@
 </div>
 
 <%= ax_field_grid do %>
-  <div class="ax-span-6">
+  <div class="ax-span-6" data-conditional-reveal-target="panel" data-conditional-reveal-values="portaria" hidden>
     <div class="wizard-field-group">
       <%= f.label :senha_imovel, "Senha do imóvel", class: "ax-label" %>
       <%= f.text_field :senha_imovel, class: "ax-control", autocomplete: "off" %>
@@ -40,6 +54,7 @@
     </div>
   </div>
 <% end %>
+</div>
 
 <div class="wizard-field-group">
   <%= f.label :observacoes, "Observações gerais", class: "ax-label" %>

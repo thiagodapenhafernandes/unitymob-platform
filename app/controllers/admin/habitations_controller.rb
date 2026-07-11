@@ -888,7 +888,7 @@ class Admin::HabitationsController < Admin::BaseController
   def load_filter_data
     tenant_habitations = current_tenant.habitations
 
-    cached = Rails.cache.fetch("admin/habitations/filter_data/v5/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
+    cached = Rails.cache.fetch("admin/habitations/filter_data/v6/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
       city_sql = "COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), ''))"
       neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), ''))"
       commercial_neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro_comercial), ''), NULLIF(TRIM(habitations.bairro_comercial), ''))"
@@ -916,13 +916,13 @@ class Admin::HabitationsController < Admin::BaseController
                                       .pluck(Arel.sql(commercial_neighborhood_sql))
                                       .reject { |name| excluded_commercial_neighborhood?(name) }
                                       .sort,
-        statuses: (
+        statuses: (["Todos"] + (
           Habitation::STATUS_OPTIONS +
           tenant_habitations.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
                              .distinct
-                             .pluck(:status) +
-          ["Ambos"]
-        ).compact_blank.uniq.sort_by { |status| I18n.transliterate(status).downcase },
+                             .pluck(:status)
+        ).compact_blank.uniq.reject { |status| status.in?(["Ambos", "Lançamento"]) }
+          .sort_by { |status| I18n.transliterate(status).downcase }),
         key_locations: (Habitation::KEY_LOCATION_OPTIONS + existing_key_locations).uniq,
         empreendimentos: filter_empreendimento_options,
         amenities: (
@@ -1419,22 +1419,15 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def pending_intake_review_scope(scope)
-    scope = scope.broker_intakes.where(intake_status: pending_review_visible_statuses)
+    scope = scope.broker_intakes.where(intake_status: "submitted_for_admin_review")
 
     if can_review_intakes?
       return restrict_pending_review_to_manager_team(scope) if current_admin_user&.can_view_team?(:captacoes) && !owns_all_resource?(:captacoes) && !tenant_owner?
 
       scope
     else
-      scope_for_current_user_properties(scope.where(intake_status: "admin_approved"))
+      scope_for_current_user_properties(scope)
     end
-  end
-
-  def pending_review_visible_statuses
-    return Habitation::PENDING_WORKFLOW_INTAKE_STATUSES if tenant_owner?
-    return %w[submitted_for_admin_review] if can_review_intakes?
-
-    %w[admin_approved]
   end
 
   def normalized_report_type
@@ -1898,17 +1891,15 @@ class Admin::HabitationsController < Admin::BaseController
   def apply_status_filter(scope, raw_statuses)
     statuses = Array(raw_statuses).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
     return scope.where.not("unaccent(TRIM(habitations.status)) = unaccent(?)", "Suspenso") if statuses.blank?
+    return scope if statuses.any? { |status| I18n.transliterate(status).downcase == "todos" }
 
-    include_both = statuses.any? { |status| I18n.transliterate(status).downcase == "ambos" }
     normalized_statuses = statuses
-      .reject { |status| I18n.transliterate(status).downcase.in?(%w[todos ambos]) }
       .map { |status| Habitation.normalize_status(status) }
       .compact_blank
       .uniq
 
     conditions = normalized_statuses.map { "unaccent(TRIM(habitations.status)) = unaccent(?)" }
     values = normalized_statuses.dup
-    conditions << "(habitations.valor_venda_cents > 0 AND habitations.valor_locacao_cents > 0)" if include_both
     return scope if conditions.blank?
 
     scope.where(conditions.join(" OR "), *values)

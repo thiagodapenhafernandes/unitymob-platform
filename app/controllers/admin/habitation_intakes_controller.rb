@@ -992,7 +992,7 @@ module Admin
         :aceita_permuta_veiculo_flag, :aceita_permuta_imovel_flag, :aceita_permuta_outros_flag,
         :mobiliado_flag, :exclusivo_flag, :ocupacao_status, :estado_conservacao,
         :andar, :ano_construcao, :demi_suites_qtd, :numero_box, :tipo_vaga,
-        :dimensoes_terreno, :topografia, :key_location, :key_location_notes,
+        :dimensoes_terreno, :topografia, :key_location, :key_location_notes, :zelador_nome, :zelador_telefone,
         :corretor_nome, :corretor_telefone, :corretor_email, :ordered_photo_ids,
         :zip_code, :street, :street_number, :neighborhood, :city, :state, :complemento, :edificio_nome, :unidade_numero,
         :lote, :quadra,
@@ -1152,12 +1152,7 @@ module Admin
 
 
     def key_location_from_captacao_value(value)
-      {
-        "corretor" => "Corretor(a)",
-        "proprietario" => "Proprietário",
-        "portaria" => "Portaria",
-        "outro" => "Outro"
-      }[value.to_s]
+      Habitation::CAPTACAO_KEY_LOCATION_OPTIONS[value.to_s]
     end
 
     def upsert_captacao_note(text, label, value)

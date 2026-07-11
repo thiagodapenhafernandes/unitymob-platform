@@ -456,6 +456,21 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(intake.observacoes).to eq("Observação livre")
   end
 
+  it "renderiza todas as opções e campos dinâmicos de localização das chaves" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "visitas", codigo: "KEY-OPTIONS-#{SecureRandom.hex(6)}")
+
+    get edit_admin_captacao_path(intake, step: "visitas")
+
+    expect(response).to have_http_status(:ok)
+    Habitation::CAPTACAO_KEY_LOCATION_OPTIONS.each do |value, label|
+      expect(response.body).to include(%(value="#{value}"))
+      expect(response.body).to include(label)
+    end
+    expect(response.body).to include("Onde estão as chaves?")
+    expect(response.body).to include("Nome do zelador")
+    expect(response.body).to include('data-conditional-reveal-values="portaria"')
+  end
+
   it "salva extras de terreno do wizard em campos estruturados" do
     intake = create(:habitation, :broker_intake, admin_user: admin, categoria: "Terreno", intake_step: "caracteristicas")
 
