@@ -178,7 +178,7 @@
           <strong>Tipo e status</strong>
         </div>
         <div class="ax-span-2">
-          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :status, label: "Status", choices: @filter_statuses, select_options: { include_blank: "Todos", selected: params[:status] }, placeholder: "Todos") %>
+          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :status, label: "Status", choices: options_for_select(@filter_statuses, @statuses), select_options: {}, multiple: true, placeholder: "Todos", html_options: { class: "filter-multi-compact" }) %>
         </div>
         <div class="ax-span-2">
           <%= ax_autocomplete_select_field(clearable: true, form: f, method: :categoria, label: "Categoria", choices: @filter_categories, select_options: { include_blank: "Todas", selected: params[:categoria] }, placeholder: "Todas") %>

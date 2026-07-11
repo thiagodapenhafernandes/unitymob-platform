@@ -1870,6 +1870,20 @@ RSpec.describe "Admin::Habitations", type: :request do
     end
   end
 
+  it "permite selecionar e combinar mais de um status no catálogo" do
+    sale = create(:habitation, status: "Venda", codigo: "MULTI-STATUS-VENDA")
+    suspended = create(:habitation, status: "Suspenso", motivo_suspensao: "Teste do filtro", codigo: "MULTI-STATUS-SUSPENSO")
+    create(:habitation, status: "Pendente", codigo: "MULTI-STATUS-FORA")
+
+    get admin_habitations_path, params: { status: ["Venda", "Suspenso"] }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(sale.codigo)
+    expect(response.body).to include(suspended.codigo)
+    expect(response.body).not_to include("MULTI-STATUS-FORA")
+    expect(response.body).to include("Status: Venda, Suspenso")
+  end
+
   it "mantém o modal de exportação fora do preloader de navegação global" do
     export = admin.habitation_exports.create!(
       status: "completed",

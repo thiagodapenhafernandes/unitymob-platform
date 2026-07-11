@@ -10059,7 +10059,14 @@ body.ax-scheduling-settings-workspace .ax-sidebar-contextbar { position: fixed; 
 .scheduling-settings-workspace { --ax-workspace-aside-w: clamp(360px, 29vw, 470px); --ax-workspace-aside-collapsed-w: var(--ax-sidebar-compact-w, 60px); height: 100%; min-height: 0; border: 0; border-radius: 0; background: var(--admin-workspace-bg, #eef2f7); }
 .scheduling-main-pane { grid-template-rows: var(--ax-contextbar-h, 48px) minmax(0, 1fr); min-height: 0; overflow: hidden; }
 .scheduling-middle-contextbar { border: 0; border-bottom: 1px solid #d8dee8; border-radius: 0; }
-.scheduling-main-body { min-height: 0; padding: var(--ax-workspace-gutter, 12px); overflow: auto; background: var(--admin-workspace-bg, #eef2f7); }
+.ax-workspace-main__body.scheduling-main-body {
+  min-height: 0;
+  padding: var(--ax-workspace-gutter, 12px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--admin-workspace-bg, #eef2f7);
+}
 .scheduling-main-stack, .scheduling-aside-body { display: grid; gap: 10px; min-width: 0; }
 .scheduling-aside-body { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px; overflow-x: hidden; background: var(--admin-workspace-bg, #eef2f7); }
 .scheduling-settings-aside { min-height: 0; overflow: hidden; }
@@ -10097,7 +10104,7 @@ body.ax-scheduling-settings-workspace .ax-sidebar-contextbar { position: fixed; 
   body.ax-scheduling-settings-workspace .ax-main { position: static; overflow: visible; }
   .scheduling-settings-workspace { display: block; height: auto; overflow: visible; }
   .scheduling-main-pane, .scheduling-settings-aside { height: auto; overflow: visible; }
-  .scheduling-main-body { overflow: visible; }
+  .ax-workspace-main__body.scheduling-main-body { overflow: visible; }
   .scheduling-settings-aside { margin-top: 8px; border-top: 1px solid #d8dee8; }
 }
 @media (max-width: 760px) { .scheduling-property-layout { grid-template-columns: 1fr; } }
