@@ -58,7 +58,6 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 
 #### Pendente
 
-- concluir a análise dos quatro ErrorEvents históricos de mídia ainda abertos;
 - acompanhar as primeiras execuções do CI e ajustar dependências de ambiente, se necessário;
 - avaliar gráficos de tendência longa depois de existir volume histórico suficiente.
 
@@ -73,10 +72,23 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 - eventos `58` a `64`, exceto o `57`, também foram encerrados após confirmação
   das correções de host para URLs, qualificação de `created_at` na auditoria e
   remoção da consulta manual ao atributo inexistente `error_class`;
-- quatro fingerprints permanecem abertos por cautela: dois arquivos ausentes,
+- quatro fingerprints permaneceram abertos naquela etapa por cautela: dois arquivos ausentes,
   uma transformação de imagem não suportada e uma falha de integridade de mídia.
   Esses eventos dependem de validação dos blobs e do fluxo de transformação antes
   de qualquer encerramento.
+
+#### Reconciliação de mídia de 12 de julho de 2026
+
+- os quatro fingerprints restantes foram rastreados até os imóveis `7873`, `4088`
+  e `6994`;
+- 38 objetos ausentes foram recuperados uma única vez da origem legada e gravados
+  no storage próprio, sem fallback ou dependência de runtime;
+- dois vínculos sem objeto e sem origem recuperável foram removidos do imóvel
+  `7873`, que permaneceu com 17 fotos válidas;
+- variantes foram processadas com sucesso para os blobs restaurados e para a foto
+  social do imóvel `6994`;
+- os quatro eventos de mídia foram encerrados após a validação e o rastreador ficou
+  sem fingerprints abertos.
 
 ### Critério de conclusão do Grupo 1
 
