@@ -386,7 +386,6 @@ module Admin
     end
 
     def build_intake_preview
-      setting = PropertySetting.instance(tenant: current_tenant)
       current_tenant.habitations.new(
         admin_user: current_admin_user,
         intake_origin: Habitation::INTAKE_ORIGIN_BROKER,
@@ -396,9 +395,7 @@ module Admin
         status: default_status,
         tipo: "Unitário",
         foto_classificacao: "Não tem fotos",
-        intake_modalidade: default_modalidade,
-        intake_review_policy_version: setting.review_policy_version,
-        intake_review_policy_snapshot: setting.review_policy_snapshot
+        intake_modalidade: default_modalidade
       ).tap do |habitation|
         habitation.assign_attributes(initial_intake_params) if params[:habitation].present?
       end
@@ -430,13 +427,13 @@ module Admin
     end
 
     def target_broker_capture_status
-      return "admin_approved" unless @habitation.effective_broker_capture_layer_enabled?(fallback_setting: @property_setting)
+      return "admin_approved" unless @property_setting&.broker_capture_layer_enabled
 
       "submitted_for_admin_review"
     end
 
     def active_broker_capture_checks
-      @habitation&.effective_intake_review_checks(fallback_setting: @property_setting) || @property_setting&.active_broker_capture_checks
+      @property_setting&.active_broker_capture_checks
     end
 
     def intake_check_enabled?(key)
