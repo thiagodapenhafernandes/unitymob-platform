@@ -98,6 +98,7 @@ Rails.application.routes.draw do
     resource :footer_setting, only: [:edit, :update]
     resource :property_setting, only: [:edit, :update] do
       get :review_workflow
+      patch :restore_review_policy
     end
     resources :webhook_settings do
       post :test, on: :member

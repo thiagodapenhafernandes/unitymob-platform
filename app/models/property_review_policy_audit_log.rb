@@ -4,7 +4,7 @@ class PropertyReviewPolicyAuditLog < ApplicationRecord
   belongs_to :admin_user
 
   validates :version, numericality: { only_integer: true, greater_than: 0 }
-  validates :changeset, :impact_snapshot, presence: true
+  validates :changeset, :impact_snapshot, :policy_snapshot, presence: true
   validate :associations_share_tenant
 
   scope :recent, -> { order(created_at: :desc) }

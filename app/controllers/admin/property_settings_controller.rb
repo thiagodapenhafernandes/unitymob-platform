@@ -69,6 +69,31 @@ module Admin
       set_review_workflow_context
     end
 
+    def restore_review_policy
+      audit = @property_setting.review_policy_audit_logs.find(params[:audit_id])
+      raise ActiveRecord::RecordNotFound, "Versão sem snapshot restaurável" if audit.policy_snapshot.blank?
+
+      before_snapshot = PropertyReviewPolicy::ChangeRecorder.snapshot(@property_setting)
+      impact_snapshot = PropertyReviewPolicy::ImpactReport.call(tenant: current_tenant, setting: @property_setting)
+      @property_setting.assign_attributes(audit.policy_snapshot.slice(*PropertyReviewPolicy::ChangeRecorder::TRACKED_FIELDS))
+      proposal = PropertyReviewPolicy::ProposalReport.call(before_snapshot: before_snapshot, proposed_setting: @property_setting, impact_snapshot: impact_snapshot)
+
+      if proposal["requires_operational_confirmation"] && !operational_impact_confirmed?
+        redirect_to review_workflow_admin_property_setting_path, alert: "Confirme o impacto operacional antes de restaurar esta política."
+        return
+      end
+
+      PropertySetting.transaction do
+        @property_setting.save!
+        PropertyReviewPolicy::ChangeRecorder.call(setting: @property_setting, admin_user: current_admin_user, before_snapshot: before_snapshot, impact_snapshot: impact_snapshot)
+        reassign_broker_intakes_to_fallback_admin_user! if before_snapshot["broker_capture_layer_enabled"] && !@property_setting.broker_capture_layer_enabled?
+      end
+
+      redirect_to review_workflow_admin_property_setting_path, notice: "Política v#{audit.version} restaurada como uma nova versão."
+    rescue ActiveRecord::RecordInvalid => error
+      redirect_to review_workflow_admin_property_setting_path, alert: "Não foi possível restaurar a política: #{error.record.errors.full_messages.to_sentence}."
+    end
+
     def set_review_workflow_context
       @required_check_labels = @property_setting.active_broker_capture_checks.map do |key|
         PropertySetting::BROKER_INTAKE_CHECK_OPTIONS[key.to_s] || key

@@ -132,6 +132,8 @@ posterior e não bloqueiam o grupo.
 - o administrador pode simular e comparar a proposta com a política vigente sem salvar;
 - mudanças que desligam a revisão e impactam captações exigem confirmação explícita
   validada no backend antes de qualquer reatribuição.
+- versões auditadas com snapshot podem ser restauradas com segurança como uma nova
+  versão, sem reescrever o histórico nem alterar regras de captações já iniciadas.
 
 #### Pendente de produção
 
@@ -142,7 +144,6 @@ posterior e não bloqueiam o grupo.
 
 - exigir confirmação reforçada para outras mudanças futuras de etapa além da
   desativação da revisão;
-- oferecer restauração segura de uma versão anterior como uma nova versão.
 
 #### Pendente — prioridade média
 

@@ -128,7 +128,61 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(audit).to have_attributes(tenant_id: admin.tenant_id, admin_user_id: admin.id, version: 2)
     expect(audit.changeset).to include("notify_internal_review_events")
     expect(audit.impact_snapshot).to include("in_progress" => 1, "awaiting_review" => 1)
+    expect(audit.policy_snapshot).to include("notify_internal_review_events" => false)
     expect(intake.reload.intake_status).to eq("submitted_for_admin_review")
+  end
+
+  it "restaura uma política auditada como nova versão sem reescrever o histórico" do
+    admin = create(:admin_user, :admin)
+    setting = PropertySetting.instance
+    sign_in admin
+
+    patch admin_property_setting_path, params: {
+      property_setting: { notify_internal_review_events: "false", required_broker_intake_checks: %w[proprietario fotos] }
+    }
+    version_to_restore = PropertyReviewPolicyAuditLog.last
+
+    patch admin_property_setting_path, params: {
+      property_setting: { notify_internal_review_events: "true", required_broker_intake_checks: %w[proprietario endereco fotos] }
+    }
+    expect(setting.reload.review_policy_version).to eq(3)
+
+    expect do
+      patch restore_review_policy_admin_property_setting_path, params: {
+        audit_id: version_to_restore.id,
+        confirm_operational_impact: "true"
+      }
+    end.to change(PropertyReviewPolicyAuditLog, :count).by(1)
+
+    expect(response).to redirect_to(review_workflow_admin_property_setting_path)
+    expect(setting.reload).to have_attributes(review_policy_version: 4, notify_internal_review_events: false)
+    expect(setting.required_broker_intake_checks).to match_array(%w[proprietario fotos])
+    expect(PropertyReviewPolicyAuditLog.last.policy_snapshot).to include("notify_internal_review_events" => false)
+    expect(version_to_restore.reload.version).to eq(2)
+  end
+
+  it "não permite restaurar auditoria de política de outro tenant" do
+    admin = create(:admin_user, :admin)
+    other_tenant = Tenant.create!(name: "Outro fluxo #{SecureRandom.hex(3)}", slug: "outro-fluxo-#{SecureRandom.hex(3)}")
+    other_admin = create(:admin_user, :admin, tenant: other_tenant)
+    other_setting = PropertySetting.create!(tenant: other_tenant)
+    other_audit = PropertyReviewPolicyAuditLog.create!(
+      tenant: other_tenant,
+      property_setting: other_setting,
+      admin_user: other_admin,
+      version: 2,
+      changeset: { "notify_internal_review_events" => { "before" => true, "after" => false } },
+      impact_snapshot: { "in_progress" => 0 },
+      policy_snapshot: PropertyReviewPolicy::ChangeRecorder.snapshot(other_setting)
+    )
+    sign_in admin
+
+    expect do
+      patch restore_review_policy_admin_property_setting_path, params: { audit_id: other_audit.id, confirm_operational_impact: "true" }
+    end.not_to change(PropertyReviewPolicyAuditLog, :count)
+
+    expect(response).to have_http_status(:not_found)
+    expect(PropertySetting.instance.review_policy_version).to eq(1)
   end
 
   it "não cria nova versão quando apenas a marca d'água muda" do

@@ -253,6 +253,14 @@
                       <strong><%= audit.admin_user.name %></strong>
                       <span><%= l(audit.created_at, format: :short) %> · <%= audit.changeset.size %> campo(s)</span>
                       <span><%= audit.impact_snapshot["in_progress"].to_i %> captação(ões) em andamento</span>
+                      <% if audit.policy_snapshot.present? && audit.version != @property_setting.review_policy_version %>
+                        <%= button_to "Restaurar como nova versão",
+                              restore_review_policy_admin_property_setting_path,
+                              method: :patch,
+                              params: { audit_id: audit.id, confirm_operational_impact: true },
+                              class: "ax-btn ax-btn--sm ax-btn--secondary",
+                              form: { data: { turbo_confirm: "Restaurar a política v#{audit.version} como uma nova versão? Captações já iniciadas manterão suas regras originais." } } %>
+                      <% end %>
                     </div>
                   </li>
                 <% end %>

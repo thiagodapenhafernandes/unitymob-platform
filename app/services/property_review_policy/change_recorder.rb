@@ -19,7 +19,7 @@ module PropertyReviewPolicy
       return if changeset.empty?
 
       setting.increment!(:review_policy_version)
-      PropertyReviewPolicyAuditLog.create!(tenant: setting.tenant, property_setting: setting, admin_user: admin_user, version: setting.review_policy_version, changeset: changeset, impact_snapshot: impact_snapshot)
+      PropertyReviewPolicyAuditLog.create!(tenant: setting.tenant, property_setting: setting, admin_user: admin_user, version: setting.review_policy_version, changeset: changeset, impact_snapshot: impact_snapshot, policy_snapshot: after_snapshot)
     end
   end
 end
