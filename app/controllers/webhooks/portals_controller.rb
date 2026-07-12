@@ -142,7 +142,7 @@ module Webhooks
       if PortalListingState.column_names.include?("tenant_id") && webhook_tenant.present?
         PortalListingState.where(tenant: webhook_tenant)
       else
-        PortalListingState.all
+        PortalListingState.none
       end
     end
 

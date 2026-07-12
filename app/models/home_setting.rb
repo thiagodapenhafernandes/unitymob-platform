@@ -1,4 +1,5 @@
 class HomeSetting < ApplicationRecord
+  include TenantScoped
   # ActiveStorage attachments
   has_one_attached :hero_background_desktop
   has_one_attached :hero_background_mobile
@@ -26,8 +27,10 @@ class HomeSetting < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 12, less_than_or_equal_to: 36, allow_blank: true }
   
   # Singleton pattern - só existe um registro
-  def self.instance
-    first_or_create!(
+  def self.instance(tenant: Current.tenant || Tenant.public_for)
+    raise ArgumentError, "Tenant obrigatório para configurações da home" if tenant.blank?
+
+    where(tenant: tenant).first_or_create!(
       hero_title: "Compre ou alugue na imobiliária mais amada de Balneário Camboriú.",
       hero_subtitle: "Aqui o lar é o centro das grandes histórias da vida.",
       cta_title: "Pronto para Encontrar Seu Imóvel?",

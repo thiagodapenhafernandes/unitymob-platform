@@ -87,7 +87,14 @@ module Habitations
     end
 
     def blob_for_photo_upload(upload, index)
-      return ActiveStorage::Blob.find_signed!(upload) if upload.is_a?(String)
+      if upload.is_a?(String)
+        blob = ActiveStorage::Blob.find_signed!(upload)
+        blob_tenant_id = blob.metadata.to_h["tenant_id"].to_s
+        raise ActiveRecord::RecordNotFound, "Blob não pertence ao tenant" unless blob_tenant_id == habitation.tenant_id.to_s
+        raise ActiveRecord::RecordNotFound, "Blob já está vinculado" if blob.attachments.exists?
+
+        return blob
+      end
 
       Storage::BlobFactory.create_from_upload!(
         upload,
@@ -96,6 +103,7 @@ module Habitations
         metadata: {
           "identified" => true,
           "source" => "admin_upload",
+          "tenant_id" => habitation.tenant_id,
           "position" => index + 1
         }
       )

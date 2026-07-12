@@ -60,7 +60,7 @@
   %>
     <% if produto_visible %>
       <li class="ax-nav__section" data-nav-section="product" style="<%= nav_section_style.call('product') %>">
-        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="true" aria-controls="nav-section-product" title="Produto">
+        <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-product" title="Produto">
           <i class="bi bi-grid-1x2"></i><span>Produto</span><i class="bi bi-chevron-down"></i>
         </button>
         <ul class="ax-nav__section-items" id="nav-section-product" data-menu-sections-target="items">
@@ -170,7 +170,7 @@
     <%# Captações %>
     <% if can_access.call(:view, :captacoes) %>
       <li>
-        <%= link_to admin_captacoes_path, class: "ax-nav__link #{'active' if controller_name == 'captacoes' && action_name != 'dashboard'}" do %>
+        <%= link_to admin_captacoes_path, class: "ax-nav__link #{'active' if controller_name == 'habitation_intakes'}" do %>
           <i class="bi bi-journal-plus"></i><span>Captações</span>
         <% end %>
       </li>

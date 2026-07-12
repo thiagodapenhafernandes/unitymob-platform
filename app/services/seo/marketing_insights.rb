@@ -59,7 +59,7 @@ module Seo
 
     def strategic_pages
       STRATEGIC_PATHS.map do |path|
-        seo = SeoSetting.find_by(canonical_path: path)
+        seo = tenant.seo_settings.find_by(canonical_path: path)
         {
           path: path,
           seo: seo,
@@ -72,7 +72,7 @@ module Seo
     end
 
     def campaign_metrics
-      MarketingCampaign.includes(:seo_setting).recent.limit(20).map do |campaign|
+      tenant.marketing_campaigns.includes(:seo_setting).recent.limit(20).map do |campaign|
         {
           campaign: campaign,
           clicks: campaign.clicks_count.to_i,
@@ -142,7 +142,7 @@ module Seo
     end
 
     def alert_for_active_campaigns_without_conversion
-      count = MarketingCampaign.where(status: "active").where("clicks_count > 0 AND conversions_count = 0").count
+      count = tenant.marketing_campaigns.where(status: "active").where("clicks_count > 0 AND conversions_count = 0").count
       return if count.zero?
 
       Alert.new(
@@ -155,7 +155,7 @@ module Seo
     end
 
     def alert_for_public_pages_without_recent_access
-      count = SeoSetting.where(active: true, apply_to_public: true, robots_index: true)
+      count = tenant.seo_settings.where(active: true, apply_to_public: true, robots_index: true)
                         .where("last_accessed_at IS NULL OR last_accessed_at < ?", 30.days.ago)
                         .count
       return if count.zero?
@@ -170,7 +170,7 @@ module Seo
     end
 
     def alert_for_weak_strategic_pages
-      count = SeoSetting.where(canonical_path: STRATEGIC_PATHS).where("seo_score < 70").count
+      count = tenant.seo_settings.where(canonical_path: STRATEGIC_PATHS).where("seo_score < 70").count
       return if count.zero?
 
       Alert.new(

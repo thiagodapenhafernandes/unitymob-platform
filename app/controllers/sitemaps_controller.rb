@@ -5,6 +5,7 @@ class SitemapsController < ApplicationController
       Seo::SitemapBuilder.new(
         base_url: request.base_url,
         url_helpers: Rails.application.routes.url_helpers,
+        tenant: public_tenant,
         habitation_scope: public_habitations
       ).to_xml
     }

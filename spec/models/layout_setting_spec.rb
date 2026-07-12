@@ -7,6 +7,15 @@ RSpec.describe LayoutSetting, type: :model do
 
       expect(setting.admin_workspace_color).to eq(LayoutSetting::ADMIN_WORKSPACE_DEFAULT)
       expect(setting.admin_sidebar_color).to eq(LayoutSetting::ADMIN_SIDEBAR_DEFAULT)
+      expect(setting.admin_theme_mode).to eq("light")
+    end
+
+    it "entrega a paleta escura quando o modo dark está ativo" do
+      setting = described_class.instance
+      setting.update!(admin_theme_mode: "dark")
+
+      expect(setting.effective_admin_theme).to include(LayoutSetting::ADMIN_DARK_THEME)
+      expect(setting.effective_admin_theme[:primary]).to eq(setting.admin_primary_color)
     end
 
     it "preenche os estilos padrão das divisões do menu" do

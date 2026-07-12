@@ -1,4 +1,5 @@
 class LeadSetting < ApplicationRecord
+  include TenantScoped
   MATCHES   = %w[phone phone_or_email phone_and_email].freeze
   OWNERS    = %w[attended any_assignment].freeze
   FALLBACKS = %w[active_in_rule active_any].freeze
@@ -18,8 +19,10 @@ class LeadSetting < ApplicationRecord
   validates :push_lead_click_action, inclusion: { in: PUSH_CLICK_ACTIONS }
 
   # Singleton.
-  def self.instance
-    first_or_create!
+  def self.instance(tenant: Current.tenant)
+    raise ArgumentError, "Tenant obrigatório para configurações de leads" if tenant.blank?
+
+    where(tenant: tenant).first_or_create!
   end
 
   def stickiness_enabled?

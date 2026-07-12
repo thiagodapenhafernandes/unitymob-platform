@@ -11,6 +11,7 @@
   admin_primary = @layout_setting.admin_primary_color.presence || LayoutSetting::ADMIN_PRIMARY_DEFAULT
   admin_ink ||= LayoutSetting::ADMIN_INK_DEFAULT
   admin_menu_section_styles = @layout_setting.admin_menu_section_styles
+  effective_admin_theme = @layout_setting.effective_admin_theme
   admin_menu_sections = [
     { key: "product", label: "Produto", icon: "grid-1x2" },
     { key: "operation", label: "Operação", icon: "briefcase" },
@@ -76,7 +77,7 @@
 
 <div class="layout-settings-workspace"
      data-controller="layout-theme-preview"
-     style="--theme-surface:<%= admin_surface %>; --theme-header:<%= admin_header %>; --theme-workspace:<%= admin_workspace %>; --theme-sidebar:<%= admin_sidebar %>; --theme-primary:<%= admin_primary %>; --theme-ink:<%= admin_ink %>;">
+     style="--theme-surface:<%= effective_admin_theme[:surface] %>; --theme-header:<%= effective_admin_theme[:header] %>; --theme-workspace:<%= effective_admin_theme[:workspace] %>; --theme-sidebar:<%= effective_admin_theme[:sidebar] %>; --theme-primary:<%= effective_admin_theme[:primary] %>; --theme-ink:<%= effective_admin_theme[:ink] %>;">
   <%= form_with(model: [:admin, @layout_setting], local: true, html: { multipart: true }, class: "layout-settings-form") do |f| %>
     <%= ax_error_summary(@layout_setting) %>
 
@@ -427,6 +428,25 @@
                 <span class="ax-badge ax-badge--blue">tokens internos</span>
               <% end
             ) do %>
+          <fieldset class="layout-settings-theme-mode">
+            <legend>Modo de exibição</legend>
+            <div class="layout-settings-theme-mode__options">
+              <label>
+                <%= f.radio_button :admin_theme_mode, "light", checked: !@layout_setting.admin_dark_mode?, data: { action: "change->layout-theme-preview#updateMode" } %>
+                <span><i class="bi bi-sun"></i><strong>Claro</strong><small>Usa as cores personalizadas abaixo.</small></span>
+              </label>
+              <label>
+                <%= f.radio_button :admin_theme_mode, "dark", checked: @layout_setting.admin_dark_mode?, data: { action: "change->layout-theme-preview#updateMode" } %>
+                <span><i class="bi bi-moon-stars"></i><strong>Escuro</strong><small>Aplica uma paleta escura de alto contraste.</small></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="layout-settings-light-palette-note">
+            <i class="bi bi-sun"></i>
+            <span><strong>Paleta personalizada do modo claro</strong> As cores abaixo são preservadas quando o modo escuro está ativo.</span>
+          </div>
+
           <div class="layout-settings-two-col">
             <div class="layout-settings-theme-grid">
               <% admin_theme_tokens.each do |theme_token| %>

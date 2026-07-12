@@ -10,6 +10,15 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     sign_in admin
   end
 
+  it "carrega o layout para System Admin sem tenant sem erro interno" do
+    sign_out admin
+    sign_in create(:admin_user, super_admin: true)
+
+    get admin_distribution_rules_path
+
+    expect(response).not_to have_http_status(:internal_server_error)
+  end
+
   it "renderiza o formulario com objetivo em modal, aside e dados de equipe em cascata" do
     manager = create(:admin_user, :admin, name: "Gestor Praia")
     create(:admin_user, name: "Corretor Cascata", manager: manager)

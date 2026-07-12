@@ -30,4 +30,35 @@ RSpec.describe "Tenant isolation for public content" do
     expect(SeoSetting.for_canonical_key("home", tenant: tenant_a)).to eq(seo_a)
     expect(SeoSetting.for_canonical_key("home", tenant: tenant_b)).to eq(seo_b)
   end
+
+  it "keeps site and lead singleton settings isolated per tenant" do
+    layout_a = LayoutSetting.instance(tenant: tenant_a)
+    layout_b = LayoutSetting.instance(tenant: tenant_b)
+    layout_a.update!(site_name: "Site A")
+    layout_b.update!(site_name: "Site B")
+
+    lead_a = LeadSetting.instance(tenant: tenant_a)
+    lead_b = LeadSetting.instance(tenant: tenant_b)
+    lead_a.update!(stickiness_enabled: true)
+    lead_b.update!(stickiness_enabled: false)
+
+    expect(LayoutSetting.instance(tenant: tenant_a).site_name).to eq("Site A")
+    expect(LayoutSetting.instance(tenant: tenant_b).site_name).to eq("Site B")
+    expect(LeadSetting.instance(tenant: tenant_a).stickiness_enabled?).to be(true)
+    expect(LeadSetting.instance(tenant: tenant_b).stickiness_enabled?).to be(false)
+  end
+
+  it "does not expose another tenant's content through sitemap services" do
+    tenant_a.landing_pages.create!(title: "Página A", slug: "pagina-a", active: true)
+    tenant_b.landing_pages.create!(title: "Página B", slug: "pagina-b", active: true)
+
+    xml = Seo::SitemapBuilder.new(
+      base_url: "https://tenant-a.example",
+      url_helpers: Rails.application.routes.url_helpers,
+      tenant: tenant_a
+    ).to_xml
+
+    expect(xml).to include("pagina-a")
+    expect(xml).not_to include("pagina-b")
+  end
 end

@@ -260,9 +260,9 @@ module Seo
       if path.start_with?("/empreendimentos")
         Habitation.empreendimentos_publicos.exists?
       elsif path == "/corporativos"
-        Habitation.active.without_developments.home_corporate.exists?
+        tenant.habitations.active.without_developments.home_corporate.exists?
       else
-        Habitation.active.without_developments.exists?
+        tenant.habitations.active.without_developments.exists?
       end
     rescue
       true

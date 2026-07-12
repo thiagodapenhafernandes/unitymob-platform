@@ -1,4 +1,5 @@
 class Admin::StorageIntegrationsController < Admin::BaseController
+  before_action :require_system_admin!
   before_action -> { check_permission!(:manage, :integracoes) }
   before_action :load_setting
 

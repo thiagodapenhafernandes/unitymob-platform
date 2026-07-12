@@ -1,4 +1,8 @@
 Rails.application.routes.draw do
+  # Substitui o endpoint global do Active Storage por uma criação de blob
+  # autenticada e vinculada ao tenant antes do upload direto.
+  post "/rails/active_storage/direct_uploads", to: "admin/tenant_direct_uploads#create"
+
   devise_for :admin_users, path: 'admin', controllers: {
     sessions: 'admin/sessions',
     omniauth_callbacks: 'admin/omniauth_callbacks'

@@ -2,8 +2,11 @@ module Seo
   class PropertySettingsBackfill
     Result = Struct.new(:evaluated, :created, :updated, :skipped, :errors, keyword_init: true)
 
-    def initialize(scope: Habitation.active)
-      @scope = scope
+    def initialize(scope: nil, tenant: Current.tenant)
+      raise ArgumentError, "Tenant obrigatório para backfill SEO" if tenant.blank?
+
+      @tenant = tenant
+      @scope = scope || tenant.habitations.active
       @result = Result.new(evaluated: 0, created: 0, updated: 0, skipped: 0, errors: 0)
     end
 
@@ -22,7 +25,7 @@ module Seo
       end
 
       attributes = Seo::PropertyMetadataBuilder.new(habitation).attributes
-      seo = SeoSetting.find_or_initialize_by(canonical_key: attributes[:canonical_key])
+      seo = @tenant.seo_settings.find_or_initialize_by(canonical_key: attributes[:canonical_key])
 
       if seo.persisted? && seo.manual_mode?
         @result.skipped += 1

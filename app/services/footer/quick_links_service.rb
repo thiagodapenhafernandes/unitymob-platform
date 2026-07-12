@@ -42,7 +42,10 @@ module Footer
     attr_reader :limit
 
     def most_accessed_links
-      SeoSetting
+      tenant = Current.tenant
+      return [] if tenant.blank?
+
+      tenant.seo_settings
         .where(active: true, apply_to_public: true, robots_index: true)
         .where("access_count > 0")
         .where(page_type: public_listing_page_types)
@@ -183,7 +186,7 @@ module Footer
     # comportamento anterior (global) explicitamente para não quebrar contextos
     # sem resolução de conta.
     def habitations
-      Current.tenant&.habitations || Habitation
+      Current.tenant&.habitations || Habitation.none
     end
 
     def property_link_available?(link)

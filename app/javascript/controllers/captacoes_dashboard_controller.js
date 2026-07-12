@@ -37,6 +37,7 @@ export default class extends Controller {
   }
 
   exitTv() {
+    this.finishTvTransition()
     this.clearTvBodyState()
     const exitButton = this.element.querySelector("[data-capt-tv-exit]")
     if (exitButton) exitButton.hidden = true
@@ -50,18 +51,23 @@ export default class extends Controller {
 
   enterTvMode(tabId, requestFullscreen = true) {
     const targetTabId = tabId || "tab-geral"
+    this.startTvTransition()
     this.activateTab(targetTabId)
     document.body.classList.add("capt-dashboard-tv-active")
     this.setTvBodyTabClass(targetTabId)
     const exitButton = this.element.querySelector("[data-capt-tv-exit]")
     if (exitButton) exitButton.hidden = false
 
-    window.setTimeout(() => {
-      this.renderCharts({ force: true })
-      if (requestFullscreen && this.element.requestFullscreen && !document.fullscreenElement) {
-        this.element.requestFullscreen().catch(() => {})
-      }
-    }, 220)
+    const fullscreenRequest = requestFullscreen && this.element.requestFullscreen && !document.fullscreenElement
+      ? this.element.requestFullscreen().catch(() => {})
+      : Promise.resolve()
+
+    fullscreenRequest.finally(() => {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        this.renderCharts({ force: true })
+        window.setTimeout(() => this.finishTvTransition(), 180)
+      }))
+    })
   }
 
   enterTvFromQueryString() {
@@ -127,7 +133,7 @@ export default class extends Controller {
       data: {
         datasets: [{
           data: [currentValue, Math.max(targetValue - currentValue, 0)],
-          backgroundColor: [color, "#e5e7eb"],
+          backgroundColor: [color, this.chartPalette().track],
           borderWidth: 0
         }]
       },
@@ -144,15 +150,16 @@ export default class extends Controller {
   }
 
   donutConfig(yes, no, color = "#f59e0b", labels = ["Sim", "Não"]) {
+    const palette = this.chartPalette()
     return {
       type: "doughnut",
       data: {
         labels,
         datasets: [{
           data: [Number(yes || 0), Number(no || 0)],
-          backgroundColor: [color, "#1f2937"],
+          backgroundColor: [color, palette.track],
           borderWidth: 2,
-          borderColor: "#fff"
+          borderColor: palette.border
         }]
       },
       options: {
@@ -161,10 +168,17 @@ export default class extends Controller {
         resizeDelay: 150,
         cutout: "55%",
         plugins: {
-          legend: { position: "bottom", labels: { boxWidth: 10, padding: 8, font: { size: 11 } } }
+          legend: { position: "bottom", labels: { color: palette.legend, boxWidth: 10, padding: 8, font: { size: 11 } } }
         }
       }
     }
+  }
+
+  chartPalette() {
+    const dark = document.documentElement.dataset.adminTheme === "dark"
+    return dark
+      ? { track: "#26364d", border: "#172033", legend: "#aebbd0" }
+      : { track: "#e5e7eb", border: "#ffffff", legend: "#64748b" }
   }
 
   renderOne(id, config, options = {}) {
@@ -176,8 +190,23 @@ export default class extends Controller {
   }
 
   handleFullscreenChange() {
-    if (!document.fullscreenElement) this.clearTvBodyState()
+    if (!document.fullscreenElement) {
+      this.finishTvTransition()
+      this.clearTvBodyState()
+    }
     window.setTimeout(() => this.renderCharts({ force: true }), 180)
+  }
+
+  startTvTransition() {
+    document.body.classList.add("capt-dashboard-tv-entering")
+    const transition = this.element.querySelector("[data-capt-tv-transition]")
+    if (transition) transition.hidden = false
+  }
+
+  finishTvTransition() {
+    document.body.classList.remove("capt-dashboard-tv-entering")
+    const transition = this.element.querySelector("[data-capt-tv-transition]")
+    if (transition) transition.hidden = true
   }
 
   setTvBodyTabClass(tabId) {
@@ -195,6 +224,7 @@ export default class extends Controller {
   }
 
   clearTvBodyState() {
+    this.finishTvTransition()
     document.body.classList.remove("capt-dashboard-tv-active")
     this.clearTvTabClass()
   }

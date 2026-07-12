@@ -1,4 +1,5 @@
 class Admin::TrackingIntegrationsController < Admin::BaseController
+  before_action :require_system_admin!
   before_action -> { check_permission!(:manage, :integracoes) }
 
   def show

@@ -297,6 +297,100 @@
 :is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu__danger i { color: #d92d20 !important; }
 :is(.wa-inbox-page, .lead-whatsapp-card) .wa-msg-menu__danger:hover { background: #fef3f2 !important; }
 
+/* Dark mode: estados interativos da conversa no detalhe do lead. */
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-bubble__body,
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-bubble__body--text,
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-bubble__body--media {
+  color: #dce6f4 !important;
+}
+
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-bubble__meta {
+  color: #9eabc0 !important;
+}
+
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-quote {
+  border-color: #34445d #34445d #34445d #2fb3a0 !important;
+  background: #141e30 !important;
+  color: #dce6f4 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-quote__author { color: #65d4c3 !important; }
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-quote__snippet { color: #aebbd0 !important; }
+
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-actions {
+  border-color: #2d3b52 !important;
+  background: #172033 !important;
+  color: #9eabc0 !important;
+  box-shadow: 0 8px 20px rgb(0 0 0 / .28) !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-actions__btn {
+  color: #9eabc0 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-actions__btn:hover,
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-actions__btn[aria-expanded="true"] {
+  background: #243149 !important;
+  color: #eef4fc !important;
+}
+
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-react,
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-menu {
+  border: 1px solid #34445d !important;
+  background: #1c283d !important;
+  color: #dce6f4 !important;
+  box-shadow: 0 16px 36px rgb(0 0 0 / .42) !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-react button {
+  color: #dce6f4 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-react button:hover {
+  background: #2a3951 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-menu button {
+  color: #dce6f4 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-menu button i {
+  color: #9eabc0 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-menu button:hover {
+  background: #27354c !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-menu__danger,
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-menu__danger i {
+  color: #ff8c86 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-msg-menu__danger:hover {
+  background: rgb(217 45 32 / .14) !important;
+}
+
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-composer__reply {
+  border-color: #34445d #34445d #34445d #2fb3a0 !important;
+  background: #141e30 !important;
+  color: #dce6f4 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-composer__reply-copy strong {
+  color: #65d4c3 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-composer__reply-copy span {
+  color: #aebbd0 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-composer__reply-close {
+  color: #9eabc0 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-composer__reply-close:hover {
+  background: #27354c !important;
+  color: #eef4fc !important;
+}
+
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-thread__jump {
+  border-color: #3a4961 !important;
+  background: #1c283d !important;
+  color: #b7c4d7 !important;
+  box-shadow: 0 10px 24px rgb(0 0 0 / .34) !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-thread__jump:hover {
+  background: #27354c !important;
+  color: #eef4fc !important;
+}
+
 :is(.wa-inbox-page, .lead-whatsapp-card) .wa-reactions {
   justify-self: start; margin: -6px 0 0 8px; padding: 2px 7px;
   border: 1px solid var(--wa-line, #eceef1); border-radius: 999px; background: #fff;
@@ -625,4 +719,38 @@ html.wa-fullscreen-lock, html.wa-fullscreen-lock body { overflow: hidden !import
   :is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-thread__scroll { padding: 12px 10px; }
   .lead-whatsapp-card__presentation { padding: 8px 10px; }
   :is(.wa-inbox-page, .lead-whatsapp-card) .wa-inbox-composer { padding: 8px; }
+}
+
+/* Composer popovers precisam ficar depois das regras-base deste arquivo. */
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-composer-popover,
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-emoji-popover {
+  border-color: #34445d !important;
+  background: #1c283d !important;
+  color: #dce6f4 !important;
+  box-shadow: 0 18px 42px rgb(0 0 0 / .46) !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-composer-popover__caption {
+  color: #8f9db3 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-composer-popover--menu > button,
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-composer-popover--menu > [data-controller="ax-modal"] > button {
+  background: transparent !important;
+  color: #dce6f4 !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-composer-popover--menu > button:hover,
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-composer-popover--menu > [data-controller="ax-modal"] > button:hover {
+  background: #27354c !important;
+  color: #ffffff !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-emoji-popover button:hover {
+  background: #27354c !important;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-composer-popover::-webkit-scrollbar-thumb,
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-emoji-popover::-webkit-scrollbar-thumb {
+  background: #4a5b74;
+}
+html[data-admin-theme="dark"] .lead-whatsapp-card .wa-inbox-composer__body:focus {
+  border-color: #5076a5 !important;
+  background: #141e30 !important;
+  color: #eef4fc !important;
 }

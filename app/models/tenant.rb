@@ -55,6 +55,11 @@ class Tenant < ApplicationRecord
   has_many :photography_schedule_blocks, dependent: :restrict_with_error
   has_many :seo_settings, dependent: :restrict_with_error
   has_many :seo_redirects, dependent: :restrict_with_error
+  has_one :layout_setting, dependent: :restrict_with_error
+  has_one :home_setting, dependent: :restrict_with_error
+  has_one :footer_setting, dependent: :restrict_with_error
+  has_one :contact_setting, dependent: :restrict_with_error
+  has_one :lead_setting, dependent: :restrict_with_error
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true

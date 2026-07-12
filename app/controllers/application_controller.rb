@@ -102,15 +102,17 @@ class ApplicationController < ActionController::Base
   end
 
   def load_layout_settings
-    @layout_setting = LayoutSetting.with_attached_logo.with_attached_favicon.first || LayoutSetting.instance
+    admin_tenant = current_tenant if respond_to?(:current_tenant, true)
+    tenant = request.path.start_with?("/admin") ? (admin_tenant || Tenant.public_for) : public_tenant
+    @layout_setting = LayoutSetting.with_attached_logo.with_attached_favicon.find_by(tenant: tenant) || LayoutSetting.instance(tenant: tenant)
     return if request.path.start_with?("/admin")
 
-    @home_setting = HomeSetting.instance
-    @footer_setting = FooterSetting.instance
+    @home_setting = HomeSetting.instance(tenant: public_tenant)
+    @footer_setting = FooterSetting.instance(tenant: public_tenant)
     @footer_links = Footer::QuickLinksService.call
     @footer_stores = public_tenant.stores.active.order(:id).to_a
-    @footer_stores = FooterStore.all.to_a if @footer_stores.empty?
-    @footer_social_links = FooterSocialLink.where(enabled: true).to_a
+    @footer_stores = @footer_setting.footer_stores.to_a if @footer_stores.empty?
+    @footer_social_links = @footer_setting.footer_social_links.where(enabled: true).to_a
     @lead_capture_enabled = WebhookSetting.lead_capture_enabled?(tenant: public_tenant)
     @site_phone_settings = WhatsappBusinessIntegration.cached_site_phone_settings(public_tenant)
     @interest_settings = InterestIntelligence::Settings.new(@layout_setting)

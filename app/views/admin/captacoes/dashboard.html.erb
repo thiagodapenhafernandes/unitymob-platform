@@ -20,6 +20,13 @@
      data-controller="captacoes-dashboard"
      data-captacoes-dashboard-chart-url-value="<%= asset_path("chart.umd.min.js") %>"
      data-captacoes-dashboard-data-value="<%= capt_dashboard_chart_payload.to_json %>">
+  <div class="capt-tv-transition" data-capt-tv-transition aria-live="polite" hidden>
+    <span class="capt-tv-transition__spinner" aria-hidden="true"></span>
+    <div>
+      <strong>Preparando apresentação</strong>
+      <small>Organizando indicadores e gráficos para esta tela.</small>
+    </div>
+  </div>
 <%
   dashboard_actions = capture do
 %>
