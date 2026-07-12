@@ -48,4 +48,15 @@ O gate local/CI é:
 RAILS_ENV=test bundle exec rake security:tenant_isolation
 ```
 
+## Saúde e alertas globais
+
+O monitor `SystemHealthMonitorJob` roda fora do contexto de tenant porque avalia a
+plataforma inteira. As amostras por conta sempre carregam `tenant_id`; apenas a
+amostra consolidada da plataforma usa `tenant_id: nil`. O histórico é exclusivo
+do Admin do Sistema e tem retenção de 90 dias.
+
+Os limites podem ser ajustados pelas variáveis `HEALTH_*`. Alertas usam Web Push
+para Admins do Sistema e e-mail via `SYSTEM_HEALTH_ALERT_EMAIL`, com fallback para
+`ERROR_ALERT_EMAIL`, sem incluir conteúdo operacional de imóveis ou leads.
+
 Esse comando deve ser executado obrigatoriamente antes de deploys que alterem autenticação, autorização, models operacionais, exports, anexos, jobs, webhooks ou integrações.

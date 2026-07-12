@@ -6,11 +6,21 @@ module Admin
       def show
         @health = ::System::HealthSnapshot.call
         @platform = ::System::PlatformHealthReport.call
+        @assessment = ::System::HealthAssessment.call(runtime: @health, platform: @platform)
+        @history = health_history
         @queue = queue_metrics
         @errors = error_metrics
       end
 
       private
+
+      def health_history
+        return [] unless ActiveRecord::Base.connection.data_source_exists?("system_health_snapshots")
+
+        SystemHealthSnapshot.platform.recent_first.limit(24).to_a.reverse
+      rescue ActiveRecord::StatementInvalid
+        []
+      end
 
       def queue_metrics
         {
