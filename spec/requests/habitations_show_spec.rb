@@ -121,19 +121,22 @@ RSpec.describe "Habitation details", type: :request do
 
     it "uses the original locally attached photo without an on-demand social transformation" do
       habitation = create(:habitation, codigo: "OG-LOCAL", slug: "apartamento-og-local")
+      habitation.update_column(:pictures, [])
       habitation.photos.attach(
         io: StringIO.new(Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=")),
         filename: "foto-local.png",
         content_type: "image/png"
       )
       habitation.reload
+      allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment)
+        .and_return("https://cdn.saluteimoveis.com.br/properties/foto-local.png")
 
       get habitation_path(habitation)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(%(property="og:image" content="https://localhost/rails/active_storage/blobs/redirect/))
+      expect(response.body).to include(%(property="og:image" content="https://cdn.saluteimoveis.com.br/properties/foto-local.png"))
       expect(response.body).to include(%(property="og:image:type" content="image/png"))
-      expect(response.body).not_to include("/rails/active_storage/representations/")
+      expect(response.body).not_to include("/rails/active_storage/")
     end
 
     it "does not expose broker phone or direct whatsapp link in the responsible attendant card" do

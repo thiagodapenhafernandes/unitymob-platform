@@ -721,18 +721,24 @@ class HabitationsController < ApplicationController
   end
 
   def share_image_metadata_for(habitation)
+    public_picture = Array(habitation.pictures)
+      .select { |picture| picture["exibir_no_site"] != false }
+      .min_by { |picture| picture["ordem"].to_i }
+    public_picture_url = helpers.public_image_url(public_picture) if public_picture.present?
+    return { url: absolute_social_image_url(public_picture_url) } if public_picture_url.present?
+
     source = habitation.primary_image_source
     attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
 
     if attachment&.blob&.image?
-      return {
-        url: "#{request.base_url}#{Rails.application.routes.url_helpers.rails_blob_path(attachment, only_path: true)}",
-        type: attachment.blob.content_type
-      }
+      cdn_url = Storage::PublicPropertyPhoto.public_url_for_attachment(attachment)
+      return { url: cdn_url, type: attachment.blob.content_type } if cdn_url.present?
     end
 
     image = helpers.public_image_url(source) if source.present?
+    image = nil if image.to_s.include?("/rails/active_storage/")
     image = habitation.primary_image_url if image.blank?
+    image = nil if image.to_s.include?("/rails/active_storage/")
     return {} if image.blank?
 
     { url: absolute_social_image_url(image) }
