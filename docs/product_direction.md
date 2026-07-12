@@ -58,9 +58,21 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 
 #### Pendente
 
-- revisar ErrorEvents históricos e resolver somente fingerprints comprovadamente corrigidos;
+- concluir a análise individual dos 11 ErrorEvents históricos ainda abertos;
 - acompanhar as primeiras execuções do CI e ajustar dependências de ambiente, se necessário;
 - avaliar gráficos de tendência longa depois de existir volume histórico suficiente.
+
+#### Auditoria operacional de 12 de julho de 2026
+
+- produção confirmada na release 346;
+- Puma, Solid Queue, Nginx e PostgreSQL confirmados como ativos;
+- 14 fingerprints estavam abertos no início da auditoria;
+- eventos `20`, `66` e `67` foram encerrados após comprovação: dois eram erros
+  de consultas diagnósticas manuais e um era o agendamento antigo da auditoria
+  de hierarquia sem tenant, já corrigido na release 346;
+- 11 fingerprints permanecem abertos por cautela, embora não tenham reincidido
+  após a release 346; eventos de mídia, geração de URL e consulta de auditoria
+  exigem validação individual antes de serem encerrados.
 
 ### Critério de conclusão do Grupo 1
 
