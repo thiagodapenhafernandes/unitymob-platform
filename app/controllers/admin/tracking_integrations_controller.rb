@@ -1,6 +1,6 @@
 class Admin::TrackingIntegrationsController < Admin::BaseController
   before_action :require_system_admin!
-  before_action -> { check_permission!(:manage, :integracoes) }
+  before_action -> { check_permission!(:manage, :integracoes) unless system_admin? }
 
   def show
     @tracking_setting = TrackingIntegrationSetting.current

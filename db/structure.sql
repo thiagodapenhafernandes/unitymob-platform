@@ -1,4 +1,4 @@
-\restrict GFCYAxTIJqq8srOAit7OUXvouA5yRp82LTGuRR9VKO43VV3vR5m1g3hTe7jk2CD
+\restrict pIv5WkekiWA6Od0lftMR0j4PewVRkMTHutVRCf0YCwYnBF6sUQe2DATLb8CSSoY
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -5073,6 +5073,81 @@ ALTER SEQUENCE public.stores_id_seq OWNED BY public.stores.id;
 
 
 --
+-- Name: system_health_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.system_health_settings (
+    id bigint NOT NULL,
+    memory_available_warning_percent numeric(5,2) DEFAULT 15.0 NOT NULL,
+    memory_available_critical_percent numeric(5,2) DEFAULT 8.0 NOT NULL,
+    disk_warning_percent numeric(5,2) DEFAULT 80.0 NOT NULL,
+    disk_critical_percent numeric(5,2) DEFAULT 90.0 NOT NULL,
+    swap_warning_mb integer DEFAULT 512 NOT NULL,
+    http_warning_ms integer DEFAULT 1500 NOT NULL,
+    http_critical_ms integer DEFAULT 4000 NOT NULL,
+    application_errors_warning integer DEFAULT 5 NOT NULL,
+    application_errors_critical integer DEFAULT 20 NOT NULL,
+    integration_failures_critical integer DEFAULT 3 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: system_health_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.system_health_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: system_health_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.system_health_settings_id_seq OWNED BY public.system_health_settings.id;
+
+
+--
+-- Name: system_health_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.system_health_snapshots (
+    id bigint NOT NULL,
+    tenant_id bigint,
+    status character varying NOT NULL,
+    source character varying DEFAULT 'platform'::character varying NOT NULL,
+    metrics jsonb DEFAULT '{}'::jsonb NOT NULL,
+    collected_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: system_health_snapshots_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.system_health_snapshots_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: system_health_snapshots_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.system_health_snapshots_id_seq OWNED BY public.system_health_snapshots.id;
+
+
+--
 -- Name: system_notification_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6646,6 +6721,20 @@ ALTER TABLE ONLY public.stores ALTER COLUMN id SET DEFAULT nextval('public.store
 
 
 --
+-- Name: system_health_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_health_settings ALTER COLUMN id SET DEFAULT nextval('public.system_health_settings_id_seq'::regclass);
+
+
+--
+-- Name: system_health_snapshots id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_health_snapshots ALTER COLUMN id SET DEFAULT nextval('public.system_health_snapshots_id_seq'::regclass);
+
+
+--
 -- Name: system_notification_settings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7689,6 +7778,22 @@ ALTER TABLE ONLY public.store_shifts
 
 ALTER TABLE ONLY public.stores
     ADD CONSTRAINT stores_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: system_health_settings system_health_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_health_settings
+    ADD CONSTRAINT system_health_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: system_health_snapshots system_health_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_health_snapshots
+    ADD CONSTRAINT system_health_snapshots_pkey PRIMARY KEY (id);
 
 
 --
@@ -11840,6 +11945,27 @@ CREATE INDEX index_stores_on_turnos_config ON public.stores USING gin (turnos_co
 
 
 --
+-- Name: index_system_health_snapshots_on_status_and_collected_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_system_health_snapshots_on_status_and_collected_at ON public.system_health_snapshots USING btree (status, collected_at);
+
+
+--
+-- Name: index_system_health_snapshots_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_system_health_snapshots_on_tenant_id ON public.system_health_snapshots USING btree (tenant_id);
+
+
+--
+-- Name: index_system_health_snapshots_on_tenant_id_and_collected_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_system_health_snapshots_on_tenant_id_and_collected_at ON public.system_health_snapshots USING btree (tenant_id, collected_at);
+
+
+--
 -- Name: index_tasks_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14508,6 +14634,14 @@ ALTER TABLE ONLY public.automation_executions
 
 
 --
+-- Name: system_health_snapshots fk_rails_f1c457414f; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_health_snapshots
+    ADD CONSTRAINT fk_rails_f1c457414f FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: lead_property_interests fk_rails_f209bd58a6; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14575,11 +14709,13 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GFCYAxTIJqq8srOAit7OUXvouA5yRp82LTGuRR9VKO43VV3vR5m1g3hTe7jk2CD
+\unrestrict pIv5WkekiWA6Od0lftMR0j4PewVRkMTHutVRCf0YCwYnBF6sUQe2DATLb8CSSoY
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260712173000'),
+('20260712170000'),
 ('20260712123000'),
 ('20260712110000'),
 ('20260711144500'),

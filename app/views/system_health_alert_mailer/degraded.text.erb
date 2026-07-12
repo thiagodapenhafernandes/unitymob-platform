@@ -1,0 +1,7 @@
+Saúde da plataforma: <%= @status %>
+
+<% @findings.each do |finding| %>
+- [<%= finding[:severity] || finding["severity"] %>] <%= finding[:message] || finding["message"] %>
+<% end %>
+
+Consulte o painel do Admin do Sistema em /admin/system/health.

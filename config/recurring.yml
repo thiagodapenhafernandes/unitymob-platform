@@ -96,6 +96,12 @@ production:
     class: QueueHealthCheckJob
     queue: checkin
     schedule: every 5 minutes
+  # Consolida saúde da plataforma e por tenant, mantém histórico de 90 dias e
+  # alerta Admins do Sistema quando limites objetivos forem ultrapassados.
+  system_health_monitor:
+    class: SystemHealthMonitorJob
+    queue: checkin
+    schedule: every 5 minutes
   # Retenção do rastreador interno de erros: apaga eventos parados há 90 dias.
   error_events_cleanup:
     class: ErrorEventsCleanupJob

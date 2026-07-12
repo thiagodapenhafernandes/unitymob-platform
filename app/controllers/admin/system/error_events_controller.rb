@@ -12,6 +12,7 @@ module Admin
         @source = params[:source].presence_in(ErrorEvent::SOURCES)
         @tenant_id = params[:tenant_id].presence
         @status = params[:status].presence_in(%w[open resolved]) || "all"
+        @category = params[:category].presence_in(%w[application traffic]) || "all"
         @tenants = Tenant.order(:name)
         @exception_classes = @storage_ready ? ErrorEvent.distinct.pluck(:exception_class).compact.sort : []
 
@@ -41,6 +42,11 @@ module Admin
         scope = scope.by_class(@exception_class) if @exception_class
         scope = scope.by_source(@source) if @source
         scope = scope.where(tenant_id: @tenant_id) if @tenant_id
+        if @category == "traffic"
+          scope = scope.where(exception_class: ::System::PlatformHealthReport::TRAFFIC_NOISE_EXCEPTIONS)
+        elsif @category == "application"
+          scope = scope.where.not(exception_class: ::System::PlatformHealthReport::TRAFFIC_NOISE_EXCEPTIONS)
+        end
 
         case @status
         when "open" then scope.unresolved

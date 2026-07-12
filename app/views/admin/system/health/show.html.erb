@@ -18,7 +18,9 @@
       <p>Aplicação, infraestrutura, filas e erros em uma visão somente leitura.</p>
     </div>
     <div class="ax-dashboard-command__status">
-      <%= ax_badge(@health[:status] == "healthy" ? "Operacional" : "Atenção", tone: @health[:status] == "healthy" ? :green : :amber, dot: true) %>
+      <% assessment_tone = @assessment[:status] == "healthy" ? :green : (@assessment[:status] == "critical" ? :red : :amber) %>
+      <%= ax_badge(@assessment[:status] == "healthy" ? "Operacional" : (@assessment[:status] == "critical" ? "Crítico" : "Atenção"), tone: assessment_tone, dot: true) %>
+      <%= ax_badge(@platform.dig(:release, :identifier), tone: :blue) %>
       <% if @health[:collected_at].present? %>
         <span>Coletado em <%= l(Time.zone.parse(@health[:collected_at]), format: :short) rescue @health[:collected_at] %></span>
       <% end %>
@@ -30,6 +32,25 @@
     <article><span>Memória disponível</span><strong><%= @health[:memory_available_percent] ? "#{@health[:memory_available_percent]}%" : "—" %></strong><em>Puma <%= @health[:puma_memory_mb] || "—" %> MB</em></article>
     <article><span>Disco</span><strong><%= @health[:disk_percent] ? "#{@health[:disk_percent]}%" : "—" %></strong><em>Swap <%= @health[:swap_used_mb] || "—" %> MB</em></article>
     <article><span>Load</span><strong><%= @health[:load_1] || "—" %></strong><em>5 min: <%= @health[:load_5] || "—" %></em></article>
+  </div>
+
+  <% if @assessment[:findings].present? %>
+    <%= ax_operational_panel(eyebrow: "Limites objetivos", title: "Pontos que exigem atenção", actions: ax_badge("#{@assessment[:findings].size} alerta(s)", tone: assessment_tone)) do %>
+      <div class="ax-table-wrap">
+        <table class="ax-table"><tbody>
+          <% @assessment[:findings].each do |finding| %>
+            <tr><td><%= ax_badge(finding[:severity] == "critical" ? "Crítico" : "Atenção", tone: finding[:severity] == "critical" ? :red : :amber, dot: true) %></td><td class="ax-strong"><%= finding[:message] %></td><td><code><%= finding[:code] %></code></td></tr>
+          <% end %>
+        </tbody></table>
+      </div>
+    <% end %>
+  <% end %>
+
+  <div class="ax-dashboard-value-strip">
+    <article><span>Erros funcionais abertos</span><strong><%= @platform.dig(:errors, :application_open) || 0 %></strong><em><%= @platform.dig(:errors, :affected_tenants) || 0 %> tenant(s) afetado(s)</em></article>
+    <article><span>Ruído de tráfego</span><strong><%= @platform.dig(:errors, :traffic_noise_occurrences) || 0 %></strong><em><%= @platform.dig(:errors, :traffic_noise_open) || 0 %> fingerprint(s)</em></article>
+    <article><span>Erros sem tenant</span><strong><%= @platform.dig(:errors, :unassigned_open) || 0 %></strong><em>jobs, login ou plataforma</em></article>
+    <article><span>Schema</span><strong><%= @platform.dig(:release, :schema_version) || "—" %></strong><em><%= @platform.dig(:release, :migrations_pending) ? "migrations pendentes" : "atualizado" %></em></article>
   </div>
 
   <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-2 tw-gap-3">
@@ -68,8 +89,88 @@
       <div class="tw-mt-2"><%= link_to "Abrir rastreador de erros", admin_system_error_events_path, class: "ax-btn ax-btn--ghost" %></div>
     <% end %>
 
-    <%= ax_operational_panel(eyebrow: "Capacidade", title: "Coleta histórica") do %>
-      <p class="tw-text-sm tw-text-ink-muted tw-m-0">Sysstat ativo no servidor, com histórico de CPU, memória, carga, swap, disco e I/O. O painel apresenta a última amostra operacional; análises históricas permanecem restritas ao servidor.</p>
+    <%= ax_operational_panel(eyebrow: "Capacidade", title: "Histórico operacional") do %>
+      <% if @history.present? %>
+        <div class="tw-flex tw-flex-wrap tw-gap-1.5">
+          <% @history.each do |snapshot| %>
+            <% tone = snapshot.status == "healthy" ? :green : (snapshot.status == "critical" ? :red : :amber) %>
+            <span title="<%= l(snapshot.collected_at, format: :short) %>"><%= ax_badge(snapshot.status.first.upcase, tone: tone, dot: true) %></span>
+          <% end %>
+        </div>
+        <p class="tw-text-xs tw-text-ink-muted tw-mt-2 tw-mb-0">Últimas <%= @history.size %> amostras, coletadas a cada 5 minutos. Retenção: 90 dias.</p>
+      <% else %>
+        <p class="tw-text-sm tw-text-ink-muted tw-m-0">O histórico começará após a primeira execução do monitor agendado.</p>
+      <% end %>
+    <% end %>
+  </div>
+
+  <%= ax_operational_panel(
+        eyebrow: "Contas",
+        title: "Saúde por tenant",
+        actions: ax_badge("#{@platform[:tenants].size} contas", tone: :blue)
+      ) do %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead><tr><th>Tenant</th><th>Status</th><th class="ax-num">Usuários</th><th class="ax-num">Imóveis</th><th class="ax-num">Leads</th><th class="ax-num">Storage</th><th class="ax-num">Integrações</th><th class="ax-num">Erros</th></tr></thead>
+        <tbody>
+          <% @platform[:tenants].each do |tenant| %>
+            <% tone = tenant[:status] == "healthy" ? :green : (tenant[:status] == "inactive" ? :gray : :amber) %>
+            <tr>
+              <td><strong><%= tenant[:name] %></strong><br><small><%= tenant[:slug] %></small></td>
+              <td><%= ax_badge(tenant[:status] == "healthy" ? "Saudável" : (tenant[:status] == "inactive" ? "Inativo" : "Atenção"), tone: tone, dot: true) %></td>
+              <td class="ax-num"><%= tenant[:active_users] %>/<%= tenant[:users] %></td>
+              <td class="ax-num"><%= tenant[:habitations] %></td>
+              <td class="ax-num"><%= tenant[:leads] %></td>
+              <td class="ax-num"><%= number_to_human_size(tenant[:storage_bytes]) %></td>
+              <td class="ax-num"><%= tenant[:integration_failures].positive? ? "#{tenant[:integration_failures]} falha(s)" : "#{tenant[:portals]} portais" %></td>
+              <td class="ax-num"><%= tenant[:open_errors] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Histórico", title: "Evolução por tenant") do %>
+    <%= form_with url: admin_system_health_path, method: :get, local: true, class: "tw-flex tw-flex-wrap tw-items-end tw-gap-2" do |f| %>
+      <div class="ax-field tw-min-w-64">
+        <%= f.label :tenant_id, "Conta", class: "ax-field__label" %>
+        <%= f.select :tenant_id, options_from_collection_for_select(Tenant.order(:name), :id, :name, @selected_tenant&.id), { include_blank: "Selecione uma conta" }, class: "ax-input" %>
+      </div>
+      <%= f.submit "Consultar histórico", class: "ax-btn ax-btn--primary" %>
+    <% end %>
+    <% if @selected_tenant.present? %>
+      <div class="ax-table-wrap tw-mt-3">
+        <table class="ax-table">
+          <thead><tr><th>Coleta</th><th>Status</th><th class="ax-num">Erros</th><th class="ax-num">Integrações</th><th class="ax-num">Storage</th></tr></thead>
+          <tbody>
+            <% @tenant_history.reverse_each do |snapshot| %>
+              <% tone = snapshot.status == "healthy" ? :green : (snapshot.status == "critical" ? :red : :amber) %>
+              <tr><td><%= l(snapshot.collected_at, format: :short) %></td><td><%= ax_badge(snapshot.status, tone: tone, dot: true) %></td><td class="ax-num"><%= snapshot.metrics["open_errors"].to_i %></td><td class="ax-num"><%= snapshot.metrics["integration_failures"].to_i %></td><td class="ax-num"><%= number_to_human_size(snapshot.metrics["storage_bytes"].to_i) %></td></tr>
+            <% end %>
+            <% if @tenant_history.empty? %><tr><td colspan="5" class="tw-text-center tw-text-ink-muted">Ainda não existem amostras para esta conta.</td></tr><% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  <% end %>
+
+  <div id="thresholds">
+    <%= ax_operational_panel(eyebrow: "Governança", title: "Limites de alerta") do %>
+      <%= form_with model: @health_setting, url: admin_system_health_path, method: :patch, local: true do |f| %>
+        <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 xl:tw-grid-cols-4 tw-gap-3">
+          <% [
+            [:memory_available_warning_percent, "Memória · atenção (%)"], [:memory_available_critical_percent, "Memória · crítico (%)"],
+            [:disk_warning_percent, "Disco · atenção (%)"], [:disk_critical_percent, "Disco · crítico (%)"],
+            [:swap_warning_mb, "Swap · atenção (MB)"], [:http_warning_ms, "HTTP · atenção (ms)"],
+            [:http_critical_ms, "HTTP · crítico (ms)"], [:application_errors_warning, "Erros · atenção"],
+            [:application_errors_critical, "Erros · crítico"], [:integration_failures_critical, "Integrações · crítico"]
+          ].each do |field, label| %>
+            <div class="ax-field"><%= f.label field, label, class: "ax-field__label" %><%= f.number_field field, min: 0, step: field.to_s.include?("percent") ? 0.1 : 1, class: "ax-input" %></div>
+          <% end %>
+        </div>
+        <div class="tw-flex tw-justify-end tw-mt-3"><%= f.submit "Salvar limites", class: "ax-btn ax-btn--primary" %></div>
+      <% end %>
     <% end %>
   </div>
 </div>
