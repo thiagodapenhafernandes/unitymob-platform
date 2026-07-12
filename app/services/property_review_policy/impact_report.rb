@@ -5,9 +5,11 @@ module PropertyReviewPolicy
     def self.call(tenant:, setting:)
       scope = tenant.habitations.broker_intakes.where(intake_status: TRACKED_STATUSES)
       by_status = scope.group(:intake_status).count
+      legacy_without_snapshot = scope.where(intake_review_policy_version: nil).count
       {
         "in_progress" => by_status.values.sum,
         "by_status" => by_status,
+        "legacy_without_policy_snapshot" => legacy_without_snapshot,
         "awaiting_review" => by_status["submitted_for_admin_review"].to_i,
         "returned_to_broker" => by_status["returned_to_broker"].to_i,
         "ready_to_publish" => by_status["admin_approved"].to_i,

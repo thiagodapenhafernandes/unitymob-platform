@@ -48,7 +48,13 @@
           <% end %>
           <% if @review_policy_proposal["requires_operational_confirmation"] %>
             <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
-              Desligar a revisão pode reatribuir <strong><%= @review_policy_proposal.dig("impact", "would_reassign_if_review_disabled") %> captação(ões)</strong> em andamento.
+              Esta mudança exige confirmação operacional.
+              <% if @review_policy_proposal["operational_confirmation_reasons"].include?("reassign_in_progress") %>
+                Pode reatribuir <strong><%= @review_policy_proposal.dig("impact", "would_reassign_if_review_disabled") %> captação(ões)</strong> em andamento.
+              <% end %>
+              <% if @review_policy_proposal["operational_confirmation_reasons"].include?("affect_legacy_without_snapshot") %>
+                Pode alterar a regra efetiva de <strong><%= @review_policy_proposal.dig("impact", "legacy_without_policy_snapshot") %> captação(ões) legada(s)</strong> sem snapshot de política.
+              <% end %>
             <% end %>
           <% end %>
         </div>
@@ -378,7 +384,7 @@
       <label class="ax-toggle-chip <%= "is-checked" if params[:confirm_operational_impact].present? %>">
         <%= check_box_tag :confirm_operational_impact, "true", params[:confirm_operational_impact].present?, class: "ax-toggle-chip__input" %>
         <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
-        <span class="ax-toggle-chip__label">Confirmo reatribuições indicadas</span>
+        <span class="ax-toggle-chip__label">Confirmo os impactos operacionais indicados</span>
       </label>
       <%= f.submit "Salvar regra do fluxo", class: "ax-btn ax-btn--primary" %>
     </div>

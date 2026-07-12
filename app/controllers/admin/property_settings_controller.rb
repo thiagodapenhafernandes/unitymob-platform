@@ -26,7 +26,7 @@ module Admin
       end
 
       if proposal["requires_operational_confirmation"] && @property_setting.valid? && !operational_impact_confirmed?
-        @property_setting.errors.add(:base, "Confirme a reatribuição das captações em andamento antes de desligar a revisão administrativa.")
+        @property_setting.errors.add(:base, "Confirme o impacto nas captações em andamento antes de alterar etapas ou responsáveis do fluxo.")
         @review_policy_proposal = proposal
         @requires_operational_confirmation = true
         @page_title = "Fluxo de revisão de captações"

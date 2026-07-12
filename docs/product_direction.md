@@ -134,16 +134,14 @@ posterior e não bloqueiam o grupo.
   validada no backend antes de qualquer reatribuição.
 - versões auditadas com snapshot podem ser restauradas com segurança como uma nova
   versão, sem reescrever o histórico nem alterar regras de captações já iniciadas.
+- mudanças de etapa, checklist, blocos devolvíveis ou responsável exigem confirmação
+  reforçada quando alcançam captações legadas sem snapshot; notificações isoladas não
+  geram bloqueio operacional desnecessário.
 
 #### Pendente de produção
 
 - promover a migration e o primeiro slice de governança para `master`;
 - validar a nova área de impacto e histórico em uma conta com captações reais.
-
-#### Pendente — prioridade alta
-
-- exigir confirmação reforçada para outras mudanças futuras de etapa além da
-  desativação da revisão;
 
 #### Pendente — prioridade média
 

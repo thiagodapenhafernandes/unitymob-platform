@@ -14,6 +14,6 @@ RSpec.describe PropertyReviewPolicy::ImpactReport do
 
     report = described_class.call(tenant: tenant, setting: setting)
 
-    expect(report).to include("in_progress" => 2, "awaiting_review" => 1)
+    expect(report).to include("in_progress" => 2, "awaiting_review" => 1, "legacy_without_policy_snapshot" => 2)
   end
 end
