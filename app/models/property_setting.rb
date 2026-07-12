@@ -277,6 +277,16 @@ class PropertySetting < ApplicationRecord
     !broker_capture_layer_enabled || broker_capture_fallback_admin_user_id.present?
   end
 
+  def review_policy_snapshot
+    {
+      "version" => review_policy_version,
+      "broker_capture_layer_enabled" => broker_capture_layer_enabled?,
+      "required_broker_intake_checks" => active_broker_capture_checks,
+      "returnable_intake_edit_sections" => active_returnable_intake_edit_sections,
+      "publication_mode" => "manual"
+    }
+  end
+
   belongs_to :tenant, optional: true
   has_many :review_policy_audit_logs, class_name: "PropertyReviewPolicyAuditLog", dependent: :restrict_with_error
 

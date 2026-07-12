@@ -125,6 +125,10 @@ posterior e não bloqueiam o grupo.
   reatribuições caso a revisão administrativa seja desligada;
 - gravação da política, versão, auditoria e reatribuição ocorre na mesma transação;
 - alterações apenas de marca d'água não criam versão falsa da política.
+- novas captações armazenam a versão e um snapshot das regras vigentes no início;
+- checklist e exigência de revisão de uma captação vinculada não mudam quando a
+  política geral do tenant recebe uma nova versão;
+- captações legadas sem snapshot mantêm fallback compatível para a política atual.
 
 #### Pendente de produção
 
@@ -133,7 +137,6 @@ posterior e não bloqueiam o grupo.
 
 #### Pendente — prioridade alta
 
-- vincular cada nova captação à versão de política sob a qual foi iniciada;
 - permitir simular o fluxo antes de salvar;
 - comparar a configuração proposta com a vigente antes da ativação;
 - exigir confirmação reforçada quando houver reatribuição ou mudança de etapa;

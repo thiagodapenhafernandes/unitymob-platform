@@ -41,6 +41,29 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Categoria relacionada")
   end
 
+  it "vincula a nova captação à versão e às regras vigentes da política" do
+    setting = PropertySetting.instance(tenant: admin.tenant)
+    setting.update!(
+      review_policy_version: 4,
+      broker_capture_layer_enabled: true,
+      required_broker_intake_checks: %w[proprietario endereco fotos]
+    )
+
+    post admin_captacoes_path
+
+    intake = admin.tenant.habitations.broker_intakes.order(:id).last
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "proprietario"))
+    expect(intake).to have_attributes(intake_review_policy_version: 4)
+    expect(intake.intake_review_policy_snapshot).to include(
+      "version" => 4,
+      "broker_capture_layer_enabled" => true,
+      "required_broker_intake_checks" => %w[proprietario endereco fotos]
+    )
+
+    setting.update!(review_policy_version: 5, required_broker_intake_checks: %w[titulo])
+    expect(intake.reload.effective_intake_review_checks(fallback_setting: setting)).to eq(%w[proprietario endereco fotos])
+  end
+
   it "exibe exportador de planilha somente para administrador ou administrativo" do
     get admin_captacoes_path
 

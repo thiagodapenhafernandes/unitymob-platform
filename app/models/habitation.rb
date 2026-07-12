@@ -917,6 +917,22 @@ class Habitation < ApplicationRecord
     intake_origin == INTAKE_ORIGIN_BROKER
   end
 
+  def intake_review_policy_bound?
+    broker_intake? && intake_review_policy_version.present? && intake_review_policy_snapshot.present?
+  end
+
+  def effective_intake_review_checks(fallback_setting: nil)
+    snapshot_checks = intake_review_policy_snapshot.to_h["required_broker_intake_checks"]
+    PropertySetting.normalize_intake_checks(snapshot_checks).presence || fallback_setting&.active_broker_capture_checks || PropertySetting.default_broker_capture_checks
+  end
+
+  def effective_broker_capture_layer_enabled?(fallback_setting: nil)
+    snapshot = intake_review_policy_snapshot.to_h
+    return ActiveModel::Type::Boolean.new.cast(snapshot["broker_capture_layer_enabled"]) if snapshot.key?("broker_capture_layer_enabled")
+
+    fallback_setting&.broker_capture_layer_enabled? != false
+  end
+
   def vista_integrated?
     vista_import_batch_id.present? ||
       vista_codigo.present? ||
