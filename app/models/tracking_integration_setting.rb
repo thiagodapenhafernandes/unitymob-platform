@@ -25,39 +25,48 @@ class TrackingIntegrationSetting
   validate :validate_google_tag_manager
   validate :validate_meta_pixel
 
-  def self.current
-    Rails.cache.fetch(CACHE_KEY, expires_in: 5.minutes) do
-      build_current
+  attr_reader :tenant
+
+  def initialize(attributes = {}, tenant: Current.tenant)
+    @tenant = tenant
+    super(attributes)
+  end
+
+  def self.current(tenant: Current.tenant)
+    raise ArgumentError, "Tenant obrigatório para rastreamento" unless tenant
+
+    Rails.cache.fetch(cache_key(tenant), expires_in: 5.minutes) do
+      build_current(tenant: tenant)
     end
   end
 
-  def self.build_current
-    new(
-      google_tag_manager_enabled: Setting.get(GTM_ENABLED_KEY, "false") == "true",
-      google_tag_manager_container_id: Setting.get(GTM_CONTAINER_ID_KEY, ""),
-      meta_pixel_enabled: Setting.get(META_PIXEL_ENABLED_KEY, "false") == "true",
-      meta_pixel_id: Setting.get(META_PIXEL_ID_KEY, "")
-    )
+  def self.build_current(tenant: Current.tenant)
+    new({
+      google_tag_manager_enabled: Setting.get(GTM_ENABLED_KEY, "false", tenant: tenant) == "true",
+      google_tag_manager_container_id: Setting.get(GTM_CONTAINER_ID_KEY, "", tenant: tenant),
+      meta_pixel_enabled: Setting.get(META_PIXEL_ENABLED_KEY, "false", tenant: tenant) == "true",
+      meta_pixel_id: Setting.get(META_PIXEL_ID_KEY, "", tenant: tenant)
+    }, tenant: tenant)
   end
 
   def self.human_attribute_name(attribute, options = {})
     HUMAN_ATTRIBUTES[attribute.to_s] || super
   end
 
-  def self.google_tag_manager_enabled?
-    Setting.get(GTM_ENABLED_KEY, "false") == "true" && google_tag_manager_container_id.present?
+  def self.google_tag_manager_enabled?(tenant: Current.tenant)
+    Setting.get(GTM_ENABLED_KEY, "false", tenant: tenant) == "true" && google_tag_manager_container_id(tenant: tenant).present?
   end
 
-  def self.google_tag_manager_container_id
-    normalize_gtm_container_id(Setting.get(GTM_CONTAINER_ID_KEY, ""))
+  def self.google_tag_manager_container_id(tenant: Current.tenant)
+    normalize_gtm_container_id(Setting.get(GTM_CONTAINER_ID_KEY, "", tenant: tenant))
   end
 
-  def self.meta_pixel_enabled?
-    Setting.get(META_PIXEL_ENABLED_KEY, "false") == "true" && meta_pixel_id.present?
+  def self.meta_pixel_enabled?(tenant: Current.tenant)
+    Setting.get(META_PIXEL_ENABLED_KEY, "false", tenant: tenant) == "true" && meta_pixel_id(tenant: tenant).present?
   end
 
-  def self.meta_pixel_id
-    normalize_meta_pixel_id(Setting.get(META_PIXEL_ID_KEY, ""))
+  def self.meta_pixel_id(tenant: Current.tenant)
+    normalize_meta_pixel_id(Setting.get(META_PIXEL_ID_KEY, "", tenant: tenant))
   end
 
   def self.normalize_gtm_container_id(value)
@@ -71,17 +80,21 @@ class TrackingIntegrationSetting
   def save
     return false unless valid?
 
-    Setting.set(GTM_ENABLED_KEY, google_tag_manager_enabled? ? "true" : "false", "Ativa Google Tag Manager no site público")
-    Setting.set(GTM_CONTAINER_ID_KEY, normalized_google_tag_manager_container_id, "ID do container Google Tag Manager")
-    Setting.set(META_PIXEL_ENABLED_KEY, meta_pixel_enabled? ? "true" : "false", "Ativa Pixel da Meta no site público")
-    Setting.set(META_PIXEL_ID_KEY, normalized_meta_pixel_id, "ID do Pixel da Meta")
-    self.class.clear_cache
+    Setting.set(GTM_ENABLED_KEY, google_tag_manager_enabled? ? "true" : "false", "Ativa Google Tag Manager no site público", tenant: tenant)
+    Setting.set(GTM_CONTAINER_ID_KEY, normalized_google_tag_manager_container_id, "ID do container Google Tag Manager", tenant: tenant)
+    Setting.set(META_PIXEL_ENABLED_KEY, meta_pixel_enabled? ? "true" : "false", "Ativa Pixel da Meta no site público", tenant: tenant)
+    Setting.set(META_PIXEL_ID_KEY, normalized_meta_pixel_id, "ID do Pixel da Meta", tenant: tenant)
+    self.class.clear_cache(tenant: tenant)
 
     true
   end
 
-  def self.clear_cache
-    Rails.cache.delete(CACHE_KEY)
+  def self.cache_key(tenant)
+    "#{CACHE_KEY}:tenant:#{tenant.id}"
+  end
+
+  def self.clear_cache(tenant: Current.tenant)
+    Rails.cache.delete(cache_key(tenant)) if tenant
   end
 
   def google_tag_manager_enabled?

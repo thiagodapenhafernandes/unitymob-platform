@@ -12,8 +12,6 @@ class Admin::BaseController < ApplicationController
 
   SYSTEM_ADMIN_GLOBAL_CONTROLLERS = %w[
     admin/push_settings
-    admin/tracking_integrations
-    admin/storage_integrations
   ].freeze
 
   before_action :authenticate_admin_user!

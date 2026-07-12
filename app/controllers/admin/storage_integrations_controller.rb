@@ -1,6 +1,5 @@
 class Admin::StorageIntegrationsController < Admin::BaseController
-  before_action :require_system_admin!
-  before_action -> { check_permission!(:manage, :integracoes) unless system_admin? }
+  before_action -> { check_permission!(:manage, :integracoes) }
   before_action :load_setting
 
   def show
@@ -88,7 +87,7 @@ class Admin::StorageIntegrationsController < Admin::BaseController
   private
 
   def load_setting
-    @storage_setting = StorageIntegrationSetting.current
+    @storage_setting = StorageIntegrationSetting.current(tenant: current_tenant)
   end
 
   def prepare_show_state

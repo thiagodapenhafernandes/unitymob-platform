@@ -1,4 +1,6 @@
 class StorageIntegrationSetting < ApplicationRecord
+  belongs_to :tenant
+
   CURRENT_CACHE_KEY = :storage_integration_setting_current
 
   PROVIDERS = %w[local digital_ocean amazon_s3].freeze
@@ -19,20 +21,22 @@ class StorageIntegrationSetting < ApplicationRecord
   validate :validate_provider_configuration
   after_commit :clear_current_cache
 
-  def self.instance
-    first || create_from_environment!
+  def self.instance(tenant: Current.tenant)
+    raise ArgumentError, "Tenant obrigatório para armazenamento" unless tenant
+
+    find_by(tenant: tenant) || create_from_environment!(tenant: tenant)
   end
 
-  def self.current
-    instance
+  def self.current(tenant: Current.tenant)
+    instance(tenant: tenant)
   end
 
   def self.clear_current_cache
     nil
   end
 
-  def self.create_from_environment!
-    new(defaults_from_environment).tap(&:save!)
+  def self.create_from_environment!(tenant:)
+    create!(defaults_from_environment.merge(tenant: tenant))
   end
 
   def self.defaults_from_environment
@@ -122,16 +126,16 @@ class StorageIntegrationSetting < ApplicationRecord
 
   def service_name_for_provider(provider)
     case provider.to_s
-    when "digital_ocean" then DO_SERVICE_NAME
-    when "amazon_s3" then S3_SERVICE_NAME
+    when "digital_ocean" then tenant_service_name(DO_SERVICE_NAME)
+    when "amazon_s3" then tenant_service_name(S3_SERVICE_NAME)
     else :local
     end
   end
 
   def provider_for_service_name(service_name)
     case service_name.to_s
-    when "do_spaces", DO_SERVICE_NAME.to_s then "digital_ocean"
-    when "amazon", "amazon_s3", S3_SERVICE_NAME.to_s then "amazon_s3"
+    when "do_spaces", DO_SERVICE_NAME.to_s, tenant_service_name(DO_SERVICE_NAME).to_s then "digital_ocean"
+    when "amazon", "amazon_s3", S3_SERVICE_NAME.to_s, tenant_service_name(S3_SERVICE_NAME).to_s then "amazon_s3"
     else "local"
     end
   end
@@ -148,12 +152,12 @@ class StorageIntegrationSetting < ApplicationRecord
 
     if digital_ocean_ready?
       config = digital_ocean_service_config
-      ([DO_SERVICE_NAME] + LEGACY_DO_SERVICE_NAMES).each { |service_name| configs[service_name] = config }
+      configs[tenant_service_name(DO_SERVICE_NAME)] = config
     end
 
     if amazon_ready?
       config = amazon_service_config
-      ([S3_SERVICE_NAME] + LEGACY_S3_SERVICE_NAMES).each { |service_name| configs[service_name] = config }
+      configs[tenant_service_name(S3_SERVICE_NAME)] = config
     end
 
     configs
@@ -194,6 +198,10 @@ class StorageIntegrationSetting < ApplicationRecord
   end
 
   private
+
+  def tenant_service_name(base_name)
+    "#{base_name}_tenant_#{tenant_id}".to_sym
+  end
 
   def clear_current_cache
     self.class.clear_current_cache

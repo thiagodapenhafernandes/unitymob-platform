@@ -37,8 +37,10 @@ module Storage
 
     def register_if_available!
       return false unless ActiveRecord::Base.connection.data_source_exists?("storage_integration_settings")
+      return false unless StorageIntegrationSetting.column_names.include?("tenant_id")
 
-      register!
+      StorageIntegrationSetting.find_each { |setting| register!(setting) }
+      true
     rescue ActiveRecord::NoDatabaseError,
            ActiveRecord::StatementInvalid,
            ActiveRecord::ConnectionNotEstablished,

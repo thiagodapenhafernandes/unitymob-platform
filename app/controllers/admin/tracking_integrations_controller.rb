@@ -1,14 +1,13 @@
 class Admin::TrackingIntegrationsController < Admin::BaseController
-  before_action :require_system_admin!
-  before_action -> { check_permission!(:manage, :integracoes) unless system_admin? }
+  before_action -> { check_permission!(:manage, :integracoes) }
 
   def show
-    @tracking_setting = TrackingIntegrationSetting.current
+    @tracking_setting = TrackingIntegrationSetting.current(tenant: current_tenant)
     @active_tab = active_tab
   end
 
   def update
-    @tracking_setting = TrackingIntegrationSetting.current
+    @tracking_setting = TrackingIntegrationSetting.current(tenant: current_tenant)
     @tracking_setting.assign_attributes(tracking_params)
     @active_tab = active_tab
 

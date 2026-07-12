@@ -47,6 +47,8 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 - histórico global e por tenant com retenção de 90 dias;
 - alertas por Web Push e e-mail, com deduplicação;
 - filtro de histórico por tenant com enforcement exclusivo de System Admin.
+- Rastreamento e Armazenamento removidos do System Admin e escopados pela conta,
+  incluindo persistência, cache, credenciais e serviços de storage separados por tenant.
 
 #### Pendente de produção
 

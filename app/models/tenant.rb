@@ -3,6 +3,7 @@ class Tenant < ApplicationRecord
 
   has_many :profiles, dependent: :restrict_with_error
   has_many :admin_users, dependent: :restrict_with_error
+  has_one :storage_integration_setting, dependent: :destroy
   has_many :account_memberships, dependent: :destroy
   has_many :leads, dependent: :restrict_with_error
   has_many :habitations, dependent: :restrict_with_error

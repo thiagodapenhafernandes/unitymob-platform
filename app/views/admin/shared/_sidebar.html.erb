@@ -43,17 +43,6 @@
         <i class="bi bi-broadcast-pin"></i><span>Notificações Globais</span>
       <% end %>
     </li>
-    <li class="ax-nav__caption">Configuração global</li>
-    <li class="ax-nav__item">
-      <%= link_to admin_tracking_integration_path, class: "ax-nav__link #{'active' if controller_name == 'tracking_integrations'}" do %>
-        <i class="bi bi-bullseye"></i><span>Rastreamento</span>
-      <% end %>
-    </li>
-    <li class="ax-nav__item">
-      <%= link_to admin_storage_integration_path, class: "ax-nav__link #{'active' if controller_name == 'storage_integrations'}" do %>
-        <i class="bi bi-cloud-arrow-up"></i><span>Armazenamento</span>
-      <% end %>
-    </li>
     <li class="ax-nav__caption">Contas</li>
     <li class="ax-nav__hint">Acesse áreas operacionais apenas por impersonação.</li>
   <% else %>
