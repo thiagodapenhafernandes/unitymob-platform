@@ -10,15 +10,24 @@ module Admin
 
     def update
       previous_layer_enabled = @property_setting.broker_capture_layer_enabled?
+      review_policy_before = PropertyReviewPolicy::ChangeRecorder.snapshot(@property_setting)
+      review_policy_impact = PropertyReviewPolicy::ImpactReport.call(tenant: current_tenant, setting: @property_setting)
       @property_setting.watermark_image.purge if remove_watermark_image?
       @property_setting.assign_attributes(property_setting_params)
       return_to_review_workflow = params[:return_to].to_s == review_workflow_admin_property_setting_path
 
-      if @property_setting.save
+      saved = false
+      PropertySetting.transaction do
+        saved = @property_setting.save
+        raise ActiveRecord::Rollback unless saved
+
+        PropertyReviewPolicy::ChangeRecorder.call(setting: @property_setting, admin_user: current_admin_user, before_snapshot: review_policy_before, impact_snapshot: review_policy_impact)
         if previous_layer_enabled && !@property_setting.broker_capture_layer_enabled
           reassign_broker_intakes_to_fallback_admin_user!
         end
+      end
 
+      if saved
         if return_to_review_workflow
           redirect_to review_workflow_admin_property_setting_path, notice: "Configurações de revisão atualizadas com sucesso."
         else
@@ -48,6 +57,8 @@ module Admin
       @returnable_section_labels = @property_setting.active_returnable_intake_edit_sections.map do |key|
         PropertySetting::RETURNABLE_INTAKE_EDIT_SECTION_OPTIONS[key.to_s] || key
       end
+      @review_policy_impact = PropertyReviewPolicy::ImpactReport.call(tenant: current_tenant, setting: @property_setting)
+      @review_policy_audits = @property_setting.review_policy_audit_logs.includes(:admin_user).recent.limit(10)
     end
 
     private

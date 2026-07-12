@@ -278,6 +278,7 @@ class PropertySetting < ApplicationRecord
   end
 
   belongs_to :tenant, optional: true
+  has_many :review_policy_audit_logs, class_name: "PropertyReviewPolicyAuditLog", dependent: :restrict_with_error
 
   # Uma configuração POR CONTA (antes era 1 linha global — vazava entre
   # tenants). Pré-migration (sem coluna) mantém o comportamento antigo.
