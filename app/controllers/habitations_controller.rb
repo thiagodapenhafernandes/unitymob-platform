@@ -724,7 +724,7 @@ class HabitationsController < ApplicationController
     public_picture = Array(habitation.pictures)
       .select { |picture| picture["exibir_no_site"] != false }
       .min_by { |picture| picture["ordem"].to_i }
-    public_picture_url = helpers.public_image_url(public_picture) if public_picture.present?
+    public_picture_url = public_picture&.dig("url").presence || public_picture&.dig("url_original").presence
     return { url: absolute_social_image_url(public_picture_url) } if public_picture_url.present?
 
     source = habitation.primary_image_source
@@ -750,10 +750,15 @@ class HabitationsController < ApplicationController
 
   def absolute_social_image_url(image)
     value = image.to_s
-    return value.sub("http://", "https://") if value.start_with?("http://")
-    return value if value.start_with?("https://")
+    if value.start_with?("http://", "https://")
+      uri = URI.parse(value.sub("http://", "https://"))
+      uri.path = uri.path.gsub(%r{/+}, "/")
+      return uri.to_s
+    end
 
     "#{request.base_url}#{value.start_with?('/') ? value : "/#{value}"}"
+  rescue URI::InvalidURIError
+    value
   end
 
 end
