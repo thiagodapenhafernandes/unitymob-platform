@@ -165,6 +165,7 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.fetch("url")).to include("share_token=")
+      expect(response.parsed_body.fetch("url")).to include("preview=")
     end
 
     it "creates a private tracked link for an unavailable property without making its plain URL public" do
@@ -185,6 +186,17 @@ RSpec.describe "Habitation details", type: :request do
       get habitation_path(habitation, share_token: token)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(habitation.display_title)
+    end
+
+    it "uses the versioned shared URL as og:url while keeping a clean canonical URL" do
+      habitation = create(:habitation, codigo: "SHARE-OG", slug: "share-og")
+      share_link = HabitationShareLink.create!(habitation: habitation, admin_user: create(:admin_user, tenant: habitation.tenant))
+      shared_path = habitation_path(habitation, share_token: share_link.token, preview: 123)
+
+      get shared_path
+
+      expect(response.body).to include(%(property="og:url" content="#{ERB::Util.html_escape("http://localhost#{shared_path}")}"))
+      expect(response.body).to include(%(rel="canonical" href="http://localhost#{habitation_path(habitation)}"))
     end
 
     it "replaces past delivery dates with ready-to-move status when marked as ready" do

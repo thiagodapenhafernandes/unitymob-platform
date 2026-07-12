@@ -197,6 +197,7 @@ class HabitationsController < ApplicationController
     @page_keywords = property_metadata[:meta_keywords]
     @page_name = property_metadata[:page_name]
     @canonical_url = habitation_url(@habitation)
+    @social_url = request.original_url if params[:share_token].present?
     
     # Image for social sharing (Open Graph)
     social_image = share_image_metadata_for(@habitation)
@@ -268,10 +269,11 @@ class HabitationsController < ApplicationController
       habitation: @habitation,
       admin_user: current_admin_user
     )
+    link.touch
 
     render json: {
       success: true,
-      url: habitation_url(@habitation, share_token: link.token),
+      url: habitation_url(@habitation, share_token: link.token, preview: link.updated_at.to_i),
       expires_at: link.expires_at.iso8601
     }
   rescue StandardError => e

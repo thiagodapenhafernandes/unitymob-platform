@@ -63,6 +63,7 @@
                     @page_image.presence ||
                     "#{request.base_url}/icon.png"
       canonical_url = sanitize_utf8.call(@canonical_url.presence || (seo_public ? seo.public_url(request.base_url) : request.original_url))
+      social_url = sanitize_utf8.call(@social_url.presence || canonical_url)
       og_title = sanitize_utf8.call(property_page ? effective_title : ((seo_public ? seo.og_title.presence : nil) || effective_title))
       og_description = strip_tags(property_page ? effective_description : ((seo_public ? seo.og_description.presence : nil) || effective_description))
       og_type = social_property.present? ? "product" : "website"
@@ -77,7 +78,7 @@
     
     <%# Open Graph / Facebook %>
     <meta property="og:type" content="<%= og_type %>">
-    <meta property="og:url" content="<%= canonical_url %>">
+    <meta property="og:url" content="<%= social_url %>">
     <meta property="og:title" content="<%= og_title %>">
     <meta property="og:description" content="<%= og_description %>">
     <meta property="og:site_name" content="<%= site_name %>">
@@ -103,7 +104,7 @@
     
     <%# Twitter %>
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="<%= canonical_url %>">
+    <meta name="twitter:url" content="<%= social_url %>">
     <meta name="twitter:title" content="<%= og_title %>">
     <meta name="twitter:description" content="<%= og_description %>">
     <meta name="twitter:image" content="<%= final_image %>">
