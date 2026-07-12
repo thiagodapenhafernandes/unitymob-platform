@@ -728,7 +728,7 @@ class HabitationsController < ApplicationController
       variant = attachment.blob.variant(
         resize_to_fill: [1200, 630],
         format: :jpg,
-        saver: { quality: 82, strip: true }
+        saver: { quality: 82 }
       )
       return {
         url: "#{request.base_url}#{Rails.application.routes.url_helpers.rails_representation_path(variant, only_path: true)}",
