@@ -550,7 +550,7 @@ class Admin::HabitationsController < Admin::BaseController
   def preload_habitation_form_associations
     ActiveRecord::Associations::Preloader.new(
       records: [@habitation],
-      associations: [:admin_user, { broker_assignments: :admin_user }]
+      associations: [:admin_user, :photos_attachments, :fichas_cadastro_attachments, :autorizacoes_venda_attachments, { broker_assignments: :admin_user }]
     ).call
   rescue StandardError => e
     Rails.logger.warn("[habitations#edit] preload de associações falhou: #{e.message}")
@@ -2186,7 +2186,6 @@ class Admin::HabitationsController < Admin::BaseController
 
   def load_habitation_audit_logs
     @habitation_audit_logs = @habitation.habitation_audit_logs.includes(:admin_user).recent.limit(80)
-    @habitation_vista_timeline_entries = habitation_vista_timeline_entries
     load_habitation_vista_document_assets
   end
 
@@ -2196,95 +2195,6 @@ class Admin::HabitationsController < Admin::BaseController
       .includes(active_storage_attachment: :blob)
       .order(Arel.sql("position ASC NULLS LAST"), :id)
       .limit(80)
-  end
-
-  def habitation_vista_timeline_entries
-    entries = []
-
-    HabitationInteraction.where(habitation: @habitation).includes(:admin_user).order(created_at: :desc).limit(40).each do |interaction|
-      entries << vista_timeline_entry(
-        interaction,
-        type: "Prontuário Vista",
-        title: interaction.subject.presence || interaction.interaction_type.presence || "Interação do Vista",
-        at: interaction.occurred_at || interaction.started_at || interaction.created_at,
-        details: [
-          interaction.body,
-          interaction.status.present? ? "Status: #{interaction.status}" : nil,
-          interaction.proposal_value_cents.to_i.positive? ? "Proposta: #{helpers.number_to_currency(interaction.proposal_value_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".")}" : nil,
-          interaction.published_vehicle.present? ? "Veículo publicado: #{interaction.published_vehicle}" : nil
-        ]
-      )
-    end
-
-    CrmAppointment.where(habitation: @habitation).includes(:admin_user).order(created_at: :desc).limit(30).each do |appointment|
-      entries << vista_timeline_entry(
-        appointment,
-        type: "Agenda Vista",
-        title: appointment.title.presence || appointment.appointment_type.presence || "Compromisso do Vista",
-        at: appointment.starts_at || appointment.created_in_source_at || appointment.source_updated_at || appointment.created_at,
-        details: [
-          appointment.description,
-          appointment.location.present? ? "Local: #{appointment.location}" : nil,
-          appointment.visit_status.present? ? "Status da visita: #{appointment.visit_status}" : nil,
-          appointment.completed? ? "Concluído" : nil
-        ]
-      )
-    end
-
-    ClientPropertyInterest.where(habitation: @habitation).includes(:admin_user).order(created_at: :desc).limit(30).each do |interest|
-      entries << vista_timeline_entry(
-        interest,
-        type: "Interesse Vista",
-        title: interest.interest_type.presence || "Interesse de cliente no Vista",
-        at: interest.consulted_at || interest.last_search_at || interest.started_at || interest.created_at,
-        details: [
-          interest.status.present? ? "Status: #{interest.status}" : nil,
-          interest.notes,
-          interest.lead? ? "Marcado como lead" : nil,
-          interest.selected? ? "Selecionado" : nil
-        ]
-      )
-    end
-
-    VistaFileAsset.where(habitation: @habitation, kind: "property_document").order(created_at: :desc).limit(20).each do |asset|
-      entries << vista_timeline_entry(
-        asset,
-        type: "Documento Vista",
-        title: asset.filename.presence || "Documento importado do Vista",
-        at: asset.downloaded_at || asset.updated_at || asset.created_at,
-        details: [
-          "Status: #{vista_file_asset_status_label(asset.status)}",
-          asset.error_message.present? ? "Erro: #{asset.error_message}" : nil,
-          asset.source_url.present? ? "Origem: #{asset.source_url}" : nil
-        ]
-      )
-    end
-
-    entries
-      .sort_by { |entry| entry[:at] || Time.zone.at(0) }
-      .reverse
-      .first(80)
-  end
-
-  def vista_timeline_entry(record, type:, title:, at:, details:)
-    {
-      at: at,
-      title: title,
-      type: type,
-      actor: record.respond_to?(:admin_user) ? record.admin_user&.name : nil,
-      source_table: record.respond_to?(:source_table) ? record.source_table : record.table_name,
-      source_key: record.respond_to?(:source_key) ? record.source_key : record.source_path,
-      details: Array(details).map { |detail| detail.to_s.strip }.reject(&:blank?)
-    }
-  end
-
-  def vista_file_asset_status_label(status)
-    {
-      "pending" => "pendente de download",
-      "downloaded" => "baixado",
-      "failed" => "falhou",
-      "skipped" => "ignorado"
-    }.fetch(status.to_s, status.to_s.presence || "desconhecido")
   end
 
   def filter_empreendimento_options

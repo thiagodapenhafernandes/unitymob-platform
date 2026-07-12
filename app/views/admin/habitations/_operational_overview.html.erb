@@ -1,0 +1,39 @@
+<%
+  portal_fields = Habitation::PORTAL_PUBLICATION_FIELDS.values.map(&:to_s).select { |field| habitation.has_attribute?(field) }
+  active_portals = portal_fields.count { |field| ActiveModel::Type::Boolean.new.cast(habitation.public_send(field)) }
+  photo_count = habitation.photos.attachments.size
+  document_count = habitation.fichas_cadastro.attachments.size + habitation.autorizacoes_venda.attachments.size
+  pending_items = []
+  pending_items << "Título público não informado" if habitation.titulo_anuncio.blank?
+  pending_items << "Imóvel sem fotos locais" if photo_count.zero?
+  pending_items << "Imóvel fora do site público" unless habitation.exibir_no_site_flag?
+  pending_items << "Nenhum canal de portal ativo" if active_portals.zero?
+  responsible_name = habitation.admin_user&.name.presence || "Sem responsável"
+%>
+
+<section class="tab-pane show active habitation-operational-overview" id="audit-overview" role="tabpanel">
+  <div class="habitation-operational-kpis">
+    <article><span>Situação</span><strong><%= habitation.situacao.presence || habitation.status.presence || "Não informada" %></strong></article>
+    <article><span>Responsável</span><strong><%= responsible_name %></strong></article>
+    <article><span>Site público</span><strong><%= habitation.exibir_no_site_flag? ? "Publicado" : "Fora do site" %></strong></article>
+    <article><span>Portais ativos</span><strong><%= active_portals %></strong></article>
+    <article><span>Fotos locais</span><strong><%= photo_count %></strong></article>
+    <article><span>Documentos locais</span><strong><%= document_count %></strong></article>
+  </div>
+
+  <div class="habitation-operational-grid">
+    <section class="habitation-operational-panel">
+      <header><i class="bi bi-exclamation-circle"></i><strong>Pendências úteis</strong><span><%= pending_items.size %></span></header>
+      <% if pending_items.any? %>
+        <ul><% pending_items.each do |item| %><li><%= item %></li><% end %></ul>
+      <% else %>
+        <p>Nenhuma pendência básica identificada.</p>
+      <% end %>
+    </section>
+
+    <section class="habitation-operational-panel">
+      <header><i class="bi bi-signpost-split"></i><strong>Próxima ação</strong></header>
+      <p><%= pending_items.first || "Acompanhar alterações e publicação pelos canais ativos." %></p>
+    </section>
+  </div>
+</section>

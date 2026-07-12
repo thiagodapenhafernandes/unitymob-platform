@@ -1,6 +1,5 @@
 <%
   logs = Array(logs)
-  vista_entries = Array(local_assigns.fetch(:vista_entries, @habitation_vista_timeline_entries))
   publication_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? }
   intake_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? }
 
@@ -10,10 +9,15 @@
     Código <%= habitation.codigo %> · últimas <%= logs.size %> movimentações registradas
   </p>
 
-  <nav class="habitation-audit-tabs" data-controller="ax-tabs" aria-label="Categorias da timeline">
+  <nav class="habitation-audit-tabs" data-controller="ax-tabs" aria-label="Áreas da central do imóvel">
     <button type="button" class="habitation-audit-tab active"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-all"
+            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-overview"
             data-action="click->ax-tabs#select" aria-selected="true">
+      Visão geral
+    </button>
+    <button type="button" class="habitation-audit-tab"
+            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-all"
+            data-action="click->ax-tabs#select" aria-selected="false">
       Alterações <span class="habitation-audit-tab__count"><%= logs.size %></span>
     </button>
     <button type="button" class="habitation-audit-tab"
@@ -26,24 +30,19 @@
             data-action="click->ax-tabs#select" aria-selected="false">
       Captação <span class="habitation-audit-tab__count"><%= intake_logs.size %></span>
     </button>
-    <button type="button" class="habitation-audit-tab"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-vista"
-            data-action="click->ax-tabs#select" aria-selected="false">
-      Vista <span class="habitation-audit-tab__count"><%= vista_entries.size %></span>
-    </button>
   </nav>
 
   <div class="tab-content habitation-audit-content">
-    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-all", active: true, logs: logs %>
+    <%= render "admin/habitations/operational_overview", habitation: habitation %>
+    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-all", active: false, logs: logs %>
     <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-publication", active: false, logs: publication_logs %>
     <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-intake", active: false, logs: intake_logs %>
-    <%= render "admin/habitations/audit_history_vista_timeline", tab_id: "audit-vista", active: false, entries: vista_entries %>
   </div>
 <% end %>
 
 <%= ax_quick_modal(
       id: "habitationHistoryModal",
-      title: "Timeline de edições do cadastro",
+      title: "Central do imóvel",
       size: :lg,
       class_name: "habitation-audit-modal",
       body: audit_modal_body
@@ -124,6 +123,23 @@
   }
 
   .habitation-audit-content { padding: 16px; }
+
+  .habitation-operational-overview { display: grid; gap: 12px; }
+  .habitation-operational-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .habitation-operational-kpis article { min-width: 0; padding: 10px 12px; border: 1px solid var(--ab-line-soft, #e7ebf2); border-radius: 8px; background: #fff; }
+  .habitation-operational-kpis span { display: block; color: var(--ab-muted, #657386); font-size: 10.5px; font-weight: 800; text-transform: uppercase; }
+  .habitation-operational-kpis strong { display: block; margin-top: 3px; overflow: hidden; color: var(--ab-ink, #202a37); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+  .habitation-operational-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+  .habitation-operational-panel { padding: 10px 12px; border: 1px solid var(--ab-line-soft, #e7ebf2); border-radius: 8px; background: var(--ab-panel-soft, #f4f7fb); }
+  .habitation-operational-panel header { display: flex; align-items: center; gap: 7px; color: var(--ab-ink, #202a37); font-size: 12px; }
+  .habitation-operational-panel header span { margin-left: auto; }
+  .habitation-operational-panel ul { margin: 8px 0 0; padding-left: 18px; color: var(--ab-muted, #657386); font-size: 12px; }
+  .habitation-operational-panel p { margin: 8px 0 0; color: var(--ab-muted, #657386); font-size: 12px; }
+
+  @media (max-width: 720px) {
+    .habitation-operational-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .habitation-operational-grid { grid-template-columns: 1fr; }
+  }
 
   /* Garante o toggle dos panes mesmo sem o JS do Bootstrap. */
   .habitation-audit-modal .tab-content > .tab-pane { display: none; }

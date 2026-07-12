@@ -2968,13 +2968,13 @@ RSpec.describe "Admin::Habitations", type: :request do
     get edit_admin_habitation_path(habitation)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Timeline")
+    expect(response.body).to include("Central do imóvel")
     expect(response.body).to include("Título do anúncio")
     expect(response.body).to include("Título antigo")
     expect(response.body).to include("Título novo")
   end
 
-  it "exibe eventos importados do Vista na timeline do cadastro" do
+  it "mantém a central do imóvel independente da timeline importada do Vista" do
     habitation = create(:habitation, codigo: "VISTA-TL-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel com timeline Vista")
     HabitationInteraction.create!(
       habitation: habitation,
@@ -2991,10 +2991,13 @@ RSpec.describe "Admin::Habitations", type: :request do
     get edit_admin_habitation_path(habitation)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Vista")
-    expect(response.body).to include("Atualização importada do Vista")
-    expect(response.body).to include("Descrição alterada no prontuário")
-    expect(response.body).to include("VISTA_API_PRONTUARIO")
+    expect(response.body).to include("Central do imóvel")
+    expect(response.body).to include("Visão geral")
+    expect(response.body).to include("Alterações")
+    expect(response.body).to include("Publicação")
+    expect(response.body).to include("Captação")
+    expect(response.body).not_to include("Atualização importada do Vista")
+    expect(response.body).not_to include("VISTA_API_PRONTUARIO")
   end
 
   it "exibe documentos importados do Vista na aba de documentos" do

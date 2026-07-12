@@ -13,7 +13,7 @@
   <%= admin_contextbar_link("Voltar", return_path, icon: "arrow-left") %>
   <%= admin_contextbar_link("Ver no site", habitation_path(@habitation), icon: "box-arrow-up-right", primary: true, target: "_blank", rel: "noopener") if @habitation.persisted? %>
   <button type="button" class="ax-contextbar__button" data-ax-modal-open="#habitationHistoryModal">
-    <i class="bi bi-clock-history"></i><span>Timeline</span>
+    <i class="bi bi-layout-text-window-reverse"></i><span>Central do imóvel</span>
   </button>
   <% if can_destroy_habitation? && @habitation.persisted? %>
     <%= button_to admin_habitation_path(@habitation.id),
