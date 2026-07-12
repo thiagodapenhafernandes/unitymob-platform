@@ -22,6 +22,53 @@ As três direções prioritárias são:
 2. políticas operacionais configuráveis por imobiliária;
 3. CRM orientado à próxima ação e à conversão.
 
+## Quadro de execução
+
+Este parecer também funciona como fonte de verdade do roadmap. Os estados usados são:
+
+- **Concluído no develop**: implementado, testado e enviado ao branch `develop`;
+- **Pendente de produção**: concluído no código, mas ainda sem promoção para `master` e deploy;
+- **Pendente**: ainda exige implementação ou decisão operacional.
+
+### Grupo 1 — confiança multi-tenant e observabilidade
+
+#### Concluído no develop
+
+- contrato formal de isolamento multi-tenant e gate automatizado `security:tenant_isolation`;
+- CI dedicado ao isolamento, executado em `develop`, `master` e pull requests;
+- correções de escopo por tenant em configurações e conteúdo compartilhado;
+- proteção das rotas globais exclusivas do System Admin;
+- menu do System Admin com acessos às telas globais;
+- painel `/admin/system/health` com release, schema, runtime, filas e erros;
+- separação entre erros funcionais e ruído de tráfego/bots;
+- saúde consolidada por tenant sem expor registros operacionais entre contas;
+- limites objetivos configuráveis pelo System Admin;
+- monitor automático a cada cinco minutos;
+- histórico global e por tenant com retenção de 90 dias;
+- alertas por Web Push e e-mail, com deduplicação;
+- filtro de histórico por tenant com enforcement exclusivo de System Admin.
+
+#### Pendente de produção
+
+- promover os commits do Grupo 1 de `develop` para `master`;
+- executar as migrations de histórico e configuração de saúde;
+- validar visualmente `/admin/system/health` em produção;
+- confirmar o primeiro ciclo do monitor e a gravação de amostras;
+- confirmar entrega real de Web Push e e-mail no ambiente de produção.
+
+#### Pendente
+
+- revisar ErrorEvents históricos e resolver somente fingerprints comprovadamente corrigidos;
+- acompanhar as primeiras execuções do CI e ajustar dependências de ambiente, se necessário;
+- avaliar gráficos de tendência longa depois de existir volume histórico suficiente.
+
+### Critério de conclusão do Grupo 1
+
+O Grupo 1 estará concluído quando o pacote estiver em produção, as rotas críticas
+estiverem saudáveis, o monitor tiver registrado amostras globais e por tenant, os
+canais de alerta tiverem sido comprovados e não houver regressão no gate de
+isolamento. Gráficos avançados são evolução posterior e não bloqueiam o grupo.
+
 ## Correção de premissa: ciclo de captação da Salute
 
 O ciclo de captação da Salute está operacional e funciona adequadamente no processo adotado pela empresa. Portanto, não deve ser classificado como um ciclo aberto ou incompleto.
@@ -204,11 +251,11 @@ Para ampliar a operação além da Salute, a plataforma precisa consolidar:
 
 ### Ciclo 1 — confiança e política operacional
 
-- concluir e publicar o pacote atual de isolamento por tenant;
-- manter testes cruzados obrigatórios;
+- concluir e publicar o pacote atual de isolamento por tenant — **pendente de produção**;
+- manter testes cruzados obrigatórios — **concluído no develop, com CI dedicado**;
 - consolidar `/admin/property_setting/review_workflow` como motor de política;
 - adicionar auditoria e impacto de mudanças de fluxo;
-- criar visão de saúde para o System Admin.
+- criar visão de saúde para o System Admin — **concluído no develop, pendente de produção**.
 
 ### Ciclo 2 — produtividade operacional
 
