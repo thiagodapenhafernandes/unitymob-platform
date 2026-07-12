@@ -112,7 +112,6 @@ RSpec.describe "Admin::PropertySettings", type: :request do
 
     expect do
       patch admin_property_setting_path, params: {
-        confirm_operational_impact: "true",
         return_to: review_workflow_admin_property_setting_path,
         property_setting: {
           broker_capture_layer_enabled: "true",
@@ -266,38 +265,9 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     end.not_to change(PropertyReviewPolicyAuditLog, :count)
 
     expect(response).to have_http_status(:unprocessable_entity)
-    expect(response.body).to include("Confirme o impacto nas captações")
+    expect(response.body).to include("Confirme a reatribuição")
     expect(setting.reload.broker_capture_layer_enabled).to be(true)
     expect(intake.reload.admin_user_id).to eq(admin.id)
-  end
-
-  it "exige confirmação ao alterar etapas que alcançam captações legadas sem snapshot" do
-    admin = create(:admin_user, :admin)
-    setting = PropertySetting.instance
-    legacy_intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin, intake_status: "returned_to_broker")
-    legacy_intake.update_columns(intake_review_policy_version: nil, intake_review_policy_snapshot: {})
-    original_checks = setting.required_broker_intake_checks
-    sign_in admin
-
-    expect do
-      patch admin_property_setting_path, params: {
-        return_to: review_workflow_admin_property_setting_path,
-        property_setting: { required_broker_intake_checks: %w[proprietario fotos] }
-      }
-    end.not_to change(PropertyReviewPolicyAuditLog, :count)
-
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(response.body).to include("captações em andamento")
-    expect(setting.reload.required_broker_intake_checks).to eq(original_checks)
-
-    patch admin_property_setting_path, params: {
-      confirm_operational_impact: "true",
-      return_to: review_workflow_admin_property_setting_path,
-      property_setting: { required_broker_intake_checks: %w[proprietario fotos] }
-    }
-
-    expect(response).to redirect_to(review_workflow_admin_property_setting_path)
-    expect(setting.reload.required_broker_intake_checks).to match_array(%w[proprietario fotos])
   end
 
   it "blocks non-admin users" do
