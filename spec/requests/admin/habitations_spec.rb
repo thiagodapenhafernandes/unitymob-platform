@@ -2433,6 +2433,20 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include("https://example.com/api-visivel.jpg")
   end
 
+  it "exibe fotos remotas do DWV no organizador sem exigir materialização local" do
+    habitation = create(
+      :habitation,
+      codigo: "MODAL-DWV-#{SecureRandom.hex(6)}",
+      imovel_dwv: "Sim",
+      pictures: [{ "url" => "https://dwvimagesv1.b-cdn.net/spec/modal-dwv.jpg" }]
+    )
+
+    get modal_admin_habitation_media_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("https://dwvimagesv1.b-cdn.net/spec/modal-dwv.jpg")
+  end
+
   it "remove fotos anexadas selecionadas ao salvar o imóvel" do
     habitation = create(:habitation, codigo: "FOTO-DEL-#{SecureRandom.hex(6)}")
     habitation.create_address!(
@@ -2799,7 +2813,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Apartamento completo para show")
     expect(response.body).to include("Edifício Visível")
-    expect(response.body).to include("https://imob.sfo3.cdn.digitaloceanspaces.com/spec/foto-api-show.jpg")
+    expect(response.body).not_to include("https://imob.sfo3.cdn.digitaloceanspaces.com/spec/foto-api-show.jpg")
+    expect(response.body).to include("foto-local-show.jpg")
     expect(response.body).to include("data-fancybox")
     expect(response.body).to include("Dados principais")
     expect(response.body).to include("Captador")
@@ -2822,6 +2837,37 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include("(47) 99999-9999")
     expect(response.body).not_to include("ficha-sigilosa.txt")
     expect(response.body).not_to include("Anexos e documentos internos")
+  end
+
+  it "não mostra Edifício e capacidade quando só existem contadores zerados" do
+    habitation = create(
+      :habitation,
+      codigo: "SHOW-EMPTY-BUILDING-#{SecureRandom.hex(6)}",
+      andares_qtd: 0,
+      ano_construcao: 0,
+      elevadores_qtd: 0,
+      aptos_andar: 0,
+      aptos_edificio: 0
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Edifício e capacidade")
+  end
+
+  it "mostra Edifício e capacidade quando há informação real do edifício" do
+    habitation = create(
+      :habitation,
+      codigo: "SHOW-BUILDING-#{SecureRandom.hex(6)}",
+      elevadores_qtd: 2
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Edifício e capacidade")
+    expect(response.body).to include("Elevadores")
   end
 
   it "mantém proprietário e anexos fora do detalhe simplificado para o captador do imóvel" do
@@ -2968,13 +3014,18 @@ RSpec.describe "Admin::Habitations", type: :request do
     get edit_admin_habitation_path(habitation)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Timeline")
+    expect(response.body).to include("Central do imóvel")
+    expect(response.body).not_to include("Título antigo")
+
+    get operational_hub_admin_habitation_path(habitation, tab: "changes")
+
+    expect(response).to have_http_status(:ok)
     expect(response.body).to include("Título do anúncio")
     expect(response.body).to include("Título antigo")
     expect(response.body).to include("Título novo")
   end
 
-  it "exibe eventos importados do Vista na timeline do cadastro" do
+  it "mantém a central do imóvel independente da timeline importada do Vista" do
     habitation = create(:habitation, codigo: "VISTA-TL-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel com timeline Vista")
     HabitationInteraction.create!(
       habitation: habitation,
@@ -2991,13 +3042,21 @@ RSpec.describe "Admin::Habitations", type: :request do
     get edit_admin_habitation_path(habitation)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Vista")
-    expect(response.body).to include("Atualização importada do Vista")
-    expect(response.body).to include("Descrição alterada no prontuário")
-    expect(response.body).to include("VISTA_API_PRONTUARIO")
+    expect(response.body).to include("Central do imóvel")
+    expect(response.body).to include("Visão geral")
+    expect(response.body).to include("Alterações")
+    expect(response.body).to include("Publicação")
+    expect(response.body).to include("Captação")
+    expect(response.body).to include("informações carregadas sob demanda")
+    expect(response.body).not_to include("Atualização importada do Vista")
+    expect(response.body).not_to include("VISTA_API_PRONTUARIO")
   end
 
-  it "exibe documentos importados do Vista na aba de documentos" do
+  it "não expõe sincronização com o Vista no CRUD do imóvel" do
+    expect(Rails.application.routes.named_routes.names).not_to include(:sync_admin_habitation)
+  end
+
+  it "não usa documentos remotos do Vista na edição depois da migração local" do
     habitation = create(:habitation, codigo: "VISTA-DOC-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel com documento Vista")
     batch = VistaImportBatch.create!(dump_dir: "spec/vista", status: "completed")
     VistaFileAsset.create!(
@@ -3016,10 +3075,10 @@ RSpec.describe "Admin::Habitations", type: :request do
     get edit_admin_habitation_path(habitation)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Documentos do Vista")
-    expect(response.body).to include("autorizacao-vista.pdf")
-    expect(response.body).to include("Pendente de download")
-    expect(response.body).to include("https://arquivos.example.test/autorizacao.pdf")
+    expect(response.body).not_to include("Documentos do Vista")
+    expect(response.body).not_to include("autorizacao-vista.pdf")
+    expect(response.body).not_to include("https://arquivos.example.test/autorizacao.pdf")
+    expect(response.body).to include("Documentos internos")
   end
 
   it "não exibe bloco de documentos do Vista para imóvel de ficha interna sem integração" do

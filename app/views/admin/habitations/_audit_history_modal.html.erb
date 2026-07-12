@@ -1,51 +1,50 @@
-<%
-  logs = Array(logs)
-  vista_entries = Array(local_assigns.fetch(:vista_entries, @habitation_vista_timeline_entries))
-  publication_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? }
-  intake_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? }
-
-  audit_modal_body = capture do
-%>
+<% audit_modal_body = capture do %>
   <p class="habitation-audit-sub">
-    Código <%= habitation.codigo %> · últimas <%= logs.size %> movimentações registradas
+    Código <%= habitation.codigo %> · informações carregadas sob demanda
   </p>
 
-  <nav class="habitation-audit-tabs" data-controller="ax-tabs" aria-label="Categorias da timeline">
+  <nav class="habitation-audit-tabs" aria-label="Áreas da central do imóvel">
     <button type="button" class="habitation-audit-tab active"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-all"
-            data-action="click->ax-tabs#select" aria-selected="true">
-      Alterações <span class="habitation-audit-tab__count"><%= logs.size %></span>
+            data-property-operational-hub-target="tab"
+            data-property-operational-hub-tab-param="overview"
+            data-action="property-operational-hub#select" aria-selected="true">
+      Visão geral
     </button>
     <button type="button" class="habitation-audit-tab"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-publication"
-            data-action="click->ax-tabs#select" aria-selected="false">
-      Publicação <span class="habitation-audit-tab__count"><%= publication_logs.size %></span>
+            data-property-operational-hub-target="tab"
+            data-property-operational-hub-tab-param="changes"
+            data-action="property-operational-hub#select" aria-selected="false">
+      Alterações
     </button>
     <button type="button" class="habitation-audit-tab"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-intake"
-            data-action="click->ax-tabs#select" aria-selected="false">
-      Captação <span class="habitation-audit-tab__count"><%= intake_logs.size %></span>
+            data-property-operational-hub-target="tab"
+            data-property-operational-hub-tab-param="publication"
+            data-action="property-operational-hub#select" aria-selected="false">
+      Publicação
     </button>
     <button type="button" class="habitation-audit-tab"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-vista"
-            data-action="click->ax-tabs#select" aria-selected="false">
-      Vista <span class="habitation-audit-tab__count"><%= vista_entries.size %></span>
+            data-property-operational-hub-target="tab"
+            data-property-operational-hub-tab-param="intake"
+            data-action="property-operational-hub#select" aria-selected="false">
+      Captação
     </button>
   </nav>
 
-  <div class="tab-content habitation-audit-content">
-    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-all", active: true, logs: logs %>
-    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-publication", active: false, logs: publication_logs %>
-    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-intake", active: false, logs: intake_logs %>
-    <%= render "admin/habitations/audit_history_vista_timeline", tab_id: "audit-vista", active: false, entries: vista_entries %>
+  <div class="tab-content habitation-audit-content" data-property-operational-hub-target="content" aria-live="polite">
+    <div class="habitation-hub-loading"><i class="bi bi-arrow-repeat"></i> Selecione uma aba para carregar.</div>
   </div>
 <% end %>
 
 <%= ax_quick_modal(
       id: "habitationHistoryModal",
-      title: "Timeline de edições do cadastro",
+      title: "Central do imóvel",
       size: :lg,
       class_name: "habitation-audit-modal",
+      data: {
+        controller: "property-operational-hub",
+        action: "ax-modal:opened->property-operational-hub#open",
+        property_operational_hub_url_value: operational_hub_admin_habitation_path(habitation)
+      },
       body: audit_modal_body
     ) %>
 
@@ -124,6 +123,41 @@
   }
 
   .habitation-audit-content { padding: 16px; }
+  .habitation-hub-loading { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 180px; color: var(--ab-muted, #657386); font-size: 12.5px; }
+  .habitation-hub-loading i { animation: habitation-hub-spin .8s linear infinite; }
+  .habitation-hub-error { display: grid; place-items: center; gap: 8px; min-height: 180px; color: var(--ab-muted, #657386); font-size: 12.5px; text-align: center; }
+  @keyframes habitation-hub-spin { to { transform: rotate(360deg); } }
+
+  .habitation-operational-overview { display: grid; gap: 12px; }
+  .habitation-operational-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .habitation-operational-kpis article { min-width: 0; padding: 10px 12px; border: 1px solid var(--ab-line-soft, #e7ebf2); border-radius: 8px; background: #fff; }
+  .habitation-operational-kpis span { display: block; color: var(--ab-muted, #657386); font-size: 10.5px; font-weight: 800; text-transform: uppercase; }
+  .habitation-operational-kpis strong { display: block; margin-top: 3px; overflow: hidden; color: var(--ab-ink, #202a37); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+  .habitation-operational-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+  .habitation-operational-panel { padding: 10px 12px; border: 1px solid var(--ab-line-soft, #e7ebf2); border-radius: 8px; background: var(--ab-panel-soft, #f4f7fb); }
+  .habitation-operational-panel header { display: flex; align-items: center; gap: 7px; color: var(--ab-ink, #202a37); font-size: 12px; }
+  .habitation-operational-panel header span { margin-left: auto; }
+  .habitation-operational-panel ul { margin: 8px 0 0; padding-left: 18px; color: var(--ab-muted, #657386); font-size: 12px; }
+  .habitation-operational-panel li.is-danger { color: var(--admin-danger, #b42318); font-weight: 700; }
+  .habitation-operational-panel p { margin: 8px 0 0; color: var(--ab-muted, #657386); font-size: 12px; }
+  .habitation-publication-overview { display: grid; gap: 12px; }
+  .habitation-publication-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .habitation-publication-summary article { padding: 10px 12px; border: 1px solid var(--ab-line-soft, #e7ebf2); border-radius: 8px; background: #fff; }
+  .habitation-publication-summary span { display: block; color: var(--ab-muted, #657386); font-size: 10.5px; font-weight: 800; text-transform: uppercase; }
+  .habitation-publication-summary strong { display: block; margin-top: 3px; font-size: 13px; }
+  .habitation-publication-channels { display: flex; flex-wrap: wrap; gap: 6px; }
+  .habitation-publication-channel { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--ab-line, #d8dee8); border-radius: 999px; color: var(--ab-muted, #657386); font-size: 11.5px; }
+  .habitation-publication-channel.is-active { border-color: #86c5a3; background: #edf8f2; color: #167548; font-weight: 700; }
+  .habitation-publication-conflicts { padding: 8px 10px; border: 1px solid #f1b6b0; border-radius: 8px; background: #fff2f0; color: #9f2d24; font-size: 12px; }
+  .habitation-publication-conflicts p { margin: 0; }
+  .habitation-publication-conflicts i { margin-right: 6px; }
+  .habitation-publication-history h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; }
+
+  @media (max-width: 720px) {
+    .habitation-operational-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .habitation-operational-grid { grid-template-columns: 1fr; }
+    .habitation-publication-summary { grid-template-columns: 1fr; }
+  }
 
   /* Garante o toggle dos panes mesmo sem o JS do Bootstrap. */
   .habitation-audit-modal .tab-content > .tab-pane { display: none; }

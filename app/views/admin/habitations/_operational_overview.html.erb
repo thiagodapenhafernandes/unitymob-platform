@@ -1,0 +1,30 @@
+<%
+  summary ||= Habitations::OperationalSummary.new(habitation)
+%>
+
+<section class="tab-pane show active habitation-operational-overview" id="audit-overview" role="tabpanel">
+  <div class="habitation-operational-kpis">
+    <article><span>Situação</span><strong><%= habitation.situacao.presence || habitation.status.presence || "Não informada" %></strong></article>
+    <article><span>Responsável</span><strong><%= summary.responsible_name %></strong></article>
+    <article><span>Site público</span><strong><%= summary.site_label %></strong></article>
+    <article><span>Portais ativos</span><strong><%= summary.active_portals.size %></strong></article>
+    <article><span>Fotos locais</span><strong><%= summary.photo_count %></strong></article>
+    <article><span>Documentos locais</span><strong><%= summary.document_count %></strong></article>
+  </div>
+
+  <div class="habitation-operational-grid">
+    <section class="habitation-operational-panel">
+      <header><i class="bi bi-exclamation-circle"></i><strong>Pendências úteis</strong><span><%= summary.issues.size %></span></header>
+      <% if summary.issues.any? %>
+        <ul><% summary.issues.each do |issue| %><li class="is-<%= issue.severity %>"><%= issue.label %></li><% end %></ul>
+      <% else %>
+        <p>Nenhuma pendência básica identificada.</p>
+      <% end %>
+    </section>
+
+    <section class="habitation-operational-panel">
+      <header><i class="bi bi-signpost-split"></i><strong>Próxima ação</strong></header>
+      <p><%= summary.next_action %></p>
+    </section>
+  </div>
+</section>

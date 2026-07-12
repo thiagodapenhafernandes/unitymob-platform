@@ -1,6 +1,6 @@
 <!-- Tab: Mídia -->
 <div class="tab-pane fade" id="media" role="tabpanel" aria-labelledby="media-tab">
-  <% media_count = (habitation.photos.attached? ? habitation.photos.attachments.size : 0) + (habitation.pictures.is_a?(Array) ? habitation.pictures.size : 0) %>
+  <% media_count = Habitations::MediaGallery.new(habitation).media_gallery_count %>
 
   <section class="ax-form-section ax-media-entry-card">
     <header class="ax-form-section__header">

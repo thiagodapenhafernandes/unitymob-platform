@@ -53,14 +53,6 @@
   intake_waiting_admin_review = habitation.broker_intake? && habitation.intake_submitted_for_admin_review?
   can_manage_internal_documents = can_manage_internal_documents?
   can_edit_protected_habitation_fields = can_edit_protected_habitation_fields?
-  vista_document_assets = Array(@habitation_vista_document_assets)
-  show_vista_document_assets = vista_document_assets.any? || habitation.vista_integrated?
-  vista_document_status_labels = {
-    "pending" => "Pendente de download",
-    "downloaded" => "Baixado",
-    "failed" => "Falhou",
-    "skipped" => "Ignorado"
-  }
   tab_titles = {
     general: "Visão geral",
     features: "Características",
@@ -290,9 +282,6 @@
 <%= render "admin/habitations/form_tabs/documents",
            f: f,
            habitation: habitation,
-           show_vista_document_assets: show_vista_document_assets,
-           vista_document_assets: vista_document_assets,
-           vista_document_status_labels: vista_document_status_labels,
            can_manage_internal_documents: can_manage_internal_documents %>
 
 

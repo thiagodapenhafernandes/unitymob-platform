@@ -9,7 +9,7 @@ class Setting < ApplicationRecord
 
   # Chaves de PLATAFORMA: sempre globais, mesmo com tenant no contexto.
   GLOBAL_KEYS = %w[facebook_webhook_verify_token].freeze
-  GLOBAL_KEY_PREFIXES = %w[tracking.].freeze
+  GLOBAL_KEY_PREFIXES = [].freeze
 
   validates :key, presence: true
   validates :key, uniqueness: { scope: :tenant_id }

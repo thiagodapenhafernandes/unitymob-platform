@@ -4,7 +4,7 @@
 <%
   active_extra_filters_count = active_extra_filters_count()
   extras_open = true
-  vista_advanced_keys = %w[
+  advanced_filter_keys = %w[
     situacao face ocupacao_status estado_conservacao area_total_min area_total_max area_privativa_min area_privativa_max
     destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo banheiros dorms suites vagas
     foto_classificacao
@@ -15,7 +15,7 @@
     permuta_location permuta_min_dorms permuta_min_suites permuta_min_garagens regiao_foco
     captacao_inicio captacao_fim somente_com_imagens somente_sem_imagens somente_dwv
   ]
-  vista_advanced_open = vista_advanced_keys.any? do |key|
+  advanced_filters_open = advanced_filter_keys.any? do |key|
     value = params[key]
     value.is_a?(Array) ? value.reject(&:blank?).any? : value.present?
   end

@@ -30,7 +30,7 @@ Rails.application.routes.draw do
     resources :profiles
     resources :habitations do
       member do
-        post :sync
+        get :operational_hub
       end
       collection do
         get :print
@@ -190,7 +190,6 @@ Rails.application.routes.draw do
         post :share
         delete :destroy_photo
       end
-      post :sync, on: :member
       post :generate_ai_preview, on: :member
       patch :format_ai_suggestion, on: :member
       patch :apply_ai_suggestion, on: :member

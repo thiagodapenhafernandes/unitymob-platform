@@ -5,7 +5,7 @@ class Admin::HabitationsController < Admin::BaseController
   before_action -> { check_permission!(:manage, :imoveis) }, only: [:new, :create]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
   before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility]
-  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :sync, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   require "csv"
   require "uri"
 
@@ -92,7 +92,7 @@ class Admin::HabitationsController < Admin::BaseController
     "valor_total_aluguel_cents" => { label: "Valor total aluguel", column: "valor_total_aluguel_cents", default_direction: "desc" }
   }.freeze
 
-  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   before_action :authorize_habitation_edit!, only: [:edit, :update]
 
   before_action :load_autocomplete_data, only: [:new, :edit, :create, :update]
@@ -469,7 +469,6 @@ class Admin::HabitationsController < Admin::BaseController
   def show
     @page_title = "Detalhes do Imóvel: #{@habitation.codigo}"
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
-    load_habitation_vista_document_assets if can_view_habitation_show_sensitive_data?(@habitation)
   end
 
   def create
@@ -541,7 +540,26 @@ class Admin::HabitationsController < Admin::BaseController
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
     preload_habitation_form_associations
     load_ai_suggestion
-    load_habitation_audit_logs
+  end
+
+  def operational_hub
+    tab = params[:tab].presence_in(%w[overview changes publication intake]) || "overview"
+
+    case tab
+    when "overview"
+      preload_operational_hub_associations
+      summary = Habitations::OperationalSummary.new(@habitation)
+      render partial: "admin/habitations/operational_overview", locals: { habitation: @habitation, summary: summary }
+    when "publication"
+      preload_operational_hub_associations
+      logs = operational_hub_logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? }
+      summary = Habitations::OperationalSummary.new(@habitation)
+      render partial: "admin/habitations/operational_publication", locals: { habitation: @habitation, summary: summary, logs: logs }
+    else
+      logs = operational_hub_logs
+      logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? } if tab == "intake"
+      render partial: "admin/habitations/audit_history_timeline", locals: { tab_id: "hub-#{tab}", active: true, logs: logs }
+    end
   end
 
   # Pré-carrega as associações que o form de responsáveis acessa por item
@@ -569,7 +587,6 @@ class Admin::HabitationsController < Admin::BaseController
 
     unless no_duplicate_address?(@habitation)
       load_ai_suggestion
-      load_habitation_audit_logs
       render :edit, status: :unprocessable_entity
       return
     end
@@ -590,7 +607,6 @@ class Admin::HabitationsController < Admin::BaseController
       unless @habitation.intake_ready_for_admin_review?(require_owner_city: true)
         @habitation.intake_missing_requirements(require_owner_city: true).each { |message| @habitation.errors.add(:base, message) }
         load_ai_suggestion
-        load_habitation_audit_logs
         render :edit, status: :unprocessable_entity
         return
       end
@@ -619,7 +635,6 @@ class Admin::HabitationsController < Admin::BaseController
       redirect_after_habitation_save(@habitation, notice: notice)
     else
       load_ai_suggestion
-      load_habitation_audit_logs
       render :edit, status: :unprocessable_entity
     end
   end
@@ -634,17 +649,6 @@ class Admin::HabitationsController < Admin::BaseController
     record_habitation_destroyed(@habitation)
     @habitation.destroy
     redirect_to admin_habitations_path, notice: "Imóvel excluído com sucesso."
-  end
-
-  def sync
-    @habitation = find_admin_habitation_param!(params[:id])
-    result = SyncPropertyService.new(@habitation.codigo).perform
-
-    if result[:success]
-      redirect_to edit_admin_habitation_path(@habitation.id), notice: "Imóvel sincronizado com o Vista com sucesso!"
-    else
-      redirect_to edit_admin_habitation_path(@habitation.id), alert: "Erro na sincronização: #{result[:error]}"
-    end
   end
 
   def generate_ai_preview
@@ -1336,11 +1340,11 @@ class Admin::HabitationsController < Admin::BaseController
 
     case filter
     when "missing_address"
-      scope.where("NULLIF(TRIM(COALESCE(addresses.logradouro, habitations.endereco)), '') IS NULL")
+      scope.without_operational_address
     when "missing_photos"
-      scope.where.not(id: scope.with_photos.select(:id))
+      scope.without_operational_photos
     when "missing_price"
-      scope.where("COALESCE(habitations.valor_venda_cents, 0) <= 0 AND COALESCE(habitations.valor_locacao_cents, 0) <= 0")
+      scope.without_operational_price
     when "stale"
       scope.where("COALESCE(habitations.data_atualizacao_crm, habitations.updated_at) < ?", 90.days.ago)
     else
@@ -2184,107 +2188,15 @@ class Admin::HabitationsController < Admin::BaseController
     habitation_media_updater.selected_picture_indices_for_removal
   end
 
-  def load_habitation_audit_logs
-    @habitation_audit_logs = @habitation.habitation_audit_logs.includes(:admin_user).recent.limit(80)
-    @habitation_vista_timeline_entries = habitation_vista_timeline_entries
-    load_habitation_vista_document_assets
+  def preload_operational_hub_associations
+    ActiveRecord::Associations::Preloader.new(
+      records: [@habitation],
+      associations: [:admin_user, :photos_attachments, :fichas_cadastro_attachments, :autorizacoes_venda_attachments]
+    ).call
   end
 
-  def load_habitation_vista_document_assets
-    @habitation_vista_document_assets = VistaFileAsset
-      .where(habitation: @habitation, kind: "property_document")
-      .includes(active_storage_attachment: :blob)
-      .order(Arel.sql("position ASC NULLS LAST"), :id)
-      .limit(80)
-  end
-
-  def habitation_vista_timeline_entries
-    entries = []
-
-    HabitationInteraction.where(habitation: @habitation).includes(:admin_user).order(created_at: :desc).limit(40).each do |interaction|
-      entries << vista_timeline_entry(
-        interaction,
-        type: "Prontuário Vista",
-        title: interaction.subject.presence || interaction.interaction_type.presence || "Interação do Vista",
-        at: interaction.occurred_at || interaction.started_at || interaction.created_at,
-        details: [
-          interaction.body,
-          interaction.status.present? ? "Status: #{interaction.status}" : nil,
-          interaction.proposal_value_cents.to_i.positive? ? "Proposta: #{helpers.number_to_currency(interaction.proposal_value_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".")}" : nil,
-          interaction.published_vehicle.present? ? "Veículo publicado: #{interaction.published_vehicle}" : nil
-        ]
-      )
-    end
-
-    CrmAppointment.where(habitation: @habitation).includes(:admin_user).order(created_at: :desc).limit(30).each do |appointment|
-      entries << vista_timeline_entry(
-        appointment,
-        type: "Agenda Vista",
-        title: appointment.title.presence || appointment.appointment_type.presence || "Compromisso do Vista",
-        at: appointment.starts_at || appointment.created_in_source_at || appointment.source_updated_at || appointment.created_at,
-        details: [
-          appointment.description,
-          appointment.location.present? ? "Local: #{appointment.location}" : nil,
-          appointment.visit_status.present? ? "Status da visita: #{appointment.visit_status}" : nil,
-          appointment.completed? ? "Concluído" : nil
-        ]
-      )
-    end
-
-    ClientPropertyInterest.where(habitation: @habitation).includes(:admin_user).order(created_at: :desc).limit(30).each do |interest|
-      entries << vista_timeline_entry(
-        interest,
-        type: "Interesse Vista",
-        title: interest.interest_type.presence || "Interesse de cliente no Vista",
-        at: interest.consulted_at || interest.last_search_at || interest.started_at || interest.created_at,
-        details: [
-          interest.status.present? ? "Status: #{interest.status}" : nil,
-          interest.notes,
-          interest.lead? ? "Marcado como lead" : nil,
-          interest.selected? ? "Selecionado" : nil
-        ]
-      )
-    end
-
-    VistaFileAsset.where(habitation: @habitation, kind: "property_document").order(created_at: :desc).limit(20).each do |asset|
-      entries << vista_timeline_entry(
-        asset,
-        type: "Documento Vista",
-        title: asset.filename.presence || "Documento importado do Vista",
-        at: asset.downloaded_at || asset.updated_at || asset.created_at,
-        details: [
-          "Status: #{vista_file_asset_status_label(asset.status)}",
-          asset.error_message.present? ? "Erro: #{asset.error_message}" : nil,
-          asset.source_url.present? ? "Origem: #{asset.source_url}" : nil
-        ]
-      )
-    end
-
-    entries
-      .sort_by { |entry| entry[:at] || Time.zone.at(0) }
-      .reverse
-      .first(80)
-  end
-
-  def vista_timeline_entry(record, type:, title:, at:, details:)
-    {
-      at: at,
-      title: title,
-      type: type,
-      actor: record.respond_to?(:admin_user) ? record.admin_user&.name : nil,
-      source_table: record.respond_to?(:source_table) ? record.source_table : record.table_name,
-      source_key: record.respond_to?(:source_key) ? record.source_key : record.source_path,
-      details: Array(details).map { |detail| detail.to_s.strip }.reject(&:blank?)
-    }
-  end
-
-  def vista_file_asset_status_label(status)
-    {
-      "pending" => "pendente de download",
-      "downloaded" => "baixado",
-      "failed" => "falhou",
-      "skipped" => "ignorado"
-    }.fetch(status.to_s, status.to_s.presence || "desconhecido")
+  def operational_hub_logs
+    @operational_hub_logs ||= @habitation.habitation_audit_logs.includes(:admin_user).recent.limit(80)
   end
 
   def filter_empreendimento_options
@@ -2393,7 +2305,7 @@ class Admin::HabitationsController < Admin::BaseController
       :proprietario_telefone_residencial, :proprietario_email, :proprietario_cidade,
       :exibir_no_site_flag, :destaque_web_flag, :lancamento_flag, :aceita_permuta_flag,
       :aceita_permuta_veiculo_flag, :aceita_permuta_imovel_flag, :aceita_permuta_outros_flag,
-      :aceita_financiamento_flag, :aceita_parcelamento_flag, :mobiliado_flag, :data_entrega, :status_vista,
+      :aceita_financiamento_flag, :aceita_parcelamento_flag, :mobiliado_flag, :data_entrega,
       :meta_title, :meta_description, :meta_keywords, 
       :piscina_flag, :lavabo_flag, :varanda_gourmet_flag, :bloco, :lote,
       :banheiro_social_qtd, :decorado_flag, :aptos_andar, :aptos_edificio,

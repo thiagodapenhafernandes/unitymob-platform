@@ -198,9 +198,14 @@
   <% end %>
 <% end %>
 
-<% if habitation.use_development_photos? && linked_development.present? && habitation.own_public_image_sources.blank? %>
-  <% linked_development.own_public_image_sources.first(12).each_with_index do |pic, index| %>
-    <% development_photo_url = public_image_url(pic) %>
+<% if habitation.use_development_photos? && linked_development.present? && attached_media_photos.blank? && api_media_pictures.blank? %>
+  <%
+    development_gallery = Habitations::MediaGallery.new(linked_development)
+    development_sources = development_gallery.attached_media_photos.map { |photo| { attachment: photo } }
+    development_sources += development_gallery.api_media_pictures.map { |_picture, _original_index, photo_url| photo_url }
+  %>
+  <% development_sources.first(12).each_with_index do |source, index| %>
+    <% development_photo_url = source.is_a?(Hash) ? public_image_url(source) : source %>
     <% development_featured = capture do %>
       <% if index.zero? %>
         <span class="ax-media-action ax-media-action--featured is-active" title="Foto em destaque" aria-label="Foto em destaque">
