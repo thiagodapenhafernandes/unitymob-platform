@@ -32,7 +32,7 @@ production:
     queue: checkin
     schedule: every day at 4:05am
   habitations_hierarchy_audit:
-    command: "result = Habitations::HierarchyAuditService.new(strict: false).call; Rails.logger.info(\"[HierarchyAudit] #{result.to_json}\")"
+    command: "Tenant.find_each { |tenant| result = Habitations::HierarchyAuditService.new(strict: false, tenant: tenant).call; Rails.logger.info(\"[HierarchyAudit] tenant_id=#{tenant.id} #{result.to_json}\") }"
     schedule: every day at 3:40am
   # Fan-out: um DwvSyncJob por tenant com integração DWV habilitada (o job
   # exige tenant_id; agendar DwvSyncJob direto sem args falhava 100%).

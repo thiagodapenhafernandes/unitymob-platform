@@ -62,6 +62,13 @@ Rails.application.configure do
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   config.force_ssl = true
 
+  # URLs generated outside a request (mailers/jobs) need an explicit host.
+  public_app_url = URI.parse(ENV.fetch("APP_HOST", "https://saluteimoveis.com.br"))
+  config.action_mailer.default_url_options = {
+    host: public_app_url.host,
+    protocol: public_app_url.scheme
+  }
+
   # Log to STDOUT by default
   config.logger = ActiveSupport::Logger.new(STDOUT)
     .tap  { |logger| logger.formatter = ::Logger::Formatter.new }
