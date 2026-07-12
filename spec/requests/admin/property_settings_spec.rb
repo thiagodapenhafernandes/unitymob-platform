@@ -104,45 +104,6 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("Publicar Site")
   end
 
-  it "versiona e audita alterações do fluxo com impacto do tenant" do
-    admin = create(:admin_user, :admin)
-    setting = PropertySetting.instance
-    intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin, intake_status: "submitted_for_admin_review")
-    sign_in admin
-
-    expect do
-      patch admin_property_setting_path, params: {
-        return_to: review_workflow_admin_property_setting_path,
-        property_setting: {
-          broker_capture_layer_enabled: "true",
-          notify_internal_review_events: "false",
-          required_broker_intake_checks: %w[proprietario endereco fotos],
-          returnable_intake_edit_sections: %w[proprietario fotos]
-        }
-      }
-    end.to change(PropertyReviewPolicyAuditLog, :count).by(1)
-
-    audit = PropertyReviewPolicyAuditLog.last
-    expect(response).to redirect_to(review_workflow_admin_property_setting_path)
-    expect(setting.reload.review_policy_version).to eq(2)
-    expect(audit).to have_attributes(tenant_id: admin.tenant_id, admin_user_id: admin.id, version: 2)
-    expect(audit.changeset).to include("notify_internal_review_events")
-    expect(audit.impact_snapshot).to include("in_progress" => 1, "awaiting_review" => 1)
-    expect(intake.reload.intake_status).to eq("submitted_for_admin_review")
-  end
-
-  it "não cria nova versão quando apenas a marca d'água muda" do
-    admin = create(:admin_user, :admin)
-    setting = PropertySetting.instance
-    sign_in admin
-
-    expect do
-      patch admin_property_setting_path, params: { property_setting: { watermark_position: "bottom_right" } }
-    end.not_to change(PropertyReviewPolicyAuditLog, :count)
-
-    expect(setting.reload.review_policy_version).to eq(1)
-  end
-
   it "requires fallback admin user when disabling broker capture review layer" do
     admin = create(:admin_user, :admin)
     gerente = Tenant.default.profiles.vertical.find_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME)

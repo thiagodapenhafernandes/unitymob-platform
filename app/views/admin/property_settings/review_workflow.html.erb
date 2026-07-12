@@ -37,7 +37,7 @@
       </div>
       <div class="ax-dashboard-command__status">
         <i class="bi bi-broadcast"></i>
-        <%= ax_badge("Política v#{@property_setting.review_policy_version}", tone: :blue, dot: true) %>
+        <%= ax_badge("Aplicado em tempo real", tone: :green, dot: true) %>
       </div>
     </header>
 
@@ -91,13 +91,6 @@
           <i class="bi bi-journal-check"></i><span>Ficha interna</span>
         <% end %>
       </div>
-    </section>
-
-    <section class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-4 tw-gap-2" aria-label="Impacto atual da política">
-      <div class="ax-metric"><span>Em andamento</span><strong><%= @review_policy_impact["in_progress"] %></strong><em>captações abertas</em></div>
-      <div class="ax-metric"><span>Em revisão</span><strong><%= @review_policy_impact["awaiting_review"] %></strong><em>aguardando decisão</em></div>
-      <div class="ax-metric"><span>Devolvidas</span><strong><%= @review_policy_impact["returned_to_broker"] %></strong><em>com edição limitada</em></div>
-      <div class="ax-metric"><span>Impacto ao desligar</span><strong><%= @review_policy_impact["would_reassign_if_review_disabled"] %></strong><em>possíveis reatribuições</em></div>
     </section>
 
     <div class="review-workflow-grid">
@@ -216,27 +209,6 @@
       </div>
 
       <aside class="review-workflow-inspector" aria-label="Mapa e estado do fluxo">
-        <%= ax_operational_panel(eyebrow: "Governança", title: "Alterações recentes", actions: ax_badge("v#{@property_setting.review_policy_version}", tone: :blue)) do %>
-          <div class="review-panel-body">
-            <% if @review_policy_audits.present? %>
-              <ol class="review-steps">
-                <% @review_policy_audits.each do |audit| %>
-                  <li class="review-steps__item">
-                    <span class="review-steps__badge"><%= audit.version %></span>
-                    <div class="review-steps__body">
-                      <strong><%= audit.admin_user.name %></strong>
-                      <span><%= l(audit.created_at, format: :short) %> · <%= audit.changeset.size %> campo(s)</span>
-                      <span><%= audit.impact_snapshot["in_progress"].to_i %> captação(ões) em andamento</span>
-                    </div>
-                  </li>
-                <% end %>
-              </ol>
-            <% else %>
-              <p class="review-hint">A trilha começa na próxima alteração salva desta política.</p>
-            <% end %>
-          </div>
-        <% end %>
-
         <%= ax_operational_panel(eyebrow: "Fluxo", title: "Mapa do fluxo") do %>
           <div class="review-panel-body">
             <ol class="review-steps">

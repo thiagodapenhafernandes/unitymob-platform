@@ -115,47 +115,6 @@ operacional completo faltam apenas a inspeção visual autenticada e a configura
 de pelo menos um transporte externo de alerta. Gráficos avançados são evolução
 posterior e não bloqueiam o grupo.
 
-### Grupo 2 — motor configurável de políticas de captação
-
-#### Concluído no develop
-
-- `/admin/property_setting/review_workflow` apresenta a versão vigente da política;
-- alterações no fluxo geram uma nova versão somente quando campos operacionais mudam;
-- trilha append-only registra quem alterou, quando, campos anteriores e posteriores;
-- auditoria e impacto são obrigatoriamente escopados pelo tenant;
-- painel mostra captações em andamento, em revisão, devolvidas e possíveis
-  reatribuições caso a revisão administrativa seja desligada;
-- gravação da política, versão, auditoria e reatribuição ocorre na mesma transação;
-- alterações apenas de marca d'água não criam versão falsa da política.
-
-#### Pendente de produção
-
-- promover a migration e o primeiro slice de governança para `master`;
-- validar a nova área de impacto e histórico em uma conta com captações reais.
-
-#### Pendente — prioridade alta
-
-- vincular cada nova captação à versão de política sob a qual foi iniciada;
-- permitir simular o fluxo antes de salvar;
-- comparar a configuração proposta com a vigente antes da ativação;
-- exigir confirmação reforçada quando houver reatribuição ou mudança de etapa;
-- oferecer restauração segura de uma versão anterior como uma nova versão.
-
-#### Pendente — prioridade média
-
-- definir revisores por perfil, equipe, loja ou região;
-- configurar SLA de revisão e alertas de atraso;
-- configurar escalonamento por inatividade;
-- variar checklist por tipo de imóvel ou modalidade;
-- definir quem pode executar a publicação final;
-- permitir publicação automática após aprovação somente quando explicitamente habilitada.
-
-#### Pendente — evolução futura
-
-- políticas diferentes por unidade, marca ou operação dentro do tenant;
-- modelos reutilizáveis para onboarding;
-- comparação de desempenho entre versões sem cruzar dados de tenants.
-
 ## Correção de premissa: ciclo de captação da Salute
 
 O ciclo de captação da Salute está operacional e funciona adequadamente no processo adotado pela empresa. Portanto, não deve ser classificado como um ciclo aberto ou incompleto.
