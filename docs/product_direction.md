@@ -58,7 +58,7 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 
 #### Pendente
 
-- concluir a análise individual dos 11 ErrorEvents históricos ainda abertos;
+- concluir a análise dos quatro ErrorEvents históricos de mídia ainda abertos;
 - acompanhar as primeiras execuções do CI e ajustar dependências de ambiente, se necessário;
 - avaliar gráficos de tendência longa depois de existir volume histórico suficiente.
 
@@ -70,9 +70,13 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 - eventos `20`, `66` e `67` foram encerrados após comprovação: dois eram erros
   de consultas diagnósticas manuais e um era o agendamento antigo da auditoria
   de hierarquia sem tenant, já corrigido na release 346;
-- 11 fingerprints permanecem abertos por cautela, embora não tenham reincidido
-  após a release 346; eventos de mídia, geração de URL e consulta de auditoria
-  exigem validação individual antes de serem encerrados.
+- eventos `58` a `64`, exceto o `57`, também foram encerrados após confirmação
+  das correções de host para URLs, qualificação de `created_at` na auditoria e
+  remoção da consulta manual ao atributo inexistente `error_class`;
+- quatro fingerprints permanecem abertos por cautela: dois arquivos ausentes,
+  uma transformação de imagem não suportada e uma falha de integridade de mídia.
+  Esses eventos dependem de validação dos blobs e do fluxo de transformação antes
+  de qualquer encerramento.
 
 ### Critério de conclusão do Grupo 1
 
