@@ -96,6 +96,19 @@ RSpec.describe "Admin::AccessAuditLogs", type: :request do
     expect(response.body).to include("Limpar")
   end
 
+  it "filtra por período sem ambiguidade ao carregar o usuário associado" do
+    create(:access_audit_log, admin_user: admin, created_at: Time.current, reason: "Evento do período")
+    sign_in admin
+
+    get admin_access_audit_logs_path, params: {
+      start_date: Date.current.iso8601,
+      end_date: Date.current.iso8601
+    }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Evento do período")
+  end
+
   it "filtra auditoria por perfil, usuário, dispositivo e rota" do
     broker_profile = Profile.create!(tenant: admin.tenant, name: "Corretor filtro #{SecureRandom.hex(4)}", axis: "vertical", position: 8_900, permissions: Profile.default_permissions_for("Corretor"))
     manager_profile = Profile.create!(tenant: admin.tenant, name: "Gerente filtro #{SecureRandom.hex(4)}", axis: "vertical", position: 700, permissions: Profile.default_permissions_for("Gerente"))

@@ -23,8 +23,8 @@ class Admin::AccessAuditLogsController < Admin::BaseController
     scope = scope.where(controller_name: params[:access_controller]) if params[:access_controller].present?
     scope = scope.where(action_name: params[:access_action]) if params[:access_action].present?
     scope = scope.where("path ILIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(params[:path].to_s)}%") if params[:path].present?
-    scope = scope.where("created_at >= ?", parsed_date(params[:start_date]).beginning_of_day) if parsed_date(params[:start_date])
-    scope = scope.where("created_at <= ?", parsed_date(params[:end_date]).end_of_day) if parsed_date(params[:end_date])
+    scope = scope.where("access_audit_logs.created_at >= ?", parsed_date(params[:start_date]).beginning_of_day) if parsed_date(params[:start_date])
+    scope = scope.where("access_audit_logs.created_at <= ?", parsed_date(params[:end_date]).end_of_day) if parsed_date(params[:end_date])
 
     @logs = scope.paginate(page: params[:page], per_page: 40)
     stats_scope = scope.except(:order, :limit, :offset)

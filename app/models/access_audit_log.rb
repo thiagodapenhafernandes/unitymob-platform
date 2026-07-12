@@ -39,7 +39,7 @@ class AccessAuditLog < ApplicationRecord
   self.record_timestamps = false
   before_create :set_created_at
 
-  scope :recent, -> { order(created_at: :desc) }
+  scope :recent, -> { order(Arel.sql("access_audit_logs.created_at DESC")) }
   scope :denied, -> { where(result: "denied") }
   scope :allowed, -> { where(result: "allowed") }
 
