@@ -50,11 +50,10 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 
 #### Pendente de produção
 
-- promover os commits do Grupo 1 de `develop` para `master`;
-- executar as migrations de histórico e configuração de saúde;
-- validar visualmente `/admin/system/health` em produção;
-- confirmar o primeiro ciclo do monitor e a gravação de amostras;
-- confirmar entrega real de Web Push e e-mail no ambiente de produção.
+- validar visualmente `/admin/system/health` em uma sessão autenticada;
+- configurar Web Push e/ou SMTP global com destinatários para comprovar a entrega
+  externa dos alertas. O código está ativo, mas os transportes estão desativados
+  no ambiente de produção.
 
 #### Pendente
 
@@ -90,12 +89,28 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 - os quatro eventos de mídia foram encerrados após a validação e o rastreador ficou
   sem fingerprints abertos.
 
+#### Publicação do Grupo 1 em 12 de julho de 2026
+
+- `develop` foi promovido para `master` no commit `6dfcec11`;
+- deploy concluído na release 347 pelo stage Mina `saluteimoveis`;
+- migrations `20260712170000` e `20260712173000` aplicadas;
+- Puma, Solid Queue, Nginx e PostgreSQL ativos;
+- monitor executado pelo agendador e manualmente, com amostras globais e por tenant;
+- banco sem migrations pendentes e rastreador com zero erros abertos;
+- `/`, `/imoveis`, `/admin/sign_in` e `/up` responderam HTTP 200;
+- a plataforma ficou em estado de atenção por uma integração degradada da Salute,
+  não por falha de infraestrutura;
+- Web Push, SMTP global e destinatários de alerta estão desativados em produção;
+  a comprovação de entrega depende dessa configuração operacional;
+- a inspeção visual autenticada não foi automatizada porque não havia navegador
+  disponível no ambiente de execução.
+
 ### Critério de conclusão do Grupo 1
 
-O Grupo 1 estará concluído quando o pacote estiver em produção, as rotas críticas
-estiverem saudáveis, o monitor tiver registrado amostras globais e por tenant, os
-canais de alerta tiverem sido comprovados e não houver regressão no gate de
-isolamento. Gráficos avançados são evolução posterior e não bloqueiam o grupo.
+O núcleo técnico do Grupo 1 está publicado e operacional. Para o encerramento
+operacional completo faltam apenas a inspeção visual autenticada e a configuração
+de pelo menos um transporte externo de alerta. Gráficos avançados são evolução
+posterior e não bloqueiam o grupo.
 
 ## Correção de premissa: ciclo de captação da Salute
 
@@ -279,11 +294,11 @@ Para ampliar a operação além da Salute, a plataforma precisa consolidar:
 
 ### Ciclo 1 — confiança e política operacional
 
-- concluir e publicar o pacote atual de isolamento por tenant — **pendente de produção**;
-- manter testes cruzados obrigatórios — **concluído no develop, com CI dedicado**;
+- concluir e publicar o pacote atual de isolamento por tenant — **publicado na release 347**;
+- manter testes cruzados obrigatórios — **publicado, com CI dedicado**;
 - consolidar `/admin/property_setting/review_workflow` como motor de política;
 - adicionar auditoria e impacto de mudanças de fluxo;
-- criar visão de saúde para o System Admin — **concluído no develop, pendente de produção**.
+- criar visão de saúde para o System Admin — **publicado na release 347**.
 
 ### Ciclo 2 — produtividade operacional
 
