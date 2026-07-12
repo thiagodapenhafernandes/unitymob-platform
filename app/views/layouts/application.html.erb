@@ -59,9 +59,13 @@
     <%# Image Metadata Logic %>
     <% 
       sanitize_utf8 = ->(value) { value.to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "").scrub }
-      final_image = seo&.social_image_url(base_url: request.base_url, page_image: @page_image) ||
-                    @page_image.presence ||
-                    "#{request.base_url}/icon.png"
+      final_image = if property_page
+        @page_image.presence || "#{request.base_url}/icon.png"
+      else
+        seo&.social_image_url(base_url: request.base_url, page_image: @page_image) ||
+          @page_image.presence ||
+          "#{request.base_url}/icon.png"
+      end
       canonical_url = sanitize_utf8.call(@canonical_url.presence || (seo_public ? seo.public_url(request.base_url) : request.original_url))
       social_url = sanitize_utf8.call(@social_url.presence || canonical_url)
       og_title = sanitize_utf8.call(property_page ? effective_title : ((seo_public ? seo.og_title.presence : nil) || effective_title))

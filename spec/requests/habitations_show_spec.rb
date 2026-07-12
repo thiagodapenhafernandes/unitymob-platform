@@ -83,40 +83,40 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).not_to include("Entrega")
     end
 
-    it "uses the first property photo as the social sharing image" do
+    it "does not expose a Vista photo when no local CDN attachment exists" do
+      vista_url = "https://cdn.vistahost.com.br/saluteim20174/vista.imobi/fotos/123/first-property.jpg"
       habitation = create(
         :habitation,
         codigo: "OG-IMG",
         slug: "apartamento-og-image",
         pictures: [
-          { "url" => public_photo_url("first-property.jpg"), "ordem" => 1, "principal" => true }
+          { "url" => vista_url, "ordem" => 1, "principal" => true }
         ]
       )
+      share_link = HabitationShareLink.create!(habitation: habitation, admin_user: create(:admin_user, tenant: habitation.tenant))
 
-      get habitation_path(habitation)
+      get habitation_path(habitation, share_token: share_link.token)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(%(property="og:image" content="#{public_photo_url("first-property.jpg")}"))
-      expect(response.body).not_to include(%(property="og:image" content="http://localhost/icon.png"))
+      expect(response.body).not_to include("vistahost.com.br")
+      expect(response.body).to include(%(property="og:image" content="http://localhost/icon.png"))
       expect(response.body).to include(%(property="og:title" content="OG-IMG - ))
     end
 
-    it "normalizes the first property photo URL in social sharing metadata" do
-      source = "https://dwvimagesv1.b-cdn.net//images/properties/first-property.jpg"
+    it "does not expose a Vista-compatible external URL in social sharing metadata" do
+      source = "https://cdn.vistahost.com.br//saluteim20174/vista.imobi/fotos/123/first-property.jpg"
       habitation = create(
         :habitation,
         codigo: "OG-IMG-NORMALIZED",
         slug: "apartamento-og-image-normalized",
         pictures: [{ "url" => source, "ordem" => 1, "principal" => true }]
       )
+      share_link = HabitationShareLink.create!(habitation: habitation, admin_user: create(:admin_user, tenant: habitation.tenant))
 
-      get habitation_path(habitation)
+      get habitation_path(habitation, share_token: share_link.token)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(
-        %(property="og:image" content="https://dwvimagesv1.b-cdn.net/images/properties/first-property.jpg")
-      )
-      expect(response.body).not_to include(%(property="og:image" content="#{source}"))
+      expect(response.body).not_to include("vistahost.com.br")
     end
 
     it "uses the original locally attached photo without an on-demand social transformation" do

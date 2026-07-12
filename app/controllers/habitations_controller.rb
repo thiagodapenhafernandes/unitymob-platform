@@ -265,6 +265,7 @@ class HabitationsController < ApplicationController
   end
 
   def share_link
+    ensure_social_photo_public!(@habitation)
     link = HabitationShareLink.create_or_reuse_for(
       habitation: @habitation,
       admin_user: current_admin_user
@@ -282,6 +283,14 @@ class HabitationsController < ApplicationController
   end
   
   private
+
+  def ensure_social_photo_public!(habitation)
+    source = habitation.primary_image_source
+    attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
+    return unless attachment&.blob&.image?
+
+    Storage::PublicPropertyPhoto.publish_attachment!(attachment)
+  end
 
   def set_shareable_habitation
     @habitation = find_habitation_in_scope(params[:id], current_admin_user.tenant.habitations)
@@ -723,12 +732,6 @@ class HabitationsController < ApplicationController
   end
 
   def share_image_metadata_for(habitation)
-    public_picture = Array(habitation.pictures)
-      .select { |picture| picture["exibir_no_site"] != false }
-      .min_by { |picture| picture["ordem"].to_i }
-    public_picture_url = public_picture&.dig("url").presence || public_picture&.dig("url_original").presence
-    return { url: absolute_social_image_url(public_picture_url) } if public_picture_url.present?
-
     source = habitation.primary_image_source
     attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
 
@@ -737,17 +740,10 @@ class HabitationsController < ApplicationController
       return { url: cdn_url, type: attachment.blob.content_type } if cdn_url.present?
     end
 
-    image = helpers.public_image_url(source) if source.present?
-    image = nil if image.to_s.include?("/rails/active_storage/")
-    image = habitation.primary_image_url if image.blank?
-    image = nil if image.to_s.include?("/rails/active_storage/")
-    return {} if image.blank?
-
-    { url: absolute_social_image_url(image) }
+    {}
   rescue StandardError => e
     Rails.logger.warn("[social_image] habitation_id=#{habitation.id} error=#{e.class}: #{e.message}")
-    image = habitation.primary_image_url
-    image.present? ? { url: absolute_social_image_url(image) } : {}
+    {}
   end
 
   def absolute_social_image_url(image)
