@@ -21,7 +21,7 @@ RSpec.describe "Admin sidebar", type: :request do
     expect(response.body).to include("Auditoria de Acessos")
     expect(response.body).to include("Auditoria de Exportações")
     expect(response.body).to include("Redirecionamentos SEO")
-    expect(response.body).to include("Trackeamento")
+    expect(response.body).to include("Rastreamento")
     expect(response.body).to include(admin_access_security_path)
     expect(response.body).to include(edit_admin_field_settings_path)
     expect(response.body).to include(admin_field_audit_logs_path)
@@ -74,6 +74,21 @@ RSpec.describe "Admin sidebar", type: :request do
     expect(response.body).not_to include("Integrações")
     expect(response.body).not_to include(admin_webhook_settings_path)
     expect(response.body).not_to include(dashboard_admin_captacoes_path)
+  end
+
+  it "marca Captações como ativo para o controller real e não deixa Produto aberto por padrão" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    get admin_captacoes_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    active_link = html.at_css('.ax-nav__section[data-nav-section="operation"] a.ax-nav__link.active')
+    product_trigger = html.at_css('.ax-nav__section[data-nav-section="product"] > .ax-nav__section-trigger')
+
+    expect(active_link&.text&.squish).to eq("Captações")
+    expect(product_trigger["aria-expanded"]).to eq("false")
   end
 
   it "exibe listagens administrativas de WhatsApp para usuário operacional autorizado" do

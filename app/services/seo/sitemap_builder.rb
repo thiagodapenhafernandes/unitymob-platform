@@ -6,10 +6,11 @@ module Seo
   class SitemapBuilder
     LIMIT = 45_000
 
-    def initialize(base_url:, url_helpers:, habitation_scope: Habitation.all)
+    def initialize(base_url:, url_helpers:, tenant:, habitation_scope: nil)
       @base_url = base_url.to_s.delete_suffix("/")
       @url_helpers = url_helpers
-      @habitation_scope = habitation_scope
+      @tenant = tenant || raise(ArgumentError, "Tenant obrigatório para sitemap")
+      @habitation_scope = habitation_scope || @tenant.habitations
       @seen = Set.new
     end
 
@@ -43,7 +44,7 @@ module Seo
     end
 
     def seo_setting_entries
-      SeoSetting.where(active: true, apply_to_public: true, robots_index: true)
+      @tenant.seo_settings.where(active: true, apply_to_public: true, robots_index: true)
                 .where.not(canonical_url: [nil, ""])
                 .order(access_count: :desc, updated_at: :desc)
                 .filter_map do |seo|
@@ -75,7 +76,7 @@ module Seo
     def landing_page_entries
       return [] unless defined?(LandingPage)
 
-      LandingPage.where(active: true).find_each.filter_map do |page|
+      @tenant.landing_pages.where(active: true).find_each.filter_map do |page|
         path = @url_helpers.public_landing_page_path(page.slug)
         add_entry(
           loc: absolute_url(path),

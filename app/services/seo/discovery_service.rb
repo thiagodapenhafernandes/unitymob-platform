@@ -169,7 +169,7 @@ module Seo
 
     def process(opportunity)
       @result.evaluated += 1
-      seo = SeoSetting.find_or_initialize_by(canonical_key: opportunity[:canonical_key])
+      seo = seo_tenant.seo_settings.find_or_initialize_by(canonical_key: opportunity[:canonical_key])
       created = seo.new_record?
 
       if seo.persisted? && seo.manual_mode?
@@ -215,7 +215,7 @@ module Seo
     end
 
     def enqueue_ai(seo)
-      SeoAiGenerationJob.perform_later(seo.id)
+      SeoAiGenerationJob.perform_later(seo.id, tenant_id: seo_tenant.id)
       seo.update_columns(ai_status: "pending")
       @result.ai_enqueued += 1
     end
@@ -239,8 +239,11 @@ module Seo
     # Nunca agrega imóveis cross-tenant: usa o tenant do contexto (job/admin)
     # com fallback no tenant do site público (console/execuções sem contexto).
     def habitation_scope
+      seo_tenant.habitations
+    end
+
+    def seo_tenant
       @seo_tenant ||= Current.tenant || Tenant.public_for
-      @seo_tenant.habitations
     end
 
     def apply_location(scope, locations)

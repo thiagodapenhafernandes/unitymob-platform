@@ -64,6 +64,7 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
           admin_sidebar_color: "#FFFFFF",
           admin_primary_color: "#365F8F",
           admin_ink_color: "#1F2733",
+          admin_theme_mode: "dark",
           admin_menu_section_colors: {
             product: {
               background_color: "#123456",
@@ -79,6 +80,7 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
       expect(response).to redirect_to(edit_admin_layout_setting_path)
       expect(LayoutSetting.instance.reload.admin_workspace_color).to eq("#F4F6FA")
       expect(LayoutSetting.instance.reload.admin_sidebar_color).to eq("#FFFFFF")
+      expect(LayoutSetting.instance.reload.admin_theme_mode).to eq("dark")
       expect(LayoutSetting.instance.reload.admin_menu_section_styles["product"]).to eq(
         "background_color" => "#123456",
         "background_opacity" => 42,

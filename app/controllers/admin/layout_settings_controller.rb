@@ -37,6 +37,7 @@ module Admin
         :admin_sidebar_color,
         :admin_primary_color,
         :admin_ink_color,
+        :admin_theme_mode,
         :logo,
         :favicon,
         :site_name,

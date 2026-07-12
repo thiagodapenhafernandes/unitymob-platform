@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-admin-theme="<%= @layout_setting&.admin_dark_mode? ? 'dark' : 'light' %>">
   <head>
     <%
       account_site_name = @layout_setting&.site_name.presence || 'Salute Imóveis'
@@ -57,21 +57,17 @@
     <%= stylesheet_link_tag "ax_toast", media: "all" %>
     <%# Tema white-label da plataforma interna, independente dos tokens do site público. %>
     <%
-      admin_surface_color = @layout_setting&.respond_to?(:admin_surface_color) ? @layout_setting.admin_surface_color.presence : nil
-      admin_header_color = @layout_setting&.respond_to?(:admin_header_color) ? @layout_setting.admin_header_color.presence : nil
-      admin_workspace_color = @layout_setting&.respond_to?(:admin_workspace_color) ? @layout_setting.admin_workspace_color.presence : nil
-      admin_sidebar_color = @layout_setting&.respond_to?(:admin_sidebar_color) ? @layout_setting.admin_sidebar_color.presence : nil
-      admin_ink_color = @layout_setting&.respond_to?(:admin_ink_color) ? @layout_setting.admin_ink_color.presence : nil
+      admin_theme = @layout_setting&.effective_admin_theme || LayoutSetting.instance.effective_admin_theme
       admin_menu_section_styles = @layout_setting&.respond_to?(:admin_menu_section_styles) ? @layout_setting.admin_menu_section_styles : LayoutSetting::ADMIN_MENU_SECTION_STYLE_DEFAULTS
     %>
     <style>
       :root {
-        --admin-surface: <%= admin_surface_color || LayoutSetting::ADMIN_SURFACE_DEFAULT %>;
-        --admin-surface-header: <%= admin_header_color || LayoutSetting::ADMIN_HEADER_DEFAULT %>;
-        --admin-workspace-bg: <%= admin_workspace_color || LayoutSetting::ADMIN_WORKSPACE_DEFAULT %>;
-        --admin-sidebar-bg: <%= admin_sidebar_color || LayoutSetting::ADMIN_SIDEBAR_DEFAULT %>;
-        --admin-primary: <%= @layout_setting&.admin_primary_color.presence || LayoutSetting::ADMIN_PRIMARY_DEFAULT %>;
-        --admin-ink: <%= admin_ink_color || LayoutSetting::ADMIN_INK_DEFAULT %>;
+        --admin-surface: <%= admin_theme[:surface] %>;
+        --admin-surface-header: <%= admin_theme[:header] %>;
+        --admin-workspace-bg: <%= admin_theme[:workspace] %>;
+        --admin-sidebar-bg: <%= admin_theme[:sidebar] %>;
+        --admin-primary: <%= admin_theme[:primary] %>;
+        --admin-ink: <%= admin_theme[:ink] %>;
         <% admin_menu_section_styles.each do |section, section_style| %>
           --admin-nav-<%= section.dasherize %>-background: <%= section_style["background_color"] %>;
           --admin-nav-<%= section.dasherize %>-background-opacity: <%= section_style["background_opacity"] %>%;

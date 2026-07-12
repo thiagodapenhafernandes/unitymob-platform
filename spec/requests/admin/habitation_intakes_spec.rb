@@ -211,7 +211,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       "id" => proprietor.id,
       "code" => "PROP-9044",
       "name" => "Thiago Proprietário",
-      "phone" => "(21) 99087-2427",
+      "phone" => "5521990872427",
       "cpf_cnpj" => "123.456.789-00",
       "email" => "thiago@example.com",
       "city" => "Itajaí"
@@ -1290,7 +1290,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       titulo_anuncio: "Título original",
       descricao_web: "Descrição original",
       proprietario: "Proprietário original",
-      proprietario_celular: "(47) 99999-0000",
+      proprietario_celular: "5547999990000",
       valor_venda_cents: 900_000_00
     )
     intake.create_address!(
@@ -1329,7 +1329,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       nome_empreendimento: "Residencial Original",
       titulo_anuncio: "Título original",
       proprietario: "Proprietário original",
-      proprietario_celular: "(47) 99999-0000",
+      proprietario_celular: "5547999990000",
       valor_venda_cents: 120_000_000
     )
     expect(intake.descricao_web.to_plain_text).to eq("Descrição original")

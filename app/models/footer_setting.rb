@@ -1,4 +1,5 @@
 class FooterSetting < ApplicationRecord
+  include TenantScoped
   include PhoneNormalizable
 
   has_many :footer_links, dependent: :destroy
@@ -10,8 +11,10 @@ class FooterSetting < ApplicationRecord
   accepts_nested_attributes_for :footer_links, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :footer_stores, allow_destroy: true, reject_if: :all_blank
   accepts_nested_attributes_for :footer_social_links, allow_destroy: true, reject_if: :all_blank
-  def self.instance
-    first_or_create!(
+  def self.instance(tenant: Current.tenant || Tenant.public_for)
+    raise ArgumentError, "Tenant obrigatório para configurações do rodapé" if tenant.blank?
+
+    where(tenant: tenant).first_or_create!(
       about_title: "Salute Imóveis",
       about_text: "Sua imobiliária de confiança em Balneário Camboriú. Tradição e excelência no mercado imobiliário desde sempre.",
       links_title: "Links Rápidos",

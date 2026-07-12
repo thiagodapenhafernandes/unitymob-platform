@@ -62,6 +62,7 @@ export default class extends Controller {
       return `${String(parsed.getDate()).padStart(2, "0")}/${String(parsed.getMonth() + 1).padStart(2, "0")}`
     })
     const values = this.leadsValue.map(([, count]) => count)
+    const chartTheme = this.chartTheme()
 
     this.destroyChart("leads")
     this.charts.leads = new window.Chart(canvas, {
@@ -96,8 +97,8 @@ export default class extends Controller {
         },
         plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(15,23,42,0.06)" } },
-          x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 8 } }
+          y: { beginAtZero: true, ticks: { precision: 0, color: chartTheme.text }, grid: { color: chartTheme.grid } },
+          x: { grid: { display: false }, ticks: { color: chartTheme.text, autoSkip: true, maxTicksLimit: 8 } }
         }
       }
     })
@@ -110,6 +111,7 @@ export default class extends Controller {
     const labels = Object.keys(this.statusesValue).map((status) => (status || "sem status").toString().replace(/_/g, " "))
     const values = Object.values(this.statusesValue)
     const palette = ["#325c8e", "#2f7d5c", "#d99a2b", "#738297", "#7b68a6", "#b42318", "#98a2b3", "#4f9d8f"]
+    const chartTheme = this.chartTheme()
 
     this.destroyChart("status")
     this.charts.status = new window.Chart(canvas, {
@@ -120,7 +122,7 @@ export default class extends Controller {
           data: values,
           backgroundColor: palette.slice(0, labels.length),
           borderWidth: 2,
-          borderColor: "#fff"
+          borderColor: chartTheme.surface
         }]
       },
       options: {
@@ -130,10 +132,21 @@ export default class extends Controller {
         animation: { duration: 300 },
         cutout: "62%",
         plugins: {
-          legend: { position: "bottom", labels: { boxWidth: 12, padding: 12, font: { size: 11 } } }
+          legend: { position: "bottom", labels: { color: chartTheme.text, boxWidth: 12, padding: 12, font: { size: 11 } } }
         }
       }
     })
+  }
+
+  chartTheme() {
+    const styles = getComputedStyle(document.documentElement)
+    const dark = document.documentElement.dataset.adminTheme === "dark"
+
+    return {
+      text: dark ? styles.getPropertyValue("--ab-muted").trim() || "#b4bdca" : "#667085",
+      grid: dark ? "rgba(230,237,247,0.10)" : "rgba(15,23,42,0.06)",
+      surface: dark ? styles.getPropertyValue("--admin-surface").trim() || "#172033" : "#ffffff"
+    }
   }
 
   destroyChart(name) {

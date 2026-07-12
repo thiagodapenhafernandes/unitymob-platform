@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-admin-theme="<%= @layout_setting&.admin_dark_mode? ? 'dark' : 'light' %>">
   <head>
     <title>Captação — Salute Imóveis</title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-    <meta name="theme-color" content="#0d6efd">
+    <meta name="theme-color" content="<%= @layout_setting&.admin_dark_mode? ? '#0f1726' : '#0d6efd' %>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Salute Campo">
@@ -1208,6 +1208,159 @@
             top: 0;
           }
         }
+      }
+
+      /* O wizard tem layout próprio; herda explicitamente o tema da plataforma. */
+      html[data-admin-theme="dark"] body {
+        background: #0f1726;
+        color: #e6edf7;
+      }
+      html[data-admin-theme="dark"] .admin-navbar {
+        border-bottom-color: #2d3b52;
+        background: #101827;
+        color: #e6edf7;
+      }
+      html[data-admin-theme="dark"] .admin-navbar-brand,
+      html[data-admin-theme="dark"] .admin-navbar-brand-text,
+      html[data-admin-theme="dark"] .admin-navbar-user-name {
+        color: #e6edf7 !important;
+      }
+      html[data-admin-theme="dark"] .admin-navbar-logout {
+        border-color: #7f454c;
+        background: #1c283d;
+        color: #ff9a95;
+      }
+      html[data-admin-theme="dark"] .admin-sidebar {
+        border-right-color: #2d3b52;
+        background: #141d2e;
+      }
+      html[data-admin-theme="dark"] .admin-sidebar .ax-nav__section {
+        border-color: #34445d !important;
+        background: #1b263a !important;
+        color: #aebbd0 !important;
+        box-shadow: none !important;
+      }
+      html[data-admin-theme="dark"] .admin-sidebar .ax-nav__section:hover,
+      html[data-admin-theme="dark"] .admin-sidebar .ax-nav__section.is-open {
+        border-color: #415573 !important;
+        background: #202d43 !important;
+      }
+      html[data-admin-theme="dark"] .admin-sidebar .ax-nav__section-header,
+      html[data-admin-theme="dark"] .admin-sidebar .ax-nav__section-toggle,
+      html[data-admin-theme="dark"] .admin-sidebar .ax-nav__section a {
+        color: #aebbd0 !important;
+      }
+      html[data-admin-theme="dark"] .admin-sidebar .ax-nav__section a:hover {
+        background: #27354c !important;
+        color: #eef4fc !important;
+      }
+      html[data-admin-theme="dark"] .wizard-admin-content,
+      html[data-admin-theme="dark"] .wizard-content {
+        background: #0f1726;
+      }
+      html[data-admin-theme="dark"] .wizard-top-bar,
+      html[data-admin-theme="dark"] .wizard-bottom-nav {
+        border-color: #2d3b52;
+        background: #172033;
+        color: #e6edf7;
+      }
+      html[data-admin-theme="dark"] .wizard-top-bar .tw-text-sm,
+      html[data-admin-theme="dark"] .wizard-top-bar .tw-text-ink-muted {
+        color: #aebbd0 !important;
+      }
+      html[data-admin-theme="dark"] .wizard-top-bar .text-dark {
+        color: #e6edf7 !important;
+      }
+      html[data-admin-theme="dark"] .wizard-back-link {
+        border-color: #3a4961;
+        background: #1c283d;
+        color: #b7c4d7;
+        box-shadow: none;
+      }
+      html[data-admin-theme="dark"] .wizard-back-link:hover {
+        border-color: #5076a5;
+        background: #243149;
+        color: #fff;
+      }
+      html[data-admin-theme="dark"] .wizard-progress { background: #2a3850; }
+      html[data-admin-theme="dark"] .wizard-progress-bar {
+        background: linear-gradient(90deg, #4d7fb8, #72a7e5);
+      }
+      html[data-admin-theme="dark"] .wizard-start-form {
+        border-color: #2d3b52;
+        background: #172033;
+        color: #e6edf7;
+        box-shadow: 0 12px 30px rgb(0 0 0 / .22);
+      }
+      html[data-admin-theme="dark"] .wizard-section-title,
+      html[data-admin-theme="dark"] .wizard-start-form h1,
+      html[data-admin-theme="dark"] .wizard-start-form h2,
+      html[data-admin-theme="dark"] .wizard-start-form strong,
+      html[data-admin-theme="dark"] .wizard-option-card__text {
+        color: #e6edf7 !important;
+      }
+      html[data-admin-theme="dark"] .wizard-start-form p,
+      html[data-admin-theme="dark"] .wizard-start-form .text-muted {
+        color: #aebbd0 !important;
+      }
+      html[data-admin-theme="dark"] .wizard-field-group .ax-label,
+      html[data-admin-theme="dark"] .wizard-field-group .form-label,
+      html[data-admin-theme="dark"] .wizard-content .ax-label {
+        color: #9eabc0 !important;
+      }
+      html[data-admin-theme="dark"] .wizard-option-card {
+        border-color: #34445d;
+        background: #1b263a;
+        color: #dce6f4;
+      }
+      html[data-admin-theme="dark"] .wizard-option-card:hover {
+        border-color: #5076a5;
+        background: #223047;
+      }
+      html[data-admin-theme="dark"] .wizard-option-card.selected {
+        border-color: #72a7e5;
+        background: rgb(54 95 143 / .24);
+        box-shadow: 0 0 0 2px rgb(114 167 229 / .14);
+      }
+      html[data-admin-theme="dark"] .wizard-option-card .icon {
+        background: #24344c;
+        color: #86b5e9;
+      }
+      html[data-admin-theme="dark"] .wizard-content .ax-control,
+      html[data-admin-theme="dark"] .wizard-content select,
+      html[data-admin-theme="dark"] .wizard-content input,
+      html[data-admin-theme="dark"] .wizard-content textarea {
+        border-color: #3a4961;
+        background: #141e30;
+        color: #e6edf7;
+        color-scheme: dark;
+      }
+      html[data-admin-theme="dark"] .wizard-content .ax-control:focus,
+      html[data-admin-theme="dark"] .wizard-content select:focus,
+      html[data-admin-theme="dark"] .wizard-content input:focus,
+      html[data-admin-theme="dark"] .wizard-content textarea:focus {
+        border-color: #5a84b8;
+        box-shadow: 0 0 0 2px rgb(54 95 143 / .24);
+      }
+      html[data-admin-theme="dark"] .wizard-content .ax-inline-notice {
+        border-color: #36506f !important;
+        background: #192a40 !important;
+        color: #b9c9dc !important;
+      }
+      html[data-admin-theme="dark"] .wizard-content .ax-inline-notice strong {
+        color: #e6edf7 !important;
+      }
+      html[data-admin-theme="dark"] .wizard-top-bar .ax-badge--gray,
+      html[data-admin-theme="dark"] .wizard-content .ax-badge--gray {
+        border-color: #3a4961 !important;
+        background: #243149 !important;
+        color: #c3cede !important;
+      }
+      html[data-admin-theme="dark"] .wizard-bottom-nav .ax-btn--ghost,
+      html[data-admin-theme="dark"] .wizard-content .ax-btn--ghost {
+        border-color: #3a4961;
+        background: #1c283d;
+        color: #dce6f4;
       }
     </style>
   </head>

@@ -18,6 +18,14 @@ const TOKEN_TO_ADMIN_VAR = {
   ink: "--admin-ink"
 }
 
+const DARK_THEME = {
+  surface: "#172033",
+  header: "#202B3D",
+  workspace: "#0F1726",
+  sidebar: "#141D2D",
+  ink: "#E6EDF7"
+}
+
 const DERIVED_ADMIN_VARS = {
   surface: [
     "--ab-panel",
@@ -55,12 +63,43 @@ const DERIVED_ADMIN_VARS = {
 
 export default class extends Controller {
   connect() {
+    if (this.darkModeSelected()) {
+      this.applyDarkTheme()
+      return
+    }
+
+    this.applyLightTheme()
+  }
+
+  updateMode() {
+    if (this.darkModeSelected()) {
+      document.documentElement.dataset.adminTheme = "dark"
+      this.applyDarkTheme()
+    } else {
+      document.documentElement.dataset.adminTheme = "light"
+      this.applyLightTheme()
+    }
+  }
+
+  applyLightTheme() {
     this.element.querySelectorAll("[data-theme-token]").forEach((input) => {
       this.applyToken(input.dataset.themeToken, input.value, { syncInputs: false })
     })
   }
 
+  applyDarkTheme() {
+    Object.entries(DARK_THEME).forEach(([token, value]) => {
+      this.applyToken(token, value, { syncInputs: false })
+    })
+  }
+
+  darkModeSelected() {
+    return this.element.querySelector('input[name="layout_setting[admin_theme_mode]"]:checked')?.value === "dark"
+  }
+
   update(event) {
+    if (this.darkModeSelected()) return
+
     const token = event.currentTarget.dataset.themeToken
     this.applyToken(token, event.currentTarget.value, { source: event.currentTarget })
   }

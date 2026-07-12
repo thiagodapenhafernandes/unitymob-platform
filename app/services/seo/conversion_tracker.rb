@@ -41,8 +41,10 @@ module Seo
     attr_reader :event_type, :request, :lead, :habitation, :metadata
 
     def seo_setting
+      return unless tenant
+
       @seo_setting ||= canonical_path_candidates.filter_map do |path|
-        SeoSetting.find_by(canonical_path: path)
+        tenant.seo_settings.find_by(canonical_path: path)
       end.first
     end
 
@@ -56,14 +58,14 @@ module Seo
       campaign_id = safe_params[:marketing_campaign_id].presence || safe_params[:campaign_id].presence
       return if campaign_id.blank?
 
-      MarketingCampaign.find_by(id: campaign_id)
+      tenant&.marketing_campaigns&.find_by(id: campaign_id)
     end
 
     def campaign_from_utm
       campaign_key = safe_params[:utm_campaign].presence || uri_query_params(source_path)["utm_campaign"].presence
       return if campaign_key.blank?
 
-      MarketingCampaign.find_by(utm_campaign: campaign_key) || MarketingCampaign.find_by(slug: campaign_key)
+      tenant&.marketing_campaigns&.find_by(utm_campaign: campaign_key) || tenant&.marketing_campaigns&.find_by(slug: campaign_key)
     end
 
     def campaign_from_page
@@ -83,6 +85,10 @@ module Seo
       rescue
         request.fullpath.presence || request.path
       end
+    end
+
+    def tenant
+      @tenant ||= lead&.tenant || habitation&.tenant || Current.tenant
     end
 
     def canonical_path_candidates

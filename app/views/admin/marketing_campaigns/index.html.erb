@@ -1,5 +1,6 @@
 <%# Campanhas — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <% bs_to_ax = { "success" => "green", "danger" => "red", "warning" => "amber", "info" => "blue", "primary" => "blue", "secondary" => "gray" } %>
+<div class="marketing-admin-dark">
 <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
   <div>
     <h1 class="ax-page-title">Campanhas</h1>
@@ -65,3 +66,4 @@
 <% if @campaigns.respond_to?(:total_pages) && @campaigns.total_pages > 1 %>
   <%= ax_pagination @campaigns, params: request.query_parameters %>
 <% end %>
+</div>

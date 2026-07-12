@@ -7,7 +7,7 @@ export default class extends Controller {
     this.transitionTimers = new WeakMap()
     this.sections = Array.from(this.element.querySelectorAll("[data-nav-section]"))
     this.sections.forEach((section) => {
-      const shouldOpen = section.dataset.navSection === "product" || this.containsActiveLink(section)
+      const shouldOpen = this.containsActiveLink(section)
       this.setSection(section, shouldOpen, false)
     })
   }
@@ -23,7 +23,15 @@ export default class extends Controller {
   toggle(event) {
     const section = event.currentTarget.closest("[data-nav-section]")
     const trigger = event.currentTarget
-    this.setSection(section, trigger.getAttribute("aria-expanded") !== "true", true)
+    const shouldOpen = trigger.getAttribute("aria-expanded") !== "true"
+
+    if (shouldOpen) {
+      this.sections.forEach((candidate) => {
+        if (candidate !== section) this.setSection(candidate, false, true)
+      })
+    }
+
+    this.setSection(section, shouldOpen, true)
   }
 
   setSection(section, open, animate) {

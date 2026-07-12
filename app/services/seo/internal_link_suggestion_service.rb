@@ -26,7 +26,7 @@ module Seo
     attr_reader :seo, :keywords, :text
 
     def seo_setting_suggestions
-      SeoSetting.where(active: true, apply_to_public: true, robots_index: true)
+      seo.tenant.seo_settings.where(active: true, apply_to_public: true, robots_index: true)
                 .where.not(id: seo.id)
                 .order(access_count: :desc, seo_score: :desc)
                 .limit(40)
@@ -44,7 +44,7 @@ module Seo
     end
 
     def property_suggestions
-      Habitation.active.without_developments.limit(30).filter_map do |habitation|
+      seo.tenant.habitations.active.without_developments.limit(30).filter_map do |habitation|
         score = candidate_score(habitation.display_title, habitation.bairro, habitation.cidade)
         next if score <= 0
 

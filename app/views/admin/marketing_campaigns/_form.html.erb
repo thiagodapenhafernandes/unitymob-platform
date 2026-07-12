@@ -1,4 +1,4 @@
-<%= form_with model: [:admin, campaign], local: true do |f| %>
+<%= form_with model: [:admin, campaign], local: true, html: { class: "marketing-campaign-form" } do |f| %>
   <%= ax_error_summary(campaign) %>
 
   <div class="ax-card tw-mb-4">

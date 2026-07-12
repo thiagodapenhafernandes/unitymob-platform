@@ -1,4 +1,4 @@
-\restrict LcHRbBmm95Kh1OlXZgNoAZ7NRYqKx2dTGj6OMHDHKrlkFBCOGwBehn6ROJuaLiM
+\restrict GFCYAxTIJqq8srOAit7OUXvouA5yRp82LTGuRR9VKO43VV3vR5m1g3hTe7jk2CD
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -1224,7 +1224,8 @@ CREATE TABLE public.banners (
     display_order integer,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    positions character varying[] DEFAULT '{}'::character varying[]
+    positions character varying[] DEFAULT '{}'::character varying[],
+    tenant_id bigint NOT NULL
 );
 
 
@@ -1262,7 +1263,8 @@ CREATE TABLE public.captacao_goals (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     start_date date NOT NULL,
-    end_date date NOT NULL
+    end_date date NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -1620,7 +1622,8 @@ CREATE TABLE public.contact_settings (
     youtube_url character varying,
     linkedin_url character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2325,7 +2328,8 @@ CREATE TABLE public.footer_settings (
     email character varying,
     copyright_text character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2849,7 +2853,8 @@ CREATE TABLE public.home_section_items (
     active boolean,
     display_order integer,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2886,7 +2891,8 @@ CREATE TABLE public.home_sections (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     order_position integer DEFAULT 0,
-    property_filters jsonb DEFAULT '{}'::jsonb NOT NULL
+    property_filters jsonb DEFAULT '{}'::jsonb NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -2941,7 +2947,8 @@ CREATE TABLE public.home_settings (
     search_filter_border_opacity numeric(3,2),
     search_filter_border_radius integer,
     hero_title_font_size integer,
-    hero_subtitle_font_size integer
+    hero_subtitle_font_size integer,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -3013,7 +3020,8 @@ CREATE TABLE public.landing_pages (
     active boolean,
     description text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -3058,7 +3066,9 @@ CREATE TABLE public.layout_settings (
     interest_intelligence_enabled boolean DEFAULT true NOT NULL,
     interest_intelligence_instructions text,
     interest_intelligence_settings jsonb DEFAULT '{}'::jsonb NOT NULL,
-    admin_menu_section_colors jsonb DEFAULT '{"growth": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#DB2777", "border_color": "#ECC1D4", "background_color": "#DB2777", "background_opacity": 10}, "account": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#475569", "border_color": "#B0C1D8", "background_color": "#475569", "background_opacity": 10}, "product": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#245486", "border_color": "#C7D8EE", "background_color": "#E8F0FB", "background_opacity": 100}, "settings": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#64748B", "border_color": "#AFC3DE", "background_color": "#64748B", "background_opacity": 10}, "operation": {"box_shadow": "inset 2px 0 0 #0F766E", "text_color": "#0F766E", "border_color": "#C9EEEB", "background_color": "#EBFFFE", "background_opacity": 100}, "management": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#7C3AED", "border_color": "#D2C0F2", "background_color": "#ECE0FF", "background_opacity": 100}, "public_site": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#0891B2", "border_color": "#BDDDE5", "background_color": "#0891B2", "background_opacity": 10}, "integrations": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#D97706", "border_color": "#E2D0BB", "background_color": "#D97706", "background_opacity": 10}}'::jsonb NOT NULL
+    admin_menu_section_colors jsonb DEFAULT '{"growth": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#DB2777", "border_color": "#ECC1D4", "background_color": "#DB2777", "background_opacity": 10}, "account": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#475569", "border_color": "#B0C1D8", "background_color": "#475569", "background_opacity": 10}, "product": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#245486", "border_color": "#C7D8EE", "background_color": "#E8F0FB", "background_opacity": 100}, "settings": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#64748B", "border_color": "#AFC3DE", "background_color": "#64748B", "background_opacity": 10}, "operation": {"box_shadow": "inset 2px 0 0 #0F766E", "text_color": "#0F766E", "border_color": "#C9EEEB", "background_color": "#EBFFFE", "background_opacity": 100}, "management": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#7C3AED", "border_color": "#D2C0F2", "background_color": "#ECE0FF", "background_opacity": 100}, "public_site": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#0891B2", "border_color": "#BDDDE5", "background_color": "#0891B2", "background_opacity": 10}, "integrations": {"box_shadow": "inset 2px 0 0 #365F8F", "text_color": "#D97706", "border_color": "#E2D0BB", "background_color": "#D97706", "background_opacity": 10}}'::jsonb NOT NULL,
+    admin_theme_mode character varying DEFAULT 'light'::character varying NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -3279,7 +3289,8 @@ CREATE TABLE public.lead_settings (
     notify_on_redistribution boolean DEFAULT true NOT NULL,
     secure_link_whatsapp boolean DEFAULT true NOT NULL,
     secure_link_email boolean DEFAULT true NOT NULL,
-    secure_link_push boolean DEFAULT true NOT NULL
+    secure_link_push boolean DEFAULT true NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -3471,7 +3482,8 @@ CREATE TABLE public.marketing_campaigns (
     utm_content character varying,
     clicks_count integer DEFAULT 0 NOT NULL,
     conversions_count integer DEFAULT 0 NOT NULL,
-    last_clicked_at timestamp(6) without time zone
+    last_clicked_at timestamp(6) without time zone,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -3611,7 +3623,8 @@ CREATE TABLE public.photography_schedule_blocks (
     reason character varying,
     created_by_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4437,7 +4450,8 @@ CREATE TABLE public.seo_redirects (
     last_hit_at timestamp(6) without time zone,
     created_by_admin_user_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -4496,7 +4510,8 @@ CREATE TABLE public.seo_settings (
     access_count integer DEFAULT 0 NOT NULL,
     last_accessed_at timestamp(6) without time zone,
     last_generated_from_path character varying,
-    intro_text text
+    intro_text text,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -5402,7 +5417,8 @@ CREATE TABLE public.webhook_settings (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     whatsapp_webhook_url character varying,
-    lead_capture_enabled boolean
+    lead_capture_enabled boolean,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -7376,7 +7392,7 @@ ALTER TABLE ONLY public.presentation_cards
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY ((ARRAY['vertical'::character varying, 'horizontal'::character varying])::text[]))) NOT VALID;
+    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY (ARRAY[('vertical'::character varying)::text, ('horizontal'::character varying)::text]))) NOT VALID;
 
 
 --
@@ -7392,7 +7408,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) OR (((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) OR (((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
 
 
 --
@@ -7400,7 +7416,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])))) NOT VALID;
+    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])))) NOT VALID;
 
 
 --
@@ -7416,7 +7432,7 @@ ALTER TABLE ONLY public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
 
 
 --
@@ -9129,10 +9145,24 @@ CREATE INDEX index_automation_workflows_on_tenant_id_and_status ON public.automa
 
 
 --
+-- Name: index_banners_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_banners_on_tenant_id ON public.banners USING btree (tenant_id);
+
+
+--
 -- Name: index_captacao_goals_on_kind_and_period; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_captacao_goals_on_kind_and_period ON public.captacao_goals USING btree (kind, start_date, end_date);
+
+
+--
+-- Name: index_captacao_goals_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_captacao_goals_on_tenant_id ON public.captacao_goals USING btree (tenant_id);
 
 
 --
@@ -9409,6 +9439,20 @@ CREATE INDEX index_client_property_interests_on_vista_import_batch_id ON public.
 
 
 --
+-- Name: index_contact_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_contact_settings_on_tenant_id ON public.contact_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_contact_settings_on_unique_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_contact_settings_on_unique_tenant_id ON public.contact_settings USING btree (tenant_id);
+
+
+--
 -- Name: index_crm_appointments_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9679,6 +9723,20 @@ CREATE UNIQUE INDEX index_featured_properties_view_on_id ON public.featured_prop
 --
 
 CREATE INDEX index_footer_links_on_footer_setting_id ON public.footer_links USING btree (footer_setting_id);
+
+
+--
+-- Name: index_footer_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_footer_settings_on_tenant_id ON public.footer_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_footer_settings_on_unique_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_footer_settings_on_unique_tenant_id ON public.footer_settings USING btree (tenant_id);
 
 
 --
@@ -10312,6 +10370,34 @@ CREATE INDEX index_home_section_items_on_home_section_id ON public.home_section_
 
 
 --
+-- Name: index_home_section_items_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_home_section_items_on_tenant_id ON public.home_section_items USING btree (tenant_id);
+
+
+--
+-- Name: index_home_sections_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_home_sections_on_tenant_id ON public.home_sections USING btree (tenant_id);
+
+
+--
+-- Name: index_home_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_home_settings_on_tenant_id ON public.home_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_home_settings_on_unique_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_home_settings_on_unique_tenant_id ON public.home_settings USING btree (tenant_id);
+
+
+--
 -- Name: index_inbound_webhook_tokens_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10323,6 +10409,34 @@ CREATE UNIQUE INDEX index_inbound_webhook_tokens_on_admin_user_id ON public.inbo
 --
 
 CREATE UNIQUE INDEX index_inbound_webhook_tokens_on_token ON public.inbound_webhook_tokens USING btree (token);
+
+
+--
+-- Name: index_landing_pages_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_landing_pages_on_tenant_id ON public.landing_pages USING btree (tenant_id);
+
+
+--
+-- Name: index_landing_pages_on_tenant_id_and_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_landing_pages_on_tenant_id_and_slug ON public.landing_pages USING btree (tenant_id, slug);
+
+
+--
+-- Name: index_layout_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_layout_settings_on_tenant_id ON public.layout_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_layout_settings_on_unique_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_layout_settings_on_unique_tenant_id ON public.layout_settings USING btree (tenant_id);
 
 
 --
@@ -10477,6 +10591,20 @@ CREATE UNIQUE INDEX index_lead_property_interests_on_lead_id_and_habitation_id O
 --
 
 CREATE INDEX index_lead_property_interests_on_tenant_id ON public.lead_property_interests USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_lead_settings_on_tenant_id ON public.lead_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_lead_settings_on_unique_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_lead_settings_on_unique_tenant_id ON public.lead_settings USING btree (tenant_id);
 
 
 --
@@ -10746,6 +10874,13 @@ CREATE INDEX index_marketing_campaigns_on_status ON public.marketing_campaigns U
 
 
 --
+-- Name: index_marketing_campaigns_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_marketing_campaigns_on_tenant_id ON public.marketing_campaigns USING btree (tenant_id);
+
+
+--
 -- Name: index_marketing_campaigns_on_utm_campaign; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10799,6 +10934,13 @@ CREATE INDEX index_photography_schedule_blocks_on_created_by_id ON public.photog
 --
 
 CREATE UNIQUE INDEX index_photography_schedule_blocks_on_date ON public.photography_schedule_blocks USING btree (date);
+
+
+--
+-- Name: index_photography_schedule_blocks_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_photography_schedule_blocks_on_tenant_id ON public.photography_schedule_blocks USING btree (tenant_id);
 
 
 --
@@ -11362,10 +11504,10 @@ CREATE UNIQUE INDEX index_seo_redirects_on_from_path ON public.seo_redirects USI
 
 
 --
--- Name: index_seo_settings_on_canonical_key; Type: INDEX; Schema: public; Owner: -
+-- Name: index_seo_redirects_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_seo_settings_on_canonical_key ON public.seo_settings USING btree (canonical_key);
+CREATE INDEX index_seo_redirects_on_tenant_id ON public.seo_redirects USING btree (tenant_id);
 
 
 --
@@ -11387,6 +11529,27 @@ CREATE INDEX index_seo_settings_on_page_type ON public.seo_settings USING btree 
 --
 
 CREATE INDEX index_seo_settings_on_seo_score ON public.seo_settings USING btree (seo_score);
+
+
+--
+-- Name: index_seo_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_seo_settings_on_tenant_id ON public.seo_settings USING btree (tenant_id);
+
+
+--
+-- Name: index_seo_settings_on_tenant_id_and_canonical_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_seo_settings_on_tenant_id_and_canonical_key ON public.seo_settings USING btree (tenant_id, canonical_key);
+
+
+--
+-- Name: index_seo_settings_on_tenant_id_and_page_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_seo_settings_on_tenant_id_and_page_name ON public.seo_settings USING btree (tenant_id, page_name);
 
 
 --
@@ -11922,6 +12085,13 @@ CREATE UNIQUE INDEX index_wa_conversations_on_tenant_and_phone ON public.whatsap
 
 
 --
+-- Name: index_webhook_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_settings_on_tenant_id ON public.webhook_settings USING btree (tenant_id);
+
+
+--
 -- Name: index_whatsapp_business_integrations_on_phone_number_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12402,6 +12572,22 @@ ALTER TABLE ONLY public.profiles
 
 
 --
+-- Name: webhook_settings fk_rails_020d2cba94; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_settings
+    ADD CONSTRAINT fk_rails_020d2cba94 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: marketing_campaigns fk_rails_0298a5d506; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.marketing_campaigns
+    ADD CONSTRAINT fk_rails_0298a5d506 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: lead_labels fk_rails_0318289c3b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12666,6 +12852,14 @@ ALTER TABLE ONLY public.checkin_audit_logs
 
 
 --
+-- Name: footer_settings fk_rails_294347decd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.footer_settings
+    ADD CONSTRAINT fk_rails_294347decd FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: automation_runs fk_rails_2a2959b596; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12815,6 +13009,14 @@ ALTER TABLE ONLY public.leads
 
 ALTER TABLE ONLY public.automation_webhook_deliveries
     ADD CONSTRAINT fk_rails_3e8969d1cd FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
+-- Name: home_settings fk_rails_3f8ab94f12; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.home_settings
+    ADD CONSTRAINT fk_rails_3f8ab94f12 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -12978,6 +13180,14 @@ ALTER TABLE ONLY public.automation_webhook_deliveries
 
 
 --
+-- Name: lead_settings fk_rails_55049f1612; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lead_settings
+    ADD CONSTRAINT fk_rails_55049f1612 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: location_pings fk_rails_550bb129fb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13087,6 +13297,14 @@ ALTER TABLE ONLY public.home_section_items
 
 ALTER TABLE ONLY public.client_interactions
     ADD CONSTRAINT fk_rails_5d58b5c954 FOREIGN KEY (vista_import_batch_id) REFERENCES public.vista_import_batches(id);
+
+
+--
+-- Name: seo_redirects fk_rails_5d82a6fd98; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seo_redirects
+    ADD CONSTRAINT fk_rails_5d82a6fd98 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -13234,6 +13452,22 @@ ALTER TABLE ONLY public.automation_executions
 
 
 --
+-- Name: home_section_items fk_rails_7b26eeb510; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.home_section_items
+    ADD CONSTRAINT fk_rails_7b26eeb510 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: contact_settings fk_rails_7b2d3b7408; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contact_settings
+    ADD CONSTRAINT fk_rails_7b2d3b7408 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: appointments fk_rails_7e7c23e377; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13343,6 +13577,14 @@ ALTER TABLE ONLY public.profiles
 
 ALTER TABLE ONLY public.habitation_interactions
     ADD CONSTRAINT fk_rails_8531aa2028 FOREIGN KEY (crm_contact_id) REFERENCES public.crm_contacts(id);
+
+
+--
+-- Name: home_sections fk_rails_857f3a3f9d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.home_sections
+    ADD CONSTRAINT fk_rails_857f3a3f9d FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -13650,6 +13892,22 @@ ALTER TABLE ONLY public.admin_users
 
 
 --
+-- Name: captacao_goals fk_rails_a73c6a331b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.captacao_goals
+    ADD CONSTRAINT fk_rails_a73c6a331b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: seo_settings fk_rails_aa64cc642d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.seo_settings
+    ADD CONSTRAINT fk_rails_aa64cc642d FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: habitations fk_rails_b0b092703f; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13882,6 +14140,14 @@ ALTER TABLE ONLY public.automation_execution_steps
 
 
 --
+-- Name: layout_settings fk_rails_c760eaba29; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.layout_settings
+    ADD CONSTRAINT fk_rails_c760eaba29 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: vista_raw_records fk_rails_c87e7e92c0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13975,6 +14241,14 @@ ALTER TABLE ONLY public.seo_change_logs
 
 ALTER TABLE ONLY public.automation_webhook_deliveries
     ADD CONSTRAINT fk_rails_d4def20ddb FOREIGN KEY (automation_event_id) REFERENCES public.automation_events(id);
+
+
+--
+-- Name: photography_schedule_blocks fk_rails_d4ef27928e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.photography_schedule_blocks
+    ADD CONSTRAINT fk_rails_d4ef27928e FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -14138,6 +14412,14 @@ ALTER TABLE ONLY public.manual_checkin_requests
 
 
 --
+-- Name: banners fk_rails_e823ce7552; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.banners
+    ADD CONSTRAINT fk_rails_e823ce7552 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: client_interactions fk_rails_e8902714fa; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14242,6 +14524,14 @@ ALTER TABLE ONLY public.leads
 
 
 --
+-- Name: landing_pages fk_rails_f383383ae6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.landing_pages
+    ADD CONSTRAINT fk_rails_f383383ae6 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: habitation_photo_shares fk_rails_f8257292ce; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14285,11 +14575,14 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict LcHRbBmm95Kh1OlXZgNoAZ7NRYqKx2dTGj6OMHDHKrlkFBCOGwBehn6ROJuaLiM
+\unrestrict GFCYAxTIJqq8srOAit7OUXvouA5yRp82LTGuRR9VKO43VV3vR5m1g3hTe7jk2CD
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260712123000'),
+('20260712110000'),
+('20260711144500'),
 ('20260711143000'),
 ('20260711120000'),
 ('20260711000000'),

@@ -80,7 +80,7 @@ class Admin::PortalIntegrationsController < Admin::BaseController
     if PortalListingState.column_names.include?("tenant_id")
       PortalListingState.where(tenant: current_tenant)
     else
-      PortalListingState.all
+      PortalListingState.none
     end
   end
 

@@ -429,7 +429,7 @@ class Admin::HabitationsController < Admin::BaseController
     # Bump last_feed_at nas integrations afetadas pra sinalizar no admin que houve mudança
     if portals_touched.any?
       portal_keys = Habitation::PORTAL_PUBLICATION_FIELDS.select { |_, col| updates.key?(col) }.keys
-      PortalIntegration.where(portal: portal_keys).update_all(updated_at: Time.current) if portal_keys.any?
+      current_tenant.portal_integrations.where(portal: portal_keys).update_all(updated_at: Time.current) if portal_keys.any?
     end
 
     render json: {

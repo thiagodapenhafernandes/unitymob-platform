@@ -101,7 +101,7 @@ module Seo
     end
 
     def enqueue_ai_generation(seo)
-      SeoAiGenerationJob.perform_later(seo.id)
+      SeoAiGenerationJob.perform_later(seo.id, tenant_id: seo.tenant_id)
     end
 
     def record_campaign_visit(seo)

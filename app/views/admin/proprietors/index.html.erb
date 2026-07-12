@@ -1,5 +1,6 @@
 <%# Proprietários — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak.
     Deferido p/ rollout: filtros avançados (cônjuge, imóvel), seleção em massa, export e relatórios. %>
+<div class="admin-entity-dark">
 <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
   <div>
     <h1 class="ax-page-title">Proprietários</h1>
@@ -84,3 +85,4 @@
 </div>
 
 <%= ax_pagination @proprietors, params: request.query_parameters %>
+</div>

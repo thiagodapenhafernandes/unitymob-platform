@@ -1,4 +1,5 @@
 class LayoutSetting < ApplicationRecord
+  include TenantScoped
   has_one_attached :logo
   has_one_attached :favicon
 
@@ -10,6 +11,15 @@ class LayoutSetting < ApplicationRecord
   ADMIN_SIDEBAR_DEFAULT = '#FFFFFF'.freeze
   ADMIN_PRIMARY_DEFAULT = '#365F8F'.freeze
   ADMIN_INK_DEFAULT = '#1F2733'.freeze
+  ADMIN_THEME_MODE_DEFAULT = 'light'.freeze
+  ADMIN_THEME_MODES = %w[light dark].freeze
+  ADMIN_DARK_THEME = {
+    surface: '#172033',
+    header: '#202B3D',
+    workspace: '#0F1726',
+    sidebar: '#141D2D',
+    ink: '#E6EDF7'
+  }.freeze
   ADMIN_AREA_NAME_DEFAULT = 'Plataforma'.freeze
   LEGACY_ADMIN_PRIMARY_DEFAULT = '#2563EB'.freeze
   ADMIN_MENU_SECTION_SHADOW_DEFAULT = "inset 2px 0 0 #365F8F".freeze
@@ -28,6 +38,24 @@ class LayoutSetting < ApplicationRecord
   validates :primary_color, presence: true
   validates :secondary_color, presence: true
   validates :accent_color, presence: true
+  validates :admin_theme_mode, inclusion: { in: ADMIN_THEME_MODES }, if: -> { has_attribute?(:admin_theme_mode) }
+
+  def admin_dark_mode?
+    has_attribute?(:admin_theme_mode) && admin_theme_mode == 'dark'
+  end
+
+  def effective_admin_theme
+    return ADMIN_DARK_THEME.merge(primary: admin_primary_color.presence || ADMIN_PRIMARY_DEFAULT) if admin_dark_mode?
+
+    {
+      surface: admin_surface_color.presence || ADMIN_SURFACE_DEFAULT,
+      header: admin_header_color.presence || ADMIN_HEADER_DEFAULT,
+      workspace: admin_workspace_color.presence || ADMIN_WORKSPACE_DEFAULT,
+      sidebar: admin_sidebar_color.presence || ADMIN_SIDEBAR_DEFAULT,
+      primary: admin_primary_color.presence || ADMIN_PRIMARY_DEFAULT,
+      ink: admin_ink_color.presence || ADMIN_INK_DEFAULT
+    }
+  end
 
   def admin_area_label
     return ADMIN_AREA_NAME_DEFAULT unless has_attribute?(:admin_area_name)
@@ -35,7 +63,8 @@ class LayoutSetting < ApplicationRecord
     admin_area_name.presence || ADMIN_AREA_NAME_DEFAULT
   end
 
-  def self.instance
+  def self.instance(tenant: Current.tenant || Tenant.public_for)
+    raise ArgumentError, "Tenant obrigatório para configurações de layout" if tenant.blank?
     defaults = {
       primary_color: '#022B3A',
       secondary_color: '#053C5E',
@@ -49,11 +78,12 @@ class LayoutSetting < ApplicationRecord
     defaults[:admin_workspace_color] = ADMIN_WORKSPACE_DEFAULT if column_names.include?('admin_workspace_color')
     defaults[:admin_sidebar_color] = ADMIN_SIDEBAR_DEFAULT if column_names.include?('admin_sidebar_color')
     defaults[:admin_ink_color] = ADMIN_INK_DEFAULT if column_names.include?('admin_ink_color')
+    defaults[:admin_theme_mode] = ADMIN_THEME_MODE_DEFAULT if column_names.include?('admin_theme_mode')
     defaults[:admin_menu_section_colors] = ADMIN_MENU_SECTION_STYLE_DEFAULTS if column_names.include?('admin_menu_section_colors')
     defaults[:interest_intelligence_enabled] = true if column_names.include?('interest_intelligence_enabled')
     defaults[:interest_intelligence_settings] = InterestIntelligence::Settings::DEFAULTS if column_names.include?('interest_intelligence_settings')
 
-    setting = first_or_initialize(defaults)
+    setting = where(tenant: tenant).first_or_initialize(defaults.merge(tenant: tenant))
 
     # Se já existir mas algum campo estiver nulo (como o accent_color do erro)
     if setting.persisted?
@@ -66,6 +96,7 @@ class LayoutSetting < ApplicationRecord
       setting.admin_workspace_color ||= ADMIN_WORKSPACE_DEFAULT if setting.has_attribute?(:admin_workspace_color)
       setting.admin_sidebar_color ||= ADMIN_SIDEBAR_DEFAULT if setting.has_attribute?(:admin_sidebar_color)
       setting.admin_ink_color ||= ADMIN_INK_DEFAULT if setting.has_attribute?(:admin_ink_color)
+      setting.admin_theme_mode ||= ADMIN_THEME_MODE_DEFAULT if setting.has_attribute?(:admin_theme_mode)
       if setting.has_attribute?(:admin_menu_section_colors)
         setting[:admin_menu_section_colors] = normalized_admin_menu_section_styles(setting[:admin_menu_section_colors])
       end
