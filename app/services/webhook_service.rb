@@ -25,7 +25,10 @@ class WebhookService
         return true
       end
 
-      active_settings = WebhookSetting.active
+      tenant = options[:tenant] || Current.tenant
+      return false unless tenant
+
+      active_settings = tenant.webhook_settings.active
       return false if active_settings.empty?
 
       results = active_settings.map do |setting|

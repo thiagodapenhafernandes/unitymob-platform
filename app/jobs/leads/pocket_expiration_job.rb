@@ -4,7 +4,8 @@ module Leads
 
     def perform(lead_id, expected_admin_user_id = nil, tenant_id: nil)
       tenant = Tenant.find_by(id: tenant_id) || Current.tenant
-      lead = tenant.present? ? tenant.leads.find_by(id: lead_id) : Lead.find_by(id: lead_id)
+      raise ArgumentError, "Tenant obrigatório para expirar lead da carteira" unless tenant
+      lead = tenant.leads.find_by(id: lead_id)
       return if lead.blank?
 
       tenant ||= lead.tenant

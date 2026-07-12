@@ -3,18 +3,18 @@ class Admin::BannersController < Admin::BaseController
   before_action :set_banner, only: [:show, :edit, :update, :destroy]
   
   def index
-    @banners = Banner.ordered.page(params[:page]).per_page(20)
+    @banners = current_tenant.banners.ordered.page(params[:page]).per_page(20)
   end
   
   def show
   end
   
   def new
-    @banner = Banner.new
+    @banner = current_tenant.banners.new
   end
   
   def create
-    @banner = Banner.new(banner_params)
+    @banner = current_tenant.banners.new(banner_params)
     
     if @banner.save
       redirect_to admin_banners_path, notice: 'Banner criado com sucesso!'
@@ -42,7 +42,7 @@ class Admin::BannersController < Admin::BaseController
   private
   
   def set_banner
-    @banner = Banner.find(params[:id])
+    @banner = current_tenant.banners.find(params[:id])
   end
   
   def banner_params

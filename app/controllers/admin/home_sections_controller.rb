@@ -3,18 +3,18 @@ class Admin::HomeSectionsController < Admin::BaseController
   before_action :set_home_section, only: [:show, :edit, :update, :destroy]
   
   def index
-    @home_sections = HomeSection.ordered.includes(:home_section_items)
+    @home_sections = current_tenant.home_sections.ordered.includes(:home_section_items)
   end
   
   def show
   end
   
   def new
-    @home_section = HomeSection.new
+    @home_section = current_tenant.home_sections.new
   end
   
   def create
-    @home_section = HomeSection.new(home_section_params)
+    @home_section = current_tenant.home_sections.new(home_section_params)
     
     if @home_section.save
       redirect_to admin_home_sections_path, notice: 'Seção criada com sucesso!'
@@ -40,14 +40,14 @@ class Admin::HomeSectionsController < Admin::BaseController
   end
   
   def toggle_active
-    @home_section = HomeSection.find(params[:id])
+    @home_section = current_tenant.home_sections.find(params[:id])
     @home_section.update(active: !@home_section.active)
     redirect_to admin_home_sections_path, notice: "Seção #{@home_section.active? ? 'ativada' : 'desativada'} com sucesso!"
   end
   
   def update_order
     params[:order].each_with_index do |id, index|
-      HomeSection.find(id).update(order_position: index + 1)
+      current_tenant.home_sections.find(id).update(order_position: index + 1)
     end
     head :ok
   end
@@ -55,7 +55,7 @@ class Admin::HomeSectionsController < Admin::BaseController
   private
   
   def set_home_section
-    @home_section = HomeSection.find(params[:id])
+    @home_section = current_tenant.home_sections.find(params[:id])
   end
   
   def home_section_params

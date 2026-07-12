@@ -22,7 +22,7 @@ module Admin
     end
 
     def block_day
-      block = PhotographyScheduleBlock.new(block_day_params)
+      block = current_tenant.photography_schedule_blocks.new(block_day_params)
       block.created_by = current_admin_user
 
       if block.save
@@ -35,7 +35,7 @@ module Admin
     end
 
     def unblock_day
-      PhotographyScheduleBlock.find(params[:id]).destroy
+      current_tenant.photography_schedule_blocks.find(params[:id]).destroy
       redirect_to admin_scheduling_integration_path, notice: "Bloqueio removido da agenda."
     end
 
@@ -55,7 +55,7 @@ module Admin
 
     def load_settings
       @photography_schedule_url = Setting.get("photography_schedule_url", "")
-      @blocked_days = PhotographyScheduleBlock.order(date: :asc)
+      @blocked_days = current_tenant.photography_schedule_blocks.order(date: :asc)
       @pending_photo_habitations = pending_photo_habitations
     end
 

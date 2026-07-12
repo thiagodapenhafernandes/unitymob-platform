@@ -154,7 +154,7 @@ module ApplicationHelper
   
   # Banner display helper
   def display_banner(position, options = {})
-    banner = Banner.active.by_position(position).detect(&:displayable?)
+    banner = public_tenant.banners.active.by_position(position).detect(&:displayable?)
     return if banner.blank?
     
     render 'shared/banner', banner: banner, options: options

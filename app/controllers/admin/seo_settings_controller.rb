@@ -4,7 +4,7 @@ class Admin::SeoSettingsController < Admin::BaseController
   before_action :load_editor_helpers, only: [:edit]
 
   def index
-    @seo_settings = SeoSetting
+    @seo_settings = current_tenant.seo_settings
                     .order(last_accessed_at: :desc, access_count: :desc, page_name: :asc)
                     .paginate(page: params[:page], per_page: 20)
     @seo_strategy_prompt = Ai::SeoContentService.instructions
@@ -14,19 +14,19 @@ class Admin::SeoSettingsController < Admin::BaseController
     @seo_discovery_status = Seo::DiscoveryService.status
     @seo_discovery_enabled = Seo::DiscoveryService.enabled?
     @stats = {
-      total: SeoSetting.count,
-      active: SeoSetting.where(active: true).count,
-      public: SeoSetting.where(apply_to_public: true).count,
-      generated: SeoSetting.where(ai_status: "generated").count
+      total: current_tenant.seo_settings.count,
+      active: current_tenant.seo_settings.where(active: true).count,
+      public: current_tenant.seo_settings.where(apply_to_public: true).count,
+      generated: current_tenant.seo_settings.where(ai_status: "generated").count
     }
   end
 
   def new
-    @seo_setting = SeoSetting.new
+    @seo_setting = current_tenant.seo_settings.new
   end
 
   def create
-    @seo_setting = SeoSetting.new(seo_setting_params)
+    @seo_setting = current_tenant.seo_settings.new(seo_setting_params)
     if @seo_setting.save
       @seo_setting.sync_focus_keywords!(params[:seo_setting][:focus_keyword_list])
       redirect_to admin_seo_settings_path, notice: 'SEO criado com sucesso!'
@@ -102,7 +102,7 @@ class Admin::SeoSettingsController < Admin::BaseController
   private
 
   def set_seo_setting
-    @seo_setting = SeoSetting.find(params[:id])
+    @seo_setting = current_tenant.seo_settings.find(params[:id])
   end
 
   def load_editor_helpers

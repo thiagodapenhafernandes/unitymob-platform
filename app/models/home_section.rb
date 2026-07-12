@@ -1,4 +1,5 @@
 class HomeSection < ApplicationRecord
+  include TenantScoped
   SECTION_TYPE_LABELS = {
     "services" => "Serviços",
     "why_choose_us" => "Por que escolher a Salute",
@@ -101,8 +102,8 @@ class HomeSection < ApplicationRecord
   end
 
   def clear_home_cache
-    Rails.cache.delete("home_sections_active_v3")
-    Rails.cache.delete("home_sections_active_v2")
+    Rails.cache.delete("home_sections_active_v3:tenant:#{tenant_id}")
+    Rails.cache.delete("home_sections_active_v2:tenant:#{tenant_id}")
     Rails.cache.delete_matched("public_home/tenant/*") if Rails.cache.respond_to?(:delete_matched)
     Rails.cache.delete_matched("views/*") if Rails.cache.respond_to?(:delete_matched)
   rescue NotImplementedError

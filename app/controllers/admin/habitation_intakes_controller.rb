@@ -670,7 +670,7 @@ module Admin
       @sale_reasons = sale_reason_options
       @google_calendar_setting = GoogleCalendarIntegrationSetting.for(current_tenant)
       @photography_min_date = Date.current + 1.day
-      @photography_blocked_dates = PhotographyScheduleBlock.pluck(:date).map(&:iso8601)
+      @photography_blocked_dates = current_tenant.photography_schedule_blocks.pluck(:date).map(&:iso8601)
       @photography_booked_slots = booked_photography_slots
     end
 
@@ -871,7 +871,7 @@ module Admin
 
       scheduled_at = @habitation.photo_session_requested_at.in_time_zone("America/Sao_Paulo")
       return true if scheduled_at.to_date <= Date.current
-      return true if PhotographyScheduleBlock.exists?(date: scheduled_at.to_date)
+      return true if current_tenant.photography_schedule_blocks.exists?(date: scheduled_at.to_date)
       return true if local_photo_schedule_conflict?(scheduled_at)
       return false unless @google_calendar_setting&.configured?
 

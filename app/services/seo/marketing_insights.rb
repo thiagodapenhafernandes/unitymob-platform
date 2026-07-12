@@ -21,7 +21,7 @@ module Seo
 
     def call
       {
-        campaign_opportunities: Seo::DashboardMetrics.new(period: "90").call[:campaign_opportunities],
+        campaign_opportunities: Seo::DashboardMetrics.new(period: "90", tenant: tenant).call[:campaign_opportunities],
         property_insights: property_insights,
         alerts: alerts,
         strategic_pages: strategic_pages,

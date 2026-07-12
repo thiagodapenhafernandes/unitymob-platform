@@ -2,7 +2,7 @@ class Admin::MarketingToolsController < Admin::BaseController
   before_action -> { check_permission!(:manage, :marketing) }
 
   def index
-    @campaign = MarketingCampaign.find_by(id: params[:campaign_id]) || MarketingCampaign.new(
+    @campaign = current_tenant.marketing_campaigns.find_by(id: params[:campaign_id]) || current_tenant.marketing_campaigns.new(
       name: params[:name],
       target_url: params[:target_url].presence || "/imoveis",
       channel: params[:channel].presence || "organic",

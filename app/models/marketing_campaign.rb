@@ -1,4 +1,5 @@
 class MarketingCampaign < ApplicationRecord
+  include TenantScoped
   CHANNELS = {
     "organic" => "Orgânico",
     "google_ads" => "Google Ads",
@@ -118,7 +119,7 @@ class MarketingCampaign < ApplicationRecord
     candidate = base_slug
     suffix = 2
 
-    while self.class.where(slug: candidate).where.not(id: id).exists?
+    while self.class.where(tenant_id: tenant_id, slug: candidate).where.not(id: id).exists?
       candidate = "#{base_slug}-#{suffix}"
       suffix += 1
     end

@@ -45,6 +45,16 @@ class Tenant < ApplicationRecord
   has_many :lead_audit_logs, dependent: :restrict_with_error
   has_many :lead_activities, dependent: :restrict_with_error
   has_many :habitation_exports, dependent: :restrict_with_error
+  has_many :captacao_goals, dependent: :restrict_with_error
+  has_many :landing_pages, dependent: :restrict_with_error
+  has_many :webhook_settings, dependent: :restrict_with_error
+  has_many :home_sections, dependent: :restrict_with_error
+  has_many :home_section_items, dependent: :restrict_with_error
+  has_many :banners, dependent: :restrict_with_error
+  has_many :marketing_campaigns, dependent: :restrict_with_error
+  has_many :photography_schedule_blocks, dependent: :restrict_with_error
+  has_many :seo_settings, dependent: :restrict_with_error
+  has_many :seo_redirects, dependent: :restrict_with_error
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true

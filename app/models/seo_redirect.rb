@@ -1,10 +1,11 @@
 class SeoRedirect < ApplicationRecord
+  include TenantScoped
   VALID_STATUS_CODES = [301, 302, 307, 308].freeze
 
   belongs_to :created_by_admin_user, class_name: "AdminUser", optional: true
 
   validates :from_path, :to_path, presence: true
-  validates :from_path, uniqueness: true
+  validates :from_path, uniqueness: { scope: :tenant_id }
   validates :status_code, inclusion: { in: VALID_STATUS_CODES }
   validate :paths_are_different
 

@@ -31,8 +31,8 @@ module Admin
       @total_venda   = venda_scope.count
       @total_locacao = locacao_scope.count
 
-      @meta_venda   = CaptacaoGoal.current_target(start_date: @period_start, end_date: @period_end, kind: :venda)
-      @meta_locacao = CaptacaoGoal.current_target(start_date: @period_start, end_date: @period_end, kind: :locacao)
+      @meta_venda   = CaptacaoGoal.current_target(start_date: @period_start, end_date: @period_end, kind: :venda, tenant: current_tenant)
+      @meta_locacao = CaptacaoGoal.current_target(start_date: @period_start, end_date: @period_end, kind: :locacao, tenant: current_tenant)
 
       @publicado_venda   = venda_scope.where(exibir_no_site_flag: true).count
       @nao_publicado_venda = @total_venda - @publicado_venda
@@ -57,8 +57,8 @@ module Admin
         .order("ct DESC, total_value DESC")
         .limit(15)
 
-      @goal_venda_obj   = CaptacaoGoal.current_foco(start_date: @period_start, end_date: @period_end, kind: :venda)
-      @goal_locacao_obj = CaptacaoGoal.current_foco(start_date: @period_start, end_date: @period_end, kind: :locacao)
+      @goal_venda_obj   = CaptacaoGoal.current_foco(start_date: @period_start, end_date: @period_end, kind: :venda, tenant: current_tenant)
+      @goal_locacao_obj = CaptacaoGoal.current_foco(start_date: @period_start, end_date: @period_end, kind: :locacao, tenant: current_tenant)
       @regiao_foco_venda = venda_scope.where(regiao_foco_positive_condition).count
       @regiao_foco_locacao = locacao_scope.where(regiao_foco_positive_condition).count
       @captacao_adm_locacao = locacao_scope.where(salute_rental_management_flag: true).count

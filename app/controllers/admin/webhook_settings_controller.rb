@@ -13,7 +13,7 @@ class Admin::WebhookSettingsController < Admin::BaseController
     @inbound_webhook_token = InboundWebhookToken.for_user(current_admin_user)
 
     if @can_manage_outbound_webhooks
-      @webhook_settings = WebhookSetting.all.order(created_at: :desc)
+      @webhook_settings = current_tenant.webhook_settings.order(created_at: :desc)
       @lead_share_tracking_days = HabitationShareLink.expiration_days
     else
       @webhook_settings = WebhookSetting.none
@@ -22,11 +22,11 @@ class Admin::WebhookSettingsController < Admin::BaseController
   end
 
   def new
-    @webhook_setting = WebhookSetting.new(enabled: true, lead_capture_enabled: true)
+    @webhook_setting = current_tenant.webhook_settings.new(enabled: true, lead_capture_enabled: true)
   end
 
   def create
-    @webhook_setting = WebhookSetting.new(webhook_params)
+    @webhook_setting = current_tenant.webhook_settings.new(webhook_params)
 
     if @webhook_setting.save
       redirect_to admin_webhook_settings_path, notice: 'Webhook criado com sucesso!'
@@ -110,7 +110,7 @@ class Admin::WebhookSettingsController < Admin::BaseController
   end
   
   def set_webhook_setting
-    @webhook_setting = WebhookSetting.find(params[:id])
+    @webhook_setting = current_tenant.webhook_settings.find(params[:id])
   end
 
   def set_inbound_webhook_token

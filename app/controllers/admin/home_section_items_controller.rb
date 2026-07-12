@@ -36,7 +36,7 @@ class Admin::HomeSectionItemsController < Admin::BaseController
   private
   
   def set_home_section
-    @home_section = HomeSection.find(params[:home_section_id])
+    @home_section = current_tenant.home_sections.find(params[:home_section_id])
   end
   
   def set_home_section_item

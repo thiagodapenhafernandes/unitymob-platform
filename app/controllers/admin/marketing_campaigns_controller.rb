@@ -4,13 +4,13 @@ class Admin::MarketingCampaignsController < Admin::BaseController
 
   def index
     @status = params[:status].to_s
-    @campaigns = MarketingCampaign.includes(:seo_setting, :admin_user).recent
+    @campaigns = current_tenant.marketing_campaigns.includes(:seo_setting, :admin_user).recent
     @campaigns = @campaigns.where(status: @status) if @status.present?
     @campaigns = @campaigns.paginate(page: params[:page], per_page: 20)
   end
 
   def new
-    @campaign = MarketingCampaign.new(
+    @campaign = current_tenant.marketing_campaigns.new(
       seo_setting_id: params[:seo_setting_id],
       channel: params[:channel].presence || "organic",
       status: "idea",
@@ -20,7 +20,7 @@ class Admin::MarketingCampaignsController < Admin::BaseController
   end
 
   def create
-    @campaign = MarketingCampaign.new(campaign_params)
+    @campaign = current_tenant.marketing_campaigns.new(campaign_params)
     @campaign.admin_user = current_admin_user
 
     if @campaign.save
@@ -49,7 +49,7 @@ class Admin::MarketingCampaignsController < Admin::BaseController
   private
 
   def set_campaign
-    @campaign = MarketingCampaign.find(params[:id])
+    @campaign = current_tenant.marketing_campaigns.find(params[:id])
   end
 
   def seed_from_seo_setting

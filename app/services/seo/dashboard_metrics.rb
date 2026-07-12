@@ -18,9 +18,10 @@ module Seo
       "aluguel" => 16
     }.freeze
 
-    attr_reader :period
+    attr_reader :period, :tenant
 
-    def initialize(period: "30")
+    def initialize(period: "30", tenant: Current.tenant)
+      @tenant = tenant || raise(ArgumentError, "Tenant obrigatório para métricas SEO")
       @period = period.to_s.presence_in(%w[7 30 90 all]) || "30"
     end
 
@@ -43,7 +44,7 @@ module Seo
     private
 
     def public_scope
-      SeoSetting.where(active: true, apply_to_public: true, robots_index: true)
+      tenant.seo_settings.where(active: true, apply_to_public: true, robots_index: true)
     end
 
     def period_range
@@ -58,27 +59,27 @@ module Seo
     end
 
     def page_visits_scope
-      scope = SeoPageVisit.all
+      scope = SeoPageVisit.where(seo_setting_id: tenant.seo_settings.select(:id))
       period_range ? scope.where(visited_on: period_range) : scope
     end
 
     def conversions_scope
-      scope = SeoConversionEvent.all
+      scope = SeoConversionEvent.where(seo_setting_id: tenant.seo_settings.select(:id))
       period_range ? scope.where(occurred_at: period_range.begin.beginning_of_day..Time.current) : scope
     end
 
     def summary
-      scope = SeoSetting.all
+      scope = tenant.seo_settings
       {
         total_pages: scope.count,
         public_pages: public_scope.count,
         total_accesses: scope.sum(:access_count),
-        unique_visitors: SeoPageVisit.distinct.count(:visitor_hash),
+        unique_visitors: page_visits_scope.reorder(nil).distinct.count(:visitor_hash),
         period_visits: page_visits_scope.sum(:visits_count),
         period_unique_visitors: page_visits_scope.distinct.count(:visitor_hash),
         period_page_visits: page_visits_scope.count,
         period_conversions: conversions_scope.count,
-        active_campaigns: MarketingCampaign.where(status: "active").count,
+        active_campaigns: tenant.marketing_campaigns.where(status: "active").count,
         accessed_pages: scope.where("access_count > 0").count,
         noindex_pages: scope.where(robots_index: false).count,
         weak_pages: scope.where("seo_score < 60").count,
@@ -88,12 +89,12 @@ module Seo
     end
 
     def daily_trend
-      visits_by_day = SeoPageVisit
+      visits_by_day = page_visits_scope
         .where(visited_on: trend_range)
         .group(:visited_on)
         .sum(:visits_count)
 
-      unique_by_day = SeoPageVisit
+      unique_by_day = page_visits_scope
         .where(visited_on: trend_range)
         .group(:visited_on)
         .distinct
@@ -110,14 +111,14 @@ module Seo
 
     def score_buckets
       {
-        strong: SeoSetting.where("seo_score >= 80").count,
-        attention: SeoSetting.where(seo_score: 60...80).count,
-        weak: SeoSetting.where("seo_score < 60").count
+        strong: tenant.seo_settings.where("seo_score >= 80").count,
+        attention: tenant.seo_settings.where(seo_score: 60...80).count,
+        weak: tenant.seo_settings.where("seo_score < 60").count
       }
     end
 
     def page_type_counts
-      SeoSetting.group(:page_type).count.sort_by { |_type, count| -count }.first(8)
+      tenant.seo_settings.group(:page_type).count.sort_by { |_type, count| -count }.first(8)
     end
 
     def top_pages
@@ -172,7 +173,7 @@ module Seo
     end
 
     def active_campaigns
-      MarketingCampaign
+      tenant.marketing_campaigns
         .includes(:seo_setting)
         .where(status: %w[active planned])
         .order(priority: :asc, updated_at: :desc)
@@ -180,7 +181,7 @@ module Seo
     end
 
     def recent_conversions
-      SeoConversionEvent
+      conversions_scope
         .includes(:seo_setting, :marketing_campaign, :lead, :habitation)
         .then { |scope| period_range ? scope.where(occurred_at: period_range.begin.beginning_of_day..Time.current) : scope }
         .recent

@@ -1,9 +1,10 @@
 class LandingPage < ApplicationRecord
+  include TenantScoped
   extend FriendlyId
   friendly_id :title, use: :slugged
 
   validates :title, presence: true
-  validates :slug, presence: true, uniqueness: true
+  validates :slug, presence: true, uniqueness: { scope: :tenant_id }
 
   # Ensure filter_params is always a hash
   after_initialize :set_default_filter_params, if: :new_record?

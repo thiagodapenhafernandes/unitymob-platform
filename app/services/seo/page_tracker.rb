@@ -28,7 +28,8 @@ module Seo
       return unless trackable?
 
       identity = PageIdentity.new(@controller).to_h
-      seo = SeoSetting.find_or_initialize_by(canonical_key: identity[:canonical_key])
+      tenant = Current.tenant || @controller.public_tenant
+      seo = tenant.seo_settings.find_or_initialize_by(canonical_key: identity[:canonical_key])
       created = seo.new_record?
 
       unless created || !seo.manual_mode?

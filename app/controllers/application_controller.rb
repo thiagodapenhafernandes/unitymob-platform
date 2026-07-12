@@ -79,7 +79,7 @@ class ApplicationController < ActionController::Base
 
     lookup_path = seo_redirect_lookup_path
     lookup_paths = [lookup_path, request.path].uniq
-    redirect_record = SeoRedirect
+    redirect_record = public_tenant.seo_redirects
       .active
       .where(from_path: lookup_paths)
       .order(Arel.sql(SeoRedirect.sanitize_sql_array(["CASE from_path WHEN ? THEN 0 ELSE 1 END", lookup_path])))
@@ -111,7 +111,7 @@ class ApplicationController < ActionController::Base
     @footer_stores = public_tenant.stores.active.order(:id).to_a
     @footer_stores = FooterStore.all.to_a if @footer_stores.empty?
     @footer_social_links = FooterSocialLink.where(enabled: true).to_a
-    @lead_capture_enabled = WebhookSetting.lead_capture_enabled?
+    @lead_capture_enabled = WebhookSetting.lead_capture_enabled?(tenant: public_tenant)
     @site_phone_settings = WhatsappBusinessIntegration.cached_site_phone_settings(public_tenant)
     @interest_settings = InterestIntelligence::Settings.new(@layout_setting)
     @tracking_setting = TrackingIntegrationSetting.current

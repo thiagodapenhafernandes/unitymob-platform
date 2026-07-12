@@ -1,6 +1,6 @@
 class LandingPagesController < ApplicationController
   def show
-    @landing_page = LandingPage.find_by!(slug: params[:slug], active: true)
+    @landing_page = public_tenant.landing_pages.find_by!(slug: params[:slug], active: true)
     
     # The filter_params are stored as a JSON hash in the database
     filters = @landing_page.filter_params || {}

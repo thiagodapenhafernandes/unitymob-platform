@@ -7,7 +7,8 @@ class HabitationPhotoWatermarkJob < ApplicationJob
 
   def perform(habitation_id, attachment_ids, property_setting_id = nil, tenant_id: nil)
     tenant = Tenant.find_by(id: tenant_id) || Current.tenant
-    habitation = tenant.present? ? tenant.habitations.find_by(id: habitation_id) : Habitation.find_by(id: habitation_id)
+    raise ArgumentError, "Tenant obrigatório para aplicar marca d'água" unless tenant
+    habitation = tenant.habitations.find_by(id: habitation_id)
     return if habitation.blank?
     tenant ||= habitation.tenant
 

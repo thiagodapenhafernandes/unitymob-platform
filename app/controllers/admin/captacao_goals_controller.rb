@@ -5,11 +5,11 @@ module Admin
     before_action :set_goal, only: [:edit, :update, :destroy]
 
     def index
-      @goals = CaptacaoGoal.order(start_date: :desc, kind: :asc)
+      @goals = current_tenant.captacao_goals.order(start_date: :desc, kind: :asc)
     end
 
     def new
-      @goal = CaptacaoGoal.new(
+      @goal = current_tenant.captacao_goals.new(
         start_date: Date.current.beginning_of_month,
         end_date: Date.current.end_of_month,
         kind: :venda,
@@ -18,7 +18,7 @@ module Admin
     end
 
     def create
-      @goal = CaptacaoGoal.new(goal_params)
+      @goal = current_tenant.captacao_goals.new(goal_params)
       if @goal.save
         redirect_to admin_captacao_goals_path, notice: "Meta criada."
       else
@@ -45,7 +45,7 @@ module Admin
     private
 
     def set_goal
-      @goal = CaptacaoGoal.find(params[:id])
+      @goal = current_tenant.captacao_goals.find(params[:id])
     end
 
     def goal_params

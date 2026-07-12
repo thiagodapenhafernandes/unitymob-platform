@@ -5,7 +5,7 @@ class MarketingEventsController < ApplicationController
     return head :accepted unless lgpd_consent_accepted?
 
     event_type = params[:event_type].presence_in(SeoConversionEvent::EVENT_TYPES.keys) || "campaign_click"
-    campaign = MarketingCampaign.find_by(id: params[:marketing_campaign_id])
+    campaign = public_tenant.marketing_campaigns.find_by(id: params[:marketing_campaign_id])
     habitation = public_tenant.habitations.find_by(id: params[:habitation_id])
 
     event = Seo::ConversionTracker.record!(

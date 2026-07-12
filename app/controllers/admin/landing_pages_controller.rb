@@ -3,18 +3,18 @@ class Admin::LandingPagesController < Admin::BaseController
   before_action :set_landing_page, only: [:edit, :update, :destroy]
 
   def index
-    @landing_pages = LandingPage.order(created_at: :desc).paginate(page: params[:page], per_page: 20)
+    @landing_pages = current_tenant.landing_pages.order(created_at: :desc).paginate(page: params[:page], per_page: 20)
     @page_title = "Páginas SEO e Dinâmicas"
     @page_subtitle = "Gerencie páginas de busca personalizada e otimização para o Google."
   end
 
   def new
-    @landing_page = LandingPage.new
+    @landing_page = current_tenant.landing_pages.new
     @page_title = "Nova Página"
   end
 
   def create
-    @landing_page = LandingPage.new(landing_page_params)
+    @landing_page = current_tenant.landing_pages.new(landing_page_params)
     if @landing_page.save
       redirect_to admin_landing_pages_path, notice: "Página criada com sucesso!"
     else
@@ -40,7 +40,7 @@ class Admin::LandingPagesController < Admin::BaseController
   end
 
   def preview
-    habitations_scope = Habitation.active.advanced_search(preview_params)
+    habitations_scope = current_tenant.habitations.active.advanced_search(preview_params)
     
     total_count = habitations_scope.count
     
@@ -75,7 +75,7 @@ class Admin::LandingPagesController < Admin::BaseController
   private
 
   def set_landing_page
-    @landing_page = LandingPage.friendly.find(params[:id])
+    @landing_page = current_tenant.landing_pages.friendly.find(params[:id])
   end
 
   def landing_page_params

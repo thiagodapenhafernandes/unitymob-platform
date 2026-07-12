@@ -1,6 +1,7 @@
 require "uri"
 
 class SeoSetting < ApplicationRecord
+  include TenantScoped
   AI_STATUSES = %w[pending generating generated failed skipped].freeze
   PAGE_TYPE_LABELS = {
     "property_show" => "Imóvel",
@@ -26,8 +27,8 @@ class SeoSetting < ApplicationRecord
   has_many :seo_conversion_events, dependent: :nullify
   
   # Validations
-  validates :page_name, presence: true, uniqueness: true
-  validates :canonical_key, presence: true, uniqueness: true
+  validates :page_name, presence: true, uniqueness: { scope: :tenant_id }
+  validates :canonical_key, presence: true, uniqueness: { scope: :tenant_id }
   validates :ai_status, inclusion: { in: AI_STATUSES }
 
   before_validation :ensure_canonical_key
@@ -36,17 +37,19 @@ class SeoSetting < ApplicationRecord
   after_update :record_change_log
   
   # Find by page with caching
-  def self.for_page(page_name)
-    Rails.cache.fetch("seo_setting_#{page_name}", expires_in: 24.hours) do
-      find_by(page_name: page_name) || new(page_name: page_name)
+  def self.for_page(page_name, tenant: Current.tenant)
+    return new(page_name: page_name) unless tenant
+
+    Rails.cache.fetch("seo_setting_tenant_#{tenant.id}_#{page_name}", expires_in: 24.hours) do
+      where(tenant: tenant).find_by(page_name: page_name) || new(page_name: page_name, tenant: tenant)
     end
   end
 
-  def self.for_canonical_key(canonical_key)
-    return if canonical_key.blank?
+  def self.for_canonical_key(canonical_key, tenant: Current.tenant)
+    return if canonical_key.blank? || tenant.blank?
 
-    Rails.cache.fetch("seo_setting_#{canonical_key}", expires_in: 24.hours) do
-      find_by(canonical_key: canonical_key)
+    Rails.cache.fetch("seo_setting_tenant_#{tenant.id}_#{canonical_key}", expires_in: 24.hours) do
+      where(tenant: tenant).find_by(canonical_key: canonical_key)
     end
   end
 
@@ -151,8 +154,8 @@ class SeoSetting < ApplicationRecord
   end
 
   def clear_seo_cache
-    Rails.cache.delete("seo_setting_#{page_name}")
-    Rails.cache.delete("seo_setting_#{canonical_key}")
+    Rails.cache.delete("seo_setting_tenant_#{tenant_id}_#{page_name}")
+    Rails.cache.delete("seo_setting_tenant_#{tenant_id}_#{canonical_key}")
     Footer::QuickLinksService.clear_cache if defined?(Footer::QuickLinksService)
   end
 
