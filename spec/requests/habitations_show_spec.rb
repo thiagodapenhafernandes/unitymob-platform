@@ -134,7 +134,7 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).to include(%(property="og:image:type" content="image/jpeg"))
       expect(response.body).to include(%(property="og:image:width" content="1200"))
       expect(response.body).to include(%(property="og:image:height" content="630"))
-      expect(response.body).not_to include("strip")
+      expect(response.body).not_to include("saver")
     end
 
     it "does not expose broker phone or direct whatsapp link in the responsible attendant card" do
