@@ -1,10 +1,16 @@
-name: Tenant isolation
+name: Isolamento entre contas
 
 on:
   pull_request:
     branches: [develop, master]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   push:
     branches: [develop, master]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
 
 concurrency:
   group: tenant-isolation-${{ github.ref }}
@@ -12,6 +18,7 @@ concurrency:
 
 jobs:
   tenant-isolation:
+    name: Validar isolamento multi-tenant
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -43,14 +50,14 @@ jobs:
 
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: .ruby-version
+          ruby-version: "3.2.3"
           bundler-cache: true
 
-      - name: Prepare database
+      - name: Preparar banco de dados
         run: bundle exec rails db:prepare
 
-      - name: Tenant isolation contract
+      - name: Executar contrato de isolamento
         run: bundle exec rake security:tenant_isolation
 
-      - name: Rails autoload check
+      - name: Validar carregamento do Rails
         run: bundle exec rails zeitwerk:check
