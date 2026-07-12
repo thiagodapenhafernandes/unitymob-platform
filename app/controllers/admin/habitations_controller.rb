@@ -5,7 +5,7 @@ class Admin::HabitationsController < Admin::BaseController
   before_action -> { check_permission!(:manage, :imoveis) }, only: [:new, :create]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
   before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility]
-  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :sync, :operational_hub, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   require "csv"
   require "uri"
 
@@ -649,17 +649,6 @@ class Admin::HabitationsController < Admin::BaseController
     record_habitation_destroyed(@habitation)
     @habitation.destroy
     redirect_to admin_habitations_path, notice: "Imóvel excluído com sucesso."
-  end
-
-  def sync
-    @habitation = find_admin_habitation_param!(params[:id])
-    result = SyncPropertyService.new(@habitation.codigo).perform
-
-    if result[:success]
-      redirect_to edit_admin_habitation_path(@habitation.id), notice: "Imóvel sincronizado com o Vista com sucesso!"
-    else
-      redirect_to edit_admin_habitation_path(@habitation.id), alert: "Erro na sincronização: #{result[:error]}"
-    end
   end
 
   def generate_ai_preview
@@ -1351,11 +1340,11 @@ class Admin::HabitationsController < Admin::BaseController
 
     case filter
     when "missing_address"
-      scope.where("NULLIF(TRIM(COALESCE(addresses.logradouro, habitations.endereco)), '') IS NULL")
+      scope.without_operational_address
     when "missing_photos"
-      scope.where.not(id: scope.with_photos.select(:id))
+      scope.without_operational_photos
     when "missing_price"
-      scope.where("COALESCE(habitations.valor_venda_cents, 0) <= 0 AND COALESCE(habitations.valor_locacao_cents, 0) <= 0")
+      scope.without_operational_price
     when "stale"
       scope.where("COALESCE(habitations.data_atualizacao_crm, habitations.updated_at) < ?", 90.days.ago)
     else
@@ -2316,7 +2305,7 @@ class Admin::HabitationsController < Admin::BaseController
       :proprietario_telefone_residencial, :proprietario_email, :proprietario_cidade,
       :exibir_no_site_flag, :destaque_web_flag, :lancamento_flag, :aceita_permuta_flag,
       :aceita_permuta_veiculo_flag, :aceita_permuta_imovel_flag, :aceita_permuta_outros_flag,
-      :aceita_financiamento_flag, :aceita_parcelamento_flag, :mobiliado_flag, :data_entrega, :status_vista,
+      :aceita_financiamento_flag, :aceita_parcelamento_flag, :mobiliado_flag, :data_entrega,
       :meta_title, :meta_description, :meta_keywords, 
       :piscina_flag, :lavabo_flag, :varanda_gourmet_flag, :bloco, :lote,
       :banheiro_social_qtd, :decorado_flag, :aptos_andar, :aptos_edificio,

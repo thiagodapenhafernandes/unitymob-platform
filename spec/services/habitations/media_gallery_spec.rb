@@ -2,9 +2,11 @@ require "rails_helper"
 
 RSpec.describe Habitations::MediaGallery do
   describe "#api_media_pictures" do
-    it "usa fotos anexadas como fonte principal e deixa API/Vista apenas como fallback" do
+    it "mantém URLs DWV como fonte operacional e elimina duplicatas materializadas" do
       habitation = create(
         :habitation,
+        codigo: "DWV-MEDIA-#{SecureRandom.hex(6)}",
+        imovel_dwv: "Sim",
         pictures: [
           { "url" => "https://cdn.vista.test/imoveis/1/posicao-um.jpg" },
           { "url" => "https://cdn.vista.test/imoveis/1/foto-local.jpg" },
@@ -25,6 +27,12 @@ RSpec.describe Habitations::MediaGallery do
         "https://cdn.vista.test/imoveis/1/fallback.jpg"
       ])
       expect(api_pictures.map { |_pic, _index, url| File.basename(URI.parse(url).path) }).not_to include("foto-local.jpg")
+    end
+
+    it "não usa payload remoto de imóvel que não pertence ao DWV" do
+      habitation = create(:habitation, codigo: "LOCAL-MEDIA-#{SecureRandom.hex(6)}", imovel_dwv: "Nao", pictures: [{ "url" => "https://cdn.vista.test/foto.jpg" }])
+
+      expect(described_class.new(habitation).api_media_pictures).to be_empty
     end
   end
 end

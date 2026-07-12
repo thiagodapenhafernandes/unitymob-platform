@@ -71,22 +71,28 @@
     }
   } : []
 
-  api_photo_sources = @habitation.pictures.is_a?(Array) ? @habitation.pictures.each_with_index.filter_map { |pic, index|
-    source = pic.is_a?(Hash) ? pic.merge("_habitation_id" => @habitation.id, "_habitation_codigo" => @habitation.codigo) : pic
-    pic_url = public_image_url(source)
-    next if pic_url.blank?
+  dwv_photo_sources = if @habitation.dwv_property?
+    Habitations::MediaGallery.new(@habitation).api_media_pictures.filter_map.with_index do |(_picture, _original_index, photo_url), index|
+      next if photo_url.blank?
 
-    {
-      url: pic_url,
-      thumb: pic_url,
-      caption: "Foto API/Vista #{index + 1}",
-      badge: "API/Vista"
-    }
-  } : []
+      {
+        url: photo_url,
+        thumb: photo_url,
+        caption: "Foto DWV #{index + 1}",
+        badge: "DWV"
+      }
+    end
+  else
+    []
+  end
 
-  development_photo_sources = if @habitation.use_development_photos? && linked_development.present? && attached_photo_sources.blank? && api_photo_sources.blank?
-    linked_development.own_public_image_sources.first(24).filter_map.with_index do |source, index|
-      photo_url = public_image_url(source)
+  development_photo_sources = if @habitation.use_development_photos? && linked_development.present? && attached_photo_sources.blank? && dwv_photo_sources.blank?
+    development_gallery = Habitations::MediaGallery.new(linked_development)
+    local_development_sources = development_gallery.attached_media_photos.map { |photo| { attachment: photo } }
+    dwv_development_sources = development_gallery.api_media_pictures.map { |_picture, _original_index, photo_url| photo_url }
+
+    (local_development_sources + dwv_development_sources).first(24).filter_map.with_index do |source, index|
+      photo_url = source.is_a?(Hash) ? public_image_url(source) : source
       next if photo_url.blank?
 
       {
@@ -100,7 +106,7 @@
     []
   end
 
-  photo_sources = attached_photo_sources + api_photo_sources + development_photo_sources
+  photo_sources = attached_photo_sources + dwv_photo_sources + development_photo_sources
   primary_photo = photo_sources.first
 
   sale_price = money.call(@habitation.valor_venda_cents)
@@ -268,11 +274,11 @@
     ["Perfil de construção", @habitation.perfil_construcao],
     ["Tipo de fachada", @habitation.tipo_fachada],
     ["Data entrega", @habitation.data_entrega],
-    ["Nº de andares", @habitation.andares_qtd],
-    ["Ano construção", @habitation.ano_construcao],
-    ["Elevadores", @habitation.elevadores_qtd],
-    ["Imóveis / andar", @habitation.aptos_andar],
-    ["Total imóveis", @habitation.aptos_edificio],
+    ["Nº de andares", @habitation.andares_qtd.to_i.positive? ? @habitation.andares_qtd : nil],
+    ["Ano construção", @habitation.ano_construcao.to_i.positive? ? @habitation.ano_construcao : nil],
+    ["Elevadores", @habitation.elevadores_qtd.to_i.positive? ? @habitation.elevadores_qtd : nil],
+    ["Imóveis / andar", @habitation.aptos_andar.to_i.positive? ? @habitation.aptos_andar : nil],
+    ["Total imóveis", @habitation.aptos_edificio.to_i.positive? ? @habitation.aptos_edificio : nil],
     ["Descrição do empreendimento", rich_text_value.call(@habitation.descricao_empreendimento)]
   ].select { |_label, value| value.present? }
 
@@ -314,7 +320,6 @@
   owner_fields = if can_view_proprietor_data?(@habitation)
     [
       ["Proprietário", @habitation.proprietario],
-      ["Cód. Vista", @habitation.proprietario_codigo],
       ["E-mail", @habitation.proprietario_email],
       ["Celular", format_phone(@habitation.proprietario_celular)],
       ["F. Comercial", format_phone(@habitation.proprietario_telefone_comercial)],

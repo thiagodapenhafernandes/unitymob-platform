@@ -377,6 +377,43 @@ class Habitation < ApplicationRecord
   
   # Active Storage Photos (For manual upload)
   has_many_attached :photos
+
+  scope :with_local_photos, -> {
+    where(<<~SQL.squish)
+      EXISTS (
+        SELECT 1
+        FROM active_storage_attachments
+        WHERE active_storage_attachments.record_id = habitations.id
+          AND active_storage_attachments.record_type = 'Habitation'
+          AND active_storage_attachments.name = 'photos'
+      )
+    SQL
+  }
+  scope :without_local_photos, -> { where.not(id: with_local_photos.select(:id)) }
+  scope :with_operational_photos, -> {
+    where(<<~SQL.squish)
+      EXISTS (
+        SELECT 1
+        FROM active_storage_attachments
+        WHERE active_storage_attachments.record_id = habitations.id
+          AND active_storage_attachments.record_type = 'Habitation'
+          AND active_storage_attachments.name = 'photos'
+      )
+      OR (
+        LOWER(TRIM(COALESCE(habitations.imovel_dwv, ''))) = 'sim'
+        AND jsonb_typeof(habitations.pictures) = 'array'
+        AND jsonb_array_length(habitations.pictures) > 0
+      )
+    SQL
+  }
+  scope :without_operational_photos, -> { where.not(id: with_operational_photos.select(:id)) }
+  scope :without_operational_address, -> {
+    where("NULLIF(TRIM(COALESCE(addresses.logradouro, habitations.endereco)), '') IS NULL")
+  }
+  scope :without_operational_price, -> {
+    where("COALESCE(habitations.tipo, '') <> ?", "Empreendimento")
+      .where("COALESCE(habitations.valor_venda_cents, 0) <= 0 AND COALESCE(habitations.valor_locacao_cents, 0) <= 0")
+  }
   has_many :ai_property_suggestions, dependent: :destroy
   has_many :habitation_audit_logs
 
@@ -917,14 +954,6 @@ class Habitation < ApplicationRecord
     intake_origin == INTAKE_ORIGIN_BROKER
   end
 
-  def vista_integrated?
-    vista_import_batch_id.present? ||
-      vista_codigo.present? ||
-      vista_imo_codigo.present? ||
-      vista_referencia_externa.present? ||
-      status_vista.present?
-  end
-
   def intake_status_label
     INTAKE_STATUSES[intake_status] || intake_status.to_s.humanize
   end
@@ -970,6 +999,32 @@ class Habitation < ApplicationRecord
     else
       photos.attached? || image_urls.any?
     end
+  end
+
+  def has_local_photo?
+    attached_photos_loaded? ? photos_attachments.any? : photos.attached?
+  end
+
+  def has_operational_photo?
+    has_local_photo? || has_dwv_remote_photo?
+  end
+
+  def has_dwv_remote_photo?
+    dwv_property? && pictures.is_a?(Array) && pictures.any? do |picture|
+      if picture.respond_to?(:[])
+        picture["url"].presence || picture[:url].presence || picture["src"].presence || picture[:src].presence
+      else
+        picture.to_s.presence
+      end
+    end
+  end
+
+  def missing_operational_address?
+    endereco.blank? && (address.blank? || address.logradouro.blank?)
+  end
+
+  def missing_operational_price?
+    !empreendimento? && !has_public_price?
   end
 
   def hidden_from_site_with_photos?

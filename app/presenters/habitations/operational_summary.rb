@@ -46,10 +46,10 @@ module Habitations
       @issues ||= begin
         rows = []
         rows << Issue.new(severity: :warning, code: :missing_title, label: "Título público não informado") if habitation.titulo_anuncio.blank?
-        rows << Issue.new(severity: :warning, code: :missing_address, label: "Endereço não informado") if habitation.endereco.blank?
+        rows << Issue.new(severity: :warning, code: :missing_address, label: "Endereço não informado") if habitation.missing_operational_address?
         rows << Issue.new(severity: :warning, code: :missing_responsible, label: "Imóvel sem responsável") if habitation.admin_user.blank?
-        rows << Issue.new(severity: :warning, code: :missing_photos, label: "Imóvel sem fotos locais") if photo_count.zero?
-        rows << Issue.new(severity: :warning, code: :missing_price, label: "Imóvel sem valor de venda ou locação") if !habitation.empreendimento? && !public_price?
+        rows << Issue.new(severity: :warning, code: :missing_photos, label: "Imóvel sem fotos disponíveis") unless habitation.has_operational_photo?
+        rows << Issue.new(severity: :warning, code: :missing_price, label: "Imóvel sem valor de venda ou locação") if habitation.missing_operational_price?
 
         if habitation.exibir_no_site_flag? && !habitation.publicly_viewable?
           rows << Issue.new(severity: :danger, code: :site_state_conflict, label: "Marcado para o site, mas indisponível: #{public_unavailable_label}")
@@ -66,10 +66,6 @@ module Habitations
     end
 
     private
-
-    def public_price?
-      habitation.valor_venda_cents.to_i.positive? || habitation.valor_locacao_cents.to_i.positive?
-    end
 
     def public_unavailable_label
       {

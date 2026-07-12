@@ -1,5 +1,3 @@
-require "set"
-
 module Habitations
   class MediaGallery
     def initialize(habitation)
@@ -24,8 +22,8 @@ module Habitations
     end
 
     def api_media_pictures
-      @api_media_pictures ||= raw_api_media_pictures.reject do |pic, original_index, pic_url|
-        covered_by_attached_media?(pic, original_index, pic_url)
+      @api_media_pictures ||= raw_dwv_pictures.reject do |pic, _original_index, pic_url|
+        covered_by_attached_media?(pic_url)
       end
     end
 
@@ -40,75 +38,55 @@ module Habitations
     def development_fallback_count
       return 0 unless habitation.use_development_photos?
       return 0 unless linked_development.present?
-      return 0 if habitation.own_public_image_sources.present?
+      return 0 if attached_media_photos.present? || api_media_pictures.present?
 
-      linked_development.own_public_image_sources.first(12).size
+      linked_development_gallery.media_gallery_count.clamp(0, 12)
     end
 
     private
 
     attr_reader :habitation
 
-    def raw_api_media_pictures
-      return [] unless habitation.pictures.is_a?(Array)
+    def raw_dwv_pictures
+      return [] unless habitation.dwv_property? && habitation.pictures.is_a?(Array)
 
-      habitation.pictures.each_with_index.filter_map do |pic, index|
-        pic_url = picture_url(pic)
-        [pic, index, pic_url] if pic_url.present?
+      habitation.pictures.each_with_index.filter_map do |picture, index|
+        url = picture_url(picture)
+        [picture, index, url] if url.present?
       end
     end
 
-    def covered_by_attached_media?(pic, original_index, pic_url)
+    def picture_url(picture)
+      return picture.to_s if picture.is_a?(String)
+      return unless picture.respond_to?(:[])
+
+      picture["url"].presence ||
+        picture[:url].presence ||
+        picture["src"].presence ||
+        picture[:src].presence ||
+        picture["link"].presence ||
+        picture[:link].presence
+    end
+
+    def covered_by_attached_media?(picture_url)
       return false if attached_media_photos.blank?
 
-      (picture_identity_keys(pic, pic_url) & attached_media_identity_keys).any?
-    end
-
-    def attached_media_identity_keys
-      @attached_media_identity_keys ||= attached_media_photos.flat_map do |attachment|
-        keys = [attachment.filename.to_s]
+      source_path = source_path_from_url(picture_url)
+      source_filename = File.basename(source_path.to_s)
+      attached_media_photos.any? do |attachment|
         metadata = attachment.blob&.metadata.to_h
-        keys << metadata["vista_source_url"]
-        keys << source_path_from_url(metadata["vista_source_url"])
-        keys << metadata["source_url"]
-        keys << source_path_from_url(metadata["source_url"])
-        keys.compact_blank.map { |key| normalize_identity_key(key) }
-      end.to_set
-    end
-
-    def picture_identity_keys(pic, pic_url)
-      keys = [pic_url, source_path_from_url(pic_url), filename_from_url(pic_url)]
-
-      if pic.respond_to?(:[])
-        keys << pic["codigo_midia_vista"]
-        keys << pic[:codigo_midia_vista]
-        keys << pic["imagem_codigo"]
-        keys << pic[:imagem_codigo]
-        keys << pic["Codigo"]
-        keys << pic[:Codigo]
-        keys << pic["ImagemCodigo"]
-        keys << pic[:ImagemCodigo]
+        sources = [metadata["source_url"], attachment.filename.to_s]
+        sources.any? do |source|
+          candidate_path = source_path_from_url(source)
+          source.to_s == picture_url.to_s ||
+            candidate_path == source_path ||
+            File.basename(candidate_path.to_s) == source_filename
+        end
       end
-
-      keys.compact_blank.map { |key| normalize_identity_key(key) }.to_set
     end
 
-    def picture_url(pic)
-      return pic.to_s if pic.is_a?(String)
-      return unless pic.respond_to?(:[])
-
-      pic["url"].presence ||
-        pic[:url].presence ||
-        pic["src"].presence ||
-        pic[:src].presence ||
-        pic["link"].presence ||
-        pic[:link].presence ||
-        pic["Foto"].presence ||
-        pic[:Foto].presence ||
-        pic["FotoOriginal"].presence ||
-        pic[:FotoOriginal].presence ||
-        pic["FotoPequena"].presence ||
-        pic[:FotoPequena].presence
+    def linked_development_gallery
+      @linked_development_gallery ||= self.class.new(linked_development)
     end
 
     def source_path_from_url(url)
@@ -117,14 +95,5 @@ module Habitations
       nil
     end
 
-    def filename_from_url(url)
-      File.basename(URI.parse(url.to_s).path)
-    rescue URI::InvalidURIError
-      File.basename(url.to_s.split("?").first)
-    end
-
-    def normalize_identity_key(value)
-      value.to_s.strip.downcase
-    end
   end
 end
