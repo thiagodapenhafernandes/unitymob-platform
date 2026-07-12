@@ -550,10 +550,15 @@ class Admin::HabitationsController < Admin::BaseController
     case tab
     when "overview"
       preload_operational_hub_associations
-      render partial: "admin/habitations/operational_overview", locals: { habitation: @habitation }
+      summary = Habitations::OperationalSummary.new(@habitation)
+      render partial: "admin/habitations/operational_overview", locals: { habitation: @habitation, summary: summary }
+    when "publication"
+      preload_operational_hub_associations
+      logs = operational_hub_logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? }
+      summary = Habitations::OperationalSummary.new(@habitation)
+      render partial: "admin/habitations/operational_publication", locals: { habitation: @habitation, summary: summary, logs: logs }
     else
-      logs = @habitation.habitation_audit_logs.includes(:admin_user).recent.limit(80)
-      logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? } if tab == "publication"
+      logs = operational_hub_logs
       logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? } if tab == "intake"
       render partial: "admin/habitations/audit_history_timeline", locals: { tab_id: "hub-#{tab}", active: true, logs: logs }
     end
@@ -2204,6 +2209,10 @@ class Admin::HabitationsController < Admin::BaseController
       records: [@habitation],
       associations: [:admin_user, :photos_attachments, :fichas_cadastro_attachments, :autorizacoes_venda_attachments]
     ).call
+  end
+
+  def operational_hub_logs
+    @operational_hub_logs ||= @habitation.habitation_audit_logs.includes(:admin_user).recent.limit(80)
   end
 
   def load_habitation_vista_document_assets

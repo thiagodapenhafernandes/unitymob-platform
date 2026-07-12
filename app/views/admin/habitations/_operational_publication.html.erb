@@ -1,0 +1,27 @@
+<section class="tab-pane show active habitation-publication-overview" id="hub-publication" role="tabpanel">
+  <div class="habitation-publication-summary">
+    <article><span>Site público</span><strong><%= summary.site_label %></strong></article>
+    <article><span>Portais ativos</span><strong><%= summary.active_portals.size %> de <%= summary.portal_channels.size %></strong></article>
+    <article><span>Disponibilidade efetiva</span><strong><%= habitation.publicly_viewable? ? "Disponível" : "Indisponível" %></strong></article>
+  </div>
+
+  <div class="habitation-publication-channels">
+    <% summary.portal_channels.each do |channel| %>
+      <span class="habitation-publication-channel <%= "is-active" if channel.active %>">
+        <i class="bi bi-<%= channel.active ? "check-circle-fill" : "circle" %>"></i><%= channel.label %>
+      </span>
+    <% end %>
+  </div>
+
+  <% publication_conflicts = summary.issues.select { |issue| issue.code.in?(%i[site_state_conflict portal_state_conflict]) } %>
+  <% if publication_conflicts.any? %>
+    <div class="habitation-publication-conflicts">
+      <% publication_conflicts.each do |issue| %><p><i class="bi bi-exclamation-triangle-fill"></i><%= issue.label %></p><% end %>
+    </div>
+  <% end %>
+
+  <div class="habitation-publication-history">
+    <h4>Histórico de publicação</h4>
+    <%= render "admin/habitations/audit_history_timeline", tab_id: "hub-publication-history", active: true, logs: logs %>
+  </div>
+</section>

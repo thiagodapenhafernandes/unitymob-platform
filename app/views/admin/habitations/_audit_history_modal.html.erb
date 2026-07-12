@@ -138,11 +138,25 @@
   .habitation-operational-panel header { display: flex; align-items: center; gap: 7px; color: var(--ab-ink, #202a37); font-size: 12px; }
   .habitation-operational-panel header span { margin-left: auto; }
   .habitation-operational-panel ul { margin: 8px 0 0; padding-left: 18px; color: var(--ab-muted, #657386); font-size: 12px; }
+  .habitation-operational-panel li.is-danger { color: var(--admin-danger, #b42318); font-weight: 700; }
   .habitation-operational-panel p { margin: 8px 0 0; color: var(--ab-muted, #657386); font-size: 12px; }
+  .habitation-publication-overview { display: grid; gap: 12px; }
+  .habitation-publication-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .habitation-publication-summary article { padding: 10px 12px; border: 1px solid var(--ab-line-soft, #e7ebf2); border-radius: 8px; background: #fff; }
+  .habitation-publication-summary span { display: block; color: var(--ab-muted, #657386); font-size: 10.5px; font-weight: 800; text-transform: uppercase; }
+  .habitation-publication-summary strong { display: block; margin-top: 3px; font-size: 13px; }
+  .habitation-publication-channels { display: flex; flex-wrap: wrap; gap: 6px; }
+  .habitation-publication-channel { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--ab-line, #d8dee8); border-radius: 999px; color: var(--ab-muted, #657386); font-size: 11.5px; }
+  .habitation-publication-channel.is-active { border-color: #86c5a3; background: #edf8f2; color: #167548; font-weight: 700; }
+  .habitation-publication-conflicts { padding: 8px 10px; border: 1px solid #f1b6b0; border-radius: 8px; background: #fff2f0; color: #9f2d24; font-size: 12px; }
+  .habitation-publication-conflicts p { margin: 0; }
+  .habitation-publication-conflicts i { margin-right: 6px; }
+  .habitation-publication-history h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; }
 
   @media (max-width: 720px) {
     .habitation-operational-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .habitation-operational-grid { grid-template-columns: 1fr; }
+    .habitation-publication-summary { grid-template-columns: 1fr; }
   }
 
   /* Garante o toggle dos panes mesmo sem o JS do Bootstrap. */
