@@ -131,9 +131,6 @@ posterior e não bloqueiam o grupo.
 - checklist e exigência de revisão de uma captação vinculada não mudam quando a
   política geral do tenant recebe uma nova versão;
 - captações legadas sem snapshot mantêm fallback compatível para a política atual.
-- o administrador pode simular e comparar a proposta com a política vigente sem salvar;
-- mudanças que desligam a revisão e impactam captações exigem confirmação explícita
-  validada no backend antes de qualquer reatribuição.
 
 #### Pendente de produção
 
@@ -142,8 +139,9 @@ posterior e não bloqueiam o grupo.
 
 #### Pendente — prioridade alta
 
-- exigir confirmação reforçada para outras mudanças futuras de etapa além da
-  desativação da revisão;
+- permitir simular o fluxo antes de salvar;
+- comparar a configuração proposta com a vigente antes da ativação;
+- exigir confirmação reforçada quando houver reatribuição ou mudança de etapa;
 - oferecer restauração segura de uma versão anterior como uma nova versão.
 
 #### Pendente — prioridade média

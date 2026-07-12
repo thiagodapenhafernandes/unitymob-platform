@@ -166,7 +166,6 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("deve ser informado")
 
     patch admin_property_setting_path, params: {
-      confirm_operational_impact: "true",
       property_setting: {
         broker_capture_layer_enabled: "false",
         broker_capture_fallback_admin_user_id: fallback.id
@@ -175,45 +174,6 @@ RSpec.describe "Admin::PropertySettings", type: :request do
 
     expect(response).to redirect_to(edit_admin_property_setting_path)
     expect(intake.reload.admin_user_id).to eq(fallback.id)
-  end
-
-  it "simula mudanças sem salvar nem criar auditoria" do
-    admin = create(:admin_user, :admin)
-    setting = PropertySetting.instance
-    sign_in admin
-
-    expect do
-      patch admin_property_setting_path, params: {
-        simulate_review_policy: "true",
-        return_to: review_workflow_admin_property_setting_path,
-        property_setting: { notify_internal_review_events: "false" }
-      }
-    end.not_to change(PropertyReviewPolicyAuditLog, :count)
-
-    expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Comparação com a política vigente")
-    expect(response.body).to include("Notificação interna")
-    expect(setting.reload.notify_internal_review_events).to be(true)
-  end
-
-  it "exige confirmação backend antes de reatribuir captações" do
-    admin = create(:admin_user, :admin)
-    fallback = admin
-    intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin, intake_status: "draft")
-    setting = PropertySetting.instance
-    sign_in admin
-
-    expect do
-      patch admin_property_setting_path, params: {
-        return_to: review_workflow_admin_property_setting_path,
-        property_setting: { broker_capture_layer_enabled: "false", broker_capture_fallback_admin_user_id: fallback.id }
-      }
-    end.not_to change(PropertyReviewPolicyAuditLog, :count)
-
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(response.body).to include("Confirme a reatribuição")
-    expect(setting.reload.broker_capture_layer_enabled).to be(true)
-    expect(intake.reload.admin_user_id).to eq(admin.id)
   end
 
   it "blocks non-admin users" do

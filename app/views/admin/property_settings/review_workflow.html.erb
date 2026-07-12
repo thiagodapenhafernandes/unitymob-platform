@@ -29,32 +29,6 @@
       <%= ax_error_summary(@property_setting) %>
     <% end %>
 
-    <% if @review_policy_proposal.present? %>
-      <%= ax_operational_panel(eyebrow: "Simulação", title: "Comparação com a política vigente", actions: ax_badge("#{@review_policy_proposal["changes"].size} mudança(s)", tone: :blue)) do %>
-        <div class="review-panel-body">
-          <% if @review_policy_proposal["changes"].present? %>
-            <div class="ax-table-wrap">
-              <table class="ax-table">
-                <thead><tr><th>Regra</th><th>Vigente</th><th>Proposta</th></tr></thead>
-                <tbody>
-                  <% @review_policy_proposal["changes"].each do |change| %>
-                    <tr><td class="ax-strong"><%= change["label"] %></td><td><%= Array(change["before"]).join(", ").presence || "—" %></td><td><%= Array(change["after"]).join(", ").presence || "—" %></td></tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="review-hint">A proposta é igual à política vigente; nada seria alterado.</p>
-          <% end %>
-          <% if @review_policy_proposal["requires_operational_confirmation"] %>
-            <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
-              Desligar a revisão pode reatribuir <strong><%= @review_policy_proposal.dig("impact", "would_reassign_if_review_disabled") %> captação(ões)</strong> em andamento.
-            <% end %>
-          <% end %>
-        </div>
-      <% end %>
-    <% end %>
-
     <header class="ax-dashboard-command ax-property-form-command review-workflow-command">
       <div class="ax-dashboard-command__main">
         <span class="ax-dashboard-command__eyebrow">Regra de entrada, revisão e site</span>
@@ -366,12 +340,6 @@
 
     <div class="ax-form-actions review-workflow-actions">
       <%= link_to "Voltar para Config Imóveis", edit_admin_property_setting_path, class: "ax-btn" %>
-      <%= button_tag "Simular mudanças", type: "submit", name: "simulate_review_policy", value: "true", class: "ax-btn ax-btn--ghost" %>
-      <label class="ax-toggle-chip <%= "is-checked" if params[:confirm_operational_impact].present? %>">
-        <%= check_box_tag :confirm_operational_impact, "true", params[:confirm_operational_impact].present?, class: "ax-toggle-chip__input" %>
-        <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
-        <span class="ax-toggle-chip__label">Confirmo reatribuições indicadas</span>
-      </label>
       <%= f.submit "Salvar regra do fluxo", class: "ax-btn ax-btn--primary" %>
     </div>
   <% end %>

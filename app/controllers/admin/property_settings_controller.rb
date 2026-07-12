@@ -15,25 +15,6 @@ module Admin
       @property_setting.watermark_image.purge if remove_watermark_image?
       @property_setting.assign_attributes(property_setting_params)
       return_to_review_workflow = params[:return_to].to_s == review_workflow_admin_property_setting_path
-      proposal = PropertyReviewPolicy::ProposalReport.call(before_snapshot: review_policy_before, proposed_setting: @property_setting, impact_snapshot: review_policy_impact)
-
-      if simulate_review_policy?
-        @review_policy_proposal = proposal
-        @page_title = "Fluxo de revisão de captações"
-        set_review_workflow_context
-        render :review_workflow
-        return
-      end
-
-      if proposal["requires_operational_confirmation"] && @property_setting.valid? && !operational_impact_confirmed?
-        @property_setting.errors.add(:base, "Confirme a reatribuição das captações em andamento antes de desligar a revisão administrativa.")
-        @review_policy_proposal = proposal
-        @requires_operational_confirmation = true
-        @page_title = "Fluxo de revisão de captações"
-        set_review_workflow_context
-        render :review_workflow, status: :unprocessable_entity
-        return
-      end
 
       saved = false
       PropertySetting.transaction do
@@ -104,14 +85,6 @@ module Admin
 
     def remove_watermark_image?
       ActiveModel::Type::Boolean.new.cast(params.dig(:property_setting, :remove_watermark_image))
-    end
-
-    def simulate_review_policy?
-      ActiveModel::Type::Boolean.new.cast(params[:simulate_review_policy])
-    end
-
-    def operational_impact_confirmed?
-      ActiveModel::Type::Boolean.new.cast(params[:confirm_operational_impact])
     end
 
     def set_broker_capture_fallback_users
