@@ -51,9 +51,8 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 #### Pendente de produção
 
 - validar visualmente `/admin/system/health` em uma sessão autenticada;
-- configurar Web Push e/ou SMTP global com destinatários para comprovar a entrega
-  externa dos alertas. O código está ativo, mas os transportes estão desativados
-  no ambiente de produção.
+- ativar uma assinatura Web Push em um navegador do System Admin. As credenciais
+  globais já estão configuradas, mas ainda não existe subscription de dispositivo.
 
 #### Pendente
 
@@ -100,8 +99,10 @@ Este parecer também funciona como fonte de verdade do roadmap. Os estados usado
 - `/`, `/imoveis`, `/admin/sign_in` e `/up` responderam HTTP 200;
 - a plataforma ficou em estado de atenção por uma integração degradada da Salute,
   não por falha de infraestrutura;
-- Web Push, SMTP global e destinatários de alerta estão desativados em produção;
-  a comprovação de entrega depende dessa configuração operacional;
+- SMTP global configurado com `contato@unitymob.com.br`, destinatário automático
+  definido e entrega real validada sem reincidência de erro;
+- credenciais Web Push configuradas e válidas, restando apenas um System Admin
+  autorizar notificações no navegador para criar a primeira subscription;
 - a inspeção visual autenticada não foi automatizada porque não havia navegador
   disponível no ambiente de execução.
 
