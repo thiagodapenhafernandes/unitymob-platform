@@ -76,7 +76,7 @@ Rails.application.routes.draw do
          as: :system_tenant_owner_impersonation
     # Erros da aplicação (rastreador interno) — visão do Admin do Sistema.
     namespace :system do
-      resource :health, only: :show, controller: "health"
+      resource :health, only: [:show, :update], controller: "health"
       resources :error_events, only: [:index, :show] do
         member do
           patch :resolve

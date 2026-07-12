@@ -130,4 +130,47 @@
       </table>
     </div>
   <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Histórico", title: "Evolução por tenant") do %>
+    <%= form_with url: admin_system_health_path, method: :get, local: true, class: "tw-flex tw-flex-wrap tw-items-end tw-gap-2" do |f| %>
+      <div class="ax-field tw-min-w-64">
+        <%= f.label :tenant_id, "Conta", class: "ax-field__label" %>
+        <%= f.select :tenant_id, options_from_collection_for_select(Tenant.order(:name), :id, :name, @selected_tenant&.id), { include_blank: "Selecione uma conta" }, class: "ax-input" %>
+      </div>
+      <%= f.submit "Consultar histórico", class: "ax-btn ax-btn--primary" %>
+    <% end %>
+    <% if @selected_tenant.present? %>
+      <div class="ax-table-wrap tw-mt-3">
+        <table class="ax-table">
+          <thead><tr><th>Coleta</th><th>Status</th><th class="ax-num">Erros</th><th class="ax-num">Integrações</th><th class="ax-num">Storage</th></tr></thead>
+          <tbody>
+            <% @tenant_history.reverse_each do |snapshot| %>
+              <% tone = snapshot.status == "healthy" ? :green : (snapshot.status == "critical" ? :red : :amber) %>
+              <tr><td><%= l(snapshot.collected_at, format: :short) %></td><td><%= ax_badge(snapshot.status, tone: tone, dot: true) %></td><td class="ax-num"><%= snapshot.metrics["open_errors"].to_i %></td><td class="ax-num"><%= snapshot.metrics["integration_failures"].to_i %></td><td class="ax-num"><%= number_to_human_size(snapshot.metrics["storage_bytes"].to_i) %></td></tr>
+            <% end %>
+            <% if @tenant_history.empty? %><tr><td colspan="5" class="tw-text-center tw-text-ink-muted">Ainda não existem amostras para esta conta.</td></tr><% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  <% end %>
+
+  <div id="thresholds">
+    <%= ax_operational_panel(eyebrow: "Governança", title: "Limites de alerta") do %>
+      <%= form_with model: @health_setting, url: admin_system_health_path, method: :patch, local: true do |f| %>
+        <div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 xl:tw-grid-cols-4 tw-gap-3">
+          <% [
+            [:memory_available_warning_percent, "Memória · atenção (%)"], [:memory_available_critical_percent, "Memória · crítico (%)"],
+            [:disk_warning_percent, "Disco · atenção (%)"], [:disk_critical_percent, "Disco · crítico (%)"],
+            [:swap_warning_mb, "Swap · atenção (MB)"], [:http_warning_ms, "HTTP · atenção (ms)"],
+            [:http_critical_ms, "HTTP · crítico (ms)"], [:application_errors_warning, "Erros · atenção"],
+            [:application_errors_critical, "Erros · crítico"], [:integration_failures_critical, "Integrações · crítico"]
+          ].each do |field, label| %>
+            <div class="ax-field"><%= f.label field, label, class: "ax-field__label" %><%= f.number_field field, min: 0, step: field.to_s.include?("percent") ? 0.1 : 1, class: "ax-input" %></div>
+          <% end %>
+        </div>
+        <div class="tw-flex tw-justify-end tw-mt-3"><%= f.submit "Salvar limites", class: "ax-btn ax-btn--primary" %></div>
+      <% end %>
+    <% end %>
+  </div>
 </div>

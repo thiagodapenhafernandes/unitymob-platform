@@ -36,7 +36,8 @@ class SystemHealthMonitorJob < ApplicationJob
 
   def tenant_status(tenant)
     return "unknown" if tenant[:status] == "inactive"
-    return "critical" if tenant[:integration_failures].to_i >= System::HealthAssessment::THRESHOLDS[:integration_failures_critical]
+    threshold = SystemHealthSetting.instance.thresholds[:integration_failures_critical]
+    return "critical" if tenant[:integration_failures].to_i >= threshold
 
     tenant[:status] == "healthy" ? "healthy" : "warning"
   end
