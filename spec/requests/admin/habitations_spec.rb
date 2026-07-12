@@ -2969,6 +2969,11 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Central do imóvel")
+    expect(response.body).not_to include("Título antigo")
+
+    get operational_hub_admin_habitation_path(habitation, tab: "changes")
+
+    expect(response).to have_http_status(:ok)
     expect(response.body).to include("Título do anúncio")
     expect(response.body).to include("Título antigo")
     expect(response.body).to include("Título novo")
@@ -2996,6 +3001,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Alterações")
     expect(response.body).to include("Publicação")
     expect(response.body).to include("Captação")
+    expect(response.body).to include("informações carregadas sob demanda")
     expect(response.body).not_to include("Atualização importada do Vista")
     expect(response.body).not_to include("VISTA_API_PRONTUARIO")
   end

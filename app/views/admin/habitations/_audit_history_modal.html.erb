@@ -1,42 +1,37 @@
-<%
-  logs = Array(logs)
-  publication_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? }
-  intake_logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? }
-
-  audit_modal_body = capture do
-%>
+<% audit_modal_body = capture do %>
   <p class="habitation-audit-sub">
-    Código <%= habitation.codigo %> · últimas <%= logs.size %> movimentações registradas
+    Código <%= habitation.codigo %> · informações carregadas sob demanda
   </p>
 
-  <nav class="habitation-audit-tabs" data-controller="ax-tabs" aria-label="Áreas da central do imóvel">
+  <nav class="habitation-audit-tabs" aria-label="Áreas da central do imóvel">
     <button type="button" class="habitation-audit-tab active"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-overview"
-            data-action="click->ax-tabs#select" aria-selected="true">
+            data-property-operational-hub-target="tab"
+            data-property-operational-hub-tab-param="overview"
+            data-action="property-operational-hub#select" aria-selected="true">
       Visão geral
     </button>
     <button type="button" class="habitation-audit-tab"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-all"
-            data-action="click->ax-tabs#select" aria-selected="false">
-      Alterações <span class="habitation-audit-tab__count"><%= logs.size %></span>
+            data-property-operational-hub-target="tab"
+            data-property-operational-hub-tab-param="changes"
+            data-action="property-operational-hub#select" aria-selected="false">
+      Alterações
     </button>
     <button type="button" class="habitation-audit-tab"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-publication"
-            data-action="click->ax-tabs#select" aria-selected="false">
-      Publicação <span class="habitation-audit-tab__count"><%= publication_logs.size %></span>
+            data-property-operational-hub-target="tab"
+            data-property-operational-hub-tab-param="publication"
+            data-action="property-operational-hub#select" aria-selected="false">
+      Publicação
     </button>
     <button type="button" class="habitation-audit-tab"
-            data-ax-tabs-target="tab" data-ax-tabs-target-param="#audit-intake"
-            data-action="click->ax-tabs#select" aria-selected="false">
-      Captação <span class="habitation-audit-tab__count"><%= intake_logs.size %></span>
+            data-property-operational-hub-target="tab"
+            data-property-operational-hub-tab-param="intake"
+            data-action="property-operational-hub#select" aria-selected="false">
+      Captação
     </button>
   </nav>
 
-  <div class="tab-content habitation-audit-content">
-    <%= render "admin/habitations/operational_overview", habitation: habitation %>
-    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-all", active: false, logs: logs %>
-    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-publication", active: false, logs: publication_logs %>
-    <%= render "admin/habitations/audit_history_timeline", tab_id: "audit-intake", active: false, logs: intake_logs %>
+  <div class="tab-content habitation-audit-content" data-property-operational-hub-target="content" aria-live="polite">
+    <div class="habitation-hub-loading"><i class="bi bi-arrow-repeat"></i> Selecione uma aba para carregar.</div>
   </div>
 <% end %>
 
@@ -45,6 +40,11 @@
       title: "Central do imóvel",
       size: :lg,
       class_name: "habitation-audit-modal",
+      data: {
+        controller: "property-operational-hub",
+        action: "ax-modal:opened->property-operational-hub#open",
+        property_operational_hub_url_value: operational_hub_admin_habitation_path(habitation)
+      },
       body: audit_modal_body
     ) %>
 
@@ -123,6 +123,10 @@
   }
 
   .habitation-audit-content { padding: 16px; }
+  .habitation-hub-loading { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 180px; color: var(--ab-muted, #657386); font-size: 12.5px; }
+  .habitation-hub-loading i { animation: habitation-hub-spin .8s linear infinite; }
+  .habitation-hub-error { display: grid; place-items: center; gap: 8px; min-height: 180px; color: var(--ab-muted, #657386); font-size: 12.5px; text-align: center; }
+  @keyframes habitation-hub-spin { to { transform: rotate(360deg); } }
 
   .habitation-operational-overview { display: grid; gap: 12px; }
   .habitation-operational-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }

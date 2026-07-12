@@ -31,6 +31,7 @@ Rails.application.routes.draw do
     resources :habitations do
       member do
         post :sync
+        get :operational_hub
       end
       collection do
         get :print
