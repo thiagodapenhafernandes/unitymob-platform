@@ -358,8 +358,6 @@
     []
   end
 
-  vista_document_assets = can_view_habitation_show_sensitive_data?(@habitation) ? Array(@habitation_vista_document_assets) : []
-
   public_flags = [
     ["Mobiliado", @habitation.mobiliado_flag],
     ["Decorado", @habitation.decorado_flag],
@@ -401,7 +399,7 @@
     { eyebrow: "Responsáveis", title: "Agenciamento", fields: broker_assignment_fields },
     { eyebrow: "Comercial", title: "Observações internas", fields: internal_note_fields }
   ].select { |panel| panel[:fields].present? }
-  has_document_panel = internal_document_groups.any? || vista_document_assets.any?
+  has_document_panel = internal_document_groups.any?
 %>
 
 <% content_for :admin_contextbar_breadcrumb do %>
@@ -640,38 +638,6 @@
           <% end %>
         <% end %>
 
-        <% if vista_document_assets.any? %>
-          <div class="ax-field-group ax-field-group--panel">
-            <div class="ax-property-record-section__head">
-              <span>Documentos do Vista</span>
-              <strong><%= pluralize(vista_document_assets.size, "arquivo", "arquivos") %></strong>
-            </div>
-            <ul class="ax-file-list">
-              <% vista_document_assets.each do |asset| %>
-                <% attachment = asset.active_storage_attachment %>
-                <% link_target = attachment&.blob&.persisted? ? rails_blob_path(attachment, disposition: "attachment") : asset.source_url %>
-                <li class="ax-file-list__item">
-                  <div class="ax-file-list__main">
-                    <i class="bi bi-file-earmark-arrow-down"></i>
-                    <div class="ax-file-list__content">
-                      <% if link_target.present? %>
-                        <%= link_to asset.filename, link_target, target: "_blank", rel: "noopener", class: "ax-file-list__title" %>
-                      <% else %>
-                        <span class="ax-file-list__title"><%= asset.filename %></span>
-                      <% end %>
-                      <div class="ax-file-list__meta"><%= asset.source_path %></div>
-                    </div>
-                  </div>
-                  <div class="ax-file-list__status">
-                    <span class="ax-status-pill <%= asset.status == "downloaded" ? 'ax-status-pill--success' : 'ax-status-pill--muted' %>">
-                      <%= asset.status.to_s.presence || "Sem status" %>
-                    </span>
-                  </div>
-                </li>
-              <% end %>
-            </ul>
-          </div>
-        <% end %>
       <% end %>
       <%= ax_operational_panel(
             eyebrow: "Documentos",

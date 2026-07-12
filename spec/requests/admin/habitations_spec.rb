@@ -3006,7 +3006,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include("VISTA_API_PRONTUARIO")
   end
 
-  it "exibe documentos importados do Vista na aba de documentos" do
+  it "não usa documentos remotos do Vista na edição depois da migração local" do
     habitation = create(:habitation, codigo: "VISTA-DOC-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel com documento Vista")
     batch = VistaImportBatch.create!(dump_dir: "spec/vista", status: "completed")
     VistaFileAsset.create!(
@@ -3025,10 +3025,10 @@ RSpec.describe "Admin::Habitations", type: :request do
     get edit_admin_habitation_path(habitation)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Documentos do Vista")
-    expect(response.body).to include("autorizacao-vista.pdf")
-    expect(response.body).to include("Pendente de download")
-    expect(response.body).to include("https://arquivos.example.test/autorizacao.pdf")
+    expect(response.body).not_to include("Documentos do Vista")
+    expect(response.body).not_to include("autorizacao-vista.pdf")
+    expect(response.body).not_to include("https://arquivos.example.test/autorizacao.pdf")
+    expect(response.body).to include("Documentos internos")
   end
 
   it "não exibe bloco de documentos do Vista para imóvel de ficha interna sem integração" do

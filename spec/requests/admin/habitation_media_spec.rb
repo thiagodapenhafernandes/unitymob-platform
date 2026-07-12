@@ -46,7 +46,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.body).to include("draggable-item")
     expect(response.body).to include("media-photo-drag-handle")
     expect(response.body).to include("data-photo-upload-async-submit=\"true\"")
-    expect(response.body).to include(upload_admin_habitation_media_path(habitation, format: :json))
+    expect(response.body).to include(upload_admin_habitation_media_path(habitation.id, format: :json))
   end
 
   it "salva mídia por JSON e devolve payload para manter o modal na tela" do
@@ -174,7 +174,9 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     get modal_admin_habitation_media_path(habitation), headers: { "X-Requested-With" => "XMLHttpRequest" }
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('data-action="click-&gt;photo-upload#toggleSiteVisibility"')
+    html = Nokogiri::HTML.fragment(response.body)
+    visibility_button = html.at_css('[data-action*="photo-upload#toggleSiteVisibility"]')
+    expect(visibility_button).to be_present
     expect(response.body).to include("data-photo-upload-visibility-url-value")
     expect(response.body).to include("No site")
   end

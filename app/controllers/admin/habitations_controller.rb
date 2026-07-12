@@ -469,7 +469,6 @@ class Admin::HabitationsController < Admin::BaseController
   def show
     @page_title = "Detalhes do Imóvel: #{@habitation.codigo}"
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
-    load_habitation_vista_document_assets if can_view_habitation_show_sensitive_data?(@habitation)
   end
 
   def create
@@ -541,7 +540,6 @@ class Admin::HabitationsController < Admin::BaseController
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
     preload_habitation_form_associations
     load_ai_suggestion
-    load_habitation_vista_document_assets
   end
 
   def operational_hub
@@ -570,7 +568,7 @@ class Admin::HabitationsController < Admin::BaseController
   def preload_habitation_form_associations
     ActiveRecord::Associations::Preloader.new(
       records: [@habitation],
-      associations: [:admin_user, :photos_attachments, :fichas_cadastro_attachments, :autorizacoes_venda_attachments, { broker_assignments: :admin_user }]
+      associations: [:admin_user, { broker_assignments: :admin_user }]
     ).call
   rescue StandardError => e
     Rails.logger.warn("[habitations#edit] preload de associações falhou: #{e.message}")
@@ -589,7 +587,6 @@ class Admin::HabitationsController < Admin::BaseController
 
     unless no_duplicate_address?(@habitation)
       load_ai_suggestion
-      load_habitation_vista_document_assets
       render :edit, status: :unprocessable_entity
       return
     end
@@ -610,7 +607,6 @@ class Admin::HabitationsController < Admin::BaseController
       unless @habitation.intake_ready_for_admin_review?(require_owner_city: true)
         @habitation.intake_missing_requirements(require_owner_city: true).each { |message| @habitation.errors.add(:base, message) }
         load_ai_suggestion
-        load_habitation_vista_document_assets
         render :edit, status: :unprocessable_entity
         return
       end
@@ -639,7 +635,6 @@ class Admin::HabitationsController < Admin::BaseController
       redirect_after_habitation_save(@habitation, notice: notice)
     else
       load_ai_suggestion
-      load_habitation_vista_document_assets
       render :edit, status: :unprocessable_entity
     end
   end
@@ -2213,14 +2208,6 @@ class Admin::HabitationsController < Admin::BaseController
 
   def operational_hub_logs
     @operational_hub_logs ||= @habitation.habitation_audit_logs.includes(:admin_user).recent.limit(80)
-  end
-
-  def load_habitation_vista_document_assets
-    @habitation_vista_document_assets = VistaFileAsset
-      .where(habitation: @habitation, kind: "property_document")
-      .includes(active_storage_attachment: :blob)
-      .order(Arel.sql("position ASC NULLS LAST"), :id)
-      .limit(80)
   end
 
   def filter_empreendimento_options
