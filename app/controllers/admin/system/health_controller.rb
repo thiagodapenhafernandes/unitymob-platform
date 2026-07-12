@@ -5,6 +5,7 @@ module Admin
 
       def show
         @health = ::System::HealthSnapshot.call
+        @platform = ::System::PlatformHealthReport.call
         @queue = queue_metrics
         @errors = error_metrics
       end

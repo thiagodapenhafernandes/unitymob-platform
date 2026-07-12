@@ -61,6 +61,12 @@
                   data: { action: "change->auto-submit#submit" } %>
           </div>
           <div class="ax-field ax-span-3">
+            <%= f.label :category, "Categoria", class: "ax-field__label" %>
+            <%= f.select :category,
+                  options_for_select([["Todas", "all"], ["Funcional", "application"], ["Tráfego inválido", "traffic"]], @category),
+                  {}, class: "ax-input", data: { action: "change->auto-submit#submit" } %>
+          </div>
+          <div class="ax-field ax-span-3">
             <%= f.label :status, "Status", class: "ax-field__label" %>
             <%= f.select :status,
                   options_for_select([["Todos", "all"], ["Abertos", "open"], ["Resolvidos", "resolved"]], @status),

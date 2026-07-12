@@ -19,6 +19,7 @@
     </div>
     <div class="ax-dashboard-command__status">
       <%= ax_badge(@health[:status] == "healthy" ? "Operacional" : "Atenção", tone: @health[:status] == "healthy" ? :green : :amber, dot: true) %>
+      <%= ax_badge(@platform.dig(:release, :identifier), tone: :blue) %>
       <% if @health[:collected_at].present? %>
         <span>Coletado em <%= l(Time.zone.parse(@health[:collected_at]), format: :short) rescue @health[:collected_at] %></span>
       <% end %>
@@ -30,6 +31,13 @@
     <article><span>Memória disponível</span><strong><%= @health[:memory_available_percent] ? "#{@health[:memory_available_percent]}%" : "—" %></strong><em>Puma <%= @health[:puma_memory_mb] || "—" %> MB</em></article>
     <article><span>Disco</span><strong><%= @health[:disk_percent] ? "#{@health[:disk_percent]}%" : "—" %></strong><em>Swap <%= @health[:swap_used_mb] || "—" %> MB</em></article>
     <article><span>Load</span><strong><%= @health[:load_1] || "—" %></strong><em>5 min: <%= @health[:load_5] || "—" %></em></article>
+  </div>
+
+  <div class="ax-dashboard-value-strip">
+    <article><span>Erros funcionais abertos</span><strong><%= @platform.dig(:errors, :application_open) || 0 %></strong><em><%= @platform.dig(:errors, :affected_tenants) || 0 %> tenant(s) afetado(s)</em></article>
+    <article><span>Ruído de tráfego</span><strong><%= @platform.dig(:errors, :traffic_noise_occurrences) || 0 %></strong><em><%= @platform.dig(:errors, :traffic_noise_open) || 0 %> fingerprint(s)</em></article>
+    <article><span>Erros sem tenant</span><strong><%= @platform.dig(:errors, :unassigned_open) || 0 %></strong><em>jobs, login ou plataforma</em></article>
+    <article><span>Schema</span><strong><%= @platform.dig(:release, :schema_version) || "—" %></strong><em><%= @platform.dig(:release, :migrations_pending) ? "migrations pendentes" : "atualizado" %></em></article>
   </div>
 
   <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-2 tw-gap-3">
@@ -72,4 +80,31 @@
       <p class="tw-text-sm tw-text-ink-muted tw-m-0">Sysstat ativo no servidor, com histórico de CPU, memória, carga, swap, disco e I/O. O painel apresenta a última amostra operacional; análises históricas permanecem restritas ao servidor.</p>
     <% end %>
   </div>
+
+  <%= ax_operational_panel(
+        eyebrow: "Contas",
+        title: "Saúde por tenant",
+        actions: ax_badge("#{@platform[:tenants].size} contas", tone: :blue)
+      ) do %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead><tr><th>Tenant</th><th>Status</th><th class="ax-num">Usuários</th><th class="ax-num">Imóveis</th><th class="ax-num">Leads</th><th class="ax-num">Storage</th><th class="ax-num">Integrações</th><th class="ax-num">Erros</th></tr></thead>
+        <tbody>
+          <% @platform[:tenants].each do |tenant| %>
+            <% tone = tenant[:status] == "healthy" ? :green : (tenant[:status] == "inactive" ? :gray : :amber) %>
+            <tr>
+              <td><strong><%= tenant[:name] %></strong><br><small><%= tenant[:slug] %></small></td>
+              <td><%= ax_badge(tenant[:status] == "healthy" ? "Saudável" : (tenant[:status] == "inactive" ? "Inativo" : "Atenção"), tone: tone, dot: true) %></td>
+              <td class="ax-num"><%= tenant[:active_users] %>/<%= tenant[:users] %></td>
+              <td class="ax-num"><%= tenant[:habitations] %></td>
+              <td class="ax-num"><%= tenant[:leads] %></td>
+              <td class="ax-num"><%= number_to_human_size(tenant[:storage_bytes]) %></td>
+              <td class="ax-num"><%= tenant[:integration_failures].positive? ? "#{tenant[:integration_failures]} falha(s)" : "#{tenant[:portals]} portais" %></td>
+              <td class="ax-num"><%= tenant[:open_errors] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
 </div>

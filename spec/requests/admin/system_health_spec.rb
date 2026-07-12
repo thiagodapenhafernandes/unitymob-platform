@@ -15,6 +15,9 @@ RSpec.describe "Admin system health", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Saúde do sistema")
     expect(response.body).to include("Operacional")
+    expect(response.body).to include("Saúde por tenant")
+    expect(response.body).to include("Erros funcionais abertos")
+    expect(response.body).to include("Ruído de tráfego")
   end
 
   it "bloqueia usuário de conta" do

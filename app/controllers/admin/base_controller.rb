@@ -10,6 +10,12 @@ class Admin::BaseController < ApplicationController
     admin/system
   ].freeze
 
+  SYSTEM_ADMIN_GLOBAL_CONTROLLERS = %w[
+    admin/push_settings
+    admin/tracking_integrations
+    admin/storage_integrations
+  ].freeze
+
   before_action :authenticate_admin_user!
   before_action :set_current_admin_user
   before_action :ensure_tenant_context_selected!
@@ -116,7 +122,7 @@ class Admin::BaseController < ApplicationController
     return if controller_path == "admin/system" || controller_path.start_with?("admin/system/")
     # Push/VAPID é config GLOBAL editada pelo Admin do Sistema — precisa ser
     # alcançável sem contexto de conta (senão ninguém edita: dono vê read-only).
-    return if controller_path == "admin/push_settings"
+    return if SYSTEM_ADMIN_GLOBAL_CONTROLLERS.include?(controller_path)
 
     redirect_to admin_system_path, alert: "Admin do Sistema acessa áreas da conta apenas por impersonação."
   end

@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe "Admin::TrackingIntegrations", type: :request do
   include Devise::Test::IntegrationHelpers
 
-  let(:admin) { create(:admin_user, :admin) }
+  let(:admin) { create(:admin_user, super_admin: true) }
 
   before do
     host! "localhost"
@@ -57,10 +57,9 @@ RSpec.describe "Admin::TrackingIntegrations", type: :request do
     expect(response.body).to include("ID do Pixel da Meta não pode ficar em branco")
   end
 
-  it "bloqueia usuario sem permissao de integracoes" do
+  it "bloqueia admin de conta porque rastreamento é configuração global" do
     sign_out admin
-    broker = create(:admin_user)
-    sign_in broker
+    sign_in create(:admin_user, :admin)
 
     get admin_tracking_integration_path
 
