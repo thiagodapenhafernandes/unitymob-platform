@@ -1,4 +1,5 @@
 class HabitationsController < ApplicationController
+  SOCIAL_IMAGE_TRANSFORMATIONS = { resize_to_limit: [1200, 1200] }.freeze
   PUBLIC_LISTING_PER_PAGE = 12
   MAX_PUBLIC_LISTING_PAGE = ENV.fetch("PUBLIC_LISTING_MAX_PAGE", 50).to_i
 
@@ -290,6 +291,12 @@ class HabitationsController < ApplicationController
     return unless attachment&.blob&.image?
 
     Storage::PublicPropertyPhoto.publish_attachment!(attachment)
+    variant = attachment.blob.variant(**SOCIAL_IMAGE_TRANSFORMATIONS).processed
+    return unless variant.respond_to?(:image) && variant.image.attached?
+
+    Storage::PublicPropertyPhoto.publish_blob!(variant.image.blob, raise_errors: true)
+  rescue StandardError => e
+    Rails.logger.warn("[social_image_publish] habitation_id=#{habitation.id} error=#{e.class}: #{e.message}")
   end
 
   def set_shareable_habitation
@@ -736,6 +743,9 @@ class HabitationsController < ApplicationController
     attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
 
     if attachment&.blob&.image?
+      variant_metadata = social_variant_metadata_for(attachment)
+      return variant_metadata if variant_metadata.present?
+
       cdn_url = Storage::PublicPropertyPhoto.public_url_for_attachment(attachment)
       return { url: cdn_url, type: attachment.blob.content_type } if cdn_url.present?
     end
@@ -744,6 +754,19 @@ class HabitationsController < ApplicationController
   rescue StandardError => e
     Rails.logger.warn("[social_image] habitation_id=#{habitation.id} error=#{e.class}: #{e.message}")
     {}
+  end
+
+  def social_variant_metadata_for(attachment)
+    variant = attachment.blob.variant(**SOCIAL_IMAGE_TRANSFORMATIONS)
+    return unless variant.respond_to?(:image) && variant.image.attached?
+
+    variant_url = Storage::PublicPropertyPhoto.public_url_for_blob(variant.image.blob)
+    return if variant_url.blank?
+
+    { url: variant_url, type: variant.image.blob.content_type }
+  rescue StandardError => e
+    Rails.logger.warn("[social_image_variant] blob_id=#{attachment.blob_id} error=#{e.class}: #{e.message}")
+    nil
   end
 
   def absolute_social_image_url(image)
