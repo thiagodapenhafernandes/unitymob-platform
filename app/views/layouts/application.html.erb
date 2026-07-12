@@ -15,8 +15,18 @@
       seo ||= property_seo if property_seo&.public_applicable? && property_seo.manual_mode?
       seo ||= SeoSetting.for_page(@page_name || 'home') unless property_page
       seo_public = seo&.public_applicable?
-      effective_title = (seo_public ? seo.meta_title.presence : nil) || @page_title || "#{site_name} - Encontre seu Imóvel Ideal"
-      effective_description = (seo_public ? seo.meta_description.presence : nil) || @page_description || "Os melhores imóveis para venda e locação. Encontre seu imóvel ideal com a #{site_name}."
+      effective_title = if property_page
+        @page_title
+      else
+        (seo_public ? seo.meta_title.presence : nil) || @page_title
+      end
+      effective_title ||= "#{site_name} - Encontre seu Imóvel Ideal"
+      effective_description = if property_page
+        @page_description
+      else
+        (seo_public ? seo.meta_description.presence : nil) || @page_description
+      end
+      effective_description ||= "Os melhores imóveis para venda e locação. Encontre seu imóvel ideal com a #{site_name}."
       effective_keywords = (seo_public ? seo.meta_keywords.presence : nil) || @page_keywords
       effective_robots = seo_public ? seo.robots_content : "index, follow"
       effective_robots = "noindex, follow" if params[:page].to_i >= 3
@@ -53,8 +63,8 @@
                     @page_image.presence ||
                     "#{request.base_url}/icon.png"
       canonical_url = sanitize_utf8.call(@canonical_url.presence || (seo_public ? seo.public_url(request.base_url) : request.original_url))
-      og_title = sanitize_utf8.call((seo_public ? seo.og_title.presence : nil) || effective_title)
-      og_description = strip_tags((seo_public ? seo.og_description.presence : nil) || effective_description)
+      og_title = sanitize_utf8.call(property_page ? effective_title : ((seo_public ? seo.og_title.presence : nil) || effective_title))
+      og_description = strip_tags(property_page ? effective_description : ((seo_public ? seo.og_description.presence : nil) || effective_description))
       og_type = social_property.present? ? "product" : "website"
       image_alt = sanitize_utf8.call([og_title, site_name].reject(&:blank?).join(" | "))
       social_price_cents = if social_property.present?

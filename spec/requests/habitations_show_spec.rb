@@ -98,6 +98,7 @@ RSpec.describe "Habitation details", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(%(property="og:image" content="#{public_photo_url("first-property.jpg")}"))
       expect(response.body).not_to include(%(property="og:image" content="http://localhost/icon.png"))
+      expect(response.body).to include(%(property="og:title" content="OG-IMG - ))
     end
 
     it "normalizes the first property photo URL in social sharing metadata" do
@@ -118,7 +119,7 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).not_to include(%(property="og:image" content="#{source}"))
     end
 
-    it "uses an optimized social variant for a locally attached property photo" do
+    it "uses the original locally attached photo without an on-demand social transformation" do
       habitation = create(:habitation, codigo: "OG-LOCAL", slug: "apartamento-og-local")
       habitation.photos.attach(
         io: StringIO.new(Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=")),
@@ -130,11 +131,9 @@ RSpec.describe "Habitation details", type: :request do
       get habitation_path(habitation)
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(%(property="og:image" content="https://localhost/rails/active_storage/representations/))
-      expect(response.body).to include(%(property="og:image:type" content="image/jpeg"))
-      expect(response.body).to include(%(property="og:image:width" content="1200"))
-      expect(response.body).to include(%(property="og:image:height" content="630"))
-      expect(response.body).not_to include("saver")
+      expect(response.body).to include(%(property="og:image" content="https://localhost/rails/active_storage/blobs/redirect/))
+      expect(response.body).to include(%(property="og:image:type" content="image/png"))
+      expect(response.body).not_to include("/rails/active_storage/representations/")
     end
 
     it "does not expose broker phone or direct whatsapp link in the responsible attendant card" do

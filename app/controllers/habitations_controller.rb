@@ -192,7 +192,7 @@ class HabitationsController < ApplicationController
     # increment_view_count(@habitation.id)
     
     property_metadata = Seo::PropertyMetadataBuilder.new(@habitation).attributes
-    @page_title = property_metadata[:meta_title]
+    @page_title = [@habitation.codigo.presence, property_metadata[:meta_title]].compact.join(" - ")
     @page_description = property_metadata[:meta_description].presence || default_property_description(@habitation)
     @page_keywords = property_metadata[:meta_keywords]
     @page_name = property_metadata[:page_name]
@@ -725,15 +725,9 @@ class HabitationsController < ApplicationController
     attachment = source.try(:[], "attachment") || source.try(:[], :attachment)
 
     if attachment&.blob&.image?
-      variant = attachment.blob.variant(
-        resize_to_fill: [1200, 630],
-        format: :jpg
-      )
       return {
-        url: "#{request.base_url}#{Rails.application.routes.url_helpers.rails_representation_path(variant, only_path: true)}",
-        width: 1200,
-        height: 630,
-        type: "image/jpeg"
+        url: "#{request.base_url}#{Rails.application.routes.url_helpers.rails_blob_path(attachment, only_path: true)}",
+        type: attachment.blob.content_type
       }
     end
 
