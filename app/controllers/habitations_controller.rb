@@ -291,10 +291,19 @@ class HabitationsController < ApplicationController
     return unless attachment&.blob&.image?
 
     Storage::PublicPropertyPhoto.publish_attachment!(attachment)
-    variant = attachment.blob.variant(**SOCIAL_IMAGE_TRANSFORMATIONS).processed
-    return unless variant.respond_to?(:image) && variant.image.attached?
+    variant = attachment.blob.variant(**SOCIAL_IMAGE_TRANSFORMATIONS)
+    variant_image = variant.image if variant.respond_to?(:image)
 
-    Storage::PublicPropertyPhoto.publish_blob!(variant.image.blob, raise_errors: true)
+    if variant_image&.attached?
+      Storage::PublicPropertyPhoto.publish_blob!(variant_image.blob, raise_errors: true)
+    else
+      Storage::PrepareSocialImageJob.perform_later(
+        habitation.id,
+        attachment.id,
+        tenant_id: habitation.tenant_id,
+        transformations: SOCIAL_IMAGE_TRANSFORMATIONS
+      )
+    end
   rescue StandardError => e
     Rails.logger.warn("[social_image_publish] habitation_id=#{habitation.id} error=#{e.class}: #{e.message}")
   end

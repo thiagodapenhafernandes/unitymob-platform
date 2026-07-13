@@ -3,6 +3,10 @@ require "rails_helper"
 RSpec.describe HabitationPhotoWatermarkJob, type: :job do
   include ActiveJob::TestHelper
 
+  it "uses the isolated media queue" do
+    expect(described_class.new.queue_name).to eq("media")
+  end
+
   it "publishes the replacement and keeps the original blob available briefly" do
     suffix = SecureRandom.hex(3)
     tenant = Tenant.create!(name: "Tenant watermark #{suffix}", slug: "tenant-watermark-#{suffix}")
