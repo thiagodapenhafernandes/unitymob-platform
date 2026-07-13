@@ -18,7 +18,12 @@ class Rack::Attack
   # Cache store: se Rails.cache for NullStore (default em dev/test), usa um
   # MemoryStore dedicado para o rack-attack funcionar.
   Rack::Attack.cache.store =
-    if Rails.cache.is_a?(ActiveSupport::Cache::NullStore)
+    if Rails.env.production? && ENV["REDIS_URL"].present?
+      ActiveSupport::Cache::RedisCacheStore.new(
+        url: ENV.fetch("RACK_ATTACK_REDIS_URL", ENV.fetch("REDIS_URL")),
+        namespace: "unitymob:rate_limit"
+      )
+    elsif Rails.cache.is_a?(ActiveSupport::Cache::NullStore)
       ActiveSupport::Cache::MemoryStore.new
     else
       Rails.cache
@@ -66,6 +71,40 @@ class Rack::Attack
 
     page = req.params["page"].to_s
     page.match?(/\A\d+\z/) && page.to_i > PUBLIC_PROPERTY_DEEP_PAGE_THRESHOLD
+  end
+
+  def self.html_login_request?(request)
+    request.path.in?(["/admin/sign_in", "/admin/two_factor"]) &&
+      request.get_header("HTTP_ACCEPT").to_s.include?("text/html")
+  end
+
+  def self.login_throttled_page(retry_after)
+    minutes = [(retry_after.to_f / 60).ceil, 1].max
+
+    <<~HTML
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+          <title>Acesso temporariamente limitado</title>
+          <style>
+            body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; box-sizing: border-box; background: #101827; color: #172033; font-family: system-ui, -apple-system, sans-serif; }
+            main { width: min(100%, 420px); box-sizing: border-box; padding: 32px; border-radius: 22px; background: #fff; box-shadow: 0 24px 70px rgba(0, 0, 0, .35); text-align: center; }
+            h1 { margin: 0 0 12px; font-size: 24px; }
+            p { margin: 0 0 22px; color: #5b6575; line-height: 1.55; }
+            a { display: inline-flex; padding: 12px 18px; border-radius: 10px; background: #365f8f; color: #fff; font-weight: 700; text-decoration: none; }
+          </style>
+        </head>
+        <body>
+          <main>
+            <h1>Muitas tentativas de acesso</h1>
+            <p>Para proteger sua conta, aguarde cerca de #{minutes} #{minutes == 1 ? "minuto" : "minutos"} antes de tentar novamente.</p>
+            <a href="/admin/sign_in">Voltar ao login</a>
+          </main>
+        </body>
+      </html>
+    HTML
   end
 
   if Rails.env.development?
@@ -184,11 +223,19 @@ class Rack::Attack
       "ua=#{request.user_agent.to_s.truncate(180)}"
     )
 
-    [
-      429,
-      { "Content-Type" => "application/json", "Retry-After" => retry_after.to_s },
-      [{ error: "rate_limited", retry_after: retry_after }.to_json]
-    ]
+    if Rack::Attack.html_login_request?(request)
+      [
+        429,
+        { "Content-Type" => "text/html; charset=utf-8", "Retry-After" => retry_after.to_s },
+        [Rack::Attack.login_throttled_page(retry_after)]
+      ]
+    else
+      [
+        429,
+        { "Content-Type" => "application/json", "Retry-After" => retry_after.to_s },
+        [{ error: "rate_limited", retry_after: retry_after }.to_json]
+      ]
+    end
   end
 end
 

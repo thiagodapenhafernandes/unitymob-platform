@@ -55,6 +55,28 @@ module Admin
                   notice: system_impersonation_notice(user)
     end
 
+    def reset_login_rate_limit
+      email = params.require(:login_rate_limit).permit(:email)[:email].to_s.downcase.strip
+      user = AdminUser.find_by(email: email)
+
+      unless user
+        redirect_to admin_system_path, alert: "Usuário não encontrado para o e-mail informado."
+        return
+      end
+
+      result = Security::LoginRateLimit.reset!(admin_user: user)
+      AccessAuditLog.log!(
+        event_type: "rate_limit_reset",
+        result: "allowed",
+        request: request,
+        admin_user: user,
+        reason: "Bloqueio temporário de login liberado pelo Admin do Sistema",
+        metadata: { system_admin_id: current_admin_user.id, released_ips: result.ips }
+      )
+
+      redirect_to admin_system_path, notice: "Bloqueio de login liberado para #{result.email}."
+    end
+
     private
 
     def system_users_scope

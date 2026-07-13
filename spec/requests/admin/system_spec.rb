@@ -33,6 +33,35 @@ RSpec.describe "Admin::System", type: :request do
     expect(AccessAuditLog.where(event_type: "sensitive_access", result: "allowed", admin_user: sys).last.tenant_id).to be_nil
   end
 
+  it "permite ao admin do sistema liberar o rate limit de login com auditoria" do
+    sys = create(:admin_user, super_admin: true)
+    user = create(:admin_user, email: "bloqueado@salute.test")
+    sign_in sys, scope: :admin_user
+
+    expect(Security::LoginRateLimit).to receive(:reset!).with(admin_user: user)
+      .and_return(Security::LoginRateLimit::Result.new(email: user.email, ips: ["203.0.113.10"]))
+
+    post admin_system_login_rate_limit_reset_path,
+         params: { login_rate_limit: { email: user.email } }
+
+    expect(response).to redirect_to(admin_system_path)
+    expect(flash[:notice]).to include(user.email)
+    log = AccessAuditLog.where(event_type: "rate_limit_reset", admin_user: user).last
+    expect(log).to be_present
+    expect(log.metadata).to include("system_admin_id" => sys.id, "released_ips" => ["203.0.113.10"])
+  end
+
+  it "não permite que admin da conta libere rate limit de login" do
+    account_admin = create(:admin_user, profile: profile_admin, super_admin: false)
+    sign_in account_admin, scope: :admin_user
+
+    post admin_system_login_rate_limit_reset_path,
+         params: { login_rate_limit: { email: account_admin.email } }
+
+    expect(response).to redirect_to(admin_root_path)
+    expect(AccessAuditLog.where(event_type: "rate_limit_reset")).not_to exist
+  end
+
   it "lista usuários para impersonação com filtros de status, tipo e conta" do
     sys = create(:admin_user, super_admin: true, name: "Admin Sistema")
     tenant = Tenant.create!(name: "Tenant filtros #{SecureRandom.hex(3)}", slug: "tenant-filtros-#{SecureRandom.hex(3)}")

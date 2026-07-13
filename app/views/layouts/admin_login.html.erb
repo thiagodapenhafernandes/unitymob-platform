@@ -10,6 +10,7 @@
     <%= csp_meta_tag %>
     <%= render "layouts/no_zoom" %>
     <%= render "layouts/pwa_meta" %>
+    <%= javascript_include_tag "admin_login_submit_guard", defer: true %>
 
     <%# Fontes e ícones self-hosted (antes Google Fonts + jsdelivr) %>
     <%= stylesheet_link_tag "vendor/admin-fonts" %>
@@ -264,6 +265,12 @@
 
       .login-submit:active {
         transform: translateY(0);
+      }
+
+      .login-submit:disabled {
+        cursor: wait;
+        opacity: .72;
+        transform: none;
       }
 
       .forgot-link {
