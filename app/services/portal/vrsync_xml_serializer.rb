@@ -10,8 +10,8 @@ module Portal
       @integration = integration
     end
 
-    def to_xml
-      xml = Builder::XmlMarkup.new(indent: 2)
+    def to_xml(target: nil)
+      xml = Builder::XmlMarkup.new(**{ indent: 2 }.merge(target ? { target: target } : {}))
       xml.instruct!
 
       xml.ListingDataFeed(
@@ -103,7 +103,7 @@ module Portal
         end
       end
 
-      xml.target!
+      target ? nil : xml.target!
     end
 
     private

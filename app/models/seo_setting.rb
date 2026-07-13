@@ -218,7 +218,7 @@ class SeoSetting < ApplicationRecord
     return if identifier.blank?
 
     tenant_habitations = Current.tenant&.habitations
-    return if tenant_habitations.blank?
+    return if tenant_habitations.nil?
 
     tenant_habitations.find_by(codigo: identifier) ||
       tenant_habitations.find_by(id: identifier) ||
