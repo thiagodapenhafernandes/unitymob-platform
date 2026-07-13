@@ -12,7 +12,7 @@
 <% search_filter_right_border_style = "border-right: var(--search-filter-border);" %>
 <% search_filter_chip_border_style = "border: var(--search-filter-border);" %>
 
-<div class="w-full max-w-5xl mx-auto mt-4 md:mt-8 relative z-20"
+<div class="hero-search w-full max-w-5xl mx-auto relative z-20"
      data-controller="search-tabs"
      data-search-tabs-sale-price-options-value="<%= json_escape(public_price_range_options("venda").to_json) %>"
      data-search-tabs-rent-price-options-value="<%= json_escape(public_price_range_options("aluguel").to_json) %>">
@@ -274,10 +274,10 @@
   </div>
 
   <div class="relative z-10 mt-3 flex justify-center">
-    <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 px-4 py-2 text-center text-xs font-semibold text-current shadow-[0_12px_34px_rgba(8,31,48,0.16)] sm:text-sm"
+    <div class="hero-search-shortcuts flex w-full items-center justify-center gap-2 px-3 py-2 text-center text-[10px] font-semibold text-current shadow-[0_12px_34px_rgba(8,31,48,0.16)] sm:w-auto sm:gap-x-6 sm:px-4 sm:text-sm"
          style="<%= search_filter_style %>; background-color: var(--search-filter-bg); border: var(--search-filter-border); border-radius: var(--search-filter-radius); color: var(--search-filter-text); backdrop-filter: blur(var(--search-filter-blur)); -webkit-backdrop-filter: blur(var(--search-filter-blur));">
       <button type="button"
-              class="inline-flex items-center justify-center gap-1.5 transition-colors hover:text-golden-one"
+              class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-golden-one sm:flex-none sm:gap-1.5"
               data-action="click->search-tabs#toggleAdvanced">
         <i class="bi bi-list text-[0.95em]" data-search-tabs-target="advancedIcon"></i>
         <span data-search-tabs-target="advancedLabel">Avançado</span>
@@ -285,14 +285,14 @@
 
       <button type="button"
               onclick="document.dispatchEvent(new CustomEvent('open-code-search'))"
-              class="inline-flex items-center justify-center gap-1.5 transition-colors hover:text-golden-one">
+              class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-golden-one sm:flex-none sm:gap-1.5">
         <i class="bi bi-upc-scan text-[0.95em]"></i>
         Por código
       </button>
 
-      <%= link_to empreendimentos_path, class: "inline-flex items-center justify-center gap-1.5 transition-colors hover:text-golden-one" do %>
+      <%= link_to empreendimentos_path, class: "inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-golden-one sm:flex-none sm:gap-1.5" do %>
         <i class="bi bi-buildings text-[0.95em]"></i>
-        Empreendimentos
+        <span class="sm:hidden">Empreend.</span><span class="hidden sm:inline">Empreendimentos</span>
       <% end %>
     </div>
   </div>

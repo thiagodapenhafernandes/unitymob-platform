@@ -74,6 +74,102 @@
   }
 }
 
+#hero {
+  padding-top: calc(5rem + env(safe-area-inset-top));
+  padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+}
+
+.hero-copy {
+  margin-bottom: 1rem;
+}
+
+.hero-title {
+  margin: 0 auto 0.75rem;
+  max-width: 22ch;
+  font-size: clamp(1.75rem, 7.6vw, 2.35rem);
+  line-height: 1.08;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.hero-subtitle {
+  font-size: clamp(0.95rem, 4.1vw, 1.125rem);
+  line-height: 1.4;
+  text-wrap: balance;
+}
+
+.hero-search {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 374px), (max-height: 700px) and (max-width: 767px) {
+  #hero {
+    padding-top: calc(5rem + env(safe-area-inset-top));
+    padding-bottom: max(1.75rem, env(safe-area-inset-bottom));
+  }
+
+  .hero-copy {
+    margin-bottom: 0.625rem;
+  }
+
+  .hero-title {
+    margin-bottom: 0.5rem;
+    font-size: clamp(1.55rem, 7.2vw, 1.9rem);
+    line-height: 1.06;
+  }
+
+  .hero-subtitle {
+    font-size: clamp(0.875rem, 3.9vw, 1rem);
+    line-height: 1.32;
+  }
+
+  .hero-search {
+    margin-top: 0.5rem;
+  }
+
+  .hero-search form {
+    padding: 0.625rem;
+  }
+
+  .hero-search form > .grid {
+    gap: 0.5rem;
+  }
+
+  .hero-search form button,
+  .hero-search form select {
+    min-height: 44px;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+}
+
+@media (min-width: 768px) {
+  #hero {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .hero-copy {
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-title {
+    margin-bottom: 1.5rem;
+    max-width: none;
+    font-size: clamp(2rem, var(--hero-title-configured-size), 5.5vw);
+    line-height: 1.12;
+  }
+
+  .hero-subtitle {
+    font-size: clamp(0.875rem, var(--hero-subtitle-configured-size), 2vw);
+    line-height: 1.5;
+  }
+
+  .hero-search {
+    margin-top: 2rem;
+  }
+}
+
 /* Glassmorphism for Detailed Search Button (requested in step 4) */
 .glass-button {
   background: rgba(255, 255, 255, 0.15);
