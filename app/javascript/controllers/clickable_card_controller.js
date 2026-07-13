@@ -111,7 +111,13 @@ export default class extends Controller {
 
     // Navega para a página do imóvel
     if (this.urlValue) {
-      Turbo.visit(this.urlValue)
+      const trackingLink = this.element.querySelector('[data-clickable-card-tracking-link]')
+
+      if (trackingLink) {
+        trackingLink.click()
+      } else {
+        Turbo.visit(this.urlValue)
+      }
     }
   }
 }
