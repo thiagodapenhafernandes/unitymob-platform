@@ -71,6 +71,9 @@ Rails.application.routes.draw do
     post "system/users/:admin_user_id/impersonate",
          to: "system#impersonate_user",
          as: :system_user_impersonation
+    post "system/login_rate_limit/reset",
+         to: "system#reset_login_rate_limit",
+         as: :system_login_rate_limit_reset
     post "system/tenants/:tenant_id/impersonate_owner",
          to: "system#impersonate_owner",
          as: :system_tenant_owner_impersonation
