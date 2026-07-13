@@ -3,7 +3,7 @@ class AccessAuditLog < ApplicationRecord
 
   EVENT_TYPES = %w[login logout admin_access sensitive_access access_denied impersonation_start impersonation_stop
                    two_factor_challenge two_factor_success two_factor_failed two_factor_enabled two_factor_disabled
-                   account_switch membership_invited membership_accepted membership_revoked].freeze
+                   account_switch membership_invited membership_accepted membership_revoked rate_limit_reset].freeze
   RESULTS = %w[allowed denied].freeze
 
   EVENT_LABELS = {
@@ -22,7 +22,8 @@ class AccessAuditLog < ApplicationRecord
     "account_switch" => "Troca de conta",
     "membership_invited" => "Convite externo enviado",
     "membership_accepted" => "Convite externo aceito",
-    "membership_revoked" => "Acesso externo revogado"
+    "membership_revoked" => "Acesso externo revogado",
+    "rate_limit_reset" => "Bloqueio de login liberado"
   }.freeze
 
   RESULT_LABELS = {

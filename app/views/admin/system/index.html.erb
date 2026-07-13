@@ -42,6 +42,31 @@
   </div>
 
   <%= ax_operational_panel(
+        eyebrow: "Segurança",
+        title: "Liberar bloqueio de login",
+        actions: ax_badge("somente Admin do Sistema", tone: :blue)
+      ) do %>
+    <p class="ax-page-subtitle">
+      Remove o bloqueio temporário por e-mail e pelos IPs das tentativas negadas nas últimas 24 horas.
+      A senha, o 2FA e as demais regras de acesso continuam inalterados. A ação fica registrada na auditoria.
+    </p>
+    <%= form_with url: admin_system_login_rate_limit_reset_path,
+                  method: :post,
+                  scope: :login_rate_limit,
+                  class: "ax-inline-form" do |form| %>
+      <div class="ax-field" style="min-width:min(100%, 360px)">
+        <%= form.label :email, "E-mail do usuário", class: "ax-label" %>
+        <%= form.email_field :email,
+                             required: true,
+                             autocomplete: "off",
+                             placeholder: "usuario@empresa.com.br",
+                             class: "ax-control" %>
+      </div>
+      <%= form.submit "Liberar acesso", class: "ax-btn ax-btn--primary" %>
+    <% end %>
+  <% end %>
+
+  <%= ax_operational_panel(
         eyebrow: "Contas",
         title: "Acesso por impersonação",
         actions: ax_badge("sem acesso operacional direto", tone: :gray)
