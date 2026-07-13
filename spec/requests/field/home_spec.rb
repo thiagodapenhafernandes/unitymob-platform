@@ -19,6 +19,16 @@ RSpec.describe "Field::Home", type: :request do
     expect(response.body).to include("loja mais próxima")
   end
 
+  it "não carrega configurações públicas de rastreamento nas rotas Field" do
+    broker = create(:admin_user, :field_agent)
+    sign_in broker
+    expect(TrackingIntegrationSetting).not_to receive(:current)
+
+    get field_root_path, headers: mobile_headers
+
+    expect(response).to have_http_status(:ok)
+  end
+
   it "oculta o botão de check-in para usuário bloqueado pontualmente" do
     Setting.set("field_checkin_enabled", "true")
     broker = create(:admin_user, name: "Thiago Dev")
@@ -84,5 +94,15 @@ RSpec.describe "Field::Home", type: :request do
     get field_root_path, headers: { "User-Agent" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
 
     expect(response).to redirect_to(admin_root_path)
+  end
+
+  it "redireciona Admin do Sistema sem tenant para a central em vez de consultar dados de outra conta" do
+    system_admin = create(:admin_user, super_admin: true)
+    sign_in system_admin
+
+    get field_root_path, headers: mobile_headers
+
+    expect(response).to redirect_to(admin_system_path)
+    expect(flash[:alert]).to include("apenas por uma conta vinculada")
   end
 end

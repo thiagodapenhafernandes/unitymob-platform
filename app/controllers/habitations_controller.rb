@@ -758,12 +758,15 @@ class HabitationsController < ApplicationController
 
   def social_variant_metadata_for(attachment)
     variant = attachment.blob.variant(**SOCIAL_IMAGE_TRANSFORMATIONS)
-    return unless variant.respond_to?(:image) && variant.image.attached?
+    return unless variant.respond_to?(:image)
 
-    variant_url = Storage::PublicPropertyPhoto.public_url_for_blob(variant.image.blob)
+    variant_image = variant.image
+    return unless variant_image&.attached?
+
+    variant_url = Storage::PublicPropertyPhoto.public_url_for_blob(variant_image.blob)
     return if variant_url.blank?
 
-    { url: variant_url, type: variant.image.blob.content_type }
+    { url: variant_url, type: variant_image.blob.content_type }
   rescue StandardError => e
     Rails.logger.warn("[social_image_variant] blob_id=#{attachment.blob_id} error=#{e.class}: #{e.message}")
     nil

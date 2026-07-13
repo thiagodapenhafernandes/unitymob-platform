@@ -11,6 +11,7 @@ module Field
     prepend_before_action :redirect_desktop_to_admin
     before_action :authenticate_admin_user!
     before_action :set_current_tenant
+    before_action :ensure_tenant_context!
     before_action :enforce_access_control_policy!
     before_action :enforce_two_factor_setup!
     layout "field"
@@ -44,6 +45,17 @@ module Field
       Current.tenant || current_admin_user&.tenant
     end
     helper_method :current_tenant
+
+    def ensure_tenant_context!
+      return if current_tenant.present?
+
+      if current_admin_user&.system_admin?
+        redirect_to admin_system_path, alert: "Admin do Sistema acessa o Field apenas por uma conta vinculada."
+      else
+        sign_out(:admin_user)
+        redirect_to new_admin_user_session_path, alert: "Não foi possível identificar sua conta. Entre novamente."
+      end
+    end
 
     def enforce_access_control_policy!
       access_result = AccessControl::Policy.call(admin_user: current_admin_user, request: request, controller: self)

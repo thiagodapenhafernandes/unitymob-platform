@@ -19,6 +19,8 @@ class LeadMailer < ApplicationMailer
 
   def welcome_lead
     @lead = params[:lead]
+    return if @lead.email.blank?
+
     @property = Habitation.find_by(id: @lead.property_id)
     admin_contact = ContactSetting.instance
 

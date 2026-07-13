@@ -75,7 +75,7 @@ class ApplicationController < ActionController::Base
 
   def apply_seo_redirect
     return unless request.get? || request.head?
-    return if request.path.start_with?("/admin", "/rails/active_storage", "/assets", "/packs")
+    return if request.path.start_with?("/admin", "/field", "/rails/active_storage", "/assets", "/packs")
 
     lookup_path = seo_redirect_lookup_path
     lookup_paths = [lookup_path, request.path].uniq
@@ -102,6 +102,8 @@ class ApplicationController < ActionController::Base
   end
 
   def load_layout_settings
+    return if request.path.start_with?("/field")
+
     admin_tenant = current_tenant if respond_to?(:current_tenant, true)
     tenant = request.path.start_with?("/admin") ? (admin_tenant || Tenant.public_for) : public_tenant
     @layout_setting = LayoutSetting.with_attached_logo.with_attached_favicon.find_by(tenant: tenant) || LayoutSetting.instance(tenant: tenant)
