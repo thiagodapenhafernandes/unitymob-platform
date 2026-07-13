@@ -4,26 +4,21 @@
   <!-- Advanced Filters Sidebar (Off-canvas) -->
   <div data-advanced-filters-target="overlay" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity duration-300" data-action="click->advanced-filters#close"></div>
   
-  <div data-advanced-filters-target="sidebar" class="public-habitations-index__drawer fixed top-[calc(72px+env(safe-area-inset-top))] right-0 h-[calc(100svh-72px-env(safe-area-inset-top))] w-full max-w-md bg-white z-50 transform translate-x-full transition-transform duration-300 shadow-2xl overflow-y-auto overscroll-contain">
+  <div data-advanced-filters-target="sidebar" role="dialog" aria-modal="true" aria-labelledby="public-filters-title" class="public-habitations-index__drawer fixed top-[calc(72px+env(safe-area-inset-top))] right-0 h-[calc(100svh-72px-env(safe-area-inset-top))] w-full max-w-md bg-white z-50 hidden transform translate-x-full transition-transform duration-300 shadow-2xl overflow-y-auto overscroll-contain">
     <div class="public-habitations-index__drawer-body p-6">
       <div class="public-habitations-index__drawer-header flex justify-between items-center mb-6">
-        <h3 class="public-habitations-index__drawer-title text-xl font-bold text-blue-three">Filtros avançados</h3>
-        <button type="button" data-action="click->advanced-filters#close" class="public-habitations-index__icon-button text-gray-400 hover:text-red-500 transition-colors">
+        <h3 id="public-filters-title" class="public-habitations-index__drawer-title text-xl font-bold text-blue-three">Filtrar imóveis</h3>
+        <button type="button" data-action="click->advanced-filters#close" class="public-habitations-index__icon-button text-gray-400 hover:text-red-500 transition-colors" aria-label="Fechar filtros">
           <i class="bi bi-x-lg text-xl"></i>
         </button>
       </div>
       
       <%= form_with url: habitations_path, method: :get, id: "advanced-filters-form" do |f| %>
-        <!-- Preserve existing params -->
-        <% Array(@selected_categories).each do |category| %>
-          <%= hidden_field_tag "category[]", category %>
-        <% end %>
-        <% Array(@selected_locations).each do |city| %>
-          <%= hidden_field_tag "city[]", city %>
-        <% end %>
-        <%= hidden_field_tag :price_range, params[:price_range] if params[:price_range].present? %>
         <%= hidden_field_tag :target_price, params[:target_price] %>
-        <%= hidden_field_tag :transaction_type, params[:transaction_type] %>
+
+        <div class="public-habitations-index__drawer-main-filters space-y-3 mb-6">
+          <%= render 'horizontal_filters_fields', f: f %>
+        </div>
 
         <%= render 'advanced_filters_fields', f: f %>
 
@@ -38,12 +33,11 @@
 
   <!-- Floating Filter Button (Mobile/Scroll) -->
   <button type="button" 
-          data-controller="scroll-visibility"
-          data-scroll-visibility-hidden-class="translate-y-24"
           data-action="click->advanced-filters#open"
-          class="public-habitations-index__floating-filter fixed bottom-6 right-6 z-50 bg-blue-three text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 translate-y-24 hover:scale-110 hover:bg-blue-one group">
-    <i class="bi bi-sliders text-2xl group-hover:rotate-180 transition-transform duration-500"></i>
-    <span class="sr-only">Filtros</span>
+          class="public-habitations-index__floating-filter fixed z-40 bg-blue-three text-white shadow-2xl flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:bg-blue-one group"
+          aria-label="Abrir filtros de imóveis">
+    <i class="bi bi-sliders text-lg" aria-hidden="true"></i>
+    <span>Filtros</span>
   </button>
 
   <!-- Horizontal Filter Bar (TOP) -->
@@ -97,11 +91,12 @@
       
       <div class="public-habitations-index__heading-row flex justify-between items-end">
         <h1 class="public-habitations-index__title text-2xl font-bold text-blue-three">
-          <%= @habitations.total_entries %> Imóveis encontrados
+          <span class="public-habitations-index__title-desktop"><%= @habitations.total_entries %> Imóveis encontrados</span>
+          <span class="public-habitations-index__title-mobile"><%= @habitations.total_entries %> imóveis</span>
         </h1>
         
         <div class="public-habitations-index__sort flex items-center gap-2">
-          <span class="text-sm text-gray-500">Ordenar por:</span>
+          <span class="public-habitations-index__sort-label text-sm text-gray-500">Ordenar por:</span>
           <select class="public-habitations-index__sort-select border-none text-sm font-bold text-blue-three focus:ring-0 cursor-pointer bg-transparent py-0 pl-0 pr-8" onchange="window.location.href = this.value">
             <option value="<%= habitations_path(request.query_parameters.merge(sort: 'newest', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'newest' || params[:sort].blank? %>>Mais recentes</option>
             <option value="<%= habitations_path(request.query_parameters.merge(sort: 'price_desc', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'price_desc' %>>Maior valor</option>
@@ -117,25 +112,7 @@
     <div class="container-custom">
   
   <!-- Banner Resultados de Busca -->
-  <%= display_banner('search_results') %>
-
-  <% listing_seo = current_public_seo_setting %>
-  <% if listing_seo&.public_applicable? && listing_seo.intro_text.present? %>
-    <section class="public-habitations-index__seo-intro bg-white border border-gray-100 rounded-xl p-6 md:p-8 shadow-sm mb-8">
-      <div class="prose prose-slate max-w-none text-gray-600 leading-relaxed">
-        <%= simple_format(listing_seo.intro_text) %>
-      </div>
-    </section>
-  <% end %>
-
-  <nav class="public-habitations-index__strategic-links bg-white border border-gray-100 rounded-xl p-5 shadow-sm mb-8" aria-label="Buscas estratégicas">
-    <h2 class="public-habitations-index__section-title text-sm font-bold text-blue-three uppercase tracking-wide mb-3">Buscas relacionadas</h2>
-    <div class="public-habitations-index__strategic-list flex flex-wrap gap-2">
-      <% Seo::StrategicLanding.property_links.each do |link| %>
-        <%= link_to link[:label], link[:path], class: "public-habitations-index__strategic-link inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-golden-one hover:text-blue-three transition-colors" %>
-      <% end %>
-    </div>
-  </nav>
+  <div class="public-habitations-index__banner"><%= display_banner('search_results') %></div>
   
   <div class="public-habitations-index__results results-section mt-8">
       
@@ -155,6 +132,26 @@
               outer_window: 0,
               previous_label: '<i class="bi bi-chevron-left"></i>',
               next_label: '<i class="bi bi-chevron-right"></i>' %>
+        </div>
+
+        <% listing_seo = current_public_seo_setting %>
+        <div class="public-habitations-index__supporting-content">
+          <% if listing_seo&.public_applicable? && listing_seo.intro_text.present? %>
+            <section class="public-habitations-index__seo-intro bg-white border border-gray-100 rounded-xl p-6 md:p-8 shadow-sm">
+              <div class="prose prose-slate max-w-none text-gray-600 leading-relaxed">
+                <%= simple_format(listing_seo.intro_text) %>
+              </div>
+            </section>
+          <% end %>
+
+          <nav class="public-habitations-index__strategic-links bg-white border border-gray-100 rounded-xl p-5 shadow-sm" aria-label="Buscas estratégicas">
+            <h2 class="public-habitations-index__section-title text-sm font-bold text-blue-three uppercase tracking-wide mb-3">Buscas relacionadas</h2>
+            <div class="public-habitations-index__strategic-list flex flex-wrap gap-2">
+              <% Seo::StrategicLanding.property_links.each do |link| %>
+                <%= link_to link[:label], link[:path], class: "public-habitations-index__strategic-link inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-golden-one hover:text-blue-three transition-colors" %>
+              <% end %>
+            </div>
+          </nav>
         </div>
       <% else %>
         <!-- Empty State -->
