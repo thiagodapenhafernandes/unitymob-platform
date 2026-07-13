@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly THRESHOLD_PERCENT="${THRESHOLD_PERCENT:-10}"
+readonly REQUIRED_SAMPLES="${REQUIRED_SAMPLES:-2}"
+readonly COOLDOWN_SECONDS="${COOLDOWN_SECONDS:-900}"
+readonly MAX_PUMA_WORKER_RSS_KB="${MAX_PUMA_WORKER_RSS_KB:-716800}"
+readonly WORKER_REQUIRED_SAMPLES="${WORKER_REQUIRED_SAMPLES:-2}"
+readonly WORKER_COOLDOWN_SECONDS="${WORKER_COOLDOWN_SECONDS:-300}"
+readonly WORKER_MAX_AVAILABLE_PERCENT="${WORKER_MAX_AVAILABLE_PERCENT:-30}"
+readonly STATE_DIR="${STATE_DIR:-/run/salute-memory-guard}"
+readonly COUNT_FILE="$STATE_DIR/pressure-count"
+readonly LAST_ACTION_FILE="$STATE_DIR/last-action"
+readonly LAST_WORKER_ACTION_FILE="$STATE_DIR/last-worker-action"
+readonly WORKER_COUNT_FILE="$STATE_DIR/worker-pressure-count"
+readonly LOCK_FILE="$STATE_DIR/lock"
+readonly PUMA_UNIT="${PUMA_UNIT:-puma_salute_imoveis_v3_production.service}"
+readonly QUEUE_UNIT="${QUEUE_UNIT:-solid_queue_salute_imoveis_v3_production.service}"
+
+mkdir -p "$STATE_DIR"
+exec 9>"$LOCK_FILE"
+flock -n 9 || exit 0
+
+mem_total_kb=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
+mem_available_kb=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
+available_percent=$((mem_available_kb * 100 / mem_total_kb))
+
+puma_master_pid=$(systemctl show "$PUMA_UNIT" -p MainPID --value)
+largest_worker_pid=""
+largest_worker_rss_kb=0
+read -r largest_worker_pid largest_worker_rss_kb < <(
+  ps --ppid "$puma_master_pid" -o pid=,rss=,args= |
+    awk '/puma: cluster worker/ {print $1, $2}' |
+    sort -k2,2nr |
+    head -1
+) || true
+
+worker_pressure_count=0
+if [[ -n "${largest_worker_pid:-}" ]] && (( largest_worker_rss_kb >= MAX_PUMA_WORKER_RSS_KB )); then
+  previous_worker_pid=0
+  [[ -f "$WORKER_COUNT_FILE" ]] && read -r previous_worker_pid worker_pressure_count < "$WORKER_COUNT_FILE"
+  [[ "$previous_worker_pid" == "$largest_worker_pid" ]] || worker_pressure_count=0
+  worker_pressure_count=$((worker_pressure_count + 1))
+  echo "$largest_worker_pid $worker_pressure_count" > "$WORKER_COUNT_FILE"
+
+  logger -p daemon.warning -t salute-memory-guard \
+    "puma worker pressure pid=${largest_worker_pid} rss_kb=${largest_worker_rss_kb} sample=${worker_pressure_count}/${WORKER_REQUIRED_SAMPLES} available=${available_percent}%"
+
+  now=$(date +%s)
+  last_worker_action=0
+  [[ -f "$LAST_WORKER_ACTION_FILE" ]] && read -r last_worker_action < "$LAST_WORKER_ACTION_FILE"
+
+  if (( worker_pressure_count >= WORKER_REQUIRED_SAMPLES )) &&
+     (( available_percent <= WORKER_MAX_AVAILABLE_PERCENT )) &&
+     (( now - last_worker_action >= WORKER_COOLDOWN_SECONDS )); then
+    logger -p daemon.warning -t salute-memory-guard \
+      "recycling puma_worker_pid=${largest_worker_pid} rss_kb=${largest_worker_rss_kb} limit_kb=${MAX_PUMA_WORKER_RSS_KB} available=${available_percent}%"
+    kill -TERM "$largest_worker_pid"
+    echo "$now" > "$LAST_WORKER_ACTION_FILE"
+    echo "0 0" > "$WORKER_COUNT_FILE"
+    exit 0
+  fi
+else
+  echo "0 0" > "$WORKER_COUNT_FILE"
+fi
+
+if (( available_percent > THRESHOLD_PERCENT )); then
+  echo 0 > "$COUNT_FILE"
+  logger -t salute-memory-guard "healthy available=${available_percent}% threshold=${THRESHOLD_PERCENT}%"
+  exit 0
+fi
+
+count=0
+[[ -f "$COUNT_FILE" ]] && read -r count < "$COUNT_FILE"
+count=$((count + 1))
+echo "$count" > "$COUNT_FILE"
+logger -p daemon.warning -t salute-memory-guard "pressure available=${available_percent}% sample=${count}/${REQUIRED_SAMPLES}"
+
+(( count >= REQUIRED_SAMPLES )) || exit 0
+
+now=$(date +%s)
+last_action=0
+[[ -f "$LAST_ACTION_FILE" ]] && read -r last_action < "$LAST_ACTION_FILE"
+if (( now - last_action < COOLDOWN_SECONDS )); then
+  logger -p daemon.warning -t salute-memory-guard \
+    "cooldown active available=${available_percent}% remaining=$((COOLDOWN_SECONDS - now + last_action))s"
+  exit 0
+fi
+
+puma_bytes=$(systemctl show "$PUMA_UNIT" -p MemoryCurrent --value)
+queue_bytes=$(systemctl show "$QUEUE_UNIT" -p MemoryCurrent --value)
+target_unit="$PUMA_UNIT"
+target_bytes=$puma_bytes
+if (( queue_bytes > puma_bytes )); then
+  target_unit="$QUEUE_UNIT"
+  target_bytes=$queue_bytes
+fi
+
+logger -p daemon.crit -t salute-memory-guard \
+  "restarting=${target_unit} available=${available_percent}% target_bytes=${target_bytes} puma_bytes=${puma_bytes} queue_bytes=${queue_bytes}"
+systemctl restart "$target_unit"
+echo "$now" > "$LAST_ACTION_FILE"
+echo 0 > "$COUNT_FILE"
+logger -p daemon.notice -t salute-memory-guard \
+  "restart complete unit=${target_unit} active=$(systemctl is-active "$target_unit")"

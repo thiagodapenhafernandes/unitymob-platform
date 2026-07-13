@@ -1,5 +1,5 @@
 class HabitationPhotoWatermarkJob < ApplicationJob
-  queue_as :default
+  queue_as :media
 
   ORIGINAL_BLOB_PURGE_DELAY = 15.minutes
 
