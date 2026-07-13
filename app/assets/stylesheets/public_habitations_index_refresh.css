@@ -13,6 +13,7 @@
   --phi-radius: 14px;
   background: var(--phi-soft);
   color: var(--phi-ink);
+  overflow-x: hidden;
   font-family: "Open Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -129,6 +130,10 @@
   box-shadow: -18px 0 48px rgba(2, 43, 58, 0.18);
 }
 
+.public-habitations-index__drawer.translate-x-full {
+  visibility: hidden;
+}
+
 .public-habitations-index__drawer-body {
   padding: 22px;
 }
@@ -150,13 +155,36 @@
   border-top-color: var(--phi-line);
 }
 
+.public-habitations-index__drawer .public-habitations-index__primary-button {
+  border-color: var(--phi-gold);
+  background: var(--phi-gold);
+  color: var(--phi-navy);
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(190, 139, 38, 0.24);
+}
+
+.public-habitations-index__drawer .public-habitations-index__primary-button:hover {
+  border-color: var(--phi-gold-2);
+  background: var(--phi-gold-2);
+  color: var(--phi-navy);
+}
+
 .public-habitations-index__floating-filter {
-  background: var(--phi-navy);
-  box-shadow: 0 18px 34px rgba(2, 43, 58, 0.24);
+  display: none;
+  background: var(--phi-gold);
+  color: var(--phi-navy);
+  box-shadow: 0 14px 30px rgba(190, 139, 38, 0.32);
+  right: 24px;
+  bottom: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  font-size: 0;
+  font-weight: 800;
 }
 
 .public-habitations-index__floating-filter:hover {
-  background: var(--phi-gold);
+  background: var(--phi-gold-2);
   color: var(--phi-navy);
 }
 
@@ -193,6 +221,10 @@
   letter-spacing: -0.01em;
 }
 
+.public-habitations-index__title-mobile {
+  display: none;
+}
+
 .public-habitations-index__sort {
   padding: 7px 10px;
   border: 1px solid var(--phi-line);
@@ -212,6 +244,12 @@
   background:
     linear-gradient(180deg, #f7f9fb 0%, #eef3f7 100%);
   padding-top: 26px;
+}
+
+.public-habitations-index__supporting-content {
+  display: grid;
+  gap: 24px;
+  margin-top: 48px;
 }
 
 .public-habitations-index__seo-intro,
@@ -338,7 +376,45 @@
   }
 
   .public-habitations-index__drawer {
+    top: 0;
+    height: 100dvh;
     max-width: none;
+    border-left: 0;
+  }
+
+  .public-habitations-index__drawer-body {
+    min-height: 100%;
+    padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+  }
+
+  .public-habitations-index__drawer-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    margin: 0 -18px 18px;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.98);
+  }
+
+  .public-habitations-index__drawer-main-filters > .relative,
+  .public-habitations-index__drawer-main-filters > button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .public-habitations-index__drawer-main-filters button,
+  .public-habitations-index__drawer-main-filters select,
+  .public-habitations-index__drawer input[type="text"],
+  .public-habitations-index__drawer input[type="number"] {
+    border-radius: 999px;
+  }
+
+  .public-habitations-index__drawer-main-filters [data-category-filter-target="panel"],
+  .public-habitations-index__drawer-main-filters [data-location-filter-target="panel"] {
+    position: relative;
+    top: auto;
+    margin-top: 6px;
+    max-height: 42dvh;
   }
 
   .public-habitations-index__filter-row > .relative,
@@ -346,6 +422,105 @@
   .public-habitations-index__apply-button {
     width: 100%;
     min-width: 0;
+  }
+
+  .public-habitations-index__filterbar {
+    display: none;
+  }
+
+  .public-habitations-index__heading {
+    padding: 12px 0;
+  }
+
+  .public-habitations-index__breadcrumb {
+    display: none;
+  }
+
+  .public-habitations-index__heading-row {
+    min-height: 42px;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .public-habitations-index__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: clamp(18px, 5.6vw, 22px);
+    white-space: nowrap;
+  }
+
+  .public-habitations-index__title-desktop {
+    display: none;
+  }
+
+  .public-habitations-index__title-mobile {
+    display: inline;
+  }
+
+  .public-habitations-index__sort {
+    flex: 0 1 48%;
+    width: auto;
+    min-width: 0;
+    padding: 6px 8px;
+  }
+
+  .public-habitations-index__sort-label {
+    display: none;
+  }
+
+  .public-habitations-index__sort-select {
+    width: 100%;
+    min-width: 0;
+    padding-right: 24px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .public-habitations-index__content {
+    min-height: 0;
+    padding: 12px 0 28px;
+  }
+
+  .public-habitations-index__banner {
+    display: none;
+  }
+
+  .public-habitations-index__results {
+    margin-top: 0;
+  }
+
+  .public-habitations-index__grid {
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .public-habitations-index__pagination {
+    margin-top: 24px;
+  }
+
+  .public-habitations-index__supporting-content {
+    gap: 16px;
+    margin-top: 36px;
+  }
+
+  .public-habitations-index__seo-intro,
+  .public-habitations-index__strategic-links {
+    padding: 20px;
+  }
+
+  .public-habitations-index__floating-filter {
+    display: flex;
+    left: 50%;
+    right: auto;
+    bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
+    width: auto;
+    height: 48px;
+    padding: 0 22px;
+    transform: translateX(-50%);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    font-size: 14px;
+    letter-spacing: 0.01em;
   }
 
   .public-habitations-index .public-property-card [class*="h-[320px]"] {
