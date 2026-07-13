@@ -108,8 +108,9 @@
     <!-- Link Overlay -->
     <%= link_to "",
                 property_path,
-                class: "absolute inset-0 z-10",
+                class: "absolute inset-0 z-10 pointer-events-none",
                 data: {
+                  clickable_card_tracking_link: true,
                   controller: "marketing-tracker",
                   action: "click->marketing-tracker#track",
                   marketing_tracker_event_type_value: "property_card_click",
