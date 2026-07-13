@@ -64,12 +64,14 @@
         </div>
 
         <!-- Row 2: Quick Filter Chips -->
-        <div class="public-habitations-index__quick-row flex flex-wrap items-center gap-2 pt-1">
-          <%= render 'quick_filter_chips' %>
+        <div class="public-habitations-index__quick-row flex items-center gap-2 pt-1">
+          <div class="public-habitations-index__quick-scroll flex min-w-0 flex-1 items-center gap-2">
+            <%= render 'quick_filter_chips' %>
+          </div>
 
           <!-- Clear Filters -->
           <% if params.except(:controller, :action, :page).present? %>
-            <%= link_to habitations_path, class: "public-habitations-index__clear-link flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors ml-auto" do %>
+            <%= link_to habitations_path, class: "public-habitations-index__clear-link flex flex-none items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors" do %>
               <i class="bi bi-x-circle"></i>
               Limpar filtros
             <% end %>

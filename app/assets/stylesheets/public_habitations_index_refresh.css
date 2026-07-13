@@ -14,6 +14,7 @@
   background: var(--phi-soft);
   color: var(--phi-ink);
   overflow-x: hidden;
+  margin-top: 0;
   font-family: "Open Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -28,6 +29,7 @@
   border-bottom: 1px solid var(--phi-line);
   box-shadow: 0 10px 28px rgba(2, 43, 58, 0.08);
   backdrop-filter: blur(12px);
+  margin-bottom: 72px;
 }
 
 .public-habitations-index__filter-form {
@@ -115,6 +117,27 @@
   color: #526173;
   font-weight: 700;
   box-shadow: 0 1px 2px rgba(2, 43, 58, 0.04);
+}
+
+.public-habitations-index__quick-row {
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.public-habitations-index__quick-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.public-habitations-index__quick-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.public-habitations-index__quick-scroll > * {
+  flex: 0 0 auto;
 }
 
 .public-habitations-index__quick-row label > input:checked + div,
@@ -354,9 +377,14 @@
 }
 
 @media (max-width: 1023px) {
+  .public-habitations-index {
+    margin-top: 72px;
+  }
+
   .public-habitations-index__filterbar {
     position: relative;
     top: auto;
+    margin-bottom: 0;
   }
 
   .public-habitations-index__heading-row {
