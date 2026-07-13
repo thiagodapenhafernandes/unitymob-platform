@@ -21,7 +21,7 @@
     aria: { label: title } do %>
   <article class="relative min-h-[430px] overflow-hidden rounded-xl bg-blue-three shadow-[0_18px_40px_rgba(2,43,58,0.18)] transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-[0_26px_56px_rgba(2,43,58,0.24)]">
     <% if image.present? %>
-      <%= image_tag public_image_url(image, resize_to_fill: [720, 860]),
+      <%= image_tag public_image_url(image, resize_to_fill: [720, 860], format: :webp),
           alt: title,
           class: "absolute inset-0 z-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105",
           loading: "lazy",

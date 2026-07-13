@@ -109,6 +109,23 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(Storage::TransformVariantJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480])
   end
 
+  it "inclui formato moderno na transformação solicitada" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("image"),
+      filename: "foto.jpg",
+      content_type: "image/jpeg"
+    )
+
+    allow(blob).to receive(:variable?).and_return(true)
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob).with(blob).and_return("https://cdn.saluteimoveis.com.br/#{blob.key}")
+    allow(Rails.cache).to receive(:write).and_return(true)
+    allow(Storage::TransformVariantJob).to receive(:perform_later)
+
+    described_class.resolve(blob, resize_to_fill: [640, 480], format: :webp)
+
+    expect(Storage::TransformVariantJob).to have_received(:perform_later).with(blob, resize_to_fill: [640, 480], format: :webp)
+  end
+
   it "não reenfileira variante temporariamente bloqueada por falha de integridade" do
     blob = ActiveStorage::Blob.create_and_upload!(
       io: StringIO.new("image"),
@@ -151,17 +168,33 @@ RSpec.describe Storage::PublicCdnImageUrl do
     expect(failure.fetch("recorded_at")).to be_present
   end
 
-  it "gera path relativo para representation sem exigir host default" do
+  it "gera path relativo pelo proxy para representation sem exigir host default" do
+    blob = instance_double(ActiveStorage::Blob, signed_id: "signed-blob")
+    variation = instance_double(ActiveStorage::Variation, key: "signed-variation")
+    filename = ActiveStorage::Filename.new("foto.webp")
+    variant = instance_double(ActiveStorage::VariantWithRecord, blob:, variation:, filename:)
+
+    expect(Rails.application.routes.url_helpers)
+      .to receive(:rails_blob_representation_proxy_path)
+      .with("signed-blob", "signed-variation", filename)
+      .and_return("/rails/active_storage/representations/signed/foto.jpg")
+
+    resolver = described_class.new(nil, representation_proxy: true)
+
+    expect(resolver.send(:representation_path, variant)).to eq("/rails/active_storage/representations/signed/foto.jpg")
+  end
+
+  it "mantém a rota de redirecionamento quando o proxy é desativado" do
     variant = instance_double(ActiveStorage::VariantWithRecord)
 
     expect(Rails.application.routes.url_helpers)
       .to receive(:rails_representation_path)
       .with(variant, only_path: true)
-      .and_return("/rails/active_storage/representations/signed/foto.jpg")
+      .and_return("/rails/active_storage/representations/redirect/signed/foto.jpg")
 
-    resolver = described_class.new(nil)
+    resolver = described_class.new(nil, proxy: false)
 
-    expect(resolver.send(:representation_path, variant)).to eq("/rails/active_storage/representations/signed/foto.jpg")
+    expect(resolver.send(:representation_path, variant)).to eq("/rails/active_storage/representations/redirect/signed/foto.jpg")
   end
 
   def address_attributes

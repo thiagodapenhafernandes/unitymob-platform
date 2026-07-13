@@ -1,4 +1,5 @@
-<div class="fixed inset-x-0 bottom-4 z-[90] hidden px-4"
+<% consent_already_accepted = cookies["salute_lgpd_consent"] == "accepted" %>
+<div class="fixed inset-x-0 bottom-4 z-[90] px-4 <%= "hidden" if consent_already_accepted %>"
      data-controller="lgpd-consent"
      data-lgpd-consent-target="banner"
      role="region"

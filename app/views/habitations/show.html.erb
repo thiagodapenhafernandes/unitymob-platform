@@ -11,9 +11,20 @@
 <% public_media_url = public_property_media_url(@habitation) %>
 <% map_coordinates = @public_map.center_coordinates if @public_map.visible? %>
 <% street_view_coordinates = @public_map.street_view_coordinates if @public_map.street_view_enabled? %>
+<% primary_image_source = images.first %>
+<% primary_image_url = public_image_url(primary_image_source, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) if primary_image_source %>
+<% primary_image_srcset = public_image_srcset(primary_image_source, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) if primary_image_source %>
 
 <% content_for :head do %>
   <%= json_ld_tag(real_estate_listing_schema(@habitation)) %>
+  <% if primary_image_url.present? %>
+    <link rel="preload"
+          as="image"
+          href="<%= primary_image_url %>"
+          imagesrcset="<%= primary_image_srcset %>"
+          imagesizes="(min-width: 1024px) 52vw, 100vw"
+          fetchpriority="high">
+  <% end %>
 <% end %>
 
 <div class="public-habitations-show bg-gray-50 min-h-screen pb-14 habitation-details"
@@ -61,7 +72,7 @@
              data-fancybox="property-gallery"
              data-caption="<%= title %> - Foto 1"
              class="public-habitations-show__gallery-primary relative block h-full overflow-hidden bg-gray-100">
-            <%= image_tag public_image_url(images.first, resize_to_limit: [1200, 900]),
+            <%= image_tag primary_image_url,
                 alt: "#{title} - Foto 1",
                 class: "h-full w-full object-cover transition-transform duration-700 hover:scale-105 #{public_gallery_image_class(images.first)}",
                 data: { public_gallery_mobile_target: "primaryImage" },
@@ -71,6 +82,7 @@
                 decoding: "async",
                 width: 960,
                 height: 720,
+                srcset: primary_image_srcset,
                 sizes: "(min-width: 1024px) 52vw, 100vw" %>
           </a>
 
@@ -80,7 +92,7 @@
                  data-fancybox="property-gallery"
                  data-caption="<%= title %> - Foto <%= index + 2 %>"
                  class="public-habitations-show__gallery-thumb relative block overflow-hidden bg-gray-100">
-                <%= image_tag public_image_url(photo, resize_to_limit: [720, 520]),
+                <%= image_tag public_image_url(photo, resize_to_fill: [720, 520], format: :webp),
                     alt: "#{title} - Foto #{index + 2}",
                     class: "h-full w-full object-cover transition-transform duration-700 hover:scale-105 #{public_gallery_image_class(photo)}",
                     style: public_gallery_image_style(photo),
@@ -88,6 +100,7 @@
                     decoding: "async",
                     width: 520,
                     height: 360,
+                    srcset: public_image_srcset(photo, widths: [360, 520, 720], aspect_ratio: 720.0 / 520, crop: true, format: :webp),
                     sizes: "24vw" %>
               </a>
             <% end %>

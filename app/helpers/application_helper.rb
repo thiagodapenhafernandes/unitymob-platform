@@ -23,15 +23,26 @@ module ApplicationHelper
     end
   end
 
-  def public_image_url(source, resize_to_limit: nil, resize_to_fill: nil, saver: { quality: 82 }, force_variant: false, proxy: true)
+  def public_image_url(source, resize_to_limit: nil, resize_to_fill: nil, format: nil, saver: { quality: 82 }, force_variant: false, proxy: true, representation_proxy: false)
     Storage::PublicCdnImageUrl.resolve(
       source,
       resize_to_limit:,
       resize_to_fill:,
+      format:,
       saver:,
       force_variant:,
-      proxy:
+      proxy:,
+      representation_proxy:
     )
+  end
+
+  def public_image_srcset(source, widths:, aspect_ratio: nil, crop: false, format: :webp, representation_proxy: false)
+    widths.filter_map do |width|
+      dimensions = aspect_ratio ? [width, (width / aspect_ratio.to_f).round] : [width, width]
+      transformations = crop ? { resize_to_fill: dimensions } : { resize_to_limit: dimensions }
+      url = public_image_url(source, **transformations, format:, representation_proxy:)
+      "#{url} #{width}w" if url.present?
+    end.join(", ").presence
   end
 
   def public_image_fallback_urls(source)

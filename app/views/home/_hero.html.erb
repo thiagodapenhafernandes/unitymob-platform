@@ -11,17 +11,23 @@
   <!-- Cinematic Slider Container -->
   <div class="hero-slider-container">
     <% (@hero_images.presence || [{ source: asset_path("hero_05.jpeg"), alt: "Salute Imóveis - Luxo e Exclusividade" }]).each_with_index do |image, index| %>
-      <% desktop_source = public_image_url(image[:source]).presence || image[:source] %>
-      <% mobile_source = public_image_url(image[:mobile_source] || image[:source]).presence || image[:mobile_source] || image[:source] %>
+      <% desktop_source = public_image_url(image[:source], resize_to_limit: [1920, 1080], format: :webp, representation_proxy: true).presence || image[:source] %>
+      <% mobile_source = public_image_url(image[:mobile_source] || image[:source], resize_to_limit: [900, 1600], format: :webp, representation_proxy: true).presence || image[:mobile_source] || image[:source] %>
+      <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
       <div class="hero-slide <%= 'active' if index == 0 %>" data-hero-slider-target="slide">
-        <%= image_tag desktop_source,
+        <%= image_tag(index.zero? ? desktop_source : placeholder,
                       class: "hero-image", 
                       alt: image[:alt],
-                      srcset: "#{mobile_source} 900w, #{desktop_source} 1920w",
+                      srcset: ("#{mobile_source} 900w, #{desktop_source} 1920w" if index.zero?),
                       sizes: "100vw",
                       fetchpriority: index == 0 ? "high" : "low",
                       loading: index == 0 ? "eager" : "lazy",
-                      decoding: "async" %>
+                      decoding: "async",
+                      data: (index.zero? ? {} : {
+                        hero_slider_image: true,
+                        src: desktop_source,
+                        srcset: "#{mobile_source} 900w, #{desktop_source} 1920w"
+                      })) %>
       </div>
     <% end %>
   </div>
