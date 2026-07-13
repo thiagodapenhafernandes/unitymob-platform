@@ -16,4 +16,14 @@ RSpec.describe LeadMailer, type: :mailer do
       expect(body).not_to include("https://wa.me/555547999729441")
     end
   end
+
+  describe "#welcome_lead" do
+    it "não monta mensagem SMTP quando o lead não informou e-mail" do
+      lead = create(:lead, email: "")
+
+      mail = described_class.with(lead: lead).welcome_lead
+
+      expect(mail.message).to be_a(ActionMailer::Base::NullMail)
+    end
+  end
 end
