@@ -14,6 +14,20 @@ RSpec.describe SeoSetting, type: :model do
     end
   end
 
+  describe "#related_habitation" do
+    it "consulta o imóvel sem materializar toda a relação do tenant" do
+      relation = double("tenant habitations")
+      tenant = double("tenant", habitations: relation)
+      seo_setting = described_class.new(canonical_key: "property:4114")
+
+      allow(Current).to receive(:tenant).and_return(tenant)
+      expect(relation).not_to receive(:blank?)
+      expect(relation).to receive(:find_by).with(codigo: "4114").and_return(:habitation)
+
+      expect(seo_setting.send(:related_habitation)).to eq(:habitation)
+    end
+  end
+
   describe ".page_type_label_for" do
     it "traduz tipos técnicos de página para pt-BR" do
       expect(described_class.page_type_label_for("property_show")).to eq("Imóvel")

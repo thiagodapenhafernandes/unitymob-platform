@@ -20,6 +20,7 @@ module Integrations
         @integration.update_column(:last_feed_at, Time.current)
 
         return unless should_render
+        return head :ok if request.head?
 
         render_feed(scope.limit(feed_limit))
       end
@@ -83,16 +84,23 @@ module Integrations
         case @integration.feed_strategy
         when "olx_xml"
           serializer = Portal::OlxXmlSerializer.new(habitations: habitations, integration: @integration)
-          render xml: serializer.to_xml
+          stream_xml(serializer)
         when "olx_json"
           serializer = Portal::OlxJsonSerializer.new(habitations: habitations, integration: @integration, portal: @portal)
           render json: serializer.as_json
         when "chaves_xml"
           serializer = Portal::ChavesXmlSerializer.new(habitations: habitations, integration: @integration)
-          render xml: serializer.to_xml
+          stream_xml(serializer)
         else
           serializer = Portal::VrsyncXmlSerializer.new(habitations: habitations, integration: @integration)
-          render xml: serializer.to_xml
+          stream_xml(serializer)
+        end
+      end
+
+      def stream_xml(serializer)
+        response.headers["Content-Type"] = "application/xml; charset=utf-8"
+        self.response_body = Enumerator.new do |output|
+          serializer.to_xml(target: output)
         end
       end
     end

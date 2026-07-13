@@ -15,8 +15,8 @@ module Portal
       @integration = integration
     end
 
-    def to_xml
-      xml = Builder::XmlMarkup.new(indent: 2)
+    def to_xml(target: nil)
+      xml = Builder::XmlMarkup.new(**{ indent: 2 }.merge(target ? { target: target } : {}))
       xml.instruct!
 
       xml.imoveis(gerado_em: Time.current.iso8601, total: @habitations.respond_to?(:size) ? @habitations.size : nil) do
@@ -107,7 +107,7 @@ module Portal
         end
       end
 
-      xml.target!
+      target ? nil : xml.target!
     end
 
     private
