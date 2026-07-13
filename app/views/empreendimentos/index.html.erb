@@ -101,7 +101,7 @@
           <% @empreendimentos.each do |empreendimento| %>
             <% unit_count = @unit_counts[empreendimento.codigo] || 0 %>
             <% image = empreendimento.primary_image_source %>
-            <% image_url = public_image_url(image, resize_to_fill: [840, 512]) if image.present? %>
+            <% image_url = public_image_url(image, resize_to_fill: [840, 512], format: :webp) if image.present? %>
             
             <div class="bg-white rounded-3xl shadow-sm hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 h-full flex flex-col transform hover:-translate-y-2 cursor-pointer"
                  data-controller="clickable-card"
@@ -111,6 +111,7 @@
               <div class="relative h-64 overflow-hidden bg-gray-100">
                 <% if image_url.present? %>
                   <img src="<%= image_url %>"
+                       sizes="(min-width: 1024px) 352px, (min-width: 768px) 50vw, 100vw"
                        alt="<%= empreendimento.nome_empreendimento %>" 
                        width="420"
                        height="256"

@@ -40,7 +40,7 @@ module Storage
       :FotoPequena
     ].freeze
 
-    TRANSFORMATION_KEYS = %i[resize_to_limit resize_to_fill].freeze
+    TRANSFORMATION_KEYS = %i[resize_to_limit resize_to_fill format].freeze
     TRUSTED_EXTERNAL_IMAGE_HOSTS = [
       "dwvimagesv1.b-cdn.net"
     ].freeze
@@ -179,7 +179,16 @@ module Storage
     end
 
     def representation_path(variant)
-      Rails.application.routes.url_helpers.rails_representation_path(variant, only_path: true)
+      routes = Rails.application.routes.url_helpers
+      if options.fetch(:representation_proxy, false) && routes.respond_to?(:rails_blob_representation_proxy_path)
+        routes.rails_blob_representation_proxy_path(
+          variant.blob.signed_id,
+          variant.variation.key,
+          variant.filename
+        )
+      else
+        routes.rails_representation_path(variant, only_path: true)
+      end
     end
 
     def transform_failed?(blob)

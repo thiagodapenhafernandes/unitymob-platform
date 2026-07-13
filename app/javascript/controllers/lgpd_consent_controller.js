@@ -6,6 +6,8 @@ const ACCEPTED_VALUE = "accepted"
 const COOKIE_MAX_AGE = 180 * 24 * 60 * 60
 
 function consentAccepted() {
+  if (document.cookie.split(";").some((cookie) => cookie.trim() === `${COOKIE_KEY}=${ACCEPTED_VALUE}`)) return true
+
   try {
     return window.localStorage.getItem(STORAGE_KEY) === ACCEPTED_VALUE
   } catch (_error) {
@@ -21,9 +23,7 @@ export default class extends Controller {
   static targets = ["banner"]
 
   connect() {
-    if (consentAccepted()) return
-
-    this.bannerTarget.classList.remove("hidden")
+    this.bannerTarget.classList.toggle("hidden", consentAccepted())
   }
 
   accept() {

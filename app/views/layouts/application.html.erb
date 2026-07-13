@@ -46,8 +46,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <% if defined?(@hero_preload_source) && @hero_preload_source.present? %>
-      <% hero_preload_source = public_image_url(@hero_preload_source) %>
-      <% hero_preload_mobile_source = public_image_url(@hero_preload_mobile_source || @hero_preload_source) %>
+      <% hero_preload_source = public_image_url(@hero_preload_source, resize_to_limit: [1920, 1080], format: :webp, representation_proxy: true) %>
+      <% hero_preload_mobile_source = public_image_url(@hero_preload_mobile_source || @hero_preload_source, resize_to_limit: [900, 1600], format: :webp, representation_proxy: true) %>
       <link rel="preload"
             as="image"
             href="<%= hero_preload_source %>"
@@ -161,7 +161,12 @@
     <% public_page_stylesheets.each do |stylesheet| %>
       <%= stylesheet_link_tag stylesheet, "data-turbo-track": "reload" %>
     <% end %>
-    <%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload" %>
+    <link rel="preload"
+          href="<%= asset_path("ax_toast.css") %>"
+          as="style"
+          onload="this.onload=null;this.rel='stylesheet'"
+          data-turbo-track="reload">
+    <noscript><%= stylesheet_link_tag "ax_toast", "data-turbo-track": "reload" %></noscript>
     
     <%# JS with Defer %>
     <%= javascript_importmap_tags "public" %>
