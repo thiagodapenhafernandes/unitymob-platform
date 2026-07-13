@@ -103,6 +103,9 @@ Rails.application.configure do
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
   config.active_job.queue_adapter = :solid_queue
+  # Analise de imagens pode abrir arquivos grandes. Mantem esse trabalho fora
+  # das filas operacionais de check-in, notificacoes e e-mail.
+  config.active_storage.queues.analysis = :media
   # config.active_job.queue_name_prefix = "unitymob_crm_production"
 
   config.action_mailer.perform_caching = false
