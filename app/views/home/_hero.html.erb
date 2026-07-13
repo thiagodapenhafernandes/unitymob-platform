@@ -2,7 +2,7 @@
 <% overlay_opacity = @home_setting.overlay_opacity || 0.7 %>
 
 <!-- Hero Section - Cinematic Master Edition -->
-<section id="hero" class="relative min-h-[100dvh] md:h-[90vh] lg:h-screen pt-[env(safe-area-inset-top)] py-8 md:py-0 flex items-center justify-center bg-gray-900 overflow-x-clip"
+<section id="hero" class="relative min-h-[100dvh] md:h-[90vh] lg:h-screen flex items-start md:items-center justify-center bg-gray-900 overflow-x-clip"
          data-controller="hero-slider" 
          data-hero-slider-interval-value="10000"
          style="--hero-overlay-start: <%= overlay_color %><%= format('%02x', (overlay_opacity * 255).to_i) %>; 
@@ -37,13 +37,13 @@
   
   <!-- Content -->
   <div class="container-custom hero-content-wrapper w-full">
-    <div class="text-center mb-6 md:mb-10 max-w-4xl mx-auto">
-      <h1 class="font-bold text-white mb-3 sm:mb-6 tracking-tight leading-tight px-2 break-words"
-          style="font-size: clamp(2rem, <%= @home_setting.hero_title_font_size_value %>px, 9vw);">
+    <div class="hero-copy text-center max-w-4xl mx-auto">
+      <h1 class="hero-title font-bold text-white tracking-tight px-2 break-words"
+          style="--hero-title-configured-size: <%= @home_setting.hero_title_font_size_value %>px;">
         <%= @home_setting.hero_title || "Encontre o imóvel dos seus sonhos" %>
       </h1>
-      <p class="text-white/90 max-w-2xl mx-auto font-medium px-4"
-         style="font-size: clamp(0.875rem, <%= @home_setting.hero_subtitle_font_size_value %>px, 4vw);">
+      <p class="hero-subtitle text-white/90 max-w-2xl mx-auto font-medium px-3"
+         style="--hero-subtitle-configured-size: <%= @home_setting.hero_subtitle_font_size_value %>px;">
         <%= @home_setting.hero_subtitle || "As melhores oportunidades em Balneário Camboriú e região" %>
       </p>
     </div>
