@@ -69,7 +69,11 @@
         <% if card_images.present? %>
           <% card_images.each_with_index do |pic, index| %>
             <div class="swiper-slide w-full aspect-[4/3]" style="width: 100% !important; flex-shrink: 0 !important;">
-              <% image_source = public_image_url(pic, resize_to_fill: [640, 480], format: :webp) %>
+              <% image_source = if index.zero?
+                public_image_url(pic, resize_to_fill: [640, 480], format: :webp)
+              else
+                public_image_url(pic)
+              end %>
               <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
               <%= image_tag(index.zero? ? image_source : placeholder,
                     alt: property_title,
