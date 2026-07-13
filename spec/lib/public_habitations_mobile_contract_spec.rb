@@ -22,4 +22,11 @@ RSpec.describe "Public habitations mobile listing contract" do
     expect(style_source).to match(/@media \(max-width: 640px\).*?\.public-habitations-index__filterbar \{\s*display: none;/m)
     expect(style_source).to match(/\.public-habitations-index__floating-filter \{.*?left: 50%;.*?transform: translateX\(-50%\);/m)
   end
+
+  it "keeps desktop quick filters and clear action on a single row" do
+    expect(view_source).to include("public-habitations-index__quick-scroll")
+    expect(view_source).to include("public-habitations-index__clear-link flex flex-none")
+    expect(style_source).to match(/\.public-habitations-index__quick-row \{.*?flex-wrap: nowrap;/m)
+    expect(style_source).to match(/\.public-habitations-index__quick-scroll \{.*?overflow-x: auto;/m)
+  end
 end
