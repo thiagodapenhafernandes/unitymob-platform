@@ -2,7 +2,7 @@ module Leads
   class Attribution
     TRACKING_KEYS = %w[
       landing_url referrer_url utm_source utm_medium utm_campaign utm_term
-      utm_content gclid fbclid msclkid
+      utm_content utm_id campaign_id gad_campaignid gclid fbclid msclkid gbraid wbraid
     ].freeze
     PAID_MEDIA = %w[cpc ppc paid paid_social paidsearch display retargeting].freeze
 

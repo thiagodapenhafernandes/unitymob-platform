@@ -254,7 +254,7 @@ export default class extends Controller {
 
   currentAttribution() {
     const params = new URLSearchParams(window.location.search)
-    const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "fbclid", "msclkid"]
+    const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id", "campaign_id", "gad_campaignid", "gclid", "fbclid", "msclkid", "gbraid", "wbraid"]
 
     return keys.reduce((payload, key) => {
       const value = params.get(key)
