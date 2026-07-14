@@ -14,8 +14,9 @@ class LeadsController < ApplicationController
     permitted[:property_id] = nil if permitted[:property_id].present? && habitation.blank?
 
     @lead = public_tenant.leads.new(permitted)
-    @lead.source_url = request.referer
+    @lead.source_url = source_page_url
     apply_share_attribution(@lead)
+    Leads::Attribution.apply!(@lead, raw: attribution_params, request: request)
     
     if @lead.save
       InterestIntelligence::SessionLinker.call(
@@ -36,6 +37,7 @@ class LeadsController < ApplicationController
 
       # Disparar Webhook
       # Disparar Webhook para todos os endpoints configurados
+      attribution = @lead.attribution_data.to_h
       WebhookService.send_form_data('whatsapp_lead', @lead.attributes.merge(
         property_code: habitation&.codigo,
         property_title: habitation&.display_title,
@@ -43,15 +45,15 @@ class LeadsController < ApplicationController
         business_type: business_type,
         business_type_label: Whatsapp::SiteRouting::NEGOTIATION_TYPES[business_type],
         page_url: source_page_url,
-        referrer_url: params.dig(:lead, :referrer_url),
-        utm_source: params.dig(:lead, :utm_source),
-        utm_medium: params.dig(:lead, :utm_medium),
-        utm_campaign: params.dig(:lead, :utm_campaign),
-        utm_term: params.dig(:lead, :utm_term),
-        utm_content: params.dig(:lead, :utm_content),
-        gclid: params.dig(:lead, :gclid),
-        fbclid: params.dig(:lead, :fbclid),
-        msclkid: params.dig(:lead, :msclkid)
+        referrer_url: attribution["referrer_url"],
+        utm_source: attribution["utm_source"],
+        utm_medium: attribution["utm_medium"],
+        utm_campaign: attribution["utm_campaign"],
+        utm_term: attribution["utm_term"],
+        utm_content: attribution["utm_content"],
+        gclid: attribution["gclid"],
+        fbclid: attribution["fbclid"],
+        msclkid: attribution["msclkid"]
       ).compact, request: request)
 
       # Send Emails (Async)
@@ -85,6 +87,12 @@ class LeadsController < ApplicationController
 
   def source_page_url
     params.dig(:lead, :page_url).presence || request.referer
+  end
+
+  def attribution_params
+    raw = params.require(:lead).permit(*Leads::Attribution::TRACKING_KEYS).to_h
+    raw["landing_url"] = raw["landing_url"].presence || source_page_url
+    raw
   end
 
   def lead_whatsapp_message
