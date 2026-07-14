@@ -732,6 +732,7 @@
               display_name = lead.display_name.presence || lead.name
               contact_parts = [lead.display_email, lead.display_phone].compact_blank
               phone_digits = lead.display_phone.to_s.gsub(/[^0-9+]/, "")
+              conversion = lead_conversion_summary(lead)
             %>
             <article id="lead_<%= lead.id %>" class="lead-list-row" role="listitem">
               <div class="lead-list-row__identity">
@@ -762,7 +763,7 @@
 
               <div class="lead-list-row__context">
                 <div class="lead-list-row__origin">
-                  <%= ax_badge(lead.origin.presence || "Origem não informada", tone: :gray) %>
+                  <%= ax_badge(conversion[:channel_label], tone: conversion[:color].to_sym) %>
                   <span><i class="bi bi-person-badge"></i><%= lead.admin_user&.name.presence || "Sem corretor atribuído" %></span>
                 </div>
                 <div class="lead-list-row__property">

@@ -48,18 +48,34 @@ module Admin::ComercialHelper
   # origin/lead_type/other_information. Fonte única para o cabeçalho e a timeline.
   def lead_conversion_summary(lead)
     info = lead.other_information.is_a?(Hash) ? lead.other_information : {}
+    attribution = lead.attribution_data.is_a?(Hash) ? lead.attribution_data : {}
     origin = lead.origin.to_s.downcase
     lead_type = lead.lead_type.to_s.downcase
+    attributed_channel = lead.attribution_channel.to_s
 
     channel, channel_label, icon, color =
-      if origin.include?("facebook") || origin.include?("instagram") || origin.include?("meta") || info["meta_page_id"].present?
-        [:meta, "Meta Ads", "bi-meta", "blue"]
-      elsif origin == "webhook" || lead_type == "webhook" || info["inbound_webhook_endpoint"].present?
+      if origin == "webhook" || lead_type == "webhook" || info["inbound_webhook_endpoint"].present?
         [:webhook, "Webhook", "bi-plug", "blue"]
       elsif origin.include?("compartilh") || lead.share_token.present?
         [:share, "Link do corretor", "bi-share", "green"]
       elsif origin.include?("zap") || origin.include?("vivareal") || origin.include?("olx")
         [:portal, "Portal imobiliário", "bi-buildings", "amber"]
+      elsif attributed_channel == "google_ads"
+        [:google_ads, "Google Ads", "bi-google", "blue"]
+      elsif attributed_channel == "meta_ads"
+        [:meta, "Meta Ads", "bi-meta", "blue"]
+      elsif attributed_channel == "microsoft_ads"
+        [:microsoft_ads, "Microsoft Ads", "bi-microsoft", "blue"]
+      elsif attributed_channel == "organic_search"
+        [:organic_search, lead.origin.presence || "Busca orgânica", "bi-search", "green"]
+      elsif attributed_channel == "organic_social"
+        [:organic_social, lead.origin.presence || "Social orgânico", "bi-instagram", "green"]
+      elsif attributed_channel == "referral"
+        [:referral, lead.origin.presence || "Referência", "bi-box-arrow-in-right", "amber"]
+      elsif attributed_channel == "direct"
+        [:direct, "Direto / origem desconhecida", "bi-compass", "gray"]
+      elsif origin.include?("facebook") || origin.include?("instagram") || origin.include?("meta") || info["meta_page_id"].present?
+        [:meta, "Meta Ads", "bi-meta", "blue"]
       elsif origin.include?("whatsapp") || lead_type.include?("whatsapp")
         [:whatsapp, "WhatsApp", "bi-whatsapp", "green"]
       elsif lead_type.present? || lead.source_url.present?
@@ -68,8 +84,9 @@ module Admin::ComercialHelper
         [:other, lead.origin.presence || "Origem não informada", "bi-inbox", "gray"]
       end
 
-    source_url   = lead.source_url.presence || info["source_url"].presence || info["page_url"].presence
-    campaign     = info["utm_campaign"].presence || info["campanha"].presence
+    source_url   = attribution["landing_url"].presence || lead.source_url.presence || info["source_url"].presence || info["page_url"].presence
+    referrer_url = attribution["referrer_url"].presence
+    campaign     = attribution["utm_campaign"].presence || info["utm_campaign"].presence || info["campanha"].presence
     received_by  = info["inbound_webhook_user_name"].presence
     webhook_tags = Array(info["webhook_tags"]).compact_blank
 
@@ -78,7 +95,13 @@ module Admin::ComercialHelper
 
     sentence =
       case channel
+      when :google_ads then "Convertido via Google Ads"
       when :meta     then "Convertido via Meta Ads#{" — formulário #{info['meta_form_id']}" if info['meta_form_id'].present?}"
+      when :microsoft_ads then "Convertido via Microsoft Ads"
+      when :organic_search then "Convertido por busca orgânica"
+      when :organic_social then "Convertido por rede social"
+      when :referral then "Convertido por site de referência"
+      when :direct then "Origem direta ou não identificada"
       when :webhook  then "Convertido via webhook#{" — recebido por #{received_by}" if received_by}"
       when :share    then "Convertido pelo link compartilhado#{" por #{lead.shared_by_admin_user.name}" if lead.shared_by_admin_user}"
       when :portal   then "Convertido via portal (#{channel_label})"
@@ -90,7 +113,13 @@ module Admin::ComercialHelper
     # Frase de proveniência (para o bloco no cabeçalho) — literal, "como veio".
     headline =
       case channel
+      when :google_ads then "Criado por um anúncio no Google Ads"
       when :meta     then "Criado por um anúncio no Meta Ads (Facebook/Instagram)"
+      when :microsoft_ads then "Criado por um anúncio no Microsoft Ads"
+      when :organic_search then "Criado por uma busca orgânica (#{channel_label})"
+      when :organic_social then "Criado por acesso social (#{channel_label})"
+      when :referral then "Criado por uma referência externa (#{channel_label})"
+      when :direct then "Acesso direto ou origem não identificada"
       when :webhook  then "Criado via webhook externo#{" · recebido por #{received_by}" if received_by}"
       when :share    then "Criado pelo link compartilhado#{" por #{lead.shared_by_admin_user.name}" if lead.shared_by_admin_user}"
       when :portal   then "Criado por um portal imobiliário (#{channel_label})"
@@ -108,7 +137,10 @@ module Admin::ComercialHelper
       color: color,
       origin: lead.origin.presence,
       source_url: source_url,
+      referrer_url: referrer_url,
       campaign: campaign,
+      medium: attribution["utm_medium"].presence,
+      term: attribution["utm_term"].presence,
       product: lead.product.presence,
       received_by: received_by,
       tags: webhook_tags

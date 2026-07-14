@@ -3350,7 +3350,10 @@ CREATE TABLE public.leads (
     vista_payload jsonb DEFAULT '{}'::jsonb NOT NULL,
     business_scoped_user_id character varying,
     tags jsonb DEFAULT '[]'::jsonb NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    attribution_channel character varying,
+    attribution_source character varying,
+    attribution_data jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -10769,6 +10772,13 @@ CREATE INDEX index_leads_on_status_waiting_acceptance ON public.leads USING btre
 
 
 --
+-- Name: index_leads_on_tenant_and_attribution_channel; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_attribution_channel ON public.leads USING btree (tenant_id, attribution_channel);
+
+
+--
 -- Name: index_leads_on_tags; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14714,6 +14724,7 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260713224000'),
 ('20260712173000'),
 ('20260712170000'),
 ('20260712123000'),
@@ -15048,4 +15059,3 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251122130154'),
 ('20251122125348'),
 ('20251122125042');
-

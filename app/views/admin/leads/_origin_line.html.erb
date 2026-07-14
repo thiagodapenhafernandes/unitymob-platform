@@ -12,12 +12,23 @@
       <% if conv[:campaign].present? %>
         <span class="lead-origin-block__fact"><i class="bi bi-megaphone"></i><%= conv[:campaign] %></span>
       <% end %>
+      <% if conv[:medium].present? %>
+        <span class="lead-origin-block__fact"><i class="bi bi-broadcast"></i><%= conv[:medium] %></span>
+      <% end %>
+      <% if conv[:term].present? %>
+        <span class="lead-origin-block__fact"><i class="bi bi-search"></i><%= conv[:term] %></span>
+      <% end %>
       <% conv[:tags].first(4).each do |tag| %>
         <span class="lead-origin-block__tag"><%= tag %></span>
       <% end %>
       <% if conv[:source_url].present? %>
         <%= link_to conv[:source_url], target: "_blank", rel: "noopener", class: "lead-origin-block__link", title: conv[:source_url] do %>
           <i class="bi bi-box-arrow-up-right"></i>Página de origem
+        <% end %>
+      <% end %>
+      <% if conv[:referrer_url].present? %>
+        <%= link_to conv[:referrer_url], target: "_blank", rel: "noopener", class: "lead-origin-block__link", title: conv[:referrer_url] do %>
+          <i class="bi bi-signpost-split"></i>Referenciador
         <% end %>
       <% end %>
     </div>

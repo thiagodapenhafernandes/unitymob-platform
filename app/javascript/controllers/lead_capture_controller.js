@@ -1,6 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
+  static attributionStorageKey = "unitymob_first_touch_attribution_v1"
+  static attributionTtlMs = 90 * 24 * 60 * 60 * 1000
+
   static targets = ["modal", "propertyId", "leadType", "origin", "shareToken", "name", "phone", "email", "submitButton"]
   static values = {
     enabled: Boolean,
@@ -9,6 +12,8 @@ export default class extends Controller {
   }
 
   connect() {
+    this.persistFirstTouchAttribution()
+
     // Close on escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.hasModalTarget && !this.modalTarget.classList.contains('hidden')) {
@@ -215,6 +220,39 @@ export default class extends Controller {
   }
 
   trackingParams() {
+    return this.storedFirstTouchAttribution() || this.currentAttribution()
+  }
+
+  persistFirstTouchAttribution() {
+    if (this.storedFirstTouchAttribution()) return
+
+    const attribution = this.currentAttribution()
+
+    try {
+      window.localStorage.setItem(this.constructor.attributionStorageKey, JSON.stringify({
+        attribution,
+        expires_at: Date.now() + this.constructor.attributionTtlMs
+      }))
+    } catch (_error) {
+      // Navegação privada ou política do navegador pode bloquear storage.
+    }
+  }
+
+  storedFirstTouchAttribution() {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(this.constructor.attributionStorageKey))
+      if (!stored?.attribution || Number(stored.expires_at) <= Date.now()) {
+        window.localStorage.removeItem(this.constructor.attributionStorageKey)
+        return null
+      }
+
+      return stored.attribution
+    } catch (_error) {
+      return null
+    }
+  }
+
+  currentAttribution() {
     const params = new URLSearchParams(window.location.search)
     const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "fbclid", "msclkid"]
 
@@ -222,6 +260,9 @@ export default class extends Controller {
       const value = params.get(key)
       if (value) payload[key] = value
       return payload
-    }, {})
+    }, {
+      landing_url: window.location.href,
+      referrer_url: document.referrer
+    })
   }
 }
