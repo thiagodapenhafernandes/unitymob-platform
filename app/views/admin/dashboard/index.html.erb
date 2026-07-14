@@ -202,19 +202,19 @@
   <% end %>
 
   <% if @dashboard_tab == "properties" %>
-  <div class="ax-dashboard-grid ax-dashboard-grid--monitoring">
+  <div class="ax-dashboard-properties-top">
     <%= turbo_frame_tag "admin_dashboard_rankings", src: admin_dashboard_section_path("rankings", dashboard_filter_params), loading: "lazy" do %>
-      <div class="ax-dashboard-grid ax-dashboard-grid--rankings <%= 'ax-dashboard-grid--rankings-single' unless @field_feature_enabled %>">
+      <div class="ax-dashboard-grid ax-dashboard-grid--rankings ax-dashboard-grid--rankings-single">
         <%= render "admin/dashboard/sections/loading_panel", title: "Carteira por corretor", eyebrow: "Distribuição", rows: 5, compact: true %>
       </div>
     <% end %>
-  </div>
 
-  <%= turbo_frame_tag "admin_dashboard_operations", src: admin_dashboard_section_path("operations", dashboard_filter_params), loading: "lazy" do %>
-    <div class="ax-dashboard-grid ax-dashboard-grid--operations">
-      <%= render "admin/dashboard/sections/loading_panel", title: "Últimos imóveis atualizados", eyebrow: "Catálogo", table: true, rows: 6 %>
-    </div>
-  <% end %>
+    <%= turbo_frame_tag "admin_dashboard_operations", src: admin_dashboard_section_path("operations", dashboard_filter_params), loading: "lazy" do %>
+      <div class="ax-dashboard-grid ax-dashboard-grid--operations ax-dashboard-grid--single">
+        <%= render "admin/dashboard/sections/loading_panel", title: "Qualidade e últimas atualizações", eyebrow: "Catálogo", table: true, rows: 6 %>
+      </div>
+    <% end %>
+  </div>
 
   <%= turbo_frame_tag "admin_dashboard_support", src: admin_dashboard_section_path("support", dashboard_filter_params), loading: "lazy" do %>
     <div class="ax-dashboard-grid ax-dashboard-grid--support">
