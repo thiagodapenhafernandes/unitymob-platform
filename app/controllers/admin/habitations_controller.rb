@@ -1464,7 +1464,8 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def pending_intake_review_scope(scope)
-    scope = scope.broker_intakes.where(intake_status: "submitted_for_admin_review")
+    review_statuses = tenant_owner? ? Habitation::PENDING_REVIEW_INTAKE_STATUSES : %w[submitted_for_admin_review]
+    scope = scope.broker_intakes.where(intake_status: review_statuses)
 
     if can_review_intakes?
       return restrict_pending_review_to_manager_team(scope) if current_admin_user&.can_view_team?(:captacoes) && !owns_all_resource?(:captacoes) && !tenant_owner?
@@ -1641,10 +1642,43 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def property_owned_by_team?(habitation)
-    ids = current_admin_user.team_scope_ids
+    ids = manager_team_user_ids
     return true if ids.include?(habitation.admin_user_id)
+    return true if property_matches_team_broker_name?(habitation, ids)
 
     habitation.broker_assignments.exists?(admin_user_id: ids)
+  end
+
+  def property_matches_team_broker_name?(habitation, team_ids)
+    return false if team_ids.blank?
+
+    broker_names = team_broker_names_for(team_ids)
+    return false if broker_names.blank?
+
+    candidates = [
+      habitation.corretor_nome,
+      (habitation.primary_captador_name if habitation.respond_to?(:primary_captador_name))
+    ].compact_blank.map { |value| normalize_broker_match_text(value) }
+
+    candidates.any? do |candidate|
+      broker_names.any? { |broker_name| candidate.include?(broker_name) }
+    end
+  end
+
+  def team_broker_names_for(team_ids)
+    @team_broker_names_by_scope ||= {}
+    key = team_ids.map(&:to_i).sort
+    @team_broker_names_by_scope[key] ||= current_tenant
+      .admin_users
+      .where(id: key)
+      .pluck(:name)
+      .compact_blank
+      .map { |name| normalize_broker_match_text(name) }
+      .select(&:present?)
+  end
+
+  def normalize_broker_match_text(value)
+    I18n.transliterate(value.to_s).downcase.squish
   end
 
   def can_release_intake_to_broker?(habitation)

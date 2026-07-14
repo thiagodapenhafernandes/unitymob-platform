@@ -280,7 +280,7 @@ class Admin::BaseController < ApplicationController
   helper_method :can?, :scope_for_resource, :owns_all_resource?,
                 :team_scope_ids, :team_available?, :include_team?,
                 :impersonating_admin_user?, :impersonation_admin_user,
-                :can_review_captacao?
+                :can_review_captacao?, :manager_team_user_ids
 
   def can?(action, resource)
     current_admin_user&.can?(action, resource)
