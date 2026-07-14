@@ -1357,17 +1357,46 @@ class Admin::HabitationsController < Admin::BaseController
     value = parsed[:value].to_s.strip
     return scope if value.blank?
 
-    case parsed[:type]
-    when :development
-      scope.where("codigo_empreendimento = :code OR codigo = :code", code: value)
-    when :standalone
-      scope.where("LOWER(unaccent(nome_empreendimento)) = LOWER(unaccent(:name))", name: value)
-    else
-      scope.where(
-        "codigo_empreendimento = :term OR codigo = :term OR LOWER(unaccent(nome_empreendimento)) = LOWER(unaccent(:term))",
-        term: value
-      )
+    matching_developments = matching_developments_for_filter(parsed[:type], value)
+    matched_codes = matching_developments.pluck(:codigo).map { |code| code.to_s.strip }.reject(&:blank?).uniq
+    matched_names = matching_developments.pluck(:nome_empreendimento).map { |name| normalize_development_filter_name(name) }.reject(&:blank?).uniq
+    matched_names << normalize_development_filter_name(value)
+    matched_names.compact_blank!
+
+    clauses = []
+    binds = {}
+
+    if matched_codes.any?
+      clauses << "(habitations.codigo_empreendimento IN (:codes) OR habitations.codigo IN (:codes))"
+      binds[:codes] = matched_codes
     end
+
+    if matched_names.any?
+      clauses << "LOWER(unaccent(COALESCE(habitations.nome_empreendimento, ''))) IN (:names)"
+      binds[:names] = matched_names
+    end
+
+    return scope if clauses.empty?
+
+    scope.where(clauses.join(" OR "), binds)
+  end
+
+  def matching_developments_for_filter(type, value)
+    developments = current_tenant.habitations.empreendimentos
+    named_match = developments.where("LOWER(unaccent(nome_empreendimento)) = LOWER(unaccent(:name))", name: value)
+
+    case type
+    when :development
+      developments.where(codigo: value).or(named_match)
+    when :standalone, :legacy
+      named_match
+    else
+      developments.where(codigo: value).or(named_match)
+    end
+  end
+
+  def normalize_development_filter_name(value)
+    I18n.transliterate(value.to_s).squish.downcase
   end
 
   def index_per_page
@@ -2003,80 +2032,11 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def apply_amenity_filter(scope, amenity)
-    key = I18n.transliterate(amenity.to_s).downcase
-    pattern = "%" + key.gsub(/[^a-z0-9]+/, "%") + "%"
-
-    case key
-    when /frente mar/
-      apply_front_sea_filter(scope)
-    when /vista frente para o mar/
-      scope.where(vista_frente_mar_flag: true)
-    when /vista para o mar/
-      scope.where("vista_frente_mar_flag = true OR unaccent(lower(descricao_web)) ILIKE unaccent(?)", "%vista%mar%")
-    when /piscina/
-      scope.where("piscina_flag = true OR COALESCE(hidromassagem_qtd, 0) > 0 OR " \
-                  "(jsonb_typeof(infra_estrutura) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(infra_estrutura) value WHERE unaccent(lower(value)) ILIKE unaccent('%piscina%')))")
-    when /elevador/
-      scope.where("COALESCE(elevadores_qtd, 0) > 0")
-    when /hidromassagem/
-      scope.where(
-        "COALESCE(hidromassagem_qtd, 0) > 0 OR " \
-        "searchable_features LIKE '%hidromassagem%'"
-      )
-    when /jardim/
-      scope.where(
-        "garden_flag = true OR " \
-        "searchable_features LIKE '%jardim%'"
-      )
-    when /garden/
-      scope.garden
-    when /quadra.*mar/
-      scope.quadra_mar
-    when /vista.*mar/
-      scope.vista_mar
-    when /lavabo/
-      scope.lavabo
-    when /depend.*empreg|wc.*empreg/
-      scope.dependencia_empregada
-    when /sacada/
-      scope.where("varanda_gourmet_flag = true OR " \
-                  "searchable_features LIKE '%sacada%'")
-    when /mobiliado/
-      scope.where("mobiliado_flag = true OR " \
-                  "searchable_features LIKE '%mobiliado%'")
-    when /cozinha.*gourmet.*churrasqueir/
-      scope.cozinha_gourmet_churrasqueira
-    when /sol.*manha/
-      scope.sol_manha
-    when /sol.*tarde/
-      scope.sol_tarde
-    when /sol.*dia.*todo/
-      scope.sol_dia_todo
-    else
-      scope.where(
-        "searchable_features LIKE :pattern",
-        pattern: I18n.transliterate(pattern).downcase
-      )
-    end
+    Habitations::AmenityFilter.call(scope, amenity)
   end
 
   def apply_front_sea_filter(scope)
-    scope.where(
-      "habitations.frente_mar_avenida_atlantica_flag IS TRUE OR " \
-      "(jsonb_typeof(habitations.caracteristicas) = 'array' AND EXISTS (" \
-      "  SELECT 1 FROM jsonb_array_elements_text(habitations.caracteristicas) value " \
-      "  WHERE unaccent(value) ILIKE unaccent('%frente mar%')" \
-      ")) OR " \
-      "(jsonb_typeof(habitations.caracteristicas) = 'object' AND EXISTS (" \
-      "  SELECT 1 FROM jsonb_each_text(habitations.caracteristicas) kv " \
-      "  WHERE unaccent(kv.key) ILIKE unaccent('%frente mar%') " \
-      "     OR unaccent(kv.value) ILIKE unaccent('%frente mar%')" \
-      ")) OR " \
-      "EXISTS (" \
-      "  SELECT 1 FROM unnest((#{Habitation::SearchScopes::UNIQUE_FEATURES_ARRAY_SQL})) AS feature " \
-      "  WHERE unaccent(feature) ILIKE unaccent('%frente mar%')" \
-      ")"
-    )
+    Habitations::AmenityFilter.call(scope, "Frente mar")
   end
 
   def apply_catalog_text_feature_filter(scope, term, boolean_column: nil)
