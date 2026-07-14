@@ -1809,6 +1809,15 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
       opacity var(--ax-motion-fast, 120ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1)),
       transform var(--ax-motion-base, 180ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1));
   }
+  /* Card #13: nomes dos campos do painel de filtros em negrito/destaque
+     (antes ficavam em cinza-claro, pouco legíveis). */
+  .habitations-inspector .ax-field-label {
+    color: #1f2937;
+    font-weight: 900;
+  }
+  html[data-admin-theme="dark"] .habitations-inspector .ax-field-label {
+    color: var(--ax-dark-text, #e6edf7);
+  }
   .habitations-inspector-rail {
     position: absolute;
     inset: 0 auto 0 0;
