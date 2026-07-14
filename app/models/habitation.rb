@@ -1079,10 +1079,10 @@ class Habitation < ApplicationRecord
     if check.call("area")
       if property_kind_terreno?
         missing << "Dimensões e estrutura física" if area_total_m2.to_f <= 0
+      elsif property_kind_sala_comercial?
+        missing << "Dimensões e estrutura física" if area_privativa_m2.to_f <= 0 && salas_qtd.to_i <= 0 && banheiros_qtd.to_i <= 0 && vagas_qtd.to_i <= 0
       elsif !has_required_intake_area?
         missing << "Área privativa" if area_privativa_m2.to_f <= 0
-      elsif property_kind_sala_comercial? && salas_qtd.to_i <= 0 && banheiros_qtd.to_i <= 0 && vagas_qtd.to_i <= 0
-        missing << "Dimensões e estrutura física"
       elsif property_kind_residencial? && dormitorios_qtd.to_i <= 0 && suites_qtd.to_i <= 0 && vagas_qtd.to_i <= 0
         missing << "Dimensões e estrutura física"
       end

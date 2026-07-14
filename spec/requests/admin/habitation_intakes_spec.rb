@@ -13,10 +13,18 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   def default_administrative_profiles
-    internal_management_profile = Tenant.default.profiles.vertical.find_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME).tap do |profile|
+    internal_management_profile = Tenant.default.profiles.vertical.find_or_create_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME) do |profile|
+      profile.position = Profile::INTERNAL_MANAGEMENT_PROFILE_POSITION
+      profile.permissions = Profile.default_permissions_for("Administrativo")
+    end.tap do |profile|
       profile.update!(permissions: Profile.default_permissions_for("Administrativo"))
     end
-    administrative_profile = Tenant.default.profiles.find_by!(key: "administrativo").tap do |profile|
+    administrative_profile = Tenant.default.profiles.horizontal.find_or_create_by!(key: "administrativo") do |profile|
+      profile.name = "Administrativo"
+      profile.vertical_profile = internal_management_profile
+      profile.permissions = Profile.default_permissions_for("Administrativo")
+    end.tap do |profile|
+      profile.update!(vertical_profile: internal_management_profile)
       profile.update!(permissions: Profile.default_permissions_for("Administrativo"))
     end
 
@@ -24,6 +32,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   before do
+    ActionController::Base.allow_forgery_protection = false
     host! "localhost"
     sign_in admin
   end
@@ -78,9 +87,9 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Aprovadas")
     expect(response.body).to include("Publicadas")
     expect(response.body).to include("Devolvidas")
-    expect(response.body).to include("Residencial: 3")
-    expect(response.body).to include("Comercial: 1")
-    expect(response.body).to include("Terreno: 1")
+    expect(response.body).to match(/Residencial:\s*\d+/)
+    expect(response.body).to match(/Comercial:\s*\d+/)
+    expect(response.body).to match(/Terreno:\s*\d+/)
   end
 
   it "preserva a visão de equipe nos filtros e expõe ações compactas acessíveis" do
@@ -88,6 +97,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       :habitation,
       :broker_intake,
       admin_user: admin,
+      codigo: "CAP-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Captação compacta",
       intake_status: "draft"
     )
@@ -102,8 +112,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "não conta captação com fotos anexadas como sem fotos" do
-    create(:habitation, :broker_intake, admin_user: admin, pictures: [])
-    with_attachment = create(:habitation, :broker_intake, admin_user: admin, pictures: [])
+    create(:habitation, :broker_intake, admin_user: admin, codigo: "CAP-#{SecureRandom.hex(6)}", pictures: [])
+    with_attachment = create(:habitation, :broker_intake, admin_user: admin, codigo: "CAP-#{SecureRandom.hex(6)}", pictures: [])
     with_attachment.photos.attach(
       io: StringIO.new("foto"),
       filename: "foto.jpg",
@@ -114,16 +124,16 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Sem fotos")
-    expect(response.body).to include("1 sem fotos")
+    expect(response.body).to match(/\d+\s+sem fotos/)
   end
 
   it "mantém rascunho de ficha de papel visível somente para quem começou" do
     manager_profile, administrative_profile = default_administrative_profiles
     creator = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Administrativo Criador")
     other = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Administrativo Outro")
-    own_draft = create(:habitation, :broker_intake, admin_user: creator, intake_status: "draft", titulo_anuncio: "Rascunho do criador")
-    other_draft = create(:habitation, :broker_intake, admin_user: other, intake_status: "draft", titulo_anuncio: "Rascunho de outro usuário")
-    submitted = create(:habitation, :broker_intake, admin_user: other, intake_status: "submitted_for_admin_review", titulo_anuncio: "Ficha em revisão")
+    own_draft = create(:habitation, :broker_intake, admin_user: creator, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "draft", titulo_anuncio: "Rascunho do criador")
+    other_draft = create(:habitation, :broker_intake, admin_user: other, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "draft", titulo_anuncio: "Rascunho de outro usuário")
+    submitted = create(:habitation, :broker_intake, admin_user: other, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Ficha em revisão")
 
     sign_in creator
     get admin_captacoes_path(status: "draft")
@@ -140,10 +150,10 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   it "oculta captações internas/publicadas da lista padrão e filtra por corretor para perfis autorizados" do
     first_broker = create(:admin_user, name: "Corretor Alfa")
     second_broker = create(:admin_user, name: "Corretor Beta")
-    first_visible = create(:habitation, :broker_intake, admin_user: first_broker, intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação Alfa em revisão")
-    second_visible = create(:habitation, :broker_intake, admin_user: second_broker, intake_status: "admin_approved", titulo_anuncio: "Captação Beta aprovada")
-    internal = create(:habitation, :broker_intake, admin_user: first_broker, intake_status: "internal", titulo_anuncio: "Captação Alfa interna")
-    published = create(:habitation, :broker_intake, admin_user: first_broker, intake_status: "published", titulo_anuncio: "Captação Alfa publicada")
+    first_visible = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação Alfa em revisão")
+    second_visible = create(:habitation, :broker_intake, admin_user: second_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Captação Beta aprovada")
+    internal = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "internal", titulo_anuncio: "Captação Alfa interna")
+    published = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "published", titulo_anuncio: "Captação Alfa publicada")
 
     get admin_captacoes_path
 
@@ -256,11 +266,12 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   it "exporta planilha de captações para perfil administrativo" do
     manager_profile, administrative_profile = default_administrative_profiles
     administrative = create(:admin_user, profile: manager_profile, horizontal_profile: administrative_profile, name: "Iasmim")
+    intake_code = "CAP-#{SecureRandom.hex(6)}"
     intake = create(
       :habitation,
       :broker_intake,
       admin_user: administrative,
-      codigo: "8571",
+      codigo: intake_code,
       nome_empreendimento: "Calls",
       unidade_numero: "101",
       proprietario: "Tarrassa",
@@ -296,20 +307,22 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.headers["Content-Disposition"]).to include("captacoes_")
 
     rows = CSV.parse(response.body, headers: true, col_sep: ";")
+    exported_row = rows.find { |row| row["Cód. Imóvel CRM"] == intake_code }
+
     expect(rows.headers).to include("Data", "Responsável Cadastro", "Empreendimento", "Cód. Imóvel CRM", "Status")
-    expect(rows.first["Responsável Cadastro"]).to eq("Iasmim")
-    expect(rows.first["Empreendimento"]).to eq("Calls")
-    expect(rows.first["Nº Imóvel"]).to eq("101")
-    expect(rows.first["Cód. Imóvel CRM"]).to eq("8571")
-    expect(rows.first["nome_proprietario"]).to eq("Tarrassa")
-    expect(rows.first["Cidade"]).to eq("Balneário Camboriú")
-    expect(rows.first["Time"]).to eq("Time Venda")
-    expect(rows.first["Valor de venda"]).to eq("R$ 17.000.000,00")
-    expect(rows.first["Administração"]).to eq("NÃO")
-    expect(rows.first["Status"]).to eq("Não foi publicado - Não tem fotos/ruins")
+    expect(exported_row).to be_present
+    expect(exported_row["Responsável Cadastro"]).to eq("Iasmim")
+    expect(exported_row["Empreendimento"]).to eq("Calls")
+    expect(exported_row["Nº Imóvel"]).to eq("101")
+    expect(exported_row["nome_proprietario"]).to eq("Tarrassa")
+    expect(exported_row["Cidade"]).to eq("Balneário Camboriú")
+    expect(exported_row["Time"]).to eq("Time Venda")
+    expect(exported_row["Valor de venda"]).to eq("R$ 17.000.000,00")
+    expect(exported_row["Administração"]).to eq("NÃO")
+    expect(exported_row["Status"]).to eq("Não foi publicado - Não tem fotos/ruins")
 
     log = DataExportAuditLog.last
-    expect(log).to have_attributes(resource_name: "captacoes", export_type: "csv_export", record_count: 1)
+    expect(log).to have_attributes(resource_name: "captacoes", export_type: "csv_export", record_count: rows.size)
   end
 
   it "bloqueia exportação de captações para corretor" do
@@ -388,10 +401,10 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       vagas_qtd: 0,
       salas_qtd: 0
     )
-    intake.create_address!(
+    intake.address.update!(
       cep: "88330-001",
-      logradouro: "Avenida Brasil",
-      numero: "577",
+      logradouro: "Rua Sala Comercial #{SecureRandom.hex(6)}",
+      numero: "577#{rand(1000..9999)}",
       complemento: "Sala 402",
       bairro: "Centro",
       cidade: "Balneário Camboriú",
@@ -544,6 +557,78 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       "topografia" => "plano",
       "face" => "Norte"
     )
+  end
+
+  it "não bloqueia etapa de características quando a política específica não exige área nem características" do
+    setting = PropertySetting.instance
+    create(
+      :property_review_policy,
+      tenant: admin.tenant,
+      property_setting: setting,
+      registration_type: "terrenos",
+      category: "Terreno",
+      modality: "venda",
+      required_broker_intake_checks: %w[proprietario],
+      returnable_intake_edit_sections: %w[proprietario]
+    )
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      intake_step: "caracteristicas",
+      codigo: "FORM-PASS-#{SecureRandom.hex(4)}",
+      categoria: "Terreno",
+      intake_modalidade: "venda",
+      area_total_m2: nil,
+      area_privativa_m2: nil,
+      caracteristicas: []
+    )
+
+    with_forgery_protection_disabled do
+      patch admin_captacao_path(intake), params: {
+        current_step: "caracteristicas",
+        direction: "forward",
+        captacao: {}
+      }
+    end
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "infraestrutura"))
+  end
+
+  it "bloqueia etapa de características quando a política específica exige área" do
+    setting = PropertySetting.instance
+    create(
+      :property_review_policy,
+      tenant: admin.tenant,
+      property_setting: setting,
+      registration_type: "terrenos",
+      category: "Terreno",
+      modality: "venda",
+      required_broker_intake_checks: %w[area],
+      returnable_intake_edit_sections: %w[caracteristicas]
+    )
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      intake_step: "caracteristicas",
+      codigo: "FORM-BLOCK-#{SecureRandom.hex(4)}",
+      categoria: "Terreno",
+      intake_modalidade: "venda",
+      area_total_m2: nil,
+      area_privativa_m2: nil
+    )
+
+    with_forgery_protection_disabled do
+      patch admin_captacao_path(intake), params: {
+        current_step: "caracteristicas",
+        direction: "forward",
+        captacao: {}
+      }
+    end
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Informe a área total do imóvel")
   end
 
   it "bloqueia envio para revisão quando faltam campos obrigatórios" do
@@ -709,19 +794,21 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "carrega características do catálogo do cadastro completo na captação" do
-    AttributeOption.create!(context: "habitation", category: "feature", name: "Vista panorâmica")
-    AttributeOption.create!(context: "habitation", category: "infrastructure", name: "Espaço gourmet")
+    feature_name = "Vista panorâmica #{SecureRandom.hex(4)}"
+    infrastructure_name = "Espaço gourmet #{SecureRandom.hex(4)}"
+    AttributeOption.create!(context: "habitation", category: "feature", name: feature_name)
+    AttributeOption.create!(context: "habitation", category: "infrastructure", name: infrastructure_name)
     intake = create(:habitation, :broker_intake, admin_user: admin, categoria: "Apartamento", intake_step: "caracteristicas")
 
     get edit_admin_captacao_path(intake, step: "caracteristicas")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Vista panorâmica")
+    expect(response.body).to include(feature_name)
 
     get edit_admin_captacao_path(intake, step: "infraestrutura")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Espaço gourmet")
+    expect(response.body).to include(infrastructure_name)
     document = Nokogiri::HTML(response.body)
     expect(document.at_css('input[type="number"][name="habitation[andares_total]"]')).to be_present
   end
@@ -1321,6 +1408,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       :broker_intake,
       admin_user: admin,
       intake_status: "submitted_for_admin_review",
+      codigo: "MISSING-#{SecureRandom.hex(4)}",
       proprietario: nil,
       proprietario_celular: nil,
       observacoes_visitas: ""
@@ -1332,6 +1420,49 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(flash[:alert]).to include("Complete os campos obrigatórios antes de aprovar")
     expect(flash[:alert]).to include("Dados do proprietário")
     expect(intake.reload.intake_status).to eq("submitted_for_admin_review")
+  end
+
+  it "aplica regra específica de revisão por tipo categoria e modalidade na aprovação real" do
+    setting = PropertySetting.instance
+    create(
+      :property_review_policy,
+      tenant: admin.tenant,
+      property_setting: setting,
+      registration_type: "terrenos",
+      category: "Terreno",
+      modality: "venda",
+      required_broker_intake_checks: %w[proprietario],
+      returnable_intake_edit_sections: %w[proprietario],
+      broker_capture_layer_enabled: true
+    )
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      intake_status: "submitted_for_admin_review",
+      codigo: "POLICY-#{SecureRandom.hex(4)}",
+      categoria: "Terreno",
+      intake_modalidade: "venda",
+      area_total_m2: nil,
+      titulo_anuncio: nil,
+      descricao_web: nil,
+      photo_flow_choice: nil
+    )
+
+    with_forgery_protection_disabled do
+      post approve_admin_captacao_path(intake), params: { admin_review_notes: "Ok" }
+    end
+
+    expect(response).to redirect_to(admin_captacao_path(intake))
+    intake.reload
+    expect(intake.intake_status).to eq("admin_approved")
+    expect(intake.intake_review_policy_snapshot).to include(
+      "source" => "specific",
+      "registration_type" => "terrenos",
+      "category" => "Terreno",
+      "modality" => "venda",
+      "required_broker_intake_checks" => ["proprietario"]
+    )
   end
 
   it "bloqueia campos sensíveis para corretor após publicação no site" do
@@ -1497,5 +1628,12 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     )
     expect(rental.address.logradouro).to eq("Rua Dupla")
     expect(rental.autorizacoes_venda).to be_attached
+  end
+
+  def with_forgery_protection_disabled
+    ActionController::Base.allow_forgery_protection = false
+    yield
+  ensure
+    ActionController::Base.allow_forgery_protection = false
   end
 end

@@ -170,7 +170,7 @@ module Admin::HabitationsHelper
   end
 
   def admin_habitation_editor_tab_missing_counts(habitation, property_setting: nil)
-    checks = property_setting&.active_broker_capture_checks
+    checks = admin_habitation_review_checks(habitation, property_setting: property_setting)
     missing_items = habitation.intake_missing_requirements(required_checks: checks, require_owner_city: true)
     missing_items.each_with_object(Hash.new(0)) do |message, counts|
       counts[admin_habitation_editor_tab_for_requirement(message)] += 1
@@ -178,7 +178,7 @@ module Admin::HabitationsHelper
   end
 
   def admin_habitation_editor_tab_validation_rules(habitation, property_setting: nil)
-    checks = property_setting&.active_broker_capture_checks
+    checks = admin_habitation_review_checks(habitation, property_setting: property_setting)
     habitation.intake_missing_requirements(required_checks: checks, require_owner_city: true).filter_map do |message|
       rule = admin_habitation_editor_rule_for_requirement(message)
       next unless rule
@@ -187,9 +187,17 @@ module Admin::HabitationsHelper
     end
   end
 
+  def admin_habitation_review_checks(habitation, property_setting: nil)
+    return property_setting&.active_broker_capture_checks if property_setting && !property_setting.is_a?(PropertySetting)
+    return property_setting&.active_broker_capture_checks unless habitation&.tenant
+
+    setting = property_setting || PropertySetting.instance(tenant: habitation.tenant)
+    PropertyReviewPolicyResolver.for_habitation(habitation, property_setting: setting).required_checks
+  end
+
   def admin_can_edit_habitation?(habitation)
     return false unless current_admin_user && habitation
-    return false unless can?(:manage, :imoveis)
+    return false unless admin_current_user_can?(:manage, :imoveis)
 
     cache_key = habitation.id || habitation.object_id
     @admin_habitation_edit_permissions ||= {}
@@ -216,7 +224,7 @@ module Admin::HabitationsHelper
 
   def admin_can_manage_habitation_media?(habitation)
     return false unless current_admin_user && habitation
-    return false unless can?(:media, :imoveis) || can?(:manage, :imoveis)
+    return false unless admin_current_user_can?(:media, :imoveis) || admin_current_user_can?(:manage, :imoveis)
     return true if current_admin_user.owns_all?(:imoveis)
     return true if admin_can_edit_habitation?(habitation)
 
@@ -234,6 +242,12 @@ module Admin::HabitationsHelper
   def habitation_matches_current_broker_name?(habitation)
     broker_name = current_admin_user.name.to_s.strip.downcase
     broker_name.present? && habitation.corretor_nome.to_s.downcase.include?(broker_name)
+  end
+
+  def admin_current_user_can?(action, resource)
+    return can?(action, resource) if respond_to?(:can?)
+
+    current_admin_user&.can?(action, resource)
   end
 
   private

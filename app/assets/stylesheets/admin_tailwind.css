@@ -24404,10 +24404,24 @@ html[data-admin-theme="dark"] .captacoes-workspace .captacoes-table-wrap .ax-tab
 .property-settings-ai-search-groups { display: grid; gap: 12px; }
 .property-settings-ai-search-group .property-settings-ai-switches { margin-bottom: 0; }
 .property-settings-ai-switches { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
-.property-settings-ai-fields { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px; }
-.property-settings-ai-fields .ax-field { display: grid; gap: 5px; }
-.property-settings-ai-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-top: 10px; }
-.property-settings-ai-metrics .ax-field { align-content: start; }
+.property-settings-ai-fields { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.property-settings-ai-fields > *,
+.property-settings-ai-metrics > * { min-width: 0; }
+.property-settings-ai-fields .ax-field { display: grid; gap: 5px; min-width: 0; }
+.property-settings-ai-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
+.property-settings-ai-metrics .ax-field { align-content: start; min-width: 0; }
+.property-settings-ai-fields > .ax-span-1 { grid-column: span 1 / span 1; }
+.property-settings-ai-fields > .ax-span-2 { grid-column: span 2 / span 2; }
+.property-settings-ai-fields > .ax-span-3 { grid-column: span 3 / span 3; }
+.property-settings-ai-fields > .ax-span-4 { grid-column: span 4 / span 4; }
+.property-settings-ai-fields > .ax-span-5 { grid-column: span 5 / span 5; }
+.property-settings-ai-fields > .ax-span-6 { grid-column: span 6 / span 6; }
+.property-settings-ai-fields > .ax-span-7 { grid-column: span 7 / span 7; }
+.property-settings-ai-fields > .ax-span-8 { grid-column: span 8 / span 8; }
+.property-settings-ai-fields > .ax-span-9 { grid-column: span 9 / span 9; }
+.property-settings-ai-fields > .ax-span-10 { grid-column: span 10 / span 10; }
+.property-settings-ai-fields > .ax-span-11 { grid-column: span 11 / span 11; }
+.property-settings-ai-fields > .ax-span-12 { grid-column: 1 / -1; }
 .property-settings-ai-fields textarea.ax-control { min-height: 138px; resize: vertical; }
 .property-settings-ai-panel--aliases .property-settings-ai-fields textarea.ax-control { min-height: 84px; }
 .property-settings-ai-options { display: grid; gap: 7px; min-width: 0; margin: 0 0 14px; padding: 0; border: 0; }

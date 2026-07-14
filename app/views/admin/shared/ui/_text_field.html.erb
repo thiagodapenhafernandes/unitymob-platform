@@ -1,6 +1,6 @@
 <%
   has_error = form.object.respond_to?(:errors) && form.object.errors[method].present?
-  field_classes = ["ax-field", field_class, ("is-invalid" if has_error)].compact.join(" ")
+  field_classes = ["ax-field", class_name, field_class, ("is-invalid" if has_error)].compact.join(" ")
   clearable = local_assigns.fetch(:clearable, false)
   options = (options || {}).dup
   options[:autocomplete] = "off" unless options.key?(:autocomplete)
@@ -20,7 +20,7 @@
 %>
 
 <div class="<%= field_classes %>">
-  <%= ax_field_label(form, method, text: label, tooltip:, meta: label_meta, class_name:, **(label_options || {})) %>
+  <%= ax_field_label(form, method, text: label, tooltip:, meta: label_meta, **(label_options || {})) %>
   <% if clearable %>
     <div class="ax-clearable-control <%= 'ax-clearable-control--multiline' if type.to_sym == :textarea %>" data-controller="ax-clear-field">
       <% clear_data = (html_options[:data] || {}).merge(ax_clear_field_target: "control", action: [html_options.dig(:data, :action), "input->ax-clear-field#update change->ax-clear-field#update"].compact_blank.join(" ")) %>

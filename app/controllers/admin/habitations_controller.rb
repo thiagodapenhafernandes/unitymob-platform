@@ -491,8 +491,9 @@ class Admin::HabitationsController < Admin::BaseController
         return
       end
 
-      unless @habitation.intake_ready_for_admin_review?(require_owner_city: true)
-        @habitation.intake_missing_requirements(require_owner_city: true).each { |message| @habitation.errors.add(:base, message) }
+      required_checks = review_required_checks_for(@habitation)
+      unless @habitation.intake_ready_for_admin_review?(required_checks: required_checks, require_owner_city: true)
+        @habitation.intake_missing_requirements(required_checks: required_checks, require_owner_city: true).each { |message| @habitation.errors.add(:base, message) }
         load_autocomplete_data
         render :new, status: :unprocessable_entity
         return
@@ -503,6 +504,7 @@ class Admin::HabitationsController < Admin::BaseController
       else
         mark_intake_as_internal(@habitation)
       end
+      snapshot_review_policy!(@habitation)
     end
 
     assign_proprietor_from_legacy_fields(@habitation) if can_access_sensitive_habitation_data?
@@ -604,8 +606,9 @@ class Admin::HabitationsController < Admin::BaseController
         new_document_uploads = {}
       end
 
-      unless @habitation.intake_ready_for_admin_review?(require_owner_city: true)
-        @habitation.intake_missing_requirements(require_owner_city: true).each { |message| @habitation.errors.add(:base, message) }
+      required_checks = review_required_checks_for(@habitation)
+      unless @habitation.intake_ready_for_admin_review?(required_checks: required_checks, require_owner_city: true)
+        @habitation.intake_missing_requirements(required_checks: required_checks, require_owner_city: true).each { |message| @habitation.errors.add(:base, message) }
         load_ai_suggestion
         render :edit, status: :unprocessable_entity
         return
@@ -616,6 +619,7 @@ class Admin::HabitationsController < Admin::BaseController
       else
         mark_intake_as_internal(@habitation)
       end
+      snapshot_review_policy!(@habitation)
     end
 
     assign_proprietor_from_legacy_fields(@habitation) if can_access_sensitive_habitation_data?
@@ -1629,6 +1633,7 @@ class Admin::HabitationsController < Admin::BaseController
   # Acesso a um imóvel: dono direto / corretor designado / nome do corretor (próprio),
   # ou — quando o perfil tem escopo de equipe — imóvel pertencente à subárvore de gestão.
   def property_accessible?(habitation)
+    return true if owns_all_resource?(:imoveis)
     return true if property_belongs_to_current_user?(habitation)
     return false unless current_admin_user&.can_view_team?(:imoveis)
 
@@ -2334,6 +2339,32 @@ class Admin::HabitationsController < Admin::BaseController
 
   def load_property_setting
     @property_setting = PropertySetting.instance
+  end
+
+  def review_required_checks_for(habitation)
+    PropertyReviewPolicyResolver
+      .for_habitation(habitation, property_setting: @property_setting)
+      .required_checks
+  end
+
+  def snapshot_review_policy!(habitation)
+    return unless habitation.has_attribute?(:intake_review_policy_snapshot)
+
+    result = PropertyReviewPolicyResolver.for_habitation(habitation, property_setting: @property_setting)
+    rule = result.policy || @property_setting
+    habitation.assign_attributes(
+      intake_review_policy_version: rule.respond_to?(:version) ? rule.version : @property_setting.review_policy_version,
+      intake_review_policy_snapshot: {
+        source: result.source.to_s,
+        registration_type: result.registration_type,
+        category: result.category,
+        modality: result.modality,
+        policy_id: result.policy&.id,
+        required_broker_intake_checks: result.required_checks,
+        returnable_intake_edit_sections: result.returnable_sections,
+        broker_capture_layer_enabled: rule.broker_capture_layer_enabled
+      }
+    )
   end
 
   def broker_protected_habitation_param_keys

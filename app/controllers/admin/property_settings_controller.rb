@@ -2,7 +2,7 @@ module Admin
   class PropertySettingsController < BaseController
     before_action :require_admin!
     before_action :set_property_setting
-    before_action :set_broker_capture_fallback_users, only: %i[edit review_workflow update]
+    before_action :set_broker_capture_fallback_users, only: %i[edit review_workflow update update_review_workflow]
     before_action :set_ai_development_alias_context, only: %i[edit update]
 
     def edit
@@ -42,13 +42,42 @@ module Admin
       set_review_workflow_context
     end
 
-    def set_review_workflow_context
-      @required_check_labels = @property_setting.active_broker_capture_checks.map do |key|
+    def update_review_workflow
+      @page_title = "Fluxo de revisão de captações"
+      set_review_context_params
+      @review_policy = find_or_initialize_review_policy
+      @review_policy.assign_attributes(review_policy_params)
+
+      if @review_policy.save
+        redirect_to review_workflow_admin_property_setting_path(review_context_query),
+                    notice: "Regra de revisão salva para o conjunto selecionado."
+      else
+        set_review_workflow_context(policy: @review_policy)
+        render :review_workflow, status: :unprocessable_entity
+      end
+    end
+
+    def set_review_workflow_context(policy: nil)
+      set_review_context_params
+      @review_policy = policy || find_existing_review_policy
+      @review_policy ||= build_review_policy_from_fallback
+      @review_result = PropertyReviewPolicyResolver.call(
+        tenant: current_tenant,
+        property_setting: @property_setting,
+        registration_type: @review_registration_type,
+        category: @review_category,
+        modality: @review_modality
+      )
+      @selected_rule = @review_result.policy || @property_setting
+      @required_check_labels = @review_result.required_checks.map do |key|
         PropertySetting::BROKER_INTAKE_CHECK_OPTIONS[key.to_s] || key
       end
-      @returnable_section_labels = @property_setting.active_returnable_intake_edit_sections.map do |key|
+      @returnable_section_labels = @review_result.returnable_sections.map do |key|
         PropertySetting::RETURNABLE_INTAKE_EDIT_SECTION_OPTIONS[key.to_s] || key
       end
+      @review_categories = categories_for_review_registration_type(@review_registration_type)
+      @review_modalities = PropertyReviewPolicy::MODALITIES.to_a.map { |key, label| [label, key] }
+      @review_registration_types = PropertyReviewPolicy::REGISTRATION_TYPES.to_a.map { |key, label| [label, key] }
     end
 
     private
@@ -135,6 +164,73 @@ module Admin
         required_broker_intake_checks: [],
         returnable_intake_edit_sections: []
       )
+    end
+
+    def review_policy_params
+      params.require(:property_review_policy).permit(
+        :broker_capture_layer_enabled,
+        :notify_internal_review_events,
+        :notify_email_review_events,
+        :review_notification_emails,
+        required_broker_intake_checks: [],
+        returnable_intake_edit_sections: []
+      )
+    end
+
+    def set_review_context_params
+      @review_registration_type = params[:registration_type].presence_in(PropertyReviewPolicy::REGISTRATION_TYPES.keys) || "apartamentos"
+      allowed_categories = categories_for_review_registration_type(@review_registration_type)
+      @review_category = params[:category].presence_in(allowed_categories) || default_category_for_review_registration_type(@review_registration_type)
+      @review_modality = params[:modality].presence_in(PropertyReviewPolicy::MODALITIES.keys) || "venda"
+    end
+
+    def review_context_query
+      {
+        registration_type: @review_registration_type,
+        category: @review_category,
+        modality: @review_modality
+      }.compact
+    end
+
+    def find_existing_review_policy
+      PropertyReviewPolicy.active.find_by(
+        tenant: current_tenant,
+        registration_type: @review_registration_type,
+        category: @review_category,
+        modality: @review_modality
+      )
+    end
+
+    def find_or_initialize_review_policy
+      find_existing_review_policy || build_review_policy_from_fallback
+    end
+
+    def build_review_policy_from_fallback
+      current_tenant.property_review_policies.new(
+        property_setting: @property_setting,
+        registration_type: @review_registration_type,
+        category: @review_category,
+        modality: @review_modality,
+        required_broker_intake_checks: @property_setting.active_broker_capture_checks,
+        returnable_intake_edit_sections: @property_setting.active_returnable_intake_edit_sections,
+        broker_capture_layer_enabled: @property_setting.broker_capture_layer_enabled,
+        notify_internal_review_events: @property_setting.notify_internal_review_events,
+        notify_email_review_events: @property_setting.notify_email_review_events,
+        review_notification_emails: @property_setting.review_notification_emails
+      )
+    end
+
+    def default_category_for_review_registration_type(registration_type)
+      case registration_type
+      when "terrenos" then "Terreno"
+      when "comerciais_industriais" then "Sala Comercial"
+      when "imoveis_residenciais" then "Casa"
+      else "Apartamento"
+      end
+    end
+
+    def categories_for_review_registration_type(registration_type)
+      PropertyReviewPolicy::CATEGORIES_BY_REGISTRATION_TYPE.fetch(registration_type, Habitation::CATEGORIES)
     end
 
     def remove_watermark_image?

@@ -1047,6 +1047,70 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include(CGI.escapeHTML("#{edit_admin_habitation_path(own_property.id)}?return_to=/admin/habitations&ownership=all&q=#{own_property.codigo}&back_anchor=habitation_#{own_property.id}"))
   end
 
+  it "permite perfil administrativo com escopo total editar imóvel de outro usuário" do
+    administrative_profile = Profile.create!(
+      tenant: Tenant.default,
+      name: "Administrativo edição #{SecureRandom.hex(6)}",
+      axis: Profile::AXES[:vertical],
+      position: 180,
+      permissions: Profile.default_permissions_for("Administrativo")
+    )
+    administrative_user = create(:admin_user, profile: administrative_profile, name: "Administrativo catálogo")
+    broker = create(:admin_user, profile: default_agent_profile, name: "Corretor responsável")
+    habitation = create(
+      :habitation,
+      admin_user: broker,
+      codigo: "ADM-EDIT-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel editável pelo administrativo"
+    )
+    habitation.address.update!(numero: "101")
+
+    sign_in administrative_user
+
+    get edit_admin_habitation_path(habitation)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Imóvel editável pelo administrativo")
+
+    expect(response.body).not_to include("Você não tem permissão para editar este imóvel.")
+  end
+
+  it "permite gerente com escopo de equipe editar imóvel da hierarquia e bloqueia imóvel externo" do
+    manager_profile = Profile.create!(
+      tenant: Tenant.default,
+      name: "Gerente edição #{SecureRandom.hex(6)}",
+      axis: Profile::AXES[:vertical],
+      position: 700,
+      permissions: Profile.default_permissions_for("Gerente")
+    )
+    manager = create(:admin_user, profile: manager_profile, acting_type: :sales, name: "Gerente catálogo")
+    team_broker = create(:admin_user, profile: default_agent_profile, manager: manager, acting_type: :sales, name: "Corretor da equipe")
+    outside_broker = create(:admin_user, profile: default_agent_profile, acting_type: :sales, name: "Corretor externo")
+    team_property = create(
+      :habitation,
+      admin_user: team_broker,
+      codigo: "TEAM-EDIT-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel da equipe"
+    )
+    team_property.address.update!(numero: "102")
+    outside_property = create(
+      :habitation,
+      admin_user: outside_broker,
+      codigo: "OUT-EDIT-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel externo"
+    )
+
+    sign_in manager
+
+    get edit_admin_habitation_path(team_property)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Imóvel da equipe")
+
+    expect(response.body).not_to include("Você não tem permissão para editar este imóvel.")
+
+    get edit_admin_habitation_path(outside_property)
+    expect(response).to redirect_to(admin_habitations_path)
+  end
+
   it "permite ao corretor alterar somente os campos autorizados do próprio imóvel" do
     broker = create(:admin_user, profile: default_agent_profile, name: "Corretor com edição limitada")
     replacement_owner = create(:admin_user, tenant: broker.tenant)

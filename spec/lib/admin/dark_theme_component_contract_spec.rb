@@ -2037,9 +2037,9 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(property_settings_review_workflow_view).to include(
       "ax_workspace_heading(",
       "ax_sticky_action_footer(",
-      'ax_workflow(label: "Configuração do fluxo de revisão de captações")',
-      '<ol class="ax-workflow__brief"',
-      '<li class="ax-workflow__brief-item">'
+      'ax_workflow(label: "Configuração do fluxo de revisão por conjunto operacional")',
+      'title: "Revisão por tipo, categoria e modalidade"',
+      'title: "Regra aplicada agora"'
     )
     expect(property_settings_review_workflow_view).not_to include("<style", "review-workflow-styles", "property_review_workflow", "ax-dashboard-command ax-property-form-command", '<div class="ax-form-actions review-workflow-actions">')
     expect(workflow_stylesheet).to include(
@@ -4312,7 +4312,7 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     )
     expect(stylesheet).to include(
       ".property-settings-ai-search-groups { display: grid; gap: 12px; }",
-      ".property-settings-ai-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));"
+      ".property-settings-ai-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));"
     )
   end
 

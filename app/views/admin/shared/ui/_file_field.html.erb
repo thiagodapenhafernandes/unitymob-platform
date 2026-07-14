@@ -1,6 +1,6 @@
 <%
   input_id ||= "#{form.object_name}_#{method}"
-  field_classes = ["ax-field", "ax-file-field", field_class].compact.join(" ")
+  field_classes = ["ax-field", "ax-file-field", class_name, field_class].compact.join(" ")
   options = (local_assigns[:options] || {}).dup
   input_data = (options.delete(:data) || {}).dup
   input_data[:ax_file_field_target] = "input"
@@ -11,7 +11,7 @@
 <div class="<%= field_classes %>"
      data-controller="ax-file-field"
      data-ax-file-field-empty-label-value="<%= empty_label %>">
-  <%= ax_field_label(form, method, text: label, tooltip:, class_name:) %>
+  <%= ax_field_label(form, method, text: label, tooltip:) %>
   <div class="ax-file-field__control">
     <%= form.file_field method,
           options.merge(

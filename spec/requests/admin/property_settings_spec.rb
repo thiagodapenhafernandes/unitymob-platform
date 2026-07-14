@@ -173,23 +173,16 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     get review_workflow_admin_property_setting_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Regra de entrada, revisão e site")
+    expect(response.body).to include("Revisão por tipo, categoria e modalidade")
     expect(response.body).to include("ax-workspace-heading", "ax-sticky-action-footer")
     expect(response.body).not_to include("review-workflow-styles", "property_review_workflow")
-    expect(Nokogiri::HTML(response.body).css("ol.ax-workflow__brief > li.ax-workflow__brief-item").size).to eq(4)
-    expect(response.body).to include("Captador preenche")
-    expect(response.body).to include("Sistema confere")
-    expect(response.body).to include("Admin aprova ou devolve")
-    expect(response.body).to include("O site só recebe o imóvel quando o responsável clicar em Publicar Site")
-    expect(response.body).to include("Esta regra vale para captações e fichas internas de captação")
-    expect(response.body).to include("O cadastro direto em Imóveis cria um imóvel administrativo e não entra neste fluxo")
-    expect(response.body).to include("Imóvel direto")
-    expect(response.body).to include("Ficha interna")
-    expect(response.body).to include("O que precisa estar completo para mandar análise")
-    expect(response.body).to include("Se devolver ao captador, o que ele pode corrigir?")
-    expect(response.body).to include("Aprovação administrativa")
+    expect(response.body).to include("Escolha o cenário que quer configurar")
+    expect(response.body).to include("Regra aplicada agora")
+    expect(response.body).to include("O sistema vai exigir")
+    expect(response.body).to include("Não se aplica neste conjunto")
+    expect(response.body).to include("Ajustar regra deste conjunto")
     expect(response.body).to include("Sempre manual")
-    expect(response.body).to include("Fora da revisão")
+    expect(response.body).to include("Regra padrão da conta")
   end
 
   it "deixa claro que revisão desligada não publica automaticamente" do
@@ -205,11 +198,57 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     get review_workflow_admin_property_setting_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Sem revisão:")
-    expect(response.body).to include("O sistema não publica sozinho")
-    expect(response.body).to include("A ficha fica aprovada para o captador publicar")
     expect(response.body).to include("Próximo passo após checklist")
     expect(response.body).to include("Publicar Site")
+  end
+
+  it "salva regra específica de revisão para o conjunto selecionado" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    with_forgery_protection_disabled do
+      patch review_workflow_admin_property_setting_path(
+        registration_type: "terrenos",
+        category: "Terreno",
+        modality: "venda"
+      ), params: {
+        property_review_policy: {
+          broker_capture_layer_enabled: "true",
+          required_broker_intake_checks: %w[proprietario area valor_negociacao],
+          returnable_intake_edit_sections: %w[proprietario negociacao],
+          notify_internal_review_events: "true",
+          notify_email_review_events: "false",
+          review_notification_emails: ""
+        }
+      }
+    end
+
+    expect(response).to redirect_to(review_workflow_admin_property_setting_path(registration_type: "terrenos", category: "Terreno", modality: "venda"))
+    policy = PropertyReviewPolicy.find_by!(tenant: admin.tenant, registration_type: "terrenos", category: "Terreno", modality: "venda")
+    expect(policy.active_broker_capture_checks).to eq(%w[proprietario area valor_negociacao])
+    expect(policy.active_returnable_intake_edit_sections).to eq(%w[proprietario negociacao])
+  end
+
+  it "restringe categorias conforme o tipo de cadastro selecionado" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    get review_workflow_admin_property_setting_path(
+      registration_type: "terrenos",
+      category: "Apartamento",
+      modality: "venda"
+    )
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    category_options = html.css('select[name="category"] option').map { |option| [option["value"], option.text] }
+    selected_category = html.at_css('select[name="category"] option[selected]')&.[]("value") ||
+                        html.at_css('select[name="category"] option')&.[]("value")
+
+    expect(category_options.map(&:first)).to include("Terreno", "Terreno em Condomínio")
+    expect(category_options.map(&:first)).not_to include("Apartamento")
+    expect(selected_category).to eq("Terreno")
+    expect(response.body).to include("Terrenos · Terreno · Venda")
   end
 
   it "requires fallback admin user when disabling broker capture review layer" do
@@ -244,5 +283,12 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     file.close
     system("magick", "-size", size, "xc:#{background}", "-fill", fill, "-draw", "rectangle 10,10 90,40", file.path, exception: true)
     Rack::Test::UploadedFile.new(file.path, "image/png", original_filename: filename)
+  end
+
+  def with_forgery_protection_disabled
+    ActionController::Base.allow_forgery_protection = false
+    yield
+  ensure
+    ActionController::Base.allow_forgery_protection = false
   end
 end

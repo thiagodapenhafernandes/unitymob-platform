@@ -11,120 +11,160 @@
     <i class="bi bi-gear"></i><span>Config Imóveis</span>
   <% end %>
   <button type="submit" form="review_workflow_form" class="ax-contextbar__button ax-contextbar__button--primary">
-    <i class="bi bi-check2"></i><span>Salvar fluxo</span>
+    <i class="bi bi-check2"></i><span>Salvar regra</span>
   </button>
 <% end %>
 
 <%
-  intake_check_choices = PropertySetting::BROKER_INTAKE_CHECK_OPTIONS.map { |key, label| [label, key] }
-  selected_intake_checks = @property_setting.active_broker_capture_checks
-  layer_on = @property_setting.broker_capture_layer_enabled?
+  selected_checks = @selected_rule.active_broker_capture_checks
+  selected_sections = @selected_rule.active_returnable_intake_edit_sections
+  context_label = [
+    PropertyReviewPolicy.registration_label(@review_registration_type),
+    @review_category,
+    PropertyReviewPolicy.modality_label(@review_modality)
+  ].compact_blank.join(" · ")
 %>
 
-<%= ax_workflow(label: "Configuração do fluxo de revisão de captações") do %>
-  <%= form_with model: @property_setting, url: admin_property_setting_path, method: :patch, html: { id: "review_workflow_form", class: "ax-workflow__form" } do |f| %>
-    <%= hidden_field_tag :return_to, review_workflow_admin_property_setting_path %>
+<%= ax_workflow(label: "Configuração do fluxo de revisão por conjunto operacional") do %>
+  <%= ax_workspace_heading(
+        eyebrow: "Configuração operacional",
+        icon: "diagram-3",
+        title: "Revisão por tipo, categoria e modalidade",
+        subtitle: "Escolha um conjunto e veja exatamente o que o sistema exige na captação, revisão e publicação.",
+        actions: ax_badge(@review_result.source_label, tone: @review_result.specific? ? :green : :gray, dot: true),
+        class_name: "ax-workflow__heading"
+      ) %>
 
-    <% if @property_setting.errors.any? %>
-      <%= ax_error_summary(@property_setting) %>
-    <% end %>
+  <%= ax_operational_panel(eyebrow: "Conjunto", title: "Escolha o cenário que quer configurar") do %>
+    <div class="ax-workflow__panel-body">
+      <%= form_with url: review_workflow_admin_property_setting_path,
+            method: :get,
+            local: true,
+            class: "ax-field-grid ax-field-grid--12 tw-items-end",
+            data: {
+              controller: "auto-submit review-policy-context",
+              review_policy_context_categories_by_type_value: PropertyReviewPolicy::CATEGORIES_BY_REGISTRATION_TYPE.to_json
+            } do |f| %>
+        <div class="ax-span-4">
+          <%= ax_select_field(
+                form: f,
+                method: :registration_type,
+                label: "Tipo de cadastro",
+                choices: @review_registration_types,
+                select_options: { selected: @review_registration_type },
+                html_options: { data: { review_policy_context_target: "registrationType", action: "change->review-policy-context#sync change->auto-submit#submit" } }
+              ) %>
+        </div>
+        <div class="ax-span-4">
+          <%= ax_select_field(
+                form: f,
+                method: :category,
+                label: "Categoria relacionada",
+                choices: @review_categories.map { |category| [category, category] },
+                select_options: { selected: @review_category },
+                html_options: { data: { review_policy_context_target: "category", action: "change->auto-submit#submit" } }
+              ) %>
+        </div>
+        <div class="ax-span-3">
+          <%= ax_select_field(
+                form: f,
+                method: :modality,
+                label: "Modalidade",
+                choices: @review_modalities,
+                select_options: { selected: @review_modality },
+                html_options: { data: { action: "change->auto-submit#submit" } }
+              ) %>
+        </div>
+        <div class="ax-span-1">
+          <%= f.submit "Aplicar", class: "ax-btn ax-btn--sm ax-btn--primary" %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
 
-    <%= ax_workspace_heading(
-          eyebrow: "Regra de entrada, revisão e site",
-          icon: "diagram-3",
-          title: "Fluxo de revisão de captações",
-          subtitle: "Defina o que o captador precisa preencher, quem revisa e o que acontece quando a ficha volta para ajuste.",
-          actions: ax_badge("Aplicado em tempo real", tone: :green, dot: true),
-          class_name: "ax-workflow__heading"
-        ) %>
+  <div class="ax-workflow__layout">
+    <div class="ax-workflow__main">
+      <%= ax_operational_panel(
+            eyebrow: "Resultado",
+            title: "Regra aplicada agora",
+            actions: ax_badge(@review_result.specific? ? "Própria" : "Padrão", tone: @review_result.specific? ? :green : :gray)
+          ) do %>
+        <div class="ax-workflow__panel-body">
+          <%= ax_inline_notice(tone: @review_result.specific? ? :success : :info, icon: @review_result.specific? ? "check-circle" : "info-circle") do %>
+            <strong><%= context_label %></strong><br>
+            <% if @review_result.specific? %>
+              Este conjunto tem uma regra própria. A operação real de captação, revisão e publicação usa esta configuração.
+            <% else %>
+              Este conjunto ainda usa a regra padrão da conta. Salvar abaixo cria uma regra própria sem alterar os demais conjuntos.
+            <% end %>
+          <% end %>
 
-    <ol class="ax-workflow__brief" aria-label="Como a captação anda no sistema">
-      <li class="ax-workflow__brief-item">
-        <span class="ax-workflow__brief-number">1</span>
-        <div>
-          <strong>Captador preenche</strong>
-          <span>Rascunhos e devoluções ficam com o captador até ele mandar para análise.</span>
-        </div>
-      </li>
-      <li class="ax-workflow__brief-item">
-        <span class="ax-workflow__brief-number">2</span>
-        <div>
-          <strong>Sistema confere</strong>
-          <span>Ao mandar análise, a ficha precisa passar pelas validações escolhidas abaixo.</span>
-        </div>
-      </li>
-      <li class="ax-workflow__brief-item">
-        <span class="ax-workflow__brief-number">3</span>
-        <div>
-          <strong><%= layer_on ? "Admin aprova ou devolve" : "Fica pronta para publicar" %></strong>
-          <span><%= layer_on ? "Se devolver, só os blocos liberados podem ser editados pelo captador." : "Sem revisão, ela vai direto para a etapa de publicação pelo captador." %></span>
-        </div>
-      </li>
-      <li class="ax-workflow__brief-item">
-        <span class="ax-workflow__brief-number ax-workflow__brief-number--green">4</span>
-        <div>
-          <strong>Captador publica</strong>
-          <span>O site só recebe o imóvel quando o responsável clicar em Publicar Site.</span>
-        </div>
-      </li>
-    </ol>
-
-    <section class="ax-workflow__scope" aria-label="Escopo do fluxo de revisão">
-      <div class="ax-workflow__scope-main">
-        <i class="bi bi-diagram-3" aria-hidden="true"></i>
-        <div>
-          <strong>Esta regra vale para captações e fichas internas de captação.</strong>
-          <span>O cadastro direto em Imóveis cria um imóvel administrativo e não entra neste fluxo de aprovação/devolução.</span>
-        </div>
-      </div>
-      <div class="ax-workflow__scope-actions">
-        <%= link_to new_admin_captacao_path, class: "ax-btn ax-btn--primary ax-btn--sm" do %>
-          <i class="bi bi-journal-plus"></i><span>Nova captação</span>
-        <% end %>
-        <%= link_to new_admin_habitation_path, class: "ax-btn ax-btn--sm" do %>
-          <i class="bi bi-building"></i><span>Imóvel direto</span>
-        <% end %>
-        <%= link_to new_admin_habitation_path(intake_mode: "paper"), class: "ax-btn ax-btn--sm" do %>
-          <i class="bi bi-journal-check"></i><span>Ficha interna</span>
-        <% end %>
-      </div>
-    </section>
-
-    <div class="ax-workflow__layout">
-      <div class="ax-workflow__main">
-        <%# Etapa 1 — Submissão / validações %>
-        <%= ax_operational_panel(
-              eyebrow: "Etapa 1 · Submissão",
-              title: "Validações de submissão",
-              actions: ax_badge("#{selected_intake_checks.size} ativas", tone: :blue)
-            ) do %>
-          <div class="ax-workflow__panel-body">
-            <p class="ax-workflow__hint">Esses itens são conferidos no momento em que o captador toca em Mandar Análise. Se faltar algo, ele continua na ficha e vê as pendências. <strong>Desmarcar todas restaura o conjunto completo</strong> — não é possível enviar sem nenhuma validação.</p>
-            <div class="ax-workflow__field habitation-form-ui">
-              <%= hidden_field_tag "property_setting[required_broker_intake_checks][]", "" %>
-              <%= ax_multiselect_field(
-                    form: f,
-                    method: :required_broker_intake_checks,
-                    label: "O que precisa estar completo para mandar análise",
-                    tooltip: "Cada item é checado quando a captação é enviada. Se faltar, o captador recebe a lista de pendências e não avança.",
-                    choices: intake_check_choices,
-                    selected: selected_intake_checks,
-                    id: "property_setting_required_broker_intake_checks",
-                    placeholder: "Selecione as validações exigidas...",
-                    data: { tom_select_tags_value: false }
-                  ) %>
+          <dl class="ax-workflow__state">
+            <div class="ax-workflow__state-row">
+              <dt>Próximo passo após checklist</dt>
+              <dd><strong><%= @selected_rule.broker_capture_layer_enabled ? "Revisão administrativa" : "Publicar Site" %></strong></dd>
             </div>
-          </div>
-        <% end %>
+            <div class="ax-workflow__state-row">
+              <dt>Publicação no site</dt>
+              <dd><%= ax_badge("Sempre manual", tone: :amber) %></dd>
+            </div>
+            <div class="ax-workflow__state-row">
+              <dt>Origem da regra</dt>
+              <dd><%= ax_badge(@review_result.source_label, tone: @review_result.specific? ? :green : :gray) %></dd>
+            </div>
+          </dl>
+        </div>
+      <% end %>
 
-        <%# Etapa 2 — Revisão administrativa %>
-        <%= ax_operational_panel(
-              eyebrow: "Etapa 2 · Revisão",
-              title: "Decisão administrativa",
-              actions: ax_badge(layer_on ? "Ativada" : "Desativada", tone: layer_on ? :green : :gray)
-            ) do %>
-          <div class="ax-workflow__panel-body ax-workflow__config">
-            <div class="habitation-form-ui">
+      <%= ax_operational_panel(
+            eyebrow: "Bloqueios",
+            title: "O sistema vai exigir",
+            actions: ax_badge("#{@review_result.applicable_checks.size} itens", tone: :blue)
+          ) do %>
+        <div class="ax-workflow__panel-body">
+          <% if @review_result.applicable_checks.any? %>
+            <div class="ax-chip-grid">
+              <% @review_result.applicable_checks.each do |_key, label| %>
+                <span class="ax-badge ax-badge--blue"><i class="bi bi-check2"></i> <%= label %></span>
+              <% end %>
+            </div>
+          <% else %>
+            <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+              Nenhuma validação aplicável foi encontrada para este conjunto. Revise a configuração antes de salvar.
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(
+            eyebrow: "Condições",
+            title: "Não se aplica neste conjunto",
+            actions: ax_badge("#{@review_result.ignored_checks.size} itens", tone: @review_result.ignored_checks.any? ? :amber : :gray)
+          ) do %>
+        <div class="ax-workflow__panel-body">
+          <% if @review_result.ignored_checks.any? %>
+            <dl class="ax-workflow__state">
+              <% @review_result.ignored_checks.each do |ignored| %>
+                <div class="ax-workflow__state-row">
+                  <dt><%= ignored.label %></dt>
+                  <dd><%= ignored.reason %></dd>
+                </div>
+              <% end %>
+            </dl>
+          <% else %>
+            <p class="ax-workflow__hint">Todas as validações marcadas se aplicam ao conjunto selecionado.</p>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%= ax_operational_panel(eyebrow: "Editar", title: "Ajustar regra deste conjunto") do %>
+        <div class="ax-workflow__panel-body">
+          <%= form_with model: @review_policy, url: review_workflow_admin_property_setting_path(registration_type: @review_registration_type, category: @review_category, modality: @review_modality), method: :patch, html: { id: "review_workflow_form", class: "ax-workflow__form" } do |f| %>
+            <% if @review_policy.errors.any? %>
+              <%= ax_error_summary(@review_policy) %>
+            <% end %>
+
+            <div class="habitation-form-ui ax-workflow__switches">
               <%= ax_toggle_chip(f, :broker_capture_layer_enabled,
                     label: "Exigir aprovação administrativa antes de publicar",
                     checked_value: "true",
@@ -132,35 +172,31 @@
                     class_name: "ax-workflow__switch") %>
             </div>
 
-            <%= ax_inline_notice(tone: layer_on ? :info : :warning, icon: layer_on ? "shield-check" : "exclamation-triangle-fill") do %>
-              <% if layer_on %>
-                <strong>Com revisão:</strong> a captação fica aguardando aprovação. O administrativo aprova ou devolve com motivo e nota interna.
-              <% else %>
-                <strong>Sem revisão:</strong> após passar no checklist, a captação fica pronta para o captador publicar. O sistema não publica sozinho.
-              <% end %>
-            <% end %>
-
-            <div class="ax-workflow__field">
-              <%= ax_select_field(
+            <div class="ax-workflow__field habitation-form-ui">
+              <%= hidden_field_tag "property_review_policy[required_broker_intake_checks][]", "" %>
+              <%= ax_multiselect_field(
                     form: f,
-                    method: :broker_capture_fallback_admin_user_id,
-                    label: "Responsável por captações antigas se a revisão for desligada",
-                    tooltip: "Ao desligar a revisão, captações ainda não publicadas precisam ficar com um usuário administrativo para não perder responsável.",
-                    choices: @broker_capture_fallback_users.map { |user| [user.name, user.id] },
-                    select_options: { include_blank: "Selecione um usuário administrativo" }
+                    method: :required_broker_intake_checks,
+                    label: "Validações que bloqueiam envio/aprovação",
+                    tooltip: "A aplicabilidade final ainda respeita categoria e modalidade. Ex.: garantia locatícia só bloqueia locação.",
+                    choices: PropertySetting::BROKER_INTAKE_CHECK_OPTIONS.map { |key, label| [label, key] },
+                    selected: selected_checks,
+                    id: "property_review_policy_required_broker_intake_checks",
+                    placeholder: "Selecione as validações exigidas...",
+                    data: { tom_select_tags_value: false }
                   ) %>
             </div>
 
             <div class="ax-workflow__field">
               <span class="ax-workflow__field-label">Se devolver ao captador, o que ele pode corrigir?</span>
-              <p class="ax-workflow__hint">Esses blocos reabrem quando o administrativo devolve a captação. O restante fica protegido para evitar alterações fora do motivo da devolução.</p>
-              <%= hidden_field_tag "property_setting[returnable_intake_edit_sections][]", "" %>
+              <p class="ax-workflow__hint">Esses blocos reabrem quando o administrativo devolve a captação. O restante continua protegido.</p>
+              <%= hidden_field_tag "property_review_policy[returnable_intake_edit_sections][]", "" %>
               <%= ax_chip_grid do %>
                 <% PropertySetting::RETURNABLE_INTAKE_EDIT_SECTION_OPTIONS.each do |key, label| %>
-                  <% section_id = "property_setting_returnable_intake_edit_sections_#{key}" %>
-                  <% section_checked = Array(@property_setting.returnable_intake_edit_sections).include?(key) %>
+                  <% section_id = "property_review_policy_returnable_intake_edit_sections_#{key}" %>
+                  <% section_checked = Array(selected_sections).include?(key) %>
                   <label class="ax-toggle-chip <%= "is-checked" if section_checked %>" data-controller="ax-checkbox-chips">
-                    <%= check_box_tag "property_setting[returnable_intake_edit_sections][]", key, section_checked,
+                    <%= check_box_tag "property_review_policy[returnable_intake_edit_sections][]", key, section_checked,
                           id: section_id,
                           class: "ax-toggle-chip__input",
                           data: { action: "change->ax-checkbox-chips#sync" } %>
@@ -170,16 +206,7 @@
                 <% end %>
               <% end %>
             </div>
-          </div>
-        <% end %>
 
-        <%# Notificações %>
-        <%= ax_operational_panel(
-              eyebrow: "Trilha",
-              title: "Notificações de revisão",
-              actions: ax_badge(@property_setting&.notify_email_review_events ? "Interno + e-mail" : "Só interno", tone: @property_setting&.notify_email_review_events ? :blue : :gray)
-            ) do %>
-          <div class="ax-workflow__panel-body ax-workflow__config">
             <div class="habitation-form-ui ax-workflow__switches">
               <%= ax_toggle_chip(f, :notify_internal_review_events,
                     label: "Avisar admins e revisores dentro do sistema",
@@ -199,120 +226,48 @@
                     rows: 3,
                     class: "ax-control",
                     placeholder: "admin1@empresa.com, admin2@empresa.com" %>
-              <p class="ax-workflow__hint">Use vírgula, ponto e vírgula ou uma linha por e-mail. Só dispara quando Enviar e-mail também estiver ligado.</p>
+              <p class="ax-workflow__hint">Use vírgula, ponto e vírgula ou uma linha por e-mail.</p>
             </div>
-          </div>
-        <% end %>
-      </div>
-
-      <aside class="ax-workflow__inspector" aria-label="Mapa e estado do fluxo">
-        <%= ax_operational_panel(eyebrow: "Fluxo", title: "Mapa do fluxo") do %>
-          <div class="ax-workflow__panel-body">
-            <ol class="ax-workflow__steps">
-              <li class="ax-workflow__step">
-                <span class="ax-workflow__step-badge">1</span>
-                <div class="ax-workflow__step-body">
-                  <strong>Captador</strong>
-                  <span>Preenche e manda análise · <%= selected_intake_checks.size %> validações ativas</span>
-                </div>
-              </li>
-              <% if layer_on %>
-                <li class="ax-workflow__step">
-                  <span class="ax-workflow__step-badge ax-workflow__step-badge--amber">2</span>
-                  <div class="ax-workflow__step-body">
-                    <strong>Administrativo</strong>
-                    <span>Aprova ou devolve · <%= @returnable_section_labels.count %> blocos reabrem se voltar</span>
-                  </div>
-                </li>
-              <% else %>
-                <li class="ax-workflow__step">
-                  <span class="ax-workflow__step-badge ax-workflow__step-badge--muted">2</span>
-                  <div class="ax-workflow__step-body">
-                    <strong>Sem revisão administrativa</strong>
-                    <span>A ficha fica aprovada para o captador publicar</span>
-                  </div>
-                </li>
-              <% end %>
-              <li class="ax-workflow__step">
-                <span class="ax-workflow__step-badge ax-workflow__step-badge--green">3</span>
-                <div class="ax-workflow__step-body">
-                  <strong>Publicar Site</strong>
-                  <span>O captador libera e o imóvel aparece no site</span>
-                </div>
-              </li>
-            </ol>
-          </div>
-        <% end %>
-
-        <%= ax_operational_panel(eyebrow: "Status", title: "Estado da configuração") do %>
-          <div class="ax-workflow__panel-body">
-            <dl class="ax-workflow__state">
-              <div class="ax-workflow__state-row">
-                <dt>Aprovação administrativa</dt>
-                <dd><%= ax_badge(layer_on ? "Ativada" : "Desativada", tone: layer_on ? :green : :gray) %></dd>
-              </div>
-              <div class="ax-workflow__state-row">
-                <dt>Notificação interna</dt>
-                <dd><%= ax_badge(@property_setting&.notify_internal_review_events ? "Ligada" : "Desligada", tone: @property_setting&.notify_internal_review_events ? :blue : :gray) %></dd>
-              </div>
-              <div class="ax-workflow__state-row">
-                <dt>Notificação por e-mail</dt>
-                <dd><%= ax_badge(@property_setting&.notify_email_review_events ? "Ligada" : "Desligada", tone: @property_setting&.notify_email_review_events ? :blue : :gray) %></dd>
-              </div>
-              <div class="ax-workflow__state-row">
-                <dt>Publicação no site</dt>
-                <dd><%= ax_badge("Sempre manual", tone: :amber) %></dd>
-              </div>
-            </dl>
-          </div>
-        <% end %>
-
-        <%= ax_operational_panel(eyebrow: "Escopo", title: "O que esta tela controla") do %>
-          <div class="ax-workflow__panel-body">
-            <dl class="ax-workflow__state ax-workflow__state--scope">
-              <div class="ax-workflow__state-row">
-                <dt>Captação do PWA</dt>
-                <dd><%= ax_badge("Entra no fluxo", tone: :green) %></dd>
-              </div>
-              <div class="ax-workflow__state-row">
-                <dt>Ficha interna de captação</dt>
-                <dd><%= ax_badge("Entra no fluxo", tone: :green) %></dd>
-              </div>
-              <div class="ax-workflow__state-row">
-                <dt>Cadastro direto em Imóveis</dt>
-                <dd><%= ax_badge("Fora da revisão", tone: :gray) %></dd>
-              </div>
-            </dl>
-          </div>
-        <% end %>
-
-        <%= ax_operational_panel(eyebrow: "Resumo", title: "Resumo da regra ativa") do %>
-          <div class="ax-workflow__panel-body">
-            <dl class="ax-workflow__state">
-              <div class="ax-workflow__state-row">
-                <dt>Validações para mandar análise</dt>
-                <dd><strong><%= @required_check_labels.count %></strong></dd>
-              </div>
-              <div class="ax-workflow__state-row">
-                <dt>Blocos reabertos na devolução</dt>
-                <dd><strong><%= @returnable_section_labels.count %></strong></dd>
-              </div>
-              <div class="ax-workflow__state-row">
-                <dt>Próximo passo após checklist</dt>
-                <dd><strong><%= layer_on ? "Revisão admin" : "Publicar Site" %></strong></dd>
-              </div>
-            </dl>
-          </div>
-        <% end %>
-      </aside>
+          <% end %>
+        </div>
+      <% end %>
     </div>
 
-    <%= ax_sticky_action_footer(
-          meta: safe_join([tag.i(class: "bi bi-shield-check", aria: { hidden: true }), tag.span("Configuração isolada por conta")], " "),
-          class_name: "ax-workflow__actions"
-        ) do %>
-      <%= link_to "Voltar para Config Imóveis", edit_admin_property_setting_path, class: "ax-btn ax-btn--ghost" %>
-      <%= f.submit "Salvar regra do fluxo", class: "ax-btn ax-btn--primary" %>
-    <% end %>
+    <aside class="ax-workflow__inspector" aria-label="Resumo da regra selecionada">
+      <%= ax_operational_panel(eyebrow: "Resumo", title: "Leitura rápida") do %>
+        <div class="ax-workflow__panel-body">
+          <dl class="ax-workflow__state">
+            <div class="ax-workflow__state-row">
+              <dt>Tipo</dt>
+              <dd><%= PropertyReviewPolicy.registration_label(@review_registration_type) %></dd>
+            </div>
+            <div class="ax-workflow__state-row">
+              <dt>Categoria</dt>
+              <dd><%= @review_category %></dd>
+            </div>
+            <div class="ax-workflow__state-row">
+              <dt>Modalidade</dt>
+              <dd><%= PropertyReviewPolicy.modality_label(@review_modality) %></dd>
+            </div>
+            <div class="ax-workflow__state-row">
+              <dt>Validações ativas</dt>
+              <dd><strong><%= @review_result.required_checks.size %></strong></dd>
+            </div>
+            <div class="ax-workflow__state-row">
+              <dt>Aplicáveis agora</dt>
+              <dd><strong><%= @review_result.applicable_checks.size %></strong></dd>
+            </div>
+          </dl>
+        </div>
+      <% end %>
+    </aside>
+  </div>
+
+  <%= ax_sticky_action_footer(
+        meta: safe_join([tag.i(class: "bi bi-shield-check", aria: { hidden: true }), tag.span("A regra salva é usada na operação real")], " "),
+        class_name: "ax-workflow__actions"
+      ) do %>
+    <%= link_to "Voltar para Config Imóveis", edit_admin_property_setting_path, class: "ax-btn ax-btn--ghost" %>
+    <%= button_tag "Salvar regra deste conjunto", type: "submit", form: "review_workflow_form", class: "ax-btn ax-btn--primary" %>
   <% end %>
 <% end %>
