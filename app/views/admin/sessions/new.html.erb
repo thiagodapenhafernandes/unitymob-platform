@@ -18,12 +18,19 @@
 
   <div class="login-field">
     <%= f.label :password, "Senha", class: "login-label" %>
-    <div class="login-control">
+    <div class="login-control login-control--password">
       <i class="bi bi-key" aria-hidden="true"></i>
       <%= f.password_field :password,
                            autocomplete: "current-password",
                            class: "login-input",
                            placeholder: "Digite sua senha" %>
+      <button type="button"
+              class="login-reveal"
+              data-login-reveal
+              aria-label="Mostrar senha"
+              aria-pressed="false">
+        <i class="bi bi-eye" aria-hidden="true"></i>
+      </button>
     </div>
   </div>
 
