@@ -29,7 +29,8 @@
     <% if lead.email.present? %>
       <div class="ax-board__card-line"><i class="bi bi-envelope"></i><span><%= lead.email %></span></div>
     <% end %>
-    <div class="ax-board__card-line"><i class="bi bi-megaphone"></i><span><%= lead.origin.presence || "Origem não informada" %></span></div>
+    <% conversion = lead_conversion_summary(lead) %>
+    <div class="ax-board__card-line"><i class="bi <%= conversion[:icon] %>"></i><span><%= conversion[:channel_label] %></span></div>
     <div class="ax-board__card-line"><i class="bi bi-person-badge"></i><span><%= lead.admin_user&.name.presence || "Sem corretor atribuído" %></span></div>
   </div>
 
