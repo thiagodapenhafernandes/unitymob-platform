@@ -1,6 +1,14 @@
 require "rails_helper"
 
 RSpec.describe Leads::Attribution do
+  it "preserva identificadores externos de campanha para conciliação posterior" do
+    lead = build(:lead)
+
+    described_class.apply!(lead, raw: { utm_id: "meta-123", gad_campaignid: "google-456", gbraid: "braid-789" })
+
+    expect(lead.attribution_data).to include("utm_id" => "meta-123", "gad_campaignid" => "google-456", "gbraid" => "braid-789")
+  end
+
   subject(:lead) { build(:lead, origin: "") }
 
   it "classifica Google Ads e preserva os dados de primeira entrada" do

@@ -1,0 +1,42 @@
+<%= turbo_frame_tag "admin_dashboard_acquisition" do %>
+  <article class="ax-dashboard-panel ax-dashboard-acquisition"
+           data-controller="dashboard-charts"
+           data-dashboard-charts-chart-url-value="<%= asset_path("chart.umd.min.js") %>"
+           data-dashboard-charts-leads-value="[]"
+           data-dashboard-charts-statuses-value="{}"
+           data-dashboard-charts-acquisition-channels-value="<%= json_escape(@acquisition_channels.to_json) %>"
+           data-dashboard-charts-acquisition-trend-value="<%= json_escape(@acquisition_trend.to_json) %>">
+    <div class="ax-dashboard-panel__header">
+      <div><span class="ax-dashboard-panel__eyebrow">Aquisição</span><h2>Origem dos leads</h2></div>
+      <%= ax_badge("#{@dashboard_period} dias", tone: :blue) %>
+    </div>
+
+    <div class="ax-dashboard-acquisition__kpis">
+      <div><span>Total</span><strong><%= @acquisition_total %></strong></div>
+      <div><span>Origem identificada</span><strong><%= @acquisition_attributed %></strong></div>
+      <div><span>Direto / desconhecido</span><strong><%= @acquisition_unknown %></strong></div>
+      <div><span>Taxa de atribuição</span><strong><%= number_with_precision(@acquisition_attribution_rate, precision: 1) %>%</strong></div>
+    </div>
+
+    <div class="ax-dashboard-acquisition__grid">
+      <section><h3>Leads por canal</h3><div class="ax-dashboard-chart ax-dashboard-chart--acquisition"><canvas id="leadsAcquisitionChart"></canvas></div></section>
+      <section><h3>Evolução por canal</h3><div class="ax-dashboard-chart ax-dashboard-chart--acquisition"><canvas id="leadsAcquisitionTrendChart"></canvas></div></section>
+    </div>
+
+    <section class="ax-dashboard-acquisition__campaigns">
+      <div class="ax-dashboard-acquisition__title"><h3>Campanhas pagas recebidas</h3><small>Nome UTM ou campanha cadastrada no CRM</small></div>
+      <% if @acquisition_campaigns.any? %>
+        <div class="ax-dashboard-list">
+          <% @acquisition_campaigns.each do |campaign| %>
+            <div class="ax-dashboard-list__row">
+              <span><strong><%= campaign[:name].presence || "Nome não enviado" %></strong><small><%= campaign[:channel_label] %><%= " · ID #{campaign[:external_id]}" if campaign[:external_id].present? %></small></span>
+              <%= ax_badge("#{campaign[:count]} leads", tone: :gray) %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="ax-dashboard-empty-row">Nenhuma campanha paga no período.</div>
+      <% end %>
+    </section>
+  </article>
+<% end %>
