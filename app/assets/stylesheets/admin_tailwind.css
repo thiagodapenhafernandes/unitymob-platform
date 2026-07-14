@@ -29299,3 +29299,33 @@ html[data-admin-theme="dark"] .captacoes-workspace .captacoes-table-wrap .ax-tab
   background: #294363 !important;
   color: #fff !important;
 }
+
+/* Dashboard: acquisition intelligence. */
+.ax-dashboard-acquisition { margin-top: 1rem; }
+.ax-dashboard-acquisition__kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-block: 1px solid var(--admin-border, #e5e7eb);
+}
+.ax-dashboard-acquisition__kpis > div { padding: .8rem 1rem; border-right: 1px solid var(--admin-border, #e5e7eb); }
+.ax-dashboard-acquisition__kpis > div:last-child { border-right: 0; }
+.ax-dashboard-acquisition__kpis span,
+.ax-dashboard-acquisition__campaigns small { display: block; color: var(--ab-muted, #667085); font-size: .75rem; }
+.ax-dashboard-acquisition__kpis strong { display: block; margin-top: .2rem; font-size: 1.25rem; }
+.ax-dashboard-acquisition__grid { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 1rem; padding: 1rem; }
+.ax-dashboard-acquisition__grid h3,
+.ax-dashboard-acquisition__campaigns h3 { margin: 0 0 .65rem; font-size: .85rem; }
+.ax-dashboard-chart--acquisition { height: 240px; }
+.ax-dashboard-acquisition__campaigns { padding: 0 1rem 1rem; }
+.ax-dashboard-acquisition__title { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.ax-dashboard-acquisition__campaigns .ax-dashboard-list__row span:first-child { min-width: 0; }
+.ax-dashboard-acquisition__campaigns .ax-dashboard-list__row strong { overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .ax-dashboard-acquisition__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ax-dashboard-acquisition__grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 540px) {
+  .ax-dashboard-acquisition__kpis { grid-template-columns: 1fr; }
+  .ax-dashboard-acquisition__kpis > div { border-right: 0; border-bottom: 1px solid var(--admin-border, #e5e7eb); }
+  .ax-dashboard-acquisition__title { display: block; }
+}

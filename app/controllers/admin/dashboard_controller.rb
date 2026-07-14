@@ -1,7 +1,7 @@
 class Admin::DashboardController < Admin::BaseController
   include DeviceRequest
 
-  DASHBOARD_SECTIONS = %w[charts funnel status rankings operations support].freeze
+  DASHBOARD_SECTIONS = %w[charts acquisition funnel status rankings operations support].freeze
   DASHBOARD_PERIODS = [7, 30, 90].freeze
 
   before_action :require_dashboard_admin!
@@ -113,6 +113,15 @@ class Admin::DashboardController < Admin::BaseController
       @leads_chart_mode = "daily"
       @leads_drilldown_urls = @leads_series.map { |date, _| admin_leads_path(start_date: date.iso8601, end_date: date.iso8601, broker_id: @dashboard_broker_id) }
     end
+  end
+
+  def load_acquisition_slice
+    result = Dashboard::LeadAcquisitionQuery.new(
+      scope: @lead_scope,
+      starts_at: dashboard_window_start,
+      tenant: current_tenant
+    ).call
+    result.each { |name, value| instance_variable_set("@acquisition_#{name}", value) }
   end
 
   def load_funnel_slice

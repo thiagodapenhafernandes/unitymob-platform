@@ -176,6 +176,10 @@
     <% end %>
   </div>
 
+  <%= turbo_frame_tag "admin_dashboard_acquisition", src: admin_dashboard_section_path("acquisition", dashboard_filter_params), loading: "lazy" do %>
+    <%= render "admin/dashboard/sections/loading_panel", title: "Origem dos leads", eyebrow: "Aquisição", chart: true %>
+  <% end %>
+
   <div class="ax-dashboard-grid ax-dashboard-grid--monitoring">
     <%= turbo_frame_tag "admin_dashboard_rankings", src: admin_dashboard_section_path("rankings", dashboard_filter_params), loading: "lazy" do %>
       <div class="ax-dashboard-grid ax-dashboard-grid--rankings <%= 'ax-dashboard-grid--rankings-single' unless @field_feature_enabled %>">

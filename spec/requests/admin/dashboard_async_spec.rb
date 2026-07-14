@@ -22,6 +22,8 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include(admin_dashboard_section_path("funnel"))
     expect(response.body).to include('id="admin_dashboard_status"')
     expect(response.body).to include(admin_dashboard_section_path("status"))
+    expect(response.body).to include('id="admin_dashboard_acquisition"')
+    expect(response.body).to include(admin_dashboard_section_path("acquisition"))
     expect(response.body).to include('id="admin_dashboard_rankings"')
     expect(response.body).to include(admin_dashboard_section_path("rankings"))
     expect(response.body).to include('id="admin_dashboard_operations"')
@@ -94,12 +96,26 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   end
 
   it "renderiza cada slice em seu turbo frame" do
-    %w[charts funnel status rankings operations support].each do |section|
+    %w[charts acquisition funnel status rankings operations support].each do |section|
       get admin_dashboard_section_path(section), headers: { "Turbo-Frame" => "admin_dashboard_#{section}" }
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(%(id="admin_dashboard_#{section}"))
     end
+  end
+
+  it "resume aquisição e campanhas pagas no período" do
+    create(:lead, tenant: admin.tenant, attribution_channel: "meta_ads", attribution_data: { "utm_campaign" => "verao", "utm_id" => "123" }, created_at: 2.days.ago)
+    create(:lead, tenant: admin.tenant, attribution_channel: "direct", attribution_data: {}, created_at: 2.days.ago)
+
+    get admin_dashboard_section_path("acquisition", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_acquisition" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Origem dos leads")
+    expect(response.body).to include("Taxa de atribuição")
+    expect(response.body).to include("Meta Ads")
+    expect(response.body).to include("verao")
+    expect(response.body).to include("ID 123")
   end
 
   it "expõe indicadores acionáveis de qualidade do catálogo" do
