@@ -2,6 +2,7 @@ class Admin::DashboardController < Admin::BaseController
   include DeviceRequest
 
   DASHBOARD_SECTIONS = %w[charts acquisition funnel status rankings operations support].freeze
+  DASHBOARD_TABS = %w[overview leads properties field].freeze
   DASHBOARD_PERIODS = [7, 30, 90].freeze
 
   before_action :require_dashboard_admin!
@@ -15,6 +16,7 @@ class Admin::DashboardController < Admin::BaseController
     section_name = params[:section].to_s
     raise ActiveRecord::RecordNotFound unless DASHBOARD_SECTIONS.include?(section_name)
 
+    @dashboard_tab = "all" if params[:tab].blank?
     send("load_#{section_name}_slice")
     render partial: "admin/dashboard/sections/#{section_name}", layout: false
   end
@@ -37,6 +39,8 @@ class Admin::DashboardController < Admin::BaseController
     @lead_scope = scoped_dashboard_leads
     @captacao_scope = scoped_dashboard_captacoes
     @field_feature_enabled = Setting.get("field_checkin_enabled", "false").to_s == "true"
+    requested_tab = params[:tab].to_s.presence_in(DASHBOARD_TABS) || "overview"
+    @dashboard_tab = requested_tab == "field" && !@field_feature_enabled ? "overview" : requested_tab
     @dashboard_updated_at = Time.current
     @dashboard_window_start = dashboard_window_start
   end
