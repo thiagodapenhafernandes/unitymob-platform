@@ -133,7 +133,7 @@
           
           <!-- Área -->
           <% 
-            areas = @development_units.map(&:area_total_m2).compact.reject(&:zero?)
+            areas = @development_units.filter_map(&:public_area_m2)
             if areas.any?
               min_area = areas.min.to_i
               max_area = areas.max.to_i
@@ -146,7 +146,7 @@
                 <p class="text-2xl font-bold text-gray-900">
                   <%= min_area == max_area ? "#{min_area}m²" : "#{min_area}m² a #{max_area}m²" %>
                 </p>
-                <p class="text-xs text-gray-500 uppercase tracking-wide">Área Total</p>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Área privativa</p>
               </div>
             </div>
           <% end %>

@@ -6,7 +6,7 @@ module Habitation::CacheableMethods
   
   # Retorna área formatada com cache
   def area_formatted
-    Rails.cache.fetch([cache_key_with_version, 'area_formatted'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'area_formatted_v2'], expires_in: CACHE_EXPIRATION) do
       calculate_area_formatted
     end
   end
@@ -51,7 +51,7 @@ module Habitation::CacheableMethods
   
   # Retorna características principais com cache
   def main_features
-    Rails.cache.fetch([cache_key_with_version, 'main_features'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'main_features_v2'], expires_in: CACHE_EXPIRATION) do
       calculate_main_features
     end
   end
@@ -72,7 +72,7 @@ module Habitation::CacheableMethods
   
   # Retorna dados formatados para card com cache
   def card_data
-    Rails.cache.fetch([cache_key_with_version, 'card_data'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'card_data_v2'], expires_in: CACHE_EXPIRATION) do
       {
         id: id,
         codigo: codigo,
@@ -86,7 +86,7 @@ module Habitation::CacheableMethods
         suites: suites_qtd,
         bathrooms: banheiros_qtd,
         parking: vagas_qtd,
-        area: area_total_m2&.to_i,
+        area: public_area_m2&.to_i,
         area_formatted: area_formatted,
         image: primary_image_url,
         images: image_urls,
@@ -101,9 +101,9 @@ module Habitation::CacheableMethods
   private
   
   def calculate_area_formatted
-    return nil unless area_total_m2.present? && area_total_m2 > 0
+    return nil unless public_area_m2
     
-    area = area_total_m2.to_i
+    area = public_area_m2.to_i
     "#{area} m²"
   end
   
@@ -166,11 +166,11 @@ module Habitation::CacheableMethods
       }
     end
     
-    if area_total_m2.to_f > 0
+    if public_area_m2
       features << {
         icon: 'ruler',
         label: 'Área',
-        value: area_total_m2.to_i,
+        value: public_area_m2.to_i,
         text: area_formatted
       }
     end

@@ -314,4 +314,22 @@ RSpec.describe Habitation, type: :model do
       expect(sale).not_to be_taxes_included_indicator
     end
   end
+
+  describe "#public_area_m2" do
+    it "returns only the private area" do
+      habitation = build(:habitation, area_privativa_m2: 82, area_total_m2: 137)
+
+      expect(habitation.public_area_m2).to eq(82)
+      expect(habitation.card_data[:area]).to eq(82)
+      expect(habitation.area_formatted).to eq("82 m²")
+    end
+
+    it "does not fall back to total area" do
+      habitation = build(:habitation, area_privativa_m2: nil, area_total_m2: 137)
+
+      expect(habitation.public_area_m2).to be_nil
+      expect(habitation.card_data[:area]).to be_nil
+      expect(habitation.area_formatted).to be_nil
+    end
+  end
 end

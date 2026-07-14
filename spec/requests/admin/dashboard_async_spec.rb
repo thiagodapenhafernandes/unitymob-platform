@@ -91,10 +91,20 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     get admin_root_path(tab: "properties")
 
     expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.css(".ax-dashboard-properties-top > turbo-frame").size).to eq(2)
     expect(response.body).to include('id="admin_dashboard_rankings"')
     expect(response.body).to include('id="admin_dashboard_operations"')
     expect(response.body).to include('id="admin_dashboard_support"')
     expect(response.body).not_to include('id="admin_dashboard_charts"')
+  end
+
+  it "faz os painéis filtrados de Imóveis ocuparem toda a coluna disponível" do
+    get admin_dashboard_section_path("rankings", tab: "properties"), headers: { "Turbo-Frame" => "admin_dashboard_rankings" }
+    expect(response.body).to include("ax-dashboard-grid--rankings-single")
+
+    get admin_dashboard_section_path("operations", tab: "properties"), headers: { "Turbo-Frame" => "admin_dashboard_operations" }
+    expect(response.body).to include("ax-dashboard-grid--single")
   end
 
   it "oculta Campo quando o módulo está pausado e volta para a visão geral" do
@@ -171,6 +181,8 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include("Meta Ads")
     expect(response.body).to include("verao")
     expect(response.body).to include("ID 123")
+    expect(response.body).to include("ax-dashboard-campaign-grid")
+    expect(response.body).to include("ax-dashboard-campaign-row__count")
   end
 
   it "expõe indicadores acionáveis de qualidade do catálogo" do

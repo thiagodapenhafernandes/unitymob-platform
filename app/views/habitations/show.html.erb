@@ -3,7 +3,7 @@
 <% title = @habitation.display_title %>
 <% address_parts = [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank %>
 <% address_text = address_parts.join(" - ") %>
-<% area_text = (@habitation.area_total_m2.presence || @habitation.area_privativa_m2.presence) %>
+<% area_text = @habitation.public_area_m2 %>
 <% has_sale_price = @habitation.valor_venda_cents.to_i.positive? %>
 <% has_rent_price = @habitation.valor_locacao_cents.to_i.positive? %>
 <% has_discount = @habitation.sale_discount? %>

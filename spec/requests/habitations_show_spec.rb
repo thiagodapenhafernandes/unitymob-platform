@@ -394,6 +394,47 @@ RSpec.describe "Habitation details", type: :request do
       expect(price_position).to be < description_position
     end
 
+    it "divulga somente a área privativa no detalhe e nos dados estruturados" do
+      habitation = create(
+        :habitation,
+        codigo: "PRIVATE-AREA",
+        slug: "area-privativa-publica",
+        area_privativa_m2: 82,
+        area_total_m2: 137
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      page = Nokogiri::HTML(response.body)
+      features_text = page.at_css(".public-habitations-show__features")&.text&.squish
+      listing_schema = page.css('script[type="application/ld+json"]')
+        .filter_map { |node| JSON.parse(node.text) rescue nil }
+        .find { |schema| schema["@type"] == "RealEstateListing" }
+
+      expect(features_text).to include("82 m²")
+      expect(features_text).not_to include("137 m²")
+      expect(listing_schema.dig("floorSize", "value")).to eq(82.0)
+    end
+
+    it "não usa a área total como fallback público" do
+      habitation = create(
+        :habitation,
+        codigo: "TOTAL-ONLY",
+        slug: "somente-area-total",
+        area_privativa_m2: nil,
+        area_total_m2: 137,
+        dormitorios_qtd: 0,
+        suites_qtd: 0,
+        vagas_qtd: 0
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("public-habitations-show__features")
+    end
+
     it "omite características sem valor informado" do
       habitation = create(:habitation, codigo: "NO-FEATURES", slug: "sem-caracteristicas", area_total_m2: 0, dormitorios_qtd: 0, suites_qtd: 0, vagas_qtd: 0)
 
@@ -530,6 +571,35 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(development.nome_empreendimento)
+    end
+
+    it "resume as unidades pela faixa de área privativa" do
+      development = create(
+        :habitation,
+        codigo: "DEV-PRIVATE-AREA",
+        tipo: "Empreendimento",
+        nome_empreendimento: "Empreendimento Área Privativa",
+        valor_venda_cents: 0
+      )
+      create(
+        :habitation,
+        codigo_empreendimento: development.codigo,
+        area_privativa_m2: 80,
+        area_total_m2: 125
+      )
+      create(
+        :habitation,
+        codigo_empreendimento: development.codigo,
+        area_privativa_m2: 100,
+        area_total_m2: 160
+      )
+
+      get empreendimento_details_path(development)
+
+      expect(response).to have_http_status(:ok)
+      page_text = Nokogiri::HTML(response.body).text.squish
+      expect(page_text).to include("80m² a 100m²", "Área privativa")
+      expect(page_text).not_to include("125m² a 160m²", "Área Total")
     end
   end
 

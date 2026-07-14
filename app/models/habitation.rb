@@ -1747,6 +1747,12 @@ class Habitation < ApplicationRecord
       area_privativa_m2.to_f.positive? ? "#{area_privativa_m2.to_i} m²" : nil
     end
   end
+
+  # A metragem divulgada no site representa exclusivamente a area privativa.
+  # Area total continua disponivel para operacao, filtros e integracoes.
+  def public_area_m2
+    area_privativa_m2.to_f.positive? ? area_privativa_m2 : nil
+  end
   
   # Retorna o título para exibição
   def display_title

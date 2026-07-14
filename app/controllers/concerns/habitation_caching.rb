@@ -23,6 +23,7 @@ module HabitationCaching
 
   def public_show_asset_cache_key
     [
+      "public-private-area-v1",
       asset_cache_path("tailwind.css"),
       asset_cache_path("application.css"),
       asset_cache_path("ax_toast.css"),

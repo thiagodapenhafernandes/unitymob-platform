@@ -26,11 +26,14 @@
     <section class="ax-dashboard-acquisition__campaigns">
       <div class="ax-dashboard-acquisition__title"><h3>Campanhas pagas recebidas</h3><small>Nome UTM ou campanha cadastrada no CRM</small></div>
       <% if @acquisition_campaigns.any? %>
-        <div class="ax-dashboard-list">
+        <div class="ax-dashboard-campaign-grid">
           <% @acquisition_campaigns.each do |campaign| %>
-            <div class="ax-dashboard-list__row">
-              <span><strong><%= campaign[:name].presence || "Nome não enviado" %></strong><small><%= campaign[:channel_label] %><%= " · ID #{campaign[:external_id]}" if campaign[:external_id].present? %></small></span>
-              <%= ax_badge("#{campaign[:count]} leads", tone: :gray) %>
+            <div class="ax-dashboard-campaign-row">
+              <span class="ax-dashboard-campaign-row__identity">
+                <strong><%= campaign[:name].presence || "Nome não enviado" %></strong>
+                <small><%= campaign[:channel_label] %><%= " · ID #{campaign[:external_id]}" if campaign[:external_id].present? %></small>
+              </span>
+              <span class="ax-dashboard-campaign-row__count"><strong><%= campaign[:count] %></strong><small>leads</small></span>
             </div>
           <% end %>
         </div>
