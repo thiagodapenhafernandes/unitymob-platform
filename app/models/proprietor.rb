@@ -90,6 +90,34 @@ class Proprietor < ApplicationRecord
     Phones::Normalizer.call(value).to_s
   end
 
+  # Cidades cadastradas historicamente vêm com grafias divergentes ("Balneario
+  # Camboriu", "balneário Camboriú", "Balneário Camboriú"). Agrupa por chave
+  # sem acento/caixa/espaço e devolve uma única grafia canônica por cidade,
+  # preferindo a versão acentuada e em caixa de título, para não poluir o
+  # autocomplete com dezenas de duplicatas.
+  def self.distinct_city_suggestions(limit: 500)
+    values = where.not(city: [nil, ""])
+      .distinct
+      .limit(limit)
+      .pluck(:city)
+      .map { |city| city.to_s.strip }
+      .reject(&:blank?)
+
+    values
+      .group_by { |city| I18n.transliterate(city).downcase.gsub(/\s+/, " ").strip }
+      .map { |_key, variants| canonical_city_variant(variants) }
+      .uniq
+      .sort_by { |city| I18n.transliterate(city).downcase }
+  end
+
+  def self.canonical_city_variant(variants)
+    variants.max_by do |city|
+      accents = city.chars.count { |char| I18n.transliterate(char) != char }
+      title_case = city == city.split(/(\s+)/).map(&:capitalize).join ? 1 : 0
+      [accents, title_case, city.length]
+    end
+  end
+
   # LGPD: CPF cifrado at-rest; *_digits com cifra determinística p/ busca por
   # igualdade. Guards mantêm o app funcional pré-migration 20260705000010.
   if (column_names.include?("cpf_cnpj_digits") rescue false)

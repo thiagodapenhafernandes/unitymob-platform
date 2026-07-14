@@ -663,14 +663,7 @@ module Admin
         )
         .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
         .order(nome_empreendimento: :asc)
-      @proprietor_city_options = current_tenant.proprietors
-        .where.not(city: [nil, ""])
-        .distinct
-        .order(:city)
-        .limit(100)
-        .pluck(:city)
-        .map { |city| city.to_s.strip }
-        .compact_blank
+      @proprietor_city_options = current_tenant.proprietors.distinct_city_suggestions
       @internal_features = (
         current_tenant.attribute_options.where(context: "habitation", category: "feature").order(:name).pluck(:name) +
         Admin::HabitationsController::CUSTOM_FEATURE_OPTIONS
