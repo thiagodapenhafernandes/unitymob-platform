@@ -20,11 +20,17 @@ default: &default
       threads: 3
       processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
       polling_interval: 0.5
-    # Integrações e mídia compartilham o worker de processamento pesado.
-    # DWV continua serializado pelo Dwv::SyncLockService; duas threads permitem
-    # que uma transformação de imagem não bloqueie todos os demais syncs.
-    - queues: [dwv, sync, media]
+    # Integrações pesadas, sem mídia. DWV continua serializado pelo
+    # Dwv::SyncLockService; duas threads permitem syncs paralelos sem competir
+    # com transformações de imagem.
+    - queues: [dwv, sync]
       threads: 2
+      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      polling_interval: 1
+    # Transformações/análises de imagem podem reter RSS alto no processo Ruby.
+    # Mantém mídia isolada e serializada para limitar pico de memória em produção.
+    - queues: media
+      threads: 1
       processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
       polling_interval: 1
     # Operacionais leves compartilham um processo, priorizando check-ins.
