@@ -133,6 +133,24 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("habitation_numero_prestacoes")
   end
 
+  it "renderiza progresso e editores ricos sem geometria inline" do
+    habitation = create(:habitation, codigo: "FORM-COMPONENTS-#{SecureRandom.hex(6)}")
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    progress = html.at_css("progress.ax-progress__bar[data-habitation-form-progress-bar]")
+    rich_texts = html.css("trix-editor.ax-rich-text-control")
+
+    expect(progress).to be_present
+    expect(progress["max"]).to eq("100")
+    expect(progress["style"]).to be_nil
+    expect(rich_texts.size).to eq(3)
+    expect(rich_texts).to all(satisfy { |editor| editor["style"].nil? })
+    expect(rich_texts.count { |editor| editor["class"].split.include?("ax-rich-text-control--lg") }).to eq(1)
+  end
+
   it "renderiza os contextos reativos ativos organizados em painéis" do
     habitation = create(
       :habitation,
@@ -324,6 +342,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(responsible_section).to be_present
     expect(portal_section).to be_present
+    expect(portal_section.css("fieldset.ax-radio-group").size).to eq(9)
     expect(side_column.element_children.index(portal_section)).to eq(
       side_column.element_children.index(responsible_section) + 1
     )
@@ -517,6 +536,23 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(habitation.reload.exibir_no_site_flag).to be(true)
+  end
+
+  it "renderiza o modal de divulgação em lote sem estilos inline" do
+    get admin_habitations_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    modal = html.at_css("#bulkPublishModal")
+    option_blocks = modal.css(".bulk-publish-channel-options[data-channel]")
+
+    expect(modal).to be_present
+    expect(modal.css("[style]")).to be_empty
+    expect(option_blocks.map { |block| block["data-channel"] }).to eq(
+      %w[chaves_na_mao casa_mineira imovelweb imovelweb_2 viva_real_vrsync]
+    )
+    expect(modal.at_css("[data-bulk-publish-target='eligTotal']")).to be_present
+    expect(modal.at_css("[data-bulk-publish-target='eligCount']")).to be_present
   end
 
   it "bloqueia publicação em massa para perfil operacional limitado à equipe" do
@@ -1380,6 +1416,54 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(other_property.titulo_anuncio)
   end
 
+  it "cruza código e nome do empreendimento no filtro para incluir unidades vinculadas por qualquer das chaves" do
+    development_code = "DEV-LUZ-#{SecureRandom.hex(6)}"
+    development_name = "Luz do Mar Residencial"
+    create(
+      :habitation,
+      codigo: development_code,
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      nome_empreendimento: development_name,
+      titulo_anuncio: development_name
+    )
+    linked_by_code = create(
+      :habitation,
+      codigo: "UNIT-LUZ-CODE-#{SecureRandom.hex(6)}",
+      codigo_empreendimento: development_code,
+      nome_empreendimento: nil,
+      titulo_anuncio: "Apto 1101"
+    )
+    linked_by_name = create(
+      :habitation,
+      codigo: "UNIT-LUZ-NAME-#{SecureRandom.hex(6)}",
+      codigo_empreendimento: nil,
+      nome_empreendimento: development_name,
+      titulo_anuncio: "Apto 2202"
+    )
+    other_property = create(
+      :habitation,
+      codigo: "UNIT-LUZ-OTHER-#{SecureRandom.hex(6)}",
+      codigo_empreendimento: nil,
+      nome_empreendimento: "Outro Residencial",
+      titulo_anuncio: "Outro Apto"
+    )
+
+    get admin_habitations_path(empreendimento_codigo: "dev:#{development_code}")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(linked_by_code.titulo_anuncio)
+    expect(response.body).to include(linked_by_name.titulo_anuncio)
+    expect(response.body).not_to include(other_property.titulo_anuncio)
+
+    get admin_habitations_path(empreendimento_codigo: "name:#{development_name}")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(linked_by_code.titulo_anuncio)
+    expect(response.body).to include(linked_by_name.titulo_anuncio)
+    expect(response.body).not_to include(other_property.titulo_anuncio)
+  end
+
   it "filtra empreendimento por corretor sem erro de distinct com ordenação" do
     broker = create(:admin_user, name: "Laudi Cardoso")
     development_code = "DEV-BROKER-#{SecureRandom.hex(6)}"
@@ -1966,6 +2050,14 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include('download="imoveis_exportacao_teste.csv"')
     expect(response.body).to include('data-controller="ax-async-download"')
     expect(response.body).to include('data-action="ax-async-download#download"')
+    html = Nokogiri::HTML(response.body)
+    modal = html.at_css("#habitationsExportModal")
+    progress = modal.at_css("progress.ax-progress__bar[data-habitation-export-target='progressBar']")
+    expect(modal.css("[style]")).to be_empty
+    expect(progress).to be_present
+    expect(progress["value"]).to eq("0.0")
+    expect(progress["max"]).to eq("100")
+    expect(modal.at_css(".habitations-export-recent-item__filename").text).to eq("imoveis_exportacao_teste.csv")
   end
 
   it "inicia a exportação CSV assíncrona e lista o progresso no modal" do

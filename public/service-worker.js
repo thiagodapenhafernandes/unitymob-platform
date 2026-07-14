@@ -31,7 +31,19 @@ self.addEventListener("fetch", function (event) {
       fetch(event.request).catch(function () {
         const fallback = event.request.url.includes("/admin/captacoes") ? fieldFallbackPage : offlineFallbackPage;
         return caches.match(fallback).then(function (cached) {
-          return cached || caches.match(offlineFallbackPage);
+          if (cached) return cached;
+
+          return caches.match(offlineFallbackPage).then(function (offlineCached) {
+            if (offlineCached) return offlineCached;
+
+            return new Response(
+              "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Salute Imóveis</title></head><body><h1>Sem conexão</h1><p>Não foi possível carregar a página no momento.</p></body></html>",
+              {
+                status: 503,
+                headers: { "Content-Type": "text/html; charset=utf-8" }
+              }
+            );
+          });
         });
       })
     );

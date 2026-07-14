@@ -87,7 +87,23 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match("/field")))
+        .catch(() =>
+          caches.match(request).then((cached) => {
+            if (cached) return cached;
+
+            return caches.match("/field").then((shellCached) => {
+              if (shellCached) return shellCached;
+
+              return new Response(
+                "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Salute Campo</title></head><body><h1>Sem conexão</h1><p>O aplicativo não conseguiu abrir agora.</p></body></html>",
+                {
+                  status: 503,
+                  headers: { "Content-Type": "text/html; charset=utf-8" }
+                }
+              );
+            });
+          })
+        )
     );
   }
 });
