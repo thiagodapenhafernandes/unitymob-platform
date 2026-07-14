@@ -375,21 +375,25 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(submitted.titulo_anuncio)
-    expect(response.body).not_to include(approved.titulo_anuncio)
+    expect(response.body).to include(approved.titulo_anuncio)
     expect(response.body).not_to include(draft.titulo_anuncio)
     expect(response.body).not_to include(returned.titulo_anuncio)
     expect(response.body).to include("Em revisão administrativa")
+    expect(response.body).to include("Aguardando aceite do corretor")
     expect(response.body).not_to include(internal.titulo_anuncio)
     expect(response.body).not_to include(published.titulo_anuncio)
 
     html = Nokogiri::HTML(response.body)
     expect(response.body).to include("ax-property-chip--intake-review")
+    expect(response.body).to include("ax-property-chip--intake-approved")
 
     get admin_habitations_path(intake_review: "pending", ownership: "all", visualizacao: "tabela")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Em revisão administrativa")
+    expect(response.body).to include("Aguardando aceite do corretor")
     expect(response.body).to include("ax-property-chip--intake-review")
+    expect(response.body).to include("ax-property-chip--intake-approved")
     expect(response.body).not_to include("Disponível internamente")
     expect(response.body).not_to include("Liberado para site")
   end
@@ -1106,6 +1110,47 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Imóvel da equipe")
 
     expect(response.body).not_to include("Você não tem permissão para editar este imóvel.")
+
+    get edit_admin_habitation_path(outside_property)
+    expect(response).to redirect_to(admin_habitations_path)
+  end
+
+  it "mostra botão de edição e permite editar imóvel da equipe identificado por nome legado do captador" do
+    manager_profile = Profile.create!(
+      tenant: Tenant.default,
+      name: "Gerente legado #{SecureRandom.hex(6)}",
+      axis: Profile::AXES[:vertical],
+      position: 705,
+      permissions: Profile.default_permissions_for("Gerente")
+    )
+    manager = create(:admin_user, profile: manager_profile, acting_type: :sales, name: "Emerson Machado")
+    team_broker = create(:admin_user, profile: default_agent_profile, manager: manager, acting_type: :sales, name: "Angye Karine")
+    outside_broker = create(:admin_user, profile: default_agent_profile, acting_type: :sales, name: "Corretor externo legado")
+    team_property = create(
+      :habitation,
+      admin_user: outside_broker,
+      corretor_nome: "Angye Karine",
+      codigo: "LEGACY-TEAM-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel legado da equipe"
+    )
+    outside_property = create(
+      :habitation,
+      admin_user: outside_broker,
+      corretor_nome: "Outro Captador",
+      codigo: "LEGACY-OUT-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel legado externo"
+    )
+
+    sign_in manager
+
+    get admin_habitations_path(q: team_property.codigo, ownership: "all")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Imóvel legado da equipe")
+    expect(response.body).to include(CGI.escapeHTML("#{edit_admin_habitation_path(team_property.id)}?return_to=/admin/habitations&ownership=all&q=#{team_property.codigo}&back_anchor=habitation_#{team_property.id}"))
+
+    get edit_admin_habitation_path(team_property)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Imóvel legado da equipe")
 
     get edit_admin_habitation_path(outside_property)
     expect(response).to redirect_to(admin_habitations_path)

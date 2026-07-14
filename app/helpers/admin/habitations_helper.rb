@@ -212,8 +212,9 @@ module Admin::HabitationsHelper
   end
 
   def habitation_owned_by_current_team?(habitation)
-    team_ids = current_admin_user.team_scope_ids
+    team_ids = current_habitation_team_scope_ids
     return true if team_ids.include?(habitation.admin_user_id)
+    return true if habitation_matches_current_team_broker_name?(habitation, team_ids)
 
     if habitation.broker_assignments.loaded?
       habitation.broker_assignments.any? { |assignment| team_ids.include?(assignment.admin_user_id) }
@@ -242,6 +243,44 @@ module Admin::HabitationsHelper
   def habitation_matches_current_broker_name?(habitation)
     broker_name = current_admin_user.name.to_s.strip.downcase
     broker_name.present? && habitation.corretor_nome.to_s.downcase.include?(broker_name)
+  end
+
+  def current_habitation_team_scope_ids
+    if respond_to?(:manager_team_user_ids)
+      manager_team_user_ids
+    else
+      current_admin_user.team_scope_ids
+    end
+  end
+
+  def habitation_matches_current_team_broker_name?(habitation, team_ids)
+    broker_names = current_habitation_team_broker_names(team_ids)
+    return false if broker_names.blank?
+
+    candidates = [
+      habitation.corretor_nome,
+      (habitation.primary_captador_name if habitation.respond_to?(:primary_captador_name))
+    ].compact_blank.map { |value| normalize_habitation_broker_match_text(value) }
+
+    candidates.any? do |candidate|
+      broker_names.any? { |broker_name| candidate.include?(broker_name) }
+    end
+  end
+
+  def current_habitation_team_broker_names(team_ids)
+    @current_habitation_team_broker_names_by_scope ||= {}
+    key = team_ids.map(&:to_i).sort
+    @current_habitation_team_broker_names_by_scope[key] ||= current_tenant
+      .admin_users
+      .where(id: key)
+      .pluck(:name)
+      .compact_blank
+      .map { |name| normalize_habitation_broker_match_text(name) }
+      .select(&:present?)
+  end
+
+  def normalize_habitation_broker_match_text(value)
+    I18n.transliterate(value.to_s).downcase.squish
   end
 
   def admin_current_user_can?(action, resource)
