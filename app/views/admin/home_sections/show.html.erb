@@ -47,16 +47,11 @@
       <% if @home_section.home_section_items.any? %>
         <hr>
         <h5>Itens desta Seção</h5>
-        <ul style="list-style:none;margin:0;padding:0">
+        <div class="ax-record-list">
           <% @home_section.home_section_items.each do |item| %>
-            <li class="tw-flex tw-items-center tw-justify-between tw-gap-2 tw-py-2" style="border-bottom:1px solid #e7ebf2">
-              <strong><%= item.title %></strong>
-              <% if item.description.present? %>
-                <p class="tw-mb-1 tw-text-ink-muted"><%= item.description %></p>
-              <% end %>
-            </li>
+            <%= ax_record_item(title: item.title, meta: item.description.presence, icon: "list-check") %>
           <% end %>
-        </ul>
+        </div>
       <% end %>
 
       <div class="tw-mt-3">

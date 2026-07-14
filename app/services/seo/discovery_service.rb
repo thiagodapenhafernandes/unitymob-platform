@@ -60,7 +60,7 @@ module Seo
     end
 
     def strategic_property_opportunities
-      Seo::StrategicLanding::PROPERTY_PAGES.map do |slug, data|
+      Seo::StrategicLanding.property_pages(tenant: seo_tenant).map do |slug, data|
         build_opportunity(
           canonical_key: "properties_landing:#{slug}",
           page_name: "imoveis:#{slug}",
@@ -69,15 +69,15 @@ module Seo
           normalized_params: data[:params],
           title: data[:title],
           description: data[:description],
-          keywords: [data[:label], "imóveis", "Balneário Camboriú", site_name].join(", "),
-          intro_text: Seo::StrategicLanding.property_intro(data),
+          keywords: [data[:label], "imóveis", primary_city, site_name].compact_blank.join(", "),
+          intro_text: Seo::StrategicLanding.property_intro(data, tenant: seo_tenant),
           count: count_properties(data[:params])
         )
       end
     end
 
     def strategic_development_opportunities
-      Seo::StrategicLanding::DEVELOPMENT_PAGES.map do |slug, data|
+      Seo::StrategicLanding.development_pages(tenant: seo_tenant).map do |slug, data|
         build_opportunity(
           canonical_key: "developments_landing:#{slug}",
           page_name: "empreendimentos:#{slug}",
@@ -86,8 +86,8 @@ module Seo
           normalized_params: data[:params],
           title: data[:title],
           description: data[:description],
-          keywords: [data[:label], "empreendimentos", "Balneário Camboriú", site_name].join(", "),
-          intro_text: Seo::StrategicLanding.development_intro(data),
+          keywords: [data[:label], "empreendimentos", primary_city, site_name].compact_blank.join(", "),
+          intro_text: Seo::StrategicLanding.development_intro(data, tenant: seo_tenant),
           count: count_developments(data[:params])
         )
       end
@@ -124,7 +124,7 @@ module Seo
           normalized_params: params,
           title: "Imóveis em #{bairro}",
           description: "Imóveis em #{bairro} com curadoria da #{site_name} para quem busca localização e boas oportunidades.",
-          keywords: ["imóveis em #{bairro}", "Balneário Camboriú", site_name].join(", "),
+          keywords: ["imóveis em #{bairro}", primary_city, site_name].compact_blank.join(", "),
           intro_text: "",
           count: count
         )
@@ -165,6 +165,10 @@ module Seo
       LayoutSetting.instance.site_name.presence || "Unitymob"
     rescue StandardError
       "Unitymob"
+    end
+
+    def primary_city
+      @primary_city ||= Tenants::PublicIdentity.new(seo_tenant).primary_city
     end
 
     def process(opportunity)

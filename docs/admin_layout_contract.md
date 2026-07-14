@@ -63,22 +63,30 @@ Regras inegociáveis:
 2. **Se o componente não existir, criar primeiro** o componente compartilhado
    (partial em `shared/ui` + helper em `Admin::UiHelper` + CSS namespeado `.ax-*`)
    e só então usar na tela. Não resolver com markup/CSS local "só nesta tela".
-3. **Se o padrão visual aparece em 2+ telas, promover** para `shared/ui` antes de
-   replicar.
-4. **Não recriar um card/painel/coluna na mão.** Cards de conteúdo =
+3. **Todo padrão visual ou comportamental repetível nasce compartilhado**, mesmo
+   quando a primeira ocorrência ainda está em uma única tela. Se houver potencial
+   de reaplicação — heading, workflow, stepper, estado, ação, campo, painel,
+   tabela, filtro, empty state, modal ou interação — criar/evoluir a primitive
+   `ax-*` na mesma rodada antes de consumir. Não esperar uma segunda tela.
+4. **CSS/markup local é exceção, não etapa intermediária.** Só pode permanecer
+   local quando representar composição ou geometria comprovadamente exclusiva do
+   domínio daquela página, sem reproduzir aparência, estado ou comportamento de
+   uma primitive. A exceção deve estar namespaced, justificada no relatório e ser
+   promovida imediatamente se surgir outro consumidor.
+5. **Não recriar um card/painel/coluna na mão.** Cards de conteúdo =
    `ax_operational_panel` (estilo dashboard: header `#f8fafc`, título 13px/800,
    eyebrow 10px). KPIs = `ax_metric_card`. Colunas de kanban = `ax_board` +
    `ax_board_column`. Painel genérico = `ax_panel`.
-5. **Não usar hack de CSS escopado para imitar um componente.** Dois antipadrões já
+6. **Não usar hack de CSS escopado para imitar um componente.** Dois antipadrões já
    corrigidos no projeto: o token global `--ax-panel-header` (#eef2f7) é igual ao
    fundo da página e some; e a regra global `.ax-app h2 { 1.3rem }` infla títulos
    de classe única — ambos resolvidos nativamente por `ax_operational_panel` e pelo
    header escopado do board. Se um título de componente vier inflado, é
    especificidade contra `.ax-app h2/h1`: escopar com 2 classes, não baixar via
    `!important`.
-6. **Ao corrigir um componente compartilhado, corrigir na origem** (partial/CSS do
+7. **Ao corrigir um componente compartilhado, corrigir na origem** (partial/CSS do
    componente), beneficiando todas as telas — não duplicar a correção por tela.
-7. **Sempre que puder, remover legado de Bootstrap.** A tendência é remover o
+8. **Sempre que puder, remover legado de Bootstrap.** A tendência é remover o
    Bootstrap 100%; `admin_compat.css` é ponte temporária, não base. Ao
    migrar/tocar numa área, trocar `row`/`col`/`card`/`form-group`/`alert`/`badge`/
    `btn`/`form-control` e markup/controllers que só sustentam o visual antigo pelos
@@ -346,8 +354,9 @@ app/assets/stylesheets/admin_tailwind.css
 app/javascript/controllers/ax_*.js
 ```
 
-Use helpers `ax_*` em views Rails. Se um padrão aparece em duas telas, promova
-para `app/views/admin/shared/ui` antes de replicar markup.
+Use helpers `ax_*` em views Rails. Se um padrão tiver potencial de reutilização,
+promova para a camada compartilhada já na primeira ocorrência, antes de consumir
+ou replicar markup.
 
 ## Componentes Estruturais
 
@@ -356,6 +365,8 @@ para `app/views/admin/shared/ui` antes de replicar markup.
 | `ax_workspace_shell` / `_workspace_shell.html.erb` | cria `ax-main` + `ax-aside` como irmãos |
 | `ax_aside_panel` / `_aside_panel.html.erb` | estrutura da coluna direita com header, token e rail recolhido |
 | `ax_sticky_action_footer` / `_sticky_action_footer.html.erb` | footer persistente de ações |
+| `ax_workflow` / `_workflow.html.erb` / `components/workflow.css` | região acessível e composição de etapas, clarificador, main/inspector, stepper e estados de processos operacionais |
+| `ax_status_list` / `_status_list.html.erb` / `components/status_list.css` | lista descritiva compacta para pares rótulo/estado em inspectors, resumos e diagnósticos |
 
 Exemplo:
 
@@ -376,18 +387,21 @@ Exemplo:
 | `ax_form_section` | seção compacta, com header funcional e colapso |
 | `ax_field_grid` | grid denso de campos em 12 colunas |
 | `ax_field_group` | subgrupo interno sem card dentro de card |
-| `ax_field_label` | label padronizado com tooltip por ícone de info |
-| `ax_text_field` | input simples |
+| `ax_field_label` | label padronizado com tooltip por ícone de info e `meta:` opcional para contador, unidade ou estado curto |
+| `ax_text_field` | input simples, preservando tipos semânticos `email`, `url`, `password`, `number`, `tel`, `search`, `datetime-local` e `textarea` |
+| `ax_standalone_field` | campo avulso sem model, incluindo input ou textarea, com label, hint e ação acoplada opcional |
+| `ax_standalone_select_field` | select avulso sem model, simples ou agrupado, preservando nome top-level, seleção, atributos das opções e opção vazia |
 | `ax_select_field` | select simples |
 | `ax_relationship_select` | select relacional com ação acoplada `+` |
 | `ax_input_group` | prefixo/sufixo/ação acoplada sem borda duplicada |
 | `ax_currency_field` | valores monetários com prefixo `R$` |
-| `ax_number_field` | quantidades e números compactos |
+| `ax_number_field` | quantidades e números compactos, com hint opcional e suporte a builders com ou sem model |
 | `ax_date_field` | datas alinhadas ao padrão dos inputs |
 | `ax_measure_field` | valores com unidade (`m²`, `%`, etc.) |
+| `ax_range_field` | faixa numérica com label, output associado, hint e hooks de interação |
 | `ax_multiselect_field` | TomSelect multi com manager opcional |
 | `ax_toggle_chip` | checkbox visual em pill |
-| `ax_radio_group` | escolhas exclusivas em pills |
+| `ax_radio_group` | escolhas exclusivas em pills, aceitando `input_data` para hooks Stimulus compartilhados |
 | `ax_dynamic_list_field` | listas de valores repetíveis |
 | `ax_file_upload_button` | acionador visual de upload |
 | `ax_attachment_item` | anexo compacto com ações |
@@ -729,7 +743,9 @@ Controles dentro de quick modal devem ser compactos e específicos do contexto.
 Não reutilizar `.custom-checkbox-card` legado quando ele inflar padding, altura
 ou quebrar labels. Para opções booleanas em modal, preferir um grid curto com
 labels clicáveis, checkbox nativo preservado e classes escopadas da tela; se o
-padrão aparecer em duas telas, promover para um componente `ax_*`.
+padrão tiver potencial de reutilização, promover para um componente `ax_*` já
+na primeira ocorrência. Uma implementação local só pode permanecer quando a
+composição for comprovadamente exclusiva e estiver namespaced.
 
 Textarea técnico em modal (prompt, estratégia, JSON, observação longa) deve ter
 altura explícita, `resize: vertical`, fonte menor e line-height confortável. Não
@@ -927,6 +943,7 @@ app/views/admin/shared/ui
 ├── _relationship_select.html.erb
 ├── _select_field.html.erb
 ├── _sticky_action_footer.html.erb
+├── _standalone_field.html.erb
 ├── _text_field.html.erb
 ├── _toggle_chip.html.erb
 ├── _whatsapp_composer.html.erb

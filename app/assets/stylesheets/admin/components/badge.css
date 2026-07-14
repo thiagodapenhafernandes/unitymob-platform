@@ -1,0 +1,72 @@
+/* Compact semantic badges shared across all admin workspaces. */
+.ax-badge { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 10.5px; font-weight: 750; line-height: 1; white-space: nowrap; }
+.ax-badge--gray { background: #eceef1; color: #475467; }
+.ax-badge--green { background: #e6f6ec; color: #08875d; }
+.ax-badge--amber { background: #fef3c7; color: #b45309; }
+.ax-badge--red { background: #fee4e2; color: #b42318; }
+.ax-badge--blue { background: var(--admin-primary-soft); color: var(--admin-primary-hover); }
+.ax-badge--purple { background: #f1e8ff; color: #6d28d9; }
+.ax-badge--cyan { background: #d9f8ff; color: #0e7490; }
+.ax-badge--dot::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+
+.ax-info-badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.ax-info-badge {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 9px;
+  border: 1px solid var(--ax-border-soft, #d8dee8);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #667085;
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+.ax-info-badge strong {
+  color: #344054;
+  font-size: 12px;
+  font-weight: 760;
+  overflow-wrap: anywhere;
+}
+
+.ax-info-badge[data-controller~="ax-tooltip"] {
+  cursor: help;
+}
+
+.ax-info-badge:focus-visible {
+  outline: 0;
+  border-color: var(--ax-field-focus);
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}
+
+[data-admin-theme="dark"] .ax-badge--gray { background: color-mix(in srgb, #64748b 22%, var(--admin-surface)); color: #cbd5e1; }
+[data-admin-theme="dark"] .ax-badge--green { background: color-mix(in srgb, #16a34a 20%, var(--admin-surface)); color: #86efac; }
+[data-admin-theme="dark"] .ax-badge--amber { background: color-mix(in srgb, #d97706 22%, var(--admin-surface)); color: #fcd34d; }
+[data-admin-theme="dark"] .ax-badge--red { background: color-mix(in srgb, #dc2626 20%, var(--admin-surface)); color: #fca5a5; }
+[data-admin-theme="dark"] .ax-badge--blue { background: color-mix(in srgb, var(--admin-primary) 24%, var(--admin-surface)); color: color-mix(in srgb, var(--admin-primary) 38%, #fff); }
+[data-admin-theme="dark"] .ax-badge--purple { background: color-mix(in srgb, #7c3aed 22%, var(--admin-surface)); color: #d8b4fe; }
+[data-admin-theme="dark"] .ax-badge--cyan { background: color-mix(in srgb, #0891b2 22%, var(--admin-surface)); color: #a5f3fc; }
+
+[data-admin-theme="dark"] .ax-info-badge {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-info-badge strong {
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-info-badge:focus-visible {
+  border-color: var(--ax-dark-focus-border);
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}

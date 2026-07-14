@@ -1,0 +1,109 @@
+/* Shared button contract: sizing, interaction, semantic variants and dark states. */
+.ax-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--ax-btn-h);
+  height: var(--ax-btn-h);
+  padding: 0 var(--ax-btn-px);
+  border: 1px solid var(--ax-field-border);
+  border-radius: var(--ax-btn-radius);
+  background: var(--ax-control-bg);
+  color: #344054;
+  font-size: var(--ax-btn-font);
+  font-weight: 750;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 1px rgb(16 24 40 / 0.04);
+  transition: background var(--ax-motion-fast) var(--ax-motion-ease), border-color var(--ax-motion-fast) var(--ax-motion-ease), color var(--ax-motion-fast) var(--ax-motion-ease), box-shadow var(--ax-motion-fast) var(--ax-motion-ease), filter var(--ax-motion-fast) var(--ax-motion-ease);
+}
+
+.ax-btn:hover { border-color: var(--ax-field-hover); background: var(--ax-control-hover); color: #202a37; box-shadow: 0 1px 2px rgb(16 24 40 / 0.08); text-decoration: none; }
+.ax-btn:focus,
+.ax-btn:focus-visible { border-color: var(--ax-field-focus); outline: none; box-shadow: 0 0 0 2px var(--admin-primary-ring); text-decoration: none; }
+.ax-btn:visited { color: #344054; text-decoration: none; }
+
+.ax-btn:disabled,
+.ax-btn[disabled],
+.ax-btn.is-disabled,
+a.ax-btn[aria-disabled="true"] {
+  border-color: #d8dee8;
+  background: #f5f7fa;
+  color: #98a2b3;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.ax-btn .ax-ico { font-size: 15px; }
+.ax-btn--primary { border-color: var(--admin-primary); background: var(--admin-primary); color: var(--admin-primary-fg); box-shadow: 0 1px 2px rgb(16 24 40 / 0.12); }
+.ax-btn--primary:hover { border-color: var(--admin-primary-hover); background: var(--admin-primary-hover); }
+
+.ax-btn.ax-btn--primary,
+a.ax-btn.ax-btn--primary,
+button.ax-btn.ax-btn--primary,
+input.ax-btn.ax-btn--primary,
+.ax-btn.ax-btn--primary:visited,
+a.ax-btn.ax-btn--primary:visited,
+.ax-btn.ax-btn--primary:hover,
+a.ax-btn.ax-btn--primary:hover,
+.ax-btn.ax-btn--primary:focus,
+a.ax-btn.ax-btn--primary:focus,
+.ax-btn.ax-btn--primary:focus-visible,
+a.ax-btn.ax-btn--primary:focus-visible { color: var(--admin-primary-fg); text-decoration: none; }
+
+.ax-btn.ax-btn--primary .ax-ico { color: inherit; }
+.ax-btn--ghost { border-color: transparent; background: transparent; color: #475467; box-shadow: none; }
+.ax-btn--ghost:hover { border-color: transparent; background: var(--ax-control-hover); color: #202a37; box-shadow: none; }
+.ax-btn--danger { border-color: #fda4af; background: #fff; color: #be123c; }
+.ax-btn--danger:hover,
+.ax-btn--danger:focus,
+.ax-btn--danger:focus-visible { border-color: #fb7185; background: #fff1f2; color: #9f1239; }
+.ax-btn--success { border-color: #abefc6; background: #ecfdf3; color: #067647; }
+.ax-btn--success:hover,
+.ax-btn--success:focus,
+.ax-btn--success:focus-visible { border-color: #75e0a7; background: #dcfae6; color: #05603a; }
+.ax-btn--warning { border-color: #fedf89; background: #fffaeb; color: #b54708; }
+.ax-btn--warning:hover,
+.ax-btn--warning:focus,
+.ax-btn--warning:focus-visible { border-color: #fdb022; background: #fef0c7; color: #93370d; }
+.ax-btn--info { border-color: #b2ddff; background: #eff8ff; color: #175cd3; }
+.ax-btn--info:hover,
+.ax-btn--info:focus,
+.ax-btn--info:focus-visible { border-color: #84caff; background: #d1e9ff; color: #1849a9; }
+.ax-btn--danger:visited { color: #be123c; }
+.ax-btn--success:visited { color: #067647; }
+.ax-btn--warning:visited { color: #b54708; }
+.ax-btn--info:visited { color: #175cd3; }
+.ax-btn--sm { min-height: var(--ax-btn-h-sm); height: var(--ax-btn-h-sm); padding: 0 var(--ax-btn-px-sm); font-size: var(--ax-btn-font-sm); }
+.ax-btn--icon { width: var(--ax-btn-icon); padding: 0; }
+.ax-btn--icon.ax-btn--sm { width: var(--ax-btn-icon-sm); }
+.ax-btn--block { width: 100%; }
+
+[data-admin-theme="dark"] .ax-btn { border-color: var(--ax-dark-border); background: var(--ax-dark-surface-raised); color: var(--ax-dark-text-soft); }
+[data-admin-theme="dark"] .ax-btn:disabled,
+[data-admin-theme="dark"] .ax-btn[disabled],
+[data-admin-theme="dark"] .ax-btn.is-disabled,
+[data-admin-theme="dark"] a.ax-btn[aria-disabled="true"] { border-color: var(--ax-dark-border-soft); background: var(--ax-dark-surface); color: var(--ax-dark-text-muted); opacity: 1; }
+
+[data-admin-theme="dark"] .ax-btn--danger { border-color: var(--ax-dark-danger-border); background: var(--ax-dark-danger-surface); color: var(--ax-dark-danger-text); box-shadow: none; }
+[data-admin-theme="dark"] .ax-btn--danger:hover,
+[data-admin-theme="dark"] .ax-btn--danger:focus-visible { border-color: #d46678; background: #512b35; color: #ffdce2; }
+[data-admin-theme="dark"] .ax-btn--success { border-color: var(--ax-dark-success-border); background: var(--ax-dark-success-surface); color: var(--ax-dark-success-text); box-shadow: none; }
+[data-admin-theme="dark"] .ax-btn--success:hover,
+[data-admin-theme="dark"] .ax-btn--success:focus,
+[data-admin-theme="dark"] .ax-btn--success:focus-visible { border-color: #4c9a76; background: #22513d; color: #c5f7da; }
+[data-admin-theme="dark"] .ax-btn--warning { border-color: var(--ax-dark-warning-border); background: var(--ax-dark-warning-surface); color: var(--ax-dark-warning-text); box-shadow: none; }
+[data-admin-theme="dark"] .ax-btn--warning:hover,
+[data-admin-theme="dark"] .ax-btn--warning:focus,
+[data-admin-theme="dark"] .ax-btn--warning:focus-visible { border-color: #ac8136; background: #503d1c; color: #ffe4a3; }
+[data-admin-theme="dark"] .ax-btn--info { border-color: var(--ax-dark-info-border); background: var(--ax-dark-info-surface); color: var(--ax-dark-info-text); box-shadow: none; }
+[data-admin-theme="dark"] .ax-btn--info:hover,
+[data-admin-theme="dark"] .ax-btn--info:focus,
+[data-admin-theme="dark"] .ax-btn--info:focus-visible { border-color: #5d86b4; background: #243f5f; color: #d5eaff; }
+
+[data-admin-theme="dark"] .ax-btn:not(.ax-btn--primary):not(.ax-btn--danger):not(.ax-btn--success):not(.ax-btn--warning):not(.ax-btn--info):hover,
+[data-admin-theme="dark"] .ax-btn:not(.ax-btn--primary):not(.ax-btn--danger):not(.ax-btn--success):not(.ax-btn--warning):not(.ax-btn--info):focus-visible { border-color: #526b8c; background: #24344e; color: var(--ax-dark-text); }

@@ -4,12 +4,12 @@
   <%= ax_error_summary(@tracking_setting) %>
 
   <ul class="ax-form-tabs tracking-workspace__tabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#trackingTabsContent">
-    <li><a class="ax-form-tabs__item <%= @active_tab == 'google_tag_manager' ? 'active' : '' %>" href="#google-tag-manager" data-ax-tabs-target="tab" data-ax-tabs-target-param="#google-tag-manager" data-action="click->ax-tabs#select" role="tab" aria-controls="google-tag-manager" aria-selected="<%= @active_tab == 'google_tag_manager' %>"><i class="bi bi-google"></i>Google Tag Manager</a></li>
-    <li><a class="ax-form-tabs__item <%= @active_tab == 'meta_pixel' ? 'active' : '' %>" href="#meta-pixel" data-ax-tabs-target="tab" data-ax-tabs-target-param="#meta-pixel" data-action="click->ax-tabs#select" role="tab" aria-controls="meta-pixel" aria-selected="<%= @active_tab == 'meta_pixel' %>"><i class="bi bi-meta"></i>Pixel da Meta</a></li>
+    <li><a class="ax-form-tabs__item <%= @active_tab == 'google_tag_manager' ? 'active' : '' %>" id="google-tag-manager-tab" href="#google-tag-manager" data-ax-tabs-target="tab" data-ax-tabs-target-param="#google-tag-manager" data-action="click->ax-tabs#select" role="tab" aria-controls="google-tag-manager" aria-selected="<%= @active_tab == 'google_tag_manager' %>"><i class="bi bi-google"></i>Google Tag Manager</a></li>
+    <li><a class="ax-form-tabs__item <%= @active_tab == 'meta_pixel' ? 'active' : '' %>" id="meta-pixel-tab" href="#meta-pixel" data-ax-tabs-target="tab" data-ax-tabs-target-param="#meta-pixel" data-action="click->ax-tabs#select" role="tab" aria-controls="meta-pixel" aria-selected="<%= @active_tab == 'meta_pixel' %>"><i class="bi bi-meta"></i>Pixel da Meta</a></li>
   </ul>
 
   <div class="tracking-tab-content" id="trackingTabsContent">
-    <section class="tracking-tab-panel" id="google-tag-manager" role="tabpanel" <%= "hidden" unless @active_tab == "google_tag_manager" %>>
+    <section class="tracking-tab-panel" id="google-tag-manager" role="tabpanel" aria-labelledby="google-tag-manager-tab" <%= "hidden" unless @active_tab == "google_tag_manager" %>>
       <div class="tracking-workspace__layout">
         <%= ax_panel(title: "Google Tag Manager", subtitle: "Container carregado em todas as páginas públicas.", actions: ax_badge(TrackingIntegrationSetting.google_tag_manager_enabled? ? "ativo" : "inativo", tone: TrackingIntegrationSetting.google_tag_manager_enabled? ? :green : :gray)) do %>
           <%= form_with url: admin_tracking_integration_path(tab: "google_tag_manager"), method: :patch, scope: :tracking, local: true, class: "tracking-settings-form" do |f| %>
@@ -23,7 +23,7 @@
       </div>
     </section>
 
-    <section class="tracking-tab-panel" id="meta-pixel" role="tabpanel" <%= "hidden" unless @active_tab == "meta_pixel" %>>
+    <section class="tracking-tab-panel" id="meta-pixel" role="tabpanel" aria-labelledby="meta-pixel-tab" <%= "hidden" unless @active_tab == "meta_pixel" %>>
       <div class="tracking-workspace__layout">
         <%= ax_panel(title: "Pixel da Meta", subtitle: "Pixel base com PageView automático no site público.", actions: ax_badge(TrackingIntegrationSetting.meta_pixel_enabled? ? "ativo" : "inativo", tone: TrackingIntegrationSetting.meta_pixel_enabled? ? :green : :gray)) do %>
           <%= form_with url: admin_tracking_integration_path(tab: "meta_pixel"), method: :patch, scope: :tracking, local: true, class: "tracking-settings-form" do |f| %>

@@ -1,0 +1,110 @@
+/* Dark and interaction contract for the Meta/WhatsApp integration workspace. */
+.wa-tabs__item:focus-visible {
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+}
+
+.wa-number-row__actions .ax-btn:focus-visible,
+.wa-connect__button:focus-visible {
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+}
+
+[data-admin-theme="dark"] .wa-tabs {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+}
+
+[data-admin-theme="dark"] .wa-tabs__item {
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .wa-tabs__item:hover,
+[data-admin-theme="dark"] .wa-tabs__item:focus-visible {
+  background: var(--ax-dark-surface-hover);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .wa-tabs__item.is-active {
+  border-color: var(--ax-dark-focus-border);
+  background: #203a5c;
+  color: #dcecff;
+  box-shadow: none;
+}
+
+[data-admin-theme="dark"] .wa-workspace :where(
+  .wa-connected,
+  .wa-webhook,
+  .wa-negotiation,
+  .wa-phone-info,
+  .wa-context-block,
+  .wa-number-row,
+  .wa-number-row__test
+) {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text-soft);
+}
+
+[data-admin-theme="dark"] .wa-workspace :where(
+  .wa-connected,
+  .wa-phone-info,
+  .wa-context-block--primary,
+  .wa-number-row--empty,
+  .wa-number-row__test
+) {
+  background: var(--ax-dark-surface-raised);
+}
+
+[data-admin-theme="dark"] .wa-workspace :where(
+  .wa-connected__cell strong,
+  .wa-webhook__head h3,
+  .wa-negotiation__head strong,
+  .wa-phone-info__cell strong,
+  .wa-context-block__head strong,
+  .wa-number-section__head strong,
+  .wa-number-row__main strong,
+  .wa-state__row dt strong,
+  .wa-state__row dd,
+  .wa-number-checkbox,
+  .wa-variable-map__row > span
+) {
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .wa-workspace :where(
+  .wa-hint,
+  .wa-connected__cell span,
+  .wa-negotiation__head span,
+  .wa-phone-info__cell span,
+  .wa-context-block__head span,
+  .wa-context-block__head p,
+  .wa-number-section__head span,
+  .wa-number-row__main span,
+  .wa-number-row__main small,
+  .wa-state__row dt span,
+  .wa-variable-map__row small
+) {
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .wa-negotiation__icon {
+  background: var(--ax-dark-success-surface);
+  color: var(--ax-dark-success-text);
+}
+
+[data-admin-theme="dark"] .wa-workspace :where(
+  .wa-field--divider,
+  .wa-context-block__head,
+  .wa-number-section,
+  .wa-test
+) {
+  border-color: var(--ax-dark-border-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wa-tabs__item,
+  .wa-workspace .ax-btn {
+    transition: none !important;
+  }
+}

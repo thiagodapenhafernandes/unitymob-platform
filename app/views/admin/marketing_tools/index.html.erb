@@ -1,48 +1,61 @@
-<%# UTM Builder — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <div class="marketing-admin-dark">
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">UTM Builder</h1>
-    <p class="ax-page-subtitle">Monte links rastreáveis para Google, Meta, Instagram, WhatsApp, rodapé e home.</p>
-  </div>
-  <%= link_to new_admin_marketing_campaign_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-    <i class="bi bi-plus-lg ax-ico"></i><span>Nova campanha</span>
-  <% end %>
-</div>
+  <%= ax_workspace_heading(
+        eyebrow: "Marketing · Rastreamento",
+        icon: "link-45deg",
+        title: "UTM Builder",
+        subtitle: "Monte links rastreáveis para Google, Meta, Instagram, WhatsApp, rodapé e home.",
+        actions: ax_button("Nova campanha", new_admin_marketing_campaign_path, variant: :primary, size: :sm, icon: "plus-lg")
+      ) %>
 
-<div class="tw-grid tw-grid-cols-1 xl:tw-grid-cols-12 tw-gap-4">
-  <div class="xl:tw-col-span-5">
-    <div class="ax-card">
-      <div class="ax-card__header"><span class="ax-card__title">Gerar link rápido</span></div>
-      <div class="ax-card__body">
-        <%= form_with url: admin_marketing_tools_path, method: :get, local: true do |f| %>
-          <div class="tw-mb-3">
-            <%= label_tag :target_url, "URL alvo", class: "ax-label" %>
-            <%= text_field_tag :target_url, @campaign.target_url, class: "ax-input", placeholder: "/imoveis/frente-mar" %>
-          </div>
-          <div class="tw-grid tw-grid-cols-2 tw-gap-2">
-            <div><%= label_tag :utm_source, "Origem", class: "ax-label" %><%= text_field_tag :utm_source, @campaign.utm_source, class: "ax-input", placeholder: "instagram" %></div>
-            <div><%= label_tag :utm_medium, "Mídia", class: "ax-label" %><%= text_field_tag :utm_medium, @campaign.utm_medium, class: "ax-input", placeholder: "social" %></div>
-            <div class="tw-col-span-2"><%= label_tag :utm_campaign, "Campanha", class: "ax-label" %><%= text_field_tag :utm_campaign, @campaign.utm_campaign, class: "ax-input", placeholder: "frente-mar-maio" %></div>
-            <div><%= label_tag :utm_term, "Termo", class: "ax-label" %><%= text_field_tag :utm_term, @campaign.utm_term, class: "ax-input" %></div>
-            <div><%= label_tag :utm_content, "Conteúdo", class: "ax-label" %><%= text_field_tag :utm_content, @campaign.utm_content, class: "ax-input" %></div>
-          </div>
-          <div class="tw-mt-3 tw-text-right"><%= f.submit "Gerar", class: "ax-btn ax-btn--primary" %></div>
-        <% end %>
-      </div>
-    </div>
-  </div>
-
-  <div class="xl:tw-col-span-7">
-    <div class="ax-card">
-      <div class="ax-card__header"><span class="ax-card__title">Link gerado</span></div>
-      <div class="ax-card__body">
-        <input type="text" class="ax-input tw-mb-3" readonly value="<%= @campaign.generated_url(request.base_url) %>">
-        <div class="tw-rounded tw-bg-surface-soft tw-border tw-border-line tw-p-3 tw-text-2xs tw-text-ink-muted">
-          Use este link nos anúncios e publicações. Quando ele gerar clique, lead ou agendamento, o dashboard tenta associar automaticamente pelo parâmetro <code>utm_campaign</code>.
+  <div class="tw-grid tw-grid-cols-1 xl:tw-grid-cols-12 tw-gap-4">
+    <div class="xl:tw-col-span-5">
+      <%= ax_operational_panel(eyebrow: "Parâmetros", title: "Gerar link rápido", class_name: "tw-h-full") do %>
+        <div class="ax-panel-body">
+          <%= form_with url: admin_marketing_tools_path, method: :get, local: true do %>
+            <%= ax_field_grid do %>
+              <div class="ax-field ax-span-12">
+                <%= ax_field_label(nil, nil, text: "URL alvo", for: "target_url") %>
+                <%= text_field_tag :target_url, @campaign.target_url, class: "ax-control", placeholder: "/imoveis/frente-mar" %>
+              </div>
+              <div class="ax-field ax-span-6">
+                <%= ax_field_label(nil, nil, text: "Origem", for: "utm_source") %>
+                <%= text_field_tag :utm_source, @campaign.utm_source, class: "ax-control", placeholder: "instagram" %>
+              </div>
+              <div class="ax-field ax-span-6">
+                <%= ax_field_label(nil, nil, text: "Mídia", for: "utm_medium") %>
+                <%= text_field_tag :utm_medium, @campaign.utm_medium, class: "ax-control", placeholder: "social" %>
+              </div>
+              <div class="ax-field ax-span-12">
+                <%= ax_field_label(nil, nil, text: "Campanha", for: "utm_campaign") %>
+                <%= text_field_tag :utm_campaign, @campaign.utm_campaign, class: "ax-control", placeholder: "frente-mar-maio" %>
+              </div>
+              <div class="ax-field ax-span-6">
+                <%= ax_field_label(nil, nil, text: "Termo", for: "utm_term") %>
+                <%= text_field_tag :utm_term, @campaign.utm_term, class: "ax-control" %>
+              </div>
+              <div class="ax-field ax-span-6">
+                <%= ax_field_label(nil, nil, text: "Conteúdo", for: "utm_content") %>
+                <%= text_field_tag :utm_content, @campaign.utm_content, class: "ax-control" %>
+              </div>
+            <% end %>
+            <%= ax_form_actions(sticky: false) do %>
+              <%= submit_tag "Gerar", class: "ax-btn ax-btn--primary" %>
+            <% end %>
+          <% end %>
         </div>
-      </div>
+      <% end %>
+    </div>
+
+    <div class="xl:tw-col-span-7">
+      <%= ax_operational_panel(eyebrow: "Resultado", title: "Link gerado", class_name: "tw-h-full") do %>
+        <div class="ax-panel-body">
+          <%= ax_standalone_field(name: nil, id: "generated_utm_url", label: "URL rastreável",
+                value: @campaign.generated_url(request.base_url), readonly: true) %>
+          <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+            Use este link nos anúncios e publicações. Quando ele gerar clique, lead ou agendamento, o dashboard tenta associar automaticamente pelo parâmetro <code>utm_campaign</code>.
+          <% end %>
+        </div>
+      <% end %>
     </div>
   </div>
-</div>
 </div>

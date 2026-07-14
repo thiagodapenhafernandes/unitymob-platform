@@ -60,7 +60,7 @@ class HabitationsController < ApplicationController
     if @strategic_landing.present?
       @page_title = "#{@strategic_landing[:title]} | #{public_site_name}"
       @page_description = @strategic_landing[:description]
-      @page_keywords = [@strategic_landing[:label], "imóveis", "Balneário Camboriú", public_site_name].join(", ")
+      @page_keywords = [@strategic_landing[:label], "imóveis", default_public_city, public_site_name].compact_blank.join(", ")
     end
     
     # Cache da página
@@ -613,7 +613,7 @@ class HabitationsController < ApplicationController
   end
   
   def build_index_description
-    city = location_label(default: "Balneário Camboriú")
+    city = location_label(default: default_public_city)
     category = category_label(default: "imóveis")
     
     # Varied Hooks/Intros
@@ -651,7 +651,7 @@ class HabitationsController < ApplicationController
   end
   
   def build_index_keywords
-    keywords = Set.new(["imóveis", "imobiliária", "balneário camboriú", public_site_name.downcase])
+    keywords = Set.new(["imóveis", "imobiliária", default_public_city.to_s.downcase, public_site_name.downcase].compact_blank)
     
     # Transaction
     keywords << 'venda' if params[:transaction_type] == 'venda'
@@ -663,7 +663,6 @@ class HabitationsController < ApplicationController
     # Location (critical keywords)
     selected_locations.each { |location| keywords << location.downcase }
     keywords << params[:bairro].downcase if params[:bairro].present?
-    keywords << 'praia brava' << 'centro' << 'barra sul' # Common searches
     
     # High-value characteristics
     keywords << 'frente mar' << 'vista mar' if params[:vista_frente_mar_flag] == '1'
@@ -698,6 +697,10 @@ class HabitationsController < ApplicationController
     "Unitymob"
   end
 
+  def default_public_city
+    Tenants::PublicIdentity.new(public_tenant).primary_city.presence || "Brasil"
+  end
+
   def discounted_results_present?
     @habitations.any? do |habitation|
       previous = habitation.valor_venda_anterior_cents.to_i
@@ -728,7 +731,7 @@ class HabitationsController < ApplicationController
     "#{categories.first.to_s.force_encoding('UTF-8').scrub} +#{categories.size - 1}"
   end
 
-  def location_label(default: "Balneário Camboriú")
+  def location_label(default: default_public_city)
     locations = selected_locations
     return default if locations.blank?
     return locations.first if locations.size == 1

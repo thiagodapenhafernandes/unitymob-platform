@@ -14,11 +14,16 @@
 //= link application.css
 //= link admin.css
 //= link admin_compat.css
+//= link admin/theme_tokens.css
 //= link admin_tailwind.css
+//= link admin/components.css
 //= link habitations_form_refresh.css
+//= link admin/components/media_modal.css
 //= link admin/habitations_catalog.css
+//= link admin/captacao_wizard.css
 //= link whatsapp_inbox_refresh.css
 //= link public_habitations_index_refresh.css
 //= link public_habitations_show_refresh.css
 //= link public_development_show_refresh.css
 //= link ax_toast.css
+//= link field_theme.css

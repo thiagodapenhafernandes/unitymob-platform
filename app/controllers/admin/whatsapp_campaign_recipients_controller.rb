@@ -8,19 +8,16 @@ class Admin::WhatsappCampaignRecipientsController < Admin::BaseController
     @conversion_status = params[:conversion_status].presence
     @query = params[:query].to_s.strip
     @recipients = filtered_recipients.paginate(page: params[:page], per_page: 40)
+    @recipient_metrics = recipient_metrics
     @page_title = "Importados CSV"
   end
 
   private
 
   def filtered_recipients
-    scope = current_tenant.whatsapp_campaign_recipients
+    scope = visible_recipients_scope
       .includes(:whatsapp_campaign, :lead, :admin_user)
-      .joins(:whatsapp_campaign)
       .order(created_at: :desc)
-
-    owner_ids = visible_owner_ids(:whatsapp_campaigns)
-    scope = scope.where(whatsapp_campaigns: { created_by_id: owner_ids }) if owner_ids.present?
     scope = scope.where(whatsapp_campaigns: { whatsapp_sender_number_id: @selected_sender_number.id }) if @selected_sender_number
     scope = scope.where(source: @source) if WhatsappCampaignRecipient::SOURCES.include?(@source)
     scope = scope.where(conversion_status: @conversion_status) if WhatsappCampaignRecipient::CONVERSION_STATUSES.include?(@conversion_status)
@@ -34,5 +31,22 @@ class Admin::WhatsappCampaignRecipientsController < Admin::BaseController
     end
 
     scope
+  end
+
+  def visible_recipients_scope
+    scope = current_tenant.whatsapp_campaign_recipients.joins(:whatsapp_campaign)
+    owner_ids = visible_owner_ids(:whatsapp_campaigns)
+    owner_ids.present? ? scope.where(whatsapp_campaigns: { created_by_id: owner_ids }) : scope
+  end
+
+  def recipient_metrics
+    base_scope = visible_recipients_scope
+    selected_scope = @selected_sender_number ? base_scope.where(whatsapp_campaigns: { whatsapp_sender_number_id: @selected_sender_number.id }) : base_scope
+
+    {
+      spreadsheet: base_scope.where(source: "spreadsheet").count,
+      selected_spreadsheet: selected_scope.where(source: "spreadsheet").count,
+      converted: selected_scope.where(conversion_status: "converted").count
+    }
   end
 end

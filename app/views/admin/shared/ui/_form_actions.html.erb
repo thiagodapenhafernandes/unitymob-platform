@@ -1,4 +1,8 @@
-<div class="ax-form-actions">
-  <%= link_to cancel_label, cancel_path, class: "ax-btn" %>
-  <%= form.submit submit_label, class: "ax-btn ax-btn--primary" %>
+<div class="<%= ["ax-form-actions", ("ax-form-actions--static" unless sticky), class_name].compact.join(" ") %>">
+  <% if body.present? %>
+    <%= body %>
+  <% else %>
+    <%= link_to cancel_label, cancel_path, class: "ax-btn" %>
+    <%= form.submit submit_label, class: "ax-btn ax-btn--primary" %>
+  <% end %>
 </div>

@@ -1,5 +1,10 @@
 <%
-  group_classes = ["ax-input-group", class_name].compact.join(" ")
+  normalized_size = size.to_s.presence
+  group_classes = [
+    "ax-input-group",
+    ("ax-input-group--#{normalized_size}" if normalized_size),
+    class_name
+  ].compact.join(" ")
 %>
 
 <div class="<%= group_classes %>">

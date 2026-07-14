@@ -1,0 +1,103 @@
+/* Shared compact grouping for related fields inside operational forms. */
+.ax-field-group {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: 6px;
+}
+
+.ax-field-group--panel {
+  padding: 8px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 8px;
+  background: var(--ax-panel-soft);
+}
+
+.ax-field-group--spaced { margin-bottom: 8px; }
+
+.ax-field-group-stack {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 14px 0 2px 16px;
+  border-left: 2px solid var(--admin-primary, #365f8f);
+}
+
+.ax-field-group__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 18px;
+  gap: 8px;
+}
+
+.ax-field-group__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  min-width: 0;
+  color: var(--ab-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .045em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ax-field-group__title > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ax-field-group__token {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(100%, 220px);
+  min-height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 999px;
+  background: var(--ax-panel-bg);
+  color: var(--ab-muted);
+  font-size: 10px;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.ax-field-group__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-left: auto;
+}
+
+.ax-field-group__body { min-width: 0; }
+
+[data-admin-theme="dark"] .ax-field-group--panel {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-field-group__title {
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-field-group__token {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text-soft);
+}
+
+@media (max-width: 620px) {
+  .ax-field-group__header {
+    flex-wrap: wrap;
+  }
+
+  .ax-field-group__actions {
+    width: 100%;
+    margin-left: 0;
+  }
+}

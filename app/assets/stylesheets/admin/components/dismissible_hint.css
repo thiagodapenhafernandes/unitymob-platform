@@ -1,0 +1,79 @@
+/* Persistent contextual guidance shared by operational workspaces. */
+.ax-dismissible-hint {
+  margin-bottom: 12px;
+  border: 1px solid var(--ab-line-soft);
+  border-left: 3px solid var(--admin-primary);
+  border-radius: 8px;
+  background: var(--ab-panel);
+  color: var(--ab-muted);
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--ax-motion-base) var(--ax-motion-ease),
+    transform var(--ax-motion-base) var(--ax-motion-ease);
+}
+
+.ax-dismissible-hint[hidden] { display: none !important; }
+
+.ax-dismissible-hint.is-dismissing {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
+.ax-dismissible-hint__body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ax-dismissible-hint__icon {
+  flex: 0 0 auto;
+  color: var(--admin-primary);
+}
+
+.ax-dismissible-hint__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ax-dismissible-hint__text strong {
+  color: var(--ab-ink);
+  font-weight: 800;
+}
+
+.ax-dismissible-hint__dismiss { flex: 0 0 auto; }
+
+.ax-dismissible-hint__dismiss:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 2px;
+}
+
+[data-admin-theme="dark"] .ax-dismissible-hint {
+  border-color: var(--ax-dark-border-soft);
+  border-left-color: var(--admin-primary);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-dismissible-hint__text strong {
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-dismissible-hint__dismiss:focus-visible {
+  outline-color: var(--ax-dark-focus-border);
+}
+
+@media (max-width: 767.98px) {
+  .ax-dismissible-hint__body {
+    align-items: flex-start;
+    padding: 9px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-dismissible-hint { transition: none; }
+}

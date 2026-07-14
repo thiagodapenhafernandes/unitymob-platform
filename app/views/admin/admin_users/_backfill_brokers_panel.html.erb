@@ -22,9 +22,7 @@
     </div>
     <div class="tw-grid tw-gap-3 tw-p-3">
       <p class="tw-m-0 tw-text-xs tw-text-ink-muted"><%= status[:message].presence || "Sem atividade recente." %></p>
-      <div class="ax-progress tw-mt-0">
-        <i style="width:<%= status[:progress].to_i %>%"></i>
-      </div>
+      <%= ax_progress(value: status[:progress], tone:, class_name: "tw-mt-0", label: "Progresso do vínculo imóvel e corretor: #{status[:progress].to_i}%") %>
       <div class="tw-grid tw-grid-cols-6 tw-gap-2">
         <div><b class="tw-block tw-font-mono tw-text-sm"><%= stats["processed"].to_i %></b><span class="tw-text-2xs tw-text-ink-muted">Processados</span></div>
         <div><b class="tw-block tw-font-mono tw-text-sm tw-text-emerald-700"><%= stats["linked"].to_i %></b><span class="tw-text-2xs tw-text-ink-muted">Vinculados</span></div>

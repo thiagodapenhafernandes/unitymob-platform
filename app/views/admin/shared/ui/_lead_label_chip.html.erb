@@ -7,5 +7,5 @@
 %>
 
 <%= tag.span chip_label.name,
-      class: ["lead-label-chip", tone_class, class_name].compact.join(" "),
-      style: (custom ? "--label-color: #{tone}" : nil) %>
+      class: ["lead-label-chip", tone_class, class_name].compact_blank.join(" "),
+      data: (custom ? { label_color: tone } : {}) %>

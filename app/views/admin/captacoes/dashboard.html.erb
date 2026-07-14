@@ -129,27 +129,24 @@
   <%= submit_tag "Aplicar", class: "ax-btn ax-btn--primary ax-btn--sm capt-dashboard-filters__submit" %>
 <% end %>
 
-<section class="capt-dashboard-kpis" aria-label="Resumo dos pré-cadastros">
+<section class="ax-metric-grid capt-dashboard-kpis" aria-label="Resumo dos pré-cadastros">
   <% [
        ["Pré-cadastros", @pre_cadastro_total, "blue"],
        ["Rascunho/devolvido", @pre_cadastro_draft, "amber"],
        ["Em aprovação", @pre_cadastro_review, "cyan"],
        ["Liberados site", @pre_cadastro_published, "green"]
      ].each do |label, value, tone| %>
-    <article class="capt-dashboard-kpi capt-dashboard-kpi--<%= tone %>">
-      <span><%= label %></span>
-      <strong><%= value %></strong>
-    </article>
+    <%= ax_metric_card(label:, value:, class_name: "capt-dashboard-kpi capt-dashboard-kpi--#{tone}") %>
   <% end %>
 </section>
 
 <!-- Tabs -->
 <div class="capt-dashboard-tabs">
   <ul class="ax-form-tabs tw-flex-1 tw-mb-0" id="captTabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#captTabContent">
-    <li><button class="ax-form-tabs__item active" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-geral" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Geral</button></li>
-    <li><button class="ax-form-tabs__item" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-venda" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Venda</button></li>
-    <li><button class="ax-form-tabs__item" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-locacao" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Locação</button></li>
-    <li><button class="ax-form-tabs__item" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-leads" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Leads</button></li>
+    <li><button class="ax-form-tabs__item active" id="tab-geral-trigger" role="tab" aria-controls="tab-geral" aria-selected="true" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-geral" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Geral</button></li>
+    <li><button class="ax-form-tabs__item" id="tab-venda-trigger" role="tab" aria-controls="tab-venda" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-venda" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Venda</button></li>
+    <li><button class="ax-form-tabs__item" id="tab-locacao-trigger" role="tab" aria-controls="tab-locacao" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-locacao" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Locação</button></li>
+    <li><button class="ax-form-tabs__item" id="tab-leads-trigger" role="tab" aria-controls="tab-leads" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#tab-leads" data-action="click->ax-tabs#select ax:tab-shown->captacoes-dashboard#rerenderVisibleCharts" type="button">Leads</button></li>
   </ul>
   <button class="ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" type="button" data-capt-active-tv data-action="captacoes-dashboard#enterActiveTv">
     <i class="bi bi-display"></i>TV da aba atual
@@ -159,7 +156,7 @@
 <div class="tab-content" id="captTabContent">
 
   <!-- GERAL -->
-  <div class="tab-pane fade show active" id="tab-geral">
+  <div class="tab-pane fade show active" id="tab-geral" role="tabpanel" aria-labelledby="tab-geral-trigger">
     <%= ax_field_grid class_name: "capt-dashboard-chart-grid tw-mb-3" do %>
       <div class="ax-span-6">
         <div class="ax-card">
@@ -275,7 +272,7 @@
   </div>
 
   <!-- VENDA -->
-  <div class="tab-pane fade" id="tab-venda">
+  <div class="tab-pane fade" id="tab-venda" role="tabpanel" aria-labelledby="tab-venda-trigger" hidden>
     <div class="capt-foco-banner tw-mb-3">
       <div>
         <div class="capt-foco-banner__label">Região foco</div>
@@ -355,7 +352,7 @@
   </div>
 
   <!-- LOCAÇÃO -->
-  <div class="tab-pane fade" id="tab-locacao">
+  <div class="tab-pane fade" id="tab-locacao" role="tabpanel" aria-labelledby="tab-locacao-trigger" hidden>
     <div class="capt-foco-banner tw-mb-3">
       <div>
         <div class="capt-foco-banner__label">Região foco</div>
@@ -441,7 +438,7 @@
   </div>
 
   <!-- LEADS HEATMAP -->
-  <div class="tab-pane fade" id="tab-leads">
+  <div class="tab-pane fade" id="tab-leads" role="tabpanel" aria-labelledby="tab-leads-trigger" hidden>
     <%= render "leads_heatmap" %>
   </div>
 </div>

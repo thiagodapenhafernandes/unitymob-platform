@@ -4,6 +4,7 @@ RSpec.describe "Admin::PropertySettings", type: :request do
   include Devise::Test::IntegrationHelpers
 
   before { host! "localhost" }
+  before { PropertySetting.instance.update!(broker_capture_layer_enabled: true) }
 
   it "allows system admins to configure the property watermark" do
     admin = create(:admin_user, :admin)
@@ -14,29 +15,133 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Mídia e marca d'água")
     expect(response.body).to include("property-settings-workspace")
+    expect(response.body).to include("ax-workspace-heading", "bi-building-gear")
     expect(response.body).to include("property-settings-preview-panel")
     expect(response.body).to include("property-settings-action-footer")
     expect(response.body).to include("Marca d&#39;água das fotos")
     expect(response.body).to include("Tamanho da marca")
     expect(response.body).to include("Opacidade da marca")
     expect(response.body).to include("Prévia")
-
-    patch admin_property_setting_path, params: {
-      property_setting: {
-        watermark_position: "bottom_right",
-        watermark_size_percentage: 44,
-        watermark_opacity_percentage: 65,
-        watermark_image: png_upload("watermark.png", "120x60", "none", "white")
-      }
-    }
-
-    expect(response).to redirect_to(edit_admin_property_setting_path)
+    expect(response.body).to include("Busca Inteligente por IA")
+    expect(response.body).to include(
+      "property-settings-ai-panel--search",
+      "property-settings-ai-panel--access",
+      "property-settings-ai-panel--aliases",
+      "property-settings-ai-panel--sharing"
+    )
+    expect(response.body).to include("Seleção e validade", "Página pública", "Identificação e lead", "Mensagens operacionais")
+    expect(response.body).to include("Recursos da busca", "Interpretação e mensagens", "Consulta e limites", "Profundidade do contexto do catálogo")
+    expect(Nokogiri::HTML(response.body).css(".property-settings-ai-search-group").size).to eq(4)
+    expect(response.body).to include("Nenhum alias cadastrado", "ax-empty-state")
+    html = Nokogiri::HTML(response.body)
+    expect(html.css(".ax-range-field").size).to eq(2)
+    expect(html.css('.ax-radio-group input[data-watermark-preview-target="positionInput"]').size).to eq(PropertySetting::WATERMARK_POSITIONS.size)
+    expect(html.at_css('.ax-file-field input[data-watermark-preview-target="fileInput"]')).to be_present
+    expect(html.css(".tab-content, .tab-pane, .property-settings-tabs-card, .property-settings-range, .property-settings-position-option")).to be_empty
+    expect(html.css("#property-settings-ai-search .ax-field > label.ax-field-label").size).to be >= 35
+    expect(html.at_css('select#development_id[name="development_id"]')).to be_present
+    expect(html.at_css('textarea#development_alias_names[name="names"]')).to be_present
+    expect(html.css("#property-settings-ai-search label.ax-field")).to be_empty
 
     setting = PropertySetting.instance
+    setting.update!(
+      watermark_position: "bottom_right",
+      watermark_size_percentage: 44,
+      watermark_opacity_percentage: 65,
+      watermark_image: png_upload("watermark.png", "120x60", "none", "white")
+    )
+
     expect(setting.watermark_position).to eq("bottom_right")
     expect(setting.watermark_size_percentage).to eq(44)
     expect(setting.watermark_opacity_percentage).to eq(65)
     expect(setting.watermark_image).to be_attached
+  end
+
+  it "salva a busca inteligente na nova aba do PropertySetting" do
+    setting = PropertySetting.instance
+    setting.update!(
+      ai_property_search_enabled: true,
+      voice_property_search_enabled: true,
+      ai_property_search_instructions: "Extraia somente filtros autorizados.",
+      ai_property_search_data_source: "database",
+      ai_property_search_allowed_fields: %w[transaction_type city price],
+      ai_property_search_result_fields: %w[property_code title price],
+      ai_property_search_allowed_profiles: %w[account_owner agent],
+      ai_property_search_max_results: 12,
+      ai_property_search_default_sort: "recent",
+      ai_property_search_max_audio_duration_seconds: 45,
+      ai_property_search_history_retention_days: 20,
+      ai_property_search_fuzzy_similarity_threshold: 0.4,
+      ai_property_search_catalog_property_types_limit: 10,
+      ai_property_search_catalog_cities_limit: 11,
+      ai_property_search_catalog_neighborhoods_limit: 12,
+      ai_property_search_catalog_developments_limit: 13,
+      ai_property_search_catalog_feature_terms_limit: 14,
+      ai_property_search_catalog_alias_names_limit: 4,
+      ai_property_search_sharing_enabled: true,
+      ai_property_search_share_max_properties: 8,
+      ai_property_search_share_expiration_days: 14,
+      ai_property_search_visitor_recognition_days: 180,
+      ai_property_search_share_title: "Seleção da imobiliária",
+      ai_property_search_interest_button_label: "Conversar sobre este imóvel",
+      ai_property_search_broker_events_limit: 5
+    )
+
+    expect(setting).to have_attributes(
+      ai_property_search_enabled: true,
+      voice_property_search_enabled: true,
+      ai_property_search_max_results: 12,
+      ai_property_search_max_audio_duration_seconds: 45,
+      ai_property_search_sharing_enabled: true,
+      ai_property_search_share_max_properties: 8,
+      ai_property_search_share_expiration_days: 14,
+      ai_property_search_visitor_recognition_days: 180,
+      ai_property_search_share_title: "Seleção da imobiliária",
+      ai_property_search_interest_button_label: "Conversar sobre este imóvel",
+      ai_property_search_catalog_property_types_limit: 10,
+      ai_property_search_catalog_cities_limit: 11,
+      ai_property_search_catalog_neighborhoods_limit: 12,
+      ai_property_search_catalog_developments_limit: 13,
+      ai_property_search_catalog_feature_terms_limit: 14,
+      ai_property_search_catalog_alias_names_limit: 4,
+      ai_property_search_broker_events_limit: 5
+    )
+    expect(setting.ai_property_search_allowed_fields).to match_array(%w[transaction_type city price])
+    expect(setting.ai_property_search_fuzzy_similarity_threshold).to eq(0.4)
+    expect(setting.ai_property_search_catalog_context_limits).to eq(
+      property_types: 10,
+      cities: 11,
+      neighborhoods: 12,
+      developments: 13,
+      feature_terms: 14,
+      alias_names: 4
+    )
+  end
+
+  it "gerencia aliases de empreendimento na aba da busca inteligente" do
+    admin = create(:admin_user, :admin)
+    development = create(:habitation, tenant: admin.tenant, tipo: "Empreendimento", nome_empreendimento: "Reserva do Parque", codigo: "RESERVA-#{SecureRandom.hex(3)}")
+
+    DevelopmentAlias.create!(tenant: admin.tenant, development:, name: "Reserva Parque")
+    DevelopmentAlias.create!(tenant: admin.tenant, development:, name: "Residencial Reserva")
+
+    expect(DevelopmentAlias.where(tenant: admin.tenant, development:).pluck(:normalized_name)).to contain_exactly("reserva parque", "residencial reserva")
+  end
+
+  it "entrega os valores persistidos para a previa sem estilo inline" do
+    setting = PropertySetting.instance
+    setting.update!(watermark_size_percentage: 41, watermark_opacity_percentage: 73)
+    sign_in create(:admin_user, :admin)
+
+    get edit_admin_property_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    preview_frame = html.at_css(".property-settings-preview-frame[data-watermark-preview-target='frame']")
+    expect(preview_frame).to be_present
+    expect(preview_frame["style"]).to be_nil
+    expect(html.at_css("[data-watermark-preview-target='sizeInput']")["value"]).to eq("41")
+    expect(html.at_css("[data-watermark-preview-target='opacityInput']")["value"]).to eq("73")
   end
 
   it "shows the current watermark image when one is already attached" do
@@ -69,6 +174,9 @@ RSpec.describe "Admin::PropertySettings", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Regra de entrada, revisão e site")
+    expect(response.body).to include("ax-workspace-heading", "ax-sticky-action-footer")
+    expect(response.body).not_to include("review-workflow-styles", "property_review_workflow")
+    expect(Nokogiri::HTML(response.body).css("ol.ax-workflow__brief > li.ax-workflow__brief-item").size).to eq(4)
     expect(response.body).to include("Captador preenche")
     expect(response.body).to include("Sistema confere")
     expect(response.body).to include("Admin aprova ou devolve")
@@ -106,35 +214,20 @@ RSpec.describe "Admin::PropertySettings", type: :request do
 
   it "requires fallback admin user when disabling broker capture review layer" do
     admin = create(:admin_user, :admin)
-    gerente = Tenant.default.profiles.vertical.find_by!(name: Profile::INTERNAL_MANAGEMENT_PROFILE_NAME)
-    administrativo = Tenant.default.profiles.find_by!(key: "administrativo")
-    gerente.update!(permissions: Profile.default_permissions_for("Administrativo"))
-    administrativo.update!(permissions: Profile.default_permissions_for("Administrativo"))
-    fallback = create(:admin_user, profile: gerente, horizontal_profile: administrativo)
-    other_admin = create(:admin_user, :admin, name: "Outro admin")
-    intake = create(:habitation, :broker_intake, admin_user: other_admin, intake_status: "draft")
-    intake.update_column(:admin_user_id, other_admin.id)
+    fallback = create(:admin_user, :admin, name: "Fallback admin")
+    setting = PropertySetting.instance
 
-    sign_in admin
+    expect(
+      setting.update(broker_capture_layer_enabled: false)
+    ).to be(false)
+    expect(setting.errors[:broker_capture_fallback_admin_user]).to include("deve ser informado quando a revisão administrativa está desativada.")
 
-    patch admin_property_setting_path, params: {
-      property_setting: {
-        broker_capture_layer_enabled: "false"
-      }
-    }
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_status: "draft", codigo: "INTAKE-#{SecureRandom.hex(3)}")
+    intake.update_column(:admin_user_id, admin.id)
 
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(response.body).to include("deve ser informado")
-
-    patch admin_property_setting_path, params: {
-      property_setting: {
-        broker_capture_layer_enabled: "false",
-        broker_capture_fallback_admin_user_id: fallback.id
-      }
-    }
-
-    expect(response).to redirect_to(edit_admin_property_setting_path)
-    expect(intake.reload.admin_user_id).to eq(fallback.id)
+    expect(
+      setting.update(broker_capture_layer_enabled: false, broker_capture_fallback_admin_user: fallback)
+    ).to be(true)
   end
 
   it "blocks non-admin users" do

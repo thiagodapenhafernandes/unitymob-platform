@@ -1,8 +1,10 @@
-<div class="container-fluid py-3">
-  <div class="tw-mb-3">
-    <h1 class="ax-page-title"><i class="bi bi-pencil-square tw-text-primary" style="margin-right:.5rem"></i>Editar campanha</h1>
-    <p class="ax-page-subtitle"><%= @campaign.name %></p>
-  </div>
+<div class="marketing-admin-dark">
+  <%= ax_workspace_heading(
+        eyebrow: "Marketing · Campanhas",
+        icon: "pencil-square",
+        title: "Editar campanha",
+        subtitle: @campaign.name
+      ) %>
 
   <%= render "admin/marketing_campaigns/form", campaign: @campaign %>
 </div>

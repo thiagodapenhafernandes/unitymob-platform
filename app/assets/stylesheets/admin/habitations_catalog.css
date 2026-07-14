@@ -2741,3 +2741,29 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
       overscroll-behavior: contain;
     }
   }
+/* Export and bulk-publish modal internals. */
+.habitations-export-modal__history { padding-bottom: 0; }
+.habitations-export-modal__form-body { padding-top: 0; }
+.habitations-export-recent-item { border-bottom: 1px solid #e7ebf2; }
+.habitations-export-recent-item__icon { color: #16a34a; }
+.habitations-export-recent-item__content { min-width: 0; }
+.habitations-export-recent-item__filename { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.habitations-export-progress__icon { color: var(--admin-primary); }
+.habitations-export-fields { overflow: hidden; }
+.habitations-export-fields__heading { padding: 8px 12px; background: #f6f8fb; color: #344054; }
+.habitations-export-fields__list { max-height: 340px; overflow-y: auto; }
+.habitations-export-fields__option { padding-right: 12px; padding-left: 12px; }
+.bulk-publish-modal__accent { color: #16a34a; }
+.bulk-publish-channel-options { padding: 8px; }
+.bulk-publish-summary { padding: 12px; background: #f6f8fb; }
+.bulk-publish-summary strong { color: #1f2733; }
+
+html[data-admin-theme="dark"] .habitations-export-recent-item { border-color: var(--ax-dark-border-soft); }
+html[data-admin-theme="dark"] .habitations-export-fields__heading,
+html[data-admin-theme="dark"] .bulk-publish-summary {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text-muted);
+}
+html[data-admin-theme="dark"] .bulk-publish-summary strong { color: var(--ax-dark-text); }
+html[data-admin-theme="dark"] .bulk-publish-modal__accent { color: #4ade80; }

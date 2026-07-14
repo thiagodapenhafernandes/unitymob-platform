@@ -1,0 +1,14 @@
+<%
+  wrapper_classes = ["ax-confirm-submit", class_name].compact.join(" ")
+  controller_data = {
+    controller: "ax-confirm-submit",
+    ax_confirm_submit_form_id_value: form_id,
+    ax_confirm_submit_message_value: message,
+    ax_confirm_submit_confirm_label_value: confirm_label,
+    ax_confirm_submit_cancel_label_value: cancel_label
+  }
+%>
+
+<%= tag.div(class: wrapper_classes, data: controller_data) do %>
+  <%= trigger %>
+<% end %>

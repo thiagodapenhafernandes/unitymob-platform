@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-admin-theme="<%= @layout_setting&.admin_dark_mode? ? 'dark' : 'light' %>">
+<html lang="pt-BR" data-admin-theme="<%= current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>">
   <head>
+    <% admin_theme_mode = current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>
+    <% admin_theme = (@layout_setting || LayoutSetting.platform_defaults).effective_admin_theme(mode: admin_theme_mode) %>
     <title>Captação — Salute Imóveis</title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-    <meta name="theme-color" content="<%= @layout_setting&.admin_dark_mode? ? '#0f1726' : '#0d6efd' %>">
+    <meta name="theme-color" content="<%= admin_theme[:header] %>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Salute Campo">
@@ -22,7 +24,10 @@
     <%= stylesheet_link_tag "vendor/bootstrap-icons" %>
     <%= stylesheet_link_tag "vendor/tom-select.bootstrap5.min", media: "all" %>
     <%= stylesheet_link_tag "admin", media: "all" %>
+    <%= stylesheet_link_tag "admin/theme_tokens", media: "all" %>
     <%= stylesheet_link_tag "admin_tailwind", media: "all" %>
+    <%= stylesheet_link_tag "admin/components", media: "all" %>
+    <%= stylesheet_link_tag "admin/captacao_wizard", media: "all" %>
     <%= stylesheet_link_tag "ax_toast", media: "all" %>
 
     <%# Fonte Inter self-hosted (antes Google Fonts) %>
@@ -33,6 +38,10 @@
     <%= javascript_importmap_tags %>
 
     <style>
+      :root {
+        --admin-primary: <%= admin_theme[:primary] %>;
+      }
+
       body {
         background: #f6f7f9;
         font-family: Inter, -apple-system, sans-serif;
@@ -103,11 +112,6 @@
         line-height: 1;
       }
       .wizard-progress { height: 5px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
-      .wizard-progress-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #0d6efd, #0a58ca);
-        transition: width .3s ease;
-      }
       .captacao-submit-progress {
         position: sticky;
         bottom: 82px;
@@ -206,8 +210,8 @@
       }
       .wizard-content .ax-btn--primary,
       .wizard-bottom-nav .ax-btn--primary {
-        background: #365f8f;
-        border-color: #2f557f;
+        background: var(--admin-primary);
+        border-color: color-mix(in srgb, var(--admin-primary) 88%, #000);
         color: #fff;
       }
       .wizard-content .ax-btn--ghost,
@@ -241,12 +245,15 @@
         background: #fff;
         text-align: left;
       }
-      .wizard-option-card:hover { border-color: #0d6efd; background: rgba(13,110,253,.04); }
+      .wizard-option-card:hover {
+        border-color: var(--admin-primary);
+        background: color-mix(in srgb, var(--admin-primary) 4%, transparent);
+      }
       .wizard-option-card input[type="radio"] { display: none; }
       .wizard-option-card.selected {
-        border-color: #365f8f;
-        background: color-mix(in srgb, #365f8f 9%, #fff);
-        box-shadow: 0 0 0 2px color-mix(in srgb, #365f8f 14%, transparent);
+        border-color: var(--admin-primary);
+        background: color-mix(in srgb, var(--admin-primary) 9%, #fff);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-primary) 14%, transparent);
       }
       .wizard-option-card .icon {
         display: inline-flex;
@@ -257,8 +264,8 @@
         height: 34px;
         margin: 0 !important;
         border-radius: 9px;
-        background: color-mix(in srgb, #365f8f 10%, #fff);
-        color: #365f8f;
+        background: color-mix(in srgb, var(--admin-primary) 10%, #fff);
+        color: var(--admin-primary);
         font-size: 1.15rem;
       }
 
@@ -299,8 +306,8 @@
       .wizard-field-group .ax-control:focus,
       .wizard-field-group .form-control:focus,
       .wizard-field-group .form-select:focus {
-        border-color: #365f8f;
-        box-shadow: 0 0 0 2px rgba(54, 95, 143, .16), inset 0 1px 1px rgba(15, 23, 42, .04);
+        border-color: var(--admin-primary);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-primary) 16%, transparent), inset 0 1px 1px rgba(15, 23, 42, .04);
       }
       .wizard-field-group select.ax-control,
       .wizard-field-group select.form-select,
@@ -350,8 +357,8 @@
       }
       .wizard-field-group .ts-wrapper.focus .ts-control,
       .wizard-field-group .ts-wrapper.dropdown-active .ts-control {
-        border-color: #365f8f;
-        box-shadow: 0 0 0 2px rgba(54, 95, 143, .16), inset 0 1px 1px rgba(15, 23, 42, .04);
+        border-color: var(--admin-primary);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--admin-primary) 16%, transparent), inset 0 1px 1px rgba(15, 23, 42, .04);
       }
       /* Single com busca: uma linha só (mesmo comportamento do admin/ax-app).
          Com o dropdown aberto o item selecionado some e o input ocupa a linha;
@@ -570,9 +577,9 @@
       }
       .wizard-feature-chip input { display: none; }
       .wizard-feature-chip.selected {
-        background: #0d6efd;
+        background: var(--admin-primary);
         color: #fff;
-        border-color: #0d6efd;
+        border-color: var(--admin-primary);
       }
       .wizard-invalid-choice {
         border: 1px solid #dc3545;
@@ -759,8 +766,8 @@
         height: 22px;
         margin-top: 1px;
         border-radius: 999px;
-        background: #eef4ff;
-        color: #0d6efd;
+        background: color-mix(in srgb, var(--admin-primary) 9%, #fff);
+        color: var(--admin-primary);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -879,8 +886,8 @@
         min-height: 38px;
       }
       .captacao-calendar-day.active {
-        background: #0d6efd;
-        border-color: #0d6efd;
+        background: var(--admin-primary);
+        border-color: var(--admin-primary);
         color: #fff;
       }
       .captacao-slot-list {
@@ -893,13 +900,13 @@
         border: 1px solid #bfdbfe;
         border-radius: 8px;
         background: #fff;
-        color: #0d6efd;
+        color: var(--admin-primary);
         font-size: .84rem;
         font-weight: 750;
       }
       .captacao-time-slot:hover {
-        background: rgba(13, 110, 253, .06);
-        border-color: #0d6efd;
+        background: color-mix(in srgb, var(--admin-primary) 6%, transparent);
+        border-color: var(--admin-primary);
       }
       .captacao-slot-empty {
         grid-column: 1 / -1;
@@ -1283,9 +1290,6 @@
         color: #fff;
       }
       html[data-admin-theme="dark"] .wizard-progress { background: #2a3850; }
-      html[data-admin-theme="dark"] .wizard-progress-bar {
-        background: linear-gradient(90deg, #4d7fb8, #72a7e5);
-      }
       html[data-admin-theme="dark"] .wizard-start-form {
         border-color: #2d3b52;
         background: #172033;

@@ -1,0 +1,88 @@
+.ax-workspace-shell {
+  --ax-workspace-aside-w: clamp(320px, 24vw, 380px);
+  --ax-workspace-aside-collapsed-w: var(--ax-sidebar-compact-w, 60px);
+  --ax-workspace-gutter: var(--ax-shell-gutter);
+
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--ax-workspace-aside-w);
+  gap: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  transition: grid-template-columns var(--ax-motion-base, 180ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1));
+}
+
+.ax-workspace-shell.is-inspector-collapsed {
+  grid-template-columns: minmax(0, 1fr) var(--ax-workspace-aside-collapsed-w);
+}
+
+.ax-workspace-main {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  grid-template-rows: var(--ax-contextbar-h) minmax(0, 1fr);
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ax-page-bg);
+}
+
+.ax-workspace-contextbar {
+  box-sizing: border-box;
+  display: flex;
+  min-width: 0;
+  height: var(--ax-contextbar-h);
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: 0 var(--ax-workspace-gutter);
+  border-bottom: 1px solid var(--ax-border);
+  background: var(--ax-panel-bg);
+}
+
+.ax-workspace-contextbar .ax-breadcrumb {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ax-workspace-contextbar .ax-contextbar__actions {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.ax-workspace-main__body {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ax-workspace-aside {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  border-left: 1px solid var(--ax-border);
+  background: var(--ax-panel-bg);
+}
+
+[data-admin-theme="dark"] .ax-workspace-contextbar,
+[data-admin-theme="dark"] .ax-workspace-aside {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-workspace-shell {
+    transition: none;
+  }
+}

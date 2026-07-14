@@ -19,5 +19,9 @@ RSpec.describe "Admin::AiIntegrations", type: :request do
     expect(response.body).to include("Geração em lote")
     expect(response.body).to include("ax-progress")
     expect(response.body).not_to include("progress-bar")
+    progress = Nokogiri::HTML(response.body).at_css(".ax-progress progress.ax-progress__bar")
+    expect(progress).to be_present
+    expect(progress["max"]).to eq("100")
+    expect(progress["style"]).to be_nil
   end
 end

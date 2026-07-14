@@ -1,0 +1,92 @@
+.ax-progress {
+  --ax-progress-color: var(--admin-primary);
+
+  width: 100%;
+  min-width: 0;
+  height: 7px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ab-line-soft, #e7ebf2);
+}
+
+.ax-progress > i,
+.ax-progress__bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: var(--ax-progress-color);
+  appearance: none;
+}
+
+.ax-progress__bar::-webkit-progress-bar {
+  border-radius: inherit;
+  background: transparent;
+}
+
+.ax-progress__bar::-webkit-progress-value {
+  border-radius: inherit;
+  background: var(--ax-progress-color);
+}
+
+.ax-progress__bar::-moz-progress-bar {
+  border-radius: inherit;
+  background: var(--ax-progress-color);
+}
+
+@keyframes ax-progress-running {
+  from { background-position: 0 0; }
+  to { background-position: 20px 0; }
+}
+
+.ax-progress__bar.is-running::-webkit-progress-value {
+  background-color: var(--ax-progress-color);
+  background-image: linear-gradient(45deg, rgb(255 255 255 / .18) 25%, transparent 25%, transparent 50%, rgb(255 255 255 / .18) 50%, rgb(255 255 255 / .18) 75%, transparent 75%, transparent);
+  background-size: 20px 20px;
+  animation: ax-progress-running .8s linear infinite;
+}
+
+.ax-progress__bar.is-running::-moz-progress-bar {
+  background-color: var(--ax-progress-color);
+  background-image: linear-gradient(45deg, rgb(255 255 255 / .18) 25%, transparent 25%, transparent 50%, rgb(255 255 255 / .18) 50%, rgb(255 255 255 / .18) 75%, transparent 75%, transparent);
+  background-size: 20px 20px;
+  animation: ax-progress-running .8s linear infinite;
+}
+
+.ax-progress--blue { --ax-progress-color: var(--admin-primary); }
+.ax-progress--green { --ax-progress-color: #16a34a; }
+.ax-progress--amber { --ax-progress-color: #d97706; }
+.ax-progress--red { --ax-progress-color: #dc2626; }
+.ax-progress--lg { height: 14px; }
+
+[data-admin-theme="dark"] .ax-progress {
+  background: var(--ax-dark-surface-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-progress__bar.is-running::-webkit-progress-value {
+    animation: none;
+  }
+
+  .ax-progress__bar.is-running::-moz-progress-bar {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .ax-progress {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    forced-color-adjust: none;
+  }
+
+  .ax-progress__bar::-webkit-progress-value {
+    background: Highlight;
+  }
+
+  .ax-progress__bar::-moz-progress-bar {
+    background: Highlight;
+  }
+}

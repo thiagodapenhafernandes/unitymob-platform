@@ -1,0 +1,57 @@
+/* Shared 12-column form grid; screen-specific arrangements remain scoped. */
+.ax-field-grid {
+  display: grid;
+  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ax-field-grid > * {
+  min-width: 0;
+}
+
+.ax-field-grid--12,
+.ax-field-grid--nested {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.ax-field-grid--compact,
+.ax-field-grid--nested {
+  gap: 8px;
+}
+
+.ax-field-grid--spaced { margin-bottom: 8px; }
+
+.ax-field-grid > .ax-span-1 { grid-column: span 1 / span 1; }
+.ax-field-grid > .ax-span-2 { grid-column: span 2 / span 2; }
+.ax-field-grid > .ax-span-3 { grid-column: span 3 / span 3; }
+.ax-field-grid > .ax-span-4 { grid-column: span 4 / span 4; }
+.ax-field-grid > .ax-span-5 { grid-column: span 5 / span 5; }
+.ax-field-grid > .ax-span-6 { grid-column: span 6 / span 6; }
+.ax-field-grid > .ax-span-7 { grid-column: span 7 / span 7; }
+.ax-field-grid > .ax-span-8 { grid-column: span 8 / span 8; }
+.ax-field-grid > .ax-span-9 { grid-column: span 9 / span 9; }
+.ax-field-grid > .ax-span-10 { grid-column: span 10 / span 10; }
+.ax-field-grid > .ax-span-11 { grid-column: span 11 / span 11; }
+.ax-field-grid > .ax-span-12 { grid-column: 1 / -1; }
+
+.ax-field-align-end {
+  display: flex;
+  align-items: end;
+  min-width: 0;
+}
+
+@media (max-width: 980px) {
+  .ax-field-grid > [class*="ax-span-"] { grid-column: span 6 / span 6; }
+
+  .ax-field-grid > :where(.ax-span-7, .ax-span-8, .ax-span-9, .ax-span-10, .ax-span-11, .ax-span-12) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .ax-field-grid,
+  .ax-field-grid--12,
+  .ax-field-grid--nested { grid-template-columns: 1fr; }
+  .ax-field-grid > [class*="ax-span-"] { grid-column: 1 / -1; }
+}

@@ -6,10 +6,7 @@
 
     <%= form_with model: @workflow, url: admin_automation_workflows_path, scope: :automation_workflow, class: "automation-workflow-new__form" do |f| %>
       <% if @workflow.errors.any? %>
-        <div class="ax-inline-notice ax-inline-notice--danger">
-          <i class="bi bi-exclamation-triangle"></i>
-          <span><%= @workflow.errors.full_messages.to_sentence %></span>
-        </div>
+        <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle", body: @workflow.errors.full_messages.to_sentence) %>
       <% end %>
 
       <label class="ax-label" for="automation_workflow_name">Nome da intervenção</label>

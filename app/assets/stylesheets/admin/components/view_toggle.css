@@ -1,0 +1,72 @@
+/* Segmented view toggle shared by Kanban/List, Cards/Table and similar views. */
+.ax-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 30px;
+  padding: 3px;
+  border: 1px solid var(--ab-line, #d8dee8);
+  border-radius: 8px;
+  background: #eef2f7;
+}
+
+.ax-view-toggle__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--ax-motion-fast, 120ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1)),
+    border-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1)),
+    color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1)),
+    box-shadow var(--ax-motion-fast, 120ms) var(--ax-motion-ease, cubic-bezier(.2, .8, .2, 1));
+}
+
+.ax-view-toggle__item:hover {
+  border-color: #cbd5e1;
+  background: #fff;
+  color: #1f2937;
+}
+
+.ax-view-toggle__item.is-active {
+  border-color: color-mix(in srgb, var(--admin-primary) 28%, #d8dee8);
+  background: #fff;
+  color: var(--admin-primary);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .06);
+}
+
+[data-admin-theme="dark"] .ax-view-toggle {
+  border-color: var(--ax-dark-border);
+  background: #141f32;
+  color: var(--ax-dark-text-muted);
+  box-shadow: none;
+}
+
+[data-admin-theme="dark"] .ax-view-toggle__item {
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-view-toggle__item:hover,
+[data-admin-theme="dark"] .ax-view-toggle__item:focus-visible {
+  border-color: #526b8c;
+  background: var(--ax-dark-surface-hover);
+  color: var(--ax-dark-text);
+  box-shadow: none;
+}
+
+[data-admin-theme="dark"] .ax-view-toggle__item.is-active {
+  border-color: var(--ax-dark-focus-border);
+  background: #203a5c;
+  color: #dcecff;
+  box-shadow: none;
+}

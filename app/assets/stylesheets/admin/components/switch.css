@@ -1,0 +1,183 @@
+/* Shared checkbox and switch controls for the admin design system.
+ * Keep light and dark states together so every consumer receives the same
+ * interaction contract. Screen-specific sizing may override this component. */
+.ax-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  color: #344054;
+  font-size: 13px;
+  user-select: none;
+}
+
+.ax-check span {
+  line-height: 1;
+}
+
+.ax-switch {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 550;
+  user-select: none;
+}
+
+.ax-switch__input,
+.ax-field .ax-switch__input,
+.ax-app .ax-switch__input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.ax-switch__track {
+  position: relative;
+  display: inline-flex;
+  width: 34px;
+  height: 20px;
+  flex: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #e7edf5;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, .08);
+  transition: background .12s, border-color .12s, box-shadow .12s;
+}
+
+.ax-switch__track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .25);
+  transition: transform .12s;
+}
+
+.ax-switch:hover .ax-switch__track {
+  border-color: var(--ax-field-hover);
+  background: var(--ax-control-hover);
+}
+
+.ax-switch__input:checked + .ax-switch__track {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary);
+}
+
+.ax-switch:hover .ax-switch__input:checked + .ax-switch__track {
+  border-color: var(--admin-primary-hover);
+  background: var(--admin-primary-hover);
+}
+
+.ax-switch__input:checked + .ax-switch__track::after {
+  transform: translateX(14px);
+}
+
+.ax-switch__input:focus-visible + .ax-switch__track {
+  box-shadow: 0 0 0 2px rgba(54, 95, 143, .12), inset 0 1px 2px rgba(15, 23, 42, .08);
+}
+
+.ax-switch:has(.ax-switch__input:disabled) {
+  cursor: not-allowed;
+  color: #98a2b3;
+}
+
+.ax-switch__input:disabled + .ax-switch__track,
+.ax-switch:hover .ax-switch__input:disabled + .ax-switch__track {
+  border-color: #d8dee8;
+  background: #f1f3f6;
+  box-shadow: none;
+  opacity: .72;
+}
+
+.ax-switch__input:disabled + .ax-switch__track::after {
+  background: #c8d0dc;
+  box-shadow: none;
+}
+
+.ax-switch--compact {
+  justify-content: center;
+}
+
+.ax-switch--compact .ax-switch__track {
+  width: 30px;
+  height: 18px;
+}
+
+.ax-switch--compact .ax-switch__track::after {
+  width: 12px;
+  height: 12px;
+}
+
+.ax-switch--compact .ax-switch__input:checked + .ax-switch__track::after {
+  transform: translateX(12px);
+}
+
+[data-admin-theme="dark"] .ax-switch,
+[data-admin-theme="dark"] .ax-check {
+  color: var(--admin-ink);
+}
+
+[data-admin-theme="dark"] .ax-switch__track {
+  border-color: var(--ax-field-border);
+  background: #34445b;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / .28);
+}
+
+[data-admin-theme="dark"] .ax-switch__track::after {
+  background: #dce6f4;
+  box-shadow: 0 1px 3px rgb(0 0 0 / .42);
+}
+
+[data-admin-theme="dark"] .ax-switch:hover .ax-switch__track {
+  border-color: var(--ax-dark-focus-border);
+  background: var(--ax-dark-surface-hover);
+}
+
+[data-admin-theme="dark"] .ax-switch__input:checked + .ax-switch__track {
+  border-color: var(--admin-primary);
+  background: var(--admin-primary);
+}
+
+[data-admin-theme="dark"] .ax-switch:hover .ax-switch__input:checked + .ax-switch__track {
+  border-color: var(--admin-primary-hover);
+  background: var(--admin-primary-hover);
+}
+
+[data-admin-theme="dark"] .ax-switch__input:focus-visible + .ax-switch__track {
+  border-color: var(--ax-dark-focus-border);
+  box-shadow: 0 0 0 3px rgb(98 148 204 / .18), inset 0 1px 2px rgb(0 0 0 / .24);
+}
+
+[data-admin-theme="dark"] .ax-switch:has(.ax-switch__input:disabled) {
+  color: var(--ax-dark-placeholder);
+}
+
+[data-admin-theme="dark"] .ax-switch__input:disabled + .ax-switch__track,
+[data-admin-theme="dark"] .ax-switch:hover .ax-switch__input:disabled + .ax-switch__track {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-workspace);
+  opacity: .72;
+}
+
+[data-admin-theme="dark"] .ax-switch__input:disabled + .ax-switch__track::after {
+  background: var(--ax-dark-placeholder);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-switch__track,
+  .ax-switch__track::after {
+    transition: none;
+  }
+}

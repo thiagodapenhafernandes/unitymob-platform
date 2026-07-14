@@ -1,0 +1,7 @@
+/* Structural stacks shared by form options and record collections. */
+.ax-option-stack,
+.ax-record-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}

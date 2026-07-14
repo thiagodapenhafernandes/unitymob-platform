@@ -1,23 +1,15 @@
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">
-      <i class="bi bi-pencil-square tw-text-primary" style="margin-right:.5rem"></i>Editar loja
-    </h1>
-    <p class="ax-page-subtitle"><%= @store.name %></p>
-  </div>
-  <div class="tw-flex tw-gap-2">
-    <%= link_to admin_store_path(@store), class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-      <i class="bi bi-eye"></i>Ver
-    <% end %>
-    <% if can?(:manage, :lojas) %>
-      <%= button_to admin_store_path(@store),
-                    method: :delete,
-                    data: { turbo_confirm: "Arquivar a loja '#{@store.name}'? Ela deixa de aparecer nos fluxos de check-in, mas o histórico é preservado." },
-                    class: "ax-btn ax-btn--danger ax-btn--sm tw-gap-2" do %>
-        <i class="bi bi-archive"></i>Arquivar
-      <% end %>
-    <% end %>
-  </div>
-</div>
+<% store_heading_actions = safe_join([
+     ax_button("Ver", admin_store_path(@store), variant: :ghost, size: :sm, icon: "eye"),
+     (button_to(admin_store_path(@store), method: :delete,
+       data: { turbo_confirm: "Arquivar a loja '#{@store.name}'? Ela deixa de aparecer nos fluxos de check-in, mas o histórico é preservado." },
+       class: "ax-btn ax-btn--danger ax-btn--sm tw-gap-2") { safe_join([ax_icon("archive"), "Arquivar"], " ") } if can?(:manage, :lojas))
+   ].compact) %>
+<%= ax_workspace_heading(
+      eyebrow: "Operação · Lojas",
+      icon: "pencil-square",
+      title: "Editar loja",
+      subtitle: @store.name,
+      actions: store_heading_actions
+    ) %>
 
 <%= render "form", store: @store %>

@@ -7,6 +7,7 @@ module Admin
       @vertical_profiles = current_tenant.profiles.ordered_vertical.includes(:horizontal_profiles)
       @horizontal_profiles = current_tenant.profiles.ordered_horizontal.includes(:vertical_profile)
       @profiles = @vertical_profiles + @horizontal_profiles
+      @users_count_by_profile_id = profile_user_counts
 
       # "Submetido a": vertical → vertical imediatamente acima na cadeia (menor
       # position acima); horizontal → o vertical em que está ancorado.
@@ -89,6 +90,19 @@ module Admin
 
     private
 
+    def profile_user_counts
+      vertical_counts = current_tenant.admin_users
+        .where(profile_id: @vertical_profiles.map(&:id))
+        .group(:profile_id)
+        .count
+      horizontal_counts = current_tenant.admin_users
+        .where(horizontal_profile_id: @horizontal_profiles.map(&:id))
+        .group(:horizontal_profile_id)
+        .count
+
+      vertical_counts.merge(horizontal_counts)
+    end
+
     def set_profile
       @profile = current_tenant.profiles.find(params[:id])
     end
@@ -124,7 +138,13 @@ module Admin
         res[:actions].each do |action|
           res_perms[action] = truthy?(entry[action])
         end
-        res_perms["scope"] = entry[:scope].presence_in(%w[own team all]) if res[:scopeable]
+        if res[:scopeable]
+          scope = entry[:scope].presence_in(%w[own team all]) || "own"
+          # Somente o eixo vertical carrega hierarquia. Em perfis horizontais,
+          # "all" é neutro e "own" pode apenas restringir o nível vertical.
+          scope = "all" if base[:axis] == Profile::AXES[:horizontal] && scope == "team"
+          res_perms["scope"] = scope
+        end
         perms[key] = res_perms
       end
 

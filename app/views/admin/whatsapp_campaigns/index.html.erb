@@ -99,10 +99,12 @@
         <% end %>
 
         <% if @sender_numbers.empty? %>
-          <div class="whatsapp-sender-card whatsapp-sender-card--empty">
-            <strong>Nenhum número cadastrado</strong>
-            <p>Adicione ou conecte um número para direcionar campanhas por remetente.</p>
-          </div>
+          <%= ax_empty_state(
+            title: "Nenhum número cadastrado",
+            description: "Adicione ou conecte um número para direcionar campanhas por remetente.",
+            icon: "telephone-plus",
+            compact: true
+          ) %>
         <% end %>
       </section>
     <% end %>
@@ -266,12 +268,13 @@
       <%= ax_operational_panel(eyebrow: "Agrupamento", title: "Grupos de campanhas") do %>
         <div class="ax-table-wrap">
           <table class="ax-table whatsapp-group-table">
+            <caption class="ax-table__caption--sr-only">Grupos de campanhas do número selecionado</caption>
             <thead>
               <tr>
-                <th>Grupo</th>
-                <th>Campanhas</th>
-                <th>Indicadores</th>
-                <th>Ações</th>
+                <th scope="col">Grupo</th>
+                <th scope="col">Campanhas</th>
+                <th scope="col">Indicadores</th>
+                <th scope="col">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -297,7 +300,7 @@
                 </tr>
               <% end %>
               <% if @campaign_groups.empty? %>
-                <tr><td colspan="4" class="ax-table__empty">Nenhum grupo criado ainda. Preencha o grupo ao criar ou editar uma campanha.</td></tr>
+                <tr><td colspan="4" class="ax-table__empty"><%= ax_empty_state(title: "Nenhum grupo criado", description: "Preencha o grupo ao criar ou editar uma campanha.", icon: "folder-plus", compact: true) %></td></tr>
               <% end %>
             </tbody>
           </table>
@@ -308,16 +311,17 @@
     <%= ax_operational_panel(eyebrow: pluralize(@campaigns.total_entries, "campanha", "campanhas"), title: "Suas campanhas") do %>
       <div class="ax-table-wrap">
         <table class="ax-table whatsapp-campaign-table">
+          <caption class="ax-table__caption--sr-only">Campanhas do número selecionado</caption>
           <thead>
             <tr>
-              <th>Campanha</th>
-              <th>Status</th>
-              <th>Número</th>
-              <th>Grupo</th>
-              <th>Template</th>
-              <th>Progresso</th>
-              <th>Criada por</th>
-              <th>Data</th>
+              <th scope="col">Campanha</th>
+              <th scope="col">Status</th>
+              <th scope="col">Número</th>
+              <th scope="col">Grupo</th>
+              <th scope="col">Template</th>
+              <th scope="col">Progresso</th>
+              <th scope="col">Criada por</th>
+              <th scope="col">Data</th>
             </tr>
           </thead>
           <tbody>
@@ -350,7 +354,7 @@
                   <div class="whatsapp-progress">
                     <span><%= campaign.sent_count %> / <%= campaign.total_recipients %></span>
                     <small><%= progress %>%</small>
-                    <meter min="0" max="100" value="<%= progress %>"></meter>
+                    <meter min="0" max="100" value="<%= progress %>" aria-label="Progresso da campanha <%= campaign.name %>"></meter>
                   </div>
                 </td>
                 <td><%= campaign.created_by&.name || "-" %></td>
@@ -358,7 +362,7 @@
               </tr>
             <% end %>
             <% if @campaigns.empty? %>
-              <tr><td colspan="8" class="ax-table__empty">Nenhuma campanha encontrada para os filtros atuais.</td></tr>
+              <tr><td colspan="8" class="ax-table__empty"><%= ax_empty_state(title: "Nenhuma campanha encontrada", description: "Ajuste os filtros ou crie uma campanha para este número.", icon: "megaphone", compact: true) %></td></tr>
             <% end %>
           </tbody>
         </table>

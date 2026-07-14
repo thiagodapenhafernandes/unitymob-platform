@@ -1,0 +1,28 @@
+<%
+  field_classes = ["ax-field", local_assigns[:class_name]].compact.join(" ")
+  input_options = (local_assigns[:options] || {}).dup
+  input_options[:name] = name
+  input_options[:id] = id
+  input_options[:value] = local_assigns[:value] unless local_assigns[:value].nil?
+  input_options[:class] = ["ax-control", local_assigns[:input_class], input_options[:class]].compact.join(" ")
+  normalized_type = (local_assigns[:type] || :text).to_sym
+  if normalized_type == :textarea
+    input_options.delete(:value)
+    control = tag.textarea(local_assigns[:value], **input_options)
+  else
+    input_options[:type] = normalized_type
+    control = tag.input(**input_options)
+  end
+%>
+
+<div class="<%= field_classes %>">
+  <label class="ax-field-label" for="<%= id %>"><%= label %></label>
+  <% if local_assigns[:action].present? %>
+    <%= ax_input_group(action: action) { control } %>
+  <% else %>
+    <%= control %>
+  <% end %>
+  <% if local_assigns[:hint].present? %>
+    <p class="ax-field__hint"><%= hint %></p>
+  <% end %>
+</div>

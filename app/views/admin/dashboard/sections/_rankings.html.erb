@@ -42,7 +42,11 @@
                   <strong><%= broker.name %></strong>
                   <span><%= broker.ct %> imóveis</span>
                 </div>
-                <i style="width:<%= max_ct.positive? ? ((broker.ct.to_f / max_ct) * 100).to_i : 0 %>%"></i>
+                <%= ax_progress(
+                  value: max_ct.positive? ? ((broker.ct.to_f / max_ct) * 100).to_i : 0,
+                  class_name: "ax-dashboard-rank__progress",
+                  label: "#{broker.name}: #{broker.ct} imóveis"
+                ) %>
               </div>
             <% end %>
           <% else %>
@@ -70,7 +74,11 @@
                   <strong><i class="bi bi-geo-alt"></i> <%= store.name %></strong>
                   <span><%= store.ct %> check-ins em 30d</span>
                 </div>
-                <i style="width:<%= max_ct.positive? ? ((store.ct.to_f / max_ct) * 100).to_i : 0 %>%"></i>
+                <%= ax_progress(
+                  value: max_ct.positive? ? ((store.ct.to_f / max_ct) * 100).to_i : 0,
+                  class_name: "ax-dashboard-rank__progress",
+                  label: "#{store.name}: #{store.ct} check-ins"
+                ) %>
               </div>
             <% end %>
           <% else %>

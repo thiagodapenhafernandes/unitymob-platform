@@ -1,0 +1,84 @@
+/* Shared AX modal shell. Bootstrap and feature-specific dialogs keep their own variants. */
+.ax-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 7vh 16px 16px;
+  overflow-y: auto;
+  background: rgb(16 24 40 / 0.45);
+}
+
+.ax-modal-panel {
+  width: 100%;
+  max-width: 560px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 24px 48px rgb(16 24 40 / 0.28);
+}
+
+.ax-modal-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #eceef1;
+}
+
+.ax-modal-panel__title { color: #1f2733; font-size: 15px; font-weight: 650; }
+.ax-modal-panel__body { padding: 18px; }
+.ax-modal-panel__footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px; border-top: 1px solid #eceef1; }
+.ax-modal-panel__section-header { border-bottom: 1px solid #e6e8eb; }
+.ax-modal-panel__section-footer { border-top: 1px solid #e6e8eb; }
+
+[data-admin-theme="dark"] .ax-modal-panel {
+  border: 1px solid var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text);
+  box-shadow: 0 24px 54px rgb(0 0 0 / .46);
+}
+
+[data-admin-theme="dark"] .ax-modal-panel__header,
+[data-admin-theme="dark"] .ax-modal-panel__footer,
+[data-admin-theme="dark"] .ax-modal-panel__section-header,
+[data-admin-theme="dark"] .ax-modal-panel__section-footer { border-color: var(--ax-dark-border-soft); }
+[data-admin-theme="dark"] .ax-modal-panel__title { color: var(--ax-dark-text); }
+
+/* Bootstrap modal compatibility follows the same admin theme contract. */
+[data-admin-theme="dark"] .modal-content {
+  border-color: var(--ax-dark-divider);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  box-shadow: 0 24px 54px rgb(0 0 0 / .46);
+}
+
+[data-admin-theme="dark"] .modal-header,
+[data-admin-theme="dark"] .modal-footer { border-color: var(--ax-dark-divider-soft); }
+
+[data-admin-theme="dark"] .modal-title { color: var(--admin-ink); }
+
+[data-admin-theme="dark"] .modal-body {
+  background: var(--admin-surface);
+  color: var(--ax-dark-text-soft);
+}
+
+[data-admin-theme="dark"] .modal-content :where(.text-muted, .form-text) {
+  color: var(--ax-dark-text-muted) !important;
+}
+
+[data-admin-theme="dark"] .modal-content :where(.card, .list-group-item) {
+  background: var(--ax-dark-surface-raised);
+  border-color: var(--ax-dark-border-soft);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .modal-content .btn-close {
+  filter: invert(1) grayscale(1) brightness(1.7);
+  opacity: .72;
+}
+
+[data-admin-theme="dark"] .modal-content .btn-close:hover,
+[data-admin-theme="dark"] .modal-content .btn-close:focus-visible { opacity: 1; }

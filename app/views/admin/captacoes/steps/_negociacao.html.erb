@@ -1,87 +1,62 @@
-<h1 class="wizard-section-title"><i class="bi bi-cash-stack tw-text-primary" style="margin-right:.5rem;"></i>Negociação</h1>
+<h1 class="wizard-section-title"><i class="bi bi-cash-stack tw-text-primary"></i>Negociação</h1>
 <p class="wizard-section-subtitle">
   Modalidade: <strong><%= @captacao.modalidade.to_s.humanize %></strong>. Preencha conforme aplicável.
 </p>
 
 <% if @captacao.requires_sale_price? %>
-  <div class="wizard-field-group">
-    <%= f.label :valor_venda, "Valor de venda (R$)", class: "ax-label" %>
-    <span class="required-star">*</span>
-    <%= f.text_field :valor_venda,
-                     value: @captacao.valor_venda_formatted,
-                     inputmode: "numeric",
-                     class: field_state.call(:valor_venda),
-                     data: { controller: "mask", mask_type_value: "currency" } %>
-    <% if field_invalid.call(:valor_venda) %><div class="invalid-feedback d-block"><%= @captacao.intake_sale_price_requirement_message %></div><% end %>
-  </div>
+  <%= ax_currency_field(form: f, method: :valor_venda,
+        label: safe_join(["Valor de venda", tag.span("*", class: "required-star")], " "),
+        class_name: "wizard-field-group", input_class: field_state.call(:valor_venda, nil),
+        value: @captacao.valor_venda_formatted, inputmode: "numeric",
+        data: { controller: "mask", mask_type_value: "currency" }) %>
+  <% if field_invalid.call(:valor_venda) %><div class="invalid-feedback d-block"><%= @captacao.intake_sale_price_requirement_message %></div><% end %>
 
-  <div class="wizard-field-group">
-    <%= f.label :motivo_venda, "Motivo da venda", class: "ax-label" %>
-    <%= f.select :motivo_venda,
-                 options_for_select(Array(@sale_reasons), @captacao.motivo_venda),
-                 { include_blank: "Selecione" },
-                 class: "ax-control" %>
-  </div>
+  <%= ax_select_field(form: f, method: :motivo_venda, label: "Motivo da venda",
+        choices: Array(@sale_reasons), select_options: { include_blank: "Selecione" }, class_name: "wizard-field-group") %>
 
-  <div class="wizard-field-group">
-    <%= f.label :aceita_permuta_answer, "Aceita permuta?", class: "ax-label" %>
-    <span class="required-star">*</span>
-    <%= f.select :aceita_permuta_answer,
-                 Habitation::YES_NO_ANSWERS.map { |key, label| [label, key] },
-                 { include_blank: "Selecione" },
-                 class: field_state.call(:aceita_permuta_answer, "ax-control") %>
-    <% if field_invalid.call(:aceita_permuta_answer) %><div class="invalid-feedback d-block">Informe se aceita permuta.</div><% end %>
-  </div>
+  <%= ax_select_field(form: f, method: :aceita_permuta_answer,
+        label: safe_join(["Aceita permuta?", tag.span("*", class: "required-star")], " "),
+        choices: Habitation::YES_NO_ANSWERS.map { |key, label| [label, key] },
+        select_options: { include_blank: "Selecione" }, class_name: "wizard-field-group",
+        html_options: { class: field_state.call(:aceita_permuta_answer, "ax-control") }) %>
+  <% if field_invalid.call(:aceita_permuta_answer) %><div class="invalid-feedback d-block">Informe se aceita permuta.</div><% end %>
 
   <%= ax_field_grid do %>
     <div class="ax-span-6">
-      <div class="wizard-field-group">
-        <%= f.label :cidade_permuta, "Cidade aceita permuta", class: "ax-label" %>
-        <%= f.text_field :cidade_permuta, class: "ax-control" %>
-      </div>
+      <%= ax_text_field(form: f, method: :cidade_permuta, label: "Cidade aceita permuta",
+            field_class: "wizard-field-group", autocomplete: "address-level2") %>
     </div>
     <div class="ax-span-6">
-      <div class="wizard-field-group">
-        <%= f.label :aceita_parcelamento_flag, "Aceita parcelamento?", class: "ax-label" %>
-        <span class="required-star">*</span>
-        <%= f.select :aceita_parcelamento_flag, [["Sim", true], ["Não", false]], {}, class: "ax-control" %>
-      </div>
+      <%= ax_select_field(form: f, method: :aceita_parcelamento_flag,
+            label: safe_join(["Aceita parcelamento?", tag.span("*", class: "required-star")], " "),
+            choices: [["Sim", true], ["Não", false]], class_name: "wizard-field-group") %>
     </div>
   <% end %>
 
-  <div class="wizard-field-group">
-    <%= f.label :numero_prestacoes, "Se aceita parcelamento, em quantas vezes?", class: "ax-label" %>
-    <%= f.number_field :numero_prestacoes, min: 1, inputmode: "numeric", class: field_state.call(:numero_prestacoes) %>
-    <% if field_invalid.call(:numero_prestacoes) %><div class="invalid-feedback d-block">Informe a quantidade de parcelas.</div><% end %>
-  </div>
+  <%= ax_number_field(form: f, method: :numero_prestacoes, label: "Se aceita parcelamento, em quantas vezes?",
+        min: 1, inputmode: "numeric", class_name: "wizard-field-group", input_class: field_state.call(:numero_prestacoes, nil)) %>
+  <% if field_invalid.call(:numero_prestacoes) %><div class="invalid-feedback d-block">Informe a quantidade de parcelas.</div><% end %>
 <% end %>
 
 <% if @captacao.requires_rent_price? %>
   <hr class="my-3">
-  <div class="wizard-field-group">
-    <%= f.label :valor_locacao, "Valor de locação (R$)", class: "ax-label" %>
-    <span class="required-star">*</span>
-    <%= f.text_field :valor_locacao,
-                     value: @captacao.valor_locacao_formatted,
-                     inputmode: "numeric",
-                     class: field_state.call(:valor_locacao),
-                     data: { controller: "mask", mask_type_value: "currency" } %>
-    <% if field_invalid.call(:valor_locacao) %><div class="invalid-feedback d-block"><%= @captacao.intake_rent_price_requirement_message %></div><% end %>
-  </div>
+  <%= ax_currency_field(form: f, method: :valor_locacao,
+        label: safe_join(["Valor de locação", tag.span("*", class: "required-star")], " "),
+        class_name: "wizard-field-group", input_class: field_state.call(:valor_locacao, nil),
+        value: @captacao.valor_locacao_formatted, inputmode: "numeric",
+        data: { controller: "mask", mask_type_value: "currency" }) %>
+  <% if field_invalid.call(:valor_locacao) %><div class="invalid-feedback d-block"><%= @captacao.intake_rent_price_requirement_message %></div><% end %>
+
+  <%= ax_select_field(form: f, method: :salute_rental_management_answer,
+        label: safe_join(["Administração de locação feita pela Salute?", tag.span("*", class: "required-star")], " "),
+        choices: Habitation::YES_NO_ANSWERS.map { |key, label| [label, key] },
+        select_options: { include_blank: "Selecione" }, class_name: "wizard-field-group",
+        html_options: { class: field_state.call(:salute_rental_management_answer, "ax-control") }) %>
+  <% if field_invalid.call(:salute_rental_management_answer) %><div class="invalid-feedback d-block">Informe se a administração será feita pela Salute.</div><% end %>
 
   <div class="wizard-field-group">
-    <%= f.label :salute_rental_management_answer, "Administração de locação feita pela Salute?", class: "ax-label" %>
-    <span class="required-star">*</span>
-    <%= f.select :salute_rental_management_answer,
-                 Habitation::YES_NO_ANSWERS.map { |key, label| [label, key] },
-                 { include_blank: "Selecione" },
-                 class: field_state.call(:salute_rental_management_answer, "ax-control") %>
-    <% if field_invalid.call(:salute_rental_management_answer) %><div class="invalid-feedback d-block">Informe se a administração será feita pela Salute.</div><% end %>
-  </div>
-
-  <div class="wizard-field-group">
-    <%= f.label :rental_guarantee_method, "Meios de garantia locatícia", class: "ax-label" %>
-    <span class="required-star">*</span>
+    <%= ax_field_label(f, :rental_guarantee_method,
+          text: safe_join(["Meios de garantia locatícia", tag.span("*", class: "required-star")], " ")) %>
     <% rental_guarantee_field_name = "#{f.object_name}[rental_guarantee_method][]" %>
     <%= hidden_field_tag rental_guarantee_field_name, "" %>
     <div class="ax-filter-checks <%= 'is-invalid' if field_invalid.call(:rental_guarantee_method) %>">
@@ -105,38 +80,25 @@
 
 <%= ax_field_grid do %>
   <div class="ax-span-6">
-    <div class="wizard-field-group">
-      <%= f.label :valor_condominio, "Condomínio (R$)", class: "ax-label" %>
-      <%= f.text_field :valor_condominio,
-                       value: @captacao.valor_condominio_formatted,
-                       inputmode: "numeric",
-                       class: field_state.call(:valor_condominio),
-                       data: { controller: "mask", mask_type_value: "currency" } %>
-      <% if field_invalid.call(:valor_condominio) %><div class="invalid-feedback d-block">Informe condomínio ou IPTU.</div><% end %>
-    </div>
+    <%= ax_currency_field(form: f, method: :valor_condominio, label: "Condomínio",
+          class_name: "wizard-field-group", input_class: field_state.call(:valor_condominio, nil),
+          value: @captacao.valor_condominio_formatted, inputmode: "numeric",
+          data: { controller: "mask", mask_type_value: "currency" }) %>
+    <% if field_invalid.call(:valor_condominio) %><div class="invalid-feedback d-block">Informe condomínio ou IPTU.</div><% end %>
   </div>
   <div class="ax-span-6">
-    <div class="wizard-field-group">
-      <%= f.label :valor_iptu, "IPTU anual (R$)", class: "ax-label" %>
-      <%= f.text_field :valor_iptu,
-                       value: @captacao.valor_iptu_formatted,
-                       inputmode: "numeric",
-                       class: field_state.call(:valor_iptu),
-                       data: { controller: "mask", mask_type_value: "currency" } %>
-      <% if field_invalid.call(:valor_iptu) %><div class="invalid-feedback d-block">Informe IPTU ou condomínio.</div><% end %>
-    </div>
+    <%= ax_currency_field(form: f, method: :valor_iptu, label: "IPTU anual",
+          class_name: "wizard-field-group", input_class: field_state.call(:valor_iptu, nil),
+          value: @captacao.valor_iptu_formatted, inputmode: "numeric",
+          data: { controller: "mask", mask_type_value: "currency" }) %>
+    <% if field_invalid.call(:valor_iptu) %><div class="invalid-feedback d-block">Informe IPTU ou condomínio.</div><% end %>
   </div>
 <% end %>
 
-<div class="wizard-field-group">
-  <%= f.label :saldo_devedor, "Saldo devedor (R$)", class: "ax-label" %>
-  <%= f.text_field :saldo_devedor,
-                   value: @captacao.saldo_devedor_formatted,
-                   inputmode: "numeric",
-                   class: "ax-control",
-                   data: { controller: "mask", mask_type_value: "currency" } %>
-  <small class="tw-text-ink-muted">Se houver financiamento em aberto.</small>
-</div>
+<%= ax_currency_field(form: f, method: :saldo_devedor, label: "Saldo devedor",
+      class_name: "wizard-field-group", value: @captacao.saldo_devedor_formatted,
+      inputmode: "numeric", data: { controller: "mask", mask_type_value: "currency" }) %>
+<small class="tw-text-ink-muted">Se houver financiamento em aberto.</small>
 
 <div class="wizard-field-group">
   <label class="ax-label">Outras taxas / contribuições</label>

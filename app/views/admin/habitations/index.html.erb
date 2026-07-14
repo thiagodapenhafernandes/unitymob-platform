@@ -91,10 +91,9 @@
                 aria-label="Selecionar itens por página">
           <i class="bi bi-gear"></i>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end habitations-command-menu habitations-command-menu--page-size"
+        <ul class="dropdown-menu dropdown-menu-end ax-menu--end habitations-command-menu habitations-command-menu--page-size"
             data-ax-dropdown-target="menu"
-            hidden
-            style="right: 0; left: auto;">
+            hidden>
           <li class="habitations-command-menu__header">
             <span>Itens por página</span>
             <small><%= current_per_page %> atual</small>
@@ -163,10 +162,9 @@
                 aria-expanded="false">
           <i class="bi bi-printer"></i> Impressão
         </button>
-        <ul class="dropdown-menu dropdown-menu-end habitations-command-menu habitations-command-menu--print"
+        <ul class="dropdown-menu dropdown-menu-end ax-menu--end habitations-command-menu habitations-command-menu--print"
             data-ax-dropdown-target="menu"
-            hidden
-            style="right: 0; left: auto;">
+            hidden>
           <li class="habitations-command-menu__header">
             <span>Modelos de impressão</span>
             <small><%= @report_types.to_h.size %> opções</small>
@@ -196,10 +194,9 @@
           <i class="bi bi-sort-down"></i>
           <span>Ordenar: <strong><%= current_sort_label %></strong></span>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end habitations-command-menu habitations-command-menu--sort"
+        <ul class="dropdown-menu dropdown-menu-end ax-menu--end habitations-command-menu habitations-command-menu--sort"
             data-ax-dropdown-target="menu"
-            hidden
-            style="right: 0; left: auto;">
+            hidden>
           <li class="habitations-command-menu__header">
             <span>Ordenar por</span>
             <small><%= sort_direction == "asc" ? "asc" : "desc" %></small>
@@ -244,8 +241,8 @@
       <i class="bi bi-collection"></i>
       <span>Todos</span>
     <% end %>
-    <%# "Pendente de revisão" é curadoria de intake (admin) — só para escopo total. %>
-    <% if owns_all_resource?(:imoveis) %>
+    <%# Revisão segue a ação e o escopo de Captações (own/team/all), não o escopo global de Imóveis. %>
+    <% if can?(:review, :captacoes) %>
       <%= link_to admin_habitations_path(ownership_base_params.merge(ownership: "all", intake_review: "pending")), class: "habitations-view-toggle__item #{pending_review_active ? 'is-active' : ''}" do %>
         <i class="bi bi-clipboard-check"></i>
         <span>Pendente de revisão</span>
@@ -263,10 +260,9 @@
         <i class="bi bi-sort-down"></i>
         <span>Ordenar: <strong><%= current_sort_label %></strong></span>
       </button>
-      <ul class="dropdown-menu dropdown-menu-end habitations-command-menu habitations-command-menu--sort"
+      <ul class="dropdown-menu dropdown-menu-end ax-menu--end habitations-command-menu habitations-command-menu--sort"
           data-ax-dropdown-target="menu"
-          hidden
-          style="right: 0; left: auto;">
+          hidden>
         <li class="habitations-command-menu__header">
           <span>Ordenar por</span>
           <small><%= sort_direction == "asc" ? "asc" : "desc" %></small>
@@ -295,8 +291,6 @@
       <i class="bi bi-sort-<%= sort_direction == "asc" ? "up" : "down" %>"></i>
     <% end %>
   </div>
-
-  <%= ax_team_toggle(:imoveis) %>
 
   <% if bulk_actions_allowed %>
     <div class="habitations-workspace-bulkline" aria-label="Seleção em massa">
@@ -341,15 +335,15 @@
     <%# Histórico das últimas exportações — FORA do <form> de exportação (o button_to de
         excluir é um <form>; aninhar quebra o submit/CSRF). Renderizado no servidor (sem JS);
         o controller habitation-export atualiza/poll este bloco quando o JS está ativo. %>
-    <div class="ax-quick-modal__body" style="padding-bottom:0">
+    <div class="ax-quick-modal__body habitations-export-modal__history">
       <div data-habitation-export-target="list" class="tw-mb-1">
         <% if @recent_exports.present? %>
           <div class="ax-label tw-mb-1">Exportações recentes</div>
           <% @recent_exports.each do |e| %>
-            <div class="tw-flex tw-items-center tw-gap-2 tw-py-2" style="border-bottom:1px solid #e7ebf2">
-              <i class="bi bi-filetype-csv" style="color:#16a34a"></i>
-              <div class="tw-flex-1" style="min-width:0">
-                <div class="tw-text-sm tw-font-semibold" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= e.filename %></div>
+            <div class="habitations-export-recent-item tw-flex tw-items-center tw-gap-2 tw-py-2">
+              <i class="bi bi-filetype-csv habitations-export-recent-item__icon"></i>
+              <div class="tw-flex-1 habitations-export-recent-item__content">
+                <div class="tw-text-sm tw-font-semibold habitations-export-recent-item__filename"><%= e.filename %></div>
                 <div class="tw-text-xs tw-text-ink-muted"><%= e.record_count %> imóveis · <%= e.created_at.strftime("%d/%m %H:%M") %></div>
               </div>
               <% if e.completed? %>
@@ -373,14 +367,18 @@
 
     <%= form_with url: export_admin_habitations_path, method: :post, local: true,
                   html: { data: { turbo: false, admin_navigation_ignore: true, habitation_export_target: "form", action: "submit->habitation-export#submit" } } do %>
-      <div class="ax-quick-modal__body" style="padding-top:0">
+      <div class="ax-quick-modal__body habitations-export-modal__form-body">
         <%# Progresso da geração assíncrona %>
         <div data-habitation-export-target="progress" class="tw-mb-3" hidden>
           <div class="tw-flex tw-items-center tw-gap-2 tw-mb-1">
-            <i class="bi bi-arrow-repeat" style="color:var(--admin-primary)"></i>
+            <i class="bi bi-arrow-repeat habitations-export-progress__icon"></i>
             <span class="tw-text-sm tw-font-semibold" data-habitation-export-target="progressLabel">Gerando o CSV…</span>
           </div>
-          <div class="ax-progress"><i data-habitation-export-target="progressBar" style="width:0%"></i></div>
+          <%= ax_progress(
+                value: 0,
+                label: "Progresso da exportação: 0%",
+                data: { habitation_export_target: "progressBar" }
+              ) %>
         </div>
 
         <div class="tw-mb-3">
@@ -400,12 +398,12 @@
           <% end %>
         <% end %>
 
-        <div class="tw-border tw-rounded-lg" style="overflow:hidden">
-          <div class="tw-py-2 tw-font-semibold" style="padding:8px 12px;background:#f6f8fb">Selecione os campos para exportação</div>
-          <div style="max-height:340px;overflow-y:auto">
+        <div class="tw-border tw-rounded-lg habitations-export-fields">
+          <div class="habitations-export-fields__heading tw-py-2 tw-font-semibold">Selecione os campos para exportação</div>
+          <div class="habitations-export-fields__list">
             <% @export_fields.each do |field_key, field_label| %>
               <% next if !can_export_proprietor_data? && field_key == "proprietario" %>
-              <label class="tw-flex tw-items-center tw-gap-2 tw-py-2 tw-border-b tw-text-sm" style="padding-left:12px;padding-right:12px">
+              <label class="tw-flex tw-items-center tw-gap-2 tw-py-2 tw-border-b tw-text-sm habitations-export-fields__option">
                 <%= check_box_tag "fields[]", field_key, @default_export_fields.include?(field_key) %>
                 <span><%= field_label %></span>
               </label>
@@ -580,7 +578,7 @@
   <div class="ax-quick-modal__panel" role="dialog" aria-modal="true">
     <header class="ax-quick-modal__header">
       <h5 class="ax-quick-modal__title tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-megaphone-fill" style="color:#16a34a"></i>
+        <i class="bi bi-megaphone-fill bulk-publish-modal__accent"></i>
         Divulgação de <span data-bulk-publish-target="modalCount">0</span> Imóveis
       </h5>
       <button type="button" class="ax-icon-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
@@ -613,7 +611,7 @@
                      data-action="change->bulk-publish#onActionChange">
               <span>Publicar</span>
             </label>
-            <label class="tw-flex tw-items-center tw-gap-2 tw-font-semibold" style="color:#16a34a" for="bulkActionUnpublish">
+            <label class="tw-flex tw-items-center tw-gap-2 tw-font-semibold bulk-publish-modal__accent" for="bulkActionUnpublish">
               <input type="radio" name="action_type" value="despublicar" id="bulkActionUnpublish"
                      data-bulk-publish-target="actionRadio"
                      data-action="change->bulk-publish#onActionChange">
@@ -625,7 +623,7 @@
         <!-- Sub-opções específicas do canal (só visíveis quando canal tem opções E ação=publicar) -->
         <div class="tw-mb-3" data-bulk-publish-target="channelOptionsWrapper" hidden>
           <!-- Chaves Na Mão -->
-          <div class="channel-options-block tw-border tw-rounded-lg" style="padding:8px" data-channel="chaves_na_mao" hidden>
+          <div class="channel-options-block bulk-publish-channel-options tw-border tw-rounded-lg" data-channel="chaves_na_mao" hidden>
             <div class="tw-text-sm tw-font-semibold tw-text-ink-muted tw-mb-1">Destaque</div>
             <div class="tw-flex tw-flex-wrap tw-gap-3 tw-mb-2">
               <% Habitation::CHAVES_NA_MAO_DESTAQUE_OPTIONS.each do |(label, val)| %>
@@ -647,7 +645,7 @@
           </div>
 
           <!-- Casa Mineira -->
-          <div class="channel-options-block tw-border tw-rounded-lg" style="padding:8px" data-channel="casa_mineira" hidden>
+          <div class="channel-options-block bulk-publish-channel-options tw-border tw-rounded-lg" data-channel="casa_mineira" hidden>
             <div class="tw-text-sm tw-font-semibold tw-text-ink-muted tw-mb-1">Modelo</div>
             <div class="tw-flex tw-flex-wrap tw-gap-3">
               <% Habitation::CASA_MINEIRA_MODELO_OPTIONS.each do |(label, val)| %>
@@ -660,7 +658,7 @@
           </div>
 
           <!-- Imovelweb -->
-          <div class="channel-options-block tw-border tw-rounded-lg" style="padding:8px" data-channel="imovelweb" hidden>
+          <div class="channel-options-block bulk-publish-channel-options tw-border tw-rounded-lg" data-channel="imovelweb" hidden>
             <div class="tw-text-sm tw-font-semibold tw-text-ink-muted tw-mb-1">Tipo Publicação</div>
             <div class="tw-flex tw-flex-wrap tw-gap-3 tw-mb-2">
               <% Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS.each do |(label, val)| %>
@@ -682,7 +680,7 @@
           </div>
 
           <!-- Imovelweb 2 -->
-          <div class="channel-options-block tw-border tw-rounded-lg" style="padding:8px" data-channel="imovelweb_2" hidden>
+          <div class="channel-options-block bulk-publish-channel-options tw-border tw-rounded-lg" data-channel="imovelweb_2" hidden>
             <div class="tw-text-sm tw-font-semibold tw-text-ink-muted tw-mb-1">Tipo Publicação</div>
             <div class="tw-flex tw-flex-wrap tw-gap-3 tw-mb-2">
               <% Habitation::IMOVELWEB_TIPO_PUBLICACAO_OPTIONS.each do |(label, val)| %>
@@ -704,7 +702,7 @@
           </div>
 
           <!-- Viva Real VRSync -->
-          <div class="channel-options-block tw-border tw-rounded-lg" style="padding:8px" data-channel="viva_real_vrsync" hidden>
+          <div class="channel-options-block bulk-publish-channel-options tw-border tw-rounded-lg" data-channel="viva_real_vrsync" hidden>
             <div class="tw-text-sm tw-font-semibold tw-text-ink-muted tw-mb-1">Tipo Publicação</div>
             <div class="tw-flex tw-flex-wrap tw-gap-3 tw-mb-2">
               <% Habitation::VIVA_REAL_TIPO_PUBLICACAO_OPTIONS.each do |(label, val)| %>
@@ -727,9 +725,9 @@
         </div>
 
         <!-- Contador de elegibilidade -->
-        <div class="tw-rounded-lg tw-text-sm tw-text-ink-muted" style="background:#f6f8fb;padding:12px">
-          Você selecionou <strong style="color:#1f2733" data-bulk-publish-target="eligTotal">0</strong> imóveis.<br>
-          Em <strong style="color:#1f2733" data-bulk-publish-target="eligCount">—</strong> você pode atualizar as opções de divulgação.
+        <div class="bulk-publish-summary tw-rounded-lg tw-text-sm tw-text-ink-muted">
+          Você selecionou <strong data-bulk-publish-target="eligTotal">0</strong> imóveis.<br>
+          Em <strong data-bulk-publish-target="eligCount">—</strong> você pode atualizar as opções de divulgação.
           <i class="bi bi-question-circle-fill tw-text-ink-muted" data-controller="ax-tooltip" data-ax-tooltip-text-value="Quantos dos imóveis selecionados realmente serão afetados pela ação escolhida." title="Quantos dos imóveis selecionados realmente serão afetados pela ação escolhida."></i>
         </div>
       </form>

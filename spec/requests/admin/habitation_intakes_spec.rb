@@ -39,6 +39,11 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Tipo de cadastro")
     expect(response.body).to include("Comerciais e industriais")
     expect(response.body).to include("Categoria relacionada")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('select[name="habitation[categoria]"][data-habitation-form-target="category"]')).to be_present
+    expect(response.body).to include("wizard-top-bar__summary", "wizard-nav-action")
+    expect(response.body).to include('progress class="ax-progress__bar"', 'aria-label="Progresso da captação: 0%"')
+    expect(response.body).not_to include("wizard-progress-bar")
   end
 
   it "exibe exportador de planilha somente para administrador ou administrativo" do
@@ -76,6 +81,24 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Residencial: 3")
     expect(response.body).to include("Comercial: 1")
     expect(response.body).to include("Terreno: 1")
+  end
+
+  it "preserva a visão de equipe nos filtros e expõe ações compactas acessíveis" do
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      titulo_anuncio: "Captação compacta",
+      intake_status: "draft"
+    )
+
+    get admin_captacoes_path(team: "0", status: "draft")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('name="team"', 'value="0"')
+    expect(response.body).to include('href="/admin/captacoes?team=0"')
+    expect(response.body).to include("aria-label=\"Continuar captação #{intake.display_title}\"")
+    expect(response.body).not_to include("captacoes-empty-state")
   end
 
   it "não conta captação com fotos anexadas como sem fotos" do
@@ -167,13 +190,25 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "exibe campo auxiliar para buscar proprietário por código na etapa do PWA" do
-    intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "proprietario")
+    intake = create(
+      :habitation,
+      :broker_intake,
+      codigo: "CAP-WIZ-#{SecureRandom.hex(6)}",
+      admin_user: admin,
+      intake_step: "proprietario"
+    )
 
     get edit_admin_captacao_path(intake, step: "proprietario")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Código do proprietário")
     expect(response.body).to include('data-proprietor-lookup-target="code"')
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('input[type="tel"][name="habitation[proprietario_telefone]"][data-controller="phone-input"]')).to be_present
+    expect(document.at_css('input[type="email"][name="habitation[proprietario_email]"]')).to be_present
+    expect(response.body).to include("wizard-top-bar__summary", "wizard-nav-action")
+    expect(response.body).to include('progress class="ax-progress__bar"', "Progresso da captação:")
+    expect(response.body).not_to include("wizard-progress-bar")
   end
 
   it "sugere cidades de proprietários já cadastrados na etapa do PWA" do
@@ -469,10 +504,21 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Onde estão as chaves?")
     expect(response.body).to include("Nome do zelador")
     expect(response.body).to include('data-conditional-reveal-values="portaria"')
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('select[name="habitation[chaves_com]"][data-conditional-reveal-target="trigger"]')).to be_present
+    expect(document.at_css('textarea[name="habitation[observacoes]"]')).to be_present
   end
 
   it "salva extras de terreno do wizard em campos estruturados" do
     intake = create(:habitation, :broker_intake, admin_user: admin, categoria: "Terreno", intake_step: "caracteristicas")
+
+    get edit_admin_captacao_path(intake, step: "caracteristicas")
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('input[type="number"][name="captacao[extras][frente_metros]"]')).to be_present
+    expect(document.at_css('select[name="captacao[extras][topografia]"]')).to be_present
+    expect(document.at_css('select[name="captacao[extras][face]"]')).to be_present
 
     patch admin_captacao_path(intake), params: {
       current_step: "caracteristicas",
@@ -534,6 +580,9 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Você pode adicionar mais antes de avançar.")
     expect(response.body).to include("Escolher horário")
     expect(response.body).not_to include("Abrir agenda de fotos")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('select[name="habitation[photo_flow_choice]"][data-captacao-photos-target="flowSelect"]')).to be_present
+    expect(document.at_css('input[type="datetime-local"][name="habitation[photo_session_requested_at]"][data-captacao-photos-target="scheduledAtInput"]')).to be_present
   end
 
   it "bloqueia avanço no próprio step e marca campos obrigatórios" do
@@ -673,6 +722,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Espaço gourmet")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('input[type="number"][name="habitation[andares_total]"]')).to be_present
   end
 
   it "separa características do imóvel e do edifício em etapas diferentes" do
@@ -734,6 +785,9 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Empreendimento cadastrado")
     expect(response.body).to include("Residencial PWA Busca")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('input[name="habitation[street]"][data-habitation-duplicate-check-target="street"]')).to be_present
+    expect(document.at_css('input[name="habitation[state]"][data-cep-lookup-target="uf"]')).to be_present
 
     patch admin_captacao_path(intake), params: {
       current_step: "endereco",
@@ -791,6 +845,10 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Valor de venda")
     expect(response.body).to include("Valor de locação")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('input[name="habitation[valor_venda]"][data-controller="mask"]')).to be_present
+    expect(document.at_css('input[name="habitation[valor_locacao]"][data-controller="mask"]')).to be_present
+    expect(document.at_css('select[name="habitation[aceita_permuta_answer]"]')).to be_present
   end
 
   it "mantém rascunho incompleto sem valor, mas bloqueia envio para revisão" do

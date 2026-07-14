@@ -1,9 +1,21 @@
 <%# Resumo da regra ao vivo — lido do DOM pelo controller distribution-rule-summary.
     Renderizado no aside; sem endpoint nem estado de servidor. %>
-<div class="distribution-rule-summary-card">
-  <div class="distribution-rule-summary-card__eyebrow"><i class="bi bi-eye"></i> Resumo da regra</div>
-  <div class="distribution-rule-summary-card__line" data-distribution-rule-summary-target="line">
+<section class="distribution-rule-summary-card" aria-labelledby="distribution-rule-summary-title">
+  <div class="distribution-rule-summary-card__header">
+    <span class="distribution-rule-summary-card__icon" aria-hidden="true"><i class="bi bi-eye"></i></span>
+    <div>
+      <h2 id="distribution-rule-summary-title">Resumo da regra</h2>
+      <p>Conferência antes de salvar</p>
+    </div>
+  </div>
+  <div class="distribution-rule-summary-card__line"
+       data-distribution-rule-summary-target="line"
+       role="status"
+       aria-live="polite"
+       aria-atomic="true">
     Configure as fontes e a equipe para ver o resumo.
   </div>
-  <div class="distribution-rule-summary-card__chips" data-distribution-rule-summary-target="chips"></div>
-</div>
+  <div class="distribution-rule-summary-card__chips"
+       data-distribution-rule-summary-target="chips"
+       aria-label="Estados complementares da regra"></div>
+</section>

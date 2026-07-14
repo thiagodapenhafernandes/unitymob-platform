@@ -78,8 +78,8 @@ RSpec.describe "Admin::Field::AuditLogs", type: :request do
     expect(response.body).to include("10.50.0.1")
     expect(response.body).not_to include("Par Campo")
     expect(response.body).not_to include("10.60.0.1")
-    stats = Nokogiri::HTML(response.body).css(".ax-card--stat").to_h do |card|
-      [card.css(".ax-stat-label").text.squish, card.css(".ax-stat-value").text.squish]
+    stats = Nokogiri::HTML(response.body).css(".ax-metric-card").to_h do |card|
+      [card.css(".ax-metric-card__label").text.squish, card.css(".ax-metric-card__value").text.squish]
     end
     expect(stats.fetch("Suspeitos")).to eq("0")
     expect(stats.fetch("Forçados")).to eq("1")

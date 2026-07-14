@@ -214,7 +214,10 @@ class Profile < ApplicationRecord
   end
 
   def configured_scope_for(resource)
-    permissions_hash.dig(resource.to_s, "scope").presence_in(SCOPE_RANKS.keys)
+    configured = permissions_hash.dig(resource.to_s, "scope").presence_in(SCOPE_RANKS.keys)
+    return nil if horizontal? && configured == "team"
+
+    configured
   end
 
   def self.restricted_scope(primary_scope, overlay_scope)

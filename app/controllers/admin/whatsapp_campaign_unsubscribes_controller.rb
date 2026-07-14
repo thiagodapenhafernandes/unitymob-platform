@@ -9,6 +9,7 @@ class Admin::WhatsappCampaignUnsubscribesController < Admin::BaseController
     @status = params[:status].presence || "active"
     @query = params[:query].to_s.strip
     @unsubscribes = filtered_unsubscribes.paginate(page: params[:page], per_page: 30)
+    @unsubscribe_metrics = unsubscribe_metrics
     @page_title = "Descadastros WhatsApp"
   end
 
@@ -28,19 +29,7 @@ class Admin::WhatsappCampaignUnsubscribesController < Admin::BaseController
   end
 
   def filtered_unsubscribes
-    scoped_campaigns = current_tenant.whatsapp_campaigns
-
-    owner_ids = visible_owner_ids(:whatsapp_campaigns)
-    scoped_campaigns = scoped_campaigns.where(created_by_id: owner_ids) if owner_ids.present?
-
-    scope = current_tenant.whatsapp_campaign_unsubscribes.includes(
-      :whatsapp_sender_number,
-      :whatsapp_campaign,
-      :whatsapp_campaign_recipient,
-      :reenabled_by
-    ).where(whatsapp_campaign_id: scoped_campaigns.select(:id)).or(
-      current_tenant.whatsapp_campaign_unsubscribes.where(whatsapp_campaign_id: nil)
-    ).recent
+    scope = visible_unsubscribes_scope
     scope = scope.where(whatsapp_sender_number: @selected_sender_number) if @selected_sender_number
     scope = @status == "all" ? scope : scope.active
     if @query.present?
@@ -48,5 +37,32 @@ class Admin::WhatsappCampaignUnsubscribesController < Admin::BaseController
       scope = scope.where("phone_number ILIKE :query OR contact_name ILIKE :query", query: like)
     end
     scope
+  end
+
+  def visible_unsubscribes_scope
+    scoped_campaigns = current_tenant.whatsapp_campaigns
+
+    owner_ids = visible_owner_ids(:whatsapp_campaigns)
+    scoped_campaigns = scoped_campaigns.where(created_by_id: owner_ids) if owner_ids.present?
+
+    current_tenant.whatsapp_campaign_unsubscribes.includes(
+      :whatsapp_sender_number,
+      :whatsapp_campaign,
+      :whatsapp_campaign_recipient,
+      :reenabled_by
+    ).where(whatsapp_campaign_id: scoped_campaigns.select(:id)).or(
+      current_tenant.whatsapp_campaign_unsubscribes.where(whatsapp_campaign_id: nil)
+    ).recent
+  end
+
+  def unsubscribe_metrics
+    base_scope = visible_unsubscribes_scope
+    selected_scope = @selected_sender_number ? base_scope.where(whatsapp_sender_number: @selected_sender_number) : base_scope
+
+    {
+      active: base_scope.active.count,
+      selected_active: selected_scope.active.count,
+      reenabled: base_scope.reenabled.count
+    }
   end
 end

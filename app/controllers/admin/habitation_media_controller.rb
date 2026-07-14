@@ -8,6 +8,7 @@ class Admin::HabitationMediaController < Admin::BaseController
   before_action :set_habitation
   before_action :scope_habitation_by_permission
   before_action :load_property_setting
+  before_action :authorize_media_management!, only: %i[update upload reorder visibility destroy_photo ambiente organize share]
 
   def show
     @page_title = "Mídia do Imóvel: #{@habitation.codigo}"
@@ -236,12 +237,16 @@ class Admin::HabitationMediaController < Admin::BaseController
 
   private
 
+  def authorize_media_management!
+    render_media_forbidden unless can_manage_media_tools?
+  end
+
   def can_manage_media_tools?
     return false unless current_admin_user
     return false unless current_admin_user.can?(:media, :imoveis) || current_admin_user.can?(:manage, :imoveis)
     return true if owns_all_resource?(:imoveis)
     return true if property_belongs_to_current_user?(@habitation)
-    return true if current_admin_user&.can_view_team?(:imoveis) && property_owned_by_team?(@habitation)
+    return property_owned_by_team?(@habitation) if current_admin_user&.can_view_team?(:imoveis)
 
     catalog_media_visible?(@habitation)
   end

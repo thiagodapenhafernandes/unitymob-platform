@@ -107,6 +107,7 @@ RSpec.describe "Admin::WhatsappInbox", type: :request do
       expect(response.body).to include("multipart/form-data")
       expect(response.body).to include("Responder no CRM")
       expect(response.body).to include("Sem lead")
+      expect(response.body).to include("data-pc-manager-trigger", "ax-avatar ax-avatar--md")
       expect(response.body).to include('turbo-frame id="wa-thread"')
       expect(conv.reload.unread_count).to eq(0)
       expect(Whatsapp::ThreadBroadcaster).to have_received(:queue_refreshed).with(conv)

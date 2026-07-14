@@ -1,8 +1,5 @@
 <div class="container-fluid py-4">
-  <div class="tw-mb-4">
-    <h1 class="ax-page-title">Novo SEO</h1>
-    <p class="ax-page-subtitle">Crie uma configuração técnica manual.</p>
-  </div>
+  <%= ax_page_header(title: "Novo SEO", subtitle: "Crie uma configuração técnica manual.", icon: "search") %>
 
   <%= render "form", seo_setting: @seo_setting %>
 </div>

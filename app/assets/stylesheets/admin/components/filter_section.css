@@ -1,0 +1,108 @@
+/* Collapsible filter section used by inspector-style filter panels. */
+.ax-filter-section {
+  border: 1px solid #dfe7f1;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.ax-filter-section + .ax-filter-section {
+  margin-top: 8px;
+}
+
+.ax-filter-section__summary {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  gap: 8px;
+  padding: 0 10px;
+  border-bottom: 1px solid transparent;
+  background: #f3f6fa;
+  color: #253041;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .025em;
+  line-height: 1;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ax-filter-section[open] > .ax-filter-section__summary {
+  border-bottom-color: #dfe7f1;
+}
+
+.ax-filter-section__summary::-webkit-details-marker {
+  display: none;
+}
+
+.ax-filter-section__summary::after {
+  content: "\F282";
+  margin-left: auto;
+  color: #7a8798;
+  font-family: "bootstrap-icons";
+  font-size: 12px;
+  line-height: 1;
+  transition: transform var(--ax-motion-medium, 180ms) var(--ax-motion-ease, ease);
+}
+
+.ax-filter-section[open] > .ax-filter-section__summary::after {
+  transform: rotate(180deg);
+}
+
+.ax-filter-section__summary > .bi {
+  color: #7b889a;
+  font-size: 13px;
+}
+
+.ax-filter-section__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #e9eff6;
+  color: var(--admin-primary);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.ax-filter-section__body {
+  padding: 10px;
+}
+
+.ax-filter-section__grid {
+  align-items: start;
+}
+
+[data-admin-theme="dark"] .ax-filter-section {
+  border-color: var(--ax-border-soft);
+  background: var(--admin-surface);
+}
+
+[data-admin-theme="dark"] .ax-filter-section__summary {
+  background: color-mix(in srgb, var(--admin-surface-header) 72%, var(--admin-surface));
+  color: var(--admin-ink);
+}
+
+[data-admin-theme="dark"] .ax-filter-section[open] > .ax-filter-section__summary {
+  border-bottom-color: var(--ax-border-soft);
+}
+
+[data-admin-theme="dark"] .ax-filter-section__summary::after,
+[data-admin-theme="dark"] .ax-filter-section__summary > .bi {
+  color: var(--ab-muted);
+}
+
+[data-admin-theme="dark"] .ax-filter-section__count {
+  background: color-mix(in srgb, var(--admin-primary) 16%, var(--admin-surface));
+  color: color-mix(in srgb, var(--admin-primary) 40%, #fff);
+}
+
+[data-admin-theme="dark"] .ax-filter-section__body {
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+}

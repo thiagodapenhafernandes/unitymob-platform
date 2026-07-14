@@ -1,6 +1,7 @@
 class Admin::LandingPagesController < Admin::BaseController
   before_action -> { check_permission!(:manage, :marketing) }
   before_action :set_landing_page, only: [:edit, :update, :destroy]
+  before_action :load_filter_options, only: [:new, :create, :edit, :update]
 
   def index
     @landing_pages = current_tenant.landing_pages.order(created_at: :desc).paginate(page: params[:page], per_page: 20)
@@ -67,8 +68,8 @@ class Admin::LandingPagesController < Admin::BaseController
         distribution: distribution
       }
     }
-  rescue => e
-    logger.error "Preview Dashboard Error: #{e.message}"
+  rescue StandardError => e
+    logger.error "[LandingPagePreview] tenant_id=#{current_tenant.id} error=#{e.class.name}"
     render json: { count: 0, metrics: { avg_price: "R$ 0,00", min_price: "R$ 0,00", max_price: "R$ 0,00", distribution: {} } }
   end
 
@@ -90,5 +91,12 @@ class Admin::LandingPagesController < Admin::BaseController
       :transaction_type, :min_bedrooms, :min_suites, :min_parking, :target_price, :min_area, :opportunity, :caracteristica_unica, :status,
       category: [], city: [], neighborhood: [], characteristics: []
     )
+  end
+
+  def load_filter_options
+    scope = current_tenant.habitations.active.left_outer_joins(:address)
+    @property_categories = scope.distinct.pluck(:categoria).compact.sort
+    @property_cities = scope.distinct.pluck(Arel.sql("COALESCE(addresses.cidade, habitations.cidade)")).compact.sort
+    @property_neighborhoods = scope.distinct.pluck(Arel.sql("COALESCE(addresses.bairro, habitations.bairro)")).compact.uniq.sort
   end
 end

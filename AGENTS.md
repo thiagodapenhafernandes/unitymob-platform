@@ -22,3 +22,9 @@
 - Ajuste ou adicione testes proporcionais ao risco, cobrindo o caso novo e pelo menos os comportamentos vizinhos que poderiam regredir.
 - Antes de entregar, rode validações relevantes para o escopo alterado e cite claramente o que foi validado. Se algum teste/check não puder ser executado, explique o motivo.
 - Em deploys, valide também rotas críticas e fluxos próximos, não apenas a tela ou endpoint diretamente alterado.
+
+## Componentização obrigatória do admin
+
+- Todo padrão visual ou comportamental com potencial de reutilização deve ser criado ou ajustado na camada compartilhada (`ax-*`, `app/views/admin/shared/ui`, `Admin::UiHelper`, componentes CSS e controllers `ax_*`) já na primeira ocorrência. Não aguarde uma segunda tela e não deixe cópia local como etapa intermediária.
+- CSS ou markup específico de página só é aceitável para composição ou geometria comprovadamente exclusiva, deve estar namespaced e não pode duplicar estado, aparência ou comportamento de primitive compartilhada.
+- Se um segundo consumidor surgir, promova o padrão para a camada compartilhada na mesma mudança e remova as versões locais.

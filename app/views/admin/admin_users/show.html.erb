@@ -22,13 +22,7 @@
 
 <div class="aus">
   <header class="ax-dashboard-command ax-property-form-command aus__head">
-    <span class="aus__avatar">
-      <% if u.avatar.attached? %>
-        <%= image_tag u.avatar, class: "aus__avatar-img" %>
-      <% else %>
-        <span class="aus__avatar-initial"><%= u.name.to_s.first&.upcase || "?" %></span>
-      <% end %>
-    </span>
+    <%= ax_avatar(name: u.name, image: u.avatar, size: :xl, class_name: "aus__avatar") %>
     <div class="ax-dashboard-command__main">
       <span class="ax-dashboard-command__eyebrow">Usuário</span>
       <div class="ax-dashboard-command__title-row">
@@ -92,13 +86,7 @@
             <div class="aus__team">
               <% @subordinates.each do |sub| %>
                 <%= link_to admin_admin_user_path(sub), class: "aus__member" do %>
-                  <span class="aus__member-avatar">
-                    <% if sub.avatar.attached? %>
-                      <%= image_tag sub.avatar, class: "aus__member-img" %>
-                    <% else %>
-                      <span class="aus__member-initial"><%= sub.name.to_s.first&.upcase || "?" %></span>
-                    <% end %>
-                  </span>
+                  <%= ax_avatar(name: sub.name, image: sub.avatar, size: :xs, class_name: "aus__member-avatar") %>
                   <span class="aus__member-main">
                     <strong><%= sub.name %></strong>
                     <span><%= sub.access_profile_name.presence || sub.email %></span>
@@ -107,7 +95,7 @@
                 <% end %>
               <% end %>
             </div>
-            <%= link_to "Ver na hierarquia", hierarchy_admin_admin_users_path, class: "ax-dashboard-panel__link", style: "margin-top:8px;display:inline-block" %>
+            <%= link_to "Ver na hierarquia", hierarchy_admin_admin_users_path, class: "ax-dashboard-panel__link tw-mt-2 tw-inline-block" %>
           <% else %>
             <%= ax_empty_state(title: "Sem subordinados", description: "Este usuário não é gestor de ninguém.", icon: "people") %>
           <% end %>
@@ -120,10 +108,6 @@
 <style id="admin-users-show-styles">
   .aus { display: grid; gap: 8px; padding-top: 8px; }
   .aus__head { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
-  .aus__avatar { flex: 0 0 auto; }
-  .aus__avatar-img { width: 54px; height: 54px; border-radius: 999px; object-fit: cover; }
-  .aus__avatar-initial { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 999px; background: var(--admin-primary, #365f8f); color: #fff; font-weight: 800; font-size: 18px; }
-
   .aus__kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   @media (max-width: 760px) { .aus__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .aus__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
@@ -141,8 +125,6 @@
   .aus__team { display: grid; gap: 6px; }
   .aus__member { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; background: #fff; text-decoration: none; }
   .aus__member:hover { background: #f8fafc; }
-  .aus__member-img { width: 30px; height: 30px; border-radius: 999px; object-fit: cover; }
-  .aus__member-initial { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 999px; background: #eef2f7; color: var(--admin-primary, #365f8f); font-weight: 800; font-size: 11px; }
   .aus__member-main { display: grid; gap: 1px; min-width: 0; flex: 1; }
   .aus__member-main strong { color: #1f2733; font-size: 12.5px; }
   .aus__member-main span { color: #8a93a3; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

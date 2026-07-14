@@ -8,18 +8,18 @@
 
 <% content_for :admin_contextbar_breadcrumb do %>
   <%= link_to "Admin", admin_root_path %>
-  <i class="bi bi-chevron-right"></i>
+  <i class="bi bi-chevron-right" aria-hidden="true"></i>
   <%= link_to "Distribuição", admin_distribution_rules_path %>
-  <i class="bi bi-chevron-right"></i>
+  <i class="bi bi-chevron-right" aria-hidden="true"></i>
   <strong><%= @rule.name %></strong>
 <% end %>
 
 <% content_for :admin_contextbar_actions do %>
   <%= link_to admin_distribution_rules_path, class: "ax-btn ax-btn--sm" do %>
-    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar</span>
+    <i class="bi bi-arrow-left ax-ico" aria-hidden="true"></i><span>Voltar</span>
   <% end %>
   <%= link_to edit_admin_distribution_rule_path(@rule), class: "ax-btn ax-btn--primary ax-btn--sm" do %>
-    <i class="bi bi-pencil ax-ico"></i><span>Editar regra</span>
+    <i class="bi bi-pencil ax-ico" aria-hidden="true"></i><span>Editar regra</span>
   <% end %>
 <% end %>
 
@@ -135,7 +135,7 @@
       <%= ax_operational_panel(
             eyebrow: "Fila",
             title: "Fila de distribuição",
-            actions: link_to(edit_admin_distribution_rule_path(@rule, anchor: "team"), class: "ax-btn ax-btn--sm") { safe_join([tag.i(class: "bi bi-people"), " Alterar corretores"]) }
+            actions: link_to(edit_admin_distribution_rule_path(@rule, anchor: "team"), class: "ax-btn ax-btn--sm") { safe_join([tag.i(class: "bi bi-people", aria: { hidden: true }), " Alterar corretores"]) }
           ) do %>
         <div class="distribution-rule-show__body">
           <p class="distribution-rule-show__muted distribution-rule-show__queue-note">Arraste pelo ícone para mudar a ordem e salve somente a fila.</p>
@@ -144,7 +144,7 @@
               <div class="distribution-rule-show__queue" data-controller="sortable" data-sortable-handle-value=".drag-handle">
                 <% @agents_queue.each do |dra| %>
                   <div class="ax-record-item distribution-rule-show__queue-item">
-                    <span class="drag-handle distribution-rule-show__queue-handle" title="Arrastar para reordenar"><i class="bi bi-grip-vertical"></i></span>
+                    <span class="drag-handle distribution-rule-show__queue-handle" title="Arrastar para reordenar" aria-hidden="true"><i class="bi bi-grip-vertical"></i></span>
                     <%= hidden_field_tag "agent_ids[]", dra.id %>
                     <span class="distribution-rule-show__queue-pos position-display"><%= dra.position %></span>
                     <div class="ax-record-item__copy distribution-rule-show__queue-main">
@@ -179,10 +179,12 @@
       <div class="distribution-rule-show__grid distribution-rule-show__grid--half">
         <%= ax_operational_panel(eyebrow: "Horários", title: "Horários e bolsão") do %>
           <div class="distribution-rule-show__body">
-            <div class="distribution-rule-show__state-row">
-              <dt>Bolsão fora do horário</dt>
-              <dd><%= ax_badge(@rule.represamento_active? ? "Ativo" : "Desligado", tone: @rule.represamento_active? ? :amber : :gray) %></dd>
-            </div>
+            <dl class="distribution-rule-show__state">
+              <div class="distribution-rule-show__state-row">
+                <dt>Bolsão fora do horário</dt>
+                <dd><%= ax_badge(@rule.represamento_active? ? "Ativo" : "Desligado", tone: @rule.represamento_active? ? :amber : :gray) %></dd>
+              </div>
+            </dl>
             <% if @rule.represamento_active? %>
               <table class="ax-table distribution-rule-show__table">
                 <thead><tr><th>Dia</th><th>Status</th><th>Horário</th></tr></thead>
@@ -221,7 +223,7 @@
               <div class="distribution-rule-show__block distribution-rule-show__block--spaced">
                 <span class="distribution-rule-show__block-label">URLs do webhook externo</span>
                 <% webhook_urls.each do |url| %>
-                  <p class="distribution-rule-show__line distribution-rule-show__break"><i class="bi bi-link-45deg"></i> <%= url %></p>
+                  <p class="distribution-rule-show__line distribution-rule-show__break"><i class="bi bi-link-45deg" aria-hidden="true"></i> <%= url %></p>
                 <% end %>
               </div>
             <% end %>

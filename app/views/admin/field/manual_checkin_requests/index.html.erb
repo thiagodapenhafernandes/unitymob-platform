@@ -1,61 +1,83 @@
-<%# Solicitações manuais de check-in — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <div class="manual-checkin-requests-admin">
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Solicitações manuais de check-in</h1>
-    <p class="ax-page-subtitle">Pedidos de corretores cuja GPS falhou — revise com cuidado.</p>
-  </div>
-  <%= link_to admin_field_check_ins_path, class: "ax-btn ax-btn--sm" do %>
-    <i class="bi bi-arrow-left ax-ico"></i><span>Voltar para check-ins</span>
+  <%= ax_workspace_heading(
+        eyebrow: "Operação · Campo",
+        icon: "hand-index-thumb",
+        title: "Solicitações manuais de check-in",
+        subtitle: "Pedidos de corretores cuja localização falhou — revise com cuidado.",
+        actions: ax_button("Voltar para check-ins", admin_field_check_ins_path, size: :sm, icon: "arrow-left")
+      ) %>
+
+  <%= ax_operational_panel(
+        eyebrow: "Fila de revisão",
+        title: "Pendentes",
+        actions: ax_badge(@pending.size, tone: @pending.any? ? :amber : :gray),
+        class_name: "tw-mb-4"
+      ) do %>
+    <% if @pending.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th>Corretor</th>
+              <th class="ax-table__col--w-180">Loja</th>
+              <th>Justificativa</th>
+              <th class="ax-table__col--w-120">Criado</th>
+              <th class="ax-num ax-table__col--w-190">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @pending.each do |request_record| %>
+              <tr>
+                <td class="ax-strong"><i class="bi bi-person-circle tw-text-ink-faint"></i> <%= request_record.admin_user.name %></td>
+                <td><i class="bi bi-shop tw-text-ink-faint"></i> <%= request_record.store.name %></td>
+                <td class="tw-text-ink-muted"><%= truncate(request_record.justification, length: 140) %></td>
+                <td class="tw-text-2xs tw-text-ink-muted"><%= time_ago_in_words(request_record.created_at) %> atrás</td>
+                <td class="ax-num">
+                  <span class="tw-inline-flex tw-gap-1">
+                    <%= button_to approve_admin_field_manual_checkin_request_path(request_record), method: :post, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--primary", data: { turbo_confirm: "Aprovar esta solicitação?" } do %><i class="bi bi-check-circle ax-ico"></i>Aprovar<% end %>
+                    <%= button_to reject_admin_field_manual_checkin_request_path(request_record), method: :post, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Rejeitar?" } do %><i class="bi bi-x-circle ax-ico"></i>Rejeitar<% end %>
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <%= ax_empty_state(title: "Nenhum pedido pendente", description: "A fila de revisão manual está vazia.", icon: "check2-circle") %>
+    <% end %>
   <% end %>
-</div>
 
-<div class="ax-card tw-mb-4">
-  <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-hourglass-split"></i> Pendentes</span><span class="ax-badge ax-badge--amber"><%= @pending.size %></span></div>
-  <div class="ax-table-wrap" style="border:0;border-radius:0">
-    <table class="ax-table">
-      <thead><tr><th>Corretor</th><th style="width:180px">Loja</th><th>Justificativa</th><th style="width:120px">Criado</th><th class="ax-num" style="width:190px">Ações</th></tr></thead>
-      <tbody>
-        <% @pending.each do |req| %>
-          <tr>
-            <td class="ax-strong"><i class="bi bi-person-circle tw-text-ink-faint"></i> <%= req.admin_user.name %></td>
-            <td><i class="bi bi-shop tw-text-ink-faint"></i> <%= req.store.name %></td>
-            <td class="tw-text-ink-muted"><%= truncate(req.justification, length: 140) %></td>
-            <td class="tw-text-2xs tw-text-ink-muted"><%= time_ago_in_words(req.created_at) %> atrás</td>
-            <td class="ax-num">
-              <span class="tw-inline-flex tw-gap-1">
-                <%= button_to approve_admin_field_manual_checkin_request_path(req), method: :post, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--primary", data: { turbo_confirm: "Aprovar esta solicitação?" } do %><i class="bi bi-check-circle ax-ico"></i>Aprovar<% end %>
-                <%= button_to reject_admin_field_manual_checkin_request_path(req), method: :post, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Rejeitar?" } do %><i class="bi bi-x-circle ax-ico"></i>Rejeitar<% end %>
-              </span>
-            </td>
-          </tr>
-        <% end %>
-        <% if @pending.empty? %><tr><td colspan="5"><div class="ax-empty">Nenhum pedido pendente.</div></td></tr><% end %>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="ax-card">
-  <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-archive"></i> Últimas revisadas</span></div>
-  <div class="ax-table-wrap" style="border:0;border-radius:0">
-    <table class="ax-table">
-      <thead><tr><th>Corretor</th><th style="width:180px">Loja</th><th style="width:130px">Status</th><th style="width:140px">Revisada</th></tr></thead>
-      <tbody>
-        <% @resolved.each do |req| %>
-          <tr>
-            <td class="ax-strong"><%= req.admin_user.name %></td>
-            <td><%= req.store.name %></td>
-            <td>
-              <% if req.approved? %><span class="ax-badge ax-badge--green ax-badge--dot">Aprovada</span>
-              <% else %><span class="ax-badge ax-badge--red ax-badge--dot">Rejeitada</span><% end %>
-            </td>
-            <td class="tw-text-2xs tw-text-ink-muted"><%= l(req.reviewed_at, format: :short) if req.reviewed_at %></td>
-          </tr>
-        <% end %>
-        <% if @resolved.empty? %><tr><td colspan="4"><div class="ax-empty">Nada revisado ainda.</div></td></tr><% end %>
-      </tbody>
-    </table>
-  </div>
-</div>
+  <%= ax_operational_panel(
+        eyebrow: "Histórico",
+        title: "Últimas revisadas",
+        actions: ax_badge(@resolved.size, tone: :gray)
+      ) do %>
+    <% if @resolved.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th>Corretor</th>
+              <th class="ax-table__col--w-180">Loja</th>
+              <th class="ax-table__col--w-130">Status</th>
+              <th class="ax-table__col--w-140">Revisada</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @resolved.each do |request_record| %>
+              <tr>
+                <td class="ax-strong"><%= request_record.admin_user.name %></td>
+                <td><%= request_record.store.name %></td>
+                <td><%= ax_badge(request_record.approved? ? "Aprovada" : "Rejeitada", tone: request_record.approved? ? :green : :red, dot: true) %></td>
+                <td class="tw-text-2xs tw-text-ink-muted"><%= l(request_record.reviewed_at, format: :short) if request_record.reviewed_at %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <%= ax_empty_state(title: "Nada revisado ainda", description: "As decisões recentes aparecerão aqui.", icon: "archive") %>
+    <% end %>
+  <% end %>
 </div>

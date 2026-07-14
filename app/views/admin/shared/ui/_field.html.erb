@@ -6,7 +6,7 @@
   <%= content %>
 
   <% if error.present? %>
-    <p class="ax-field__error"><%= error %></p>
+    <p class="ax-field__error" role="alert"><%= error %></p>
   <% elsif hint.present? %>
     <p class="ax-field__hint"><%= hint %></p>
   <% end %>

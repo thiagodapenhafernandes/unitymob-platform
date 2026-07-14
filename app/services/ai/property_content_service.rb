@@ -49,8 +49,21 @@ module Ai
       Setting.get(MODEL_SETTING, DEFAULT_MODEL).to_s.presence || DEFAULT_MODEL
     end
 
-    def self.instructions
-      Setting.get(PROMPT_SETTING, DEFAULT_PROMPT).to_s.presence || DEFAULT_PROMPT
+    def self.instructions(tenant: Current.tenant)
+      fallback = default_prompt(tenant)
+      Setting.get(PROMPT_SETTING, fallback, tenant: tenant).to_s.presence || fallback
+    end
+
+    def self.default_prompt(tenant)
+      return DEFAULT_PROMPT if tenant.blank?
+
+      identity = Tenants::PublicIdentity.new(tenant)
+      city = identity.primary_city.presence || "sua região"
+      DEFAULT_PROMPT
+        .gsub("Salute Imóveis", identity.name)
+        .gsub("Balneário Camboriú", city)
+        .gsub("Praia Brava", city)
+        .gsub("Barra Sul", city)
     end
 
     def self.connected?
@@ -146,13 +159,13 @@ module Ai
 
     def system_instructions
       <<~TEXT
-        Você é um redator imobiliário da Salute Imóveis.
+        Você é um redator imobiliário da #{Tenants::PublicIdentity.new(@habitation.tenant).name}.
         Siga estritamente as instruções configuradas pelo administrador.
         Nunca invente informações ausentes no cadastro.
         Retorne apenas JSON no formato solicitado.
 
         INSTRUÇÕES DO ADMINISTRADOR:
-        #{self.class.instructions}
+        #{self.class.instructions(tenant: @habitation.tenant)}
       TEXT
     end
 

@@ -1,40 +1,44 @@
 <%# Agenda comercial — visão semana/dia/lista (.ax-*) %>
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Agenda</h1>
-    <p class="ax-page-subtitle">Visitas, reuniões e ligações da sua equipe.</p>
-  </div>
-  <% if can?(:manage, :comercial) %>
-    <%= render "admin/appointments/form_modal", trigger_label: "Novo compromisso", trigger_class: "ax-btn ax-btn--sm ax-btn--primary" %>
-  <% end %>
-</div>
+<% appointment_heading_actions = if can?(:manage, :comercial)
+     render "admin/appointments/form_modal", trigger_label: "Novo compromisso", trigger_class: "ax-btn ax-btn--sm ax-btn--primary"
+   end %>
+<%= ax_workspace_heading(
+      eyebrow: "Comercial · Agenda",
+      icon: "calendar-event",
+      title: "Agenda",
+      subtitle: "Visitas, reuniões e ligações da sua equipe.",
+      actions: appointment_heading_actions
+    ) %>
 
-<%= render "admin/shared/hint", key: "agenda", icon: "bi-calendar-event",
-      text: "Agende visitas direto da ficha do lead (botão <strong>Agendar visita</strong>). Elas aparecem aqui e na <strong>linha do tempo</strong> do cliente." %>
+<%= ax_dismissible_hint(key: "agenda", icon: "calendar-event",
+      text: "Agende visitas direto da ficha do lead (botão <strong>Agendar visita</strong>). Elas aparecem aqui e na <strong>linha do tempo</strong> do cliente.") %>
 
 <%# Alternador de visão + navegação %>
 <div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-2 tw-mb-4">
   <div class="tw-flex tw-gap-2">
     <% [["semana", "Semana"], ["dia", "Dia"], ["lista", "Lista"]].each do |key, label| %>
-      <%= link_to label, admin_appointments_path(view: key, date: @date), class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @view == key}" %>
+      <%= link_to label,
+                  admin_appointments_path(view: key, date: @date, team: params[:team]),
+                  class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @view == key}",
+                  aria: { current: ("page" if @view == key) } %>
     <% end %>
     <%= ax_team_toggle(:comercial) %>
   </div>
   <% unless @view == "lista" %>
     <% step = @view == "dia" ? 1 : 7 %>
     <div class="tw-flex tw-items-center tw-gap-2">
-      <%= link_to admin_appointments_path(view: @view, date: @date - step), class: "ax-ico-btn", title: "Anterior" do %><i class="bi bi-chevron-left"></i><% end %>
+      <%= ax_icon_button label: "Período anterior", icon: "chevron-left", url: admin_appointments_path(view: @view, date: @date - step, team: params[:team]) %>
       <span class="ax-strong">
         <% if @view == "dia" %><%= l(@date, format: :long) %><% else %><%= l(@week_start, format: :short) %> – <%= l(@week_end, format: :short) %><% end %>
       </span>
-      <%= link_to admin_appointments_path(view: @view, date: @date + step), class: "ax-ico-btn", title: "Próximo" do %><i class="bi bi-chevron-right"></i><% end %>
-      <%= link_to "Hoje", admin_appointments_path(view: @view, date: Date.current), class: "ax-btn ax-btn--sm" %>
+      <%= ax_icon_button label: "Próximo período", icon: "chevron-right", url: admin_appointments_path(view: @view, date: @date + step, team: params[:team]) %>
+      <%= link_to "Hoje", admin_appointments_path(view: @view, date: Date.current, team: params[:team]), class: "ax-btn ax-btn--sm" %>
     </div>
   <% end %>
 </div>
 
 <% if @view == "semana" %>
-  <div class="tw-grid tw-gap-3" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+  <div class="ax-appointment-grid">
     <% @days.each do |day| %>
       <div class="ax-card <%= 'tw-ring-2 tw-ring-primary' if day == Date.current %>">
         <div class="ax-card__header tw-flex tw-items-center tw-justify-between">
@@ -43,7 +47,7 @@
         </div>
         <div class="ax-card__body tw-grid tw-gap-2">
           <% (@appointments_by_day[day] || []).each do |appt| %>
-            <%= render "admin/appointments/card", appt: appt %>
+            <%= ax_appointment_card(appointment: appt) %>
           <% end %>
           <% if (@appointments_by_day[day] || []).empty? %>
             <span class="ax-page-subtitle tw-text-center tw-py-2">—</span>
@@ -55,13 +59,13 @@
 <% elsif @appointments.any? %>
   <div class="tw-grid tw-gap-2">
     <% @appointments.each do |appt| %>
-      <%= render "admin/appointments/card", appt: appt, expanded: true %>
+      <%= ax_appointment_card(appointment: appt, expanded: true) %>
     <% end %>
   </div>
 <% else %>
-  <div class="ax-empty">
-    <i class="bi bi-calendar2-week tw-text-3xl tw-text-ink-faint"></i>
-    <p class="tw-mt-2">Nenhum compromisso <%= @view == "lista" ? "futuro" : "neste período" %>.</p>
-    <p class="ax-page-subtitle">Agende uma visita a partir de um lead ou no botão "Novo compromisso".</p>
-  </div>
+  <%= ax_empty_state(
+        title: "Nenhum compromisso #{@view == 'lista' ? 'futuro' : 'neste período'}",
+        description: "Agende uma visita a partir de um lead ou no botão Novo compromisso.",
+        icon: "calendar2-week"
+      ) %>
 <% end %>

@@ -1,5 +1,9 @@
 module ApplicationHelper
   def public_price_range_options(transaction_type = nil)
+    profile = PublicSiteProfile.current(tenant: public_tenant)
+    configured = transaction_type.to_s.downcase.in?(%w[aluguel locacao locação alugar]) ? profile.rental_price_options : profile.sale_price_options
+    return [["Todos os Valores", ""], *configured] if configured.any?
+
     if transaction_type.to_s.downcase.in?(%w[aluguel locacao locação alugar])
       [
         ["Todos os Valores", ""],
@@ -82,46 +86,33 @@ module ApplicationHelper
   end
 
   def real_estate_agent_schema
+    identity = Tenants::PublicIdentity.new(public_tenant)
+    layout = LayoutSetting.instance(tenant: public_tenant)
+    logo_url = public_image_url({ attachment: layout.logo }) if layout.logo.attached?
+
     {
       "@context" => "https://schema.org",
       "@type" => ["RealEstateAgent", "LocalBusiness"],
-      "name" => "Salute Imóveis",
-      "url" => "https://saluteimoveis.com.br",
-      "logo" => absolute_url_for_asset("salute-imoveis.svg"),
-      "telephone" => "+554733111067",
-      "email" => "contato@saluteimoveis.com",
-      "sameAs" => [
-        "https://www.instagram.com/saluteimoveis/",
-        "https://www.facebook.com/saluteimoveisunicos/",
-        "https://www.youtube.com/channel/UC9BG_PI0pFj-m65sR6KeZtA"
-      ],
-      "location" => [
+      "name" => identity.name,
+      "url" => request.base_url,
+      "logo" => absolute_public_url(logo_url),
+      "telephone" => identity.phone,
+      "email" => identity.email,
+      "sameAs" => identity.social_urls.presence,
+      "location" => identity.locations.map do |location|
         {
           "@type" => "Place",
-          "name" => "Filial Av. Brasil",
+          "name" => location[:name],
           "address" => {
             "@type" => "PostalAddress",
-            "streetAddress" => "Rua 3150, 3160",
-            "addressLocality" => "Balneário Camboriú",
-            "addressRegion" => "SC",
-            "postalCode" => "88330-281",
+            "streetAddress" => location[:address],
+            "addressLocality" => identity.primary_city,
+            "postalCode" => location[:postal_code],
             "addressCountry" => "BR"
-          }
-        },
-        {
-          "@type" => "Place",
-          "name" => "Filial Av. Atlântica",
-          "address" => {
-            "@type" => "PostalAddress",
-            "streetAddress" => "Avenida Atlântica, 3750",
-            "addressLocality" => "Balneário Camboriú",
-            "addressRegion" => "SC",
-            "postalCode" => "88330-024",
-            "addressCountry" => "BR"
-          }
+          }.compact
         }
-      ]
-    }
+      end.presence
+    }.compact
   end
 
   def real_estate_listing_schema(habitation)
@@ -148,16 +139,18 @@ module ApplicationHelper
   # SEO Helper - Dynamic meta tags
   def seo_meta_tags(page_name = 'home')
     seo = SeoSetting.for_page(page_name)
+    identity = Tenants::PublicIdentity.new(public_tenant)
+    fallback_description = ["Imobiliária", identity.primary_city.present? ? "em #{identity.primary_city}" : nil].compact.join(" ")
     
     content_for :meta_tags do
       tags = []
-      tags << tag.meta(name: 'title', content: seo.meta_title || 'Salute Imóveis')
-      tags << tag.meta(name: 'description', content: seo.meta_description || 'Imobiliária em Balneário Camboriú')
+      tags << tag.meta(name: 'title', content: seo.meta_title.presence || identity.name)
+      tags << tag.meta(name: 'description', content: seo.meta_description.presence || fallback_description)
       tags << tag.meta(name: 'keywords', content: seo.meta_keywords) if seo.meta_keywords.present?
       
       # Open Graph
-      tags << tag.meta(property: 'og:title', content: seo.meta_title || 'Salute Imóveis')
-      tags << tag.meta(property: 'og:description', content: seo.meta_description || 'Imobiliária em Balneário Camboriú')
+      tags << tag.meta(property: 'og:title', content: seo.meta_title.presence || identity.name)
+      tags << tag.meta(property: 'og:description', content: seo.meta_description.presence || fallback_description)
       
       tags.join("\n").html_safe
     end

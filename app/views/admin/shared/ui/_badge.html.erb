@@ -1,1 +1,1 @@
-<%= tag.span(label, class: Array(classes).compact.join(" ")) %>
+<%= tag.span(label, **(local_assigns[:options] || {}), class: [Array(classes), local_assigns.dig(:options, :class)].flatten.compact.join(" ")) %>

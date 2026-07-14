@@ -1,34 +1,30 @@
 <%= form_with model: [:admin, store], local: true, html: { class: "admin-entity-dark" } do |f| %>
   <%= ax_error_summary(store) %>
 
-  <!-- Card 1: Identificação -->
-  <div class="ax-card tw-mb-4">
-    <div class="ax-card__body">
-      <h5 class="tw-font-bold tw-mb-3">
-        <i class="bi bi-tag-fill tw-text-primary" style="margin-right:.5rem"></i>Identificação
-      </h5>
+  <%= ax_operational_panel(eyebrow: "Cadastro", title: "Identificação", class_name: "tw-mb-4") do %>
       <%= ax_field_grid do %>
         <div class="ax-span-6">
           <%= ax_text_field(form: f, method: :name, label: "Nome da loja", placeholder: "Ex: Loja Centro") %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :active, "Status", class: "ax-label tw-font-semibold" %>
+          <%= ax_field_label(f, :active, text: "Status") %>
           <div class="tw-mt-2">
             <%= ax_switch_field(label: store.active? ? "Ativa" : "Inativa", form: f, method: :active) %>
           </div>
         </div>
 
         <div class="ax-span-6">
-          <%= f.label :director_admin_user_id, "Diretor da loja", class: "ax-label tw-font-semibold" %>
-          <%= f.select :director_admin_user_id,
-                       options_for_select(current_tenant.admin_users.active.order(:name).map { |u| [u.name, u.id] }, store.director_admin_user_id),
-                       { include_blank: "— Sem diretor —" },
-                       class: "ax-control",
-                       data: { controller: "tom-select", placeholder: "Buscar corretor…" } %>
+          <%= ax_select_field(
+                form: f,
+                method: :director_admin_user_id,
+                label: "Diretor da loja",
+                choices: current_tenant.admin_users.active.order(:name).map { |u| [u.name, u.id] },
+                select_options: { include_blank: "— Sem diretor —" },
+                html_options: { data: { controller: "tom-select", placeholder: "Buscar corretor…" } }
+              ) %>
           <small class="tw-text-ink-muted">Admin responsável por esta unidade.</small>
         </div>
         <div class="ax-span-6">
-          <%= f.label :timezone, "Fuso horário", class: "ax-label tw-font-semibold" %>
           <%
             brazil_zones = [
               ["Brasília / São Paulo (GMT-03:00)", "America/Sao_Paulo"],
@@ -42,83 +38,83 @@
               .reject { |tz| brazil_zones.any? { |_, iana| iana == tz.tzinfo.name } }
               .map    { |tz| [tz.to_s, tz.tzinfo.name] }
           %>
-          <%= f.select :timezone,
-                       grouped_options_for_select(
-                         { "Brasil" => brazil_zones, "Américas" => americas_zones },
-                         store.timezone
-                       ),
-                       {},
-                       class: "ax-control",
-                       data: { controller: "tom-select", placeholder: "Buscar fuso…" } %>
+          <%= ax_select_field(
+                form: f,
+                method: :timezone,
+                label: "Fuso horário",
+                choices: grouped_options_for_select(
+                  { "Brasil" => brazil_zones, "Américas" => americas_zones },
+                  store.timezone
+                ),
+                html_options: { data: { controller: "tom-select", placeholder: "Buscar fuso…" } }
+              ) %>
         </div>
 
         <div class="ax-span-6">
-          <%= f.label :phone, "Telefone", class: "ax-label tw-font-semibold" %>
-          <div class="tw-flex tw-items-center tw-gap-2">
-            <span><i class="bi bi-telephone tw-text-ink-muted"></i></span>
+          <%= ax_field_label(f, :phone, text: "Telefone") %>
+          <%= ax_input_group(prefix: ax_icon("telephone", class_name: "tw-text-ink-muted")) do %>
             <%= f.text_field :phone,
                              class: "ax-control",
                              placeholder: "(47) 3311-1067",
                              autocomplete: "tel",
                              data: { controller: "phone-input" } %>
-          </div>
+          <% end %>
         </div>
         <div class="ax-span-6">
-          <%= f.label :creci, "CRECI da loja", class: "ax-label tw-font-semibold" %>
-          <div class="tw-flex tw-items-center tw-gap-2">
-            <span><i class="bi bi-award tw-text-ink-muted"></i></span>
+          <%= ax_field_label(f, :creci, text: "CRECI da loja") %>
+          <%= ax_input_group(prefix: ax_icon("award", class_name: "tw-text-ink-muted")) do %>
             <%= f.text_field :creci, class: "ax-control" %>
-          </div>
+          <% end %>
         </div>
       <% end %>
-    </div>
-  </div>
+  <% end %>
 
-  <!-- Card 2: Localização e geofence -->
-  <div class="ax-card tw-mb-4"
+  <div class="tw-mb-4"
        data-controller="store-map-picker"
        data-store-map-picker-latitude-value="<%= store.latitude %>"
        data-store-map-picker-longitude-value="<%= store.longitude %>"
        data-store-map-picker-radius-value="<%= store.geofence_radius_meters %>">
-    <div class="ax-card__body">
-      <h5 class="tw-font-bold tw-mb-3">
-        <i class="bi bi-geo-alt-fill" style="margin-right:.5rem; color:#dc2626"></i>Localização e geofence
-      </h5>
+    <%= ax_operational_panel(eyebrow: "Geofence", title: "Localização e geofence") do %>
       <p class="tw-text-sm tw-text-ink-muted tw-mb-3">Informe o número para localizar o ponto exato. Quando o mapa não confirmar o número, clique ou arraste o marcador para fazer o ajuste fino.</p>
 
       <div data-controller="cep-lookup"
            data-cep-lookup-geocode-url-value="<%= geocode_admin_stores_path %>">
         <%= ax_field_grid do %>
           <div class="ax-span-6">
-            <%= f.label :zip_code, "CEP", class: "ax-label tw-font-semibold" %>
-            <div class="tw-flex tw-items-center tw-gap-2">
-              <span><i class="bi bi-mailbox tw-text-ink-muted"></i></span>
+            <%= ax_field_label(f, :zip_code, text: "CEP") %>
+            <%= ax_input_group(
+                  prefix: ax_icon("mailbox", class_name: "tw-text-ink-muted"),
+                  action: capture do %>
+              <button type="button"
+                      class="ax-btn ax-btn--ghost tw-gap-2"
+                      data-cep-lookup-target="button"
+                      data-action="cep-lookup#lookup">
+                <i class="bi bi-search" aria-hidden="true"></i><span>Buscar</span>
+              </button>
+            <% end) do %>
               <%= f.text_field :zip_code,
                                class: "ax-control",
                                placeholder: "88330-030",
                                maxlength: 9,
                                data: { cep_lookup_target: "cep", action: "blur->cep-lookup#lookup" } %>
-              <button type="button"
-                      class="ax-btn ax-btn--ghost tw-gap-2"
-                      data-cep-lookup-target="button"
-                      data-action="cep-lookup#lookup">
-                <i class="bi bi-search"></i>Buscar
-              </button>
-            </div>
+            <% end %>
             <small data-cep-lookup-target="status" class="form-text tw-text-sm tw-text-ink-muted">
               Digite o CEP e clique Buscar — preenchemos endereço + mapa automaticamente.
             </small>
           </div>
           <div class="ax-span-6">
-            <%= f.label :address, "Endereço", class: "ax-label tw-font-semibold" %>
-            <%= f.text_field :address,
-                             class: "ax-control",
-                             placeholder: "Av. Atlântica",
-                             data: { cep_lookup_target: "address" } %>
+            <%= ax_text_field(form: f, method: :address, label: "Endereço", placeholder: "Av. Atlântica",
+                  autocomplete: "address-line1", data: { cep_lookup_target: "address" }) %>
           </div>
           <div class="ax-span-4">
-            <%= f.label :number, "Número", class: "ax-label tw-font-semibold" %>
-            <div class="tw-flex tw-gap-2">
+            <%= ax_field_label(f, :number, text: "Número") %>
+            <%= ax_input_group(action: capture do %>
+              <button type="button"
+                      class="ax-btn ax-btn--primary tw-whitespace-nowrap"
+                      data-action="cep-lookup#geocodeFromNumber">
+                Aplicar
+              </button>
+            <% end) do %>
               <%= f.text_field :number,
                                class: "ax-control",
                                placeholder: "3750",
@@ -126,33 +122,21 @@
                                  cep_lookup_target: "number",
                                  action: "keydown.enter->cep-lookup#geocodeFromNumber"
                                } %>
-              <button type="button"
-                      class="ax-btn ax-btn--primary tw-whitespace-nowrap"
-                      data-action="cep-lookup#geocodeFromNumber">
-                Aplicar
-              </button>
-            </div>
+            <% end %>
             <small class="tw-text-ink-muted">Necessário para ajuste fino do geofence.</small>
           </div>
 
           <div class="ax-span-6">
-            <%= f.label :neighborhood, "Bairro", class: "ax-label tw-font-semibold" %>
-            <%= f.text_field :neighborhood,
-                             class: "ax-control",
-                             data: { cep_lookup_target: "neighborhood" } %>
+            <%= ax_text_field(form: f, method: :neighborhood, label: "Bairro", autocomplete: "address-level3",
+                  data: { cep_lookup_target: "neighborhood" }) %>
           </div>
           <div class="ax-span-6">
-            <%= f.label :city, "Cidade", class: "ax-label tw-font-semibold" %>
-            <%= f.text_field :city,
-                             class: "ax-control",
-                             data: { cep_lookup_target: "city" } %>
+            <%= ax_text_field(form: f, method: :city, label: "Cidade", autocomplete: "address-level2",
+                  data: { cep_lookup_target: "city" }) %>
           </div>
           <div class="ax-span-2">
-            <%= f.label :state, "UF", class: "ax-label tw-font-semibold" %>
-            <%= f.text_field :state,
-                             class: "ax-control text-uppercase",
-                             maxlength: 2,
-                             data: { cep_lookup_target: "uf" } %>
+            <%= ax_text_field(form: f, method: :state, label: "UF", maxlength: 2, class: "text-uppercase",
+                  autocomplete: "address-level1", data: { cep_lookup_target: "uf" }) %>
           </div>
         <% end %>
       </div>
@@ -161,77 +145,58 @@
 
       <!-- Mapa -->
       <div data-store-map-picker-target="map"
-           style="height: 400px; border-radius: 8px;"
-           class="border"></div>
+           class="store-location-map store-location-map--editor"></div>
 
       <div class="tw-mt-3">
       <%= ax_field_grid do %>
         <div class="ax-span-4">
-          <%= f.label :latitude, "Latitude", class: "ax-label tw-font-semibold tw-text-sm" %>
-          <%= f.text_field :latitude,
-                           class: "ax-control ax-control--sm font-monospace",
-                           data: { store_map_picker_target: "latitudeInput", action: "change->store-map-picker#updateFromInputs" },
-                           readonly: true %>
+          <%= ax_text_field(form: f, method: :latitude, label: "Latitude", class: "ax-control--sm font-monospace",
+                data: { store_map_picker_target: "latitudeInput", action: "change->store-map-picker#updateFromInputs" }, readonly: true) %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :longitude, "Longitude", class: "ax-label tw-font-semibold tw-text-sm" %>
-          <%= f.text_field :longitude,
-                           class: "ax-control ax-control--sm font-monospace",
-                           data: { store_map_picker_target: "longitudeInput", action: "change->store-map-picker#updateFromInputs" },
-                           readonly: true %>
+          <%= ax_text_field(form: f, method: :longitude, label: "Longitude", class: "ax-control--sm font-monospace",
+                data: { store_map_picker_target: "longitudeInput", action: "change->store-map-picker#updateFromInputs" }, readonly: true) %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :geofence_radius_meters, "Raio de check-in (m)", class: "ax-label tw-font-semibold tw-text-sm" %>
-          <div class="tw-flex tw-items-center tw-gap-2">
+          <%= ax_field_label(f, :geofence_radius_meters, text: "Raio de check-in (m)") %>
+          <%= ax_input_group(
+                suffix: ax_badge(
+                  "#{store.geofence_radius_meters}m",
+                  tone: :blue,
+                  data: { store_map_picker_target: "radiusLabel" }
+                )
+              ) do %>
             <%= f.number_field :geofence_radius_meters,
                                min: 25, max: 2000, step: 25,
                                class: "ax-control ax-control--sm",
                                data: { store_map_picker_target: "radiusInput", action: "input->store-map-picker#updateRadius" } %>
-            <span class="ax-badge ax-badge--blue" data-store-map-picker-target="radiusLabel"><%= store.geofence_radius_meters %>m</span>
-          </div>
+          <% end %>
         </div>
       <% end %>
       </div>
-    </div>
+    <% end %>
   </div>
 
-  <!-- Card 3: Tolerâncias -->
-  <div class="ax-card tw-mb-4">
-    <div class="ax-card__body">
-      <h5 class="tw-font-bold tw-mb-3">
-        <i class="bi bi-stopwatch-fill" style="margin-right:.5rem; color:#d97706"></i>Presença e tolerância
-      </h5>
+  <%= ax_operational_panel(eyebrow: "Presença", title: "Presença e tolerância", class_name: "tw-mb-4") do %>
       <%= ax_field_grid do %>
         <div class="ax-span-6">
-          <%= f.label :out_of_radius_tolerance_minutes, "Tolerância fora do raio (minutos)", class: "ax-label tw-font-semibold" %>
-          <div class="tw-flex tw-items-center tw-gap-2">
-            <span><i class="bi bi-hourglass-split" style="color:#d97706"></i></span>
+          <%= ax_field_label(f, :out_of_radius_tolerance_minutes, text: "Tolerância fora do raio (minutos)") %>
+          <%= ax_input_group(prefix: ax_icon("hourglass-split", class_name: "tw-text-amber-600"), suffix: "min") do %>
             <%= f.number_field :out_of_radius_tolerance_minutes, min: 1, max: 120, class: "ax-control" %>
-            <span>min</span>
-          </div>
+          <% end %>
           <small class="tw-text-ink-muted">Se corretor sair do raio, é avisado e tem esse tempo pra voltar antes de check-out automático.</small>
         </div>
         <div class="ax-span-6">
-          <%= f.label :auto_checkout_after_minutes, "Fallback de check-out automático", class: "ax-label tw-font-semibold" %>
-          <div class="tw-flex tw-items-center tw-gap-2">
-            <span><i class="bi bi-moon" style="color:var(--admin-primary)"></i></span>
+          <%= ax_field_label(f, :auto_checkout_after_minutes, text: "Fallback de check-out automático") %>
+          <%= ax_input_group(prefix: ax_icon("moon", class_name: "tw-text-primary"), suffix: "min") do %>
             <%= f.number_field :auto_checkout_after_minutes, min: 0, max: 240, class: "ax-control" %>
-            <span>min</span>
-          </div>
+          <% end %>
           <small class="tw-text-ink-muted">Usado como fallback quando o turno operacional não tiver uma regra própria.</small>
         </div>
       <% end %>
-    </div>
-  </div>
+  <% end %>
 
-  <!-- Card 4: Turnos operacionais -->
-  <div class="ax-card tw-mb-4">
-    <div class="ax-card__body">
-      <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
-        <h5 class="tw-font-bold" style="margin-bottom:0">
-          <i class="bi bi-calendar-week-fill tw-text-primary" style="margin-right:.5rem"></i>Turnos operacionais da loja
-        </h5>
-      </div>
+  <%= ax_operational_panel(eyebrow: "Agenda", title: "Turnos operacionais da loja", class_name: "tw-mb-4") do %>
       <%= ax_inline_notice(tone: :neutral, icon: "calendar-week") do %>
         A loja define as janelas de <strong>Entrada</strong>, <strong>Pós-risca</strong> e <strong>Fora da roleta</strong>. Os corretores participantes continuam sendo definidos nas regras de distribuição.
       <% end %>
@@ -245,13 +210,7 @@
       <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
         Quando uma regra exigir turno ativo, o sistema consulta estes horários da loja selecionada no check-in. O checkout automático encerra o ponto; remover da fila é opcional e só acontece quando estiver marcado no turno.
       <% end %>
-    </div>
-  </div>
+  <% end %>
 
-  <div class="tw-flex tw-justify-end tw-gap-2" style="margin-bottom:3rem">
-    <%= link_to "Cancelar", admin_stores_path, class: "ax-btn ax-btn--ghost" %>
-    <%= f.submit class: "ax-btn ax-btn--primary" do %>
-      <i class="bi bi-check-lg" style="margin-right:.25rem"></i>Salvar loja
-    <% end %>
-  </div>
+  <%= ax_form_actions(cancel_path: admin_stores_path, submit_label: "Salvar loja", form: f) %>
 <% end %>

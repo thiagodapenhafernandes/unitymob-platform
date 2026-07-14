@@ -1,4 +1,4 @@
-<h1 class="wizard-section-title"><i class="bi bi-house-heart-fill tw-text-primary" style="margin-right:.5rem;"></i>Vamos começar</h1>
+<h1 class="wizard-section-title"><i class="bi bi-house-heart-fill tw-text-primary"></i>Vamos começar</h1>
 <p class="wizard-section-subtitle">
   Olá, <strong><%= current_admin_user.name.split.first %></strong>! Selecione o tipo de cadastro, a categoria e a modalidade.
 </p>
@@ -51,14 +51,10 @@
     <%= f.hidden_field :tipo, value: "Unitário", data: { habitation_form_target: "tipo" } %>
   </div>
 
-  <div class="wizard-field-group">
-    <%= f.label :categoria, "Categoria relacionada", class: "ax-label" %>
-    <%= f.select :categoria,
-                 cadastro_categories.fetch(inferred_cadastro_type),
-                 { include_blank: "Selecione..." },
-                 class: "ax-control",
-                 data: { habitation_form_target: "category" } %>
-  </div>
+  <%= ax_select_field(form: f, method: :categoria, label: "Categoria relacionada",
+        choices: cadastro_categories.fetch(inferred_cadastro_type),
+        select_options: { include_blank: "Selecione..." }, class_name: "wizard-field-group",
+        html_options: { data: { habitation_form_target: "category" } }) %>
 
   <div class="wizard-field-group">
     <label class="ax-label">Modalidade <span class="required-star">*</span></label>

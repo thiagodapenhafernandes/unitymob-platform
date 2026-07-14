@@ -1,60 +1,48 @@
 <%# Proprietários — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak.
     Deferido p/ rollout: filtros avançados (cônjuge, imóvel), seleção em massa, export e relatórios. %>
 <div class="admin-entity-dark">
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Proprietários</h1>
-    <p class="ax-page-subtitle">Gerencie proprietários e parceiros vinculados aos imóveis.</p>
-  </div>
-  <%= link_to new_admin_proprietor_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-    <i class="bi bi-plus-lg ax-ico"></i><span>Novo proprietário</span>
-  <% end %>
-</div>
+<%= ax_workspace_heading(
+      eyebrow: "Cadastros · Relacionamentos",
+      icon: "people",
+      title: "Proprietários",
+      subtitle: "Gerencie proprietários e parceiros vinculados aos imóveis.",
+      metrics: [{ value: number_with_delimiter(@proprietors.total_entries), label: "encontrados" }],
+      actions: ax_button("Novo proprietário", new_admin_proprietor_path, variant: :primary, size: :sm, icon: "plus-lg")
+    ) %>
 
 <%# Filtros principais %>
-<%= form_with url: admin_proprietors_path, method: :get, scope: :filters do |f| %>
-  <div class="ax-card tw-mb-3">
-    <div class="ax-card__body tw-flex tw-flex-wrap tw-items-end tw-gap-3">
-      <div class="tw-flex-1 tw-min-w-[200px]">
-        <label class="ax-label">Nome / Denominação</label>
-        <%= f.text_field :name, value: @filters[:name], class: "ax-input", placeholder: "Buscar por nome..." %>
+<%= ax_filter_form(url: admin_proprietors_path, reset_path: (@filters.values.any?(&:present?) ? admin_proprietors_path : nil), submit_label: "Pesquisar", class_name: "tw-mb-3", scope: :filters) do |f| %>
+  <%= ax_field_grid do %>
+      <div class="ax-span-4">
+        <label class="ax-label" for="filters_name">Nome / Denominação</label>
+        <%= f.search_field :name, value: @filters[:name], class: "ax-search ax-search--fluid", placeholder: "Buscar por nome..." %>
       </div>
-      <div class="tw-w-44">
-        <label class="ax-label">Cidade</label>
-        <%= f.text_field :city, value: @filters[:city], class: "ax-input", placeholder: "Cidade" %>
+      <div class="ax-span-3">
+        <label class="ax-label" for="filters_city">Cidade</label>
+        <%= f.text_field :city, value: @filters[:city], class: "ax-control", placeholder: "Cidade" %>
       </div>
-      <div class="tw-w-36">
-        <label class="ax-label">Código Vista</label>
-        <%= f.text_field :vista_code, value: @filters[:vista_code], class: "ax-input", placeholder: "Código" %>
+      <div class="ax-span-2">
+        <label class="ax-label" for="filters_vista_code">Código Vista</label>
+        <%= f.text_field :vista_code, value: @filters[:vista_code], class: "ax-control", placeholder: "Código" %>
       </div>
-      <div class="tw-w-44">
-        <label class="ax-label">CPF / CNPJ</label>
-        <%= f.text_field :cpf_cnpj, value: @filters[:cpf_cnpj], class: "ax-input", placeholder: "Documento" %>
+      <div class="ax-span-3">
+        <label class="ax-label" for="filters_cpf_cnpj">CPF / CNPJ</label>
+        <%= f.text_field :cpf_cnpj, value: @filters[:cpf_cnpj], class: "ax-control", placeholder: "Documento" %>
       </div>
-      <div class="tw-flex tw-items-center tw-gap-2">
-        <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-search ax-ico"></i>Pesquisar</button>
-        <% if @filters.values.any?(&:present?) %>
-          <%= link_to "Limpar", admin_proprietors_path, class: "ax-btn ax-btn--ghost" %>
-        <% end %>
-      </div>
-    </div>
-  </div>
+  <% end %>
 <% end %>
 
-<div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-  <span class="ax-page-subtitle"><span class="tw-font-semibold tw-text-ink"><%= number_with_delimiter(@proprietors.total_entries) %></span> encontrados</span>
-</div>
-
+<%= ax_operational_panel(eyebrow: "Cadastro", title: "Proprietários encontrados") do %>
 <div class="ax-table-wrap">
   <table class="ax-table">
     <thead>
       <tr>
         <th>Nome / Denominação</th>
-        <th style="width:150px">Fone principal</th>
-        <th style="width:160px">CPF / CNPJ</th>
-        <th style="width:160px">Cidade</th>
-        <th class="ax-num" style="width:90px">Imóveis</th>
-        <th class="ax-num" style="width:74px">Ações</th>
+        <th class="ax-table__col--w-150">Fone principal</th>
+        <th class="ax-table__col--w-160">CPF / CNPJ</th>
+        <th class="ax-table__col--w-160">Cidade</th>
+        <th class="ax-num ax-table__col--compact">Imóveis</th>
+        <th class="ax-num ax-table__col--xs">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -70,19 +58,22 @@
           <td><%= proprietor.city.presence || "—" %></td>
           <td class="ax-num"><span class="ax-badge ax-badge--gray"><%= @habitations_count_by_proprietor[proprietor.id].to_i %></span></td>
           <td class="ax-num">
-            <span class="tw-inline-flex tw-gap-0.5">
-              <%= link_to edit_admin_proprietor_path(proprietor), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
-            </span>
+            <%= ax_icon_button(
+                  label: "Editar proprietário #{proprietor.name}",
+                  icon: "pencil",
+                  url: edit_admin_proprietor_path(proprietor)
+                ) %>
           </td>
         </tr>
       <% end %>
 
       <% if @proprietors.empty? %>
-        <tr><td colspan="6"><div class="ax-empty">Nenhum proprietário encontrado com os filtros aplicados.</div></td></tr>
+        <tr><td colspan="6"><%= ax_empty_state(title: "Nenhum proprietário encontrado", description: "Ajuste os filtros ou cadastre um novo proprietário.", icon: "people", action: ax_button("Novo proprietário", new_admin_proprietor_path, variant: :primary, size: :sm), compact: true) %></td></tr>
       <% end %>
     </tbody>
   </table>
 </div>
+<% end %>
 
 <%= ax_pagination @proprietors, params: request.query_parameters %>
 </div>

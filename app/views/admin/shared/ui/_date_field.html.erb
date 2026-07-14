@@ -19,7 +19,7 @@
 <div class="<%= field_classes %>">
   <%= ax_field_label(form, method, text: label, tooltip:) %>
   <% if clearable %>
-    <div class="ax-clearable-control" data-controller="ax-clear-field">
+    <div class="ax-clearable-control ax-clearable-control--date" data-controller="ax-clear-field">
       <%= form.date_field method, input_options %>
       <button class="ax-clearable-control__button"
               type="button"
@@ -28,7 +28,7 @@
               data-ax-clear-field-target="button"
               data-action="click->ax-clear-field#clear"
               hidden>
-        <i class="bi bi-x"></i>
+        <i class="bi bi-x" aria-hidden="true"></i>
       </button>
     </div>
   <% else %>

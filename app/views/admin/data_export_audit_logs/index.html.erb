@@ -1,39 +1,39 @@
 <%# Auditoria de Exportações — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
-<div class="tw-mb-4">
-  <h1 class="ax-page-title">Auditoria de Exportações</h1>
-  <p class="ax-page-subtitle">Registro de CSVs, relatórios e impressões que retiram dados da plataforma.</p>
+<%= ax_workspace_heading(
+      eyebrow: "Segurança · Rastreabilidade",
+      icon: "file-earmark-lock",
+      title: "Auditoria de Exportações",
+      subtitle: "Registro de CSVs, relatórios e impressões que retiram dados da plataforma."
+    ) %>
+
+<div class="ax-metric-grid tw-mb-4">
+  <%= ax_metric_card(label: "Eventos", value: @total_exports) %>
+  <%= ax_metric_card(label: "CSVs", value: @csv_exports) %>
+  <%= ax_metric_card(label: "Relatórios", value: @print_reports) %>
+  <%= ax_metric_card(label: "Registros expostos", value: number_with_delimiter(@total_records)) %>
 </div>
 
-<div class="tw-grid tw-grid-cols-2 md:tw-grid-cols-4 tw-gap-3 tw-mb-4">
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Eventos</div><div class="ax-stat-value"><%= @total_exports %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">CSVs</div><div class="ax-stat-value"><%= @csv_exports %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Relatórios</div><div class="ax-stat-value"><%= @print_reports %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Registros expostos</div><div class="ax-stat-value"><%= number_with_delimiter(@total_records) %></div></div>
-</div>
-
-<%= form_with url: admin_data_export_audit_logs_path, method: :get, local: true do %>
-  <div class="ax-card tw-mb-4">
-    <div class="ax-card__body tw-grid tw-grid-cols-2 md:tw-grid-cols-4 lg:tw-grid-cols-6 tw-gap-3 tw-items-end">
-      <div><%= label_tag :export_type, "Tipo", class: "ax-label" %><%= select_tag :export_type, options_for_select([["Todos", ""], *DataExportAuditLog::EXPORT_TYPES.map { |k, l| [l, k] }], params[:export_type]), class: "ax-select" %></div>
-      <div><%= label_tag :resource_name, "Dados", class: "ax-label" %><%= select_tag :resource_name, options_for_select([["Todos", ""], *DataExportAuditLog::RESOURCE_NAMES.map { |k, l| [l, k] }], params[:resource_name]), class: "ax-select" %></div>
-      <div><%= label_tag :admin_user_id, "Usuário", class: "ax-label" %><%= select_tag :admin_user_id, options_from_collection_for_select(@available_users, :id, ->(u) { "#{u.name} · #{u.email}" }, params[:admin_user_id]), include_blank: "Todos", class: "ax-select" %></div>
-      <div><%= label_tag :profile_id, "Perfil", class: "ax-label" %><%= select_tag :profile_id, options_from_collection_for_select(@available_profiles, :id, ->(profile) { profile_filter_label(profile) }, params[:profile_id]), include_blank: "Todos", class: "ax-select" %></div>
-      <div><%= label_tag :ip, "IP", class: "ax-label" %><%= text_field_tag :ip, params[:ip], class: "ax-input", placeholder: "127.0.0.1" %></div>
-      <div><%= label_tag :data_format, "Formato", class: "ax-label" %><%= select_tag :data_format, options_for_select([["Todos", ""]] + @available_formats.map { |f| [f.to_s.upcase, f] }, params[:data_format]), class: "ax-select" %></div>
-      <div class="tw-col-span-2"><%= label_tag :filename, "Arquivo contém", class: "ax-label" %><%= text_field_tag :filename, params[:filename], class: "ax-input", placeholder: "nome do arquivo" %></div>
-      <div><%= label_tag :start_date, "De", class: "ax-label" %><%= date_field_tag :start_date, params[:start_date], class: "ax-input" %></div>
-      <div><%= label_tag :end_date, "Até", class: "ax-label" %><%= date_field_tag :end_date, params[:end_date], class: "ax-input" %></div>
-      <div class="tw-flex tw-gap-1">
-        <%= submit_tag "Filtrar", class: "ax-btn ax-btn--primary" %>
-        <%= link_to "Limpar", admin_data_export_audit_logs_path, class: "ax-btn ax-btn--ghost" %>
-      </div>
-    </div>
-  </div>
+<%= ax_filter_form(url: admin_data_export_audit_logs_path,
+                   reset_path: admin_data_export_audit_logs_path,
+                   submit_label: "Filtrar",
+                   class_name: "tw-mb-4") do |_form| %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-4"><%= label_tag :export_type, "Tipo", class: "ax-label" %><%= select_tag :export_type, options_for_select([["Todos", ""], *DataExportAuditLog::EXPORT_TYPES.map { |k, l| [l, k] }], params[:export_type]), class: "ax-control" %></div>
+    <div class="ax-span-4"><%= label_tag :resource_name, "Dados", class: "ax-label" %><%= select_tag :resource_name, options_for_select([["Todos", ""], *DataExportAuditLog::RESOURCE_NAMES.map { |k, l| [l, k] }], params[:resource_name]), class: "ax-control" %></div>
+    <div class="ax-span-4"><%= label_tag :admin_user_id, "Usuário", class: "ax-label" %><%= select_tag :admin_user_id, options_from_collection_for_select(@available_users, :id, ->(u) { "#{u.name} · #{u.email}" }, params[:admin_user_id]), include_blank: "Todos", class: "ax-control" %></div>
+    <div class="ax-span-4"><%= label_tag :profile_id, "Perfil", class: "ax-label" %><%= select_tag :profile_id, options_from_collection_for_select(@available_profiles, :id, ->(profile) { profile_filter_label(profile) }, params[:profile_id]), include_blank: "Todos", class: "ax-control" %></div>
+    <div class="ax-span-4"><%= label_tag :ip, "IP", class: "ax-label" %><%= text_field_tag :ip, params[:ip], class: "ax-control", placeholder: "127.0.0.1" %></div>
+    <div class="ax-span-4"><%= label_tag :data_format, "Formato", class: "ax-label" %><%= select_tag :data_format, options_for_select([["Todos", ""]] + @available_formats.map { |f| [f.to_s.upcase, f] }, params[:data_format]), class: "ax-control" %></div>
+    <div class="ax-span-6"><%= label_tag :filename, "Arquivo contém", class: "ax-label" %><%= text_field_tag :filename, params[:filename], class: "ax-control", placeholder: "nome do arquivo" %></div>
+    <div class="ax-span-3"><%= label_tag :start_date, "De", class: "ax-label" %><%= date_field_tag :start_date, params[:start_date], class: "ax-control" %></div>
+    <div class="ax-span-3"><%= label_tag :end_date, "Até", class: "ax-label" %><%= date_field_tag :end_date, params[:end_date], class: "ax-control" %></div>
+  <% end %>
 <% end %>
 
+<%= ax_operational_panel(eyebrow: "Histórico", title: "Exportações registradas") do %>
 <div class="ax-table-wrap">
   <table class="ax-table">
-    <thead><tr><th style="width:130px">Quando</th><th>Usuário</th><th style="width:120px">Tipo</th><th style="width:120px">Dados</th><th class="ax-num" style="width:100px">Registros</th><th style="width:90px">Formato</th><th style="width:120px">IP</th><th>Detalhes</th></tr></thead>
+    <thead><tr><th class="ax-table__col--w-130">Quando</th><th>Usuário</th><th class="ax-table__col--w-120">Tipo</th><th class="ax-table__col--w-120">Dados</th><th class="ax-num ax-table__col--w-100">Registros</th><th class="ax-table__col--compact">Formato</th><th class="ax-table__col--w-120">IP</th><th>Detalhes</th></tr></thead>
     <tbody>
       <% @logs.each do |log| %>
         <tr>
@@ -59,10 +59,11 @@
           </td>
         </tr>
       <% end %>
-      <% if @logs.empty? %><tr><td colspan="8"><div class="ax-empty">Nenhuma exportação registrada.</div></td></tr><% end %>
+      <% if @logs.empty? %><tr><td colspan="8"><%= ax_empty_state(title: "Nenhuma exportação registrada", description: "Ajuste os filtros ou aguarde uma nova retirada de dados.", icon: "file-earmark-lock", compact: true) %></td></tr><% end %>
     </tbody>
   </table>
 </div>
+<% end %>
 
 <% if @logs.respond_to?(:total_pages) && @logs.total_pages > 1 %>
   <%= ax_pagination @logs, params: request.query_parameters %>

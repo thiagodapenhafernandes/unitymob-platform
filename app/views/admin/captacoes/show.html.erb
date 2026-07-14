@@ -1,28 +1,22 @@
 <% property_setting = @property_setting || PropertySetting.instance %>
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
-  <div>
-    <h1 class="ax-page-title"><%= @captacao.intake_display_title %></h1>
-    <div class="ax-page-subtitle">
-      <%= @captacao.property_kind.humanize %> · <%= @captacao.modalidade.humanize %> ·
-      <% if @captacao.submitted_at %>
-        Finalizada em <%= l(@captacao.submitted_at, format: :short) %>
-      <% end %>
-    </div>
-  </div>
-  <div class="tw-flex tw-gap-2">
+<%
+  captacao_subtitle_parts = [@captacao.property_kind.humanize, @captacao.modalidade.humanize]
+  captacao_subtitle_parts << "Finalizada em #{l(@captacao.submitted_at, format: :short)}" if @captacao.submitted_at
+  intake_status_badge_class = case @captacao.intake_status
+    when "submitted_for_admin_review", "admin_approved"
+      "ax-badge ax-badge--amber"
+    when "returned_to_broker"
+      "ax-badge ax-badge--red"
+    when "published", "internal"
+      "ax-badge ax-badge--green"
+    else
+      "ax-badge ax-badge--gray"
+    end
+  page_actions = capture do
+%>
     <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost ax-btn--sm" do %>
       <i class="bi bi-arrow-left"></i>Voltar
     <% end %>
-    <% intake_status_badge_class = case @captacao.intake_status
-         when "submitted_for_admin_review", "admin_approved"
-           "ax-badge ax-badge--amber"
-         when "returned_to_broker"
-           "ax-badge ax-badge--red"
-         when "published", "internal"
-           "ax-badge ax-badge--green"
-         else
-           "ax-badge ax-badge--gray"
-         end %>
     <span class="<%= intake_status_badge_class %>"><%= @captacao.intake_status_label %></span>
     <% if can_broker_release_to_site?(@captacao) %>
       <%= button_to release_to_site_admin_captacao_path(@captacao), method: :post,
@@ -30,8 +24,12 @@
         <i class="bi bi-globe"></i>Publicar Site
       <% end %>
     <% end %>
-  </div>
-</div>
+<% end %>
+<%= ax_page_header(
+      title: @captacao.intake_display_title,
+      subtitle: safe_join(captacao_subtitle_parts, " · "),
+      actions: page_actions
+    ) %>
 
 <% if @captacao.published_on_site? %>
   <%= ax_inline_notice(tone: :success, icon: "check-circle-fill") do %>
@@ -54,7 +52,7 @@
   <% end %>
 <% end %>
 
-<% if property_setting&.broker_capture_layer_enabled && can?(:review, :captacoes) && @captacao.broker_intake? %>
+<% if property_setting&.broker_capture_layer_enabled && can_review_captacao?(@captacao) && @captacao.broker_intake? %>
   <% if @captacao.review_return_count_warning? %>
     <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
       <strong>Esta captação já teve <%= @captacao.review_return_count %> devoluções.</strong>
@@ -130,7 +128,7 @@
         <table class="ax-table">
           <thead>
             <tr>
-              <th style="width: 90px">Versão</th>
+              <th class="ax-table__col--compact">Versão</th>
               <th>Data/hora</th>
             <th>Responsável</th>
             <th>Ação</th>
@@ -153,7 +151,7 @@
                         <li>
                           <strong><%= change[:label] %>:</strong>
                           <%= change[:before].presence || "vazio" %>
-                          <i class="bi bi-arrow-right" style="margin-left:.25rem;margin-right:.25rem;"></i>
+                          <i class="bi bi-arrow-right capt-detail-change-arrow"></i>
                           <%= change[:after].presence || "vazio" %>
                         </li>
                       <% end %>
@@ -176,7 +174,7 @@
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
         <div class="capt-detail-section-title"><i class="bi bi-megaphone"></i>Anúncio para publicação</div>
-        <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
+        <dl class="tw-grid tw-text-sm capt-detail-definition-grid">
           <dt class="ax-span-3">Categoria</dt>
           <dd class="ax-span-9"><%= @captacao.categoria.presence || "—" %></dd>
           <dt class="ax-span-3">Título do anúncio</dt>
@@ -201,7 +199,7 @@
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
         <div class="capt-detail-section-title"><i class="bi bi-geo-alt"></i>Endereço</div>
-        <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
+        <dl class="tw-grid tw-text-sm capt-detail-definition-grid">
           <dt class="ax-span-3">Logradouro</dt>
           <dd class="ax-span-9"><%= [@captacao.street, @captacao.street_number].compact_blank.join(", ") %></dd>
           <% if @captacao.edificio_nome.present? %>
@@ -227,7 +225,7 @@
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
         <div class="capt-detail-section-title"><i class="bi bi-rulers"></i>Características</div>
-        <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
+        <dl class="tw-grid tw-text-sm capt-detail-definition-grid">
           <dt class="ax-span-3">Área total</dt>
           <dd class="ax-span-9"><%= @captacao.area_total %> m²<%= " · privativa #{@captacao.area_privativa} m²" if @captacao.area_privativa.present? %></dd>
           <% if @captacao.property_kind_residencial? %>
@@ -251,7 +249,7 @@
     <div class="ax-card tw-mb-3">
       <div class="ax-card__body">
         <div class="capt-detail-section-title"><i class="bi bi-cash-stack"></i>Negociação</div>
-        <dl class="tw-grid tw-text-sm" style="grid-template-columns:repeat(12,1fr);gap:.25rem .5rem;">
+        <dl class="tw-grid tw-text-sm capt-detail-definition-grid">
           <% if @captacao.valor_venda.present? %>
             <dt class="ax-span-3">Venda</dt>
             <dd class="ax-span-9"><strong><%= number_to_currency(@captacao.valor_venda, unit: "R$ ") %></strong></dd>

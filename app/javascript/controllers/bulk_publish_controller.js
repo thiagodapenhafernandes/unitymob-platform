@@ -233,7 +233,7 @@ export default class extends Controller {
     const button = event.currentTarget
     const originalHTML = button.innerHTML
     button.disabled = true
-    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processando...'
+    button.innerHTML = '<span class="ax-spinner" aria-hidden="true"></span> Processando...'
 
     try {
       const response = await fetch(this.urlValue, {

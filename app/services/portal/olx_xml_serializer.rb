@@ -5,13 +5,10 @@ module Portal
   # Spec: https://developers.olx.com.br/anuncio/xml/real_estate/home.html
   # Tags em PT-BR: CodigoImovel, SubTipoImovel, TituloAnuncio, PrecoVenda, etc.
   class OlxXmlSerializer
-    CONTACT_NAME  = "SALUTE IMOVEIS"
-    CONTACT_EMAIL = "contato@saluteimoveis.com.br"
-    CONTACT_PHONE = "(47) 3311-1067"
-
     def initialize(habitations:, integration:)
       @habitations = habitations
       @integration = integration
+      @identity = Tenants::PublicIdentity.new(integration.tenant)
     end
 
     def to_xml(target: nil)
@@ -86,9 +83,9 @@ module Portal
 
               # Contato
               xml.Contato do
-                xml.Nome     CONTACT_NAME
-                xml.Email    CONTACT_EMAIL
-                xml.Telefone CONTACT_PHONE
+                xml.Nome     @identity.name
+                xml.Email    @identity.email
+                xml.Telefone @identity.phone
               end
             end
           end

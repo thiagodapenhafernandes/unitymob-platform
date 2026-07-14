@@ -1,11 +1,22 @@
-<div class="ax-sticky-action-footer habitation-action-bar <%= class_name %>">
+<%
+  footer_classes = [
+    "ax-sticky-action-footer",
+    ("ax-sticky-action-footer--static" unless sticky),
+    "habitation-action-bar",
+    class_name
+  ].compact.join(" ")
+%>
+
+<footer class="<%= footer_classes %>" aria-label="Ações do formulário">
   <div class="ax-sticky-action-footer__inner habitation-action-inner">
-    <div class="ax-sticky-action-footer__meta habitation-action-meta">
-      <%= meta %>
-    </div>
+    <% if meta.present? %>
+      <div class="ax-sticky-action-footer__meta habitation-action-meta">
+        <%= meta %>
+      </div>
+    <% end %>
 
     <div class="ax-sticky-action-footer__actions habitation-action-buttons">
       <%= body %>
     </div>
   </div>
-</div>
+</footer>

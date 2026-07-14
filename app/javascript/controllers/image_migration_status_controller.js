@@ -122,8 +122,8 @@ export default class extends Controller {
     this.setTextIfPresent("executionDetail", `${current} de ${total}`)
 
     if (this.hasExecutionProgressBarTarget) {
-      this.executionProgressBarTarget.classList.toggle("progress-bar-animated", !!execution.running)
-      this.executionProgressBarTarget.classList.toggle("progress-bar-striped", !!execution.running)
+      this.executionProgressBarTarget.classList.toggle("is-running", !!execution.running)
+      this.executionProgressBarTarget.setAttribute("aria-busy", execution.running ? "true" : "false")
     }
   }
 
@@ -157,7 +157,8 @@ export default class extends Controller {
     if (!target) return
 
     const progress = Math.max(0, Math.min(100, Number(value || 0)))
-    target.style.width = `${progress}%`
+    target.value = progress
+    target.setAttribute("value", progress.toString())
     target.setAttribute("aria-valuenow", progress.toString())
   }
 

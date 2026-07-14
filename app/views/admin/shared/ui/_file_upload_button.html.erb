@@ -6,7 +6,6 @@
 %>
 
 <% if form.present? && method.present? %>
-  <%= form.label method, label, label_options.merge(for: input_id) %>
   <%= form.file_field method,
                       multiple:,
                       direct_upload:,
@@ -16,6 +15,7 @@
                       id: input_id,
                       data: input_data,
                       **input_options %>
+  <%= form.label method, label, label_options.merge(for: input_id) %>
 <% else %>
   <%= label_tag input_id, label, label_options %>
 <% end %>

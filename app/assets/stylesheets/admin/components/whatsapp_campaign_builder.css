@@ -1,0 +1,43 @@
+/* Accessible step navigation for the WhatsApp campaign builder. */
+.whatsapp-campaign-builder {
+  min-width: 0;
+}
+
+.whatsapp-campaign-builder__step:focus-visible {
+  border-color: var(--admin-primary);
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+}
+
+[data-admin-theme="dark"] .whatsapp-campaign-builder__nav {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+}
+
+[data-admin-theme="dark"] .whatsapp-campaign-builder__step {
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .whatsapp-campaign-builder__step:hover,
+[data-admin-theme="dark"] .whatsapp-campaign-builder__step:focus-visible {
+  border-color: var(--ax-dark-focus-border);
+  background: var(--ax-dark-surface-hover);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .whatsapp-campaign-builder__step.is-active {
+  border-color: var(--ax-dark-focus-border);
+  background: #203a5c;
+  color: #dcecff;
+}
+
+[data-admin-theme="dark"] .whatsapp-campaign-builder__progress {
+  background: var(--ax-dark-surface-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whatsapp-campaign-builder__step,
+  .whatsapp-campaign-builder__progress > span {
+    transition: none !important;
+  }
+}

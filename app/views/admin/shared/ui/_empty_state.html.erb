@@ -1,5 +1,5 @@
-<div class="ax-empty-state">
-  <div class="ax-empty-state__icon"><%= ax_icon(icon) %></div>
+<div class="<%= ["ax-empty-state", ("ax-empty-state--compact" if compact), class_name].compact.join(" ") %>" role="status" aria-live="polite" aria-atomic="true">
+  <div class="ax-empty-state__icon" aria-hidden="true"><%= ax_icon(icon) %></div>
   <h2 class="ax-empty-state__title"><%= title %></h2>
   <% if description.present? %>
     <p class="ax-empty-state__description"><%= description %></p>

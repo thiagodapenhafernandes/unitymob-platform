@@ -1,0 +1,11 @@
+<%
+  snippet_classes = ["ax-code-snippet", class_name].compact.join(" ")
+  accessible_label = label.presence || title.presence || "Trecho de código"
+%>
+
+<div class="<%= snippet_classes %>">
+  <% if title.present? %>
+    <div class="ax-code-snippet__title"><%= title %></div>
+  <% end %>
+  <pre tabindex="0" aria-label="<%= accessible_label %>"><code><%= code %></code></pre>
+</div>

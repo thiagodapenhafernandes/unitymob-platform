@@ -60,7 +60,16 @@ class MarketingCampaign < ApplicationRecord
   end
 
   def budget=(value)
-    self.budget_cents = (value.to_s.gsub(/[^\d,\.]/, "").tr(",", ".").to_f.round(2) * 100).to_i
+    raw = value.to_s.gsub(/[^\d,\.]/, "")
+    decimal_separator = (raw.rindex(",") || -1) > (raw.rindex(".") || -1) ? "," : "."
+    normalized = if raw.include?(",") && raw.include?(".")
+                   raw.delete(decimal_separator == "," ? "." : ",").sub(decimal_separator, ".")
+                 elsif decimal_separator == ","
+                   raw.tr(",", ".")
+                 else
+                   raw
+                 end
+    self.budget_cents = (normalized.to_d.round(2) * 100).to_i
   end
 
   def generated_url(base_url = nil)

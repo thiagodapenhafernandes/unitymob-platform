@@ -1,0 +1,79 @@
+/* Shared field wrapper, legacy label and neutral supporting hint. */
+.ax-field {
+  min-width: 0;
+}
+
+.ax-field__label {
+  display: block;
+  margin-bottom: 5px;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.ax-field__hint {
+  margin: 5px 0 0;
+  color: #697586;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.ax-field__hint--steps {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+
+.ax-field__hint--steps-spacious {
+  line-height: 1.7;
+}
+
+[data-admin-theme="dark"] .ax-field__label {
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-field__hint {
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-field__error {
+  color: var(--ax-dark-danger-text);
+}
+
+[data-admin-theme="dark"] :where(
+  .ax-control.is-invalid,
+  .ax-field input.is-invalid,
+  .ax-field select.is-invalid,
+  .ax-field textarea.is-invalid
+) {
+  border-color: var(--ax-dark-danger-border) !important;
+}
+
+[data-admin-theme="dark"] :where(
+  .ax-control.is-invalid:focus,
+  .ax-field input.is-invalid:focus,
+  .ax-field select.is-invalid:focus,
+  .ax-field textarea.is-invalid:focus
+) {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ax-dark-danger-text) 20%, transparent) !important;
+}
+
+/* Compact validation/status pills used by dense forms. */
+[data-admin-theme="dark"] .habitation-form-ui .ax-field-status {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .habitation-form-ui .ax-field-status--success {
+  border-color: #24734f;
+  background: #123c2c;
+  color: #8ce8b9;
+}
+
+[data-admin-theme="dark"] .habitation-form-ui .ax-field-status--danger {
+  border-color: #8b3a42;
+  background: #471e27;
+  color: #ffabb2;
+}

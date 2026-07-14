@@ -1,4 +1,4 @@
-<article class="ax-metric-card <%= local_assigns[:class_name] %>">
+<article class="ax-metric-card <%= local_assigns[:class_name] %>" aria-label="<%= label %>">
   <div class="ax-metric-card__header">
     <span class="ax-metric-card__label"><%= label %></span>
     <% if local_assigns[:badge].present? %>
@@ -10,8 +10,6 @@
     <div class="ax-metric-card__hint"><%= hint %></div>
   <% end %>
   <% if local_assigns[:progress].present? %>
-    <div class="ax-progress">
-      <i style="width:<%= [[progress.to_f, 0].max, 100].min %>%"></i>
-    </div>
+    <%= ax_progress(value: progress, label: "#{label}: #{[[progress.to_f, 0].max, 100].min}%") %>
   <% end %>
 </article>

@@ -7,89 +7,50 @@
         <div class="au-body">
           <div class="au-avatar-row">
             <div class="au-avatar">
-              <% if admin_user.avatar.attached? %>
-                <%= image_tag admin_user.avatar, class: "au-avatar__img" %>
-              <% else %>
-                <span class="au-avatar__placeholder"><i class="bi bi-person-fill"></i></span>
+              <%= ax_avatar(
+                    name: admin_user.name.presence || admin_user.email || "Usuário",
+                    image: admin_user.avatar,
+                    size: :xxl
+                  ) %>
+            </div>
+            <%= ax_file_field(form: f, method: :avatar, label: "Foto de perfil", tooltip: "Formatos aceitos: JPG e PNG.", button_label: "Escolher foto", class_name: "au-avatar-row__field") %>
+          </div>
+
+          <%= ax_field_grid do %>
+            <%= ax_text_field(form: f, method: :name, label: "Nome completo", class_name: "ax-span-6", placeholder: "Ex.: João Silva") %>
+            <%= ax_text_field(form: f, method: :email, type: :email, label: "E-mail de acesso", class_name: "ax-span-6", placeholder: "joao@empresa.com") %>
+
+            <%= ax_text_field(form: f, method: :phone, type: :tel, label: "Celular / WhatsApp", class_name: "ax-span-6", placeholder: "(47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" }) %>
+            <%= ax_text_field(form: f, method: :secondary_phone, type: :tel, label: "Telefone secundário", class_name: "ax-span-6", placeholder: "(47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" }) %>
+
+            <%= ax_text_field(form: f, method: :creci, label: "CRECI", class_name: "ax-span-6", placeholder: "Ex.: 12345SC") %>
+            <%= ax_date_field(form: f, method: :birth_date, label: "Data de nascimento", class_name: "ax-span-6") %>
+
+            <%= ax_text_field(form: f, method: :city, label: "Cidade", class_name: "ax-span-6", placeholder: "Ex.: Balneário Camboriú") %>
+            <%= ax_text_field(form: f, method: :biography, type: :textarea, label: "Biografia / observações", class_name: "ax-span-12", rows: 4, placeholder: "Breve descrição sobre o usuário...") %>
+          <% end %>
+
+          <% if admin_user.respond_to?(:mirror?) && admin_user.mirror? %>
+            <%= ax_inline_notice(tone: :info, icon: "person-lock", compact: true) do %>
+              Usuário externo (espelho): e-mail e senha pertencem à conta de origem — <strong><%= admin_user.notification_email %></strong>.
+            <% end %>
+          <% else %>
+            <%= ax_field_grid do %>
+              <%= ax_text_field(form: f, method: :password, type: :password, label: admin_user.persisted? ? "Senha (em branco = não alterar)" : "Senha", class_name: "ax-span-6", autocomplete: "new-password") %>
+              <%= ax_text_field(form: f, method: :password_confirmation, type: :password, label: "Confirmar senha", class_name: "ax-span-6", autocomplete: "new-password") %>
+            <% end %>
+          <% end %>
+
+          <% if admin_user.persisted? && admin_user.respond_to?(:otp_enabled?) && admin_user.otp_enabled? && current_admin_user.tenant_owner? %>
+            <div class="tw-mt-2">
+              <%= link_to reset_two_factor_admin_admin_user_path(admin_user),
+                    data: { turbo_method: :post,
+                            turbo_confirm: "Resetar a verificação em duas etapas de #{admin_user.name}? A pessoa volta a entrar só com a senha e precisará reconfigurar o app autenticador." },
+                    class: "ax-btn ax-btn--sm ax-btn--ghost" do %>
+                <i class="bi bi-shield-x ax-ico" aria-hidden="true"></i><span>Resetar 2FA (perdeu o aparelho)</span>
               <% end %>
             </div>
-            <div class="au-field">
-              <%= ax_field_label(f, :avatar, text: "Foto de perfil", tooltip: "Formatos aceitos: JPG, PNG.") %>
-              <%= f.file_field :avatar, class: "ax-control" %>
-            </div>
-          </div>
-
-          <div class="au-row au-row--2">
-            <div class="au-field">
-              <%= ax_field_label(f, :name, text: "Nome completo") %>
-              <%= f.text_field :name, class: "ax-control", placeholder: "Ex: João Silva" %>
-            </div>
-            <div class="au-field">
-              <%= ax_field_label(f, :email, text: "E-mail de acesso") %>
-              <%= f.email_field :email, class: "ax-control", placeholder: "joao@empresa.com" %>
-            </div>
-          </div>
-
-          <div class="au-row au-row--2">
-            <div class="au-field">
-              <%= ax_field_label(f, :phone, text: "Celular / WhatsApp") %>
-              <%= f.text_field :phone, class: "ax-control", placeholder: "(47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" } %>
-            </div>
-            <div class="au-field">
-              <%= ax_field_label(f, :secondary_phone, text: "Telefone secundário") %>
-              <%= f.text_field :secondary_phone, class: "ax-control", placeholder: "(47) 99999-9999", autocomplete: "tel", data: { controller: "phone-input" } %>
-            </div>
-          </div>
-
-          <div class="au-row au-row--2">
-            <div class="au-field">
-              <%= ax_field_label(f, :creci, text: "CRECI") %>
-              <%= f.text_field :creci, class: "ax-control", placeholder: "Ex: 12345SC" %>
-            </div>
-            <div class="au-field">
-              <%= ax_field_label(f, :birth_date, text: "Data de nascimento") %>
-              <%= f.date_field :birth_date, class: "ax-control" %>
-            </div>
-          </div>
-
-          <div class="au-row au-row--2">
-            <div class="au-field">
-              <%= ax_field_label(f, :city, text: "Cidade") %>
-              <%= f.text_field :city, class: "ax-control", placeholder: "Ex: Balneário Camboriú" %>
-            </div>
-          </div>
-
-          <div class="au-field">
-            <%= ax_field_label(f, :biography, text: "Biografia / observações") %>
-            <%= f.text_area :biography, rows: 4, class: "ax-control", placeholder: "Breve descrição sobre o usuário..." %>
-          </div>
-
-          <div class="au-divider"></div>
-
-          <div class="au-row au-row--2">
-            <div class="au-field">
-              <% if admin_user.respond_to?(:mirror?) && admin_user.mirror? %>
-                <p class="ax-field__hint" style="margin:0">Usuário externo (espelho): e-mail e senha são da conta de origem — <%= admin_user.notification_email %>.</p>
-              <% else %>
-              <%= ax_field_label(f, :password, text: admin_user.persisted? ? "Senha (em branco = não alterar)" : "Senha") %>
-              <%= f.password_field :password, class: "ax-control", autocomplete: "new-password" %>
-            </div>
-            <div class="au-field">
-              <%= ax_field_label(f, :password_confirmation, text: "Confirmar senha") %>
-              <%= f.password_field :password_confirmation, class: "ax-control", autocomplete: "new-password" %>
-              <% end %>
-              <% if admin_user.persisted? && admin_user.respond_to?(:otp_enabled?) && admin_user.otp_enabled? && current_admin_user.tenant_owner? %>
-                <div class="tw-mt-2">
-                  <%= link_to reset_two_factor_admin_admin_user_path(admin_user),
-                        data: { turbo_method: :post,
-                                turbo_confirm: "Resetar a verificação em duas etapas de #{admin_user.name}? A pessoa volta a entrar só com a senha e precisará reconfigurar o app autenticador." },
-                        class: "ax-btn ax-btn--sm ax-btn--ghost" do %>
-                    <i class="bi bi-shield-x ax-ico"></i><span>Resetar 2FA (perdeu o aparelho)</span>
-                  <% end %>
-                </div>
-              <% end %>
-            </div>
-          </div>
+          <% end %>
         </div>
       <% end %>
     </div>
@@ -98,86 +59,91 @@
       <%= ax_operational_panel(eyebrow: "Acesso", title: "Acesso e equipe") do %>
         <div class="au-body" data-controller="admin-user-access">
           <% if current_admin_user&.can?(:manage, :corretores) %>
-            <div class="au-field">
-              <%= ax_field_label(nil, nil, text: "Perfil de acesso", for: "admin_user_access_profile_id") %>
-              <%
-                current_access_id = admin_user.horizontal_profile_id.presence || admin_user.profile_id
-              %>
-              <select name="admin_user[access_profile_id]" id="admin_user_access_profile_id" class="ax-control"
-                      data-admin-user-access-target="accessSelect"
-                      data-action="change->admin-user-access#sync">
-                <option value="">Selecione um perfil...</option>
-                <optgroup label="Hierarquia">
-                  <% (@assignable_vertical_profiles || []).each do |profile| %>
-                    <option value="<%= profile.id %>" data-axis="vertical" <%= "selected" if current_access_id == profile.id %>><%= profile.name %></option>
-                  <% end %>
-                </optgroup>
-                <% if (@assignable_horizontal_profiles || []).any? %>
-                  <optgroup label="Funções operacionais">
-                    <% @assignable_horizontal_profiles.each do |horizontal_profile| %>
-                      <option value="<%= horizontal_profile.id %>"
-                              data-axis="horizontal"
-                              data-vertical-profile-id="<%= horizontal_profile.root_vertical_profile&.id %>"
-                              <%= "selected" if current_access_id == horizontal_profile.id %>>
-                        <%= horizontal_profile.name %><%= " · #{horizontal_profile.root_vertical_profile.name}" if horizontal_profile.root_vertical_profile %>
-                      </option>
-                    <% end %>
-                  </optgroup>
-                <% end %>
-              </select>
-              <p class="au-hint">O eixo é decidido pelo perfil: hierarquia define escopo e equipe; função operacional já carrega a hierarquia a que pertence.</p>
-            </div>
+            <%
+              current_access_id = admin_user.horizontal_profile_id.presence || admin_user.profile_id
+              access_profile_groups = {
+                "Hierarquia" => (@assignable_vertical_profiles || []).map { |profile| [profile.name, profile.id, { data: { axis: "vertical" } }] },
+                "Funções operacionais" => (@assignable_horizontal_profiles || []).map do |profile|
+                  [
+                    safe_join([profile.name, profile.root_vertical_profile ? "· #{profile.root_vertical_profile.name}" : nil].compact, " "),
+                    profile.id,
+                    { data: { axis: "horizontal", vertical_profile_id: profile.root_vertical_profile&.id } }
+                  ]
+                end
+              }.reject { |_label, choices| choices.empty? }
+            %>
+            <%= ax_standalone_select_field(
+                  name: "admin_user[access_profile_id]",
+                  id: "admin_user_access_profile_id",
+                  label: "Perfil de acesso",
+                  choices: access_profile_groups,
+                  selected: current_access_id,
+                  include_blank: "Selecione um perfil...",
+                  hint: "A hierarquia define escopo e equipe; a função operacional já carrega a hierarquia correspondente.",
+                  grouped: true,
+                  data: { admin_user_access_target: "accessSelect", action: "change->admin-user-access#sync" }
+                ) %>
           <% else %>
-            <div class="au-field">
-              <span class="au-field__label">Perfil de acesso</span>
-              <p class="au-hint"><strong><%= admin_user.profile&.name || "Ainda não definido" %></strong><%= " · #{admin_user.horizontal_profile.name}" if admin_user.horizontal_profile %></p>
-            </div>
+            <%= ax_status_list(
+                  label: "Perfil de acesso",
+                  rows: [{
+                    label: "Perfil atual",
+                    value: safe_join([admin_user.profile&.name || "Ainda não definido", admin_user.horizontal_profile&.name].compact, " · ")
+                  }]
+                ) %>
           <% end %>
 
-          <div class="au-switches">
+          <%= ax_chip_grid do %>
             <%= ax_toggle_chip(f, :active, label: "Ativo no sistema", id: "admin_user_active") %>
             <span data-admin-user-access-target="verticalOnly">
               <%= ax_toggle_chip(f, :display_on_site, label: "Exibir perfil no site", id: "admin_user_display_on_site") %>
             </span>
-          </div>
-          <p class="au-hint">Usuários inativos não recebem leads e ficam fora da distribuição. O status é sincronizado a cada importação do Vista.</p>
+          <% end %>
+          <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
+            Usuários inativos não recebem leads e ficam fora da distribuição. O status é sincronizado a cada importação do Vista.
+          <% end %>
 
-          <div class="au-field" data-admin-user-access-target="verticalOnly">
-            <%= ax_field_label(f, :acting_type, text: "Área de atuação", tooltip: "Venda, Locação ou Ambos. Define quais gestores o usuário precisa.") %>
-            <%= f.select :acting_type, AdminUser.acting_types.keys.map { |k| [I18n.t("enums.admin_user.acting_type.#{k}", default: k.humanize), k] }, { prompt: "Selecione..." }, { class: "ax-control", data: { admin_user_access_target: "actingSelect", action: "change->admin-user-access#sync" } } %>
+          <div data-admin-user-access-target="verticalOnly">
+            <%= ax_select_field(
+                  form: f,
+                  method: :acting_type,
+                  label: "Área de atuação",
+                  tooltip: "Venda, Locação ou Ambos. Define quais gestores o usuário precisa.",
+                  choices: AdminUser.acting_types.keys.map { |k| [I18n.t("enums.admin_user.acting_type.#{k}", default: k.humanize), k] },
+                  select_options: { prompt: "Selecione..." },
+                  html_options: { data: { admin_user_access_target: "actingSelect", action: "change->admin-user-access#sync" } }
+                ) %>
           </div>
 
           <% if current_admin_user&.can?(:manage, :corretores) %>
             <% manager_options = @assignable_manager_options || [] %>
-            <div class="au-field" data-admin-user-access-target="verticalOnly salesManagerField">
-              <%= ax_field_label(f, :manager_id, text: "Gestor de Venda", tooltip: "Equipe de venda: hierarquia e regras de distribuição de venda.") %>
-              <%= f.collection_select :manager_id, manager_options, :id, :name, { prompt: "Nenhum (topo da hierarquia)" }, { class: "ax-control" } %>
+            <div data-admin-user-access-target="verticalOnly salesManagerField">
+              <%= ax_select_field(form: f, method: :manager_id, label: "Gestor de Venda", tooltip: "Equipe de venda: hierarquia e regras de distribuição de venda.", choices: manager_options.map { |manager| [manager.name, manager.id] }, select_options: { prompt: "Nenhum (topo da hierarquia)" }) %>
             </div>
-            <div class="au-field" data-admin-user-access-target="verticalOnly rentalsManagerField">
-              <%= ax_field_label(f, :rentals_manager_id, text: "Gestor de Locação", tooltip: "Equipe de locação: hierarquia e regras de distribuição de locação.") %>
-              <%= f.collection_select :rentals_manager_id, manager_options, :id, :name, { prompt: "Nenhum (topo da hierarquia)" }, { class: "ax-control" } %>
+            <div data-admin-user-access-target="verticalOnly rentalsManagerField">
+              <%= ax_select_field(form: f, method: :rentals_manager_id, label: "Gestor de Locação", tooltip: "Equipe de locação: hierarquia e regras de distribuição de locação.", choices: manager_options.map { |manager| [manager.name, manager.id] }, select_options: { prompt: "Nenhum (topo da hierarquia)" }) %>
             </div>
-            <p class="au-hint" data-admin-user-access-target="verticalOnly">Cada área de atuação exige o gestor correspondente — <strong>"Ambos" pede os dois</strong>. O gestor precisa estar em um perfil vertical acima do usuário; sem o vínculo da área, o usuário fica fora daquela hierarquia e <strong>não aparece nas regras de distribuição da área</strong>.</p>
+            <div data-admin-user-access-target="verticalOnly">
+              <%= ax_inline_notice(tone: :warning, icon: "diagram-3", compact: true) do %>
+                Cada área exige o gestor correspondente — <strong>“Ambos” pede os dois</strong>. Sem o vínculo, o usuário fica fora da hierarquia e das regras de distribuição da área.
+              <% end %>
+            </div>
           <% end %>
 
           <% if current_admin_user&.tenant_owner? %>
-            <div class="au-field">
-              <span class="au-field__label">Segurança de login</span>
-              <div class="au-switches">
+            <%= ax_field_group(title: "Segurança de login") do %>
+              <%= ax_chip_grid do %>
                 <%= ax_toggle_chip(f, :require_ip_allowlist, label: "Exigir IP permitido", id: "admin_user_require_ip_allowlist") %>
                 <%= ax_toggle_chip(f, :require_trusted_device, label: "Exigir aparelho confiável", id: "admin_user_require_trusted_device") %>
-              </div>
-            </div>
+              <% end %>
+            <% end %>
           <% end %>
 
           <% if admin_user.vista_id.present? %>
-            <div class="au-field">
-              <span class="au-field__label">Integração Vista</span>
-              <%= ax_input_group(prefix: tag.i(class: "bi bi-link-45deg")) do %>
-                <input type="text" class="ax-control" value="<%= admin_user.vista_id %>" readonly disabled>
-              <% end %>
-              <p class="au-hint" style="color:#15803d"><i class="bi bi-check-circle-fill"></i> Conectado ao Vista</p>
-            </div>
+            <%= ax_status_list(
+                  label: "Integração Vista",
+                  rows: [{ label: "Identificador", value: admin_user.vista_id }, { label: "Estado", value: ax_badge("Conectado", tone: :green, dot: true) }]
+                ) %>
           <% end %>
         </div>
       <% end %>
@@ -195,24 +161,3 @@
     <%= f.submit (admin_user.persisted? ? "Salvar alterações" : "Criar usuário"), class: "ax-btn ax-btn--primary" %>
   <% end %>
 <% end %>
-
-<style id="admin-users-form-styles">
-  .au-form { display: grid; gap: 8px; padding-top: 8px; }
-  .au-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
-  @media (min-width: 1080px) { .au-form-grid { grid-template-columns: minmax(0, 1fr) 360px; } }
-  .au-form-main, .au-form-side { display: grid; gap: 8px; min-width: 0; }
-  .au-body { padding: 12px; display: grid; gap: 14px; }
-  .au-field { display: grid; gap: 5px; min-width: 0; }
-  .au-field__label { color: #1f2733; font-size: 12px; font-weight: 700; }
-  .au-row { display: grid; gap: 10px; }
-  .au-row--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  @media (max-width: 560px) { .au-row--2 { grid-template-columns: minmax(0, 1fr); } }
-  .au-hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.45; }
-  .au-divider { height: 1px; background: var(--ax-border-soft, #e7ebf2); }
-  .au-switches { display: grid; gap: 6px; }
-
-  .au-avatar-row { display: flex; align-items: center; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--ax-border-soft, #e7ebf2); }
-  .au-avatar__img { width: 76px; height: 76px; border-radius: 999px; object-fit: cover; }
-  .au-avatar__placeholder { display: inline-flex; align-items: center; justify-content: center; width: 76px; height: 76px; border-radius: 999px; background: #eef2f7; color: #9aa3b2; font-size: 28px; }
-  .au-avatar-row .au-field { flex: 1; }
-</style>

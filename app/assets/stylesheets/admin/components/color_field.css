@@ -1,0 +1,104 @@
+.ax-color-control {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  height: 34px;
+  min-height: 34px;
+  overflow: hidden;
+  border: 1px solid var(--ax-field-border);
+  border-radius: 7px;
+  background: var(--ax-control-bg, #fff);
+  transition: border-color var(--ax-motion-fast) var(--ax-motion-ease), box-shadow var(--ax-motion-fast) var(--ax-motion-ease);
+}
+
+.ax-color-control:hover {
+  border-color: var(--ax-field-hover);
+}
+
+.ax-color-control:focus-within {
+  border-color: var(--ax-field-focus);
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}
+
+.ax-color-control__swatch {
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  min-height: 0 !important;
+  margin: -1px;
+  padding: 0;
+  border: 0 !important;
+  border-right: 1px solid var(--ax-field-border) !important;
+  border-radius: 0 !important;
+  background: var(--ax-control-bg, #fff) !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ax-color-field.ax-field input[type="color"] {
+  margin: -1px;
+  padding: 0;
+}
+
+.ax-color-control__swatch::-webkit-color-swatch-wrapper {
+  height: 100%;
+  padding: 0;
+}
+
+.ax-color-control__swatch::-webkit-color-swatch,
+.ax-color-control__swatch::-moz-color-swatch {
+  border: 0;
+  border-radius: 0;
+}
+
+.ax-color-control__text {
+  width: 100%;
+  height: 34px;
+  min-width: 0;
+  min-height: 0 !important;
+  padding: 0 .75rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--ax-control-bg, #fff) !important;
+  color: var(--admin-ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 650;
+  text-transform: uppercase;
+  box-shadow: none !important;
+}
+
+.ax-color-control__swatch:disabled,
+.ax-color-control__text:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+[data-admin-theme="dark"] .ax-color-control,
+[data-admin-theme="dark"] .ax-color-control__text,
+[data-admin-theme="dark"] .ax-color-control__swatch {
+  border-color: var(--ax-dark-border) !important;
+  background: var(--ax-dark-surface) !important;
+  color: var(--ax-dark-text) !important;
+}
+
+[data-admin-theme="dark"] .ax-color-control:hover {
+  border-color: var(--ax-dark-focus-border) !important;
+}
+
+[data-admin-theme="dark"] .ax-color-control:focus-within {
+  border-color: var(--ax-dark-focus-border) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ax-dark-focus-border) 35%, transparent);
+}
+
+@media (max-width: 420px) {
+  .ax-color-control {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-color-control {
+    transition: none;
+  }
+}

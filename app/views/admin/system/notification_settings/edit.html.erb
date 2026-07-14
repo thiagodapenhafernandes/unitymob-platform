@@ -23,16 +23,13 @@
 %>
 
 <div class="ax-system">
-  <header class="ax-dashboard-command ax-property-form-command">
-    <div class="ax-dashboard-command__main">
-      <span class="ax-dashboard-command__eyebrow">Admin do Sistema</span>
-      <h1>Notificações globais</h1>
-      <p>Transportes globais de notificação (WhatsApp, SMTP e Web Push) usados como <strong>fallback opt-in</strong> pelas contas. Cada conta só usa o global quando não tem integração própria pronta <em>e</em> o opt-in está ligado abaixo.</p>
-    </div>
-    <div class="ax-dashboard-command__status">
-      <%= ax_badge(wa_configured ? "WhatsApp pronto" : "WhatsApp incompleto", tone: wa_configured ? :green : :gray, dot: true) %>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        eyebrow: "Admin do Sistema",
+        icon: "bell",
+        title: "Notificações globais",
+        subtitle: "Transportes globais de notificação — WhatsApp, SMTP e Web Push — usados como fallback opt-in pelas contas. Cada conta só usa o global quando não tem integração própria pronta e o opt-in está ligado.",
+        actions: ax_badge(wa_configured ? "WhatsApp pronto" : "WhatsApp incompleto", tone: wa_configured ? :green : :gray, dot: true)
+      ) %>
 
   <% unless encryption_ready %>
     <%= ax_inline_notice(tone: :warning, icon: "shield-lock") do %>
@@ -107,9 +104,9 @@
             </div>
           <% end %>
 
-          <div class="ax-form-actions">
+          <%= ax_form_actions(sticky: false) do %>
             <%= f.submit "Salvar WhatsApp e webhooks", class: "ax-btn ax-btn--primary" %>
-          </div>
+          <% end %>
         <% end %>
       <% else %>
         <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
@@ -169,9 +166,9 @@
             </div>
           <% end %>
 
-          <div class="ax-form-actions">
+          <%= ax_form_actions(sticky: false) do %>
             <%= f.submit "Salvar SMTP global", class: "ax-btn ax-btn--primary" %>
-          </div>
+          <% end %>
         <% end %>
       <% end %>
 
@@ -193,9 +190,9 @@
             </div>
           <% end %>
 
-          <div class="ax-form-actions">
+          <%= ax_form_actions(sticky: false) do %>
             <%= f.submit "Salvar Web Push", class: "ax-btn ax-btn--primary" %>
-          </div>
+          <% end %>
         <% end %>
 
         <%= ax_operational_panel(eyebrow: "Credenciais", title: "Chaves VAPID",
@@ -248,8 +245,8 @@
                   <thead>
                     <tr>
                       <th>Conta</th>
-                      <th style="width:160px">WhatsApp global</th>
-                      <th style="width:160px">E-mail global</th>
+                      <th class="ax-table__col--w-160">WhatsApp global</th>
+                      <th class="ax-table__col--w-160">E-mail global</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -275,9 +272,9 @@
                   </tbody>
                 </table>
               </div>
-              <div class="ax-form-actions tw-mt-3">
+              <%= ax_form_actions(sticky: false, class_name: "tw-mt-3") do %>
                 <%= submit_tag "Salvar opt-ins", class: "ax-btn ax-btn--primary", disabled: !@fallback_columns_ready %>
-              </div>
+              <% end %>
             <% end %>
           <% end %>
         </div>
@@ -307,7 +304,7 @@
 
       <%= ax_operational_panel(eyebrow: "Como funciona", title: "Ordem de resolução") do %>
         <div class="ax-panel-body">
-          <ol class="ax-field__hint" style="padding-left:18px;margin:0;line-height:1.6;">
+          <ol class="ax-field__hint ax-field__hint--steps">
             <li>A conta usa <strong>sempre</strong> a integração própria quando ela está pronta.</li>
             <li>Se não estiver e o <strong>opt-in</strong> da conta estiver ligado, cai para o transporte global.</li>
             <li>Sem opt-in ou sem global configurado, o canal simplesmente não dispara.</li>

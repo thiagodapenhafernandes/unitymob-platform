@@ -1,8 +1,15 @@
 <%
   badge_classes = ["ax-info-badge", ("ax-info-badge--#{tone}" if tone.present? && tone.to_sym != :default), class_name].compact.join(" ")
+  badge_options = { class: badge_classes }
+  if tooltip.present?
+    badge_options[:data] = {
+      controller: "ax-tooltip",
+      ax_tooltip_text_value: tooltip
+    }
+  end
 %>
 
-<div class="<%= badge_classes %>" title="<%= tooltip %>">
+<%= tag.div(**badge_options) do %>
   <span><%= label %></span>
   <strong><%= value %></strong>
-</div>
+<% end %>

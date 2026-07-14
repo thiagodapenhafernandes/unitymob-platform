@@ -22,7 +22,7 @@
     <button type="button" hidden data-pc-manager-trigger data-action="ax-modal#open" aria-hidden="true" tabindex="-1"></button>
   <% elsif trigger_variant == :menu %>
     <button type="button" data-action="ax-modal#open">
-      <i class="bi bi-pencil" style="color:#697586"></i><span><%= trigger_label || "Meus cartões" %></span>
+      <i class="bi bi-pencil tw-text-ink-muted"></i><span><%= trigger_label || "Meus cartões" %></span>
     </button>
   <% elsif trigger_block %>
     <button type="button" class="ax-btn ax-btn--block ax-btn--ghost wa-inbox-thread__schedule-button" data-action="ax-modal#open">
@@ -36,19 +36,15 @@
   <% end %>
 
   <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
-    <div class="ax-modal-panel" role="dialog" aria-modal="true">
-      <div class="tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3" style="border-bottom:1px solid #e6e8eb">
-        <strong><i class="bi bi-person-badge ax-ico tw-text-primary"></i> Meus cartões de apresentação</strong>
-        <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+    <div class="ax-modal-panel" role="dialog" aria-modal="true" aria-labelledby="presentationCardsManagerTitle">
+      <div class="ax-modal-panel__section-header tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3">
+        <strong id="presentationCardsManagerTitle"><i class="bi bi-person-badge ax-ico tw-text-primary" aria-hidden="true"></i> Meus cartões de apresentação</strong>
+        <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar gerenciador de cartões"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
       </div>
 
       <div class="pc-manager">
         <div class="tw-flex tw-items-center tw-gap-3">
-          <% if current_admin_user.avatar.attached? %>
-            <%= image_tag current_admin_user.avatar, class: "tw-w-10 tw-h-10 tw-rounded-full tw-object-cover", alt: current_admin_user.name %>
-          <% else %>
-            <span class="ax-avatar" style="width:40px;height:40px;font-size:14px"><%= wa_initials(current_admin_user.name) %></span>
-          <% end %>
+          <%= ax_avatar(name: current_admin_user.name, image: current_admin_user.avatar, size: :md) %>
           <div class="tw-min-w-0">
             <strong class="tw-block tw-truncate"><%= current_admin_user.name %></strong>
             <span class="tw-text-ink-muted tw-text-sm"><%= current_admin_user.creci.present? ? "CRECI #{current_admin_user.creci}" : "CRECI não informado" %></span>
@@ -85,9 +81,9 @@
                   </span>
                   <span class="pc-item__preview"><%= card.greeting %></span>
                 </div>
-                <button type="button" class="ax-ico-btn" title="Editar cartão" aria-label="Editar cartão"
+                <button type="button" class="ax-ico-btn" title="Editar cartão <%= card.label %>" aria-label="Editar cartão <%= card.label %>"
                         data-action="ax-disclosure#toggle">
-                  <i class="bi bi-pencil"></i>
+                  <i class="bi bi-pencil" aria-hidden="true"></i>
                 </button>
               </div>
 
@@ -95,18 +91,12 @@
                 <%= form_with url: admin_presentation_card_path(card), method: :patch do %>
                   <input type="hidden" name="return_to" value="<%= request.fullpath %>">
                   <div class="tw-grid tw-gap-3">
-                    <div>
-                      <label class="ax-label" for="pc_label_<%= card.id %>">Rótulo (finalidade)</label>
-                      <%= text_field_tag "presentation_card[label]", card.label, id: "pc_label_#{card.id}", class: "ax-input", maxlength: 40, required: true %>
-                    </div>
-                    <div>
-                      <label class="ax-label" for="pc_greeting_<%= card.id %>">Saudação</label>
-                      <%= text_area_tag "presentation_card[greeting]", card.greeting, id: "pc_greeting_#{card.id}", rows: 4, maxlength: 600, required: true, class: "ax-textarea" %>
-                    </div>
+                    <%= ax_standalone_field(name: "presentation_card[label]", id: "pc_label_#{card.id}", label: "Rótulo (finalidade)", value: card.label, maxlength: 40, required: true) %>
+                    <%= ax_standalone_field(name: "presentation_card[greeting]", id: "pc_greeting_#{card.id}", label: "Saudação", value: card.greeting, type: :textarea, rows: 4, maxlength: 600, required: true) %>
                     <input type="hidden" name="presentation_card[use_photo]" value="0">
-                    <%= ax_switch_field(name: "presentation_card[use_photo]", label: "Enviar com minha foto (avatar do perfil)", checked: card.use_photo?) %>
+                    <%= ax_switch_field(name: "presentation_card[use_photo]", id: "pc_use_photo_#{card.id}", label: "Enviar com minha foto (avatar do perfil)", checked: card.use_photo?) %>
                     <input type="hidden" name="presentation_card[active]" value="0">
-                    <%= ax_switch_field(name: "presentation_card[active]", label: "Ativo (aparece nas Respostas rápidas)", checked: card.active?) %>
+                    <%= ax_switch_field(name: "presentation_card[active]", id: "pc_active_#{card.id}", label: "Ativo (aparece nas Respostas rápidas)", checked: card.active?) %>
                     <div class="tw-flex tw-justify-end">
                       <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Salvar alterações</button>
                     </div>
@@ -114,8 +104,8 @@
                 <% end %>
 
                 <div class="pc-item__danger">
-                  <%= button_to admin_presentation_card_path(card), method: :delete, class: "ax-btn ax-btn--sm ax-btn--ghost pc-item__delete", params: { return_to: request.fullpath } do %>
-                    <i class="bi bi-trash ax-ico"></i><span>Excluir cartão</span>
+                  <%= button_to admin_presentation_card_path(card), method: :delete, class: "ax-btn ax-btn--sm ax-btn--ghost pc-item__delete", params: { return_to: request.fullpath }, form: { data: { turbo_confirm: "Excluir o cartão “#{card.label}”?" } } do %>
+                    <i class="bi bi-trash ax-ico" aria-hidden="true"></i><span>Excluir cartão <%= card.label %></span>
                   <% end %>
                 </div>
               </div>
@@ -136,16 +126,10 @@
             <%= form_with url: admin_presentation_cards_path, method: :post do %>
               <input type="hidden" name="return_to" value="<%= request.fullpath %>">
               <div class="tw-grid tw-gap-3">
-                <div>
-                  <label class="ax-label" for="pc_label_new">Rótulo (finalidade)</label>
-                  <%= text_field_tag "presentation_card[label]", "", id: "pc_label_new", class: "ax-input", maxlength: 40, required: true, placeholder: "Ex.: Lançamentos, Locação, Alto padrão..." %>
-                </div>
-                <div>
-                  <label class="ax-label" for="pc_greeting_new">Saudação</label>
-                  <%= text_area_tag "presentation_card[greeting]", default_greeting, id: "pc_greeting_new", rows: 4, maxlength: 600, required: true, class: "ax-textarea" %>
-                </div>
+                <%= ax_standalone_field(name: "presentation_card[label]", id: "pc_label_new", label: "Rótulo (finalidade)", value: "", maxlength: 40, required: true, placeholder: "Ex.: Lançamentos, Locação, Alto padrão...") %>
+                <%= ax_standalone_field(name: "presentation_card[greeting]", id: "pc_greeting_new", label: "Saudação", value: default_greeting, type: :textarea, rows: 4, maxlength: 600, required: true) %>
                 <input type="hidden" name="presentation_card[use_photo]" value="0">
-                <%= ax_switch_field(name: "presentation_card[use_photo]", label: "Enviar com minha foto (avatar do perfil)", checked: true) %>
+                <%= ax_switch_field(name: "presentation_card[use_photo]", id: "pc_use_photo_new", label: "Enviar com minha foto (avatar do perfil)", checked: true) %>
                 <input type="hidden" name="presentation_card[active]" value="1">
                 <div class="tw-flex tw-justify-end">
                   <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Criar cartão</button>
@@ -170,7 +154,7 @@
         <% end %>
       </div>
 
-      <div class="tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3" style="border-top:1px solid #e6e8eb">
+      <div class="ax-modal-panel__section-footer tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3">
         <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Fechar</button>
       </div>
     </div>

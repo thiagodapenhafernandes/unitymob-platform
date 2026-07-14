@@ -755,6 +755,11 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def authorize_habitation_edit!
+    unless can_edit_habitation?(@habitation)
+      redirect_to admin_habitations_path, alert: "Você não tem permissão para editar este imóvel."
+      return
+    end
+
     return unless @habitation&.broker_intake?
     return unless @habitation.intake_submitted_for_admin_review?
     return if can_complete_admin_intake_review?(@habitation)
@@ -1408,7 +1413,9 @@ class Admin::HabitationsController < Admin::BaseController
     return scope if @ownership_scope == "all"
     return scope unless current_admin_user
 
-    owner_ids = visible_owner_ids(:imoveis)
+    # O escopo do perfil é a fonte de verdade. Em `team`, a listagem sempre usa
+    # a subárvore completa; não existe opt-out por query param nesta tela.
+    owner_ids = accessible_owner_ids(:imoveis)
     return scope if owner_ids.nil? # escopo total (não deveria cair aqui, mas é defensivo)
 
     if owner_ids == [current_admin_user.id]
@@ -1616,7 +1623,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def can_edit_habitation?(habitation)
-    owns_all_resource?(:imoveis) || property_accessible?(habitation)
+    can?(:manage, :imoveis) && property_accessible?(habitation)
   end
 
   # Acesso a um imóvel: dono direto / corretor designado / nome do corretor (próprio),
@@ -1645,17 +1652,17 @@ class Admin::HabitationsController < Admin::BaseController
   def can_complete_admin_intake_review?(habitation)
     return false unless habitation&.broker_intake?
 
-    tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes)
+    can_review_captacao?(habitation)
   end
 
   def can_review_intakes?
-    tenant_owner? || current_admin_user&.can_view_team?(:captacoes) || can?(:review, :captacoes)
+    can?(:review, :captacoes)
   end
 
   def can_manage_intake_status?(habitation)
     return false unless habitation&.broker_intake?
 
-    tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes)
+    can_review_captacao?(habitation)
   end
 
   def can_manage_internal_documents?
@@ -1818,7 +1825,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def can_create_internal_intake?
-    tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes)
+    tenant_owner? || owns_all_resource?(:captacoes)
   end
 
   def admin_paper_intake_requested?
@@ -2348,7 +2355,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def can_manage_habitation_signal_flags?
-    tenant_owner? || owns_all_resource?(:imoveis) || can?(:review, :captacoes)
+    tenant_owner? || owns_all_resource?(:imoveis) || can_review_captacao?(@habitation)
   end
 
   def can_destroy_habitation?
@@ -2439,29 +2446,14 @@ class Admin::HabitationsController < Admin::BaseController
     habitation_visible_admin_users.exists?(id: id) ? id.to_s : nil
   end
 
+  # Dados sensíveis da conta INTEIRA: exige escopo total. Revisor com escopo de
+  # equipe acessa os dados da própria hierarquia pelos caminhos de gestor
+  # (manager_can_view_proprietor_data?), nunca por este atalho global.
   def can_access_sensitive_habitation_data?
-    tenant_owner? || owns_all_resource?(:imoveis) || can?(:review, :captacoes)
+    tenant_owner? || owns_all_resource?(:imoveis) || (can?(:review, :captacoes) && owns_all_resource?(:captacoes))
   end
 
-  # Equipe do gestor = própria subárvore recursiva (team_scope_ids), ainda recortada
-  # por tipo de atuação (venda/locação) quando o gestor não é "both".
-  def manager_team_user_ids
-    return [] unless current_admin_user
-
-    ids = current_admin_user.team_scope_ids
-    return ids if current_admin_user.both?
-
-    current_tenant.admin_users.where(id: ids, acting_type: manager_allowed_acting_types).pluck(:id)
-  end
-
-  def manager_allowed_acting_types
-    case current_admin_user&.acting_type
-    when "sales" then AdminUser.acting_types.values_at("sales", "both")
-    when "rentals" then AdminUser.acting_types.values_at("rentals", "both")
-    else AdminUser.acting_types.values
-    end
-  end
-
+  # manager_team_user_ids / manager_allowed_acting_types vivem no BaseController.
   def manager_can_view_proprietor_data?(habitation)
     team_ids = manager_team_user_ids
     return false if team_ids.blank?
@@ -2475,9 +2467,15 @@ class Admin::HabitationsController < Admin::BaseController
     team_ids = manager_team_user_ids
     return scope.none if team_ids.blank?
 
-    scope.left_outer_joins(:broker_assignments)
-         .where("habitations.admin_user_id IN (:ids) OR habitation_broker_assignments.admin_user_id IN (:ids)", ids: team_ids)
-         .distinct
+    scope.where(
+      "habitations.admin_user_id IN (:ids) OR EXISTS (
+        SELECT 1
+        FROM habitation_broker_assignments
+        WHERE habitation_broker_assignments.habitation_id = habitations.id
+          AND habitation_broker_assignments.admin_user_id IN (:ids)
+      )",
+      ids: team_ids
+    )
   end
 
   def assign_proprietor_from_legacy_fields(habitation)

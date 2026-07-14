@@ -4,7 +4,7 @@
   section_open = !section_collapsed
   section_classes = ["ax-form-section", local_assigns[:class_name]]
   section_classes << "is-open" if section_collapse_id.present? && section_open
-  section_options = { class: section_classes.compact.join(" ") }
+  section_options = { class: section_classes.compact_blank.join(" "), aria: { label: title } }
   if section_collapse_id.present?
     section_options[:data] = {
       controller: "ax-disclosure",
@@ -16,6 +16,8 @@
   if section_collapse_id.present?
     section_body_options[:id] = section_collapse_id
     section_body_options[:data] = { ax_disclosure_target: "content" }
+    section_body_options[:role] = "region"
+    section_body_options[:aria] = { label: title }
     section_body_options[:hidden] = true if section_collapsed
   end
 %>
@@ -49,8 +51,8 @@
         <% if section_collapse_id.present? %>
           <button class="ax-form-section__toggle"
                   type="button"
-                  title="Alternar seção"
-                  aria-label="Alternar seção"
+                  title="Alternar seção <%= title %>"
+                  aria-label="Alternar seção <%= title %>"
                   data-action="click->ax-disclosure#toggle"
                   data-ax-disclosure-target="trigger"
                   aria-expanded="<%= section_collapsed ? 'false' : 'true' %>"

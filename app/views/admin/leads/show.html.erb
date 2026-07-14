@@ -167,7 +167,7 @@
       <% end %>
 
       <% if timeline_wa_events.any? %>
-        <div class="tw-mt-2 tw-pt-2" style="border-top: 1px dashed #e6e8eb" data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
+        <div class="ax-disclosure-divider tw-mt-2" data-controller="ax-disclosure" data-ax-disclosure-open-value="false">
           <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost"
                   data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger" aria-expanded="false">
             <i class="bi bi-whatsapp ax-ico"></i><span>Mostrar mensagens do WhatsApp (<%= timeline_wa_events.size %>)</span>

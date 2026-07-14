@@ -280,10 +280,10 @@ class Admin::DashboardController < Admin::BaseController
     closed_count = status_counts[closed_status].to_i
 
     rows = [
-      { label: "Clientes impactados", value: total_leads, benchmark: "10% a 20%", tone: "red", width: 100 },
-      { label: "Leads interessados", value: interested_count, benchmark: "5% a 15%", tone: "orange", width: 82 },
-      { label: "Oportunidades", value: opportunity_count, benchmark: "20% a 40%", tone: "amber", width: 64 },
-      { label: "Vendas", value: closed_count, benchmark: "0,1% a 1,2%", tone: "blue", width: 46 }
+      { label: "Clientes impactados", value: total_leads, benchmark: "10% a 20%", tone: "red" },
+      { label: "Leads interessados", value: interested_count, benchmark: "5% a 15%", tone: "orange" },
+      { label: "Oportunidades", value: opportunity_count, benchmark: "20% a 40%", tone: "amber" },
+      { label: "Vendas", value: closed_count, benchmark: "0,1% a 1,2%", tone: "blue" }
     ]
 
     rows.each_cons(2) do |from, to|

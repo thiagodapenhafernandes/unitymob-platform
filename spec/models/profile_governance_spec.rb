@@ -250,6 +250,25 @@ RSpec.describe Profile, "governança vertical/horizontal", type: :model do
     expect(described_class.restricted_scope("team", nil)).to eq("team")
   end
 
+  it "ignora team configurado diretamente em perfil horizontal" do
+    vertical = described_class.create!(
+      tenant: tenant,
+      name: "Coordenação vertical",
+      axis: "vertical",
+      position: 777,
+      permissions: { "imoveis" => { "scope" => "all" } }
+    )
+    horizontal = described_class.create!(
+      tenant: tenant,
+      name: "Função operacional",
+      axis: "horizontal",
+      vertical_profile: vertical,
+      permissions: { "imoveis" => { "scope" => "team" } }
+    )
+
+    expect(horizontal.configured_scope_for(:imoveis)).to be_nil
+  end
+
   it "permite configurar escopo hierárquico nos recursos de auditoria" do
     resources = described_class::RESOURCES.index_by { |resource| resource.fetch(:key) }
 

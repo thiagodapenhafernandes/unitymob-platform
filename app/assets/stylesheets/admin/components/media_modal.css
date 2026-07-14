@@ -1,0 +1,77 @@
+/* Loaded after the habitation refresh so this feature modal follows the active theme. */
+[data-admin-theme="dark"] .ax-media-modal { background: rgb(2 8 23 / .76); backdrop-filter: blur(5px); }
+[data-admin-theme="dark"] .ax-media-modal__panel { border-color: var(--ax-dark-border); background: var(--ax-dark-surface); color: var(--ax-dark-text); box-shadow: 0 28px 70px rgb(0 0 0 / .56); }
+[data-admin-theme="dark"] .ax-media-modal__header,
+[data-admin-theme="dark"] .ax-media-modal__footer { border-color: var(--ax-dark-border-soft); background: var(--ax-dark-surface-raised); }
+[data-admin-theme="dark"] .ax-media-modal__body { background: var(--ax-dark-workspace); }
+[data-admin-theme="dark"] .ax-media-modal__form { background: var(--ax-dark-surface); color: var(--ax-dark-text); }
+[data-admin-theme="dark"] .ax-media-modal__actions .ax-icon-btn {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text-soft);
+}
+[data-admin-theme="dark"] .ax-media-modal__actions .ax-icon-btn:hover,
+[data-admin-theme="dark"] .ax-media-modal__actions .ax-icon-btn:focus-visible {
+  border-color: var(--ax-dark-focus-border);
+  background: var(--ax-dark-surface-hover);
+  color: var(--ax-dark-text);
+}
+[data-admin-theme="dark"] .ax-media-modal :where(.text-muted, [aria-disabled="true"], :disabled) {
+  color: var(--ax-dark-text-muted) !important;
+  opacity: .68;
+}
+[data-admin-theme="dark"] .ax-media-modal__footer .ax-btn:not(.ax-btn--primary) {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text);
+}
+[data-admin-theme="dark"] .ax-media-modal__footer .ax-btn:not(.ax-btn--primary):hover,
+[data-admin-theme="dark"] .ax-media-modal__footer .ax-btn:not(.ax-btn--primary):focus-visible {
+  border-color: var(--ax-dark-focus-border);
+  background: var(--ax-dark-surface-hover);
+}
+[data-admin-theme="dark"] .ax-media-modal__eyebrow,
+[data-admin-theme="dark"] .ax-media-modal__footer-meta { color: var(--ax-dark-text-muted); }
+[data-admin-theme="dark"] .ax-media-modal__title-group h2,
+[data-admin-theme="dark"] .ax-media-modal__meta,
+[data-admin-theme="dark"] .ax-media-modal__body .ax-form-section,
+[data-admin-theme="dark"] .ax-media-modal__state { color: var(--ax-dark-text); }
+[data-admin-theme="dark"] .ax-media-modal__body .ax-form-section,
+[data-admin-theme="dark"] .ax-media-modal__body .ax-media-manager,
+[data-admin-theme="dark"] .ax-media-modal__body .ax-media-toolbar,
+[data-admin-theme="dark"] .ax-media-modal__body .ax-media-upload-panel { border-color: var(--ax-dark-border-soft); background: var(--ax-dark-surface); }
+[data-admin-theme="dark"] .ax-media-modal__body :is(.ax-media-toolbar__title, .ax-media-upload-panel__title, .ax-media-accordion__title) { color: var(--ax-dark-text); }
+[data-admin-theme="dark"] .ax-media-modal__body :is(.ax-media-toolbar__meta, .ax-media-upload-panel__hint, .ax-media-accordion__meta) { color: var(--ax-dark-text-muted); }
+
+[data-admin-theme="dark"] .ax-media-popover__body {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text-soft);
+  box-shadow: 0 20px 48px rgb(0 0 0 / .48);
+}
+[data-admin-theme="dark"] .ax-media-popover__actions { border-color: var(--ax-dark-border-soft); }
+[data-admin-theme="dark"] .ax-media-compact-details {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+}
+[data-admin-theme="dark"] .ax-media-compact-details > summary {
+  color: var(--ax-dark-text-soft);
+}
+[data-admin-theme="dark"] .ax-media-compact-details > summary:hover,
+[data-admin-theme="dark"] .ax-media-compact-details > summary:focus-visible {
+  background: var(--ax-dark-surface-hover);
+  color: var(--ax-dark-text);
+  outline: none;
+}
+[data-admin-theme="dark"] .ax-media-compact-details > summary strong { color: var(--ax-dark-text); }
+[data-admin-theme="dark"] .ax-media-compact-details[open] > summary { border-color: var(--ax-dark-border-soft); }
+[data-admin-theme="dark"] .ax-media-source-notice {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+}
+[data-admin-theme="dark"] .ax-media-source-notice__icon {
+  background: #243a59;
+  color: #9bc5ef;
+}
+[data-admin-theme="dark"] .ax-media-source-notice__copy strong { color: var(--ax-dark-text); }
+[data-admin-theme="dark"] .ax-media-source-notice__copy span { color: var(--ax-dark-text-muted); }

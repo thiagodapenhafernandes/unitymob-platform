@@ -1,0 +1,93 @@
+/* Compact search control with an embedded magnifier. */
+.ax-search {
+  flex: 1 1 240px;
+  max-width: 380px;
+  height: 34px;
+  padding: 0 12px 0 32px;
+  color: var(--admin-ink);
+  background: var(--ax-control-bg) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23697586' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'/><path d='m21 21-4.3-4.3'/></svg>") no-repeat 10px center;
+  border: 1px solid #d2d6db;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color .12s, box-shadow .12s;
+}
+
+.ax-search--fluid {
+  width: 100%;
+  max-width: none;
+}
+
+/* Dentro de ax-field o eixo flex é vertical. O basis horizontal legado de
+   240px virava altura e estourava formulários de filtro. */
+.ax-field > .ax-search {
+  flex: 0 0 var(--ax-form-control-height, 34px);
+  height: var(--ax-form-control-height, 34px);
+}
+
+.ax-search:hover:not(:disabled):not([readonly]) {
+  border-color: var(--ax-field-hover, #b8c5d6);
+}
+
+.ax-search:focus-visible {
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px var(--admin-primary-ring);
+}
+
+.ax-search::-webkit-search-cancel-button {
+  cursor: pointer;
+  opacity: .62;
+}
+
+.ax-search::-webkit-search-cancel-button:hover {
+  opacity: 1;
+}
+
+.ax-search:disabled,
+.ax-search[readonly] {
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+.ax-search[readonly] {
+  cursor: default;
+}
+
+[data-admin-theme="dark"] .ax-search {
+  border-color: var(--ax-dark-border);
+  background-color: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+  color-scheme: dark;
+}
+
+[data-admin-theme="dark"] .ax-search::placeholder {
+  color: var(--ax-dark-placeholder);
+  opacity: 1;
+}
+
+[data-admin-theme="dark"] .ax-search:hover:not(:disabled):not([readonly]) {
+  border-color: #526985;
+}
+
+[data-admin-theme="dark"] .ax-search:focus-visible {
+  border-color: var(--ax-dark-focus-border);
+  box-shadow: 0 0 0 3px rgb(98 148 204 / .16);
+  outline: none;
+}
+
+[data-admin-theme="dark"] .ax-search::-webkit-search-cancel-button {
+  filter: invert(1);
+}
+
+[data-admin-theme="dark"] .ax-search:disabled,
+[data-admin-theme="dark"] .ax-search[readonly] {
+  border-color: #33445d;
+  background-color: #141f32;
+  color: #8f9db2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-search {
+    transition: none;
+  }
+}

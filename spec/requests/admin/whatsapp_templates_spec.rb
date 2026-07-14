@@ -29,6 +29,13 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       expect(response.body).to include("Templates WhatsApp")
       expect(response.body).to include("convite")
       expect(response.body).to include("Criar campanha")
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css("a.whatsapp-template-selector__option[aria-current='true']")).to be_present
+      expect(document.at_css("table caption")&.text).to include("Templates da WABA selecionada")
+      expect(document.css("table th[scope='col']").size).to eq(6)
+      campaign_action = document.at_css("a.ax-btn--primary[href*='new_campaign']")
+      expect(campaign_action).to be_present
+      expect(campaign_action["style"]).to be_nil
     end
 
     it "pede selecao do numero antes de listar templates" do
@@ -39,6 +46,20 @@ RSpec.describe "Admin::WhatsappTemplates", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Número / WABA")
       expect(response.body).not_to include("<table")
+    end
+
+
+    it "usa os estados vazios compartilhados para numeros e templates" do
+      get admin_whatsapp_templates_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Nenhum número ativo cadastrado", "ax-empty-state")
+
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant, waba_id: "waba-vazia")
+      get admin_whatsapp_templates_path(whatsapp_sender_number_id: sender.id)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Nenhum template encontrado", "Ajuste os filtros ou sincronize novamente")
     end
 
     it "nao lista o numero fixo das notificacoes como numero de campanha" do

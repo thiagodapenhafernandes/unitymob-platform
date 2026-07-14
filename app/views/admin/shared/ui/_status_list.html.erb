@@ -1,0 +1,14 @@
+<%
+  status_list_classes = ["ax-status-list", local_assigns[:class_name]].compact.join(" ")
+  status_list_options = { class: status_list_classes }
+  status_list_options[:aria] = { label: local_assigns[:label] } if local_assigns[:label].present?
+%>
+
+<%= tag.dl(**status_list_options) do %>
+  <% rows.each do |row| %>
+    <div class="ax-status-list__row">
+      <dt class="ax-status-list__label"><%= row.fetch(:label) %></dt>
+      <dd class="ax-status-list__value"><%= row.fetch(:value) %></dd>
+    </div>
+  <% end %>
+<% end %>

@@ -1,44 +1,61 @@
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-  <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2"><i class="bi bi-toggles2 tw-text-primary"></i>Configurações de Campo (check-in)</h1>
-</div>
+<div class="field-settings-admin">
+  <%= ax_workspace_heading(
+        eyebrow: "Configurações · Operação de campo",
+        icon: "toggles2",
+        title: "Configurações de Campo",
+        pills: [@enabled ? "Check-in ativo" : "Check-in inativo"],
+        subtitle: "Controle o acesso ao PWA de campo e as exceções individuais de check-in."
+      ) %>
 
-<div class="ax-card">
-  <div class="ax-card__body">
-    <h5 class="tw-font-bold tw-mb-3 tw-flex tw-items-center tw-gap-2">
-      <i class="bi bi-geo-alt-fill" style="color:#16a34a"></i>Feature check-in geolocalizado
-    </h5>
+  <div class="ax-metric-grid" aria-label="Resumo da operação de campo">
+    <%= ax_metric_card(
+          label: "Check-in",
+          value: @enabled ? "Ativo" : "Inativo",
+          badge: ax_badge(@enabled ? "Disponível" : "Pausado", tone: @enabled ? :green : :gray)
+        ) %>
+    <%= ax_metric_card(label: "Usuários ativos", value: @field_users.size, hint: "na conta atual") %>
+    <%= ax_metric_card(label: "Lojas ativas", value: @stores.size, hint: "aptas à configuração") %>
+    <%= ax_metric_card(
+          label: "Bloqueios",
+          value: @blocked_agents_count,
+          hint: @blocked_agents_count.positive? ? "exceções individuais" : "nenhuma exceção"
+        ) %>
+  </div>
 
-    <p class="ax-page-subtitle">
+  <%= ax_operational_panel(
+        eyebrow: "Feature gate",
+        title: "Check-in geolocalizado",
+        actions: ax_badge(@enabled ? "Ativado" : "Desativado", tone: @enabled ? :green : :gray, dot: @enabled)
+      ) do %>
+    <p class="ax-field__hint">
       Quando <strong>ativada</strong>, o PWA <code>/field</code> aceita login dos corretores e as rotas <code>/field/*</code> respondem normalmente.
-      Quando <strong>desativada</strong>, todas as rotas <code>/field/*</code> retornam 404 e o filtro de check-in
-      em <code>/admin/distribution_rules</code> fica inoperante (regras funcionam como antes).
+      Quando <strong>desativada</strong>, essas rotas retornam 404 e o filtro de check-in em <code>/admin/distribution_rules</code> fica inoperante.
     </p>
 
-    <%= form_with url: admin_field_settings_path, method: :patch, local: true do |f| %>
-      <%= ax_switch_field(label: tag.span("Check-in ativado", class: "tw-font-bold"), name: :enabled, value: "1", checked: @enabled, id: "field_enabled", class_name: "tw-mb-4") %>
+    <%= form_with url: admin_field_settings_path, method: :patch, local: true do |form| %>
+      <%= ax_switch_field(
+            label: tag.span("Check-in ativado", class: "tw-font-bold"),
+            name: :enabled,
+            value: "1",
+            checked: @enabled,
+            id: "field_enabled",
+            class_name: "tw-mb-4"
+          ) %>
 
-      <div class="tw-flex tw-justify-end tw-gap-2">
-        <%= link_to "Cancelar", admin_root_path, class: "ax-btn ax-btn--ghost" %>
-        <%= f.submit "Salvar", class: "ax-btn ax-btn--primary" %>
-      </div>
+      <%= ax_form_actions(cancel_path: admin_root_path, submit_label: "Salvar", form:) %>
     <% end %>
-  </div>
-</div>
+  <% end %>
 
-<div class="ax-card tw-mt-3">
-  <div class="ax-card__body">
-    <div class="tw-flex tw-items-start tw-justify-between tw-gap-3 tw-mb-3">
-      <div>
-        <h5 class="tw-font-bold tw-mb-1 tw-flex tw-items-center tw-gap-2">
-          <i class="bi bi-person-dash-fill" style="color:var(--admin-primary)"></i>Bloqueios pontuais de check-in
-        </h5>
-        <p class="ax-page-subtitle tw-mb-0">
-          Com o check-in ativado, todos os usuários ativos podem usar o botão no PWA. Use esta lista apenas para bloquear exceções.
-          A loja é definida pela proximidade real do usuário com as lojas configuradas.
-        </p>
-      </div>
-      <%= ax_badge("#{@blocked_agents_count} bloqueado(s)", tone: @blocked_agents_count.positive? ? :amber : :green) %>
-    </div>
+  <%= ax_operational_panel(
+        eyebrow: "Exceções",
+        title: "Bloqueios pontuais de check-in",
+        class_name: "tw-mt-3",
+        actions: ax_badge("#{@blocked_agents_count} bloqueado(s)", tone: @blocked_agents_count.positive? ? :amber : :green)
+      ) do %>
+    <p class="ax-field__hint">
+      Com o check-in ativado, todos os usuários ativos podem usar o botão no PWA. Use esta lista apenas para bloquear exceções.
+      A loja é definida pela proximidade real do usuário com as lojas configuradas.
+    </p>
 
     <% if @stores.empty? %>
       <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
@@ -47,14 +64,15 @@
       <% end %>
     <% end %>
 
-    <div class="ax-table-shell">
+    <div class="ax-table-wrap">
       <table class="ax-table">
+        <caption class="tw-sr-only">Acesso dos usuários ativos da conta ao check-in geolocalizado</caption>
         <thead>
           <tr>
-            <th>Usuário</th>
-            <th>Acesso ao check-in</th>
-            <th>Regra aplicada</th>
-            <th class="tw-text-right">Ação</th>
+            <th scope="col">Usuário</th>
+            <th scope="col" class="ax-table__col--w-170">Acesso ao check-in</th>
+            <th scope="col">Regra aplicada</th>
+            <th scope="col" class="tw-text-right ax-table__col--w-120">Ação</th>
           </tr>
         </thead>
         <tbody>
@@ -65,52 +83,52 @@
                 <strong><%= user.name %></strong>
                 <div class="tw-text-xs tw-text-ink-muted"><%= user.email %></div>
               </td>
-              <td>
-                <%= ax_badge(blocked ? "Bloqueado" : "Liberado por padrão", tone: blocked ? :amber : :green, dot: !blocked) %>
-              </td>
-              <td>
-                Loja mais próxima dentro do raio e horário configurados
-              </td>
+              <td><%= ax_badge(blocked ? "Bloqueado" : "Liberado por padrão", tone: blocked ? :amber : :green, dot: !blocked) %></td>
+              <td>Loja mais próxima dentro do raio e horário configurados</td>
               <td class="tw-text-right">
                 <% if blocked %>
-                  <%= button_to unblock_agent_admin_field_settings_path,
-                        method: :patch,
-                        params: { admin_user_id: user.id },
-                        class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-                    Liberar
-                  <% end %>
+                  <%= button_to "Liberar",
+                                unblock_agent_admin_field_settings_path,
+                                method: :patch,
+                                params: { admin_user_id: user.id },
+                                class: "ax-btn ax-btn--sm ax-btn--primary",
+                                aria: { label: "Liberar check-in para #{user.name}" } %>
                 <% else %>
-                  <%= button_to block_agent_admin_field_settings_path,
-                        method: :patch,
-                        params: { admin_user_id: user.id },
-                        class: "ax-btn ax-btn--sm ax-btn--ghost",
-                        data: { turbo_confirm: "Bloquear check-in de #{user.name}?" } do %>
-                    Bloquear
-                  <% end %>
+                  <%= button_to "Bloquear",
+                                block_agent_admin_field_settings_path,
+                                method: :patch,
+                                params: { admin_user_id: user.id },
+                                class: "ax-btn ax-btn--sm",
+                                aria: { label: "Bloquear check-in para #{user.name}" },
+                                data: { turbo_confirm: "Bloquear check-in de #{user.name}?" } %>
                 <% end %>
               </td>
             </tr>
           <% end %>
+
           <% if @field_users.empty? %>
             <tr>
-              <td colspan="4"><div class="ax-empty">Nenhum usuário ativo encontrado.</div></td>
+              <td colspan="4">
+                <%= ax_empty_state(
+                      title: "Nenhum usuário ativo encontrado",
+                      description: "Usuários ativos da conta aparecerão aqui para configuração individual.",
+                      icon: "person-dash"
+                    ) %>
+              </td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
-  </div>
-</div>
+  <% end %>
 
-<div class="ax-card tw-mt-3">
-  <div class="ax-card__body">
-    <h6 class="tw-font-bold tw-flex tw-items-center tw-gap-2"><i class="bi bi-info-circle-fill" style="color:var(--admin-primary)"></i>Checklist antes de ativar</h6>
-    <ul class="tw-text-sm" style="margin-bottom:0">
+  <%= ax_operational_panel(eyebrow: "Pré-requisitos", title: "Checklist antes de ativar", class_name: "tw-mt-3") do %>
+    <ul class="ax-field__hint ax-field__hint--steps">
       <li>Lojas cadastradas em <%= link_to "/admin/stores", admin_stores_path %> com coordenadas, raio e turnos.</li>
       <li>Regras de distribuição configuradas para exigir check-in quando esse filtro fizer parte da operação.</li>
       <li>Bloqueios pontuais revisados apenas para usuários que não devem usar o check-in.</li>
       <li>Worker <code>solid_queue</code> rodando com scheduler ativo (cron <code>recurring.yml</code>).</li>
       <li>PostGIS habilitado no Postgres.</li>
     </ul>
-  </div>
+  <% end %>
 </div>

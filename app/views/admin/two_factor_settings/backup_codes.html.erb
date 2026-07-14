@@ -1,14 +1,13 @@
 <% content_for :title, "Códigos de backup — Verificação em duas etapas" %>
 
 <div class="layout-settings-workspace">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-key" style="color: var(--admin-primary);"></i>Guarde seus códigos de backup
-      </h1>
-      <p class="ax-page-subtitle">Eles aparecem <strong>só esta vez</strong>. Cada código entra uma única vez no lugar do aplicativo.</p>
-    </div>
-  </div>
+  <%= ax_workspace_heading(
+        eyebrow: "Segurança · Acesso",
+        icon: "key",
+        title: "Guarde seus códigos de backup",
+        subtitle: "Eles aparecem só esta vez. Cada código entra uma única vez no lugar do aplicativo.",
+        pills: ["uso único"]
+      ) %>
 
   <div class="layout-settings-grid">
     <div class="layout-settings-main">
@@ -18,18 +17,27 @@
             Copie ou imprima AGORA — por segurança, o sistema não mostra estes códigos de novo.
           <% end %>
 
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
+          <div class="two-factor-backup-grid"
+               data-controller="clipboard"
+               data-clipboard-success-content-value="Copiado!">
             <% @backup_codes.each do |code| %>
-              <code style="display:block;padding:8px 10px;background:#f7f8fa;border:1px solid #eceef1;border-radius:6px;font-size:13px;text-align:center;letter-spacing:.05em;"><%= code %></code>
+              <code class="two-factor-backup-code"><%= code %></code>
             <% end %>
-          </div>
+            <textarea class="tw-sr-only"
+                      readonly
+                      tabindex="-1"
+                      aria-hidden="true"
+                      data-clipboard-target="source"><%= @backup_codes.join("\n") %></textarea>
 
-          <div class="tw-flex tw-gap-2">
-            <button type="button" class="ax-btn"
-                    onclick="navigator.clipboard.writeText(<%= @backup_codes.join("\n").to_json %>).then(() => this.textContent = 'Copiado!')">
-              Copiar todos
-            </button>
-            <%= link_to "Concluir", admin_two_factor_settings_path, class: "ax-btn ax-btn--primary" %>
+            <div class="two-factor-backup-actions">
+              <button type="button"
+                      class="ax-btn"
+                      data-action="clipboard#copy"
+                      data-clipboard-target="button">
+                <span data-clipboard-target="content">Copiar todos</span>
+              </button>
+              <%= link_to "Concluir", admin_two_factor_settings_path, class: "ax-btn ax-btn--primary" %>
+            </div>
           </div>
         </div>
       <% end %>

@@ -103,6 +103,7 @@
   .hier-row.is-root { border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 30%, #e7ebf2); background: #f8fafc; }
 
   .hier-row__handle { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 18px; color: #b4bdca; cursor: grab; }
+  .hier-row__handle.is-placeholder { visibility: hidden; }
   .hier-row__handle:active { cursor: grabbing; }
   .hier-row__handle:hover { color: var(--admin-primary, #365f8f); }
 
@@ -127,8 +128,6 @@
   .hier-row__toggle[aria-expanded="true"] i { transform: rotate(90deg); }
 
   .hier-row__avatar { flex: 0 0 auto; }
-  .hier-row__img { width: 34px; height: 34px; border-radius: 999px; object-fit: cover; }
-  .hier-row__initial { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 999px; background: var(--admin-primary, #365f8f); color: #fff; font-weight: 800; font-size: 12px; }
 
   .hier-row__main { display: grid; gap: 1px; min-width: 0; flex: 1; }
   .hier-row__main strong { color: #1f2733; font-size: 13px; }

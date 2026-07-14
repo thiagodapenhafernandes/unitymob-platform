@@ -1,0 +1,28 @@
+/* Shared mobile offcanvas behavior; sidebar geometry remains in the shell. */
+.ax-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgb(16 24 40 / .45);
+  backdrop-filter: blur(2px);
+}
+
+.ax-drawer-backdrop[hidden] {
+  display: none;
+}
+
+.ax-drawer-panel {
+  transition:
+    transform var(--ax-motion-slow) var(--ax-motion-ease),
+    box-shadow var(--ax-motion-base) var(--ax-motion-ease);
+}
+
+[data-admin-theme="dark"] .ax-drawer-backdrop {
+  background: rgb(2 6 23 / .68);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-drawer-panel {
+    transition-duration: 0.01ms;
+  }
+}

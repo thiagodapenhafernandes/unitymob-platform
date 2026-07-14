@@ -10,16 +10,21 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   end
 
   def list_forms
-    @page_number = params[:page].to_i
-    @page_number = 1 if @page_number < 1
     @forms_per_page = FORMS_PER_PAGE
     @forms_total_count = @page.meta_lead_forms.count
+    total_pages = [(@forms_total_count.to_f / @forms_per_page).ceil, 1].max
+    requested_page = [params[:page].to_i, 1].max
+    @page_number = [requested_page, total_pages].min
     @forms = @page.meta_lead_forms
                   .order(facebook_created_at: :desc, id: :desc)
                   .offset((@page_number - 1) * @forms_per_page)
                   .limit(@forms_per_page)
     @next_page = @forms_total_count > (@page_number * @forms_per_page) ? @page_number + 1 : nil
-    @frame_id = params[:frame_id].presence || "page_forms_#{@page.id}"
+    @frame_id = if @page_number == 1
+      "page_forms_#{@page.id}"
+    else
+      "page_forms_#{@page.id}_page_#{@page_number}"
+    end
     render layout: false
   end
 
@@ -48,7 +53,7 @@ class Admin::MetaIntegrationsController < Admin::BaseController
     if integration.nil?
       message = "Você não tem uma conta Meta conectada. Conecte seu Facebook em Configurações → Integrações Meta."
       respond_to do |format|
-        format.json { render json: { ok: false, message: message }, status: :unprocessable_entity }
+        format.json { render json: { ok: false, message: message }, status: :unprocessable_content }
         format.html { redirect_to admin_meta_integrations_path, alert: message }
       end
       return
@@ -60,10 +65,13 @@ class Admin::MetaIntegrationsController < Admin::BaseController
       format.json { render json: { ok: true, message: notice } }
       format.html { redirect_to admin_meta_integrations_path, notice: notice }
     end
-  rescue => e
+  rescue StandardError => e
+    Rails.logger.error("[MetaSync] enqueue failed integration_id=#{integration&.id} error=#{e.class}")
+    message = "Não foi possível iniciar a sincronização. Tente novamente em instantes."
+
     respond_to do |format|
-      format.json { render json: { ok: false, message: "Erro ao iniciar sincronização: #{e.message}" }, status: :internal_server_error }
-      format.html { redirect_to admin_meta_integrations_path, alert: "Erro ao iniciar sincronização: #{e.message}" }
+      format.json { render json: { ok: false, message: message }, status: :internal_server_error }
+      format.html { redirect_to admin_meta_integrations_path, alert: message }
     end
   end
 
@@ -72,6 +80,8 @@ class Admin::MetaIntegrationsController < Admin::BaseController
   end
 
   def set_page
+    raise ActiveRecord::RecordNotFound, "Integração Meta não encontrada" unless @integration
+
     @page = @integration.meta_facebook_pages.find(params[:page_id])
   end
 end

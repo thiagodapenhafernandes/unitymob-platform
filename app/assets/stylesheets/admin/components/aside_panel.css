@@ -1,0 +1,314 @@
+/* Shared contextual inspector panel and collapsed rail. */
+.ax-aside-panel-shell {
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ax-aside-panel {
+  display: grid;
+  grid-template-rows: var(--ax-contextbar-h) minmax(0, 1fr);
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.ax-aside-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: var(--ax-contextbar-h);
+  padding: 0 var(--ax-workspace-gutter);
+  border-bottom: 1px solid #dfe5ee;
+  background: #eef3f8;
+}
+
+.ax-aside-panel__header strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #1f2733;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .055em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ax-aside-panel__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.ax-aside-panel__actions > span,
+.ax-aside-rail__token {
+  overflow: hidden;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: #697586;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ax-aside-panel__toggle,
+.ax-aside-rail__toggle {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #d4dce8;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.ax-aside-panel__toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.ax-aside-rail__toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.ax-aside-panel__toggle:hover,
+.ax-aside-rail__toggle:hover {
+  border-color: #b9c6d8;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.ax-aside-panel__toggle:focus-visible,
+.ax-aside-rail:focus-visible,
+.ax-aside-rail__toggle:focus-visible {
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+}
+
+.ax-aside-panel__body {
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ax-aside-rail {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 2;
+  display: inline-flex;
+  width: var(--ax-workspace-aside-collapsed-w, 44px);
+  height: 100%;
+  align-items: flex-start;
+  justify-content: center;
+  padding: .65rem .25rem;
+  border: 0;
+  border-radius: 0;
+  background: #eef3f8;
+  color: #334155;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ax-aside-rail__content {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  color: #334155;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-orientation: mixed;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+}
+
+.ax-workspace-shell.is-inspector-collapsed .ax-aside-panel {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(10px);
+}
+
+.ax-workspace-shell.is-inspector-collapsed .ax-aside-rail {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+[data-admin-theme="dark"] .ax-aside-panel {
+  border-color: var(--ax-dark-divider);
+  background: var(--admin-workspace-bg);
+  color: var(--admin-ink);
+}
+
+[data-admin-theme="dark"] .ax-aside-panel__header {
+  border-bottom-color: var(--ax-dark-divider);
+  background: var(--ax-dark-context);
+}
+
+[data-admin-theme="dark"] .ax-aside-panel__header strong { color: var(--admin-ink); }
+
+[data-admin-theme="dark"] .ax-aside-panel__actions > span,
+[data-admin-theme="dark"] .ax-aside-rail__token {
+  background: color-mix(in srgb, var(--admin-primary) 12%, var(--admin-surface));
+  color: var(--ab-muted);
+}
+
+[data-admin-theme="dark"] :where(.ax-aside-panel__toggle, .ax-aside-rail__toggle) {
+  border-color: var(--ax-field-border);
+  background: var(--ax-control-bg);
+  color: var(--ab-muted);
+  box-shadow: none;
+}
+
+[data-admin-theme="dark"] :where(.ax-aside-panel__toggle, .ax-aside-rail__toggle):hover,
+[data-admin-theme="dark"] :where(.ax-aside-panel__toggle, .ax-aside-rail__toggle):focus-visible {
+  border-color: var(--ax-field-hover);
+  background: var(--ax-control-hover);
+  color: var(--admin-ink);
+}
+
+[data-admin-theme="dark"] .ax-aside-rail {
+  border-color: var(--ax-dark-divider);
+  background: var(--admin-workspace-bg);
+  color: var(--ab-muted);
+}
+
+[data-admin-theme="dark"] .ax-aside-rail__content { color: var(--ab-muted); }
+
+.ax-aside-rail--nav {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  width: var(--ax-workspace-aside-collapsed-w, 60px);
+  padding: 6px 6px 8px;
+  background: linear-gradient(to bottom, #eef2f7 0, #eef2f7 var(--ax-contextbar-h), #f8fafc var(--ax-contextbar-h), #f8fafc 100%);
+  cursor: default;
+  transform: translateX(8px);
+  transition:
+    opacity var(--ax-motion-fast) var(--ax-motion-ease),
+    transform var(--ax-motion-base) var(--ax-motion-ease),
+    background var(--ax-motion-fast) var(--ax-motion-ease);
+}
+
+.ax-aside-rail--nav:hover {
+  background: linear-gradient(to bottom, #eef2f7 0, #eef2f7 var(--ax-contextbar-h), #f8fafc var(--ax-contextbar-h), #f8fafc 100%);
+}
+
+.ax-aside-rail--nav .ax-aside-rail__toggle {
+  width: var(--ax-btn-h-sm);
+  height: var(--ax-btn-h-sm);
+  margin-bottom: 14px;
+  border-color: #dfe5ee;
+  border-radius: var(--ax-btn-radius);
+  background: #fff;
+  color: #607086;
+  box-shadow: 0 1px 1px rgb(15 23 42 / .04);
+}
+
+.ax-aside-rail--nav .ax-aside-rail__toggle:hover {
+  border-color: #c7d3e3;
+  background: #f8fafc;
+  color: #263241;
+}
+
+.ax-aside-rail-nav {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  justify-items: center;
+}
+
+.ax-aside-rail-nav__item {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #475467;
+  cursor: pointer;
+  transition:
+    background var(--ax-motion-fast) var(--ax-motion-ease),
+    border-color var(--ax-motion-fast) var(--ax-motion-ease),
+    color var(--ax-motion-fast) var(--ax-motion-ease);
+}
+
+.ax-aside-rail-nav__item:hover,
+.ax-aside-rail-nav__item:focus-visible {
+  border-color: #dbe3ee;
+  background: #eef3f9;
+  color: #1f2733;
+  outline: none;
+}
+
+.ax-aside-rail-nav__item.active {
+  border-color: #c7d8ee;
+  background: #e8f0fb;
+  color: #245486;
+  box-shadow: none;
+}
+
+.ax-aside-rail-nav__item .bi { color: #8490a1; font-size: 15px; line-height: 1; }
+.ax-aside-rail-nav__item:hover .bi,
+.ax-aside-rail-nav__item:focus-visible .bi { color: #586579; }
+.ax-aside-rail-nav__item.active .bi { color: var(--admin-primary); }
+.ax-aside-rail-nav__item .ax-tab-error { position: absolute; top: -4px; right: -4px; }
+.ax-aside-rail-nav__item .ax-tab-missing { position: absolute; top: -5px; right: -5px; }
+.ax-aside-rail--nav > .ax-aside-rail__token { display: none; }
+
+[data-admin-theme="dark"] .ax-aside-rail--nav,
+[data-admin-theme="dark"] .ax-aside-rail--nav:hover {
+  background: linear-gradient(to bottom, var(--ax-dark-context) 0, var(--ax-dark-context) var(--ax-contextbar-h), var(--admin-workspace-bg) var(--ax-contextbar-h), var(--admin-workspace-bg) 100%);
+}
+
+[data-admin-theme="dark"] .ax-aside-rail--nav .ax-aside-rail__toggle {
+  border-color: var(--ax-field-border);
+  background: var(--ax-control-bg);
+  color: var(--ab-muted);
+  box-shadow: none;
+}
+
+[data-admin-theme="dark"] .ax-aside-rail-nav__item { color: var(--ab-muted); }
+[data-admin-theme="dark"] .ax-aside-rail-nav__item .bi { color: #8291a6; }
+[data-admin-theme="dark"] .ax-aside-rail-nav__item:hover,
+[data-admin-theme="dark"] .ax-aside-rail-nav__item:focus-visible {
+  border-color: var(--ax-field-border);
+  background: var(--ax-control-hover);
+  color: var(--admin-ink);
+}
+[data-admin-theme="dark"] .ax-aside-rail-nav__item:hover .bi,
+[data-admin-theme="dark"] .ax-aside-rail-nav__item:focus-visible .bi { color: #b8c5d8; }
+[data-admin-theme="dark"] .ax-aside-rail-nav__item.active {
+  border-color: color-mix(in srgb, var(--admin-primary) 48%, var(--admin-surface));
+  background: color-mix(in srgb, var(--admin-primary) 18%, var(--admin-surface));
+  color: color-mix(in srgb, var(--admin-primary) 42%, #fff);
+}
+[data-admin-theme="dark"] .ax-aside-rail-nav__item.active .bi { color: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-aside-panel,
+  .ax-aside-rail {
+    transition-duration: 0.01ms !important;
+  }
+}

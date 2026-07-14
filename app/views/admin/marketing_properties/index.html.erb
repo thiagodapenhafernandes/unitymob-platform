@@ -1,26 +1,26 @@
 <%# Imóveis com Potencial — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <div class="marketing-admin-dark">
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Imóveis com Potencial</h1>
-    <p class="ax-page-subtitle">Imóveis que merecem campanha, melhoria de foto ou reforço comercial.</p>
-  </div>
-  <%= link_to admin_marketing_opportunities_path, class: "ax-btn ax-btn--sm" do %>
-    <i class="bi bi-lightbulb ax-ico"></i><span>Oportunidades</span>
-  <% end %>
-</div>
+<%= ax_workspace_heading(
+      eyebrow: "Marketing · Priorização",
+      icon: "buildings",
+      title: "Imóveis com Potencial",
+      subtitle: "Imóveis que merecem campanha, melhoria de foto ou reforço comercial.",
+      metrics: [{ value: @property_insights.size, label: "priorizados" }],
+      actions: ax_button("Oportunidades", admin_marketing_opportunities_path, size: :sm, icon: "lightbulb")
+    ) %>
 
+<%= ax_operational_panel(eyebrow: "Desempenho", title: "Prioridades comerciais") do %>
 <div class="ax-table-wrap">
   <table class="ax-table">
     <thead>
       <tr>
         <th>Imóvel</th>
-        <th style="width:180px">Local</th>
-        <th class="ax-num" style="width:100px">Interações</th>
-        <th class="ax-num" style="width:80px">Leads</th>
-        <th class="ax-num" style="width:90px">Potencial</th>
+        <th class="ax-table__col--w-180">Local</th>
+        <th class="ax-num ax-table__col--w-100">Interações</th>
+        <th class="ax-num ax-table__col--w-80">Leads</th>
+        <th class="ax-num ax-table__col--compact">Potencial</th>
         <th>Motivos</th>
-        <th class="ax-num" style="width:140px">Ações</th>
+        <th class="ax-num ax-table__col--w-140">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -49,9 +49,10 @@
         </tr>
       <% end %>
       <% if @property_insights.blank? %>
-        <tr><td colspan="7"><div class="ax-empty">Nenhum imóvel priorizado agora.</div></td></tr>
+        <tr><td colspan="7"><%= ax_empty_state(title: "Nenhum imóvel priorizado agora", description: "As prioridades aparecerão quando houver sinais suficientes de tráfego, leads ou oportunidade comercial.", icon: "buildings", compact: true) %></td></tr>
       <% end %>
     </tbody>
   </table>
 </div>
+<% end %>
 </div>

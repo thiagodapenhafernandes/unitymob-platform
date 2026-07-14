@@ -12,6 +12,7 @@ export default class extends Controller {
 
   connect() {
     this.closeTimer = null
+    this.assignRelationships()
     this.apply(this.openValue, { animate: false })
   }
 
@@ -27,11 +28,12 @@ export default class extends Controller {
   }
 
   apply(open, options = {}) {
-    const animate = options.animate !== false
+    const animate = options.animate !== false && !this.prefersReducedMotion
 
     if (this.closeTimer) window.clearTimeout(this.closeTimer)
     this.element.classList.toggle("is-open", open)
-    this.triggerTargets.forEach((t) => t.setAttribute("aria-expanded", open ? "true" : "false"))
+    this.disclosureTriggers.forEach((trigger) => trigger.setAttribute("aria-expanded", open ? "true" : "false"))
+    this.contentTarget.setAttribute("aria-hidden", open ? "false" : "true")
 
     if (open) {
       this.openContent(animate)
@@ -93,5 +95,33 @@ export default class extends Controller {
     this.contentTarget.style.maxHeight = ""
     this.contentTarget.style.opacity = ""
     this.contentTarget.style.overflow = ""
+  }
+
+  assignRelationships() {
+    if (!this.contentTarget.id) this.contentTarget.id = `ax-disclosure-content-${this.uniqueId()}`
+
+    this.disclosureTriggers.forEach((trigger) => {
+      trigger.setAttribute("aria-controls", this.contentTarget.id)
+    })
+  }
+
+  get disclosureTriggers() {
+    const selector = [
+      '[data-ax-disclosure-target~="trigger"]',
+      '[data-action~="ax-disclosure#toggle"]',
+      '[data-action~="click->ax-disclosure#toggle"]'
+    ].join(",")
+
+    return Array.from(this.element.querySelectorAll(selector)).filter((trigger) => {
+      return trigger.closest('[data-controller~="ax-disclosure"]') === this.element
+    })
+  }
+
+  get prefersReducedMotion() {
+    return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true
+  }
+
+  uniqueId() {
+    return Math.random().toString(36).slice(2, 10)
   }
 }

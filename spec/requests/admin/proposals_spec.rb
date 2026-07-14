@@ -16,6 +16,12 @@ RSpec.describe "Admin::Proposals", type: :request do
       get new_admin_lead_proposal_path(lead)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Nova proposta")
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css(".ax-workspace-heading")).to be_present
+      expect(document.at_css(".ax-operational-panel .ax-field-grid")).to be_present
+      expect(document.css(".ax-currency-field").size).to eq(2)
+      expect(document.at_css(".ax-date-field [data-controller='ax-clear-field']")).to be_present
+      expect(document.css(".ax-operational-panel [style]")).to be_empty
     end
 
     it "renderiza o formulário de edição" do
@@ -24,6 +30,9 @@ RSpec.describe "Admin::Proposals", type: :request do
       get edit_admin_proposal_path(proposal)
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Editar proposta")
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css(".ax-workspace-heading__scope").text).to include(proposal.status_label)
+      expect(document.at_css(".ax-form-actions")).to be_present
     end
   end
 

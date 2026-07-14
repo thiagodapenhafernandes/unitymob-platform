@@ -1,21 +1,10 @@
 <%
-  notice_classes = ["ax-inline-notice", "ax-inline-notice--#{tone}", class_name].compact_blank.join(" ")
-  # Paleta tone-aware inline (mesma identidade do toast), para colorir em
-  # qualquer contexto — inclusive layouts sem admin_tailwind (ex.: wizard).
-  notice_tones = {
-    info:    { border: "#365f8f", bg: "#eef4fb", fg: "#1f3b5c" },
-    success: { border: "#16a34a", bg: "#ecfdf3", fg: "#15803d" },
-    warning: { border: "#d97706", bg: "#fffbeb", fg: "#b45309" },
-    danger:  { border: "#dc2626", bg: "#fff1f0", fg: "#b42318" },
-    neutral: { border: "#d8e1ec", bg: "#f8fafc", fg: "#475467" }
-  }
-  t = notice_tones[tone.to_sym] || notice_tones[:neutral]
-  notice_style = "display:flex;align-items:center;gap:7px;min-height:34px;padding:7px 9px;border:1px solid #{t[:border]};border-left-width:3px;border-radius:7px;background:#{t[:bg]};color:#{t[:fg]};font-size:12px;font-weight:650;line-height:1.25;"
+  notice_classes = ["ax-inline-notice", "ax-inline-notice--#{tone}", ("ax-inline-notice--compact" if compact), class_name].compact_blank.join(" ")
 %>
 
-<div class="<%= notice_classes %>" style="<%= notice_style %>">
+<div class="<%= notice_classes %>" role="<%= notice_role %>" aria-live="<%= aria_live %>" aria-atomic="true">
   <% if icon.present? %>
     <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
   <% end %>
-  <span><%= body %></span>
+  <div class="ax-inline-notice__content"><%= body %></div>
 </div>

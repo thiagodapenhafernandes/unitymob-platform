@@ -1,15 +1,13 @@
 <%# Campanhas — listagem compacta (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <% bs_to_ax = { "success" => "green", "danger" => "red", "warning" => "amber", "info" => "blue", "primary" => "blue", "secondary" => "gray" } %>
 <div class="marketing-admin-dark">
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Campanhas</h1>
-    <p class="ax-page-subtitle">Planeje ações para SEO, tráfego pago, Instagram, WhatsApp, Home e Rodapé.</p>
-  </div>
-  <%= link_to new_admin_marketing_campaign_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-    <i class="bi bi-plus-lg ax-ico"></i><span>Nova campanha</span>
-  <% end %>
-</div>
+<%= ax_workspace_heading(
+      eyebrow: "Marketing · Execução",
+      icon: "bullseye",
+      title: "Campanhas",
+      subtitle: "Planeje ações para SEO, tráfego pago, Instagram, WhatsApp, Home e Rodapé.",
+      actions: ax_button("Nova campanha", new_admin_marketing_campaign_path, variant: :primary, size: :sm, icon: "plus-lg")
+    ) %>
 
 <div class="tw-flex tw-flex-wrap tw-gap-1.5 tw-mb-3">
   <%= link_to "Todas", admin_marketing_campaigns_path, class: "ax-btn ax-btn--sm #{'ax-btn--primary' if @status.blank?}" %>
@@ -18,19 +16,20 @@
   <% end %>
 </div>
 
+<%= ax_operational_panel(eyebrow: "Operação", title: "Campanhas cadastradas") do %>
 <div class="ax-table-wrap">
   <table class="ax-table">
     <thead>
       <tr>
         <th>Campanha</th>
-        <th style="width:120px">Canal</th>
-        <th style="width:110px">Status</th>
-        <th class="ax-num" style="width:80px">Prior.</th>
-        <th style="width:150px">Período</th>
-        <th class="ax-num" style="width:80px">Cliques</th>
-        <th class="ax-num" style="width:90px">Conv.</th>
-        <th class="ax-num" style="width:70px">Taxa</th>
-        <th class="ax-num" style="width:90px">Ações</th>
+        <th class="ax-table__col--w-120">Canal</th>
+        <th class="ax-table__col--md">Status</th>
+        <th class="ax-num ax-table__col--w-80">Prior.</th>
+        <th class="ax-table__col--w-150">Período</th>
+        <th class="ax-num ax-table__col--w-80">Cliques</th>
+        <th class="ax-num ax-table__col--compact">Conv.</th>
+        <th class="ax-num ax-table__col--w-70">Taxa</th>
+        <th class="ax-num ax-table__col--compact">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -41,13 +40,13 @@
             <% if campaign.target_url.present? %><%= link_to truncate(campaign.target_url, length: 44), campaign.target_url, target: "_blank", rel: "noopener", class: "tw-text-2xs tw-text-ink-muted" %><% end %>
             <% if campaign.seo_setting %><div class="tw-text-2xs tw-text-ink-faint">SEO: <%= campaign.seo_setting.display_name %></div><% end %>
           </td>
-          <td><span class="ax-badge ax-badge--gray"><%= campaign.channel_label %></span></td>
-          <td><span class="ax-badge ax-badge--<%= bs_to_ax[campaign.status_badge_class.to_s] || 'gray' %>"><%= campaign.status_label %></span></td>
+          <td><%= ax_badge(campaign.channel_label, tone: :gray) %></td>
+          <td><%= ax_badge(campaign.status_label, tone: (bs_to_ax[campaign.status_badge_class.to_s] || "gray").to_sym) %></td>
           <td class="ax-num"><%= campaign.priority %></td>
           <td class="tw-text-2xs tw-text-ink-muted"><%= [campaign.starts_on&.strftime("%d/%m/%y"), campaign.ends_on&.strftime("%d/%m/%y")].compact.join(" – ").presence || "—" %></td>
           <td class="ax-num ax-strong"><%= number_with_delimiter(campaign.clicks_count) %></td>
           <td class="ax-num ax-strong"><%= number_with_delimiter(campaign.conversions_count) %></td>
-          <td class="ax-num"><span class="ax-badge ax-badge--gray"><%= campaign.conversion_rate %>%</span></td>
+          <td class="ax-num"><%= ax_badge("#{campaign.conversion_rate}%", tone: :gray) %></td>
           <td class="ax-num">
             <span class="tw-inline-flex tw-gap-0.5">
               <%= link_to edit_admin_marketing_campaign_path(campaign), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
@@ -57,11 +56,21 @@
         </tr>
       <% end %>
       <% if @campaigns.blank? %>
-        <tr><td colspan="9"><div class="ax-empty">Nenhuma campanha cadastrada.</div></td></tr>
+        <tr>
+          <td colspan="9">
+            <%= ax_empty_state(
+                  title: "Nenhuma campanha cadastrada",
+                  description: "Crie uma campanha para organizar canal, período e conversões.",
+                  icon: "bullseye",
+                  action: ax_button("Criar campanha", new_admin_marketing_campaign_path, variant: :primary, size: :sm)
+                ) %>
+          </td>
+        </tr>
       <% end %>
     </tbody>
   </table>
 </div>
+<% end %>
 
 <% if @campaigns.respond_to?(:total_pages) && @campaigns.total_pages > 1 %>
   <%= ax_pagination @campaigns, params: request.query_parameters %>

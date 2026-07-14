@@ -1,134 +1,150 @@
-<%# Automação — intervenções horizontais de acompanhamento (.ax-*) %>
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Automação de acompanhamento</h1>
-    <p class="ax-page-subtitle">Crie intervenções horizontais para apoiar o andamento dos leads sem substituir a Distribuição de Leads.</p>
-  </div>
-  <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
-    <%= link_to admin_automation_events_path, class: "ax-btn ax-btn--sm" do %>
-      <i class="bi bi-activity ax-ico"></i><span>Eventos recentes</span>
-    <% end %>
-    <%= link_to new_admin_automation_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-      <i class="bi bi-diagram-3 ax-ico"></i><span>Nova intervenção</span>
-    <% end %>
-  </div>
-</div>
+<div class="automation-rules-admin">
+  <%= ax_workspace_heading(
+        eyebrow: "Automações · Acompanhamento",
+        icon: "diagram-3",
+        title: "Automação de acompanhamento",
+        subtitle: "Crie intervenções horizontais para apoiar a jornada dos leads sem substituir a Distribuição de Leads.",
+        metrics: [
+          { value: @workflows.size, label: "fluxos" },
+          { value: @rules.size, label: "regras" }
+        ],
+        actions: safe_join([
+          ax_button("Eventos recentes", admin_automation_events_path, size: :sm, icon: "activity"),
+          ax_button("Nova intervenção", new_admin_automation_rule_path, variant: :primary, size: :sm, icon: "diagram-3")
+        ])
+      ) %>
 
-<%= render "admin/shared/module_objective_notice",
-      icon: "intersect",
-      eyebrow: "Automação horizontal",
-      description: "Use este módulo para criar intervenções que atravessam a jornada do lead sem assumir a distribuição primária: tarefas, lembretes, avisos, mensagens, notas, integrações e acompanhamentos quando alguma condição acontecer." %>
+  <%= render "admin/shared/module_objective_notice",
+        icon: "intersect",
+        eyebrow: "Automação horizontal",
+        description: "Use este módulo para criar intervenções que atravessam a jornada do lead sem assumir a distribuição primária: tarefas, lembretes, avisos, mensagens, notas, integrações e acompanhamentos quando alguma condição acontecer." %>
 
-<%= render "admin/shared/hint", key: "automacao", icon: "bi-diagram-3",
-      text: "A Distribuição de Leads continua dona de origem, destino, fila, corretor, aceite, represamento e horários. A automação observa estados e faz pequenas intervenções de apoio." %>
+  <%= ax_dismissible_hint(key: "automacao", icon: "diagram-3",
+        text: "A Distribuição de Leads continua dona de origem, destino, fila, corretor, aceite, represamento e horários. A automação observa estados e faz pequenas intervenções de apoio.") %>
 
-<% if @workflows.any? %>
-  <div class="tw-grid tw-gap-3 tw-mb-6">
-    <% @workflows.each do |workflow| %>
-      <div class="ax-card">
-        <div class="ax-card__body tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3">
-          <div class="tw-min-w-0">
-            <div class="tw-flex tw-items-center tw-gap-2">
-              <i class="bi bi-diagram-3" style="color:var(--admin-primary)"></i>
-              <span class="ax-strong"><%= workflow.name %></span>
-              <span class="ax-badge ax-badge--<%= workflow.status == 'active' ? 'green' : 'gray' %>"><%= workflow.status_label %></span>
-              <% if workflow.whatsapp_campaign_source? %>
-                <span class="ax-badge ax-badge--cyan">Disparo WhatsApp #<%= workflow.whatsapp_campaign_source_id %></span>
-              <% end %>
-            </div>
-            <p class="ax-page-subtitle tw-mb-0 tw-mt-1">
-              <% if workflow.active_version %>
-                Versao publicada #<%= workflow.active_version.version_number %>
-              <% else %>
-                Rascunho ainda nao publicado
-              <% end %>
-            </p>
-          </div>
-          <div class="tw-flex tw-items-center tw-gap-2">
+  <% if @workflows.any? %>
+    <%= ax_operational_panel(eyebrow: "Builder", title: "Fluxos recentes", class_name: "tw-mb-4") do %>
+      <div class="ax-record-list">
+        <% @workflows.each do |workflow| %>
+          <% workflow_actions = capture do %>
             <% if workflow.whatsapp_campaign_source? %>
-              <%= link_to admin_whatsapp_campaign_path(workflow.whatsapp_campaign_source_id), class: "ax-btn ax-btn--sm" do %>
-                <i class="bi bi-megaphone ax-ico"></i><span>Ver disparo</span>
-              <% end %>
+              <%= ax_button("Ver disparo", admin_whatsapp_campaign_path(workflow.whatsapp_campaign_source_id), size: :sm, icon: "megaphone") %>
             <% end %>
-            <%= link_to builder_admin_automation_workflow_path(workflow), class: "ax-btn ax-btn--sm" do %>
-              <i class="bi bi-pencil-square ax-ico"></i><span>Abrir builder</span>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    <% end %>
-  </div>
-<% end %>
+            <%= ax_button("Abrir builder", builder_admin_automation_workflow_path(workflow), size: :sm, icon: "pencil-square") %>
+          <% end %>
 
-<% if @rules.any? %>
-  <div class="tw-grid tw-gap-3 tw-mb-6">
-    <% @rules.each do |rule| %>
-      <div class="ax-card" style="<%= 'opacity:.62' unless rule.active? %>">
-        <div class="ax-card__body tw-flex tw-flex-wrap tw-items-start tw-justify-between tw-gap-3">
-          <div class="tw-min-w-0 tw-flex-1">
-            <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
-              <i class="bi bi-lightning-charge-fill" style="color:var(--admin-primary)"></i>
-              <span class="ax-strong"><%= rule.name %></span>
-              <span class="ax-badge ax-badge--<%= rule.active? ? 'green' : 'gray' %>"><%= rule.active? ? 'Ativa' : 'Pausada' %></span>
-              <% if rule.runs_count.to_i > 0 %><span class="ax-page-subtitle"><%= rule.runs_count %> execuções</span><% end %>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-text-sm">
-              <span class="ax-badge ax-badge--blue">QUANDO</span>
-              <span><%= rule.trigger_label.downcase %></span>
-              <% if rule.conditions_hash[:stage].present? %><span class="ax-badge ax-badge--gray">etapa: <%= rule.conditions_hash[:stage] %></span><% end %>
-              <% if rule.conditions_hash[:source].present? %><span class="ax-badge ax-badge--gray">origem: <%= rule.conditions_hash[:source] %></span><% end %>
-              <% if rule.idle_hours > 0 %><span class="ax-badge ax-badge--amber">+ <%= rule.idle_hours %>h parado</span><% end %>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2 tw-mt-2 tw-text-sm">
-              <span class="ax-badge ax-badge--green">INTERVENÇÃO</span>
-              <% rule.actions_summary.each do |label| %>
-                <span class="tw-inline-flex tw-items-center tw-gap-1"><i class="bi bi-arrow-right-short"></i><%= label %></span>
+          <%= ax_record_item(
+                title: workflow.name,
+                eyebrow: "Fluxo",
+                meta: workflow.active_version ? "Versão publicada ##{workflow.active_version.version_number}" : "Rascunho ainda não publicado",
+                icon: "diagram-3",
+                actions: workflow_actions
+              ) do %>
+            <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+              <%= ax_badge(workflow.status_label, tone: workflow.status == "active" ? :green : :gray, dot: true) %>
+              <% if workflow.whatsapp_campaign_source? %>
+                <%= ax_badge("Disparo WhatsApp ##{workflow.whatsapp_campaign_source_id}", tone: :cyan) %>
               <% end %>
-              <% if rule.actions_summary.empty? %><span class="ax-page-subtitle">sem ações</span><% end %>
             </div>
-          </div>
-          <div class="tw-flex tw-items-center tw-gap-1">
-            <%= button_to toggle_active_admin_automation_rule_path(rule), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: rule.active? ? "Pausar" : "Ativar" do %>
-              <i class="bi <%= rule.active? ? 'bi-pause-circle' : 'bi-play-circle' %>"></i>
-            <% end %>
-            <%= link_to edit_admin_automation_rule_path(rule), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
-            <%= button_to admin_automation_rule_path(rule), method: :delete, form_class: "tw-inline", class: "ax-ico-btn", title: "Remover", data: { turbo_confirm: "Remover esta regra?" } do %><i class="bi bi-trash"></i><% end %>
-          </div>
-        </div>
-      </div>
-    <% end %>
-  </div>
-<% else %>
-  <div class="ax-empty tw-mb-6">
-    <i class="bi bi-lightning-charge tw-text-3xl tw-text-ink-faint"></i>
-    <p class="tw-mt-2 ax-strong">Nenhuma intervenção automatizada ainda</p>
-    <p class="ax-page-subtitle">Ex.: “quando um lead fica 2h parado em Atendimento, criar tarefa e avisar o responsável”.</p>
-    <div class="tw-flex tw-gap-2 tw-justify-center tw-mt-3">
-      <%= link_to "Criar intervenção", new_admin_automation_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary" %>
-      <%= button_to "Criar regra de exemplo", create_example_admin_automation_rules_path, method: :post, class: "ax-btn ax-btn--sm" %>
-    </div>
-  </div>
-<% end %>
-
-<%# Histórico de execuções %>
-<% if @recent_runs.any? %>
-  <h2 class="ax-page-title tw-text-base tw-mb-2">Execuções recentes</h2>
-  <div class="ax-table-wrap">
-    <table class="ax-table">
-      <thead><tr><th>Quando</th><th>Regra</th><th>Lead</th><th style="width:120px">Status</th></tr></thead>
-      <tbody>
-        <% @recent_runs.each do |run| %>
-          <tr>
-            <td><%= run.created_at.strftime("%d/%m %H:%M") %></td>
-            <td><%= run.automation_rule&.name %></td>
-            <td><% if run.lead %><%= link_to run.lead.display_name, admin_lead_path(run.lead), class: "tw-text-primary" %><% else %>—<% end %></td>
-            <td>
-              <% color = { "executed" => "green", "scheduled" => "blue", "skipped" => "gray", "error" => "red" }[run.status] %>
-              <span class="ax-badge ax-badge--<%= color %>"><%= run.status_label %></span>
-            </td>
-          </tr>
+          <% end %>
         <% end %>
-      </tbody>
-    </table>
-  </div>
-<% end %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Intervenções", title: "Regras de acompanhamento", class_name: "tw-mb-4") do %>
+    <% if @rules.any? %>
+      <div class="ax-record-list">
+        <% @rules.each do |rule| %>
+          <% rule_actions = capture do %>
+            <%= button_to toggle_active_admin_automation_rule_path(rule),
+                          method: :patch,
+                          form_class: "tw-inline",
+                          class: "ax-ico-btn",
+                          title: rule.active? ? "Pausar" : "Ativar",
+                          aria: { label: "#{rule.active? ? 'Pausar' : 'Ativar'} #{rule.name}" } do %>
+              <i class="bi <%= rule.active? ? "bi-pause-circle" : "bi-play-circle" %>"></i>
+            <% end %>
+            <%= link_to edit_admin_automation_rule_path(rule), class: "ax-ico-btn", title: "Editar", aria: { label: "Editar #{rule.name}" } do %>
+              <i class="bi bi-pencil"></i>
+            <% end %>
+            <%= button_to admin_automation_rule_path(rule),
+                          method: :delete,
+                          form_class: "tw-inline",
+                          class: "ax-ico-btn",
+                          title: "Remover",
+                          aria: { label: "Remover #{rule.name}" },
+                          data: { turbo_confirm: "Remover esta regra?" } do %>
+              <i class="bi bi-trash"></i>
+            <% end %>
+          <% end %>
+
+          <%= ax_record_item(
+                title: rule.name,
+                eyebrow: "Regra",
+                meta: ("#{rule.runs_count} execuções" if rule.runs_count.to_i.positive?),
+                icon: "lightning-charge-fill",
+                class_name: ("tw-opacity-60" unless rule.active?),
+                actions: rule_actions
+              ) do %>
+            <div class="tw-grid tw-gap-2 tw-text-sm">
+              <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+                <%= ax_badge(rule.active? ? "Ativa" : "Pausada", tone: rule.active? ? :green : :gray, dot: true) %>
+                <%= ax_badge("QUANDO", tone: :blue) %>
+                <span><%= rule.trigger_label.downcase %></span>
+                <% if rule.conditions_hash[:stage].present? %><%= ax_badge("etapa: #{rule.conditions_hash[:stage]}", tone: :gray) %><% end %>
+                <% if rule.conditions_hash[:source].present? %><%= ax_badge("origem: #{rule.conditions_hash[:source]}", tone: :gray) %><% end %>
+                <% if rule.idle_hours.positive? %><%= ax_badge("+ #{rule.idle_hours}h parado", tone: :amber) %><% end %>
+              </div>
+              <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
+                <%= ax_badge("INTERVENÇÃO", tone: :green) %>
+                <% rule.actions_summary.each do |label| %>
+                  <span class="tw-inline-flex tw-items-center tw-gap-1"><i class="bi bi-arrow-right-short"></i><%= label %></span>
+                <% end %>
+                <% if rule.actions_summary.empty? %><span class="ax-page-subtitle">sem ações</span><% end %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <%= ax_empty_state(
+            title: "Nenhuma intervenção automatizada ainda",
+            description: "Exemplo: quando um lead fica duas horas parado em Atendimento, criar tarefa e avisar o responsável.",
+            icon: "lightning-charge",
+            action: safe_join([
+              ax_button("Criar intervenção", new_admin_automation_rule_path, variant: :primary, size: :sm),
+              button_to("Criar regra de exemplo", create_example_admin_automation_rules_path, method: :post, class: "ax-btn ax-btn--sm")
+            ])
+          ) %>
+    <% end %>
+  <% end %>
+
+  <% if @recent_runs.any? %>
+    <%= ax_operational_panel(eyebrow: "Histórico", title: "Execuções recentes") do %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th class="ax-table__col--w-150">Quando</th>
+              <th>Regra</th>
+              <th>Lead</th>
+              <th class="ax-table__col--w-120">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_runs.each do |run| %>
+              <% status_tone = { "executed" => :green, "scheduled" => :blue, "skipped" => :gray, "error" => :red }[run.status] || :gray %>
+              <tr>
+                <td><%= run.created_at.strftime("%d/%m %H:%M") %></td>
+                <td><%= run.automation_rule&.name %></td>
+                <td><%= run.lead ? link_to(run.lead.display_name, admin_lead_path(run.lead), class: "tw-text-primary") : "—" %></td>
+                <td><%= ax_badge(run.status_label, tone: status_tone, dot: true) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  <% end %>
+</div>

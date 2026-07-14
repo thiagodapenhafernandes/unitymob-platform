@@ -19,16 +19,18 @@ module Field
     private
 
     def manifest_payload
+      identity = Tenants::PublicIdentity.new(public_tenant)
+      brand = identity.name
       {
-        name: "Salute Imóveis — Campo",
-        short_name: "Salute Campo",
+        name: "#{brand} — Campo",
+        short_name: "#{brand} Campo".truncate(12, omission: ""),
         description: "Check-in geolocalizado dos corretores em plantão.",
-        start_url: "/field/",
+        start_url: "/field",
         scope: "/field/",
         display: "standalone",
         orientation: "portrait",
         background_color: "#f8f9fa",
-        theme_color: (LayoutSetting.instance.admin_primary_color.presence rescue nil) || "#365F8F",
+        theme_color: (LayoutSetting.instance(tenant: public_tenant).admin_primary_color.presence rescue nil) || "#365F8F",
         lang: "pt-BR",
         categories: ["business", "productivity"],
         icons: [

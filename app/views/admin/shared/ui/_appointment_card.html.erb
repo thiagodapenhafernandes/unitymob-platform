@@ -1,0 +1,29 @@
+<% kind_tone = { "visita" => "blue", "reuniao" => "amber", "ligacao" => "green", "outro" => "gray" }[appointment.kind] || "gray" %>
+<% status_badge = { "realizado" => ["Realizado", "green"], "cancelado" => ["Cancelado", "red"] }[appointment.status] %>
+<article class="ax-appointment-card<%= ' is-cancelled' if appointment.cancelado? %><%= ' is-completed' if appointment.realizado? %>">
+  <div class="ax-appointment-card__head">
+    <div class="ax-appointment-card__badges">
+      <span class="ax-badge ax-badge--<%= kind_tone %>"><%= appointment.kind_label %></span>
+      <% if status_badge %>
+        <span class="ax-badge ax-badge--<%= status_badge.last %>"><%= status_badge.first %></span>
+      <% end %>
+    </div>
+    <time class="ax-strong" datetime="<%= appointment.starts_at.iso8601 %>"><%= appointment.starts_at.strftime("%H:%M") %></time>
+  </div>
+  <strong class="ax-appointment-card__title"><%= appointment.title %></strong>
+  <% if expanded %>
+    <div class="ax-appointment-card__meta"><%= l(appointment.starts_at, format: :long) %></div>
+  <% end %>
+  <% if appointment.lead %>
+    <div class="ax-appointment-card__lead"><%= link_to appointment.lead.display_name, admin_lead_path(appointment.lead), class: "tw-text-primary" %></div>
+  <% end %>
+  <% if appointment.location.present? %>
+    <div class="ax-appointment-card__meta" title="<%= appointment.location %>"><i class="bi bi-geo-alt" aria-hidden="true"></i> <%= appointment.location %></div>
+  <% end %>
+  <% if can?(:manage, :comercial) && appointment.agendado? %>
+    <div class="ax-appointment-card__actions">
+      <%= button_to admin_appointment_path(appointment, appointment: { status: "realizado" }), method: :patch, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--icon", title: "Marcar realizado", aria: { label: "Marcar compromisso como realizado" } do %><i class="bi bi-check2" aria-hidden="true"></i><% end %>
+      <%= button_to admin_appointment_path(appointment), method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--icon", data: { turbo_confirm: "Remover compromisso?" }, title: "Remover", aria: { label: "Remover compromisso" } do %><i class="bi bi-trash" aria-hidden="true"></i><% end %>
+    </div>
+  <% end %>
+</article>

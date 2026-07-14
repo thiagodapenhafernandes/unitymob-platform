@@ -3,7 +3,7 @@
   eyebrow = local_assigns[:eyebrow]
   empty_text = local_assigns[:empty_text].presence || "Nada por aqui."
 %>
-<section class="ax-board__column <%= local_assigns[:class_name] %>">
+<section class="<%= ["ax-board__column", local_assigns[:class_name]].compact_blank.join(" ") %>" aria-label="<%= title %>">
   <div class="ax-board__col-head">
     <div class="ax-board__col-heading">
       <% if eyebrow.present? %>
@@ -12,7 +12,10 @@
       <h2 class="ax-board__col-title"><%= title %></h2>
     </div>
     <% unless count.nil? %>
-      <%= tag.span(count, class: "ax-board__col-count", data: (local_assigns[:count_data] || {})) %>
+      <%= tag.span(count,
+                   class: "ax-board__col-count",
+                   data: (local_assigns[:count_data] || {}),
+                   aria: { label: "#{count} itens em #{title}", live: "polite", atomic: true }) %>
     <% end %>
   </div>
 

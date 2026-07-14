@@ -1,0 +1,476 @@
+/* Native text, select and textarea controls shared across admin modules. */
+.ax-control,
+.ax-field input:not([type="color"]),
+.ax-field select,
+.ax-field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ax-form-control-height);
+  padding: 0 .75rem;
+  border: 1px solid var(--ax-field-border);
+  border-radius: var(--ax-form-control-radius);
+  background: #fff;
+  color: #1f2733;
+  box-shadow: none !important;
+  font-size: 13px;
+  transition: border-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease),
+              background-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease),
+              box-shadow var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease);
+}
+
+.ax-control:not(:disabled):not([readonly]):hover,
+.ax-field input:not([type="color"]):not(:disabled):not([readonly]):hover,
+.ax-field select:not(:disabled):hover,
+.ax-field textarea:not(:disabled):not([readonly]):hover {
+  border-color: var(--ax-field-hover);
+  background: #f8fafc;
+}
+
+.ax-control:focus,
+.ax-control:focus-visible,
+.ax-field input:not([type="color"]):focus,
+.ax-field select:focus,
+.ax-field textarea:focus {
+  border-color: var(--ax-field-focus);
+  box-shadow: 0 0 0 2px rgb(54 95 143 / .12) !important;
+  outline: 0;
+}
+
+textarea.ax-control,
+.ax-field textarea {
+  min-height: 72px;
+  padding: 9px 10px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+:where(
+  .ax-control:disabled,
+  .ax-control[readonly],
+  .ax-field input:disabled,
+  .ax-field input[readonly],
+  .ax-field select:disabled,
+  .ax-field textarea:disabled,
+  .ax-field textarea[readonly]
+) {
+  border-color: var(--ax-border-soft, #d8dee8);
+  background: #f3f5f8;
+  color: #7b8493;
+  cursor: not-allowed;
+}
+
+:where(.ax-control[readonly], .ax-field input[readonly], .ax-field textarea[readonly]) {
+  cursor: default;
+}
+
+.ax-field.is-invalid :where(.ax-control, input:not([type="color"]), select, textarea) {
+  border-color: #f04438;
+}
+
+[data-admin-theme="dark"] :where(
+  .ax-control,
+  .ax-field input:not([type="color"]),
+  .ax-field select,
+  .ax-field textarea
+) {
+  border-color: var(--ax-dark-border);
+  background-color: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+  color-scheme: dark;
+}
+[data-admin-theme="dark"] :where(.ax-control, .ax-field input, .ax-field textarea)::placeholder {
+  color: var(--ax-dark-placeholder);
+  opacity: 1;
+}
+[data-admin-theme="dark"] :where(select.ax-control, .ax-field select) option {
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+}
+[data-admin-theme="dark"] :where(
+  .ax-control,
+  .ax-field input:not([type="color"]),
+  .ax-field select,
+  .ax-field textarea
+):not(:disabled):not([readonly]):hover {
+  border-color: #526b8c;
+  background: var(--ax-dark-surface-hover);
+}
+[data-admin-theme="dark"] :where(
+  .ax-control,
+  .ax-field input:not([type="color"]),
+  .ax-field select,
+  .ax-field textarea
+):focus,
+[data-admin-theme="dark"] :where(
+  .ax-control,
+  .ax-field input:not([type="color"]),
+  .ax-field select,
+  .ax-field textarea
+):focus-visible {
+  border-color: var(--ax-dark-focus-border);
+  background: var(--ax-dark-surface);
+  box-shadow: 0 0 0 3px rgb(98 148 204 / .16) !important;
+  outline: none;
+}
+[data-admin-theme="dark"] :where(
+  .ax-control:disabled,
+  .ax-control[readonly],
+  .ax-field input:disabled,
+  .ax-field input[readonly],
+  .ax-field select:disabled,
+  .ax-field textarea:disabled,
+  .ax-field textarea[readonly]
+) {
+  border-color: var(--ax-dark-border-soft);
+  background: #141f32;
+  color: var(--ax-dark-text-muted);
+}
+
+.ax-input,
+.ax-select,
+.ax-textarea {
+  width: 100%;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid #d2d6db;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2733;
+  box-shadow: none !important;
+  font-size: 13px;
+  outline: none;
+  transition: border-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease),
+              box-shadow var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease);
+}
+
+.ax-textarea {
+  height: auto;
+  padding: 8px 11px;
+}
+
+.ax-input:focus,
+.ax-select:focus,
+.ax-textarea:focus {
+  border-color: #7f96b5;
+  box-shadow: 0 0 0 2px rgb(54 95 143 / .12) !important;
+}
+
+:where(.ax-input, .ax-select, .ax-textarea):not(:disabled):not([readonly]):hover {
+  border-color: var(--ax-field-hover, #b8c5d6);
+  background: #f8fafc;
+}
+
+:where(.ax-input, .ax-select, .ax-textarea):is(:disabled, [readonly]) {
+  border-color: var(--ax-border-soft, #d8dee8);
+  background: #f3f5f8;
+  color: #7b8493;
+  cursor: not-allowed;
+}
+
+:where(.ax-input, .ax-select, .ax-textarea)[readonly] { cursor: default; }
+
+[data-admin-theme="dark"] .ax-input,
+[data-admin-theme="dark"] .ax-select,
+[data-admin-theme="dark"] .ax-textarea {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+  color-scheme: dark;
+}
+
+[data-admin-theme="dark"] .ax-input::placeholder,
+[data-admin-theme="dark"] .ax-textarea::placeholder {
+  color: var(--ax-dark-placeholder);
+  opacity: 1;
+}
+
+[data-admin-theme="dark"] .ax-select option {
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-input:focus,
+[data-admin-theme="dark"] .ax-select:focus,
+[data-admin-theme="dark"] .ax-textarea:focus {
+  border-color: var(--ax-dark-focus-border);
+  box-shadow: 0 0 0 3px rgb(98 148 204 / .16) !important;
+  outline: none;
+}
+
+[data-admin-theme="dark"] .ax-input:disabled,
+[data-admin-theme="dark"] .ax-select:disabled,
+[data-admin-theme="dark"] .ax-textarea:disabled,
+[data-admin-theme="dark"] .ax-input[readonly],
+[data-admin-theme="dark"] .ax-select[readonly],
+[data-admin-theme="dark"] .ax-textarea[readonly] {
+  border-color: var(--ax-dark-border-soft);
+  background: #141f32;
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] :where(
+  .ax-control,
+  .ax-field input:not([type="color"]),
+  .ax-input,
+  .ax-textarea
+):-webkit-autofill,
+[data-admin-theme="dark"] :where(
+  .ax-control,
+  .ax-field input:not([type="color"]),
+  .ax-input,
+  .ax-textarea
+):-webkit-autofill:hover,
+[data-admin-theme="dark"] :where(
+  .ax-control,
+  .ax-field input:not([type="color"]),
+  .ax-input,
+  .ax-textarea
+):-webkit-autofill:focus {
+  border-color: var(--ax-dark-border);
+  -webkit-box-shadow: 0 0 0 1000px var(--ax-dark-surface) inset !important;
+  -webkit-text-fill-color: var(--ax-dark-text);
+  caret-color: var(--ax-dark-text);
+}
+
+/* Enhanced selects share the same surface and contrast contract as native controls. */
+[data-admin-theme="dark"] :where(.ts-control, .ts-dropdown) {
+  border-color: var(--ax-dark-border);
+  background-color: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+  color-scheme: dark;
+}
+
+[data-admin-theme="dark"] .ts-control > input::placeholder,
+[data-admin-theme="dark"] .ts-dropdown .dropdown-input::placeholder {
+  color: var(--ax-dark-placeholder);
+  opacity: 1;
+}
+
+[data-admin-theme="dark"] .ts-dropdown :where(.option, .optgroup-header) {
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ts-dropdown :where(.option:hover, .option.active, .option.selected) {
+  background: var(--ax-dark-surface-hover);
+  color: #fff;
+}
+
+/*
+ * Tom Select can append the dropdown directly to <body>. Keep that portaled
+ * surface inside the same dark contract even when it is no longer a child of
+ * .habitation-form-ui. The stronger selector also neutralizes legacy light
+ * rules from the habitation workspace without affecting the light theme.
+ */
+[data-admin-theme="dark"] body.ax-habitations-workspace .ts-dropdown {
+  border-color: var(--ax-dark-border) !important;
+  background: var(--ax-dark-surface) !important;
+  color: var(--ax-dark-text) !important;
+  box-shadow: 0 18px 42px rgb(0 0 0 / .44) !important;
+  color-scheme: dark;
+}
+
+[data-admin-theme="dark"] body.ax-habitations-workspace .ts-dropdown .dropdown-input-wrap {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface-raised);
+}
+
+[data-admin-theme="dark"] body.ax-habitations-workspace .ts-dropdown .dropdown-input {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] body.ax-habitations-workspace .ts-dropdown :where(.option, .create) {
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text-soft);
+}
+
+[data-admin-theme="dark"] body.ax-habitations-workspace .ts-dropdown :where(
+  .active,
+  .option:hover,
+  .option.active,
+  .option.selected,
+  .create:hover,
+  .create.active
+) {
+  background: var(--ax-dark-surface-hover) !important;
+  color: #fff !important;
+}
+
+[data-admin-theme="dark"] .habitation-form-ui .habitations-inspector .ts-wrapper.disabled .ts-control {
+  border-color: var(--ax-dark-border-soft) !important;
+  background: #141f32 !important;
+  color: var(--ax-dark-text-muted) !important;
+}
+
+/* Rich Tom Select dropdown rendered on body through dropdownParent. */
+.ax-select-dropdown {
+  z-index: 1080;
+  overflow: hidden;
+  border: 1px solid #cbd8e8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 30px rgb(15 23 42 / .12);
+  color: #1f2937;
+  font-size: 12.5px;
+}
+
+body > .ts-dropdown { z-index: 6500; }
+
+.ax-select-dropdown .ts-dropdown-content {
+  max-height: min(280px, 45vh);
+  padding: 4px 0;
+}
+
+.ax-select-dropdown :where(.option, .create) {
+  padding: 7px 12px;
+  color: #1f2937;
+  font-weight: 560;
+  line-height: 1.2;
+}
+
+.ax-select-option { display: grid; gap: 3px; }
+.ax-select-option__label,
+.ax-select-item { color: #1f2937; font-weight: 760; line-height: 1.2; }
+.ax-select-option__description {
+  color: #667085;
+  font-size: 11.5px;
+  font-weight: 560;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.ax-select-dropdown .active {
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 10%, #fff);
+  color: var(--admin-primary, #365f8f);
+}
+.ax-select-dropdown .selected { color: var(--admin-primary, #365f8f); font-weight: 720; }
+
+[data-admin-theme="dark"] .ax-select-dropdown {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+  box-shadow: 0 18px 42px rgb(0 0 0 / .44);
+}
+[data-admin-theme="dark"] .ax-select-dropdown :where(.option, .create) {
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text-soft);
+}
+[data-admin-theme="dark"] .ax-select-option__label,
+[data-admin-theme="dark"] .ax-select-item { color: var(--ax-dark-text); }
+[data-admin-theme="dark"] .ax-select-option__description { color: var(--ax-dark-text-muted); }
+[data-admin-theme="dark"] .ax-select-dropdown :where(.active, .selected),
+[data-admin-theme="dark"] .ax-select-dropdown :where(.option, .create):hover {
+  background: var(--ax-dark-surface-hover);
+  color: #fff;
+}
+[data-admin-theme="dark"] .ax-select-dropdown :where(.active, .selected) .ax-select-option__label,
+[data-admin-theme="dark"] .ax-select-dropdown :where(.option, .create):hover .ax-select-option__label {
+  color: #fff;
+}
+
+/* Shared trailing action used by multiselects and lookup controls. The light
+ * geometry remains owned by each component; only the dark interaction contract
+ * is centralized here so every occurrence receives the same treatment. */
+[data-admin-theme="dark"] .ax-multiselect__action {
+  border-color: var(--ax-dark-border, #33445f);
+  background: var(--ax-dark-surface-raised, #18243a);
+  color: var(--ax-dark-text-muted, #aebbd0);
+}
+
+[data-admin-theme="dark"] .ax-multiselect__action:hover {
+  border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 72%, #8fb8e8);
+  background: var(--ax-dark-surface-hover, #24344d);
+  color: var(--ax-dark-text, #edf3fb);
+}
+
+[data-admin-theme="dark"] .ax-multiselect__action:focus-visible {
+  border-color: var(--admin-primary-ring, #6294cc);
+  background: var(--ax-dark-surface-hover, #24344d);
+  color: var(--ax-dark-text, #edf3fb);
+}
+
+@media (max-width: 767.98px) {
+  :where(
+    .ax-control,
+    .ax-field input:not([type="color"]),
+    .ax-field select,
+    .ax-field textarea,
+    .ax-input,
+    .ax-select,
+    .ax-textarea,
+    .ts-control > input
+  ) {
+    font-size: 16px;
+  }
+
+  .ax-select-dropdown .ts-dropdown-content { max-height: min(216px, 32vh); }
+  .ax-select-dropdown :where(.option, .create) { padding: 10px 12px; font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(
+    .ax-control,
+    .ax-field input:not([type="color"]),
+    .ax-field select,
+    .ax-field textarea,
+    .ax-input,
+    .ax-select,
+    .ax-textarea
+  ) {
+    transition: none;
+  }
+}
+
+.ax-range-field {
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 7px;
+  background: var(--ax-panel-soft);
+}
+
+.ax-range-field__header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ax-range-field__value {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--ax-control-bg);
+  color: var(--admin-primary);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.ax-range-field__input {
+  width: 100%;
+  accent-color: var(--admin-primary);
+  cursor: pointer;
+}
+
+.ax-range-field__input:focus-visible {
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+}
+
+.ax-range-field__input:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+[data-admin-theme="dark"] .ax-range-field {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface);
+}
+
+[data-admin-theme="dark"] .ax-range-field__value {
+  background: var(--ax-dark-surface-raised);
+  color: color-mix(in srgb, var(--admin-primary) 58%, #fff);
+}

@@ -50,8 +50,11 @@ export default class extends Controller {
     const percent = Math.max(0, Math.min(100, Number(status.percent || 0)))
 
     if (this.hasBarTarget) {
-      this.barTarget.style.width = `${percent}%`
-      this.barTarget.parentElement?.setAttribute("aria-valuenow", percent.toString())
+      this.barTarget.value = percent
+      this.barTarget.setAttribute("value", percent.toString())
+      this.barTarget.setAttribute("aria-valuenow", percent.toString())
+      this.barTarget.classList.toggle("is-running", this.activeStatus(status.status))
+      this.barTarget.setAttribute("aria-busy", this.activeStatus(status.status) ? "true" : "false")
     }
 
     this.setTextIfPresent("percent", this.percent(percent))

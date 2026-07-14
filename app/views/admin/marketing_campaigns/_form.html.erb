@@ -1,47 +1,38 @@
 <%= form_with model: [:admin, campaign], local: true, html: { class: "marketing-campaign-form" } do |f| %>
   <%= ax_error_summary(campaign) %>
 
-  <div class="ax-card tw-mb-4">
-    <div class="ax-card__body">
+  <%= ax_operational_panel(eyebrow: "Cadastro", title: "Configuração da campanha", class_name: "tw-mb-4") do %>
       <%= ax_field_grid do %>
         <div class="ax-span-6">
-          <%= f.label :name, "Nome da campanha", class: "ax-label tw-font-semibold" %>
-          <%= f.text_field :name, class: "ax-control", required: true %>
+          <%= ax_text_field(form: f, method: :name, label: "Nome da campanha", required: true) %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :seo_setting_id, "Página SEO vinculada", class: "ax-label tw-font-semibold" %>
-          <%= f.collection_select :seo_setting_id,
-                                  SeoSetting.order(access_count: :desc, page_name: :asc).limit(200),
-                                  :id,
-                                  :display_name,
-                                  { include_blank: "Sem vínculo" },
-                                  class: "ax-control" %>
+          <%= ax_select_field(form: f, method: :seo_setting_id, label: "Página SEO vinculada",
+                choices: @seo_settings.map { |setting| [setting.display_name, setting.id] },
+                select_options: { include_blank: "Sem vínculo" }) %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :channel, "Canal", class: "ax-label tw-font-semibold" %>
-          <%= f.select :channel, MarketingCampaign::CHANNELS.map { |key, label| [label, key] }, {}, class: "ax-control" %>
+          <%= ax_select_field(form: f, method: :channel, label: "Canal",
+                choices: MarketingCampaign::CHANNELS.map { |key, label| [label, key] }) %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :status, "Status", class: "ax-label tw-font-semibold" %>
-          <%= f.select :status, MarketingCampaign::STATUSES.map { |key, label| [label, key] }, {}, class: "ax-control" %>
+          <%= ax_select_field(form: f, method: :status, label: "Status",
+                choices: MarketingCampaign::STATUSES.map { |key, label| [label, key] }) %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :priority, "Prioridade", class: "ax-label tw-font-semibold" %>
-          <%= f.number_field :priority, class: "ax-control", min: 1, max: 5 %>
+          <%= ax_number_field(form: f, method: :priority, label: "Prioridade", min: 1, max: 5) %>
         </div>
         <div class="ax-span-6">
-          <%= f.label :target_url, "URL alvo", class: "ax-label tw-font-semibold" %>
-          <%= f.text_field :target_url, class: "ax-control", placeholder: "/imoveis/frente-mar" %>
+          <%= ax_text_field(form: f, method: :target_url, label: "URL alvo", placeholder: "/imoveis/frente-mar") %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :budget, "Orçamento previsto", class: "ax-label tw-font-semibold" %>
-          <%= f.text_field :budget, value: number_with_precision(campaign.budget, precision: 2), class: "ax-control", placeholder: "0,00" %>
+          <%= ax_currency_field(form: f, method: :budget, label: "Orçamento previsto",
+                value: number_with_precision(campaign.budget, precision: 2), placeholder: "0,00") %>
         </div>
         <div class="ax-span-12">
-          <div class="tw-rounded-lg tw-p-2" style="border:1px solid var(--ax-border, #e5e7eb)">
+          <%= ax_operational_panel(eyebrow: "Rastreamento", title: "UTM Builder") do %>
             <div class="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-flex-wrap tw-gap-2">
               <div>
-                <h2 class="tw-font-bold tw-mb-1"><i class="bi bi-link-45deg" style="margin-right:.25rem"></i>UTM Builder</h2>
                 <p class="tw-text-sm tw-text-ink-muted">Preencha os campos para gerar o link final da campanha.</p>
               </div>
               <% if campaign.persisted? %>
@@ -50,56 +41,43 @@
             </div>
             <%= ax_field_grid do %>
               <div class="ax-span-4">
-                <%= f.label :utm_source, "Origem", class: "ax-label tw-text-sm tw-font-semibold" %>
-                <%= f.text_field :utm_source, class: "ax-control", placeholder: "google, instagram, footer" %>
+                <%= ax_text_field(form: f, method: :utm_source, label: "Origem", placeholder: "google, instagram, footer") %>
               </div>
               <div class="ax-span-4">
-                <%= f.label :utm_medium, "Mídia", class: "ax-label tw-text-sm tw-font-semibold" %>
-                <%= f.text_field :utm_medium, class: "ax-control", placeholder: "cpc, social, organic" %>
+                <%= ax_text_field(form: f, method: :utm_medium, label: "Mídia", placeholder: "cpc, social, organic") %>
               </div>
               <div class="ax-span-4">
-                <%= f.label :utm_campaign, "Campanha", class: "ax-label tw-text-sm tw-font-semibold" %>
-                <%= f.text_field :utm_campaign, class: "ax-control", placeholder: "frente-mar-maio" %>
+                <%= ax_text_field(form: f, method: :utm_campaign, label: "Campanha", placeholder: "frente-mar-maio") %>
               </div>
               <div class="ax-span-6">
-                <%= f.label :utm_term, "Termo", class: "ax-label tw-text-sm tw-font-semibold" %>
-                <%= f.text_field :utm_term, class: "ax-control", placeholder: "apartamento frente mar" %>
+                <%= ax_text_field(form: f, method: :utm_term, label: "Termo", placeholder: "apartamento frente mar") %>
               </div>
               <div class="ax-span-6">
-                <%= f.label :utm_content, "Conteúdo", class: "ax-label tw-text-sm tw-font-semibold" %>
-                <%= f.text_field :utm_content, class: "ax-control", placeholder: "botao-footer, criativo-a" %>
+                <%= ax_text_field(form: f, method: :utm_content, label: "Conteúdo", placeholder: "botao-footer, criativo-a") %>
               </div>
             <% end %>
             <% if campaign.target_url.present? %>
               <div class="tw-mt-3">
-                <label class="ax-label tw-text-sm tw-font-semibold">Link atual gerado</label>
-                <input type="text" class="ax-control ax-control--sm" readonly value="<%= campaign.generated_url(request.base_url) %>">
+                <%= ax_standalone_field(name: nil, id: "marketing_campaign_generated_url", label: "Link atual gerado",
+                      value: campaign.generated_url(request.base_url), readonly: true, input_class: "ax-control--sm") %>
               </div>
             <% end %>
-          </div>
+          <% end %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :starts_on, "Início", class: "ax-label tw-font-semibold" %>
-          <%= f.date_field :starts_on, class: "ax-control" %>
+          <%= ax_date_field(form: f, method: :starts_on, label: "Início") %>
         </div>
         <div class="ax-span-4">
-          <%= f.label :ends_on, "Fim", class: "ax-label tw-font-semibold" %>
-          <%= f.date_field :ends_on, class: "ax-control" %>
+          <%= ax_date_field(form: f, method: :ends_on, label: "Fim") %>
         </div>
         <div class="ax-span-12">
-          <%= f.label :objective, "Objetivo", class: "ax-label tw-font-semibold" %>
-          <%= f.text_field :objective, class: "ax-control", placeholder: "Ex: gerar leads para imóveis frente mar" %>
+          <%= ax_text_field(form: f, method: :objective, label: "Objetivo", placeholder: "Ex: gerar leads para imóveis frente mar") %>
         </div>
         <div class="ax-span-12">
-          <%= f.label :notes, "Notas", class: "ax-label tw-font-semibold" %>
-          <%= f.text_area :notes, class: "ax-control", rows: 5 %>
+          <%= ax_text_field(form: f, method: :notes, label: "Notas", type: :textarea, rows: 5) %>
         </div>
       <% end %>
-    </div>
-  </div>
+  <% end %>
 
-  <div class="tw-flex tw-justify-end tw-gap-2">
-    <%= link_to "Cancelar", admin_marketing_campaigns_path, class: "ax-btn ax-btn--ghost" %>
-    <%= f.submit "Salvar campanha", class: "ax-btn ax-btn--primary" %>
-  </div>
+  <%= ax_form_actions(cancel_path: admin_marketing_campaigns_path, submit_label: "Salvar campanha", form: f) %>
 <% end %>

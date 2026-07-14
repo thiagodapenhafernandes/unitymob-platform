@@ -9,12 +9,13 @@ export default class extends Controller {
     this.refresh()
   }
 
+  disconnect() {
+    this.requestController?.abort()
+  }
+
   refresh() {
     const formData = new FormData(this.element)
     const params = new URLSearchParams()
-
-    // Log for debugging
-    console.log("Refreshing preview...")
 
     for (let [key, value] of formData.entries()) {
       // Logic to extract parameters from Rails-style names like 'landing_page[filter_params][min_area]'
@@ -37,23 +38,38 @@ export default class extends Controller {
 
     const url = `${this.urlValue}?${params.toString()}`
 
+    this.requestController?.abort()
+    this.requestController = new AbortController()
+    const requestController = this.requestController
+    this.resultsTarget.setAttribute("aria-busy", "true")
+
     fetch(url, {
+      signal: requestController.signal,
       headers: {
         "Accept": "application/json",
         "X-Requested-With": "XMLHttpRequest"
       }
     })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return response.json()
+      })
       .then(data => {
         this.renderDashboard(data)
       })
       .catch(error => {
-        console.error("Error fetching preview:", error)
+        if (error.name === "AbortError") return
+
         this.resultsTarget.innerHTML = `
-        <div class="alert alert-danger small p-2">
-          Erro ao carregar prévia. Verifique os logs.
+        <div class="ax-inline-notice ax-inline-notice--danger" role="alert">
+          Não foi possível carregar a prévia. Tente novamente.
         </div>
       `
+      })
+      .finally(() => {
+        if (this.requestController === requestController) {
+          this.resultsTarget.setAttribute("aria-busy", "false")
+        }
       })
   }
 
@@ -62,13 +78,14 @@ export default class extends Controller {
 
     if (count === 0) {
       this.resultsTarget.innerHTML = `
-        <div class="text-center py-5 w-100">
-          <i class="bi bi-search text-muted" style="font-size: 2rem;"></i>
-          <div class="mt-2 text-muted italic">Nenhum imóvel encontrado com esses filtros.</div>
+        <div class="landing-page-preview__empty" role="status">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <div>Nenhum imóvel encontrado com esses filtros.</div>
         </div>
       `
       // Update the hero count too if visible
       if (this.hasCountTarget) {
+        this.countTarget.hidden = false
         this.countTarget.textContent = "0 imóveis"
       }
       return
@@ -79,50 +96,48 @@ export default class extends Controller {
       .sort(([, a], [, b]) => b - a)
 
     const distributionHtml = sortedDistribution.map(([cat, qty]) => {
-      const percentage = (qty / count) * 100
+      const safeCategory = this.escapeHtml(cat)
       return `
-        <div class="distribution-item">
-          <div class="distribution-header">
-            <span class="distribution-label">${cat}</span>
-            <span class="distribution-count">${qty}</span>
+        <div class="landing-page-preview__distribution-item">
+          <div class="landing-page-preview__distribution-header">
+            <span class="landing-page-preview__distribution-label">${safeCategory}</span>
+            <span class="landing-page-preview__distribution-count">${qty}</span>
           </div>
-          <div class="progress-thin">
-            <div class="progress-bar" role="progressbar" style="width: ${percentage}%"></div>
-          </div>
+          <progress class="landing-page-preview__progress" value="${qty}" max="${count}" aria-label="${safeCategory}: ${qty} de ${count} imóveis"></progress>
         </div>
       `
     }).join('')
 
+    const averagePrice = this.escapeHtml(metrics.avg_price)
+    const minimumPrice = this.escapeHtml(metrics.min_price)
+    const maximumPrice = this.escapeHtml(metrics.max_price)
+
     this.resultsTarget.innerHTML = `
-      <!-- Hero Metric -->
-      <div class="preview-stat-hero">
-        <span class="hero-value">${count}</span>
-        <span class="hero-label">Imóveis Encontrados</span>
+      <div class="landing-page-preview__hero">
+        <span class="landing-page-preview__hero-value">${count}</span>
+        <span class="landing-page-preview__hero-label">Imóveis encontrados</span>
       </div>
 
-      <div class="preview-stats-grid">
-        <!-- Preço Médio -->
-        <div class="preview-stat-card">
-          <div class="stat-label"><i class="bi bi-tag-fill"></i> Preço Médio</div>
-          <div class="stat-value">${metrics.avg_price}</div>
-          <div class="stat-sub">Média dos resultados</div>
+      <div class="landing-page-preview__stats">
+        <div class="landing-page-preview__stat">
+          <div class="landing-page-preview__stat-label"><i class="bi bi-tag-fill" aria-hidden="true"></i> Preço médio</div>
+          <div class="landing-page-preview__stat-value">${averagePrice}</div>
+          <div class="landing-page-preview__stat-hint">Média dos resultados</div>
         </div>
-        
-        <!-- Variação -->
-        <div class="preview-stat-card">
-          <div class="stat-label"><i class="bi bi-bar-chart-fill"></i> Variação de Preço</div>
-          <div class="stat-value" style="font-size: 1rem; color: var(--admin-text-main);">
-            Min: <span class="text-secondary">${metrics.min_price}</span>
+
+        <div class="landing-page-preview__stat">
+          <div class="landing-page-preview__stat-label"><i class="bi bi-bar-chart-fill" aria-hidden="true"></i> Variação de preço</div>
+          <div class="landing-page-preview__stat-value landing-page-preview__stat-value--compact">
+            Mín.: <span>${minimumPrice}</span>
           </div>
-          <div class="stat-value" style="font-size: 1rem; color: var(--admin-text-main);">
-            Max: <span class="text-secondary">${metrics.max_price}</span>
+          <div class="landing-page-preview__stat-value landing-page-preview__stat-value--compact">
+            Máx.: <span>${maximumPrice}</span>
           </div>
         </div>
 
-        <!-- Distribuição por Categoria -->
-        <div class="preview-stat-card">
-          <div class="stat-label"><i class="bi bi-pie-chart-fill"></i> Por Categoria</div>
-          <div class="distribution-list">
+        <div class="landing-page-preview__stat">
+          <div class="landing-page-preview__stat-label"><i class="bi bi-pie-chart-fill" aria-hidden="true"></i> Por categoria</div>
+          <div class="landing-page-preview__distribution">
             ${distributionHtml}
           </div>
         </div>
@@ -133,5 +148,11 @@ export default class extends Controller {
     if (this.hasCountTarget) {
       this.countTarget.hidden = true
     }
+  }
+
+  escapeHtml(value) {
+    const element = document.createElement("div")
+    element.textContent = String(value ?? "")
+    return element.innerHTML
   }
 }

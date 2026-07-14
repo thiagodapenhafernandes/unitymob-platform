@@ -8,7 +8,7 @@
   end
 %>
 <% if messages.present? %>
-  <span class="ax-field__error">
+  <span class="ax-field__error" role="alert">
     <i class="bi bi-exclamation-circle" aria-hidden="true"></i><%= messages.first %>
   </span>
 <% end %>

@@ -102,10 +102,10 @@ export default class extends Controller {
         ? `<a class="ax-icon-btn" href="${this.escapeHtml(e.download_url)}" title="Baixar" download="${this.escapeHtml(e.filename)}" data-controller="ax-async-download" data-action="ax-async-download#download" data-turbo="false" data-admin-navigation-ignore="true" data-ax-async-download-accept-value="text/csv,*/*"><i class="bi bi-download"></i></a>`
         : ""
       return `
-        <div class="tw-flex tw-items-center tw-gap-2 tw-py-2" style="border-bottom:1px solid #e7ebf2">
-          <i class="bi bi-filetype-csv" style="color:#16a34a"></i>
-          <div class="tw-flex-1" style="min-width:0">
-            <div class="tw-text-sm tw-font-semibold" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${this.escapeHtml(e.filename)}</div>
+        <div class="habitations-export-recent-item tw-flex tw-items-center tw-gap-2 tw-py-2">
+          <i class="bi bi-filetype-csv habitations-export-recent-item__icon"></i>
+          <div class="tw-flex-1 habitations-export-recent-item__content">
+            <div class="tw-text-sm tw-font-semibold habitations-export-recent-item__filename">${this.escapeHtml(e.filename)}</div>
             <div class="tw-text-xs tw-text-ink-muted">${this.escapeHtml(e.record_count)} imóveis · ${this.escapeHtml(e.created_at)}</div>
           </div>
           ${badge}
@@ -165,7 +165,12 @@ export default class extends Controller {
   showProgress(pct, label) {
     if (!this.hasProgressTarget) return
     this.progressTarget.hidden = false
-    if (this.hasProgressBarTarget) this.progressBarTarget.style.width = `${Math.min(Math.max(pct, 0), 100)}%`
+    if (this.hasProgressBarTarget) {
+      const progress = Math.min(Math.max(Number(pct) || 0, 0), 100)
+      this.progressBarTarget.value = progress
+      this.progressBarTarget.textContent = `${progress}%`
+      this.progressBarTarget.setAttribute("aria-label", `Progresso da exportação: ${progress}%`)
+    }
     if (this.hasProgressLabelTarget) this.progressLabelTarget.textContent = label
   }
 
@@ -175,7 +180,6 @@ export default class extends Controller {
 
   showError(message) {
     this.showProgress(0, `Erro: ${message}`)
-    if (this.hasProgressBarTarget) this.progressBarTarget.style.width = "0%"
   }
 
   setSubmitting(on) {

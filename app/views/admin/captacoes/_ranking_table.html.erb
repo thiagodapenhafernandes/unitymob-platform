@@ -3,9 +3,9 @@
   <table class="ax-table">
     <thead class="capt-ranking-table__head">
       <tr>
-        <th style="width: 40px;">Rank</th>
+        <th class="ax-table__col--w-40">Rank</th>
         <th>Corretor</th>
-        <th style="min-width: 140px;">Captação</th>
+        <th class="capt-ranking-table__col-chart">Captação</th>
         <th class="tw-text-right"><%= value_label %></th>
       </tr>
     </thead>
@@ -15,8 +15,12 @@
           <td class="tw-font-bold tw-text-ink-muted"><%= i + 1 %></td>
           <td><%= row.name %></td>
           <td>
-            <div class="bar-cell" style="width: 100%;">
-              <div class="fill" style="width: <%= (row.ct.to_f / max_ct * 100).to_i %>%;"></div>
+            <div class="bar-cell">
+              <%= ax_progress(
+                value: (row.ct.to_f / max_ct * 100).to_i,
+                class_name: "capt-ranking-row__progress",
+                label: "#{row.name}: #{row.ct} captações"
+              ) %>
               <span class="label"><%= row.ct %></span>
             </div>
           </td>

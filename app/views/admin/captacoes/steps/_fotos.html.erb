@@ -9,21 +9,14 @@
          data-captacao-photos-min-date-value="<%= (@photography_min_date || Date.current + 1.day).iso8601 %>"
          data-captacao-photos-blocked-dates-value="<%= (@photography_blocked_dates || []).to_json %>"
          data-captacao-photos-booked-slots-value="<%= (@photography_booked_slots || []).to_json %>">
-  <h1 class="wizard-section-title"><i class="bi bi-camera-fill" style="color:var(--admin-primary);"></i> Fotos e autorização</h1>
+  <h1 class="wizard-section-title"><i class="bi bi-camera-fill tw-text-primary"></i> Fotos e autorização</h1>
   <p class="wizard-section-subtitle">Envie fotos em lote, adicione mais imagens quando precisar e anexe a autorização antes de mandar para análise.</p>
 
-  <div class="wizard-field-group">
-    <label class="ax-label">Fotos ou agendamento com fotógrafo</label>
-    <%= f.select :photo_flow_choice,
-                 options_for_select(
-                   photo_flow_options,
-                   selected: @captacao.photo_flow_choice
-                 ),
-                 { include_blank: "Selecione" },
-                 class: field_state.call(:photo_flow_choice, "ax-control"),
-                 data: { captacao_photos_target: "flowSelect", action: "change->captacao-photos#refreshFlow" } %>
-    <% if field_invalid.call(:photo_flow_choice) %><div class="invalid-feedback d-block">Escolha se vai enviar fotos ou agendar fotógrafo.</div><% end %>
-  </div>
+  <%= ax_select_field(form: f, method: :photo_flow_choice, label: "Fotos ou agendamento com fotógrafo",
+        choices: photo_flow_options, select_options: { include_blank: "Selecione" }, class_name: "wizard-field-group",
+        html_options: { class: field_state.call(:photo_flow_choice, "ax-control"),
+                        data: { captacao_photos_target: "flowSelect", action: "change->captacao-photos#refreshFlow" } }) %>
+  <% if field_invalid.call(:photo_flow_choice) %><div class="invalid-feedback d-block">Escolha se vai enviar fotos ou agendar fotógrafo.</div><% end %>
 
   <div class="wizard-field-group" data-captacao-photos-target="uploadPanel" hidden>
     <label class="ax-label">Fotos do imóvel</label>
@@ -146,11 +139,11 @@
     </div>
   </div>
 
-  <div class="wizard-field-group" data-captacao-photos-target="scheduledAtGroup" hidden>
-    <%= f.label :photo_session_requested_at, "Data/hora agendada com fotógrafo", class: "ax-label", data: { captacao_photos_target: "scheduledAtLabel" } %>
-    <%= f.datetime_local_field :photo_session_requested_at,
-                               class: field_state.call(:photo_session_requested_at),
-                               data: { captacao_photos_target: "scheduledAtInput" } %>
+  <div data-captacao-photos-target="scheduledAtGroup" hidden>
+    <%= ax_text_field(form: f, method: :photo_session_requested_at, label: "Data/hora agendada com fotógrafo",
+          type: :"datetime-local", field_class: "wizard-field-group", class: field_state.call(:photo_session_requested_at),
+          label_options: { data: { captacao_photos_target: "scheduledAtLabel" } },
+          data: { captacao_photos_target: "scheduledAtInput" }) %>
     <% if field_invalid.call(:photo_session_requested_at) %><div class="invalid-feedback d-block">Informe a data/hora agendada.</div><% end %>
     <small class="tw-text-ink-muted" data-captacao-photos-target="scheduledAtHint">Obrigatório quando a opção for agendar fotógrafo.</small>
   </div>

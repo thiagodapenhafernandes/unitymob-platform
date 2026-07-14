@@ -14,16 +14,15 @@ class FooterSetting < ApplicationRecord
   def self.instance(tenant: Current.tenant || Tenant.public_for)
     raise ArgumentError, "Tenant obrigatório para configurações do rodapé" if tenant.blank?
 
-    where(tenant: tenant).first_or_create!(
-      about_title: "Salute Imóveis",
-      about_text: "Sua imobiliária de confiança em Balneário Camboriú. Tradição e excelência no mercado imobiliário desde sempre.",
+    defaults = {
+      about_title: tenant.name,
+      about_text: "Encontre oportunidades imobiliárias e fale com nossa equipe.",
       links_title: "Links Rápidos",
       stores_title: "Nossas Lojas",
       contact_title: "Contato",
       social_title: "Redes Sociais",
-      whatsapp: "(47) 98863-0198",
-      email: "contato@saluteimoveis.com",
-      copyright_text: "© 2026 Salute Imóveis. Todos os direitos reservados. CRECI 6834"
-    )
+      copyright_text: "© #{Time.current.year} #{tenant.name}. Todos os direitos reservados."
+    }
+    where(tenant: tenant).first_or_create!(defaults)
   end
 end

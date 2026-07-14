@@ -1,48 +1,43 @@
 <%# Alertas de Marketing — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <% bs_to_ax = { "success" => "green", "danger" => "red", "warning" => "amber", "info" => "blue", "primary" => "blue", "secondary" => "gray" } %>
 <div class="marketing-admin-dark">
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Alertas de Marketing</h1>
-    <p class="ax-page-subtitle">Sinais automáticos para evitar campanha sem estoque, SEO fraco ou página sem tráfego.</p>
-  </div>
-  <%= link_to admin_seo_dashboard_path, class: "ax-btn ax-btn--sm" do %>
-    <i class="bi bi-graph-up-arrow ax-ico"></i><span>Dashboard SEO</span>
-  <% end %>
-</div>
+<%= ax_workspace_heading(
+      eyebrow: "Marketing · Monitoramento",
+      icon: "exclamation-diamond",
+      title: "Alertas de Marketing",
+      subtitle: "Sinais automáticos para evitar campanha sem estoque, SEO fraco ou página sem tráfego.",
+      actions: ax_button("Dashboard SEO", admin_seo_dashboard_path, size: :sm, icon: "graph-up-arrow")
+    ) %>
 
 <div class="tw-grid tw-grid-cols-1 xl:tw-grid-cols-12 tw-gap-4">
   <div class="xl:tw-col-span-5">
-    <div class="ax-card">
-      <div class="ax-card__header"><span class="ax-card__title">Alertas ativos</span></div>
-      <div class="ax-card__body tw-flex tw-flex-col tw-gap-3">
+    <%= ax_operational_panel(eyebrow: "Monitoramento", title: "Alertas ativos", class_name: "tw-h-full") do %>
+      <div class="tw-grid tw-gap-2">
         <% @alerts.each do |alert| %>
-          <div class="tw-flex tw-justify-between tw-gap-3 tw-pb-3 tw-border-b tw-border-line last:tw-border-0 last:tw-pb-0">
-            <div>
-              <span class="ax-badge ax-badge--<%= bs_to_ax[alert.level.to_s] || 'gray' %> tw-mb-1"><%= alert.level %></span>
-              <div class="ax-strong"><%= alert.title %></div>
-              <div class="tw-text-2xs tw-text-ink-muted"><%= alert.description %></div>
-            </div>
-            <div class="tw-flex-none"><%= link_to alert.action_label, alert.action_path, class: "ax-btn ax-btn--sm" %></div>
-          </div>
+          <%= ax_record_item(
+                title: alert.title,
+                meta: alert.description,
+                icon: "exclamation-triangle",
+                body: tag.span(alert.level, class: "ax-badge ax-badge--#{bs_to_ax[alert.level.to_s] || 'gray'}"),
+                actions: ax_button(alert.action_label, alert.action_path, size: :sm)
+              ) %>
         <% end %>
-        <% if @alerts.blank? %><div class="ax-empty tw-py-6">Nenhum alerta crítico agora.</div><% end %>
+        <% if @alerts.blank? %><%= ax_empty_state(title: "Nenhum alerta crítico agora", description: "Estoque, tráfego e SEO não exigem intervenção imediata.", icon: "check-circle") %><% end %>
       </div>
-    </div>
+    <% end %>
   </div>
 
   <div class="xl:tw-col-span-7">
-    <div class="ax-card">
-      <div class="ax-card__header"><span class="ax-card__title">Checklist das páginas estratégicas</span></div>
-      <div class="ax-table-wrap" style="border:0;border-radius:0">
+    <%= ax_operational_panel(eyebrow: "Prontidão", title: "Checklist das páginas estratégicas", class_name: "tw-h-full") do %>
+      <div class="ax-table-wrap">
         <table class="ax-table">
           <thead>
             <tr>
               <th>Página</th>
-              <th class="ax-num" style="width:90px">Estoque</th>
-              <th class="ax-num" style="width:80px">Únicos</th>
-              <th class="ax-num" style="width:80px">SEO</th>
-              <th style="width:100px">Status</th>
+              <th class="ax-num ax-table__col--compact">Estoque</th>
+              <th class="ax-num ax-table__col--w-80">Únicos</th>
+              <th class="ax-num ax-table__col--w-80">SEO</th>
+              <th class="ax-table__col--w-100">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -59,7 +54,7 @@
           </tbody>
         </table>
       </div>
-    </div>
+    <% end %>
   </div>
 </div>
 </div>

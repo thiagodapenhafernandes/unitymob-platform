@@ -19,7 +19,7 @@ class Admin::FooterSettingsController < Admin::BaseController
   private
 
   def set_footer_setting
-    @footer_setting = FooterSetting.instance
+    @footer_setting = FooterSetting.instance(tenant: current_tenant)
   end
 
   def footer_setting_params

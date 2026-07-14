@@ -1,42 +1,47 @@
-<header class="ax-dashboard-command ax-property-form-command">
-  <div class="ax-dashboard-command__main">
-    <span class="ax-dashboard-command__eyebrow">Perfil de acesso</span>
-    <h1><%= @profile.name %></h1>
-    <p>
-      <%= @profile.vertical? ? "Perfil vertical da hierarquia principal." : "Função horizontal anexada a um perfil vertical." %>
-    </p>
-  </div>
-  <div class="ax-dashboard-command__actions">
-    <%= link_to "Voltar", admin_profiles_path, class: "ax-btn" %>
-    <%= link_to "Editar", edit_admin_profile_path(@profile), class: "ax-btn ax-btn--primary" %>
-  </div>
-</header>
+<%
+  profile_actions = safe_join([
+    link_to("Voltar", admin_profiles_path, class: "ax-btn"),
+    link_to("Editar", edit_admin_profile_path(@profile), class: "ax-btn ax-btn--primary")
+  ])
+%>
+<div class="profiles-admin">
+<%= ax_workspace_heading(
+      eyebrow: "Conta · Perfil de acesso",
+      icon: "shield-lock",
+      title: @profile.name,
+      subtitle: @profile.vertical? ? "Perfil vertical da hierarquia principal." : "Função horizontal anexada a um perfil vertical.",
+      actions: profile_actions
+    ) %>
 
-<div class="ax-table-wrap" style="margin-top:8px">
-  <table class="ax-table">
-    <tbody>
+<%= ax_operational_panel(eyebrow: "Governança", title: "Resumo do perfil", class_name: "tw-mt-2") do %>
+  <div class="ax-table-wrap">
+    <table class="ax-table">
+      <caption class="tw-sr-only">Resumo estrutural do perfil <%= @profile.name %></caption>
+      <tbody>
       <tr>
-        <th style="width:220px">Eixo</th>
+        <th scope="row" class="ax-table__col--w-220">Eixo</th>
         <td><%= @profile.vertical? ? "Vertical" : "Horizontal" %></td>
       </tr>
       <tr>
-        <th>Vinculado a</th>
+        <th scope="row">Vinculado a</th>
         <td><%= @profile.horizontal? ? @profile.vertical_profile&.name : "Hierarquia principal" %></td>
       </tr>
       <tr>
-        <th>Ordem vertical</th>
+        <th scope="row">Ordem vertical</th>
         <td><%= @profile.vertical? ? @profile.position : "Nao se aplica" %></td>
       </tr>
       <tr>
-        <th>Status</th>
+        <th scope="row">Status</th>
         <td><%= @profile.active? ? "Ativo" : "Inativo" %></td>
       </tr>
       <tr>
-        <th>Usuários vinculados</th>
+        <th scope="row">Usuários vinculados</th>
         <td>
           <%= @profile.vertical? ? @profile.admin_users.where(tenant: current_tenant).count : current_tenant.admin_users.where(horizontal_profile_id: @profile.id).count %>
         </td>
       </tr>
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+  </div>
+<% end %>
 </div>

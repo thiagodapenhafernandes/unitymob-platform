@@ -1,0 +1,57 @@
+<section class="field-ai-search"
+         data-controller="field-property-search"
+         data-field-property-search-create-url-value="<%= field_property_search_path(format: :json) %>"
+         data-field-property-search-select-url-value="<%= select_field_property_search_path(format: :json) %>"
+         data-field-property-search-share-url-value="<%= field_property_share_collections_path(format: :json) %>"
+         data-field-property-search-max-duration-value="<%= @setting.ai_property_search_max_audio_duration_seconds %>"
+         data-field-property-search-auto-start-value="<%= params[:voice] == "1" %>"
+         data-field-property-search-processing-message-value="<%= @setting.ai_property_search_processing_message %>"
+         data-field-property-search-selection-message-value="<%= @setting.ai_property_search_selection_count_message %>"
+         data-field-property-search-share-error-message-value="<%= @setting.ai_property_search_share_error_message %>"
+         data-field-property-search-link-copied-message-value="<%= @setting.ai_property_search_link_copied_message %>">
+  <header class="field-ai-search__header">
+    <%= link_to field_root_path, class: "field-ai-search__back", aria: { label: "Voltar" } do %><i class="bi bi-arrow-left"></i><% end %>
+    <div><span>Imóveis</span><h1>Busca inteligente</h1></div>
+  </header>
+
+  <div class="field-ai-search__composer">
+    <p><%= @setting.ai_property_search_welcome_message %></p>
+    <textarea class="field-ai-search__input"
+              rows="4"
+              maxlength="2000"
+              placeholder="Ex.: apartamento para venda, 3 quartos, Centro, até R$ 1,2 milhão"
+              data-field-property-search-target="query"></textarea>
+    <div class="field-ai-search__actions">
+      <button type="button" class="field-ai-search__mic" hidden data-action="field-property-search#newSearch" data-field-property-search-target="newSearch"><i class="bi bi-plus-circle"></i><span>Nova busca</span></button>
+      <% if @setting.voice_property_search_enabled? %>
+        <button type="button" class="field-ai-search__mic" data-action="field-property-search#startRecording" data-field-property-search-target="micButton" aria-label="Gravar busca por voz">
+          <i class="bi bi-mic-fill"></i><span>Falar busca</span>
+        </button>
+      <% end %>
+      <button type="button" class="field-ai-search__submit" data-action="field-property-search#search" data-field-property-search-target="submitButton">
+        <i class="bi bi-search"></i><span>Buscar imóveis</span>
+      </button>
+    </div>
+    <div class="field-ai-search__recording" hidden data-field-property-search-target="recordingState" aria-live="polite">
+      <button type="button" class="field-ai-search__record-action field-ai-search__record-action--discard" data-action="field-property-search#discardRecording" aria-label="Descartar gravação"><i class="bi bi-trash"></i></button>
+      <span class="field-ai-search__recording-dot" aria-hidden="true"></span>
+      <span class="field-ai-search__record-time" data-field-property-search-target="timer">0:00</span>
+      <span class="field-ai-search__record-bars" data-field-property-search-target="recordBars" aria-hidden="true"></span>
+      <button type="button" class="field-ai-search__record-action field-ai-search__record-action--pause" data-action="field-property-search#togglePauseRecording" data-field-property-search-target="pauseButton" aria-label="Pausar gravação"><i class="bi bi-pause-fill"></i></button>
+      <button type="button" class="field-ai-search__record-send" data-action="field-property-search#sendRecording" aria-label="Enviar áudio"><i class="bi bi-send-fill"></i></button>
+    </div>
+  </div>
+
+  <div class="field-ai-search__processing" hidden data-field-property-search-target="processing" role="status" aria-live="polite">
+    <span class="field-ai-search__processing-spinner" aria-hidden="true"></span>
+    <span><strong data-field-property-search-target="processingText"><%= @setting.ai_property_search_processing_message %></strong><small>Transcrevendo, entendendo os filtros e procurando imóveis disponíveis.</small></span>
+  </div>
+  <div class="field-ai-search__status" hidden data-field-property-search-target="status"></div>
+  <section class="field-ai-search__confirmation" hidden data-field-property-search-target="confirmation">
+    <h2>Confirme os filtros interpretados</h2>
+    <div class="field-ai-search__chips" data-field-property-search-target="filterChips"></div>
+    <button type="button" class="field-ai-search__submit" data-action="field-property-search#confirmSearch">Confirmar busca</button>
+  </section>
+  <section class="field-ai-search__results" aria-live="polite" data-field-property-search-target="results"></section>
+  <div class="field-ai-selection-bar" hidden data-field-property-search-target="selectionBar"><strong data-field-property-search-target="selectionCount"><%= @setting.ai_property_search_message(:ai_property_search_selection_count_message, count: 0) %></strong><button type="button" data-action="field-property-search#shareSelection"><i class="bi bi-share"></i> <%= @setting.ai_property_search_share_button_label %></button></div>
+</section>

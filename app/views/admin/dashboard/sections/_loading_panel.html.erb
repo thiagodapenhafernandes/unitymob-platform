@@ -7,7 +7,7 @@
   compact ||= false
 %>
 
-<article class="ax-dashboard-panel ax-dashboard-skeleton <%= 'ax-dashboard-skeleton--compact' if compact %>" aria-label="<%= title %>">
+<article class="ax-dashboard-panel ax-dashboard-skeleton <%= 'ax-dashboard-skeleton--compact' if compact %>" role="status" aria-live="polite" aria-busy="true" aria-label="Carregando <%= title %>">
   <div class="ax-dashboard-panel__header">
     <div>
       <span class="ax-dashboard-panel__eyebrow"><%= eyebrow %></span>
@@ -17,27 +17,21 @@
   </div>
 
   <% if chart %>
-    <div class="ax-skeleton-chart">
-      <span style="height: 42%"></span>
-      <span style="height: 66%"></span>
-      <span style="height: 50%"></span>
-      <span style="height: 78%"></span>
-      <span style="height: 58%"></span>
-      <span style="height: 72%"></span>
-      <span style="height: 46%"></span>
+    <div class="ax-skeleton-chart" aria-hidden="true">
+      <% 7.times do %><span></span><% end %>
     </div>
   <% elsif table %>
-    <div class="ax-skeleton-table">
+    <div class="ax-skeleton-table" aria-hidden="true">
       <% rows.times do %>
         <span></span>
       <% end %>
     </div>
   <% else %>
-    <div class="ax-skeleton-list">
+    <div class="ax-skeleton-list" aria-hidden="true">
       <% rows.times do |index| %>
         <span class="ax-skeleton-row">
           <i></i>
-          <b style="width:<%= [78, 62, 70, 54, 66][index % 5] %>%"></b>
+          <b class="ax-skeleton-row__line--<%= (index % 5) + 1 %>"></b>
           <em></em>
         </span>
       <% end %>

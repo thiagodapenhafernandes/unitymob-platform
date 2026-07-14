@@ -1,75 +1,30 @@
 <style>
-  .access-audit-kpi {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
-  }
-  .access-audit-kpi .value {
-    font-size: 1.8rem;
-    font-weight: 800;
-    color: #0f172a;
-    line-height: 1;
-  }
-  .access-audit-kpi .label {
-    margin-top: .35rem;
-    color: #64748b;
-    font-size: .75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-  }
   .access-audit-row {
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--ax-border-soft);
     padding: .9rem 0;
   }
   .access-audit-row:last-child { border-bottom: 0; }
-  .access-audit-title { font-weight: 700; color: #0f172a; }
-  .access-audit-meta { font-size: .82rem; color: #64748b; }
+  .access-audit-title { color: var(--admin-ink); font-weight: 700; }
+  .access-audit-meta { color: var(--ab-muted); font-size: .82rem; }
   .access-audit-path {
     font-family: monospace;
     font-size: .78rem;
-    color: #475569;
+    color: var(--ab-muted);
     word-break: break-all;
   }
 </style>
 
-<div class="tw-flex tw-justify-between tw-items-start tw-mb-4 tw-flex-wrap tw-gap-2">
-  <div>
-    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-      <i class="bi bi-person-lock tw-text-primary"></i>Auditoria de Acessos
-    </h1>
-    <p class="ax-page-subtitle">
-      Log append-only de autenticação, tentativas negadas e acessos a áreas sensíveis. A navegação administrativa comum não é registrada.
-    </p>
-  </div>
-</div>
+<%= ax_page_header(
+      title: "Auditoria de Acessos",
+      subtitle: "Log append-only de autenticação, tentativas negadas e acessos a áreas sensíveis. A navegação administrativa comum não é registrada.",
+      icon: "person-lock"
+    ) %>
 
-<div class="ax-field-grid ax-field-grid--12 tw-mb-3">
-  <div class="ax-span-3">
-    <div class="access-audit-kpi">
-      <div class="value"><%= @total_events %></div>
-      <div class="label">Eventos filtrados</div>
-    </div>
-  </div>
-  <div class="ax-span-3">
-    <div class="access-audit-kpi">
-      <div class="value" style="color:#16a34a"><%= @allowed_events %></div>
-      <div class="label">Permitidos</div>
-    </div>
-  </div>
-  <div class="ax-span-3">
-    <div class="access-audit-kpi">
-      <div class="value" style="<%= "color:#dc2626" if @denied_events.positive? %>"><%= @denied_events %></div>
-      <div class="label">Negados</div>
-    </div>
-  </div>
-  <div class="ax-span-3">
-    <div class="access-audit-kpi">
-      <div class="value"><%= @unique_ips %></div>
-      <div class="label">IPs únicos</div>
-    </div>
-  </div>
+<div class="ax-metric-grid tw-mb-3" aria-label="Resumo da auditoria de acessos">
+  <%= ax_metric_card(label: "Eventos filtrados", value: @total_events) %>
+  <%= ax_metric_card(label: "Permitidos", value: @allowed_events, badge: ax_badge("Permitido", tone: :green, dot: true)) %>
+  <%= ax_metric_card(label: "Negados", value: @denied_events, badge: ax_badge(@denied_events.positive? ? "Atenção" : "Nenhum", tone: @denied_events.positive? ? :red : :gray, dot: @denied_events.positive?)) %>
+  <%= ax_metric_card(label: "IPs únicos", value: @unique_ips) %>
 </div>
 
 <div class="ax-card tw-mb-3">
@@ -163,11 +118,9 @@
       <% @logs.each do |log| %>
         <div class="access-audit-row">
           <div class="tw-flex tw-justify-between tw-items-start tw-gap-3 tw-flex-wrap">
-            <div style="flex:1 1 0%">
+            <div class="tw-flex-1 tw-min-w-0">
               <div class="access-audit-title tw-flex tw-items-center tw-gap-2">
-                <span class="ax-badge <%= log.result == "allowed" ? "ax-badge--green" : "ax-badge--red" %>">
-                  <%= log.result_label %>
-                </span>
+                <%= ax_badge(log.result_label, tone: log.result == "allowed" ? :green : :red) %>
                 <%= log.event_label %> · <%= log.actor_name %>
               </div>
               <div class="access-audit-meta tw-mt-2 tw-flex tw-items-center tw-gap-1">
@@ -195,10 +148,11 @@
 
       <%= ax_pagination @logs, params: request.query_parameters %>
     <% else %>
-      <div class="tw-text-center tw-text-ink-muted" style="padding:3rem 0">
-        <i class="bi bi-inbox tw-mb-2" style="display:block;font-size:2rem"></i>
-        Nenhum acesso encontrado com os filtros atuais.
-      </div>
+      <%= ax_empty_state(
+            title: "Nenhum acesso encontrado",
+            description: "Não há eventos para os filtros atuais.",
+            icon: "inbox"
+          ) %>
     <% end %>
   </div>
 </div>

@@ -5,40 +5,43 @@
 <% file_asset_counts = @status[:file_asset_counts] || {} %>
 
 <div data-controller="image-migration-status" data-image-migration-status-url-value="<%= admin_image_migration_status_path(format: :json) %>">
-  <div class="tw-flex tw-flex-wrap tw-justify-between tw-items-center tw-gap-3 tw-mb-4">
-    <div>
-      <h1 class="ax-page-title">Migração de Imagens</h1>
-      <p class="ax-page-subtitle">Materialize fotos da API Vista no Active Storage/DO Spaces, sem baixar novamente o que já está anexado.</p>
-    </div>
+  <% migration_actions = capture do %>
     <div class="tw-flex tw-gap-2">
       <%= button_to admin_sync_image_migration_path, method: :post, class: "ax-btn ax-btn--sm ax-btn--primary", disabled: worker[:running], data: { image_migration_status_target: "syncButton" }, form: { class: "tw-inline", data: { turbo_confirm: "Iniciar a materialização das fotos com as configurações salvas?" } } do %>
         <i class="bi bi-play-fill ax-ico"></i>Iniciar
       <% end %>
       <%= link_to admin_image_migration_status_path, class: "ax-btn ax-btn--sm" do %><i class="bi bi-arrow-clockwise ax-ico"></i>Atualizar<% end %>
     </div>
-  </div>
+  <% end %>
+  <%= ax_workspace_heading(
+        eyebrow: "Sistema · Active Storage",
+        icon: "images",
+        title: "Migração de Imagens",
+        subtitle: "Materialize fotos da API Vista no Active Storage/DO Spaces, sem baixar novamente o que já está anexado.",
+        actions: migration_actions
+      ) %>
 
-  <div class="tw-grid tw-grid-cols-2 xl:tw-grid-cols-4 tw-gap-3 tw-mb-4">
-    <div class="ax-card ax-card--stat">
-      <div class="ax-stat-label">Imóveis com fotos</div>
-      <div class="ax-stat-value" data-image-migration-status-target="propertyProgressValue"><%= number_to_percentage(@status[:property_progress], precision: 2) %></div>
-      <div class="ax-page-subtitle"><strong data-image-migration-status-target="propertiesWithPhotos"><%= number_with_delimiter(@status[:properties_with_photos]) %></strong> de <strong data-image-migration-status-target="totalProperties"><%= number_with_delimiter(@status[:total_properties]) %></strong></div>
-    </div>
-    <div class="ax-card ax-card--stat">
-      <div class="ax-stat-label">Pendentes</div>
-      <div class="ax-stat-value" data-image-migration-status-target="pendingProperties"><%= number_with_delimiter(@status[:pending_properties]) %></div>
-      <div class="ax-page-subtitle">Imóveis com galeria API/Vista e nenhuma foto anexada.</div>
-    </div>
-    <div class="ax-card ax-card--stat">
-      <div class="ax-stat-label">Fotos anexadas</div>
-      <div class="ax-stat-value" data-image-migration-status-target="migratedImages"><%= number_with_delimiter(@status[:migrated_images]) %></div>
-      <div class="ax-page-subtitle"><span data-image-migration-status-target="imageProgress"><%= number_to_percentage(@status[:image_progress], precision: 2) %></span> do volume estimado de origem.</div>
-    </div>
-    <div class="ax-card ax-card--stat">
-      <div class="ax-stat-label">Processo</div>
-      <div class="tw-my-1"><span class="ax-badge <%= worker[:running] ? 'ax-badge--green' : 'ax-badge--gray' %>" data-image-migration-status-target="workerBadge"><%= worker[:status] %></span></div>
-      <div class="ax-page-subtitle" data-image-migration-status-target="workerPid"><% if worker[:pid].present? %>PID <code><%= worker[:pid] %></code><% else %>Sem execução ativa<% end %></div>
-    </div>
+  <div class="ax-metric-grid tw-mb-4">
+    <%= ax_metric_card(
+          label: "Imóveis com fotos",
+          value: tag.span(number_to_percentage(@status[:property_progress], precision: 2), data: { image_migration_status_target: "propertyProgressValue" }),
+          hint: safe_join([tag.strong(number_with_delimiter(@status[:properties_with_photos]), data: { image_migration_status_target: "propertiesWithPhotos" }), " de ", tag.strong(number_with_delimiter(@status[:total_properties]), data: { image_migration_status_target: "totalProperties" })])
+        ) %>
+    <%= ax_metric_card(
+          label: "Pendentes",
+          value: tag.span(number_with_delimiter(@status[:pending_properties]), data: { image_migration_status_target: "pendingProperties" }),
+          hint: "Imóveis com galeria API/Vista e nenhuma foto anexada."
+        ) %>
+    <%= ax_metric_card(
+          label: "Fotos anexadas",
+          value: tag.span(number_with_delimiter(@status[:migrated_images]), data: { image_migration_status_target: "migratedImages" }),
+          hint: safe_join([tag.span(number_to_percentage(@status[:image_progress], precision: 2), data: { image_migration_status_target: "imageProgress" }), " do volume estimado de origem."])
+        ) %>
+    <%= ax_metric_card(
+          label: "Processo",
+          value: tag.span(worker[:status], class: "ax-badge #{worker[:running] ? 'ax-badge--green' : 'ax-badge--gray'}", data: { image_migration_status_target: "workerBadge" }),
+          hint: tag.span(worker[:pid].present? ? "PID #{worker[:pid]}" : "Sem execução ativa", data: { image_migration_status_target: "workerPid" })
+        ) %>
   </div>
 
   <div class="ax-card tw-mb-4">
@@ -78,9 +81,12 @@
           <div class="ax-page-subtitle" data-image-migration-status-target="executionDetail"><%= number_with_delimiter(execution[:current].to_i) %> de <%= number_with_delimiter(execution[:total].to_i) %></div>
         </div>
       </div>
-      <div class="tw-h-3.5 tw-rounded tw-bg-line tw-mb-3 tw-overflow-hidden">
-        <div class="tw-h-full tw-rounded" style="width:<%= execution[:progress].to_f.clamp(0, 100) %>%;background:var(--admin-primary)" data-image-migration-status-target="executionProgressBar"></div>
-      </div>
+      <%= ax_progress(
+        value: execution[:progress],
+        class_name: "ax-progress--lg tw-mb-3",
+        label: "Progresso da migração de imagens",
+        data: { image_migration_status_target: "executionProgressBar" }
+      ) %>
       <div class="tw-grid tw-grid-cols-2 lg:tw-grid-cols-6 tw-gap-3 tw-text-2xs">
         <div><div class="tw-text-ink-muted">Imóveis novos</div><div class="ax-strong" data-image-migration-status-target="executionPropertiesAdded"><%= number_with_delimiter(execution[:properties_added].to_i) %></div></div>
         <div><div class="tw-text-ink-muted">Fotos novas</div><div class="ax-strong" data-image-migration-status-target="executionImagesAdded"><%= number_with_delimiter(execution[:images_added].to_i) %></div></div>
@@ -113,11 +119,17 @@
   </div>
 
   <% if @status[:failed_properties].positive? %>
-    <div class="ax-card tw-mb-3" style="border-left:3px solid #f59e0b"><div class="ax-card__body"><div class="ax-strong"><i class="bi bi-exclamation-triangle tw-text-amber-600"></i> Há imóveis com falha de materialização</div><div class="tw-text-2xs tw-mt-1">Amostra de IDs: <code><%= @status[:failed_sample].join(", ") %></code>.</div></div></div>
+    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+      <strong>Há imóveis com falha de materialização.</strong> Amostra de IDs: <code><%= @status[:failed_sample].join(", ") %></code>.
+    <% end %>
   <% end %>
   <% if @status[:public_vista_first_properties].positive? %>
-    <div class="ax-card tw-mb-3" style="border-left:3px solid #f59e0b"><div class="ax-card__body"><div class="ax-strong"><i class="bi bi-exclamation-triangle tw-text-amber-600"></i> Há imóveis públicos usando Vista como fallback</div><div class="tw-text-2xs tw-mt-1">Amostra de IDs: <code><%= @status[:public_vista_first_sample].join(", ") %></code>.</div></div></div>
+    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+      <strong>Há imóveis públicos usando Vista como origem temporária.</strong> Amostra de IDs: <code><%= @status[:public_vista_first_sample].join(", ") %></code>.
+    <% end %>
   <% end %>
 
-  <div class="ax-card" style="border-left:3px solid var(--admin-primary)"><div class="ax-card__body tw-text-2xs"><i class="bi bi-info-circle tw-text-primary"></i> A execução usa a galeria da API/Vista como origem, reaproveita fotos já anexadas por nome de arquivo e baixa apenas o que ainda falta no Active Storage/DO Spaces.</div></div>
+  <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+    A execução usa a galeria da API/Vista como origem, reaproveita fotos já anexadas por nome de arquivo e baixa apenas o que ainda falta no Active Storage/DO Spaces.
+  <% end %>
 </div>

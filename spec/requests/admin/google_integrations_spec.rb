@@ -29,6 +29,29 @@ RSpec.describe "Admin::GoogleIntegrations", type: :request do
     expect(response.body).to include("Cód. imóvel CRM")
     expect(response.body).not_to include("Como esta integração será usada")
     expect(response.body).not_to include("Como a agenda será usada")
+    document = Nokogiri::HTML(response.body)
+    expect(document.css('.ax-form-tabs__item[aria-current="page"]').size).to eq(1)
+    expect(document.at_css('#google-sheets:not([hidden])')).to be_present
+    expect(document.at_css('#google-calendar[hidden]')).to be_present
+    expect(document.css(".ax-operational-panel").size).to be >= 2
+    expect(document.at_css('input[type="url"][name="google_sheets[web_app_url]"]')).to be_present
+    expect(document.at_css('input[type="password"][name="google_sheets[token]"]')).to be_present
+    expect(document.at_css(".ax-form-actions--static")).to be_present
+  end
+
+  it "carrega a configuracao Sheets explicitamente no tenant autenticado" do
+    other_tenant = Tenant.create!(name: "Google externo #{SecureRandom.hex(3)}", slug: "google-externo-#{SecureRandom.hex(4)}")
+    current_url = "https://script.google.com/macros/s/#{SecureRandom.hex(4)}/exec"
+    foreign_url = "https://script.google.com/macros/s/fora-#{SecureRandom.hex(4)}/exec"
+    Setting.set(GoogleSheetsIntegrationSetting::WEB_APP_URL_KEY, current_url, tenant: admin.tenant)
+    Setting.set(GoogleSheetsIntegrationSetting::WEB_APP_URL_KEY, foreign_url, tenant: other_tenant)
+
+    get admin_google_integration_path(tab: "sheets")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(current_url)
+    expect(response.body).not_to include(foreign_url)
+    expect { GoogleSheetsIntegrationSetting.current(tenant: nil) }.to raise_error(ArgumentError, /Tenant obrigatório/)
   end
 
   it "salva a configuração do Google Maps por conta" do

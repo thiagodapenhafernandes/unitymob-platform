@@ -5,7 +5,7 @@
   </button>
   <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
     <div class="ax-modal-panel" role="dialog" aria-modal="true">
-      <div class="tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3" style="border-bottom:1px solid #e6e8eb">
+      <div class="ax-modal-panel__section-header tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3">
         <strong><i class="bi bi-calendar-event ax-ico tw-text-primary"></i> Agendar compromisso</strong>
         <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
       </div>
@@ -38,7 +38,7 @@
             <%= text_area_tag "appointment[notes]", nil, id: "appointment_notes", class: "ax-textarea", rows: 2 %>
           </div>
         </div>
-        <div class="tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3" style="border-top:1px solid #e6e8eb">
+        <div class="ax-modal-panel__section-footer tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3">
           <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Cancelar</button>
           <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Agendar</button>
         </div>

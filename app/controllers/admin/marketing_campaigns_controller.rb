@@ -1,6 +1,7 @@
 class Admin::MarketingCampaignsController < Admin::BaseController
   before_action -> { check_permission!(:manage, :marketing) }
   before_action :set_campaign, only: [:edit, :update, :destroy]
+  before_action :load_seo_settings, only: [:new, :create, :edit, :update]
 
   def index
     @status = params[:status].to_s
@@ -50,6 +51,10 @@ class Admin::MarketingCampaignsController < Admin::BaseController
 
   def set_campaign
     @campaign = current_tenant.marketing_campaigns.find(params[:id])
+  end
+
+  def load_seo_settings
+    @seo_settings = current_tenant.seo_settings.order(access_count: :desc, page_name: :asc).limit(200)
   end
 
   def seed_from_seo_setting

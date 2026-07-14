@@ -94,6 +94,8 @@ RSpec.describe "Admin::AccessAuditLogs", type: :request do
     expect(response.body).to include("Senha inválida")
     expect(response.body).to include("IPs únicos")
     expect(response.body).to include("Limpar")
+    expect(Nokogiri::HTML(response.body).at_css(".ax-page-head .ax-page-title .bi-person-lock")).to be_present
+    expect(Nokogiri::HTML(response.body).css(".access-audit-row [style]")).to be_empty
   end
 
   it "filtra por período sem ambiguidade ao carregar o usuário associado" do

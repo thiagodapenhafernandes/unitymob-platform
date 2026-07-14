@@ -1,0 +1,32 @@
+<%
+  preview_classes = [
+    "ax-media-preview",
+    "ax-media-preview--#{variant}",
+    "ax-media-preview--#{size}",
+    class_name
+  ].compact.join(" ")
+%>
+
+<article class="<%= preview_classes %>">
+  <% if label.present? %>
+    <div class="ax-media-preview__label">
+      <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+      <span><%= label %></span>
+    </div>
+  <% end %>
+
+  <div class="ax-media-preview__frame">
+    <% if image.present? %>
+      <%= image_tag image, class: "ax-media-preview__image" %>
+    <% else %>
+      <div class="ax-media-preview__empty">
+        <i class="bi bi-image" aria-hidden="true"></i>
+        <% if empty_text.present? %><span><%= empty_text %></span><% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if body.present? %>
+    <div class="ax-media-preview__body"><%= body %></div>
+  <% end %>
+</article>

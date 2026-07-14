@@ -1,13 +1,18 @@
 <div id="meta_sync_status" class="tw-w-full">
   <% if integration&.sync_status == 'processing' %>
-    <div class="tw-mb-4">
+    <div class="tw-mb-4" role="status" aria-live="polite" aria-atomic="true">
       <div class="tw-flex tw-justify-between tw-items-center tw-mb-2">
         <span class="tw-text-sm tw-font-bold tw-text-primary tw-gap-1 tw-inline-flex tw-items-center">
-          <i class="bi bi-arrow-repeat fa-spin"></i> <%= integration.sync_message || "Sincronizando Páginas e Formulários..." %>
+          <span class="ax-spinner" aria-hidden="true"></span>
+          <%= integration.sync_message || "Sincronizando Páginas e Formulários..." %>
         </span>
         <span class="ax-badge ax-badge--blue"><%= integration.sync_progress || 0 %>%</span>
       </div>
-      <%= ax_progress(value: integration.sync_progress || 0, tone: :blue) %>
+      <%= ax_progress(
+            value: integration.sync_progress || 0,
+            tone: :blue,
+            label: "Sincronização Meta: #{integration.sync_progress || 0}%"
+          ) %>
       <p class="extra-small tw-text-ink-muted tw-mt-2">Esta operação pode levar alguns minutos. Não feche esta página para acompanhar o progresso.</p>
     </div>
   <% elsif integration&.sync_status == 'completed' %>

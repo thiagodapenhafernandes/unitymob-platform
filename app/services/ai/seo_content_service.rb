@@ -21,8 +21,17 @@ module Ai
       Ai::PropertyContentService.connected?
     end
 
-    def self.instructions
-      Setting.get(PROMPT_SETTING, DEFAULT_PROMPT).to_s.presence || DEFAULT_PROMPT
+    def self.instructions(tenant: Current.tenant)
+      fallback = default_prompt(tenant)
+      Setting.get(PROMPT_SETTING, fallback, tenant: tenant).to_s.presence || fallback
+    end
+
+    def self.default_prompt(tenant)
+      return DEFAULT_PROMPT if tenant.blank?
+
+      identity = Tenants::PublicIdentity.new(tenant)
+      city = identity.primary_city.presence || "a região de atuação da imobiliária"
+      DEFAULT_PROMPT.gsub("Balneário Camboriú, Praia Brava e região", city)
     end
 
     def self.save_instructions!(value)
@@ -108,7 +117,7 @@ module Ai
         Retorne apenas JSON no schema solicitado.
 
         INSTRUÇÕES ESTRATÉGICAS:
-        #{self.class.instructions}
+        #{self.class.instructions(tenant: @seo_setting.tenant)}
       TEXT
     end
 

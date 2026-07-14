@@ -1,8 +1,14 @@
 <div class="captacao-goals-admin">
-<h1 class="ax-page-title tw-mb-3">Editar meta — <%= @goal.period_label %> · <%= @goal.kind.humanize %></h1>
-<div class="ax-card">
-  <div class="ax-card__body">
+  <%= ax_workspace_heading(
+        eyebrow: "Captações · Planejamento",
+        icon: "pencil-square",
+        title: "Editar meta de captação",
+        pills: [@goal.kind.humanize],
+        subtitle: @goal.period_label,
+        actions: ax_button("Voltar", admin_captacao_goals_path, size: :sm, icon: "arrow-left")
+      ) %>
+
+  <%= ax_operational_panel(eyebrow: "Configuração", title: "Dados da meta") do %>
     <%= render "form", goal: @goal %>
-  </div>
-</div>
+  <% end %>
 </div>

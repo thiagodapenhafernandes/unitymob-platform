@@ -5,7 +5,7 @@
   </button>
   <div class="ax-modal-overlay" hidden data-ax-modal-target="overlay" data-action="click->ax-modal#backdropClose">
     <div class="ax-modal-panel" role="dialog" aria-modal="true">
-      <div class="tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3" style="border-bottom:1px solid #e6e8eb">
+      <div class="ax-modal-panel__section-header tw-flex tw-items-center tw-justify-between tw-px-4 tw-py-3">
         <strong><i class="bi bi-check2-square ax-ico tw-text-primary"></i> Nova tarefa</strong>
         <button type="button" class="ax-ico-btn" data-action="ax-modal#close" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
       </div>
@@ -14,28 +14,28 @@
           <% if local_assigns[:lead] %><%= hidden_field_tag "task[lead_id]", lead.id %><% end %>
           <div>
             <label class="ax-label" for="task_title">Título</label>
-            <%= text_field_tag "task[title]", nil, id: "task_title", class: "ax-input", required: true, placeholder: "Ex.: Ligar para confirmar visita" %>
+            <%= text_field_tag "task[title]", nil, id: "task_title", class: "ax-control", required: true, placeholder: "Ex.: Ligar para confirmar visita" %>
           </div>
-          <div class="tw-grid tw-grid-cols-2 tw-gap-3">
-            <div>
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
               <label class="ax-label" for="task_kind">Tipo</label>
-              <%= select_tag "task[kind]", options_for_select(Task::KINDS.map { |k, v| [v, k] }, "follow_up"), id: "task_kind", class: "ax-select" %>
+              <%= select_tag "task[kind]", options_for_select(Task::KINDS.map { |k, v| [v, k] }, "follow_up"), id: "task_kind", class: "ax-control" %>
             </div>
-            <div>
+            <div class="ax-span-6">
               <label class="ax-label" for="task_priority">Prioridade</label>
-              <%= select_tag "task[priority]", options_for_select(Task::PRIORITIES.map { |k, v| [v, k] }, "normal"), id: "task_priority", class: "ax-select" %>
+              <%= select_tag "task[priority]", options_for_select(Task::PRIORITIES.map { |k, v| [v, k] }, "normal"), id: "task_priority", class: "ax-control" %>
             </div>
-          </div>
+          <% end %>
           <div>
             <label class="ax-label" for="task_due_at">Prazo</label>
-            <input type="datetime-local" name="task[due_at]" id="task_due_at" class="ax-input">
+            <input type="datetime-local" name="task[due_at]" id="task_due_at" class="ax-control">
           </div>
           <div>
             <label class="ax-label" for="task_description">Descrição</label>
-            <%= text_area_tag "task[description]", nil, id: "task_description", class: "ax-textarea", rows: 2 %>
+            <%= text_area_tag "task[description]", nil, id: "task_description", class: "ax-control", rows: 2 %>
           </div>
         </div>
-        <div class="tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3" style="border-top:1px solid #e6e8eb">
+        <div class="ax-modal-panel__section-footer tw-flex tw-justify-end tw-gap-2 tw-px-4 tw-py-3">
           <button type="button" class="ax-btn ax-btn--sm" data-action="ax-modal#close">Cancelar</button>
           <button type="submit" class="ax-btn ax-btn--sm ax-btn--primary">Criar tarefa</button>
         </div>

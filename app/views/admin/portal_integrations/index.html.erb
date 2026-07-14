@@ -3,13 +3,14 @@
 <% current_readiness = @readiness[@active_portal] || {} %>
 <% current_status = current_readiness[:status] %>
 <% current_checklist = current_readiness[:checklist] || [] %>
+<% readiness_tone = ->(color) { { "success" => :green, "danger" => :red, "warning" => :amber, "primary" => :blue }.fetch(color.to_s, :gray) } %>
 
 <%= ax_workspace_heading(eyebrow: "Integrações · Distribuição", icon: "building", title: "Portais", pills: [current_integration.title], subtitle: "Configure publicação, elegibilidade e retorno operacional por portal.", metrics: [{ value: current_preview[:eligible_count].to_i, label: "elegíveis" }]) %>
 
 <%= ax_field_grid(columns: 12, gap: :compact) do %>
   <!-- Sidebar de portais com status visual -->
   <div class="ax-span-3">
-    <div class="ax-card">
+    <%= ax_panel(title: "Portais", subtitle: "Canais disponíveis", class_name: "portal-integrations-nav-panel") do %>
       <ul class="portal-integrations-nav">
         <% PortalIntegration::PORTALS.each do |portal_key| %>
           <% integration = @integrations[portal_key] %>
@@ -18,8 +19,9 @@
           <% portal_label = integration.readiness_label(portal_status) %>
           <% portal_eligible = @previews.dig(portal_key, :eligible_count).to_i %>
           <li class="portal-integrations-nav__item">
-          <a href="<%= admin_portal_integrations_path(portal: portal_key) %>"
-             class="portal-integrations-nav__link <%= 'is-active' if @active_portal == portal_key %>">
+          <%= link_to admin_portal_integrations_path(portal: portal_key),
+                class: ["portal-integrations-nav__link", ("is-active" if @active_portal == portal_key)].compact.join(" "),
+                aria: { current: ("page" if @active_portal == portal_key) } do %>
             <div class="tw-flex tw-justify-between tw-items-start tw-gap-2">
               <div>
                 <div class="tw-font-semibold"><%= integration.title %></div>
@@ -27,15 +29,13 @@
                   <%= portal_eligible %> imóveis elegíveis
                 </small>
               </div>
-              <span class="ax-badge ax-badge--<%= portal_color == 'success' ? 'green' : portal_color == 'danger' ? 'red' : portal_color == 'warning' ? 'amber' : portal_color == 'primary' ? 'blue' : 'gray' %>">
-                <%= portal_label %>
-              </span>
+              <%= ax_badge(portal_label, tone: readiness_tone.call(portal_color)) %>
             </div>
-          </a>
+          <% end %>
           </li>
         <% end %>
       </ul>
-    </div>
+    <% end %>
   </div>
 
   <!-- Painel principal -->
@@ -45,7 +45,7 @@
     <div class="portal-integrations-commandbar">
       <div class="portal-integrations-commandbar__identity">
         <strong><%= current_integration.title %></strong>
-        <span class="ax-badge ax-badge--<%= banner_color == 'success' ? 'green' : banner_color == 'danger' ? 'red' : banner_color == 'warning' ? 'amber' : banner_color == 'primary' ? 'blue' : 'gray' %>"><%= current_integration.readiness_label(current_status) %></span>
+        <%= ax_badge(current_integration.readiness_label(current_status), tone: readiness_tone.call(banner_color)) %>
       </div>
       <div class="portal-integrations-commandbar__metrics">
         <span><strong><%= current_preview[:eligible_count].to_i %></strong> elegíveis</span>
@@ -63,11 +63,8 @@
     <% end %>
 
     <!-- Configuração -->
-    <div class="ax-card tw-mb-3">
-      <div class="ax-card__header">
-        <h6 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-gear"></i>Configuração</h6>
-      </div>
-      <div class="ax-card__body">
+    <%= ax_operational_panel(eyebrow: "Publicação", title: "Configuração", class_name: "tw-mb-3") do %>
+      <div class="ax-panel-body">
         <%= form_with model: current_integration,
                       url: admin_portal_integration_path(@active_portal),
                       method: :patch,
@@ -80,27 +77,17 @@
           <%= ax_field_grid(columns: 12, gap: :compact) do %>
             <% if current_integration.requires_account_id? %>
               <div class="ax-span-6">
-                <%= f.label :account_id, "Account ID", class: "ax-label" %>
-                <span class="ax-badge ax-badge--red tw-ml-1">obrigatório</span>
-                <%= f.text_field :account_id, class: "ax-control", placeholder: "Ex: 12345" %>
-                <small class="portal-integrations-help">ID da sua conta no portal. Solicite ao gerente comercial.</small>
+                <%= ax_text_field(form: f, method: :account_id, label: "Account ID", required: true, placeholder: "Ex: 12345", hint: "Obrigatório. ID da sua conta no portal; solicite ao gerente comercial.") %>
               </div>
               <div class="ax-span-6">
-                <%= f.label :publisher_id, "Publisher ID", class: "ax-label" %>
-                <span class="ax-badge ax-badge--red tw-ml-1">obrigatório</span>
-                <%= f.text_field :publisher_id, class: "ax-control", placeholder: "Ex: 67890" %>
-                <small class="portal-integrations-help">ID do publicador (geralmente igual ao Account ID).</small>
+                <%= ax_text_field(form: f, method: :publisher_id, label: "Publisher ID", required: true, placeholder: "Ex: 67890", hint: "Obrigatório. ID do publicador, geralmente igual ao Account ID.") %>
               </div>
             <% else %>
               <div class="ax-span-6">
-                <%= f.label :account_id, "Account ID", class: "ax-label" %>
-                <small class="portal-integrations-help portal-integrations-help--inline">(opcional)</small>
-                <%= f.text_field :account_id, class: "ax-control" %>
+                <%= ax_text_field(form: f, method: :account_id, label: "Account ID", hint: "Opcional") %>
               </div>
               <div class="ax-span-6">
-                <%= f.label :publisher_id, "Publisher ID", class: "ax-label" %>
-                <small class="portal-integrations-help portal-integrations-help--inline">(opcional)</small>
-                <%= f.text_field :publisher_id, class: "ax-control" %>
+                <%= ax_text_field(form: f, method: :publisher_id, label: "Publisher ID", hint: "Opcional") %>
               </div>
             <% end %>
 
@@ -121,25 +108,13 @@
             </div>
 
             <div class="ax-span-6">
-              <%= f.label :allowed_business_types, "Tipos de negócio", class: "ax-label" %>
-              <%= f.select :allowed_business_types,
-                           options_for_select(@business_type_options, current_integration.allowed_business_types),
-                           {},
-                           multiple: true,
-                           class: "ax-control",
-                           data: { controller: "tom-select", tom_select_tags_value: true } %>
-              <small class="portal-integrations-help">Quais tipos de transação serão enviados.</small>
+              <%= ax_multiselect_field(form: f, method: :allowed_business_types, label: "Tipos de negócio", choices: @business_type_options, selected: current_integration.allowed_business_types, placeholder: "Selecione os tipos enviados") %>
+              <p class="ax-field__hint">Quais tipos de transação serão enviados.</p>
             </div>
 
             <div class="ax-span-6">
-              <%= f.label :allowed_statuses, "Status permitidos", class: "ax-label" %>
-              <%= f.select :allowed_statuses,
-                           options_for_select(@status_options, current_integration.allowed_statuses),
-                           {},
-                           multiple: true,
-                           class: "ax-control",
-                           data: { controller: "tom-select", tom_select_tags_value: true } %>
-              <small class="portal-integrations-help">Apenas imóveis nestes status entram no feed.</small>
+              <%= ax_multiselect_field(form: f, method: :allowed_statuses, label: "Status permitidos", choices: @status_options, selected: current_integration.allowed_statuses, placeholder: "Selecione os status enviados") %>
+              <p class="ax-field__hint">Apenas imóveis nestes status entram no feed.</p>
             </div>
 
             <div class="ax-span-12">
@@ -148,21 +123,17 @@
             </div>
           <% end %>
 
-          <div class="tw-flex tw-justify-end tw-gap-2 tw-mt-4">
+          <%= ax_form_actions(sticky: false) do %>
             <%= f.submit "Salvar Configuração", class: "ax-btn ax-btn--primary" %>
-          </div>
+          <% end %>
         <% end %>
       </div>
-    </div>
+    <% end %>
 
     <!-- URL do Feed em destaque (ação principal) -->
     <% feed_url = integrations_portals_feed_token_url(portal: @active_portal, token: current_integration.feed_token, format: current_integration.feed_format) %>
-    <div class="ax-card portal-integrations-feed-card tw-mb-3" data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
-      <div class="ax-card__body">
-        <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
-          <i class="bi bi-link-45deg portal-integrations-feed-card__icon"></i>
-          <div class="portal-integrations-feed-card__title">URL do Feed para o portal</div>
-        </div>
+    <%= ax_operational_panel(eyebrow: "Distribuição", title: "URL do Feed para o portal", class_name: "portal-integrations-feed-card tw-mb-3") do %>
+      <div class="ax-panel-body" data-controller="clipboard" data-clipboard-success-content-value="✓ Copiado!">
         <p class="tw-text-sm tw-text-ink-muted tw-mb-3">
           <strong>Esta é a URL que você deve enviar ao <%= current_integration.title %>.</strong>
           O portal vai ler seus imóveis automaticamente a partir dela.
@@ -192,20 +163,10 @@
           <% end %>
         </div>
       </div>
-    </div>
+    <% end %>
 
     <!-- Webhook (secundário) -->
-    <div class="ax-card tw-mb-3" data-controller="ax-disclosure">
-      <div class="ax-card__header">
-        <button class="ax-btn ax-btn--ghost portal-integrations-disclosure-button"
-                type="button" data-action="ax-disclosure#toggle" data-ax-disclosure-target="trigger"
-                aria-expanded="false" aria-controls="webhookSection">
-          <span class="tw-flex tw-items-center tw-gap-2"><i class="bi bi-arrow-down-circle"></i>Webhook (opcional — eventos do portal)</span>
-          <i class="bi bi-chevron-down"></i>
-        </button>
-      </div>
-      <div id="webhookSection" data-ax-disclosure-target="content" hidden>
-        <div class="ax-card__body">
+    <%= ax_collapsible_card(title: "Webhook (opcional — eventos do portal)", collapse_id: "webhookSection", icon: "arrow-down-circle", collapsed: true, class_name: "tw-mb-3") do %>
           <p class="tw-text-sm tw-text-ink-muted tw-mb-2">
             Alguns portais conseguem nos enviar de volta avisos de aprovação, rejeição ou alterações.
             Configure essa URL no painel do portal se ele suportar webhooks.
@@ -214,9 +175,7 @@
             <%= webhooks_portal_events_url(portal: @active_portal) %>
           </div>
           <small class="portal-integrations-help">Use o Webhook Secret configurado acima para assinatura HMAC-SHA256.</small>
-        </div>
-      </div>
-    </div>
+    <% end %>
 
     <% if current_preview[:top_reasons].present? %>
       <details class="portal-integrations-rejections tw-mb-3">
@@ -226,19 +185,17 @@
     <% end %>
 
     <!-- Tabela de retornos -->
-    <div class="ax-card">
-      <div class="ax-card__header">
-        <h6 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-clock-history"></i>Últimos retornos do portal</h6>
-      </div>
+    <%= ax_operational_panel(eyebrow: "Retorno", title: "Últimos retornos do portal") do %>
       <div class="ax-table-wrap">
         <table class="ax-table">
+          <caption>Últimos eventos recebidos do <%= current_integration.title %></caption>
           <thead>
             <tr>
-              <th>Código</th>
-              <th>ID Externo</th>
-              <th>Evento</th>
-              <th>Status</th>
-              <th>Atualizado em</th>
+              <th scope="col">Código</th>
+              <th scope="col">ID Externo</th>
+              <th scope="col">Evento</th>
+              <th scope="col">Status</th>
+              <th scope="col">Atualizado em</th>
             </tr>
           </thead>
           <tbody>
@@ -255,13 +212,13 @@
             <% else %>
               <tr>
                 <td colspan="5" class="portal-integrations-empty-cell">
-                  Sem eventos recebidos ainda. Eles aparecem aqui após o portal começar a sincronizar.
+                  <%= ax_empty_state(title: "Sem eventos recebidos", description: "Eles aparecem aqui após o portal começar a sincronizar.", icon: "clock-history", compact: true) %>
                 </td>
               </tr>
             <% end %>
           </tbody>
         </table>
       </div>
-    </div>
+    <% end %>
   </div>
 <% end %>

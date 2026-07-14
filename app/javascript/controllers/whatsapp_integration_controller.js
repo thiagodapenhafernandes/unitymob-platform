@@ -176,21 +176,15 @@ export default class extends Controller {
   }
 
   paintNotice(element, type) {
-    const tone = this.tones()[type] || this.tones().info
-    element.style.display = "flex"
+    const tone = ["success", "warning", "danger", "info"].includes(type) ? type : "info"
+    element.classList.remove(
+      "ax-inline-notice--success",
+      "ax-inline-notice--warning",
+      "ax-inline-notice--danger",
+      "ax-inline-notice--info"
+    )
+    element.classList.add(`ax-inline-notice--${tone}`)
     element.hidden = false
-    element.style.borderColor = tone.border
-    element.style.background = tone.background
-    element.style.color = tone.color
-  }
-
-  tones() {
-    return {
-      success: { border: "#16a34a", background: "#ecfdf3", color: "#15803d" },
-      warning: { border: "#d97706", background: "#fffbeb", color: "#b45309" },
-      danger: { border: "#dc2626", background: "#fff1f0", color: "#b42318" },
-      info: { border: "#365f8f", background: "#eef4fb", color: "#1f3b5c" }
-    }
   }
 
   jsonHeaders() {

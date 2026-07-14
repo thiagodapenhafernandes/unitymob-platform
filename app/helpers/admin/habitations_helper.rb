@@ -189,6 +189,7 @@ module Admin::HabitationsHelper
 
   def admin_can_edit_habitation?(habitation)
     return false unless current_admin_user && habitation
+    return false unless can?(:manage, :imoveis)
 
     cache_key = habitation.id || habitation.object_id
     @admin_habitation_edit_permissions ||= {}
@@ -198,7 +199,19 @@ module Admin::HabitationsHelper
       current_admin_user.owns_all?(:imoveis) ||
       habitation.admin_user_id == current_admin_user.id ||
       habitation_assigned_to_current_user?(habitation) ||
-      habitation_matches_current_broker_name?(habitation)
+      habitation_matches_current_broker_name?(habitation) ||
+      (current_admin_user.can_view_team?(:imoveis) && habitation_owned_by_current_team?(habitation))
+  end
+
+  def habitation_owned_by_current_team?(habitation)
+    team_ids = current_admin_user.team_scope_ids
+    return true if team_ids.include?(habitation.admin_user_id)
+
+    if habitation.broker_assignments.loaded?
+      habitation.broker_assignments.any? { |assignment| team_ids.include?(assignment.admin_user_id) }
+    else
+      habitation.broker_assignments.exists?(admin_user_id: team_ids)
+    end
   end
 
   def admin_can_manage_habitation_media?(habitation)

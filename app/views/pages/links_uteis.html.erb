@@ -12,75 +12,21 @@
 <!-- Links Grid -->
 <section class="py-16 bg-gray-50">
   <div class="container-custom">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      
-      <!-- IPTU -->
-      <a href="https://www.balneariocamboriu.sc.gov.br/" target="_blank" 
-         class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 group">
-        <div class="bg-blue-three/10 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:bg-golden-one/20 transition-colors">
-          <i class="bi bi-file-text text-3xl text-blue-three"></i>
-        </div>
-        <h3 class="text-xl font-bold text-blue-three mb-2">Consulta IPTU</h3>
-        <p class="text-gray-600 mb-4">Consulte e emita segunda via do IPTU</p>
-        <span class="text-golden-one font-semibold group-hover:underline">Acessar →</span>
-      </a>
-
-      <!-- Cartórios -->
-      <a href="https://www.cnj.jus.br/servicos-e-consultas/" target="_blank" 
-         class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 group">
-        <div class="bg-blue-three/10 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:bg-golden-one/20 transition-colors">
-          <i class="bi bi-building text-3xl text-blue-three"></i>
-        </div>
-        <h3 class="text-xl font-bold text-blue-three mb-2">Cart
-
-órios</h3>
-        <p class="text-gray-600 mb-4">Consulta de certidões e registros</p>
-        <span class="text-golden-one font-semibold group-hover:underline">Acessar →</span>
-      </a>
-
-      <!-- Prefeitura -->
-      <a href="https://www.balneariocamboriu.sc.gov.br/" target="_blank" 
-         class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 group">
-        <div class="bg-blue-three/10 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:bg-golden-one/20 transition-colors">
-          <i class="bi bi-house-door text-3xl text-blue-three"></i>
-        </div>
-        <h3 class="text-xl font-bold text-blue-three mb-2">Prefeitura</h3>
-        <p class="text-gray-600 mb-4">Portal da Prefeitura de Balneário Camboriú</p>
-        <span class="text-golden-one font-semibold group-hover:underline">Acessar →</span>
-      </a>
-
-      <!-- FGTS -->
-      <a href="https://www.fgts.gov.br/" target="_blank" 
-         class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 group">
-        <div class="bg-blue-three/10 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:bg-golden-one/20 transition-colors">
-          <i class="bi bi-piggy-bank text-3xl text-blue-three"></i>
-        </div>
-        <h3 class="text-xl font-bold text-blue-three mb-2">FGTS</h3>
-        <p class="text-gray-600 mb-4">Consulta saldo e extrato do FGTS</p>
-        <span class="text-golden-one font-semibold group-hover:underline">Acessar →</span>
-      </a>
-
-      <!-- Caixa -->
-      <a href="https://www.caixa.gov.br/voce/habitacao/Paginas/default.aspx" target="_blank" 
-         class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 group">
-        <div class="bg-blue-three/10 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:bg-golden-one/20 transition-colors">
-          <i class="bi bi-bank text-3xl text-blue-three"></i>
-        </div>
-        <h3 class="text-xl font-bold text-blue-three mb-2">Caixa Econômica</h3>
-        <p class="text-gray-600 mb-4">Financiamento habitacional</p>
-        <span class="text-golden-one font-semibold group-hover:underline">Acessar →</span>
-      </a>
-
-      <!-- Simulador Caixa -->
-      <a href="https://www.caixa.gov.br/voce/habitacao/simulador/Paginas/default.aspx" target="_blank" 
-         class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 group">
-        <div class="bg-blue-three/10 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:bg-golden-one/20 transition-colors">
-          <i class="bi bi-calculator text-3xl text-blue-three"></i>
-        </div>
-        <h3 class="text-xl font-bold text-blue-three mb-2">Simulador Caixa</h3>
-        <p class="text-gray-600 mb-4">Simule seu financiamento</p>
-        <span class="text-golden-one font-semibold group-hover:underline">Acessar →</span>
-      </a>
-    </div>
+    <% if @useful_links.any? %>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <% @useful_links.each do |link| %>
+          <a href="<%= link[:url] %>" target="_blank" rel="noopener" class="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1 group">
+            <div class="bg-blue-three/10 w-16 h-16 rounded-full flex items-center justify-center mb-4 group-hover:bg-golden-one/20 transition-colors">
+              <i class="bi bi-<%= link[:icon] %> text-3xl text-blue-three"></i>
+            </div>
+            <h3 class="text-xl font-bold text-blue-three mb-2"><%= link[:label] %></h3>
+            <% if link[:description].present? %><p class="text-gray-600 mb-4"><%= link[:description] %></p><% end %>
+            <span class="text-golden-one font-semibold group-hover:underline">Acessar →</span>
+          </a>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="bg-white rounded-xl p-8 text-center text-gray-600 shadow-sm">Nenhum link útil publicado por esta imobiliária.</div>
+    <% end %>
   </div>
 </section>

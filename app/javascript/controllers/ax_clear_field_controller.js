@@ -16,6 +16,7 @@ export default class extends Controller {
 
     const control = this.controlTarget
     const tomSelect = control.tomselect
+    if (this.controlUnavailable(control, tomSelect)) return
 
     if (tomSelect) {
       tomSelect.clear()
@@ -42,7 +43,18 @@ export default class extends Controller {
   update() {
     if (!this.hasControlTarget || !this.hasButtonTarget) return
 
-    this.buttonTarget.hidden = !this.hasValue(this.controlTarget)
+    const control = this.controlTarget
+    this.buttonTarget.hidden = this.controlUnavailable(control, control.tomselect) || !this.hasValue(control)
+  }
+
+  controlUnavailable(control, tomSelect = control?.tomselect) {
+    return Boolean(
+      !control ||
+      control.disabled ||
+      control.readOnly ||
+      tomSelect?.isDisabled ||
+      tomSelect?.isLocked
+    )
   }
 
   hasValue(control) {

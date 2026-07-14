@@ -4,12 +4,12 @@
 <% panel_title = ->(icon, text) { safe_join([tag.i(class: "bi #{icon}"), text], " ") } %>
 
 <div class="layout-settings-workspace">
-  <div class="tw-mb-4">
-    <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-      <i class="bi bi-building-gear" style="color: var(--admin-primary);"></i>Configurações da Conta
-    </h1>
-    <p class="ax-page-subtitle">Tudo que é da conta em um lugar: marca, equipe e permissões, notificações, segurança, auditorias e compliance.</p>
-  </div>
+  <%= ax_workspace_heading(
+        eyebrow: "Conta · Governança",
+        icon: "building-gear",
+        title: "Configurações da Conta",
+        subtitle: "Tudo que é da conta em um lugar: marca, equipe e permissões, notificações, segurança, auditorias e compliance."
+      ) %>
 
   <%# ---- Identidade da conta (único bloco editável — destacado no topo) ---- %>
   <%= ax_operational_panel(eyebrow: "Empresa", title: panel_title.call("bi-building", "Identidade da conta"), class_name: "tw-mb-4") do %>

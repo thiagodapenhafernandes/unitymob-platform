@@ -1,23 +1,25 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-admin-theme="<%= @layout_setting&.admin_dark_mode? ? 'dark' : 'light' %>">
+<html lang="pt-BR" data-admin-theme="<%= current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>">
   <head>
     <%
       account_site_name = @layout_setting&.site_name.presence || 'Salute Imóveis'
       account_admin_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : 'Plataforma'
+      admin_theme_mode = current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT
+      admin_theme = (@layout_setting || LayoutSetting.platform_defaults).effective_admin_theme(mode: admin_theme_mode)
     %>
     <title><%= current_admin_user&.system_admin? ? 'Unitymob Plataforma' : "#{account_site_name} - #{account_admin_area_name}" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <link rel="manifest" href="<%= admin_manifest_path(format: :json) %>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="<%= (defined?(LayoutSetting) ? LayoutSetting.instance.site_name.presence : nil) || 'Plataforma' %>">
+    <meta name="apple-mobile-web-app-title" content="<%= @layout_setting&.site_name.presence || 'Plataforma' %>">
     <link rel="apple-touch-icon" href="/pwa-icon-192">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= action_cable_meta_tag %>
     <%= render 'layouts/no_zoom' %>
-    <%= render 'layouts/pwa_meta' %>
+    <%= render 'layouts/pwa_meta', theme_color: admin_theme[:header] %>
     <%
       admin_controller_path = controller_path.to_s
       admin_action_name = action_name.to_s
@@ -50,14 +52,16 @@
     <%# Camada de compatibilidade de classes legadas (telas ainda não 100% migradas, no visual novo) %>
     <%= stylesheet_link_tag "admin_compat", media: "all" %>
     <%# Novo design system da plataforma interna (Tailwind, prefixo tw-, namespaced .ax-*) %>
+    <%= stylesheet_link_tag "admin/theme_tokens", media: "all" %>
     <%= stylesheet_link_tag "admin_tailwind", media: "all" %>
+    <%= stylesheet_link_tag "admin/components", media: "all" %>
     <%= stylesheet_link_tag "habitations_form_refresh", media: "all" %>
+    <%= stylesheet_link_tag "admin/components/media_modal", media: "all" %>
     <%= stylesheet_link_tag "whatsapp_inbox_refresh", media: "all" %>
     <%# Toast compartilhado (mesma identidade em todo o sistema) %>
     <%= stylesheet_link_tag "ax_toast", media: "all" %>
     <%# Tema white-label da plataforma interna, independente dos tokens do site público. %>
     <%
-      admin_theme = @layout_setting&.effective_admin_theme || LayoutSetting.instance.effective_admin_theme
       admin_menu_section_styles = @layout_setting&.respond_to?(:admin_menu_section_styles) ? @layout_setting.admin_menu_section_styles : LayoutSetting::ADMIN_MENU_SECTION_STYLE_DEFAULTS
     %>
     <style>
@@ -242,8 +246,6 @@
       } catch (_) {}
 
     </script>
-    <meta name="theme-color" content="#ffffff">
-
     <!-- Fontes Inter & Outfit self-hosted (antes Google Fonts) -->
     <%= stylesheet_link_tag "vendor/admin-fonts", media: "all" %>
     <%# JS de framework legado removido — comportamento data-* legado tratado em application.js %>
@@ -282,12 +284,34 @@
 
         <div class="ax-navbar__user" data-controller="ax-dropdown">
           <button type="button" class="ax-navbar__user-trigger" data-action="ax-dropdown#toggle" data-ax-dropdown-target="trigger" aria-expanded="false" aria-label="Menu do usuário">
-            <span class="ax-navbar__avatar"><i class="bi bi-person"></i></span>
+            <%= ax_avatar(
+                  name: current_admin_user&.name.presence || current_admin_user&.email || "Usuário",
+                  image: current_admin_user&.avatar,
+                  size: :xxs,
+                  class_name: "ax-navbar__avatar"
+                ) %>
             <span class="tw-hidden sm:tw-inline"><%= current_admin_user&.name.presence || current_admin_user&.email %></span>
             <i class="bi bi-chevron-down tw-text-xs tw-text-ink-faint"></i>
           </button>
-          <div class="ax-menu" data-ax-dropdown-target="menu" hidden style="right:0; left:auto;">
+          <div class="ax-menu ax-menu--end" data-ax-dropdown-target="menu" hidden>
             <div class="tw-px-2.5 tw-py-1.5 tw-text-xs tw-text-ink-muted tw-truncate"><%= current_admin_user&.notification_email %></div>
+            <div class="ax-menu__sep"></div>
+            <% dark_theme_enabled = current_admin_user&.admin_dark_mode? %>
+            <%= button_to admin_theme_preference_path,
+                  method: :patch,
+                  params: { admin_user: { admin_theme_mode: dark_theme_enabled ? "light" : "dark" } },
+                  class: "ax-menu__item",
+                  form: {
+                    class: "tw-block tw-w-full",
+                    data: { controller: "theme-preference", action: "submit->theme-preference#submit" }
+                  },
+                  role: "switch",
+                  aria: { checked: dark_theme_enabled.to_s, label: "Alternar tema escuro" } do %>
+              <i class="bi bi-moon-stars"></i><span>Tema escuro</span>
+              <span class="ax-switch ax-switch--compact ax-menu__theme-switch <%= 'is-checked' if dark_theme_enabled %> tw-ml-auto" aria-hidden="true">
+                <span class="ax-switch__track"></span>
+              </span>
+            <% end %>
             <%# Multi-conta: troca sem relogin (só fora de impersonação e com 2+ contas) %>
             <%# Troca de contas: recurso de ADMIN DE CONTAS — só aparece quando a
                 identidade primária é Admin da Conta (tenant_owner) na conta natal. %>
@@ -300,7 +324,7 @@
                 <% accounts.each do |entry| %>
                   <% is_current = entry[:admin_user].id == current_admin_user.id %>
                   <% if is_current %>
-                    <div class="ax-menu__item" style="cursor:default;opacity:.7">
+                    <div class="ax-menu__item ax-menu__item--current">
                       <i class="bi bi-check2"></i><span><%= entry[:tenant].name %></span>
                     </div>
                   <% else %>
@@ -351,7 +375,7 @@
       <div class="ax-drawer-backdrop lg:tw-hidden" data-ax-drawer-target="backdrop" hidden data-action="click->ax-drawer#close"></div>
 
       <%# ===== Sidebar (desktop fixa / mobile drawer) ===== %>
-      <aside class="ax-sidebar" data-ax-drawer-target="panel">
+      <aside class="ax-sidebar ax-drawer-panel" data-ax-drawer-target="panel">
         <%= render 'admin/shared/sidebar' %>
       </aside>
     <% end %>
@@ -403,8 +427,7 @@
 
     <%= render "admin/habitations/media/modal_shell" %>
     
-    <div id="admin-offline-banner" hidden
-         style="position: fixed; top: 0; left: 0; right: 0; z-index: 4090; padding: 8px 14px; background: #b54708; color: #fff; font-size: 12.5px; font-weight: 600; text-align: center;">
+    <div id="admin-offline-banner" class="ax-admin-offline-banner" hidden>
       <i class="bi bi-wifi-off"></i> Sem conexão — suas ações podem não ser salvas até a internet voltar.
     </div>
     <script>

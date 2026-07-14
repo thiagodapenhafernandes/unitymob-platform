@@ -20,12 +20,30 @@ RSpec.describe "Admin::WhatsappIntegrations", type: :request do
     expect(response.body).to include("Telefones do Site")
     expect(response.body).to include("1980983762681491")
     expect(response.body).to include("Sincronizar templates")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("WhatsApp Business API")
+    expect(document.css(".ax-empty-state").map(&:text).join).to include("Nenhuma finalidade configurada", "Nenhum número cadastrado")
+    expect(document.at_css('input[type="url"][name="whatsapp_business_integration[webhook_callback_url]"]')).to be_present
+    expect(document.at_css('input[type="password"][name="whatsapp_business_integration[access_token]"]')).to be_present
+    expect(document.at_css('input[type="tel"][name="whatsapp_sender_number[display_phone_number]"][data-controller="phone-input"]')).to be_present
   end
 
   it "redireciona a antiga aba de forms para Meta Leads" do
     get admin_whatsapp_integration_path(tab: "forms")
 
     expect(response).to redirect_to(admin_meta_integrations_path)
+  end
+
+  it "renderiza o prefixo semântico dos telefones do site" do
+    get admin_whatsapp_integration_path(tab: "site_phones")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Telefones dos formulários do site")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css(".ax-input-group__icon--whatsapp")).to be_present
+    expect(document.at_css(".wa-tabs__item[aria-current='page']")&.text).to include("Telefones do Site")
+    expect(document.css(".wa-form [style]")).to be_empty
+    expect(document.at_css('input[type="tel"][name="whatsapp_business_integration[sale_whatsapp_number]"][data-controller="phone-input"]')).to be_present
   end
 
   it "exibe e salva telefones do site por tipo de negociacao" do

@@ -1,27 +1,31 @@
-<h1 class="wizard-section-title"><i class="bi bi-key-fill tw-text-primary" style="margin-right:.5rem;"></i>Visitação e chaves</h1>
+<h1 class="wizard-section-title"><i class="bi bi-key-fill tw-text-primary"></i>Visitação e chaves</h1>
 <p class="wizard-section-subtitle">Para agendar visitas: onde estão as chaves, senhas, melhores dias.</p>
 
 <div data-controller="conditional-reveal" data-conditional-reveal-kind-value="select">
-<div class="wizard-field-group">
-  <%= f.label :chaves_com, "Chaves com quem?", class: "ax-label" %>
-  <span class="required-star">*</span>
-  <%= f.select :chaves_com,
-               Habitation::CAPTACAO_KEY_LOCATION_OPTIONS.map { |value, label| [label, value] },
-               { include_blank: "—" },
-               class: field_state.call(:chaves_com, "ax-control"),
-               data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" } %>
+<%= ax_select_field(
+      form: f,
+      method: :chaves_com,
+      label: safe_join(["Chaves com quem?", tag.span("*", class: "required-star")], " "),
+      choices: Habitation::CAPTACAO_KEY_LOCATION_OPTIONS.map { |value, label| [label, value] },
+      select_options: { include_blank: "—" },
+      class_name: "wizard-field-group",
+      html_options: {
+        class: field_state.call(:chaves_com, "ax-control"),
+        data: { conditional_reveal_target: "trigger", action: "change->conditional-reveal#sync" }
+      }
+    ) %>
   <% if field_invalid.call(:chaves_com) %><div class="invalid-feedback d-block">Informe onde estão as chaves.</div><% end %>
-</div>
 
-<div class="wizard-field-group" data-conditional-reveal-target="panel" data-conditional-reveal-values="outro" hidden>
-  <%= f.label :key_location_notes, "Onde estão as chaves?", class: "ax-label" %>
-  <%= f.text_field :key_location_notes, class: "ax-control", placeholder: "Informe com quem ou onde retirar", data: { conditional_required: "true" } %>
+<div data-conditional-reveal-target="panel" data-conditional-reveal-values="outro" hidden>
+  <%= ax_text_field(form: f, method: :key_location_notes, label: "Onde estão as chaves?",
+        field_class: "wizard-field-group", placeholder: "Informe com quem ou onde retirar",
+        data: { conditional_required: "true" }) %>
 </div>
 
 <div data-conditional-reveal-target="panel" data-conditional-reveal-values="zelador" hidden>
   <%= ax_field_grid do %>
-    <div class="ax-span-6"><div class="wizard-field-group"><%= f.label :zelador_nome, "Nome do zelador", class: "ax-label" %><%= f.text_field :zelador_nome, class: "ax-control" %></div></div>
-    <div class="ax-span-6"><div class="wizard-field-group"><%= f.label :zelador_telefone, "Telefone do zelador", class: "ax-label" %><%= f.telephone_field :zelador_telefone, class: "ax-control", data: { controller: "phone-input" } %></div></div>
+    <div class="ax-span-6"><%= ax_text_field(form: f, method: :zelador_nome, label: "Nome do zelador", field_class: "wizard-field-group") %></div>
+    <div class="ax-span-6"><%= ax_text_field(form: f, method: :zelador_telefone, label: "Telefone do zelador", type: :tel, field_class: "wizard-field-group", data: { controller: "phone-input" }) %></div>
   <% end %>
 </div>
 
@@ -42,21 +46,15 @@
 
 <%= ax_field_grid do %>
   <div class="ax-span-6" data-conditional-reveal-target="panel" data-conditional-reveal-values="portaria" hidden>
-    <div class="wizard-field-group">
-      <%= f.label :senha_imovel, "Senha do imóvel", class: "ax-label" %>
-      <%= f.text_field :senha_imovel, class: "ax-control", autocomplete: "off" %>
-    </div>
+    <%= ax_text_field(form: f, method: :senha_imovel, label: "Senha do imóvel",
+          field_class: "wizard-field-group", autocomplete: "off") %>
   </div>
   <div class="ax-span-6">
-    <div class="wizard-field-group">
-      <%= f.label :senha_portaria, "Senha da portaria", class: "ax-label" %>
-      <%= f.text_field :senha_portaria, class: "ax-control", autocomplete: "off" %>
-    </div>
+    <%= ax_text_field(form: f, method: :senha_portaria, label: "Senha da portaria",
+          field_class: "wizard-field-group", autocomplete: "off") %>
   </div>
 <% end %>
 </div>
 
-<div class="wizard-field-group">
-  <%= f.label :observacoes, "Observações gerais", class: "ax-label" %>
-  <%= f.text_area :observacoes, rows: 3, class: "ax-control", placeholder: "Detalhes úteis sobre o imóvel ou a negociação" %>
-</div>
+<%= ax_text_field(form: f, method: :observacoes, label: "Observações gerais", type: :textarea,
+      field_class: "wizard-field-group", rows: 3, placeholder: "Detalhes úteis sobre o imóvel ou a negociação") %>

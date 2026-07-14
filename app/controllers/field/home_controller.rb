@@ -14,6 +14,8 @@ module Field
       @field_enabled    = FieldFeatureGate.field_checkin_enabled?
       @field_agent_allowed = FieldFeatureGate.field_agent_allowed?(@admin_user, tenant: current_tenant)
       @active_check_in  = @field_enabled ? @admin_user.active_check_in : nil
+      @ai_property_search_setting = PropertySetting.instance(tenant: current_tenant)
+      @ai_property_search_available = @ai_property_search_setting.ai_property_search_available_to?(@admin_user)
 
       lead_scope = current_tenant.leads.where(admin_user_id: @admin_user.id)
       intake_scope = current_tenant.habitations.broker_intakes.where(admin_user_id: @admin_user.id)
@@ -37,6 +39,19 @@ module Field
       @my_published_habitations = habitation_scope.where(exibir_no_site_flag: true).count
 
       @recent_my_leads = lead_scope.order(created_at: :desc).limit(5)
+      broker_events_limit = if @ai_property_search_setting.respond_to?(:ai_property_search_broker_events_limit)
+        @ai_property_search_setting.ai_property_search_broker_events_limit.to_i
+      else
+        3
+      end
+      @recent_property_interest_events = current_tenant.ai_property_share_audit_events
+        .where(admin_user_id: @admin_user.id, event_type: %w[interest_created interest_repeated])
+        .where.not(lead_id: nil)
+        .includes(:lead, :habitation)
+        .order(created_at: :desc)
+        .to_a
+        .uniq { |event| event.lead_id }
+        .first(broker_events_limit)
       @lead_properties_by_id = current_tenant.habitations.where(id: @recent_my_leads.filter_map(&:property_id).uniq).index_by(&:id)
       @recent_open_captacoes = intake_scope
                                 .where(intake_status: [nil, "draft", "returned_to_broker"])

@@ -29,7 +29,7 @@ class EmpreendimentosController < ApplicationController
     if @strategic_landing.present?
       @page_title = "#{@strategic_landing[:title]} | #{public_site_name}"
       @page_description = @strategic_landing[:description]
-      @page_keywords = [@strategic_landing[:label], "empreendimentos", "Balneário Camboriú", public_site_name].join(", ")
+      @page_keywords = [@strategic_landing[:label], "empreendimentos", default_public_city, public_site_name].compact_blank.join(", ")
     end
   end
 
@@ -86,5 +86,10 @@ class EmpreendimentosController < ApplicationController
     @layout_setting&.site_name.presence || LayoutSetting.instance.site_name.presence || "Unitymob"
   rescue StandardError
     "Unitymob"
+  end
+
+
+  def default_public_city
+    Tenants::PublicIdentity.new(public_tenant).primary_city.presence || "Brasil"
   end
 end

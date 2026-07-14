@@ -37,7 +37,7 @@
             ].each do |mode, icon, label, sub, tooltip| %>
             <%= f.radio_button :distribution_mode, mode, class: "ax-option-card__input", id: "mode_#{mode}", data: { action: "change->distribution-rule#toggleMode" } %>
             <%= f.label "mode_#{mode}", class: "ax-option-card distribution-rule-mode", for: "mode_#{mode}" do %>
-              <i class="bi bi-<%= icon %>"></i>
+              <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
               <span>
                 <strong>
                   <%= label %>
@@ -235,7 +235,7 @@
         <code>A1 -&gt; B1 -&gt; C1 -&gt; A2 -&gt; B2</code>.
       <% end %>
 
-      <p class="tw-text-sm tw-text-ink-muted tw-mt-3" style="margin-bottom:0">
+      <p class="tw-text-sm tw-text-ink-muted tw-mt-3 tw-mb-0">
         Lojas sem corretores naquele evento são puladas. A regra ainda respeita filtros de disponibilidade,
         perfil, canais e demais critérios configurados.
       </p>

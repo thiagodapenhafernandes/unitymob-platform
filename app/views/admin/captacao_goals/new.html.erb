@@ -1,8 +1,13 @@
 <div class="captacao-goals-admin">
-<h1 class="ax-page-title tw-mb-3">Nova meta de captação</h1>
-<div class="ax-card">
-  <div class="ax-card__body">
+  <%= ax_workspace_heading(
+        eyebrow: "Captações · Planejamento",
+        icon: "bullseye",
+        title: "Nova meta de captação",
+        subtitle: "Defina período, tipo, quantidade e critérios de foco para o acompanhamento.",
+        actions: ax_button("Voltar", admin_captacao_goals_path, size: :sm, icon: "arrow-left")
+      ) %>
+
+  <%= ax_operational_panel(eyebrow: "Configuração", title: "Dados da meta") do %>
     <%= render "form", goal: @goal %>
-  </div>
-</div>
+  <% end %>
 </div>

@@ -13,12 +13,12 @@
 <% heading_actions = capture do %>
   <% if can_export_captacoes? %>
     <%= link_to export_admin_captacoes_path(request.query_parameters), class: "ax-workspace-heading__tool captacoes-heading-action" do %>
-      <i class="bi bi-file-earmark-spreadsheet"></i>
+      <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>
       <span>Exportar</span>
     <% end %>
   <% end %>
   <%= link_to new_admin_captacao_path, class: "ax-workspace-heading__tool captacoes-heading-action captacoes-heading-action--primary" do %>
-    <i class="bi bi-plus-lg"></i>
+    <i class="bi bi-plus-lg" aria-hidden="true"></i>
     <span>Nova captação</span>
   <% end %>
 <% end %>
@@ -38,12 +38,9 @@
         class_name: "captacoes-heading"
       ) %>
 
-  <section class="captacoes-kpi-strip" aria-label="Resumo de captações">
+  <section class="ax-metric-grid captacoes-kpi-strip" aria-label="Resumo de captações">
     <% status_tiles.each do |label, value, tone| %>
-      <div class="captacoes-kpi captacoes-kpi--<%= tone %>">
-        <span class="captacoes-kpi__label"><%= label %></span>
-        <strong class="captacoes-kpi__value"><%= value %></strong>
-      </div>
+      <%= ax_metric_card(label:, value:, class_name: "captacoes-kpi captacoes-kpi--#{tone}") %>
     <% end %>
   </section>
 
@@ -70,25 +67,26 @@
   </section>
 
   <%= form_with url: admin_captacoes_path, method: :get, local: true, class: "captacoes-filter-panel" do %>
+    <%= hidden_field_tag :team, params[:team] if params[:team].present? %>
     <div class="captacoes-filter-panel__header">
       <div>
-        <span class="captacoes-filter-panel__eyebrow"><i class="bi bi-funnel"></i> Filtros</span>
+        <span class="captacoes-filter-panel__eyebrow"><i class="bi bi-funnel" aria-hidden="true"></i> Filtros</span>
         <strong>Refinar captações</strong>
       </div>
       <%= ax_team_toggle(:captacoes, class_name: "captacoes-team-toggle") %>
     </div>
     <div class="captacoes-filter-grid">
       <div class="captacoes-filter-field">
-        <label class="ax-label">Tipo</label>
+        <label class="ax-label" for="property_kind">Tipo</label>
         <%= select_tag :property_kind, options_for_select([["Todos os tipos", ""], ["Residencial", "residencial"], ["Sala comercial", "sala_comercial"], ["Terreno", "terreno"]], params[:property_kind]), class: "ax-select" %>
       </div>
       <div class="captacoes-filter-field">
-        <label class="ax-label">Status</label>
+        <label class="ax-label" for="status">Status</label>
         <%= select_tag :status, options_for_select([["Todos status", ""], ["Rascunhos", "draft"], ["Finalizadas", "completed"], ["Publicadas no site", "published"]], params[:status]), class: "ax-select" %>
       </div>
       <% if can_filter_intakes_by_broker? %>
         <div class="captacoes-filter-field captacoes-filter-field--broker">
-          <label class="ax-label">Corretor</label>
+          <label class="ax-label" for="corretor_id">Corretor</label>
           <%= select_tag :corretor_id,
                          options_from_collection_for_select(@captacao_brokers, :id, :name, params[:corretor_id]),
                          include_blank: "Todos corretores",
@@ -96,8 +94,8 @@
         </div>
       <% end %>
       <div class="captacoes-filter-actions">
-        <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-funnel ax-ico"></i>Filtrar</button>
-        <% if filters_active %><%= link_to "Limpar", admin_captacoes_path, class: "ax-btn ax-btn--ghost" %><% end %>
+        <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-funnel ax-ico" aria-hidden="true"></i>Filtrar</button>
+        <% if filters_active %><%= link_to "Limpar", admin_captacoes_path(team: params[:team]), class: "ax-btn ax-btn--ghost" %><% end %>
       </div>
     </div>
   <% end %>
@@ -107,14 +105,14 @@
       <thead>
         <tr>
           <th>Imóvel</th>
-          <th style="width:90px">Código</th>
-          <th style="width:120px">Tipo</th>
-          <th style="width:110px">Modalidade</th>
-          <% if can_filter_intakes_by_broker? %><th style="width:150px">Corretor</th><% end %>
-          <th class="ax-num" style="width:130px">Valor</th>
-          <th style="width:110px">Status</th>
-          <th style="width:96px">Atualizada</th>
-          <th class="ax-num" style="width:96px">Ações</th>
+          <th class="ax-table__col--compact">Código</th>
+          <th class="ax-table__col--w-120">Tipo</th>
+          <th class="ax-table__col--md">Modalidade</th>
+          <% if can_filter_intakes_by_broker? %><th class="ax-table__col--w-150">Corretor</th><% end %>
+          <th class="ax-num ax-table__col--w-130">Valor</th>
+          <th class="ax-table__col--md">Status</th>
+          <th class="ax-table__col--sm">Atualizada</th>
+          <th class="ax-num ax-table__col--sm">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -123,7 +121,7 @@
           <tr>
             <td>
               <div class="ax-strong"><%= c.display_title %></div>
-              <% if c.city.present? %><div class="tw-text-2xs tw-text-ink-faint"><i class="bi bi-geo-alt"></i> <%= c.city %></div><% end %>
+              <% if c.city.present? %><div class="tw-text-2xs tw-text-ink-faint"><i class="bi bi-geo-alt" aria-hidden="true"></i> <%= c.city %></div><% end %>
             </td>
             <td><% if c.codigo.present? %><%= link_to c.codigo, admin_habitations_path(q: c.codigo) %><% else %>—<% end %></td>
             <td><span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span></td>
@@ -136,18 +134,22 @@
             <td class="tw-text-2xs tw-text-ink-muted"><%= time_ago_in_words(c.updated_at) %></td>
             <td class="ax-num">
               <% if c.completed? %>
-                <%= link_to admin_captacao_path(c), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
+                <%= ax_icon_button label: "Ver captação #{c.display_title}", icon: "eye", url: admin_captacao_path(c) %>
               <% else %>
-                <%= link_to edit_admin_captacao_path(c), class: "ax-btn ax-btn--sm", title: "Continuar" do %><i class="bi bi-pencil ax-ico"></i><% end %>
+                <%= ax_icon_button label: "Continuar captação #{c.display_title}", icon: "pencil", url: edit_admin_captacao_path(c) %>
               <% end %>
             </td>
           </tr>
         <% end %>
         <% if @captacoes.empty? %>
-          <tr><td colspan="<%= can_filter_intakes_by_broker? ? 9 : 8 %>"><div class="ax-empty">
-            <i class="bi bi-inbox tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>
-            Você ainda não tem captações. <%= link_to "Criar primeira", new_admin_captacao_path, class: "tw-text-primary" %>.
-          </div></td></tr>
+          <tr><td colspan="<%= can_filter_intakes_by_broker? ? 9 : 8 %>">
+            <%= ax_empty_state(
+                  title: "Nenhuma captação encontrada",
+                  description: "Você ainda não tem captações.",
+                  action: link_to("Criar primeira", new_admin_captacao_path, class: "ax-btn ax-btn--primary"),
+                  compact: true
+                ) %>
+          </td></tr>
         <% end %>
       </tbody>
     </table>
@@ -161,8 +163,8 @@
           <div class="captacao-mobile-card__title"><%= c.display_title %></div>
           <div class="captacao-mobile-card__meta">
             <% if c.codigo.present? %><span>Cod. <%= c.codigo %></span><% end %>
-            <% if c.city.present? %><span><i class="bi bi-geo-alt"></i> <%= c.city %></span><% end %>
-            <% if can_filter_intakes_by_broker? %><span><i class="bi bi-person"></i> <%= c.corretor.name %></span><% end %>
+            <% if c.city.present? %><span><i class="bi bi-geo-alt" aria-hidden="true"></i> <%= c.city %></span><% end %>
+            <% if can_filter_intakes_by_broker? %><span><i class="bi bi-person" aria-hidden="true"></i> <%= c.corretor.name %></span><% end %>
           </div>
           <div class="captacao-mobile-card__badges">
             <span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span>
@@ -182,19 +184,19 @@
           </strong>
           <span><%= time_ago_in_words(c.updated_at) %></span>
           <% if c.completed? %>
-            <%= link_to admin_captacao_path(c), class: "ax-btn ax-btn--sm ax-btn--ghost" do %><i class="bi bi-eye ax-ico"></i>Ver<% end %>
+            <%= link_to admin_captacao_path(c), class: "ax-btn ax-btn--sm ax-btn--ghost" do %><i class="bi bi-eye ax-ico" aria-hidden="true"></i>Ver<% end %>
           <% else %>
-            <%= link_to edit_admin_captacao_path(c), class: "ax-btn ax-btn--sm" do %><i class="bi bi-pencil ax-ico"></i>Continuar<% end %>
+            <%= link_to edit_admin_captacao_path(c), class: "ax-btn ax-btn--sm" do %><i class="bi bi-pencil ax-ico" aria-hidden="true"></i>Continuar<% end %>
           <% end %>
         </div>
       </article>
     <% end %>
     <% if @captacoes.empty? %>
-      <div class="captacoes-empty-state">
-        <i class="bi bi-inbox"></i>
-        <strong>Nenhuma captação encontrada</strong>
-        <span>Você ainda não tem captações. <%= link_to "Criar primeira", new_admin_captacao_path, class: "tw-text-primary" %>.</span>
-      </div>
+      <%= ax_empty_state(
+            title: "Nenhuma captação encontrada",
+            description: "Você ainda não tem captações.",
+            action: link_to("Criar primeira", new_admin_captacao_path, class: "ax-btn ax-btn--primary")
+          ) %>
     <% end %>
   </div>
 

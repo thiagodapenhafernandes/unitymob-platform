@@ -75,6 +75,14 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     get admin_root_path(tab: "leads", period: 7)
 
     expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.css(".ax-dashboard-skeleton")).not_to be_empty
+    expect(document.css(".ax-skeleton-chart span").size).to eq(28)
+    expect(document.css(".ax-skeleton-row b[class^='ax-skeleton-row__line--']")).not_to be_empty
+    expect(document.css(".ax-dashboard-skeleton [style]")).to be_empty
+    expect(document.css(".ax-dashboard-skeleton[role='status'][aria-live='polite'][aria-busy='true']")).not_to be_empty
+    expect(document.css(".ax-skeleton-chart[aria-hidden='true'], .ax-skeleton-table[aria-hidden='true'], .ax-skeleton-list[aria-hidden='true']")).not_to be_empty
+    expect(document.css(".ax-dashboard-skeleton").all? { |panel| panel["aria-label"].to_s.start_with?("Carregando ") }).to be(true)
     expect(response.body).to include('id="admin_dashboard_charts"')
     expect(response.body).to include('id="admin_dashboard_funnel"')
     expect(response.body).to include('id="admin_dashboard_status"')
@@ -93,6 +101,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
     expect(document.css(".ax-dashboard-properties-top > turbo-frame").size).to eq(2)
+    expect(document.at_css(".ax-dashboard-properties-top--stacked > turbo-frame")[:id]).to eq("admin_dashboard_operations")
     expect(response.body).to include('id="admin_dashboard_rankings"')
     expect(response.body).to include('id="admin_dashboard_operations"')
     expect(response.body).to include('id="admin_dashboard_support"')
@@ -199,7 +208,14 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   end
 
   it "usa o slug real da Habitation para abrir captações em rascunho fora do Turbo Frame" do
-    intake = create(:habitation, :broker_intake, tenant: admin.tenant, admin_user: admin, intake_status: "draft")
+    intake = create(
+      :habitation,
+      :broker_intake,
+      tenant: admin.tenant,
+      admin_user: admin,
+      codigo: "dashboard-intake-draft",
+      intake_status: "draft"
+    )
 
     get admin_dashboard_section_path("support"), headers: { "Turbo-Frame" => "admin_dashboard_support" }
 
@@ -210,8 +226,8 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   end
 
   it "filtra o catálogo pelo indicador de qualidade selecionado" do
-    missing_price = create(:habitation, valor_venda_cents: 0, valor_locacao_cents: 0)
-    priced = create(:habitation, valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
+    missing_price = create(:habitation, codigo: "dashboard-missing-price", valor_venda_cents: 0, valor_locacao_cents: 0)
+    priced = create(:habitation, codigo: "dashboard-priced", valor_venda_cents: 900_000_00, valor_locacao_cents: 0)
 
     get admin_habitations_path(ownership: "all", dashboard_quality: "missing_price")
 
@@ -231,6 +247,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include("Vendas")
     expect(response.body).to include("Referência:")
     expect(response.body).to include("%")
+    expect(Nokogiri::HTML(response.body).css(".ax-dashboard-funnel [style]")).to be_empty
   end
 
   it "nomeia o ranking como distribuição de carteira e oculta Campo quando pausado" do
@@ -286,7 +303,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   end
 
   it "renderiza oferta versus demanda usando leads vinculados a imóveis" do
-    habitation = create(:habitation, tenant: admin.tenant, categoria: "Apartamento")
+    habitation = create(:habitation, tenant: admin.tenant, categoria: "Apartamento", codigo: "DASH-#{SecureRandom.hex(5)}")
     create(:lead, tenant: admin.tenant, property_id: habitation.id, created_at: 2.days.ago)
 
     get admin_dashboard_section_path("support", period: 7), headers: { "Turbo-Frame" => "admin_dashboard_support" }
@@ -295,6 +312,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     expect(response.body).to include("Oferta versus demanda por categoria")
     expect(response.body).to include("Apartamento")
     expect(response.body).to include("Leads vinculados")
+    expect(Nokogiri::HTML(response.body).css("progress.ax-progress__bar")).not_to be_empty
   end
 
   it "gera a serie de leads dos ultimos 30 dias incluindo o dia atual" do

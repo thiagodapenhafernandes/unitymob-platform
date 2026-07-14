@@ -53,7 +53,11 @@
                 <strong><%= category.presence || "Sem categoria" %></strong>
                 <span><%= count %></span>
               </div>
-              <i style="width:<%= max_cat.positive? ? ((count.to_f / max_cat) * 100).to_i : 0 %>%"></i>
+              <%= ax_progress(
+                value: max_cat.positive? ? ((count.to_f / max_cat) * 100).to_i : 0,
+                class_name: "ax-dashboard-category__progress",
+                label: "#{category.presence || 'Sem categoria'}: #{count} imóveis"
+              ) %>
             </div>
           <% end %>
         </div>

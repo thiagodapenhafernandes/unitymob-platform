@@ -4,81 +4,47 @@
   <%= form_with(model: @home_setting, url: admin_home_setting_path, local: true, html: { multipart: true }) do |f| %>
     <%= ax_error_summary(@home_setting) %>
 
-    <!-- Tabs Navigation -->
     <ul class="ax-form-tabs tw-mb-4" id="homeSettingsTabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#homeSettingsTabsContent">
       <li role="presentation">
-        <button class="ax-form-tabs__item active" id="hero-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#hero" data-action="click->ax-tabs#select" type="button" role="tab">
-          <i class="bi bi-image"></i>Seção Hero
+        <button class="ax-form-tabs__item active" id="hero-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#hero" data-action="click->ax-tabs#select" type="button" role="tab" aria-controls="hero" aria-selected="true" tabindex="0">
+          <i class="bi bi-image" aria-hidden="true"></i>Seção Hero
         </button>
       </li>
       <li role="presentation">
-        <button class="ax-form-tabs__item" id="cta-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#cta" data-action="click->ax-tabs#select" type="button" role="tab">
-          <i class="bi bi-megaphone"></i>Call to Action
+        <button class="ax-form-tabs__item" id="cta-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#cta" data-action="click->ax-tabs#select" type="button" role="tab" aria-controls="cta" aria-selected="false" tabindex="-1">
+          <i class="bi bi-megaphone" aria-hidden="true"></i>Call to Action
         </button>
       </li>
       <li role="presentation">
-        <button class="ax-form-tabs__item" id="sections-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#sections" data-action="click->ax-tabs#select" type="button" role="tab">
-          <i class="bi bi-layout-three-columns"></i>Gerenciar Seções
+        <button class="ax-form-tabs__item" id="sections-tab" data-ax-tabs-target="tab" data-ax-tabs-target-param="#sections" data-action="click->ax-tabs#select" type="button" role="tab" aria-controls="sections" aria-selected="false" tabindex="-1">
+          <i class="bi bi-layout-three-columns" aria-hidden="true"></i>Gerenciar Seções
         </button>
       </li>
     </ul>
 
-    <!-- Tabs Content -->
-    <div class="tab-content" id="homeSettingsTabsContent">
-      
-      <!-- Hero Tab -->
-      <div class="tab-pane fade show active" id="hero" role="tabpanel">
+    <div class="ax-form-tabs__panels" id="homeSettingsTabsContent">
+      <div class="ax-form-tabs__panel" id="hero" role="tabpanel" aria-labelledby="hero-tab" aria-hidden="false" tabindex="0">
         <%= ax_field_grid do %>
-          <!-- Text Content -->
           <div class="ax-span-12">
-            <div class="ax-card">
-              <div class="ax-card__header">
-                <h5 class="ax-card__title"><i class="bi bi-text-left"></i>Conteúdo do Hero</h5>
-              </div>
-              <div class="ax-card__body">
-                <div class="tw-mb-3">
-                  <%= f.label :hero_title, "Título Principal", class: "ax-label tw-font-bold" %>
-                  <%= f.text_area :hero_title, rows: 2, class: "ax-control", placeholder: "Compre ou alugue na imobiliária mais amada de Balneário Camboriú" %>
-                  <small class="tw-text-sm tw-text-ink-muted">Texto principal que aparece no topo da home</small>
-                </div>
+            <%= ax_operational_panel(eyebrow: "Conteúdo", title: "Textos do Hero") do %>
+                <%= ax_text_field(form: f, method: :hero_title, type: :textarea, label: "Título principal", hint: "Texto principal que aparece no topo da Home.", rows: 2, placeholder: "Compre ou alugue na imobiliária mais amada de Balneário Camboriú") %>
 
                 <%= ax_field_grid class_name: "tw-mb-3" do %>
                   <div class="ax-span-6">
-                    <%= f.label :hero_title_font_size, "Tamanho do título", class: "ax-label tw-font-bold" %>
-                    <%= ax_input_group(suffix: "px") do %>
-                      <%= f.number_field :hero_title_font_size, value: @home_setting.hero_title_font_size || 72, min: 24, max: 96, step: 1, class: "ax-control" %>
-                    <% end %>
+                    <%= ax_measure_field(form: f, method: :hero_title_font_size, label: "Tamanho do título", unit: "px", value: @home_setting.hero_title_font_size || 72, min: 24, max: 96, step: 1) %>
                   </div>
                   <div class="ax-span-6">
-                    <%= f.label :hero_subtitle_font_size, "Tamanho do subtítulo", class: "ax-label tw-font-bold" %>
-                    <%= ax_input_group(suffix: "px") do %>
-                      <%= f.number_field :hero_subtitle_font_size, value: @home_setting.hero_subtitle_font_size || 20, min: 12, max: 36, step: 1, class: "ax-control" %>
-                    <% end %>
+                    <%= ax_measure_field(form: f, method: :hero_subtitle_font_size, label: "Tamanho do subtítulo", unit: "px", value: @home_setting.hero_subtitle_font_size || 20, min: 12, max: 36, step: 1) %>
                   </div>
                 <% end %>
 
-                <div class="mb-0">
-                  <%= f.label :hero_subtitle, "Subtítulo", class: "ax-label tw-font-bold" %>
-                  <%= f.text_area :hero_subtitle, rows: 2, class: "ax-control", placeholder: "Aqui o lar é o centro das grandes histórias da vida." %>
-                  <small class="tw-text-sm tw-text-ink-muted">Texto secundário abaixo do título</small>
-                </div>
-              </div>
-            </div>
+                <%= ax_text_field(form: f, method: :hero_subtitle, type: :textarea, label: "Subtítulo", hint: "Texto secundário exibido abaixo do título.", rows: 2, placeholder: "Aqui o lar é o centro das grandes histórias da vida.") %>
+            <% end %>
           </div>
 
-          <!-- Background Images -->
           <div class="ax-span-6">
-            <div class="ax-card" style="height: 100%;">
-              <div class="ax-card__header">
-                <h5 class="ax-card__title"><i class="bi bi-laptop"></i>Imagem Desktop</h5>
-              </div>
-              <div class="ax-card__body">
-                <label class="ax-label tw-font-bold">Slides do Hero (Desktop)</label>
-                <%= file_field_tag "home_setting[hero_slide_images][]",
-                                   multiple: true,
-                                   class: "ax-control tw-mb-2",
-                                   accept: "image/*" %>
-                <small class="tw-text-sm tw-text-ink-muted tw-block tw-mb-3">Você pode enviar uma ou mais imagens. Elas serão redimensionadas para até 1920x1080px e otimizadas para web no upload.</small>
+            <%= ax_operational_panel(eyebrow: "Mídia", title: "Slides para desktop", class_name: "home-settings-card--fill") do %>
+                <%= ax_file_field(form: f, method: :hero_slide_images, label: "Imagens do Hero", hint: "Envie uma ou mais imagens. O sistema redimensiona até 1920x1080px e otimiza para web.", accept: "image/*", multiple: true, input_id: "home-setting-hero-slide-images", button_label: "Adicionar imagens") %>
 
                 <% if @home_setting.hero_slides.any? %>
                   <div class="tw-flex tw-flex-col tw-gap-2"
@@ -87,32 +53,31 @@
                     <%= f.fields_for :hero_slides, @home_setting.hero_slides do |slide_f| %>
                       <% slide = slide_f.object %>
                       <div class="nested-form-wrapper">
-                        <div class="border rounded-3 bg-white p-2">
-                          <div class="tw-flex tw-items-center tw-gap-3">
-                            <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm border hero-slide-drag-handle flex-shrink-0" title="Arrastar para ordenar">
-                              <i class="bi bi-arrows-move"></i>
+                        <div class="home-settings-slide-item">
+                          <div class="home-settings-slide-item__content">
+                            <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm hero-slide-drag-handle" aria-label="Arrastar slide <%= slide.position %> para ordenar">
+                              <i class="bi bi-arrows-move" aria-hidden="true"></i>
                             </button>
 
-                            <span class="ax-badge ax-badge--gray flex-shrink-0">
+                            <span class="ax-badge ax-badge--gray home-settings-slide-item__position">
                               #<span class="position-display"><%= slide.position %></span>
                             </span>
 
-                            <div class="position-relative overflow-hidden rounded bg-light flex-shrink-0" style="width: 150px;">
+                            <div class="home-settings-slide-thumb">
                             <% if slide.image.attached? %>
-                              <%= image_tag slide.image.variant(resize_to_limit: [300, 170]), class: "img-fluid tw-w-full", style: "aspect-ratio: 16 / 9; object-fit: cover;" %>
+                              <%= image_tag slide.image.variant(resize_to_limit: [300, 170]), class: "tw-w-full home-settings-slide-thumb__image" %>
                             <% end %>
                             </div>
 
                             <%= slide_f.hidden_field :position, class: "position-field" %>
 
-                            <div class="flex-grow-1">
-                              <%= slide_f.label :alt_text, "Texto alternativo", class: "ax-label tw-text-sm tw-font-semibold tw-mb-1" %>
-                              <%= slide_f.text_field :alt_text, class: "ax-control ax-control--sm" %>
+                            <div class="home-settings-slide-item__field">
+                              <%= ax_text_field(form: slide_f, method: :alt_text, label: "Texto alternativo", class_name: "tw-text-sm", class: "ax-control--sm") %>
                             </div>
 
-                            <div class="tw-flex tw-items-center tw-gap-3 flex-shrink-0">
+                            <div class="home-settings-slide-item__actions">
                               <%= ax_switch_field(form: slide_f, method: :active, label: "Ativo") %>
-                              <%= ax_check_field(form: slide_f, method: :_destroy, label: tag.span("Remover", class: "tw-text-sm", style: "color:#dc2626"), class_name: "mb-0") %>
+                              <%= ax_check_field(form: slide_f, method: :_destroy, label: tag.span("Remover", class: "tw-text-sm home-settings-remove-label")) %>
                             </div>
                           </div>
                         </div>
@@ -120,296 +85,228 @@
                     <% end %>
                   </div>
                 <% elsif @home_setting.hero_background_desktop.attached? %>
-                  <div class="position-relative overflow-hidden rounded shadow-sm">
-                    <%= image_tag @home_setting.hero_background_desktop.variant(resize_to_limit: [960, 540]), class: "img-fluid tw-w-full", id: "hero-desktop-image" %>
-                    <div id="hero-overlay-preview" data-home-settings-preview-target="overlayPreview"
-                         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-                                background-color: <%= @home_setting.overlay_color || '#000000' %>;
-                                opacity: <%= @home_setting.overlay_opacity || 0.7 %>;
-                                pointer-events: none; transition: all 0.2s ease;">
+                  <div class="home-settings-legacy-preview">
+                            <%= image_tag @home_setting.hero_background_desktop.variant(resize_to_limit: [960, 540]), class: "tw-w-full home-settings-slide-thumb__image", id: "hero-desktop-image" %>
+                    <div id="hero-overlay-preview" class="home-settings-overlay-preview" data-home-settings-preview-target="overlayPreview">
                     </div>
-                    <span class="ax-badge ax-badge--gray position-absolute top-0 start-0 m-2" style="z-index: 5;">
+                    <span class="ax-badge ax-badge--gray home-settings-current-image-badge">
                       <i class="bi bi-image"></i>Imagem atual antiga
                     </span>
                   </div>
                 <% else %>
-                  <div class="tw-text-center p-4 bg-light rounded">
-                    <i class="bi bi-image tw-text-ink-muted" style="font-size: 3rem;"></i>
-                    <p class="tw-text-ink-muted mt-2 mb-0">Nenhuma imagem carregada</p>
-                  </div>
+                  <%= ax_empty_state(
+                        title: "Nenhuma imagem desktop carregada",
+                        description: "Envie uma ou mais imagens para montar os slides do Hero.",
+                        icon: "image",
+                        compact: true
+                      ) %>
                 <% end %>
-              </div>
-            </div>
+            <% end %>
           </div>
 
           <div class="ax-span-6">
-            <div class="ax-card" style="height: 100%;">
-              <div class="ax-card__header">
-                <h5 class="ax-card__title"><i class="bi bi-phone"></i>Imagem Mobile</h5>
-              </div>
-              <div class="ax-card__body">
-                <%= f.label :hero_background_mobile, "Imagem de Fundo (Mobile)", class: "ax-label tw-font-bold" %>
-                <%= f.file_field :hero_background_mobile, class: "ax-control tw-mb-3", accept: "image/*" %>
-                <small class="tw-text-sm tw-text-ink-muted tw-block tw-mb-3">Recomendado: 768x1024px (vertical)</small>
+            <%= ax_operational_panel(eyebrow: "Mídia", title: "Imagem para mobile", class_name: "home-settings-card--fill") do %>
+                <%= ax_file_field(form: f, method: :hero_background_mobile, label: "Imagem de fundo", hint: "Formato recomendado: 768x1024px, orientação vertical.", accept: "image/*", button_label: "Escolher imagem") %>
 
                 <% if @home_setting.hero_background_mobile.attached? %>
-                  <div class="position-relative">
-                    <%= image_tag @home_setting.hero_background_mobile, class: "img-fluid rounded shadow-sm" %>
-                    <span class="ax-badge ax-badge--blue position-absolute top-0 start-0 m-2">
+                  <div class="home-settings-mobile-preview">
+                    <%= image_tag @home_setting.hero_background_mobile, class: "home-settings-mobile-preview__image" %>
+                    <span class="ax-badge ax-badge--blue home-settings-mobile-preview__badge">
                       <i class="bi bi-check-circle"></i>Imagem Atual
                     </span>
                   </div>
                 <% else %>
-                  <div class="tw-text-center p-4 bg-light rounded">
-                    <i class="bi bi-phone tw-text-ink-muted" style="font-size: 3rem;"></i>
-                    <p class="tw-text-ink-muted mt-2 mb-0">Nenhuma imagem carregada</p>
-                  </div>
+                  <%= ax_empty_state(
+                        title: "Nenhuma imagem mobile carregada",
+                        description: "Sem arquivo específico, a experiência poderá usar a imagem desktop configurada.",
+                        icon: "phone",
+                        compact: true
+                      ) %>
                 <% end %>
-              </div>
-            </div>
+            <% end %>
           </div>
 
-          <!-- CTA Button & Overlay -->
           <div class="ax-span-12">
-            <div class="ax-card">
-              <div class="ax-card__header">
-                <h5 class="ax-card__title"><i class="bi bi-sliders"></i>Personalização Visual</h5>
-              </div>
-              <div class="ax-card__body">
-                <div>
-                  <!-- Overlay Settings Block -->
-                  <div class="tw-mb-4">
-                    <h6 class="text-uppercase tw-text-ink-muted tw-font-bold tw-text-sm tw-mb-3 border-bottom pb-2">Configurações de Sobreposição (Overlay)</h6>
+            <%= ax_operational_panel(eyebrow: "Aparência", title: "Personalização visual") do %>
+                <div class="tw-flex tw-flex-col tw-gap-4">
+                  <%= ax_field_group(title: "Sobreposição do Hero", token: "Overlay") do %>
                     <%= ax_field_grid do %>
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :overlay_opacity, class: "ax-label tw-font-bold" do %>
-                          Opacidade <span class="ax-badge ax-badge--gray">0.0 - 1.0</span>
-                        <% end %>
-                        <%= ax_input_group(suffix: tag.i(class: "bi bi-opacity")) do %>
-                          <%= f.number_field :overlay_opacity, step: 0.1, min: 0, max: 1, class: "ax-control", placeholder: "0.7", id: "input-overlay-opacity", data: { home_settings_preview_target: "overlayOpacity", action: "input->home-settings-preview#updateOverlay" } %>
-                        <% end %>
+                        <%= ax_number_field(form: f, method: :overlay_opacity, label: "Opacidade", hint: "Use um valor entre 0,0 e 1,0.", step: 0.1, min: 0, max: 1, placeholder: "0.7", id: "input-overlay-opacity", data: { home_settings_preview_target: "overlayOpacity", action: "input->home-settings-preview#updateOverlay" }) %>
                       </div>
 
                       <div class="ax-span-5 tw-mb-3">
-                        <%= f.label :overlay_color, "Cor da Sobreposição", class: "ax-label tw-font-bold" %>
-                        <div class="tw-flex tw-gap-2 tw-items-center">
-                          <%= f.color_field :overlay_color, value: @home_setting.overlay_color || '#000000', class: "ax-control", id: "input-overlay-color-picker", style: "width: 80px; height: 48px;", data: { home_settings_preview_target: "overlayColorPicker", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "picker" } %>
-                          <%= f.text_field :overlay_color, value: @home_setting.overlay_color || '#000000', class: "ax-control", id: "input-overlay-color-text", data: { home_settings_preview_target: "overlayColorText", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "text" } %>
-                        </div>
+                        <%= ax_color_field(
+                              form: f,
+                              method: :overlay_color,
+                              label: "Cor da Sobreposição",
+                              value: @home_setting.overlay_color || "#000000",
+                              color_options: { id: "input-overlay-color-picker", data: { home_settings_preview_target: "overlayColorPicker", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "picker" } },
+                              text_options: { id: "input-overlay-color-text", data: { home_settings_preview_target: "overlayColorText", action: "input->home-settings-preview#syncOverlay", home_settings_preview_source_param: "text" } }
+                            ) %>
                       </div>
                     <% end %>
-                  </div>
+                  <% end %>
 
-                  <!-- Search Button Block -->
-                  <div>
-                    <h6 class="text-uppercase tw-text-ink-muted tw-font-bold tw-text-sm tw-mb-3 border-bottom pb-2">Personalização do Botão de Busca</h6>
+                  <%= ax_field_group(title: "Botão de busca") do %>
                     <%= ax_field_grid do %>
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :hero_cta_text, "Texto do Botão de Busca", class: "ax-label tw-font-bold" %>
-                        <%= f.text_field :hero_cta_text, class: "ax-control", placeholder: "Buscar Imóveis" %>
+                        <%= ax_text_field(form: f, method: :hero_cta_text, label: "Texto do botão de busca", placeholder: "Buscar imóveis") %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :hero_button_color, "Cor do Botão de Busca", class: "ax-label tw-font-bold" %>
-                        <div class="tw-flex tw-gap-2 tw-items-center">
-                          <%= f.color_field :hero_button_color, value: @home_setting.hero_button_color || '#BFAB25', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "picker" } %>
-                          <%= f.text_field :hero_button_color, value: @home_setting.hero_button_color || '#BFAB25', class: "ax-control", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "text" } %>
-                        </div>
+                        <%= ax_color_field(
+                              form: f, method: :hero_button_color, label: "Cor do Botão de Busca",
+                              value: @home_setting.hero_button_color || "#BFAB25",
+                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "picker" } },
+                              text_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button", home_settings_preview_source_param: "text" } }
+                            ) %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :hero_button_text_color, "Cor do Texto do Botão", class: "ax-label tw-font-bold" %>
-                        <div class="tw-flex tw-gap-2 tw-items-center">
-                          <%= f.color_field :hero_button_text_color, value: @home_setting.hero_button_text_color || '#FFFFFF', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "picker" } %>
-                          <%= f.text_field :hero_button_text_color, value: @home_setting.hero_button_text_color || '#FFFFFF', class: "ax-control", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "text" } %>
-                        </div>
+                        <%= ax_color_field(
+                              form: f, method: :hero_button_text_color, label: "Cor do Texto do Botão",
+                              value: @home_setting.hero_button_text_color || "#FFFFFF",
+                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "picker" } },
+                              text_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "hero-button-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "hero-button-text", home_settings_preview_source_param: "text" } }
+                            ) %>
                       </div>
 
                       <% if false %>
                         <div class="ax-span-12">
-                          <%= f.label :hero_cta_link, "Link do Botão (Opcional)", class: "ax-label tw-font-bold" %>
-                          <%= f.text_field :hero_cta_link, class: "ax-control", placeholder: "/imoveis" %>
+                          <%= ax_text_field(form: f, method: :hero_cta_link, label: "Link do botão (opcional)", placeholder: "/imoveis") %>
                         </div>
                       <% end %>
                     <% end %>
-                  </div>
+                  <% end %>
 
-                  <!-- Search Filter Block -->
-                  <div class="tw-mt-4">
-                    <h6 class="text-uppercase tw-text-ink-muted tw-font-bold tw-text-sm tw-mb-3 border-bottom pb-2">Personalização do Filtro de Busca</h6>
+                  <%= ax_field_group(title: "Filtro de busca") do %>
                     <%= ax_field_grid do %>
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :search_filter_background_color, "Cor do Fundo do Filtro", class: "ax-label tw-font-bold" %>
-                        <div class="tw-flex tw-gap-2 tw-items-center">
-                          <%= f.color_field :search_filter_background_color, value: @home_setting.search_filter_background_color || '#FFFFFF', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "picker" } %>
-                          <%= f.text_field :search_filter_background_color, value: @home_setting.search_filter_background_color || '#FFFFFF', class: "ax-control", id: "search-filter-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "text" } %>
-                        </div>
+                        <%= ax_color_field(
+                              form: f, method: :search_filter_background_color, label: "Cor do Fundo do Filtro",
+                              value: @home_setting.search_filter_background_color || "#FFFFFF",
+                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "picker" } },
+                              text_options: { id: "search-filter-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-background", home_settings_preview_source_param: "text" } }
+                            ) %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :search_filter_background_opacity, class: "ax-label tw-font-bold" do %>
-                          Opacidade do Fundo <span class="ax-badge ax-badge--gray">0.0 - 1.0</span>
-                        <% end %>
-                        <%= ax_input_group(suffix: tag.i(class: "bi bi-opacity")) do %>
-                          <%= f.number_field :search_filter_background_opacity, value: @home_setting.search_filter_background_opacity || 0.9, step: 0.05, min: 0, max: 1, class: "ax-control", placeholder: "0.9" %>
-                        <% end %>
+                        <%= ax_number_field(form: f, method: :search_filter_background_opacity, label: "Opacidade do fundo", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_background_opacity || 0.9, step: 0.05, min: 0, max: 1, placeholder: "0.9") %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :search_filter_backdrop_blur, "Translucidez / Desfoque", class: "ax-label tw-font-bold" %>
-                        <%= ax_input_group(suffix: "px") do %>
-                          <%= f.number_field :search_filter_backdrop_blur, value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, class: "ax-control", placeholder: "16" %>
-                        <% end %>
-                        <small class="tw-text-sm tw-text-ink-muted">Quanto maior, mais efeito de vidro.</small>
+                        <%= ax_measure_field(form: f, method: :search_filter_backdrop_blur, label: "Translucidez / desfoque", unit: "px", value: @home_setting.search_filter_backdrop_blur || 16, min: 0, max: 40, step: 1, placeholder: "16") %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :search_filter_border_radius, "Radius do Filtro", class: "ax-label tw-font-bold" %>
-                        <%= ax_input_group(suffix: "px") do %>
-                          <%= f.number_field :search_filter_border_radius, value: @home_setting.search_filter_border_radius || 22, min: 0, max: 40, step: 1, class: "ax-control", placeholder: "22" %>
-                        <% end %>
+                        <%= ax_measure_field(form: f, method: :search_filter_border_radius, label: "Raio do filtro", unit: "px", value: @home_setting.search_filter_border_radius || 22, min: 0, max: 40, step: 1, placeholder: "22") %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :search_filter_field_background_color, "Cor dos Campos", class: "ax-label tw-font-bold" %>
-                        <div class="tw-flex tw-gap-2 tw-items-center">
-                          <%= f.color_field :search_filter_field_background_color, value: @home_setting.search_filter_field_background_color || '#FFFFFF', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "picker" } %>
-                          <%= f.text_field :search_filter_field_background_color, value: @home_setting.search_filter_field_background_color || '#FFFFFF', class: "ax-control", id: "search-filter-field-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "text" } %>
-                        </div>
+                        <%= ax_color_field(
+                              form: f, method: :search_filter_field_background_color, label: "Cor dos Campos",
+                              value: @home_setting.search_filter_field_background_color || "#FFFFFF",
+                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "picker" } },
+                              text_options: { id: "search-filter-field-background-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-field-background", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-field-background", home_settings_preview_source_param: "text" } }
+                            ) %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :search_filter_field_background_opacity, class: "ax-label tw-font-bold" do %>
-                          Opacidade dos Campos <span class="ax-badge ax-badge--gray">0.0 - 1.0</span>
-                        <% end %>
-                        <%= ax_input_group(suffix: tag.i(class: "bi bi-opacity")) do %>
-                          <%= f.number_field :search_filter_field_background_opacity, value: @home_setting.search_filter_field_background_opacity || 0.85, step: 0.05, min: 0, max: 1, class: "ax-control", placeholder: "0.85" %>
-                        <% end %>
+                        <%= ax_number_field(form: f, method: :search_filter_field_background_opacity, label: "Opacidade dos campos", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_field_background_opacity || 0.85, step: 0.05, min: 0, max: 1, placeholder: "0.85") %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :search_filter_text_color, "Cor dos Textos/Links", class: "ax-label tw-font-bold" %>
-                        <div class="tw-flex tw-gap-2 tw-items-center">
-                          <%= f.color_field :search_filter_text_color, value: @home_setting.search_filter_text_color || '#022B3A', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "picker" } %>
-                          <%= f.text_field :search_filter_text_color, value: @home_setting.search_filter_text_color || '#022B3A', class: "ax-control", id: "search-filter-text-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "text" } %>
-                        </div>
+                        <%= ax_color_field(
+                              form: f, method: :search_filter_text_color, label: "Cor dos Textos/Links",
+                              value: @home_setting.search_filter_text_color || "#022B3A",
+                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "picker" } },
+                              text_options: { id: "search-filter-text-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-text", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-text", home_settings_preview_source_param: "text" } }
+                            ) %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :search_filter_border_enabled, "Borda do Filtro", class: "ax-label tw-font-bold" %>
-                        <div class="tw-mt-2">
-                          <%= ax_switch_field(form: f, method: :search_filter_border_enabled, label: "Ativar borda") %>
-                        </div>
+                        <%= ax_switch_field(form: f, method: :search_filter_border_enabled, label: "Exibir borda do filtro") %>
                       </div>
 
                       <div class="ax-span-4 tw-mb-3">
-                        <%= f.label :search_filter_border_color, "Cor da Borda", class: "ax-label tw-font-bold" %>
-                        <div class="tw-flex tw-gap-2 tw-items-center">
-                          <%= f.color_field :search_filter_border_color, value: @home_setting.search_filter_border_color || '#FFFFFF', class: "ax-control", style: "width: 80px; height: 48px;", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "picker" } %>
-                          <%= f.text_field :search_filter_border_color, value: @home_setting.search_filter_border_color || '#FFFFFF', class: "ax-control", id: "search-filter-border-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "text" } %>
-                        </div>
+                        <%= ax_color_field(
+                              form: f, method: :search_filter_border_color, label: "Cor da Borda",
+                              value: @home_setting.search_filter_border_color || "#FFFFFF",
+                              color_options: { data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "picker", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "picker" } },
+                              text_options: { id: "search-filter-border-text", data: { action: "input->home-settings-preview#syncPair", home_settings_preview_pair: "search-filter-border", home_settings_preview_source: "text", home_settings_preview_pair_param: "search-filter-border", home_settings_preview_source_param: "text" } }
+                            ) %>
                       </div>
 
-                      <div class="ax-span-4 mb-0">
-                        <%= f.label :search_filter_border_opacity, class: "ax-label tw-font-bold" do %>
-                          Opacidade da Borda <span class="ax-badge ax-badge--gray">0.0 - 1.0</span>
-                        <% end %>
-                        <%= ax_input_group(suffix: tag.i(class: "bi bi-opacity")) do %>
-                          <%= f.number_field :search_filter_border_opacity, value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, class: "ax-control", placeholder: "0.45" %>
-                        <% end %>
+                      <div class="ax-span-4">
+                        <%= ax_number_field(form: f, method: :search_filter_border_opacity, label: "Opacidade da borda", hint: "Use um valor entre 0,0 e 1,0.", value: @home_setting.search_filter_border_opacity || 0.45, step: 0.05, min: 0, max: 1, placeholder: "0.45") %>
                       </div>
                     <% end %>
-                  </div>
+                  <% end %>
                 </div>
-              </div>
-            </div>
+            <% end %>
           </div>
         <% end %>
       </div>
 
-      <!-- CTA Tab -->
-      <div class="tab-pane fade" id="cta" role="tabpanel">
-        <div class="ax-card">
-          <div class="ax-card__header">
-            <h5 class="ax-card__title"><i class="bi bi-megaphone-fill"></i>Seção Call to Action</h5>
-          </div>
-          <div class="ax-card__body">
+      <div class="ax-form-tabs__panel" id="cta" role="tabpanel" aria-labelledby="cta-tab" aria-hidden="true" tabindex="0" hidden>
+        <%= ax_operational_panel(eyebrow: "Conversão", title: "Chamada para ação") do %>
             <%= ax_field_grid do %>
               <div class="ax-span-6 tw-mb-3">
-                <%= f.label :cta_title, "Título", class: "ax-label tw-font-bold" %>
-                <%= f.text_field :cta_title, class: "ax-control", placeholder: "Pronto para Encontrar Seu Imóvel?" %>
-                <small class="tw-text-sm tw-text-ink-muted">Título da seção de chamada para ação</small>
+                <%= ax_text_field(form: f, method: :cta_title, label: "Título", hint: "Título da seção de chamada para ação.", placeholder: "Pronto para encontrar seu imóvel?") %>
               </div>
 
               <div class="ax-span-6 tw-mb-3">
-                <%= f.label :cta_subtitle, "Subtítulo", class: "ax-label tw-font-bold" %>
-                <%= f.text_field :cta_subtitle, class: "ax-control", placeholder: "Entre em contato conosco e descubra as melhores oportunidades" %>
-                <small class="tw-text-sm tw-text-ink-muted">Descrição complementar</small>
+                <%= ax_text_field(form: f, method: :cta_subtitle, label: "Subtítulo", hint: "Descrição complementar da chamada.", placeholder: "Entre em contato conosco e descubra as melhores oportunidades") %>
               </div>
             <% end %>
-
-          </div>
-        </div>
+        <% end %>
       </div>
 
-      <!-- Sections Tab -->
-      <div class="tab-pane fade" id="sections" role="tabpanel">
-        <div class="ax-card">
-          <div class="ax-card__header">
-            <h5 class="ax-card__title"><i class="bi bi-toggles"></i>Controle de Seções da Home</h5>
-          </div>
-          <div class="ax-card__body">
+      <div class="ax-form-tabs__panel" id="sections" role="tabpanel" aria-labelledby="sections-tab" aria-hidden="true" tabindex="0" hidden>
+        <%= ax_operational_panel(eyebrow: "Publicação", title: "Controle de seções da Home") do %>
             <p class="tw-text-ink-muted tw-mb-4">
               <i class="bi bi-info-circle"></i>
               Ative ou desative seções específicas da página inicial. Seções desativadas não aparecerão para os visitantes.
             </p>
 
-            <%= ax_field_grid do %>
+            <%= ax_field_grid class_name: "home-settings-section-grid" do %>
               <div class="ax-span-4">
-                <div class="ax-card" style="height: 100%;">
-                  <div class="ax-card__body">
-                    <%= ax_switch_field(form: f, method: :services_active, id: "services_active", label: "<i class=\"bi bi-grid-3x3-gap\" style=\"color:var(--admin-primary)\"></i> Nossos Serviços".html_safe) %>
-                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2 mb-0">Exibe os serviços oferecidos pela imobiliária</p>
-                  </div>
-                </div>
+                <%= ax_field_group(title: "Nossos serviços", class_name: "home-settings-card--fill") do %>
+                    <%= ax_switch_field(form: f, method: :services_active, id: "services_active", label: "Exibir seção") %>
+                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2">Exibe os serviços oferecidos pela imobiliária.</p>
+                <% end %>
               </div>
 
               <div class="ax-span-4">
-                <div class="ax-card" style="height: 100%;">
-                  <div class="ax-card__body">
-                    <%= ax_switch_field(form: f, method: :why_choose_active, id: "why_choose_active", label: "<i class=\"bi bi-star\" style=\"color:#d97706\"></i> Por Que Escolher".html_safe) %>
-                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2 mb-0">Mostra os diferenciais da empresa</p>
-                  </div>
-                </div>
+                <%= ax_field_group(title: "Por que escolher", class_name: "home-settings-card--fill") do %>
+                    <%= ax_switch_field(form: f, method: :why_choose_active, id: "why_choose_active", label: "Exibir seção") %>
+                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2">Mostra os diferenciais da empresa.</p>
+                <% end %>
               </div>
 
               <div class="ax-span-4">
-                <div class="ax-card" style="height: 100%;">
-                  <div class="ax-card__body">
-                    <%= ax_switch_field(form: f, method: :cta_contact_active, id: "cta_contact_active", label: "<i class=\"bi bi-telephone\" style=\"color:#16a34a\"></i> CTA de Contato".html_safe) %>
-                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2 mb-0">Seção de chamada para entrar em contato</p>
-                  </div>
-                </div>
+                <%= ax_field_group(title: "CTA de contato", class_name: "home-settings-card--fill") do %>
+                    <%= ax_switch_field(form: f, method: :cta_contact_active, id: "cta_contact_active", label: "Exibir seção") %>
+                    <p class="tw-text-ink-muted tw-text-sm tw-mt-2">Exibe a chamada para entrar em contato.</p>
+                <% end %>
               </div>
             <% end %>
 
             <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
               <strong>Atenção:</strong> As seções de imóveis (Destaques, Oportunidades, etc.) são gerenciadas em
-              <%= link_to 'Seções Homepage', admin_home_sections_path, class: 'alert-link' %>.
+              <%= link_to 'Seções da Home', admin_home_sections_path, class: 'ax-link' %>.
             <% end %>
-          </div>
-        </div>
+        <% end %>
       </div>
 
     </div>
 
-    <!-- Save Button -->
-    <div class="tw-flex tw-justify-between tw-items-center tw-gap-2 tw-mt-4 p-4 bg-light rounded">
-      <div class="tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-info-circle" style="color:var(--admin-primary)"></i>
-        <span class="tw-text-ink-muted">Não esqueça de salvar suas alterações</span>
-      </div>
-      <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary", data: { disable_with: "Salvando..." } %>
-    </div>
+    <%= ax_sticky_action_footer(
+          meta: safe_join([tag.i(class: "bi bi-globe2", aria: { hidden: true }), tag.span("As alterações serão publicadas na Home desta conta após salvar.")], " ")
+        ) do %>
+      <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
+      <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary", data: { disable_with: "Salvando..." } %>
+    <% end %>
   <% end %>
 </div>

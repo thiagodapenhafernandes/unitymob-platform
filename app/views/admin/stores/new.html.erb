@@ -1,15 +1,11 @@
 <div class="admin-entity-dark">
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">
-      <i class="bi bi-plus-square-fill tw-text-primary" style="margin-right:.5rem"></i>Nova loja
-    </h1>
-    <p class="ax-page-subtitle">Cadastre uma loja física com geofence, turnos e diretor.</p>
-  </div>
-  <%= link_to admin_stores_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-    <i class="bi bi-arrow-left"></i>Voltar
-  <% end %>
-</div>
+<%= ax_workspace_heading(
+      eyebrow: "Operação · Lojas",
+      icon: "plus-square-fill",
+      title: "Nova loja",
+      subtitle: "Cadastre uma loja física com geofence, turnos e diretor.",
+      actions: ax_button("Voltar", admin_stores_path, variant: :ghost, size: :sm, icon: "arrow-left")
+    ) %>
 
 <%= render "form", store: @store %>
 </div>

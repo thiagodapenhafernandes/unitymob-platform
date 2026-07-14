@@ -148,6 +148,10 @@ RSpec.describe "Admin::Leads", type: :request do
       get admin_leads_path(view: "list", team: "0")
 
       expect(response).to have_http_status(:ok)
+      team_toggle = Nokogiri::HTML(response.body).at_css('a.ax-team-toggle[role="switch"]')
+      expect(team_toggle).to be_present
+      expect(team_toggle["aria-checked"]).to eq("false")
+      expect(URI.parse(team_toggle["href"]).query).to include("team=1", "view=list")
       expect(response.body).to include(own_lead.name)
       expect(response.body).not_to include(team_lead.name)
 
@@ -258,6 +262,7 @@ RSpec.describe "Admin::Leads", type: :request do
     it "exibe histórico de alterações no detalhe do lead" do
       lead = create(:lead, status: "Novo")
       create(:lead_audit_log, lead: lead, admin_user: admin, action: "status_changed")
+      LeadActivity.log!(lead:, kind: :whatsapp_in, metadata: { body: "Mensagem recebida" })
 
       get admin_lead_path(lead)
 
@@ -265,6 +270,9 @@ RSpec.describe "Admin::Leads", type: :request do
       expect(response.body).to include("Histórico")
       expect(response.body).to include("Histórico do Lead")
       expect(response.body).to include("alterou o status do lead")
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css(".ax-disclosure-divider[data-controller='ax-disclosure']")).to be_present
+      expect(document.css(".ax-disclosure-divider[style]")).to be_empty
     end
 
     it "explica quando o lead nao possui imovel especifico atrelado" do

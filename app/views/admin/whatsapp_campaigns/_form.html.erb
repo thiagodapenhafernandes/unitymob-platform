@@ -30,10 +30,10 @@
                 whatsapp_campaign_builder_current_response_decisions_value: campaign.response_decisions.to_json
               } do |f| %>
   <% if campaign.errors.any? %>
-    <div class="ax-inline-notice ax-inline-notice--danger"><%= campaign.errors.full_messages.to_sentence %></div>
+    <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle", body: campaign.errors.full_messages.to_sentence) %>
   <% end %>
 
-  <div class="whatsapp-campaign-builder__nav" role="list">
+  <div class="whatsapp-campaign-builder__nav" role="tablist" aria-label="Etapas da campanha">
     <% [
       [1, "Dados", "bi-pencil-square"],
       [2, "Modelo", "bi-chat-square-text"],
@@ -43,21 +43,32 @@
     ].each do |step, label, icon| %>
       <button type="button"
               class="whatsapp-campaign-builder__step"
+              id="whatsapp-campaign-step-tab-<%= step %>"
+              role="tab"
+              aria-controls="whatsapp-campaign-step-panel-<%= step %>"
+              aria-selected="<%= step == 1 %>"
+              tabindex="<%= step == 1 ? 0 : -1 %>"
               data-whatsapp-campaign-builder-target="stepButton"
               data-step="<%= step %>"
-              data-action="whatsapp-campaign-builder#goTo">
-        <i class="bi <%= icon %> ax-ico"></i>
+              data-action="click->whatsapp-campaign-builder#goTo keydown->whatsapp-campaign-builder#navigateSteps">
+        <i class="bi <%= icon %> ax-ico" aria-hidden="true"></i>
         <span><%= label %></span>
       </button>
     <% end %>
   </div>
 
-  <div class="whatsapp-campaign-builder__progress" aria-hidden="true">
+  <div class="whatsapp-campaign-builder__progress"
+       role="progressbar"
+       aria-label="Progresso das etapas da campanha"
+       aria-valuemin="1"
+       aria-valuemax="5"
+       aria-valuenow="1"
+       data-whatsapp-campaign-builder-target="progressTrack">
     <span data-whatsapp-campaign-builder-target="progress"></span>
   </div>
 
   <div class="whatsapp-campaign-builder__workspace">
-    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="1">
+    <section class="whatsapp-campaign-builder__pane" id="whatsapp-campaign-step-panel-1" role="tabpanel" aria-labelledby="whatsapp-campaign-step-tab-1" data-whatsapp-campaign-builder-target="step" data-step="1">
       <%= ax_operational_panel(eyebrow: "Etapa 1", title: "Dados do disparo") do %>
         <div class="ax-panel-body whatsapp-campaign-form__stack">
           <%= ax_text_field(
@@ -118,7 +129,7 @@
       <% end %>
     </section>
 
-    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="2" hidden>
+    <section class="whatsapp-campaign-builder__pane" id="whatsapp-campaign-step-panel-2" role="tabpanel" aria-labelledby="whatsapp-campaign-step-tab-2" aria-hidden="true" data-whatsapp-campaign-builder-target="step" data-step="2" hidden>
       <%= ax_operational_panel(eyebrow: "Etapa 2", title: "Modelo e variáveis") do %>
         <div class="ax-panel-body whatsapp-campaign-form__stack">
           <div class="ax-field">
@@ -133,9 +144,9 @@
                          } %>
           </div>
           <div class="whatsapp-template-variable-map" data-whatsapp-campaign-builder-target="variableList">
-            <div class="ax-inline-notice ax-inline-notice--info">
+            <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
               Selecione um modelo para o sistema identificar e montar os campos variáveis automaticamente.
-            </div>
+            <% end %>
           </div>
           <div class="whatsapp-campaign-template-preview">
             <div>
@@ -161,24 +172,24 @@
             </div>
             <% linked_workflow = campaign.automation_workflow %>
             <% if linked_workflow&.whatsapp_campaign_customized? %>
-              <div class="ax-inline-notice ax-inline-notice--warning">
+              <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", compact: true) do %>
                 A automação vinculada foi personalizada no builder avançado. As decisões simples continuam visíveis aqui, mas não sobrescrevem os ajustes finos.
                 <%= link_to "Revisar automação", builder_admin_automation_workflow_path(linked_workflow) %>.
-              </div>
+              <% end %>
             <% elsif linked_workflow.present? %>
-              <div class="ax-inline-notice ax-inline-notice--info">
+              <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
                 Estas decisões mantêm a automação vinculada sincronizada. Usuários avançados podem revisar e ajustar o fluxo no builder.
                 <%= link_to "Abrir automação", builder_admin_automation_workflow_path(linked_workflow) %>.
-              </div>
+              <% end %>
             <% else %>
-              <div class="ax-inline-notice ax-inline-notice--info">
+              <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
                 Ao salvar a campanha, o sistema gera uma automação vinculada com base nos botões reais do template.
-              </div>
+              <% end %>
             <% end %>
             <div data-whatsapp-campaign-builder-target="responseDecisionList">
-              <div class="ax-inline-notice ax-inline-notice--info">
+              <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
                 Selecione um modelo para detectar os botões e configurar as decisões comerciais.
-              </div>
+              <% end %>
             </div>
           </div>
           <div class="whatsapp-campaign-test-send">
@@ -203,7 +214,7 @@
       <% end %>
     </section>
 
-    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="3" hidden>
+    <section class="whatsapp-campaign-builder__pane" id="whatsapp-campaign-step-panel-3" role="tabpanel" aria-labelledby="whatsapp-campaign-step-tab-3" aria-hidden="true" data-whatsapp-campaign-builder-target="step" data-step="3" hidden>
       <div class="whatsapp-campaign-form__grid">
         <%= ax_operational_panel(eyebrow: "Etapa 3", title: "Segmentação do público") do %>
           <div class="ax-panel-body whatsapp-campaign-form__stack whatsapp-audience-builder">
@@ -324,18 +335,18 @@
                     ) %>
               </div>
 
-              <div class="ax-inline-notice ax-inline-notice--info">
+              <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
                 O processamento usa essa cadência para controlar quantos destinatários entram por vez. O envio continua respeitando o ritmo da etapa de agendamento.
-              </div>
+              <% end %>
               <button type="button" class="ax-btn ax-btn--primary" data-action="whatsapp-campaign-builder#prepareSpreadsheet">
                 <i class="bi bi-file-earmark-check ax-ico"></i><span>Preparar planilha para disparo</span>
               </button>
             </div>
 
             <div class="whatsapp-audience-panel" data-whatsapp-campaign-builder-target="audienceModePanel" data-audience-mode="saved_audience">
-              <div class="ax-inline-notice ax-inline-notice--warning">
+              <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", compact: true) do %>
                 Público salvo ainda não está habilitado para envio. A opção fica visível para manter o desenho do produto, mas o sistema bloqueia o disparo até existir uma lista selecionável.
-              </div>
+              <% end %>
             </div>
 
             <button type="button" class="ax-btn ax-btn--primary" data-action="whatsapp-campaign-builder#previewAudience">
@@ -359,7 +370,7 @@
       </div>
     </section>
 
-    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="4" hidden>
+    <section class="whatsapp-campaign-builder__pane" id="whatsapp-campaign-step-panel-4" role="tabpanel" aria-labelledby="whatsapp-campaign-step-tab-4" aria-hidden="true" data-whatsapp-campaign-builder-target="step" data-step="4" hidden>
       <%= ax_operational_panel(eyebrow: "Etapa 4", title: "Agendamento e ritmo") do %>
         <div class="ax-panel-body whatsapp-schedule-workspace">
           <div class="whatsapp-schedule-main">
@@ -468,7 +479,7 @@
       <% end %>
     </section>
 
-    <section class="whatsapp-campaign-builder__pane" data-whatsapp-campaign-builder-target="step" data-step="5" hidden>
+    <section class="whatsapp-campaign-builder__pane" id="whatsapp-campaign-step-panel-5" role="tabpanel" aria-labelledby="whatsapp-campaign-step-tab-5" aria-hidden="true" data-whatsapp-campaign-builder-target="step" data-step="5" hidden>
       <%= ax_operational_panel(eyebrow: "Etapa 5", title: "Revisão antes do disparo") do %>
         <div class="ax-panel-body whatsapp-campaign-review">
           <dl>

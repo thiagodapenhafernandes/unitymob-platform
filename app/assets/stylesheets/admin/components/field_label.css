@@ -1,0 +1,76 @@
+/* Shared form label with optional tooltip trigger. */
+.ax-field-label-wrap {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ax-field-label {
+  display: inline-flex;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .018em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.ax-field-label__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ax-field-label__info {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8a99ad;
+  font-size: 12px;
+  line-height: 1;
+  cursor: help;
+}
+
+.ax-field-label__info:hover,
+.ax-field-label__info:focus-visible {
+  color: var(--admin-primary);
+  outline: none;
+}
+
+.ax-field-label__info:focus-visible {
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}
+
+.ax-field-label[aria-disabled="true"],
+.ax-field-label.is-disabled {
+  color: var(--ax-disabled-text, #98a2b3);
+  cursor: not-allowed;
+}
+
+[data-admin-theme="dark"] .ax-field-label {
+  color: var(--ax-dark-text-soft);
+}
+
+[data-admin-theme="dark"] .ax-field-label__info {
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-field-label__info:hover,
+[data-admin-theme="dark"] .ax-field-label__info:focus-visible {
+  color: var(--ax-dark-link);
+}
+
+[data-admin-theme="dark"] :where(.ax-field-label[aria-disabled="true"], .ax-field-label.is-disabled) {
+  color: var(--ax-dark-text-muted);
+}

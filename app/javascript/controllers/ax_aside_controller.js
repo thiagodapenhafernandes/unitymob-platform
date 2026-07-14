@@ -4,7 +4,7 @@ const DEFAULT_STORAGE_KEY = "ax-aside-collapsed"
 const DEFAULT_PRELOAD_CLASS = "ax-inspector-collapsed-preload"
 
 export default class extends Controller {
-  static targets = ["toggle"]
+  static targets = ["toggle", "panel", "rail"]
   static values = {
     storageKey: String,
     preloadClass: String,
@@ -15,8 +15,9 @@ export default class extends Controller {
   connect() {
     this.element.dataset.axAsideReady = "true"
     this.applyStoredState()
+    this.assignRelationships()
     this.syncPreloadState()
-    this.syncToggleState()
+    this.syncAccessibility()
     this.keepWorkspacePinned()
   }
 
@@ -24,7 +25,7 @@ export default class extends Controller {
     if (event) event.preventDefault()
 
     const collapsed = !this.element.classList.contains(this.collapsedClassValue)
-    this.setCollapsed(collapsed)
+    this.setCollapsed(collapsed, { activeElement: event?.currentTarget || document.activeElement })
   }
 
   collapse() {
@@ -35,7 +36,9 @@ export default class extends Controller {
     this.setCollapsed(false)
   }
 
-  setCollapsed(collapsed) {
+  setCollapsed(collapsed, options = {}) {
+    const activeElement = options.activeElement || document.activeElement
+    const shouldMoveFocus = this.focusWillBeHidden(activeElement, collapsed)
     this.element.classList.toggle(this.collapsedClassValue, collapsed)
 
     try {
@@ -43,7 +46,8 @@ export default class extends Controller {
     } catch (_) {}
 
     this.syncPreloadState()
-    this.syncToggleState()
+    this.syncAccessibility()
+    if (shouldMoveFocus) this.visibleToggle(collapsed)?.focus()
   }
 
   applyStoredState() {
@@ -74,11 +78,50 @@ export default class extends Controller {
     )
   }
 
-  syncToggleState() {
+  syncAccessibility() {
     const expanded = !this.element.classList.contains(this.collapsedClassValue)
     this.toggleTargets.forEach((button) => {
       button.setAttribute("aria-expanded", expanded ? "true" : "false")
     })
+
+    if (this.hasPanelTarget) {
+      this.panelTarget.toggleAttribute("inert", !expanded)
+      this.panelTarget.setAttribute("aria-hidden", expanded ? "false" : "true")
+    }
+    if (this.hasRailTarget) {
+      this.railTarget.toggleAttribute("inert", expanded)
+      this.railTarget.setAttribute("aria-hidden", expanded ? "true" : "false")
+    }
+  }
+
+  assignRelationships() {
+    if (!this.hasPanelTarget) return
+
+    if (!this.panelTarget.id) this.panelTarget.id = `ax-aside-panel-${this.uniqueId()}`
+    this.toggleTargets.forEach((button) => button.setAttribute("aria-controls", this.panelTarget.id))
+  }
+
+  focusWillBeHidden(activeElement, collapsed) {
+    if (!activeElement) return false
+    if (collapsed && this.hasPanelTarget) return this.panelTarget.contains(activeElement)
+    if (!collapsed && this.hasRailTarget) return this.railTarget === activeElement || this.railTarget.contains(activeElement)
+
+    return false
+  }
+
+  visibleToggle(collapsed) {
+    if (collapsed && this.hasRailTarget) {
+      return this.toggleTargets.find((button) => this.railTarget === button || this.railTarget.contains(button))
+    }
+    if (!collapsed && this.hasPanelTarget) {
+      return this.toggleTargets.find((button) => this.panelTarget === button || this.panelTarget.contains(button))
+    }
+
+    return this.toggleTargets.find((button) => !button.closest("[inert]"))
+  }
+
+  uniqueId() {
+    return Math.random().toString(36).slice(2, 10)
   }
 
   keepWorkspacePinned() {

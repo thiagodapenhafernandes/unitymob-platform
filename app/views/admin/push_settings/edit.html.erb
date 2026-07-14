@@ -1,14 +1,12 @@
 <% content_for :title, "Push (PWA) — Configurações da Conta" %>
 
 <div class="layout-settings-workspace">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-phone-vibrate" style="color: var(--admin-primary);"></i>Push no PWA
-      </h1>
-      <p class="ax-page-subtitle">Notificações Web Push enviadas ao aparelho dos corretores — novo lead chega mesmo com o app fechado.</p>
-    </div>
-  </div>
+  <%= ax_workspace_heading(
+        eyebrow: "Configurações · Comunicação",
+        icon: "phone-vibrate",
+        title: "Push no PWA",
+        subtitle: "Notificações Web Push enviadas ao aparelho dos corretores — novo lead chega mesmo com o app fechado."
+      ) %>
 
   <% if @read_only %>
     <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
@@ -42,9 +40,9 @@
         <% end %>
 
         <% unless @read_only %>
-          <div class="ax-form-actions">
+          <%= ax_form_actions do %>
             <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
-          </div>
+          <% end %>
         <% end %>
       <% end %>
 
@@ -61,29 +59,29 @@
                   description: "Quando os corretores registrarem aparelhos e receberem envios, a saúde de cada um aparece aqui.",
                   icon: "phone-vibrate") %>
           <% else %>
-            <div style="overflow-x:auto;">
-              <table class="ax-table" style="width:100%;font-size:12.5px;">
+            <div class="ax-table-wrap">
+              <table class="ax-table">
                 <thead>
                   <tr>
-                    <th style="text-align:left;">Corretor</th>
-                    <th style="text-align:left;">Status</th>
-                    <th title="Aparelhos com inscrição ativa">Aparelhos</th>
-                    <th title="Pushes aceitos pelo provedor (FCM/APNs)">Enviados</th>
-                    <th title="Confirmados no aparelho pelo service worker">Recebidos</th>
-                    <th title="Inscrição inválida, erro de provedor ou sem inscrição">Falhas</th>
-                    <th style="text-align:right;">Último recebido</th>
+                    <th>Corretor</th>
+                    <th>Status</th>
+                    <th class="tw-text-center" title="Aparelhos com inscrição ativa">Aparelhos</th>
+                    <th class="tw-text-center" title="Pushes aceitos pelo provedor (FCM/APNs)">Enviados</th>
+                    <th class="tw-text-center" title="Confirmados no aparelho pelo service worker">Recebidos</th>
+                    <th class="tw-text-center" title="Inscrição inválida, erro de provedor ou sem inscrição">Falhas</th>
+                    <th class="ax-num">Último recebido</th>
                   </tr>
                 </thead>
                 <tbody>
                   <% @push_health.each do |row| %>
                     <tr>
-                      <td style="text-align:left;"><strong><%= row[:user].name %></strong></td>
-                      <td style="text-align:left;"><%= ax_badge(row[:label], tone: row[:tone], dot: true) %></td>
-                      <td style="text-align:center;"><%= row[:devices] %></td>
-                      <td style="text-align:center;"><%= row[:sent] %></td>
-                      <td style="text-align:center;"><%= row[:received] %></td>
-                      <td style="text-align:center;<%= 'color:#d92d20;font-weight:700;' if row[:failures].positive? %>"><%= row[:failures] %></td>
-                      <td style="text-align:right;color:#667085;"><%= row[:last_received_at] ? l(row[:last_received_at], format: "%d/%m %H:%M") : "—" %></td>
+                      <td><strong><%= row[:user].name %></strong></td>
+                      <td><%= ax_badge(row[:label], tone: row[:tone], dot: true) %></td>
+                      <td class="tw-text-center"><%= row[:devices] %></td>
+                      <td class="tw-text-center"><%= row[:sent] %></td>
+                      <td class="tw-text-center"><%= row[:received] %></td>
+                      <td class="tw-text-center <%= 'tw-text-red-600 tw-font-bold' if row[:failures].positive? %>"><%= row[:failures] %></td>
+                      <td class="ax-num tw-text-ink-muted"><%= row[:last_received_at] ? l(row[:last_received_at], format: "%d/%m %H:%M") : "—" %></td>
                     </tr>
                   <% end %>
                 </tbody>
@@ -145,24 +143,19 @@
     <aside class="layout-settings-inspector">
       <%= ax_operational_panel(eyebrow: "Status", title: "Diagnóstico") do %>
         <div class="ax-panel-body">
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>Canal pronto para enviar</span>
-            <%= ax_badge(@push_setting.configured? ? "Pronto" : "Incompleto", tone: @push_setting.configured? ? :green : :gray, dot: true) %>
-          </div>
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>Chaves VAPID</span>
-            <% if @push_setting.keys_source == :env %>
-              <%= ax_badge("Do ambiente", tone: :blue) %>
-            <% elsif @push_setting.keys_source == :custom %>
-              <%= ax_badge("Personalizadas", tone: :amber) %>
-            <% else %>
-              <%= ax_badge("Ausentes", tone: :gray) %>
-            <% end %>
-          </div>
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>E-mail de contato</span>
-            <%= ax_badge(@push_setting.effective_subject.present? ? "OK" : "Faltando", tone: @push_setting.effective_subject.present? ? :green : :gray) %>
-          </div>
+          <% vapid_status = case @push_setting.keys_source
+             when :env then ax_badge("Do ambiente", tone: :blue)
+             when :custom then ax_badge("Personalizadas", tone: :amber)
+             else ax_badge("Ausentes", tone: :gray)
+             end %>
+          <%= ax_status_list(
+                label: "Diagnóstico do canal push",
+                rows: [
+                  { label: "Canal pronto para enviar", value: ax_badge(@push_setting.configured? ? "Pronto" : "Incompleto", tone: @push_setting.configured? ? :green : :gray, dot: true) },
+                  { label: "Chaves VAPID", value: vapid_status },
+                  { label: "E-mail de contato", value: ax_badge(@push_setting.effective_subject.present? ? "OK" : "Faltando", tone: @push_setting.effective_subject.present? ? :green : :gray) }
+                ]
+              ) %>
           <p class="ax-field__hint tw-mt-2 tw-mb-0">
             O canal só dispara <strong>ativado</strong>, com chaves VAPID e e-mail de contato preenchidos.
           </p>
@@ -179,7 +172,7 @@
 
       <%= ax_operational_panel(eyebrow: "Como funciona", title: "Fluxo do push") do %>
         <div class="ax-panel-body">
-          <ol class="ax-field__hint" style="padding-left:18px;margin:0;line-height:1.6;">
+          <ol class="ax-field__hint ax-field__hint--steps">
             <li>O aparelho do corretor se inscreve com a <strong>chave pública</strong> e renova a inscrição sozinho.</li>
             <li>Ao distribuir um lead, o servidor assina com a <strong>chave privada</strong> e envia com prioridade alta.</li>
             <li>Google/Apple entregam; o app confirma a recepção — é o que alimenta a tabela de saúde.</li>

@@ -1,6 +1,13 @@
 require 'rails_helper'
 
 RSpec.describe FieldFeatureGate, type: :controller do
+  before do
+    Current.reset
+    Setting.where(key: FieldFeatureGate::SETTING_KEY).delete_all
+  end
+
+  after { Current.reset }
+
   # Controller anônimo pra testar o concern isoladamente
   controller(ActionController::Base) do
     include FieldFeatureGate

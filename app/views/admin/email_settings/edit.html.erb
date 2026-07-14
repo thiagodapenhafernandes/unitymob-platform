@@ -1,21 +1,18 @@
 <div class="layout-settings-workspace">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-envelope-at" style="color: var(--admin-primary);"></i>Meu SMTP
-      </h1>
-      <p class="ax-page-subtitle">Servidor de envio <strong>desta conta</strong> para avisar corretores sobre novos leads e demais notificações por e-mail. Sem SMTP próprio, a conta pode cair no SMTP global (se o Admin do Sistema tiver liberado o fallback).</p>
-      <% if @email_transport_source == :global %>
-        <div class="tw-mt-2">
-          <%= ax_badge("Usando SMTP global do sistema", tone: :blue, dot: true) %>
-        </div>
-      <% elsif @email_transport_source == :tenant %>
-        <div class="tw-mt-2">
-          <%= ax_badge("Usando SMTP próprio da conta", tone: :green, dot: true) %>
-        </div>
-      <% end %>
-    </div>
-  </div>
+  <%
+    email_status = if @email_transport_source == :global
+      ax_badge("Usando SMTP global do sistema", tone: :blue, dot: true)
+    elsif @email_transport_source == :tenant
+      ax_badge("Usando SMTP próprio da conta", tone: :green, dot: true)
+    end
+  %>
+  <%= ax_workspace_heading(
+        eyebrow: "Configurações · Notificações",
+        icon: "envelope-at",
+        title: "Meu SMTP",
+        subtitle: "Servidor de envio desta conta para avisar corretores sobre novos leads e demais notificações por e-mail. Sem SMTP próprio, a conta pode usar o SMTP global quando o fallback estiver liberado.",
+        actions: email_status
+      ) %>
 
   <div class="layout-settings-grid">
     <div class="layout-settings-main">
@@ -96,34 +93,33 @@
           </div>
         <% end %>
 
-        <div class="ax-form-actions layout-settings-actions">
+        <%= ax_form_actions(sticky: false, class_name: "layout-settings-actions") do %>
           <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
           <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
-        </div>
+        <% end %>
       <% end %>
     </div>
 
     <aside class="layout-settings-inspector">
       <%= ax_operational_panel(eyebrow: "Status", title: "Diagnóstico") do %>
         <div class="ax-panel-body">
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>Canal pronto para enviar</span>
-            <% if @email_transport_source == :global %>
-              <%= ax_badge("Global ativo", tone: :blue, dot: true) %>
-            <% elsif @email_setting.configured? %>
-              <%= ax_badge("Pronto", tone: :green, dot: true) %>
-            <% else %>
-              <%= ax_badge("Incompleto", tone: :gray, dot: true) %>
-            <% end %>
-          </div>
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>Criptografia de credenciais</span>
-            <% if @email_setting.encryption_ready? %>
-              <%= ax_badge("Ativa", tone: :green) %>
-            <% else %>
-              <%= ax_badge("Indisponível", tone: :amber) %>
-            <% end %>
-          </div>
+          <%
+            channel_status = if @email_transport_source == :global
+              ax_badge("Global ativo", tone: :blue, dot: true)
+            elsif @email_setting.configured?
+              ax_badge("Pronto", tone: :green, dot: true)
+            else
+              ax_badge("Incompleto", tone: :gray, dot: true)
+            end
+            encryption_status = @email_setting.encryption_ready? ? ax_badge("Ativa", tone: :green) : ax_badge("Indisponível", tone: :amber)
+          %>
+          <%= ax_status_list(
+                label: "Diagnóstico do canal de e-mail",
+                rows: [
+                  { label: "Canal pronto para enviar", value: channel_status },
+                  { label: "Criptografia de credenciais", value: encryption_status }
+                ]
+              ) %>
           <p class="ax-field__hint tw-mt-2">
             O canal dispara pelo SMTP próprio quando estiver <strong>ativado</strong> e completo; se não estiver, usa o SMTP global quando o fallback da conta estiver liberado.
           </p>
@@ -133,13 +129,21 @@
       <%= ax_operational_panel(eyebrow: "Validação", title: "Enviar e-mail de teste") do %>
         <div class="ax-panel-body">
           <%= form_with(url: test_admin_email_setting_path, method: :post, local: true) do %>
-            <div class="ax-field">
-              <%= email_field_tag :to, @effective_email_setting&.from_email || @email_setting.from_email, class: "ax-control", placeholder: "destino@exemplo.com" %>
-              <p class="ax-field__hint">Em branco usa o e-mail do remetente.</p>
-            </div>
-            <%= submit_tag "Enviar teste", class: "ax-btn ax-btn--sm",
-                  disabled: !@effective_email_setting&.configured?,
-                  data: { turbo: false } %>
+            <%= ax_standalone_field(
+                  name: "to",
+                  id: "smtp_test_to",
+                  label: "Destinatário do teste",
+                  value: @effective_email_setting&.from_email || @email_setting.from_email,
+                  type: :email,
+                  placeholder: "destino@exemplo.com",
+                  hint: "Em branco usa o e-mail do remetente.",
+                  action: submit_tag(
+                    "Enviar teste",
+                    class: "ax-btn ax-btn--sm",
+                    disabled: !@effective_email_setting&.configured?,
+                    data: { turbo: false }
+                  )
+                ) %>
           <% end %>
           <% unless @effective_email_setting&.configured? %>
             <p class="ax-field__hint tw-mt-2">
@@ -159,7 +163,7 @@
               <span class="ax-field__hint tw-m-0">
                 para <strong><%= last_test["to"] %></strong>
                 em <%= (l(Time.zone.parse(last_test["at"]), format: "%d/%m %H:%M") rescue last_test["at"]) %>
-                <% if last_test["error"].present? %> — <code style="font-size:11px"><%= last_test["error"] %></code><% end %>
+                <% if last_test["error"].present? %> — <code class="tw-text-xs"><%= last_test["error"] %></code><% end %>
               </span>
             </div>
           <% end %>
