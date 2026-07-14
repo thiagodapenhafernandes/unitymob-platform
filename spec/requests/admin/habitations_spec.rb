@@ -2094,6 +2094,18 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("is-active")
   end
 
+  it "não recolhe o inspector ao limpar filtros do catálogo" do
+    get filter_inspector_admin_habitations_path(scope: "frente_mar"), headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+
+    clear_link = Nokogiri::HTML.fragment(response.body).css("a").find { |node| node.text.squish == "Limpar" }
+    expect(clear_link).to be_present
+    expect(clear_link["href"]).to include("clear_filters=1")
+    expect(clear_link["data-turbo-frame"]).to eq("_top")
+    expect(clear_link["data-action"].to_s).not_to include("ax-aside#collapse")
+  end
+
   it "libera todos os status de imóvel no filtro do catálogo para corretor" do
     agent = create(:admin_user, email: "agent-statuses-#{SecureRandom.hex(6)}@salute.test")
     agent.update!(profile: default_agent_profile)

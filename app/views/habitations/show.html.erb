@@ -71,6 +71,11 @@
           <a href="<%= image_url.call(images.first) %>"
              data-fancybox="property-gallery"
              data-caption="<%= title %> - Foto 1"
+             data-public-gallery-mobile-src="<%= primary_image_url %>"
+             data-public-gallery-mobile-srcset="<%= primary_image_srcset %>"
+             data-public-gallery-mobile-sizes="(min-width: 1024px) 52vw, 100vw"
+             data-public-gallery-mobile-class="<%= public_gallery_image_class(images.first) %>"
+             data-public-gallery-mobile-style="<%= public_gallery_image_style(images.first, primary: true) %>"
              class="public-habitations-show__gallery-primary relative block h-full overflow-hidden bg-gray-100">
             <%= image_tag primary_image_url,
                 alt: "#{title} - Foto 1",
@@ -91,6 +96,11 @@
               <a href="<%= image_url.call(photo) %>"
                  data-fancybox="property-gallery"
                  data-caption="<%= title %> - Foto <%= index + 2 %>"
+                 data-public-gallery-mobile-src="<%= public_image_url(photo, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) %>"
+                 data-public-gallery-mobile-srcset="<%= public_image_srcset(photo, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) %>"
+                 data-public-gallery-mobile-sizes="(min-width: 1024px) 52vw, 100vw"
+                 data-public-gallery-mobile-class="<%= public_gallery_image_class(photo) %>"
+                 data-public-gallery-mobile-style="<%= public_gallery_image_style(photo, primary: true) %>"
                  class="public-habitations-show__gallery-thumb relative block overflow-hidden bg-gray-100">
                 <%= image_tag public_image_url(photo, resize_to_fill: [720, 520], format: :webp),
                     alt: "#{title} - Foto #{index + 2}",
@@ -111,6 +121,11 @@
           <a href="<%= image_url.call(photo) %>"
              data-fancybox="property-gallery"
              data-caption="<%= title %> - Foto <%= index + 6 %>"
+             data-public-gallery-mobile-src="<%= public_image_url(photo, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) %>"
+             data-public-gallery-mobile-srcset="<%= public_image_srcset(photo, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) %>"
+             data-public-gallery-mobile-sizes="(min-width: 1024px) 52vw, 100vw"
+             data-public-gallery-mobile-class="<%= public_gallery_image_class(photo) %>"
+             data-public-gallery-mobile-style="<%= public_gallery_image_style(photo, primary: true) %>"
              class="hidden"></a>
         <% end %>
 

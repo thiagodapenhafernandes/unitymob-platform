@@ -229,6 +229,33 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(policy.active_returnable_intake_edit_sections).to eq(%w[proprietario negociacao])
   end
 
+  it "salva a mesma regra de revisão para múltiplas categorias relacionadas" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    with_forgery_protection_disabled do
+      patch review_workflow_admin_property_setting_path(
+        registration_type: "terrenos",
+        category: ["Terreno", "Terreno em Condomínio"],
+        modality: "venda"
+      ), params: {
+        property_review_policy: {
+          broker_capture_layer_enabled: "true",
+          required_broker_intake_checks: %w[proprietario area],
+          returnable_intake_edit_sections: %w[proprietario],
+          notify_internal_review_events: "true",
+          notify_email_review_events: "false",
+          review_notification_emails: ""
+        }
+      }
+    end
+
+    expect(response).to redirect_to(review_workflow_admin_property_setting_path(registration_type: "terrenos", category: ["Terreno", "Terreno em Condomínio"], modality: "venda"))
+    policies = PropertyReviewPolicy.where(tenant: admin.tenant, registration_type: "terrenos", modality: "venda").where(category: ["Terreno", "Terreno em Condomínio"])
+    expect(policies.size).to eq(2)
+    expect(policies.map(&:active_broker_capture_checks)).to all(eq(%w[proprietario area]))
+  end
+
   it "restringe categorias conforme o tipo de cadastro selecionado" do
     admin = create(:admin_user, :admin)
     sign_in admin
@@ -241,10 +268,12 @@ RSpec.describe "Admin::PropertySettings", type: :request do
 
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
-    category_options = html.css('select[name="category"] option').map { |option| [option["value"], option.text] }
-    selected_category = html.at_css('select[name="category"] option[selected]')&.[]("value") ||
-                        html.at_css('select[name="category"] option')&.[]("value")
+    category_select = html.at_css('select[name="category[]"][multiple]')
+    category_options = category_select.css("option").map { |option| [option["value"], option.text] }
+    selected_category = category_select.css("option[selected]").first&.[]("value") ||
+                        category_select.css("option").first&.[]("value")
 
+    expect(category_select).to be_present
     expect(category_options.map(&:first)).to include("Terreno", "Terreno em Condomínio")
     expect(category_options.map(&:first)).not_to include("Apartamento")
     expect(selected_category).to eq("Terreno")

@@ -20,7 +20,7 @@
   selected_sections = @selected_rule.active_returnable_intake_edit_sections
   context_label = [
     PropertyReviewPolicy.registration_label(@review_registration_type),
-    @review_category,
+    (@review_selected_categories.size > 1 ? "#{@review_selected_categories.size} categorias" : @review_category),
     PropertyReviewPolicy.modality_label(@review_modality)
   ].compact_blank.join(" · ")
 %>
@@ -56,13 +56,20 @@
               ) %>
         </div>
         <div class="ax-span-4">
-          <%= ax_select_field(
+          <%= ax_multiselect_field(
                 form: f,
                 method: :category,
                 label: "Categoria relacionada",
                 choices: @review_categories.map { |category| [category, category] },
-                select_options: { selected: @review_category },
-                html_options: { data: { review_policy_context_target: "category", action: "change->auto-submit#submit" } }
+                selected: @review_selected_categories,
+                id: "review_workflow_category",
+                placeholder: "Selecione uma ou mais categorias",
+                data: {
+                  review_policy_context_target: "category",
+                  action: "change->auto-submit#submit",
+                  tom_select_tags_value: false,
+                  tom_select_options_value: { plugins: ["remove_button"] }
+                }
               ) %>
         </div>
         <div class="ax-span-3">
@@ -96,6 +103,9 @@
               Este conjunto tem uma regra própria. A operação real de captação, revisão e publicação usa esta configuração.
             <% else %>
               Este conjunto ainda usa a regra padrão da conta. Salvar abaixo cria uma regra própria sem alterar os demais conjuntos.
+            <% end %>
+            <% if @review_selected_categories.size > 1 %>
+              <br>O resultado exibido usa <strong><%= @review_category %></strong> como referência. Ao salvar, a mesma regra será aplicada às <strong><%= @review_selected_categories.size %> categorias selecionadas</strong>.
             <% end %>
           <% end %>
 
@@ -159,7 +169,7 @@
 
       <%= ax_operational_panel(eyebrow: "Editar", title: "Ajustar regra deste conjunto") do %>
         <div class="ax-workflow__panel-body">
-          <%= form_with model: @review_policy, url: review_workflow_admin_property_setting_path(registration_type: @review_registration_type, category: @review_category, modality: @review_modality), method: :patch, html: { id: "review_workflow_form", class: "ax-workflow__form" } do |f| %>
+          <%= form_with model: @review_policy, url: review_workflow_admin_property_setting_path(registration_type: @review_registration_type, category: @review_selected_categories, modality: @review_modality), method: :patch, html: { id: "review_workflow_form", class: "ax-workflow__form" } do |f| %>
             <% if @review_policy.errors.any? %>
               <%= ax_error_summary(@review_policy) %>
             <% end %>
@@ -243,7 +253,7 @@
             </div>
             <div class="ax-workflow__state-row">
               <dt>Categoria</dt>
-              <dd><%= @review_category %></dd>
+              <dd><%= @review_selected_categories.size > 1 ? "#{@review_selected_categories.size} selecionadas" : @review_category %></dd>
             </div>
             <div class="ax-workflow__state-row">
               <dt>Modalidade</dt>
