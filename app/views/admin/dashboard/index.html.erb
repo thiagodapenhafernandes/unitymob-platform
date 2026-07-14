@@ -3,7 +3,7 @@
   hour = Time.current.hour
   greeting = hour < 12 ? "Bom dia" : (hour < 18 ? "Boa tarde" : "Boa noite")
   first_name = current_admin_user.name.to_s.split.first.presence || current_admin_user.email
-  dashboard_filter_params = { period: @dashboard_period }
+  dashboard_filter_params = { period: @dashboard_period, tab: @dashboard_tab }
   dashboard_filter_params[:broker_id] = @dashboard_broker_id if @dashboard_broker_id.present?
 
   dashboard_subtitle =
@@ -60,7 +60,20 @@
     </div>
   </header>
 
+  <nav class="ax-dashboard-tabs" aria-label="Áreas do dashboard">
+    <% dashboard_tabs = [["overview", "Visão geral", "grid-1x2"], ["leads", "Leads", "megaphone"], ["properties", "Imóveis", "buildings"]] %>
+    <% dashboard_tabs << ["field", "Campo", "geo-alt"] if @field_feature_enabled %>
+    <% dashboard_tabs.each do |key, label, icon| %>
+      <%= link_to admin_root_path(tab: key, period: @dashboard_period, broker_id: @dashboard_broker_id),
+                  class: "ax-dashboard-tabs__item #{'is-active' if @dashboard_tab == key}",
+                  aria: { current: (@dashboard_tab == key ? "page" : nil) } do %>
+        <i class="bi bi-<%= icon %>"></i><span><%= label %></span>
+      <% end %>
+    <% end %>
+  </nav>
+
   <%= form_with url: admin_root_path, method: :get, class: "ax-dashboard-filters", data: { turbo: false } do |form| %>
+    <%= form.hidden_field :tab, value: @dashboard_tab %>
     <span><i class="bi bi-funnel"></i> Escopo do painel</span>
     <%= form.select :period, [["7 dias", 7], ["30 dias", 30], ["90 dias", 90]], { selected: @dashboard_period }, class: "ax-control", aria: { label: "Período do dashboard" }, onchange: "this.form.requestSubmit()" %>
     <% if @is_admin_view %>
@@ -68,6 +81,7 @@
     <% end %>
   <% end %>
 
+  <% if @dashboard_tab == "overview" %>
   <div class="ax-dashboard-kpis <%= 'ax-dashboard-kpis--compact' if @is_admin_view && !@field_feature_enabled %>">
     <%= link_to admin_habitations_path(ownership: "all"), class: "ax-dashboard-kpi-link", aria: { label: "Ver imóveis no catálogo" } do %>
       <%= ax_metric_card(
@@ -158,7 +172,9 @@
       </div>
     </div>
   </aside>
+  <% end %>
 
+  <% if @dashboard_tab == "leads" %>
   <div class="ax-dashboard-grid ax-dashboard-grid--insights">
     <%= turbo_frame_tag "admin_dashboard_charts", src: admin_dashboard_section_path("charts", dashboard_filter_params) do %>
       <%= render "admin/dashboard/sections/loading_panel",
@@ -180,20 +196,22 @@
     <%= render "admin/dashboard/sections/loading_panel", title: "Origem dos leads", eyebrow: "Aquisição", chart: true %>
   <% end %>
 
+  <%= turbo_frame_tag "admin_dashboard_rankings", src: admin_dashboard_section_path("rankings", dashboard_filter_params), loading: "lazy" do %>
+    <%= render "admin/dashboard/sections/loading_panel", title: "Desempenho por corretor", eyebrow: "Comercial", rows: 5 %>
+  <% end %>
+  <% end %>
+
+  <% if @dashboard_tab == "properties" %>
   <div class="ax-dashboard-grid ax-dashboard-grid--monitoring">
     <%= turbo_frame_tag "admin_dashboard_rankings", src: admin_dashboard_section_path("rankings", dashboard_filter_params), loading: "lazy" do %>
       <div class="ax-dashboard-grid ax-dashboard-grid--rankings <%= 'ax-dashboard-grid--rankings-single' unless @field_feature_enabled %>">
         <%= render "admin/dashboard/sections/loading_panel", title: "Carteira por corretor", eyebrow: "Distribuição", rows: 5, compact: true %>
-        <% if @field_feature_enabled %>
-          <%= render "admin/dashboard/sections/loading_panel", title: "Top lojas", eyebrow: "Campo", rows: 5, compact: true %>
-        <% end %>
       </div>
     <% end %>
   </div>
 
   <%= turbo_frame_tag "admin_dashboard_operations", src: admin_dashboard_section_path("operations", dashboard_filter_params), loading: "lazy" do %>
     <div class="ax-dashboard-grid ax-dashboard-grid--operations">
-      <%= render "admin/dashboard/sections/loading_panel", title: "Atividade recente", eyebrow: "Auditoria", rows: 6 %>
       <%= render "admin/dashboard/sections/loading_panel", title: "Últimos imóveis atualizados", eyebrow: "Catálogo", table: true, rows: 6 %>
     </div>
   <% end %>
@@ -203,5 +221,17 @@
       <%= render "admin/dashboard/sections/loading_panel", title: "Últimas captações", eyebrow: "Captação", rows: 5 %>
       <%= render "admin/dashboard/sections/loading_panel", title: "Distribuição por categoria", eyebrow: "Mix", rows: 6 %>
     </div>
+  <% end %>
+  <% end %>
+
+  <% if @dashboard_tab == "field" && @field_feature_enabled %>
+    <div class="ax-dashboard-grid ax-dashboard-grid--monitoring">
+      <%= turbo_frame_tag "admin_dashboard_rankings", src: admin_dashboard_section_path("rankings", dashboard_filter_params), loading: "lazy" do %>
+        <%= render "admin/dashboard/sections/loading_panel", title: "Top lojas por check-ins", eyebrow: "Campo", rows: 5 %>
+      <% end %>
+    </div>
+    <%= turbo_frame_tag "admin_dashboard_operations", src: admin_dashboard_section_path("operations", dashboard_filter_params), loading: "lazy" do %>
+      <%= render "admin/dashboard/sections/loading_panel", title: "Atividade recente", eyebrow: "Auditoria", rows: 6 %>
+    <% end %>
   <% end %>
 </section>

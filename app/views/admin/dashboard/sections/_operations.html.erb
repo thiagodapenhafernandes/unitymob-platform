@@ -1,5 +1,6 @@
 <%= turbo_frame_tag "admin_dashboard_operations" do %>
   <div class="ax-dashboard-grid ax-dashboard-grid--operations">
+    <% if %w[all field].include?(@dashboard_tab) %>
     <article class="ax-dashboard-panel ax-dashboard-panel--activity">
       <div class="ax-dashboard-panel__header">
         <div>
@@ -32,7 +33,9 @@
         <% end %>
       </div>
     </article>
+    <% end %>
 
+    <% if %w[all properties].include?(@dashboard_tab) %>
     <article class="ax-dashboard-panel">
       <div class="ax-dashboard-panel__header">
         <div>
@@ -90,5 +93,6 @@
         </table>
       </div>
     </article>
+    <% end %>
   </div>
 <% end %>

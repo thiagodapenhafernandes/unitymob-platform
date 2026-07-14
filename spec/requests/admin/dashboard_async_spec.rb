@@ -11,25 +11,13 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     sign_in admin
   end
 
-  it "renderiza o shell com frames assíncronos" do
+  it "renderiza a visão geral sem carregar slices de outras áreas" do
     get admin_root_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('id="admin_dashboard_charts"')
-    expect(response.body).to include(admin_dashboard_section_path("charts"))
-    expect(response.body).not_to include('id="admin_dashboard_charts" src="/admin/dashboard/charts" loading="lazy"')
-    expect(response.body).to include('id="admin_dashboard_funnel"')
-    expect(response.body).to include(admin_dashboard_section_path("funnel"))
-    expect(response.body).to include('id="admin_dashboard_status"')
-    expect(response.body).to include(admin_dashboard_section_path("status"))
-    expect(response.body).to include('id="admin_dashboard_acquisition"')
-    expect(response.body).to include(admin_dashboard_section_path("acquisition"))
-    expect(response.body).to include('id="admin_dashboard_rankings"')
-    expect(response.body).to include(admin_dashboard_section_path("rankings"))
-    expect(response.body).to include('id="admin_dashboard_operations"')
-    expect(response.body).to include(admin_dashboard_section_path("operations"))
-    expect(response.body).to include('id="admin_dashboard_support"')
-    expect(response.body).to include(admin_dashboard_section_path("support"))
+    expect(response.body).to include("Visão geral", "Leads", "Imóveis")
+    expect(response.body).to include('aria-current="page"')
+    expect(response.body).not_to include('id="admin_dashboard_charts"')
     expect(response.body).to include("Atenção necessária")
     expect(response.body).to include("Prioridade operacional")
     expect(response.body).not_to include("Módulo Campo desativado")
@@ -57,7 +45,7 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     get admin_root_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('id="admin_dashboard_charts"')
+    expect(response.body).to include("Visão geral", "Leads", "Imóveis")
     expect(response.body).not_to include(admin_profiles_path)
   end
 
@@ -80,7 +68,74 @@ RSpec.describe "Admin dashboard async slices", type: :request do
     get admin_root_path
 
     expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Visão geral", "Leads", "Imóveis")
+  end
+
+  it "carrega somente os painéis da aba Leads e preserva os filtros na URL" do
+    get admin_root_path(tab: "leads", period: 7)
+
+    expect(response).to have_http_status(:ok)
     expect(response.body).to include('id="admin_dashboard_charts"')
+    expect(response.body).to include('id="admin_dashboard_funnel"')
+    expect(response.body).to include('id="admin_dashboard_status"')
+    expect(response.body).to include('id="admin_dashboard_acquisition"')
+    expect(response.body).to include('id="admin_dashboard_rankings"')
+    expect(response.body).to include("tab=leads")
+    expect(response.body).to include("period=7")
+    expect(response.body).not_to include('id="admin_dashboard_operations"')
+    expect(response.body).not_to include('id="admin_dashboard_support"')
+    expect(response.body).not_to include("Atenção necessária")
+  end
+
+  it "separa os painéis de Imóveis" do
+    get admin_root_path(tab: "properties")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('id="admin_dashboard_rankings"')
+    expect(response.body).to include('id="admin_dashboard_operations"')
+    expect(response.body).to include('id="admin_dashboard_support"')
+    expect(response.body).not_to include('id="admin_dashboard_charts"')
+  end
+
+  it "oculta Campo quando o módulo está pausado e volta para a visão geral" do
+    allow(Setting).to receive(:get).and_call_original
+    allow(Setting).to receive(:get).with("field_checkin_enabled", "false").and_return("false")
+
+    get admin_root_path(tab: "field")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("<span>Campo</span>")
+    expect(response.body).to include("Atenção necessária")
+    expect(response.body).not_to include('id="admin_dashboard_operations"')
+  end
+  it "exibe os painéis de Campo quando o módulo está ativo" do
+    allow(Setting).to receive(:get).and_call_original
+    allow(Setting).to receive(:get).with("field_checkin_enabled", "false").and_return("true")
+
+    get admin_root_path(tab: "field")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("<span>Campo</span>")
+    expect(response.body).to include('id="admin_dashboard_rankings"')
+    expect(response.body).to include('id="admin_dashboard_operations"')
+    expect(response.body).not_to include('id="admin_dashboard_support"')
+  end
+
+  it "não mistura domínios dentro dos slices compartilhados" do
+    allow(Setting).to receive(:get).and_call_original
+    allow(Setting).to receive(:get).with("field_checkin_enabled", "false").and_return("true")
+
+    get admin_dashboard_section_path("rankings", tab: "leads"), headers: { "Turbo-Frame" => "admin_dashboard_rankings" }
+    expect(response.body).to include("Desempenho por corretor")
+    expect(response.body).not_to include("Carteira de imóveis por corretor", "Top lojas por check-ins")
+
+    get admin_dashboard_section_path("rankings", tab: "properties"), headers: { "Turbo-Frame" => "admin_dashboard_rankings" }
+    expect(response.body).to include("Carteira de imóveis por corretor")
+    expect(response.body).not_to include("Desempenho por corretor", "Top lojas por check-ins")
+
+    get admin_dashboard_section_path("operations", tab: "field"), headers: { "Turbo-Frame" => "admin_dashboard_operations" }
+    expect(response.body).to include("Atividade recente")
+    expect(response.body).not_to include("Últimos imóveis atualizados")
   end
 
   it "direciona usuário mobile sem permissão de dashboard para o Field" do
