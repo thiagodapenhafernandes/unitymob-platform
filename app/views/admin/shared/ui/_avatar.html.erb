@@ -1,0 +1,5 @@
+<% if image.respond_to?(:attached?) ? image.attached? : image.present? %>
+  <%= image_tag image, class: classes, alt: name %>
+<% else %>
+  <span class="<%= classes %>" role="img" aria-label="<%= name %>"><%= initials %></span>
+<% end %>

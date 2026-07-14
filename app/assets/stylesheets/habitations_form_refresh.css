@@ -100,6 +100,7 @@
   padding: 9px 10px;
   line-height: 1.45;
 }
+.habitation-form-ui .ax-rich-text-control--lg { min-height:250px; }
 .habitation-form-ui trix-toolbar {
   display: block;
   margin-bottom: 6px;
@@ -133,11 +134,7 @@
 .habitation-property-editor-main .habitation-editor-progress__bar {
   height:6px; overflow:hidden; border-radius:999px; background:#edf2f7;
 }
-.habitation-property-editor-main .habitation-editor-progress__bar > i {
-  display:block; height:100%; min-width:6px; border-radius:inherit;
-  background:var(--admin-primary, #365f8f);
-  transition:width 300ms cubic-bezier(.2,.8,.2,1);
-}
+.habitation-property-editor-main .habitation-editor-progress__bar.ax-progress { margin-top:0; }
 
 /* =============================================================================
    PACOTE B — cabeçalho de seção com ícone (card__h do redesign)

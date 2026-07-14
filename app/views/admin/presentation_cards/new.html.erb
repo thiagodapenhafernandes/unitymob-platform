@@ -1,14 +1,12 @@
 <% content_for :title, "Novo cartão de apresentação" %>
 
 <div class="layout-settings-workspace">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-person-badge" style="color: var(--admin-primary);"></i>Novo cartão de apresentação
-      </h1>
-      <p class="ax-page-subtitle">Um modelo de saudação para se apresentar com um clique no atendimento.</p>
-    </div>
-    <%= link_to "Voltar", admin_presentation_cards_path, class: "ax-btn" %>
-  </div>
+  <%= ax_workspace_heading(
+        eyebrow: "WhatsApp · Atendimento",
+        icon: "person-badge",
+        title: "Novo cartão de apresentação",
+        subtitle: "Um modelo de saudação para se apresentar com um clique no atendimento.",
+        actions: link_to("Voltar", admin_presentation_cards_path, class: "ax-btn")
+      ) %>
   <%= render "form", card: @card %>
 </div>

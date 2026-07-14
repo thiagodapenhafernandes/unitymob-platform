@@ -1,155 +1,98 @@
 <div class="public-site-workspace">
-  <%= ax_workspace_heading(eyebrow: "Site público · Estrutura", icon: "telephone", title: "Contato", subtitle: "Gerencie canais de atendimento e redes sociais exibidos no site.", actions: ax_button("Voltar", admin_root_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
+  <%= ax_workspace_heading(
+        eyebrow: "Site público · Estrutura",
+        icon: "telephone",
+        title: "Contato",
+        subtitle: "Gerencie canais de atendimento e redes sociais exibidos no site.",
+        actions: ax_button("Voltar", admin_root_path, variant: :ghost, size: :sm, icon: "arrow-left")
+      ) %>
 
   <%= form_with(model: @contact_setting, url: admin_contact_setting_path, method: :patch) do |f| %>
     <%= ax_error_summary(@contact_setting) %>
 
-    <div class="tw-grid tw-gap-4" style="grid-template-columns: repeat(12, minmax(0, 1fr));">
-      <!-- Contact Information -->
+    <%= ax_field_grid do %>
       <div class="ax-span-6">
-        <div class="ax-card h-100">
-          <div class="ax-card__header bg-primary bg-opacity-10">
-            <h5 class="ax-card__title tw-mb-0 tw-text-primary tw-flex tw-items-center tw-gap-2">
-              <i class="bi bi-person-lines-fill"></i>Contato Principal
-            </h5>
-          </div>
-          <div class="ax-card__body">
-            <!-- WhatsApp Primary -->
-            <div class="tw-mb-4">
-              <%= f.label :whatsapp_primary, class: "ax-label tw-font-bold tw-flex tw-items-center tw-gap-2" do %>
-                <i class="bi bi-whatsapp" style="color:#16a34a"></i>WhatsApp Principal
-              <% end %>
-              <div class="tw-flex tw-items-center">
-                <span class="bg-success bg-opacity-10">
-                  <i class="bi bi-whatsapp" style="color:#16a34a"></i>
-                </span>
+        <%= ax_operational_panel(eyebrow: "Atendimento", title: "Contato principal") do %>
+          <div class="tw-grid tw-gap-4">
+            <div class="ax-field">
+              <%= ax_field_label(f, :whatsapp_primary, text: "WhatsApp principal") %>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp tw-text-green-600", aria: { hidden: true })) do %>
                 <%= f.text_field :whatsapp_primary, class: "ax-control", placeholder: "(47) 99123-4567", autocomplete: "tel", data: { controller: "phone-input" } %>
-              </div>
-              <small class="tw-text-ink-muted">Formato: código do país + DDD + número (sem espaços)</small>
+              <% end %>
+              <p class="ax-field__hint">Formato: código do país + DDD + número.</p>
             </div>
 
-            <!-- Phone -->
-            <div class="tw-mb-4">
-              <%= f.label :phone, class: "ax-label tw-font-bold tw-flex tw-items-center tw-gap-2" do %>
-                <i class="bi bi-telephone tw-text-primary"></i>Telefone Fixo
-              <% end %>
-              <div class="tw-flex tw-items-center">
-                <span class="bg-primary bg-opacity-10">
-                  <i class="bi bi-telephone tw-text-primary"></i>
-                </span>
+            <div class="ax-field">
+              <%= ax_field_label(f, :phone, text: "Telefone fixo") %>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-telephone tw-text-primary", aria: { hidden: true })) do %>
                 <%= f.text_field :phone, class: "ax-control", placeholder: "(47) 3311-1067", autocomplete: "tel", data: { controller: "phone-input" } %>
-              </div>
-              <small class="tw-text-ink-muted">Telefone fixo da empresa</small>
+              <% end %>
+              <p class="ax-field__hint">Telefone fixo da empresa.</p>
             </div>
 
-            <!-- Email -->
-            <div class="tw-mb-4">
-              <%= f.label :email_primary, class: "ax-label tw-font-bold tw-flex tw-items-center tw-gap-2" do %>
-                <i class="bi bi-envelope" style="color:#dc2626"></i>Email Principal
-              <% end %>
-              <div class="tw-flex tw-items-center">
-                <span class="bg-danger bg-opacity-10">
-                  <i class="bi bi-envelope" style="color:#dc2626"></i>
-                </span>
+            <div class="ax-field">
+              <%= ax_field_label(f, :email_primary, text: "E-mail principal") %>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-envelope tw-text-red-600", aria: { hidden: true })) do %>
                 <%= f.email_field :email_primary, class: "ax-control", placeholder: "contato@saluteimoveis.com" %>
-              </div>
-              <small class="tw-text-ink-muted">Email principal para contato</small>
+              <% end %>
+              <p class="ax-field__hint">E-mail principal para contato.</p>
             </div>
 
-            <!-- WhatsApp Secondary -->
-            <div class="tw-mb-0">
-              <%= f.label :whatsapp_secondary, class: "ax-label tw-font-bold tw-flex tw-items-center tw-gap-2" do %>
-                <i class="bi bi-whatsapp" style="color:#16a34a"></i>WhatsApp Secundário
-                <span class="ax-badge ax-badge--gray">Opcional</span>
-              <% end %>
-              <div class="tw-flex tw-items-center">
-                <span class="bg-success bg-opacity-10">
-                  <i class="bi bi-whatsapp" style="color:#16a34a"></i>
-                </span>
+            <div class="ax-field">
+              <div class="tw-flex tw-items-center tw-gap-2">
+                <%= ax_field_label(f, :whatsapp_secondary, text: "WhatsApp secundário") %>
+                <%= ax_badge("Opcional", tone: :gray) %>
+              </div>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-whatsapp tw-text-green-600", aria: { hidden: true })) do %>
                 <%= f.text_field :whatsapp_secondary, class: "ax-control", placeholder: "(47) 99123-4567", autocomplete: "tel", data: { controller: "phone-input" } %>
-              </div>
-              <small class="tw-text-ink-muted">WhatsApp alternativo (opcional)</small>
+              <% end %>
+              <p class="ax-field__hint">Canal alternativo de WhatsApp.</p>
             </div>
           </div>
-        </div>
+        <% end %>
       </div>
 
-      <!-- Social Media -->
       <div class="ax-span-6">
-        <div class="ax-card h-100">
-          <div class="ax-card__header bg-info bg-opacity-10">
-            <h5 class="ax-card__title tw-mb-0 tw-flex tw-items-center tw-gap-2" style="color:var(--admin-primary)">
-              <i class="bi bi-share-fill"></i>Redes Sociais
-            </h5>
-          </div>
-          <div class="ax-card__body">
-            <!-- Facebook -->
-            <div class="tw-mb-4">
-              <%= f.label :facebook_url, class: "ax-label tw-font-bold tw-flex tw-items-center tw-gap-2" do %>
-                <i class="bi bi-facebook tw-text-primary"></i>Facebook
-              <% end %>
-              <div class="tw-flex tw-items-center">
-                <span class="bg-primary bg-opacity-10">
-                  <i class="bi bi-facebook tw-text-primary"></i>
-                </span>
+        <%= ax_operational_panel(eyebrow: "Presença digital", title: "Redes sociais") do %>
+          <div class="tw-grid tw-gap-4">
+            <div class="ax-field">
+              <%= ax_field_label(f, :facebook_url, text: "Facebook") %>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-facebook tw-text-primary", aria: { hidden: true })) do %>
                 <%= f.url_field :facebook_url, class: "ax-control", placeholder: "https://facebook.com/saluteimoveis" %>
-              </div>
-              <small class="tw-text-ink-muted">URL completa da página do Facebook</small>
+              <% end %>
+              <p class="ax-field__hint">URL completa da página do Facebook.</p>
             </div>
 
-            <!-- Instagram -->
-            <div class="tw-mb-4">
-              <%= f.label :instagram_url, class: "ax-label tw-font-bold tw-flex tw-items-center tw-gap-2" do %>
-                <i class="bi bi-instagram" style="color:#dc2626"></i>Instagram
-              <% end %>
-              <div class="tw-flex tw-items-center">
-                <span class="bg-danger bg-opacity-10">
-                  <i class="bi bi-instagram" style="color:#dc2626"></i>
-                </span>
+            <div class="ax-field">
+              <%= ax_field_label(f, :instagram_url, text: "Instagram") %>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-instagram tw-text-red-600", aria: { hidden: true })) do %>
                 <%= f.url_field :instagram_url, class: "ax-control", placeholder: "https://instagram.com/saluteimoveis" %>
-              </div>
-              <small class="tw-text-ink-muted">URL completa do perfil do Instagram</small>
+              <% end %>
+              <p class="ax-field__hint">URL completa do perfil do Instagram.</p>
             </div>
 
-            <!-- YouTube -->
-            <div class="tw-mb-4">
-              <%= f.label :youtube_url, class: "ax-label tw-font-bold tw-flex tw-items-center tw-gap-2" do %>
-                <i class="bi bi-youtube" style="color:#dc2626"></i>YouTube
-              <% end %>
-              <div class="tw-flex tw-items-center">
-                <span class="bg-danger bg-opacity-10">
-                  <i class="bi bi-youtube" style="color:#dc2626"></i>
-                </span>
+            <div class="ax-field">
+              <%= ax_field_label(f, :youtube_url, text: "YouTube") %>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-youtube tw-text-red-600", aria: { hidden: true })) do %>
                 <%= f.url_field :youtube_url, class: "ax-control", placeholder: "https://youtube.com/@saluteimoveis" %>
-              </div>
-              <small class="tw-text-ink-muted">URL completa do canal do YouTube</small>
+              <% end %>
+              <p class="ax-field__hint">URL completa do canal do YouTube.</p>
             </div>
 
-            <!-- LinkedIn -->
-            <div class="tw-mb-0">
-              <%= f.label :linkedin_url, class: "ax-label tw-font-bold tw-flex tw-items-center tw-gap-2" do %>
-                <i class="bi bi-linkedin tw-text-primary"></i>LinkedIn
-              <% end %>
-              <div class="tw-flex tw-items-center">
-                <span class="bg-primary bg-opacity-10">
-                  <i class="bi bi-linkedin tw-text-primary"></i>
-                </span>
+            <div class="ax-field">
+              <%= ax_field_label(f, :linkedin_url, text: "LinkedIn") %>
+              <%= ax_input_group(prefix: tag.i(class: "bi bi-linkedin tw-text-primary", aria: { hidden: true })) do %>
                 <%= f.url_field :linkedin_url, class: "ax-control", placeholder: "https://linkedin.com/company/saluteimoveis" %>
-              </div>
-              <small class="tw-text-ink-muted">URL completa da página do LinkedIn</small>
+              <% end %>
+              <p class="ax-field__hint">URL completa da página do LinkedIn.</p>
             </div>
           </div>
-        </div>
+        <% end %>
       </div>
-    </div>
+    <% end %>
 
-    <!-- Save Button -->
-    <div class="tw-flex tw-justify-between tw-items-center tw-mt-4 p-4 bg-light rounded tw-gap-2">
-      <div class="tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-shield-check" style="color:#16a34a"></i>
-        <span class="tw-text-ink-muted">As informações serão atualizadas em todo o site</span>
-      </div>
-      <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary", style: "padding-left: 3rem; padding-right: 3rem;", data: { disable_with: "Salvando..." } %>
-    </div>
+    <%= ax_sticky_action_footer(meta: safe_join([tag.i(class: "bi bi-shield-check tw-text-green-600", aria: { hidden: true }), tag.span("As informações serão atualizadas em todo o site")], " ")) do %>
+      <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary", data: { disable_with: "Salvando..." } %>
+    <% end %>
   <% end %>
 </div>

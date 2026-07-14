@@ -18,6 +18,10 @@ RSpec.describe "Admin::StorageIntegrations", type: :request do
     expect(response.body).to include("anexos")
     expect(response.body).to include("blobs")
     expect(response.body).to include("Fotos públicas/CDN")
+    progress = Nokogiri::HTML(response.body).at_css("progress.ax-progress__bar[data-storage-public-photo-publish-target='bar']")
+    expect(progress).to be_present
+    expect(progress["style"]).to be_nil
+    expect(progress["max"]).to eq("100")
   end
 
   it "isola a configuração de armazenamento por conta" do

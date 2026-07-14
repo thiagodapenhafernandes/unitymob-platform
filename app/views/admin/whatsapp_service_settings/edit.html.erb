@@ -1,14 +1,12 @@
 <% content_for :title, "Atendimento WhatsApp — Configurações" %>
 
 <div class="layout-settings-workspace">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-whatsapp" style="color: var(--admin-primary);"></i>Atendimento WhatsApp
-      </h1>
-      <p class="ax-page-subtitle">Política do atendimento no inbox: cartão de apresentação do corretor e regras de resposta. A conexão do número fica em <%= link_to "Integrações › WhatsApp", admin_whatsapp_integration_path, class: "tw-text-primary" %>.</p>
-    </div>
-  </div>
+  <%= ax_workspace_heading(
+        eyebrow: "Configurações · Atendimento",
+        icon: "whatsapp",
+        title: "Atendimento WhatsApp",
+        subtitle: safe_join(["Política do atendimento no inbox: cartão de apresentação do corretor e regras de resposta. A conexão do número fica em ", link_to("Integrações › WhatsApp", admin_whatsapp_integration_path, class: "tw-text-primary"), "."])
+      ) %>
 
   <div class="layout-settings-grid">
     <div class="layout-settings-main">
@@ -39,9 +37,9 @@
           </div>
         <% end %>
 
-        <div class="ax-form-actions">
+        <%= ax_form_actions do %>
           <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
-        </div>
+        <% end %>
       <% end %>
     </div>
 

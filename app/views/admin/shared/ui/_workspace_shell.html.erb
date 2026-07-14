@@ -1,10 +1,10 @@
 <%
   aside_first = local_assigns[:aside_first]
-  shell_class = ["ax-workspace-shell", ("ax-workspace-shell--aside-first" if aside_first), local_assigns[:class_name]].compact.join(" ")
-  main_class = ["ax-workspace-main", local_assigns[:main_class]].compact.join(" ")
-  main_body_class = ["ax-workspace-main__body", local_assigns[:main_body_class]].compact.join(" ")
-  aside_class = ["ax-workspace-aside", local_assigns[:aside_class]].compact.join(" ")
-  contextbar_class = ["ax-workspace-contextbar", local_assigns[:contextbar_class]].compact.join(" ")
+  shell_class = ["ax-workspace-shell", ("ax-workspace-shell--aside-first" if aside_first), local_assigns[:class_name]].compact_blank.join(" ")
+  main_class = ["ax-workspace-main", local_assigns[:main_class]].compact_blank.join(" ")
+  main_body_class = ["ax-workspace-main__body", local_assigns[:main_body_class]].compact_blank.join(" ")
+  aside_class = ["ax-workspace-aside", local_assigns[:aside_class]].compact_blank.join(" ")
+  contextbar_class = ["ax-workspace-contextbar", local_assigns[:contextbar_class]].compact_blank.join(" ")
   aside_content = local_assigns[:aside]
   aside_partial = local_assigns[:aside_partial]
   aside_locals = local_assigns[:aside_locals] || {}
@@ -34,10 +34,6 @@
     class: aside_class,
     aria: { label: local_assigns[:aside_label].presence || "Painel contextual" }
   }
-  if aside_first
-    main_attributes[:style] = "grid-column: 1; grid-row: 1;"
-    aside_attributes[:style] = "grid-column: 2; grid-row: 1;"
-  end
 %>
 
 <%= tag.div(**shell_attributes) do %>

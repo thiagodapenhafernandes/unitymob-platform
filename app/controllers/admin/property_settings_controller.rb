@@ -3,6 +3,7 @@ module Admin
     before_action :require_admin!
     before_action :set_property_setting
     before_action :set_broker_capture_fallback_users, only: %i[edit review_workflow update]
+    before_action :set_ai_development_alias_context, only: %i[edit update]
 
     def edit
       @page_title = "Config Imóveis"
@@ -67,6 +68,70 @@ module Admin
         :notify_internal_review_events,
         :notify_email_review_events,
         :review_notification_emails,
+        :ai_property_search_enabled,
+        :voice_property_search_enabled,
+        :ai_property_search_instructions,
+        :ai_property_search_welcome_message,
+        :ai_property_search_processing_message,
+        :ai_property_search_no_results_message,
+        :ai_property_search_data_source,
+        :ai_property_search_max_results,
+        :ai_property_search_default_sort,
+        :ai_property_search_allow_flexible_results,
+        :ai_property_search_price_tolerance_percentage,
+        :ai_property_search_allow_clarifying_questions,
+        :ai_property_search_require_filter_confirmation,
+        :ai_property_search_max_audio_duration_seconds,
+        :ai_property_search_language,
+        :ai_property_search_history_enabled,
+        :ai_property_search_history_retention_days,
+        :ai_property_search_development_name_enabled,
+        :ai_property_search_developer_name_enabled,
+        :ai_property_search_fuzzy_matching_enabled,
+        :ai_property_search_fuzzy_similarity_threshold,
+        :ai_property_search_location_fuzzy_threshold,
+        :ai_property_search_resilient_search_enabled,
+        :ai_property_search_transcription_vocabulary_enabled,
+        :ai_property_search_development_aliases_enabled,
+        :ai_property_search_search_by_characteristics_enabled,
+        :ai_property_search_catalog_property_types_limit,
+        :ai_property_search_catalog_cities_limit,
+        :ai_property_search_catalog_neighborhoods_limit,
+        :ai_property_search_catalog_developments_limit,
+        :ai_property_search_catalog_feature_terms_limit,
+        :ai_property_search_catalog_alias_names_limit,
+        :ai_property_search_sharing_enabled,
+        :ai_property_search_share_max_properties,
+        :ai_property_search_share_expiration_days,
+        :ai_property_search_visitor_recognition_days,
+        :ai_property_search_share_title,
+        :ai_property_search_share_message,
+        :ai_property_search_public_eyebrow,
+        :ai_property_search_public_title,
+        :ai_property_search_public_description,
+        :ai_property_search_view_property_label,
+        :ai_property_search_interest_button_label,
+        :ai_property_search_identity_title,
+        :ai_property_search_identity_description,
+        :ai_property_search_identity_name_label,
+        :ai_property_search_identity_phone_label,
+        :ai_property_search_identity_submit_label,
+        :ai_property_search_identity_cancel_label,
+        :ai_property_search_interest_success_message,
+        :ai_property_search_lead_origin,
+        :ai_property_search_broker_panel_title,
+        :ai_property_search_broker_event_message,
+        :ai_property_search_selection_count_message,
+        :ai_property_search_share_button_label,
+        :ai_property_search_link_copied_message,
+        :ai_property_search_share_error_message,
+        :ai_property_search_interest_error_message,
+        :ai_property_search_broker_event_meta,
+        :ai_property_search_sharing_disabled_message,
+        :ai_property_search_broker_events_limit,
+        ai_property_search_allowed_fields: [],
+        ai_property_search_result_fields: [],
+        ai_property_search_allowed_profiles: [],
         required_broker_intake_checks: [],
         returnable_intake_edit_sections: []
       )
@@ -82,6 +147,14 @@ module Admin
         .includes(:profile, :horizontal_profile)
         .order(:name)
         .select { |user| user.tenant_owner? || (user.can?(:review, :captacoes) && user.owns_all?(:captacoes)) }
+    end
+
+    def set_ai_development_alias_context
+      @ai_search_developments = current_tenant.habitations.where(tipo: "Empreendimento")
+        .order(Arel.sql("COALESCE(nome_empreendimento, titulo_anuncio, codigo) ASC"))
+        .limit(500)
+      @development_aliases = DevelopmentAlias.where(tenant: current_tenant)
+        .includes(:development).order(:normalized_name)
     end
 
     def reassign_broker_intakes_to_fallback_admin_user!

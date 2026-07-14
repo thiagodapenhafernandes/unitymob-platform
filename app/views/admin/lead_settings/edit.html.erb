@@ -1,32 +1,15 @@
-<style>
-  /* Espaçamento vertical entre os painéis da coluna principal. */
-  .lead-settings-form { display: flex; flex-direction: column; gap: 16px; }
-  .lead-settings-form .ax-form-actions { margin-top: 4px; }
-  .lead-settings-nested {
-    margin-top: 14px;
-    padding: 14px 0 2px 16px;
-    border-left: 2px solid var(--admin-primary, #365f8f);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .lead-settings-nested .ax-radio-group__options { gap: 8px; }
-</style>
-
 <div class="layout-settings-workspace">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-people" style="color: var(--admin-primary);"></i>Configurações de Leads
-      </h1>
-      <p class="ax-page-subtitle">Regras globais da conta para o tratamento de leads: fidelização ao corretor e privacidade na notificação.</p>
-    </div>
-  </div>
+  <%= ax_workspace_heading(
+        eyebrow: "Configurações · Operação",
+        icon: "people",
+        title: "Configurações de Leads",
+        subtitle: "Regras globais da conta para o tratamento de leads: fidelização ao corretor e privacidade na notificação."
+      ) %>
 
   <div class="layout-settings-grid">
     <div class="layout-settings-main">
       <%= form_with(model: [:admin, @lead_setting], url: admin_lead_setting_path, method: :patch, local: true,
-            data: { controller: "lead-settings" }, class: "layout-settings-form lead-settings-form") do |f| %>
+            data: { controller: "lead-settings" }, class: "layout-settings-form tw-flex tw-flex-col tw-gap-4") do |f| %>
         <%= ax_error_summary(@lead_setting) %>
 
         <%# ===== Fidelização ===== %>
@@ -37,7 +20,7 @@
                   input_data: { action: "change->lead-settings#toggleStickiness" }) %>
             <p class="ax-field__hint">Quando um lead chega de uma pessoa já atendida antes, ele é atribuído ao mesmo corretor, em vez de entrar na rotação.</p>
 
-            <div class="section-toggle-container lead-settings-nested<%= ' tw-hidden' unless @lead_setting.stickiness_enabled? %>"
+            <div class="section-toggle-container ax-field-group-stack<%= ' tw-hidden' unless @lead_setting.stickiness_enabled? %>"
                  data-lead-settings-target="stickinessSection">
               <%= ax_field_group(title: "Como reconhecer a mesma pessoa", token: "Identidade") do %>
                 <%= ax_radio_group(form: f, method: :stickiness_match, label: "Casar leads pelo:",
@@ -127,7 +110,7 @@
               O clique passa pelo mesmo motor — abre o contato do lead e <strong>marca como atendido</strong> dentro do prazo —, mantendo o sistema no meio e medindo o SLA em todos os canais.
             </p>
 
-            <div class="section-toggle-container lead-settings-nested<%= ' tw-hidden' unless @lead_setting.secure_links_enabled? %>"
+            <div class="section-toggle-container ax-field-group-stack<%= ' tw-hidden' unless @lead_setting.secure_links_enabled? %>"
                  data-lead-settings-target="secureSection">
               <%= ax_field_group(title: "Validade do link", token: "Expiração") do %>
                 <%= ax_number_field(form: f, method: :secure_link_expiry_days, label: "Validade em dias",
@@ -145,54 +128,42 @@
           </div>
         <% end %>
 
-        <div class="ax-form-actions layout-settings-actions">
+        <%= ax_form_actions(sticky: false, class_name: "layout-settings-actions") do %>
           <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>
           <%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %>
-        </div>
+        <% end %>
       <% end %>
     </div>
 
     <aside class="layout-settings-inspector">
       <%= ax_operational_panel(eyebrow: "Status", title: "Resumo") do %>
         <div class="ax-panel-body">
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>Fidelização</span>
-            <%= ax_badge(@lead_setting.stickiness_enabled? ? "Ativa" : "Desligada", tone: @lead_setting.stickiness_enabled? ? :green : :gray, dot: true) %>
-          </div>
+          <% lead_status_rows = [
+            { label: "Fidelização", value: ax_badge(@lead_setting.stickiness_enabled? ? "Ativa" : "Desligada", tone: @lead_setting.stickiness_enabled? ? :green : :gray, dot: true) }
+          ] %>
           <% if @lead_setting.stickiness_enabled? %>
-            <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-              <span>Janela</span>
-              <%= ax_badge(@lead_setting.window_forever? ? "Para sempre" : "#{@lead_setting.stickiness_window_days} dias", tone: :blue) %>
-            </div>
+            <% lead_status_rows << { label: "Janela", value: ax_badge(@lead_setting.window_forever? ? "Para sempre" : "#{@lead_setting.stickiness_window_days} dias", tone: :blue) } %>
           <% end %>
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>Link seguro</span>
-            <%= ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true) %>
-          </div>
-          <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-            <span>Clique no push</span>
-            <%= ax_badge(@lead_setting.push_lead_click_action == "whatsapp" ? "WhatsApp direto" : "Detalhes primeiro", tone: :blue) %>
-          </div>
+          <% lead_status_rows.concat([
+            { label: "Link seguro", value: ax_badge(@lead_setting.secure_links_enabled? ? "Ligado" : "Desligado", tone: @lead_setting.secure_links_enabled? ? :green : :gray, dot: true) },
+            { label: "Clique no push", value: ax_badge(@lead_setting.push_lead_click_action == "whatsapp" ? "WhatsApp direto" : "Detalhes primeiro", tone: :blue) }
+          ]) %>
           <% if @lead_setting.secure_links_enabled? %>
-            <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-              <span>Validade do link</span>
-              <%= ax_badge(@lead_setting.secure_link_expiry_days.to_i.zero? ? "Nunca expira" : "#{@lead_setting.secure_link_expiry_days} dias", tone: :blue) %>
-            </div>
-            <div class="tw-flex tw-items-center tw-justify-between tw-mb-2">
-              <span>Canais</span>
-              <span>
-                <%= ax_badge("WhatsApp", tone: @lead_setting.secure_link_whatsapp? ? :green : :gray, dot: true) %>
-                <%= ax_badge("E-mail", tone: @lead_setting.secure_link_email? ? :green : :gray, dot: true) %>
-                <%= ax_badge("Push", tone: @lead_setting.secure_link_push? ? :green : :gray, dot: true) %>
-              </span>
-            </div>
+            <% lead_status_rows << { label: "Validade do link", value: ax_badge(@lead_setting.secure_link_expiry_days.to_i.zero? ? "Nunca expira" : "#{@lead_setting.secure_link_expiry_days} dias", tone: :blue) } %>
+            <% channel_badges = safe_join([
+              ax_badge("WhatsApp", tone: @lead_setting.secure_link_whatsapp? ? :green : :gray, dot: true),
+              ax_badge("E-mail", tone: @lead_setting.secure_link_email? ? :green : :gray, dot: true),
+              ax_badge("Push", tone: @lead_setting.secure_link_push? ? :green : :gray, dot: true)
+            ]) %>
+            <% lead_status_rows << { label: "Canais", value: channel_badges } %>
           <% end %>
+          <%= ax_status_list(rows: lead_status_rows, label: "Resumo das configurações de leads") %>
         </div>
       <% end %>
 
       <%= ax_operational_panel(eyebrow: "Como funciona", title: "Fluxo") do %>
         <div class="ax-panel-body">
-          <ol class="ax-field__hint" style="padding-left:18px;margin:0;line-height:1.6;">
+          <ol class="ax-field__hint ax-field__hint--steps">
             <li><strong>Fidelização</strong>: na distribuição, se a pessoa já tem corretor (pela chave escolhida) e ele está elegível → vai direto pra ele; senão, rotação normal.</li>
             <li><strong>Push</strong>: o clique sempre vale como aceite dentro do prazo; depois abre o destino configurado: detalhes do lead ou WhatsApp direto.</li>
             <li><strong>Link seguro</strong>: nos canais ligados (WhatsApp, e-mail, push), a notificação esconde o contato atrás de um link <code>/s/&lt;token&gt;</code>; o clique valida a expiração, abre o contato/lead e marca o atendimento dentro do prazo (mede o SLA).</li>

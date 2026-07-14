@@ -1,0 +1,147 @@
+/* Shared dense data-table contract. Module-specific column and row variants stay scoped. */
+.ax-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--ax-field-border);
+  border-radius: 8px;
+  background: var(--ax-panel-bg);
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ax-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12.5px;
+}
+
+.ax-table__caption--sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ax-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 12px;
+  border-bottom: 1px solid #d2d6db;
+  background: #f8fafa;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ax-table tbody td {
+  padding: 7px 12px;
+  border-top: 1px solid #eceef1;
+  color: #475467;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.ax-table tbody tr:first-child td { border-top: 0; }
+.ax-table tbody tr:nth-child(even) td { background: #fafbfc; }
+.ax-table tbody tr:hover td,
+.ax-table tbody tr:focus-within td { background: var(--admin-primary-softer); }
+.ax-table__row--sortable { cursor: move; }
+.ax-table__row--sortable:active { cursor: grabbing; }
+.ax-table .ax-strong { color: var(--admin-ink); font-weight: 600; }
+.ax-table a { color: var(--admin-ink); font-weight: 600; text-decoration: none; }
+.ax-table a:hover { color: var(--admin-primary); text-decoration: none; }
+.ax-table a:focus-visible {
+  border-radius: 3px;
+  color: var(--admin-primary);
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 2px;
+}
+
+.ax-table tbody td.ax-table__empty {
+  padding: 24px 16px;
+  background: var(--ax-panel-bg, #fff);
+  color: var(--ab-muted, #667085);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-align: center;
+  white-space: normal;
+}
+
+/* Predictable widths for operational columns; content columns keep fluid sizing. */
+.ax-table__col--xs { width: 74px; }
+.ax-table__col--compact { width: 90px; }
+.ax-table__col--sm { width: 96px; }
+.ax-table__col--md { width: 110px; }
+.ax-table__col--lg { width: 200px; }
+.ax-table__col--w-40 { width: 40px; }
+.ax-table__col--w-70 { width: 70px; }
+.ax-table__col--w-80 { width: 80px; }
+.ax-table__col--w-100 { width: 100px; }
+.ax-table__col--w-120 { width: 120px; }
+.ax-table__col--w-130 { width: 130px; }
+.ax-table__col--w-140 { width: 140px; }
+.ax-table__col--w-150 { width: 150px; }
+.ax-table__col--w-160 { width: 160px; }
+.ax-table__col--w-170 { width: 170px; }
+.ax-table__col--w-180 { width: 180px; }
+.ax-table__col--w-190 { width: 190px; }
+.ax-table__col--w-220 { width: 220px; }
+
+.ax-table__text--truncate {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-admin-theme="dark"] .ax-table-wrap {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-table thead th {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text-soft);
+}
+
+[data-admin-theme="dark"] .ax-table tbody td,
+[data-admin-theme="dark"] .ax-table tbody tr:nth-child(even) td {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text-soft);
+}
+
+[data-admin-theme="dark"] .ax-table tbody tr:hover td,
+[data-admin-theme="dark"] .ax-table tbody tr:focus-within td {
+  background: var(--ax-dark-surface-hover);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-table a:focus-visible {
+  color: #badaf7;
+  outline-color: var(--admin-primary-ring);
+}
+
+[data-admin-theme="dark"] .ax-table tbody td.ax-table__empty {
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text-muted);
+}
+
+@media (max-width: 639px) {
+  .ax-table thead th { padding: 7px 9px; }
+  .ax-table tbody td { padding: 6px 9px; }
+  .ax-table tbody td.ax-table__empty { padding: 18px 12px; }
+}

@@ -2,30 +2,27 @@
 
 <ul class="ax-form-tabs tw-mb-4">
   <li>
-    <a class="ax-form-tabs__item <%= 'active' if @active_tab == 'sheets' %>" <%= 'aria-current="page"'.html_safe if @active_tab == 'sheets' %> href="<%= admin_google_integration_path(tab: 'sheets') %>">
-      <i class="bi bi-table me-2"></i>Google Sheets
-    </a>
+    <%= link_to admin_google_integration_path(tab: "sheets"), class: ["ax-form-tabs__item", ("active" if @active_tab == "sheets")].compact.join(" "), aria: { current: ("page" if @active_tab == "sheets") } do %>
+      <i class="bi bi-table" aria-hidden="true"></i>Google Sheets
+    <% end %>
   </li>
   <li>
-    <a class="ax-form-tabs__item <%= 'active' if @active_tab == 'calendar' %>" <%= 'aria-current="page"'.html_safe if @active_tab == 'calendar' %> href="<%= admin_google_integration_path(tab: 'calendar') %>">
-      <i class="bi bi-calendar2-week me-2"></i>Agenda
-    </a>
+    <%= link_to admin_google_integration_path(tab: "calendar"), class: ["ax-form-tabs__item", ("active" if @active_tab == "calendar")].compact.join(" "), aria: { current: ("page" if @active_tab == "calendar") } do %>
+      <i class="bi bi-calendar2-week" aria-hidden="true"></i>Agenda
+    <% end %>
   </li>
   <li>
-    <a class="ax-form-tabs__item <%= 'active' if @active_tab == 'maps' %>" <%= 'aria-current="page"'.html_safe if @active_tab == 'maps' %> href="<%= admin_google_integration_path(tab: 'maps') %>">
-      <i class="bi bi-map me-2"></i>Maps
-    </a>
+    <%= link_to admin_google_integration_path(tab: "maps"), class: ["ax-form-tabs__item", ("active" if @active_tab == "maps")].compact.join(" "), aria: { current: ("page" if @active_tab == "maps") } do %>
+      <i class="bi bi-map" aria-hidden="true"></i>Maps
+    <% end %>
   </li>
 </ul>
 
 <div id="google-sheets" <%= "hidden" unless @active_tab == "sheets" %>>
   <%= ax_field_grid do %>
   <div class="ax-span-12">
-    <div class="ax-card">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-key me-2 text-primary"></i>Captações para planilha</h5>
-      </div>
-      <div class="ax-card__body">
+    <%= ax_operational_panel(eyebrow: "Google Sheets", title: "Captações para planilha") do %>
+      <div class="ax-panel-body">
         <%= ax_error_summary(@google_sheets_setting) %>
 
         <%= ax_inline_notice(tone: @google_sheets_setting.connected? ? :success : :warning, icon: @google_sheets_setting.connected? ? "check-circle" : "exclamation-triangle", class_name: "google-integration-status") do %>
@@ -38,46 +35,23 @@
         <%= form_with url: admin_google_integration_path, method: :patch, scope: :google_sheets, local: true do |f| %>
           <%= ax_switch_field(label: tag.span("Ativar sincronização de captações com Google Sheets", class: "tw-font-semibold"), form: f, method: :enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @google_sheets_setting.enabled? }) %>
 
-          <div class="tw-mb-3">
-            <%= f.label :web_app_url, "URL do Web App do Apps Script", class: "ax-label tw-font-semibold" %>
-            <%= f.url_field :web_app_url,
-                class: "ax-control",
-                value: @google_sheets_setting.web_app_url,
-                placeholder: "https://script.google.com/macros/s/.../exec" %>
-            <div class="form-text">URL publicada no Google Apps Script para receber e atualizar as captações.</div>
-          </div>
+          <%= ax_text_field(form: f, method: :web_app_url, label: "URL do Web App do Apps Script", type: :url, value: @google_sheets_setting.web_app_url, placeholder: "https://script.google.com/macros/s/.../exec", hint: "URL publicada no Google Apps Script para receber e atualizar as captações.", field_class: "tw-mb-3") %>
 
-          <div class="tw-mb-3">
-            <%= f.label :token, "Token de segurança", class: "ax-label tw-font-semibold" %>
-            <%= f.password_field :token,
-                class: "ax-control",
-                autocomplete: "off",
-                placeholder: (@google_sheets_setting.token_configured? ? "Token já configurado. Preencha apenas para substituir." : "Crie um token simples para o Apps Script validar") %>
-            <div class="form-text">Este valor será enviado junto do payload e validado pelo Apps Script.</div>
-          </div>
+          <%= ax_text_field(form: f, method: :token, label: "Token de segurança", type: :password, autocomplete: "off", placeholder: (@google_sheets_setting.token_configured? ? "Token já configurado. Preencha apenas para substituir." : "Crie um token simples para o Apps Script validar"), hint: "Este valor será enviado junto do payload e validado pelo Apps Script.", field_class: "tw-mb-3") %>
 
           <%= ax_field_grid do %>
             <div class="ax-span-6">
-              <%= f.label :worksheet_name, "Nome da aba", class: "ax-label tw-font-semibold" %>
-              <%= f.text_field :worksheet_name,
-                  class: "ax-control",
-                  value: @google_sheets_setting.worksheet_name,
-                  placeholder: GoogleSheetsIntegrationSetting::DEFAULT_WORKSHEET_NAME %>
+              <%= ax_text_field(form: f, method: :worksheet_name, label: "Nome da aba", value: @google_sheets_setting.worksheet_name, placeholder: GoogleSheetsIntegrationSetting::DEFAULT_WORKSHEET_NAME) %>
             </div>
             <div class="ax-span-6">
-              <%= f.label :key_column, "Coluna-chave para atualização", class: "ax-label tw-font-semibold" %>
-              <%= f.text_field :key_column,
-                  class: "ax-control",
-                  value: @google_sheets_setting.key_column,
-                  placeholder: GoogleSheetsIntegrationSetting::DEFAULT_KEY_COLUMN %>
-              <div class="form-text">Padrão recomendado: <code>Cód. imóvel CRM</code>.</div>
+              <%= ax_text_field(form: f, method: :key_column, label: "Coluna-chave para atualização", value: @google_sheets_setting.key_column, placeholder: GoogleSheetsIntegrationSetting::DEFAULT_KEY_COLUMN, hint: "Padrão recomendado: Cód. imóvel CRM.") %>
             </div>
           <% end %>
 
-          <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
+          <%= ax_form_actions(sticky: false) do %><%= f.submit "Salvar configurações", class: "ax-btn ax-btn--primary" %><% end %>
         <% end %>
       </div>
-    </div>
+    <% end %>
   </div>
 
   <% end %>
@@ -90,11 +64,8 @@
 <div id="google-calendar" <%= "hidden" unless @active_tab == "calendar" %>>
   <%= ax_field_grid do %>
   <div class="ax-span-12">
-    <div class="ax-card">
-      <div class="ax-card__header">
-        <h5 class="ax-card__title tw-font-bold"><i class="bi bi-calendar2-plus me-2 text-primary"></i>Agenda de fotografia</h5>
-      </div>
-      <div class="ax-card__body">
+    <%= ax_operational_panel(eyebrow: "Google Calendar", title: "Agenda de fotografia") do %>
+      <div class="ax-panel-body">
         <%= ax_error_summary(@google_calendar_setting) %>
 
         <%= ax_inline_notice(tone: @google_calendar_setting.configured? ? :success : :warning, icon: @google_calendar_setting.configured? ? "check-circle" : "exclamation-triangle", class_name: "google-integration-status") do %>
@@ -110,36 +81,13 @@
         <%= form_with url: admin_google_integration_path, method: :patch, scope: :google_calendar, local: true do |f| %>
           <%= ax_switch_field(label: tag.span("Criar evento no Google Calendar quando a captação agendar fotógrafo", class: "tw-font-semibold"), form: f, method: :enabled, checked_value: "true", unchecked_value: "false", class_name: "tw-mb-3", input_html: { checked: @google_calendar_setting.enabled? }) %>
 
-          <div class="tw-mb-3">
-            <%= f.label :calendar_id, "ID da agenda", class: "ax-label tw-font-semibold" %>
-            <%= f.text_field :calendar_id,
-                class: "ax-control",
-                value: @google_calendar_setting.calendar_id.presence || GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID,
-                placeholder: GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID %>
-            <div class="form-text">Use o e-mail da agenda ou o Calendar ID. Compartilhe essa agenda com o <code>client_email</code> da service account com permissão para alterar eventos.</div>
-          </div>
+          <%= ax_text_field(form: f, method: :calendar_id, label: "ID da agenda", value: @google_calendar_setting.calendar_id.presence || GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID, placeholder: GoogleCalendarIntegrationSetting::DEFAULT_CALENDAR_ID, hint: "Use o e-mail ou Calendar ID e compartilhe a agenda com o client_email da service account.", field_class: "tw-mb-3") %>
 
-          <div class="tw-mb-3">
-            <%= f.label :default_duration_minutes, "Duração padrão do evento", class: "ax-label tw-font-semibold" %>
-            <%= f.number_field :default_duration_minutes,
-                class: "ax-control",
-                value: @google_calendar_setting.default_duration_minutes.presence || GoogleCalendarIntegrationSetting::DEFAULT_DURATION_MINUTES,
-                min: GoogleCalendarIntegrationSetting::MIN_DURATION_MINUTES,
-                max: GoogleCalendarIntegrationSetting::MAX_DURATION_MINUTES,
-                step: 15 %>
-          </div>
+          <%= ax_number_field(form: f, method: :default_duration_minutes, label: "Duração padrão do evento", value: @google_calendar_setting.default_duration_minutes.presence || GoogleCalendarIntegrationSetting::DEFAULT_DURATION_MINUTES, min: GoogleCalendarIntegrationSetting::MIN_DURATION_MINUTES, max: GoogleCalendarIntegrationSetting::MAX_DURATION_MINUTES, step: 15, class_name: "tw-mb-3") %>
 
-          <div class="tw-mb-3">
-            <%= f.label :service_account_json, "JSON da service account", class: "ax-label tw-font-semibold" %>
-            <%= f.text_area :service_account_json,
-                class: "ax-control",
-                rows: 8,
-                autocomplete: "off",
-                placeholder: (@google_calendar_setting.service_account_configured? ? "Credencial já configurada. Cole um novo JSON apenas para substituir." : "{\"type\":\"service_account\",...}") %>
-            <div class="form-text">A chave privada fica criptografada no banco. O conteúdo salvo não é exibido novamente.</div>
-          </div>
+          <%= ax_text_field(form: f, method: :service_account_json, label: "JSON da service account", type: :textarea, rows: 8, autocomplete: "off", placeholder: (@google_calendar_setting.service_account_configured? ? "Credencial já configurada. Cole um novo JSON apenas para substituir." : "{\"type\":\"service_account\",...}"), hint: "A chave privada fica criptografada no banco e o conteúdo salvo não é exibido novamente.", field_class: "tw-mb-3") %>
 
-          <%= f.submit "Salvar Agenda", class: "ax-btn ax-btn--primary" %>
+          <%= ax_form_actions(sticky: false) do %><%= f.submit "Salvar agenda", class: "ax-btn ax-btn--primary" %><% end %>
         <% end %>
 
         <hr class="tw-my-4">
@@ -151,7 +99,7 @@
           <i class="bi bi-calendar-check me-2"></i>Criar evento de teste
         <% end %>
       </div>
-    </div>
+    <% end %>
   </div>
 
   <% end %>

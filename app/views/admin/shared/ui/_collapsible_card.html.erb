@@ -10,9 +10,11 @@
 %>
 <section class="ax-card ax-collapse-card <%= 'is-open' unless collapsed %> <%= local_assigns[:class_name] %>"
          data-controller="ax-disclosure"
-         data-ax-disclosure-open-value="<%= !collapsed %>">
+         data-ax-disclosure-open-value="<%= !collapsed %>"
+         aria-labelledby="<%= collapse_id %>_trigger">
   <header class="ax-card__header ax-collapse-card__header">
     <button type="button"
+            id="<%= collapse_id %>_trigger"
             class="ax-collapse-card__trigger"
             data-action="ax-disclosure#toggle"
             data-ax-disclosure-target="trigger"

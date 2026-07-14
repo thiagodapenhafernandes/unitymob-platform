@@ -1,10 +1,10 @@
 <%# Campos de um turno (StoreShift) — usado tanto na listagem existente quanto
     no <template> do nested-form. `corretores` é a coleção escopada ao tenant. %>
 <div class="ax-span-12 nested-fields" data-new-record="<%= f.object.new_record? %>">
-  <div class="ax-card bg-light tw-mb-2">
+  <div class="ax-card tw-mb-2">
     <div class="ax-card__body">
       <div class="tw-flex tw-justify-between tw-items-center tw-mb-2">
-        <label class="ax-label tw-font-bold tw-inline-flex tw-items-center tw-gap-2" style="margin-bottom:0;">
+        <label class="ax-label tw-font-bold tw-inline-flex tw-items-center tw-gap-2 tw-mb-0">
           <i class="bi bi-clock-history"></i>Turno
         </label>
         <button type="button" class="ax-btn ax-btn--danger ax-btn--sm tw-gap-2" data-action="nested-form#remove">

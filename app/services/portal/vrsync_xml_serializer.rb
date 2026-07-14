@@ -8,6 +8,7 @@ module Portal
     def initialize(habitations:, integration:)
       @habitations = habitations
       @integration = integration
+      @identity = Tenants::PublicIdentity.new(integration.tenant)
     end
 
     def to_xml(target: nil)
@@ -21,11 +22,11 @@ module Portal
       ) do
         xml.Listings do
           xml.Header do
-            xml.Provider "Salute"
-            xml.Email "contato@saluteimoveis.com.br"
-            xml.ContactName "SALUTE IMOVEIS"
+            xml.Provider @identity.name
+            xml.Email @identity.email
+            xml.ContactName @identity.name
             xml.PublishDate Time.current.iso8601
-            xml.Telephone "(47) 3311-1067"
+            xml.Telephone @identity.phone
           end
 
           @habitations.each do |habitation|
@@ -33,9 +34,9 @@ module Portal
               xml.ListingID habitation.codigo
               xml.UpdateDate (habitation.updated_at || Time.current).iso8601
               xml.ContactInfo do
-                xml.Name "SALUTE IMOVEIS"
-                xml.Email "contato@saluteimoveis.com.br"
-                xml.Telephone "(47) 3311-1067"
+                xml.Name @identity.name
+                xml.Email @identity.email
+                xml.Telephone @identity.phone
               end
 
               xml.Details do

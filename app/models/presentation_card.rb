@@ -70,7 +70,7 @@ class PresentationCard < ApplicationRecord
   # site_name) vem primeiro; o nome interno da conta é fallback técnico.
   def company_display_name
     display = begin
-      LayoutSetting.instance.site_name.to_s.strip.presence
+      LayoutSetting.instance(tenant: tenant).site_name.to_s.strip.presence
     rescue StandardError
       nil
     end

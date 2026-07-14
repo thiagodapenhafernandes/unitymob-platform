@@ -1,0 +1,110 @@
+/* Dense audience workspace shared by imported recipients and unsubscribes. */
+.ax-audience-workspace {
+  display: grid;
+  gap: 14px;
+}
+
+.ax-audience-workspace__summary {
+  gap: 10px;
+}
+
+.ax-audience-workspace__summary--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ax-audience-workspace__summary--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ax-audience-workspace__filters {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+}
+
+.ax-audience-workspace__filters--4 {
+  grid-template-columns: 1.2fr .8fr 1.2fr auto;
+}
+
+.ax-audience-workspace__filters--5 {
+  grid-template-columns: 1.1fr .8fr .8fr 1.2fr auto;
+}
+
+.ax-audience-workspace__actions,
+.ax-audience-workspace__reenable {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ax-audience-workspace__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 260px;
+}
+
+.ax-audience-workspace__tag {
+  padding: 2px 8px;
+  border: 1px solid #d8dee8;
+  border-radius: 999px;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.ax-audience-workspace__muted,
+.ax-audience-workspace__reason {
+  color: #667085;
+  font-size: 12px;
+}
+
+.ax-audience-workspace__reason {
+  max-width: 260px;
+  line-height: 1.25;
+}
+
+.ax-audience-workspace__reenable {
+  gap: 6px;
+}
+
+.ax-audience-workspace__reenable .ax-control {
+  width: 180px;
+  height: 32px;
+}
+
+[data-admin-theme="dark"] .ax-audience-workspace__tag {
+  border-color: var(--ax-dark-border);
+  color: var(--ax-dark-text-soft);
+}
+
+[data-admin-theme="dark"] :where(.ax-audience-workspace__muted, .ax-audience-workspace__reason) {
+  color: var(--ax-dark-text-muted);
+}
+
+@media (max-width: 1100px) {
+  .ax-audience-workspace__summary--4,
+  .ax-audience-workspace__filters--5 {
+    grid-template-columns: 1fr;
+  }
+
+  .ax-audience-workspace__filters--5 .ax-audience-workspace__actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .ax-audience-workspace__summary--3,
+  .ax-audience-workspace__filters--4 {
+    grid-template-columns: 1fr;
+  }
+
+  .ax-audience-workspace__filters--4 .ax-audience-workspace__actions,
+  .ax-audience-workspace__reenable {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

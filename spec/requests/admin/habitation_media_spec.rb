@@ -92,6 +92,8 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Mídia e uploads")
     expect(response.body).to include(modal_admin_habitation_media_path(habitation))
+    expect(response.body).to include('class="ax-menu__header admin-property-menu__header"')
+    expect(response.body).to include('class="ax-menu__item admin-property-menu__item"')
   end
 
   it "envia foto por JSON e devolve a galeria renderizada sem depender do submit do cadastro" do
@@ -142,6 +144,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
 
   it "atualiza visibilidade de fotos e imagens da API por JSON" do
     habitation = create_media_habitation(
+      imovel_dwv: "Sim",
       pictures: [
         { "url" => "https://example.com/site.jpg" },
         { "url" => "https://example.com/interna.jpg" }
@@ -160,11 +163,15 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response).to have_http_status(:ok)
     payload = JSON.parse(response.body)
     habitation.reload
+    gallery = Nokogiri::HTML.fragment(payload.fetch("gallery_html"))
+    attached_visibility_button = gallery.at_css(%([data-photo-id="#{attachment.id}"]))
 
     expect(payload.dig("inputs", "site_hidden_photo_ids")).to eq(attachment.id.to_s)
     expect(payload.dig("inputs", "site_hidden_picture_urls")).to eq("https://example.com/interna.jpg")
     expect(habitation.site_hidden_photo_ids).to contain_exactly(attachment.id)
     expect(habitation.pictures.second["site_hidden"]).to eq(true)
+    expect(attached_visibility_button["aria-pressed"]).to eq("false")
+    expect(attached_visibility_button.at_css("span")).to be_nil
   end
 
   it "expõe no modal o botão e a rota assíncrona de visibilidade" do
@@ -178,7 +185,10 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     visibility_button = html.at_css('[data-action*="photo-upload#toggleSiteVisibility"]')
     expect(visibility_button).to be_present
     expect(response.body).to include("data-photo-upload-visibility-url-value")
-    expect(response.body).to include("No site")
+    expect(visibility_button["aria-label"]).to eq("Foto publicada no site")
+    expect(visibility_button["aria-pressed"]).to eq("true")
+    expect(visibility_button.at_css("i.bi-globe2[aria-hidden='true']")).to be_present
+    expect(visibility_button.at_css("span")).to be_nil
   end
 
   it "renderiza ação de ambiente para imagem externa da API no modal" do

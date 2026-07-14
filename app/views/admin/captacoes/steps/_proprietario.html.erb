@@ -1,4 +1,4 @@
-<h1 class="wizard-section-title"><i class="bi bi-person-vcard-fill tw-text-primary" style="margin-right:.5rem;"></i>Dados do proprietário</h1>
+<h1 class="wizard-section-title"><i class="bi bi-person-vcard-fill tw-text-primary"></i>Dados do proprietário</h1>
 <p class="wizard-section-subtitle">Informações básicas de contato para a captação.</p>
 
 <div data-controller="proprietor-lookup"
@@ -35,73 +35,80 @@
     </div>
   </div>
 
-<div class="wizard-field-group">
-  <%= label_tag :proprietario_lookup_codigo, "Código do proprietário", class: "ax-label" %>
-  <%= text_field_tag :proprietario_lookup_codigo,
-        @captacao.proprietor&.vista_code,
-        class: "ax-control",
-        placeholder: "Ex.: código Vista ou código interno",
-        autocomplete: "off",
-        data: {
-          proprietor_lookup_target: "code",
-          action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup"
-        } %>
-</div>
+<%= ax_standalone_field(
+      name: :proprietario_lookup_codigo,
+      id: :proprietario_lookup_codigo,
+      label: "Código do proprietário",
+      value: @captacao.proprietor&.vista_code,
+      class_name: "wizard-field-group",
+      placeholder: "Ex.: código Vista ou código interno",
+      autocomplete: "off",
+      data: {
+        proprietor_lookup_target: "code",
+        action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup"
+      }
+    ) %>
 
-<div class="wizard-field-group">
-  <%= f.label :proprietario_nome, "Nome completo", class: "ax-label" %>
-  <span class="required-star">*</span>
-  <%= f.text_field :proprietario_nome,
-        class: field_state.call(:proprietario_nome),
-        autocomplete: "name",
-        data: {
-          proprietor_lookup_target: "name",
-          action: "input->proprietor-lookup#handleManualEdit"
-        } %>
-  <% if field_invalid.call(:proprietario_nome) %><div class="invalid-feedback d-block">Informe o nome completo do proprietário.</div><% end %>
-</div>
+<%= ax_text_field(
+      form: f,
+      method: :proprietario_nome,
+      label: safe_join(["Nome completo", tag.span("*", class: "required-star")], " "),
+      field_class: "wizard-field-group",
+      class: field_state.call(:proprietario_nome),
+      autocomplete: "name",
+      data: {
+        proprietor_lookup_target: "name",
+        action: "input->proprietor-lookup#handleManualEdit"
+      }
+    ) %>
+<% if field_invalid.call(:proprietario_nome) %><div class="invalid-feedback d-block">Informe o nome completo do proprietário.</div><% end %>
 
-<div class="wizard-field-group">
-  <%= f.label :proprietario_telefone, "Telefone / WhatsApp", class: "ax-label" %>
-  <span class="required-star">*</span>
-  <%= f.telephone_field :proprietario_telefone,
-                         class: field_state.call(:proprietario_telefone),
-                         placeholder: "(47) 99999-0000",
-                         autocomplete: "tel",
-                         data: {
-                           controller: "phone-input",
-                           proprietor_lookup_target: "phone",
-                           action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
-                         } %>
-  <% if field_invalid.call(:proprietario_telefone) %><div class="invalid-feedback d-block">Informe o telefone/WhatsApp do proprietário.</div><% end %>
-</div>
+<%= ax_text_field(
+      form: f,
+      method: :proprietario_telefone,
+      label: safe_join(["Telefone / WhatsApp", tag.span("*", class: "required-star")], " "),
+      type: :tel,
+      field_class: "wizard-field-group",
+      class: field_state.call(:proprietario_telefone),
+      placeholder: "(47) 99999-0000",
+      autocomplete: "tel",
+      data: {
+        controller: "phone-input",
+        proprietor_lookup_target: "phone",
+        action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
+      }
+    ) %>
+<% if field_invalid.call(:proprietario_telefone) %><div class="invalid-feedback d-block">Informe o telefone/WhatsApp do proprietário.</div><% end %>
 
 <%= ax_field_grid do %>
   <div class="ax-span-6">
-    <div class="wizard-field-group">
-      <%= f.label :proprietario_cpf_cnpj, "CPF ou CNPJ", class: "ax-label" %>
-      <%= f.text_field :proprietario_cpf_cnpj,
-                       class: "ax-control",
-                       placeholder: "000.000.000-00",
-                       data: {
-                         controller: "mask",
-                         mask_type_value: "cpf_cnpj",
-                         proprietor_lookup_target: "cpfCnpj",
-                         action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
-                       } %>
-    </div>
+    <%= ax_text_field(
+          form: f,
+          method: :proprietario_cpf_cnpj,
+          label: "CPF ou CNPJ",
+          field_class: "wizard-field-group",
+          placeholder: "000.000.000-00",
+          data: {
+            controller: "mask",
+            mask_type_value: "cpf_cnpj",
+            proprietor_lookup_target: "cpfCnpj",
+            action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
+          }
+        ) %>
   </div>
   <div class="ax-span-6">
-    <div class="wizard-field-group">
-      <%= f.label :proprietario_email, "E-mail", class: "ax-label" %>
-      <%= f.email_field :proprietario_email,
-            class: "ax-control",
-            autocomplete: "email",
-            data: {
-              proprietor_lookup_target: "email",
-              action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
-            } %>
-    </div>
+    <%= ax_text_field(
+          form: f,
+          method: :proprietario_email,
+          label: "E-mail",
+          type: :email,
+          field_class: "wizard-field-group",
+          autocomplete: "email",
+          data: {
+            proprietor_lookup_target: "email",
+            action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
+          }
+        ) %>
   </div>
 <% end %>
 

@@ -31,7 +31,7 @@
   }
 
   .field-hero {
-    background: linear-gradient(135deg, #0f6bf2 0%, #0b56c5 100%);
+    background: linear-gradient(135deg, var(--field-primary) 0%, color-mix(in srgb, var(--field-primary) 78%, #000) 100%);
     border-radius: 16px;
     color: #fff;
     display: grid;
@@ -77,8 +77,8 @@
     color: #fff;
   }
   .field-checkin-cta--active {
-    background: linear-gradient(135deg, #0f6bf2 0%, #0b56c5 100%);
-    border-color: #0b56c5;
+    background: linear-gradient(135deg, var(--field-primary) 0%, color-mix(in srgb, var(--field-primary) 78%, #000) 100%);
+    border-color: color-mix(in srgb, var(--field-primary) 78%, #000);
     color: #fff;
   }
   .field-checkin-cta--paused {
@@ -297,20 +297,33 @@
     <div class="field-header__greeting"><i class="bi bi-sun-fill text-warning me-1"></i><%= greeting %>,</div>
     <h1 class="field-header__name"><%= @admin_user.name.presence || @admin_user.email %></h1>
   </div>
-  <%= button_to destroy_admin_user_session_path, method: :delete, class: "field-logout", title: "Sair" do %>
-    <i class="bi bi-box-arrow-right"></i>
-  <% end %>
+  <div class="field-header__actions">
+    <% field_dark_theme = current_admin_user.admin_dark_mode? %>
+    <%= button_to admin_theme_preference_path,
+          method: :patch,
+          params: { admin_user: { admin_theme_mode: field_dark_theme ? "light" : "dark" } },
+          class: "field-theme-toggle",
+          form: { data: { controller: "theme-preference", action: "submit->theme-preference#submit" } },
+          title: field_dark_theme ? "Usar tema claro" : "Usar tema escuro",
+          role: "switch",
+          aria: { checked: field_dark_theme.to_s, label: "Alternar tema escuro" } do %>
+      <i class="bi <%= field_dark_theme ? 'bi-sun' : 'bi-moon-stars' %>"></i>
+    <% end %>
+    <%= button_to destroy_admin_user_session_path, method: :delete, class: "field-logout", title: "Sair" do %>
+      <i class="bi bi-box-arrow-right"></i>
+    <% end %>
+  </div>
 </div>
 
 <%# Multi-conta no PWA: mesma regra do admin — SÓ Admin de Contas alterna. %>
 <% if (@admin_user.login_identity.tenant_owner? rescue false) %>
   <% accounts = (@admin_user.switchable_accounts rescue []) %>
   <% if accounts.size > 1 %>
-    <section style="margin:0 0 10px;background:#fff;border:1px solid #e6e8eb;border-radius:10px;padding:10px 12px;">
-      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#697586;margin-bottom:6px;">
+    <section class="field-account-switcher">
+      <div class="field-account-switcher__title">
         <i class="bi bi-arrow-left-right"></i> Minhas contas
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      <div class="field-account-switcher__items">
         <% accounts.each do |entry| %>
           <% if entry[:admin_user].id == @admin_user.id %>
             <span class="ax-badge ax-badge--blue"><i class="bi bi-check2"></i> <%= entry[:tenant].name %></span>
@@ -473,6 +486,21 @@
   <% end %>
 </div>
 
+<% if @recent_property_interest_events.any? %>
+  <section class="field-panel">
+    <div class="field-panel__header"><h2 class="field-panel__title"><i class="bi bi-heart text-danger me-1"></i><%= @ai_property_search_setting.ai_property_search_broker_panel_title %></h2></div>
+    <div class="field-panel__body field-priority-list">
+      <% @recent_property_interest_events.each do |event| %>
+        <%= link_to admin_lead_path(event.lead), class: "field-priority" do %>
+          <span class="field-priority__icon bg-danger-subtle text-danger"><i class="bi bi-heart-fill"></i></span>
+          <span class="field-priority__copy"><span class="field-priority__title"><%= @ai_property_search_setting.ai_property_search_message(:ai_property_search_broker_event_message, name: event.lead.display_name) %></span><span class="field-priority__desc"><%= @ai_property_search_setting.ai_property_search_message(:ai_property_search_broker_event_meta, count: event.lead.property_interests.count) %> · <%= time_ago_in_words(event.created_at) %></span></span>
+          <i class="bi bi-chevron-right field-priority__chevron"></i>
+        <% end %>
+      <% end %>
+    </div>
+  </section>
+<% end %>
+
 <% if @recent_my_leads.any? %>
   <section class="field-panel">
     <div class="field-panel__header">
@@ -491,7 +519,7 @@
               <div class="min-w-0">
                 <%= link_to lead.display_name, admin_lead_path(lead), class: "field-lead__name" %>
                 <div class="field-lead__meta">
-                  <span><i class="bi bi-circle-fill text-<%= Lead.status_badge_class(lead.status) %> me-1" style="font-size:.45rem;"></i><%= lead.status.presence || Lead.default_status %></span>
+                  <span><i class="bi bi-circle-fill text-<%= Lead.status_badge_class(lead.status) %> me-1 field-lead__status-dot"></i><%= lead.status.presence || Lead.default_status %></span>
                   <span><i class="bi bi-bullseye me-1"></i><%= lead.origin.presence || "Origem não informada" %></span>
                   <% if property %>
                     <span><i class="bi bi-house-door me-1"></i><%= property.codigo.presence || property.titulo_anuncio %></span>

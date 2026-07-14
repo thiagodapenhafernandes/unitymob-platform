@@ -1,17 +1,23 @@
 <div class="property-settings-workspace" data-controller="watermark-preview">
-  <header class="property-settings-header">
-    <div>
-      <span class="property-settings-header__eyebrow">Configuração de imóveis</span>
-      <h1 class="ax-page-title">Mídia e marca d'água</h1>
-      <p class="ax-page-subtitle">Defina como a identidade da conta será aplicada às novas fotos dos imóveis.</p>
-    </div>
-    <div class="property-settings-header__status">
-      <%= ax_badge(@property_setting.watermark_image.attached? ? "Marca configurada" : "Sem marca", tone: @property_setting.watermark_image.attached? ? :green : :gray) %>
-      <%= link_to review_workflow_admin_property_setting_path, class: "ax-btn ax-btn--sm" do %>
-        <i class="bi bi-diagram-3 ax-ico"></i><span>Fluxo de revisão</span>
-      <% end %>
-    </div>
-  </header>
+  <%= ax_workspace_heading(
+        eyebrow: "Configuração de imóveis",
+        icon: "building-gear",
+        title: "Configurações de imóveis",
+        subtitle: "Centralize mídia, revisão e busca inteligente do portfólio da conta.",
+        actions: safe_join([
+          ax_badge(
+            @property_setting.watermark_image.attached? ? "Marca configurada" : "Sem marca",
+            tone: @property_setting.watermark_image.attached? ? :green : :gray
+          ),
+          ax_button(
+            "Fluxo de revisão",
+            review_workflow_admin_property_setting_path,
+            variant: :ghost,
+            size: :sm,
+            icon: "diagram-3"
+          )
+        ])
+      ) %>
 
   <%= form_with model: @property_setting,
         url: admin_property_setting_path,
@@ -19,6 +25,14 @@
         html: { multipart: true },
         class: "property-settings-form" do |f| %>
     <%= ax_error_summary(@property_setting) if @property_setting.errors.any? %>
+
+    <ul class="ax-form-tabs" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#property-settings-tab-content">
+      <li><button class="ax-form-tabs__item active" id="property-settings-media-tab" type="button" role="tab" aria-controls="property-settings-media" aria-selected="true" tabindex="0" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-media" data-action="click->ax-tabs#select"><i class="bi bi-image" aria-hidden="true"></i> Mídia e marca d'água</button></li>
+      <li><button class="ax-form-tabs__item" id="property-settings-ai-search-tab" type="button" role="tab" aria-controls="property-settings-ai-search" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#property-settings-ai-search" data-action="click->ax-tabs#select"><i class="bi bi-stars" aria-hidden="true"></i> Busca Inteligente por IA</button></li>
+    </ul>
+
+    <div class="ax-form-tabs__panels" id="property-settings-tab-content">
+      <section class="ax-form-tabs__panel" id="property-settings-media" role="tabpanel" aria-labelledby="property-settings-media-tab" aria-hidden="false" tabindex="0">
 
     <div class="property-settings-layout">
       <main class="property-settings-main">
@@ -28,19 +42,16 @@
               actions: ax_badge("novas fotos", tone: :blue)
             ) do %>
           <div class="property-settings-fields">
-            <div class="property-settings-upload">
-              <%= ax_field_label(
-                    f,
-                    :watermark_image,
-                    text: "Imagem da marca d'água",
-                    tooltip: "Use preferencialmente PNG transparente. JPEG e WebP também são aceitos."
-                  ) %>
-              <%= f.file_field :watermark_image,
-                    class: "ax-control",
-                    accept: "image/png,image/jpeg,image/webp",
-                    data: { action: "change->watermark-preview#loadFile", watermark_preview_target: "fileInput" } %>
-              <small class="ax-field__hint">PNG transparente oferece o melhor resultado sobre fotos claras e escuras.</small>
-            </div>
+            <%= ax_file_field(
+                  form: f,
+                  method: :watermark_image,
+                  label: "Imagem da marca d'água",
+                  tooltip: "Use preferencialmente PNG transparente. JPEG e WebP também são aceitos.",
+                  hint: "PNG transparente oferece o melhor resultado sobre fotos claras e escuras.",
+                  accept: "image/png,image/jpeg,image/webp",
+                  button_label: "Escolher marca",
+                  data: { action: "change->watermark-preview#loadFile", watermark_preview_target: "fileInput" }
+                ) %>
 
             <% if @property_setting.watermark_image.attached? %>
               <div class="property-settings-current-file">
@@ -52,53 +63,53 @@
                   <strong><%= @property_setting.watermark_image.filename %></strong>
                   <small><%= number_to_human_size(@property_setting.watermark_image.byte_size) %></small>
                 </div>
-                <label class="property-settings-remove-file">
-                  <%= check_box_tag "property_setting[remove_watermark_image]", "1", false, id: "property_setting_remove_watermark_image" %>
-                  <span>Remover imagem atual</span>
-                </label>
+                <%= ax_check_field(
+                      name: "property_setting[remove_watermark_image]",
+                      value: "1",
+                      id: "property_setting_remove_watermark_image",
+                      label: "Remover imagem atual",
+                      class_name: "property-settings-remove-file"
+                    ) %>
               </div>
             <% end %>
 
-            <fieldset class="property-settings-fieldset">
-              <legend>Posição padrão</legend>
-              <div class="property-settings-position-grid">
-                <% PropertySetting::WATERMARK_POSITIONS.each do |value, label| %>
-                  <label class="property-settings-position-option">
-                    <%= f.radio_button :watermark_position,
-                          value,
-                          data: { action: "watermark-preview#update", watermark_preview_target: "positionInput" } %>
-                    <span><i class="bi bi-bounding-box-circles"></i><%= label %></span>
-                  </label>
-                <% end %>
-              </div>
-            </fieldset>
+            <%= ax_radio_group(
+                  form: f,
+                  method: :watermark_position,
+                  label: "Posição padrão",
+                  choices: PropertySetting::WATERMARK_POSITIONS.map { |value, label| [label, value] },
+                  class_name: "property-settings-position-grid",
+                  input_data: { action: "watermark-preview#update", watermark_preview_target: "positionInput" }
+                ) %>
 
             <div class="property-settings-range-grid">
-              <label class="property-settings-range">
-                <span>
-                  <strong>Tamanho da marca</strong>
-                  <output data-watermark-preview-target="sizeValue"><%= @property_setting.watermark_size_percentage %>%</output>
-                </span>
-                <%= f.range_field :watermark_size_percentage,
-                      min: PropertySetting::WATERMARK_SIZE_RANGE.begin,
-                      max: PropertySetting::WATERMARK_SIZE_RANGE.end,
-                      step: 1,
-                      data: { action: "input->watermark-preview#update", watermark_preview_target: "sizeInput" } %>
-                <small>Proporção ocupada sobre a largura da foto.</small>
-              </label>
+              <%= ax_range_field(
+                    form: f,
+                    method: :watermark_size_percentage,
+                    label: "Tamanho da marca",
+                    value: @property_setting.watermark_size_percentage,
+                    suffix: "%",
+                    hint: "Proporção ocupada sobre a largura da foto.",
+                    min: PropertySetting::WATERMARK_SIZE_RANGE.begin,
+                    max: PropertySetting::WATERMARK_SIZE_RANGE.end,
+                    step: 1,
+                    input_data: { action: "input->watermark-preview#update", watermark_preview_target: "sizeInput" },
+                    output_data: { watermark_preview_target: "sizeValue" }
+                  ) %>
 
-              <label class="property-settings-range">
-                <span>
-                  <strong>Opacidade da marca</strong>
-                  <output data-watermark-preview-target="opacityValue"><%= @property_setting.watermark_opacity_percentage %>%</output>
-                </span>
-                <%= f.range_field :watermark_opacity_percentage,
-                      min: PropertySetting::WATERMARK_OPACITY_RANGE.begin,
-                      max: PropertySetting::WATERMARK_OPACITY_RANGE.end,
-                      step: 1,
-                      data: { action: "input->watermark-preview#update", watermark_preview_target: "opacityInput" } %>
-                <small>Equilibre legibilidade e preservação da imagem.</small>
-              </label>
+              <%= ax_range_field(
+                    form: f,
+                    method: :watermark_opacity_percentage,
+                    label: "Opacidade da marca",
+                    value: @property_setting.watermark_opacity_percentage,
+                    suffix: "%",
+                    hint: "Equilibre legibilidade e preservação da imagem.",
+                    min: PropertySetting::WATERMARK_OPACITY_RANGE.begin,
+                    max: PropertySetting::WATERMARK_OPACITY_RANGE.end,
+                    step: 1,
+                    input_data: { action: "input->watermark-preview#update", watermark_preview_target: "opacityInput" },
+                    output_data: { watermark_preview_target: "opacityValue" }
+                  ) %>
             </div>
           </div>
         <% end %>
@@ -129,8 +140,7 @@
           <i class="bi bi-eye"></i>
         </div>
         <div class="property-settings-preview-frame"
-             data-watermark-preview-target="frame"
-             style="--watermark-size: <%= @property_setting.watermark_size_percentage %>%; --watermark-opacity: <%= @property_setting.watermark_opacity_percentage.to_f / 100 %>;">
+             data-watermark-preview-target="frame">
           <div class="property-settings-preview-photo"></div>
           <% logo_class = "property-settings-preview-logo watermark-position-#{@property_setting.watermark_position}" %>
           <% logo_class = "#{logo_class} tw-hidden" unless @property_setting.watermark_image.attached? %>
@@ -157,9 +167,185 @@
         </div>
       </aside>
     </div>
+      </section>
+
+      <section class="ax-form-tabs__panel" id="property-settings-ai-search" role="tabpanel" aria-labelledby="property-settings-ai-search-tab" aria-hidden="true" tabindex="0" hidden>
+        <div class="property-settings-ai-grid">
+          <%= ax_panel(title: "Busca Inteligente de Imóveis por IA", subtitle: "A IA interpreta a intenção; somente o backend autorizado consulta o portfólio.", actions: ax_badge("tenant", tone: :blue), class_name: "property-settings-ai-panel property-settings-ai-panel--search") do %>
+            <div class="property-settings-ai-search-groups">
+              <%= ax_field_group(title: "Recursos da busca", token: "Comportamento", class_name: "property-settings-ai-search-group") do %>
+                <div class="property-settings-ai-switches">
+                  <%= ax_toggle_chip(f, :ai_property_search_enabled, label: "Ativar busca inteligente") %>
+                  <%= ax_toggle_chip(f, :voice_property_search_enabled, label: "Exibir gravação por voz no PWA") %>
+                  <%= ax_toggle_chip(f, :ai_property_search_allow_flexible_results, label: "Sugerir alternativas após busca sem resultados") %>
+                  <small class="ax-field__hint">Ligado por padrão. Quando desativado, a busca só retorna resultado exato.</small>
+                  <%= ax_toggle_chip(f, :ai_property_search_resilient_search_enabled, label: "Busca resiliente (sempre tentar alternativas)") %>
+                  <small class="ax-field__hint">Relaxa características, empreendimento, bairro, quantidades e preço de forma combinada, sempre mantendo cidade, tipo de imóvel e finalidade.</small>
+                  <%= ax_toggle_chip(f, :ai_property_search_transcription_vocabulary_enabled, label: "Vocabulário do catálogo na transcrição de áudio") %>
+                  <small class="ax-field__hint">Envia cidades, bairros e empreendimentos da conta para a transcrição reconhecer nomes falados com mais exatidão.</small>
+                  <%= ax_toggle_chip(f, :ai_property_search_history_enabled, label: "Registrar histórico operacional") %>
+                  <%= ax_toggle_chip(f, :ai_property_search_development_name_enabled, label: "Buscar pelo nome do empreendimento") %>
+                  <%= ax_toggle_chip(f, :ai_property_search_developer_name_enabled, label: "Buscar por incorporadora") %>
+                  <%= ax_toggle_chip(f, :ai_property_search_development_aliases_enabled, label: "Considerar aliases comerciais") %>
+                  <%= ax_toggle_chip(f, :ai_property_search_fuzzy_matching_enabled, label: "Aceitar nomes aproximados") %>
+                  <%= ax_toggle_chip(f, :ai_property_search_search_by_characteristics_enabled, label: "Identificar por características") %>
+                </div>
+              <% end %>
+
+              <%= ax_field_group(title: "Interpretação e mensagens", token: "IA", class_name: "property-settings-ai-search-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(
+                        form: f,
+                        method: :ai_property_search_instructions,
+                        type: :textarea,
+                        label: "Instrução principal da IA",
+                        hint: "Instrução operacional por tenant. Ex.: “entre R$ 1,5 milhão e R$ 2 milhões” deve virar faixa mínima e máxima; “apartment” deve ser normalizado para “Apartamento”. A IA também recebe um JSON seguro do catálogo preparado pelo backend para reconhecer nomes, bairros, cidades e empreendimentos. Não inclua credenciais, SQL ou dados sensíveis. A allowlist abaixo prevalece sobre o texto.",
+                        class_name: "ax-span-12",
+                        rows: 7
+                      ) %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_welcome_message, label: "Mensagem inicial", class_name: "ax-span-12") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_processing_message, label: "Mensagem durante o processamento", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_no_results_message, label: "Mensagem sem resultados", class_name: "ax-span-6") %>
+                </div>
+              <% end %>
+
+              <%= ax_field_group(title: "Consulta e limites", token: "Execução", class_name: "property-settings-ai-search-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_select_field(form: f, method: :ai_property_search_data_source, label: "Fonte de dados", choices: PropertySetting::AI_PROPERTY_SEARCH_DATA_SOURCES.map { |value| [value.humanize, value] }, class_name: "ax-span-4") %>
+                  <%= ax_select_field(form: f, method: :ai_property_search_default_sort, label: "Ordenação padrão", choices: PropertySetting::AI_PROPERTY_SEARCH_SORTS.map { |value| [value.humanize, value] }, class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_language, label: "Idioma", class_name: "ax-span-4", placeholder: "pt-BR") %>
+                </div>
+                <div class="property-settings-ai-metrics">
+                  <%= ax_number_field(form: f, method: :ai_property_search_max_results, label: "Máximo de resultados", min: 1, max: 100) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_price_tolerance_percentage, label: "Tolerância de preço (%)", hint: "Aplicada para mais no máximo e para menos no mínimo pedidos.", min: 0, max: 30) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_max_audio_duration_seconds, label: "Áudio máximo (segundos)", min: 5, max: 180) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_history_retention_days, label: "Retenção do histórico (dias)", min: 1, max: 365) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_fuzzy_similarity_threshold, label: "Similaridade mínima", hint: "0,30 equilibra variações e falsos positivos.", min: 0.1, max: 1, step: 0.05) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_location_fuzzy_threshold, label: "Similaridade mínima de localização", hint: "0,40 é mais conservador para cidades e bairros.", min: 0.1, max: 1, step: 0.05) %>
+                </div>
+              <% end %>
+
+              <%= ax_field_group(title: "Profundidade do contexto do catálogo", token: "JSON", class_name: "property-settings-ai-search-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_number_field(form: f, method: :ai_property_search_catalog_property_types_limit, label: "Tipos de imóvel no contexto", hint: "Padrão atual: 12.", class_name: "ax-span-4", min: 1, max: 50) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_catalog_cities_limit, label: "Cidades no contexto", hint: "Padrão atual: 12.", class_name: "ax-span-4", min: 1, max: 50) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_catalog_neighborhoods_limit, label: "Bairros no contexto", hint: "Padrão atual: 18.", class_name: "ax-span-4", min: 1, max: 80) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_catalog_developments_limit, label: "Empreendimentos no contexto", hint: "Padrão atual: 12.", class_name: "ax-span-4", min: 1, max: 50) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_catalog_feature_terms_limit, label: "Características e lazer", hint: "Padrão atual: 20.", class_name: "ax-span-4", min: 1, max: 100) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_catalog_alias_names_limit, label: "Aliases por empreendimento", hint: "Padrão atual: 5.", class_name: "ax-span-4", min: 1, max: 20) %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <%= ax_panel(title: "Campos e acesso autorizados", subtitle: "Tudo que não estiver selecionado será removido antes da consulta e da resposta.", class_name: "property-settings-ai-panel property-settings-ai-panel--access") do %>
+            <fieldset class="property-settings-ai-options"><legend>Campos permitidos para busca</legend><div class="ax-chip-grid"><%= f.collection_check_boxes :ai_property_search_allowed_fields, PropertySetting::AI_PROPERTY_SEARCH_FIELD_OPTIONS.to_a, :first, :last do |item| %><%= item.label(class: "ax-toggle-chip") { item.check_box + tag.span(item.text) } %><% end %></div></fieldset>
+            <fieldset class="property-settings-ai-options"><legend>Campos visíveis nos cards</legend><div class="ax-chip-grid"><%= f.collection_check_boxes :ai_property_search_result_fields, PropertySetting::AI_PROPERTY_SEARCH_RESULT_FIELD_OPTIONS.to_a, :first, :last do |item| %><%= item.label(class: "ax-toggle-chip") { item.check_box + tag.span(item.text) } %><% end %></div></fieldset>
+            <fieldset class="property-settings-ai-options"><legend>Disponibilidade por perfil</legend><div class="ax-chip-grid"><%= f.collection_check_boxes :ai_property_search_allowed_profiles, PropertySetting::AI_PROPERTY_SEARCH_PROFILE_OPTIONS.to_a, :first, :last do |item| %><%= item.label(class: "ax-toggle-chip") { item.check_box + tag.span(item.text) } %><% end %></div></fieldset>
+            <%= ax_inline_notice(tone: :info, icon: "shield-lock", compact: true) do %>
+              O áudio original não é persistido. O histórico guarda apenas transcrição, filtros, contagem e tempos quando ativado.
+            <% end %>
+          <% end %>
+
+          <%= ax_panel(title: "Aliases de empreendimentos", subtitle: "Cadastre nomes comerciais e variações usadas pelos corretores.", class_name: "property-settings-ai-panel property-settings-ai-panel--aliases") do %>
+            <div class="property-settings-ai-fields">
+              <%= ax_standalone_select_field(
+                    name: :development_id,
+                    id: "development_id",
+                    label: "Empreendimento",
+                    choices: @ai_search_developments.map { |item| [item.nome_empreendimento.presence || item.titulo_anuncio.presence || item.codigo, item.id] },
+                    include_blank: "Selecione",
+                    class_name: "ax-span-5"
+                  ) %>
+              <%= ax_standalone_field(
+                    name: :names,
+                    id: "development_alias_names",
+                    label: "Nomes alternativos",
+                    type: :textarea,
+                    class_name: "ax-span-7",
+                    rows: 2,
+                    placeholder: "Reserva Parque; Residencial Reserva do Parque"
+                  ) %>
+            </div>
+            <div class="property-settings-alias-form">
+              <button type="submit" name="_method" value="post" formaction="<%= admin_development_aliases_path %>" formmethod="post" class="ax-btn ax-btn--primary ax-btn--sm"><i class="bi bi-plus-lg"></i> Adicionar aliases</button>
+            </div>
+            <div class="property-settings-alias-list">
+              <% @development_aliases.each do |alias_record| %>
+                <div class="property-settings-alias-item">
+                  <span><strong><%= alias_record.name %></strong><small><%= alias_record.development.nome_empreendimento.presence || alias_record.development.titulo_anuncio %></small></span>
+                  <%= ax_icon_button label: "Remover alias #{alias_record.name}", icon: "trash", url: admin_development_alias_path(alias_record), data: { turbo_method: :delete } %>
+                </div>
+              <% end %>
+              <% if @development_aliases.empty? %>
+                <%= ax_empty_state(
+                      title: "Nenhum alias cadastrado",
+                      description: "Adicione nomes comerciais para ampliar o reconhecimento das buscas.",
+                      icon: "tags",
+                      compact: true
+                    ) %>
+              <% end %>
+            </div>
+          <% end %>
+
+          <%= ax_panel(title: "Compartilhamento e conversão", subtitle: "Configure a seleção enviada pelo corretor, identificação do visitante e mensagens operacionais.", class_name: "property-settings-ai-panel property-settings-ai-panel--sharing") do %>
+            <div class="property-settings-ai-switches"><%= ax_toggle_chip(f, :ai_property_search_sharing_enabled, label: "Permitir compartilhar seleções") %></div>
+            <div class="property-settings-sharing-groups">
+              <%= ax_field_group(title: "Seleção e validade", token: "Compartilhamento", class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_number_field(form: f, method: :ai_property_search_share_max_properties, label: "Máximo de imóveis por seleção", class_name: "ax-span-4", min: 1, max: 100) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_share_expiration_days, label: "Validade do link (dias)", class_name: "ax-span-4", min: 1, max: 365) %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_visitor_recognition_days, label: "Reconhecer visitante por (dias)", class_name: "ax-span-4", min: 1, max: 730) %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_title, label: "Título ao compartilhar", class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_message, label: "Mensagem ao compartilhar", hint: "Use %{count} para a quantidade.", class_name: "ax-span-8") %>
+                </div>
+              <% end %>
+
+              <%= ax_field_group(title: "Página pública", token: "Conteúdo", class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_public_eyebrow, label: "Chamada da página pública", class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_public_title, label: "Título da página pública", hint: "Use %{count} para a quantidade.", class_name: "ax-span-8") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_public_description, label: "Descrição da página pública", class_name: "ax-span-12") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_view_property_label, label: "Botão para visualizar", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_interest_button_label, label: "Botão de interesse", class_name: "ax-span-6") %>
+                </div>
+              <% end %>
+
+              <%= ax_field_group(title: "Identificação e lead", token: "Conversão", class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_title, label: "Título da identificação", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_description, label: "Texto da identificação", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_name_label, label: "Campo nome", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_phone_label, label: "Campo telefone", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_submit_label, label: "Confirmar identificação", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_identity_cancel_label, label: "Cancelar identificação", class_name: "ax-span-3") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_interest_success_message, label: "Mensagem de interesse registrado", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_lead_origin, label: "Origem do lead", class_name: "ax-span-6") %>
+                </div>
+              <% end %>
+
+              <%= ax_field_group(title: "Mensagens operacionais", token: "Corretor", class_name: "property-settings-sharing-group") do %>
+                <div class="property-settings-ai-fields">
+                  <%= ax_text_field(form: f, method: :ai_property_search_broker_panel_title, label: "Título do bloco do corretor", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_broker_event_message, label: "Mensagem do interesse", hint: "Use %{name} para o nome do lead.", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_selection_count_message, label: "Contador da seleção", hint: "Use %{count}.", class_name: "ax-span-4") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_button_label, label: "Botão compartilhar", class_name: "ax-span-4") %>
+                  <%= ax_number_field(form: f, method: :ai_property_search_broker_events_limit, label: "Máximo de avisos ao corretor", class_name: "ax-span-4", min: 1, max: 20) %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_link_copied_message, label: "Link copiado", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_sharing_disabled_message, label: "Compartilhamento desativado", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_share_error_message, label: "Erro ao compartilhar", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_interest_error_message, label: "Erro ao registrar interesse", class_name: "ax-span-6") %>
+                  <%= ax_text_field(form: f, method: :ai_property_search_broker_event_meta, label: "Resumo agrupado ao corretor", hint: "Use %{count}.", class_name: "ax-span-12") %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </section>
+    </div>
 
     <%= ax_sticky_action_footer(
-          meta: safe_join([tag.i(class: "bi bi-shield-check"), tag.span("Configuração global de mídia da conta")], " "),
+          meta: safe_join([tag.i(class: "bi bi-shield-check"), tag.span("Configuração isolada por conta")], " "),
           class_name: "property-settings-action-footer"
         ) do %>
       <%= link_to "Cancelar", admin_root_path, class: "ax-btn" %>

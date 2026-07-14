@@ -13,7 +13,7 @@
           <% on = assigned_ids.include?(label.id) %>
           <button type="button"
                   class="lead-labels__chip <%= label.custom_color? ? 'lead-labels__chip--custom' : "lead-labels__chip--#{label.color}" %> <%= 'is-on' if on %>"
-                  style="--label-color: <%= lead_label_css_color(label.color) %>"
+                  data-label-color="<%= lead_label_css_color(label.color) %>"
                   data-action="lead-labels#toggle"
                   data-url="<%= toggle_admin_lead_lead_label_path(lead, label) %>"
                   aria-pressed="<%= on %>">

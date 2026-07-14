@@ -9,6 +9,7 @@
             class: chip_classes,
             role: "switch",
             "aria-checked": checked.to_s,
+            "aria-label": (checked ? "Não incluir registros da equipe" : "Incluir registros da equipe"),
             title: "Inclui os registros da sua equipe (subárvore de gestão)" do %>
   <span class="ax-toggle-chip__box" aria-hidden="true"><i class="bi bi-<%= icon %>"></i></span>
   <span class="ax-toggle-chip__label"><%= label %></span>

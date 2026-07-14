@@ -668,7 +668,7 @@ export default class extends Controller {
     event.stopPropagation()
 
     const button = event.currentTarget
-    const tile = button.closest('.media-photo-tile')
+    const tile = this.siteToggleTile(button)
     if (!tile || button.disabled) return
 
     const previousHidden = tile.dataset.siteHidden === "true"
@@ -689,7 +689,7 @@ export default class extends Controller {
     this.setSiteToggleButton(button, hidden)
     try {
       await this.syncVisibility()
-      this.showTransientFeedback(hidden ? "Foto removida do site." : "Foto liberada no site.")
+      this.notifySiteVisibility(hidden)
     } catch (_error) {
       tile.dataset.siteHidden = previousHidden ? "true" : "false"
       tile.classList.toggle('is-site-hidden', previousHidden)
@@ -708,7 +708,7 @@ export default class extends Controller {
 
   syncSiteVisibilityControls() {
     this.element.querySelectorAll(".media-photo-site-toggle").forEach((button) => {
-      const tile = button.closest(".media-photo-tile")
+      const tile = this.siteToggleTile(button)
       if (!tile) return
 
       this.setSiteToggleButton(button, tile.dataset.siteHidden === "true")
@@ -898,11 +898,28 @@ export default class extends Controller {
     input.value = nextValues.join(',')
   }
 
+  // O toggle vive no footer do tile (irmao do frame .media-photo-tile),
+  // entao o closest() precisa subir ate o item da grade antes de descer.
+  siteToggleTile(button) {
+    return button.closest('.media-photo-tile') ||
+      button.closest('.ax-media-grid__item')?.querySelector('.media-photo-tile')
+  }
+
+  notifySiteVisibility(hidden) {
+    const message = hidden ? "Foto despublicada do site." : "Foto publicada no site."
+    if (window.axToast) {
+      window.axToast({ message, type: hidden ? "info" : "success", timeout: 2400 })
+    } else {
+      this.showTransientFeedback(message)
+    }
+  }
+
   setSiteToggleButton(button, hidden) {
     button.classList.toggle('ax-media-action--published', !hidden)
     button.classList.toggle('ax-media-action--neutral', hidden)
     button.title = hidden ? 'Foto interna, fora do site' : 'Foto publicada no site'
     button.setAttribute('aria-label', button.title)
+    button.setAttribute('aria-pressed', hidden ? 'false' : 'true')
 
     const icon = button.querySelector('i')
     if (icon) {
@@ -910,8 +927,6 @@ export default class extends Controller {
       icon.classList.toggle('bi-eye-slash', hidden)
     }
 
-    const label = button.querySelector('span')
-    if (label) label.textContent = hidden ? 'Fora do site' : 'No site'
   }
 
   nextNewFileId() {

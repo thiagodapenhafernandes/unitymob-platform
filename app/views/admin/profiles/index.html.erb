@@ -1,94 +1,88 @@
-<%# Perfis de Acesso — listagem. A ação "Novo perfil" vem da contextbar global. %>
-<header class="ax-dashboard-command ax-property-form-command">
-  <div class="ax-dashboard-command__main">
-    <span class="ax-dashboard-command__eyebrow">Administração</span>
-    <h1>Perfis de acesso</h1>
-    <p>Gerencie hierarquia vertical, funções horizontais, permissões e escopos operacionais.</p>
-  </div>
-  <div class="ax-dashboard-command__status">
-    <%= ax_badge("#{@vertical_profiles.size} verticais", tone: :blue) %>
-    <%= ax_badge("#{@horizontal_profiles.size} horizontais", tone: :gray) %>
-  </div>
-</header>
+<div class="profiles-admin">
+  <%= ax_workspace_heading(
+        eyebrow: "Administração · Acesso",
+        icon: "shield-lock",
+        title: "Perfis de acesso",
+        subtitle: "Gerencie hierarquia vertical, funções horizontais, permissões e escopos operacionais.",
+        metrics: [
+          { value: @vertical_profiles.size, label: "verticais" },
+          { value: @horizontal_profiles.size, label: "horizontais" }
+        ]
+      ) %>
 
-<div style="margin-top:12px">
-  <%= ax_inline_notice(tone: :info, icon: "diagram-3") do %>
-    <strong>Hierarquia dinâmica:</strong> os níveis de gestão vêm dos <strong>perfis verticais</strong> desta tela (nada é fixo por nome de perfil).
-    Ao criar um perfil acima dos corretores, todos os usuários abaixo <strong>precisam ser vinculados a um gestor</strong> —
+  <%= ax_inline_notice(tone: :info, icon: "diagram-3", class_name: "tw-mb-3") do %>
+    <strong>Hierarquia dinâmica:</strong> os níveis de gestão vêm dos <strong>perfis verticais</strong> desta tela.
+    Ao criar um perfil acima dos corretores, todos os usuários abaixo <strong>precisam ser vinculados a um gestor</strong>;
     quem ficar sem vínculo sai da hierarquia e <strong>não aparece para seleção nas regras de distribuição</strong>.
   <% end %>
-</div>
 
-<div class="ax-table-wrap" style="margin-top:12px">
-  <table class="ax-table">
-    <thead>
-      <tr>
-        <th>Nome do Perfil</th>
-        <th style="width:180px">Submetido a</th>
-        <th style="width:130px">Eixo</th>
-        <th style="width:180px">Vinculado a</th>
-        <th class="ax-num" style="width:110px">Usuários</th>
-        <th style="width:96px">Status</th>
-        <th class="ax-num" style="width:90px">Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @ordered_profiles.each do |profile| %>
-        <tr>
-          <td class="ax-strong">
-            <%= profile.name %>
-            <% if profile.locked? %><span class="ax-badge ax-badge--gray">fixo</span><% end %>
-          </td>
-          <td>
+  <%= ax_operational_panel(eyebrow: "Governança", title: "Hierarquia e funções") do %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <caption class="tw-sr-only">Perfis verticais e horizontais da conta atual</caption>
+        <thead>
+          <tr>
+            <th scope="col">Nome do perfil</th>
+            <th scope="col" class="ax-table__col--w-180">Submetido a</th>
+            <th scope="col" class="ax-table__col--w-130">Eixo</th>
+            <th scope="col" class="ax-table__col--w-180">Vinculado a</th>
+            <th scope="col" class="ax-num ax-table__col--md">Usuários</th>
+            <th scope="col" class="ax-table__col--sm">Status</th>
+            <th scope="col" class="ax-num ax-table__col--compact">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @ordered_profiles.each do |profile| %>
             <% superior = @superior_profile[profile.id] %>
-            <% if superior %>
-              <span class="ax-badge <%= profile.horizontal? ? 'ax-badge--purple' : 'ax-badge--blue' %>">
-                <i class="bi bi-arrow-right"></i>
-                <%= superior.name %>
-                <% unless profile.horizontal? %>
-                  <%# vertical: seta "sobe" no fim, espelhada (haste à direita) %>
-                  <i class="bi bi-arrow-90deg-up" style="display:inline-block;transform:scaleX(-1)"></i>
+            <% users_count = @users_count_by_profile_id.fetch(profile.id, 0) %>
+            <tr>
+              <td class="ax-strong">
+                <span class="tw-inline-flex tw-items-center tw-gap-2">
+                  <%= profile.name %>
+                  <%= ax_badge("fixo", tone: :gray) if profile.locked? %>
+                </span>
+              </td>
+              <td>
+                <% if superior %>
+                  <%= ax_badge("→ #{superior.name}", tone: profile.horizontal? ? :purple : :blue) %>
+                <% else %>
+                  <span class="ax-muted">Topo da hierarquia</span>
                 <% end %>
-              </span>
-            <% else %>
-              <span class="ax-muted">Topo da hierarquia</span>
-            <% end %>
-          </td>
-          <td>
-            <% if profile.vertical? %>
-              <span class="ax-badge ax-badge--blue">Vertical</span>
-            <% else %>
-              <span class="ax-badge ax-badge--purple">Horizontal</span>
-            <% end %>
-          </td>
-          <td><%= profile.horizontal? ? profile.vertical_profile&.name : "Hierarquia principal" %></td>
-          <td class="ax-num">
-            <span class="ax-badge ax-badge--gray">
-              <%= profile.vertical? ? profile.admin_users.where(tenant: current_tenant).count : current_tenant.admin_users.where(horizontal_profile_id: profile.id).count %>
-            </span>
-          </td>
-          <td>
-            <% if profile.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativo</span>
-            <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativo</span><% end %>
-          </td>
-          <td class="ax-num">
-            <span class="tw-inline-flex tw-gap-0.5">
-              <%= link_to edit_admin_profile_path(profile), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
-              <% unless profile.locked? %>
-                <%= button_to admin_profile_path(profile), method: :delete, form_class: "tw-inline", data: { turbo_confirm: "Tem certeza? Isso pode afetar o acesso dos usuários vinculados." }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
-              <% end %>
-            </span>
-          </td>
-        </tr>
-      <% end %>
+              </td>
+              <td><%= ax_badge(profile.vertical? ? "Vertical" : "Horizontal", tone: profile.vertical? ? :blue : :purple) %></td>
+              <td><%= profile.horizontal? ? profile.vertical_profile&.name : "Hierarquia principal" %></td>
+              <td class="ax-num"><%= ax_badge(users_count, tone: :gray) %></td>
+              <td><%= ax_badge(profile.active? ? "Ativo" : "Inativo", tone: profile.active? ? :green : :gray, dot: true) %></td>
+              <td class="ax-num">
+                <span class="tw-inline-flex tw-gap-0.5">
+                  <%= ax_icon_button(label: "Editar #{profile.name}", icon: "pencil", url: edit_admin_profile_path(profile)) %>
+                  <% unless profile.locked? %>
+                    <%= ax_icon_button(
+                          label: "Excluir #{profile.name}",
+                          icon: "trash",
+                          url: admin_profile_path(profile),
+                          variant: :danger,
+                          data: { turbo_method: :delete, turbo_confirm: "Tem certeza? Isso pode afetar o acesso dos usuários vinculados." }
+                        ) %>
+                  <% end %>
+                </span>
+              </td>
+            </tr>
+          <% end %>
 
-      <% if @profiles.empty? %>
-        <tr>
-          <td colspan="7">
-            <%= ax_empty_state(title: "Nenhum perfil cadastrado.", icon: "shield-lock") %>
-          </td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
+          <% if @profiles.empty? %>
+            <tr>
+              <td colspan="7">
+                <%= ax_empty_state(
+                      title: "Nenhum perfil cadastrado",
+                      description: "Crie um perfil vertical ou uma função horizontal pela barra de contexto.",
+                      icon: "shield-lock"
+                    ) %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
 </div>

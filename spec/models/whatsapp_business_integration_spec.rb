@@ -30,6 +30,21 @@ RSpec.describe WhatsappBusinessIntegration, type: :model do
     expect(integration.phone_for("sale")).to eq("554733111067")
   end
 
+  it "usa somente o telefone de contato do tenant da integracao como fallback" do
+    tenant = create(:admin_user).tenant
+    other_tenant = Tenant.create!(name: "Outro tenant WhatsApp", slug: "outro-whatsapp-#{SecureRandom.hex(4)}")
+    ContactSetting.create!(tenant: other_tenant, whatsapp_primary: "5547999999999")
+    ContactSetting.create!(tenant:, whatsapp_primary: "5547888888888")
+    integration = build(
+      :whatsapp_business_integration,
+      tenant:,
+      default_whatsapp_number: nil,
+      sale_whatsapp_number: nil
+    )
+
+    expect(integration.phone_for("sale")).to eq("5547888888888")
+  end
+
   it "controla se o formulario intermediario deve aparecer por negociacao" do
     integration = build(:whatsapp_business_integration, rent_requires_lead_form: false)
 

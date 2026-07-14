@@ -1,0 +1,77 @@
+/* Persistent form actions shared across admin workspaces. */
+.ax-sticky-action-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--ax-form-border-soft);
+  background: rgb(255 255 255 / .96);
+  box-shadow: 0 -8px 24px rgb(16 24 40 / .08);
+  backdrop-filter: blur(8px);
+}
+
+.ax-sticky-action-footer--static {
+  position: static;
+  box-shadow: none;
+}
+
+.ax-sticky-action-footer__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding-inline: 12px;
+}
+
+.ax-sticky-action-footer__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #697586;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.ax-sticky-action-footer__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+[data-admin-theme="dark"] .ax-sticky-action-footer {
+  border-color: var(--ax-dark-border-soft);
+  background: color-mix(in srgb, var(--ax-dark-surface) 96%, transparent);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / .22);
+}
+
+[data-admin-theme="dark"] .ax-sticky-action-footer__meta {
+  color: var(--ax-dark-text-muted);
+}
+
+@media (max-width: 639px) {
+  .ax-sticky-action-footer__inner {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    padding: 9px 10px;
+  }
+
+  .ax-sticky-action-footer__actions {
+    justify-content: flex-start;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .ax-sticky-action-footer__actions > * {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-sticky-action-footer { backdrop-filter: none; }
+}

@@ -5,6 +5,7 @@ export default class extends Controller {
     "step",
     "stepButton",
     "progress",
+    "progressTrack",
     "audienceCount",
     "audienceMeta",
     "audienceSample",
@@ -87,6 +88,29 @@ export default class extends Controller {
     if (!step) return
     if (step > this.currentStepValue && !this.validateCurrentStep()) return
     this.showStep(step)
+  }
+
+  navigateSteps(event) {
+    const keys = ["ArrowLeft", "ArrowRight", "Home", "End"]
+    if (!keys.includes(event.key)) return
+
+    event.preventDefault()
+    const buttons = this.stepButtonTargets
+    const currentIndex = buttons.indexOf(event.currentTarget)
+    if (currentIndex < 0) return
+
+    let nextIndex = currentIndex
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % buttons.length
+    if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + buttons.length) % buttons.length
+    if (event.key === "Home") nextIndex = 0
+    if (event.key === "End") nextIndex = buttons.length - 1
+
+    const nextButton = buttons[nextIndex]
+    const nextStep = Number(nextButton.dataset.step)
+    if (nextStep > this.currentStepValue && !this.validateCurrentStep()) return
+
+    this.showStep(nextStep)
+    nextButton.focus()
   }
 
   refreshReview() {
@@ -438,17 +462,21 @@ export default class extends Controller {
   showStep(step) {
     this.currentStepValue = step
     this.stepTargets.forEach((element) => {
-      element.hidden = Number(element.dataset.step) !== step
+      const active = Number(element.dataset.step) === step
+      element.hidden = !active
+      element.setAttribute("aria-hidden", active ? "false" : "true")
     })
     this.stepButtonTargets.forEach((button) => {
       const active = Number(button.dataset.step) === step
       button.classList.toggle("is-active", active)
-      button.setAttribute("aria-current", active ? "step" : "false")
+      button.setAttribute("aria-selected", active ? "true" : "false")
+      button.setAttribute("tabindex", active ? "0" : "-1")
     })
 
     if (this.hasProgressTarget && this.stepTargets.length > 0) {
       this.progressTarget.style.width = `${(step / this.stepTargets.length) * 100}%`
     }
+    if (this.hasProgressTrackTarget) this.progressTrackTarget.setAttribute("aria-valuenow", String(step))
 
     this.updateFooterActions()
     this.refreshReview()

@@ -1,0 +1,144 @@
+/* Shared composite control: prefix/suffix, controls, clearable fields and buttons. */
+.ax-input-group {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  isolation: isolate;
+}
+
+.ax-input-group > .ax-control,
+.ax-input-group > .form-control,
+.ax-input-group > .form-select,
+.ax-input-group > .ts-wrapper,
+.ax-input-group > .ax-clearable-control {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 1% !important;
+}
+
+.ax-input-group > :not(:first-child) {
+  margin-left: -1px;
+}
+
+.ax-input-group > .ax-control:not(:first-child),
+.ax-input-group > .form-control:not(:first-child),
+.ax-input-group > .form-select:not(:first-child),
+.ax-input-group > .ax-clearable-control:not(:first-child) .ax-control {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.ax-input-group > .ax-control:not(:last-child),
+.ax-input-group > .form-control:not(:last-child),
+.ax-input-group > .form-select:not(:last-child),
+.ax-input-group > .ax-clearable-control:not(:last-child) .ax-control {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.ax-input-group > .ax-control:focus,
+.ax-input-group > .form-control:focus,
+.ax-input-group > .form-select:focus,
+.ax-input-group > .ax-clearable-control:focus-within {
+  position: relative;
+  z-index: 2;
+}
+
+.ax-input-group__addon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: var(--ax-form-control-height);
+  min-height: var(--ax-form-control-height);
+  padding: 0 10px;
+  border: 1px solid var(--ax-field-border);
+  background: #f8fafc;
+  color: #697586;
+  font-weight: 760;
+  transition: border-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease),
+              background-color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease),
+              color var(--ax-motion-fast, 120ms) var(--ax-motion-ease, ease);
+}
+
+.ax-input-group--sm .ax-input-group__addon {
+  padding-inline: 8px;
+  font-size: 12px;
+}
+
+.ax-input-group:focus-within .ax-input-group__addon {
+  border-color: var(--ax-field-focus);
+}
+
+.ax-input-group:has(:disabled) .ax-input-group__addon,
+.ax-input-group:has([readonly]) .ax-input-group__addon {
+  border-color: var(--ax-border-soft, #d8dee8);
+  background: #f3f5f8;
+  color: #7b8493;
+}
+
+.ax-input-group__addon:first-child {
+  border-top-left-radius: var(--ax-form-control-radius);
+  border-bottom-left-radius: var(--ax-form-control-radius);
+  border-right: 0;
+}
+
+.ax-input-group__addon:last-child {
+  border-top-right-radius: var(--ax-form-control-radius);
+  border-bottom-right-radius: var(--ax-form-control-radius);
+  border-left: 0;
+}
+
+.ax-input-group__addon:not(:first-child):not(:last-child) {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+}
+
+.ax-input-group__icon--whatsapp {
+  color: #16a34a;
+}
+
+[data-admin-theme="dark"] :where(.ax-input-group__addon, .ax-input-group__prefix, .ax-input-group__suffix) {
+  border-color: var(--ax-dark-border) !important;
+  background: var(--ax-dark-surface-raised) !important;
+  color: var(--ax-dark-text-soft) !important;
+}
+
+[data-admin-theme="dark"] .ax-input-group__icon--whatsapp {
+  color: #4ade80;
+}
+
+[data-admin-theme="dark"] .ax-input-group:focus-within .ax-input-group__addon {
+  border-color: var(--ax-dark-focus-border) !important;
+  background: var(--ax-dark-focus-surface) !important;
+  color: var(--ax-dark-text) !important;
+}
+
+[data-admin-theme="dark"] .ax-input-group:has(:disabled) .ax-input-group__addon,
+[data-admin-theme="dark"] .ax-input-group:has([readonly]) .ax-input-group__addon {
+  border-color: var(--ax-dark-border) !important;
+  background: var(--ax-dark-surface) !important;
+  color: var(--ax-dark-text-muted) !important;
+}
+
+[data-admin-theme="dark"] .ax-input-group > .ax-btn.ax-btn--ghost {
+  border-color: var(--ax-dark-border) !important;
+  background: var(--ax-dark-surface-raised) !important;
+  color: #aebbd0 !important;
+  box-shadow: none !important;
+}
+
+[data-admin-theme="dark"] .ax-input-group > .ax-btn.ax-btn--ghost:hover,
+[data-admin-theme="dark"] .ax-input-group > .ax-btn.ax-btn--ghost:focus-visible {
+  border-color: var(--ax-dark-focus-border) !important;
+  background: var(--ax-dark-focus-surface) !important;
+  color: #fff !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-input-group__addon {
+    transition: none;
+  }
+}

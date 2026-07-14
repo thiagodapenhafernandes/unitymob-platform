@@ -1,0 +1,20 @@
+<%
+  field_classes = ["ax-field", "ax-range-field", class_name].compact.join(" ")
+  input_options = (options || {}).dup
+  input_options[:class] = ["ax-range-field__input", input_options[:class]].compact.join(" ")
+  input_options[:data] = input_data if input_data.present?
+%>
+
+<div class="<%= field_classes %>">
+  <div class="ax-range-field__header">
+    <%= ax_field_label(form, method, text: label) %>
+    <output class="ax-range-field__value"
+            for="<%= form.field_id(method) %>"
+            <%= tag.attributes(data: output_data) if output_data.present? %>><%= value %><%= suffix %></output>
+  </div>
+  <%= form.range_field method, input_options %>
+  <%= render "admin/shared/ui/field_error", form: form, method: method %>
+  <% if hint.present? && !(form.object.respond_to?(:errors) && form.object.errors[method].present?) %>
+    <p class="ax-field__hint"><%= hint %></p>
+  <% end %>
+</div>

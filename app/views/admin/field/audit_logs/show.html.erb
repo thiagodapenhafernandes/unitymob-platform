@@ -1,35 +1,33 @@
-<div class="tw-mb-3">
-  <%= link_to admin_field_audit_logs_path, class: "tw-inline-flex tw-items-center tw-gap-2 tw-text-ink-muted tw-text-sm text-decoration-none" do %>
-    <i class="bi bi-arrow-left"></i>Voltar
-  <% end %>
-</div>
+<div class="field-audit-logs-admin">
+  <%= ax_workspace_heading(
+        eyebrow: "Campo · Rastreabilidade",
+        icon: "shield-lock-fill",
+        title: "Log ##{@log.id}",
+        pills: [@log.action],
+        subtitle: l(@log.created_at, format: :long),
+        actions: ax_button("Voltar", admin_field_audit_logs_path, size: :sm, icon: "arrow-left")
+      ) %>
 
-<div class="ax-card">
-  <div class="ax-card__header">
-    <h4 class="ax-card__title tw-flex tw-items-center tw-gap-2"><i class="bi bi-shield-lock-fill" style="color:#dc2626"></i>Log #<%= @log.id %></h4>
-  </div>
-  <div class="ax-card__body">
-    <dl style="display:grid;grid-template-columns:25% 75%;gap:.25rem .75rem;margin-bottom:0">
-      <dt>Quando</dt>
-      <dd><%= l(@log.created_at, format: :long) %></dd>
-      <dt>Ação</dt>
-      <dd><code><%= @log.action %></code></dd>
-      <dt>Corretor</dt>
-      <dd><%= @log.admin_user&.name || "—" %></dd>
-      <dt>Ator</dt>
-      <dd><%= @log.actor_admin_user&.name || "—" %></dd>
-      <dt>IP</dt>
-      <dd><%= @log.ip %></dd>
-      <dt>Check-in</dt>
-      <dd>
-        <% if @log.check_in_id %>
-          <%= link_to "##{@log.check_in_id}", admin_field_check_in_path(@log.check_in_id), class: "text-decoration-none" %>
-        <% else %>
-          —
+  <%= ax_operational_panel(eyebrow: "Evento imutável", title: "Detalhes da auditoria") do %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-4"><%= ax_record_item(title: l(@log.created_at, format: :long), eyebrow: "Quando", icon: "clock-history") %></div>
+      <div class="ax-span-4"><%= ax_record_item(title: @log.action, eyebrow: "Ação", icon: "activity") %></div>
+      <div class="ax-span-4"><%= ax_record_item(title: @log.ip.presence || "—", eyebrow: "IP", icon: "globe") %></div>
+      <div class="ax-span-4"><%= ax_record_item(title: @log.admin_user&.name || "—", eyebrow: "Corretor", icon: "person") %></div>
+      <div class="ax-span-4"><%= ax_record_item(title: @log.actor_admin_user&.name || "—", eyebrow: "Ator", icon: "person-badge") %></div>
+      <div class="ax-span-4">
+        <%= ax_record_item(
+              title: @log.check_in_id ? "Check-in ##{@log.check_in_id}" : "—",
+              eyebrow: "Vínculo",
+              icon: "person-vcard",
+              actions: (@log.check_in_id ? ax_button("Abrir", admin_field_check_in_path(@log.check_in_id), size: :sm) : nil)
+            ) %>
+      </div>
+      <div class="ax-span-12">
+        <%= ax_record_item(title: "Payload registrado", eyebrow: "Metadata", icon: "braces") do %>
+          <%= ax_code_snippet(code: JSON.pretty_generate(@log.metadata), label: "Payload registrado na auditoria") %>
         <% end %>
-      </dd>
-      <dt>Metadata</dt>
-      <dd><pre class="tw-text-sm tw-p-2 tw-rounded-lg" style="background:#f8fafc;border:1px solid #e5e7eb"><%= JSON.pretty_generate(@log.metadata) %></pre></dd>
-    </dl>
-  </div>
+      </div>
+    <% end %>
+  <% end %>
 </div>

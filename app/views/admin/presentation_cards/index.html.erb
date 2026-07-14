@@ -1,15 +1,13 @@
 <% content_for :title, "Cartões de apresentação" %>
 
 <div class="layout-settings-workspace">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-person-badge" style="color: var(--admin-primary);"></i>Cartões de apresentação
-      </h1>
-      <p class="ax-page-subtitle">Modelos de saudação para se apresentar no atendimento WhatsApp — enviados pelo número da empresa, sem expor seu contato pessoal.</p>
-    </div>
-    <%= ax_button("Novo cartão", new_admin_presentation_card_path, variant: :primary, icon: "plus-lg") %>
-  </div>
+  <%= ax_workspace_heading(
+        eyebrow: "WhatsApp · Atendimento",
+        icon: "person-badge",
+        title: "Cartões de apresentação",
+        subtitle: "Modelos de saudação para se apresentar no atendimento WhatsApp — enviados pelo número da empresa, sem expor seu contato pessoal.",
+        actions: ax_button("Novo cartão", new_admin_presentation_card_path, variant: :primary, icon: "plus-lg")
+      ) %>
 
   <div class="layout-settings-grid">
     <div class="layout-settings-main">
@@ -18,16 +16,17 @@
           <p class="ax-field__hint tw-mt-0">Disponível para todos os corretores no atendimento; nome, CRECI e foto entram automaticamente de quem envia (<code>{nome}</code> e <code>{creci}</code> no texto são substituídos). Não pode ser excluído nem desativado.</p>
           <div class="ax-table-wrap">
             <table class="ax-table">
-              <thead><tr><th>Rótulo</th><th>Saudação</th><th>Formato</th><th class="tw-text-right"><%= "Ações" if current_admin_user.tenant_owner? %></th></tr></thead>
+              <caption class="tw-sr-only">Template de apresentação disponível para toda a conta</caption>
+              <thead><tr><th scope="col">Rótulo</th><th scope="col">Saudação</th><th scope="col">Formato</th><th scope="col" class="tw-text-right"><%= "Ações" if current_admin_user.tenant_owner? %></th></tr></thead>
               <tbody>
                 <% @system_cards.each do |card| %>
                   <tr>
-                    <td class="ax-strong"><%= card.label %> <%= ax_badge("Sistema", tone: :blue) %></td>
+                    <th scope="row" class="ax-strong"><%= card.label %> <%= ax_badge("Sistema", tone: :blue) %></th>
                     <td class="tw-max-w-[340px] tw-truncate" title="<%= card.greeting %>"><%= truncate(card.greeting, length: 80) %></td>
                     <td><%= card.use_photo? ? ax_badge("Foto + texto", tone: :blue) : ax_badge("Só texto", tone: :gray) %></td>
                     <td class="tw-text-right">
                       <% if current_admin_user.tenant_owner? %>
-                        <%= link_to "Editar", edit_admin_presentation_card_path(card), class: "ax-btn ax-btn--sm" %>
+                        <%= ax_icon_button(label: "Editar template #{card.label}", icon: "pencil", url: edit_admin_presentation_card_path(card)) %>
                       <% end %>
                     </td>
                   </tr>
@@ -43,21 +42,24 @@
           <% if @cards.any? %>
             <div class="ax-table-wrap">
               <table class="ax-table">
+                <caption class="tw-sr-only">Cartões pessoais de <%= current_admin_user.name %></caption>
                 <thead>
-                  <tr><th>Rótulo</th><th>Saudação</th><th>Formato</th><th>Status</th><th class="tw-text-right">Ações</th></tr>
+                  <tr><th scope="col">Rótulo</th><th scope="col">Saudação</th><th scope="col">Formato</th><th scope="col">Status</th><th scope="col" class="tw-text-right">Ações</th></tr>
                 </thead>
                 <tbody>
                   <% @cards.each do |card| %>
                     <tr>
-                      <td class="ax-strong"><%= card.label %></td>
+                      <th scope="row" class="ax-strong"><%= card.label %></th>
                       <td class="tw-max-w-[340px] tw-truncate" title="<%= card.greeting %>"><%= truncate(card.greeting, length: 80) %></td>
                       <td><%= card.use_photo? ? ax_badge("Foto + texto", tone: :blue) : ax_badge("Só texto", tone: :gray) %></td>
                       <td><%= card.active? ? ax_badge("Ativo", tone: :green, dot: true) : ax_badge("Inativo", tone: :gray) %></td>
                       <td class="tw-text-right tw-whitespace-nowrap">
-                        <%= link_to "Editar", edit_admin_presentation_card_path(card), class: "ax-btn ax-btn--sm" %>
-                        <%= button_to "Excluir", admin_presentation_card_path(card), method: :delete,
+                        <%= ax_icon_button(label: "Editar cartão #{card.label}", icon: "pencil", url: edit_admin_presentation_card_path(card)) %>
+                        <%= button_to admin_presentation_card_path(card), method: :delete,
                               form: { data: { turbo_confirm: "Excluir o cartão “#{card.label}”?" }, class: "tw-inline" },
-                              class: "ax-btn ax-btn--sm ax-btn--danger" %>
+                              class: "ax-btn ax-btn--sm ax-btn--icon ax-btn--danger", title: "Excluir cartão #{card.label}", aria: { label: "Excluir cartão #{card.label}" } do %>
+                          <%= ax_icon("trash") %>
+                        <% end %>
                       </td>
                     </tr>
                   <% end %>

@@ -1,0 +1,256 @@
+.ax-workflow { display: grid; gap: 8px; padding-top: 8px; }
+.ax-workflow__form { min-width: 0; display: grid; gap: 8px; }
+.ax-workflow__heading { margin-bottom: 0; }
+
+.ax-workflow__brief {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ax-workflow__brief-item {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--ax-border-soft, #e4e9f0);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+.ax-workflow__brief-number {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 12%, #fff);
+  color: var(--admin-primary, #365f8f);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ax-workflow__brief-number--green {
+  background: #e7f7ef;
+  color: #087f5b;
+}
+
+.ax-workflow__brief-item strong {
+  display: block;
+  color: #1f2733;
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ax-workflow__brief-item span {
+  display: block;
+  color: #697586;
+  font-size: 11.5px;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+@media (max-width: 1180px) {
+  .ax-workflow__brief { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .ax-workflow__brief { grid-template-columns: minmax(0, 1fr); }
+}
+
+.ax-workflow__scope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--admin-primary, #365f8f) 18%, #d8dee8);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 5%, #fff);
+}
+
+.ax-workflow__scope-main {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ax-workflow__scope-main > i {
+  flex: 0 0 auto;
+  color: var(--admin-primary, #365f8f);
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.ax-workflow__scope-main strong {
+  display: block;
+  color: #1f2733;
+  font-size: 12.5px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.ax-workflow__scope-main span {
+  display: block;
+  color: #697586;
+  font-size: 11.5px;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.ax-workflow__scope-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .ax-workflow__scope {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ax-workflow__scope-actions {
+    justify-content: flex-start;
+  }
+}
+
+.ax-workflow__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+@media (min-width: 1080px) {
+  .ax-workflow__layout { grid-template-columns: minmax(0, 1fr) 340px; }
+}
+
+.ax-workflow__main { display: grid; min-width: 0; gap: 8px; }
+
+/* Corpo padronizado dos cards reutilizáveis (ax_operational_panel não traz padding). */
+.ax-workflow__panel-body { padding: 12px; display: grid; gap: 12px; }
+
+.ax-workflow__inspector {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  align-self: start;
+}
+
+@media (min-width: 1080px) {
+  .ax-workflow__inspector {
+    position: sticky;
+    top: calc(var(--ax-navbar-h, 48px) + var(--ax-contextbar-h, 40px) + 8px);
+  }
+}
+
+/* Campos e textos auxiliares */
+.ax-workflow__config { display: grid; gap: 14px; }
+.ax-workflow__field { display: grid; gap: 5px; min-width: 0; }
+.ax-workflow__field-label { color: #1f2733; font-size: 12px; font-weight: 700; }
+.ax-workflow__switches { display: grid; gap: 8px; }
+.ax-workflow__hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.4; }
+
+/* Stepper compacto do inspector */
+.ax-workflow__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.ax-workflow__step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+.ax-workflow__step:last-child { padding-bottom: 0; }
+.ax-workflow__step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--ax-border-soft, #e4e9f0);
+}
+.ax-workflow__step-badge {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--admin-primary, #365f8f);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  z-index: 1;
+}
+.ax-workflow__step-badge--amber { background: #d9890a; }
+.ax-workflow__step-badge--green { background: #0e9f6e; }
+.ax-workflow__step-badge--muted { background: #8a93a3; }
+.ax-workflow__step-body { display: grid; gap: 1px; min-width: 0; padding-top: 2px; }
+.ax-workflow__step-body strong { color: #1f2733; font-size: 12.5px; font-weight: 700; }
+.ax-workflow__step-body span { color: #697586; font-size: 11.5px; line-height: 1.35; }
+
+/* Linhas de estado/resumo */
+.ax-workflow__state { margin: 0; display: grid; gap: 8px; }
+.ax-workflow__state-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ax-workflow__state-row dt { margin: 0; color: #697586; font-size: 12px; }
+.ax-workflow__state-row dd { margin: 0; font-size: 12.5px; font-weight: 600; color: #1f2733; }
+
+.ax-workflow__actions { margin-top: 0; }
+
+[data-admin-theme="dark"] .ax-workflow__brief-item {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface);
+  box-shadow: none;
+}
+
+[data-admin-theme="dark"] .ax-workflow__brief-number {
+  background: color-mix(in srgb, var(--admin-primary) 24%, var(--ax-dark-surface));
+}
+
+[data-admin-theme="dark"] .ax-workflow__brief-number--green {
+  background: color-mix(in srgb, #0e9f6e 24%, var(--ax-dark-surface));
+  color: #75e0a7;
+}
+
+[data-admin-theme="dark"] .ax-workflow__brief-item strong,
+[data-admin-theme="dark"] .ax-workflow__scope-main strong,
+[data-admin-theme="dark"] .ax-workflow__field-label,
+[data-admin-theme="dark"] .ax-workflow__step-body strong,
+[data-admin-theme="dark"] .ax-workflow__state-row dd {
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-workflow__brief-item span,
+[data-admin-theme="dark"] .ax-workflow__scope-main span,
+[data-admin-theme="dark"] .ax-workflow__step-body span,
+[data-admin-theme="dark"] .ax-workflow__state-row dt,
+[data-admin-theme="dark"] .ax-workflow__hint {
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-workflow__scope {
+  border-color: color-mix(in srgb, var(--admin-primary) 40%, var(--ax-dark-border));
+  background: color-mix(in srgb, var(--admin-primary) 10%, var(--ax-dark-surface));
+}
+
+[data-admin-theme="dark"] .ax-workflow__step:not(:last-child)::before {
+  background: var(--ax-dark-border-soft);
+}
+
+@media (max-width: 640px) {
+  .ax-workflow__scope-actions .ax-btn { width: 100%; }
+}

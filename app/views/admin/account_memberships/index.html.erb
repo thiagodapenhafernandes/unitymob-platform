@@ -1,47 +1,46 @@
 <% content_for :title, "Acessos externos — Configurações da Conta" %>
 
 <div class="layout-settings-workspace">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <div>
-      <h1 class="ax-page-title tw-flex tw-items-center tw-gap-2">
-        <i class="bi bi-person-plus" style="color: var(--admin-primary);"></i>Acessos externos
-      </h1>
-      <p class="ax-page-subtitle">Convide pessoas de fora (ex.: agência de marketing) para acessar esta conta com um perfil escolhido — elas alternam de conta sem novo login.</p>
-    </div>
-  </div>
+  <%= ax_workspace_heading(
+        eyebrow: "Conta · Equipe",
+        icon: "person-plus",
+        title: "Acessos externos",
+        subtitle: "Convide pessoas de fora para acessar esta conta com um perfil escolhido — elas alternam de conta sem novo login.",
+        metrics: [{ value: @memberships.size, label: "acessos" }]
+      ) %>
 
   <div class="layout-settings-grid">
     <div class="layout-settings-main">
       <%= ax_operational_panel(eyebrow: "Convidar", title: "Novo acesso externo") do %>
         <div class="ax-panel-body">
           <%= form_with model: @membership, url: admin_account_memberships_path, local: true do |f| %>
-            <div class="tw-grid tw-gap-3" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
-              <div class="ax-field">
+            <%= ax_field_grid do %>
+              <div class="ax-field ax-span-6">
                 <%= ax_field_label(f, :invited_email, text: "E-mail do convidado") %>
                 <%= f.email_field :invited_email, class: "ax-control", required: true, placeholder: "pessoa@agencia.com.br" %>
               </div>
-              <div class="ax-field">
-                <%= ax_field_label(nil, nil, text: "Perfil de acesso nesta conta") %>
+              <div class="ax-field ax-span-6">
+                <%= ax_field_label(nil, nil, text: "Perfil de acesso nesta conta", for: "account_membership_access_profile_id") %>
                 <%= select_tag "account_membership[access_profile_id]",
                       grouped_options_for_select(@access_profile_options),
-                      class: "ax-control", required: true %>
+                      id: "account_membership_access_profile_id", class: "ax-control", required: true %>
               </div>
-              <div class="ax-field">
+              <div class="ax-field ax-span-4">
                 <%= ax_field_label(f, :acting_type, text: "Área de atuação") %>
                 <%= f.select :acting_type, AdminUser.acting_types.keys.map { |k| [k == "sales" ? "Venda" : k == "rentals" ? "Locação" : "Ambos", AdminUser.acting_types[k]] }, {}, { class: "ax-control" } %>
               </div>
-              <div class="ax-field">
+              <div class="ax-field ax-span-4">
                 <%= ax_field_label(f, :manager_id, text: "Gestor de venda (se perfil de hierarquia)") %>
                 <%= f.select :manager_id, @manager_options, { include_blank: "—" }, { class: "ax-control" } %>
               </div>
-              <div class="ax-field">
+              <div class="ax-field ax-span-4">
                 <%= ax_field_label(f, :rentals_manager_id, text: "Gestor de locação (se atua em locação)") %>
                 <%= f.select :rentals_manager_id, @manager_options, { include_blank: "—" }, { class: "ax-control" } %>
               </div>
-            </div>
+            <% end %>
             <p class="ax-field__hint">Função operacional (perfil horizontal) fica fora da árvore de gestão — os campos de gestor são ignorados nesse caso.</p>
             <div class="tw-flex tw-justify-end">
-              <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-send ax-ico"></i><span>Enviar convite</span></button>
+              <button type="submit" class="ax-btn ax-btn--primary"><i class="bi bi-send ax-ico" aria-hidden="true"></i><span>Enviar convite</span></button>
             </div>
           <% end %>
         </div>
@@ -51,10 +50,21 @@
         <%= ax_operational_panel(eyebrow: "Link do convite", title: "Envie por onde preferir") do %>
           <div class="ax-panel-body">
             <p class="ax-field__hint tw-mt-0">O link abaixo vale por 7 dias — pode mandar por WhatsApp se o e-mail não chegar:</p>
-            <div class="tw-flex tw-items-center tw-gap-2">
-              <input type="text" class="ax-control" readonly value="<%= flash[:invite_url] %>" id="invite-url-field" onclick="this.select()">
-              <button type="button" class="ax-btn ax-btn--sm"
-                      onclick="navigator.clipboard.writeText(document.getElementById('invite-url-field').value).then(() => this.textContent = 'Copiado!')">Copiar</button>
+            <div class="tw-flex tw-items-center tw-gap-2"
+                 data-controller="clipboard"
+                 data-clipboard-success-content-value="Copiado!">
+              <input type="text"
+                     class="ax-control"
+                     readonly
+                     value="<%= flash[:invite_url] %>"
+                     data-clipboard-target="source"
+                     data-action="focus->clipboard#select click->clipboard#select">
+              <button type="button"
+                      class="ax-btn ax-btn--sm"
+                      data-action="clipboard#copy"
+                      data-clipboard-target="button">
+                <span data-clipboard-target="content">Copiar</span>
+              </button>
             </div>
           </div>
         <% end %>
@@ -96,7 +106,7 @@
                           <%= button_to admin_account_membership_path(m), method: :delete,
                                 class: "ax-btn ax-btn--sm ax-btn--ghost",
                                 form: { data: { turbo_confirm: "Revogar o acesso de #{m.invited_email} a esta conta?" } } do %>
-                            <i class="bi bi-x-circle ax-ico"></i><span>Revogar</span>
+                            <i class="bi bi-x-circle ax-ico" aria-hidden="true"></i><span>Revogar</span>
                           <% end %>
                         <% end %>
                       </td>

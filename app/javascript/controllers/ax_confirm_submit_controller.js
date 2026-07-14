@@ -8,10 +8,15 @@ export default class extends Controller {
     cancelLabel: { type: String, default: "Cancelar" }
   }
 
+  disconnect() {
+    this.closeConfirmation()
+  }
+
   request(event) {
     event.preventDefault()
     event.stopPropagation()
 
+    this.previouslyFocusedElement = event.currentTarget || document.activeElement
     this.closeOpenConfirmations()
     this.showConfirmation()
   }
@@ -21,7 +26,14 @@ export default class extends Controller {
     event.stopPropagation()
 
     const form = document.getElementById(this.formIdValue)
-    if (!form) return
+    if (!form) {
+      this.closeConfirmation({ restoreFocus: true })
+      return
+    }
+
+    const confirmButton = event.currentTarget
+    confirmButton.disabled = true
+    confirmButton.setAttribute("aria-busy", "true")
 
     if (typeof form.requestSubmit === "function") {
       form.requestSubmit()
@@ -33,7 +45,7 @@ export default class extends Controller {
   cancel(event) {
     event.preventDefault()
     event.stopPropagation()
-    this.closeConfirmation()
+    this.closeConfirmation({ restoreFocus: true })
   }
 
   showConfirmation() {
@@ -43,6 +55,9 @@ export default class extends Controller {
     const panel = document.createElement("div")
     panel.className = "ax-confirm-submit__panel"
     panel.dataset.axConfirmSubmitPanel = "true"
+    panel.setAttribute("role", "alertdialog")
+    panel.setAttribute("aria-modal", "false")
+    panel.setAttribute("aria-label", this.messageValue)
     panel.innerHTML = `
       <span class="ax-confirm-submit__message">${this.escapeHtml(this.messageValue)}</span>
       <span class="ax-confirm-submit__actions">
@@ -51,20 +66,27 @@ export default class extends Controller {
       </span>
     `
 
-    panel.querySelector("[data-ax-confirm-submit-cancel]").addEventListener("click", this.cancel.bind(this))
+    const cancelButton = panel.querySelector("[data-ax-confirm-submit-cancel]")
+    cancelButton.addEventListener("click", this.cancel.bind(this))
     panel.querySelector("[data-ax-confirm-submit-confirm]").addEventListener("click", this.confirm.bind(this))
+    panel.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") this.cancel(event)
+    })
     item.appendChild(panel)
+    cancelButton.focus()
   }
 
-  closeConfirmation() {
+  closeConfirmation(options = {}) {
     const item = this.element.closest(".ax-file-list__item") || this.element
     item.classList.remove("is-confirming")
     item.querySelector("[data-ax-confirm-submit-panel]")?.remove()
+    if (options.restoreFocus && this.previouslyFocusedElement?.isConnected) this.previouslyFocusedElement.focus()
+    this.previouslyFocusedElement = null
   }
 
   closeOpenConfirmations() {
     document.querySelectorAll("[data-ax-confirm-submit-panel]").forEach((panel) => {
-      panel.closest(".ax-file-list__item")?.classList.remove("is-confirming")
+      panel.closest(".is-confirming")?.classList.remove("is-confirming")
       panel.remove()
     })
   }

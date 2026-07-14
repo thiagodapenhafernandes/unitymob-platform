@@ -23,6 +23,7 @@ class GoogleSheetsIntegrationSetting
   }.freeze
 
   attribute :enabled, :boolean, default: false
+  attribute :tenant
   attribute :web_app_url, :string
   attribute :token, :string
   attribute :worksheet_name, :string, default: DEFAULT_WORKSHEET_NAME
@@ -30,20 +31,26 @@ class GoogleSheetsIntegrationSetting
 
   validates :worksheet_name, presence: true
   validates :key_column, presence: true
+  validates :tenant, presence: true
   validate :validate_required_fields_when_enabled
   validate :validate_web_app_url
 
-  def self.current
+  def self.current(tenant: Current.tenant)
+    raise ArgumentError, "Tenant obrigatório para configurar Google Sheets" if tenant.blank?
+
     new(
-      enabled: Setting.get(ENABLED_KEY, "false") == "true",
-      web_app_url: Setting.get(WEB_APP_URL_KEY, ""),
-      worksheet_name: Setting.get(WORKSHEET_NAME_KEY, DEFAULT_WORKSHEET_NAME),
-      key_column: Setting.get(KEY_COLUMN_KEY, DEFAULT_KEY_COLUMN)
+      tenant: tenant,
+      enabled: Setting.get(ENABLED_KEY, "false", tenant: tenant) == "true",
+      web_app_url: Setting.get(WEB_APP_URL_KEY, "", tenant: tenant),
+      worksheet_name: Setting.get(WORKSHEET_NAME_KEY, DEFAULT_WORKSHEET_NAME, tenant: tenant),
+      key_column: Setting.get(KEY_COLUMN_KEY, DEFAULT_KEY_COLUMN, tenant: tenant)
     )
   end
 
-  def self.connected?
-    Setting.get(WEB_APP_URL_KEY).present? && Setting.get(TOKEN_KEY).present?
+  def self.connected?(tenant: Current.tenant)
+    raise ArgumentError, "Tenant obrigatório para consultar Google Sheets" if tenant.blank?
+
+    Setting.get(WEB_APP_URL_KEY, tenant: tenant).present? && Setting.get(TOKEN_KEY, tenant: tenant).present?
   end
 
   def self.human_attribute_name(attribute, options = {})
@@ -51,17 +58,17 @@ class GoogleSheetsIntegrationSetting
   end
 
   def connected?
-    self.class.connected?
+    self.class.connected?(tenant: tenant)
   end
 
   def save
     return false unless valid?
 
-    Setting.set(ENABLED_KEY, enabled? ? "true" : "false", "Ativa envio de captações para Google Sheets")
-    Setting.set(WEB_APP_URL_KEY, normalized_web_app_url, "URL do Web App do Google Apps Script para captações")
-    Setting.set(WORKSHEET_NAME_KEY, normalized_worksheet_name, "Nome da aba da planilha de captações")
-    Setting.set(KEY_COLUMN_KEY, normalized_key_column, "Coluna-chave usada para atualizar captações no Google Sheets")
-    Setting.set(TOKEN_KEY, token.to_s.strip, "Token de segurança do Web App de captações") if token.to_s.strip.present?
+    Setting.set(ENABLED_KEY, enabled? ? "true" : "false", "Ativa envio de captações para Google Sheets", tenant: tenant)
+    Setting.set(WEB_APP_URL_KEY, normalized_web_app_url, "URL do Web App do Google Apps Script para captações", tenant: tenant)
+    Setting.set(WORKSHEET_NAME_KEY, normalized_worksheet_name, "Nome da aba da planilha de captações", tenant: tenant)
+    Setting.set(KEY_COLUMN_KEY, normalized_key_column, "Coluna-chave usada para atualizar captações no Google Sheets", tenant: tenant)
+    Setting.set(TOKEN_KEY, token.to_s.strip, "Token de segurança do Web App de captações", tenant: tenant) if token.to_s.strip.present?
 
     true
   end
@@ -71,7 +78,7 @@ class GoogleSheetsIntegrationSetting
   end
 
   def token_configured?
-    Setting.get(TOKEN_KEY).present?
+    Setting.get(TOKEN_KEY, tenant: tenant).present?
   end
 
   private

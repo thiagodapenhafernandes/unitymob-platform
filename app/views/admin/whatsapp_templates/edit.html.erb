@@ -6,8 +6,6 @@
   <% end %>
 <% end %>
 
-<%= render "critical_styles" %>
-
 <div class="whatsapp-templates">
   <% if @template.template_type == "carousel" %>
     <%= render "carousel_form", template: @template, sender_number: nil %>

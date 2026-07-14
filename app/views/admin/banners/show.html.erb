@@ -1,88 +1,79 @@
 <div class="public-site-workspace">
-<%= ax_workspace_heading(eyebrow: "Site público · Banners", icon: "eye", title: @banner.title, pills: [@banner.active? ? "Ativo" : "Inativo"], subtitle: "Mídia, destino e posições de exibição.", actions: safe_join([ax_button("Voltar", admin_banners_path, variant: :ghost, size: :sm, icon: "arrow-left"), ax_button("Editar", edit_admin_banner_path(@banner), variant: :primary, size: :sm, icon: "pencil-square")])) %>
+  <%= ax_workspace_heading(
+        eyebrow: "Site público · Banners",
+        icon: "eye",
+        title: @banner.title,
+        pills: [@banner.active? ? "Ativo" : "Inativo"],
+        subtitle: "Mídia, destino e posições de exibição.",
+        actions: safe_join([
+          ax_button("Voltar", admin_banners_path, variant: :ghost, size: :sm, icon: "arrow-left"),
+          ax_button("Editar", edit_admin_banner_path(@banner), variant: :primary, size: :sm, icon: "pencil-square")
+        ])
+      ) %>
 
-<div class="ax-card">
-  <div class="ax-card__header">
-    <i class="bi bi-eye-fill"></i> Pré-visualização do Banner
-  </div>
-  <div class="ax-card__body tw-p-4">
-    <div class="preview-container">
-      <div class="preview-desktop tw-text-center">
-        <span class="preview-title tw-inline-flex tw-items-center tw-gap-2"><i class="bi bi-pc-display"></i> Preview Desktop</span>
-        <% if @banner.image_desktop.attached? %>
-          <%= image_tag @banner.image_desktop, class: "border", style: "border-color:rgba(108,117,125,.1)" %>
-        <% else %>
-          <div class="rounded tw-text-ink-muted" style="padding-top:3rem; padding-bottom:3rem; background:#f8f9fa">No Desktop Image</div>
-        <% end %>
-      </div>
-      <div class="preview-mobile tw-text-center">
-        <span class="preview-title tw-inline-flex tw-items-center tw-gap-2"><i class="bi bi-phone"></i> Preview Mobile</span>
-        <% if @banner.image_mobile.attached? %>
-          <%= image_tag @banner.image_mobile, class: "border", style: "border-color:rgba(108,117,125,.1)" %>
-        <% else %>
-          <div class="rounded tw-text-ink-muted tw-w-full" style="padding-top:3rem; padding-bottom:3rem; background:#f8f9fa">No Mobile Image</div>
-        <% end %>
-      </div>
+  <%= ax_operational_panel(eyebrow: "Mídia", title: "Pré-visualização do banner") do %>
+    <div class="ax-media-preview-grid">
+      <%= ax_media_preview(
+            label: "Preview desktop",
+            icon: "pc-display",
+            image: (@banner.image_desktop if @banner.image_desktop.attached?),
+            variant: :desktop,
+            empty_text: "Sem imagem desktop"
+          ) %>
+      <%= ax_media_preview(
+            label: "Preview mobile",
+            icon: "phone",
+            image: (@banner.image_mobile if @banner.image_mobile.attached?),
+            variant: :mobile,
+            empty_text: "Sem imagem mobile"
+          ) %>
     </div>
-  </div>
-</div>
+  <% end %>
 
-<%= ax_field_grid do %>
-  <div class="ax-span-12">
-    <div class="ax-card">
-      <div class="ax-card__header">
-        <i class="bi bi-info-circle-fill"></i> Dados Detalhados
-      </div>
-      <div class="ax-card__body tw-p-4">
-        <%= ax_field_grid do %>
-          <div class="ax-span-3">
-            <label class="tw-text-ink-muted tw-text-sm tw-font-bold tw-mb-1" style="display:block; text-transform:uppercase">Título</label>
-            <div class="tw-font-bold" style="color:#212529"><%= @banner.title %></div>
-          </div>
-          <div class="ax-span-3">
-            <label class="tw-text-ink-muted tw-text-sm tw-font-bold tw-mb-1" style="display:block; text-transform:uppercase">Status</label>
-            <% if @banner.active? %>
-              <span class="ax-badge ax-badge--green">Banner Ativo</span>
-            <% else %>
-              <span class="ax-badge ax-badge--gray">Banner Inativo</span>
-            <% end %>
-          </div>
-          <div class="ax-span-3">
-            <label class="tw-text-ink-muted tw-text-sm tw-font-bold tw-mb-1" style="display:block; text-transform:uppercase">Ordem</label>
-            <span class="ax-badge ax-badge--gray">Posição #<%= @banner.display_order %></span>
-          </div>
-          <div class="ax-span-3">
-            <label class="tw-text-ink-muted tw-text-sm tw-font-bold tw-mb-1" style="display:block; text-transform:uppercase">Link Externo</label>
-            <% if @banner.link_url.present? %>
-              <a href="<%= @banner.link_url %>" target="_blank" class="ax-btn ax-btn--sm ax-btn--ghost tw-mt-1">
-                <i class="bi bi-box-arrow-up-right"></i> <%= @banner.link_text.presence || "Acessar Link" %>
-              </a>
-            <% else %>
-              <span class="tw-text-ink-muted">Nenhum configurado</span>
-            <% end %>
-          </div>
-        <% end %>
-
-        <div class="tw-mt-4" style="padding-top:1.5rem; border-top:1px solid var(--ax-border, #e5e7eb)">
-        <%= ax_field_grid do %>
-          <div class="ax-span-6">
-            <label class="tw-text-ink-muted tw-text-sm tw-font-bold tw-mb-2" style="display:block; text-transform:uppercase">Descrição</label>
-            <p style="margin-bottom:0; color:#212529"><%= @banner.description.presence || "Sem descrição" %></p>
-          </div>
-          <div class="ax-span-6">
-            <label class="tw-text-ink-muted tw-text-sm tw-font-bold tw-mb-2" style="display:block; text-transform:uppercase">Posições de Exibição</label>
-            <div class="tw-flex tw-flex-wrap tw-gap-2">
-              <% @banner.positions&.each do |pos| %>
-                <span class="ax-badge ax-badge--blue tw-p-2">
-                  <i class="bi bi-geo-alt-fill" style="margin-right:.25rem"></i><%= Banner::POSITIONS[pos] || pos.humanize %>
-                </span>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
+  <div class="tw-mt-3">
+    <%= ax_operational_panel(eyebrow: "Cadastro", title: "Dados detalhados") do %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-3">
+          <%= ax_record_item(title: @banner.title, eyebrow: "Título", icon: "type") %>
         </div>
-      </div>
-    </div>
+        <div class="ax-span-3">
+          <%= ax_record_item(
+                title: @banner.active? ? "Banner ativo" : "Banner inativo",
+                eyebrow: "Status",
+                icon: @banner.active? ? "check-circle" : "pause-circle",
+                actions: ax_badge(@banner.active? ? "Ativo" : "Inativo", tone: @banner.active? ? :green : :gray, dot: true)
+              ) %>
+        </div>
+        <div class="ax-span-3">
+          <%= ax_record_item(title: "Posição ##{@banner.display_order}", eyebrow: "Ordem", icon: "sort-numeric-down") %>
+        </div>
+        <div class="ax-span-3">
+          <% link_action = if @banner.link_url.present?
+                             ax_button(@banner.link_text.presence || "Acessar link", @banner.link_url, variant: :ghost, size: :sm, icon: "box-arrow-up-right", target: "_blank", rel: "noopener")
+                           end %>
+          <%= ax_record_item(
+                title: @banner.link_url.presence || "Nenhum configurado",
+                eyebrow: "Link externo",
+                icon: "link-45deg",
+                actions: link_action
+              ) %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_record_item(
+                title: @banner.description.presence || "Sem descrição",
+                eyebrow: "Descrição",
+                icon: "text-paragraph"
+              ) %>
+        </div>
+        <div class="ax-span-6">
+          <%= ax_record_item(
+                title: @banner.positions.present? ? "#{@banner.positions.size} posição(ões)" : "Nenhuma posição definida",
+                eyebrow: "Posições de exibição",
+                icon: "geo-alt-fill",
+                body: safe_join(Array(@banner.positions).map { |position| ax_badge(Banner::POSITIONS[position] || position.humanize, tone: :blue) }, " ")
+              ) %>
+        </div>
+      <% end %>
+    <% end %>
   </div>
-<% end %>
 </div>

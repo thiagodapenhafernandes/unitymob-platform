@@ -1,12 +1,12 @@
-<div class="col-12 nested-fields" data-new-record="<%= f.object.new_record? %>">
-  <div class="ax-card bg-light">
+<div class="nested-fields footer-nested-field" data-new-record="<%= f.object.new_record? %>">
+  <div class="ax-card footer-nested-card">
     <div class="ax-card__body">
       <div class="tw-flex tw-justify-between tw-mb-2">
         <div class="tw-flex tw-items-center tw-gap-2">
-          <span class="ax-badge ax-badge--blue" data-position-label style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <span class="ax-badge ax-badge--blue footer-nested-position" data-position-label>
             <%= f.object.position || 1 %>
           </span>
-          <label class="ax-label tw-font-bold tw-inline-flex tw-items-center tw-gap-2" style="margin-bottom:0;"><i class="bi bi-geo-alt"></i>Unidade / Loja</label>
+          <label class="ax-label tw-font-bold tw-inline-flex tw-items-center tw-gap-2 footer-nested-label"><i class="bi bi-geo-alt"></i>Unidade / Loja</label>
           <div class="tw-inline-flex tw-items-center">
             <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="nested-form#moveUp" title="Mover para cima">
               <i class="bi bi-chevron-up"></i>
@@ -24,24 +24,25 @@
       <%= f.hidden_field :position %>
 
       <div class="tw-mb-2">
-        <%= f.text_field :name, class: "ax-control ax-control--sm", placeholder: "Nome da Loja (ex: Loja Centro)" %>
+        <%= ax_text_field(form: f, method: :name, label: "Nome da loja", class: "ax-control--sm", placeholder: "Ex: Loja Centro") %>
       </div>
 
       <div class="tw-mb-2">
-        <%= f.text_field :address, class: "ax-control ax-control--sm", placeholder: "Endereço completo" %>
+        <%= ax_text_field(form: f, method: :address, label: "Endereço completo", class: "ax-control--sm", autocomplete: "address-line1") %>
       </div>
 
       <%= ax_field_grid do %>
         <div class="ax-span-6 tw-mb-2">
-          <%= f.text_field :zip_code, class: "ax-control ax-control--sm", placeholder: "CEP" %>
+          <%= ax_text_field(form: f, method: :zip_code, label: "CEP", class: "ax-control--sm", autocomplete: "postal-code") %>
         </div>
         <div class="ax-span-6 tw-mb-2">
-          <%= f.text_field :creci, class: "ax-control ax-control--sm", placeholder: "CRECI" %>
+          <%= ax_text_field(form: f, method: :creci, label: "CRECI", class: "ax-control--sm") %>
         </div>
       <% end %>
 
       <div class="tw-mb-1">
-        <%= f.text_field :phone, class: "ax-control ax-control--sm", placeholder: "(47) 3311-1067", autocomplete: "tel", data: { controller: "phone-input" } %>
+        <%= ax_text_field(form: f, method: :phone, label: "Telefone", type: :tel, class: "ax-control--sm",
+              placeholder: "(47) 3311-1067", autocomplete: "tel", data: { controller: "phone-input" }) %>
       </div>
     </div>
   </div>

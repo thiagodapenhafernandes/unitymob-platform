@@ -7,14 +7,12 @@
                   aria: { label: "Voltar para captações" } do %>
         <i class="bi bi-arrow-left"></i>
       <% end %>
-      <div class="tw-text-sm tw-text-ink-muted" style="flex-grow:1;">
+      <div class="wizard-top-bar__summary tw-text-sm tw-text-ink-muted">
         Nova captação · <strong class="text-dark">Definição inicial</strong>
       </div>
       <span class="ax-badge ax-badge--gray">Sem rascunho criado</span>
     </div>
-    <div class="wizard-progress">
-      <div class="wizard-progress-bar" style="width: 0%;"></div>
-    </div>
+    <%= ax_progress(value: 0, class_name: "wizard-progress", label: "Progresso da captação: 0%") %>
   </div>
 </div>
 
@@ -32,10 +30,10 @@
 
     <div class="wizard-bottom-nav">
       <div class="wizard-shell wizard-start-shell tw-flex tw-gap-2">
-        <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost", style: "flex:1 1 0;" do %>
+        <%= link_to admin_captacoes_path, class: "ax-btn ax-btn--ghost wizard-nav-action" do %>
           Cancelar
         <% end %>
-        <%= button_tag type: :submit, class: "ax-btn ax-btn--primary", style: "flex:1 1 0;" do %>
+        <%= button_tag type: :submit, class: "ax-btn ax-btn--primary wizard-nav-action" do %>
           Iniciar captação<i class="bi bi-arrow-right"></i>
         <% end %>
       </div>

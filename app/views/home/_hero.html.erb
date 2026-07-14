@@ -2,7 +2,7 @@
 <% overlay_opacity = @home_setting.overlay_opacity || 0.7 %>
 
 <!-- Hero Section - Cinematic Master Edition -->
-<section id="hero" class="relative min-h-[100dvh] md:h-[90vh] lg:h-screen flex items-start md:items-center justify-center bg-gray-900 overflow-x-clip"
+<section id="hero" class="relative min-h-[75dvh] md:h-[90vh] lg:h-screen flex items-center md:items-center justify-center bg-gray-900 overflow-x-clip"
          data-controller="hero-slider" 
          data-hero-slider-interval-value="10000"
          style="--hero-overlay-start: <%= overlay_color %><%= format('%02x', (overlay_opacity * 255).to_i) %>; 
@@ -10,7 +10,7 @@
   
   <!-- Cinematic Slider Container -->
   <div class="hero-slider-container">
-    <% (@hero_images.presence || [{ source: asset_path("hero_05.jpeg"), alt: "Salute Imóveis - Luxo e Exclusividade" }]).each_with_index do |image, index| %>
+    <% (@hero_images.presence || [{ source: asset_path("hero_05.jpeg"), alt: "#{@public_identity.name} - imóveis em destaque" }]).each_with_index do |image, index| %>
       <% desktop_source = public_image_url(image[:source], resize_to_limit: [1920, 1080], format: :webp, representation_proxy: true).presence || image[:source] %>
       <% mobile_source = public_image_url(image[:mobile_source] || image[:source], resize_to_limit: [900, 1600], format: :webp, representation_proxy: true).presence || image[:mobile_source] || image[:source] %>
       <% placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" %>
@@ -44,7 +44,7 @@
       </h1>
       <p class="hero-subtitle text-white/90 max-w-2xl mx-auto font-medium px-3"
          style="--hero-subtitle-configured-size: <%= @home_setting.hero_subtitle_font_size_value %>px;">
-        <%= @home_setting.hero_subtitle || "As melhores oportunidades em Balneário Camboriú e região" %>
+        <%= @home_setting.hero_subtitle.presence || ["As melhores oportunidades", ("em #{@public_identity.primary_city}" if @public_identity.primary_city.present?)].compact.join(" ") %>
       </p>
     </div>
 

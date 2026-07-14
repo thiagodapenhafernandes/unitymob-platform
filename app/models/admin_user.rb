@@ -1,6 +1,9 @@
 class AdminUser < ApplicationRecord
   include PhoneNormalizable
 
+  ADMIN_THEME_MODES = %w[light dark].freeze
+  ADMIN_THEME_MODE_DEFAULT = "light".freeze
+
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :recoverable, :rememberable, :timeoutable,
@@ -57,6 +60,18 @@ class AdminUser < ApplicationRecord
 
   validates :email, presence: true, uniqueness: true
   validates :name, presence: true
+  validates :admin_theme_mode, inclusion: { in: ADMIN_THEME_MODES }, if: -> { has_attribute?(:admin_theme_mode) }
+
+  def effective_admin_theme_mode
+    identity = login_identity
+    return ADMIN_THEME_MODE_DEFAULT unless identity.has_attribute?(:admin_theme_mode)
+
+    identity.admin_theme_mode.presence_in(ADMIN_THEME_MODES) || ADMIN_THEME_MODE_DEFAULT
+  end
+
+  def admin_dark_mode?
+    effective_admin_theme_mode == "dark"
+  end
   normalize_phone_fields :phone, :secondary_phone
   validates :tenant, presence: true, unless: :super_admin?
   validates :profile, presence: true, unless: :super_admin?

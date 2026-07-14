@@ -1,81 +1,92 @@
-<%# Redirects SEO — compacto (.ax-*) com forms inline. Original em index.html.erb.bootstrap-bak %>
 <div class="public-site-workspace">
-<%= ax_workspace_heading(eyebrow: "Site público · SEO", icon: "signpost-split", title: "Redirecionamentos", subtitle: "Direcione URLs antigas e preserve a autoridade das páginas.", actions: ax_button("Páginas SEO", admin_seo_settings_path, variant: :ghost, size: :sm, icon: "arrow-left")) %>
+  <%= ax_workspace_heading(
+        eyebrow: "Site público · SEO",
+        icon: "signpost-split",
+        title: "Redirecionamentos",
+        subtitle: "Direcione URLs antigas e preserve a autoridade das páginas.",
+        metrics: [{ value: (@seo_redirects.total_entries rescue @seo_redirects.size), label: "redirects" }],
+        actions: ax_button("Páginas SEO", admin_seo_settings_path, size: :sm, icon: "arrow-left")
+      ) %>
 
-<div class="ax-card tw-mb-3">
-  <div class="ax-card__body">
-    <%= form_with model: [:admin, @seo_redirect], local: true do |f| %>
-      <% if @seo_redirect.errors.any? %>
-        <div class="tw-mb-2 tw-text-red-600 tw-text-2xs"><%= @seo_redirect.errors.full_messages.to_sentence %></div>
+  <%= ax_operational_panel(eyebrow: "Cadastro", title: "Novo redirecionamento", class_name: "tw-mb-3") do %>
+    <%= form_with model: [:admin, @seo_redirect], local: true do |form| %>
+      <%= ax_error_summary(@seo_redirect) %>
+
+      <%= ax_field_grid do %>
+        <div class="ax-span-5">
+          <%= ax_text_field(form:, method: :from_path, label: "URL antiga", placeholder: "/imoveis-antigo") %>
+        </div>
+        <div class="ax-span-5">
+          <%= ax_text_field(form:, method: :to_path, label: "URL destino", placeholder: "/imoveis") %>
+        </div>
+        <div class="ax-span-2">
+          <%= ax_select_field(form:, method: :status_code, label: "Tipo", choices: SeoRedirect::VALID_STATUS_CODES) %>
+        </div>
       <% end %>
-      <div class="tw-flex tw-flex-wrap tw-items-end tw-gap-3">
-        <div class="tw-flex-1 tw-min-w-[180px]">
-          <%= f.label :from_path, "URL antiga", class: "ax-label" %>
-          <%= f.text_field :from_path, class: "ax-input", placeholder: "/imoveis-antigo" %>
-        </div>
-        <div class="tw-flex-1 tw-min-w-[180px]">
-          <%= f.label :to_path, "URL destino", class: "ax-label" %>
-          <%= f.text_field :to_path, class: "ax-input", placeholder: "/imoveis" %>
-        </div>
-        <div class="tw-w-32">
-          <%= f.label :status_code, "Tipo", class: "ax-label" %>
-          <%= f.select :status_code, SeoRedirect::VALID_STATUS_CODES, {}, class: "ax-select" %>
-        </div>
-        <label class="tw-inline-flex tw-items-center tw-gap-1.5 tw-text-sm tw-text-ink-soft tw-h-[34px]">
-          <%= f.check_box :active %> Ativo
-        </label>
-        <%= f.submit "Criar", class: "ax-btn ax-btn--primary" %>
+
+      <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-mt-3">
+        <%= ax_toggle_chip(form, :active, label: "Ativo") %>
+        <%= form.submit "Criar redirecionamento", class: "ax-btn ax-btn--primary" %>
       </div>
     <% end %>
-  </div>
-</div>
-</div>
+  <% end %>
 
-<div class="ax-table-wrap">
-  <table class="ax-table">
-    <thead>
-      <tr>
-        <th>Origem</th>
-        <th>Destino</th>
-        <th style="width:90px">Tipo</th>
-        <th class="ax-num" style="width:120px">Hits</th>
-        <th style="width:90px">Status</th>
-        <th class="ax-num" style="width:140px">Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @seo_redirects.each do |redirect| %>
-        <tr>
-          <%= form_with model: [:admin, redirect], local: true do |f| %>
-            <td><%= f.text_field :from_path, class: "ax-input" %></td>
-            <td><%= f.text_field :to_path, class: "ax-input" %></td>
-            <td><%= f.select :status_code, SeoRedirect::VALID_STATUS_CODES, {}, class: "ax-select" %></td>
-            <td class="ax-num">
-              <div class="ax-strong"><%= redirect.hit_count %></div>
-              <div class="tw-text-2xs tw-text-ink-faint"><%= redirect.last_hit_at ? l(redirect.last_hit_at, format: :short) : "sem acesso" %></div>
-            </td>
-            <td>
-              <label class="tw-inline-flex tw-items-center tw-gap-1.5 tw-text-2xs tw-text-ink-soft">
-                <%= f.check_box :active %> <%= redirect.active? ? "Ativo" : "Off" %>
-              </label>
-            </td>
-            <td class="ax-num">
-              <div class="tw-inline-flex tw-gap-1">
-                <%= f.submit "Salvar", class: "ax-btn ax-btn--sm" %>
-                <%= link_to admin_seo_redirect_path(redirect), class: "ax-ico-btn", data: { turbo_method: :delete, turbo_confirm: "Remover este redirect?" }, title: "Remover" do %><i class="bi bi-trash"></i><% end %>
-              </div>
-            </td>
+  <%= ax_operational_panel(eyebrow: "Mapa de URLs", title: "Redirecionamentos cadastrados") do %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead>
+          <tr>
+            <th>Origem</th>
+            <th>Destino</th>
+            <th class="ax-table__col--compact">Tipo</th>
+            <th class="ax-num ax-table__col--w-120">Hits</th>
+            <th class="ax-table__col--compact">Status</th>
+            <th class="ax-num ax-table__col--w-140">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @seo_redirects.each do |redirect| %>
+            <tr>
+              <%= form_with model: [:admin, redirect], local: true do |form| %>
+                <td><%= form.text_field :from_path, class: "ax-control", aria: { label: "URL de origem" } %></td>
+                <td><%= form.text_field :to_path, class: "ax-control", aria: { label: "URL de destino" } %></td>
+                <td><%= form.select :status_code, SeoRedirect::VALID_STATUS_CODES, {}, class: "ax-control", aria: { label: "Código HTTP" } %></td>
+                <td class="ax-num">
+                  <div class="ax-strong"><%= redirect.hit_count %></div>
+                  <div class="tw-text-2xs tw-text-ink-faint"><%= redirect.last_hit_at ? l(redirect.last_hit_at, format: :short) : "sem acesso" %></div>
+                </td>
+                <td><%= ax_toggle_chip(form, :active, label: redirect.active? ? "Ativo" : "Off") %></td>
+                <td class="ax-num">
+                  <div class="tw-inline-flex tw-gap-1">
+                    <%= form.submit "Salvar", class: "ax-btn ax-btn--sm" %>
+                    <%= link_to admin_seo_redirect_path(redirect),
+                                class: "ax-ico-btn",
+                                data: { turbo_method: :delete, turbo_confirm: "Remover este redirect?" },
+                                title: "Remover",
+                                aria: { label: "Remover redirect de #{redirect.from_path}" } do %>
+                      <i class="bi bi-trash"></i>
+                    <% end %>
+                  </div>
+                </td>
+              <% end %>
+            </tr>
           <% end %>
-        </tr>
-      <% end %>
-      <% if @seo_redirects.empty? %>
-        <tr><td colspan="6"><div class="ax-empty">Nenhum redirect cadastrado.</div></td></tr>
-      <% end %>
-    </tbody>
-  </table>
-</div>
 
-<% if @seo_redirects.respond_to?(:total_pages) && @seo_redirects.total_pages > 1 %>
-  <%= ax_pagination @seo_redirects, params: request.query_parameters %>
-<% end %>
+          <% if @seo_redirects.empty? %>
+            <tr>
+              <td colspan="6">
+                <%= ax_empty_state(
+                      title: "Nenhum redirecionamento cadastrado",
+                      description: "Cadastre uma URL antiga para encaminhá-la a um destino válido.",
+                      icon: "signpost-split"
+                    ) %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <%= ax_pagination @seo_redirects, params: request.query_parameters %>
+  <% end %>
 </div>

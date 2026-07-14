@@ -46,33 +46,27 @@
             <%= f.label :webhook_url, class: "ax-label tw-inline-flex tw-items-center tw-gap-2" do %>
               <i class="bi bi-link-45deg tw-text-primary"></i>URL do Webhook (Padrão)
             <% end %>
-            <div class="tw-flex tw-items-center tw-gap-2">
-              <span class="tw-inline-flex tw-items-center" style="background:var(--admin-primary-soft); padding:.375rem .5rem; border-radius:.375rem">
-                <i class="bi bi-globe tw-text-primary"></i>
-              </span>
+            <%= ax_input_group(prefix: tag.i(class: "bi bi-globe tw-text-primary")) do %>
               <%= f.text_field :webhook_url, class: "ax-control", placeholder: "https://seu-servidor.com/webhook" %>
-            </div>
+            <% end %>
             <small class="tw-text-ink-muted">URL principal para envio de dados (POST).</small>
           </div>
 
           <!-- WhatsApp Webhook URL -->
           <div class="tw-mb-4">
             <%= f.label :whatsapp_webhook_url, class: "ax-label tw-inline-flex tw-items-center tw-gap-2" do %>
-              <i class="fab fa-whatsapp" style="color:#16a34a"></i>URL do Webhook (Específico WhatsApp/Leads)
+              <i class="bi bi-whatsapp tw-text-green-600"></i>URL do Webhook (Específico WhatsApp/Leads)
             <% end %>
-            <div class="tw-flex tw-items-center tw-gap-2">
-              <span class="tw-inline-flex tw-items-center" style="background:rgba(22,163,74,.1); padding:.375rem .5rem; border-radius:.375rem">
-                <i class="bi bi-link-45deg" style="color:#16a34a"></i>
-              </span>
+            <%= ax_input_group(prefix: tag.i(class: "bi bi-link-45deg tw-text-green-600")) do %>
               <%= f.text_field :whatsapp_webhook_url, class: "ax-control", placeholder: "https://n8n.seu-servidor.com/webhook/leads" %>
-            </div>
+            <% end %>
             <small class="tw-text-ink-muted">Opcional. Se preenchido, leads de WhatsApp serão enviados para esta URL prioritariamente.</small>
           </div>
 
           <!-- Enabled Toggles -->
           <%= ax_field_grid(class_name: "tw-mb-4") do %>
             <div class="ax-span-6">
-              <%= ax_switch_field(label: tag.span(safe_join([tag.i(class: "bi bi-power", style: "color:#16a34a"), "Habilitar Webhook"]), class: "tw-inline-flex tw-items-center tw-gap-2"), form: f, method: :enabled, id: "webhook_enabled", input_html: { role: "switch" }) %>
+              <%= ax_switch_field(label: tag.span(safe_join([tag.i(class: "bi bi-power tw-text-green-600"), "Habilitar Webhook"]), class: "tw-inline-flex tw-items-center tw-gap-2"), form: f, method: :enabled, id: "webhook_enabled", input_html: { role: "switch" }) %>
             </div>
             <div class="ax-span-6">
               <%= ax_switch_field(label: tag.span(safe_join([tag.i(class: "bi bi-person-badge tw-text-primary"), "Captura de Leads (Modal)"]), class: "tw-inline-flex tw-items-center tw-gap-2"), form: f, method: :lead_capture_enabled, id: "lead_capture_enabled", input_html: { role: "switch" }) %>
@@ -101,7 +95,7 @@
           <p class="tw-text-ink-muted tw-text-sm">Este webhook disparará sempre que um formulário for preenchido no site.</p>
           <hr>
           <h6>Formulários Monitorados:</h6>
-          <ul class="tw-text-sm tw-text-ink-muted" style="padding-left:1rem; margin-bottom:0">
+          <ul class="ax-field__hint ax-field__hint--steps">
             <li>Contato Geral</li>
             <li>Agendamento de Visita</li>
             <li>Trabalhe Conosco</li>
@@ -112,7 +106,7 @@
 
       <%= ax_operational_panel(eyebrow: "Contrato", title: "Exemplo de payload", class_name: "tw-mb-4") do %>
           <p class="tw-text-ink-muted tw-text-sm tw-mb-3">Envio via <strong>POST</strong> com <code>Content-Type: application/json</code>.</p>
-          <pre class="webhook-editor-payload"><code><%= JSON.pretty_generate(sample_webhook_payload) %></code></pre>
+          <%= ax_code_snippet(code: JSON.pretty_generate(sample_webhook_payload), label: "Exemplo de payload JSON") %>
       <% end %>
 
       <div class="tw-grid tw-gap-2">

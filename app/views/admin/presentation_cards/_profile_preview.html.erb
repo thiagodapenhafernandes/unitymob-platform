@@ -3,11 +3,7 @@
 <%= ax_operational_panel(eyebrow: "Prévia", title: "Como o cliente vê") do %>
   <div class="ax-panel-body">
     <div class="tw-flex tw-items-center tw-gap-3 tw-mb-3">
-      <% if current_admin_user.avatar.attached? %>
-        <%= image_tag current_admin_user.avatar, class: "tw-w-12 tw-h-12 tw-rounded-full tw-object-cover", alt: current_admin_user.name %>
-      <% else %>
-        <span class="ax-avatar" style="width:48px;height:48px;font-size:16px"><%= wa_initials(current_admin_user.name) %></span>
-      <% end %>
+      <%= ax_avatar(name: current_admin_user.name, image: current_admin_user.avatar, size: :lg) %>
       <div class="tw-min-w-0">
         <strong class="tw-block tw-truncate"><%= current_admin_user.name %></strong>
         <span class="tw-text-ink-muted tw-text-sm"><%= current_admin_user.creci.present? ? "CRECI #{current_admin_user.creci}" : "CRECI não informado" %></span>

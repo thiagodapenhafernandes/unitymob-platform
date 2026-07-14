@@ -1,0 +1,151 @@
+/* Property operational hub: shared surface contract for overview, publication and audit timeline. */
+.habitation-audit-modal {
+  --hab-audit-card-bg: #fff;
+}
+
+.habitation-audit-tab:focus-visible {
+  outline: 2px solid var(--admin-primary, #365f8f);
+  outline-offset: 2px;
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal {
+  --hab-audit-card-bg: var(--ax-dark-surface-raised, #18243a);
+  --hab-audit-surface: var(--ax-dark-surface, #0f1726);
+  --hab-audit-surface-raised: var(--ax-dark-surface-raised, #18243a);
+  --hab-audit-surface-soft: color-mix(in srgb, var(--ax-dark-surface-raised, #18243a) 72%, #0b1322);
+  --hab-audit-border: var(--ax-dark-border, #33445f);
+  --hab-audit-border-soft: var(--ax-dark-border-soft, #27364d);
+  --hab-audit-text: var(--ax-dark-text, #edf3fb);
+  --hab-audit-muted: var(--ax-dark-text-muted, #aebbd0);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-audit-sub,
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-audit-tabs,
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-audit-content {
+  border-color: var(--hab-audit-border-soft);
+  background: var(--hab-audit-surface);
+  color: var(--hab-audit-muted);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-audit-tab {
+  border-color: var(--hab-audit-border);
+  background: var(--hab-audit-surface-raised);
+  color: var(--hab-audit-muted);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-audit-tab:hover {
+  border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 72%, var(--hab-audit-border));
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 16%, var(--hab-audit-surface-raised));
+  color: var(--hab-audit-text);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-audit-tab.active {
+  border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 72%, #8fb8e8);
+  background: var(--admin-primary, #365f8f);
+  color: #f8fbff;
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-audit-tab__count {
+  background: color-mix(in srgb, var(--hab-audit-surface) 72%, transparent);
+  color: var(--hab-audit-text);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal :is(
+  .habitation-operational-kpis article,
+  .habitation-publication-summary article,
+  .habitation-operational-panel,
+  .ax-tl-card,
+  .habitation-audit-empty
+) {
+  border-color: var(--hab-audit-border);
+  background: var(--hab-audit-surface-raised);
+  color: var(--hab-audit-text);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal :is(
+  .habitation-operational-kpis span,
+  .habitation-publication-summary span,
+  .habitation-operational-panel ul,
+  .habitation-operational-panel p,
+  .habitation-hub-loading,
+  .habitation-hub-error,
+  .ax-tl-day,
+  .ax-tl-time,
+  .ax-tl-meta,
+  .ax-tl-before,
+  .habitation-audit-empty
+) {
+  color: var(--hab-audit-muted);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal :is(
+  .habitation-operational-kpis strong,
+  .habitation-publication-summary strong,
+  .habitation-operational-panel header,
+  .habitation-publication-history h4,
+  .ax-tl-title,
+  .ax-tl-actor,
+  .ax-tl-field,
+  .ax-tl-after,
+  .habitation-audit-detail-list
+) {
+  color: var(--hab-audit-text);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-publication-channel {
+  border-color: var(--hab-audit-border);
+  background: var(--hab-audit-surface-soft);
+  color: var(--hab-audit-muted);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-publication-channel.is-active {
+  border-color: #277c5a;
+  background: #123d31;
+  color: #9be7c0;
+}
+
+.habitation-audit-modal .habitation-publication-history {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ab-line-soft, #e7ebf2);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-publication-history {
+  border-color: var(--hab-audit-border-soft);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-publication-conflicts {
+  border-color: var(--ax-dark-danger-border, #7f3434);
+  background: var(--ax-dark-danger-surface, #351a22);
+  color: var(--ax-dark-danger-text, #ffb4b4);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .ax-tl {
+  border-color: var(--hab-audit-border);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .ax-tl-node {
+  border-color: #76a9df;
+  background: var(--hab-audit-surface-raised);
+  color: #9bc5f1;
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .ax-tl-source {
+  border-color: var(--hab-audit-border);
+  background: var(--hab-audit-surface-soft);
+  color: var(--hab-audit-muted);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .ax-tl-changes li {
+  border: 1px solid var(--hab-audit-border-soft);
+  background: var(--hab-audit-surface-soft);
+  color: var(--hab-audit-muted);
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .ax-tl-changes li i {
+  color: #8292aa;
+}
+
+[data-admin-theme="dark"] .habitation-audit-modal .habitation-audit-empty {
+  border-style: dashed;
+}

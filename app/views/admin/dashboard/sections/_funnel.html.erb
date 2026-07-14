@@ -10,9 +10,8 @@
 
     <div class="ax-dashboard-funnel">
       <div class="ax-dashboard-funnel__visual" aria-label="Funil comercial dos últimos 30 dias">
-        <% @commercial_funnel_rows.each_with_index do |row, index| %>
-          <div class="ax-dashboard-funnel__stage ax-dashboard-funnel__stage--<%= row[:tone] %>"
-               style="--stage-width:<%= row[:width] %>%; --stage-index:<%= index %>;">
+        <% @commercial_funnel_rows.each do |row| %>
+          <div class="ax-dashboard-funnel__stage ax-dashboard-funnel__stage--<%= row[:tone] %>">
             <span class="ax-dashboard-funnel__stage-label"><%= row[:label] %></span>
             <strong><%= number_with_delimiter(row[:value]) %></strong>
           </div>

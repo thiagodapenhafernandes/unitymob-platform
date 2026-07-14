@@ -1,9 +1,12 @@
-<div class="admin-entity-dark"><div class="ax-card">
-  <div class="ax-card__header py-3">
-    <h5 class="ax-card__title tw-mb-0 tw-font-bold tw-text-primary tw-flex tw-items-center tw-gap-2"><i class="bi bi-plus-circle"></i>Novo Proprietário</h5>
-  </div>
-  <div class="ax-card__body p-4">
+<div class="proprietor-editor">
+  <%= ax_workspace_heading(
+        eyebrow: "Cadastros · Proprietários",
+        icon: "person-plus",
+        title: "Novo proprietário",
+        subtitle: "Cadastre dados pessoais, contatos, endereço e informações complementares."
+      ) %>
+
+  <%= ax_operational_panel(eyebrow: "Cadastro", title: "Dados do proprietário") do %>
     <%= render 'form', proprietor: @proprietor %>
-  </div>
-</div>
+  <% end %>
 </div>

@@ -21,6 +21,14 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
   end
 
   describe "GET index" do
+    it "renderiza estado vazio compartilhado quando nao existem remetentes" do
+      get admin_whatsapp_campaigns_path
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css(".ax-empty-state")&.text).to include("Nenhum número cadastrado")
+    end
+
     it "renderiza a camada de selecao por numero" do
       create(:whatsapp_sender_number, display_phone_number: "5511988887777", phone_number_id: "111222333444")
 
@@ -90,6 +98,29 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response.body).not_to include("Lead por filtro")
       expect(response.body).to include(admin_whatsapp_campaign_recipients_path)
     end
+
+    it "isola listagem e metricas de destinatarios por tenant" do
+      sender = create(:whatsapp_sender_number, tenant: admin.tenant)
+      campaign = WhatsappCampaign.create!(name: "CSV da conta", whatsapp_template: template, whatsapp_sender_number: sender, created_by: admin)
+      campaign.campaign_recipients.create!(source: "spreadsheet", name: "Contato da conta", phone_number: "5511999990000")
+
+      other_tenant = Tenant.create!(name: "Outra conta CSV #{SecureRandom.hex(3)}", slug: "outra-conta-csv-#{SecureRandom.hex(3)}")
+      other_admin = create(:admin_user, :admin, tenant: other_tenant)
+      other_template = other_admin.tenant.whatsapp_templates.create!(name: "outro_tenant", language: "pt_BR", status: "APPROVED", body: "Olá")
+      other_integration = create(:whatsapp_business_integration, tenant: other_tenant, connected_by_admin_user: other_admin)
+      other_sender = create(:whatsapp_sender_number, tenant: other_tenant, whatsapp_business_integration: other_integration)
+      other_campaign = other_admin.tenant.whatsapp_campaigns.create!(name: "CSV externo", whatsapp_template: other_template, whatsapp_sender_number: other_sender, created_by: other_admin)
+      other_campaign.campaign_recipients.create!(tenant: other_admin.tenant, source: "spreadsheet", name: "Contato externo", phone_number: "5521999990000")
+
+      get admin_whatsapp_campaign_recipients_path
+
+      document = Nokogiri::HTML(response.body)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Contato da conta")
+      expect(response.body).not_to include("Contato externo")
+      expect(document.at_css(".ax-metric-card[aria-label='CSV no sistema'] .ax-metric-card__value")&.text).to eq("1")
+      expect(document.at_css("table caption")&.text).to include("Destinatários importados")
+    end
   end
 
   describe "GET documentation" do
@@ -114,6 +145,11 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response.body).to include("Enviar agora")
       expect(response.body).to include("Estimativas")
       expect(response.body).not_to include("Resposta automática")
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css("[role='tablist'][aria-label='Etapas da campanha']")).to be_present
+      expect(document.css("[role='tab']").size).to eq(5)
+      expect(document.css("[role='tabpanel']").size).to eq(5)
+      expect(document.at_css("[role='progressbar'][aria-valuenow='1']")).to be_present
     end
 
     it "pre-seleciona template vindo do catalogo" do
@@ -149,6 +185,10 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response.body).to include("Campanha monitorada")
       expect(response.body).to include("Performance")
       expect(response.body).to include("Mensagens recentes")
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css("table caption")&.text).to include("Mensagens recentes da campanha Campanha monitorada")
+      expect(document.css("table th[scope='col']").size).to eq(7)
+      expect(document.at_css("meter[aria-label='Progresso da campanha Campanha monitorada']")).to be_present
     end
 
     it "exibe resumo de ocorrencias e operacoes para falhas de entrega" do
@@ -791,6 +831,24 @@ RSpec.describe "Admin::WhatsappCampaigns", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Descadastros WhatsApp")
       expect(response.body).to include("Contato Teste")
+    end
+
+    it "isola listagem e metricas de descadastros por tenant" do
+      create(:whatsapp_campaign_unsubscribe, phone_number: "5511999990000", contact_name: "Contato da conta")
+      other_tenant = Tenant.create!(name: "Outra conta opt-out #{SecureRandom.hex(3)}", slug: "outra-conta-opt-out-#{SecureRandom.hex(3)}")
+      other_admin = create(:admin_user, :admin, tenant: other_tenant)
+      other_integration = create(:whatsapp_business_integration, tenant: other_tenant, connected_by_admin_user: other_admin)
+      other_sender = create(:whatsapp_sender_number, tenant: other_tenant, whatsapp_business_integration: other_integration)
+      create(:whatsapp_campaign_unsubscribe, whatsapp_sender_number: other_sender, phone_number: "5521999990000", contact_name: "Contato externo")
+
+      get admin_whatsapp_campaign_unsubscribes_path
+
+      document = Nokogiri::HTML(response.body)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Contato da conta")
+      expect(response.body).not_to include("Contato externo")
+      expect(document.at_css(".ax-metric-card[aria-label='Ativos no sistema'] .ax-metric-card__value")&.text).to eq("1")
+      expect(document.at_css("table caption")&.text).to include("Contatos descadastrados")
     end
 
     it "lista e reabilita contatos descadastrados por numero" do

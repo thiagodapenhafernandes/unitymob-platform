@@ -11,26 +11,26 @@
   checkout_delay_value = format("%02d:%02d", checkout_delay_seconds / 3600, (checkout_delay_seconds % 3600) / 60)
 %>
 
-<div class="ax-card tw-mb-3" data-controller="store-operational-shift">
-  <div class="ax-card__body">
-    <div class="tw-flex tw-items-center tw-justify-between tw-gap-3 tw-mb-3">
-      <h6 class="tw-font-bold" style="margin:0"><%= shift_title %></h6>
-      <%= hidden_field_tag "store[turnos_config_#{shift_key}_ativo]", "false", id: nil %>
-      <%= ax_switch_field(
-            label: "Ativo",
-            name: "store[turnos_config_#{shift_key}_ativo]",
-            checked: shift_active,
-            checked_value: "true",
-            unchecked_value: "false",
-            id: "store_turnos_config_#{shift_key}_ativo",
-            input_html: {
-              data: {
-                store_operational_shift_target: "active",
-                action: "store-operational-shift#sync"
-              }
-            }
-          ) %>
-    </div>
+<% shift_actions = capture do %>
+  <%= hidden_field_tag "store[turnos_config_#{shift_key}_ativo]", "false", id: nil %>
+  <%= ax_switch_field(
+        label: "Ativo",
+        name: "store[turnos_config_#{shift_key}_ativo]",
+        checked: shift_active,
+        checked_value: "true",
+        unchecked_value: "false",
+        id: "store_turnos_config_#{shift_key}_ativo",
+        input_html: {
+          data: {
+            store_operational_shift_target: "active",
+            action: "store-operational-shift#sync"
+          }
+        }
+      ) %>
+<% end %>
+
+<div data-controller="store-operational-shift">
+  <%= ax_field_group(title: shift_title, actions: shift_actions, class_name: "tw-mb-3") do %>
 
     <%= ax_field_grid do %>
       <div class="ax-span-4">
@@ -94,5 +94,5 @@
         <p class="ax-field__hint">Após o fim do turno. Use 00:00 para imediato.</p>
       </div>
     <% end %>
-  </div>
+  <% end %>
 </div>

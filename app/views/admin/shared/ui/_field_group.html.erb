@@ -1,18 +1,8 @@
 <% group_classes = ["ax-field-group", class_name].compact_blank.join(" ") %>
-<%
-  group_styles = [
-    "display:grid",
-    "align-content:start",
-    "min-width:0",
-    "gap:6px",
-    ("padding:8px;border:1px solid #dfe7f1;border-radius:8px;background:#fbfdff" if group_classes.include?("ax-field-group--panel")),
-    ("margin-bottom:8px" if group_classes.include?("ax-field-group--spaced"))
-  ].compact.join(";")
-%>
 
-<div class="<%= group_classes %>" style="<%= group_styles %>">
-  <div class="ax-field-group__header" style="display:flex;align-items:center;justify-content:space-between;min-height:18px;gap:8px;">
-    <h6 class="ax-field-group__title" style="display:inline-flex;align-items:center;gap:4px;margin:0;color:#697586;font-size:10px;font-weight:900;letter-spacing:.045em;line-height:1;text-transform:uppercase;">
+<div class="<%= group_classes %>">
+  <div class="ax-field-group__header">
+    <h6 class="ax-field-group__title">
       <span><%= title %></span>
       <% if local_assigns[:tooltip].present? %>
         <button type="button"
@@ -25,13 +15,13 @@
       <% end %>
     </h6>
     <% if token.present? %>
-      <span class="ax-field-group__token" style="display:inline-flex;align-items:center;min-height:20px;padding:0 8px;border-radius:999px;background:#eef3f8;color:#667085;font-size:10px;font-weight:850;"><%= token %></span>
+      <span class="ax-field-group__token"><%= token %></span>
     <% end %>
     <% if actions.present? %>
-      <div class="ax-field-group__actions" style="margin-left:auto;"><%= actions %></div>
+      <div class="ax-field-group__actions"><%= actions %></div>
     <% end %>
   </div>
-  <div class="ax-field-group__body" style="min-width:0;">
+  <div class="ax-field-group__body">
     <%= body %>
   </div>
 </div>

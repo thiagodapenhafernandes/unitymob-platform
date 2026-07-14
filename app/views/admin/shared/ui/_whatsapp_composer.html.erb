@@ -79,17 +79,17 @@
         </button>
         <div class="wa-composer-popover wa-composer-popover--menu" hidden data-attach-menu-target="popover">
           <button type="button" data-action="attach-menu#pick" data-accept="<%= Whatsapp::MediaSupport.accept_attribute_for(:document) %>">
-            <i class="bi bi-file-earmark-text" style="color:#7c3aed"></i><span>Documento</span>
+            <i class="bi bi-file-earmark-text wa-composer-popover__icon wa-composer-popover__icon--document"></i><span>Documento</span>
           </button>
           <%# MIME exatos (nunca video/*): o iOS converte MOV->MP4/HEIC->JPEG na escolha %>
           <button type="button" data-action="attach-menu#pick" data-accept="<%= Whatsapp::MediaSupport.accept_attribute_for(:image, :video) %>">
-            <i class="bi bi-images" style="color:#175cd3"></i><span>Fotos e vídeos</span>
+            <i class="bi bi-images wa-composer-popover__icon wa-composer-popover__icon--media"></i><span>Fotos e vídeos</span>
           </button>
           <button type="button" data-action="attach-menu#pick" data-accept="<%= Whatsapp::MediaSupport.accept_attribute_for(:image) %>" data-capture="environment">
-            <i class="bi bi-camera" style="color:#e0447a"></i><span>Câmera</span>
+            <i class="bi bi-camera wa-composer-popover__icon wa-composer-popover__icon--camera"></i><span>Câmera</span>
           </button>
           <button type="button" data-action="attach-menu#pick" data-accept="<%= Whatsapp::MediaSupport.accept_attribute_for(:audio) %>">
-            <i class="bi bi-headphones" style="color:#d97706"></i><span>Áudio</span>
+            <i class="bi bi-headphones wa-composer-popover__icon wa-composer-popover__icon--audio"></i><span>Áudio</span>
           </button>
         </div>
       </div>
@@ -124,14 +124,14 @@
                         data-action="quick-replies#useCard"
                         data-card-id="<%= card.id %>"
                         data-body="<%= card.message_body_for(current_admin_user) %>">
-                  <i class="bi bi-person-badge" style="color:#16a34a"></i>
+                  <i class="bi bi-person-badge wa-composer-popover__icon wa-composer-popover__icon--presentation"></i>
                   <span><%= card.system? ? "Empresa · " : "" %><%= card.label %><%= " · com foto" if card.use_photo? %></span>
                 </button>
               <% end %>
               <%# modal fica FORA deste <form> (forms aninhados sao descartados
                   pelo parser e os campos required travavam o submit/gravacao) %>
               <button type="button" data-action="quick-replies#openCards">
-                <i class="bi bi-pencil" style="color:#697586"></i><span>Meus cartões</span>
+                <i class="bi bi-pencil wa-composer-popover__icon wa-composer-popover__icon--edit"></i><span>Meus cartões</span>
               </button>
             <% end %>
             <% if templates.any? %>
@@ -140,7 +140,7 @@
                 <button type="button"
                         data-action="quick-replies#useTemplate"
                         data-template-name="<%= template.name %>">
-                  <i class="bi bi-patch-check" style="color:#175cd3"></i>
+                  <i class="bi bi-patch-check wa-composer-popover__icon wa-composer-popover__icon--template"></i>
                   <span><%= template.name %></span>
                 </button>
               <% end %>

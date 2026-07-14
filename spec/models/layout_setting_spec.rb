@@ -10,12 +10,11 @@ RSpec.describe LayoutSetting, type: :model do
       expect(setting.admin_theme_mode).to eq("light")
     end
 
-    it "entrega a paleta escura quando o modo dark está ativo" do
+    it "entrega a paleta escura conforme o modo solicitado pelo usuário" do
       setting = described_class.instance
-      setting.update!(admin_theme_mode: "dark")
 
-      expect(setting.effective_admin_theme).to include(LayoutSetting::ADMIN_DARK_THEME)
-      expect(setting.effective_admin_theme[:primary]).to eq(setting.admin_primary_color)
+      expect(setting.effective_admin_theme(mode: "dark")).to include(LayoutSetting::ADMIN_DARK_THEME)
+      expect(setting.effective_admin_theme(mode: "dark")[:primary]).to eq(setting.admin_primary_color)
     end
 
     it "preenche os estilos padrão das divisões do menu" do

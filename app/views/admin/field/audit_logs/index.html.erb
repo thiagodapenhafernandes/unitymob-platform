@@ -1,79 +1,87 @@
-<%# Auditoria de Campo — compacto (.ax-*) com timeline. Original em index.html.erb.bootstrap-bak %>
 <%
   action_meta = {
-    "created"                 => { label: "Check-in criado",          icon: "bi-plus-circle-fill",      color: "primary" },
-    "closed"                  => { label: "Check-out",                icon: "bi-box-arrow-right",       color: "secondary" },
-    "forced_closed"           => { label: "Fechado pelo admin",       icon: "bi-exclamation-octagon",   color: "warning" },
-    "flagged_suspicious"      => { label: "Flagged suspeito",         icon: "bi-exclamation-triangle-fill", color: "danger" },
-    "manual_request_created"  => { label: "Pedido manual criado",     icon: "bi-hand-index-thumb",      color: "info" },
-    "manual_request_approved" => { label: "Pedido manual aprovado",   icon: "bi-check-circle-fill",     color: "success" },
-    "manual_request_rejected" => { label: "Pedido manual rejeitado",  icon: "bi-x-circle-fill",         color: "dark" }
+    "created"                 => { label: "Check-in criado", icon: "plus-circle-fill", tone: :blue },
+    "closed"                  => { label: "Check-out", icon: "box-arrow-right", tone: :gray },
+    "forced_closed"           => { label: "Fechado pelo admin", icon: "exclamation-octagon", tone: :amber },
+    "flagged_suspicious"      => { label: "Flagged suspeito", icon: "exclamation-triangle-fill", tone: :red },
+    "manual_request_created"  => { label: "Pedido manual criado", icon: "hand-index-thumb", tone: :blue },
+    "manual_request_approved" => { label: "Pedido manual aprovado", icon: "check-circle-fill", tone: :green },
+    "manual_request_rejected" => { label: "Pedido manual rejeitado", icon: "x-circle-fill", tone: :gray }
   }
-  dot_hex = { "primary" => "var(--admin-primary)", "danger" => "#b42318", "warning" => "#b45309", "success" => "#08875d", "info" => "var(--admin-primary)", "secondary" => "#98a2b3", "dark" => "#475467" }
-  bs_to_ax = { "primary" => "blue", "danger" => "red", "warning" => "amber", "success" => "green", "info" => "blue", "secondary" => "gray", "dark" => "gray" }
-  grouped = @logs.group_by { |l| l.created_at.to_date }
+  grouped_logs = @logs.group_by { |log| log.created_at.to_date }
 %>
 
-<div class="tw-mb-4">
-  <h1 class="ax-page-title">Auditoria de Campo</h1>
-  <p class="ax-page-subtitle">Log <strong>append-only</strong> — eventos de check-in imutáveis (trigger PG bloqueia UPDATE/DELETE).</p>
-</div>
+<div class="field-audit-logs-admin">
+  <%= ax_workspace_heading(
+        eyebrow: "Campo · Rastreabilidade",
+        icon: "shield-lock-fill",
+        title: "Auditoria de Campo",
+        subtitle: "Log append-only de eventos imutáveis de check-in e revisão manual."
+      ) %>
 
-<div class="tw-grid tw-grid-cols-2 md:tw-grid-cols-4 tw-gap-3 tw-mb-4">
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label"><i class="bi bi-funnel"></i> Filtrados</div><div class="ax-stat-value"><%= @total_events %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label"><i class="bi bi-calendar-day"></i> Hoje</div><div class="ax-stat-value"><%= @events_today %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label"><i class="bi bi-exclamation-triangle"></i> Suspeitos</div><div class="ax-stat-value <%= 'tw-text-red-600' if @flagged_count > 0 %>"><%= @flagged_count %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label"><i class="bi bi-hammer"></i> Forçados</div><div class="ax-stat-value <%= 'tw-text-amber-600' if @forced_count > 0 %>"><%= @forced_count %></div></div>
-</div>
-
-<%= form_with url: admin_field_audit_logs_path, method: :get, local: true do %>
-  <div class="ax-card tw-mb-3">
-    <div class="ax-card__body tw-grid tw-grid-cols-2 md:tw-grid-cols-4 tw-gap-3 tw-items-end">
-      <div><label class="ax-label">Ação</label><%= select_tag :action_filter, options_for_select([["Todas", ""]] + @available_actions.map { |a| [action_meta.dig(a, :label) || a.humanize, a] }, params[:action_filter]), class: "ax-select" %></div>
-      <div><label class="ax-label">Corretor</label><%= select_tag :admin_user_id, options_from_collection_for_select(@available_users, :id, ->(u) { "#{u.name} · #{u.email}" }, params[:admin_user_id]), class: "ax-select", include_blank: "Todos" %></div>
-      <div><label class="ax-label">Perfil</label><%= select_tag :profile_id, options_from_collection_for_select(@available_profiles, :id, ->(profile) { profile_filter_label(profile) }, params[:profile_id]), class: "ax-select", include_blank: "Todos" %></div>
-      <div><label class="ax-label">Executado por</label><%= select_tag :actor_admin_user_id, options_from_collection_for_select(@available_actors, :id, ->(u) { "#{u.name} · #{u.email}" }, params[:actor_admin_user_id]), class: "ax-select", include_blank: "Todos" %></div>
-      <div><label class="ax-label">Loja</label><%= select_tag :store_id, options_from_collection_for_select(@available_stores, :id, :name, params[:store_id]), class: "ax-select", include_blank: "Todas" %></div>
-      <div><label class="ax-label">IP</label><%= text_field_tag :ip, params[:ip], class: "ax-input", placeholder: "000.000.000.000" %></div>
-      <div><label class="ax-label">De</label><%= date_field_tag :start_date, params[:start_date], class: "ax-input" %></div>
-      <div><label class="ax-label">Até</label><%= date_field_tag :end_date, params[:end_date], class: "ax-input" %></div>
-      <div class="tw-flex tw-gap-1"><%= submit_tag "Aplicar", class: "ax-btn ax-btn--primary" %><%= link_to "Limpar", admin_field_audit_logs_path, class: "ax-btn ax-btn--ghost" %></div>
-    </div>
+  <div class="ax-metric-grid tw-mb-4">
+    <%= ax_metric_card(label: "Filtrados", value: @total_events) %>
+    <%= ax_metric_card(label: "Hoje", value: @events_today) %>
+    <%= ax_metric_card(label: "Suspeitos", value: @flagged_count, badge: (@flagged_count.positive? ? ax_badge("Atenção", tone: :red) : nil)) %>
+    <%= ax_metric_card(label: "Forçados", value: @forced_count, badge: (@forced_count.positive? ? ax_badge("Revisar", tone: :amber) : nil)) %>
   </div>
-<% end %>
 
-<div class="ax-card">
-  <div class="ax-card__body">
-    <% if grouped.any? %>
-      <% grouped.each do |date, logs| %>
-        <div class="tw-inline-block tw-my-3 tw-px-2.5 tw-py-1 tw-rounded-full tw-text-2xs tw-font-bold tw-uppercase" style="background:#1f2733;color:#fff"><i class="bi bi-calendar3"></i> <%= l(date, format: :long) %> · <%= pluralize(logs.size, "evento") %></div>
-        <% logs.each do |log| %>
-          <% meta = action_meta[log.action] || { label: log.action.humanize, icon: "bi-info-circle", color: "secondary" } %>
-          <div class="tw-flex tw-gap-3 tw-py-3 tw-pl-4 tw-border-b tw-border-line last:tw-border-0 tw-relative">
-            <span class="tw-absolute tw-left-0 tw-top-4 tw-w-3 tw-h-3 tw-rounded-full" style="background:<%= dot_hex[meta[:color]] || '#cbd5e1' %>;box-shadow:0 0 0 3px #fff,0 0 0 4px #e5e7eb"></span>
-            <div class="tw-flex-1 tw-min-w-0">
-              <div class="tw-flex tw-justify-between tw-items-start tw-gap-2">
-                <div>
-                  <div class="ax-strong"><i class="bi <%= meta[:icon] %>"></i> <%= meta[:label] %></div>
-                  <div class="tw-text-2xs tw-text-ink-muted tw-mt-0.5">
-                    <% if log.admin_user %><i class="bi bi-person"></i> <strong><%= log.admin_user.name %></strong><% end %>
-                    <% if log.actor_admin_user && log.actor_admin_user_id != log.admin_user_id %> · por <%= log.actor_admin_user.name %><% end %>
-                    <% if log.check_in && log.check_in.store %> · <i class="bi bi-shop-window"></i> <%= log.check_in.store.name %><% end %>
-                    <% if log.ip.present? %> · <i class="bi bi-globe"></i> <%= log.ip %><% end %>
-                  </div>
-                </div>
-                <div class="tw-text-2xs tw-text-ink-faint tw-whitespace-nowrap"><%= l(log.created_at, format: :short).split(" ").last %></div>
-              </div>
-              <% if log.metadata.present? && log.metadata.any? %>
-                <details class="tw-mt-1"><summary class="tw-text-2xs tw-text-ink-muted tw-cursor-pointer">Metadados</summary><pre class="tw-mt-1 tw-bg-surface-soft tw-border tw-border-line tw-rounded tw-p-2 tw-font-mono tw-text-2xs tw-overflow-auto"><%= JSON.pretty_generate(log.metadata) %></pre></details>
-              <% end %>
-            </div>
+  <%= ax_filter_form(url: admin_field_audit_logs_path, reset_path: admin_field_audit_logs_path, submit_label: "Aplicar", class_name: "tw-mb-3") do |_form| %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-3"><%= label_tag :action_filter, "Ação", class: "ax-label" %><%= select_tag :action_filter, options_for_select([["Todas", ""]] + @available_actions.map { |action| [action_meta.dig(action, :label) || action.humanize, action] }, params[:action_filter]), class: "ax-control" %></div>
+      <div class="ax-span-3"><%= label_tag :admin_user_id, "Corretor", class: "ax-label" %><%= select_tag :admin_user_id, options_from_collection_for_select(@available_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:admin_user_id]), class: "ax-control", include_blank: "Todos" %></div>
+      <div class="ax-span-3"><%= label_tag :profile_id, "Perfil", class: "ax-label" %><%= select_tag :profile_id, options_from_collection_for_select(@available_profiles, :id, ->(profile) { profile_filter_label(profile) }, params[:profile_id]), class: "ax-control", include_blank: "Todos" %></div>
+      <div class="ax-span-3"><%= label_tag :actor_admin_user_id, "Executado por", class: "ax-label" %><%= select_tag :actor_admin_user_id, options_from_collection_for_select(@available_actors, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:actor_admin_user_id]), class: "ax-control", include_blank: "Todos" %></div>
+      <div class="ax-span-3"><%= label_tag :store_id, "Loja", class: "ax-label" %><%= select_tag :store_id, options_from_collection_for_select(@available_stores, :id, :name, params[:store_id]), class: "ax-control", include_blank: "Todas" %></div>
+      <div class="ax-span-3"><%= label_tag :ip, "IP", class: "ax-label" %><%= text_field_tag :ip, params[:ip], class: "ax-control", placeholder: "000.000.000.000" %></div>
+      <div class="ax-span-3"><%= label_tag :start_date, "De", class: "ax-label" %><%= date_field_tag :start_date, params[:start_date], class: "ax-control" %></div>
+      <div class="ax-span-3"><%= label_tag :end_date, "Até", class: "ax-label" %><%= date_field_tag :end_date, params[:end_date], class: "ax-control" %></div>
+    <% end %>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Linha do tempo", title: "Eventos registrados") do %>
+    <% if grouped_logs.any? %>
+      <div class="ax-record-list">
+        <% grouped_logs.each do |date, logs| %>
+          <div class="tw-flex tw-items-center tw-gap-2 tw-my-2">
+            <%= ax_badge(l(date, format: :long), tone: :gray) %>
+            <span class="ax-page-subtitle"><%= pluralize(logs.size, "evento") %></span>
           </div>
+
+          <% logs.each do |log| %>
+            <% meta = action_meta[log.action] || { label: log.action.humanize, icon: "info-circle", tone: :gray } %>
+            <% log_meta = safe_join([
+                 (safe_join([tag.i(class: "bi bi-person"), tag.strong(log.admin_user.name)], " ") if log.admin_user),
+                 ("por #{log.actor_admin_user.name}" if log.actor_admin_user && log.actor_admin_user_id != log.admin_user_id),
+                 (safe_join([tag.i(class: "bi bi-shop-window"), log.check_in.store.name], " ") if log.check_in&.store),
+                 (safe_join([tag.i(class: "bi bi-globe"), log.ip], " ") if log.ip.present?)
+               ].compact, " · ") %>
+
+            <%= ax_record_item(
+                  title: meta[:label],
+                  eyebrow: l(log.created_at, format: :short).split(" ").last,
+                  meta: log_meta,
+                  icon: meta[:icon],
+                  actions: ax_badge(log.action, tone: meta[:tone])
+                ) do %>
+              <% if log.metadata.present? && log.metadata.any? %>
+                <details>
+                  <summary class="tw-text-2xs tw-text-ink-muted tw-cursor-pointer">Metadados</summary>
+                  <pre class="tw-mt-1 tw-bg-surface-soft tw-border tw-border-line tw-rounded tw-p-2 tw-font-mono tw-text-2xs tw-overflow-auto"><%= JSON.pretty_generate(log.metadata) %></pre>
+                </details>
+              <% end %>
+            <% end %>
+          <% end %>
         <% end %>
-      <% end %>
+      </div>
+
       <%= ax_pagination @logs, params: request.query_parameters %>
     <% else %>
-      <div class="ax-empty"><i class="bi bi-inbox tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>Nenhum evento encontrado com esses filtros.</div>
+      <%= ax_empty_state(
+            title: "Nenhum evento encontrado",
+            description: "Ajuste os filtros ou aguarde novos eventos de check-in.",
+            icon: "shield-lock"
+          ) %>
     <% end %>
-  </div>
+  <% end %>
 </div>

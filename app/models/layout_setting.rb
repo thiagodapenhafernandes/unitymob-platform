@@ -44,8 +44,8 @@ class LayoutSetting < ApplicationRecord
     has_attribute?(:admin_theme_mode) && admin_theme_mode == 'dark'
   end
 
-  def effective_admin_theme
-    return ADMIN_DARK_THEME.merge(primary: admin_primary_color.presence || ADMIN_PRIMARY_DEFAULT) if admin_dark_mode?
+  def effective_admin_theme(mode: ADMIN_THEME_MODE_DEFAULT)
+    return ADMIN_DARK_THEME.merge(primary: admin_primary_color.presence || ADMIN_PRIMARY_DEFAULT) if mode == "dark"
 
     {
       surface: admin_surface_color.presence || ADMIN_SURFACE_DEFAULT,
@@ -70,7 +70,7 @@ class LayoutSetting < ApplicationRecord
       secondary_color: '#053C5E',
       accent_color: '#BFAB25',
       admin_primary_color: ADMIN_PRIMARY_DEFAULT,
-      site_name: 'Salute Imóveis'
+      site_name: tenant.name
     }
     defaults[:admin_area_name] = ADMIN_AREA_NAME_DEFAULT if column_names.include?('admin_area_name')
     defaults[:admin_surface_color] = ADMIN_SURFACE_DEFAULT if column_names.include?('admin_surface_color')
@@ -110,6 +110,26 @@ class LayoutSetting < ApplicationRecord
     end
 
     setting
+  end
+
+  def self.platform_defaults
+    attributes = {
+      primary_color: '#022B3A',
+      secondary_color: '#053C5E',
+      accent_color: '#BFAB25',
+      admin_primary_color: ADMIN_PRIMARY_DEFAULT,
+      site_name: 'Unitymob'
+    }
+    attributes[:admin_area_name] = ADMIN_AREA_NAME_DEFAULT if column_names.include?('admin_area_name')
+    attributes[:admin_surface_color] = ADMIN_SURFACE_DEFAULT if column_names.include?('admin_surface_color')
+    attributes[:admin_header_color] = ADMIN_HEADER_DEFAULT if column_names.include?('admin_header_color')
+    attributes[:admin_workspace_color] = ADMIN_WORKSPACE_DEFAULT if column_names.include?('admin_workspace_color')
+    attributes[:admin_sidebar_color] = ADMIN_SIDEBAR_DEFAULT if column_names.include?('admin_sidebar_color')
+    attributes[:admin_ink_color] = ADMIN_INK_DEFAULT if column_names.include?('admin_ink_color')
+    attributes[:admin_theme_mode] = ADMIN_THEME_MODE_DEFAULT if column_names.include?('admin_theme_mode')
+    attributes[:admin_menu_section_colors] = ADMIN_MENU_SECTION_STYLE_DEFAULTS if column_names.include?('admin_menu_section_colors')
+
+    new(attributes)
   end
 
   def interest_intelligence_effective_instructions

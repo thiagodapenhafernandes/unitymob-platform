@@ -4,9 +4,33 @@
   label_options[:class] = [label_class, label_options[:class]].compact.join(" ")
 %>
 
-<% label_markup = capture do %>
+<% label_text = capture do %>
   <span class="ax-field-label__text"><%= text %></span>
-  <% if tooltip.present? %>
+<% end %>
+
+<% label_element = capture do %>
+  <% if form.present? && method.present? %>
+    <%= form.label method, label_options do %>
+      <%= label_text %>
+      <%= meta if local_assigns[:meta].present? %>
+    <% end %>
+  <% elsif label_options[:for].present? %>
+    <%= tag.label(**label_options) do %>
+      <%= label_text %>
+      <%= meta if local_assigns[:meta].present? %>
+    <% end %>
+  <% else %>
+    <% neutral_options = label_options.except(:for) %>
+    <%= tag.span(**neutral_options) do %>
+      <%= label_text %>
+      <%= meta if local_assigns[:meta].present? %>
+    <% end %>
+  <% end %>
+<% end %>
+
+<% if tooltip.present? %>
+  <span class="ax-field-label-wrap">
+    <%= label_element %>
     <button type="button"
             class="ax-field-label__info"
             aria-label="Ajuda: <%= text %>"
@@ -14,15 +38,7 @@
             data-ax-tooltip-text-value="<%= tooltip %>">
       <i class="bi bi-info-circle" aria-hidden="true"></i>
     </button>
-  <% end %>
-<% end %>
-
-<% if form.present? && method.present? %>
-  <%= form.label method, label_options do %>
-    <%= label_markup %>
-  <% end %>
+  </span>
 <% else %>
-  <%= tag.label(**label_options) do %>
-    <%= label_markup %>
-  <% end %>
+  <%= label_element %>
 <% end %>

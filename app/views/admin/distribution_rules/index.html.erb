@@ -11,7 +11,7 @@
           size: :sm,
           icon: "info-circle",
           data: { ax_modal_open: "#distributionObjectiveModal" }) %>
-    <i class="bi bi-diagram-3"></i>
+    <i class="bi bi-diagram-3" aria-hidden="true"></i>
     <%= ax_badge("#{@distribution_rules.size} regra#{'s' if @distribution_rules.size != 1}", tone: :gray) %>
   </div>
 </header>
@@ -22,7 +22,7 @@
       class_name: "distribution-objective-modal") do %>
   <div class="automation-workflow-objective">
     <div class="automation-workflow-objective__intro">
-      <span class="automation-workflow-objective__icon"><i class="bi bi-diagram-3"></i></span>
+      <span class="automation-workflow-objective__icon" aria-hidden="true"><i class="bi bi-diagram-3"></i></span>
       <div>
         <div class="automation-workflow-objective__eyebrow">Distribuição vertical</div>
         <p>
@@ -58,26 +58,27 @@
     </thead>
     <tbody>
       <% @distribution_rules.each do |rule| %>
+        <% enabled_sources = distribution_rule_enabled_sources(rule) %>
         <tr>
           <td>
             <div class="ax-strong"><%= rule.name %></div>
             <div class="tw-flex tw-gap-1 tw-mt-1">
-              <% if rule.pocket_active? %><span class="ax-badge ax-badge--amber"><i class="bi bi-hourglass-split"></i> <%= rule.pocket_time %>m</span><% end %>
-              <% if rule.represamento_active? %><span class="ax-badge ax-badge--blue"><i class="bi bi-moon-stars"></i> Bolsão</span><% end %>
+              <% if rule.pocket_active? %><span class="ax-badge ax-badge--amber"><i class="bi bi-hourglass-split" aria-hidden="true"></i> <%= rule.pocket_time %>m</span><% end %>
+              <% if rule.represamento_active? %><span class="ax-badge ax-badge--blue"><i class="bi bi-moon-stars" aria-hidden="true"></i> Bolsão</span><% end %>
             </div>
           </td>
           <td><span class="ax-badge ax-badge--gray tw-uppercase tw-font-mono"><%= rule.business_type %></span></td>
           <td>
-            <span class="tw-inline-flex tw-gap-2 tw-text-base">
-              <% if rule.source_meta? %><i class="bi bi-facebook tw-text-blue-600" title="Meta"></i><% end %>
-              <% if rule.source_webhook? %><i class="bi bi-diagram-2 tw-text-ink-muted" title="Webhook"></i><% end %>
-              <% if rule.source_site? %><i class="bi bi-globe tw-text-cyan-600" title="Site"></i><% end %>
-              <% if rule.source_portal? %><i class="bi bi-building tw-text-green-600" title="Portais"></i><% end %>
+            <span class="tw-inline-flex tw-gap-2 tw-text-base" aria-label="Fontes: <%= enabled_sources.presence&.to_sentence || 'nenhuma' %>">
+              <% if rule.source_meta? %><i class="bi bi-facebook tw-text-blue-600" title="Meta" aria-hidden="true"></i><% end %>
+              <% if rule.source_webhook? %><i class="bi bi-diagram-2 tw-text-ink-muted" title="Webhook" aria-hidden="true"></i><% end %>
+              <% if rule.source_site? %><i class="bi bi-globe tw-text-cyan-600" title="Site" aria-hidden="true"></i><% end %>
+              <% if rule.source_portal? %><i class="bi bi-building tw-text-green-600" title="Portais" aria-hidden="true"></i><% end %>
             </span>
           </td>
           <td>
             <span class="tw-inline-flex tw-items-center tw-gap-1.5 tw-text-2xs tw-uppercase tw-font-semibold tw-text-ink-muted">
-              <i class="bi bi-<%= rule.rotary? ? 'arrow-repeat' : (rule.performance? ? 'graph-up-arrow' : 'lightning-fill') %>"></i>
+              <i class="bi bi-<%= rule.rotary? ? 'arrow-repeat' : (rule.performance? ? 'graph-up-arrow' : 'lightning-fill') %>" aria-hidden="true"></i>
               <%= rule.distribution_mode %>
             </span>
           </td>
@@ -87,27 +88,26 @@
           </td>
           <td class="ax-num">
             <span class="tw-inline-flex tw-gap-0.5">
-              <%= link_to admin_distribution_rule_path(rule), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
-              <%= link_to edit_admin_distribution_rule_path(rule), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
-              <%= button_to toggle_active_admin_distribution_rule_path(rule), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: rule.active? ? "Pausar" : "Ativar" do %><i class="bi bi-<%= rule.active? ? 'pause-circle' : 'play-circle' %>"></i><% end %>
-              <%= button_to admin_distribution_rule_path(rule), method: :delete, form_class: "tw-inline", data: { turbo_confirm: "Tem certeza?" }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
+              <%= link_to admin_distribution_rule_path(rule), class: "ax-ico-btn", title: "Ver #{rule.name}", aria: { label: "Ver regra #{rule.name}" } do %><i class="bi bi-eye" aria-hidden="true"></i><% end %>
+              <%= link_to edit_admin_distribution_rule_path(rule), class: "ax-ico-btn", title: "Editar #{rule.name}", aria: { label: "Editar regra #{rule.name}" } do %><i class="bi bi-pencil" aria-hidden="true"></i><% end %>
+              <%= button_to toggle_active_admin_distribution_rule_path(rule), method: :patch, form_class: "tw-inline", class: "ax-ico-btn", title: rule.active? ? "Pausar #{rule.name}" : "Ativar #{rule.name}", aria: { label: rule.active? ? "Pausar regra #{rule.name}" : "Ativar regra #{rule.name}" } do %><i class="bi bi-<%= rule.active? ? 'pause-circle' : 'play-circle' %>" aria-hidden="true"></i><% end %>
+              <%= button_to admin_distribution_rule_path(rule), method: :delete, form_class: "tw-inline", data: { turbo_confirm: "Excluir a regra #{rule.name}?" }, class: "ax-ico-btn", title: "Excluir #{rule.name}", aria: { label: "Excluir regra #{rule.name}" } do %><i class="bi bi-trash" aria-hidden="true"></i><% end %>
             </span>
           </td>
         </tr>
       <% end %>
 
       <% if @distribution_rules.empty? %>
-        <tr><td colspan="6"><div class="ax-empty">
-          <i class="bi bi-diagram-3 tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>
-          Nenhuma regra definida ainda.
-          <div class="tw-mt-3">
-            <%= ax_button("Criar primeira regra",
-                  new_admin_distribution_rule_path,
-                  variant: :primary,
-                  size: :sm,
-                  icon: "plus-lg") %>
-          </div>
-        </div></td></tr>
+        <tr>
+          <td colspan="6">
+            <%= ax_empty_state(
+                  title: "Nenhuma regra definida",
+                  description: "Crie a primeira regra para distribuir leads entre fontes, filas e corretores.",
+                  icon: "diagram-3",
+                  action: ax_button("Criar primeira regra", new_admin_distribution_rule_path, variant: :primary, size: :sm, icon: "plus-lg")
+                ) %>
+          </td>
+        </tr>
       <% end %>
     </tbody>
   </table>

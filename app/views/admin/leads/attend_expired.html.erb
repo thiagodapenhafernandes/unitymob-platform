@@ -1,21 +1,11 @@
 <div class="layout-settings-workspace">
-  <div class="ax-empty-state" style="max-width:520px;margin:48px auto;text-align:center;">
-    <% taken = (@attend_reason == :taken) %>
-    <div style="font-size:42px;color:#d97706;margin-bottom:12px;">
-      <i class="bi <%= taken ? 'bi-person-check' : 'bi-hourglass-bottom' %>"></i>
-    </div>
-    <h1 class="ax-page-title" style="justify-content:center;"><%= taken ? "Lead já atendido" : "Tempo esgotado" %></h1>
-    <p class="ax-page-subtitle" style="margin-top:8px;">
-      <% if taken %>
-        Outro corretor aceitou este lead primeiro. Fique de olho — o próximo é seu!
-      <% else %>
-        O prazo para atender este lead expirou e ele foi redistribuído para outro corretor.
-      <% end %>
-    </p>
-    <div style="margin-top:20px;">
-      <%= link_to admin_leads_path, class: "ax-btn ax-btn--primary" do %>
-        <i class="bi bi-list-ul ax-ico"></i> Ver meus leads
-      <% end %>
-    </div>
-  </div>
+  <% taken = (@attend_reason == :taken) %>
+  <%= ax_empty_state(
+        title: taken ? "Lead já atendido" : "Tempo esgotado",
+        description: taken ?
+          "Outro corretor aceitou este lead primeiro. Fique de olho — o próximo é seu!" :
+          "O prazo para atender este lead expirou e ele foi redistribuído para outro corretor.",
+        icon: taken ? "person-check" : "hourglass-bottom",
+        action: ax_button("Ver meus leads", admin_leads_path, variant: :primary, icon: "list-ul")
+      ) %>
 </div>

@@ -26,7 +26,7 @@
             </div>
             <div>
               <h3 class="text-lg font-bold text-blue-three mb-2">Endereço</h3>
-              <p class="text-gray-600">Av. Atlântica, 1234<br>Balneário Camboriú, SC</p>
+              <p class="text-gray-600"><%= simple_format(@contact_setting.address) %></p>
             </div>
           </div>
         </div>
@@ -39,8 +39,8 @@
             </div>
             <div>
               <h3 class="text-lg font-bold text-blue-three mb-2">Telefone</h3>
-              <p class="text-gray-600">(47) 3311-1067</p>
-              <a href="tel:+554733111067" class="text-golden-one hover:underline">Ligar agora</a>
+              <p class="text-gray-600"><%= Phones::Normalizer.display(@contact_setting.phone) %></p>
+              <a href="tel:+<%= @contact_setting.phone.to_s.gsub(/\D/, '') %>" class="text-golden-one hover:underline">Ligar agora</a>
             </div>
           </div>
         </div>
@@ -53,8 +53,8 @@
             </div>
             <div>
               <h3 class="text-lg font-bold text-blue-three mb-2">Email</h3>
-              <p class="text-gray-600">contato@saluteimoveis.com</p>
-              <a href="mailto:contato@saluteimoveis.com" class="text-golden-one hover:underline">Enviar email</a>
+              <p class="text-gray-600"><%= @contact_setting.email_primary %></p>
+              <a href="mailto:<%= @contact_setting.email_primary %>" class="text-golden-one hover:underline">Enviar email</a>
             </div>
           </div>
         </div>
@@ -67,8 +67,8 @@
             </div>
             <div>
               <h3 class="text-lg font-bold text-blue-three mb-2">WhatsApp</h3>
-              <p class="text-gray-600">(47) 99123-4567</p>
-              <a href="https://wa.me/5547991234567" target="_blank" class="text-golden-one hover:underline">
+              <p class="text-gray-600"><%= Phones::Normalizer.display(@contact_setting.whatsapp_primary) %></p>
+              <a href="https://wa.me/<%= @contact_setting.whatsapp_primary.to_s.gsub(/\D/, '') %>" target="_blank" rel="noopener" class="text-golden-one hover:underline">
                 Enviar mensagem
               </a>
             </div>
@@ -76,26 +76,15 @@
         </div>
 
         <!-- Business Hours -->
+        <% if @business_hours.present? %>
         <div class="bg-blue-three text-white p-6 rounded-xl shadow-md">
           <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
             <i class="bi bi-clock"></i>
             Horário de Atendimento
           </h3>
-          <div class="space-y-2 text-sm">
-            <p class="flex justify-between">
-              <span>Segunda a Sexta:</span>
-              <span class="font-semibold">08:00 - 18:00</span>
-            </p>
-            <p class="flex justify-between">
-              <span>Sábado:</span>
-              <span class="font-semibold">09:00 - 13:00</span>
-            </p>
-            <p class="flex justify-between">
-              <span>Domingo:</span>
-              <span class="font-semibold">Fechado</span>
-            </p>
-          </div>
+          <div class="space-y-2 text-sm"><%= simple_format(@business_hours) %></div>
         </div>
+        <% end %>
       </div>
 
       <!-- Contact Form -->
@@ -157,7 +146,7 @@
 <!-- Map Section (Optional) -->
 <section class="h-96 bg-gray-200">
   <iframe 
-    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3556.5347!2d-48.6368!3d-26.9944!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjbCsDU5JzM5LjgiUyA0OMKwMzgnMTIuNSJX!5e0!3m2!1spt-BR!2sbr!4v1234567890"
+    src="https://www.google.com/maps?q=<%= ERB::Util.url_encode(@contact_setting.address) %>&amp;output=embed"
     width="100%" 
     height="100%" 
     style="border:0;" 

@@ -31,7 +31,7 @@ class Admin::GoogleIntegrationsController < Admin::BaseController
   private
 
   def load_google_settings
-    @google_sheets_setting = GoogleSheetsIntegrationSetting.current
+    @google_sheets_setting = GoogleSheetsIntegrationSetting.current(tenant: current_tenant)
     @google_calendar_setting = GoogleCalendarIntegrationSetting.for(current_tenant)
     @google_maps_setting = GoogleMapsIntegrationSetting.for(current_tenant)
   end

@@ -4,8 +4,8 @@
 <section class="relative h-[400px] flex items-center justify-center bg-cover bg-center" 
          style="background-image: linear-gradient(rgba(30, 64, 175, 0.8), rgba(30, 64, 175, 0.8)), url('<%= asset_path 'hero_05.jpeg' %>');">
   <div class="container-custom relative z-10 text-center text-white">
-    <h1 class="text-4xl lg:text-5xl font-bold mb-4" data-aos="fade-up">Sobre a Salute Imóveis</h1>
-    <p class="text-xl" data-aos="fade-up" data-aos-delay="100">Sua imobiliária de confiança em Balneário Camboriú</p>
+    <h1 class="text-4xl lg:text-5xl font-bold mb-4" data-aos="fade-up">Sobre a <%= @public_identity.name %></h1>
+    <p class="text-xl" data-aos="fade-up" data-aos-delay="100">Sua imobiliária de confiança<%= " em #{@public_identity.primary_city}" if @public_identity.primary_city.present? %></p>
   </div>
 </section>
 
@@ -14,14 +14,14 @@
   <div class="container-custom">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
       <div data-aos="fade-right">
-        <%= image_tag "salute.icon.svg", class: "w-full max-w-md mx-auto", alt: "Salute Imóveis" %>
+        <% if @layout_setting&.logo&.attached? %>
+          <%= image_tag public_image_url({ attachment: @layout_setting.logo }), class: "w-full max-w-md mx-auto", alt: @public_identity.name %>
+        <% end %>
       </div>
       <div data-aos="fade-left">
         <h2 class="text-3xl lg:text-4xl font-bold text-blue-three mb-6">Quem Somos</h2>
         <p class="text-gray-700 text-lg leading-relaxed mb-4">
-          A <strong class="text-blue-three">Salute Imóveis</strong> é uma imobiliária com vasta experiência 
-          no mercado imobiliário de Balneário Camboriú e região. Nossa missão é conectar pessoas aos seus 
-          sonhos, oferecendo imóveis de alta qualidade e atendimento personalizado.
+          <%= @footer_setting.about_text.presence || "A #{@public_identity.name} conecta pessoas às melhores oportunidades do mercado imobiliário, com atendimento próximo e transparente." %>
         </p>
         <p class="text-gray-700 text-lg leading-relaxed mb-6">
           Com uma equipe qualificada e comprometida, trabalhamos para garantir que cada cliente encontre o 
@@ -51,7 +51,7 @@
         </div>
         <h3 class="text-2xl font-bold text-blue-three mb-4">Missão</h3>
         <p class="text-gray-600 leading-relaxed">
-          Proporcionar as melhores soluções imobiliárias, com transparência, ética e excelência no atendimento.
+          <%= @public_site_profile.institutional_mission.presence || "Configure a missão da empresa no Perfil público." %>
         </p>
       </div>
 
@@ -62,7 +62,7 @@
         </div>
         <h3 class="text-2xl font-bold text-blue-three mb-4">Visão</h3>
         <p class="text-gray-600 leading-relaxed">
-          Ser referência no mercado imobiliário, reconhecida pela qualidade dos serviços e satisfação dos clientes.
+          <%= @public_site_profile.institutional_vision.presence || "Configure a visão da empresa no Perfil público." %>
         </p>
       </div>
 
@@ -73,7 +73,7 @@
         </div>
         <h3 class="text-2xl font-bold text-blue-three mb-4">Valores</h3>
         <p class="text-gray-600 leading-relaxed">
-          Integridade, comprometimento, inovação e respeito em todas as nossas relações.
+          <%= @public_site_profile.institutional_values.presence || "Configure os valores da empresa no Perfil público." %>
         </p>
       </div>
     </div>
@@ -84,7 +84,7 @@
 <section class="py-16 bg-white">
   <div class="container-custom">
     <h2 class="text-3xl lg:text-4xl font-bold text-blue-three text-center mb-12" data-aos="fade-up">
-      Por Que Escolher a Salute Imóveis?
+      Por Que Escolher a <%= @public_identity.name %>?
     </h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -96,7 +96,7 @@
         <div>
           <h3 class="text-xl font-bold text-blue-three mb-2">Experiência no Mercado</h3>
           <p class="text-gray-600">
-            Anos de atuação no mercado imobiliário de Balneário Camboriú e região, 
+            Experiência no mercado imobiliário<%= " de #{@public_identity.primary_city} e região" if @public_identity.primary_city.present? %>,
             com conhecimento profundo do mercado local.
           </p>
         </div>

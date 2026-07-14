@@ -7,17 +7,27 @@
   control_class = ["ax-control", options.delete(:class)].compact.join(" ")
   html_options = options.merge(class: control_class)
   html_options[:"aria-invalid"] = "true" if has_error
+  normalized_type = type.to_s.presence || "text"
+  field_method = {
+    "email" => :email_field,
+    "url" => :url_field,
+    "password" => :password_field,
+    "number" => :number_field,
+    "tel" => :telephone_field,
+    "search" => :search_field,
+    "datetime-local" => :datetime_local_field
+  }.fetch(normalized_type, :text_field)
 %>
 
 <div class="<%= field_classes %>">
-  <%= ax_field_label(form, method, text: label, tooltip:, class_name:, **(label_options || {})) %>
+  <%= ax_field_label(form, method, text: label, tooltip:, meta: label_meta, class_name:, **(label_options || {})) %>
   <% if clearable %>
-    <div class="ax-clearable-control" data-controller="ax-clear-field">
+    <div class="ax-clearable-control <%= 'ax-clearable-control--multiline' if type.to_sym == :textarea %>" data-controller="ax-clear-field">
       <% clear_data = (html_options[:data] || {}).merge(ax_clear_field_target: "control", action: [html_options.dig(:data, :action), "input->ax-clear-field#update change->ax-clear-field#update"].compact_blank.join(" ")) %>
-      <% if type.to_sym == :textarea %>
+      <% if normalized_type == "textarea" %>
         <%= form.text_area method, html_options.merge(data: clear_data) %>
       <% else %>
-        <%= form.text_field method, html_options.merge(data: clear_data) %>
+        <%= form.public_send(field_method, method, html_options.merge(data: clear_data)) %>
       <% end %>
       <button class="ax-clearable-control__button"
               type="button"
@@ -26,16 +36,16 @@
               data-ax-clear-field-target="button"
               data-action="click->ax-clear-field#clear"
               hidden>
-        <i class="bi bi-x"></i>
+        <i class="bi bi-x" aria-hidden="true"></i>
       </button>
     </div>
-  <% elsif type.to_sym == :textarea %>
+  <% elsif normalized_type == "textarea" %>
     <%= form.text_area method, html_options %>
   <% else %>
-    <%= form.text_field method, html_options %>
+    <%= form.public_send(field_method, method, html_options) %>
   <% end %>
   <%= render "admin/shared/ui/field_error", form: form, method: method %>
-  <% if local_assigns[:hint].present? && form.object.errors[method].blank? %>
+  <% if local_assigns[:hint].present? && !has_error %>
     <p class="ax-field__hint"><%= hint %></p>
   <% end %>
 </div>

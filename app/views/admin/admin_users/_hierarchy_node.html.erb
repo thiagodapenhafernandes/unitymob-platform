@@ -39,7 +39,7 @@
     <% if draggable %>
       <span class="hier-row__handle" title="Arraste para mover de gestor ou reordenar"><i class="bi bi-grip-vertical"></i></span>
     <% elsif can_reorg %>
-      <span class="hier-row__handle" style="visibility:hidden"><i class="bi bi-grip-vertical"></i></span>
+      <span class="hier-row__handle is-placeholder" aria-hidden="true"><i class="bi bi-grip-vertical"></i></span>
     <% end %>
 
     <button type="button" class="hier-row__toggle" data-hier-toggle
@@ -48,13 +48,7 @@
       <% if has_kids %><i class="bi bi-chevron-right"></i><% end %>
     </button>
 
-    <span class="hier-row__avatar">
-      <% if user.avatar.attached? %>
-        <%= image_tag user.avatar, class: "hier-row__img" %>
-      <% else %>
-        <span class="hier-row__initial"><%= user.name.to_s.first&.upcase || "?" %></span>
-      <% end %>
-    </span>
+    <%= ax_avatar(name: user.name, image: user.avatar, size: :sm, class_name: "hier-row__avatar") %>
 
     <div class="hier-row__main">
       <strong><%= user.name %></strong>

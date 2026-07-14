@@ -1,0 +1,13 @@
+<main class="shared-property-selection" data-controller="property-share-interest" data-property-share-interest-url-value="<%= interest_ai_property_share_collection_path(@collection.token) %>" data-property-share-interest-error-message-value="<%= @setting.ai_property_search_interest_error_message %>">
+  <header><span><%= @setting.ai_property_search_public_eyebrow %></span><h1><%= @setting.ai_property_search_message(:ai_property_search_public_title, count: @habitations.size) %></h1><p><%= @setting.ai_property_search_public_description %></p></header>
+  <div class="shared-property-selection__notice" hidden data-property-share-interest-target="notice"></div>
+  <section class="shared-property-selection__grid">
+    <% @habitations.each do |property| %>
+      <article class="shared-property-card">
+        <% if (image = property.public_image_sources.first) %><%= image_tag Storage::PublicCdnImageUrl.resolve(image, resize_to_fill: [640, 420], format: :webp), alt: property.display_title %><% end %>
+        <div><strong><%= property.display_title %></strong><small><%= [property.address&.bairro || property.bairro, property.address&.cidade || property.cidade].compact_blank.join(" · ") %></small><%= link_to @setting.ai_property_search_view_property_label, habitation_path(property), class: "shared-property-card__link" %><button type="button" data-action="property-share-interest#interest" data-habitation-id="<%= property.id %>"><%= @setting.ai_property_search_interest_button_label %></button></div>
+      </article>
+    <% end %>
+  </section>
+  <dialog data-property-share-interest-target="dialog"><form method="dialog" data-action="submit->property-share-interest#identify"><h2><%= @setting.ai_property_search_identity_title %></h2><p><%= @setting.ai_property_search_identity_description %></p><label><%= @setting.ai_property_search_identity_name_label %><input name="name" required autocomplete="name"></label><label><%= @setting.ai_property_search_identity_phone_label %><input name="phone" required inputmode="tel" autocomplete="tel"></label><button type="submit"><%= @setting.ai_property_search_identity_submit_label %></button><button type="button" data-action="property-share-interest#close"><%= @setting.ai_property_search_identity_cancel_label %></button></form></dialog>
+</main>

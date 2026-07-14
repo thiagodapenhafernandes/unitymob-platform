@@ -12,6 +12,7 @@ class Admin::BaseController < ApplicationController
 
   SYSTEM_ADMIN_GLOBAL_CONTROLLERS = %w[
     admin/push_settings
+    admin/theme_preferences
   ].freeze
 
   before_action :authenticate_admin_user!
@@ -278,10 +279,47 @@ class Admin::BaseController < ApplicationController
 
   helper_method :can?, :scope_for_resource, :owns_all_resource?,
                 :team_scope_ids, :team_available?, :include_team?,
-                :impersonating_admin_user?, :impersonation_admin_user
+                :impersonating_admin_user?, :impersonation_admin_user,
+                :can_review_captacao?
 
   def can?(action, resource)
     current_admin_user&.can?(action, resource)
+  end
+
+  # Equipe do gestor = própria subárvore recursiva (team_scope_ids), ainda recortada
+  # por tipo de atuação (venda/locação) quando o gestor não é "both".
+  def manager_team_user_ids
+    return [] unless current_admin_user
+
+    ids = current_admin_user.team_scope_ids
+    return ids if current_admin_user.both?
+
+    current_tenant.admin_users.where(id: ids, acting_type: manager_allowed_acting_types).pluck(:id)
+  end
+
+  def manager_allowed_acting_types
+    case current_admin_user&.acting_type
+    when "sales" then AdminUser.acting_types.values_at("sales", "both")
+    when "rentals" then AdminUser.acting_types.values_at("rentals", "both")
+    else AdminUser.acting_types.values
+    end
+  end
+
+  # A permissão "review" de captações respeita o escopo do perfil:
+  # "all" revisa a conta inteira; "team" revisa apenas captações da própria
+  # hierarquia de gestão (captador ou corretor designado na equipe); "own",
+  # apenas as próprias.
+  def can_review_captacao?(habitation)
+    return false unless can?(:review, :captacoes)
+    return true if tenant_owner? || owns_all_resource?(:captacoes)
+    return false unless habitation
+    return true if habitation.admin_user_id == current_admin_user&.id
+    return false unless current_admin_user&.can_view_team?(:captacoes)
+
+    team_ids = manager_team_user_ids
+    return false if team_ids.blank?
+
+    habitation.admin_user_id.in?(team_ids) || habitation.broker_assignments.exists?(admin_user_id: team_ids)
   end
 
   def impersonation_admin_user

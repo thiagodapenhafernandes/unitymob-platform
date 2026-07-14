@@ -1,40 +1,30 @@
-<%= form_with model: [:admin, goal], local: true, html: { class: "captacao-goals-form" } do |f| %>
+<%= form_with model: [:admin, goal], local: true, html: { class: "captacao-goals-form" } do |form| %>
   <%= ax_error_summary(goal) %>
 
   <%= ax_field_grid do %>
     <div class="ax-span-3">
-      <%= f.label :start_date, "Data inicial", class: "ax-label" %>
-      <%= f.date_field :start_date, class: "ax-control" %>
+      <%= ax_date_field(form:, method: :start_date, label: "Data inicial") %>
     </div>
     <div class="ax-span-3">
-      <%= f.label :end_date, "Data final", class: "ax-label" %>
-      <%= f.date_field :end_date, class: "ax-control" %>
+      <%= ax_date_field(form:, method: :end_date, label: "Data final") %>
     </div>
     <div class="ax-span-3">
-      <%= f.label :kind, "Tipo", class: "ax-label" %>
-      <%= f.select :kind, [["Venda", "venda"], ["Locação", "locacao"]], {}, class: "ax-control" %>
+      <%= ax_select_field(form:, method: :kind, label: "Tipo", choices: [["Venda", "venda"], ["Locação", "locacao"]]) %>
     </div>
     <div class="ax-span-3">
-      <%= f.label :target, "Meta de captações", class: "ax-label" %>
-      <%= f.number_field :target, class: "ax-control", min: 1 %>
+      <%= ax_number_field(form:, method: :target, label: "Meta de captações", min: 1) %>
     </div>
 
     <div class="ax-span-12">
-      <%= f.label :foco_regiao, "Observação da meta (opcional)", class: "ax-label" %>
-      <%= f.text_field :foco_regiao, class: "ax-control", placeholder: "Ex.: meta comercial interna" %>
+      <%= ax_text_field(form:, method: :foco_regiao, label: "Observação da meta (opcional)", placeholder: "Ex.: meta comercial interna") %>
     </div>
     <div class="ax-span-6">
-      <%= f.label :foco_valor_min, "Faixa de valor — mínimo (R$)", class: "ax-label" %>
-      <%= f.number_field :foco_valor_min, step: 0.01, class: "ax-control" %>
+      <%= ax_number_field(form:, method: :foco_valor_min, label: "Faixa de valor — mínimo (R$)", step: 0.01) %>
     </div>
     <div class="ax-span-6">
-      <%= f.label :foco_valor_max, "Faixa de valor — máximo (R$)", class: "ax-label" %>
-      <%= f.number_field :foco_valor_max, step: 0.01, class: "ax-control" %>
+      <%= ax_number_field(form:, method: :foco_valor_max, label: "Faixa de valor — máximo (R$)", step: 0.01) %>
     </div>
   <% end %>
 
-  <div class="tw-flex tw-justify-end tw-gap-2 tw-mt-3">
-    <%= link_to "Cancelar", admin_captacao_goals_path, class: "ax-btn ax-btn--ghost" %>
-    <%= f.submit class: "ax-btn ax-btn--primary" %>
-  </div>
+  <%= ax_form_actions(cancel_path: admin_captacao_goals_path, submit_label: goal.persisted? ? "Atualizar meta" : "Criar meta", form:) %>
 <% end %>

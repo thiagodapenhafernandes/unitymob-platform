@@ -1,0 +1,57 @@
+<div class="public-site-workspace">
+  <%= ax_workspace_heading(eyebrow: "Site público · Governança", icon: "building-gear", title: "Perfil público", subtitle: "Defina mercado, faixas de preço e dados jurídicos usados pelo site desta conta.") %>
+
+  <%= form_with model: @profile, url: admin_public_site_profile_path, method: :patch do |f| %>
+    <%= ax_error_summary(@profile) %>
+
+    <div class="tw-grid tw-gap-4 lg:tw-grid-cols-2">
+      <%= ax_form_section(title: "Mercado de atuação", eyebrow: "Localização", icon: "geo-alt") do %>
+        <%= ax_text_field(form: f, method: :primary_city, label: "Cidade principal", placeholder: "Ex.: Balneário Camboriú") %>
+        <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Quando vazio, o sistema usa a cidade mais frequente entre os imóveis públicos.</p>
+      <% end %>
+
+      <%= ax_form_section(title: "Prontidão jurídica", eyebrow: "Publicação", icon: "shield-check") do %>
+        <% if @profile.activation_gaps.any? %>
+          <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", body: "Pendências para ativar outra marca: #{@profile.activation_gaps.join(', ')}.") %>
+        <% else %>
+          <%= ax_inline_notice(tone: :success, icon: "check-circle", body: "Dados jurídicos essenciais preenchidos.") %>
+        <% end %>
+      <% end %>
+
+      <%= ax_form_section(title: "Faixas para venda", eyebrow: "Filtros", icon: "cash-stack") do %>
+        <%= f.label :sale_price_ranges, "Uma faixa por linha: Nome|mínimo|máximo", class: "ax-label" %>
+        <%= f.text_area :sale_price_ranges, rows: 7, class: "ax-control", placeholder: "Até R$ 1 milhão|0|1000000\nAcima de R$ 1 milhão|1000000|" %>
+      <% end %>
+
+      <%= ax_form_section(title: "Faixas para locação", eyebrow: "Filtros", icon: "cash-coin") do %>
+        <%= f.label :rental_price_ranges, "Uma faixa por linha: Nome|mínimo|máximo", class: "ax-label" %>
+        <%= f.text_area :rental_price_ranges, rows: 7, class: "ax-control", placeholder: "Até R$ 5 mil|0|5000\nAcima de R$ 5 mil|5000|" %>
+      <% end %>
+
+      <%= ax_form_section(title: "Dados jurídicos", eyebrow: "Privacidade", icon: "file-earmark-lock") do %>
+        <%= ax_text_field(form: f, method: :legal_name, label: "Razão social") %>
+        <%= ax_text_field(form: f, method: :legal_document, label: "CNPJ/Documento") %>
+        <%= ax_text_field(form: f, method: :legal_address, label: "Endereço jurídico") %>
+        <%= ax_text_field(form: f, method: :privacy_email, label: "E-mail de privacidade") %>
+        <%= ax_text_field(form: f, method: :creci, label: "CRECI da empresa") %>
+      <% end %>
+
+      <%= ax_form_section(title: "Pilares institucionais", eyebrow: "Sobre", icon: "bullseye") do %>
+        <%= f.label :institutional_mission, "Missão", class: "ax-label" %>
+        <%= f.text_area :institutional_mission, rows: 3, class: "ax-control tw-mb-3" %>
+        <%= f.label :institutional_vision, "Visão", class: "ax-label" %>
+        <%= f.text_area :institutional_vision, rows: 3, class: "ax-control tw-mb-3" %>
+        <%= f.label :institutional_values, "Valores", class: "ax-label" %>
+        <%= f.text_area :institutional_values, rows: 3, class: "ax-control" %>
+      <% end %>
+
+      <%= ax_form_section(title: "Links úteis", eyebrow: "Serviços", icon: "link-45deg") do %>
+        <%= f.label :useful_links, "Um link por linha: Nome|URL|Descrição|ícone", class: "ax-label" %>
+        <%= f.text_area :useful_links, rows: 9, class: "ax-control", placeholder: "Prefeitura|https://prefeitura.exemplo.gov.br|Portal municipal|building" %>
+        <p class="tw-text-sm tw-text-ink-muted tw-mt-2 tw-mb-0">O ícone usa os nomes do Bootstrap Icons. Ex.: building, bank, calculator.</p>
+      <% end %>
+    </div>
+
+    <div class="tw-flex tw-justify-end tw-mt-4"><%= f.submit "Salvar perfil público", class: "ax-btn ax-btn--primary" %></div>
+  <% end %>
+</div>

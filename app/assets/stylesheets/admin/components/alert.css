@@ -1,0 +1,70 @@
+/* Structured validation and operational alerts shared by admin forms. */
+.ax-alert {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+  color: #475467;
+  scroll-margin-top: calc(var(--ax-navbar-h, 52px) + var(--ax-contextbar-h, 42px) + 12px);
+}
+
+.ax-alert:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 2px;
+}
+
+.ax-alert--danger { border-color: #fecdd3; background: #fff5f6; color: #9f1239; }
+.ax-alert--warning { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+.ax-alert__icon { display: inline-grid; width: 24px; height: 24px; flex: none; place-items: center; }
+.ax-alert__content { flex: 1 1 auto; min-width: 0; }
+.ax-alert__title { color: #1f2733; font-size: 13px; font-weight: 750; }
+.ax-alert__list { margin: 5px 0 0; padding-left: 17px; font-size: 12.5px; }
+.ax-alert__list li { overflow-wrap: anywhere; }
+.ax-alert__groups { display: grid; gap: 8px; margin-top: 8px; }
+.ax-alert__group { display: grid; gap: 3px; }
+.ax-alert__group strong { color: #1f2733; font-size: 12px; font-weight: 800; }
+
+[data-admin-theme="dark"] .ax-alert {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-alert:focus-visible {
+  outline-color: var(--ax-dark-focus-border);
+}
+
+[data-admin-theme="dark"] .ax-alert :where(.ax-alert__title, .ax-alert__group strong) {
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-alert--danger {
+  border-color: var(--ax-dark-danger-border);
+  background: var(--ax-dark-danger-surface);
+  color: var(--ax-dark-danger-text);
+}
+
+[data-admin-theme="dark"] .ax-alert--warning {
+  border-color: var(--ax-dark-warning-border);
+  background: var(--ax-dark-warning-surface);
+  color: var(--ax-dark-warning-text);
+}
+
+[data-admin-theme="dark"] :where(.ax-alert--danger, .ax-alert--warning) :where(.ax-alert__title, .ax-alert__group strong) {
+  color: inherit;
+}
+
+@media (max-width: 639px) {
+  .ax-alert {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .ax-alert__icon {
+    width: 20px;
+    height: 20px;
+  }
+}

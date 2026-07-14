@@ -9,12 +9,7 @@ class ContactSetting < ApplicationRecord
   def self.instance(tenant: Current.tenant || Tenant.public_for)
     raise ArgumentError, "Tenant obrigatório para configurações de contato" if tenant.blank?
 
-    where(tenant: tenant).first_or_create!(
-      whatsapp_primary: '5547991234567',
-      phone: '(47) 3311-1067',
-      email_primary: 'contato@saluteimoveis.com',
-      address: 'Balneário Camboriú - SC'
-    )
+    where(tenant: tenant).first_or_create!
   end
 
   private

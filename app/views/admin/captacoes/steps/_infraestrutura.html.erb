@@ -13,7 +13,7 @@
   features_predio = captacao_feature_options(@external_features, fallback_features_predio, @captacao.caracteristicas_predio)
 %>
 
-<h1 class="wizard-section-title"><i class="bi bi-building tw-text-primary" style="margin-right:.5rem;"></i>Edifício e lazer</h1>
+<h1 class="wizard-section-title"><i class="bi bi-building tw-text-primary"></i>Edifício e lazer</h1>
 <p class="wizard-section-subtitle">Informe estrutura do prédio, condomínio e áreas de lazer.</p>
 
 <% if @captacao.property_kind_terreno? %>
@@ -24,24 +24,18 @@
   <% if @captacao.uses_building_infrastructure? %>
     <%= ax_field_grid do %>
       <div class="ax-span-4">
-        <div class="wizard-field-group">
-          <%= f.label :andares_total, "Total andares", class: "ax-label" %>
-          <%= f.number_field :andares_total, min: 0, inputmode: "numeric", class: "ax-control" %>
-        </div>
+        <%= ax_number_field(form: f, method: :andares_total, label: "Total andares", min: 0,
+              inputmode: "numeric", class_name: "wizard-field-group") %>
       </div>
       <div class="ax-span-4">
-        <div class="wizard-field-group">
-          <%= f.label :aptos_por_andar, "Aptos/andar", class: "ax-label" %>
-          <%= f.number_field :aptos_por_andar, min: 0, inputmode: "numeric", class: "ax-control" %>
-        </div>
+        <%= ax_number_field(form: f, method: :aptos_por_andar, label: "Aptos/andar", min: 0,
+              inputmode: "numeric", class_name: "wizard-field-group") %>
       </div>
     <% end %>
   <% end %>
 
-  <div class="wizard-field-group">
-    <%= f.label :distancia_praia, "Distância da praia (m)", class: "ax-label" %>
-    <%= f.number_field :distancia_praia, min: 0, inputmode: "decimal", class: "ax-control" %>
-  </div>
+  <%= ax_number_field(form: f, method: :distancia_praia, label: "Distância da praia (m)", min: 0,
+        inputmode: "decimal", class_name: "wizard-field-group") %>
 
   <% unless @captacao.uses_building_infrastructure? %>
     <%= ax_inline_notice(tone: :neutral, icon: "info-circle") do %>

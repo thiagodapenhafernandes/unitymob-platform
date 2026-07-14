@@ -4,7 +4,7 @@
   pwa_site_name = @layout_setting&.site_name.presence || "Unitymob"
   pwa_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : "Plataforma"
 %>
-<meta name="theme-color" content="#022B3A">
+<meta name="theme-color" content="<%= local_assigns.fetch(:theme_color, '#022B3A') %>">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="<%= pwa_site_name %> <%= pwa_area_name %>">

@@ -1,8 +1,10 @@
 module Admin::UiHelper
   AX_BADGE_TONES = {
     gray: "ax-badge--gray",
+    neutral: "ax-badge--gray",
     green: "ax-badge--green",
     amber: "ax-badge--amber",
+    orange: "ax-badge--amber",
     red: "ax-badge--red",
     blue: "ax-badge--blue",
     purple: "ax-badge--purple",
@@ -19,8 +21,11 @@ module Admin::UiHelper
     info: "ax-btn--info"
   }.freeze
 
-  def ax_icon(name, class_name: nil)
-    tag.i(class: ["bi", "bi-#{name}", class_name].compact.join(" "))
+  def ax_icon(name, class_name: nil, decorative: true)
+    tag.i(
+      class: ["bi", "bi-#{name}", class_name].compact_blank.join(" "),
+      aria: (decorative ? { hidden: true } : nil)
+    )
   end
 
   # Iniciais para avatares (WhatsApp inbox e afins): 2 primeiras letras do nome.
@@ -64,12 +69,46 @@ module Admin::UiHelper
     LEAD_LABEL_CSS_COLORS.fetch(color, LEAD_LABEL_CSS_COLORS["gray"])
   end
 
-  def ax_badge(label, tone: :gray, dot: false, class_name: nil)
+  def ax_badge(label, tone: :gray, dot: false, class_name: nil, **options)
     classes = ["ax-badge", AX_BADGE_TONES.fetch(tone.to_sym, AX_BADGE_TONES[:gray])]
     classes << "ax-badge--dot" if dot
     classes << class_name if class_name.present?
 
-    render "admin/shared/ui/badge", label:, classes:
+    render "admin/shared/ui/badge", label:, classes:, options:
+  end
+
+  def ax_avatar(name:, image: nil, size: :md, class_name: nil)
+    size = size.to_sym
+    size = :md unless %i[xxs xs sm md lg xl xxl].include?(size)
+
+    render(
+      "admin/shared/ui/avatar",
+      name:,
+      image:,
+      initials: wa_initials(name),
+      classes: ["ax-avatar", "ax-avatar--#{size}", class_name].compact_blank.join(" ")
+    )
+  end
+
+  def ax_appointment_card(appointment:, expanded: false)
+    render "admin/shared/ui/appointment_card", appointment:, expanded:
+  end
+
+  def ax_dismissible_hint(key:, text:, icon: "lightbulb", class_name: nil)
+    storage_scope = "admin-user-#{current_admin_user&.id || 'anonymous'}"
+    render "admin/shared/ui/dismissible_hint", key:, text:, icon:, class_name:, storage_scope:
+  end
+
+  def ax_confirm_submit(form_id:, message:, confirm_label: "Confirmar", cancel_label: "Cancelar", class_name: nil, &block)
+    render(
+      "admin/shared/ui/confirm_submit",
+      form_id:,
+      message:,
+      confirm_label:,
+      cancel_label:,
+      class_name:,
+      trigger: capture(&block)
+    )
   end
 
   def ax_lead_label_chip(label, class_name: nil)
@@ -107,8 +146,12 @@ module Admin::UiHelper
     )
   end
 
-  def ax_page_header(title:, subtitle: nil, actions: nil)
-    render "admin/shared/ui/page_header", title:, subtitle:, actions:
+  def ax_code_snippet(code:, title: nil, label: nil, class_name: nil)
+    render "admin/shared/ui/code_snippet", code:, title:, label:, class_name:
+  end
+
+  def ax_page_header(title:, subtitle: nil, icon: nil, actions: nil, class_name: nil)
+    render "admin/shared/ui/page_header", title:, subtitle:, icon:, actions:, class_name:
   end
 
   # Cabeçalho operacional do ax-main: eyebrow + título com pills, subtítulo,
@@ -127,13 +170,26 @@ module Admin::UiHelper
     )
   end
 
+  # Composição de processos operacionais com etapas, conteúdo principal e
+  # inspector. A estrutura interna usa o contrato compartilhado `.ax-workflow`.
+  def ax_workflow(label:, class_name: nil, data: {}, body: nil, &block)
+    render(
+      "admin/shared/ui/workflow",
+      label:,
+      class_name:,
+      data:,
+      body: block_given? ? capture(&block) : body
+    )
+  end
+
   # Board (kanban) reutilizável. `data:` recebe os atributos de comportamento do
   # consumidor (ex.: { controller: "lead-kanban" }); o conteúdo são as colunas.
-  def ax_board(data: {}, class_name: nil, body: nil, &block)
+  def ax_board(data: {}, class_name: nil, label: "Quadro de trabalho", body: nil, &block)
     render(
       "admin/shared/ui/board",
       data:,
       class_name:,
+      label:,
       body: block_given? ? capture(&block) : body
     )
   end
@@ -176,6 +232,17 @@ module Admin::UiHelper
       actions:,
       class_name:,
       body: block_given? ? capture(&block) : body
+    )
+  end
+
+  # Lista semântica e compacta de pares rótulo/estado para inspectors e
+  # diagnósticos. `value` aceita texto ou HTML seguro, como `ax_badge`.
+  def ax_status_list(rows:, class_name: nil, label: nil)
+    render(
+      "admin/shared/ui/status_list",
+      rows: Array(rows),
+      class_name:,
+      label:
     )
   end
 
@@ -231,12 +298,16 @@ module Admin::UiHelper
     )
   end
 
-  def ax_inline_notice(tone: :neutral, icon: "info-circle", class_name: nil, body: nil, &block)
+  def ax_inline_notice(tone: :neutral, icon: "info-circle", class_name: nil, body: nil, compact: false, announce: true, &block)
+    danger = tone.to_s == "danger"
     render(
       "admin/shared/ui/inline_notice",
       tone:,
       icon:,
       class_name:,
+      compact:,
+      notice_role: announce ? (danger ? "alert" : "status") : nil,
+      aria_live: announce ? (danger ? "assertive" : "polite") : nil,
       body: block_given? ? capture(&block) : body
     )
   end
@@ -253,31 +324,68 @@ module Admin::UiHelper
     )
   end
 
-  def ax_field_label(form = nil, method = nil, text:, tooltip: nil, class_name: nil, **options)
+  def ax_field_label(form = nil, method = nil, text:, tooltip: nil, meta: nil, class_name: nil, **options)
     render(
       "admin/shared/ui/field_label",
       form:,
       method:,
       text:,
       tooltip:,
+      meta:,
       class_name:,
       options:
     )
   end
 
-  def ax_text_field(form:, method:, label:, tooltip: nil, hint: nil, type: :text, class_name: nil, field_class: nil, label_options: {}, clearable: false, **options)
+  def ax_text_field(form:, method:, label:, tooltip: nil, label_meta: nil, hint: nil, type: :text, class_name: nil, field_class: nil, label_options: {}, clearable: false, **options)
     render(
       "admin/shared/ui/text_field",
       form:,
       method:,
       label:,
       tooltip:,
+      label_meta:,
       hint:,
       type:,
       class_name:,
       field_class:,
       label_options:,
       clearable:,
+      options:
+    )
+  end
+
+  # Campo avulso para formulários que não pertencem a um model (OTP, senha de
+  # confirmação, destino de teste etc.). Pode compor uma ação acoplada usando
+  # o mesmo contrato visual de `ax_input_group`.
+  def ax_standalone_field(name:, id:, label:, value: nil, type: :text, hint: nil, action: nil, class_name: nil, input_class: nil, **options)
+    render(
+      "admin/shared/ui/standalone_field",
+      name:,
+      id:,
+      label:,
+      value:,
+      type:,
+      hint:,
+      action:,
+      class_name:,
+      input_class:,
+      options:
+    )
+  end
+
+  def ax_standalone_select_field(name:, id:, label:, choices:, selected: nil, include_blank: nil, hint: nil, class_name: nil, grouped: false, **options)
+    render(
+      "admin/shared/ui/standalone_select_field",
+      name:,
+      id:,
+      label:,
+      choices:,
+      selected:,
+      include_blank:,
+      hint:,
+      class_name:,
+      grouped:,
       options:
     )
   end
@@ -383,8 +491,8 @@ module Admin::UiHelper
 
   # Barra de progresso reutilizável (substitui `progress`/`progress-bar` do Bootstrap).
   # tone: :green/:red/:amber/:blue (cor da barra); value: 0-100.
-  def ax_progress(value:, tone: nil, class_name: nil, label: nil)
-    render "admin/shared/ui/progress", value:, tone:, class_name:, label:
+  def ax_progress(value:, tone: nil, class_name: nil, label: nil, data: {})
+    render "admin/shared/ui/progress", value:, tone:, class_name:, label:, data:
   end
 
   # Switch deslizante reutilizável (substitui o markup Bootstrap `form-check form-switch`).
@@ -397,7 +505,7 @@ module Admin::UiHelper
            checked_value:, unchecked_value:, id:, class_name:, input_html:
   end
 
-  def ax_toggle_chip(form = nil, method = nil, label:, checked_value: "1", unchecked_value: "0", disabled: false, class_name: nil, id: nil, input_data: {}, name: nil, checked: false)
+  def ax_toggle_chip(form = nil, method = nil, label:, checked_value: "1", unchecked_value: "0", disabled: false, class_name: nil, id: nil, input_data: {}, name: nil, checked: false, include_hidden: true)
     render(
       "admin/shared/ui/toggle_chip",
       form:,
@@ -410,7 +518,8 @@ module Admin::UiHelper
       id:,
       input_data:,
       name:,
-      checked:
+      checked:,
+      include_hidden:
     )
   end
 
@@ -466,13 +575,14 @@ module Admin::UiHelper
     )
   end
 
-  def ax_number_field(form:, method:, label:, tooltip: nil, class_name: nil, input_class: nil, clearable: false, **options)
+  def ax_number_field(form:, method:, label:, tooltip: nil, hint: nil, class_name: nil, input_class: nil, clearable: false, **options)
     render(
       "admin/shared/ui/number_field",
       form:,
       method:,
       label:,
       tooltip:,
+      hint:,
       class_name:,
       input_class:,
       clearable:,
@@ -521,7 +631,7 @@ module Admin::UiHelper
     )
   end
 
-  def ax_radio_group(form:, method:, label:, choices:, class_name: nil, item_class: nil)
+  def ax_radio_group(form:, method:, label:, choices:, class_name: nil, item_class: nil, disabled: false, input_data: {})
     render(
       "admin/shared/ui/radio_group",
       form:,
@@ -529,7 +639,25 @@ module Admin::UiHelper
       label:,
       choices:,
       class_name:,
-      item_class:
+      item_class:,
+      disabled:,
+      input_data:
+    )
+  end
+
+  def ax_range_field(form:, method:, label:, value:, suffix: nil, hint: nil, class_name: nil, input_data: {}, output_data: {}, **options)
+    render(
+      "admin/shared/ui/range_field",
+      form:,
+      method:,
+      label:,
+      value:,
+      suffix:,
+      hint:,
+      class_name:,
+      input_data:,
+      output_data:,
+      options:
     )
   end
 
@@ -600,6 +728,20 @@ module Admin::UiHelper
       "admin/shared/ui/media_grid",
       class_name:,
       data:,
+      body: block_given? ? capture(&block) : body
+    )
+  end
+
+  def ax_media_preview(label: nil, icon: "image", image: nil, variant: :desktop, size: :default, empty_text: "Sem imagem", class_name: nil, body: nil, &block)
+    render(
+      "admin/shared/ui/media_preview",
+      label:,
+      icon:,
+      image:,
+      variant:,
+      size:,
+      empty_text:,
+      class_name:,
       body: block_given? ? capture(&block) : body
     )
   end
@@ -734,20 +876,30 @@ module Admin::UiHelper
     render "admin/shared/ui/error_summary", record:, title:, grouped_errors:, labels:, order:
   end
 
-  def ax_form_actions(cancel_path:, submit_label:, form:, cancel_label: "Cancelar")
-    render "admin/shared/ui/form_actions", cancel_path:, submit_label:, form:, cancel_label:
+  def ax_form_actions(cancel_path: nil, submit_label: nil, form: nil, cancel_label: "Cancelar", sticky: true, class_name: nil, &block)
+    render(
+      "admin/shared/ui/form_actions",
+      cancel_path:,
+      submit_label:,
+      form:,
+      cancel_label:,
+      sticky:,
+      class_name:,
+      body: block_given? ? capture(&block) : nil
+    )
   end
 
-  def ax_sticky_action_footer(meta: nil, class_name: nil, body: nil, &block)
+  def ax_sticky_action_footer(meta: nil, sticky: true, class_name: nil, body: nil, &block)
     render(
       "admin/shared/ui/sticky_action_footer",
       meta:,
+      sticky:,
       class_name:,
       body: block_given? ? capture(&block) : body
     )
   end
 
-  def ax_filter_form(url:, method: :get, reset_path: nil, submit_label: "Filtrar", reset_label: "Limpar", class_name: nil, **options, &block)
+  def ax_filter_form(url:, method: :get, reset_path: nil, submit_label: "Filtrar", reset_label: "Limpar", filter_label: "Filtros", class_name: nil, **options, &block)
     form_with(url:, method:, local: true, **options) do |form|
       fields = capture(form, &block)
       render(
@@ -756,13 +908,14 @@ module Admin::UiHelper
         reset_path:,
         submit_label:,
         reset_label:,
+        filter_label:,
         class_name:
       )
     end
   end
 
-  def ax_empty_state(title:, description: nil, icon: "inbox", action: nil)
-    render "admin/shared/ui/empty_state", title:, description:, icon:, action:
+  def ax_empty_state(title:, description: nil, icon: "inbox", action: nil, compact: false, class_name: nil)
+    render "admin/shared/ui/empty_state", title:, description:, icon:, action:, compact:, class_name:
   end
 
   def ax_pagination(collection, params: nil, class_name: nil, show_summary: true, **options)

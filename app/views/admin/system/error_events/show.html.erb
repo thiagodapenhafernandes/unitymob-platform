@@ -83,12 +83,12 @@
   <% end %>
 
   <%= ax_operational_panel(eyebrow: "Diagnóstico", title: "Contexto da última ocorrência") do %>
-    <pre class="tw-bg-surface-soft tw-border tw-border-line tw-rounded tw-p-2 tw-font-mono tw-text-2xs tw-overflow-auto"><%= JSON.pretty_generate(@error_event.context.presence || {}) %></pre>
+    <%= ax_code_snippet(code: JSON.pretty_generate(@error_event.context.presence || {}), label: "Contexto da última ocorrência") %>
   <% end %>
 
   <%= ax_operational_panel(eyebrow: "Diagnóstico", title: "Backtrace") do %>
     <% if @error_event.backtrace.present? %>
-      <pre class="tw-bg-surface-soft tw-border tw-border-line tw-rounded tw-p-2 tw-font-mono tw-text-2xs tw-overflow-auto"><%= @error_event.backtrace %></pre>
+      <%= ax_code_snippet(code: @error_event.backtrace, label: "Backtrace da última ocorrência") %>
     <% else %>
       <%= ax_empty_state(title: "Sem backtrace", description: "A exceção foi registrada sem stack trace.", icon: "bug") %>
     <% end %>

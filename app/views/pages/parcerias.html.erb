@@ -7,10 +7,10 @@
       <div class="lg:col-span-7 text-white">
         <span class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider">
           <i class="bi bi-briefcase"></i>
-          Salute Parcerias
+          <%= @public_identity.name %> · Parcerias
         </span>
         <h1 class="mt-6 text-4xl lg:text-5xl font-semibold leading-tight">
-          Seja um Corretor Parceiro da Salute Imóveis
+          Seja um Corretor Parceiro da <%= @public_identity.name %>
         </h1>
         <p class="mt-4 text-white/80 text-lg max-w-2xl">
           Potencialize seus negócios com uma curadoria de imóveis qualificados, atendimento ágil e suporte comercial dedicado.
@@ -23,7 +23,7 @@
             </div>
             <div>
               <h3 class="text-xl font-semibold">Portfólio premium para seus clientes</h3>
-              <p class="text-white/80">Acesso a imóveis de alto potencial em Balneário Camboriú e região.</p>
+              <p class="text-white/80">Acesso a imóveis de alto potencial<%= " em #{@public_identity.primary_city} e região" if @public_identity.primary_city.present? %>.</p>
             </div>
           </div>
           <div class="flex gap-4">

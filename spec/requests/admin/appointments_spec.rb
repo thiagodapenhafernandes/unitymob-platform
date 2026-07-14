@@ -14,10 +14,17 @@ RSpec.describe "Admin::Appointments", type: :request do
     it "exibe a agenda da semana" do
       Appointment.create!(title: "Visita ap 302", admin_user: admin, starts_at: Time.current.change(hour: 10))
 
-      get admin_appointments_path
+      get admin_appointments_path(team: "0")
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Agenda")
+      expect(response.body).to include("Agenda", "ax-workspace-heading", "ax-dismissible-hint", "data-dismissible-key-value=\"agenda\"", "ax-appointment-grid", "ax-appointment-card", "Visita ap 302", "ax-modal-overlay")
+      document = Nokogiri::HTML(response.body)
+      view_links = document.css('a.ax-btn[href*="view="]')
+      expect(view_links).not_to be_empty
+      expect(view_links).to all(satisfy { |link| URI.parse(link["href"]).query.include?("team=0") })
+      expect(document.at_css('a.ax-btn[aria-current="page"]')).to be_present
+      expect(document.at_css('a.ax-btn--icon[aria-label="Período anterior"] i[aria-hidden="true"]')).to be_present
+      expect(document.at_css('a.ax-btn--icon[aria-label="Próximo período"] i[aria-hidden="true"]')).to be_present
     end
   end
 

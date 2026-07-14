@@ -1,0 +1,60 @@
+/* Shared account-user family used by index, new and edit workspaces. */
+.au-page { display: grid; gap: 8px; padding-top: 8px; }
+.au-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+
+.au-user { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.au-user__avatar { position: relative; flex: 0 0 auto; }
+.au-user__vista { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border: 2px solid var(--ax-panel-bg); border-radius: 999px; background: #16a34a; }
+.au-user__main { display: grid; gap: 1px; min-width: 0; }
+.au-user__main strong { color: var(--admin-ink); font-size: 13px; }
+.au-user__main > span { overflow: hidden; color: var(--ab-muted); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.au-user__meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1px; }
+.au-user__meta span { color: var(--ab-muted); font-size: 10.5px; }
+.au-strong { color: var(--admin-ink); font-size: 12.5px; font-weight: 600; }
+.au-muted { color: var(--ab-muted); }
+.au-actions { display: inline-flex; gap: 2px; justify-content: flex-end; }
+.reassign-delete__form { display: grid; gap: 8px; margin-top: 12px; }
+.reassign-delete__hint { margin: 0; color: var(--ab-muted); font-size: 11.5px; line-height: 1.45; }
+
+.au-form {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.au-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.au-form-main,
+.au-form-side { display: grid; gap: 8px; min-width: 0; }
+.au-body { display: grid; gap: 14px; padding: 12px; }
+.au-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ax-border-soft, #e7ebf2);
+}
+
+.au-avatar-row__field { flex: 1; }
+
+[data-admin-theme="dark"] .au-form .au-avatar-row { border-color: #33445d; }
+
+[data-admin-theme="dark"] .au-page :where(.au-user__main strong, .au-strong) { color: #e8eef7; }
+[data-admin-theme="dark"] .au-page :where(.au-user__main > span, .au-user__meta span, .au-muted) { color: #96a5ba; }
+[data-admin-theme="dark"] .au-page .au-user__vista { border-color: var(--ax-panel-bg); }
+
+@media (min-width: 1080px) {
+  .au-form-grid { grid-template-columns: minmax(0, 1fr) 360px; }
+}
+
+@media (max-width: 720px) {
+  .au-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+}

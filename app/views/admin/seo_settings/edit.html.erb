@@ -1,10 +1,5 @@
 <div class="container-fluid py-3 seo-editor-shell">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-flex-wrap tw-gap-2">
-    <div>
-      <h1 class="ax-page-title"><i class="bi bi-search tw-text-primary"></i> Editar SEO</h1>
-      <p class="ax-page-subtitle"><%= @seo_setting.display_name %></p>
-    </div>
-    <div class="tw-flex tw-gap-2">
+  <% page_actions = capture do %>
       <%= link_to admin_seo_settings_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
         <i class="bi bi-arrow-left"></i>Voltar
       <% end %>
@@ -14,8 +9,13 @@
           data: { turbo_submits_with: "Gerando..." } do %>
         <i class="bi bi-stars"></i>Gerar com IA
       <% end %>
-    </div>
-  </div>
+  <% end %>
+  <%= ax_page_header(
+        title: "Editar SEO",
+        subtitle: @seo_setting.display_name,
+        icon: "search",
+        actions: page_actions
+      ) %>
 
   <%= render "form", seo_setting: @seo_setting %>
 </div>

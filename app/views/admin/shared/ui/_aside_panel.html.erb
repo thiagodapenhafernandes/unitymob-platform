@@ -14,7 +14,7 @@
 
 <div class="<%= wrapper_classes %>">
   <% if rail_body.present? %>
-    <div class="<%= rail_classes %>" aria-label="<%= rail_label %>">
+    <div class="<%= rail_classes %>" aria-label="<%= rail_label %>" <%= toggle_target_attribute %>="rail">
       <button type="button"
               class="ax-aside-rail__toggle"
               data-action="<%= toggle_action %>"
@@ -32,8 +32,8 @@
   <% else %>
     <button type="button"
             class="<%= rail_classes %>"
+            <%= toggle_target_attribute %>="rail toggle"
             data-action="<%= toggle_action %>"
-            <%= toggle_target_attribute %>="toggle"
             aria-expanded="true"
             aria-label="<%= rail_label %>"
             title="<%= rail_label %>">
@@ -47,7 +47,7 @@
     </button>
   <% end %>
 
-  <div class="<%= panel_classes %>">
+  <div class="<%= panel_classes %>" <%= toggle_target_attribute %>="panel">
     <header class="<%= header_classes %>">
       <strong><%= title %></strong>
       <div class="<%= actions_classes %>">

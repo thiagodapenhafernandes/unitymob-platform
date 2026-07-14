@@ -1,9 +1,11 @@
-<section class="ax-filter-form <%= local_assigns[:class_name] %>">
+<section class="<%= ["ax-filter-form", local_assigns[:class_name]].compact_blank.join(" ") %>"
+         role="search"
+         aria-label="<%= filter_label %>">
   <div class="ax-filter-form__fields">
     <%= fields %>
   </div>
 
-  <div class="ax-filter-form__actions">
+  <div class="ax-filter-form__actions" aria-label="Ações dos filtros">
     <%= submit_tag submit_label, class: "ax-btn ax-btn--primary" %>
     <% if reset_path.present? %>
       <%= link_to reset_label, reset_path, class: "ax-btn" %>

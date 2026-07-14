@@ -1,78 +1,122 @@
-<%# Check-ins em campo — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
-<% bs_to_ax = { "success" => "green", "danger" => "red", "warning" => "amber", "info" => "blue", "primary" => "blue", "secondary" => "gray" } %>
 <div class="field-checkins-admin">
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Check-ins em campo</h1>
-    <p class="ax-page-subtitle">Monitoramento ao vivo dos corretores em plantão.</p>
-  </div>
-  <%= link_to admin_stores_path, class: "ax-btn ax-btn--sm" do %><i class="bi bi-shop ax-ico"></i><span>Lojas</span><% end %>
-</div>
+  <%= ax_workspace_heading(
+        eyebrow: "Operação · Campo",
+        icon: "geo-alt",
+        title: "Check-ins em campo",
+        subtitle: "Monitoramento ao vivo dos corretores em plantão.",
+        actions: ax_button("Lojas", admin_stores_path, size: :sm, icon: "shop")
+      ) %>
 
-<div class="tw-grid tw-grid-cols-2 md:tw-grid-cols-4 tw-gap-3 tw-mb-4">
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Ativos agora</div><div class="ax-stat-value tw-text-green-600"><%= @active_check_ins.size %></div></div>
-  <div class="ax-card ax-card--stat"><div class="ax-stat-label">Fechados hoje</div><div class="ax-stat-value"><%= @today_closed.size %></div></div>
-</div>
-
-<div class="ax-card tw-mb-4">
-  <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-broadcast tw-text-green-600"></i> Check-ins ativos (<%= @active_check_ins.size %>)</span></div>
-  <div class="ax-table-wrap" style="border:0;border-radius:0">
-    <table class="ax-table">
-      <thead><tr><th>Corretor</th><th style="width:170px">Loja</th><th style="width:120px">Entrou</th><th style="width:110px">Duração</th><th style="width:120px">Status</th><th class="ax-num" style="width:90px">Ações</th></tr></thead>
-      <tbody>
-        <% @active_check_ins.each do |c| %>
-          <tr>
-            <td class="ax-strong"><i class="bi bi-person-circle tw-text-ink-faint"></i> <%= c.admin_user.name %></td>
-            <td><i class="bi bi-shop tw-text-ink-faint"></i> <%= c.store.name %></td>
-            <td class="tw-text-2xs tw-text-ink-muted"><%= l(c.checked_in_at, format: :short) %></td>
-            <td class="tw-font-mono tw-text-2xs"><%= distance_of_time_in_words(c.checked_in_at, Time.current) %></td>
-            <td>
-              <% if c.out_of_radius_since %><span class="ax-badge ax-badge--amber ax-badge--dot">Fora do raio</span>
-              <% else %><span class="ax-badge ax-badge--green ax-badge--dot">No raio</span><% end %>
-            </td>
-            <td class="ax-num">
-              <span class="tw-inline-flex tw-gap-0.5">
-                <%= link_to admin_field_check_in_path(c), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
-                <% if can?(:manage, :field_checkins) %>
-                  <%= button_to force_check_out_admin_field_check_in_path(c), method: :post, form_class: "tw-inline", class: "ax-ico-btn", title: "Forçar check-out", form: { data: { turbo_confirm: "Forçar check-out de #{c.admin_user.name}?" } } do %><i class="bi bi-power"></i><% end %>
-                <% end %>
-              </span>
-            </td>
-          </tr>
-        <% end %>
-        <% if @active_check_ins.empty? %><tr><td colspan="6"><div class="ax-empty">Nenhum corretor ativo no momento.</div></td></tr><% end %>
-      </tbody>
-    </table>
+  <div class="ax-metric-grid tw-mb-4" aria-label="Resumo dos check-ins">
+    <%= ax_metric_card(
+          label: "Ativos agora",
+          value: @active_check_ins.size,
+          badge: ax_badge("Ao vivo", tone: :green, dot: true)
+        ) %>
+    <%= ax_metric_card(label: "Fechados hoje", value: @today_closed.size) %>
   </div>
-</div>
 
-<div class="ax-card">
-  <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-clock-history"></i> Fechados hoje (<%= @today_closed.size %>)</span></div>
-  <div class="ax-table-wrap" style="border:0;border-radius:0">
-    <table class="ax-table">
-      <thead><tr><th>Corretor</th><th style="width:170px">Loja</th><th style="width:120px">Entrou</th><th style="width:120px">Saiu</th><th style="width:110px">Duração</th><th style="width:140px">Motivo</th></tr></thead>
-      <tbody>
-        <% @today_closed.each do |c| %>
-          <% icon, color, label = case c.status
-             when "closed_manual" then ["bi-box-arrow-right", "secondary", "Manual"]
-             when "closed_auto_shift_end" then ["bi-moon", "info", "Fim turno"]
-             when "closed_auto_out_of_radius" then ["bi-geo-alt-fill", "warning", "Saiu do raio"]
-             when "closed_auto_no_signal" then ["bi-wifi-off", "secondary", "Sem sinal"]
-             when "closed_admin_force" then ["bi-shield-exclamation", "danger", "Admin forçou"]
-             else ["bi-question-circle", "secondary", c.status]
-             end %>
-          <tr>
-            <td class="ax-strong"><%= c.admin_user.name %></td>
-            <td><%= c.store.name %></td>
-            <td class="tw-text-2xs tw-text-ink-muted"><%= l(c.checked_in_at, format: :short) %></td>
-            <td class="tw-text-2xs tw-text-ink-muted"><%= l(c.checked_out_at, format: :short) if c.checked_out_at %></td>
-            <td class="tw-text-2xs"><%= distance_of_time_in_words(c.checked_in_at, c.checked_out_at || Time.current) %></td>
-            <td><span class="ax-badge ax-badge--<%= bs_to_ax[color] || 'gray' %>"><i class="bi <%= icon %>"></i> <%= label %></span></td>
-          </tr>
-        <% end %>
-        <% if @today_closed.empty? %><tr><td colspan="6"><div class="ax-empty">Nenhum check-in fechado hoje.</div></td></tr><% end %>
-      </tbody>
-    </table>
-  </div>
-</div>
+  <%= ax_operational_panel(
+        eyebrow: "Monitoramento ao vivo",
+        title: "Check-ins ativos",
+        actions: ax_badge(@active_check_ins.size, tone: @active_check_ins.any? ? :green : :gray, dot: @active_check_ins.any?),
+        class_name: "tw-mb-4"
+      ) do %>
+    <% if @active_check_ins.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th>Corretor</th>
+              <th class="ax-table__col--w-170">Loja</th>
+              <th class="ax-table__col--w-120">Entrou</th>
+              <th class="ax-table__col--md">Duração</th>
+              <th class="ax-table__col--w-120">Status</th>
+              <th class="ax-num ax-table__col--compact">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @active_check_ins.each do |check_in| %>
+              <tr>
+                <td class="ax-strong"><i class="bi bi-person-circle tw-text-ink-faint"></i> <%= check_in.admin_user.name %></td>
+                <td><i class="bi bi-shop tw-text-ink-faint"></i> <%= check_in.store.name %></td>
+                <td class="tw-text-2xs tw-text-ink-muted"><%= l(check_in.checked_in_at, format: :short) %></td>
+                <td class="tw-font-mono tw-text-2xs"><%= distance_of_time_in_words(check_in.checked_in_at, Time.current) %></td>
+                <td>
+                  <%= ax_badge(
+                        check_in.out_of_radius_since? ? "Fora do raio" : "No raio",
+                        tone: check_in.out_of_radius_since? ? :amber : :green,
+                        dot: true
+                      ) %>
+                </td>
+                <td class="ax-num">
+                  <span class="tw-inline-flex tw-gap-0.5">
+                    <%= link_to admin_field_check_in_path(check_in), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
+                    <% if can?(:manage, :field_checkins) %>
+                      <%= button_to force_check_out_admin_field_check_in_path(check_in), method: :post, form_class: "tw-inline", class: "ax-ico-btn", title: "Forçar check-out", form: { data: { turbo_confirm: "Forçar check-out de #{check_in.admin_user.name}?" } } do %><i class="bi bi-power"></i><% end %>
+                    <% end %>
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <%= ax_empty_state(
+            title: "Nenhum corretor ativo",
+            description: "Não há check-ins abertos no momento.",
+            icon: "person-check"
+          ) %>
+    <% end %>
+  <% end %>
+
+  <%= ax_operational_panel(
+        eyebrow: "Histórico do dia",
+        title: "Fechados hoje",
+        actions: ax_badge(@today_closed.size, tone: :gray)
+      ) do %>
+    <% if @today_closed.any? %>
+      <div class="ax-table-wrap">
+        <table class="ax-table">
+          <thead>
+            <tr>
+              <th>Corretor</th>
+              <th class="ax-table__col--w-170">Loja</th>
+              <th class="ax-table__col--w-120">Entrou</th>
+              <th class="ax-table__col--w-120">Saiu</th>
+              <th class="ax-table__col--md">Duração</th>
+              <th class="ax-table__col--w-140">Motivo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @today_closed.each do |check_in| %>
+              <% icon, tone, label = case check_in.status
+                 when "closed_manual" then ["box-arrow-right", :gray, "Manual"]
+                 when "closed_auto_shift_end" then ["moon", :blue, "Fim turno"]
+                 when "closed_auto_out_of_radius" then ["geo-alt-fill", :amber, "Saiu do raio"]
+                 when "closed_auto_no_signal" then ["wifi-off", :gray, "Sem sinal"]
+                 when "closed_admin_force" then ["shield-exclamation", :red, "Admin forçou"]
+                 else ["question-circle", :gray, check_in.status]
+                 end %>
+              <tr>
+                <td class="ax-strong"><%= check_in.admin_user.name %></td>
+                <td><%= check_in.store.name %></td>
+                <td class="tw-text-2xs tw-text-ink-muted"><%= l(check_in.checked_in_at, format: :short) %></td>
+                <td class="tw-text-2xs tw-text-ink-muted"><%= l(check_in.checked_out_at, format: :short) if check_in.checked_out_at %></td>
+                <td class="tw-text-2xs"><%= distance_of_time_in_words(check_in.checked_in_at, check_in.checked_out_at || Time.current) %></td>
+                <td><%= ax_badge(safe_join([tag.i(class: "bi bi-#{icon}"), label], " "), tone: tone) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <%= ax_empty_state(
+            title: "Nenhum check-in fechado hoje",
+            description: "Os encerramentos do dia aparecerão aqui.",
+            icon: "clock-history"
+          ) %>
+    <% end %>
+  <% end %>
 </div>

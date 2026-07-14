@@ -9,7 +9,7 @@
     user_initial = user_name&.first&.upcase || "?"
     user_email = user&.email || ""
   %>
-  <span class="drag-handle distribution-rule-agent__handle" title="Arrastar para reordenar"><i class="bi bi-grip-vertical"></i></span>
+  <span class="drag-handle distribution-rule-agent__handle" title="Arrastar para reordenar" aria-hidden="true"><i class="bi bi-grip-vertical"></i></span>
   <span class="ax-record-item__icon distribution-rule-agent__avatar"><%= user_initial %></span>
   <div class="ax-record-item__copy distribution-rule-agent__main">
     <strong><%= user_name %></strong>
@@ -27,8 +27,8 @@
       <span class="ax-badge ax-badge--gray">#<span class="position-display"><%= f.object.position || "-" %></span></span>
     </div>
 
-    <button type="button" class="ax-ico-btn distribution-rule-agent__remove" data-action="click->team-rules#remove" title="Remover">
-      <i class="bi bi-trash"></i>
+    <button type="button" class="ax-ico-btn distribution-rule-agent__remove" data-action="click->team-rules#remove" title="Remover <%= user_name %>" aria-label="Remover <%= user_name %> da fila">
+      <i class="bi bi-trash" aria-hidden="true"></i>
     </button>
   </div>
 

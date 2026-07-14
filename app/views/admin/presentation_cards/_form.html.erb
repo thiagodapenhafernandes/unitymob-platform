@@ -2,11 +2,7 @@
 <div class="layout-settings-grid">
   <div class="layout-settings-main">
     <%= form_with model: [:admin, card], class: "layout-settings-form" do |f| %>
-      <% if card.errors.any? %>
-        <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle") do %>
-          <%= card.errors.full_messages.to_sentence %>
-        <% end %>
-      <% end %>
+      <%= ax_error_summary(card) %>
 
       <%= ax_operational_panel(eyebrow: "Apresentação", title: card.persisted? ? "Editar cartão" : "Novo cartão") do %>
         <div class="ax-panel-body">
@@ -16,10 +12,10 @@
                     hint: "Só para você identificar (ex.: Venda, Locação).", maxlength: 40, required: true) %>
             </div>
             <div class="ax-span-12">
-              <%= ax_field_label(f, :greeting, text: "Saudação",
-                    tooltip: "Texto enviado ao cliente. A assinatura com seu nome e CRECI é adicionada automaticamente.") %>
-              <%= f.text_area :greeting, rows: 4, maxlength: 600, required: true, class: "ax-textarea",
-                    placeholder: "Olá! Eu sou o corretor responsável pelo seu atendimento..." %>
+              <%= ax_text_field(form: f, method: :greeting, label: "Saudação", type: :textarea,
+                    tooltip: "Texto enviado ao cliente. A assinatura com seu nome e CRECI é adicionada automaticamente.",
+                    rows: 4, maxlength: 600, required: true,
+                    placeholder: "Olá! Eu sou o corretor responsável pelo seu atendimento...") %>
             </div>
           <% end %>
 
@@ -47,10 +43,11 @@
         </div>
       <% end %>
 
-      <div class="ax-form-actions">
-        <%= link_to "Cancelar", admin_presentation_cards_path, class: "ax-btn" %>
-        <%= f.submit(card.persisted? ? "Salvar cartão" : "Criar cartão", class: "ax-btn ax-btn--primary") %>
-      </div>
+      <%= ax_form_actions(
+            cancel_path: admin_presentation_cards_path,
+            submit_label: card.persisted? ? "Salvar cartão" : "Criar cartão",
+            form: f
+          ) %>
     <% end %>
   </div>
 

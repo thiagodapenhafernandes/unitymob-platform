@@ -7,6 +7,7 @@ module Admin
     def index
       @metrics = system_metrics
       @tenants = Tenant.active.includes(admin_users: :profile).order(:name)
+      @tenant_owners_by_tenant_id = tenant_owners_by_tenant_id(@tenants)
       @system_admins = AdminUser.where(super_admin: true).includes(:profile).order(:name)
       @last_login_by_admin_id = last_login_by_admin_id(@system_admins.map(&:id))
       @failed_job_groups = failed_job_groups
@@ -200,6 +201,15 @@ module Admin
         .where(profiles: { key: "tenant_owner", axis: Profile::AXES[:vertical] })
         .order(:name)
         .first
+    end
+
+    def tenant_owners_by_tenant_id(tenants)
+      tenants.each_with_object({}) do |tenant, owners|
+        owner = tenant.admin_users.find do |user|
+          user.active? && !user.super_admin? && user.profile&.tenant_owner?
+        end
+        owners[tenant.id] = owner if owner
+      end
     end
 
     def solid_queue_metrics

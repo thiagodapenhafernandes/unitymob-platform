@@ -23,6 +23,19 @@ RSpec.describe "Admin::LeadLabels", type: :request do
       expect(body["manager_html"]).to include("Quente")
       expect(body).to have_key("chips_html")
     end
+
+    it "renderiza cor personalizada como dado seguro no gerenciador e nos chips" do
+      label = create(:lead_label, admin_user: admin, tenant: admin.tenant, name: "Especial", color: "#7c3aed")
+      lead.lead_labels << label
+
+      get admin_lead_lead_labels_path(lead)
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["manager_html"]).to include('data-label-color="#7c3aed"')
+      expect(body["chips_html"]).to include('data-label-color="#7c3aed"')
+      expect(body.values_at("manager_html", "chips_html").join).not_to match(/\bstyle\s*=/i)
+    end
   end
 
   describe "POST create" do

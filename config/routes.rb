@@ -20,6 +20,7 @@ Rails.application.routes.draw do
   get "pwa-icon-:size", to: "pwa_icons#show", as: :pwa_icon, constraints: { size: /192|512/ }
 
   namespace :admin do
+    resource :theme_preference, only: :update
     delete "context_items", to: "context_items#clear", as: :context_items
     delete "context_items/:id", to: "context_items#destroy", as: :context_item, constraints: { id: /[^\/]+/ }
 
@@ -96,12 +97,14 @@ Rails.application.routes.draw do
 
     resource :home_setting, only: [:edit, :update]
     resource :contact_setting, only: [:edit, :update]
+    resource :public_site_profile, only: [:edit, :update]
     resource :layout_setting, only: [:show, :edit, :update]
     resource :lead_setting, only: [:edit, :update]
     resource :footer_setting, only: [:edit, :update]
     resource :property_setting, only: [:edit, :update] do
       get :review_workflow
     end
+    resources :development_aliases, only: [:create, :destroy]
     resources :webhook_settings do
       post :test, on: :member
       collection do
@@ -418,6 +421,10 @@ Rails.application.routes.draw do
     get "up", to: "health#up"
     get "manifest", to: "manifests#show", as: :manifest, defaults: { format: :json }
     get "", to: "home#show", as: :root
+    resource :property_search, only: [:show, :create] do
+      post :select
+    end
+    resources :property_share_collections, only: [:create]
     get "stores/discover", to: "stores#discover"
     resources :check_ins, only: [:new, :create] do
       patch :check_out, on: :member
@@ -431,6 +438,9 @@ Rails.application.routes.draw do
       end
     end
   end
+
+  get "selecoes/:token", to: "ai_property_share_collections#show", as: :ai_property_share_collection
+  post "selecoes/:token/interesses", to: "ai_property_share_collections#interest", as: :interest_ai_property_share_collection
 
   namespace :api do
     namespace :v1 do
@@ -455,7 +465,8 @@ Rails.application.routes.draw do
   
   # Static pages
   get 'trabalhe-conosco', to: 'pages#trabalhe_conosco', as: :trabalhe_conosco
-  get 'salute-parcerias', to: 'pages#parcerias', as: :parcerias
+  get 'parcerias', to: 'pages#parcerias', as: :parcerias
+  get 'salute-parcerias', to: 'pages#parcerias' # Compatibilidade com links existentes da Salute
   get 'simulador-financiamento', to: 'pages#simulador', as: :simulador
   get 'politica-de-privacidade', to: 'pages#privacy_policy', as: :privacy_policy
   get 'termos-de-uso', to: 'pages#terms_of_use', as: :terms_of_use

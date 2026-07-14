@@ -75,7 +75,7 @@ class HomeController < ApplicationController
     
     # SEO
     @page_name = 'home'
-    @page_title = 'Salute Imóveis | Encontre seu Imóvel Ideal'
+    @page_title = "#{public_identity.name} | Encontre seu Imóvel Ideal"
     @page_description = 'Os melhores imóveis para venda e locação. Apartamentos, casas, terrenos e mais.'
     
     # Cache da página (Browser)
@@ -83,18 +83,32 @@ class HomeController < ApplicationController
   end
   
   def sobre
+    load_public_identity
     @page_name = 'sobre'
-    @page_title = 'Sobre Nós | Salute Imóveis'
-    @page_description = 'Conheça a Salute Imóveis, sua imobiliária de confiança.'
+    @page_title = "Sobre Nós | #{@public_identity.name}"
+    @page_description = "Conheça a #{@public_identity.name}, sua imobiliária de confiança."
   end
   
   def contato
+    load_public_identity
     @page_name = 'contato'
-    @page_title = 'Contato | Salute Imóveis'
-    @page_description = 'Entre em contato com a Salute Imóveis. Estamos prontos para ajudar você.'
+    @page_title = "Contato | #{@public_identity.name}"
+    @page_description = "Entre em contato com a #{@public_identity.name}. Estamos prontos para ajudar você."
   end
 
   private
+
+  def public_identity
+    @public_identity ||= Tenants::PublicIdentity.new(public_tenant)
+  end
+
+  def load_public_identity
+    @public_identity = public_identity
+    @contact_setting = ContactSetting.instance(tenant: public_tenant)
+    @footer_setting = FooterSetting.instance(tenant: public_tenant)
+    @public_site_profile = PublicSiteProfile.current(tenant: public_tenant)
+    @business_hours = @contact_setting.business_hours.presence
+  end
 
   def cached_home_properties(section, cache_name)
     ids = Rails.cache.fetch(home_section_cache_key(section, cache_name), expires_in: 15.minutes) do
@@ -224,7 +238,7 @@ class HomeController < ApplicationController
       {
         source: slide.image,
         mobile_source: slide.image,
-        alt: slide.alt_text.presence || "Salute Imóveis - Luxo e Exclusividade"
+        alt: slide.alt_text.presence || "#{public_identity.name} - imóveis em destaque"
       }
     end
 
@@ -232,11 +246,11 @@ class HomeController < ApplicationController
       images << {
         source: home_setting.hero_background_desktop,
         mobile_source: (home_setting.hero_background_mobile.attached? ? home_setting.hero_background_mobile : home_setting.hero_background_desktop),
-        alt: "Salute Imóveis - Luxo e Exclusividade"
+        alt: "#{public_identity.name} - imóveis em destaque"
       }
     end
 
     fallback = helpers.asset_path("hero_05.jpeg")
-    images.presence || [{ source: fallback, mobile_source: fallback, alt: "Salute Imóveis - Luxo e Exclusividade" }]
+    images.presence || [{ source: fallback, mobile_source: fallback, alt: "#{public_identity.name} - imóveis em destaque" }]
   end
 end

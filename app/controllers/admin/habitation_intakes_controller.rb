@@ -287,7 +287,7 @@ module Admin
     def publish
       if @habitation.intake_admin_approved?
         release_to_site
-      elsif can?(:review, :captacoes)
+      elsif can_review_captacao?(@habitation)
         approve
       else
         redirect_to admin_captacao_path(@habitation), alert: "Captação ainda precisa de aprovação administrativa."
@@ -448,7 +448,7 @@ module Admin
     end
 
     def can_export_captacoes?
-      tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes)
+      tenant_owner? || owns_all_resource?(:captacoes)
     end
 
     def can_broker_release_to_site?(habitation)
@@ -460,7 +460,9 @@ module Admin
 
     def scoped_intakes
       scope = current_tenant.habitations.broker_intakes
-      if owns_all_resource?(:captacoes) || can?(:review, :captacoes)
+      # Revisor com escopo total enxerga a conta inteira; revisor/gestor com
+      # escopo de equipe cai no recorte por donos visíveis (a própria hierarquia).
+      if tenant_owner? || owns_all_resource?(:captacoes)
         return scope.where(
           "(habitations.intake_status IS NOT NULL AND habitations.intake_status NOT IN (:draft_statuses)) OR habitations.admin_user_id = :user_id",
           draft_statuses: ["draft"],
@@ -587,43 +589,28 @@ module Admin
     end
 
     def authorize_access!
-      return if owns_all_resource?(:captacoes) || can?(:review, :captacoes)
+      return if tenant_owner? || owns_all_resource?(:captacoes)
       return if @habitation.admin_user_id == current_admin_user.id
+      return if current_admin_user&.can_view_team?(:captacoes) && manager_can_access_intake?(@habitation)
 
       redirect_to admin_captacoes_path, alert: "Você não tem acesso a esta captação."
     end
 
     def authorize_intake_edit!
       return unless @habitation.intake_submitted_for_admin_review?
-      return if can?(:review, :captacoes)
+      return if can_review_captacao?(@habitation)
       return if current_admin_user&.can_view_team?(:captacoes) && manager_can_access_intake?(@habitation)
 
       redirect_to admin_captacoes_path, alert: "Captações pendentes de revisão só podem ser alteradas por quem revisa captações ou pelo gestor responsável."
     end
 
-    def manager_team_user_ids
-      return [] unless current_admin_user
-
-      ids = current_admin_user.team_scope_ids
-      return ids if current_admin_user.both?
-
-      current_tenant.admin_users.where(id: ids, acting_type: manager_allowed_acting_types).pluck(:id)
-    end
-
-    def manager_allowed_acting_types
-      case current_admin_user&.acting_type
-      when "sales" then AdminUser.acting_types.values_at("sales", "both")
-      when "rentals" then AdminUser.acting_types.values_at("rentals", "both")
-      else AdminUser.acting_types.values
-      end
-    end
-
+    # manager_team_user_ids / manager_allowed_acting_types vivem no BaseController.
     def manager_can_access_intake?(habitation)
       manager_team_user_ids.include?(habitation.admin_user_id)
     end
 
     def authorize_review!
-      return if can?(:review, :captacoes)
+      return if can_review_captacao?(@habitation)
 
       redirect_to admin_captacoes_path, alert: "Você não tem permissão para aprovar captações."
     end
@@ -1080,7 +1067,7 @@ module Admin
 
     def filter_returnable_intake_params(attrs)
       return attrs unless @habitation&.intake_returned_to_broker?
-      return attrs if can?(:review, :captacoes)
+      return attrs if can_review_captacao?(@habitation)
 
       allowed_fields = @property_setting&.available_returnable_field_names || []
       attrs.slice(*allowed_fields)

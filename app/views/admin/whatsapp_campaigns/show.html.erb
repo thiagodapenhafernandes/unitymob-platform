@@ -146,9 +146,9 @@
         </article>
       <% end %>
       <% if @campaign.dynamic_response_cards.blank? %>
-        <div class="ax-inline-notice ax-inline-notice--info">
+        <%= ax_inline_notice(tone: :info, icon: "info-circle", compact: true) do %>
           Este template não possui botões mensuráveis. Respostas por texto continuam aparecendo em Mensagens recentes e podem ser tratadas pela Automação.
-        </div>
+        <% end %>
       <% end %>
     </div>
   </section>
@@ -195,7 +195,7 @@
       <strong>Progresso</strong>
       <span data-whatsapp-campaign-live-target="progressPercent"><%= progress %>%</span>
     </div>
-    <meter min="0" max="100" value="<%= progress %>" data-whatsapp-campaign-live-target="progressMeter"></meter>
+    <meter min="0" max="100" value="<%= progress %>" aria-label="Progresso da campanha <%= @campaign.name %>" data-whatsapp-campaign-live-target="progressMeter"></meter>
     <small>Pendentes: <span data-whatsapp-campaign-live-target="pendingCount"><%= [@campaign.total_recipients.to_i - @campaign.sent_count.to_i - @campaign.failed_count.to_i, 0].max %></span></small>
   </section>
 
@@ -219,15 +219,16 @@
     </div>
     <div class="ax-table-wrap">
       <table class="ax-table whatsapp-message-table">
+        <caption class="ax-table__caption--sr-only">Mensagens recentes da campanha <%= @campaign.name %></caption>
         <thead>
           <tr>
-            <th>Destinatário</th>
-            <th>Telefone</th>
-            <th>WAMID</th>
-            <th>Status</th>
-            <th>Resposta</th>
-            <th>Erro</th>
-            <th>Atualizado</th>
+            <th scope="col">Destinatário</th>
+            <th scope="col">Telefone</th>
+            <th scope="col">WAMID</th>
+            <th scope="col">Status</th>
+            <th scope="col">Resposta</th>
+            <th scope="col">Erro</th>
+            <th scope="col">Atualizado</th>
           </tr>
         </thead>
         <tbody data-whatsapp-campaign-live-target="messagesBody">
@@ -253,7 +254,7 @@
             </tr>
           <% end %>
           <% if @messages.empty? %>
-            <tr><td colspan="7" class="ax-table__empty">Nenhuma mensagem encontrada para os filtros atuais.</td></tr>
+            <tr><td colspan="7" class="ax-table__empty"><%= ax_empty_state(title: "Nenhuma mensagem encontrada", description: "Ajuste os filtros ou aguarde o processamento desta campanha.", icon: "chat-square-text", compact: true) %></td></tr>
           <% end %>
         </tbody>
       </table>

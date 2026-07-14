@@ -1,6 +1,10 @@
-<div class="ax-alert ax-alert--danger ax-form-error-summary" role="alert">
-  <div class="ax-alert__icon"><%= ax_icon("exclamation-triangle-fill") %></div>
-  <div>
+<div class="ax-alert ax-alert--danger ax-form-error-summary"
+     role="alert"
+     aria-live="assertive"
+     aria-atomic="true"
+     tabindex="-1">
+  <div class="ax-alert__icon" aria-hidden="true"><%= ax_icon("exclamation-triangle-fill") %></div>
+  <div class="ax-alert__content">
     <div class="ax-alert__title"><%= title %></div>
     <% if grouped_errors.present? %>
       <div class="ax-alert__groups">

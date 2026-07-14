@@ -1,99 +1,70 @@
 <%# Eventos da Automação — observabilidade do pipeline horizontal %>
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Eventos da Automação</h1>
-    <p class="ax-page-subtitle">Acompanhe o que a plataforma observou, processou e disparou nas intervenções horizontais.</p>
-  </div>
-  <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
-    <%= link_to admin_automation_rules_path, class: "ax-btn ax-btn--sm" do %>
-      <i class="bi bi-arrow-left ax-ico"></i><span>Voltar para automação</span>
-    <% end %>
-    <%= link_to new_admin_automation_rule_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-      <i class="bi bi-diagram-3 ax-ico"></i><span>Nova intervenção</span>
-    <% end %>
-  </div>
-</div>
+<%= ax_workspace_heading(
+      eyebrow: "Automações · Observabilidade",
+      icon: "activity",
+      title: "Eventos da Automação",
+      subtitle: "Acompanhe o que a plataforma observou, processou e disparou nas intervenções horizontais.",
+      actions: safe_join([
+        ax_button("Voltar para automação", admin_automation_rules_path, size: :sm, icon: "arrow-left"),
+        ax_button("Nova intervenção", new_admin_automation_rule_path, variant: :primary, size: :sm, icon: "diagram-3")
+      ])
+    ) %>
 
 <%= render "admin/shared/module_objective_notice",
       icon: "activity",
       eyebrow: "Observabilidade",
       description: "Use esta tela para entender por que uma automação rodou, ficou pendente ou falhou. Ela mostra eventos da jornada do lead depois que ele existe; regras de fila, destino, responsável, aceite e represamento continuam na Distribuição de Leads." %>
 
-<div class="tw-grid tw-grid-cols-1 md:tw-grid-cols-4 tw-gap-3 tw-mb-4">
-  <div class="ax-card">
-    <div class="ax-card__body">
-      <div class="ax-page-subtitle tw-mb-1">Processados</div>
-      <div class="ax-page-title tw-text-lg"><%= number_with_delimiter(@processed_count) %></div>
-    </div>
-  </div>
-  <div class="ax-card">
-    <div class="ax-card__body">
-      <div class="ax-page-subtitle tw-mb-1">Pendentes</div>
-      <div class="ax-page-title tw-text-lg"><%= number_with_delimiter(@pending_count) %></div>
-    </div>
-  </div>
-  <div class="ax-card">
-    <div class="ax-card__body">
-      <div class="ax-page-subtitle tw-mb-1">Erros</div>
-      <div class="ax-page-title tw-text-lg"><%= number_with_delimiter(@failed_count) %></div>
-    </div>
-  </div>
-  <div class="ax-card">
-    <div class="ax-card__body">
-      <div class="ax-page-subtitle tw-mb-1">Tipos observados</div>
-      <div class="ax-page-title tw-text-lg"><%= number_with_delimiter(@event_counts.keys.size) %></div>
-    </div>
-  </div>
+<div class="ax-metric-grid tw-mb-4">
+  <%= ax_metric_card(label: "Processados", value: number_with_delimiter(@processed_count)) %>
+  <%= ax_metric_card(label: "Pendentes", value: number_with_delimiter(@pending_count)) %>
+  <%= ax_metric_card(label: "Erros", value: number_with_delimiter(@failed_count)) %>
+  <%= ax_metric_card(label: "Tipos observados", value: number_with_delimiter(@event_counts.keys.size)) %>
 </div>
 
-<%= form_with url: admin_automation_events_path, method: :get, local: true, class: "ax-card tw-mb-4" do %>
-  <div class="ax-card__body tw-grid tw-grid-cols-1 md:tw-grid-cols-5 tw-gap-3 tw-items-end">
-    <div>
+<%= ax_filter_form(url: admin_automation_events_path, reset_path: admin_automation_events_path, submit_label: "Filtrar", class_name: "tw-mb-4") do |_form| %>
+  <%= ax_field_grid do %>
+    <div class="ax-span-3">
       <label class="ax-label" for="automation_event_q">Buscar</label>
-      <%= text_field_tag :q, @q, id: "automation_event_q", class: "ax-input", placeholder: "Lead, telefone, evento ou chave" %>
+      <%= text_field_tag :q, @q, id: "automation_event_q", class: "ax-control", placeholder: "Lead, telefone, evento ou chave" %>
     </div>
-    <div>
+    <div class="ax-span-3">
       <label class="ax-label" for="automation_event_status">Status</label>
       <%= select_tag :status,
             options_for_select([["Todos", ""]] + AutomationEvent::STATUSES.map { |status| [AutomationEvent.new(status: status).status_label, status] }, @status),
             id: "automation_event_status",
-            class: "ax-input" %>
+            class: "ax-control" %>
     </div>
-    <div>
+    <div class="ax-span-3">
       <label class="ax-label" for="automation_event_event">Evento</label>
       <%= select_tag :event,
             options_for_select([["Todos", ""]] + Automation::EventCatalog.names.map { |name| ["#{Automation::EventCatalog.label(name)} (#{@event_counts.fetch(name, 0)})", name] }, @event_name),
             id: "automation_event_event",
-            class: "ax-input" %>
+            class: "ax-control" %>
     </div>
-    <div>
+    <div class="ax-span-3">
       <label class="ax-label" for="automation_event_source">Origem técnica</label>
       <%= select_tag :source,
             options_for_select([["Todas", ""]] + @source_options.map { |source| [AutomationEvent.new(source: source).source_label, source] }, @source),
             id: "automation_event_source",
-            class: "ax-input" %>
+            class: "ax-control" %>
     </div>
-    <div class="tw-flex tw-flex-wrap tw-items-center tw-gap-2">
-      <%= button_tag type: "submit", class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-        <i class="bi bi-funnel ax-ico"></i><span>Filtrar</span>
-      <% end %>
-      <%= link_to "Limpar", admin_automation_events_path, class: "ax-btn ax-btn--sm" %>
-    </div>
-  </div>
+  <% end %>
 <% end %>
 
 <% if @events.any? %>
+  <%= ax_operational_panel(eyebrow: "Pipeline", title: "Eventos observados") do %>
   <div class="ax-table-wrap">
     <table class="ax-table">
       <thead>
         <tr>
-          <th style="width:150px">Quando</th>
+          <th class="ax-table__col--w-150">Quando</th>
           <th>Evento</th>
           <th>Lead</th>
-          <th style="width:120px">Status</th>
-          <th style="width:130px">Disparos</th>
+          <th class="ax-table__col--w-120">Status</th>
+          <th class="ax-table__col--w-130">Disparos</th>
           <th>Detalhes</th>
-          <th style="width:180px">Operação</th>
+          <th class="ax-table__col--w-180">Operação</th>
         </tr>
       </thead>
       <tbody>
@@ -158,7 +129,7 @@
                 <details>
                   <summary class="tw-text-sm tw-font-semibold tw-cursor-pointer">Ignorar</summary>
                   <%= form_with url: ignore_admin_automation_event_path(event), method: :patch, local: true, class: "tw-mt-2 tw-grid tw-gap-2" do %>
-                    <%= text_field_tag :reason, nil, class: "ax-input", placeholder: "Motivo" %>
+                    <%= text_field_tag :reason, nil, class: "ax-control", placeholder: "Motivo" %>
                     <%= button_tag type: "submit", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Ignorar este evento?" } do %>
                       <i class="bi bi-slash-circle ax-ico"></i><span>Ignorar evento</span>
                     <% end %>
@@ -173,6 +144,7 @@
       </tbody>
     </table>
   </div>
+  <% end %>
 
   <%= ax_pagination(@events) %>
 <% else %>

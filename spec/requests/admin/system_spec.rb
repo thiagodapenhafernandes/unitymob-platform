@@ -30,6 +30,10 @@ RSpec.describe "Admin::System", type: :request do
     }.to change { AccessAuditLog.where(event_type: "sensitive_access", result: "allowed", admin_user: sys).count }.by(1)
 
     expect(response).to have_http_status(:ok)
+    expect(response.body).to include("ax-system-login-release-field", "ax-table__col--w-120")
+    expect(response.body).to include("Contas ativas disponíveis para impersonação", "Operadores globais com acesso")
+    system_workspace = Nokogiri::HTML(response.body).at_css(".ax-system").to_html
+    expect(system_workspace).not_to match(/\bstyle\s*=/i)
     expect(AccessAuditLog.where(event_type: "sensitive_access", result: "allowed", admin_user: sys).last.tenant_id).to be_nil
   end
 
@@ -80,6 +84,8 @@ RSpec.describe "Admin::System", type: :request do
     expect(response.body).to include('data-controller="auto-submit admin-user-access"')
     expect(response.body).to include('data-controller="tom-select"')
     expect(response.body).to include("hierarchical-user-filter:change->auto-submit#submit")
+    expect(response.body).to include('class="ax-num ax-table__col--w-130"')
+    expect(response.body).to include("Usuários globais disponíveis para impersonação auditada")
     expect(table_text).to include(active_user.name)
     expect(table_text).not_to include(inactive_user.name)
     expect(table_text).not_to include(other_user.name)

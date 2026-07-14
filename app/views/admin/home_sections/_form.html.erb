@@ -40,17 +40,15 @@
             Estes filtros refinam a lista padrão deste tipo de seção. Deixe todos desmarcados para preservar o comportamento atual.
           </p>
 
-          <%= ax_field_grid do %>
+          <%= ax_chip_grid do %>
             <% HomeSection::PROPERTY_FILTER_OPTIONS.each do |key, option| %>
-              <div class="ax-span-4">
-                <label class="border tw-rounded-lg tw-py-2 tw-w-full tw-flex tw-items-center tw-gap-2" style="padding-left:0.75rem;padding-right:0.75rem;">
-                  <%= check_box_tag "home_section[property_filters][#{key}]",
-                                    "1",
-                                    @home_section.property_filter_enabled?(key),
-                                    class: "m-0" %>
-                  <span class="tw-font-semibold"><%= option[:label] %></span>
-                </label>
-              </div>
+              <%= ax_toggle_chip(
+                    label: option[:label],
+                    name: "home_section[property_filters][#{key}]",
+                    checked: @home_section.property_filter_enabled?(key),
+                    include_hidden: false,
+                    class_name: "ax-toggle-chip--full"
+                  ) %>
             <% end %>
           <% end %>
         </div>

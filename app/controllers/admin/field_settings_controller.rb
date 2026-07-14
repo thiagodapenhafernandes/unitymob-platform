@@ -7,7 +7,7 @@ class Admin::FieldSettingsController < Admin::BaseController
 
   def update
     value = ActiveModel::Type::Boolean.new.cast(params[:enabled]) ? "true" : "false"
-    Setting.set(FieldFeatureGate::SETTING_KEY, value)
+    Setting.set(FieldFeatureGate::SETTING_KEY, value, tenant: current_tenant)
     redirect_to edit_admin_field_settings_path, notice: "Feature check-in #{value == 'true' ? 'ativada' : 'desativada'}."
   end
 
@@ -28,7 +28,7 @@ class Admin::FieldSettingsController < Admin::BaseController
   private
 
   def load_field_settings
-    @enabled = FieldFeatureGate.field_checkin_enabled?
+    @enabled = Setting.get(FieldFeatureGate::SETTING_KEY, "false", tenant: current_tenant).to_s == "true"
     @field_users = current_tenant.admin_users.active.order(:name)
     @stores = current_tenant.stores.active.order(:name)
     @blocked_agent_ids = FieldFeatureGate.disabled_agent_ids(tenant: current_tenant)

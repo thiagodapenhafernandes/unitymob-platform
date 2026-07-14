@@ -26,6 +26,15 @@ const DARK_THEME = {
   ink: "#E6EDF7"
 }
 
+const INITIAL_THEME_DATASET = {
+  surface: "layoutThemePreviewInitialSurface",
+  header: "layoutThemePreviewInitialHeader",
+  workspace: "layoutThemePreviewInitialWorkspace",
+  sidebar: "layoutThemePreviewInitialSidebar",
+  primary: "layoutThemePreviewInitialPrimary",
+  ink: "layoutThemePreviewInitialInk"
+}
+
 const DERIVED_ADMIN_VARS = {
   surface: [
     "--ab-panel",
@@ -63,12 +72,24 @@ const DERIVED_ADMIN_VARS = {
 
 export default class extends Controller {
   connect() {
+    this.applyInitialTheme()
+
     if (this.darkModeSelected()) {
       this.applyDarkTheme()
       return
     }
 
     this.applyLightTheme()
+  }
+
+  applyInitialTheme() {
+    Object.entries(INITIAL_THEME_DATASET).forEach(([token, datasetKey]) => {
+      const value = this.normalizedHex(this.element.dataset[datasetKey])
+      if (value) this.element.style.setProperty(TOKEN_TO_VAR[token], value)
+    })
+
+    const publicPrimary = this.normalizedHex(this.element.dataset.layoutThemePreviewPublicPrimary)
+    if (publicPrimary) this.element.style.setProperty("--theme-public-primary", publicPrimary)
   }
 
   updateMode() {

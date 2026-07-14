@@ -1,15 +1,10 @@
 module Portal
   class OlxJsonSerializer
-    CONTACT = {
-      name: "SALUTE IMOVEIS",
-      email: "contato@saluteimoveis.com.br",
-      phone: "(47) 3311-1067"
-    }.freeze
-
     def initialize(habitations:, integration:, portal:)
       @habitations = habitations
       @integration = integration
       @portal = portal
+      @identity = Tenants::PublicIdentity.new(integration.tenant)
     end
 
     def as_json
@@ -18,7 +13,7 @@ module Portal
         generated_at: Time.current.iso8601,
         account_id: @integration.account_id,
         publisher_id: @integration.publisher_id,
-        contact: CONTACT,
+        contact: contact,
         listings: @habitations.map { |habitation| serialize_listing(habitation) }
       }
     end
@@ -46,7 +41,7 @@ module Portal
         useful_area_m2: numeric(habitation.area_privativa_m2),
         total_area_m2: numeric(habitation.area_total_m2),
         address: address_for(habitation),
-        contact: CONTACT,
+        contact: contact,
         features: features_for(habitation),
         publication_options: publication_options_for(habitation),
         exhibit_on_site: habitation.exibir_no_site_flag,
@@ -67,6 +62,10 @@ module Portal
         "Sem descrição"
     rescue
       "Sem descrição"
+    end
+
+    def contact
+      { name: @identity.name, email: @identity.email, phone: @identity.phone }
     end
 
     def address_for(habitation)

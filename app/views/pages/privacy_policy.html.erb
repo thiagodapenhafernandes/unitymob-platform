@@ -17,7 +17,7 @@
           <h2 class="text-2xl font-bold text-blue-three">Introdução</h2>
         </div>
         <div class="prose prose-lg text-gray-600 max-w-none pl-11">
-          <p class="mb-4">A <strong>Salute Locação de Imóveis Ltda - ME</strong>, inscrita no CNPJ sob o nº <strong>63.057.499/0001-93</strong>, com sede na Av. Atlântica, 3750 - Sala E, Balneário Camboriú - SC, CEP 88330-024, está comprometida com a proteção da privacidade e dos dados pessoais de seus usuários, clientes e visitantes.</p>
+          <p class="mb-4">A <strong><%= @public_site_profile.legal_name.presence || @public_identity.name %></strong><%= ", inscrita sob o documento nº #{@public_site_profile.legal_document}" if @public_site_profile.legal_document.present? %><%= ", com sede em #{@public_site_profile.legal_address}" if @public_site_profile.legal_address.present? %>, está comprometida com a proteção da privacidade e dos dados pessoais de seus usuários, clientes e visitantes.</p>
           <p class="mb-4">Esta Política de Privacidade foi elaborada em conformidade com a <strong>Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018)</strong> e descreve como coletamos, usamos, armazenamos, compartilhamos e protegemos suas informações pessoais.</p>
           <p>Ao utilizar nosso website, preencher formulários ou entrar em contato conosco, você concorda com os termos desta política.</p>
         </div>
@@ -32,7 +32,7 @@
           <ul class="space-y-3 text-gray-600">
             <li class="flex gap-2"><i class="bi bi-dot text-golden-one text-xl"></i> <span><strong>Dados Pessoais:</strong> Qualquer informação relacionada a pessoa natural identificada ou identificável.</span></li>
             <li class="flex gap-2"><i class="bi bi-dot text-golden-one text-xl"></i> <span><strong>Titular:</strong> Pessoa natural a quem se referem os dados pessoais.</span></li>
-            <li class="flex gap-2"><i class="bi bi-dot text-golden-one text-xl"></i> <span><strong>Controlador:</strong> Salute Imóveis, responsável pelas decisões sobre o tratamento de dados pessoais.</span></li>
+            <li class="flex gap-2"><i class="bi bi-dot text-golden-one text-xl"></i> <span><strong>Controlador:</strong> <%= @public_site_profile.legal_name.presence || @public_identity.name %>, responsável pelas decisões sobre o tratamento de dados pessoais.</span></li>
             <li class="flex gap-2"><i class="bi bi-dot text-golden-one text-xl"></i> <span><strong>Tratamento:</strong> Toda operação realizada com dados pessoais (coleta, armazenamento, uso, compartilhamento, etc.).</span></li>
             <li class="flex gap-2"><i class="bi bi-dot text-golden-one text-xl"></i> <span><strong>Consentimento:</strong> Manifestação livre, informada e inequívoca pela qual o titular concorda com o tratamento de seus dados.</span></li>
           </ul>
@@ -183,17 +183,17 @@
             </h3>
             <p class="mb-4 text-gray-300">Para exercer seus direitos ou esclarecer dúvidas sobre como tratamos seus dados, entre em contato com nosso Encarregado de Proteção de Dados:</p>
             <div class="space-y-2">
-              <a href="mailto:privacidade@saluteimoveis.com" class="flex items-center gap-3 hover:text-golden-one transition-colors">
+              <a href="mailto:<%= @public_site_profile.privacy_email.presence || @public_identity.email %>" class="flex items-center gap-3 hover:text-golden-one transition-colors">
                 <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
                   <i class="bi bi-envelope"></i>
                 </div>
-                <span>privacidade@saluteimoveis.com</span>
+                <span><%= @public_site_profile.privacy_email.presence || @public_identity.email %></span>
               </a>
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
                   <i class="bi bi-telephone"></i>
                 </div>
-                <span>(47) 3311-1067</span>
+                <span><%= Phones::Normalizer.display(@public_identity.phone) %></span>
               </div>
             </div>
           </div>

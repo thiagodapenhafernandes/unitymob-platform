@@ -4,25 +4,26 @@
 
 <div class="ax-table-wrap">
   <table class="ax-table">
+    <caption>Banners configurados para o site público desta conta</caption>
     <thead>
       <tr>
-        <th style="width:110px">Preview</th>
-        <th>Informações</th>
-        <th style="width:220px">Localização</th>
-        <th class="ax-num" style="width:80px">Ordem</th>
-        <th style="width:96px">Status</th>
-        <th class="ax-num" style="width:90px">Ações</th>
+        <th scope="col" class="ax-table__col--md">Preview</th>
+        <th scope="col">Informações</th>
+        <th scope="col" class="ax-table__col--w-220">Localização</th>
+        <th scope="col" class="ax-num ax-table__col--w-80">Ordem</th>
+        <th scope="col" class="ax-table__col--sm">Status</th>
+        <th scope="col" class="ax-num ax-table__col--compact">Ações</th>
       </tr>
     </thead>
     <tbody>
       <% @banners.each do |banner| %>
         <tr>
           <td>
-            <% if banner.image_desktop.attached? %>
-              <img src="<%= url_for(banner.image_desktop) %>" class="tw-rounded tw-border tw-border-line" style="width:88px;height:50px;object-fit:cover;">
-            <% else %>
-              <div class="tw-flex tw-items-center tw-justify-center tw-rounded tw-border tw-border-line tw-bg-surface-soft tw-text-ink-faint" style="width:88px;height:50px;"><i class="bi bi-image"></i></div>
-            <% end %>
+            <%= ax_media_preview(
+                  image: (banner.image_desktop if banner.image_desktop.attached?),
+                  size: :thumbnail,
+                  empty_text: nil
+                ) %>
           </td>
           <td>
             <div class="ax-strong"><%= banner.title %></div>
@@ -31,29 +32,28 @@
           <td>
             <% if banner.positions.present? %>
               <div class="tw-flex tw-flex-wrap tw-gap-1">
-                <% banner.positions.each do |pos| %><span class="ax-badge ax-badge--blue"><%= Banner::POSITIONS[pos] || pos.humanize %></span><% end %>
+                <% banner.positions.each do |pos| %><%= ax_badge(Banner::POSITIONS[pos] || pos.humanize, tone: :blue) %><% end %>
               </div>
-            <% else %><span class="ax-badge ax-badge--gray">Não definido</span><% end %>
+            <% else %><%= ax_badge("Não definido", tone: :gray) %><% end %>
           </td>
           <td class="ax-num ax-strong">#<%= banner.display_order %></td>
           <td>
-            <% if banner.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativo</span>
-            <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativo</span><% end %>
+            <%= ax_badge(banner.active? ? "Ativo" : "Inativo", tone: banner.active? ? :green : :gray, dot: true) %>
           </td>
           <td class="ax-num">
             <span class="tw-inline-flex tw-gap-0.5">
-              <%= link_to admin_banner_path(banner), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
-              <%= link_to edit_admin_banner_path(banner), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
-              <%= link_to admin_banner_path(banner), data: { turbo_method: :delete, turbo_confirm: "Confirmar exclusão deste banner?" }, class: "ax-ico-btn", title: "Remover" do %><i class="bi bi-trash"></i><% end %>
+              <%= ax_icon_button(label: "Ver banner #{banner.title}", icon: "eye", url: admin_banner_path(banner), variant: :ghost) %>
+              <%= ax_icon_button(label: "Editar banner #{banner.title}", icon: "pencil", url: edit_admin_banner_path(banner), variant: :ghost) %>
+              <%= ax_icon_button(label: "Remover banner #{banner.title}", icon: "trash", url: admin_banner_path(banner), variant: :ghost, data: { turbo_method: :delete, turbo_confirm: "Confirmar exclusão deste banner?" }) %>
             </span>
           </td>
         </tr>
       <% end %>
 
       <% if @banners.empty? %>
-        <tr><td colspan="6"><div class="ax-empty">
-          <i class="bi bi-image-fill tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>Nenhum banner encontrado.
-        </div></td></tr>
+        <tr>
+          <td colspan="6"><%= ax_empty_state(title: "Nenhum banner encontrado", description: "Cadastre um banner para começar a publicar mídia no site.", icon: "image-fill", compact: true) %></td>
+        </tr>
       <% end %>
     </tbody>
   </table>

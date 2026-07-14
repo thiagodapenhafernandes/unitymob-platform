@@ -1,165 +1,101 @@
-<div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">
-      <i class="bi bi-geo-alt-fill tw-text-primary" style="margin-right:.5rem"></i><%= @store.name %>
-      <% if @store.active? %>
-        <span class="ax-badge ax-badge--green" style="margin-left:.5rem"><i class="bi bi-check-circle-fill" style="margin-right:.25rem"></i>Ativa</span>
+<%
+  store_location = [@store.address, @store.city, @store.state].compact_blank.join(" • ")
+  heading_actions = safe_join([
+    ax_button("Voltar", admin_stores_path, variant: :ghost, size: :sm, icon: "arrow-left"),
+    (ax_button("Editar", edit_admin_store_path(@store), variant: :primary, size: :sm, icon: "pencil") if can?(:manage, :lojas))
+  ].compact)
+%>
+
+<%= ax_workspace_heading(
+      eyebrow: "Operação · Lojas",
+      icon: "geo-alt-fill",
+      title: @store.name,
+      pills: [@store.active? ? "Ativa" : "Inativa"],
+      subtitle: store_location.presence || "Sem endereço informado.",
+      actions: heading_actions
+    ) %>
+
+<div class="ax-metric-grid tw-mb-3" aria-label="Resumo operacional da loja">
+  <%= ax_metric_card(label: "Raio de check-in", value: "#{@store.geofence_radius_meters} m", hint: "Geofence operacional") %>
+  <%= ax_metric_card(label: "Tolerância fora", value: "#{@store.out_of_radius_tolerance_minutes} min", hint: "Antes de invalidar presença") %>
+  <%= ax_metric_card(label: "Auto check-out", value: "#{@store.auto_checkout_after_minutes} min", hint: "Encerramento automático") %>
+</div>
+
+<%= ax_field_grid do %>
+  <div class="ax-span-6">
+    <%= ax_operational_panel(eyebrow: "Geofence", title: "Localização") do %>
+      <% if @store.latitude.present? && @store.longitude.present? %>
+        <div data-controller="store-map-picker"
+             data-store-map-picker-latitude-value="<%= @store.latitude %>"
+             data-store-map-picker-longitude-value="<%= @store.longitude %>"
+             data-store-map-picker-radius-value="<%= @store.geofence_radius_meters %>"
+             data-store-map-picker-readonly-value="true">
+          <div class="store-location-map" data-store-map-picker-target="map"></div>
+        </div>
+        <div class="tw-text-sm tw-text-ink-muted tw-font-mono">
+          <%= @store.latitude %>, <%= @store.longitude %>
+        </div>
       <% else %>
-        <span class="ax-badge ax-badge--gray" style="margin-left:.5rem"><i class="bi bi-pause-circle-fill" style="margin-right:.25rem"></i>Inativa</span>
+        <%= ax_empty_state(
+              title: "Sem localização definida",
+              description: "Defina as coordenadas para habilitar a geofence desta loja.",
+              icon: "map",
+              action: ax_button("Definir no mapa", edit_admin_store_path(@store), variant: :ghost, size: :sm)
+            ) %>
       <% end %>
-    </h1>
-    <p class="ax-page-subtitle">
-      <% if @store.address.present? %>
-        <i class="bi bi-pin-map" style="margin-right:.25rem"></i><%= [@store.address, @store.city, @store.state].compact_blank.join(" • ") %>
-      <% end %>
-    </p>
-  </div>
-  <div class="tw-flex tw-gap-2">
-    <%= link_to admin_stores_path, class: "ax-btn ax-btn--ghost ax-btn--sm tw-gap-2" do %>
-      <i class="bi bi-arrow-left"></i>Voltar
-    <% end %>
-    <%= link_to edit_admin_store_path(@store), class: "ax-btn ax-btn--primary ax-btn--sm tw-gap-2" do %>
-      <i class="bi bi-pencil"></i>Editar
     <% end %>
   </div>
-</div>
 
-<%= ax_field_grid do %>
-  <div class="ax-span-4">
-    <div class="ax-card" style="height:100%">
-      <div class="ax-card__body tw-text-center">
-        <i class="bi bi-bullseye" style="font-size: 2rem; color:var(--admin-primary)"></i>
-        <div class="tw-font-bold tw-mt-2"><%= @store.geofence_radius_meters %>m</div>
-        <small class="tw-text-ink-muted text-uppercase">Raio de check-in</small>
-      </div>
-    </div>
-  </div>
-  <div class="ax-span-4">
-    <div class="ax-card" style="height:100%">
-      <div class="ax-card__body tw-text-center">
-        <i class="bi bi-hourglass-split" style="font-size: 2rem; color:#d97706"></i>
-        <div class="tw-font-bold tw-mt-2"><%= @store.out_of_radius_tolerance_minutes %>min</div>
-        <small class="tw-text-ink-muted text-uppercase">Tolerância fora</small>
-      </div>
-    </div>
-  </div>
-  <div class="ax-span-4">
-    <div class="ax-card" style="height:100%">
-      <div class="ax-card__body tw-text-center">
-        <i class="bi bi-moon tw-text-primary" style="font-size: 2rem;"></i>
-        <div class="tw-font-bold tw-mt-2"><%= @store.auto_checkout_after_minutes %>min</div>
-        <small class="tw-text-ink-muted text-uppercase">Auto check-out</small>
-      </div>
-    </div>
-  </div>
-<% end %>
+  <div class="ax-span-6 tw-grid tw-gap-3">
+    <%= ax_operational_panel(eyebrow: "Responsável", title: "Diretor") do %>
+      <% if @store.director %>
+        <%= ax_record_item(title: @store.director.name, meta: @store.director.email, icon: "person-badge-fill") %>
+      <% else %>
+        <%= ax_empty_state(
+              title: "Sem diretor atribuído",
+              description: "Edite a loja para definir o responsável pela unidade.",
+              icon: "person-dash"
+            ) %>
+      <% end %>
+    <% end %>
 
-<div class="tw-mt-3">
-<%= ax_field_grid do %>
-  <div class="ax-span-6">
-    <div class="ax-card tw-mb-3">
-      <div class="ax-card__body">
-        <h5 class="tw-font-bold tw-mb-3">
-          <i class="bi bi-map" style="margin-right:.5rem; color:#dc2626"></i>Localização
-        </h5>
-        <% if @store.latitude.present? && @store.longitude.present? %>
-          <div data-controller="store-map-picker"
-               data-store-map-picker-latitude-value="<%= @store.latitude %>"
-               data-store-map-picker-longitude-value="<%= @store.longitude %>"
-               data-store-map-picker-radius-value="<%= @store.geofence_radius_meters %>"
-               data-store-map-picker-readonly-value="true">
-            <div data-store-map-picker-target="map" style="height: 350px; border-radius: 8px;" class="border"></div>
-          </div>
-          <div class="tw-text-sm tw-text-ink-muted tw-mt-2 font-monospace">
-            <%= @store.latitude %>, <%= @store.longitude %>
-          </div>
-        <% else %>
-          <div class="tw-text-center tw-text-ink-muted py-4">
-            <i class="bi bi-map" style="font-size: 2rem;"></i>
-            <p class="tw-mt-2" style="margin-bottom:0">Sem localização definida.</p>
-            <%= link_to "Definir no mapa", edit_admin_store_path(@store), class: "ax-btn ax-btn--sm ax-btn--ghost tw-mt-2" %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  </div>
+    <%= ax_operational_panel(eyebrow: "Agenda", title: "Turnos operacionais") do %>
+      <% operational_shifts = @store.operational_turnos_config %>
+      <% active_shift = @store.current_operational_shift %>
+      <% configured_shifts = Store::OPERATIONAL_SHIFTS.filter_map { |shift_key| shift_config = operational_shifts[shift_key]; [shift_key, shift_config] if shift_config.present? && ActiveModel::Type::Boolean.new.cast(shift_config["ativo"]) } %>
 
-  <div class="ax-span-6">
-    <div class="ax-card tw-mb-3">
-      <div class="ax-card__body">
-        <h5 class="tw-font-bold tw-mb-3">
-          <i class="bi bi-person-badge-fill tw-text-primary" style="margin-right:.5rem"></i>Diretor
-        </h5>
-        <% if @store.director %>
-          <div class="tw-flex tw-items-center tw-gap-3">
-            <i class="bi bi-person-circle tw-text-ink-muted" style="font-size: 2.5rem;"></i>
-            <div>
-              <div class="tw-font-semibold"><%= @store.director.name %></div>
-              <small class="tw-text-ink-muted"><%= @store.director.email %></small>
-            </div>
-          </div>
-        <% else %>
-          <p class="tw-text-ink-muted" style="margin-bottom:0"><i class="bi bi-dash-circle" style="margin-right:.25rem"></i>Sem diretor atribuído.</p>
-        <% end %>
-      </div>
-    </div>
-
-    <div class="ax-card tw-mb-3">
-      <div class="ax-card__body">
-        <h5 class="tw-font-bold tw-mb-3">
-          <i class="bi bi-calendar-week-fill tw-text-primary" style="margin-right:.5rem"></i>Turnos operacionais
-        </h5>
-        <% operational_shifts = @store.operational_turnos_config %>
-        <% active_shift = @store.current_operational_shift %>
-        <ul class="list-unstyled tw-text-sm" style="margin-bottom:0">
-          <% Store::OPERATIONAL_SHIFTS.each do |shift_key| %>
-            <% shift_config = operational_shifts[shift_key] %>
-            <% next if shift_config.blank? %>
+      <% if configured_shifts.any? %>
+        <div class="tw-grid tw-gap-2">
+          <% configured_shifts.each do |shift_key, shift_config| %>
             <% title = { "manha" => "Manhã", "tarde" => "Tarde", "unico" => "Único" }.fetch(shift_key) %>
-            <% active_config = ActiveModel::Type::Boolean.new.cast(shift_config["ativo"]) %>
-            <% if active_config %>
-              <li class="tw-mb-2 tw-flex tw-items-center tw-justify-between tw-gap-2">
-                <span>
-                  <i class="bi bi-clock tw-text-ink-muted" style="margin-right:.5rem"></i>
-                  <strong><%= title %></strong>
-                  <span class="tw-text-ink-muted">
-                    <%= shift_config.dig("entrada", "inicio") %> - <%= shift_config.dig("fora_roleta", "fim") %>
-                  </span>
-                </span>
-                <% if active_shift == shift_key %>
-                  <span class="ax-badge ax-badge--green ax-badge--dot">Agora</span>
-                <% else %>
-                  <span class="ax-badge ax-badge--gray ax-badge--dot">Configurado</span>
-                <% end %>
-              </li>
-            <% end %>
+            <%= ax_record_item(
+                  title: title,
+                  meta: "#{shift_config.dig("entrada", "inicio")} - #{shift_config.dig("fora_roleta", "fim")}",
+                  icon: "clock",
+                  actions: ax_badge(active_shift == shift_key ? "Agora" : "Configurado", tone: active_shift == shift_key ? :green : :gray, dot: true)
+                ) %>
           <% end %>
-        </ul>
-        <p class="tw-text-ink-muted tw-text-sm" style="margin:.5rem 0 0">
-          Corretores participantes são definidos nas regras de distribuição.
-        </p>
-      </div>
-    </div>
+        </div>
+      <% else %>
+        <%= ax_empty_state(title: "Sem turnos ativos", description: "Nenhuma janela operacional está configurada para esta loja.", icon: "calendar-x") %>
+      <% end %>
 
-    <div class="ax-card tw-mb-3">
-      <div class="ax-card__body">
-        <h5 class="tw-font-bold tw-mb-3">
-          <i class="bi bi-info-circle-fill" style="margin-right:.5rem; color:var(--admin-primary)"></i>Informações
-        </h5>
-        <ul class="list-unstyled tw-text-sm" style="margin-bottom:0">
-          <% if @store.phone.present? %>
-            <li class="tw-mb-2"><i class="bi bi-telephone tw-text-ink-muted" style="margin-right:.5rem"></i><%= format_phone(@store.phone) %></li>
-          <% end %>
-          <% if @store.creci.present? %>
-            <li class="tw-mb-2"><i class="bi bi-award tw-text-ink-muted" style="margin-right:.5rem"></i>CRECI: <strong><%= @store.creci %></strong></li>
-          <% end %>
-          <% if @store.zip_code.present? %>
-            <li class="tw-mb-2"><i class="bi bi-mailbox tw-text-ink-muted" style="margin-right:.5rem"></i>CEP: <%= @store.zip_code %></li>
-          <% end %>
-          <li style="margin-bottom:0"><i class="bi bi-clock tw-text-ink-muted" style="margin-right:.5rem"></i>Fuso: <%= @store.timezone %></li>
-        </ul>
+      <p class="ax-field__hint tw-mb-0">Corretores participantes são definidos nas regras de distribuição.</p>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Cadastro", title: "Informações") do %>
+      <div class="tw-grid tw-gap-2">
+        <% if @store.phone.present? %>
+          <%= ax_record_item(title: format_phone(@store.phone), eyebrow: "Telefone", icon: "telephone") %>
+        <% end %>
+        <% if @store.creci.present? %>
+          <%= ax_record_item(title: @store.creci, eyebrow: "CRECI", icon: "award") %>
+        <% end %>
+        <% if @store.zip_code.present? %>
+          <%= ax_record_item(title: @store.zip_code, eyebrow: "CEP", icon: "mailbox") %>
+        <% end %>
+        <%= ax_record_item(title: @store.timezone, eyebrow: "Fuso horário", icon: "clock-history") %>
       </div>
-    </div>
+    <% end %>
   </div>
 <% end %>
-</div>

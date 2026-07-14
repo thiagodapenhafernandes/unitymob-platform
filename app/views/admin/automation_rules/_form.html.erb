@@ -2,9 +2,7 @@
 <%= form_with model: rule, url: url, method: local_assigns.fetch(:method, :post), scope: :automation_rule,
       data: { controller: "automation-builder", action: "submit->automation-builder#serialize" } do |f| %>
   <% if rule.errors.any? %>
-    <div class="ax-card tw-mb-3" style="border-left:3px solid #ef4444">
-      <div class="ax-card__body"><%= rule.errors.full_messages.to_sentence %></div>
-    </div>
+    <%= ax_error_summary(rule) %>
   <% end %>
 
   <%= render "admin/shared/module_objective_notice",
@@ -13,54 +11,52 @@
         description: "Configure pequenas intervenções de acompanhamento. A distribuição primária do lead, filas, responsáveis, aceite, represamento e horários continuam sendo configurados apenas em Distribuição de Leads." %>
 
   <%# Identificação + QUANDO %>
-  <div class="ax-card tw-mb-4">
-    <div class="ax-card__body tw-grid tw-gap-3">
-      <div class="tw-flex tw-flex-wrap tw-items-end tw-gap-3">
-        <div style="flex:1;min-width:240px">
+  <%= ax_operational_panel(eyebrow: "Configuração", title: "Identificação e gatilho", class_name: "tw-mb-4") do %>
+      <%= ax_field_grid do %>
+        <div class="ax-span-10">
           <label class="ax-label">Nome da regra</label>
-          <%= f.text_field :name, class: "ax-input", placeholder: "Ex.: Resgate de lead frio" %>
+          <%= f.text_field :name, class: "ax-control", placeholder: "Ex.: Resgate de lead frio" %>
         </div>
-        <label class="ax-check tw-pb-2">
-          <%= f.check_box :active %> <span>Regra ativa</span>
-        </label>
-      </div>
+        <div class="ax-span-2 tw-flex tw-items-end">
+          <%= ax_toggle_chip(f, :active, label: "Regra ativa") %>
+        </div>
+      <% end %>
 
-      <div class="tw-flex tw-flex-wrap tw-items-end tw-gap-3 tw-pt-2" style="border-top:1px solid #e6e8eb">
-        <div>
-          <span class="ax-badge ax-badge--blue tw-mb-1">QUANDO</span>
-          <div>
-            <%= f.select :trigger_event, AutomationRule::TRIGGERS.map { |k, v| [v, k] }, {}, class: "ax-select", data: { automation_builder_target: "trigger", action: "change->automation-builder#syncTrigger" }, style: "min-width:280px" %>
-          </div>
+      <%= ax_field_group(title: "Quando", token: "Gatilho", class_name: "ax-field-group--panel tw-mt-3") do %>
+        <%= ax_field_grid do %>
+        <div class="ax-span-4">
+          <label class="ax-label">Evento</label>
+          <%= f.select :trigger_event, AutomationRule::TRIGGERS.map { |k, v| [v, k] }, {}, class: "ax-control", data: { automation_builder_target: "trigger", action: "change->automation-builder#syncTrigger" } %>
         </div>
-        <div>
+        <div class="ax-span-3">
           <label class="ax-label">Etapa do lead (opcional)</label>
-          <select name="automation_rule[conditions][stage]" class="ax-select" style="min-width:170px">
+          <select name="automation_rule[conditions][stage]" class="ax-control">
             <option value="">Qualquer etapa</option>
             <% @status_options.each do |s| %><option value="<%= s %>" <%= 'selected' if rule.conditions_hash[:stage].to_s == s %>><%= s %></option><% end %>
           </select>
         </div>
-        <div>
+        <div class="ax-span-3">
           <label class="ax-label">Origem (opcional)</label>
-          <select name="automation_rule[conditions][source]" class="ax-select" style="min-width:150px">
+          <select name="automation_rule[conditions][source]" class="ax-control">
             <option value="">Qualquer origem</option>
             <% @source_options.each do |s| %><option value="<%= s %>" <%= 'selected' if rule.conditions_hash[:source].to_s == s %>><%= s %></option><% end %>
           </select>
         </div>
-        <div data-automation-builder-target="idleCond">
+        <div class="ax-span-2" data-automation-builder-target="idleCond">
           <label class="ax-label">Parado há (horas)</label>
-          <input type="number" name="automation_rule[conditions][idle_hours]" class="ax-input" style="max-width:120px" placeholder="48" value="<%= rule.idle_hours.positive? ? rule.idle_hours : nil %>">
+          <input type="number" name="automation_rule[conditions][idle_hours]" class="ax-control" placeholder="48" value="<%= rule.idle_hours.positive? ? rule.idle_hours : nil %>">
         </div>
-      </div>
-    </div>
-  </div>
+        <% end %>
+      <% end %>
+  <% end %>
 
   <%# ENTÃO — ações %>
-  <div class="ax-card tw-mb-4">
-    <div class="ax-card__body">
-      <div class="tw-flex tw-items-center tw-justify-between tw-mb-3">
-          <span class="ax-badge ax-badge--green">INTERVENÇÃO</span>
-        <button type="button" class="ax-btn ax-btn--sm" data-action="automation-builder#addRow"><i class="bi bi-plus-lg ax-ico"></i><span>Adicionar intervenção</span></button>
-      </div>
+  <%= ax_operational_panel(
+        eyebrow: "Execução",
+        title: "Intervenções",
+        class_name: "tw-mb-4",
+        actions: button_tag(type: "button", class: "ax-btn ax-btn--sm", data: { action: "automation-builder#addRow" }) { safe_join([tag.i(class: "bi bi-plus-lg ax-ico"), tag.span("Adicionar intervenção")]) }
+      ) do %>
 
       <div data-automation-builder-target="rows">
         <% rule.action_list.each do |a| %>
@@ -71,20 +67,18 @@
       <template data-automation-builder-target="template"><%= render "action_row", action: {} %></template>
       <%= hidden_field_tag "automation_rule[actions_json]", rule.actions.to_json, data: { automation_builder_target: "json" } %>
       <p class="ax-page-subtitle tw-mt-2"><i class="bi bi-info-circle"></i> Use <strong>Esperar (nutrição)</strong> entre intervenções para acompanhar o lead ao longo de dias.</p>
-    </div>
-  </div>
+  <% end %>
 
   <% if @simulation_result %>
-    <div class="ax-card tw-mb-4">
-      <div class="ax-card__body">
+    <%= ax_operational_panel(eyebrow: "Prévia", title: "Resultado da simulação", class_name: "tw-mb-4") do %>
         <div class="tw-flex tw-items-start tw-gap-3">
-          <i class="bi bi-search" style="color:var(--admin-primary)"></i>
+          <i class="bi bi-search tw-text-primary" aria-hidden="true"></i>
           <div>
             <h2 class="ax-page-title tw-text-base tw-mb-1"><%= @simulation_result.title %></h2>
             <p class="ax-page-subtitle tw-mb-2"><%= @simulation_result.summary %></p>
             <div class="tw-flex tw-flex-wrap tw-gap-2 tw-mb-2">
               <% @simulation_result.actions.each do |label| %>
-                <span class="ax-badge ax-badge--green"><%= label %></span>
+                <%= ax_badge(label, tone: :green) %>
               <% end %>
             </div>
             <% if @simulation_result.sample_leads.any? %>
@@ -95,11 +89,10 @@
             <% end %>
           </div>
         </div>
-      </div>
-    </div>
+    <% end %>
   <% end %>
 
-  <div class="tw-flex tw-justify-end tw-gap-2">
+  <%= ax_form_actions do %>
     <%= link_to "Cancelar", admin_automation_rules_path, class: "ax-btn ax-btn--sm" %>
     <%= button_tag type: "submit",
           formaction: (rule.persisted? ? simulate_admin_automation_rule_path(rule) : simulate_admin_automation_rules_path),
@@ -108,5 +101,5 @@
       <i class="bi bi-search ax-ico"></i><span>Simular</span>
     <% end %>
     <%= f.submit "Salvar regra", class: "ax-btn ax-btn--sm ax-btn--primary" %>
-  </div>
+  <% end %>
 <% end %>

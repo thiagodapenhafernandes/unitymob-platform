@@ -28,14 +28,7 @@
               input_html: { checked: setting.enabled? }
             ) %>
 
-        <div class="tw-mb-3">
-          <%= f.label :api_key, "Chave da API do Google Maps", class: "ax-label tw-font-semibold" %>
-          <%= f.password_field :api_key,
-              class: "ax-control",
-              autocomplete: "new-password",
-              placeholder: (setting.api_key_configured? ? "Chave já configurada. Preencha apenas para substituir." : "Informe a chave restrita por domínio") %>
-          <div class="form-text">A chave fica criptografada no banco, mas continua visível ao navegador. Restrinja-a por domínio e por API no Google Cloud.</div>
-        </div>
+        <%= ax_text_field(form: f, method: :api_key, label: "Chave da API do Google Maps", type: :password, autocomplete: "new-password", placeholder: (setting.api_key_configured? ? "Chave já configurada. Preencha apenas para substituir." : "Informe a chave restrita por domínio"), hint: "A chave fica criptografada no banco. Restrinja-a por domínio e por API no Google Cloud.", field_class: "tw-mb-3") %>
 
         <%= ax_field_grid(columns: 12, gap: :compact) do %>
           <div class="ax-span-6">
@@ -49,11 +42,10 @@
                 ) %>
           </div>
           <div class="ax-span-3">
-            <%= ax_text_field(
+            <%= ax_number_field(
                   form: f,
                   method: :approximate_radius_meters,
                   label: "Raio aproximado",
-                  type: "number",
                   min: GoogleMapsIntegrationSetting::MIN_RADIUS_METERS,
                   max: GoogleMapsIntegrationSetting::MAX_RADIUS_METERS,
                   step: 10,
@@ -61,11 +53,10 @@
                 ) %>
           </div>
           <div class="ax-span-3">
-            <%= ax_text_field(
+            <%= ax_number_field(
                   form: f,
                   method: :default_zoom,
                   label: "Zoom inicial",
-                  type: "number",
                   min: GoogleMapsIntegrationSetting::MIN_ZOOM,
                   max: GoogleMapsIntegrationSetting::MAX_ZOOM,
                   value: setting.default_zoom
@@ -83,7 +74,7 @@
           <span>A vista da rua pode revelar o endereço exato. O padrão seguro é mantê-la desligada e liberar somente nos imóveis autorizados.</span>
         <% end %>
 
-        <%= f.submit "Salvar configuração", class: "ax-btn ax-btn--primary" %>
+        <%= ax_form_actions(sticky: false) do %><%= f.submit "Salvar configuração", class: "ax-btn ax-btn--primary" %><% end %>
       <% end %>
     <% end %>
   </div>

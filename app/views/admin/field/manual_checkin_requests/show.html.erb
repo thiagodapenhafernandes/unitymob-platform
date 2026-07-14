@@ -1,50 +1,45 @@
 <div class="manual-checkin-requests-admin">
-<div class="tw-mb-3">
-  <%= link_to admin_field_manual_checkin_requests_path, class: "tw-inline-flex tw-items-center tw-gap-2 tw-text-ink-muted tw-text-sm text-decoration-none" do %>
-    <i class="bi bi-arrow-left"></i>Voltar
-  <% end %>
-</div>
+  <% request_tone = @request.pending? ? :amber : @request.approved? ? :green : :red %>
+  <% request_status = @request.pending? ? "Pendente" : @request.approved? ? "Aprovada" : "Rejeitada" %>
+  <% review_actions = if @request.pending?
+                        safe_join([
+                          button_to(approve_admin_field_manual_checkin_request_path(@request), method: :post, class: "ax-btn ax-btn--primary") { safe_join([tag.i(class: "bi bi-check-circle-fill ax-ico"), "Aprovar"]) },
+                          button_to(reject_admin_field_manual_checkin_request_path(@request), method: :post, class: "ax-btn ax-btn--danger") { safe_join([tag.i(class: "bi bi-x-circle-fill ax-ico"), "Rejeitar"]) }
+                        ])
+                      end %>
 
-<div class="ax-card">
-  <div class="ax-card__header">
-    <h4 class="ax-card__title tw-flex tw-items-center tw-gap-2">
-      <i class="bi bi-hand-index-thumb-fill" style="color:#d97706"></i>Solicitação #<%= @request.id %>
-    </h4>
-  </div>
-  <div class="ax-card__body">
-    <dl style="display:grid;grid-template-columns:25% 75%;gap:.25rem .75rem;margin-bottom:0">
-      <dt>Corretor</dt>
-      <dd><%= @request.admin_user.name %> (<%= @request.admin_user.email %>)</dd>
-      <dt>Loja</dt>
-      <dd><%= @request.store.name %></dd>
-      <dt>Status</dt>
-      <dd>
-        <% case @request.status
-           when "pending" %>
-          <span class="ax-badge ax-badge--amber">Pendente</span>
-        <% when "approved" %>
-          <span class="ax-badge ax-badge--green">Aprovada</span>
-        <% else %>
-          <span class="ax-badge ax-badge--red">Rejeitada</span>
-        <% end %>
-      </dd>
-      <dt>Justificativa</dt>
-      <dd><%= simple_format(@request.justification) %></dd>
+  <%= ax_workspace_heading(
+        eyebrow: "Operação · Revisão manual",
+        icon: "hand-index-thumb-fill",
+        title: "Solicitação ##{@request.id}",
+        pills: [request_status],
+        subtitle: "Confira a justificativa e o vínculo operacional antes de decidir.",
+        actions: ax_button("Voltar", admin_field_manual_checkin_requests_path, size: :sm, icon: "arrow-left")
+      ) %>
+
+  <%= ax_operational_panel(
+        eyebrow: "Solicitação",
+        title: "Dados para revisão",
+        actions: review_actions
+      ) do %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-6">
+        <%= ax_record_item(title: @request.admin_user.name, eyebrow: "Corretor", meta: @request.admin_user.email, icon: "person-circle") %>
+      </div>
+      <div class="ax-span-6">
+        <%= ax_record_item(title: @request.store.name, eyebrow: "Loja", icon: "shop") %>
+      </div>
+      <div class="ax-span-4">
+        <%= ax_record_item(title: request_status, eyebrow: "Status", icon: "circle-fill", actions: ax_badge(request_status, tone: request_tone, dot: true)) %>
+      </div>
+      <div class="ax-span-8">
+        <%= ax_record_item(title: "Justificativa informada", eyebrow: "Justificativa", icon: "chat-left-text", body: simple_format(@request.justification)) %>
+      </div>
       <% if @request.review_notes.present? %>
-        <dt>Notas da revisão</dt>
-        <dd><%= simple_format(@request.review_notes) %></dd>
+        <div class="ax-span-12">
+          <%= ax_record_item(title: "Notas da revisão", eyebrow: "Revisão", icon: "journal-check", body: simple_format(@request.review_notes)) %>
+        </div>
       <% end %>
-    </dl>
-  </div>
-  <% if @request.pending? %>
-    <div class="tw-flex tw-gap-2 tw-justify-end tw-p-2" style="border-top:1px solid #e5e7eb">
-      <%= button_to approve_admin_field_manual_checkin_request_path(@request), method: :post, class: "ax-btn ax-btn--primary tw-inline-flex tw-items-center tw-gap-2" do %>
-        <i class="bi bi-check-circle-fill"></i>Aprovar
-      <% end %>
-      <%= button_to reject_admin_field_manual_checkin_request_path(@request), method: :post, class: "ax-btn ax-btn--danger tw-inline-flex tw-items-center tw-gap-2" do %>
-        <i class="bi bi-x-circle-fill"></i>Rejeitar
-      <% end %>
-    </div>
+    <% end %>
   <% end %>
-</div>
 </div>

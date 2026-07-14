@@ -32,6 +32,21 @@ RSpec.describe "Admin user governance", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Subordinado")
     expect(response.body).not_to include("Fora")
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.at_css(".ax-avatar.ax-avatar--md[role='img'][aria-label='Subordinado']")).to be_present
+    expect(doc.at_css("a[aria-label='Editar usuário Subordinado']")).to be_present
+    expect(doc.at_css("button[aria-label='Excluir usuário Subordinado']")).to be_present
+    expect(doc.at_css(".ax-workspace-heading")).to be_present
+    expect(doc.at_css('section.ax-filter-form[role="search"]')).to be_present
+    expect(doc.css('.ax-filter-form label[for]').size).to eq(5)
+    expect(doc.at_css('table.ax-table caption.tw-sr-only')).to be_present
+    expect(doc.css('table.ax-table thead th[scope="col"]').size).to eq(7)
+    expect(doc.at_css('select#reassign_to_id[name="reassign_to_id"][data-reassign-delete-target="select"]')).to be_present
+    expect(doc.at_css("#reassignDeleteModal .ax-form-actions--static")).to be_present
+
+    get admin_admin_user_path(subordinate)
+    expect(response).to have_http_status(:ok)
+    expect(Nokogiri::HTML(response.body).at_css(".ax-avatar.ax-avatar--xl[role='img'][aria-label='Subordinado']")).to be_present
 
     get edit_admin_admin_user_path(subordinate)
     expect(response).to have_http_status(:ok)
@@ -87,6 +102,8 @@ RSpec.describe "Admin user governance", type: :request do
     expect(response.body).to include(agent_profile.name)
     expect(response.body).not_to include(director_profile.name)
     expect(response.body).not_to include(owner_profile.name)
+    expect(response.body).to include('class="au-form"', "au-form-grid")
+    expect(response.body).not_to include("admin-users-form-styles")
   end
 
   it "marca funções horizontais com o perfil vertical vinculado no formulário" do
@@ -114,6 +131,29 @@ RSpec.describe "Admin user governance", type: :request do
     expect(option["data-vertical-profile-id"]).to eq(manager_profile.id.to_s)
     expect(response.body).to include('data-controller="admin-user-access"')
     expect(response.body).not_to include("admin_user_super_admin")
+    form = Nokogiri::HTML(response.body)
+    expect(form.at_css('input[type="email"][name="admin_user[email]"]')).to be_present
+    expect(form.css('input[type="tel"][data-controller="phone-input"]').size).to eq(2)
+    expect(form.at_css('input[type="date"][name="admin_user[birth_date]"]')).to be_present
+    expect(form.at_css('textarea[name="admin_user[biography]"]')).to be_present
+    expect(form.css(".au-form label.au-field")).to be_empty
+  end
+
+  it "não exibe campos de senha ao editar uma identidade espelho" do
+    tenant = Tenant.create!(name: "Tenant espelho #{SecureRandom.hex(3)}", slug: "tenant-espelho-#{SecureRandom.hex(3)}")
+    source_tenant = Tenant.create!(name: "Origem espelho #{SecureRandom.hex(3)}", slug: "origem-espelho-#{SecureRandom.hex(3)}")
+    owner = create(:admin_user, tenant: tenant, profile: tenant.profiles.find_by!(key: "tenant_owner"), role: :editor)
+    primary = create(:admin_user, tenant: source_tenant, profile: source_tenant.profiles.find_by!(key: "agent"), email: "origem-#{SecureRandom.hex(3)}@example.com")
+    mirror = create(:admin_user, tenant: tenant, profile: tenant.profiles.find_by!(key: "agent"), manager: owner, primary_admin_user: primary, contact_email: primary.email)
+
+    sign_in owner
+    get edit_admin_admin_user_path(mirror)
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.css('input[type="password"]')).to be_empty
+    expect(doc.text).to include("e-mail e senha pertencem à conta de origem", primary.email)
+    expect(doc.at_css(".ax-inline-notice--info")).to be_present
   end
 
   it "ignora tentativa de promover usuário da conta para Admin do Sistema pelo formulário operacional" do
@@ -222,8 +262,13 @@ RSpec.describe "Admin user governance", type: :request do
     expect(response).to have_http_status(:ok)
     doc = Nokogiri::HTML(response.body)
     user_node = doc.at_css(%([data-user-id="#{user.id}"]))
+    owner_node = doc.css(%([data-user-id="#{owner.id}"])).find { |node| node.at_css(".ax-avatar.ax-avatar--sm") }
 
     expect(user_node).to be_present
+    expect(owner_node).to be_present
+    avatar = owner_node.at_css(".ax-avatar.ax-avatar--sm")
+    expect(avatar).to be_present
+    expect([avatar["aria-label"], avatar["alt"]]).to include("Owner Organograma")
     expect(user_node.text).to include("Manager")
     expect(user_node.css(".hier-row__horizontal").text).to include("Função: Support")
     expect(doc.css("[data-user-id]").map { |node| node["data-user-id"].to_i }).to contain_exactly(owner.id, user.id)

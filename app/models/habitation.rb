@@ -433,6 +433,7 @@ class Habitation < ApplicationRecord
   belongs_to :admin_user, optional: true, foreign_key: 'admin_user_id'
   
   has_many :broker_assignments, class_name: "HabitationBrokerAssignment", dependent: :destroy
+  has_many :development_aliases, foreign_key: :development_id, dependent: :destroy, inverse_of: :development
   has_many :habitation_share_links, dependent: :destroy
   accepts_nested_attributes_for :broker_assignments, allow_destroy: true, reject_if: :all_blank
 

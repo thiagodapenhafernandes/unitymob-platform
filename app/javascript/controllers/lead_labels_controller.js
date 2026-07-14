@@ -17,6 +17,7 @@ export default class extends Controller {
   connect() {
     this.loaded = false
     this.busy = false
+    this.hydrateCustomColors(document)
   }
 
   // Lazy-load do corpo na primeira abertura (refaz se a carga falhou).
@@ -93,6 +94,16 @@ export default class extends Controller {
         .querySelectorAll(`[data-lead-labels-chips="${this.leadIdValue}"]`)
         .forEach((strip) => { strip.outerHTML = data.chips_html })
     }
+    this.hydrateCustomColors(document)
+  }
+
+  hydrateCustomColors(root) {
+    root.querySelectorAll("[data-label-color]").forEach((element) => {
+      const color = String(element.dataset.labelColor || "").trim()
+      if (/^#[0-9a-fA-F]{6}$/.test(color)) {
+        element.style.setProperty("--label-color", color)
+      }
+    })
   }
 
   showError(message) {

@@ -104,9 +104,23 @@ class ApplicationController < ActionController::Base
   def load_layout_settings
     return if request.path.start_with?("/field")
 
-    admin_tenant = current_tenant if respond_to?(:current_tenant, true)
-    tenant = request.path.start_with?("/admin") ? (admin_tenant || Tenant.public_for) : public_tenant
-    @layout_setting = LayoutSetting.with_attached_logo.with_attached_favicon.find_by(tenant: tenant) || LayoutSetting.instance(tenant: tenant)
+    if request.path.start_with?("/admin")
+      admin_tenant = current_tenant if respond_to?(:current_tenant, true)
+      @layout_setting =
+        if admin_tenant.present?
+          LayoutSetting.with_attached_logo.with_attached_favicon.find_by(tenant: admin_tenant) ||
+            LayoutSetting.instance(tenant: admin_tenant)
+        elsif current_admin_user&.system_admin?
+          LayoutSetting.platform_defaults
+        else
+          public_layout_tenant = Tenant.public_for
+          LayoutSetting.with_attached_logo.with_attached_favicon.find_by(tenant: public_layout_tenant) ||
+            LayoutSetting.instance(tenant: public_layout_tenant)
+        end
+    else
+      @layout_setting = LayoutSetting.with_attached_logo.with_attached_favicon.find_by(tenant: public_tenant) ||
+        LayoutSetting.instance(tenant: public_tenant)
+    end
     return if request.path.start_with?("/admin")
 
     @home_setting = HomeSetting.instance(tenant: public_tenant)
@@ -118,6 +132,6 @@ class ApplicationController < ActionController::Base
     @lead_capture_enabled = WebhookSetting.lead_capture_enabled?(tenant: public_tenant)
     @site_phone_settings = WhatsappBusinessIntegration.cached_site_phone_settings(public_tenant)
     @interest_settings = InterestIntelligence::Settings.new(@layout_setting)
-    @tracking_setting = TrackingIntegrationSetting.current
+    @tracking_setting = TrackingIntegrationSetting.current(tenant: public_tenant)
   end
 end

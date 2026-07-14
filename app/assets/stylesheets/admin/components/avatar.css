@@ -1,0 +1,65 @@
+/* Shared identity avatar with image and initials fallback. */
+.ax-avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--admin-primary-ring, #b8c9dc);
+  border-radius: 999px;
+  background: var(--admin-primary-soft, #e8f0fb);
+  color: var(--admin-primary, #365f8f);
+  font-weight: 850;
+  line-height: 1;
+  object-fit: cover;
+  aspect-ratio: 1;
+  user-select: none;
+}
+
+.ax-avatar--xxs {
+  width: 22px;
+  height: 22px;
+  font-size: 9px;
+}
+
+.ax-avatar--xs {
+  width: 30px;
+  height: 30px;
+  font-size: 10.5px;
+}
+
+.ax-avatar--sm {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+}
+
+.ax-avatar--md {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.ax-avatar--lg {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+}
+
+.ax-avatar--xl {
+  width: 54px;
+  height: 54px;
+  font-size: 18px;
+}
+
+.ax-avatar--xxl {
+  width: 76px;
+  height: 76px;
+  font-size: 24px;
+}
+
+[data-admin-theme="dark"] .ax-avatar {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-info-text);
+}

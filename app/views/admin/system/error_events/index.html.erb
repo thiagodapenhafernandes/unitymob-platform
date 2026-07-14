@@ -103,7 +103,7 @@
                 <th class="ax-num">Ocorrências</th>
                 <th>Última vez</th>
                 <th>Status</th>
-                <th class="ax-num" style="width:90px">Ação</th>
+                <th class="ax-num ax-table__col--compact">Ação</th>
               </tr>
             </thead>
             <tbody>
@@ -128,9 +128,7 @@
           </table>
         </div>
 
-        <div class="ax-pagination">
-          <%= will_paginate @error_events %>
-        </div>
+        <%= ax_pagination @error_events, params: request.query_parameters %>
       <% else %>
         <%= ax_empty_state(title: "Nenhum erro encontrado", description: "Ajuste os filtros — ou está tudo saudável por aqui.", icon: "bug") %>
       <% end %>

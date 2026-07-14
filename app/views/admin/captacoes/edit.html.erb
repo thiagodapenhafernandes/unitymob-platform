@@ -28,7 +28,7 @@
                   aria: { label: "Voltar para captações" } do %>
         <i class="bi bi-arrow-left"></i>
       <% end %>
-      <div class="tw-text-sm tw-text-ink-muted" style="flex-grow:1;">
+      <div class="wizard-top-bar__summary tw-text-sm tw-text-ink-muted">
         Etapa <%= shown_idx + 1 %> de <%= total_steps %> · <strong class="text-dark"><%= step_titles[@step] %></strong>
       </div>
       <% unless @captacao.completed? %>
@@ -43,9 +43,7 @@
         <% end %>
       <% end %>
     </div>
-    <div class="wizard-progress">
-      <div class="wizard-progress-bar" style="width: <%= @captacao.progress_percentage %>%;"></div>
-    </div>
+    <%= ax_progress(value: @captacao.progress_percentage, class_name: "wizard-progress", label: "Progresso da captação: #{@captacao.progress_percentage}%") %>
   </div>
 </div>
 
@@ -106,16 +104,16 @@
     <div class="wizard-bottom-nav">
       <div class="wizard-shell tw-flex tw-gap-2">
         <% if @captacao.previous_step %>
-          <%= button_tag type: :submit, name: :direction, value: "back", class: "ax-btn ax-btn--ghost", style: "flex:1 1 0;" do %>
+          <%= button_tag type: :submit, name: :direction, value: "back", class: "ax-btn ax-btn--ghost wizard-nav-action" do %>
             <i class="bi bi-arrow-left"></i>Voltar
           <% end %>
         <% end %>
         <% if @step == "review" %>
-          <%= button_tag type: :submit, name: :direction, value: "forward", class: "ax-btn ax-btn--primary", style: "flex:1 1 0;", data: { habitation_duplicate_check_target: "submit" } do %>
+          <%= button_tag type: :submit, name: :direction, value: "forward", class: "ax-btn ax-btn--primary wizard-nav-action", data: { habitation_duplicate_check_target: "submit" } do %>
             <i class="bi bi-send-check"></i>Mandar Análise
           <% end %>
         <% else %>
-          <%= button_tag type: :submit, name: :direction, value: "forward", class: "ax-btn ax-btn--primary", style: "flex:1 1 0;", data: { habitation_duplicate_check_target: "submit" } do %>
+          <%= button_tag type: :submit, name: :direction, value: "forward", class: "ax-btn ax-btn--primary wizard-nav-action", data: { habitation_duplicate_check_target: "submit" } do %>
             Avançar<i class="bi bi-arrow-right"></i>
           <% end %>
         <% end %>

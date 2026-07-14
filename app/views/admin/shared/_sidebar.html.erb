@@ -11,9 +11,6 @@
     rescue Devise::MissingWarden
       false
     end
-    nav_section_style = lambda do |key|
-      "--nav-section-background:var(--admin-nav-#{key}-background);--nav-section-background-opacity:var(--admin-nav-#{key}-background-opacity);--nav-section-text:var(--admin-nav-#{key}-text);--nav-section-border:var(--admin-nav-#{key}-border);--nav-section-shadow:var(--admin-nav-#{key}-shadow);"
-    end
   %>
 <ul class="ax-nav <%= 'ax-nav--sectioned' unless system_admin_without_tenant %>" data-controller="menu-sections">
   <% if system_admin_without_tenant %>
@@ -64,7 +61,7 @@
     crescimento_visible = can_access.call(:manage, :marketing)
   %>
     <% if produto_visible %>
-      <li class="ax-nav__section" data-nav-section="product" style="<%= nav_section_style.call('product') %>">
+      <li class="ax-nav__section" data-nav-section="product">
         <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-product" title="Produto">
           <i class="bi bi-grid-1x2"></i><span>Produto</span><i class="bi bi-chevron-down"></i>
         </button>
@@ -101,7 +98,7 @@
     <% end %>
 
     <% if operacao_visible %>
-      <li class="ax-nav__section" data-nav-section="operation" style="<%= nav_section_style.call('operation') %>">
+      <li class="ax-nav__section" data-nav-section="operation">
         <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-operation" title="Operação">
           <i class="bi bi-briefcase"></i><span>Operação</span><i class="bi bi-chevron-down"></i>
         </button>
@@ -210,7 +207,7 @@
     <% end %>
 
     <% if gestao_visible %>
-      <li class="ax-nav__section" data-nav-section="management" style="<%= nav_section_style.call('management') %>">
+      <li class="ax-nav__section" data-nav-section="management">
         <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-management" title="Gestão">
           <i class="bi bi-people"></i><span>Gestão</span><i class="bi bi-chevron-down"></i>
         </button>
@@ -256,7 +253,7 @@
     <% end %>
 
     <% if crescimento_visible %>
-      <li class="ax-nav__section" data-nav-section="growth" style="<%= nav_section_style.call('growth') %>">
+      <li class="ax-nav__section" data-nav-section="growth">
         <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-growth" title="Crescimento">
           <i class="bi bi-graph-up-arrow"></i><span>Crescimento</span><i class="bi bi-chevron-down"></i>
         </button>
@@ -275,7 +272,7 @@
     <% end %>
 
     <% if can_access.call(:manage, :marketing) %>
-      <li class="ax-nav__section" data-nav-section="public-site" style="<%= nav_section_style.call('public-site') %>">
+      <li class="ax-nav__section" data-nav-section="public-site">
         <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-public-site" title="Site público">
           <i class="bi bi-globe2"></i><span>Site público</span><i class="bi bi-chevron-down"></i>
         </button>
@@ -289,6 +286,7 @@
       <li><%= link_to admin_banners_path, class: "ax-nav__link #{'active' if controller_name == 'banners'}" do %><i class="bi bi-image"></i><span>Banners</span><% end %></li>
       <li><%= link_to admin_home_sections_path, class: "ax-nav__link #{'active' if controller_name == 'home_sections'}" do %><i class="bi bi-layout-text-sidebar"></i><span>Seções da Home</span><% end %></li>
       <li class="ax-nav__caption">Estrutura</li>
+      <li><%= link_to edit_admin_public_site_profile_path, class: "ax-nav__link #{'active' if controller_name == 'public_site_profiles'}" do %><i class="bi bi-building-gear"></i><span>Perfil público</span><% end %></li>
       <li><%= link_to edit_admin_home_setting_path, class: "ax-nav__link #{'active' if controller_name == 'home_settings'}" do %><i class="bi bi-house-door"></i><span>Home</span><% end %></li>
       <li><%= link_to edit_admin_contact_setting_path, class: "ax-nav__link #{'active' if controller_name == 'contact_settings'}" do %><i class="bi bi-telephone"></i><span>Contato</span><% end %></li>
       <li><%= link_to edit_admin_footer_setting_path, class: "ax-nav__link #{'active' if controller_name == 'footer_settings'}" do %><i class="bi bi-layout-sidebar"></i><span>Rodapé</span><% end %></li>
@@ -299,7 +297,7 @@
     <%# Integrações técnicas %>
     <% schedule_context = can_access.call(:view, :agenda_fotografia) || can_access.call(:manage, :agenda_fotografia) || can_access.call(:manage, :integracoes) %>
     <% if can_access.call(:manage, :integracoes) || schedule_context %>
-      <li class="ax-nav__section" data-nav-section="integrations" style="<%= nav_section_style.call('integrations') %>">
+      <li class="ax-nav__section" data-nav-section="integrations">
         <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-integrations" title="Integrações">
           <i class="bi bi-plug"></i><span>Integrações</span><i class="bi bi-chevron-down"></i>
         </button>
@@ -351,7 +349,7 @@
                          whatsapp_service_visible
     %>
     <% if settings_visible %>
-      <li class="ax-nav__section" data-nav-section="settings" style="<%= nav_section_style.call('settings') %>">
+      <li class="ax-nav__section" data-nav-section="settings">
         <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-settings" title="Configurações">
           <i class="bi bi-sliders"></i><span>Configurações</span><i class="bi bi-chevron-down"></i>
         </button>
@@ -386,7 +384,7 @@
       notif_menu_visible = can_access.call(:manage, :integracoes)
     %>
     <% if tenant_owner? || security_menu_visible || audit_menu_visible || whatsapp_admin_menu_visible || brand_menu_visible || notif_menu_visible %>
-      <li class="ax-nav__section" data-nav-section="account" style="<%= nav_section_style.call('account') %>">
+      <li class="ax-nav__section" data-nav-section="account">
         <button type="button" class="ax-nav__section-trigger" data-menu-sections-target="trigger" data-action="menu-sections#toggle" aria-expanded="false" aria-controls="nav-section-account" title="Conta">
           <i class="bi bi-building-gear"></i><span>Conta</span><i class="bi bi-chevron-down"></i>
         </button>

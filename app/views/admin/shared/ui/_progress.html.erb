@@ -1,8 +1,12 @@
 <%
   pct = [[value.to_f, 0].max, 100].min
-  colors = { green: "#16a34a", red: "#dc2626", amber: "#d97706", blue: "var(--admin-primary)" }
-  bar_color = colors[tone&.to_sym]
+  supported_tones = %i[green red amber blue]
+  normalized_tone = tone&.to_sym
+  normalized_tone = nil unless supported_tones.include?(normalized_tone)
+  progress_classes = ["ax-progress", normalized_tone && "ax-progress--#{normalized_tone}", class_name].compact_blank.join(" ")
+  formatted_pct = pct == pct.to_i ? pct.to_i : pct.round(1)
+  accessible_label = label.presence || "Progresso: #{formatted_pct}%"
 %>
-<div class="ax-progress <%= class_name %>"<%= label.present? ? " title=\"#{label}\"".html_safe : "" %>>
-  <i style="width:<%= pct %>%<%= "; background:#{bar_color}" if bar_color %>"></i>
+<div class="<%= progress_classes %>"<% if label.present? %> title="<%= label %>"<% end %>>
+  <progress class="ax-progress__bar" value="<%= pct %>" max="100" aria-label="<%= accessible_label %>"<%= tag.attributes(data:) if data.present? %>><%= formatted_pct %>%</progress>
 </div>

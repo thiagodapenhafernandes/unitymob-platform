@@ -1,0 +1,14 @@
+<%
+  select_options = (options || {}).dup
+  select_options[:class] = ["ax-control", select_options[:class]].compact.join(" ")
+  option_tags = grouped ? grouped_options_for_select(choices, selected) : options_for_select(choices, selected)
+  option_tags = tag.option(include_blank, value: "") + option_tags unless include_blank.nil?
+%>
+
+<div class="ax-field <%= class_name %>">
+  <label class="ax-field-label" for="<%= id %>"><%= label %></label>
+  <%= select_tag name, option_tags, select_options.merge(id: id) %>
+  <% if hint.present? %>
+    <p class="ax-field__hint"><%= hint %></p>
+  <% end %>
+</div>

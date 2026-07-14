@@ -1,10 +1,9 @@
-<%# Integração Meta Ads — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <div class="integration-workspace meta-integration-workspace">
 <%= ax_workspace_heading(eyebrow: "Integrações · Aquisição", icon: "meta", title: "Meta Leads", pills: [@integration ? "conectada" : "desconectada"], subtitle: "Monitore páginas e formulários que recebem leads automaticamente.", metrics: [{ value: @pages.size, label: "páginas" }], actions: capture do %>
   <% if @integration %>
     <%= turbo_stream_from "meta_sync_#{@integration.id}" %>
     <%= button_to disconnect_admin_meta_integrations_path, method: :delete, form_class: "tw-inline", class: "ax-btn ax-btn--sm ax-btn--danger", data: { turbo_confirm: "Tem certeza? Isso irá parar a importação de leads." } do %>
-      <i class="bi bi-box-arrow-right ax-ico"></i><span>Desconectar conta</span>
+      <i class="bi bi-box-arrow-right ax-ico" aria-hidden="true"></i><span>Desconectar conta</span>
     <% end %>
   <% end %>
 <% end) %>
@@ -12,35 +11,32 @@
 <div class="tw-grid tw-grid-cols-1 lg:tw-grid-cols-12 tw-gap-4">
   <div class="lg:tw-col-span-12">
     <%= render "sync_status", integration: @integration %>
-    <div class="ax-card">
-      <div class="ax-card__header"><span class="ax-card__title"><i class="bi bi-facebook tw-text-blue-600"></i> Conexão Facebook</span></div>
-      <div class="ax-card__body">
+    <%= ax_operational_panel(eyebrow: "Aquisição", title: "Conexão Facebook") do %>
         <% if @integration %>
-          <div class="tw-flex tw-items-center tw-gap-3 tw-mb-4 tw-p-3 tw-rounded tw-bg-surface-soft tw-border tw-border-line">
-            <span class="ax-navbar__avatar" style="width:44px;height:44px;font-size:18px;"><i class="bi bi-person-fill"></i></span>
-            <div>
-              <div class="ax-strong">Conectado como <%= @integration.name %></div>
-              <div class="tw-text-2xs tw-text-ink-faint"><%= @integration.email %></div>
-            </div>
-            <div class="tw-ml-auto tw-text-right">
-              <div class="tw-text-green-600 tw-font-semibold tw-text-2xs"><i class="bi bi-check-circle-fill"></i> Ativo</div>
-              <span class="ax-badge ax-badge--green tw-mt-1">Token de Longo Prazo</span>
-            </div>
-          </div>
+          <%= ax_record_item(
+                title: "Conectado como #{@integration.name}",
+                meta: @integration.email,
+                icon: "person-fill",
+                class_name: "meta-integration-account",
+                actions: safe_join([
+                  ax_badge("Ativo", tone: :green, dot: true),
+                  ax_badge("Token de longo prazo", tone: :green)
+                ], " ")
+              ) %>
 
           <div class="tw-flex tw-justify-between tw-items-center tw-mb-3">
             <span class="ax-stat-label">Suas Páginas</span>
             <%= button_to sync_pages_admin_meta_integrations_path, form_class: "tw-inline", class: "ax-btn ax-btn--sm" do %>
-              <i class="bi bi-arrow-repeat ax-ico"></i> Sincronizar Páginas
+              <i class="bi bi-arrow-repeat ax-ico" aria-hidden="true"></i> Sincronizar Páginas
             <% end %>
           </div>
 
           <div class="tw-flex tw-flex-col tw-divide-y tw-divide-line tw-border tw-border-line tw-rounded">
             <% @pages.each do |page| %>
-              <details class="tw-p-3">
-                <summary class="tw-flex tw-justify-between tw-items-center tw-cursor-pointer">
+              <details class="ax-disclosure-card meta-integration-page">
+                <summary class="ax-disclosure-card__summary">
                   <span class="tw-flex tw-items-center tw-gap-3">
-                    <span class="ax-navbar__avatar" style="width:32px;height:32px;"><i class="bi bi-facebook tw-text-blue-600"></i></span>
+                    <span class="ax-navbar__avatar meta-integration-avatar meta-integration-avatar--page" aria-hidden="true"><i class="bi bi-facebook tw-text-blue-600"></i></span>
                     <span>
                       <span class="ax-strong tw-block"><%= page.name %></span>
                       <span class="tw-text-2xs tw-text-ink-faint"><%= page.category %></span>
@@ -48,36 +44,38 @@
                   </span>
                   <span class="tw-flex tw-items-center tw-gap-2">
                     <% if page.active %><span class="ax-badge ax-badge--green ax-badge--dot">Webhook Ativo</span><% end %>
-                    <i class="bi bi-chevron-down tw-text-ink-faint"></i>
+                    <i class="bi bi-chevron-down ax-disclosure-card__chevron" aria-hidden="true"></i>
                   </span>
                 </summary>
-                <div class="tw-mt-3 tw-bg-surface-soft tw-p-3 tw-rounded tw-border tw-border-line">
-                  <div class="ax-stat-label tw-mb-2"><i class="bi bi-file-earmark-text"></i> Formulários Vinculados</div>
+                <div class="ax-disclosure-card__body">
+                  <div class="ax-stat-label tw-mb-2"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Formulários vinculados</div>
                   <turbo-frame id="page_forms_<%= page.id %>" src="<%= list_forms_admin_meta_integrations_path(page_id: page.id) %>" loading="lazy">
-                    <div class="tw-text-center tw-py-3 tw-text-ink-faint tw-text-2xs">Carregando...</div>
+                    <div class="tw-flex tw-items-center tw-justify-center tw-gap-2 tw-py-3 tw-text-ink-faint tw-text-2xs" role="status" aria-live="polite">
+                      <span class="ax-spinner" aria-hidden="true"></span><span>Carregando formulários...</span>
+                    </div>
                   </turbo-frame>
                 </div>
               </details>
             <% end %>
             <% if @pages.empty? %>
-              <div class="ax-empty">
-                <i class="bi bi-journal-x tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>
-                Nenhuma página sincronizada. Clique em "Sincronizar Páginas".
-              </div>
+              <%= ax_empty_state(
+                    icon: "journal-x",
+                    title: "Nenhuma página sincronizada",
+                    description: 'Clique em "Sincronizar Páginas" para carregar as páginas disponíveis.'
+                  ) %>
             <% end %>
           </div>
         <% else %>
           <div class="tw-text-center tw-py-8">
-            <i class="bi bi-facebook tw-text-blue-600" style="font-size:3rem;"></i>
+            <i class="bi bi-facebook tw-text-blue-600 meta-integration-connect-icon" aria-hidden="true"></i>
             <h2 class="ax-page-title tw-mt-3 tw-mb-2">Conecte sua conta do Facebook</h2>
             <p class="ax-page-subtitle tw-max-w-md tw-mx-auto tw-mb-4">Integre suas Páginas e Formulários de Lead Ads para receber leads automaticamente no CRM.</p>
             <%= button_to admin_user_facebook_omniauth_authorize_path, method: :post, data: { turbo: false }, form_class: "tw-inline", class: "ax-btn ax-btn--primary" do %>
-              <i class="bi bi-facebook ax-ico"></i> Continuar com Facebook
+              <i class="bi bi-facebook ax-ico" aria-hidden="true"></i> Continuar com Facebook
             <% end %>
           </div>
         <% end %>
-      </div>
-    </div>
+    <% end %>
   </div>
 
 </div>

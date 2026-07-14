@@ -40,10 +40,11 @@
                   <% next unless attachment.persisted? && attachment.blob&.persisted? %>
                   <% attachment_actions = capture do %>
                     <% if habitation.persisted? && can_manage_internal_documents %>
-                      <span data-controller="ax-confirm-submit"
-                            data-ax-confirm-submit-form-id-value="purge_attachment_<%= attachment.id %>"
-                            data-ax-confirm-submit-message-value="Remover este arquivo?"
-                            data-ax-confirm-submit-confirm-label-value="Remover">
+                      <%= ax_confirm_submit(
+                            form_id: "purge_attachment_#{attachment.id}",
+                            message: "Remover este arquivo?",
+                            confirm_label: "Remover"
+                          ) do %>
                         <%= button_tag type: "button",
                                        class: "ax-btn ax-btn--ghost ax-btn--sm ax-text-danger",
                                        title: "Remover arquivo",
@@ -51,7 +52,7 @@
                                        data: { action: "click->ax-confirm-submit#request" } do %>
                           <i class="bi bi-trash"></i>
                         <% end %>
-                      </span>
+                      <% end %>
                     <% end %>
                   <% end %>
                   <%= ax_attachment_item(
@@ -105,10 +106,11 @@
                   <% next unless attachment.persisted? && attachment.blob&.persisted? %>
                   <% attachment_actions = capture do %>
                     <% if habitation.persisted? && can_manage_internal_documents %>
-                      <span data-controller="ax-confirm-submit"
-                            data-ax-confirm-submit-form-id-value="purge_attachment_<%= attachment.id %>"
-                            data-ax-confirm-submit-message-value="Remover este arquivo?"
-                            data-ax-confirm-submit-confirm-label-value="Remover">
+                      <%= ax_confirm_submit(
+                            form_id: "purge_attachment_#{attachment.id}",
+                            message: "Remover este arquivo?",
+                            confirm_label: "Remover"
+                          ) do %>
                         <%= button_tag type: "button",
                                        class: "ax-btn ax-btn--ghost ax-btn--sm ax-text-danger",
                                        title: "Remover arquivo",
@@ -116,7 +118,7 @@
                                        data: { action: "click->ax-confirm-submit#request" } do %>
                           <i class="bi bi-trash"></i>
                         <% end %>
-                      </span>
+                      <% end %>
                     <% end %>
                   <% end %>
                   <%= ax_attachment_item(

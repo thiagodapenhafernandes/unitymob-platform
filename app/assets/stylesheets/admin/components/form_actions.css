@@ -1,0 +1,45 @@
+/* Sticky action bar for standard admin forms. */
+.ax-form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 -2px 14px rgba(15, 23, 42, .06);
+  backdrop-filter: blur(8px);
+}
+
+.ax-form-actions--static { position: static; }
+
+.ax-form-actions[aria-busy="true"] {
+  cursor: wait;
+  opacity: .72;
+}
+
+.ax-form-actions[aria-busy="true"] :where(a, button, input) {
+  pointer-events: none;
+}
+
+[data-admin-theme="dark"] .ax-form-actions {
+  border-color: var(--ax-border-soft);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+}
+
+@media (max-width: 639px) {
+  .ax-form-actions {
+    position: static;
+    flex-wrap: wrap;
+    padding: 9px;
+  }
+
+  .ax-form-actions > :where(a, button, input[type="submit"]) {
+    flex: 1 1 140px;
+  }
+}

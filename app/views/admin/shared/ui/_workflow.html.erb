@@ -1,0 +1,7 @@
+<%= tag.section(
+      class: ["ax-workflow", local_assigns[:class_name]].compact.join(" "),
+      aria: { label: local_assigns.fetch(:label) },
+      data: local_assigns[:data] || {}
+    ) do %>
+  <%= local_assigns[:body] %>
+<% end %>

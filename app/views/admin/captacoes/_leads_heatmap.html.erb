@@ -50,8 +50,8 @@
                     <td class="tw-text-ink-muted">·</td>
                   <% else %>
                     <% intensity = @heatmap_max.positive? ? (count.to_f / @heatmap_max) : 0 %>
-                    <% alpha = 0.25 + (intensity * 0.75) %>
-                    <td class="hc" style="background-color: rgba(245,130,32,<%= alpha.round(2) %>);">
+                    <% intensity_level = [[(intensity * 5).ceil, 1].max, 5].min %>
+                    <td class="hc hc--intensity-<%= intensity_level %>">
                       <%= count %>
                     </td>
                   <% end %>

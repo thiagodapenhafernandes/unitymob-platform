@@ -1,8 +1,0 @@
-<%# locals: key (string), text (html), icon (optional) %>
-<div class="ax-card tw-mb-3" data-controller="dismissible" data-dismissible-key-value="<%= key %>" style="border-left:3px solid var(--admin-primary)">
-  <div class="ax-card__body tw-flex tw-items-center tw-gap-2">
-    <i class="bi <%= local_assigns.fetch(:icon, 'bi-lightbulb') %>" style="color:var(--admin-primary)"></i>
-    <div class="ax-page-subtitle tw-flex-1"><%= text.html_safe %></div>
-    <button type="button" class="ax-ico-btn" data-action="dismissible#dismiss" title="Entendi" aria-label="Fechar dica"><i class="bi bi-x-lg"></i></button>
-  </div>
-</div>

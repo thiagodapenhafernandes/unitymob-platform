@@ -1,0 +1,138 @@
+/* Presentation-card manager used by the WhatsApp composer and quick replies. */
+.pc-manager {
+  display: grid;
+  gap: 12px;
+  max-height: min(62vh, 640px);
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.pc-manager__list { display: grid; gap: 7px; }
+
+.pc-item {
+  min-width: 0;
+  border: 1px solid var(--ax-border-soft);
+  border-radius: 8px;
+  background: var(--admin-surface);
+}
+
+.pc-item--system { background: var(--ax-panel-soft); }
+
+.pc-item__row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.pc-item__icon {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  font-size: 14px;
+}
+
+.pc-item__copy {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pc-item__label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.pc-item__preview {
+  overflow: hidden;
+  color: var(--ab-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-item__panel {
+  padding: 10px;
+  border-top: 1px solid var(--ax-border-soft);
+}
+
+.pc-item__danger {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--ax-border-soft);
+}
+
+.pc-item__delete { color: #b42318; }
+
+.pc-item__delete:hover {
+  background: #fef3f2;
+  color: #912018;
+}
+
+.pc-item--new { border-style: dashed; }
+
+.pc-item__new-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--admin-primary);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background var(--ax-motion-fast) var(--ax-motion-ease), box-shadow var(--ax-motion-fast) var(--ax-motion-ease);
+}
+
+.pc-item__new-trigger:hover { background: var(--admin-primary-softer); }
+
+.pc-item__new-trigger:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--admin-primary-ring);
+}
+
+[data-admin-theme="dark"] .pc-item {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface);
+}
+
+[data-admin-theme="dark"] .pc-item--system { background: var(--ax-dark-surface-raised); }
+[data-admin-theme="dark"] :where(.pc-item__panel, .pc-item__danger) { border-color: var(--ax-dark-border-soft); }
+[data-admin-theme="dark"] .pc-item__label { color: var(--ax-dark-text); }
+[data-admin-theme="dark"] .pc-item__preview { color: var(--ax-dark-text-muted); }
+
+[data-admin-theme="dark"] .pc-item__delete:hover {
+  background: var(--ax-dark-danger-surface);
+  color: var(--ax-dark-danger-text);
+}
+
+[data-admin-theme="dark"] .pc-item__new-trigger:hover { background: var(--ax-dark-surface-hover); }
+
+@media (max-width: 639px) {
+  .pc-manager { max-height: min(70vh, 640px); padding: 10px; }
+  .pc-item__row { align-items: flex-start; }
+  .pc-item__preview { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-item__new-trigger { transition: none; }
+}

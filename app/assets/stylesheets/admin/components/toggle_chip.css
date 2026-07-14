@@ -1,0 +1,208 @@
+/* Shared toggle-chip contract. Scoped grids and workspaces may refine its density. */
+.ax-toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ax-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 6px;
+}
+
+.ax-chip-grid .ax-toggle-chip {
+  gap: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.ax-chip-grid .ax-toggle-chip__input {
+  width: 15px !important;
+  height: 15px !important;
+  border: 2px solid #d2d6db;
+  border-radius: 4px;
+  background-color: #fff;
+  background-image: none;
+  background-position: center;
+  background-size: 11px 11px;
+}
+
+.ax-chip-grid .ax-toggle-chip__input:checked {
+  border-color: var(--admin-primary) !important;
+  background-color: var(--admin-primary) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.5' d='M3 8l3.5 3.5L13 4'/%3E%3C/svg%3E") !important;
+  background-position: center !important;
+  background-size: 11px 11px !important;
+}
+
+.ax-chip-grid__item { width: 100%; min-width: 0; }
+
+.ax-chip-grid__item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 28px;
+  padding: 5px 12px 5px 10px;
+  border: 1px solid #d2d6db;
+  border-radius: 6px;
+  background: #fff;
+  color: #344054;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background var(--ax-motion-fast, 140ms) var(--ax-motion-ease, ease),
+              border-color var(--ax-motion-fast, 140ms) var(--ax-motion-ease, ease),
+              color var(--ax-motion-fast, 140ms) var(--ax-motion-ease, ease),
+              box-shadow var(--ax-motion-fast, 140ms) var(--ax-motion-ease, ease);
+}
+
+.ax-toggle-chip--full {
+  width: 100%;
+}
+
+.ax-chip-grid--inline {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ax-toggle-chip:hover {
+  border-color: #c5d3e3;
+  background: #f8fafc;
+}
+
+.ax-toggle-chip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Isolated toggles use a 32x18 switch; ax-chip-grid refines it to a checkbox. */
+.ax-toggle-chip__input {
+  flex: 0 0 auto;
+  width: 32px !important;
+  height: 18px !important;
+  margin: 0 !important;
+  border: 0;
+  border-radius: 999px;
+  appearance: none;
+  background-color: #d2d6db;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='6.5' fill='white'/%3E%3C/svg%3E");
+  background-position: 2px center;
+  background-repeat: no-repeat;
+  background-size: 14px 14px;
+  cursor: inherit;
+  transition: background-color 150ms ease, background-position 150ms ease;
+}
+
+.ax-toggle-chip__box {
+  display: none;
+}
+
+.ax-toggle-chip__input:checked {
+  background-color: var(--admin-primary) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14'%3E%3Ccircle cx='7' cy='7' r='6.5' fill='white'/%3E%3C/svg%3E") !important;
+  background-position: right 2px center !important;
+  background-repeat: no-repeat !important;
+  background-size: 14px 14px !important;
+}
+
+.ax-toggle-chip.is-checked,
+.ax-toggle-chip:has(.ax-toggle-chip__input:checked) {
+  border-color: var(--admin-primary) !important;
+  background: var(--admin-primary-softer, #f1f5f9) !important;
+  color: var(--admin-primary) !important;
+}
+
+.ax-toggle-chip.is-checked:hover,
+.ax-toggle-chip:has(.ax-toggle-chip__input:checked):hover {
+  border-color: var(--admin-primary-hover) !important;
+  background: color-mix(in srgb, var(--admin-primary) 14%, #fff) !important;
+  color: var(--admin-primary-hover) !important;
+}
+
+.ax-toggle-chip:has(.ax-toggle-chip__input:focus-visible),
+.ax-toggle-chip:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-primary) 14%, transparent);
+}
+
+.ax-toggle-chip:has(.ax-toggle-chip__input:disabled) {
+  cursor: not-allowed;
+}
+
+.ax-toggle-chip.is-disabled {
+  cursor: not-allowed;
+}
+
+.ax-toggle-chip:has(.ax-toggle-chip__input:disabled:not(:checked)) {
+  opacity: .62;
+}
+
+.ax-toggle-chip.is-checked:has(.ax-toggle-chip__input:disabled) {
+  opacity: .82;
+}
+
+[data-admin-theme="dark"] .ax-toggle-chip {
+  border-color: var(--ax-field-border);
+  background: color-mix(in srgb, var(--admin-surface-header) 62%, var(--admin-surface));
+  color: var(--ab-muted);
+}
+
+[data-admin-theme="dark"] .ax-toggle-chip:hover {
+  border-color: var(--ax-field-hover);
+  background: var(--ax-control-hover);
+  color: var(--admin-ink);
+}
+
+[data-admin-theme="dark"] .ax-toggle-chip.is-checked,
+[data-admin-theme="dark"] .ax-toggle-chip:has(.ax-toggle-chip__input:checked) {
+  border-color: color-mix(in srgb, var(--admin-primary) 62%, var(--ax-dark-border)) !important;
+  background-color: color-mix(in srgb, var(--admin-primary) 24%, var(--ax-dark-surface-raised)) !important;
+  background-image: none !important;
+  color: var(--ax-dark-text) !important;
+}
+
+[data-admin-theme="dark"] .ax-toggle-chip.is-checked:hover,
+[data-admin-theme="dark"] .ax-toggle-chip:has(.ax-toggle-chip__input:checked):hover {
+  border-color: #7eafe2 !important;
+  background-color: #29476e !important;
+  background-image: none !important;
+  color: #f3f8ff !important;
+}
+
+[data-admin-theme="dark"] .ax-toggle-chip__input:not(:checked) {
+  background-color: #43536b !important;
+}
+
+/* The dense grid has a more specific legacy contract in the main bundle. */
+[data-admin-theme="dark"] .ax-chip-grid .ax-toggle-chip__input:not(:checked) {
+  border-color: var(--ax-field-border);
+  background-color: #43536b !important;
+  background-image: none !important;
+}
+
+@media (max-width: 639px) {
+  .ax-chip-grid {
+    grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  }
+
+  .ax-toggle-chip {
+    max-width: 100%;
+    min-height: 30px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-toggle-chip,
+  .ax-toggle-chip__input {
+    transition: none;
+  }
+}

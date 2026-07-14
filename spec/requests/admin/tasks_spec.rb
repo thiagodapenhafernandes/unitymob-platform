@@ -15,11 +15,16 @@ RSpec.describe "Admin::Tasks", type: :request do
       create(:lead, name: "Cliente Tarefa", phone: "11999999999")
       Task.create!(title: "Ligar para cliente", admin_user: admin, status: "pendente")
 
-      get admin_tasks_path
+      get admin_tasks_path(team: "0")
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("Minhas Tarefas")
-      expect(response.body).to include("Ligar para cliente")
+      expect(response.body).to include("Minhas Tarefas", "Ligar para cliente", "ax-dismissible-hint", 'data-dismissible-key-value="tasks"')
+      document = Nokogiri::HTML(response.body)
+      filter_links = document.css('a.ax-btn[href*="filter="]')
+      expect(filter_links).not_to be_empty
+      expect(filter_links).to all(satisfy { |link| URI.parse(link["href"]).query.include?("team=0") })
+      expect(document.at_css('a.ax-btn[aria-current="page"]')).to be_present
+      expect(document.at_css('button.ax-ico-btn[aria-label="Concluir tarefa Ligar para cliente"] i[aria-hidden="true"]')).to be_present
     end
   end
 

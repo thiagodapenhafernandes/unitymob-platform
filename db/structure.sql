@@ -1,4 +1,4 @@
-\restrict pIv5WkekiWA6Od0lftMR0j4PewVRkMTHutVRCf0YCwYnBF6sUQe2DATLb8CSSoY
+\restrict beVdsQFcNethjEKt5MsTvSHoQjiNmgO2bAeAVK2B0jgqfGqeTJTAmjSXrb5vSL6
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -736,6 +736,7 @@ CREATE TABLE public.admin_users (
     otp_consumed_timestep integer,
     primary_admin_user_id bigint,
     contact_email character varying,
+    admin_theme_mode character varying DEFAULT 'light'::character varying NOT NULL,
     CONSTRAINT admin_users_system_admin_outside_tenant CHECK (((super_admin = false) OR ((tenant_id IS NULL) AND (profile_id IS NULL) AND (horizontal_profile_id IS NULL) AND (manager_id IS NULL)))),
     CONSTRAINT admin_users_tenant_required_unless_system_admin CHECK (((super_admin = true) OR (tenant_id IS NOT NULL))),
     CONSTRAINT chk_admin_users_mirror_not_super_admin CHECK (((primary_admin_user_id IS NULL) OR (super_admin = false)))
@@ -759,6 +760,149 @@ CREATE SEQUENCE public.admin_users_id_seq
 --
 
 ALTER SEQUENCE public.admin_users_id_seq OWNED BY public.admin_users.id;
+
+
+--
+-- Name: ai_property_search_histories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ai_property_search_histories (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    selected_habitation_id bigint,
+    original_audio_reference character varying,
+    transcription text,
+    interpreted_filters jsonb DEFAULT '{}'::jsonb NOT NULL,
+    result_count integer DEFAULT 0 NOT NULL,
+    processing_time_ms integer,
+    status character varying NOT NULL,
+    error_message text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ai_property_search_histories_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ai_property_search_histories_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ai_property_search_histories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ai_property_search_histories_id_seq OWNED BY public.ai_property_search_histories.id;
+
+
+--
+-- Name: ai_property_share_audit_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ai_property_share_audit_events (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    ai_property_share_collection_id bigint NOT NULL,
+    admin_user_id bigint,
+    lead_id bigint,
+    habitation_id bigint,
+    event_type character varying NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ai_property_share_audit_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ai_property_share_audit_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ai_property_share_audit_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ai_property_share_audit_events_id_seq OWNED BY public.ai_property_share_audit_events.id;
+
+
+--
+-- Name: ai_property_share_collections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ai_property_share_collections (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    token character varying NOT NULL,
+    expires_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ai_property_share_collections_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ai_property_share_collections_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ai_property_share_collections_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ai_property_share_collections_id_seq OWNED BY public.ai_property_share_collections.id;
+
+
+--
+-- Name: ai_property_share_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ai_property_share_items (
+    id bigint NOT NULL,
+    ai_property_share_collection_id bigint NOT NULL,
+    habitation_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ai_property_share_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ai_property_share_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ai_property_share_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ai_property_share_items_id_seq OWNED BY public.ai_property_share_items.id;
 
 
 --
@@ -1809,6 +1953,40 @@ ALTER SEQUENCE public.data_export_audit_logs_id_seq OWNED BY public.data_export_
 
 
 --
+-- Name: development_aliases; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.development_aliases (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    development_id bigint NOT NULL,
+    name character varying NOT NULL,
+    normalized_name character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: development_aliases_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.development_aliases_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: development_aliases_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.development_aliases_id_seq OWNED BY public.development_aliases.id;
+
+
+--
 -- Name: distribution_rule_agents; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2243,7 +2421,9 @@ CREATE TABLE public.habitations (
     permuta_outros_descricao text,
     public_map_display_mode character varying DEFAULT 'inherit'::character varying NOT NULL,
     public_street_view_mode character varying DEFAULT 'inherit'::character varying NOT NULL,
-    searchable_features text GENERATED ALWAYS AS (public.habitation_searchable_features(caracteristicas, infra_estrutura, caracteristica_unica, descricao_web, (face)::text)) STORED
+    searchable_features text GENERATED ALWAYS AS (public.habitation_searchable_features(caracteristicas, infra_estrutura, caracteristica_unica, descricao_web, (face)::text)) STORED,
+    intake_review_policy_version integer,
+    intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -3021,7 +3201,12 @@ CREATE TABLE public.landing_pages (
     description text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    page_type character varying DEFAULT 'property_listing'::character varying NOT NULL,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    published_at timestamp(6) without time zone,
+    preview_token_digest character varying,
+    system_path character varying
 );
 
 
@@ -3416,6 +3601,184 @@ CREATE SEQUENCE public.location_pings_id_seq
 --
 
 ALTER SEQUENCE public.location_pings_id_seq OWNED BY public.location_pings.id;
+
+
+--
+-- Name: maglev_assets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maglev_assets (
+    id bigint NOT NULL,
+    filename character varying,
+    content_type character varying,
+    width integer,
+    height integer,
+    byte_size integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: maglev_assets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maglev_assets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maglev_assets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maglev_assets_id_seq OWNED BY public.maglev_assets.id;
+
+
+--
+-- Name: maglev_page_paths; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maglev_page_paths (
+    id bigint NOT NULL,
+    maglev_page_id bigint,
+    locale character varying NOT NULL,
+    value character varying NOT NULL,
+    canonical boolean DEFAULT true
+);
+
+
+--
+-- Name: maglev_page_paths_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maglev_page_paths_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maglev_page_paths_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maglev_page_paths_id_seq OWNED BY public.maglev_page_paths.id;
+
+
+--
+-- Name: maglev_pages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maglev_pages (
+    id bigint NOT NULL,
+    visible boolean DEFAULT true,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    title_translations jsonb DEFAULT '{}'::jsonb,
+    seo_title_translations jsonb DEFAULT '{}'::jsonb,
+    meta_description_translations jsonb DEFAULT '{}'::jsonb,
+    sections_translations jsonb DEFAULT '{}'::jsonb,
+    lock_version integer,
+    og_title_translations jsonb DEFAULT '{}'::jsonb,
+    og_description_translations jsonb DEFAULT '{}'::jsonb,
+    og_image_url_translations jsonb DEFAULT '{}'::jsonb,
+    published_at timestamp without time zone,
+    published_payload jsonb DEFAULT '{}'::jsonb
+);
+
+
+--
+-- Name: maglev_pages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maglev_pages_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maglev_pages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maglev_pages_id_seq OWNED BY public.maglev_pages.id;
+
+
+--
+-- Name: maglev_sections_content_stores; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maglev_sections_content_stores (
+    id bigint NOT NULL,
+    container_id character varying,
+    container_type character varying,
+    sections_translations jsonb DEFAULT '{}'::jsonb,
+    published boolean DEFAULT false,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: maglev_sections_content_stores_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maglev_sections_content_stores_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maglev_sections_content_stores_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maglev_sections_content_stores_id_seq OWNED BY public.maglev_sections_content_stores.id;
+
+
+--
+-- Name: maglev_sites; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maglev_sites (
+    id bigint NOT NULL,
+    name character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    locales jsonb DEFAULT '[]'::jsonb,
+    sections_translations jsonb DEFAULT '{}'::jsonb,
+    lock_version integer,
+    style jsonb DEFAULT '[]'::jsonb,
+    published_at timestamp without time zone
+);
+
+
+--
+-- Name: maglev_sites_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maglev_sites_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maglev_sites_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maglev_sites_id_seq OWNED BY public.maglev_sites.id;
 
 
 --
@@ -3887,6 +4250,42 @@ ALTER SEQUENCE public.property_pages_id_seq OWNED BY public.property_pages.id;
 
 
 --
+-- Name: property_review_policy_audit_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.property_review_policy_audit_logs (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    property_setting_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    version integer NOT NULL,
+    changeset jsonb DEFAULT '{}'::jsonb NOT NULL,
+    impact_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL
+);
+
+
+--
+-- Name: property_review_policy_audit_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.property_review_policy_audit_logs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: property_review_policy_audit_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.property_review_policy_audit_logs_id_seq OWNED BY public.property_review_policy_audit_logs.id;
+
+
+--
 -- Name: property_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3904,7 +4303,72 @@ CREATE TABLE public.property_settings (
     notify_internal_review_events boolean DEFAULT true NOT NULL,
     notify_email_review_events boolean DEFAULT false NOT NULL,
     review_notification_emails text,
-    tenant_id bigint
+    tenant_id bigint,
+    review_policy_version integer DEFAULT 1 NOT NULL,
+    ai_property_search_enabled boolean DEFAULT false NOT NULL,
+    voice_property_search_enabled boolean DEFAULT false NOT NULL,
+    ai_property_search_instructions text,
+    ai_property_search_welcome_message character varying,
+    ai_property_search_processing_message character varying,
+    ai_property_search_no_results_message character varying,
+    ai_property_search_data_source character varying DEFAULT 'database'::character varying NOT NULL,
+    ai_property_search_allowed_fields text[] DEFAULT '{}'::text[] NOT NULL,
+    ai_property_search_result_fields text[] DEFAULT '{}'::text[] NOT NULL,
+    ai_property_search_max_results integer DEFAULT 20 NOT NULL,
+    ai_property_search_default_sort character varying DEFAULT 'relevance'::character varying NOT NULL,
+    ai_property_search_allow_flexible_results boolean DEFAULT true NOT NULL,
+    ai_property_search_price_tolerance_percentage integer DEFAULT 10 NOT NULL,
+    ai_property_search_allow_clarifying_questions boolean DEFAULT true NOT NULL,
+    ai_property_search_require_filter_confirmation boolean DEFAULT false NOT NULL,
+    ai_property_search_max_audio_duration_seconds integer DEFAULT 60 NOT NULL,
+    ai_property_search_language character varying DEFAULT 'pt-BR'::character varying NOT NULL,
+    ai_property_search_allowed_profiles text[] DEFAULT '{}'::text[] NOT NULL,
+    ai_property_search_history_enabled boolean DEFAULT false NOT NULL,
+    ai_property_search_history_retention_days integer DEFAULT 30 NOT NULL,
+    ai_property_search_development_name_enabled boolean DEFAULT true NOT NULL,
+    ai_property_search_developer_name_enabled boolean DEFAULT true NOT NULL,
+    ai_property_search_fuzzy_matching_enabled boolean DEFAULT true NOT NULL,
+    ai_property_search_fuzzy_similarity_threshold numeric(3,2) DEFAULT 0.3 NOT NULL,
+    ai_property_search_development_aliases_enabled boolean DEFAULT true NOT NULL,
+    ai_property_search_search_by_characteristics_enabled boolean DEFAULT true NOT NULL,
+    ai_property_search_sharing_enabled boolean DEFAULT true NOT NULL,
+    ai_property_search_share_max_properties integer DEFAULT 20 NOT NULL,
+    ai_property_search_share_expiration_days integer DEFAULT 30 NOT NULL,
+    ai_property_search_visitor_recognition_days integer DEFAULT 365 NOT NULL,
+    ai_property_search_share_title character varying DEFAULT 'Imóveis selecionados'::character varying NOT NULL,
+    ai_property_search_share_message character varying DEFAULT 'Separei %{count} imóveis para você.'::character varying NOT NULL,
+    ai_property_search_public_eyebrow character varying DEFAULT 'Seleção preparada para você'::character varying NOT NULL,
+    ai_property_search_public_title character varying DEFAULT '%{count} imóvel(is) selecionado(s)'::character varying NOT NULL,
+    ai_property_search_public_description character varying DEFAULT 'Veja os detalhes e marque os imóveis que realmente despertaram seu interesse.'::character varying NOT NULL,
+    ai_property_search_view_property_label character varying DEFAULT 'Ver imóvel'::character varying NOT NULL,
+    ai_property_search_interest_button_label character varying DEFAULT 'Tenho interesse'::character varying NOT NULL,
+    ai_property_search_identity_title character varying DEFAULT 'Como podemos identificar você?'::character varying NOT NULL,
+    ai_property_search_identity_description character varying DEFAULT 'Informe uma vez. Nos próximos imóveis, seu interesse será enviado diretamente ao corretor.'::character varying NOT NULL,
+    ai_property_search_identity_name_label character varying DEFAULT 'Nome'::character varying NOT NULL,
+    ai_property_search_identity_phone_label character varying DEFAULT 'WhatsApp'::character varying NOT NULL,
+    ai_property_search_identity_submit_label character varying DEFAULT 'Enviar interesse'::character varying NOT NULL,
+    ai_property_search_identity_cancel_label character varying DEFAULT 'Cancelar'::character varying NOT NULL,
+    ai_property_search_interest_success_message character varying DEFAULT 'Interesse enviado ao corretor.'::character varying NOT NULL,
+    ai_property_search_lead_origin character varying DEFAULT 'Seleção compartilhada'::character varying NOT NULL,
+    ai_property_search_broker_panel_title character varying DEFAULT 'Interesses nas suas seleções'::character varying NOT NULL,
+    ai_property_search_broker_event_message character varying DEFAULT '%{name} demonstrou interesse'::character varying NOT NULL,
+    ai_property_search_selection_count_message character varying DEFAULT '%{count} selecionado(s)'::character varying NOT NULL,
+    ai_property_search_share_button_label character varying DEFAULT 'Compartilhar'::character varying NOT NULL,
+    ai_property_search_link_copied_message character varying DEFAULT 'Link copiado para compartilhar.'::character varying NOT NULL,
+    ai_property_search_share_error_message character varying DEFAULT 'Não foi possível compartilhar.'::character varying NOT NULL,
+    ai_property_search_interest_error_message character varying DEFAULT 'Não foi possível registrar o interesse.'::character varying NOT NULL,
+    ai_property_search_broker_event_meta character varying DEFAULT '%{count} imóvel(is) agrupado(s)'::character varying NOT NULL,
+    ai_property_search_sharing_disabled_message character varying DEFAULT 'Compartilhamento de seleções desativado.'::character varying NOT NULL,
+    ai_property_search_broker_events_limit integer DEFAULT 3 NOT NULL,
+    ai_property_search_catalog_property_types_limit integer DEFAULT 12 NOT NULL,
+    ai_property_search_catalog_cities_limit integer DEFAULT 12 NOT NULL,
+    ai_property_search_catalog_neighborhoods_limit integer DEFAULT 18 NOT NULL,
+    ai_property_search_catalog_developments_limit integer DEFAULT 12 NOT NULL,
+    ai_property_search_catalog_feature_terms_limit integer DEFAULT 20 NOT NULL,
+    ai_property_search_catalog_alias_names_limit integer DEFAULT 5 NOT NULL,
+    ai_property_search_transcription_vocabulary_enabled boolean DEFAULT true NOT NULL,
+    ai_property_search_resilient_search_enabled boolean DEFAULT false NOT NULL,
+    ai_property_search_location_fuzzy_threshold numeric(3,2) DEFAULT 0.4 NOT NULL
 );
 
 
@@ -4572,6 +5036,82 @@ ALTER SEQUENCE public.settings_id_seq OWNED BY public.settings.id;
 
 
 --
+-- Name: site_navigation_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.site_navigation_items (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    landing_page_id bigint,
+    parent_id bigint,
+    label character varying NOT NULL,
+    placement character varying NOT NULL,
+    destination_type character varying DEFAULT 'internal_path'::character varying NOT NULL,
+    destination character varying,
+    "position" integer DEFAULT 0 NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    new_tab boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: site_navigation_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.site_navigation_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: site_navigation_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.site_navigation_items_id_seq OWNED BY public.site_navigation_items.id;
+
+
+--
+-- Name: site_page_blocks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.site_page_blocks (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    landing_page_id bigint NOT NULL,
+    block_type character varying NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    visible boolean DEFAULT true NOT NULL,
+    settings jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: site_page_blocks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.site_page_blocks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: site_page_blocks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.site_page_blocks_id_seq OWNED BY public.site_page_blocks.id;
+
+
+--
 -- Name: solid_queue_blocked_executions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4965,7 +5505,8 @@ CREATE TABLE public.storage_integration_settings (
     last_test_status character varying,
     last_test_message text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    tenant_id bigint NOT NULL
 );
 
 
@@ -6038,6 +6579,34 @@ ALTER TABLE ONLY public.admin_users ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: ai_property_search_histories id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_search_histories ALTER COLUMN id SET DEFAULT nextval('public.ai_property_search_histories_id_seq'::regclass);
+
+
+--
+-- Name: ai_property_share_audit_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_audit_events ALTER COLUMN id SET DEFAULT nextval('public.ai_property_share_audit_events_id_seq'::regclass);
+
+
+--
+-- Name: ai_property_share_collections id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_collections ALTER COLUMN id SET DEFAULT nextval('public.ai_property_share_collections_id_seq'::regclass);
+
+
+--
+-- Name: ai_property_share_items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_items ALTER COLUMN id SET DEFAULT nextval('public.ai_property_share_items_id_seq'::regclass);
+
+
+--
 -- Name: ai_property_suggestions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6196,6 +6765,13 @@ ALTER TABLE ONLY public.crm_contacts ALTER COLUMN id SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public.data_export_audit_logs ALTER COLUMN id SET DEFAULT nextval('public.data_export_audit_logs_id_seq'::regclass);
+
+
+--
+-- Name: development_aliases id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.development_aliases ALTER COLUMN id SET DEFAULT nextval('public.development_aliases_id_seq'::regclass);
 
 
 --
@@ -6430,6 +7006,41 @@ ALTER TABLE ONLY public.location_pings ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: maglev_assets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_assets ALTER COLUMN id SET DEFAULT nextval('public.maglev_assets_id_seq'::regclass);
+
+
+--
+-- Name: maglev_page_paths id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_page_paths ALTER COLUMN id SET DEFAULT nextval('public.maglev_page_paths_id_seq'::regclass);
+
+
+--
+-- Name: maglev_pages id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_pages ALTER COLUMN id SET DEFAULT nextval('public.maglev_pages_id_seq'::regclass);
+
+
+--
+-- Name: maglev_sections_content_stores id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_sections_content_stores ALTER COLUMN id SET DEFAULT nextval('public.maglev_sections_content_stores_id_seq'::regclass);
+
+
+--
+-- Name: maglev_sites id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_sites ALTER COLUMN id SET DEFAULT nextval('public.maglev_sites_id_seq'::regclass);
+
+
+--
 -- Name: manual_checkin_requests id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -6511,6 +7122,13 @@ ALTER TABLE ONLY public.profiles ALTER COLUMN id SET DEFAULT nextval('public.pro
 --
 
 ALTER TABLE ONLY public.property_pages ALTER COLUMN id SET DEFAULT nextval('public.property_pages_id_seq'::regclass);
+
+
+--
+-- Name: property_review_policy_audit_logs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_review_policy_audit_logs ALTER COLUMN id SET DEFAULT nextval('public.property_review_policy_audit_logs_id_seq'::regclass);
 
 
 --
@@ -6623,6 +7241,20 @@ ALTER TABLE ONLY public.seo_settings ALTER COLUMN id SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public.settings ALTER COLUMN id SET DEFAULT nextval('public.settings_id_seq'::regclass);
+
+
+--
+-- Name: site_navigation_items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.site_navigation_items ALTER COLUMN id SET DEFAULT nextval('public.site_navigation_items_id_seq'::regclass);
+
+
+--
+-- Name: site_page_blocks id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.site_page_blocks ALTER COLUMN id SET DEFAULT nextval('public.site_page_blocks_id_seq'::regclass);
 
 
 --
@@ -6944,6 +7576,38 @@ ALTER TABLE public.admin_users
 
 
 --
+-- Name: ai_property_search_histories ai_property_search_histories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_search_histories
+    ADD CONSTRAINT ai_property_search_histories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ai_property_share_audit_events ai_property_share_audit_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_audit_events
+    ADD CONSTRAINT ai_property_share_audit_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ai_property_share_collections ai_property_share_collections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_collections
+    ADD CONSTRAINT ai_property_share_collections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ai_property_share_items ai_property_share_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_items
+    ADD CONSTRAINT ai_property_share_items_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ai_property_suggestions ai_property_suggestions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7133,6 +7797,14 @@ ALTER TABLE ONLY public.crm_contacts
 
 ALTER TABLE ONLY public.data_export_audit_logs
     ADD CONSTRAINT data_export_audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: development_aliases development_aliases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.development_aliases
+    ADD CONSTRAINT development_aliases_pkey PRIMARY KEY (id);
 
 
 --
@@ -7400,6 +8072,46 @@ ALTER TABLE ONLY public.location_pings
 
 
 --
+-- Name: maglev_assets maglev_assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_assets
+    ADD CONSTRAINT maglev_assets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maglev_page_paths maglev_page_paths_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_page_paths
+    ADD CONSTRAINT maglev_page_paths_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maglev_pages maglev_pages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_pages
+    ADD CONSTRAINT maglev_pages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maglev_sections_content_stores maglev_sections_content_stores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_sections_content_stores
+    ADD CONSTRAINT maglev_sections_content_stores_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maglev_sites maglev_sites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maglev_sites
+    ADD CONSTRAINT maglev_sites_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: manual_checkin_requests manual_checkin_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7484,7 +8196,7 @@ ALTER TABLE ONLY public.presentation_cards
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY (ARRAY[('vertical'::character varying)::text, ('horizontal'::character varying)::text]))) NOT VALID;
+    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY ((ARRAY['vertical'::character varying, 'horizontal'::character varying])::text[]))) NOT VALID;
 
 
 --
@@ -7500,7 +8212,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) OR (((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) OR (((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
 
 
 --
@@ -7508,7 +8220,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])))) NOT VALID;
+    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])))) NOT VALID;
 
 
 --
@@ -7524,7 +8236,7 @@ ALTER TABLE ONLY public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
 
 
 --
@@ -7533,6 +8245,14 @@ ALTER TABLE public.profiles
 
 ALTER TABLE ONLY public.property_pages
     ADD CONSTRAINT property_pages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: property_review_policy_audit_logs property_review_policy_audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_review_policy_audit_logs
+    ADD CONSTRAINT property_review_policy_audit_logs_pkey PRIMARY KEY (id);
 
 
 --
@@ -7669,6 +8389,22 @@ ALTER TABLE ONLY public.seo_settings
 
 ALTER TABLE ONLY public.settings
     ADD CONSTRAINT settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: site_navigation_items site_navigation_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.site_navigation_items
+    ADD CONSTRAINT site_navigation_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: site_page_blocks site_page_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.site_page_blocks
+    ADD CONSTRAINT site_page_blocks_pkey PRIMARY KEY (id);
 
 
 --
@@ -7944,6 +8680,13 @@ ALTER TABLE ONLY public.whatsapp_templates
 
 
 --
+-- Name: canonical_speed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX canonical_speed ON public.maglev_page_paths USING btree (canonical, locale, value);
+
+
+--
 -- Name: idx_account_memberships_live_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7969,6 +8712,41 @@ CREATE INDEX idx_active_storage_habitation_photo_records ON public.active_storag
 --
 
 CREATE UNIQUE INDEX idx_admin_users_one_mirror_per_tenant ON public.admin_users USING btree (primary_admin_user_id, tenant_id) WHERE (primary_admin_user_id IS NOT NULL);
+
+
+--
+-- Name: idx_ai_property_search_history_retention; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ai_property_search_history_retention ON public.ai_property_search_histories USING btree (tenant_id, created_at);
+
+
+--
+-- Name: idx_ai_share_audits_broker_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ai_share_audits_broker_time ON public.ai_property_share_audit_events USING btree (admin_user_id, created_at);
+
+
+--
+-- Name: idx_ai_share_audits_collection; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ai_share_audits_collection ON public.ai_property_share_audit_events USING btree (ai_property_share_collection_id);
+
+
+--
+-- Name: idx_ai_share_items_collection; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ai_share_items_collection ON public.ai_property_share_items USING btree (ai_property_share_collection_id);
+
+
+--
+-- Name: idx_ai_share_items_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_ai_share_items_unique ON public.ai_property_share_items USING btree (ai_property_share_collection_id, habitation_id);
 
 
 --
@@ -8021,6 +8799,27 @@ CREATE INDEX idx_cpi_client_habitation_codes ON public.client_property_interests
 
 
 --
+-- Name: idx_development_aliases_name_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_development_aliases_name_trgm ON public.development_aliases USING gin (normalized_name public.gin_trgm_ops);
+
+
+--
+-- Name: idx_development_aliases_tenant_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_development_aliases_tenant_name ON public.development_aliases USING btree (tenant_id, normalized_name);
+
+
+--
+-- Name: idx_development_aliases_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_development_aliases_unique ON public.development_aliases USING btree (tenant_id, development_id, normalized_name);
+
+
+--
 -- Name: idx_dist_rule_agents_on_rule_and_admin; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8053,6 +8852,20 @@ CREATE INDEX idx_hab_share_links_hab_admin_exp ON public.habitation_share_links 
 --
 
 CREATE INDEX idx_habitations_categoria_status ON public.habitations USING btree (categoria, status);
+
+
+--
+-- Name: idx_habitations_constructor_name_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_habitations_constructor_name_trgm ON public.habitations USING gin (lower((construtora)::text) public.gin_trgm_ops);
+
+
+--
+-- Name: idx_habitations_development_name_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_habitations_development_name_trgm ON public.habitations USING gin (lower((nome_empreendimento)::text) public.gin_trgm_ops);
 
 
 --
@@ -8109,6 +8922,13 @@ CREATE INDEX idx_habitations_searchable_features_trgm ON public.habitations USIN
 --
 
 CREATE INDEX idx_habitations_status_categoria_cidade ON public.habitations USING btree (status, categoria, cidade);
+
+
+--
+-- Name: idx_habitations_tenant_review_policy_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_habitations_tenant_review_policy_version ON public.habitations USING btree (tenant_id, intake_review_policy_version);
 
 
 --
@@ -8343,6 +9163,20 @@ CREATE INDEX idx_public_nav_events_session_time ON public.public_navigation_even
 
 
 --
+-- Name: idx_review_policy_audits_setting_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_review_policy_audits_setting_version ON public.property_review_policy_audit_logs USING btree (property_setting_id, version);
+
+
+--
+-- Name: idx_review_policy_audits_tenant_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_review_policy_audits_tenant_created ON public.property_review_policy_audit_logs USING btree (tenant_id, created_at);
+
+
+--
 -- Name: idx_settings_global_key_unique; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8354,6 +9188,13 @@ CREATE UNIQUE INDEX idx_settings_global_key_unique ON public.settings USING btre
 --
 
 CREATE UNIQUE INDEX idx_settings_tenant_key_unique ON public.settings USING btree (tenant_id, key) WHERE (tenant_id IS NOT NULL);
+
+
+--
+-- Name: idx_site_navigation_items_scope; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_site_navigation_items_scope ON public.site_navigation_items USING btree (tenant_id, placement, "position");
 
 
 --
@@ -8900,6 +9741,83 @@ CREATE INDEX index_admin_users_on_vista_import_batch_id ON public.admin_users US
 --
 
 CREATE INDEX index_admin_users_on_vista_payload ON public.admin_users USING gin (vista_payload);
+
+
+--
+-- Name: index_ai_property_search_histories_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_search_histories_on_admin_user_id ON public.ai_property_search_histories USING btree (admin_user_id);
+
+
+--
+-- Name: index_ai_property_search_histories_on_selected_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_search_histories_on_selected_habitation_id ON public.ai_property_search_histories USING btree (selected_habitation_id);
+
+
+--
+-- Name: index_ai_property_search_histories_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_search_histories_on_tenant_id ON public.ai_property_search_histories USING btree (tenant_id);
+
+
+--
+-- Name: index_ai_property_share_audit_events_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_share_audit_events_on_admin_user_id ON public.ai_property_share_audit_events USING btree (admin_user_id);
+
+
+--
+-- Name: index_ai_property_share_audit_events_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_share_audit_events_on_habitation_id ON public.ai_property_share_audit_events USING btree (habitation_id);
+
+
+--
+-- Name: index_ai_property_share_audit_events_on_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_share_audit_events_on_lead_id ON public.ai_property_share_audit_events USING btree (lead_id);
+
+
+--
+-- Name: index_ai_property_share_audit_events_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_share_audit_events_on_tenant_id ON public.ai_property_share_audit_events USING btree (tenant_id);
+
+
+--
+-- Name: index_ai_property_share_collections_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_share_collections_on_admin_user_id ON public.ai_property_share_collections USING btree (admin_user_id);
+
+
+--
+-- Name: index_ai_property_share_collections_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_share_collections_on_tenant_id ON public.ai_property_share_collections USING btree (tenant_id);
+
+
+--
+-- Name: index_ai_property_share_collections_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_ai_property_share_collections_on_token ON public.ai_property_share_collections USING btree (token);
+
+
+--
+-- Name: index_ai_property_share_items_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_property_share_items_on_habitation_id ON public.ai_property_share_items USING btree (habitation_id);
 
 
 --
@@ -9722,6 +10640,20 @@ CREATE INDEX index_data_export_audit_logs_on_tenant_id ON public.data_export_aud
 
 
 --
+-- Name: index_development_aliases_on_development_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_development_aliases_on_development_id ON public.development_aliases USING btree (development_id);
+
+
+--
+-- Name: index_development_aliases_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_development_aliases_on_tenant_id ON public.development_aliases USING btree (tenant_id);
+
+
+--
 -- Name: index_distribution_rule_agents_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10527,10 +11459,31 @@ CREATE INDEX index_landing_pages_on_tenant_id ON public.landing_pages USING btre
 
 
 --
+-- Name: index_landing_pages_on_tenant_id_and_page_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_landing_pages_on_tenant_id_and_page_type ON public.landing_pages USING btree (tenant_id, page_type);
+
+
+--
 -- Name: index_landing_pages_on_tenant_id_and_slug; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX index_landing_pages_on_tenant_id_and_slug ON public.landing_pages USING btree (tenant_id, slug);
+
+
+--
+-- Name: index_landing_pages_on_tenant_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_landing_pages_on_tenant_id_and_status ON public.landing_pages USING btree (tenant_id, status);
+
+
+--
+-- Name: index_landing_pages_on_tenant_id_and_system_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_landing_pages_on_tenant_id_and_system_path ON public.landing_pages USING btree (tenant_id, system_path) WHERE (system_path IS NOT NULL);
 
 
 --
@@ -10772,17 +11725,17 @@ CREATE INDEX index_leads_on_status_waiting_acceptance ON public.leads USING btre
 
 
 --
--- Name: index_leads_on_tenant_and_attribution_channel; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_leads_on_tenant_and_attribution_channel ON public.leads USING btree (tenant_id, attribution_channel);
-
-
---
 -- Name: index_leads_on_tags; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_leads_on_tags ON public.leads USING gin (tags);
+
+
+--
+-- Name: index_leads_on_tenant_and_attribution_channel; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_leads_on_tenant_and_attribution_channel ON public.leads USING btree (tenant_id, attribution_channel);
 
 
 --
@@ -10895,6 +11848,13 @@ CREATE INDEX index_location_pings_on_check_in_id ON public.location_pings USING 
 --
 
 CREATE INDEX index_location_pings_on_check_in_id_and_recorded_at ON public.location_pings USING btree (check_in_id, recorded_at);
+
+
+--
+-- Name: index_maglev_page_paths_on_maglev_page_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_maglev_page_paths_on_maglev_page_id ON public.maglev_page_paths USING btree (maglev_page_id);
 
 
 --
@@ -11196,6 +12156,27 @@ CREATE INDEX index_profiles_on_vertical_profile_id ON public.profiles USING btre
 --
 
 CREATE UNIQUE INDEX index_property_pages_on_slug ON public.property_pages USING btree (slug);
+
+
+--
+-- Name: index_property_review_policy_audit_logs_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_property_review_policy_audit_logs_on_admin_user_id ON public.property_review_policy_audit_logs USING btree (admin_user_id);
+
+
+--
+-- Name: index_property_review_policy_audit_logs_on_property_setting_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_property_review_policy_audit_logs_on_property_setting_id ON public.property_review_policy_audit_logs USING btree (property_setting_id);
+
+
+--
+-- Name: index_property_review_policy_audit_logs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_property_review_policy_audit_logs_on_tenant_id ON public.property_review_policy_audit_logs USING btree (tenant_id);
 
 
 --
@@ -11675,6 +12656,48 @@ CREATE INDEX index_settings_on_tenant_id ON public.settings USING btree (tenant_
 
 
 --
+-- Name: index_site_navigation_items_on_landing_page_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_site_navigation_items_on_landing_page_id ON public.site_navigation_items USING btree (landing_page_id);
+
+
+--
+-- Name: index_site_navigation_items_on_parent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_site_navigation_items_on_parent_id ON public.site_navigation_items USING btree (parent_id);
+
+
+--
+-- Name: index_site_navigation_items_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_site_navigation_items_on_tenant_id ON public.site_navigation_items USING btree (tenant_id);
+
+
+--
+-- Name: index_site_page_blocks_on_landing_page_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_site_page_blocks_on_landing_page_id ON public.site_page_blocks USING btree (landing_page_id);
+
+
+--
+-- Name: index_site_page_blocks_on_landing_page_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_site_page_blocks_on_landing_page_id_and_position ON public.site_page_blocks USING btree (landing_page_id, "position");
+
+
+--
+-- Name: index_site_page_blocks_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_site_page_blocks_on_tenant_id ON public.site_page_blocks USING btree (tenant_id);
+
+
+--
 -- Name: index_solid_queue_blocked_executions_for_maintenance; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11868,6 +12891,13 @@ CREATE UNIQUE INDEX index_solid_queue_semaphores_on_key ON public.solid_queue_se
 --
 
 CREATE INDEX index_solid_queue_semaphores_on_key_and_value ON public.solid_queue_semaphores USING btree (key, value);
+
+
+--
+-- Name: index_storage_integration_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_storage_integration_settings_on_tenant_id ON public.storage_integration_settings USING btree (tenant_id);
 
 
 --
@@ -12613,6 +13643,20 @@ CREATE INDEX index_whatsapp_templates_on_tenant_id_and_status ON public.whatsapp
 
 
 --
+-- Name: maglev_sections_content_stores_container_and_published; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maglev_sections_content_stores_container_and_published ON public.maglev_sections_content_stores USING btree (container_id, container_type, published);
+
+
+--
+-- Name: scoped_canonical_speed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX scoped_canonical_speed ON public.maglev_page_paths USING btree (canonical, maglev_page_id, locale);
+
+
+--
 -- Name: access_audit_logs access_audit_logs_no_update; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -12756,6 +13800,14 @@ ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
 
 
 --
+-- Name: property_review_policy_audit_logs fk_rails_09a9273b20; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_review_policy_audit_logs
+    ADD CONSTRAINT fk_rails_09a9273b20 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: email_settings fk_rails_09c40e8cf2; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12793,6 +13845,14 @@ ALTER TABLE ONLY public.automation_executions
 
 ALTER TABLE ONLY public.habitation_share_links
     ADD CONSTRAINT fk_rails_0e80d0e62c FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
+-- Name: storage_integration_settings fk_rails_0e9f588a76; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.storage_integration_settings
+    ADD CONSTRAINT fk_rails_0e9f588a76 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -12857,6 +13917,14 @@ ALTER TABLE ONLY public.public_navigation_events
 
 ALTER TABLE ONLY public.ai_property_suggestions
     ADD CONSTRAINT fk_rails_16f184cd4c FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: ai_property_share_audit_events fk_rails_17b96feb65; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_audit_events
+    ADD CONSTRAINT fk_rails_17b96feb65 FOREIGN KEY (ai_property_share_collection_id) REFERENCES public.ai_property_share_collections(id);
 
 
 --
@@ -13020,6 +14088,14 @@ ALTER TABLE ONLY public.automation_executions
 
 
 --
+-- Name: development_aliases fk_rails_2dcdc5fbf4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.development_aliases
+    ADD CONSTRAINT fk_rails_2dcdc5fbf4 FOREIGN KEY (development_id) REFERENCES public.habitations(id);
+
+
+--
 -- Name: distribution_rule_agents fk_rails_2ff40d37bc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13049,6 +14125,14 @@ ALTER TABLE ONLY public.client_interactions
 
 ALTER TABLE ONLY public.solid_queue_recurring_executions
     ADD CONSTRAINT fk_rails_318a5533ed FOREIGN KEY (job_id) REFERENCES public.solid_queue_jobs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ai_property_search_histories fk_rails_31b281fe65; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_search_histories
+    ADD CONSTRAINT fk_rails_31b281fe65 FOREIGN KEY (selected_habitation_id) REFERENCES public.habitations(id);
 
 
 --
@@ -13180,6 +14264,14 @@ ALTER TABLE ONLY public.appointments
 
 
 --
+-- Name: property_review_policy_audit_logs fk_rails_431ffbf173; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_review_policy_audit_logs
+    ADD CONSTRAINT fk_rails_431ffbf173 FOREIGN KEY (property_setting_id) REFERENCES public.property_settings(id);
+
+
+--
 -- Name: distribution_rule_agents fk_rails_43433f55b6; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13204,6 +14296,30 @@ ALTER TABLE ONLY public.public_navigation_sessions
 
 
 --
+-- Name: development_aliases fk_rails_448c7e2a78; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.development_aliases
+    ADD CONSTRAINT fk_rails_448c7e2a78 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: site_page_blocks fk_rails_44b66de6bc; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.site_page_blocks
+    ADD CONSTRAINT fk_rails_44b66de6bc FOREIGN KEY (landing_page_id) REFERENCES public.landing_pages(id);
+
+
+--
+-- Name: ai_property_share_items fk_rails_457e3bcfa2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_items
+    ADD CONSTRAINT fk_rails_457e3bcfa2 FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
 -- Name: habitations fk_rails_469bb01085; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13217,6 +14333,14 @@ ALTER TABLE ONLY public.habitations
 
 ALTER TABLE ONLY public.trusted_devices
     ADD CONSTRAINT fk_rails_4780fd9ba4 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: ai_property_share_items fk_rails_4858e95e30; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_items
+    ADD CONSTRAINT fk_rails_4858e95e30 FOREIGN KEY (ai_property_share_collection_id) REFERENCES public.ai_property_share_collections(id);
 
 
 --
@@ -13273,6 +14397,14 @@ ALTER TABLE ONLY public.vista_file_assets
 
 ALTER TABLE ONLY public.check_ins
     ADD CONSTRAINT fk_rails_4ffa2041a7 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: site_page_blocks fk_rails_503ad8d4df; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.site_page_blocks
+    ADD CONSTRAINT fk_rails_503ad8d4df FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -13353,6 +14485,14 @@ ALTER TABLE ONLY public.client_property_interests
 
 ALTER TABLE ONLY public.google_maps_integration_settings
     ADD CONSTRAINT fk_rails_55dd38d915 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: site_navigation_items fk_rails_56ce029201; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.site_navigation_items
+    ADD CONSTRAINT fk_rails_56ce029201 FOREIGN KEY (landing_page_id) REFERENCES public.landing_pages(id);
 
 
 --
@@ -13484,6 +14624,14 @@ ALTER TABLE ONLY public.proposals
 
 
 --
+-- Name: ai_property_share_audit_events fk_rails_6342925429; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_audit_events
+    ADD CONSTRAINT fk_rails_6342925429 FOREIGN KEY (lead_id) REFERENCES public.leads(id);
+
+
+--
 -- Name: proprietors fk_rails_63e65bb6ac; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13585,6 +14733,14 @@ ALTER TABLE ONLY public.account_memberships
 
 ALTER TABLE ONLY public.automation_executions
     ADD CONSTRAINT fk_rails_77842b67af FOREIGN KEY (automation_workflow_id) REFERENCES public.automation_workflows(id);
+
+
+--
+-- Name: ai_property_search_histories fk_rails_79a24e9cd0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_search_histories
+    ADD CONSTRAINT fk_rails_79a24e9cd0 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -13769,6 +14925,14 @@ ALTER TABLE ONLY public.distribution_rule_agents
 
 ALTER TABLE ONLY public.account_memberships
     ADD CONSTRAINT fk_rails_89ba2cac91 FOREIGN KEY (profile_id) REFERENCES public.profiles(id);
+
+
+--
+-- Name: ai_property_share_collections fk_rails_89f69afe21; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_collections
+    ADD CONSTRAINT fk_rails_89f69afe21 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -14180,6 +15344,14 @@ ALTER TABLE ONLY public.property_settings
 
 
 --
+-- Name: ai_property_search_histories fk_rails_becdcfa42e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_search_histories
+    ADD CONSTRAINT fk_rails_becdcfa42e FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: trusted_devices fk_rails_c1b334ed72; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14276,6 +15448,14 @@ ALTER TABLE ONLY public.automation_execution_steps
 
 
 --
+-- Name: ai_property_share_audit_events fk_rails_c5d6831be9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_audit_events
+    ADD CONSTRAINT fk_rails_c5d6831be9 FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
+
+
+--
 -- Name: layout_settings fk_rails_c760eaba29; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14345,6 +15525,14 @@ ALTER TABLE ONLY public.automation_rules
 
 ALTER TABLE ONLY public.account_memberships
     ADD CONSTRAINT fk_rails_d11605f7e1 FOREIGN KEY (manager_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: ai_property_share_audit_events fk_rails_d3e6f65b2b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_audit_events
+    ADD CONSTRAINT fk_rails_d3e6f65b2b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -14436,6 +15624,14 @@ ALTER TABLE ONLY public.admin_users
 
 
 --
+-- Name: ai_property_share_collections fk_rails_d99a0939e3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_collections
+    ADD CONSTRAINT fk_rails_d99a0939e3 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
 -- Name: automation_webhook_deliveries fk_rails_d9b086da60; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14500,6 +15696,22 @@ ALTER TABLE ONLY public.location_pings
 
 
 --
+-- Name: site_navigation_items fk_rails_e274181308; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.site_navigation_items
+    ADD CONSTRAINT fk_rails_e274181308 FOREIGN KEY (parent_id) REFERENCES public.site_navigation_items(id);
+
+
+--
+-- Name: property_review_policy_audit_logs fk_rails_e274961d8b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_review_policy_audit_logs
+    ADD CONSTRAINT fk_rails_e274961d8b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: client_property_interests fk_rails_e2de1e8832; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14521,6 +15733,14 @@ ALTER TABLE ONLY public.whatsapp_conversations
 
 ALTER TABLE ONLY public.whatsapp_campaign_messages
     ADD CONSTRAINT fk_rails_e477ef2c00 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: ai_property_share_audit_events fk_rails_e489d75748; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_property_share_audit_events
+    ADD CONSTRAINT fk_rails_e489d75748 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -14676,6 +15896,14 @@ ALTER TABLE ONLY public.landing_pages
 
 
 --
+-- Name: site_navigation_items fk_rails_f4d96da8ad; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.site_navigation_items
+    ADD CONSTRAINT fk_rails_f4d96da8ad FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: habitation_photo_shares fk_rails_f8257292ce; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14719,15 +15947,48 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict pIv5WkekiWA6Od0lftMR0j4PewVRkMTHutVRCf0YCwYnBF6sUQe2DATLb8CSSoY
+\unrestrict beVdsQFcNethjEKt5MsTvSHoQjiNmgO2bAeAVK2B0jgqfGqeTJTAmjSXrb5vSL6
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260714213000'),
+('20260714210000'),
+('20260714203000'),
+('20260714173000'),
+('20260714171500'),
+('20260714170000'),
+('20260714143000'),
+('20260714120000'),
+('20260713230000'),
 ('20260713224000'),
+('20260713015757'),
+('20260713015756'),
+('20260713015755'),
+('20260713015754'),
+('20260713015753'),
+('20260713015752'),
+('20260713015751'),
+('20260713015750'),
+('20260713015749'),
+('20260713015748'),
+('20260713015747'),
+('20260713015746'),
+('20260713015745'),
+('20260713015744'),
+('20260713015743'),
+('20260713015742'),
+('20260713015741'),
+('20260712203000'),
+('20260712193000'),
+('20260712184500'),
+('20260712183000'),
+('20260712180000'),
 ('20260712173000'),
 ('20260712170000'),
 ('20260712123000'),
+('20260712120001'),
+('20260712120000'),
 ('20260712110000'),
 ('20260711144500'),
 ('20260711143000'),

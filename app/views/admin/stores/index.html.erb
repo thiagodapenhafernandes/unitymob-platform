@@ -1,31 +1,35 @@
 <%# Lojas — listagem compacta (design system .ax-*). Original em index.html.erb.bootstrap-bak %>
 <div class="admin-entity-dark">
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Lojas</h1>
-    <p class="ax-page-subtitle">Lojas físicas com geofence e diretor para check-in de corretores.</p>
-  </div>
+<% store_heading_actions = capture do %>
   <div class="tw-flex tw-items-center tw-gap-2">
     <%= form_with url: admin_stores_path, method: :get do %>
-      <%= search_field_tag :q, params[:q], class: "ax-search", placeholder: "Buscar por nome..." %>
+      <%= search_field_tag :q, params[:q], class: "ax-search", placeholder: "Buscar por nome...", aria: { label: "Buscar lojas por nome" } %>
     <% end %>
-    <%= link_to new_admin_store_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %>
-      <i class="bi bi-plus-lg ax-ico"></i><span>Nova loja</span>
+    <% if can?(:manage, :lojas) %>
+      <%= ax_button("Nova loja", new_admin_store_path, variant: :primary, size: :sm, icon: "plus-lg") %>
     <% end %>
   </div>
-</div>
+<% end %>
+<%= ax_workspace_heading(
+      eyebrow: "Operação · Lojas",
+      icon: "shop-window",
+      title: "Lojas",
+      subtitle: "Lojas físicas com geofence e diretor para check-in de corretores.",
+      actions: store_heading_actions
+    ) %>
 
 <div class="ax-table-wrap">
   <table class="ax-table">
+    <caption class="tw-sr-only">Lojas da conta e configurações operacionais de check-in</caption>
     <thead>
       <tr>
-        <th>Loja</th>
-        <th>Localização</th>
-        <th class="ax-num" style="width:90px">Raio</th>
-        <th class="ax-num" style="width:110px">Tolerância</th>
-        <th style="width:200px">Diretor</th>
-        <th style="width:96px">Status</th>
-        <th class="ax-num" style="width:74px">Ações</th>
+        <th scope="col">Loja</th>
+        <th scope="col">Localização</th>
+        <th scope="col" class="ax-num ax-table__col--compact">Raio</th>
+        <th scope="col" class="ax-num ax-table__col--md">Tolerância</th>
+        <th scope="col" class="ax-table__col--lg">Diretor</th>
+        <th scope="col" class="ax-table__col--sm">Status</th>
+        <th scope="col" class="ax-num ax-table__col--xs">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -38,28 +42,30 @@
           <td class="ax-num"><%= store.geofence_radius_meters %> m</td>
           <td class="ax-num"><%= store.out_of_radius_tolerance_minutes %> min</td>
           <td><%= store.director&.name || "—" %></td>
-          <td>
-            <% if store.active? %>
-              <span class="ax-badge ax-badge--green ax-badge--dot">Ativa</span>
-            <% else %>
-              <span class="ax-badge ax-badge--gray ax-badge--dot">Inativa</span>
-            <% end %>
-          </td>
+          <td><%= ax_badge(store.active? ? "Ativa" : "Inativa", tone: store.active? ? :green : :gray, dot: true) %></td>
           <td class="ax-num">
             <span class="tw-inline-flex tw-gap-0.5">
-              <%= link_to admin_store_path(store), class: "ax-ico-btn", title: "Ver" do %><i class="bi bi-eye"></i><% end %>
-              <%= link_to edit_admin_store_path(store), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+              <%= ax_icon_button(label: "Ver loja #{store.name}", icon: "eye", url: admin_store_path(store)) %>
+              <% if can?(:manage, :lojas) %>
+                <%= ax_icon_button(label: "Editar loja #{store.name}", icon: "pencil", url: edit_admin_store_path(store)) %>
+              <% end %>
             </span>
           </td>
         </tr>
       <% end %>
 
       <% if @stores.empty? %>
-        <tr><td colspan="7"><div class="ax-empty">
-          <i class="bi bi-shop-window tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>
-          Nenhuma loja cadastrada.
-          <div class="tw-mt-3"><%= link_to "Cadastrar primeira loja", new_admin_store_path, class: "ax-btn ax-btn--sm ax-btn--primary tw-inline-flex" %></div>
-        </div></td></tr>
+        <tr>
+          <td colspan="7">
+            <%= ax_empty_state(
+                  title: "Nenhuma loja cadastrada",
+                  description: "Cadastre uma unidade para configurar geofence, turnos e direção.",
+                  icon: "shop-window",
+                  action: (ax_button("Cadastrar primeira loja", new_admin_store_path, variant: :primary, size: :sm) if can?(:manage, :lojas)),
+                  compact: true
+                ) %>
+          </td>
+        </tr>
       <% end %>
     </tbody>
   </table>

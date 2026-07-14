@@ -1,0 +1,86 @@
+/* Shared icon-only controls. Both legacy AX names retain their original geometry. */
+.ax-ico-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+
+.ax-ico-btn:hover { background: #eceef1; color: #1f2733; }
+.ax-ico-btn:active { background: #e2e6eb; color: #111827; }
+.ax-ico-btn:focus-visible {
+  background: #eceef1;
+  color: #1f2733;
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: 1px;
+}
+
+.ax-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #d8e1ec;
+  border-radius: 7px;
+  background: #fff;
+  color: #667085;
+  cursor: pointer;
+  transition: border-color var(--ax-motion-fast) var(--ax-motion-ease), background var(--ax-motion-fast) var(--ax-motion-ease), color var(--ax-motion-fast) var(--ax-motion-ease);
+}
+
+.ax-icon-btn:hover { border-color: #c4d0df; background: #f8fafc; color: #1f2733; }
+.ax-icon-btn:active { border-color: #aebdce; background: #eef2f7; color: #111827; }
+.ax-icon-btn:focus-visible {
+  border-color: var(--ax-field-focus);
+  background: #f8fafc;
+  color: #1f2733;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}
+
+[data-admin-theme="dark"] :where(.ax-ico-btn, .ax-icon-btn) {
+  color: var(--ax-dark-text-soft);
+}
+
+[data-admin-theme="dark"] .ax-ico-btn {
+  border-color: transparent;
+  background: transparent;
+}
+
+[data-admin-theme="dark"] .ax-icon-btn {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+}
+
+[data-admin-theme="dark"] :where(.ax-ico-btn, .ax-icon-btn):hover,
+[data-admin-theme="dark"] :where(.ax-ico-btn, .ax-icon-btn):focus-visible {
+  border-color: #526b8c;
+  background: #243a59;
+  color: #badaf7;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--admin-primary-ring);
+}
+
+[data-admin-theme="dark"] :where(.ax-ico-btn, .ax-icon-btn):active {
+  border-color: #607b9e;
+  background: #2a4365;
+  color: #d9eaff;
+}
+
+:where(.ax-ico-btn, .ax-icon-btn):is(:disabled, [aria-disabled="true"], .is-disabled) {
+  cursor: not-allowed;
+  opacity: .48;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.ax-ico-btn, .ax-icon-btn) { transition: none; }
+}

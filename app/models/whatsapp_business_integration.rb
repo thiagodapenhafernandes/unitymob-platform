@@ -163,7 +163,7 @@ class WhatsappBusinessIntegration < ApplicationRecord
   end
 
   def default_contact_whatsapp
-    ContactSetting.first&.whatsapp_primary || "554733111067"
+    ContactSetting.where(tenant_id: tenant_id).pick(:whatsapp_primary).presence || "554733111067"
   end
 
   def validate_site_phone_numbers

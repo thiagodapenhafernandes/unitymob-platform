@@ -274,7 +274,9 @@ export default class extends Controller {
       node.textContent = `${completed}/${total}`
     })
     this.element.querySelectorAll("[data-habitation-form-progress-bar]").forEach((node) => {
-      node.style.width = `${percent}%`
+      node.value = percent
+      node.textContent = `${percent}%`
+      node.setAttribute("aria-label", `Progresso do cadastro: ${percent}%`)
     })
   }
 

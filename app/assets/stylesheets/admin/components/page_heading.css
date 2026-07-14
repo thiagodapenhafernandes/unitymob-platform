@@ -1,0 +1,65 @@
+/* Shared compact page title contract. Workspace headings remain a richer component. */
+.ax-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.ax-page-head__text { min-width: 0; }
+
+.ax-page-head__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ax-page-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ax-page-title > .bi {
+  flex: 0 0 auto;
+  color: var(--admin-primary);
+  font-size: .95em;
+}
+
+.ax-page-subtitle {
+  max-width: 76ch;
+  margin: 4px 0 0;
+  color: #697586;
+  font-size: 12.5px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+[data-admin-theme="dark"] .ax-page-title { color: var(--ax-dark-text); }
+
+[data-admin-theme="dark"] .ax-page-subtitle {
+  color: var(--ax-dark-text-muted);
+}
+
+@media (max-width: 639px) {
+  .ax-page-head { flex-direction: column; }
+
+  .ax-page-head__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .ax-page-head__actions > * { max-width: 100%; }
+}

@@ -1,12 +1,12 @@
-<div class="col-12 nested-fields" data-new-record="<%= f.object.new_record? %>">
-  <div class="ax-card bg-light">
+<div class="nested-fields footer-nested-field" data-new-record="<%= f.object.new_record? %>">
+  <div class="ax-card footer-nested-card">
     <div class="ax-card__body">
       <div class="tw-flex tw-justify-between tw-mb-2">
         <div class="tw-flex tw-items-center tw-gap-2">
-          <span class="ax-badge ax-badge--blue" data-position-label style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <span class="ax-badge ax-badge--blue footer-nested-position" data-position-label>
             <%= f.object.position || 1 %>
           </span>
-          <label class="ax-label tw-font-bold tw-inline-flex tw-items-center tw-gap-2" style="margin-bottom:0;"><i class="bi bi-share"></i>Rede Social</label>
+          <label class="ax-label tw-font-bold tw-inline-flex tw-items-center tw-gap-2 footer-nested-label"><i class="bi bi-share"></i>Rede Social</label>
           <div class="tw-inline-flex tw-items-center">
             <button type="button" class="ax-btn ax-btn--ghost ax-btn--sm" data-action="nested-form#moveUp" title="Mover para cima">
               <i class="bi bi-chevron-up"></i>
@@ -24,14 +24,13 @@
       <%= f.hidden_field :position %>
 
       <div class="tw-mb-2">
-        <%= f.select :platform,
-            options_for_select(['Instagram', 'Facebook', 'WhatsApp', 'YouTube', 'TikTok', 'LinkedIn'], f.object.platform),
-            { prompt: 'Selecione a Plataforma' },
-            { class: "ax-control ax-control--sm" } %>
+        <%= ax_select_field(form: f, method: :platform, label: "Plataforma",
+              choices: ['Instagram', 'Facebook', 'WhatsApp', 'YouTube', 'TikTok', 'LinkedIn'],
+              select_options: { prompt: 'Selecione a plataforma' }, html_options: { class: "ax-control--sm" }) %>
       </div>
 
       <div class="tw-mb-2">
-        <%= f.text_field :url, class: "ax-control ax-control--sm", placeholder: "Link do perfil (https://...)" %>
+        <%= ax_text_field(form: f, method: :url, label: "Link do perfil", class: "ax-control--sm", placeholder: "https://...") %>
       </div>
 
       <%= ax_switch_field(label: "Ativo", form: f, method: :enabled, id: "switch_#{f.object.id}") %>

@@ -54,7 +54,7 @@
                   method: :post,
                   scope: :login_rate_limit,
                   class: "ax-inline-form" do |form| %>
-      <div class="ax-field" style="min-width:min(100%, 360px)">
+      <div class="ax-field ax-system-login-release-field">
         <%= form.label :email, "E-mail do usuário", class: "ax-label" %>
         <%= form.email_field :email,
                              required: true,
@@ -79,17 +79,18 @@
     <% if @tenants.any? %>
       <div class="ax-table-wrap">
         <table class="ax-table">
+          <caption class="tw-sr-only">Contas ativas disponíveis para impersonação pelo Dono da conta</caption>
           <thead>
             <tr>
-              <th>Tenant</th>
-              <th>Slug</th>
-              <th>Dono da conta</th>
-              <th class="ax-num" style="width:120px">Ação</th>
+              <th scope="col">Conta</th>
+              <th scope="col">Slug</th>
+              <th scope="col">Dono da conta</th>
+              <th scope="col" class="ax-num ax-table__col--w-120">Ação</th>
             </tr>
           </thead>
           <tbody>
             <% @tenants.each do |tenant| %>
-              <% owner = tenant.admin_users.detect { |user| user.active? && !user.super_admin? && user.profile&.tenant_owner? } %>
+              <% owner = @tenant_owners_by_tenant_id[tenant.id] %>
               <tr>
                 <td class="ax-strong"><%= tenant.name %></td>
                 <td><%= tenant.slug %></td>
@@ -184,14 +185,15 @@
     <% if @system_admins.any? %>
       <div class="ax-table-wrap">
         <table class="ax-table">
+          <caption class="tw-sr-only">Operadores globais com acesso de Admin do Sistema</caption>
           <thead>
             <tr>
-              <th>Operador</th>
-              <th>E-mail</th>
-              <th>Perfil</th>
-              <th>Último login</th>
-              <th>Segurança</th>
-              <th style="width:120px">Status</th>
+              <th scope="col">Operador</th>
+              <th scope="col">E-mail</th>
+              <th scope="col">Perfil</th>
+              <th scope="col">Último login</th>
+              <th scope="col">Segurança</th>
+              <th scope="col" class="ax-table__col--w-120">Status</th>
             </tr>
           </thead>
           <tbody>

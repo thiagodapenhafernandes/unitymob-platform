@@ -1,4 +1,6 @@
 class PagesController < ApplicationController
+  before_action :load_public_identity
+
   def trabalhe_conosco
     @page_name = 'trabalhe_conosco'
     # Página "Trabalhe Conosco" / "Seja um Corretor Parceiro"
@@ -6,8 +8,8 @@ class PagesController < ApplicationController
 
   def parcerias
     @page_name = 'parcerias'
-    @page_title = 'Salute Parcerias | Seja nosso corretor parceiro'
-    @page_description = 'Seja um corretor parceiro da Salute Imóveis e tenha acesso a imóveis exclusivos, suporte especializado e mais oportunidades de negócio.'
+    @page_title = "#{@public_identity.name} | Seja nosso corretor parceiro"
+    @page_description = "Seja um corretor parceiro da #{@public_identity.name} e tenha acesso a imóveis, suporte especializado e novas oportunidades de negócio."
   end
   
   def submit_trabalhe_conosco
@@ -34,6 +36,7 @@ class PagesController < ApplicationController
   end
 
   def links_uteis
+    @useful_links = PublicSiteProfile.current(tenant: public_tenant).useful_link_options
   end
 
   def corporativos
@@ -41,14 +44,20 @@ class PagesController < ApplicationController
   end
   
   def privacy_policy
-    # Política de Privacidade
+    @public_site_profile = PublicSiteProfile.current(tenant: public_tenant)
+    @public_identity = Tenants::PublicIdentity.new(public_tenant)
   end
   
   def terms_of_use
-    # Termos de Uso
+    @public_site_profile = PublicSiteProfile.current(tenant: public_tenant)
+    @public_identity = Tenants::PublicIdentity.new(public_tenant)
   end
   
   private
+
+  def load_public_identity
+    @public_identity = Tenants::PublicIdentity.new(public_tenant)
+  end
   
   def work_params
     params.permit(:name, :email, :phone, :message, :creci, :experience, :cv)

@@ -1,0 +1,17 @@
+/* Geometry unique to the mobile capture wizard shell. */
+.wizard-top-bar__summary {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wizard-nav-action { flex: 1 1 0; }
+
+.wizard-progress.ax-progress { margin-top: 0; }
+
+[data-admin-theme="dark"] .wizard-progress .ax-progress__bar::-webkit-progress-value {
+  background: #72a7e5;
+}
+
+[data-admin-theme="dark"] .wizard-progress .ax-progress__bar::-moz-progress-bar {
+  background: #72a7e5;
+}

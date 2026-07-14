@@ -1,4 +1,6 @@
-<%= tag.div(class: ["ax-board", local_assigns[:class_name]].compact.join(" "),
-            data: (local_assigns[:data] || {})) do %>
+<%= tag.div(class: ["ax-board", local_assigns[:class_name]].compact_blank.join(" "),
+            data: (local_assigns[:data] || {}),
+            role: "region",
+            aria: { label: local_assigns[:label].presence || "Quadro de trabalho" }) do %>
   <%= body %>
 <% end %>

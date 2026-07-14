@@ -19,6 +19,24 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(response).not_to have_http_status(:internal_server_error)
   end
 
+  it "renderiza a listagem com estado vazio e acoes iconicas acessiveis" do
+    rule = create(:distribution_rule, name: "Regra Acessível", source_site: true)
+
+    get admin_distribution_rules_path
+
+    doc = Nokogiri::HTML(response.body)
+    expect(response).to have_http_status(:ok)
+    expect(doc.at_css("a[aria-label='Ver regra Regra Acessível']")).to be_present
+    expect(doc.at_css("a[aria-label='Editar regra Regra Acessível']")).to be_present
+    expect(doc.at_css("[aria-label='Fontes: Site/WhatsApp']")).to be_present
+
+    rule.destroy!
+    get admin_distribution_rules_path
+
+    expect(response.body).to include("Nenhuma regra definida")
+    expect(response.body).to include("Criar primeira regra")
+  end
+
   it "renderiza o formulario com objetivo em modal, aside e dados de equipe em cascata" do
     manager = create(:admin_user, :admin, name: "Gestor Praia")
     create(:admin_user, name: "Corretor Cascata", manager: manager)
@@ -48,6 +66,8 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(response.body).to include("sorteio ponderado")
     expect(response.body).to include("O primeiro que aceitar assume o lead")
     expect(response.body).to include("Filtro opcional pela faixa de valor do lead")
+    expect(doc.at_css("#distribution-rule-summary-title").text).to eq("Resumo da regra")
+    expect(doc.at_css("[data-distribution-rule-summary-target='line'][role='status']")["aria-live"]).to eq("polite")
   end
 
   it "limita selecao de fila a subarvore do usuario logado com permissao de distribuicao" do
@@ -376,5 +396,8 @@ RSpec.describe "Admin::DistributionRules", type: :request do
     expect(response.body).to include("Captação Praia Brava")
     expect(response.body).to include("Check-in geolocalizado")
     expect(response.body).to include("Notificações")
+    doc = Nokogiri::HTML(response.body)
+    expect(doc.at_css(".distribution-rule-show__state > .distribution-rule-show__state-row")).to be_present
+    expect(doc.at_css(".distribution-rule-show__queue-handle[aria-hidden='true']")).to be_nil
   end
 end

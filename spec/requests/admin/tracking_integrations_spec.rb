@@ -20,6 +20,9 @@ RSpec.describe "Admin::TrackingIntegrations", type: :request do
     expect(response.body).to include("GTM-XXXXXXX")
     expect(response.body).to include("tracking-workspace__layout")
     expect(response.body).to include("tracking-tab-panel")
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('input[name="tracking[google_tag_manager_enabled]"][role="switch"]')).to be_present
+    expect(document.at_css('input[name="tracking[meta_pixel_enabled]"][role="switch"]')).to be_present
     expect(response.body).not_to include('class="tab-pane')
     expect(response.body).not_to include("Onde a tag é instalada")
   end

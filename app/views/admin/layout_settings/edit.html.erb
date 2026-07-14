@@ -11,7 +11,7 @@
   admin_primary = @layout_setting.admin_primary_color.presence || LayoutSetting::ADMIN_PRIMARY_DEFAULT
   admin_ink ||= LayoutSetting::ADMIN_INK_DEFAULT
   admin_menu_section_styles = @layout_setting.admin_menu_section_styles
-  effective_admin_theme = @layout_setting.effective_admin_theme
+  effective_admin_theme = @layout_setting.effective_admin_theme(mode: current_admin_user.effective_admin_theme_mode)
   admin_menu_sections = [
     { key: "product", label: "Produto", icon: "grid-1x2" },
     { key: "operation", label: "Operação", icon: "briefcase" },
@@ -77,7 +77,21 @@
 
 <div class="layout-settings-workspace"
      data-controller="layout-theme-preview"
-     style="--theme-surface:<%= effective_admin_theme[:surface] %>; --theme-header:<%= effective_admin_theme[:header] %>; --theme-workspace:<%= effective_admin_theme[:workspace] %>; --theme-sidebar:<%= effective_admin_theme[:sidebar] %>; --theme-primary:<%= effective_admin_theme[:primary] %>; --theme-ink:<%= effective_admin_theme[:ink] %>;">
+     data-layout-theme-preview-initial-surface="<%= effective_admin_theme[:surface] %>"
+     data-layout-theme-preview-initial-header="<%= effective_admin_theme[:header] %>"
+     data-layout-theme-preview-initial-workspace="<%= effective_admin_theme[:workspace] %>"
+     data-layout-theme-preview-initial-sidebar="<%= effective_admin_theme[:sidebar] %>"
+     data-layout-theme-preview-initial-primary="<%= effective_admin_theme[:primary] %>"
+     data-layout-theme-preview-initial-ink="<%= effective_admin_theme[:ink] %>"
+     data-layout-theme-preview-public-primary="<%= public_primary %>">
+  <%= ax_workspace_heading(
+        eyebrow: "Conta · Identidade visual",
+        icon: "palette2",
+        title: "Identidade e Marca",
+        pills: ["Escopo: conta", "Tema pessoal: #{current_admin_user.effective_admin_theme_mode == 'dark' ? 'Escuro' : 'Claro'}"],
+        subtitle: "Configure marca, cores e navegação da conta. Cada usuário continua escolhendo individualmente entre modo claro e escuro."
+      ) %>
+
   <%= form_with(model: [:admin, @layout_setting], local: true, html: { multipart: true }, class: "layout-settings-form") do |f| %>
     <%= ax_error_summary(@layout_setting) %>
 
@@ -170,12 +184,11 @@
           <div class="layout-settings-menu-style-grid">
             <% admin_menu_sections.each do |section| %>
               <% key = section[:key] %>
-              <% style = admin_menu_section_styles.fetch(key) %>
+              <% section_palette = admin_menu_section_styles.fetch(key) %>
               <% css_key = key.dasherize %>
               <section class="layout-settings-menu-style-card">
                 <div class="layout-settings-menu-style-preview"
-                     data-menu-section-preview="<%= key %>"
-                     style="--nav-section-background:var(--admin-nav-<%= css_key %>-background);--nav-section-background-opacity:var(--admin-nav-<%= css_key %>-background-opacity);--nav-section-text:var(--admin-nav-<%= css_key %>-text);--nav-section-border:var(--admin-nav-<%= css_key %>-border);--nav-section-shadow:var(--admin-nav-<%= css_key %>-shadow);">
+                     data-menu-section-preview="<%= css_key %>">
                   <i class="bi bi-<%= section[:icon] %>"></i>
                   <strong><%= section[:label] %></strong>
                   <i class="bi bi-chevron-down"></i>
@@ -189,20 +202,18 @@
                   }.each do |property, (label, css_property)| %>
                     <div class="ax-field ax-color-field">
                       <%= label_tag "layout_setting_admin_menu_section_colors_#{key}_#{property}", label %>
-                      <div class="ax-color-control">
+                      <div class="ax-color-control" data-controller="ax-color-pair">
                         <%= color_field_tag "layout_setting[admin_menu_section_colors][#{key}][#{property}]",
-                              style[property],
-                              id: "layout_setting_admin_menu_section_colors_#{key}_#{property}",
+                              section_palette[property],
+                              id: "layout_setting_admin_menu_section_colors_#{key}_#{property}_picker",
                               class: "ax-color-control__swatch",
                               title: "Escolha a cor de #{label.downcase} de #{section[:label]}",
-                              oninput: "this.nextElementSibling.value = this.value",
-                              data: { action: "input->layout-theme-preview#updateMenuSection", menu_section_key: key, menu_style_property: css_property } %>
+                              data: { ax_color_pair_target: "swatch", action: "input->ax-color-pair#sync input->layout-theme-preview#updateMenuSection", menu_section_key: key, menu_style_property: css_property } %>
                         <%= text_field_tag "layout_setting[admin_menu_section_colors][#{key}][#{property}]",
-                              style[property],
+                              section_palette[property],
                               class: "ax-color-control__text",
                               spellcheck: false,
-                              oninput: "this.previousElementSibling.value = this.value",
-                              data: { action: "input->layout-theme-preview#updateMenuSection", menu_section_key: key, menu_style_property: css_property } %>
+                              data: { ax_color_pair_target: "text", action: "input->ax-color-pair#sync input->layout-theme-preview#updateMenuSection", menu_section_key: key, menu_style_property: css_property } %>
                       </div>
                     </div>
                   <% end %>
@@ -211,7 +222,7 @@
                     <%= label_tag "layout_setting_admin_menu_section_colors_#{key}_background_opacity", "Opacidade" %>
                     <div class="layout-settings-menu-opacity__control">
                       <%= number_field_tag "layout_setting[admin_menu_section_colors][#{key}][background_opacity]",
-                            style["background_opacity"],
+                            section_palette["background_opacity"],
                             id: "layout_setting_admin_menu_section_colors_#{key}_background_opacity",
                             min: 0,
                             max: 100,
@@ -225,7 +236,7 @@
                   <div class="ax-field">
                     <%= label_tag "layout_setting_admin_menu_section_colors_#{key}_box_shadow", "Box shadow" %>
                     <%= text_field_tag "layout_setting[admin_menu_section_colors][#{key}][box_shadow]",
-                          style["box_shadow"],
+                          section_palette["box_shadow"],
                           id: "layout_setting_admin_menu_section_colors_#{key}_box_shadow",
                           class: "ax-control",
                           placeholder: LayoutSetting::ADMIN_MENU_SECTION_SHADOW_DEFAULT,
@@ -291,7 +302,7 @@
               <%= f.text_area :interest_intelligence_instructions,
                     value: @layout_setting.interest_intelligence_instructions.presence || InterestIntelligence::SystemInstructions::DEFAULT_TEXT,
                     rows: 7,
-                    class: "ax-input layout-settings-interest__textarea" %>
+                    class: "ax-control layout-settings-interest__textarea" %>
               <small>
                 Se o campo ficar vazio, a plataforma usa a diretriz padrão do sistema.
                 Personalize apenas quando a conta tiver uma estratégia própria de recomendação e curadoria.
@@ -303,7 +314,7 @@
                 <span>Score mínimo</span>
                 <%= number_field_tag "layout_setting[interest_intelligence_settings][minimum_match_score]",
                       interest_settings["minimum_match_score"],
-                      class: "ax-input",
+                      class: "ax-control",
                       min: 0,
                       max: 100,
                       step: 1 %>
@@ -314,7 +325,7 @@
                 <span>Tolerância de preço (%)</span>
                 <%= number_field_tag "layout_setting[interest_intelligence_settings][price_tolerance_percent]",
                       interest_settings["price_tolerance_percent"],
-                      class: "ax-input",
+                      class: "ax-control",
                       min: 0,
                       max: 100,
                       step: 1 %>
@@ -325,7 +336,7 @@
                 <span>Visualizações fortes</span>
                 <%= number_field_tag "layout_setting[interest_intelligence_settings][strong_interest_views]",
                       interest_settings["strong_interest_views"],
-                      class: "ax-input",
+                      class: "ax-control",
                       min: 1,
                       max: 20,
                       step: 1 %>
@@ -336,7 +347,7 @@
                 <span>Máximo de sugestões</span>
                 <%= number_field_tag "layout_setting[interest_intelligence_settings][max_suggestions]",
                       interest_settings["max_suggestions"],
-                      class: "ax-input",
+                      class: "ax-control",
                       min: 1,
                       max: 20,
                       step: 1 %>
@@ -347,7 +358,7 @@
                 <span>Lead parado sem match (h)</span>
                 <%= number_field_tag "layout_setting[interest_intelligence_settings][idle_without_match_hours]",
                       interest_settings["idle_without_match_hours"],
-                      class: "ax-input",
+                      class: "ax-control",
                       min: 1,
                       max: 720,
                       step: 1 %>
@@ -368,7 +379,7 @@
                   <span><%= label %></span>
                   <%= number_field_tag "layout_setting[interest_intelligence_settings][#{key}]",
                         interest_settings[key.to_s],
-                        class: "ax-input",
+                        class: "ax-control",
                         min: 0,
                         max: 100,
                         step: 1 %>
@@ -428,23 +439,9 @@
                 <span class="ax-badge ax-badge--blue">tokens internos</span>
               <% end
             ) do %>
-          <fieldset class="layout-settings-theme-mode">
-            <legend>Modo de exibição</legend>
-            <div class="layout-settings-theme-mode__options">
-              <label>
-                <%= f.radio_button :admin_theme_mode, "light", checked: !@layout_setting.admin_dark_mode?, data: { action: "change->layout-theme-preview#updateMode" } %>
-                <span><i class="bi bi-sun"></i><strong>Claro</strong><small>Usa as cores personalizadas abaixo.</small></span>
-              </label>
-              <label>
-                <%= f.radio_button :admin_theme_mode, "dark", checked: @layout_setting.admin_dark_mode?, data: { action: "change->layout-theme-preview#updateMode" } %>
-                <span><i class="bi bi-moon-stars"></i><strong>Escuro</strong><small>Aplica uma paleta escura de alto contraste.</small></span>
-              </label>
-            </div>
-          </fieldset>
-
           <div class="layout-settings-light-palette-note">
             <i class="bi bi-sun"></i>
-            <span><strong>Paleta personalizada do modo claro</strong> As cores abaixo são preservadas quando o modo escuro está ativo.</span>
+            <span><strong>Identidade visual da conta</strong> O modo claro ou escuro é escolhido individualmente por cada usuário no menu pessoal.</span>
           </div>
 
           <div class="layout-settings-two-col">
@@ -501,7 +498,8 @@
           <div class="layout-settings-token-contract">
             <% admin_token_contract.each do |token_label, token_contract| %>
               <div class="layout-settings-token-contract__item">
-                <span class="layout-settings-token-contract__swatch" style="background:var(<%= token_contract[:theme_var] %>)"></span>
+                <span class="layout-settings-token-contract__swatch"
+                      data-theme-swatch="<%= token_contract[:theme_var].delete_prefix("--theme-") %>"></span>
                 <div class="layout-settings-token-contract__content">
                   <strong><%= token_label %></strong>
                   <small><%= token_contract[:description] %></small>
@@ -566,35 +564,35 @@
             ) do %>
           <div class="layout-settings-impact-list">
             <div class="layout-settings-impact is-platform">
-              <span style="background:#111827"></span>
+              <span class="layout-settings-impact__swatch layout-settings-impact__swatch--platform"></span>
               <div>
                 <strong>Plataforma</strong>
                 <small><code>Unitymob Plataforma</code> aparece apenas para operadores globais do sistema.</small>
               </div>
             </div>
             <div class="layout-settings-impact is-brand">
-              <span style="background:<%= public_primary %>"></span>
+              <span class="layout-settings-impact__swatch layout-settings-impact__swatch--public"></span>
               <div>
                 <strong>Conta / marca</strong>
                 <small><code>site_name</code> identifica o dono da conta: <%= account_brand_name %>.</small>
               </div>
             </div>
             <div class="layout-settings-impact is-internal">
-              <span style="background:<%= admin_primary %>"></span>
+              <span class="layout-settings-impact__swatch layout-settings-impact__swatch--admin"></span>
               <div>
                 <strong>Plataforma da conta</strong>
                 <small><code>admin_area_name</code> nomeia o ambiente operacional: <%= account_admin_area_name %>.</small>
               </div>
             </div>
             <div class="layout-settings-impact is-admin">
-              <span style="background:<%= admin_primary %>"></span>
+              <span class="layout-settings-impact__swatch layout-settings-impact__swatch--admin"></span>
               <div>
                 <strong>Tema da plataforma</strong>
                 <small><code>admin_primary_color</code> em <code>layouts/admin</code></small>
               </div>
             </div>
             <div class="layout-settings-impact">
-              <span style="background:<%= public_primary %>"></span>
+              <span class="layout-settings-impact__swatch layout-settings-impact__swatch--public"></span>
               <div>
                 <strong>Tema do site público</strong>
                 <small><code>primary_color</code>, <code>secondary_color</code> e <code>accent_color</code></small>
@@ -604,27 +602,27 @@
 
           <div class="layout-settings-token-board">
             <div>
-              <span class="layout-settings-token-board__swatch" style="background:var(--theme-surface)"></span>
+              <span class="layout-settings-token-board__swatch" data-theme-swatch="surface"></span>
               <code>surface.DEFAULT</code>
             </div>
             <div>
-              <span class="layout-settings-token-board__swatch" style="background:var(--theme-header)"></span>
+              <span class="layout-settings-token-board__swatch" data-theme-swatch="header"></span>
               <code>surface.header</code>
             </div>
             <div>
-              <span class="layout-settings-token-board__swatch" style="background:var(--theme-workspace)"></span>
+              <span class="layout-settings-token-board__swatch" data-theme-swatch="workspace"></span>
               <code>workspace.background</code>
             </div>
             <div>
-              <span class="layout-settings-token-board__swatch" style="background:var(--theme-sidebar)"></span>
+              <span class="layout-settings-token-board__swatch" data-theme-swatch="sidebar"></span>
               <code>sidebar.background</code>
             </div>
             <div>
-              <span class="layout-settings-token-board__swatch" style="background:var(--theme-primary)"></span>
+              <span class="layout-settings-token-board__swatch" data-theme-swatch="primary"></span>
               <code>primary</code>
             </div>
             <div>
-              <span class="layout-settings-token-board__swatch" style="background:var(--theme-ink)"></span>
+              <span class="layout-settings-token-board__swatch" data-theme-swatch="ink"></span>
               <code>ink</code>
             </div>
           </div>

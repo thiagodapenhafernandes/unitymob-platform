@@ -1,8 +1,10 @@
-<div class="container-fluid py-3 marketing-admin-dark">
-  <div class="tw-mb-3">
-    <h1 class="ax-page-title"><i class="bi bi-plus-circle tw-text-primary" style="margin-right:.5rem"></i>Nova campanha</h1>
-    <p class="ax-page-subtitle">Crie uma ação vinculada a uma página estratégica ou campanha livre.</p>
-  </div>
+<div class="marketing-admin-dark">
+  <%= ax_workspace_heading(
+        eyebrow: "Marketing · Campanhas",
+        icon: "plus-circle",
+        title: "Nova campanha",
+        subtitle: "Crie uma ação vinculada a uma página estratégica ou campanha livre."
+      ) %>
 
   <%= render "admin/marketing_campaigns/form", campaign: @campaign %>
 </div>

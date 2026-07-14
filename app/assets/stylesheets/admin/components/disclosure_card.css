@@ -1,0 +1,82 @@
+/* Collapsible details/summary card shared by dense admin forms. */
+.ax-disclosure-card {
+  border: 1px solid var(--ax-border-soft, #e7ebf2);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ax-disclosure-card__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.ax-disclosure-card__summary::-webkit-details-marker { display: none; }
+
+.ax-disclosure-card__summary:focus-visible {
+  border-radius: 7px;
+  outline: 2px solid var(--admin-primary-ring);
+  outline-offset: -2px;
+}
+
+.ax-disclosure-card__chevron {
+  color: #8a93a3;
+  transition: transform .18s ease;
+}
+
+.ax-disclosure-card[open] .ax-disclosure-card__chevron {
+  transform: rotate(180deg);
+}
+
+.ax-disclosure-card__body {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+  border-top: 1px solid var(--ax-border-soft, #e7ebf2);
+}
+
+.ax-disclosure-divider {
+  padding-top: 8px;
+  border-top: 1px dashed var(--ax-border-soft);
+}
+
+[data-admin-theme="dark"] .ax-disclosure-card {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface);
+  color: var(--ax-dark-text);
+}
+
+[data-admin-theme="dark"] .ax-disclosure-card:hover {
+  border-color: #4b6382;
+  background: #1d2c43;
+}
+
+[data-admin-theme="dark"] .ax-disclosure-card__summary {
+  color: var(--ax-dark-text-soft) !important;
+}
+
+[data-admin-theme="dark"] .ax-disclosure-card__body {
+  border-top-color: var(--ax-dark-border-soft) !important;
+  color: var(--ax-dark-text-muted);
+}
+
+[data-admin-theme="dark"] .ax-disclosure-divider {
+  border-color: var(--ax-dark-border-soft);
+}
+
+[data-admin-theme="dark"] .ax-disclosure-card__chevron { color: #91a0b5; }
+
+[data-admin-theme="dark"] .ax-disclosure-card__summary:focus-visible {
+  outline-color: color-mix(in srgb, var(--admin-primary) 72%, #fff);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-disclosure-card__chevron {
+    transition-duration: 0.01ms;
+  }
+}

@@ -140,14 +140,15 @@
     <% if @admin_users.any? %>
       <div class="ax-table-wrap">
         <table class="ax-table">
+          <caption class="tw-sr-only">Usuários globais disponíveis para impersonação auditada</caption>
           <thead>
             <tr>
-              <th>Usuário</th>
-              <th>Conta</th>
-              <th>Perfil de acesso</th>
-              <th>Função horizontal</th>
-              <th>Status</th>
-              <th class="ax-num" style="width:130px">Ação</th>
+              <th scope="col">Usuário</th>
+              <th scope="col">Conta</th>
+              <th scope="col">Perfil de acesso</th>
+              <th scope="col">Função horizontal</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="ax-num ax-table__col--w-130">Ação</th>
             </tr>
           </thead>
           <tbody>
@@ -183,9 +184,7 @@
         </table>
       </div>
 
-      <div class="ax-pagination">
-        <%= will_paginate @admin_users %>
-      </div>
+      <%= ax_pagination @admin_users, params: request.query_parameters %>
     <% else %>
       <%= ax_empty_state(title: "Nenhum usuário encontrado", description: "Ajuste a busca ou selecione outra conta.", icon: "people") %>
     <% end %>

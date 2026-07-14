@@ -31,20 +31,17 @@
 
         <%= ax_field_grid do %>
           <div class="ax-span-6">
-            <%= f.label :page_name, "Nome interno", class: "ax-label" %>
-            <%= f.text_field :page_name, class: "ax-control ax-control--sm" %>
+            <%= ax_text_field(form: f, method: :page_name, label: "Nome interno", class: "ax-control--sm") %>
           </div>
           <div class="ax-span-6">
-            <%= f.label :canonical_key, "Chave canônica", class: "ax-label" %>
-            <%= f.text_field :canonical_key, class: "ax-control ax-control--sm" %>
+            <%= ax_text_field(form: f, method: :canonical_key, label: "Chave canônica", class: "ax-control--sm") %>
           </div>
           <div class="ax-span-4">
-            <%= f.label :page_type, "Tipo", class: "ax-label" %>
-            <%= f.text_field :page_type, class: "ax-control ax-control--sm" %>
+            <%= ax_text_field(form: f, method: :page_type, label: "Tipo", class: "ax-control--sm") %>
           </div>
           <div class="ax-span-8">
-            <%= f.label :canonical_url, "Canonical URL", class: "ax-label" %>
-            <%= f.text_field :canonical_url, class: "ax-control ax-control--sm", data: { seo_field: "canonical" } %>
+            <%= ax_text_field(form: f, method: :canonical_url, label: "Canonical URL", class: "ax-control--sm",
+                  data: { seo_field: "canonical" }) %>
           </div>
         <% end %>
       <% end %>
@@ -54,38 +51,32 @@
 
         <%= ax_field_grid do %>
           <div class="ax-span-12">
-            <div class="seo-editor-field-head">
-              <%= f.label :meta_title, "Meta title", class: "ax-label" %>
-              <span class="seo-editor-counter"><span data-seo-count="title"><%= title_length %></span>/65</span>
-            </div>
-            <%= f.text_field :meta_title, class: "ax-control", data: { seo_field: "title" } %>
+            <%= ax_text_field(form: f, method: :meta_title, label: "Meta title", class_name: "seo-editor-field-head",
+                  label_meta: tag.span(safe_join([tag.span(title_length, data: { seo_count: "title" }), "/65"]), class: "seo-editor-counter"),
+                  data: { seo_field: "title" }) %>
           </div>
           <div class="ax-span-12">
-            <div class="seo-editor-field-head">
-              <%= f.label :meta_description, "Meta description", class: "ax-label" %>
-              <span class="seo-editor-counter"><span data-seo-count="description"><%= description_length %></span>/160</span>
-            </div>
-            <%= f.text_area :meta_description, rows: 3, class: "ax-control", data: { seo_field: "description" } %>
+            <%= ax_text_field(form: f, method: :meta_description, label: "Meta description", type: :textarea,
+                  class_name: "seo-editor-field-head",
+                  label_meta: tag.span(safe_join([tag.span(description_length, data: { seo_count: "description" }), "/160"]), class: "seo-editor-counter"),
+                  rows: 3, data: { seo_field: "description" }) %>
           </div>
           <div class="ax-span-12">
-            <%= f.label :meta_keywords, "Keywords e foco", class: "ax-label" %>
-            <%= f.text_area :meta_keywords, rows: 2, class: "ax-control", placeholder: "Separe por vírgulas. A primeira keyword será tratada como foco principal.", data: { seo_field: "keywords" } %>
+            <%= ax_text_field(form: f, method: :meta_keywords, label: "Keywords e foco", type: :textarea, rows: 2,
+                  placeholder: "Separe por vírgulas. A primeira keyword será tratada como foco principal.", data: { seo_field: "keywords" }) %>
           </div>
           <div class="ax-span-12">
-            <%= f.label :focus_keyword_list, "Keywords foco persistidas", class: "ax-label" %>
-            <%= f.text_field :focus_keyword_list,
-                value: seo_setting.focus_keyword_list.presence || seo_setting.meta_keywords,
-                class: "ax-control",
-                placeholder: "Até 5 termos, separados por vírgula",
-                data: { seo_field: "focusKeywords" } %>
+            <%= ax_text_field(form: f, method: :focus_keyword_list, label: "Keywords foco persistidas",
+                  value: seo_setting.focus_keyword_list.presence || seo_setting.meta_keywords,
+                  placeholder: "Até 5 termos, separados por vírgula", data: { seo_field: "focusKeywords" }) %>
             <div class="seo-editor-note">Essas keywords alimentam a análise, sugestões de links internos e futuras gerações com IA.</div>
           </div>
           <div class="ax-span-12">
-            <div class="seo-editor-field-head">
-              <%= f.label :intro_text, "Texto introdutório da página", class: "ax-label" %>
-              <span class="seo-editor-counter"><span data-seo-count="intro"><%= intro_word_count %></span> palavras</span>
-            </div>
-            <%= f.text_area :intro_text, rows: 5, class: "ax-control", placeholder: "Use 150 a 250 palavras para páginas de listagem estratégicas. Esse texto aparece acima dos imóveis/empreendimentos.", data: { seo_field: "intro", listing: listing_page } %>
+            <%= ax_text_field(form: f, method: :intro_text, label: "Texto introdutório da página", type: :textarea,
+                  class_name: "seo-editor-field-head",
+                  label_meta: tag.span(safe_join([tag.span(intro_word_count, data: { seo_count: "intro" }), " palavras"]), class: "seo-editor-counter"),
+                  rows: 5, placeholder: "Use 150 a 250 palavras para páginas de listagem estratégicas. Esse texto aparece acima dos imóveis/empreendimentos.",
+                  data: { seo_field: "intro", listing: listing_page }) %>
             <div class="seo-editor-note">Para listagens indexáveis, explique intenção da busca, diferenciais da região e caminhos para filtros relacionados.</div>
           </div>
         <% end %>
@@ -96,17 +87,15 @@
 
         <%= ax_field_grid do %>
           <div class="ax-span-6">
-            <%= f.label :og_title, "Open Graph title", class: "ax-label" %>
-            <%= f.text_field :og_title, class: "ax-control", data: { seo_field: "ogTitle" } %>
+            <%= ax_text_field(form: f, method: :og_title, label: "Open Graph title", data: { seo_field: "ogTitle" }) %>
           </div>
           <div class="ax-span-6">
-            <%= f.label :og_image_file, "Imagem OG", class: "ax-label" %>
-            <%= f.file_field :og_image_file, class: "ax-control" %>
+            <%= ax_file_field(form: f, method: :og_image_file, label: "Imagem OG", accept: "image/*") %>
             <div class="seo-editor-note">Fallback automático: primeira imagem do imóvel ou logo quadrada da Salute.</div>
           </div>
           <div class="ax-span-12">
-            <%= f.label :og_description, "Open Graph description", class: "ax-label" %>
-            <%= f.text_area :og_description, rows: 2, class: "ax-control", data: { seo_field: "ogDescription" } %>
+            <%= ax_text_field(form: f, method: :og_description, label: "Open Graph description", type: :textarea,
+                  rows: 2, data: { seo_field: "ogDescription" }) %>
           </div>
         <% end %>
       <% end %>
@@ -126,7 +115,7 @@
       <% if seo_setting.ai_insights.present? %>
         <%= ax_inline_notice(tone: :info, icon: "lightbulb") do %>
           <strong>Insights da IA:</strong>
-          <div class="tw-mt-2" style="white-space: pre-line;"><%= seo_setting.ai_insights %></div>
+          <div class="ax-inline-notice__content--multiline tw-mt-2"><%= seo_setting.ai_insights %></div>
         <% end %>
       <% end %>
 

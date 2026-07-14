@@ -1,4 +1,5 @@
-<section class="ax-operational-panel ax-dashboard-panel <%= local_assigns[:class_name] %>">
+<section class="ax-operational-panel ax-dashboard-panel <%= local_assigns[:class_name] %>"
+         <% if local_assigns[:title].present? || local_assigns[:eyebrow].present? %>aria-label="<%= title.presence || eyebrow %>"<% end %>>
   <% if local_assigns[:eyebrow].present? || local_assigns[:title].present? || local_assigns[:actions].present? %>
     <header class="ax-operational-panel__header ax-dashboard-panel__header">
       <div>

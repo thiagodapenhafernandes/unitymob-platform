@@ -34,11 +34,11 @@
 
       const banner = document.createElement("div");
       banner.id = bannerId;
-      banner.style.cssText = "position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:6000;display:flex;align-items:center;gap:10px;padding:11px 12px;background:#0f172a;color:#fff;border-radius:12px;box-shadow:0 12px 32px rgba(15,23,42,.28);font-size:13px;font-weight:700;";
+      banner.className = "ax-push-permission-banner";
       banner.innerHTML =
-        '<span style="flex:1;line-height:1.25;">Ative notificações para receber novos leads neste aparelho.</span>' +
-        '<button type="button" id="admin-push-enable" style="background:#22c55e;color:#052e16;border:0;border-radius:8px;padding:8px 11px;font-weight:900;">Ativar</button>' +
-        '<button type="button" id="admin-push-dismiss" aria-label="Dispensar" style="background:transparent;color:#cbd5e1;border:0;font-size:18px;line-height:1;padding:4px;">&times;</button>';
+        '<span class="ax-push-permission-banner__copy">Ative notificações para receber novos leads neste aparelho.</span>' +
+        '<button type="button" id="admin-push-enable" class="ax-push-permission-banner__enable">Ativar</button>' +
+        '<button type="button" id="admin-push-dismiss" class="ax-push-permission-banner__dismiss" aria-label="Dispensar">&times;</button>';
       document.body.appendChild(banner);
 
       document.getElementById("admin-push-enable").addEventListener("click", async function () {

@@ -5,7 +5,7 @@
       <div class="webhook-share-form">
         <div class="tw-w-56">
           <%= label_tag :lead_share_tracking_days, "Validade do cookie/link (dias)", class: "ax-label" %>
-          <%= number_field_tag :lead_share_tracking_days, lead_share_tracking_days, min: HabitationShareLink::MIN_EXPIRATION_DAYS, max: HabitationShareLink::MAX_EXPIRATION_DAYS, class: "ax-input" %>
+          <%= number_field_tag :lead_share_tracking_days, lead_share_tracking_days, min: HabitationShareLink::MIN_EXPIRATION_DAYS, max: HabitationShareLink::MAX_EXPIRATION_DAYS, class: "ax-control" %>
         </div>
         <p class="ax-page-subtitle tw-flex-1 tw-min-w-[220px]">Quando um visitante abre um link compartilhado por corretor, o site mantém a atribuição por este período.</p>
         <%= submit_tag "Salvar validade", class: "ax-btn ax-btn--primary" %>
@@ -22,9 +22,9 @@
           <tr>
             <th>Descrição</th>
             <th>URL do Webhook</th>
-            <th style="width:120px">Captura Leads?</th>
-            <th style="width:96px">Status</th>
-            <th class="ax-num" style="width:110px">Ações</th>
+            <th class="ax-table__col--w-120">Captura Leads?</th>
+            <th class="ax-table__col--sm">Status</th>
+            <th class="ax-num ax-table__col--md">Ações</th>
           </tr>
         </thead>
         <tbody>

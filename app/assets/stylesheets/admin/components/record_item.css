@@ -1,0 +1,112 @@
+/* Shared compact record row. Feature modules may extend its inner layout. */
+.ax-record-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--ax-border-soft, #e7ebf2);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ax-record-item__main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ax-record-item:focus-within {
+  border-color: var(--admin-primary, #365f8f);
+  box-shadow: 0 0 0 3px var(--admin-primary-soft, #eef2f7);
+}
+
+.ax-record-item__icon {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--admin-primary-soft, #eef2f7);
+  color: var(--admin-primary, #365f8f);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ax-record-item__copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ax-record-item__copy strong {
+  overflow: hidden;
+  color: #1f2733;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-record-item__copy span {
+  overflow: hidden;
+  color: #8a93a3;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ax-record-item__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.ax-record-item__body {
+  min-width: 0;
+  margin-top: 5px;
+}
+
+[data-admin-theme="dark"] .ax-record-item {
+  border-color: var(--ax-dark-border-soft) !important;
+  background: var(--ax-dark-surface) !important;
+  color: var(--ax-dark-text) !important;
+  box-shadow: none !important;
+}
+
+[data-admin-theme="dark"] .ax-record-item:focus-within {
+  border-color: #4b6382 !important;
+  background: #1d2c43 !important;
+  box-shadow: 0 0 0 3px rgb(86 126 175 / 18%) !important;
+}
+
+[data-admin-theme="dark"] :where(.ax-record-item__title, .ax-record-item__copy strong) {
+  color: var(--ax-dark-text) !important;
+}
+
+[data-admin-theme="dark"] :where(.ax-record-item__meta, .ax-record-item__copy span) {
+  color: #96a5ba !important;
+}
+
+[data-admin-theme="dark"] .ax-record-item__icon {
+  background: #24344d !important;
+  color: #91acc9 !important;
+}
+
+@media (max-width: 640px) {
+  .ax-record-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .ax-record-item__actions {
+    width: 100%;
+    padding-left: 42px;
+    flex-wrap: wrap;
+  }
+}

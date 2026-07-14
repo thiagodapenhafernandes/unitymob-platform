@@ -6,13 +6,10 @@ module Portal
   # Tags em PT-BR (referencia, transacao, finalidade, tipo, valor, etc.)
   # Lido 1x por dia pelo portal.
   class ChavesXmlSerializer
-    CONTACT_NAME  = "SALUTE IMOVEIS"
-    CONTACT_EMAIL = "contato@saluteimoveis.com.br"
-    CONTACT_PHONE = "(47) 3311-1067"
-
     def initialize(habitations:, integration:)
       @habitations = habitations
       @integration = integration
+      @identity = Tenants::PublicIdentity.new(integration.tenant)
     end
 
     def to_xml(target: nil)
@@ -99,9 +96,9 @@ module Portal
 
             # Contato
             xml.contato do
-              xml.nome     CONTACT_NAME
-              xml.email    CONTACT_EMAIL
-              xml.telefone CONTACT_PHONE
+              xml.nome     @identity.name
+              xml.email    @identity.email
+              xml.telefone @identity.phone
             end
           end
         end

@@ -1,13 +1,16 @@
-<header class="ax-page-head">
+<header class="<%= ["ax-page-head", class_name].compact.join(" ") %>">
   <div class="ax-page-head__text">
-    <h1 class="ax-page-title"><%= title %></h1>
+    <h1 class="ax-page-title">
+      <% if icon.present? %><i class="bi bi-<%= icon %>" aria-hidden="true"></i><% end %>
+      <%= title %>
+    </h1>
     <% if subtitle.present? %>
       <p class="ax-page-subtitle"><%= subtitle %></p>
     <% end %>
   </div>
 
   <% if actions.present? %>
-    <div class="ax-page-head__actions">
+    <div class="ax-page-head__actions" role="group" aria-label="Ações da página">
       <%= actions %>
     </div>
   <% end %>

@@ -80,18 +80,18 @@
             <%= form_with url: admin_access_security_path, method: :patch, local: true do %>
               <div class="tw-mb-3">
                 <%= ax_switch_field(name: :enforce_broker_ip_allowlist, value: "1", checked: @broker_ip_allowlist_enabled, label: "Corretores só podem logar por IP permitido", id: "enforce_broker_ip_allowlist") %>
-                <div class="access-security-help">Use para exigir rede da imobiliária, VPN ou faixas específicas para perfis não administrativos.</div>
+                <div class="ax-field__hint">Use para exigir rede da imobiliária, VPN ou faixas específicas para perfis não administrativos.</div>
               </div>
 
               <div class="tw-mb-4">
                 <%= ax_switch_field(name: :enforce_broker_trusted_devices, value: "1", checked: @broker_trusted_devices_enabled, label: "Corretores só podem logar em aparelhos aprovados", id: "enforce_broker_trusted_devices") %>
-                <div class="access-security-help">Ao tentar logar em aparelho novo, ele fica pendente para aprovação nesta tela.</div>
+                <div class="ax-field__hint">Ao tentar logar em aparelho novo, ele fica pendente para aprovação nesta tela.</div>
               </div>
 
               <% if current_tenant.respond_to?(:require_two_factor) %>
                 <div class="tw-mb-4">
                   <%= ax_switch_field(name: :require_two_factor, value: "1", checked: current_tenant.require_two_factor?, label: "Exigir verificação em duas etapas (Google Authenticator) de todos", id: "require_two_factor") %>
-                  <div class="access-security-help">Quem ainda não ativou é levado à tela de configuração no próximo acesso — ninguém fica trancado fora. Cada usuário ativa em <%= link_to "Verificação em duas etapas", admin_two_factor_settings_path %>.</div>
+                  <div class="ax-field__hint">Quem ainda não ativou é levado à tela de configuração no próximo acesso — ninguém fica trancado fora. Cada usuário ativa em <%= link_to "Verificação em duas etapas", admin_two_factor_settings_path %>.</div>
                 </div>
               <% end %>
 
@@ -107,7 +107,7 @@
                 <%= hidden_field_tag :section, "sessions" %>
                 <div class="tw-mb-3">
                   <%= ax_switch_field(name: :session_timeout_enabled, value: "1", checked: current_tenant.session_timeout_enabled?, label: "Expirar sessão por inatividade", id: "session_timeout_enabled") %>
-                  <div class="access-security-help">Quem ficar sem usar o sistema pelo período abaixo precisa entrar de novo — vale também para aparelhos com "lembrar deste dispositivo".</div>
+                  <div class="ax-field__hint">Quem ficar sem usar o sistema pelo período abaixo precisa entrar de novo — vale também para aparelhos com "lembrar deste dispositivo".</div>
                 </div>
 
                 <%= ax_field_grid do %>
@@ -118,7 +118,7 @@
                   <div class="ax-span-4">
                     <%= label_tag :session_remember_days, "Validade do lembrar deste dispositivo (dias)", class: "ax-label" %>
                     <%= number_field_tag :session_remember_days, current_tenant.session_remember_days, min: 1, max: 180, class: "ax-control", placeholder: "Padrão: #{(AdminUser.remember_for / 1.day).round} dias" %>
-                    <div class="access-security-help">Opcional — em branco usa o padrão do sistema.</div>
+                    <div class="ax-field__hint">Opcional — em branco usa o padrão do sistema.</div>
                   </div>
                 <% end %>
 
@@ -128,18 +128,19 @@
               <% end %>
 
               <div class="tw-mt-4">
-                <div class="access-security-help tw-mb-2">Precisa tirar todo mundo agora (troca de equipe, aparelho perdido, suspeita de acesso indevido)? Encerra as sessões e os "lembrar deste dispositivo" de todos os usuários da conta — a sua sessão atual é preservada.</div>
+                <div class="ax-field__hint tw-mb-2">Precisa tirar todo mundo agora (troca de equipe, aparelho perdido, suspeita de acesso indevido)? Encerra as sessões e os "lembrar deste dispositivo" de todos os usuários da conta — a sua sessão atual é preservada.</div>
                 <%= form_with url: admin_access_security_path, method: :patch, local: true, id: "end_all_sessions_form" do %>
                   <%= hidden_field_tag :end_all_sessions, "1" %>
                 <% end %>
-                <span data-controller="ax-confirm-submit"
-                      data-ax-confirm-submit-form-id-value="end_all_sessions_form"
-                      data-ax-confirm-submit-message-value="Encerrar as sessões de todos os usuários da conta agora?"
-                      data-ax-confirm-submit-confirm-label-value="Encerrar sessões">
+                <%= ax_confirm_submit(
+                      form_id: "end_all_sessions_form",
+                      message: "Encerrar as sessões de todos os usuários da conta agora?",
+                      confirm_label: "Encerrar sessões"
+                    ) do %>
                   <%= button_tag type: "button", class: "ax-btn ax-btn--danger", data: { action: "click->ax-confirm-submit#request" } do %>
                     <i class="bi bi-door-closed ax-ico"></i><span>Encerrar todas as sessões agora</span>
                   <% end %>
-                </span>
+                <% end %>
               </div>
             </div>
           <% end %>
@@ -190,31 +191,31 @@
 
       <%= ax_operational_panel(eyebrow: "Governança", title: "Regras cadastradas",
             actions: ax_badge("#{@rules.size} regra#{"s" if @rules.size != 1}", tone: :gray)) do %>
-        <div class="ax-panel-body access-security-filter-bar">
+        <div class="ax-panel-body ax-panel-body--muted">
           <%= form_with url: admin_access_security_path, method: :get, local: true do %>
             <%= ax_field_grid do %>
               <div class="ax-span-2">
-                <%= label_tag :rule_type, "Tipo", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :rule_type, "Tipo", class: "ax-label" %>
                 <%= select_tag :rule_type, options_for_select([["Todos", ""], *AccessControlRule::RULE_TYPES.map { |key, label| [label, key] }], params[:rule_type]), class: "ax-control ax-control--sm" %>
               </div>
               <div class="ax-span-2">
-                <%= label_tag :scope_type, "Aplicar para", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :scope_type, "Aplicar para", class: "ax-label" %>
                 <%= select_tag :scope_type, options_for_select([["Todos", ""], *@access_scope_types.map { |key, label| [label, key] }], params[:scope_type]), class: "ax-control ax-control--sm" %>
               </div>
               <div class="ax-span-2">
-                <%= label_tag :rule_enabled, "Status", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :rule_enabled, "Status", class: "ax-label" %>
                 <%= select_tag :rule_enabled, options_for_select([["Todos", ""], ["Ativa", "true"], ["Inativa", "false"]], params[:rule_enabled]), class: "ax-control ax-control--sm" %>
               </div>
               <div class="ax-span-2">
-                <%= label_tag :rule_profile_id, "Perfil", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :rule_profile_id, "Perfil", class: "ax-label" %>
                 <%= select_tag :rule_profile_id, options_from_collection_for_select(@profiles, :id, ->(profile) { profile_filter_label(profile) }, params[:rule_profile_id]), include_blank: "Todos", class: "ax-control ax-control--sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." } } %>
               </div>
               <div class="ax-span-2">
-                <%= label_tag :rule_admin_user_id, "Usuário", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :rule_admin_user_id, "Usuário", class: "ax-label" %>
                 <%= select_tag :rule_admin_user_id, options_from_collection_for_select(@admin_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:rule_admin_user_id]), include_blank: "Todos", class: "ax-control ax-control--sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." } } %>
               </div>
               <div class="ax-span-2">
-                <%= label_tag :rule_ip, "IP contém", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :rule_ip, "IP contém", class: "ax-label" %>
                 <%= text_field_tag :rule_ip, params[:rule_ip], class: "ax-control ax-control--sm", placeholder: "127.0.0.1" %>
               </div>
               <div class="ax-span-2 tw-grid">
@@ -263,7 +264,7 @@
                 </tr>
               <% end %>
               <% if @rules.empty? %>
-                <tr><td colspan="6" class="access-security-empty-cell">Nenhuma regra cadastrada.</td></tr>
+                <tr><td colspan="6" class="ax-table__empty">Nenhuma regra cadastrada.</td></tr>
               <% end %>
             </tbody>
           </table>
@@ -275,31 +276,31 @@
       <%= ax_operational_panel(eyebrow: "Confiança", title: "Aparelhos identificados",
             actions: ax_badge("#{@trusted_devices.size} aparelho#{"s" if @trusted_devices.size != 1}", tone: :gray),
             class_name: "access-security-devices-panel") do %>
-        <div class="ax-panel-body access-security-filter-bar" id="devices">
+        <div class="ax-panel-body ax-panel-body--muted" id="devices">
           <%= form_with url: admin_access_security_path, method: :get, local: true do %>
             <%= ax_field_grid do %>
               <div class="ax-span-2">
-                <%= label_tag :device_status, "Status", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :device_status, "Status", class: "ax-label" %>
                 <%= select_tag :device_status, options_for_select([["Todos", ""], *TrustedDevice::STATUSES.map { |key, label| [label, key] }], params[:device_status]), class: "ax-control ax-control--sm" %>
               </div>
               <div class="ax-span-2">
-                <%= label_tag :device_profile_id, "Perfil", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :device_profile_id, "Perfil", class: "ax-label" %>
                 <%= select_tag :device_profile_id, options_from_collection_for_select(@profiles, :id, ->(profile) { profile_filter_label(profile) }, params[:device_profile_id]), include_blank: "Todos", class: "ax-control ax-control--sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar perfil..." } } %>
               </div>
               <div class="ax-span-3">
-                <%= label_tag :device_admin_user_id, "Usuário", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :device_admin_user_id, "Usuário", class: "ax-label" %>
                 <%= select_tag :device_admin_user_id, options_from_collection_for_select(@admin_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:device_admin_user_id]), include_blank: "Todos", class: "ax-control ax-control--sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." } } %>
               </div>
               <div class="ax-span-2">
-                <%= label_tag :device_type, "Dispositivo", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :device_type, "Dispositivo", class: "ax-label" %>
                 <%= select_tag :device_type, options_for_select([["Todos", ""]] + @available_device_types.map { |value| [value, value] }, params[:device_type]), class: "ax-control ax-control--sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar dispositivo..." } } %>
               </div>
               <div class="ax-span-2">
-                <%= label_tag :device_browser, "Navegador", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :device_browser, "Navegador", class: "ax-label" %>
                 <%= select_tag :device_browser, options_for_select([["Todos", ""]] + @available_browsers.map { |value| [value, value] }, params[:device_browser]), class: "ax-control ax-control--sm", data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar navegador..." } } %>
               </div>
               <div class="ax-span-2">
-                <%= label_tag :device_ip, "IP", class: "ax-label access-security-filter-label" %>
+                <%= label_tag :device_ip, "IP", class: "ax-label" %>
                 <%= text_field_tag :device_ip, params[:device_ip], class: "ax-control ax-control--sm", placeholder: "127.0.0.1" %>
               </div>
               <div class="ax-span-2 tw-grid">
@@ -348,7 +349,7 @@
                 </tr>
               <% end %>
               <% if @trusted_devices.empty? %>
-                <tr><td colspan="6" class="access-security-empty-cell">Nenhum aparelho identificado ainda.</td></tr>
+                <tr><td colspan="6" class="ax-table__empty">Nenhum aparelho identificado ainda.</td></tr>
               <% end %>
             </tbody>
           </table>

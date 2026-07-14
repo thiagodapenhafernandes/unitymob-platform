@@ -18,6 +18,26 @@
   --golden-two: #E1C340;
 }
 
+.shared-property-selection { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; color: #172033; }
+.shared-property-selection header { margin-bottom: 20px; }
+.shared-property-selection header span { color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.shared-property-selection header h1 { margin: 4px 0 6px; }
+.shared-property-selection header p { margin: 0; color: #64748b; }
+.shared-property-selection__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.shared-property-card { overflow: hidden; border: 1px solid #dbe4f0; border-radius: 16px; background: #fff; box-shadow: 0 5px 18px rgb(15 23 42 / .08); }
+.shared-property-card img { width: 100%; height: 190px; object-fit: cover; }
+.shared-property-card > div { display: grid; gap: 8px; padding: 14px; }
+.shared-property-card small { color: #64748b; }
+.shared-property-card button, .shared-property-card__link { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: #365f8f; color: #fff; font-weight: 800; text-decoration: none; }
+.shared-property-card__link { background: #eef3f8; color: #365f8f; }
+.shared-property-selection__notice { margin-bottom: 16px; padding: 12px; border-radius: 10px; background: #ecfdf5; color: #166534; }
+.shared-property-selection dialog { width: min(92vw, 420px); border: 0; border-radius: 16px; box-shadow: 0 24px 70px rgb(15 23 42 / .35); }
+.shared-property-selection dialog::backdrop { background: rgb(15 23 42 / .62); }
+.shared-property-selection dialog form { display: grid; gap: 12px; }
+.shared-property-selection dialog h2, .shared-property-selection dialog p { margin: 0; }
+.shared-property-selection dialog label { display: grid; gap: 5px; font-weight: 700; }
+.shared-property-selection dialog input { min-height: 44px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 9px; }
+
 .interest-tracking-consent {
   position: fixed;
   right: 16px;

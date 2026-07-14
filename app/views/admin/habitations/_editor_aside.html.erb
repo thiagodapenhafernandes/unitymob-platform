@@ -66,9 +66,12 @@
       <span>Progresso</span>
       <strong data-habitation-form-progress-count><%= completed_tabs_count %>/<%= tab_nav_items.size %></strong>
     </div>
-    <div class="habitation-editor-progress__bar" aria-hidden="true">
-      <i style="width:<%= progress_percent %>%" data-habitation-form-progress-bar></i>
-    </div>
+    <%= ax_progress(
+          value: progress_percent,
+          class_name: "habitation-editor-progress__bar",
+          label: "Progresso do cadastro: #{progress_percent}%",
+          data: { habitation_form_progress_bar: true }
+        ) %>
   </div>
   <nav class="ax-form-tabs habitation-tabs-bar"
        aria-label="Seções do cadastro"

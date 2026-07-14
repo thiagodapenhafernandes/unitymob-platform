@@ -11,28 +11,29 @@
           <% all_actions = %w[view media manage review publish sync] %>
           <div class="prof-matrix-wrap">
             <table class="ax-table prof-matrix">
+              <caption class="tw-sr-only">Permissões por recurso, ação e escopo deste perfil</caption>
               <thead>
                 <tr>
-                  <th style="min-width:230px">Recurso</th>
+                  <th scope="col" class="prof-matrix__resource-col">Recurso</th>
                   <% all_actions.each do |action| %>
-                    <th class="ax-num" style="min-width:72px"><%= Profile::ACTION_LABELS[action] || action.humanize %></th>
+                    <th scope="col" class="ax-num prof-matrix__action-col"><%= Profile::ACTION_LABELS[action] || action.humanize %></th>
                   <% end %>
-                  <th style="min-width:170px">Escopo</th>
+                  <th scope="col" class="prof-matrix__scope-col">Escopo</th>
                 </tr>
               </thead>
               <tbody>
                 <% Profile::RESOURCES.each do |resource| %>
                   <% existing = (profile.permissions || {})[resource[:key]] || {} %>
                   <tr>
-                    <td>
+                    <th scope="row">
                       <div class="prof-res">
-                        <span class="prof-res__icon"><i class="bi <%= resource[:icon] %>"></i></span>
-                        <div class="prof-res__main">
-                          <strong><%= resource[:label] %></strong>
-                          <span><%= resource[:description] %></span>
-                        </div>
+                          <span class="prof-res__icon"><i class="bi <%= resource[:icon] %>" aria-hidden="true"></i></span>
+                          <div class="prof-res__main">
+                            <strong><%= resource[:label] %></strong>
+                            <span title="<%= resource[:description] %>"><%= resource[:description] %></span>
+                          </div>
                       </div>
-                    </td>
+                    </th>
 
                     <% all_actions.each do |action| %>
                       <td class="ax-num">
@@ -55,7 +56,9 @@
                       <% if resource[:scopeable] %>
                         <%= select_tag "profile[permissions][#{resource[:key]}][scope]",
                                        options_for_select([["Apenas os próprios", "own"], ["Equipe (subárvore)", "team"], ["Todos", "all"]], existing["scope"] || "own"),
-                                       class: "ax-control ax-control--sm" %>
+                                       class: "ax-control ax-control--sm",
+                                       data: { profile_axis_context_target: "scope" },
+                                       aria: { label: "Escopo de #{resource[:label]}" } %>
                       <% else %>
                         <%= ax_badge("Global", tone: :gray) %>
                       <% end %>
@@ -89,6 +92,7 @@
               <%= hidden_field_tag "profile[axis]", profile.axis %>
             <% end %>
             <p class="prof-hint">Somente Dono da Conta e Corretor são fixos. Os demais perfis podem mudar de eixo quando necessário.</p>
+            <p class="prof-hint">O escopo “Equipe (subárvore)” é exclusivo de perfis verticais, pois depende da hierarquia.</p>
           </div>
 
           <%
@@ -162,31 +166,3 @@
     <%= f.submit (profile.persisted? ? "Salvar alterações" : "Criar perfil"), class: "ax-btn ax-btn--primary" %>
   <% end %>
 <% end %>
-
-<style id="profiles-form-styles">
-  .prof-form { display: grid; gap: 8px; padding-top: 8px; }
-  .prof-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
-  @media (min-width: 1080px) { .prof-grid { grid-template-columns: minmax(0, 1fr) 320px; } }
-  .prof-main, .prof-side { display: grid; gap: 8px; min-width: 0; }
-  .prof-body { padding: 12px; display: grid; gap: 12px; }
-  .prof-hint { margin: 0; color: #8a93a3; font-size: 11.5px; line-height: 1.45; }
-  .prof-field { display: grid; gap: 5px; min-width: 0; }
-  .prof-field__label { color: #1f2733; font-size: 12px; font-weight: 700; }
-
-  .prof-matrix-wrap { overflow-x: auto; border: 1px solid var(--ax-border-soft, #e7ebf2); border-radius: 8px; }
-  .prof-matrix { margin: 0; }
-  .prof-matrix th, .prof-matrix td { vertical-align: middle; }
-  .prof-matrix .ax-control { min-height: 30px; padding: 3px 8px; font-size: 12px; }
-  .prof-dash { color: #c2c9d4; }
-  .prof-res { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .prof-res__icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: 0 0 auto; border-radius: 7px; background: #eef2f7; color: var(--admin-primary, #365f8f); }
-  .prof-res__main { display: grid; gap: 1px; min-width: 0; }
-  .prof-res__main strong { color: #1f2733; font-size: 12.5px; }
-  .prof-res__main span { color: #8a93a3; font-size: 10.5px; }
-
-  .prof-fullaccess { display: flex; gap: 10px; padding: 12px; border: 1px solid #f4d492; border-left-width: 3px; border-radius: 8px; background: #fffbeb; }
-  .prof-fullaccess__icon { color: #d97706; font-size: 16px; flex: 0 0 auto; margin-top: 2px; }
-  .prof-fullaccess__toggle { gap: 8px; }
-  .prof-fullaccess__toggle strong { color: #92400e; font-size: 13px; }
-  .prof-fullaccess p { margin: 4px 0 0; color: #a16207; font-size: 11.5px; line-height: 1.4; }
-</style>

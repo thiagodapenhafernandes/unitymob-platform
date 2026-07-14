@@ -1,0 +1,25 @@
+<%
+  hint_classes = ["ax-dismissible-hint", class_name].compact_blank.join(" ")
+  hint_id = "ax-dismissible-hint-#{key.to_s.parameterize}"
+%>
+
+<aside id="<%= hint_id %>"
+       class="<%= hint_classes %>"
+       role="note"
+       aria-label="Dica"
+       data-controller="dismissible"
+       data-dismissible-key-value="<%= key %>"
+       data-dismissible-storage-key-value="<%= "#{storage_scope}:#{key}" %>">
+  <div class="ax-dismissible-hint__body">
+    <i class="bi bi-<%= icon %> ax-dismissible-hint__icon" aria-hidden="true"></i>
+    <div class="ax-dismissible-hint__text"><%= sanitize(text, tags: %w[strong], attributes: []) %></div>
+    <button type="button"
+            class="ax-ico-btn ax-dismissible-hint__dismiss"
+            data-action="dismissible#dismiss"
+            title="Entendi"
+            aria-label="Fechar dica"
+            aria-controls="<%= hint_id %>">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+  </div>
+</aside>

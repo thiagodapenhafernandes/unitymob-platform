@@ -14,49 +14,15 @@
   <% end %>
 <% end %>
 
-<style>
-  .whatsapp-imports { display:grid; gap:14px; }
-  .whatsapp-imports__summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
-  .whatsapp-import-card { border:1px solid #d8dee8; border-radius:8px; background:#fff; padding:12px; box-shadow:0 6px 16px rgba(23,32,51,.04); }
-  .whatsapp-import-card span { display:block; color:#667085; font-size:10px; font-weight:850; text-transform:uppercase; }
-  .whatsapp-import-card strong { display:block; margin-top:4px; color:#172033; font-size:20px; line-height:1; }
-  .whatsapp-imports__filters { display:grid; grid-template-columns:1.1fr .8fr .8fr 1.2fr auto; gap:10px; align-items:end; padding:12px; border:1px solid #d8dee8; border-radius:8px; background:#fff; }
-  .whatsapp-imports__actions { display:flex; gap:8px; justify-content:flex-end; }
-  .whatsapp-imports .ax-table-wrap { border:1px solid #d8dee8; border-radius:8px; background:#fff; box-shadow:0 6px 16px rgba(23,32,51,.04); }
-  .whatsapp-imports__tags { display:flex; gap:4px; flex-wrap:wrap; max-width:260px; }
-  .whatsapp-imports__tag { border:1px solid #d8dee8; border-radius:999px; color:#475467; font-size:11px; font-weight:750; padding:2px 8px; }
-  .whatsapp-imports__muted { color:#667085; font-size:12px; }
-  @media (max-width: 1100px) {
-    .whatsapp-imports__summary,
-    .whatsapp-imports__filters { grid-template-columns:1fr; }
-    .whatsapp-imports__actions { justify-content:flex-start; flex-wrap:wrap; }
-  }
-</style>
-
-<div class="whatsapp-imports">
-  <% base_scope = WhatsappCampaignRecipient.all %>
-  <% spreadsheet_count = base_scope.where(source: "spreadsheet").count %>
-  <% selected_scope = @selected_sender_number ? base_scope.joins(:whatsapp_campaign).where(whatsapp_campaigns: { whatsapp_sender_number_id: @selected_sender_number.id }) : base_scope %>
-  <section class="whatsapp-imports__summary">
-    <article class="whatsapp-import-card">
-      <span>CSV no sistema</span>
-      <strong><%= number_with_delimiter(spreadsheet_count) %></strong>
-    </article>
-    <article class="whatsapp-import-card">
-      <span>No número selecionado</span>
-      <strong><%= number_with_delimiter(selected_scope.where(source: "spreadsheet").count) %></strong>
-    </article>
-    <article class="whatsapp-import-card">
-      <span>Convertidos em lead</span>
-      <strong><%= number_with_delimiter(selected_scope.where(conversion_status: "converted").count) %></strong>
-    </article>
-    <article class="whatsapp-import-card">
-      <span>Na lista atual</span>
-      <strong><%= number_with_delimiter(@recipients.total_entries) %></strong>
-    </article>
+<div class="ax-audience-workspace">
+  <section class="ax-metric-grid ax-audience-workspace__summary ax-audience-workspace__summary--4">
+    <%= ax_metric_card(label: "CSV no sistema", value: number_with_delimiter(@recipient_metrics[:spreadsheet])) %>
+    <%= ax_metric_card(label: "No número selecionado", value: number_with_delimiter(@recipient_metrics[:selected_spreadsheet])) %>
+    <%= ax_metric_card(label: "Convertidos em lead", value: number_with_delimiter(@recipient_metrics[:converted])) %>
+    <%= ax_metric_card(label: "Na lista atual", value: number_with_delimiter(@recipients.total_entries)) %>
   </section>
 
-  <%= form_with url: admin_whatsapp_campaign_recipients_path, method: :get, local: true, class: "whatsapp-imports__filters" do %>
+  <%= form_with url: admin_whatsapp_campaign_recipients_path, method: :get, local: true, class: "ax-card ax-audience-workspace__filters ax-audience-workspace__filters--5" do %>
     <div class="ax-field">
       <%= label_tag :whatsapp_sender_number_id, "Número de envio", class: "ax-label" %>
       <%= select_tag :whatsapp_sender_number_id,
@@ -79,7 +45,7 @@
       <%= label_tag :query, "Contato", class: "ax-label" %>
       <%= text_field_tag :query, @query, class: "ax-control", placeholder: "Nome, telefone ou e-mail" %>
     </div>
-    <div class="whatsapp-imports__actions">
+    <div class="ax-audience-workspace__actions">
       <%= link_to admin_whatsapp_campaign_recipients_path, class: "ax-btn" do %>
         <i class="bi bi-x ax-ico"></i><span>Limpar</span>
       <% end %>
@@ -91,16 +57,17 @@
 
   <div class="ax-table-wrap">
     <table class="ax-table">
+      <caption class="ax-table__caption--sr-only">Destinatários importados das campanhas WhatsApp</caption>
       <thead>
         <tr>
-          <th>Contato importado</th>
-          <th>Campanha</th>
-          <th>Origem</th>
-          <th>Status importado</th>
-          <th>Responsável</th>
-          <th>Tags</th>
-          <th>Situação</th>
-          <th>Importado em</th>
+          <th scope="col">Contato importado</th>
+          <th scope="col">Campanha</th>
+          <th scope="col">Origem</th>
+          <th scope="col">Status importado</th>
+          <th scope="col">Responsável</th>
+          <th scope="col">Tags</th>
+          <th scope="col">Situação</th>
+          <th scope="col">Importado em</th>
         </tr>
       </thead>
       <tbody>
@@ -126,12 +93,12 @@
             <td>
               <% tags = recipient.tag_list %>
               <% if tags.any? %>
-                <div class="whatsapp-imports__tags">
+                <div class="ax-audience-workspace__tags">
                   <% tags.first(4).each do |tag| %>
-                    <span class="whatsapp-imports__tag"><%= tag %></span>
+                    <span class="ax-audience-workspace__tag"><%= tag %></span>
                   <% end %>
                   <% if tags.size > 4 %>
-                    <span class="whatsapp-imports__muted">+<%= tags.size - 4 %></span>
+                    <span class="ax-audience-workspace__muted">+<%= tags.size - 4 %></span>
                   <% end %>
                 </div>
               <% else %>
@@ -159,7 +126,7 @@
           </tr>
         <% end %>
         <% if @recipients.empty? %>
-          <tr><td colspan="8" class="ax-table__empty">Nenhum destinatário importado encontrado para os filtros atuais.</td></tr>
+          <tr><td colspan="8" class="ax-table__empty"><%= ax_empty_state(title: "Nenhum destinatário importado", description: "Ajuste os filtros ou importe uma planilha em uma campanha.", icon: "file-earmark-spreadsheet", compact: true) %></td></tr>
         <% end %>
       </tbody>
     </table>

@@ -21,7 +21,7 @@ RSpec.describe "Admin::AutomationRules", type: :request do
       expect(response.body).to include("Automação")
       expect(response.body).to include("Resgate de lead frio")
       expect(response.body).to include("QUANDO")
-      expect(response.body).to include("INTERVENÇÃO")
+      expect(response.body).to include("INTERVENÇÃO", "ax-dismissible-hint", 'data-dismissible-key-value="automacao"')
     end
   end
 
@@ -30,6 +30,24 @@ RSpec.describe "Admin::AutomationRules", type: :request do
       get new_admin_automation_rule_path
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("Nome da intervenção")
+    end
+  end
+
+  describe "GET edit" do
+    it "renderiza o formulário da regra com o contrato do builder" do
+      rule = AutomationRule.create!(
+        name: "Acompanhamento editável",
+        trigger_event: "lead_idle",
+        conditions: { "idle_hours" => 48 },
+        actions: [{ "type" => "add_note", "body" => "Retomar contato" }]
+      )
+
+      get edit_admin_automation_rule_path(rule)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Editar intervenção de automação", "Identificação e gatilho", "Intervenções")
+      expect(response.body).to include('data-controller="automation-builder"', 'data-automation-builder-target="rows"', 'data-automation-builder-target="template"')
+      expect(response.body).to include("Acompanhamento editável", "Retomar contato")
     end
   end
 

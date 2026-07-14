@@ -168,15 +168,18 @@
                     <i class="bi bi-chevron-down ax-disclosure-card__chevron"></i>
                   </summary>
                   <div class="ax-disclosure-card__body">
-                    <div class="ax-code-snippet">
-                      <div class="ax-code-snippet__title">POST JSON</div>
-                      <pre><code>{
-  "name": "Nome do Lead",
-  "email": "lead@email.com",
-  "phone": "47999999999",
-  "keywords": ["<%= distribution_rule.webhook_tags&.first || 'tag-exemplo' %>"]
-}</code></pre>
-                    </div>
+                    <%= ax_code_snippet(
+                          title: "POST JSON",
+                          label: "Exemplo de payload do webhook",
+                          code: JSON.pretty_generate(
+                            {
+                              name: "Nome do Lead",
+                              email: "lead@email.com",
+                              phone: "47999999999",
+                              keywords: [distribution_rule.webhook_tags&.first || "tag-exemplo"]
+                            }
+                          )
+                        ) %>
                   </div>
                 </details>
               </div>
@@ -278,7 +281,7 @@
                 indisponível, o toggle some (o valor atual da regra é preservado no save,
                 pois o param ausente não altera o atributo). %>
             <% if channel_states[:whatsapp][:configured] %>
-              <%= ax_toggle_chip(f, :notify_whatsapp, label: raw("<i class='bi bi-whatsapp' style='color:#1da851'></i> WhatsApp"),
+              <%= ax_toggle_chip(f, :notify_whatsapp, label: raw("<i class='bi bi-whatsapp tw-text-green-600'></i> WhatsApp"),
                     input_data: notify_channel_guard_data(:whatsapp, channel_states[:whatsapp])) %>
             <% end %>
             <%= ax_toggle_chip(f, :notify_email, label: raw("<i class='bi bi-envelope'></i> E-mail ao corretor"),
@@ -298,7 +301,7 @@
                       options_for_select(distribution_rule.notify_webhook_url_list, distribution_rule.notify_webhook_url_list), {},
                       { multiple: true, class: "ax-control", data: { controller: "tom-select", tom_select_create_value: "true", distribution_rule_target: "notifyWebhookSelect" } } %>
                 <p class="ax-field__hint">Cada lead distribuído por esta regra é enviado (POST JSON completo — lead, histórico, corretor e gestor) para todas estas URLs, além de cair na fila do corretor. Digite a URL e tecle Enter para adicionar.</p>
-                <p class="tw-hidden" data-distribution-rule-target="notifyWebhookError" style="color:#b42318;font-size:12px;font-weight:650;margin-top:6px;">
+                <p class="ax-field__error tw-hidden" data-distribution-rule-target="notifyWebhookError">
                   <i class="bi bi-exclamation-triangle"></i> Adicione ao menos uma URL de disparo ou desative o Webhook externo.
                 </p>
               </div>

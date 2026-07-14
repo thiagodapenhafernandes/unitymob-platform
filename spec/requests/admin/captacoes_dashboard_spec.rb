@@ -12,10 +12,15 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
   end
 
   it "calcula metas e indicadores de captação a partir dos imóveis" do
-    create(:habitation, admin_user: admin, valor_venda_cents: 900_000_00, valor_locacao_cents: 0, regiao_foco: "Centro")
-    create(:habitation, admin_user: admin, valor_venda_cents: 700_000_00, valor_locacao_cents: 0, regiao_foco: "Não")
-    create(:habitation, admin_user: admin, valor_venda_cents: 0, valor_locacao_cents: 4_000_00, regiao_foco: "Sim", salute_rental_management_flag: true)
-    create(:habitation, admin_user: admin, valor_venda_cents: 0, valor_locacao_cents: 3_000_00, regiao_foco: "Não", salute_rental_management_flag: false)
+    tenant = Tenant.create!(name: "Tenant dashboard #{SecureRandom.hex(4)}", slug: "tenant-dashboard-#{SecureRandom.hex(4)}")
+    dashboard_admin = create(:admin_user, tenant:, profile: tenant.profiles.find_by!(key: "tenant_owner"), role: :editor)
+    sign_out admin
+    sign_in dashboard_admin
+
+    create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 900_000_00, valor_locacao_cents: 0, regiao_foco: "Centro")
+    create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 700_000_00, valor_locacao_cents: 0, regiao_foco: "Não")
+    create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 0, valor_locacao_cents: 4_000_00, regiao_foco: "Sim", salute_rental_management_flag: true)
+    create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 0, valor_locacao_cents: 3_000_00, regiao_foco: "Não", salute_rental_management_flag: false)
 
     get dashboard_admin_captacoes_path
 
@@ -31,6 +36,9 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     expect(response.body).to include("de 2 captações de venda")
     expect(response.body).to include("de 2 captações de locação")
     expect(response.body).to include("50%")
+    ranking_progress = Nokogiri::HTML(response.body).css(".capt-ranking-row__progress progress.ax-progress__bar")
+    expect(ranking_progress).not_to be_empty
+    expect(ranking_progress).to all(satisfy { |bar| bar["style"].nil? && bar["max"] == "100" })
   end
 
   it "permite ao administrador editar o título do dashboard" do

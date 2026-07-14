@@ -2,20 +2,21 @@
 <div class="public-site-workspace">
 <%= ax_workspace_heading(eyebrow: "Site público · Home", icon: "layout-text-sidebar", title: "Seções da Home", subtitle: "Ordene, publique e configure os blocos exibidos na página inicial.", metrics: [{ value: @home_sections.size, label: "seções" }], actions: ax_button("Nova seção", new_admin_home_section_path, variant: :primary, size: :sm, icon: "plus-lg")) %>
 
+<%= ax_operational_panel(eyebrow: "Composição", title: "Blocos da página inicial") do %>
 <div class="ax-table-wrap">
   <table class="ax-table">
     <thead>
       <tr>
-        <th style="width:80px">Ordem</th>
-        <th style="width:220px">Tipo</th>
+        <th class="ax-table__col--w-80">Ordem</th>
+        <th class="ax-table__col--w-220">Tipo</th>
         <th>Título</th>
-        <th style="width:120px">Status</th>
-        <th class="ax-num" style="width:110px">Ações</th>
+        <th class="ax-table__col--w-120">Status</th>
+        <th class="ax-num ax-table__col--md">Ações</th>
       </tr>
     </thead>
     <tbody id="sortable-sections" data-controller="home-sections-sort" data-home-sections-sort-url-value="<%= update_order_admin_home_sections_path %>">
       <% @home_sections.each do |section| %>
-        <tr data-id="<%= section.id %>" style="cursor:move;">
+        <tr data-id="<%= section.id %>" class="ax-table__row--sortable">
           <td>
             <i class="bi bi-grip-vertical tw-text-ink-faint"></i>
             <span class="ax-badge ax-badge--gray tw-ml-1"><%= section.order_position || '-' %></span>
@@ -33,8 +34,8 @@
             <% if section.subtitle.present? %><div class="tw-text-2xs tw-text-ink-faint"><%= truncate(section.subtitle, length: 60) %></div><% end %>
           </td>
           <td>
-            <%= button_to toggle_active_admin_home_section_path(section), method: :patch, form_class: "tw-inline",
-                  class: "ax-badge #{section.active ? 'ax-badge--green' : 'ax-badge--gray'} tw-border-0 tw-cursor-pointer", form: { style: 'display:inline-block;' } do %>
+            <%= button_to toggle_active_admin_home_section_path(section), method: :patch, form_class: "tw-inline-block",
+                  class: "ax-badge #{section.active ? 'ax-badge--green' : 'ax-badge--gray'} tw-border-0 tw-cursor-pointer" do %>
               <i class="bi bi-toggle-<%= section.active ? 'on' : 'off' %>"></i> <%= section.active ? 'Ativo' : 'Inativo' %>
             <% end %>
           </td>
@@ -49,11 +50,10 @@
       <% end %>
 
       <% if @home_sections.empty? %>
-        <tr><td colspan="5"><div class="ax-empty">
-          <i class="bi bi-inbox tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>Nenhuma seção cadastrada.
-        </div></td></tr>
+        <tr><td colspan="5"><%= ax_empty_state(title: "Nenhuma seção cadastrada", description: "Adicione o primeiro bloco para compor a página inicial.", icon: "layout-text-sidebar", action: ax_button("Nova seção", new_admin_home_section_path, variant: :primary, size: :sm), compact: true) %></td></tr>
       <% end %>
     </tbody>
   </table>
 </div>
+<% end %>
 </div>

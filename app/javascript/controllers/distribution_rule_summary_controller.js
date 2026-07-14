@@ -78,7 +78,7 @@ export default class extends Controller {
         ["hourglass-split", this.checked("pocket_active") ? "Pocket" : "Sem tempo limite", this.checked("pocket_active")]
       ]
       this.chipsTarget.innerHTML = chips.map(([icon, text, on]) =>
-        `<span class="ax-badge ${on ? "ax-badge--green" : "ax-badge--gray"} distribution-rule-summary-chip${on ? "" : " is-off"}"><i class="bi bi-${icon}"></i> ${text}</span>`
+        `<span class="ax-badge ${on ? "ax-badge--green" : "ax-badge--gray"} distribution-rule-summary-chip${on ? "" : " is-off"}"><i class="bi bi-${icon}" aria-hidden="true"></i> ${text}</span>`
       ).join("")
     }
   }

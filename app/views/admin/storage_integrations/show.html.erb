@@ -246,9 +246,11 @@
               </div>
               <strong class="tw-text-sm tw-text-ink" data-storage-public-photo-publish-target="percent"><%= number_to_percentage(public_photo_publish_progress[:percent].to_f, precision: 1) %></strong>
             </div>
-            <div class="ax-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<%= public_photo_publish_progress[:percent].to_f %>">
-              <i data-storage-public-photo-publish-target="bar" style="width:<%= public_photo_publish_progress[:percent].to_f %>%"></i>
-            </div>
+            <%= ax_progress(
+              value: public_photo_publish_progress[:percent],
+              label: "Progresso da publicação de fotos",
+              data: { storage_public_photo_publish_target: "bar" }
+            ) %>
             <div class="storage-integration-progress-meta">
               <span><strong data-storage-public-photo-publish-target="processed"><%= number_with_delimiter(public_photo_publish_progress[:processed].to_i) %></strong> analisadas</span>
               <span><strong data-storage-public-photo-publish-target="total"><%= number_with_delimiter(public_photo_publish_progress[:total].to_i) %></strong> total</span>

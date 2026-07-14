@@ -17,7 +17,7 @@
           <h2 class="text-2xl font-bold text-blue-three">Aceitação dos Termos</h2>
         </div>
         <div class="prose prose-lg text-gray-600 max-w-none pl-11">
-          <p class="mb-4">Bem-vindo ao website da <strong>Salute Imóveis</strong>. Ao acessar e utilizar este site, você concorda em cumprir e estar vinculado aos seguintes Termos de Uso.</p>
+          <p class="mb-4">Bem-vindo ao website da <strong><%= @public_identity.name %></strong>. Ao acessar e utilizar este site, você concorda em cumprir e estar vinculado aos seguintes Termos de Uso.</p>
           <p class="mb-4">Se você não concorda com estes termos, pedimos que não utilize nosso website.</p>
           <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg">
             <div class="flex gap-3">
@@ -34,16 +34,16 @@
       <section class="mb-10 border-b border-gray-100 pb-8 last:border-0">
         <div class="flex items-center gap-3 mb-4">
           <span class="bg-blue-three/10 text-blue-three w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">2</span>
-          <h2 class="text-2xl font-bold text-blue-three">Sobre a Salute Imóveis</h2>
+          <h2 class="text-2xl font-bold text-blue-three">Sobre a <%= @public_identity.name %></h2>
         </div>
         <div class="pl-11 text-gray-600">
-          <p class="mb-4">A <strong>Salute Locação de Imóveis Ltda - ME</strong> é uma empresa especializada em corretagem no aluguel de imóveis e intermediação imobiliária, inscrita no:</p>
+          <p class="mb-4">A <strong><%= @public_site_profile.legal_name.presence || @public_identity.name %></strong> atua na intermediação imobiliária e está identificada pelos dados abaixo:</p>
           <ul class="space-y-2 bg-gray-50 p-6 rounded-xl border border-gray-100">
-            <li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">Razão Social:</strong> Salute Locação de Imóveis Ltda - ME</li>
-            <li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">CNPJ:</strong> 63.057.499/0001-93</li>
-            <li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">CRECI:</strong> 6834</li>
-            <li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">Endereço:</strong> Av. Atlântica, 3750 - Sala E, Balneário Camboriú - SC</li>
-            <li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">Telefone:</strong> (47) 3311-1067</li>
+            <li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">Razão Social:</strong> <%= @public_site_profile.legal_name.presence || @public_identity.name %></li>
+            <% if @public_site_profile.legal_document.present? %><li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">Documento:</strong> <%= @public_site_profile.legal_document %></li><% end %>
+            <% if @public_site_profile.creci.present? %><li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">CRECI:</strong> <%= @public_site_profile.creci %></li><% end %>
+            <li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">Endereço:</strong> <%= @public_site_profile.legal_address.presence || @public_identity.address %></li>
+            <li class="flex gap-2"><strong class="text-blue-three min-w-[100px]">Telefone:</strong> <%= Phones::Normalizer.display(@public_identity.phone) %></li>
           </ul>
         </div>
       </section>
@@ -136,7 +136,7 @@
           <h2 class="text-2xl font-bold text-blue-three">Isenção e Limitação</h2>
         </div>
         <div class="pl-11 text-gray-600">
-          <p class="mb-4">Este website é fornecido "como está", sem garantias de qualquer tipo. A Salute Imóveis não será responsável por:</p>
+          <p class="mb-4">Este website é fornecido "como está", sem garantias de qualquer tipo. A <%= @public_identity.name %> não será responsável por:</p>
           <ul class="list-disc list-inside space-y-1 ml-2 mb-4">
             <li>Danos diretos, indiretos ou consequenciais</li>
             <li>Perda de lucros ou dados</li>
@@ -154,20 +154,20 @@
         <div class="pl-11">
           <div class="bg-gray-900 text-white p-6 rounded-xl shadow-lg">
             <h3 class="text-xl font-bold text-golden-one mb-4 flex items-center gap-2">
-              <i class="bi bi-building"></i> Salute Imóveis
+              <i class="bi bi-building"></i> <%= @public_identity.name %>
             </h3>
             <div class="space-y-3 text-gray-300">
               <p class="flex items-start gap-3">
                 <i class="bi bi-geo-alt mt-1 text-golden-one"></i>
-                <span>Av. Atlântica, 3750 - Sala E, Balneário Camboriú - SC<br>CEP 88330-024</span>
+                <span><%= @public_site_profile.legal_address.presence || @public_identity.address %></span>
               </p>
               <p class="flex items-center gap-3">
                 <i class="bi bi-envelope text-golden-one"></i>
-                <a href="mailto:contato@saluteimoveis.com" class="hover:text-white transition-colors">contato@saluteimoveis.com</a>
+                <a href="mailto:<%= @public_identity.email %>" class="hover:text-white transition-colors"><%= @public_identity.email %></a>
               </p>
               <p class="flex items-center gap-3">
                 <i class="bi bi-telephone text-golden-one"></i>
-                <span>(47) 3311-1067</span>
+                <span><%= Phones::Normalizer.display(@public_identity.phone) %></span>
               </p>
             </div>
           </div>

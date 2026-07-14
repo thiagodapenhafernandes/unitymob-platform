@@ -1,8 +1,11 @@
 <div class="admin-content">
-  <div class="tw-flex tw-justify-between tw-items-center tw-mb-4">
-    <h1 class="ax-page-title"><%= @home_section_item.persisted? ? "Editar Item" : "Novo Item" %></h1>
+  <% page_actions = capture do %>
     <%= link_to "← Voltar", admin_home_section_path(@home_section), class: "ax-btn ax-btn--ghost" %>
-  </div>
+  <% end %>
+  <%= ax_page_header(
+        title: @home_section_item.persisted? ? "Editar Item" : "Novo Item",
+        actions: page_actions
+      ) %>
 
   <%= form_with(model: [:admin, @home_section, @home_section_item], local: true, class: "admin-form") do |f| %>
     <%= ax_error_summary(@home_section_item) %>
@@ -30,7 +33,7 @@
             <%= f.file_field :icon, class: "ax-control", accept: "image/*" %>
             <% if @home_section_item.icon.attached? %>
               <div class="tw-mt-2">
-                <%= image_tag @home_section_item.icon, style: "max-height: 80px;" %>
+                <%= ax_media_preview(label: "Ícone atual", image: @home_section_item.icon, variant: :thumbnail) %>
               </div>
             <% end %>
           </div>

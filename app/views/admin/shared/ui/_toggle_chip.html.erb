@@ -6,7 +6,7 @@
                   else
                     local_assigns[:checked]
                   end
-  chip_classes = ["ax-toggle-chip", local_assigns[:class_name], ("is-checked" if checked_state)].compact
+  chip_classes = ["ax-toggle-chip", local_assigns[:class_name], ("is-checked" if checked_state), ("is-disabled" if disabled)].compact
   input_data = local_assigns[:input_data].present? ? local_assigns[:input_data].dup : {}
   existing_action = input_data.delete(:action) || input_data.delete("action")
   input_data[:action] = ["change->ax-checkbox-chips#sync", existing_action].compact.join(" ")
@@ -15,13 +15,17 @@
     disabled: disabled,
     data: input_data
   }
+  input_options[:include_hidden] = include_hidden if builder_mode
   input_options[:id] = local_assigns[:id] if local_assigns[:id].present?
 %>
-<label class="<%= chip_classes.join(" ") %>" data-controller="ax-checkbox-chips">
+<label class="<%= chip_classes.join(" ") %>"
+       data-controller="ax-checkbox-chips"
+       data-checked="<%= checked_state %>"
+       aria-disabled="<%= disabled %>">
   <% if builder_mode %>
     <%= form.check_box method, input_options, checked_value, unchecked_value %>
   <% else %>
-    <%= hidden_field_tag local_assigns[:name], unchecked_value, id: nil if local_assigns[:name].present? %>
+    <%= hidden_field_tag local_assigns[:name], unchecked_value, id: nil if local_assigns[:name].present? && include_hidden %>
     <%= check_box_tag local_assigns[:name], checked_value, checked_state, input_options %>
   <% end %>
   <span class="ax-toggle-chip__box" aria-hidden="true">

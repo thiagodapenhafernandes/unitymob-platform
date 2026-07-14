@@ -50,8 +50,8 @@ RSpec.describe "Admin profile permissions", type: :request do
     manager = create(:admin_user, profile: manager_profile, acting_type: :sales)
     team_broker = create(:admin_user, manager: manager, acting_type: :sales)
     outside_broker = create(:admin_user, acting_type: :sales)
-    team_intake = create(:habitation, :broker_intake, admin_user: team_broker, intake_status: "submitted_for_admin_review")
-    outside_intake = create(:habitation, :broker_intake, admin_user: outside_broker, intake_status: "submitted_for_admin_review")
+    team_intake = create(:habitation, :broker_intake, codigo: "CAP-EDIT-TEAM-#{SecureRandom.hex(5)}", admin_user: team_broker, intake_status: "submitted_for_admin_review")
+    outside_intake = create(:habitation, :broker_intake, codigo: "CAP-EDIT-OUT-#{SecureRandom.hex(5)}", admin_user: outside_broker, intake_status: "submitted_for_admin_review")
 
     sign_in manager
 
@@ -60,6 +60,114 @@ RSpec.describe "Admin profile permissions", type: :request do
 
     get edit_admin_habitation_path(outside_intake)
     expect(response).to redirect_to(admin_habitations_path)
+  end
+
+  it "aplica manage, review e scope team a qualquer perfil vertical com hierarquia" do
+    manager_profile = Profile.create!(
+      tenant: Tenant.default,
+      name: "Coordenação vertical #{SecureRandom.hex(6)}",
+      axis: Profile::AXES[:vertical],
+      position: 760,
+      permissions: {
+        "imoveis" => { "view" => true, "media" => true, "manage" => true, "scope" => "team" },
+        "captacoes" => { "view" => true, "manage" => true, "review" => true, "scope" => "team" }
+      }
+    )
+    manager = create(:admin_user, profile: manager_profile, acting_type: :sales)
+    team_broker = create(:admin_user, manager: manager, acting_type: :sales)
+    outside_broker = create(:admin_user, acting_type: :sales)
+    team_intake = create(
+      :habitation,
+      :broker_intake,
+      codigo: "CAP-TEAM-#{SecureRandom.hex(5)}",
+      titulo_anuncio: "Captação da equipe #{SecureRandom.hex(4)}",
+      admin_user: team_broker,
+      intake_status: "submitted_for_admin_review",
+      proprietario: "Proprietário da equipe"
+    )
+    outside_intake = create(
+      :habitation,
+      :broker_intake,
+      codigo: "CAP-OUT-#{SecureRandom.hex(5)}",
+      titulo_anuncio: "Captação externa #{SecureRandom.hex(4)}",
+      admin_user: outside_broker,
+      intake_status: "submitted_for_admin_review",
+      proprietario: "Proprietário externo"
+    )
+
+    sign_in manager
+
+    get admin_captacoes_path
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(team_intake.intake_display_title)
+    expect(response.body).not_to include(outside_intake.intake_display_title)
+
+    get admin_habitations_path(team: "0")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Pendente de revisão")
+    expect(response.body).not_to include("+ equipe")
+
+    get admin_habitations_path(intake_review: "pending", ownership: "all", team: "0")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(team_intake.titulo_anuncio)
+    expect(response.body).not_to include(outside_intake.titulo_anuncio)
+
+    get admin_captacao_path(team_intake)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Revisão administrativa")
+    authenticity_token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')["content"]
+
+    get admin_captacao_path(outside_intake)
+    expect(response).to redirect_to(admin_captacoes_path)
+
+    post return_to_broker_admin_captacao_path(team_intake), params: {
+      authenticity_token: authenticity_token,
+      admin_review_return_reason: "Ajustar documentação",
+      admin_review_notes: "Revisão do gerente"
+    }
+    expect(response).to redirect_to(admin_captacao_path(team_intake))
+    expect(team_intake.reload.intake_status).to eq("returned_to_broker")
+
+    post return_to_broker_admin_captacao_path(outside_intake), params: {
+      authenticity_token: authenticity_token,
+      admin_review_return_reason: "Tentativa fora da equipe",
+      admin_review_notes: "Não deve revisar"
+    }
+    expect(response).to redirect_to(admin_captacoes_path)
+    expect(outside_intake.reload.intake_status).to eq("submitted_for_admin_review")
+
+    get modal_admin_habitation_media_path(team_intake), headers: { "X-Requested-With" => "XMLHttpRequest" }
+    expect(response).to have_http_status(:ok)
+
+    get modal_admin_habitation_media_path(outside_intake), headers: { "X-Requested-With" => "XMLHttpRequest" }
+    expect(response).to redirect_to(admin_habitations_path)
+
+    get edit_admin_habitation_path(team_intake)
+    authenticity_token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')["content"]
+    delete admin_habitation_path(team_intake), params: { authenticity_token: authenticity_token }
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(team_intake.reload).to be_persisted
+
+    manager_profile.update!(permissions: manager_profile.permissions.deep_merge(
+      "imoveis" => { "manage" => false },
+      "captacoes" => { "review" => false }
+    ))
+
+    get edit_admin_habitation_path(team_intake)
+    expect(response).to redirect_to(admin_habitations_path)
+
+    team_intake.update!(intake_status: "submitted_for_admin_review")
+    get admin_habitations_path(intake_review: "pending")
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include(team_intake.titulo_anuncio)
+
+    post return_to_broker_admin_captacao_path(team_intake), params: {
+      authenticity_token: authenticity_token,
+      admin_review_return_reason: "Tentativa sem permissão",
+      admin_review_notes: "Não deve revisar"
+    }
+    expect(response).to redirect_to(admin_captacoes_path)
+    expect(team_intake.reload.intake_status).to eq("submitted_for_admin_review")
   end
 
   it "bloqueia corretor de editar captação pendente de revisão" do

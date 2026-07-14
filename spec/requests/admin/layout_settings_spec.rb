@@ -24,6 +24,8 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
     expect(panels).to all(satisfy do |panel|
       panel.at_xpath('./header[contains(concat(" ", normalize-space(@class), " "), " ax-panel__header ")]//button[contains(concat(" ", normalize-space(@class), " "), " ax-panel__trigger ")]')&.[]("aria-expanded") == "false"
     end)
+    expect(response.body).to include("Identidade e Marca", "Escopo: conta", "Tema pessoal: Claro")
+    expect(response.body).to include("Cada usuário continua escolhendo individualmente")
   end
 
   it "prioriza os blocos por impacto na identidade e na operação" do
@@ -49,7 +51,67 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
     end
   end
 
+  it "entrega os tokens iniciais da previa sem estilos inline" do
+    get edit_admin_layout_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    workspace = html.at_css(".layout-settings-workspace[data-controller='layout-theme-preview']")
+    contract_swatches = html.css(".layout-settings-token-contract__swatch[data-theme-swatch]")
+
+    expect(workspace).to be_present
+    expect(workspace["style"]).to be_nil
+    expect(workspace["data-layout-theme-preview-initial-surface"]).to match(/\A#[0-9A-F]{6}\z/i)
+    expect(workspace["data-layout-theme-preview-public-primary"]).to match(/\A#[0-9A-F]{6}\z/i)
+    expect(contract_swatches.map { |swatch| swatch["data-theme-swatch"] }).to eq(
+      %w[surface header workspace sidebar primary ink]
+    )
+    expect(contract_swatches).to all(satisfy { |swatch| swatch["style"].nil? })
+  end
+
+  it "renderiza pares de cor com ids distintos e sincronização Stimulus" do
+    get edit_admin_layout_setting_path
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    controls = html.css('.ax-color-control[data-controller~="ax-color-pair"]')
+
+    expect(controls).not_to be_empty
+    expect(controls).to all(satisfy do |control|
+      swatch = control.at_css('input[type="color"][data-ax-color-pair-target="swatch"]')
+      text = control.at_css('input[type="text"][data-ax-color-pair-target="text"]')
+      swatch.present? && text.present? && swatch["id"] != text["id"] && swatch["oninput"].nil? && text["oninput"].nil?
+    end)
+  end
+
   describe "PATCH update" do
+    it "nega acesso a usuario sem permissao de gerenciar marketing" do
+      sign_out admin
+      user = create(:admin_user)
+      expect(user.can?(:manage, :marketing)).to be(false)
+      sign_in user
+
+      get edit_admin_layout_setting_path
+
+      expect(response).to redirect_to(admin_root_path)
+      follow_redirect!
+      expect(response.body).to include("Você não tem permissão para acessar esta área")
+    end
+
+    it "atualiza somente a identidade visual do tenant autenticado" do
+      other_tenant = Tenant.create!(name: "Outra marca #{SecureRandom.hex(3)}", slug: "outra-marca-#{SecureRandom.hex(3)}")
+      other_setting = LayoutSetting.instance(tenant: other_tenant)
+      other_setting.update!(admin_primary_color: "#123456")
+
+      patch admin_layout_setting_path, params: {
+        layout_setting: { admin_primary_color: "#654321" }
+      }
+
+      expect(response).to redirect_to(edit_admin_layout_setting_path)
+      expect(LayoutSetting.instance(tenant: admin.tenant).reload.admin_primary_color).to eq("#654321")
+      expect(other_setting.reload.admin_primary_color).to eq("#123456")
+    end
+
     it "permite configurar backgrounds estruturais do workspace administrativo" do
       patch admin_layout_setting_path, params: {
         layout_setting: {
@@ -80,7 +142,7 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
       expect(response).to redirect_to(edit_admin_layout_setting_path)
       expect(LayoutSetting.instance.reload.admin_workspace_color).to eq("#F4F6FA")
       expect(LayoutSetting.instance.reload.admin_sidebar_color).to eq("#FFFFFF")
-      expect(LayoutSetting.instance.reload.admin_theme_mode).to eq("dark")
+      expect(LayoutSetting.instance.reload.admin_theme_mode).to eq("light")
       expect(LayoutSetting.instance.reload.admin_menu_section_styles["product"]).to eq(
         "background_color" => "#123456",
         "background_opacity" => 42,
@@ -136,5 +198,23 @@ RSpec.describe "Admin::LayoutSettings", type: :request do
         "allow_direct_lead_message" => false
       )
     end
+  end
+
+
+  it "usa controles compartilhados e breakpoints na inteligencia de interesse" do
+    get edit_admin_layout_setting_path
+
+    html = Nokogiri::HTML(response.body)
+    intelligence = html.at_css(".layout-settings-panel--interest-intelligence")
+    expect(intelligence).to be_present
+    expect(intelligence.css(".ax-control").size).to be >= 12
+    expect(intelligence.to_html).not_to include('class="ax-input')
+
+    css = Rails.root.join("app/assets/stylesheets/admin_tailwind.css").read
+    expect(css).to include(
+      'html[data-admin-theme="dark"] .layout-settings-interest__toggle',
+      ".layout-settings-interest__toggle:focus-within",
+      ".layout-settings-interest__controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }"
+    )
   end
 end

@@ -1,86 +1,115 @@
-<%# Oportunidades de Marketing — compacto (.ax-*). Original em index.html.erb.bootstrap-bak %>
 <div class="marketing-admin-dark">
-<div class="tw-flex tw-flex-wrap tw-items-center tw-justify-between tw-gap-3 tw-mb-4">
-  <div>
-    <h1 class="ax-page-title">Oportunidades de Marketing</h1>
-    <p class="ax-page-subtitle">Prioridades automáticas para campanhas, SEO e links internos.</p>
-  </div>
-  <div class="tw-flex tw-gap-2">
-    <%= link_to admin_marketing_tools_path, class: "ax-btn ax-btn--sm" do %><i class="bi bi-link-45deg ax-ico"></i><span>UTM Builder</span><% end %>
-    <%= link_to admin_marketing_campaigns_path, class: "ax-btn ax-btn--sm ax-btn--primary" do %><i class="bi bi-bullseye ax-ico"></i><span>Campanhas</span><% end %>
-  </div>
-</div>
+  <%= ax_workspace_heading(
+        eyebrow: "Marketing · Inteligência",
+        icon: "graph-up-arrow",
+        title: "Oportunidades de Marketing",
+        subtitle: "Prioridades automáticas para campanhas, SEO e links internos.",
+        actions: safe_join([
+          ax_button("UTM Builder", admin_marketing_tools_path, size: :sm, icon: "link-45deg"),
+          ax_button("Campanhas", admin_marketing_campaigns_path, variant: :primary, size: :sm, icon: "bullseye")
+        ])
+      ) %>
 
-<div class="tw-grid tw-grid-cols-1 xl:tw-grid-cols-12 tw-gap-4">
-  <div class="xl:tw-col-span-7">
-    <div class="ax-card tw-h-full">
-      <div class="ax-card__header"><span class="ax-card__title">Páginas com maior potencial</span></div>
-      <div class="ax-card__body tw-flex tw-flex-col tw-gap-3">
-        <% @insights[:campaign_opportunities].each do |item| %>
-          <% seo = item.seo %>
-          <div class="tw-flex tw-justify-between tw-gap-3 tw-pb-3 tw-border-b tw-border-line last:tw-border-0 last:tw-pb-0">
-            <div>
-              <div class="ax-strong"><%= truncate(seo.display_name, length: 70) %></div>
-              <%= link_to seo.sanitized_canonical_path, seo.public_url(request.base_url), target: "_blank", rel: "noopener", class: "tw-text-2xs tw-text-ink-muted" %>
-              <div class="tw-mt-2 tw-flex tw-flex-wrap tw-gap-1">
-                <% item.reasons.each do |reason| %><span class="ax-badge ax-badge--amber"><%= reason %></span><% end %>
-              </div>
-            </div>
-            <div class="tw-text-right tw-flex-none">
-              <span class="ax-badge ax-badge--green">score <%= item.score %></span>
-              <div class="tw-mt-2"><%= link_to "Criar campanha", new_admin_marketing_campaign_path(seo_setting_id: seo.id), class: "ax-btn ax-btn--sm" %></div>
-            </div>
+  <div class="tw-grid tw-grid-cols-1 xl:tw-grid-cols-12 tw-gap-4">
+    <div class="xl:tw-col-span-7">
+      <%= ax_operational_panel(eyebrow: "Priorização", title: "Páginas com maior potencial", class_name: "tw-h-full") do %>
+        <% if @insights[:campaign_opportunities].any? %>
+          <div class="tw-grid tw-gap-2">
+            <% @insights[:campaign_opportunities].each do |item| %>
+              <% seo = item.seo %>
+              <% opportunity_actions = tag.div(
+                   safe_join([
+                     ax_badge("score #{item.score}", tone: :green),
+                     ax_button("Criar campanha", new_admin_marketing_campaign_path(seo_setting_id: seo.id), size: :sm)
+                   ]),
+                   class: "tw-grid tw-gap-2 tw-text-right"
+                 ) %>
+              <%= ax_record_item(
+                    title: truncate(seo.display_name, length: 70),
+                    meta: link_to(seo.sanitized_canonical_path, seo.public_url(request.base_url), target: "_blank", rel: "noopener"),
+                    icon: "lightbulb",
+                    actions: opportunity_actions,
+                    body: safe_join(item.reasons.map { |reason| ax_badge(reason, tone: :amber) }, " ")
+                  ) %>
+            <% end %>
           </div>
+        <% else %>
+          <%= ax_empty_state(
+                title: "Sem oportunidades suficientes",
+                description: "As prioridades aparecerão quando houver dados de páginas, estoque e acesso.",
+                icon: "lightbulb"
+              ) %>
         <% end %>
-        <% if @insights[:campaign_opportunities].blank? %><div class="ax-empty tw-py-6">Sem oportunidades suficientes ainda.</div><% end %>
-      </div>
+      <% end %>
     </div>
-  </div>
 
-  <div class="xl:tw-col-span-5">
-    <div class="ax-card tw-h-full">
-      <div class="ax-card__header"><span class="ax-card__title">Páginas estratégicas</span></div>
-      <div class="ax-table-wrap" style="border:0;border-radius:0">
-        <table class="ax-table">
-          <thead><tr><th>Página</th><th class="ax-num" style="width:80px">Estoque</th><th class="ax-num" style="width:70px">SEO</th><th class="ax-num" style="width:80px">Acessos</th></tr></thead>
-          <tbody>
-            <% @insights[:strategic_pages].each do |row| %>
+    <div class="xl:tw-col-span-5">
+      <%= ax_operational_panel(eyebrow: "SEO e estoque", title: "Páginas estratégicas", class_name: "tw-h-full") do %>
+        <div class="ax-table-wrap">
+          <table class="ax-table">
+            <thead>
               <tr>
-                <td><%= link_to row[:path], row[:path], target: "_blank", rel: "noopener" %></td>
-                <td class="ax-num ax-strong"><%= row[:stock] %></td>
-                <td class="ax-num"><span class="ax-badge ax-badge--<%= row[:score] >= 80 ? 'green' : row[:score] >= 60 ? 'amber' : 'red' %>"><%= row[:score] %></span></td>
-                <td class="ax-num"><%= row[:access_count] %></td>
+                <th>Página</th>
+                <th class="ax-num ax-table__col--w-80">Estoque</th>
+                <th class="ax-num ax-table__col--w-70">SEO</th>
+                <th class="ax-num ax-table__col--w-80">Acessos</th>
               </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              <% @insights[:strategic_pages].each do |row| %>
+                <% score_tone = row[:score] >= 80 ? :green : row[:score] >= 60 ? :amber : :red %>
+                <tr>
+                  <td><%= link_to row[:path], row[:path], target: "_blank", rel: "noopener" %></td>
+                  <td class="ax-num ax-strong"><%= row[:stock] %></td>
+                  <td class="ax-num"><%= ax_badge(row[:score], tone: score_tone) %></td>
+                  <td class="ax-num"><%= row[:access_count] %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
     </div>
-  </div>
 
-  <div class="xl:tw-col-span-12">
-    <div class="ax-card">
-      <div class="ax-card__header"><span class="ax-card__title">Campanhas recentes</span></div>
-      <div class="ax-table-wrap" style="border:0;border-radius:0">
-        <table class="ax-table">
-          <thead><tr><th>Campanha</th><th style="width:120px">Canal</th><th class="ax-num" style="width:80px">Cliques</th><th class="ax-num" style="width:90px">Conv.</th><th class="ax-num" style="width:70px">Taxa</th><th class="ax-num" style="width:130px">Custo/conv.</th></tr></thead>
-          <tbody>
-            <% @insights[:campaign_metrics].each do |row| %>
-              <% campaign = row[:campaign] %>
-              <tr>
-                <td><%= link_to campaign.name, edit_admin_marketing_campaign_path(campaign), class: "ax-strong" %></td>
-                <td><span class="ax-badge ax-badge--gray"><%= campaign.channel_label %></span></td>
-                <td class="ax-num ax-strong"><%= row[:clicks] %></td>
-                <td class="ax-num ax-strong"><%= row[:conversions] %></td>
-                <td class="ax-num"><%= row[:conversion_rate] %>%</td>
-                <td class="ax-num"><%= number_to_currency(row[:cost_per_conversion], unit: "R$ ", separator: ",", delimiter: ".") %></td>
-              </tr>
-            <% end %>
-            <% if @insights[:campaign_metrics].blank? %><tr><td colspan="6"><div class="ax-empty">Nenhuma campanha cadastrada.</div></td></tr><% end %>
-          </tbody>
-        </table>
-      </div>
+    <div class="xl:tw-col-span-12">
+      <%= ax_operational_panel(eyebrow: "Desempenho", title: "Campanhas recentes") do %>
+        <% if @insights[:campaign_metrics].any? %>
+          <div class="ax-table-wrap">
+            <table class="ax-table">
+              <thead>
+                <tr>
+                  <th>Campanha</th>
+                  <th class="ax-table__col--w-120">Canal</th>
+                  <th class="ax-num ax-table__col--w-80">Cliques</th>
+                  <th class="ax-num ax-table__col--compact">Conv.</th>
+                  <th class="ax-num ax-table__col--w-70">Taxa</th>
+                  <th class="ax-num ax-table__col--w-130">Custo/conv.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @insights[:campaign_metrics].each do |row| %>
+                  <% campaign = row[:campaign] %>
+                  <tr>
+                    <td><%= link_to campaign.name, edit_admin_marketing_campaign_path(campaign), class: "ax-strong" %></td>
+                    <td><%= ax_badge(campaign.channel_label, tone: :gray) %></td>
+                    <td class="ax-num ax-strong"><%= row[:clicks] %></td>
+                    <td class="ax-num ax-strong"><%= row[:conversions] %></td>
+                    <td class="ax-num"><%= row[:conversion_rate] %>%</td>
+                    <td class="ax-num"><%= number_to_currency(row[:cost_per_conversion], unit: "R$ ", separator: ",", delimiter: ".") %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <%= ax_empty_state(
+                title: "Nenhuma campanha cadastrada",
+                description: "Crie uma campanha para acompanhar cliques, conversões e custo.",
+                icon: "bullseye",
+                action: ax_button("Criar campanha", new_admin_marketing_campaign_path, variant: :primary, size: :sm)
+              ) %>
+        <% end %>
+      <% end %>
     </div>
   </div>
-</div>
 </div>

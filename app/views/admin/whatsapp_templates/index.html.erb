@@ -14,8 +14,6 @@
   <% end %>
 <% end %>
 
-<%= render "critical_styles" %>
-
 <div class="whatsapp-templates">
   <section class="whatsapp-template-header">
     <div class="whatsapp-template-header__icon"><i class="bi bi-grid-3x2-gap"></i></div>
@@ -37,16 +35,20 @@
     <div class="whatsapp-template-selector__options">
       <% @sender_numbers.each do |number| %>
         <%= link_to admin_whatsapp_templates_path(whatsapp_sender_number_id: number.id),
-                    class: "whatsapp-template-selector__option #{'is-active' if @sender_number&.id == number.id}" do %>
+                    class: "whatsapp-template-selector__option #{'is-active' if @sender_number&.id == number.id}",
+                    aria: ({ current: "true" } if @sender_number&.id == number.id) do %>
           <strong><%= number.formatted_phone %></strong>
           <span><%= number.label %></span>
           <small>WABA: <%= number.waba_id.presence || "não informada" %></small>
         <% end %>
       <% end %>
       <% if @sender_numbers.empty? %>
-        <div class="whatsapp-template-selector__empty">
-          Nenhum número ativo cadastrado. Adicione um número na integração WhatsApp antes de gerenciar templates.
-        </div>
+        <%= ax_empty_state(
+          title: "Nenhum número ativo cadastrado",
+          description: "Adicione um número na integração WhatsApp antes de gerenciar templates.",
+          icon: "whatsapp",
+          compact: true
+        ) %>
       <% end %>
     </div>
   </section>
@@ -79,14 +81,15 @@
   <% if @sender_number %>
     <section class="whatsapp-template-table-section">
     <table class="ax-table whatsapp-template-table">
+      <caption class="ax-table__caption--sr-only">Templates da WABA selecionada</caption>
       <thead>
         <tr>
-          <th>Nome</th>
-          <th>Tipo</th>
-          <th>Categoria</th>
-          <th>Idioma</th>
-          <th>Status</th>
-          <th>Ações</th>
+          <th scope="col">Nome</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Categoria</th>
+          <th scope="col">Idioma</th>
+          <th scope="col">Status</th>
+          <th scope="col">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -110,8 +113,7 @@
                 <% end %>
                 <% if template.approved? %>
                   <%= link_to new_campaign_admin_whatsapp_template_path(template, whatsapp_sender_number_id: @sender_number&.id),
-                              class: "ax-btn ax-btn--sm ax-btn--primary",
-                              style: "color:#fff" do %>
+                              class: "ax-btn ax-btn--sm ax-btn--primary" do %>
                     <i class="bi bi-megaphone ax-ico"></i><span>Criar campanha</span>
                   <% end %>
                 <% end %>
@@ -128,12 +130,12 @@
         <% end %>
         <% if @templates.empty? %>
           <tr>
-            <td colspan="6">Nenhum template encontrado para os filtros atuais.</td>
+            <td colspan="6"><%= ax_empty_state(title: "Nenhum template encontrado", description: "Ajuste os filtros ou sincronize novamente os templates desta WABA.", icon: "chat-square-text", compact: true) %></td>
           </tr>
         <% end %>
       </tbody>
     </table>
-    <%= will_paginate @templates if @templates.respond_to?(:total_pages) && @templates.total_pages > 1 %>
+    <%= ax_pagination @templates, params: request.query_parameters %>
     </section>
   <% end %>
 </div>
