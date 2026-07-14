@@ -35,12 +35,16 @@
 .au-avatar-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 14px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--ax-border-soft, #e7ebf2);
 }
 
-.au-avatar-row__field { flex: 1; }
+.au-avatar-row__field {
+  flex: 1 1 320px;
+  min-width: min(100%, 280px);
+}
 
 [data-admin-theme="dark"] .au-form .au-avatar-row { border-color: #33445d; }
 

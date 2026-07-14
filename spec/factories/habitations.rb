@@ -1,7 +1,7 @@
 FactoryBot.define do
   factory :habitation do
     tenant { Current.tenant || Tenant.default }
-    sequence(:codigo) { |n| (900_000 + n).to_s }
+    sequence(:codigo) { |n| "SPEC-#{n}-#{SecureRandom.hex(4)}" }
     categoria { "Casa em Condomínio" }
     tipo { "Unitário" }
     status { "Venda" }

@@ -7,6 +7,7 @@ class Tenant < ApplicationRecord
   has_many :account_memberships, dependent: :destroy
   has_many :leads, dependent: :restrict_with_error
   has_many :habitations, dependent: :restrict_with_error
+  has_many :property_review_policies, dependent: :restrict_with_error
   has_many :ai_property_share_collections, dependent: :restrict_with_error
   has_many :ai_property_share_audit_events, dependent: :restrict_with_error
   has_many :development_aliases, dependent: :restrict_with_error

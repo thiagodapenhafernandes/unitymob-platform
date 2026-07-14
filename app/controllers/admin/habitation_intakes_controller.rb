@@ -134,6 +134,7 @@ module Admin
             @habitation,
             target_intake_status: target_broker_capture_status
           ).call!
+          snapshot_review_policy!(submitted_records)
           redirect_to admin_captacao_path(@habitation),
                       notice: submission_notice(submitted_records, target_broker_capture_status)
         else
@@ -186,6 +187,7 @@ module Admin
           @habitation,
           target_intake_status: target_broker_capture_status
         ).call!
+        snapshot_review_policy!(submitted_records)
         notify_review_events(submitted_records, event: "submit_for_review")
         redirect_to admin_captacao_path(@habitation),
                     notice: submission_notice(submitted_records, target_broker_capture_status)
@@ -228,6 +230,7 @@ module Admin
         admin_reviewed_at: Time.current,
         admin_review_notes: admin_review_notes
       )
+      snapshot_review_policy!(@habitation)
       notify_review_events([@habitation], event: "approve", notes: admin_review_notes)
       redirect_to admin_captacao_path(@habitation), notice: "Captação liberada pelo administrativo."
     end
@@ -280,6 +283,7 @@ module Admin
         exibir_no_site_flag: true,
         foto_classificacao: @habitation.foto_classificacao.presence || "Boas"
       )
+      snapshot_review_policy!(@habitation)
       notify_review_events([@habitation], event: "release_to_site")
       redirect_to admin_captacao_path(@habitation), notice: "Imóvel liberado para o site."
     end
@@ -407,6 +411,10 @@ module Admin
       property_kind = attrs.delete("property_kind")
       default_category = default_category_for_cadastro_type(cadastro_type.presence || property_kind)
       attrs["categoria"] = default_category if attrs["categoria"].blank? && default_category.present?
+      if (modalidade = attrs.delete("modalidade")).present?
+        attrs["intake_modalidade"] = modalidade
+        attrs["status"] = modalidade.in?(%w[locacao_anual locacao_diaria]) ? "Aluguel" : "Venda"
+      end
       attrs
     end
 
@@ -427,13 +435,28 @@ module Admin
     end
 
     def target_broker_capture_status
-      return "admin_approved" unless @property_setting&.broker_capture_layer_enabled
+      return "admin_approved" unless current_review_rule&.broker_capture_layer_enabled
 
       "submitted_for_admin_review"
     end
 
     def active_broker_capture_checks
-      @property_setting&.active_broker_capture_checks
+      current_review_result.required_checks
+    end
+
+    def active_returnable_field_names
+      current_review_rule&.available_returnable_field_names || []
+    end
+
+    def current_review_result
+      @current_review_result ||= PropertyReviewPolicyResolver.for_habitation(
+        @habitation,
+        property_setting: @property_setting
+      )
+    end
+
+    def current_review_rule
+      current_review_result.policy || @property_setting
     end
 
     def intake_check_enabled?(key)
@@ -705,8 +728,10 @@ module Admin
       case step
       when "proprietario"
         missing = []
-        missing << "Informe o nome do proprietário." if @habitation.proprietario.blank?
-        missing << "Informe o telefone/WhatsApp do proprietário." if @habitation.proprietario_celular.blank?
+        if intake_check_enabled?(:proprietario)
+          missing << "Informe o nome do proprietário." if @habitation.proprietario.blank?
+          missing << "Informe o telefone/WhatsApp do proprietário." if @habitation.proprietario_celular.blank?
+        end
         missing << "Informe a cidade do proprietário." if intake_check_enabled?(:proprietario_cidade) && @habitation.proprietario_cidade.blank?
         missing
       when "endereco"
@@ -723,16 +748,22 @@ module Admin
         missing
       when "caracteristicas"
         missing = []
-        if @habitation.property_kind_terreno? && !@habitation.has_required_intake_area?
-          missing << "Informe a área total do imóvel."
-        elsif !@habitation.has_required_intake_area?
-          missing << "Informe a área privativa do imóvel."
-        end
-        if @habitation.property_kind_residencial? && @habitation.dormitorios_qtd.to_i <= 0
-          missing << "Informe a quantidade de dormitórios."
-        end
-        if @habitation.property_kind_residencial? && @habitation.banheiros_qtd.to_i <= 0
-          missing << "Informe a quantidade de banheiros."
+        if intake_check_enabled?(:area)
+          if @habitation.property_kind_terreno? && !@habitation.has_required_intake_area?
+            missing << "Informe a área total do imóvel."
+          elsif @habitation.property_kind_sala_comercial?
+            if @habitation.area_privativa_m2.to_f <= 0 && @habitation.salas_qtd.to_i <= 0 && @habitation.banheiros_qtd.to_i <= 0 && @habitation.vagas_qtd.to_i <= 0
+              missing << "Informe salas, banheiros, vagas ou a área privativa do imóvel."
+            end
+          elsif !@habitation.has_required_intake_area?
+            missing << "Informe a área privativa do imóvel."
+          end
+          if @habitation.property_kind_residencial? && @habitation.dormitorios_qtd.to_i <= 0
+            missing << "Informe a quantidade de dormitórios."
+          end
+          if @habitation.property_kind_residencial? && @habitation.banheiros_qtd.to_i <= 0
+            missing << "Informe a quantidade de banheiros."
+          end
         end
         if @habitation.requires_parking_info?
           missing << "Informe o tipo de vaga." if intake_check_enabled?(:tipo_vaga) && @habitation.tipo_vaga.blank?
@@ -741,18 +772,18 @@ module Admin
         end
         missing << "Informe a ocupação do imóvel." if intake_check_enabled?(:ocupacao) && !@habitation.property_kind_terreno? && @habitation.ocupacao_status.blank?
         missing << "Informe a situação do imóvel." if intake_check_enabled?(:situacao) && !@habitation.property_kind_terreno? && @habitation.situacao.blank?
-        missing << "Marque ao menos uma característica do imóvel." if @habitation.caracteristicas.blank?
+        missing << "Marque ao menos uma característica do imóvel." if intake_check_enabled?(:caracteristicas) && @habitation.caracteristicas.blank?
         missing
       when "infraestrutura"
         missing = []
-        missing << "Marque ao menos uma característica do edifício." if @habitation.uses_building_infrastructure? && @habitation.infra_estrutura.blank?
+        missing << "Marque ao menos uma característica do edifício." if intake_check_enabled?(:infraestrutura) && @habitation.uses_building_infrastructure? && @habitation.infra_estrutura.blank?
         missing
       when "negociacao"
         missing = []
-        if @habitation.requires_sale_price? && !@habitation.valid_intake_sale_price?
+        if intake_check_enabled?(:valor_negociacao) && @habitation.requires_sale_price? && !@habitation.valid_intake_sale_price?
           missing << @habitation.intake_sale_price_requirement_message
         end
-        if @habitation.requires_rent_price? && !@habitation.valid_intake_rent_price?
+        if intake_check_enabled?(:valor_negociacao) && @habitation.requires_rent_price? && !@habitation.valid_intake_rent_price?
           missing << @habitation.intake_rent_price_requirement_message
         end
         missing << "Informe ao menos condomínio ou IPTU." if intake_check_enabled?(:financeiro) && @habitation.requires_intake_expense_amount? && @habitation.valor_condominio_cents.blank? && @habitation.valor_iptu_cents.blank?
@@ -765,11 +796,13 @@ module Admin
         missing
       when "fotos"
         missing = []
-        missing << "Escolha se vai enviar fotos ou agendar fotógrafo." if @habitation.photo_flow_choice.blank?
-        missing << "Envie ao menos uma foto do imóvel." if @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
-        missing << "Informe a data/hora agendada com fotógrafo." if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
-        missing << "Escolha um horário disponível para a fotografia." if photo_schedule_slot_unavailable?
-        missing << "Anexe a autorização do proprietário." unless @habitation.autorizacoes_venda.attached?
+        if intake_check_enabled?(:fotos)
+          missing << "Escolha se vai enviar fotos ou agendar fotógrafo." if @habitation.photo_flow_choice.blank?
+          missing << "Envie ao menos uma foto do imóvel." if @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
+          missing << "Informe a data/hora agendada com fotógrafo." if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
+          missing << "Escolha um horário disponível para a fotografia." if photo_schedule_slot_unavailable?
+        end
+        missing << "Anexe a autorização do proprietário." if intake_check_enabled?(:autorizacao) && !@habitation.autorizacoes_venda.attached?
         missing
       when "visitas"
         missing = []
@@ -783,13 +816,38 @@ module Admin
 
     def notify_review_events(records, event:, notes: nil, return_reason: nil)
       Array(records).each do |habitation|
+        review_rule = PropertyReviewPolicyResolver.for_habitation(habitation, property_setting: @property_setting).policy || @property_setting
         HabitationIntakeReviewNotifier.new(
           habitation: habitation,
           actor: current_admin_user,
           event: event,
           notes: notes,
-          return_reason: return_reason
+          return_reason: return_reason,
+          property_setting: review_rule
         ).call
+      end
+    end
+
+    def snapshot_review_policy!(records)
+      Array(records).each do |habitation|
+        result = PropertyReviewPolicyResolver.for_habitation(habitation, property_setting: @property_setting)
+        rule = result.policy || @property_setting
+        next unless habitation.has_attribute?(:intake_review_policy_snapshot)
+
+        habitation.update_columns(
+          intake_review_policy_version: rule.respond_to?(:version) ? rule.version : @property_setting.review_policy_version,
+          intake_review_policy_snapshot: {
+            source: result.source.to_s,
+            registration_type: result.registration_type,
+            category: result.category,
+            modality: result.modality,
+            policy_id: result.policy&.id,
+            required_broker_intake_checks: result.required_checks,
+            returnable_intake_edit_sections: result.returnable_sections,
+            broker_capture_layer_enabled: rule.broker_capture_layer_enabled
+          },
+          updated_at: Time.current
+        )
       end
     end
 
@@ -797,8 +855,8 @@ module Admin
       fields = {}
       case step
       when "proprietario"
-        fields[:proprietario_nome] = true if @habitation.proprietario.blank?
-        fields[:proprietario_telefone] = true if @habitation.proprietario_celular.blank?
+        fields[:proprietario_nome] = true if intake_check_enabled?(:proprietario) && @habitation.proprietario.blank?
+        fields[:proprietario_telefone] = true if intake_check_enabled?(:proprietario) && @habitation.proprietario_celular.blank?
         fields[:proprietario_cidade] = true if intake_check_enabled?(:proprietario_cidade) && @habitation.proprietario_cidade.blank?
       when "endereco"
         fields[:zip_code] = true if @habitation.cep.blank?
@@ -811,13 +869,22 @@ module Admin
         fields[:unidade_numero] = true if intake_check_enabled?(:unidade) && @habitation.requires_unit_number? && @habitation.bloco.blank?
         fields[:complemento] = true if @habitation.requires_intake_address_complement? && !@habitation.requires_unit_number? && @habitation.complemento.blank?
       when "caracteristicas"
-        if @habitation.property_kind_terreno? && !@habitation.has_required_intake_area?
-          fields[:area_total] = true
-        elsif !@habitation.has_required_intake_area?
-          fields[:area_privativa] = true
+        if intake_check_enabled?(:area)
+          if @habitation.property_kind_terreno? && !@habitation.has_required_intake_area?
+            fields[:area_total] = true
+          elsif @habitation.property_kind_sala_comercial?
+            if @habitation.area_privativa_m2.to_f <= 0 && @habitation.salas_qtd.to_i <= 0 && @habitation.banheiros_qtd.to_i <= 0 && @habitation.vagas_qtd.to_i <= 0
+              fields[:salas] = true
+              fields[:banheiros] = true
+              fields[:vagas_garagem] = true
+              fields[:area_privativa] = true
+            end
+          elsif !@habitation.has_required_intake_area?
+            fields[:area_privativa] = true
+          end
+          fields[:dormitorios] = true if @habitation.property_kind_residencial? && @habitation.dormitorios_qtd.to_i <= 0
+          fields[:banheiros] = true if @habitation.property_kind_residencial? && @habitation.banheiros_qtd.to_i <= 0
         end
-        fields[:dormitorios] = true if @habitation.property_kind_residencial? && @habitation.dormitorios_qtd.to_i <= 0
-        fields[:banheiros] = true if @habitation.property_kind_residencial? && @habitation.banheiros_qtd.to_i <= 0
         if @habitation.requires_parking_info?
           fields[:tipo_vaga] = true if intake_check_enabled?(:tipo_vaga) && @habitation.tipo_vaga.blank?
           fields[:vagas_garagem] = true if intake_check_enabled?(:vagas) && @habitation.vagas_qtd.nil?
@@ -825,12 +892,12 @@ module Admin
         end
         fields[:ocupacao] = true if intake_check_enabled?(:ocupacao) && !@habitation.property_kind_terreno? && @habitation.ocupacao_status.blank?
         fields[:situacao_imovel] = true if intake_check_enabled?(:situacao) && !@habitation.property_kind_terreno? && @habitation.situacao.blank?
-        fields[:caracteristicas_imovel] = true if @habitation.caracteristicas.blank?
+        fields[:caracteristicas_imovel] = true if intake_check_enabled?(:caracteristicas) && @habitation.caracteristicas.blank?
       when "infraestrutura"
-        fields[:caracteristicas_predio] = true if @habitation.uses_building_infrastructure? && @habitation.infra_estrutura.blank?
+        fields[:caracteristicas_predio] = true if intake_check_enabled?(:infraestrutura) && @habitation.uses_building_infrastructure? && @habitation.infra_estrutura.blank?
       when "negociacao"
-        fields[:valor_venda] = true if @habitation.requires_sale_price? && !@habitation.valid_intake_sale_price?
-        fields[:valor_locacao] = true if @habitation.requires_rent_price? && !@habitation.valid_intake_rent_price?
+        fields[:valor_venda] = true if intake_check_enabled?(:valor_negociacao) && @habitation.requires_sale_price? && !@habitation.valid_intake_sale_price?
+        fields[:valor_locacao] = true if intake_check_enabled?(:valor_negociacao) && @habitation.requires_rent_price? && !@habitation.valid_intake_rent_price?
         if intake_check_enabled?(:financeiro) && @habitation.requires_intake_expense_amount? && @habitation.valor_condominio_cents.blank? && @habitation.valor_iptu_cents.blank?
           fields[:valor_condominio] = true
           fields[:valor_iptu] = true
@@ -840,11 +907,11 @@ module Admin
         fields[:rental_guarantee_method] = true if intake_check_enabled?(:garantia_locaticia) && @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
         fields[:numero_prestacoes] = true if intake_check_enabled?(:parcelamento) && @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.blank?
       when "fotos"
-        fields[:photo_flow_choice] = true if @habitation.photo_flow_choice.blank?
-        fields[:photos] = true if @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
-        fields[:photo_session_requested_at] = true if @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
-        fields[:photo_session_requested_at] = true if photo_schedule_slot_unavailable?
-        fields[:autorizacoes_venda] = true unless @habitation.autorizacoes_venda.attached?
+        fields[:photo_flow_choice] = true if intake_check_enabled?(:fotos) && @habitation.photo_flow_choice.blank?
+        fields[:photos] = true if intake_check_enabled?(:fotos) && @habitation.photo_flow_choice == "upload" && !@habitation.has_any_photo?
+        fields[:photo_session_requested_at] = true if intake_check_enabled?(:fotos) && @habitation.photo_flow_choice == "schedule" && @habitation.photo_session_requested_at.blank?
+        fields[:photo_session_requested_at] = true if intake_check_enabled?(:fotos) && photo_schedule_slot_unavailable?
+        fields[:autorizacoes_venda] = true if intake_check_enabled?(:autorizacao) && !@habitation.autorizacoes_venda.attached?
       when "visitas"
         fields[:chaves_com] = true if intake_check_enabled?(:chaves) && @habitation.requires_intake_key_location? && @habitation.key_location.blank?
         fields[:dias_visitas] = true if !@habitation.skip_visitas? && !@habitation.intake_visit_days_present?
@@ -1069,7 +1136,7 @@ module Admin
       return attrs unless @habitation&.intake_returned_to_broker?
       return attrs if can_review_captacao?(@habitation)
 
-      allowed_fields = @property_setting&.available_returnable_field_names || []
+      allowed_fields = active_returnable_field_names
       attrs.slice(*allowed_fields)
     end
 

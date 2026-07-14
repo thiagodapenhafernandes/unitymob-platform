@@ -149,7 +149,8 @@ RSpec.describe Admin::UiHelper, type: :helper do
       document = Nokogiri::HTML.fragment(html)
 
       expect(document.at_css('input[type="email"][name="sample[email]"]')).to be_present
-      expect(document.at_css('label.field-head[for="sample_email"] .field-counter')&.text).to eq("12/65")
+      expect(document.at_css('.ax-field.field-head input[type="email"][name="sample[email]"]')).to be_present
+      expect(document.at_css('label[for="sample_email"] .field-counter')&.text).to eq("12/65")
       expect(document.at_css('input[type="url"][name="sample[url]"]')).to be_present
       expect(document.at_css('input[type="password"][name="sample[secret]"]')).to be_present
       expect(document.at_css('input[type="number"][name="sample[amount]"]')).to be_present

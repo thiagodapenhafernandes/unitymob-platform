@@ -1,4 +1,4 @@
-\restrict beVdsQFcNethjEKt5MsTvSHoQjiNmgO2bAeAVK2B0jgqfGqeTJTAmjSXrb5vSL6
+\restrict YFMDifFKGiuHy0rsxepoc2rZ2iQdTNJ4020dCJPRptaILWLYrLpTpOZG0oMFvu0
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -4250,6 +4250,49 @@ ALTER SEQUENCE public.property_pages_id_seq OWNED BY public.property_pages.id;
 
 
 --
+-- Name: property_review_policies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.property_review_policies (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    property_setting_id bigint NOT NULL,
+    registration_type character varying NOT NULL,
+    category character varying,
+    modality character varying,
+    active boolean DEFAULT true NOT NULL,
+    version integer DEFAULT 1 NOT NULL,
+    broker_capture_layer_enabled boolean DEFAULT true NOT NULL,
+    required_broker_intake_checks text[] DEFAULT '{}'::text[] NOT NULL,
+    returnable_intake_edit_sections text[] DEFAULT '{}'::text[] NOT NULL,
+    notify_internal_review_events boolean DEFAULT true NOT NULL,
+    notify_email_review_events boolean DEFAULT false NOT NULL,
+    review_notification_emails text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: property_review_policies_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.property_review_policies_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: property_review_policies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.property_review_policies_id_seq OWNED BY public.property_review_policies.id;
+
+
+--
 -- Name: property_review_policy_audit_logs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7125,6 +7168,13 @@ ALTER TABLE ONLY public.property_pages ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: property_review_policies id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_review_policies ALTER COLUMN id SET DEFAULT nextval('public.property_review_policies_id_seq'::regclass);
+
+
+--
 -- Name: property_review_policy_audit_logs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8248,6 +8298,14 @@ ALTER TABLE ONLY public.property_pages
 
 
 --
+-- Name: property_review_policies property_review_policies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_review_policies
+    ADD CONSTRAINT property_review_policies_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: property_review_policy_audit_logs property_review_policy_audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9037,6 +9095,20 @@ CREATE INDEX idx_on_tenant_id_phone_number_id_9c3acbd0a4 ON public.whatsapp_busi
 
 
 --
+-- Name: idx_on_tenant_id_registration_type_category_2b597fb47b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_registration_type_category_2b597fb47b ON public.property_review_policies USING btree (tenant_id, registration_type, category);
+
+
+--
+-- Name: idx_on_tenant_id_registration_type_e495fae6c4; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_tenant_id_registration_type_e495fae6c4 ON public.property_review_policies USING btree (tenant_id, registration_type);
+
+
+--
 -- Name: idx_on_tenant_id_whatsapp_campaign_id_234de3ba14; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9118,6 +9190,13 @@ CREATE UNIQUE INDEX idx_portal_listing_states_tenant_portal_code ON public.porta
 --
 
 CREATE UNIQUE INDEX idx_portal_listing_states_tenant_portal_external ON public.portal_listing_states USING btree (tenant_id, portal, external_listing_id) WHERE (external_listing_id IS NOT NULL);
+
+
+--
+-- Name: idx_property_review_policies_context; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_property_review_policies_context ON public.property_review_policies USING btree (tenant_id, registration_type, COALESCE(category, ''::character varying), COALESCE(modality, ''::character varying)) WHERE (active = true);
 
 
 --
@@ -12159,6 +12238,20 @@ CREATE UNIQUE INDEX index_property_pages_on_slug ON public.property_pages USING 
 
 
 --
+-- Name: index_property_review_policies_on_property_setting_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_property_review_policies_on_property_setting_id ON public.property_review_policies USING btree (property_setting_id);
+
+
+--
+-- Name: index_property_review_policies_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_property_review_policies_on_tenant_id ON public.property_review_policies USING btree (tenant_id);
+
+
+--
 -- Name: index_property_review_policy_audit_logs_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14224,6 +14317,14 @@ ALTER TABLE ONLY public.leads
 
 
 --
+-- Name: property_review_policies fk_rails_3bf01a3aa0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_review_policies
+    ADD CONSTRAINT fk_rails_3bf01a3aa0 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: automation_webhook_deliveries fk_rails_3e8969d1cd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15120,6 +15221,14 @@ ALTER TABLE ONLY public.solid_queue_claimed_executions
 
 
 --
+-- Name: property_review_policies fk_rails_9dcb54921b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.property_review_policies
+    ADD CONSTRAINT fk_rails_9dcb54921b FOREIGN KEY (property_setting_id) REFERENCES public.property_settings(id);
+
+
+--
 -- Name: account_memberships fk_rails_9de42ef7be; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15947,7 +16056,7 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict beVdsQFcNethjEKt5MsTvSHoQjiNmgO2bAeAVK2B0jgqfGqeTJTAmjSXrb5vSL6
+\unrestrict YFMDifFKGiuHy0rsxepoc2rZ2iQdTNJ4020dCJPRptaILWLYrLpTpOZG0oMFvu0
 
 SET search_path TO "$user", public;
 
@@ -15955,6 +16064,7 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20260714213000'),
 ('20260714210000'),
 ('20260714203000'),
+('20260714190000'),
 ('20260714173000'),
 ('20260714171500'),
 ('20260714170000'),

@@ -246,6 +246,7 @@ class PropertySetting < ApplicationRecord
 
   has_one_attached :watermark_image
   belongs_to :broker_capture_fallback_admin_user, class_name: "AdminUser", optional: true
+  has_many :property_review_policies, dependent: :destroy
 
   before_validation :initialize_defaults!
 

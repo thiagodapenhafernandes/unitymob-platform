@@ -1,5 +1,7 @@
 <% property_setting = @property_setting || PropertySetting.instance %>
 <%
+  review_result = PropertyReviewPolicyResolver.for_habitation(@captacao, property_setting: property_setting)
+  review_rule = review_result.policy || property_setting
   captacao_subtitle_parts = [@captacao.property_kind.humanize, @captacao.modalidade.humanize]
   captacao_subtitle_parts << "Finalizada em #{l(@captacao.submitted_at, format: :short)}" if @captacao.submitted_at
   intake_status_badge_class = case @captacao.intake_status
@@ -37,8 +39,8 @@
   <% end %>
 <% end %>
 
-<% if can_broker_release_to_site?(@captacao) && !@captacao.broker_can_release_to_site? %>
-  <% missing_requirements = @captacao.intake_missing_requirements(required_checks: property_setting&.active_broker_capture_checks, require_owner_city: true) %>
+<% if can_broker_release_to_site?(@captacao) && !@captacao.broker_can_release_to_site?(required_checks: review_result.required_checks) %>
+  <% missing_requirements = @captacao.intake_missing_requirements(required_checks: review_result.required_checks, require_owner_city: true) %>
   <%= ax_inline_notice(tone: :danger, icon: "exclamation-triangle-fill") do %>
     <strong>Esta captação ainda não está pronta para liberar no site.</strong>
     <% if missing_requirements.any? %>
@@ -52,7 +54,7 @@
   <% end %>
 <% end %>
 
-<% if property_setting&.broker_capture_layer_enabled && can_review_captacao?(@captacao) && @captacao.broker_intake? %>
+<% if review_rule&.broker_capture_layer_enabled && can_review_captacao?(@captacao) && @captacao.broker_intake? %>
   <% if @captacao.review_return_count_warning? %>
     <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle-fill") do %>
       <strong>Esta captação já teve <%= @captacao.review_return_count %> devoluções.</strong>

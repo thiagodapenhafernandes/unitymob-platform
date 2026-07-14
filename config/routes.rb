@@ -103,6 +103,7 @@ Rails.application.routes.draw do
     resource :footer_setting, only: [:edit, :update]
     resource :property_setting, only: [:edit, :update] do
       get :review_workflow
+      patch :review_workflow, action: :update_review_workflow
     end
     resources :development_aliases, only: [:create, :destroy]
     resources :webhook_settings do
