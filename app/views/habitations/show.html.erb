@@ -1,5 +1,6 @@
 <% images = @habitation.public_image_sources %>
 <% image_url = ->(photo) { public_image_url(photo) } %>
+<% gallery_original_url = ->(photo) { image_url.call(photo) } %>
 <% title = @habitation.display_title %>
 <% address_parts = [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank %>
 <% address_text = address_parts.join(" - ") %>
@@ -118,11 +119,11 @@
         </div>
 
         <% images.drop(5).each_with_index do |photo, index| %>
-          <a href="<%= image_url.call(photo) %>"
+          <% photo_original_url = gallery_original_url.call(photo) %>
+          <a href="<%= photo_original_url %>"
              data-fancybox="property-gallery"
              data-caption="<%= title %> - Foto <%= index + 6 %>"
-             data-public-gallery-mobile-src="<%= public_image_url(photo, resize_to_limit: [1200, 900], format: :webp, representation_proxy: true) %>"
-             data-public-gallery-mobile-srcset="<%= public_image_srcset(photo, widths: [480, 800, 1200], aspect_ratio: 4.0 / 3, format: :webp, representation_proxy: true) %>"
+             data-public-gallery-mobile-src="<%= photo_original_url %>"
              data-public-gallery-mobile-sizes="(min-width: 1024px) 52vw, 100vw"
              data-public-gallery-mobile-class="<%= public_gallery_image_class(photo) %>"
              data-public-gallery-mobile-style="<%= public_gallery_image_style(photo, primary: true) %>"
