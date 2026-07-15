@@ -326,7 +326,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     )
   end
 
-  it "posiciona a publicação em portais abaixo dos responsáveis na aba comercial" do
+  it "posiciona a publicação em portais abaixo das colunas comerciais" do
     habitation = create(:habitation, codigo: "PORTAL-FORM-#{SecureRandom.hex(6)}")
 
     get edit_admin_habitation_path(habitation)
@@ -334,17 +334,20 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
 
     html = Nokogiri::HTML(response.body)
-    side_column = html.at_css("#comercial .ax-commercial-column--side")
+    workspace = html.at_css("#comercial .ax-commercial-workspace")
+    commercial_columns = workspace.at_css(".ax-commercial-columns")
+    side_column = workspace.at_css(".ax-commercial-column--side")
     responsible_section = side_column.at_xpath("./section[.//span[normalize-space()='Responsáveis e agenciamento']]")
-    portal_section = side_column.at_xpath(
+    portal_section = workspace.at_xpath(
       "./div[contains(concat(' ', normalize-space(@class), ' '), ' portal-publication-section ')]"
     )
 
     expect(responsible_section).to be_present
     expect(portal_section).to be_present
     expect(portal_section.css("fieldset.ax-radio-group").size).to eq(9)
-    expect(side_column.element_children.index(portal_section)).to eq(
-      side_column.element_children.index(responsible_section) + 1
+    expect(side_column.css(".portal-publication-section")).to be_empty
+    expect(workspace.element_children.index(portal_section)).to eq(
+      workspace.element_children.index(commercial_columns) + 1
     )
   end
 
