@@ -46,7 +46,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.body).to include("draggable-item")
     expect(response.body).to include("media-photo-drag-handle")
     expect(response.body).to include("data-photo-upload-async-submit=\"true\"")
-    expect(response.body).to include(upload_admin_habitation_media_path(habitation.id, format: :json))
+    expect(response.body).to include(upload_admin_habitation_media_path(habitation, format: :json))
   end
 
   it "salva mídia por JSON e devolve payload para manter o modal na tela" do
@@ -193,9 +193,10 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
 
   it "renderiza ação de ambiente para imagem externa da API no modal" do
     habitation = create_media_habitation(
+      imovel_dwv: "Sim",
       pictures: [
-        { "url" => "https://example.com/cozinha.jpg" },
-        { "url" => "https://example.com/quarto.jpg" }
+        { "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/cozinha.jpg" },
+        { "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/quarto.jpg" }
       ]
     )
 
@@ -250,6 +251,11 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
 
   context "quando o usuário é corretor" do
     let(:admin) { create(:admin_user, email: "media-broker-#{SecureRandom.hex(8)}@salute.test") }
+
+    # O perfil "agent" do tenant de teste vem sem permissões; a factory não o
+    # atualiza. Garante as permissões padrão de Corretor (imoveis view/media,
+    # escopo own) para o corretor conseguir acessar o catálogo/mídia.
+    before { admin.profile.update!(permissions: Profile.default_permissions_for("Corretor")) }
 
     it "exibe Mídia e uploads no menu do catálogo para imóveis visíveis" do
       habitation = create_media_habitation(codigo: "99999002")

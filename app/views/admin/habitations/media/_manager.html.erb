@@ -14,13 +14,13 @@
   if habitation.persisted?
     media_controller_data.merge!(
       photo_upload_async_value: true,
-      photo_upload_upload_url_value: upload_admin_habitation_media_path(habitation.id, format: :json),
-      photo_upload_reorder_url_value: reorder_admin_habitation_media_path(habitation.id, format: :json),
-      photo_upload_visibility_url_value: visibility_admin_habitation_media_path(habitation.id, format: :json),
-      photo_upload_destroy_url_value: destroy_photo_admin_habitation_media_path(habitation.id, format: :json),
-      media_tools_ambiente_url_value: ambiente_admin_habitation_media_path(habitation.id, format: :json),
-      media_tools_organize_url_value: organize_admin_habitation_media_path(habitation.id, format: :json),
-      media_tools_share_url_value: share_admin_habitation_media_path(habitation.id, format: :json),
+      photo_upload_upload_url_value: upload_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_reorder_url_value: reorder_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_visibility_url_value: visibility_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_destroy_url_value: destroy_photo_admin_habitation_media_path(habitation, format: :json),
+      media_tools_ambiente_url_value: ambiente_admin_habitation_media_path(habitation, format: :json),
+      media_tools_organize_url_value: organize_admin_habitation_media_path(habitation, format: :json),
+      media_tools_share_url_value: share_admin_habitation_media_path(habitation, format: :json),
       media_tools_ambientes_value: foto_ambientes.to_json,
       media_tools_can_edit_value: can_edit_media.to_s
     )
