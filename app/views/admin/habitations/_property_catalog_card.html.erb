@@ -183,12 +183,6 @@
       <div class="ax-property-price">
         <span>Valor do imóvel</span>
         <strong><%= price_label %></strong>
-        <% if imovel.preco_atualizado_em.present? %>
-          <span class="ax-property-price__updated" title="Preço atualizado em <%= l(imovel.preco_atualizado_em, format: :long) rescue imovel.preco_atualizado_em.strftime('%d/%m/%Y') %>">
-            <i class="bi bi-tag-fill" aria-hidden="true"></i>
-            Preço atualizado há <%= time_ago_in_words(imovel.preco_atualizado_em) %>
-          </span>
-        <% end %>
       </div>
       <div class="ax-property-costs">
         <% costs.each do |label, value| %>
@@ -198,6 +192,12 @@
           </span>
         <% end %>
       </div>
+      <% if imovel.preco_atualizado_em.present? %>
+        <span class="ax-property-price__updated" title="Preço atualizado em <%= l(imovel.preco_atualizado_em, format: :long) rescue imovel.preco_atualizado_em.strftime('%d/%m/%Y') %>">
+          <i class="bi bi-tag-fill" aria-hidden="true"></i>
+          Preço atualizado há <%= time_ago_in_words(imovel.preco_atualizado_em) %>
+        </span>
+      <% end %>
     </footer>
   </div>
 </article>

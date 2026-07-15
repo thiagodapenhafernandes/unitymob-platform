@@ -91,7 +91,14 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-price s
   color: var(--admin-ink) !important;
 }
 
-/* Card #30: badge "Preço atualizado há X dias" abaixo do valor do imóvel. */
+/* Card #30: badge "Preço atualizado há X dias" — faixa própria no rodapé do
+   card, ocupando as duas colunas do grid e centralizada logo abaixo do valor
+   (antes ficava dentro do bloco de valor e era cortado). */
+.ax-property-card__footer > .ax-property-price__updated {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: .1rem;
+}
 .ax-property-price__updated {
   display: inline-flex;
   align-items: center;

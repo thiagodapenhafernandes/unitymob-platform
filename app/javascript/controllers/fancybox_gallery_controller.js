@@ -162,7 +162,7 @@ export default class extends Controller {
       if (!response.ok) throw new Error(`Falha ao carregar galeria (${response.status})`)
       return response.json()
     }).then((payload) => {
-      this.remoteGalleryItems = Array(payload.items).map((item) => ({
+      this.remoteGalleryItems = Array.from(payload.items || []).map((item) => ({
         src: item.src,
         type: item.type || "image",
         caption: item.caption || "",
