@@ -175,7 +175,7 @@
                           admin_system_user_impersonation_path(user),
                           method: :post,
                           class: "ax-dashboard-panel__link",
-                          form: { data: { turbo_confirm: "Entrar como #{user.name}?" } } %>
+                          form: { data: { turbo: false, turbo_confirm: "Entrar como #{user.name}?" } } %>
                   <% end %>
                 </td>
               </tr>

@@ -100,7 +100,8 @@
                     <%= button_to "Impersonar",
                           admin_system_tenant_owner_impersonation_path(tenant),
                           method: :post,
-                          class: "ax-dashboard-panel__link" %>
+                          class: "ax-dashboard-panel__link",
+                          form: { data: { turbo: false } } %>
                   <% else %>
                     <span class="ax-system-muted">Indisponível</span>
                   <% end %>

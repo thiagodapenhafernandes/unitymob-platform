@@ -14,7 +14,13 @@ RSpec.describe "Admin impersonations", type: :request do
 
     sign_in system_admin, scope: :admin_user
 
-    post admin_system_user_impersonation_path(broker)
+    start_path = admin_system_user_impersonation_path(broker)
+    get admin_system_users_path, params: { q: broker.email }
+    start_form = form_for_action(start_path)
+
+    expect(start_form["data-turbo"]).to eq("false")
+
+    post start_path, params: csrf_params_from_response
 
     expect(response).to redirect_to(admin_root_path)
     expect(session[:impersonator_admin_user_id]).to eq(system_admin.id)
@@ -24,7 +30,12 @@ RSpec.describe "Admin impersonations", type: :request do
 
     expect(response).to redirect_to(admin_root_path)
 
-    delete admin_impersonation_path
+    get admin_root_path
+    stop_form = form_for_action(admin_impersonation_path)
+
+    expect(stop_form["data-turbo"]).to eq("false")
+
+    delete admin_impersonation_path, params: csrf_params_from_response
 
     expect(response).to redirect_to(admin_system_users_path)
     expect(session[:impersonator_admin_user_id]).to be_nil
@@ -56,5 +67,17 @@ RSpec.describe "Admin impersonations", type: :request do
     expect(response).to have_http_status(:not_found)
     expect(session[:impersonator_admin_user_id]).to be_nil
     expect(AccessAuditLog.where(event_type: "impersonation_start", admin_user: broker)).not_to exist
+  end
+
+  def csrf_params_from_response
+    token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content")
+    token.present? ? { authenticity_token: token } : {}
+  end
+
+  def form_for_action(path)
+    form = Nokogiri::HTML(response.body).at_css(%(form[action="#{path}"]))
+    expect(form).to be_present
+    expect(form.at_css('input[name="authenticity_token"]')).to be_present if ActionController::Base.allow_forgery_protection
+    form
   end
 end
