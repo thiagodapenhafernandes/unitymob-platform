@@ -799,7 +799,7 @@ class Admin::HabitationsController < Admin::BaseController
   # do imóvel — campos bloqueados para o corretor. Restrito a quem edita os
   # campos protegidos (dono do tenant ou imoveis escopo "all").
   def authorize_habitation_ai_content!
-    return if can_edit_protected_habitation_fields?
+    return unless Habitations::FieldLockPolicy.for(current_admin_user).action_locked?("acao:gerar_ia")
 
     message = "Geração de conteúdo com IA é restrita ao administrador."
     if turbo_frame_request?

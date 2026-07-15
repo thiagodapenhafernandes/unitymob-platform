@@ -1,9 +1,9 @@
 <% habitation = f.object %>
 
 <% unique_feature_actions = capture do %>
-  <%# Card #1: "Gerar com IA" escreve título/descrição/SEO — bloqueado para o
-      corretor. Gatilho pelo módulo de Perfil/Permissão (imoveis escopo all/dono). %>
-  <% if habitation.persisted? && (tenant_owner? || owns_all_resource?(:imoveis)) %>
+  <%# Card #1: "Gerar com IA" escreve título/descrição/SEO — pode estar travado
+      pelo perfil (Habitations::FieldLockPolicy). %>
+  <% if habitation.persisted? && !Habitations::FieldLockPolicy.for(current_admin_user).action_locked?("acao:gerar_ia") %>
     <%= link_to generate_ai_preview_admin_habitation_path(habitation.id),
         class: "ax-btn ax-btn--primary ax-btn--sm",
         data: {

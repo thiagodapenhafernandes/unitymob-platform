@@ -1,0 +1,93 @@
+<%#
+  Modal "Campos do cadastro de imóvel" (card #1 / Opção B).
+  Renderizado DENTRO do form do perfil — os checkboxes submetem em
+  profile[permissions][imoveis][locked_fields][]. Checked = TRAVADO.
+  Fonte: Habitations::CadastroFieldRegistry. Estado inicial:
+  Habitations::FieldLockPolicy.effective_locked_keys_for.
+%>
+<% effective_locked = Habitations::FieldLockPolicy.effective_locked_keys_for(profile.permissions&.dig("imoveis")) %>
+<% total = Habitations::CadastroFieldRegistry.all_keys.size %>
+
+<style>
+  .prof-field-locks__toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:10px 0 14px; padding:8px 12px; border:1px solid var(--ax-border-soft,#e3e8f1); border-radius:10px; background:var(--ax-panel-header,#f7f9fc); position:sticky; top:0; z-index:1; }
+  .prof-field-locks__count { font-size:13px; color:#475467; }
+  .prof-field-locks__masters { display:flex; gap:8px; }
+  .prof-field-locks__groups { display:grid; gap:14px; }
+  .prof-field-locks__group { border:1px solid var(--ax-border-soft,#e3e8f1); border-radius:10px; padding:10px 12px 12px; margin:0; }
+  .prof-field-locks__group-title { display:flex; align-items:baseline; gap:8px; padding:0 0 8px; font-size:12px; }
+  .prof-field-locks__group-tab { font-weight:800; color:#1f2937; text-transform:uppercase; letter-spacing:.02em; }
+  .prof-field-locks__group-section { color:#667085; }
+  .prof-field-locks__items { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:6px 14px; }
+  .prof-field-locks__item { display:flex; align-items:center; gap:8px; font-size:13px; color:#344054; cursor:pointer; padding:2px 0; min-width:0; }
+  .prof-field-locks__item-label { overflow:hidden; text-overflow:ellipsis; }
+  .prof-field-locks__item--action .prof-field-locks__item-label { font-style:italic; color:#3f5b7d; }
+  .prof-field-locks__checkbox { flex:0 0 auto; width:15px; height:15px; accent-color:var(--admin-primary,#365f8f); }
+</style>
+
+<% modal_body = capture do %>
+  <div class="prof-field-locks" data-controller="field-locks">
+    <p class="prof-hint">
+      Marque para <strong>travar</strong> o campo/ação para este perfil; desmarque para liberar.
+      Só o <strong>dono da conta</strong> edita tudo. Campo novo nasce travado.
+    </p>
+
+    <div class="prof-field-locks__toolbar">
+      <span class="prof-field-locks__count">
+        <strong data-field-locks-target="lockedCount"><%= effective_locked.size %></strong> de <%= total %> travados
+      </span>
+      <div class="prof-field-locks__masters">
+        <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="field-locks#lockAll">
+          <i class="bi bi-lock"></i> Travar tudo
+        </button>
+        <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="field-locks#unlockAll">
+          <i class="bi bi-unlock"></i> Liberar tudo
+        </button>
+      </div>
+    </div>
+
+    <%# hidden garante que a chave locked_fields sempre chegue (mesmo com nada marcado) %>
+    <%= hidden_field_tag "profile[permissions][imoveis][locked_fields][]", "" %>
+
+    <div class="prof-field-locks__groups">
+      <% Habitations::CadastroFieldRegistry.groups.each do |group| %>
+        <fieldset class="prof-field-locks__group">
+          <legend class="prof-field-locks__group-title">
+            <span class="prof-field-locks__group-tab"><%= group[:tab] %></span>
+            <span class="prof-field-locks__group-section"><%= group[:section] %></span>
+          </legend>
+          <div class="prof-field-locks__items">
+            <% group[:items].each do |itm| %>
+              <label class="prof-field-locks__item <%= 'prof-field-locks__item--action' if itm[:kind] == :action %>">
+                <%= check_box_tag "profile[permissions][imoveis][locked_fields][]",
+                      itm[:key],
+                      effective_locked.include?(itm[:key]),
+                      id: "flock_#{itm[:key].parameterize(separator: '_')}",
+                      class: "prof-field-locks__checkbox",
+                      data: { field_locks_target: "checkbox", action: "change->field-locks#recount" } %>
+                <span class="prof-field-locks__item-label">
+                  <%= itm[:label] %>
+                  <% if itm[:kind] == :action %><i class="bi bi-cursor" title="Ação/botão" aria-hidden="true"></i><% end %>
+                </span>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<% modal_footer = capture do %>
+  <button type="button" class="ax-btn" data-action="ax-modal#close">Fechar</button>
+  <button type="button" class="ax-btn ax-btn--primary" data-action="ax-modal#close">
+    <i class="bi bi-check-lg"></i> Aplicar (salvar no formulário)
+  </button>
+<% end %>
+
+<%= ax_quick_modal(
+      id: "imoveisFieldLocksModal",
+      title: "Campos do cadastro de imóvel — travas por perfil",
+      size: :lg,
+      body: modal_body,
+      footer: modal_footer
+    ) %>

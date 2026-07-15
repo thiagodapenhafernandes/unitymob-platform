@@ -1,6 +1,6 @@
-<%# Card #1: "Responsáveis e agenciamento" é bloqueado para o corretor.
-    Gatilho pelo módulo de Perfil/Permissão (imoveis escopo all ou dono). %>
-<% can_manage_responsibles = !(f.object.persisted? && !(tenant_owner? || owns_all_resource?(:imoveis))) %>
+<%# Card #1: "Responsáveis e agenciamento" pode estar travado pelo perfil
+    (Habitations::FieldLockPolicy). %>
+<% can_manage_responsibles = !(f.object.persisted? && Habitations::FieldLockPolicy.for(current_admin_user).action_locked?("acao:gerenciar_responsaveis")) %>
 <% broker_group_actions = capture do %>
   <% if can_manage_responsibles %>
     <%= ax_button("Adicionar", variant: :ghost, size: :sm, icon: "person-plus", data: { ax_modal_open: "#addBrokerModal", action: "habitation-brokers#resetModal" }) %>

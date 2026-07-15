@@ -145,6 +145,15 @@ module Admin
           scope = "all" if base[:axis] == Profile::AXES[:horizontal] && scope == "team"
           res_perms["scope"] = scope
         end
+
+        # Imóveis: trava de campos do cadastro (card #1 / Opção B). Guarda os
+        # campos marcados (= travados) validados contra o registry. O hidden do
+        # modal garante que a chave sempre chega (mesmo com nada marcado).
+        if key == "imoveis"
+          submitted = Array(entry[:locked_fields]).map(&:to_s).reject(&:blank?)
+          res_perms["locked_fields"] = submitted & Habitations::CadastroFieldRegistry.all_keys
+        end
+
         perms[key] = res_perms
       end
 

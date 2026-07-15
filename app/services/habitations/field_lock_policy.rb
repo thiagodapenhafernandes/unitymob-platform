@@ -95,6 +95,15 @@ module Habitations
     end
 
     class << self
+      # Conjunto travado EFETIVO de um perfil (para renderizar o modal): usa a
+      # config salva (locked_fields) quando presente, senão o default do card #1.
+      def effective_locked_keys_for(imoveis_permissions)
+        raw = imoveis_permissions.is_a?(Hash) ? imoveis_permissions["locked_fields"] : nil
+        return Set.new(raw.map(&:to_s)) if raw.is_a?(Array)
+
+        default_locked_keys
+      end
+
       # Default = comportamento atual do card #1: editável só o que está em
       # BrokerEditPolicy (allowlist + address_attributes.imediacoes); todo o
       # resto (incl. todas as ações) nasce travado.

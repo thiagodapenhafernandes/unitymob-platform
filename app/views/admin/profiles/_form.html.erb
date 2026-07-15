@@ -32,6 +32,13 @@
                             <strong><%= resource[:label] %></strong>
                             <span title="<%= resource[:description] %>"><%= resource[:description] %></span>
                           </div>
+                          <% if resource[:key] == "imoveis" %>
+                            <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost prof-res__field-locks"
+                                    data-ax-modal-open="#imoveisFieldLocksModal"
+                                    title="Configurar quais campos do cadastro este perfil pode editar">
+                              <i class="bi bi-sliders" aria-hidden="true"></i> Campos do cadastro
+                            </button>
+                          <% end %>
                       </div>
                     </th>
 
@@ -160,6 +167,10 @@
       </div>
     </aside>
   </div>
+
+  <%# Modal de travas de campos do cadastro (card #1 / Opção B). Fica DENTRO do
+      form para os checkboxes submeterem em profile[permissions][imoveis][locked_fields]. %>
+  <%= render "admin/profiles/field_locks_modal", profile: profile %>
 
   <%= ax_sticky_action_footer do %>
     <%= link_to "Cancelar", admin_profiles_path, class: "ax-btn" %>
