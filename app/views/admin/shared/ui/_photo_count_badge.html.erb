@@ -4,8 +4,6 @@
   compact = local_assigns.fetch(:compact, false)
   label = if compact
             total_count.to_s
-          elsif preview_count < total_count
-            "#{preview_count} de #{total_count} fotos"
           else
             "#{total_count} #{total_count == 1 ? 'foto' : 'fotos'}"
           end

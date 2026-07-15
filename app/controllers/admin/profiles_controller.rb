@@ -66,7 +66,8 @@ module Admin
         @profile.assign_attributes(attrs)
         render_profile_position_error(:edit)
       elsif update_profile_with_structural_reconciliation(attrs)
-        redirect_to admin_profiles_path, notice: "Perfil e permissões atualizados."
+        destination = params[:save_navigation] == "exit" ? admin_profiles_path : edit_admin_profile_path(@profile)
+        redirect_to destination, notice: "Perfil e permissões atualizados."
       else
         render :edit, status: :unprocessable_entity
       end

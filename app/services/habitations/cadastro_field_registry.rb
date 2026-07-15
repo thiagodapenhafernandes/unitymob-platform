@@ -22,7 +22,7 @@ module Habitations
   module CadastroFieldRegistry
     GROUPS = [
       {
-        tab: "Visão geral", section: "Tipo de cadastro",
+        tab: "Visão geral", section: "Definições básicas",
         items: [
           { key: "tipo", label: "Tipo de cadastro" },
           { key: "categoria", label: "Categoria" },
@@ -34,19 +34,39 @@ module Habitations
         ]
       },
       {
+        tab: "Visão geral", section: "Identificação e sinalizadores",
+        items: [
+          { key: "exibir_no_site_flag", label: "Site", kind: :flag },
+          { key: "destaque_web_flag", label: "Destaque", kind: :flag },
+          { key: "festival_salute_flag", label: "Super destaque", kind: :flag },
+          { key: "lancamento_flag", label: "Lançamento", kind: :flag },
+          { key: "tem_placa_flag", label: "Placa", kind: :flag },
+          { key: "exclusivo_flag", label: "Exclusivo", kind: :flag },
+          { key: "imovel_dwv", label: "Imóvel DWV", kind: :flag }
+        ]
+      },
+      {
         tab: "Visão geral", section: "Vínculo do empreendimento",
         items: [
           { key: "codigo_empreendimento", label: "Código do empreendimento" },
           { key: "nome_empreendimento", label: "Nome do empreendimento" },
           { key: "data_entrega", label: "Data de entrega" },
           { key: "perfil_construcao", label: "Perfil de construção" },
-          { key: "acao:vincular_empreendimento", label: "Botão + (cadastrar/vincular empreendimento)", kind: :action }
+          { key: "acao:vincular_empreendimento", label: "Cadastrar/vincular empreendimento", kind: :action }
+        ]
+      },
+      {
+        tab: "Visão geral", section: "Proprietário e responsável",
+        items: [
+          { key: "proprietor_id", label: "Proprietário" },
+          { key: "admin_user_id", label: "Captador responsável" },
+          { key: "acao:cadastrar_proprietario", label: "Cadastrar novo proprietário", kind: :action }
         ]
       },
       {
         tab: "Visão geral", section: "Endereço e localização",
         items: [
-          { key: "tipo_endereco", label: "Tipo de logradouro" },
+          { key: "tipo_endereco", label: "Tipo de logradouro", param_path: "address_attributes.tipo_endereco" },
           { key: "logradouro", label: "Logradouro", param_path: "address_attributes.logradouro" },
           { key: "numero", label: "Número", param_path: "address_attributes.numero" },
           { key: "complemento", label: "Complemento", param_path: "address_attributes.complemento" },
@@ -54,10 +74,13 @@ module Habitations
           { key: "bairro_comercial", label: "Bairro comercial", param_path: "address_attributes.bairro_comercial" },
           { key: "cidade", label: "Cidade", param_path: "address_attributes.cidade" },
           { key: "uf", label: "UF", param_path: "address_attributes.uf" },
-          { key: "bloco", label: "Bloco / Unidade", param_path: "address_attributes.bloco" },
+          { key: "cep", label: "CEP", param_path: "address_attributes.cep" },
+          { key: "bloco", label: "Bloco / Unidade" },
           { key: "imediacoes", label: "Imediações", param_path: "address_attributes.imediacoes" },
           { key: "public_map_display_mode", label: "Localização pública (mapa)" },
-          { key: "public_street_view_mode", label: "Localização pública (street view)" }
+          { key: "public_street_view_mode", label: "Localização pública (street view)" },
+          { key: "acao:buscar_cep", label: "Buscar endereço pelo CEP", kind: :action },
+          { key: "acao:gerenciar_imediacoes", label: "Gerenciar imediações", kind: :action }
         ]
       },
       {
@@ -69,7 +92,6 @@ module Habitations
           { key: "salas_qtd", label: "Salas" },
           { key: "varandas_qtd", label: "Varandas" },
           { key: "banheiros_qtd", label: "Banheiros" },
-          { key: "banheiro_social_qtd", label: "Banheiros sociais" },
           { key: "hidromassagem_qtd", label: "Hidromassagens" },
           { key: "vagas_qtd", label: "Vagas" },
           { key: "elevadores_qtd", label: "Elevadores" },
@@ -79,22 +101,31 @@ module Habitations
           { key: "area_privativa_m2", label: "Área privativa (m²)" },
           { key: "area_total_m2", label: "Área total (m²)" },
           { key: "area_terreno_m2", label: "Área do terreno (m²)" },
-          { key: "area_util_m2", label: "Área útil (m²)" },
           { key: "dimensoes_terreno", label: "Dimensões do terreno" },
-          { key: "frente_terreno_m", label: "Frente do terreno (m)" },
-          { key: "fundo_terreno_m", label: "Fundo do terreno (m)" },
           { key: "topografia", label: "Topografia" },
           { key: "face", label: "Face / Posição solar" }
         ]
       },
       {
+        tab: "Visão geral", section: "Financeiro e valores",
+        items: [
+          { key: "valor_venda_formatted", label: "Venda" },
+          { key: "valor_locacao_formatted", label: "Aluguel" },
+          { key: "valor_condominio_formatted", label: "Condomínio" },
+          { key: "valor_iptu_formatted", label: "IPTU" },
+          { key: "valor_alugado_terceiros_formatted", label: "Valor comercializado (locação)" },
+          { key: "valor_vendido_terceiros_formatted", label: "Valor comercializado (venda)" },
+          { key: "valor_por_m2_formatted", label: "Valor por m² (somente leitura)" }
+        ]
+      },
+      {
         tab: "Características", section: "Destaque e texto público",
         items: [
-          { key: "destaque_web_flag", label: "Destaque Web", kind: :flag },
           { key: "caracteristica_unica", label: "Característica única" },
           { key: "titulo_anuncio", label: "Título do anúncio" },
           { key: "descricao_web", label: "Descrição do imóvel para internet" },
-          { key: "acao:gerar_ia", label: "Botão Gerar com IA", kind: :action }
+          { key: "acao:gerar_ia", label: "Gerar conteúdo com IA", kind: :action },
+          { key: "acao:gerenciar_destaques", label: "Gerenciar destaques", kind: :action }
         ]
       },
       {
@@ -108,14 +139,14 @@ module Habitations
         tab: "Infraestrutura", section: "Dados do edifício",
         items: [
           { key: "construtora", label: "Construtora" },
-          { key: "agenciador", label: "Agenciador" },
-          { key: "tipo_fachada", label: "Tipo de fachada" },
-          { key: "descricao_empreendimento", label: "Descrição do empreendimento" }
+          { key: "agenciador", label: "Administradora do condomínio" },
+          { key: "tipo_fachada", label: "Tipo de fachada" }
         ]
       },
       {
         tab: "Infraestrutura", section: "Descrição e capacidade",
         items: [
+          { key: "descricao_empreendimento", label: "Descrição do empreendimento" },
           { key: "andares_qtd", label: "Nº de andares" },
           { key: "ano_construcao", label: "Ano de construção" },
           # "elevadores_qtd" é o mesmo param da seção "Dimensões e estrutura física"
@@ -132,23 +163,6 @@ module Habitations
         ]
       },
       {
-        tab: "Comercial", section: "Financeiro e valores",
-        items: [
-          { key: "valor_venda_formatted", label: "Valor de venda" },
-          { key: "valor_locacao_formatted", label: "Valor de locação" },
-          { key: "valor_condominio_formatted", label: "Condomínio" },
-          { key: "valor_iptu_formatted", label: "IPTU" },
-          { key: "valor_por_m2_formatted", label: "Valor por m²" },
-          { key: "valor_alugado_terceiros_formatted", label: "Valor comercializado (locação)" },
-          { key: "valor_vendido_terceiros_formatted", label: "Valor comercializado (venda)" },
-          { key: "valor_venda_anterior_formatted", label: "Valor de venda anterior (automático)" },
-          { key: "valor_locacao_anterior_formatted", label: "Valor de locação anterior (automático)" },
-          { key: "valor_promocional_formatted", label: "Valor promocional (automático)" },
-          { key: "valor_promocional_indicador", label: "Indicador de promoção", kind: :flag },
-          { key: "saldo_devedor_formatted", label: "Saldo devedor" }
-        ]
-      },
-      {
         tab: "Comercial", section: "Condições comerciais",
         items: [
           { key: "condicoes_negociacao", label: "Condições de negociação" },
@@ -157,7 +171,10 @@ module Habitations
           { key: "numero_prestacoes", label: "Nº de prestações" },
           { key: "inscricao_imobiliaria", label: "Inscrição imobiliária" },
           { key: "matricula_imovel", label: "Matrícula do imóvel" },
-          { key: "zona", label: "Zona" }
+          { key: "zona", label: "Zona" },
+          { key: "valor_venda_anterior_formatted", label: "Venda anterior" },
+          { key: "valor_locacao_anterior_formatted", label: "Aluguel anterior" },
+          { key: "valor_promocional_formatted", label: "Valor promocional" }
         ]
       },
       {
@@ -177,8 +194,7 @@ module Habitations
           { key: "permuta_dormitorios_qtd", label: "Permuta: dormitórios" },
           { key: "permuta_suites_qtd", label: "Permuta: suítes" },
           { key: "permuta_garagens_qtd", label: "Permuta: garagens" },
-          { key: "permuta_outros_descricao", label: "Permuta: descrição (outros)" },
-          { key: "rental_guarantee_method", label: "Garantia de locação" }
+          { key: "permuta_outros_descricao", label: "Permuta: descrição (outros)" }
         ]
       },
       {
@@ -190,7 +206,6 @@ module Habitations
           { key: "proprietario_celular", label: "Celular do proprietário" },
           { key: "proprietario_telefone_comercial", label: "Telefone comercial do proprietário" },
           { key: "proprietario_telefone_residencial", label: "Telefone residencial do proprietário" },
-          { key: "proprietor_id", label: "Vínculo do proprietário (pesquisa/cadastro)" },
           { key: "captador_commission_percentage", label: "Comissão do captador (%)" },
           { key: "broker_commission_percentage", label: "Comissão do corretor (%)" },
           { key: "valor_comissao_formatted", label: "Valor da comissão" },
@@ -211,6 +226,7 @@ module Habitations
           { key: "zelador_nome", label: "Nome do zelador" },
           { key: "zelador_telefone", label: "Telefone do zelador" },
           { key: "responsavel_reserva", label: "Responsável pela reserva" },
+          { key: "saldo_devedor_formatted", label: "Saldo devedor" },
           { key: "observacoes_visitas", label: "Observações de visitas" },
           { key: "observacoes", label: "Observações gerais" }
         ]
@@ -218,15 +234,13 @@ module Habitations
       {
         tab: "Comercial", section: "Responsáveis e agenciamento",
         items: [
-          { key: "admin_user_id", label: "Captador responsável" },
-          { key: "acao:gerenciar_responsaveis", label: "Adicionar/Remover responsáveis", kind: :action }
+          { key: "acao:gerenciar_responsaveis", label: "Adicionar/Remover responsáveis", kind: :action,
+            extra_params: %w[broker_assignments_attributes] }
         ]
       },
       {
         tab: "Comercial", section: "Publicação em portais",
         items: [
-          { key: "exibir_no_site_flag", label: "Exibir no site", kind: :flag },
-          { key: "publicar_zapimoveis", label: "Publicar: ZAP Imóveis", kind: :flag },
           { key: "publicar_viva_real_vrsync", label: "Publicar: Viva Real", kind: :flag },
           { key: "publicar_imovelweb", label: "Publicar: ImovelWeb", kind: :flag },
           { key: "publicar_imovelweb_2", label: "Publicar: ImovelWeb 2", kind: :flag },
@@ -250,40 +264,38 @@ module Habitations
         tab: "Mídia", section: "Mídia e uploads",
         items: [
           { key: "photos", label: "Fotos (upload/ordem/ocultar)",
-            extra_params: %w[ordered_photo_ids ordered_picture_indices site_hidden_photo_ids site_hidden_picture_urls] },
+            extra_params: %w[ordered_photo_ids ordered_picture_indices site_hidden_photo_ids site_hidden_picture_urls remove_photo_ids remove_picture_indices] },
+          { key: "apply_photo_watermark", label: "Aplicar marca d'água", kind: :flag },
           { key: "videos", label: "Vídeos" },
           { key: "tour_virtual", label: "Tour virtual" },
           { key: "podcast_url", label: "Podcast (URL)" },
-          { key: "plantas", label: "Plantas" },
-          { key: "fotos_empreendimento", label: "Fotos do empreendimento" },
           { key: "use_development_photos_flag", label: "Usar fotos do empreendimento", kind: :flag },
-          { key: "foto_classificacao", label: "Classificação das fotos" }
+          { key: "foto_classificacao", label: "Classificação das fotos" },
+          { key: "acao:abrir_organizador_midia", label: "Abrir organizador de mídia", kind: :action },
+          { key: "acao:organizar_fotos", label: "Organizar fotos por ambiente", kind: :action },
+          { key: "acao:enviar_fotos", label: "Enviar fotos", kind: :action },
+          { key: "acao:alterar_visibilidade_fotos", label: "Publicar/ocultar fotos no site", kind: :action },
+          { key: "acao:gerenciar_ordem_fotos", label: "Reordenar/definir foto de destaque", kind: :action },
+          { key: "acao:configurar_ambiente_foto", label: "Configurar ambiente da foto", kind: :action },
+          { key: "acao:remover_foto", label: "Remover fotos", kind: :action }
         ]
       },
       {
-        tab: "Sinalizadores", section: "Exibição e sinalizadores",
-        items: [
-          { key: "lancamento_flag", label: "Lançamento", kind: :flag },
-          { key: "exclusivo_flag", label: "Exclusivo", kind: :flag },
-          { key: "tem_placa_flag", label: "Tem placa", kind: :flag },
-          { key: "festival_salute_flag", label: "Festival Salute", kind: :flag },
-          { key: "imovel_dwv", label: "Imóvel DWV" }
-        ]
-      },
-      {
-        tab: "Documentos", section: "Documentos",
+        tab: "Documentos", section: "Documentos internos",
         items: [
           { key: "fichas_cadastro", label: "Fichas de cadastro" },
-          { key: "autorizacoes_venda", label: "Autorizações de venda" }
+          { key: "autorizacoes_venda", label: "Autorizações de venda" },
+          { key: "acao:remover_fichas_cadastro", label: "Remover fichas de cadastro", kind: :action },
+          { key: "acao:remover_autorizacoes_venda", label: "Remover autorizações de venda", kind: :action }
         ]
       },
       {
-        tab: "SEO & Controle", section: "SEO e controle",
+        tab: "SEO & Controle", section: "Otimização para busca",
         items: [
           { key: "meta_title", label: "Meta Title" },
-          { key: "meta_description", label: "Meta Description" },
-          { key: "meta_keywords", label: "Meta Keywords" },
-          { key: "slug", label: "URL amigável (Slug)" }
+          { key: "meta_description", label: "Meta Description (SEO)" },
+          { key: "meta_keywords", label: "Palavras-chave (Tags)" },
+          { key: "slug", label: "URL amigável (Slug) (somente leitura)" }
         ]
       }
     ].freeze

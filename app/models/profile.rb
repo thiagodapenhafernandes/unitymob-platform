@@ -51,6 +51,7 @@ class Profile < ApplicationRecord
   before_validation :assign_role_key
   before_validation :normalize_axis
   before_validation :normalize_vertical_position
+  before_validation :normalize_habitation_field_locks
 
   # Catálogo de recursos configuráveis via UI em /admin/profiles.
   # Cada entrada define: label humano, ícone, ações disponíveis e se suporta scope own/all.
@@ -191,7 +192,19 @@ class Profile < ApplicationRecord
 
   def self.default_permissions_for(name)
     permissions = PROFILE_PRESETS[name.to_s] || PROFILE_PRESETS["Corretor"]
-    permissions.deep_dup
+    permissions.deep_dup.tap { |payload| apply_habitation_field_lock_defaults!(payload) }
+  end
+
+  def self.apply_habitation_field_lock_defaults!(permissions)
+    return permissions unless permissions.is_a?(Hash)
+
+    imoveis = permissions["imoveis"]
+    return permissions unless imoveis.is_a?(Hash)
+    return permissions if imoveis["locked_fields"].is_a?(Array)
+
+    full_access = permissions["admin"] == true || imoveis["scope"].to_s == "all"
+    imoveis["locked_fields"] = full_access ? [] : Habitations::FieldLockPolicy.default_locked_keys.to_a
+    permissions
   end
 
   # Pode fazer `action` sobre `resource`?
@@ -263,6 +276,10 @@ class Profile < ApplicationRecord
     elsif position.blank?
       self.position = next_vertical_position
     end
+  end
+
+  def normalize_habitation_field_locks
+    self.class.apply_habitation_field_lock_defaults!(permissions)
   end
 
   def permissions_hash

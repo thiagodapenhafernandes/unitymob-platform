@@ -4,6 +4,8 @@
   attached_media_photos = local_assigns.fetch(:attached_media_photos)
   api_media_pictures = local_assigns.fetch(:api_media_pictures, [])
   can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:manage, :imoveis))
+  can_edit_photos = local_assigns.fetch(:can_edit_photos, can_edit_media)
+  media_action_allowed = local_assigns.fetch(:media_action_allowed, ->(_key) { can_edit_media })
 %>
 
 <% if attached_media_photos.any? %>
@@ -23,6 +25,7 @@
               aria-label="<%= photo_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
               aria-pressed="<%= !photo_hidden_from_site %>"
               data-action="click->photo-upload#toggleSiteVisibility"
+              <%= "disabled" unless media_action_allowed.call("acao:alterar_visibilidade_fotos") %>
               data-photo-id="<%= photo.id %>">
         <i class="bi <%= photo_hidden_from_site ? 'bi-eye-slash' : 'bi-globe2' %>" aria-hidden="true"></i>
       </button>
@@ -38,7 +41,8 @@
                   class="media-photo-feature-button ax-media-action ax-media-action--featured"
                   title="Definir como destaque"
                   aria-label="Definir como destaque"
-                  data-action="photo-upload#setFeatured">
+                  data-action="photo-upload#setFeatured"
+                  <%= "disabled" unless media_action_allowed.call("acao:gerenciar_ordem_fotos") %>>
             <i class="bi bi-star"></i>
           </button>
         <% end %>
@@ -47,7 +51,7 @@
     <% photo_actions = capture do %>
       <span class="ax-media-action-group">
         <%= site_toggle %>
-        <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar">
+        <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar" <%= "disabled" unless media_action_allowed.call("acao:gerenciar_ordem_fotos") %>>
           <i class="bi bi-grip-vertical"></i>
         </button>
         <% if can_edit_media %>
@@ -56,6 +60,7 @@
                   title="Configurar ambiente"
                   aria-label="Configurar ambiente"
                   data-action="media-tools#openSettings"
+                  <%= "disabled" unless media_action_allowed.call("acao:configurar_ambiente_foto") %>
                   data-media-tools-photo-id-param="<%= photo.id %>"
                   data-media-tools-ambiente-param="<%= photo_ambiente %>"
                   data-media-tools-ambiente-position-param="<%= photo_ambiente_position %>">
@@ -66,7 +71,8 @@
                 class="media-photo-action-button ax-media-action ax-media-action--danger"
                 title="Remover foto"
                 aria-label="Remover foto"
-                data-action="photo-upload#removeAttached">
+                data-action="photo-upload#removeAttached"
+                <%= "disabled" unless media_action_allowed.call("acao:remover_foto") %>>
           <i class="bi bi-trash"></i>
         </button>
       </span>
@@ -119,6 +125,7 @@
               aria-label="<%= picture_hidden_from_site ? 'Foto interna, fora do site' : 'Foto publicada no site' %>"
               aria-pressed="<%= !picture_hidden_from_site %>"
               data-action="click->photo-upload#toggleSiteVisibility"
+              <%= "disabled" unless media_action_allowed.call("acao:alterar_visibilidade_fotos") %>
               data-picture-url="<%= pic_url %>">
         <i class="bi <%= picture_hidden_from_site ? 'bi-eye-slash' : 'bi-globe2' %>" aria-hidden="true"></i>
       </button>
@@ -134,7 +141,8 @@
                   class="media-photo-feature-button ax-media-action ax-media-action--featured"
                   title="Definir como destaque"
                   aria-label="Definir como destaque"
-                  data-action="photo-upload#setFeatured">
+                  data-action="photo-upload#setFeatured"
+                  <%= "disabled" unless media_action_allowed.call("acao:gerenciar_ordem_fotos") %>>
             <i class="bi bi-star"></i>
           </button>
         <% end %>
@@ -143,7 +151,7 @@
     <% picture_actions = capture do %>
       <span class="ax-media-action-group">
         <%= site_toggle %>
-        <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar">
+        <button type="button" class="media-photo-drag-handle media-photo-action-button ax-media-action ax-media-action--neutral" title="Arrastar para reordenar" aria-label="Arrastar para reordenar" <%= "disabled" unless media_action_allowed.call("acao:gerenciar_ordem_fotos") %>>
           <i class="bi bi-grip-vertical"></i>
         </button>
         <% if can_edit_media %>
@@ -152,6 +160,7 @@
                   title="Configurar ambiente"
                   aria-label="Configurar ambiente"
                   data-action="media-tools#openSettings"
+                  <%= "disabled" unless media_action_allowed.call("acao:configurar_ambiente_foto") %>
                   data-media-tools-picture-index-param="<%= original_index %>"
                   data-media-tools-ambiente-param="<%= picture_ambiente %>"
                   data-media-tools-ambiente-position-param="<%= picture_ambiente_position %>">
@@ -162,7 +171,8 @@
                 class="media-photo-action-button ax-media-action ax-media-action--danger"
                 title="Remover foto"
                 aria-label="Remover foto"
-                data-action="photo-upload#removeApiPicture">
+                data-action="photo-upload#removeApiPicture"
+                <%= "disabled" unless media_action_allowed.call("acao:remover_foto") %>>
           <i class="bi bi-trash"></i>
         </button>
       </span>

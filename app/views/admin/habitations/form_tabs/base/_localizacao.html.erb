@@ -10,7 +10,7 @@
                 choices: Habitation::STREET_TYPES,
                 select_options: { include_blank: true },
                 html_options: {
-                  disabled: !can_edit_protected_habitation_fields,
+                  disabled: !habitation_field_editable?("tipo_endereco"),
                   data: { controller: "tom-select", placeholder: "Selecione...", cep_search_target: "tipo", habitation_form_target: "streetTypeSelect" }
                 }
               ) %>
@@ -22,7 +22,7 @@
                 method: :logradouro,
                 label: "Logradouro",
                 placeholder: "Rua, Av...",
-                readonly: !can_edit_protected_habitation_fields,
+                readonly: !habitation_field_editable?("logradouro"),
                 data: {
                   cep_search_target: "logradouro",
                   habitation_form_target: "street",
@@ -37,7 +37,7 @@
                 form: address_form,
                 method: :numero,
                 label: "Nº",
-                readonly: !can_edit_protected_habitation_fields,
+                readonly: !habitation_field_editable?("numero"),
                 data: {
                   cep_search_target: "numero",
                   habitation_form_target: "streetNumber",
@@ -52,7 +52,7 @@
                 form: address_form,
                 method: :complemento,
                 label: "Compl.",
-                readonly: !can_edit_protected_habitation_fields,
+                readonly: !habitation_field_editable?("complemento"),
                 data: {
                   cep_search_target: "complemento",
                   habitation_duplicate_check_target: "complement",
@@ -69,7 +69,7 @@
                 choices: Habitation::UF_OPTIONS,
                 select_options: { include_blank: true },
                 html_options: {
-                  disabled: !can_edit_protected_habitation_fields,
+                  disabled: !habitation_field_editable?("uf"),
                   data: { controller: "tom-select", placeholder: "UF", cep_search_target: "uf", habitation_form_target: "stateSelect" }
                 }
               ) %>
@@ -78,14 +78,18 @@
         <div class="ax-span-2">
           <%= ax_field_label(address_form, :cep, text: "CEP") %>
           <% cep_action = capture do %>
-            <button class="ax-btn ax-btn--primary" type="button" data-action="cep-search#search" <%= "disabled" unless can_edit_protected_habitation_fields %>>
+            <button class="ax-btn ax-btn--primary" type="button"
+                    data-action="cep-search#search"
+                    data-broker-field-policy-lock
+                    data-field-lock-action="acao:buscar_cep"
+                    <%= "disabled" unless habitation_field_editable?("cep") && habitation_field_editable?("acao:buscar_cep") %>>
               <i class="bi bi-search"></i>
             </button>
           <% end %>
           <%= ax_input_group(action: cep_action) do %>
             <%= address_form.text_field :cep,
                 class: "ax-control",
-                readonly: !can_edit_protected_habitation_fields,
+                readonly: !habitation_field_editable?("cep"),
                 data: {
                   controller: "mask",
                   mask_type_value: "cep",
@@ -104,7 +108,7 @@
                 choices: @neighborhoods,
                 select_options: { include_blank: true, selected: address_form.object.bairro },
                 html_options: {
-                  disabled: !can_edit_protected_habitation_fields,
+                  disabled: !habitation_field_editable?("bairro"),
                   data: { controller: "tom-select", tom_select_create_value: true, cep_search_target: "bairro", habitation_form_target: "neighborhoodSelect" }
                 }
               ) %>
@@ -118,7 +122,7 @@
                 choices: (@commercial_neighborhoods || []),
                 select_options: { include_blank: true, selected: address_form.object.bairro_comercial },
                 html_options: {
-                  disabled: !can_edit_protected_habitation_fields,
+                  disabled: !habitation_field_editable?("bairro_comercial"),
                   data: { controller: "tom-select", tom_select_create_value: true, habitation_form_target: "commercialNeighborhoodSelect" }
                 }
               ) %>
@@ -132,7 +136,7 @@
                 choices: @cities,
                 select_options: { include_blank: true, selected: address_form.object.cidade },
                 html_options: {
-                  disabled: !can_edit_protected_habitation_fields,
+                  disabled: !habitation_field_editable?("cidade"),
                   data: { controller: "tom-select", tom_select_create_value: true, cep_search_target: "cidade", habitation_form_target: "citySelect" }
                 }
               ) %>
@@ -143,7 +147,7 @@
                 form: f,
                 method: :bloco,
                 label: "Bloco",
-                readonly: !can_edit_protected_habitation_fields,
+                readonly: !habitation_field_editable?("bloco"),
                 data: {
                   habitation_duplicate_check_target: "unit",
                   action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check"
@@ -174,6 +178,7 @@
                   modal_title: "Gerenciar Imediações",
                   context: "habitation",
                   category: "imediacoes",
+                  field_lock_action: "acao:gerenciar_imediacoes",
                   field_name: "habitation[address_attributes][imediacoes][]",
                   modal_id: "attributeManagerModal"
                 }
@@ -202,7 +207,7 @@
               label: "Localização pública",
               choices: Habitation::PUBLIC_MAP_DISPLAY_MODES.map { |value, label| [label, value] },
               select_options: { selected: f.object.public_map_display_mode },
-              html_options: { disabled: !can_edit_protected_habitation_fields }
+              html_options: { disabled: !habitation_field_editable?("public_map_display_mode") }
             ) %>
       </div>
       <div class="ax-span-6">
@@ -212,7 +217,7 @@
               label: "Vista da rua",
               choices: Habitation::PUBLIC_STREET_VIEW_MODES.map { |value, label| [label, value] },
               select_options: { selected: f.object.public_street_view_mode },
-              html_options: { disabled: !can_edit_protected_habitation_fields }
+              html_options: { disabled: !habitation_field_editable?("public_street_view_mode") }
             ) %>
       </div>
     <% end %>

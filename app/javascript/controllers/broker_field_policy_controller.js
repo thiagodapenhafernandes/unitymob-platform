@@ -4,10 +4,11 @@ import { Controller } from "@hotwired/stimulus"
 // Habitations::BrokerEditPolicy não libera. Só é conectado quando
 // broker_restricted_habitation_edit? é true (ver _form.html.erb).
 export default class extends Controller {
-  static values = { allowedFields: Array }
+  static values = { allowedFields: Array, allowedActions: Array }
 
   connect() {
     this.allowed = new Set(this.allowedFieldsValue)
+    this.allowedActions = new Set(this.allowedActionsValue)
     this.lockForbiddenFields()
     this.lockAttributeManagers()
     this.lockMarkedControls()
@@ -55,9 +56,10 @@ export default class extends Controller {
 
   lockAttributeManagers() {
     this.element.querySelectorAll("[data-action*='attribute-manager#open']").forEach((button) => {
-      button.disabled = true
-      button.setAttribute("aria-disabled", "true")
-      button.title = "Gerenciamento restrito ao administrador"
+      const actionKey = button.dataset.fieldLockAction
+      if (actionKey && this.allowedActions.has(actionKey)) return
+
+      this.disableAction(button)
     })
   }
 
@@ -66,10 +68,25 @@ export default class extends Controller {
   // Marcados na view com data-broker-field-policy-lock.
   lockMarkedControls() {
     this.element.querySelectorAll("[data-broker-field-policy-lock]").forEach((control) => {
-      control.disabled = true
-      control.setAttribute("aria-disabled", "true")
-      control.classList.add("is-policy-locked")
+      const fieldKey = control.dataset.fieldLockField
+      const actionKey = control.dataset.fieldLockAction
+      if (fieldKey && this.allowed.has(fieldKey)) return
+      if (actionKey && this.allowedActions.has(actionKey)) return
+
+      this.disableAction(control)
     })
+  }
+
+  disableAction(control) {
+    control.disabled = true
+    control.setAttribute("aria-disabled", "true")
+    control.classList.add("is-policy-locked")
+    if (control.tagName === "A") control.addEventListener("click", this.preventLockedAction)
+  }
+
+  preventLockedAction(event) {
+    event.preventDefault()
+    event.stopImmediatePropagation()
   }
 
   trixInputName(editor) {

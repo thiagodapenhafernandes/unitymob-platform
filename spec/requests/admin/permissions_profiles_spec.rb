@@ -115,13 +115,11 @@ RSpec.describe "Admin profile permissions", type: :request do
     get admin_captacao_path(team_intake)
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Revisão administrativa")
-    authenticity_token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')["content"]
 
     get admin_captacao_path(outside_intake)
     expect(response).to redirect_to(admin_captacoes_path)
 
     post return_to_broker_admin_captacao_path(team_intake), params: {
-      authenticity_token: authenticity_token,
       admin_review_return_reason: "Ajustar documentação",
       admin_review_notes: "Revisão do gerente"
     }
@@ -129,7 +127,6 @@ RSpec.describe "Admin profile permissions", type: :request do
     expect(team_intake.reload.intake_status).to eq("returned_to_broker")
 
     post return_to_broker_admin_captacao_path(outside_intake), params: {
-      authenticity_token: authenticity_token,
       admin_review_return_reason: "Tentativa fora da equipe",
       admin_review_notes: "Não deve revisar"
     }
@@ -143,8 +140,7 @@ RSpec.describe "Admin profile permissions", type: :request do
     expect(response).to redirect_to(admin_habitations_path)
 
     get edit_admin_habitation_path(team_intake)
-    authenticity_token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')["content"]
-    delete admin_habitation_path(team_intake), params: { authenticity_token: authenticity_token }
+    delete admin_habitation_path(team_intake)
     expect(response).to redirect_to(admin_habitations_path)
     expect(team_intake.reload).to be_persisted
 
@@ -162,7 +158,6 @@ RSpec.describe "Admin profile permissions", type: :request do
     expect(response.body).not_to include(team_intake.titulo_anuncio)
 
     post return_to_broker_admin_captacao_path(team_intake), params: {
-      authenticity_token: authenticity_token,
       admin_review_return_reason: "Tentativa sem permissão",
       admin_review_notes: "Não deve revisar"
     }
@@ -276,8 +271,34 @@ RSpec.describe "Admin profile permissions", type: :request do
       }
     }
 
-    expect(response).to redirect_to(admin_profiles_path)
+    expect(response).to redirect_to(edit_admin_profile_path(profile))
     expect(profile.reload.permissions.dig("leads", "scope")).to eq("team")
+  end
+
+  it "só sai da edição do perfil quando o usuário escolhe salvar e sair" do
+    admin = create(:admin_user, :admin)
+    profile = build_manager_profile(name: "Gerente navegação #{SecureRandom.hex(6)}", position: 820)
+
+    sign_in admin
+    get edit_admin_profile_path(profile)
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css('button[name="save_navigation"][value="stay"]')&.text&.squish).to eq("Salvar alterações")
+    expect(document.at_css('button[name="save_navigation"][value="exit"]')&.text&.squish).to eq("Salvar e sair")
+
+    patch admin_profile_path(profile), params: {
+      save_navigation: "exit",
+      profile: {
+        name: profile.name,
+        active: "1",
+        axis: "vertical",
+        position: profile.position.to_s,
+        permissions: { admin: "0" }
+      }
+    }
+
+    expect(response).to redirect_to(admin_profiles_path)
   end
 
   it "restringe a gestao de perfis ao Tenant Owner, ignorando permissao horizontal ampla" do
@@ -394,7 +415,7 @@ RSpec.describe "Admin profile permissions", type: :request do
       }
     }
 
-    expect(response).to redirect_to(admin_profiles_path)
+    expect(response).to redirect_to(edit_admin_profile_path(profile))
     expect(profile.reload.position).to eq(3_600)
   end
 
@@ -451,7 +472,7 @@ RSpec.describe "Admin profile permissions", type: :request do
 
     positions = tenant.profiles.vertical.order(:position).pluck(:position)
 
-    expect(response).to redirect_to(admin_profiles_path)
+    expect(response).to redirect_to(edit_admin_profile_path(moving))
     expect(moving.reload.position).to be > first.reload.position
     expect(moving.position).to be < second.reload.position
     expect(positions).to eq(positions.uniq)
@@ -482,7 +503,7 @@ RSpec.describe "Admin profile permissions", type: :request do
       }
     }
 
-    expect(response).to redirect_to(admin_profiles_path)
+    expect(response).to redirect_to(edit_admin_profile_path(profile))
     expect(profile.reload).to be_horizontal
     expect(profile.vertical_profile).to eq(owner_profile)
     expect(user.reload.profile).to eq(owner_profile)
@@ -510,7 +531,7 @@ RSpec.describe "Admin profile permissions", type: :request do
       }
     }
 
-    expect(response).to redirect_to(admin_profiles_path)
+    expect(response).to redirect_to(edit_admin_profile_path(horizontal))
     expect(horizontal.reload.vertical_profile).to eq(director)
     expect(user.reload.profile).to eq(director)
     expect(user.horizontal_profile).to eq(horizontal)

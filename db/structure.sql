@@ -1,4 +1,4 @@
-\restrict 7qKg4l0rJI7hKZX6kVxzTEsON6azFShNiBwc8VXIIpXqVZvofsUnInIvTEPVfAv
+\restrict 1Kj6s5piOR0dGe9CKy8URwoJ3ndpVNhO0u7ecpPLlVjK3FwltwNHXFd7V39CBE3
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -8247,7 +8247,7 @@ ALTER TABLE ONLY public.presentation_cards
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY (ARRAY[('vertical'::character varying)::text, ('horizontal'::character varying)::text]))) NOT VALID;
+    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY ((ARRAY['vertical'::character varying, 'horizontal'::character varying])::text[]))) NOT VALID;
 
 
 --
@@ -8263,7 +8263,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) OR (((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) OR (((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
 
 
 --
@@ -8271,7 +8271,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])))) NOT VALID;
+    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])))) NOT VALID;
 
 
 --
@@ -8287,7 +8287,7 @@ ALTER TABLE ONLY public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
 
 
 --
@@ -16057,11 +16057,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 7qKg4l0rJI7hKZX6kVxzTEsON6azFShNiBwc8VXIIpXqVZvofsUnInIvTEPVfAv
+\unrestrict 1Kj6s5piOR0dGe9CKy8URwoJ3ndpVNhO0u7ecpPLlVjK3FwltwNHXFd7V39CBE3
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260715183000'),
 ('20260715090000'),
 ('20260714220000'),
 ('20260714213000'),

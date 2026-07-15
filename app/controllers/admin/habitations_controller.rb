@@ -61,6 +61,7 @@ class Admin::HabitationsController < Admin::BaseController
   RETURN_PARAM_DENYLIST = %w[
     controller action id habitation_id return_to back_anchor authenticity_token _method utf8 commit
     habitation save_anchor save_navigation save_context release_to_broker_after_save save_internal_after_save
+    association attachment_id
   ].freeze
   LATEST_HUMAN_ACTIVITY_SQL = <<~SQL.squish.freeze
     COALESCE(
@@ -106,7 +107,8 @@ class Admin::HabitationsController < Admin::BaseController
   helper_method :can_destroy_habitation?
   helper_method :can_bulk_publish_habitations?
   helper_method :can_edit_protected_habitation_fields?
-  helper_method :broker_restricted_habitation_edit?, :broker_habitation_allowed_fields
+  helper_method :broker_restricted_habitation_edit?, :broker_habitation_allowed_fields,
+                :broker_habitation_allowed_actions
   helper_method :active_extra_filters_count, :clear_extra_filter_params
   helper_method :owns_all_resource?
 
@@ -742,6 +744,13 @@ class Admin::HabitationsController < Admin::BaseController
       redirect_to edit_habitation_path_with_return(@habitation, anchor: "documents"), alert: "Você não tem permissão para remover documentos internos."
       return
     end
+    if association.in?(%w[fichas_cadastro autorizacoes_venda])
+      action_key = "acao:remover_#{association}"
+      if Habitations::FieldLockPolicy.for(current_admin_user).action_locked?(action_key)
+        redirect_to edit_habitation_path_with_return(@habitation, anchor: "documents"), alert: "Este perfil não pode remover esse tipo de documento."
+        return
+      end
+    end
 
     attachment = @habitation.public_send(association).attachments.find_by(id: params[:attachment_id])
     if attachment.nil?
@@ -1160,7 +1169,7 @@ class Admin::HabitationsController < Admin::BaseController
     @permuta_min_garagens = params[:permuta_min_garagens]
     @key_location = params[:key_location]
     @salute_rental_management = params[:salute_rental_management]
-    @empreendimento_codigo = params[:empreendimento_codigo]
+    @empreendimento_codigo = normalize_development_filter_value(params[:empreendimento_codigo])
     @corretor_id = can_filter_by_broker? ? catalog_filter_admin_user_id(params[:corretor_id]) : nil
     @proprietor_id = can_filter_by_proprietor? ? params[:proprietor_id] : nil
     @destaque_web = params[:destaque_web]
@@ -1435,6 +1444,19 @@ class Admin::HabitationsController < Admin::BaseController
     end
   end
 
+  def normalize_development_filter_value(raw_value)
+    parsed = Admin::HabitationDevelopmentFilterOptions.parse(raw_value)
+    value = parsed[:value].to_s.strip
+    return nil if value.blank?
+    return raw_value if parsed[:type] != :legacy
+
+    if current_tenant.habitations.empreendimentos.exists?(codigo: value)
+      Admin::HabitationDevelopmentFilterOptions.development_value(value)
+    else
+      raw_value
+    end
+  end
+
   def normalize_development_filter_name(value)
     I18n.transliterate(value.to_s).squish.downcase
   end
@@ -1655,11 +1677,13 @@ class Admin::HabitationsController < Admin::BaseController
     return true if can_access_sensitive_habitation_data?
     return manager_can_view_proprietor_data?(habitation) if current_admin_user&.can_view_team?(:imoveis)
 
-    property_captured_by_current_user?(habitation)
+    false
   end
 
   def can_edit_habitation?(habitation)
-    can?(:manage, :imoveis) && property_accessible?(habitation)
+    return false unless property_accessible?(habitation)
+
+    can?(:manage, :imoveis) || property_belongs_to_current_user?(habitation)
   end
 
   # Acesso a um imóvel: dono direto / corretor designado / nome do corretor (próprio),
@@ -2478,6 +2502,10 @@ class Admin::HabitationsController < Admin::BaseController
 
   def broker_habitation_allowed_fields
     Habitations::FieldLockPolicy.for(current_admin_user).allowed_frontend_fields
+  end
+
+  def broker_habitation_allowed_actions
+    Habitations::FieldLockPolicy.for(current_admin_user).allowed_action_keys
   end
 
   def property_belongs_to_current_user?(habitation)

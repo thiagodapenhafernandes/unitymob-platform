@@ -105,7 +105,7 @@ module Habitations
         media: %w[
           photos ordered_photo_ids ordered_picture_indices site_hidden_photo_ids
           site_hidden_picture_urls videos tour_virtual podcast_url plantas
-          fotos_empreendimento use_development_photos_flag
+          fotos_empreendimento use_development_photos_flag apply_photo_watermark
         ]
       }
       # ======================= Aba "Documentos": bloqueada (nada) =======================

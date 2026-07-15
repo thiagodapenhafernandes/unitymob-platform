@@ -975,6 +975,35 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(intake.photos).to be_attached
   end
 
+  it "publica fotos enviadas pela captação antes de avançar para revisão" do
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "fotos", photo_flow_choice: "upload")
+    authorization = Rack::Test::UploadedFile.new(
+      StringIO.new("autorizacao"),
+      "image/png",
+      original_filename: "autorizacao.png"
+    )
+    uploaded_photo = Rack::Test::UploadedFile.new(
+      StringIO.new("foto nova"),
+      "image/jpeg",
+      original_filename: "foto-nova.jpg"
+    )
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment).and_return("https://cdn.example.test/foto-nova.jpg")
+    allow(Storage::PublicPropertyPhoto).to receive(:publish_attachment!).and_return(true)
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "fotos",
+      direction: "forward",
+      habitation: {
+        photos: [uploaded_photo],
+        autorizacoes_venda: [authorization]
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "review"))
+    expect(intake.reload.photos.attachments.size).to eq(1)
+    expect(Storage::PublicPropertyPhoto).to have_received(:publish_attachment!).with(instance_of(ActiveStorage::Attachment))
+  end
+
   it "não remove anexos existentes quando o navegador envia campos de arquivo vazios" do
     intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "fotos", photo_flow_choice: "upload")
     intake.photos.attach(io: StringIO.new("foto"), filename: "foto.jpg", content_type: "image/jpeg")

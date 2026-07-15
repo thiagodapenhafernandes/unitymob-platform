@@ -298,6 +298,32 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
       uploaded_photo&.unlink
     end
 
+    it "impede abrir o organizador quando a ação está travada no perfil" do
+      permissions = Profile.default_permissions_for("Corretor").deep_dup
+      permissions["imoveis"]["locked_fields"] = ["acao:abrir_organizador_midia"]
+      admin.profile.update!(permissions: permissions)
+      habitation = create_media_habitation
+
+      get modal_admin_habitation_media_path(habitation), headers: { "X-Requested-With" => "XMLHttpRequest" }
+
+      expect(response).to redirect_to(admin_habitations_path)
+    end
+
+    it "impede remover foto quando a ação está travada no perfil" do
+      permissions = Profile.default_permissions_for("Corretor").deep_dup
+      permissions["imoveis"]["locked_fields"] = ["acao:remover_foto"]
+      admin.profile.update!(permissions: permissions)
+      habitation = create_media_habitation(admin_user: admin)
+      habitation.photos.attach(io: StringIO.new("foto protegida"), filename: "protegida.jpg", content_type: "image/jpeg")
+
+      delete destroy_photo_admin_habitation_media_path(habitation, format: :json), params: {
+        photo_id: habitation.photos.attachments.first.id
+      }
+
+      expect(response).to have_http_status(:forbidden)
+      expect(habitation.reload.photos.attachments.size).to eq(1)
+    end
+
     it "mantém bloqueada a mídia de captação rascunho de outro corretor" do
       habitation = create_media_habitation(intake_origin: Habitation::INTAKE_ORIGIN_BROKER, intake_status: "draft", exibir_no_site_flag: false)
 

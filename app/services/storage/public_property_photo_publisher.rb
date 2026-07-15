@@ -38,7 +38,8 @@ module Storage
       Rails.cache.read(cache_key(PROGRESS_KEY, tenant: tenant)) || default_progress
     end
 
-    def self.write_progress(attributes = {}, tenant: nil)
+    def self.write_progress(attributes = nil, tenant: nil, **keyword_attributes)
+      attributes = attributes.to_h.merge(keyword_attributes)
       payload = progress(tenant: tenant).merge(attributes.symbolize_keys)
       total = payload[:total].to_i
       processed = payload[:processed].to_i

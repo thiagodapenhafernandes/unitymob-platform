@@ -12,6 +12,11 @@ module Habitations
   # A virada para "só o dono edita tudo" acontece na Fase 4 (seed) — trocar o
   # corpo de #unrestricted? para `tenant_owner_only?`.
   class FieldLockPolicy
+    DEFAULT_EDITABLE_ACTION_KEYS = %w[
+      acao:abrir_organizador_midia acao:organizar_fotos acao:enviar_fotos
+      acao:alterar_visibilidade_fotos acao:gerenciar_ordem_fotos
+      acao:configurar_ambiente_foto acao:remover_foto
+    ].freeze
     def self.for(admin_user)
       new(admin_user)
     end
@@ -45,7 +50,7 @@ module Habitations
     # Params de topo (habitation[<param>]) liberados, incluindo os extra_params
     # (ex.: um item "Fotos" libera ordered_photo_ids, site_hidden_photo_ids...).
     def allowed_top_level_params
-      allowed_field_items.flat_map do |item|
+      (allowed_field_items + allowed_action_items).flat_map do |item|
         [CadastroFieldRegistry.top_level_param_for(item[:key]), *item[:extra_params]]
       end.compact.uniq
     end
@@ -54,9 +59,15 @@ module Habitations
     # campos liberados — inclui paths aninhados (address_attributes.imediacoes)
     # e extra_params. Formato igual ao BrokerEditPolicy::ALLOWED_FIELDS.
     def allowed_frontend_fields
-      allowed_field_items.flat_map do |item|
+      (allowed_field_items + allowed_action_items).flat_map do |item|
         [item[:param_path] || item[:key], *item[:extra_params]]
-      end.compact.uniq
+      end.compact.reject { |key| key.start_with?("acao:") }.uniq
+    end
+
+    def allowed_action_keys
+      CadastroFieldRegistry.all_items
+        .select { |item| item[:kind] == :action && !field_locked?(item[:key]) }
+        .map { |item| item[:key] }
     end
 
     # Sub-chaves liberadas dentro de address_attributes (ex.: imediacoes).
@@ -73,6 +84,12 @@ module Habitations
 
     def allowed_field_items
       CadastroFieldRegistry.field_items.reject { |item| field_locked?(item[:key]) }
+    end
+
+    def allowed_action_items
+      CadastroFieldRegistry.all_items.select do |item|
+        item[:kind] == :action && !field_locked?(item[:key])
+      end
     end
 
     def tenant_owner?
@@ -117,10 +134,11 @@ module Habitations
 
       def default_editable_keys
         allowed = BrokerEditPolicy::ALLOWED_FIELDS.to_set
-        CadastroFieldRegistry.field_items.filter_map do |item|
+        fields = CadastroFieldRegistry.field_items.filter_map do |item|
           path = item[:param_path] || item[:key]
           item[:key] if allowed.include?(path) || allowed.include?(item[:key])
-        end.to_set
+        end
+        (fields + DEFAULT_EDITABLE_ACTION_KEYS).to_set
       end
     end
   end

@@ -38,6 +38,7 @@
               data-attribute-manager-field-name-value="<%= manager_config.fetch(:field_name) %>"
               data-attribute-manager-modal-id-value="<%= manager_config.fetch(:modal_id, "attributeManagerModal") %>"
               data-action="click->attribute-manager#open"
+              <% if manager_config[:field_lock_action].present? %>data-field-lock-action="<%= manager_config[:field_lock_action] %>"<% end %>
               data-title="<%= manager_config.fetch(:modal_title, manager_config.fetch(:title, "Gerenciar opções")) %>"
               data-select-id="<%= select_id %>">
         <i class="bi bi-gear"></i>

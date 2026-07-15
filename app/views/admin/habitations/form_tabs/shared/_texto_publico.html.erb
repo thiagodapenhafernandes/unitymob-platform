@@ -23,6 +23,7 @@
           data-attribute-manager-field-name-value="habitation[caracteristica_unica][]"
           data-attribute-manager-modal-id-value="attributeManagerModal"
           data-action="click->attribute-manager#open"
+          data-field-lock-action="acao:gerenciar_destaques"
           data-title="Gerenciar Destaques"
           data-select-id="habitation_caracteristica_unica">
     <i class="bi bi-gear ax-ico"></i>Gerenciar
@@ -60,6 +61,7 @@
               form: f,
               method: :titulo_anuncio,
               label: "Título do anúncio",
+              readonly: !habitation_field_editable?("titulo_anuncio"),
               tooltip: "Usado em sites e portais."
             ) %>
       </div>

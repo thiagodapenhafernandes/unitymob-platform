@@ -40,4 +40,25 @@ RSpec.describe Habitations::BrokerEditPolicy, "por perfil (Fase 4)", type: :mode
     expect(keys).to include("tipo", "meta_title")
     expect(keys).not_to include("status")
   end
+
+  it "descarta no servidor campo simples, endereço e ação composta travados" do
+    custom = user_with(
+      "scope" => "all",
+      "locked_fields" => ["titulo_anuncio", "logradouro", "acao:gerenciar_responsaveis"]
+    )
+    params = {
+      "titulo_anuncio" => "Tentativa bloqueada",
+      "status" => "Venda",
+      "broker_assignments_attributes" => { "0" => { "admin_user_id" => "123", "role" => "captador" } },
+      "address_attributes" => { "logradouro" => "Rua bloqueada", "cidade" => "Cidade liberada" }
+    }
+
+    filtered = described_class.filter(params, habitation: habitation, admin_user: custom)
+
+    expect(filtered).to include("status")
+    expect(filtered).not_to have_key("titulo_anuncio")
+    expect(filtered).not_to have_key("broker_assignments_attributes")
+    expect(filtered.dig("address_attributes", "cidade")).to eq("Cidade liberada")
+    expect(filtered.dig("address_attributes", "logradouro")).to be_nil
+  end
 end
