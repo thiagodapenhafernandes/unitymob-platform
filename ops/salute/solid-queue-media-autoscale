@@ -71,13 +71,13 @@ fi
 
 metrics=$(
   cd "$APP_DIR" &&
-    RAILS_ENV=production bundle exec rails runner '
-      scope = SolidQueue::ReadyExecution.joins(:job).where(solid_queue_jobs: { queue_name: "media" })
-      oldest = scope.minimum("solid_queue_jobs.created_at")
-      puts "ready=#{scope.count}"
-      puts "oldest_age=#{oldest ? (Time.current - oldest).to_i : 0}"
-      puts "claimed=#{SolidQueue::ClaimedExecution.joins(:job).where(solid_queue_jobs: { queue_name: "media" }).count}"
-    '
+    "$RVM_SHELL" "$RVM_RUBY" -c 'RAILS_ENV=production bundle exec rails runner "
+      scope = SolidQueue::ReadyExecution.joins(:job).where(solid_queue_jobs: { queue_name: \"media\" })
+      oldest = scope.minimum(\"solid_queue_jobs.created_at\")
+      puts \"ready=#{scope.count}\"
+      puts \"oldest_age=#{oldest ? (Time.current - oldest).to_i : 0}\"
+      puts \"claimed=#{SolidQueue::ClaimedExecution.joins(:job).where(solid_queue_jobs: { queue_name: \"media\" }).count}\"
+    "'
 )
 
 ready=$(awk -F= '$1 == "ready" {print $2}' <<< "$metrics")
