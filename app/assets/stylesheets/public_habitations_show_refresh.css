@@ -62,9 +62,19 @@
   background: #edf2f7;
 }
 
+.public-habitations-show__gallery-thumbs {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  min-height: 0;
+}
+
+.public-habitations-show__gallery-thumb {
+  min-height: 0;
+}
+
 .public-habitations-show__gallery-primary img,
 .public-habitations-show__gallery-thumb img {
   background: #ffffff;
+  display: block;
   object-position: center center;
 }
 
