@@ -31,7 +31,7 @@
           card_return_params = admin_habitation_flat_return_params(card_return_to_path)
           details_path = admin_habitation_path_with_query(admin_habitation_path(imovel.id), card_return_params)
           edit_path = admin_habitation_path_with_query(edit_admin_habitation_path(imovel.id), card_return_params) if admin_can_edit_habitation?(imovel)
-          media_modal_path = admin_habitation_path_with_query(modal_admin_habitation_media_path(imovel.id), card_return_params) if admin_can_manage_habitation_media?(imovel)
+          media_modal_path = admin_habitation_path_with_query(modal_admin_habitation_media_path(imovel), card_return_params) if admin_can_manage_habitation_media?(imovel)
           catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
           image_urls = catalog_property_image_urls(imovel)
           total_image_count = catalog_property_image_count(imovel)
