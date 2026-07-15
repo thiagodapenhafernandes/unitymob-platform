@@ -77,6 +77,11 @@ module Storage
       @options = options
     end
 
+    # Resolve APENAS imagens NOSSAS (ActiveStorage/blobs no nosso CDN/Spaces).
+    # NÃO serve para imagens de DWV: elas ficam na URL própria do DWV, que não
+    # baixamos para o Spaces — e o resolver, por design, só aceita/valida o nosso
+    # CDN (é pra continuar assim). Para exibir foto DWV, use a URL crua vinda de
+    # Habitations::MediaGallery#raw_dwv_pictures, não este resolver.
     def resolve
       return if source.blank?
 
