@@ -165,7 +165,13 @@ module Admin
     end
 
     def default_permissions
-      params[:axis] == Profile::AXES[:horizontal] ? {} : Profile.default_permissions_for("Corretor")
+      return {} if params[:axis] == Profile::AXES[:horizontal]
+
+      base = Profile.default_permissions_for("Corretor").deep_dup
+      # Card #1: perfil novo nasce com TODOS os campos do cadastro travados.
+      base["imoveis"] ||= {}
+      base["imoveis"]["locked_fields"] = Habitations::CadastroFieldRegistry.all_keys
+      base
     end
 
     def vertical_position_after(profile_id)
