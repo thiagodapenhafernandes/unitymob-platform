@@ -94,6 +94,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :gallery, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   before_action :authorize_habitation_edit!, only: [:edit, :update]
+  before_action :authorize_habitation_ai_content!, only: [:generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
 
   before_action :load_autocomplete_data, only: [:new, :edit, :create, :update]
   before_action :load_property_setting, only: [:new, :edit, :create, :update]
@@ -792,6 +793,20 @@ class Admin::HabitationsController < Admin::BaseController
     return if can_bulk_publish_habitations?
 
     render json: { error: "Você não tem permissão para publicação em massa de imóveis." }, status: :forbidden
+  end
+
+  # Card #1: geração/aplicação de conteúdo por IA escreve título, descrição e SEO
+  # do imóvel — campos bloqueados para o corretor. Restrito a quem edita os
+  # campos protegidos (dono do tenant ou imoveis escopo "all").
+  def authorize_habitation_ai_content!
+    return if can_edit_protected_habitation_fields?
+
+    message = "Geração de conteúdo com IA é restrita ao administrador."
+    if turbo_frame_request?
+      render_ai_content_preview(message: message, message_type: "warning")
+    else
+      redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), alert: message
+    end
   end
 
   def sort_column
