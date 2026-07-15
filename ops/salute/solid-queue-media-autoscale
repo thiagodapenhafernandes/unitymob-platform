@@ -10,6 +10,7 @@ readonly QUEUE_UNIT="${QUEUE_UNIT:-solid_queue_salute_imoveis_v3_production.serv
 readonly RVM_SHELL="${RVM_SHELL:-/usr/local/rvm/bin/rvm-shell}"
 readonly RVM_RUBY="${RVM_RUBY:-3.2.3@default}"
 readonly RUN_USER="${RUN_USER:-salute}"
+readonly RUN_HOME="${RUN_HOME:-$(getent passwd "$RUN_USER" | cut -d: -f6)}"
 
 readonly READY_HIGH="${READY_HIGH:-1500}"
 readonly READY_LOW="${READY_LOW:-300}"
@@ -68,6 +69,10 @@ if [[ "$queue_active" != true ]]; then
   echo "$now" > "$last_action_file"
   exit 0
 fi
+
+export HOME="$RUN_HOME"
+export USER="$RUN_USER"
+export LOGNAME="$RUN_USER"
 
 metrics=$(
   cd "$APP_DIR" &&
@@ -137,6 +142,9 @@ systemd-run \
   --property="MemoryMax=${EXTRA_MEMORY_MAX}" \
   --property=Restart=on-failure \
   --property=RestartSec=5 \
+  --setenv="HOME=$RUN_HOME" \
+  --setenv="USER=$RUN_USER" \
+  --setenv="LOGNAME=$RUN_USER" \
   --uid="$RUN_USER" \
   "$RVM_SHELL" "$RVM_RUBY" -c "cd $APP_DIR && RAILS_ENV=production RAILS_MEMORY_CACHE_SIZE_MB=$EXTRA_CACHE_MB MALLOC_ARENA_MAX=2 bundle exec bin/jobs start -c $CONFIG_FILE --skip-recurring=true"
 echo "$now" > "$last_action_file"
