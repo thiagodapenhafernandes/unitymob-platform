@@ -45,8 +45,9 @@ RSpec.describe "Admin::System", type: :request do
     expect(Security::LoginRateLimit).to receive(:reset!).with(admin_user: user)
       .and_return(Security::LoginRateLimit::Result.new(email: user.email, ips: ["203.0.113.10"]))
 
+    get admin_system_path
     post admin_system_login_rate_limit_reset_path,
-         params: { login_rate_limit: { email: user.email } }
+         params: csrf_params_from_response.merge(login_rate_limit: { email: user.email })
 
     expect(response).to redirect_to(admin_system_path)
     expect(flash[:notice]).to include(user.email)
@@ -59,8 +60,9 @@ RSpec.describe "Admin::System", type: :request do
     account_admin = create(:admin_user, profile: profile_admin, super_admin: false)
     sign_in account_admin, scope: :admin_user
 
+    get admin_root_path
     post admin_system_login_rate_limit_reset_path,
-         params: { login_rate_limit: { email: account_admin.email } }
+         params: csrf_params_from_response.merge(login_rate_limit: { email: account_admin.email })
 
     expect(response).to redirect_to(admin_root_path)
     expect(AccessAuditLog.where(event_type: "rate_limit_reset")).not_to exist
@@ -179,7 +181,13 @@ RSpec.describe "Admin::System", type: :request do
     owner = create(:admin_user, :admin, tenant: tenant, profile: owner_profile, name: "Dono da Conta")
     sign_in sys, scope: :admin_user
 
-    post admin_system_tenant_owner_impersonation_path(tenant)
+    path = admin_system_tenant_owner_impersonation_path(tenant)
+    get admin_system_path
+    form = form_for_action(path)
+
+    expect(form["data-turbo"]).to eq("false")
+
+    post path, params: csrf_params_from_response
 
     expect(response).to redirect_to(admin_root_path)
     expect(request.session[:impersonator_admin_user_id]).to eq(sys.id)
@@ -198,10 +206,28 @@ RSpec.describe "Admin::System", type: :request do
     user = create(:admin_user, tenant: tenant, profile: agent_profile, name: "Usuário Impersonado")
     sign_in sys, scope: :admin_user
 
-    post admin_system_user_impersonation_path(user)
+    path = admin_system_user_impersonation_path(user)
+    get admin_system_users_path, params: { q: user.email }
+    form = form_for_action(path)
+
+    expect(form["data-turbo"]).to eq("false")
+
+    post path, params: csrf_params_from_response
 
     expect(response).to redirect_to(admin_root_path)
     expect(request.session[:impersonator_admin_user_id]).to eq(sys.id)
     expect(AccessAuditLog.where(event_type: "impersonation_start", admin_user: user)).to exist
+  end
+
+  def csrf_params_from_response
+    token = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content")
+    token.present? ? { authenticity_token: token } : {}
+  end
+
+  def form_for_action(path)
+    form = Nokogiri::HTML(response.body).at_css(%(form[action="#{path}"]))
+    expect(form).to be_present
+    expect(form.at_css('input[name="authenticity_token"]')).to be_present if ActionController::Base.allow_forgery_protection
+    form
   end
 end

@@ -402,7 +402,8 @@
           <%= button_to admin_impersonation_path,
                 method: :delete,
                 class: "btn btn-sm btn-dark fw-semibold",
-                form_class: "mb-0" do %>
+                form_class: "mb-0",
+                form: { data: { turbo: false } } do %>
             <i class="bi bi-arrow-counterclockwise me-1"></i> Voltar ao admin
           <% end %>
         </div>
