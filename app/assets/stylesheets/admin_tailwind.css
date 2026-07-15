@@ -940,7 +940,7 @@ body.ax-habitation-editor-workspace .ax-main {
   height: auto;
   min-height: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: clip;
   background: #eef2f7;
 }
 
