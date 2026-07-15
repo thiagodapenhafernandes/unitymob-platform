@@ -762,6 +762,12 @@ class HabitationsController < ApplicationController
       return { url: cdn_url, type: attachment.blob.content_type } if cdn_url.present?
     end
 
+    # Imóveis importados (Vista/DWV) guardam as fotos como URL externa, não como
+    # attachment. Sem este fallback o og:image caía no icon.png e o link
+    # compartilhado (WhatsApp/redes) subia sem a foto do imóvel.
+    external_url = Storage::PublicCdnImageUrl.resolve(source)
+    return { url: external_url } if external_url.present?
+
     {}
   rescue StandardError => e
     Rails.logger.warn("[social_image] habitation_id=#{habitation.id} error=#{e.class}: #{e.message}")

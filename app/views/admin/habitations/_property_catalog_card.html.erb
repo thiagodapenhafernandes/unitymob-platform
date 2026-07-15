@@ -6,6 +6,8 @@
   media_modal_path = admin_habitation_path_with_query(modal_admin_habitation_media_path(imovel.id), card_return_params) if admin_can_manage_habitation_media?(imovel)
   catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
   image_urls = catalog_property_image_urls(imovel)
+  total_image_count = catalog_property_image_count(imovel)
+  preview_image_count = catalog_property_image_preview_count(imovel, total_count: total_image_count)
   image_url = image_urls.first
   fallback_image_urls = image_urls.drop(1)
   display_title = imovel.display_title
@@ -117,6 +119,9 @@
     </div>
 
     <div class="ax-property-card__media-badges">
+      <%= render "admin/shared/ui/photo_count_badge",
+                 total_count: total_image_count,
+                 preview_count: preview_image_count %>
       <span class="ax-property-update <%= update_state %>" title="<%= full_update_label %>">
         <i class="bi bi-clock-history"></i>
         <%= compact_update_label %>
