@@ -460,6 +460,40 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body.scan('data-require-lead-form="true"').size).to eq(6)
     end
 
+    it "mantém srcset nas fotos visíveis e não gera srcset antecipado para fotos escondidas" do
+      habitation = create(:habitation, codigo: "MEDIA-BACKLOG", slug: "media-backlog")
+      image = Base64.decode64("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=")
+
+      8.times do |index|
+        habitation.photos.attach(
+          io: StringIO.new(image),
+          filename: "foto-#{index}.png",
+          content_type: "image/png"
+        )
+      end
+
+      allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment) do |attachment|
+        "https://cdn.saluteimoveis.com.br/#{attachment.blob.key}"
+      end
+      allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_blob) do |blob|
+        "https://cdn.saluteimoveis.com.br/#{blob.key}"
+      end
+      allow(Storage::TransformVariantJob).to receive(:perform_later)
+
+      get habitation_path(habitation)
+
+      html = Nokogiri::HTML(response.body)
+      hidden_gallery_links = html.css('a.hidden[data-fancybox="property-gallery"]')
+      visible_gallery_links = html.css('.public-habitations-show__gallery-thumb[data-fancybox="property-gallery"]')
+
+      expect(response).to have_http_status(:ok)
+      expect(visible_gallery_links.size).to eq(4)
+      expect(visible_gallery_links).to all(satisfy { |link| link["data-public-gallery-mobile-srcset"].present? })
+      expect(hidden_gallery_links.size).to eq(3)
+      expect(hidden_gallery_links).to all(satisfy { |link| link["data-public-gallery-mobile-srcset"].blank? })
+      expect(Storage::TransformVariantJob).to have_received(:perform_later).at_most(36).times
+    end
+
     it "expõe a página pública de favoritos" do
       get favorite_habitations_path
 
