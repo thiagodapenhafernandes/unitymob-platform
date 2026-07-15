@@ -111,6 +111,26 @@
    deixa como pílulas densas (não quebra o controller). */
 .habitation-form-ui .ax-toggle-chip { height:26px; padding:0 11px; border-radius:6px; font-size:12px; font-weight:700; }
 
+/* Portais: as opcoes condicionais aumentam a altura conforme o usuario marca
+   publicacao. Estes containers precisam crescer no fluxo da area rolavel; com
+   overflow herdado do editor os cards seguintes pareciam ser "comidos". */
+body.ax-habitation-editor-workspace #comercial,
+body.ax-habitation-editor-workspace #comercial .ax-commercial-workspace,
+body.ax-habitation-editor-workspace #comercial .ax-commercial-columns,
+body.ax-habitation-editor-workspace #comercial .ax-commercial-column {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.habitation-form-ui .portal-publication-section {
+  overflow: visible;
+}
+
+.habitation-form-ui .portal-publication-section .portal-sub-options {
+  overflow: visible;
+}
+
 /* ---------- Faixa de ação (footer sticky) — leve reforço ---------- */
 .habitation-form-ui .habitation-action-bar--top,
 .habitation-form-ui .ax-sticky-action-footer { -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
