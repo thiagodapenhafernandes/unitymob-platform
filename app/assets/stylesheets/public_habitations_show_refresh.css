@@ -65,11 +65,7 @@
 .public-habitations-show__gallery-primary img,
 .public-habitations-show__gallery-thumb img {
   background: #ffffff;
-  object-position: center var(--public-gallery-object-position-y, 50%);
-}
-
-.public-habitations-show__gallery-primary .public-habitations-show__gallery-image--portrait {
-  --public-gallery-object-position-y: 78%;
+  object-position: center center;
 }
 
 .public-habitations-show__share {

@@ -55,22 +55,7 @@ module HabitationsHelper
   end
 
   def public_gallery_image_style(source, primary: false)
-    dimensions = public_image_dimensions(source)
-    return nil unless dimensions
-
-    width, height = dimensions
-    return nil if width.to_i <= 0 || height.to_i <= 0
-
-    height_ratio = height.to_f / width.to_f
-    position_y = if primary && height_ratio > 1.15
-                   50 + ((height_ratio - 1.0) * 42)
-                 else
-                   50
-                 end
-    position_y = position_y.clamp(50, 86)
-
-    css_position_y = format("%.1f", position_y).sub(/\.0\z/, "")
-    "--public-gallery-object-position-y: #{css_position_y}%;"
+    nil
   end
 
   def public_image_dimensions(source)
