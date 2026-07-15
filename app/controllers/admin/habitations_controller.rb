@@ -2169,11 +2169,9 @@ class Admin::HabitationsController < Admin::BaseController
     permitted = params.require(:habitation).permit(*permitted_habitation_fields)
     strip_blank_photo_uploads!(permitted)
 
+    # Filtro por perfil (allowlist): já derruba tudo que a config trava, tornando
+    # o antigo deny-list (broker_protected_habitation_param_keys) redundante.
     permitted = Habitations::BrokerEditPolicy.filter(permitted, habitation: @habitation, admin_user: current_admin_user) if broker_restricted_habitation_edit?
-
-    unless can_edit_protected_habitation_fields?
-      permitted = permitted.except(*broker_protected_habitation_param_keys)
-    end
 
     unless can_view_proprietor_data?(@habitation)
       proprietor_locked_fields = %i[
@@ -2462,12 +2460,20 @@ class Admin::HabitationsController < Admin::BaseController
     tenant_owner? || (can?(:manage, :imoveis) && owns_all_resource?(:imoveis))
   end
 
+  # Card #1 (Fase 4): "edita os campos protegidos livremente" = perfil sem NENHUMA
+  # trava (dono do tenant, ou full-access semeado com locked_fields: []). Usado
+  # como gate GROSSO nos readonly/disabled de Endereço/Proprietário/Empreendimento.
+  # Para trava por campo específico, ver habitation_field_editable? (helper) —
+  # perfil PARCIALMENTE travado trava esses blocos de forma conservadora.
   def can_edit_protected_habitation_fields?
-    tenant_owner? || owns_all_resource?(:imoveis)
+    Habitations::FieldLockPolicy.for(current_admin_user).locked_keys.empty?
   end
 
+  # Card #1 (Fase 4): só o dono edita tudo; todo o resto passa pela config do
+  # perfil (FieldLockPolicy). Para full-access a config foi semeada vazia, então
+  # nada é travado — o filtro roda mas libera tudo.
   def broker_restricted_habitation_edit?
-    @habitation&.persisted? && !can_edit_protected_habitation_fields?
+    @habitation&.persisted? && !current_admin_user&.tenant_owner?
   end
 
   def broker_habitation_allowed_fields

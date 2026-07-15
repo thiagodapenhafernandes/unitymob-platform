@@ -20,9 +20,10 @@ module Habitations
       @admin_user = admin_user
     end
 
-    # Nada travado para quem edita tudo.
+    # Card #1 (Fase 4): SÓ o dono da conta edita tudo. Todo o resto é por perfil
+    # (a config de full-access foi semeada com locked_fields: [] na migração).
     def unrestricted?
-      tenant_owner? || owns_all_imoveis?
+      tenant_owner?
     end
 
     def locked_keys

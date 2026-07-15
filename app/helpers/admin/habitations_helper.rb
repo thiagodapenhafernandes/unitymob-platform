@@ -1,6 +1,17 @@
 module Admin::HabitationsHelper
   BOOLEAN_TYPE = ActiveModel::Type::Boolean.new
 
+  # Card #1 (Opção B): um campo do cadastro é editável para o usuário atual se o
+  # perfil dele não o travou (Habitations::FieldLockPolicy). Só o dono edita tudo.
+  # Usado nos readonly/disabled das partials do formulário.
+  def habitation_field_lock_policy
+    @habitation_field_lock_policy ||= Habitations::FieldLockPolicy.for(current_admin_user)
+  end
+
+  def habitation_field_editable?(key)
+    !habitation_field_lock_policy.field_locked?(key.to_s)
+  end
+
   PUBLICATION_CHANNEL_LABELS = {
     exibir_no_site_flag: "Site",
     publicar_zapimoveis: "Zapimoveis",
