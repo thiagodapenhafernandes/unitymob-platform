@@ -65,11 +65,11 @@
     <!-- Swiper for Images -->
     <div class="swiper card-swiper h-full w-full" data-controller="card-swiper" style="overflow: hidden !important;">
       <div class="swiper-wrapper" style="display: flex !important; width: 100% !important;">
-        <% card_images = property.card_image_sources(5) %>
+        <% card_images = property.card_image_sources(6) %>
         <% if card_images.present? %>
           <% card_images.each_with_index do |pic, index| %>
             <div class="swiper-slide w-full aspect-[4/3]" style="width: 100% !important; flex-shrink: 0 !important;">
-              <% image_source = if index.zero?
+              <% image_source = if index < 6
                 public_image_url(pic, resize_to_fill: [640, 480], format: :webp)
               else
                 public_image_url(pic)
