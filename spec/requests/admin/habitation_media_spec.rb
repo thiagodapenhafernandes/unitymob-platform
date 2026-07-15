@@ -192,11 +192,13 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
   end
 
   it "renderiza ação de ambiente para imagem externa da API no modal" do
+    # Imagens de DWV ficam na URL própria do DWV (não baixamos para o nosso
+    # Spaces), então usam URL externa e não passam pelo resolver de CDN.
     habitation = create_media_habitation(
       imovel_dwv: "Sim",
       pictures: [
-        { "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/cozinha.jpg" },
-        { "url" => "#{Storage::PublicPropertyPhoto.public_base_url}/spec/quarto.jpg" }
+        { "url" => "https://dwvapp.com.br/fotos/cozinha.jpg" },
+        { "url" => "https://dwvapp.com.br/fotos/quarto.jpg" }
       ]
     )
 
