@@ -91,6 +91,26 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-price s
   color: var(--admin-ink) !important;
 }
 
+/* Card #30: badge "Preço atualizado há X dias" abaixo do valor do imóvel. */
+.ax-property-price__updated {
+  display: inline-flex;
+  align-items: center;
+  gap: .28rem;
+  margin-top: .3rem;
+  padding: .12rem .42rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 12%, #fff);
+  color: var(--admin-primary, #365f8f);
+  font-size: .66rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+html[data-admin-theme="dark"] .ax-property-price__updated {
+  background: color-mix(in srgb, var(--admin-primary, #365f8f) 26%, transparent);
+  color: var(--ax-dark-text, #e6edf7);
+}
+
 html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__meta,
 html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-price small {
   color: var(--ab-muted) !important;

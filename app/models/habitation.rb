@@ -469,6 +469,7 @@ class Habitation < ApplicationRecord
   before_validation :sanitize_fields
   before_validation :clear_motivo_suspensao_unless_suspended
   before_save :capture_price_reductions
+  before_update :stamp_preco_atualizado_em
   before_save :sync_flags_from_features
   before_save :sync_intake_answers
   after_save :clear_cache
@@ -2170,6 +2171,17 @@ class Habitation < ApplicationRecord
   def capture_price_reductions
     capture_sale_price_reduction
     capture_rent_price_reduction
+  end
+
+  # Marca quando o preço (venda ou locação) foi alterado, para o card exibir
+  # "Preço atualizado há X dias". Só em updates — no cadastro inicial não faz
+  # sentido "atualização". Guardado por has_attribute? para tolerar boot antes
+  # da migration em ambientes que ainda não migraram.
+  def stamp_preco_atualizado_em
+    return unless has_attribute?(:preco_atualizado_em)
+    return unless will_save_change_to_valor_venda_cents? || will_save_change_to_valor_locacao_cents?
+
+    self.preco_atualizado_em = Time.current
   end
 
   def capture_sale_price_reduction

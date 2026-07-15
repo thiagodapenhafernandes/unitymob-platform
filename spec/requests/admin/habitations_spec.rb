@@ -904,17 +904,16 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(captador_index).to be > development_index
   end
 
-  it "renderiza todas as fotos do imóvel no fancybox do card e da tabela" do
+  it "carrega assincronamente todas as fotos do imóvel no fancybox do card e da tabela" do
+    pictures = 9.times.map do |index|
+      { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-#{index + 1}.jpg" }
+    end
     habitation = create(
       :habitation,
       tenant: admin.tenant,
       codigo: "GAL-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Apartamento com galeria completa",
-      pictures: [
-        { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-1.jpg" },
-        { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-2.jpg" },
-        { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-3.jpg" }
-      ]
+      pictures:
     )
 
     get admin_habitations_path(q: habitation.codigo)
@@ -922,22 +921,21 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
     gallery_links = html.css(%(a[data-fancybox="admin-property-card-#{habitation.id}"]))
-    expect(gallery_links.map { |node| node["href"] }).to contain_exactly(
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-1.jpg",
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-2.jpg",
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-3.jpg"
-    )
+    gallery_container = html.at_css(%([data-fancybox-gallery-source-url-value="#{gallery_admin_habitation_path(habitation)}"]))
+    expect(gallery_links.size).to eq(6)
+    expect(gallery_container).to be_present
 
     get admin_habitations_path(q: habitation.codigo, visualizacao: "tabela")
 
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
     gallery_links = html.css(%(a[data-fancybox="admin-property-row-#{habitation.id}"]))
-    expect(gallery_links.map { |node| node["href"] }).to contain_exactly(
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-1.jpg",
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-2.jpg",
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-3.jpg"
-    )
+    expect(gallery_links.size).to eq(6)
+
+    get gallery_admin_habitation_path(habitation), as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("items").pluck("src")).to eq(pictures.pluck("url"))
   end
 
   it "não exibe badge de canais publicados no card do catálogo" do

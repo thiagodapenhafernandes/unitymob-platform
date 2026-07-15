@@ -68,7 +68,9 @@
           <% end %>
           <td data-column="property">
             <div class="ax-property-table__property">
-              <div class="ax-property-table__thumb" data-controller="fancybox-gallery">
+              <div class="ax-property-table__thumb"
+                   data-controller="fancybox-gallery"
+                   data-fancybox-gallery-source-url-value="<%= gallery_admin_habitation_path(imovel) %>">
                 <% if image_url.present? %>
                   <%= link_to image_url,
                               class: "ax-property-table__thumb-link",

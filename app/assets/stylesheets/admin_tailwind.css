@@ -1686,6 +1686,29 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
   object-position: center;
 }
 
+.ax-property-card__media.is-loading::after,
+.ax-property-table__thumb.is-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(255, 255, 255, .48);
+  border-top-color: #fff;
+  border-radius: 50%;
+  margin: -11px 0 0 -11px;
+  background: rgba(15, 23, 42, .28);
+  box-shadow: 0 0 0 999px rgba(15, 23, 42, .22);
+  animation: ax-gallery-loading-spin .7s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes ax-gallery-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
 .ax-property-card__media-link,
 .ax-property-table__thumb-link {
   position: absolute;
@@ -2294,6 +2317,7 @@ body.ax-habitation-editor-workspace .ax-sidebar-contextbar {
 }
 
 .ax-property-table__thumb {
+  position: relative;
   display: grid;
   width: 76px;
   height: 56px;

@@ -1,4 +1,4 @@
-\restrict YFMDifFKGiuHy0rsxepoc2rZ2iQdTNJ4020dCJPRptaILWLYrLpTpOZG0oMFvu0
+\restrict Mr4Z2nYW33EcCah5cgFbnt9gOgacxDqZWoJfYdAvsx4PCwja03Fey1kji2L8Fl1
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -2423,7 +2423,8 @@ CREATE TABLE public.habitations (
     public_street_view_mode character varying DEFAULT 'inherit'::character varying NOT NULL,
     searchable_features text GENERATED ALWAYS AS (public.habitation_searchable_features(caracteristicas, infra_estrutura, caracteristica_unica, descricao_web, (face)::text)) STORED,
     intake_review_policy_version integer,
-    intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL
+    intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    preco_atualizado_em timestamp(6) without time zone
 );
 
 
@@ -8246,7 +8247,7 @@ ALTER TABLE ONLY public.presentation_cards
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY ((ARRAY['vertical'::character varying, 'horizontal'::character varying])::text[]))) NOT VALID;
+    ADD CONSTRAINT profiles_axis_allowed CHECK (((axis)::text = ANY (ARRAY[('vertical'::character varying)::text, ('horizontal'::character varying)::text]))) NOT VALID;
 
 
 --
@@ -8262,7 +8263,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) OR (((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_builtin_axis_governance CHECK (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) OR (((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])) AND ((axis)::text = 'vertical'::text) AND (vertical_profile_id IS NULL) AND ("position" IS NOT NULL)))) NOT VALID;
 
 
 --
@@ -8270,7 +8271,7 @@ ALTER TABLE public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[])))) NOT VALID;
+    ADD CONSTRAINT profiles_locked_only_for_builtin_verticals CHECK (((locked = false) OR ((key)::text = ANY (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text])))) NOT VALID;
 
 
 --
@@ -8286,7 +8287,7 @@ ALTER TABLE ONLY public.profiles
 --
 
 ALTER TABLE public.profiles
-    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL ((ARRAY['tenant_owner'::character varying, 'agent'::character varying])::text[]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
+    ADD CONSTRAINT profiles_vertical_position_governance CHECK ((((axis)::text <> 'vertical'::text) OR (((key)::text = 'tenant_owner'::text) AND ("position" = 0) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key)::text = 'agent'::text) AND ("position" = 10000) AND (locked = true) AND (vertical_profile_id IS NULL)) OR (((key IS NULL) OR ((key)::text <> ALL (ARRAY[('tenant_owner'::character varying)::text, ('agent'::character varying)::text]))) AND ("position" > 0) AND ("position" < 10000) AND (vertical_profile_id IS NULL)))) NOT VALID;
 
 
 --
@@ -16056,11 +16057,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict YFMDifFKGiuHy0rsxepoc2rZ2iQdTNJ4020dCJPRptaILWLYrLpTpOZG0oMFvu0
+\unrestrict Mr4Z2nYW33EcCah5cgFbnt9gOgacxDqZWoJfYdAvsx4PCwja03Fey1kji2L8Fl1
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260714220000'),
 ('20260714213000'),
 ('20260714210000'),
 ('20260714203000'),
@@ -16430,3 +16432,4 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251122130154'),
 ('20251122125348'),
 ('20251122125042');
+

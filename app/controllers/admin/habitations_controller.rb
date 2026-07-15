@@ -5,7 +5,7 @@ class Admin::HabitationsController < Admin::BaseController
   before_action -> { check_permission!(:manage, :imoveis) }, only: [:new, :create]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
   before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility]
-  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :gallery, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   require "csv"
   require "uri"
 
@@ -92,7 +92,7 @@ class Admin::HabitationsController < Admin::BaseController
     "valor_total_aluguel_cents" => { label: "Valor total aluguel", column: "valor_total_aluguel_cents", default_direction: "desc" }
   }.freeze
 
-  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :gallery, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   before_action :authorize_habitation_edit!, only: [:edit, :update]
 
   before_action :load_autocomplete_data, only: [:new, :edit, :create, :update]
@@ -469,6 +469,22 @@ class Admin::HabitationsController < Admin::BaseController
   def show
     @page_title = "Detalhes do Imóvel: #{@habitation.codigo}"
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
+  end
+
+  def gallery
+    items = @habitation.public_image_sources.each_with_index.filter_map do |source, index|
+      url = Storage::PublicCdnImageUrl.resolve(source)
+      next if url.blank?
+
+      {
+        src: url,
+        thumb_src: url,
+        type: "image",
+        caption: "#{@habitation.display_title} - Foto #{index + 1}"
+      }
+    end
+
+    render json: { items: }
   end
 
   def create
