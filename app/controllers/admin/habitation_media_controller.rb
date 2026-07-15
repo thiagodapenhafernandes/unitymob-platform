@@ -312,7 +312,16 @@ class Admin::HabitationMediaController < Admin::BaseController
       photos: []
     )
 
+    # Cards #16 + #1: o corretor pode gerenciar a mídia, mas NÃO pode alterar a
+    # "Classificação das fotos". O gatilho de restrição segue o módulo de
+    # Perfil/Permissão (imoveis escopo != all e não é dono do tenant).
+    permitted = permitted.except(:foto_classificacao) if broker_restricted_media_edit?
+
     strip_blank_photo_uploads!(permitted)
+  end
+
+  def broker_restricted_media_edit?
+    @habitation&.persisted? && !(tenant_owner? || owns_all_resource?(:imoveis))
   end
 
   def upload_params

@@ -27,8 +27,11 @@
   end
 %>
 
+<%# Cards #16 + #1: corretor restrito gerencia mídia, mas NÃO altera a
+    "Classificação das fotos". Gatilho pelo módulo de Perfil/Permissão. %>
+<% can_edit_photo_classification = !(habitation.persisted? && !(tenant_owner? || owns_all_resource?(:imoveis))) %>
 <% media_controls = capture do %>
-  <% if can_edit_media %>
+  <% if can_edit_media && can_edit_photo_classification %>
     <div class="ax-media-upload-panel__classification">
       <%= ax_select_field(
             form: f,

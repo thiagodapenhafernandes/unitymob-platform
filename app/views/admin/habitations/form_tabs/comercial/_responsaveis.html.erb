@@ -1,5 +1,10 @@
+<%# Card #1: "Responsáveis e agenciamento" é bloqueado para o corretor.
+    Gatilho pelo módulo de Perfil/Permissão (imoveis escopo all ou dono). %>
+<% can_manage_responsibles = !(f.object.persisted? && !(tenant_owner? || owns_all_resource?(:imoveis))) %>
 <% broker_group_actions = capture do %>
-  <%= ax_button("Adicionar", variant: :ghost, size: :sm, icon: "person-plus", data: { ax_modal_open: "#addBrokerModal", action: "habitation-brokers#resetModal" }) %>
+  <% if can_manage_responsibles %>
+    <%= ax_button("Adicionar", variant: :ghost, size: :sm, icon: "person-plus", data: { ax_modal_open: "#addBrokerModal", action: "habitation-brokers#resetModal" }) %>
+  <% end %>
 <% end %>
 
 <%= ax_form_section(title: "Responsáveis e agenciamento", eyebrow: "Corretores", icon: "people", actions: broker_group_actions) do %>
@@ -23,9 +28,11 @@
 
     <%= f.fields_for :broker_assignments do |ba_form| %>
       <% broker_actions = capture do %>
-        <button type="button" class="ax-btn ax-btn--danger ax-btn--sm" data-action="habitation-brokers#remove" title="Remover responsável">
-          <i class="bi bi-x-circle"></i>
-        </button>
+        <% if can_manage_responsibles %>
+          <button type="button" class="ax-btn ax-btn--danger ax-btn--sm" data-action="habitation-brokers#remove" title="Remover responsável">
+            <i class="bi bi-x-circle"></i>
+          </button>
+        <% end %>
       <% end %>
       <%= ax_record_item(
             eyebrow: ba_form.object.role,
