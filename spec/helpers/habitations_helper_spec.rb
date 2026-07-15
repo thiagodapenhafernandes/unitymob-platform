@@ -49,6 +49,39 @@ RSpec.describe HabitationsHelper, type: :helper do
     end
   end
 
+  describe "#catalog_property_image_count" do
+    before do
+      allow(Storage::PublicPropertyPhoto).to receive(:public_base_url).and_return("https://cdn.saluteimoveis.com.br")
+    end
+
+    it "conta todas as fotos públicas mesmo quando a prévia do catálogo é limitada" do
+      property = create(
+        :habitation,
+        codigo: "CATALOG-COUNT-1",
+        address_attributes: address_attributes("Imóvel com galeria"),
+        pictures: 9.times.map { |index| { "url" => "https://cdn.saluteimoveis.com.br/foto-#{index}.jpg" } }
+      )
+
+      expect(helper.catalog_property_image_urls(property).size).to eq(6)
+      expect(helper.catalog_property_image_count(property)).to eq(9)
+      expect(helper.catalog_property_image_preview_count(property)).to eq(6)
+    end
+
+    it "não inclui fotos ocultas na contagem exibida" do
+      property = create(
+        :habitation,
+        codigo: "CATALOG-COUNT-2",
+        address_attributes: address_attributes("Imóvel com foto oculta"),
+        pictures: [
+          { "url" => "https://cdn.saluteimoveis.com.br/visivel.jpg" },
+          { "url" => "https://cdn.saluteimoveis.com.br/oculta.jpg", "site_hidden" => true }
+        ]
+      )
+
+      expect(helper.catalog_property_image_count(property)).to eq(1)
+    end
+  end
+
   def address_attributes(logradouro)
     {
       logradouro:,

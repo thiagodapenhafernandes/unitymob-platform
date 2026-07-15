@@ -46,7 +46,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.body).to include("draggable-item")
     expect(response.body).to include("media-photo-drag-handle")
     expect(response.body).to include("data-photo-upload-async-submit=\"true\"")
-    expect(response.body).to include(upload_admin_habitation_media_path(habitation.id, format: :json))
+    expect(response.body).to include(upload_admin_habitation_media_path(habitation, format: :json))
   end
 
   it "salva mídia por JSON e devolve payload para manter o modal na tela" do
@@ -192,10 +192,13 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
   end
 
   it "renderiza ação de ambiente para imagem externa da API no modal" do
+    # Imagens de DWV ficam na URL própria do DWV (não baixamos para o nosso
+    # Spaces), então usam URL externa e não passam pelo resolver de CDN.
     habitation = create_media_habitation(
+      imovel_dwv: "Sim",
       pictures: [
-        { "url" => "https://example.com/cozinha.jpg" },
-        { "url" => "https://example.com/quarto.jpg" }
+        { "url" => "https://dwvapp.com.br/fotos/cozinha.jpg" },
+        { "url" => "https://dwvapp.com.br/fotos/quarto.jpg" }
       ]
     )
 
@@ -251,6 +254,11 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
   context "quando o usuário é corretor" do
     let(:admin) { create(:admin_user, email: "media-broker-#{SecureRandom.hex(8)}@salute.test") }
 
+    # O perfil "agent" do tenant de teste vem sem permissões; a factory não o
+    # atualiza. Garante as permissões padrão de Corretor (imoveis view/media,
+    # escopo own) para o corretor conseguir acessar o catálogo/mídia.
+    before { admin.profile.update!(permissions: Profile.default_permissions_for("Corretor")) }
+
     it "exibe Mídia e uploads no menu do catálogo para imóveis visíveis" do
       habitation = create_media_habitation(codigo: "99999002")
 
@@ -288,6 +296,32 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     ensure
       uploaded_photo&.close
       uploaded_photo&.unlink
+    end
+
+    it "impede abrir o organizador quando a ação está travada no perfil" do
+      permissions = Profile.default_permissions_for("Corretor").deep_dup
+      permissions["imoveis"]["locked_fields"] = ["acao:abrir_organizador_midia"]
+      admin.profile.update!(permissions: permissions)
+      habitation = create_media_habitation
+
+      get modal_admin_habitation_media_path(habitation), headers: { "X-Requested-With" => "XMLHttpRequest" }
+
+      expect(response).to redirect_to(admin_habitations_path)
+    end
+
+    it "impede remover foto quando a ação está travada no perfil" do
+      permissions = Profile.default_permissions_for("Corretor").deep_dup
+      permissions["imoveis"]["locked_fields"] = ["acao:remover_foto"]
+      admin.profile.update!(permissions: permissions)
+      habitation = create_media_habitation(admin_user: admin)
+      habitation.photos.attach(io: StringIO.new("foto protegida"), filename: "protegida.jpg", content_type: "image/jpeg")
+
+      delete destroy_photo_admin_habitation_media_path(habitation, format: :json), params: {
+        photo_id: habitation.photos.attachments.first.id
+      }
+
+      expect(response).to have_http_status(:forbidden)
+      expect(habitation.reload.photos.attachments.size).to eq(1)
     end
 
     it "mantém bloqueada a mídia de captação rascunho de outro corretor" do

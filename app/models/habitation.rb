@@ -469,6 +469,7 @@ class Habitation < ApplicationRecord
   before_validation :sanitize_fields
   before_validation :clear_motivo_suspensao_unless_suspended
   before_save :capture_price_reductions
+  before_update :stamp_preco_atualizado_em
   before_save :sync_flags_from_features
   before_save :sync_intake_answers
   after_save :clear_cache
@@ -2172,24 +2173,58 @@ class Habitation < ApplicationRecord
     capture_rent_price_reduction
   end
 
+  # Marca quando o preço (venda ou locação) foi alterado, para o card exibir
+  # "Preço atualizado há X dias". Só em updates — no cadastro inicial não faz
+  # sentido "atualização". Guardado por has_attribute? para tolerar boot antes
+  # da migration em ambientes que ainda não migraram.
+  def stamp_preco_atualizado_em
+    return unless has_attribute?(:preco_atualizado_em)
+    return unless will_save_change_to_valor_venda_cents? || will_save_change_to_valor_locacao_cents?
+
+    self.preco_atualizado_em = Time.current
+  end
+
   def capture_sale_price_reduction
     return unless will_save_change_to_valor_venda_cents?
+    # Respeita quem já definiu o "anterior" explicitamente (ex.: import do Vista).
+    return if will_save_change_to_valor_venda_anterior_cents?
 
     old_cents, new_cents = attribute_change_to_be_saved(:valor_venda_cents).map(&:to_i)
-    return unless old_cents.positive? && new_cents.positive? && new_cents < old_cents
 
-    self.valor_venda_anterior_cents = old_cents
-    self.valor_promocional_cents = new_cents
+    if old_cents.positive? && new_cents.positive? && new_cents < old_cents
+      self.valor_venda_anterior_cents = old_cents
+      self.valor_promocional_cents = new_cents unless will_save_change_to_valor_promocional_cents?
+    elsif new_cents > old_cents
+      # Preço subiu: deixa de ser promoção de venda — limpa "anterior" e o
+      # valor promocional (que fica visível no site) para não exibir dado velho.
+      self.valor_venda_anterior_cents = nil
+      clear_shared_promocional_for(:sale)
+    end
   end
 
   def capture_rent_price_reduction
     return unless will_save_change_to_valor_locacao_cents?
+    return if will_save_change_to_valor_locacao_anterior_cents?
 
     old_cents, new_cents = attribute_change_to_be_saved(:valor_locacao_cents).map(&:to_i)
-    return unless old_cents.positive? && new_cents.positive? && new_cents < old_cents
 
-    self.valor_locacao_anterior_cents = old_cents
-    self.valor_promocional_cents = new_cents
+    if old_cents.positive? && new_cents.positive? && new_cents < old_cents
+      self.valor_locacao_anterior_cents = old_cents
+      self.valor_promocional_cents = new_cents unless will_save_change_to_valor_promocional_cents?
+    elsif new_cents > old_cents
+      self.valor_locacao_anterior_cents = nil
+      clear_shared_promocional_for(:rent)
+    end
+  end
+
+  # valor_promocional_cents é compartilhado entre venda e locação; ao subir o
+  # preço de uma modalidade só limpa o promocional se a outra também não estiver
+  # em desconto e se ninguém o setou explicitamente nesta gravação.
+  def clear_shared_promocional_for(modality)
+    return if will_save_change_to_valor_promocional_cents?
+
+    other_discount = modality == :sale ? rent_discount? : sale_discount?
+    self.valor_promocional_cents = nil unless other_discount
   end
   
   def clear_cache

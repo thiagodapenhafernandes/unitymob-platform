@@ -8,11 +8,14 @@ export default class extends Controller {
     this.index = 0
     this.links = Array.from(this.element.querySelectorAll('a[data-fancybox="property-gallery"]'))
     this.pointerStart = null
+    this.preventNextClick = false
     this.onPointerDown = this.handlePointerDown.bind(this)
     this.onPointerUp = this.handlePointerUp.bind(this)
+    this.onClick = this.handleClick.bind(this)
     this.element.addEventListener("pointerdown", this.onPointerDown, { passive: true })
     this.element.addEventListener("pointerup", this.onPointerUp)
     this.element.addEventListener("pointercancel", this.onPointerUp)
+    this.element.addEventListener("click", this.onClick, true)
     this.restoreFavorite()
     this.updateControls()
   }
@@ -21,6 +24,7 @@ export default class extends Controller {
     this.element.removeEventListener("pointerdown", this.onPointerDown)
     this.element.removeEventListener("pointerup", this.onPointerUp)
     this.element.removeEventListener("pointercancel", this.onPointerUp)
+    this.element.removeEventListener("click", this.onClick, true)
   }
 
   handlePointerDown(event) {
@@ -38,11 +42,20 @@ export default class extends Controller {
 
     if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return
 
+    this.preventNextClick = true
     if (deltaX < 0) {
       this.next()
     } else {
       this.previous()
     }
+  }
+
+  handleClick(event) {
+    if (!this.preventNextClick) return
+
+    this.preventNextClick = false
+    event.preventDefault()
+    event.stopPropagation()
   }
 
   previous() {
@@ -59,9 +72,49 @@ export default class extends Controller {
     const link = this.links[this.index]
     if (!link || !this.hasPrimaryImageTarget) return
 
-    this.primaryImageTarget.src = link.href
+    const imageSrc = link.dataset.publicGalleryMobileSrc || link.href
+    const imageSrcset = link.dataset.publicGalleryMobileSrcset
+    const imageSizes = link.dataset.publicGalleryMobileSizes
+    const imageClass = link.dataset.publicGalleryMobileClass
+    const imageStyle = link.dataset.publicGalleryMobileStyle
+
+    if (imageSrcset) {
+      this.primaryImageTarget.srcset = imageSrcset
+    } else {
+      this.primaryImageTarget.removeAttribute("srcset")
+    }
+
+    if (imageSizes) {
+      this.primaryImageTarget.sizes = imageSizes
+    } else {
+      this.primaryImageTarget.removeAttribute("sizes")
+    }
+
+    this.primaryImageTarget.src = imageSrc
     this.primaryImageTarget.alt = link.dataset.caption || this.primaryImageTarget.alt
+    this.applyPrimaryImageClass(imageClass)
+    this.applyPrimaryImageStyle(imageStyle)
     this.updateControls()
+  }
+
+  applyPrimaryImageClass(imageClass) {
+    if (!imageClass) return
+
+    Array.from(this.primaryImageTarget.classList)
+      .filter((className) => className.startsWith("public-habitations-show__gallery-image"))
+      .forEach((className) => this.primaryImageTarget.classList.remove(className))
+
+    imageClass.split(/\s+/).filter(Boolean).forEach((className) => {
+      this.primaryImageTarget.classList.add(className)
+    })
+  }
+
+  applyPrimaryImageStyle(imageStyle) {
+    this.primaryImageTarget.style.removeProperty("--public-gallery-object-position-y")
+    if (!imageStyle) return
+
+    const match = imageStyle.match(/--public-gallery-object-position-y\s*:\s*([^;]+)/)
+    if (match) this.primaryImageTarget.style.setProperty("--public-gallery-object-position-y", match[1].trim())
   }
 
   updateControls() {

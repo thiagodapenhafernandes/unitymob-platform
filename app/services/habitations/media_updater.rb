@@ -1,5 +1,7 @@
 module Habitations
   class MediaUpdater
+    class PhotoPublicationError < StandardError; end
+
     def self.strip_blank_photo_uploads!(attributes)
       return attributes unless attributes.key?(:photos)
 
@@ -43,9 +45,14 @@ module Habitations
       new_attachment_ids = habitation.photos.attachments.ids - existing_attachment_ids
       return if new_attachment_ids.blank?
 
+      publication_errors = []
       habitation.photos.attachments.includes(:blob).where(id: new_attachment_ids).find_each do |attachment|
-        Storage::PublicPropertyPhoto.publish_attachment!(attachment)
+        next if Storage::PublicPropertyPhoto.public_url_for_attachment(attachment).blank?
+        next if Storage::PublicPropertyPhoto.publish_attachment!(attachment)
+
+        publication_errors << attachment.id
       end
+      raise PhotoPublicationError, "Falha ao publicar fotos: #{publication_errors.join(', ')}" if publication_errors.any?
 
       return unless apply_watermark && property_setting&.watermark_configured?
 

@@ -12,6 +12,8 @@ let fancyboxPromise = null
 let fancyboxStylesheetPromise = null
 
 export default class extends Controller {
+  static values = { sourceUrl: String }
+
   connect() {
     this.open = this.open.bind(this)
     this.element.dataset.fancyboxGalleryReady = "true"
@@ -51,19 +53,18 @@ export default class extends Controller {
       setTimeout(() => loadingCard.classList.remove("is-loading"), 5000)
     }
 
-    this.ensureFancyboxAssets().then((Fancybox) => {
-      const links = this.galleryLinks()
-      if (links.length === 0) {
+    Promise.all([this.ensureFancyboxAssets(), this.galleryItems()]).then(([Fancybox, items]) => {
+      if (items.length === 0) {
         this.debug("open:empty-gallery")
         return
       }
 
-      const startIndex = Math.max(links.indexOf(galleryTrigger), 0)
-      this.debug("open:fancybox", { links: links.length, startIndex, href: galleryTrigger.href })
+      const startIndex = Math.max(items.findIndex((item) => item.src === galleryTrigger.href), 0)
+      this.debug("open:fancybox", { links: items.length, startIndex, href: galleryTrigger.href })
       this.pauseEmbeddableMedia()
 
       Fancybox.show(
-        links.map((item) => this.galleryItem(item)),
+        items,
         {
           startIndex,
           animated: false,
@@ -146,6 +147,34 @@ export default class extends Controller {
 
   galleryLinks() {
     return Array.from(this.element.querySelectorAll("a[data-fancybox]")).filter((link) => link.href)
+  }
+
+  galleryItems() {
+    if (!this.hasSourceUrlValue) return Promise.resolve(this.galleryLinks().map((item) => this.galleryItem(item)))
+    if (this.remoteGalleryItems) return Promise.resolve(this.remoteGalleryItems)
+    if (this.galleryRequest) return this.galleryRequest
+
+    this.element.classList.add("is-loading")
+    this.galleryRequest = fetch(this.sourceUrlValue, {
+      headers: { Accept: "application/json" },
+      credentials: "same-origin"
+    }).then((response) => {
+      if (!response.ok) throw new Error(`Falha ao carregar galeria (${response.status})`)
+      return response.json()
+    }).then((payload) => {
+      this.remoteGalleryItems = Array.from(payload.items || []).map((item) => ({
+        src: item.src,
+        type: item.type || "image",
+        caption: item.caption || "",
+        thumbSrc: item.thumb_src || item.src
+      })).filter((item) => item.src)
+      return this.remoteGalleryItems
+    }).finally(() => {
+      this.galleryRequest = null
+      this.element.classList.remove("is-loading")
+    })
+
+    return this.galleryRequest
   }
 
   galleryItem(item) {

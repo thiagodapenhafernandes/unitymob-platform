@@ -5,14 +5,14 @@
         <%= ax_field_group(title: "Proprietário e contatos") do %>
           <%= ax_field_grid do %>
             <div class="ax-span-8">
-              <%= ax_text_field(form: f, method: :proprietario, label: "Nome", readonly: !can_edit_protected_habitation_fields) %>
+              <%= ax_text_field(form: f, method: :proprietario, label: "Nome", readonly: !habitation_field_editable?("proprietario")) %>
             </div>
             <div class="ax-span-12">
               <%= ax_text_field(
                     form: f,
                     method: :proprietario_email,
                     label: "E-mail",
-                    readonly: !can_edit_protected_habitation_fields && habitation.proprietario_email.present?
+                    readonly: !habitation_field_editable?("proprietario_email")
                   ) %>
             </div>
             <div class="ax-span-12">
@@ -20,7 +20,7 @@
                     form: f,
                     method: :proprietario_cidade,
                     label: "Cidade",
-                    readonly: !can_edit_protected_habitation_fields && habitation.proprietario_cidade.present?
+                    readonly: !habitation_field_editable?("proprietario_cidade")
                   ) %>
             </div>
             <div class="ax-span-12">
@@ -29,7 +29,7 @@
                     method: :proprietario_celular,
                     label: "Celular",
                     value: Phones::Normalizer.display(habitation.proprietario_telefone),
-                    readonly: !can_edit_protected_habitation_fields,
+                    readonly: !habitation_field_editable?("proprietario_celular"),
                     data: { controller: "phone-input" }
                   ) %>
             </div>
@@ -39,7 +39,7 @@
                     method: :proprietario_telefone_comercial,
                     label: "F. Comercial",
                     value: Phones::Normalizer.display(habitation.proprietario_telefone_comercial_display),
-                    readonly: !can_edit_protected_habitation_fields,
+                    readonly: !habitation_field_editable?("proprietario_telefone_comercial"),
                     data: { controller: "phone-input" }
                   ) %>
             </div>
@@ -49,7 +49,7 @@
                     method: :proprietario_telefone_residencial,
                     label: "F. Residencial",
                     value: Phones::Normalizer.display(habitation.proprietario_telefone_residencial_display),
-                    readonly: !can_edit_protected_habitation_fields,
+                    readonly: !habitation_field_editable?("proprietario_telefone_residencial"),
                     data: { controller: "phone-input" }
                   ) %>
             </div>

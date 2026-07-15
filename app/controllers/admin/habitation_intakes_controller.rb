@@ -86,16 +86,17 @@ module Admin
 
       if direction == "back"
         target = @habitation.previous_step || current_step
-        @habitation.assign_attributes(captacao_style_params) if intake_param_key.present?
+        assign_captacao_style_attributes if intake_param_key.present?
         @habitation.update_column(:intake_step, target)
         redirect_to edit_admin_captacao_path(@habitation, step: target)
         return
       end
 
+      new_photo_uploads = []
       if published_restricted_update?
         @habitation.assign_attributes(published_restricted_params)
       else
-        @habitation.assign_attributes(captacao_style_params)
+        new_photo_uploads = assign_captacao_style_attributes
       end
       touch_manual_habitation_update!(@habitation)
 
@@ -106,7 +107,7 @@ module Admin
         return
       end
 
-      if @habitation.save
+      if save_intake_with_photos(new_photo_uploads)
         apply_intake_photo_ambientes!(@habitation)
         enqueue_photo_calendar_sync_if_needed!(@habitation)
         unless step_requirements_met?(current_step)
@@ -162,12 +163,49 @@ module Admin
       habitation.data_atualizacao_crm = Time.current if habitation.changed?
     end
 
+    def assign_captacao_style_attributes
+      attributes = captacao_style_params
+      photo_uploads = extract_intake_photo_uploads!(attributes)
+      @habitation.assign_attributes(attributes)
+      photo_uploads
+    end
+
+    def extract_intake_photo_uploads!(attributes)
+      Array(attributes.delete("photos")).reject { |photo| Habitations::MediaUpdater.blank_upload?(photo) }
+    end
+
+    def save_intake_with_photos(photo_uploads)
+      saved = false
+      Habitation.transaction do
+        saved = @habitation.save
+        raise ActiveRecord::Rollback unless saved
+
+        habitation_media_updater.attach_new_photos(photo_uploads)
+      end
+
+      saved
+    rescue Habitations::MediaUpdater::PhotoPublicationError => e
+      Rails.logger.error("[captacao_photo_publish] habitation_id=#{@habitation.id} error=#{e.message}")
+      @habitation.errors.add(:base, "Não foi possível publicar as fotos. Tente enviar novamente antes de mandar para revisão.")
+      false
+    end
+
+    def habitation_media_updater
+      Habitations::MediaUpdater.new(
+        habitation: @habitation,
+        params: params,
+        actor: current_admin_user,
+        request: request,
+        property_setting: @property_setting
+      )
+    end
+
     def link_proprietor_from_intake_fields
       Habitations::ProprietorLinker.new(@habitation).call
     end
 
     def submit_for_review
-      @habitation.assign_attributes(captacao_style_params) if intake_param_key.present?
+      new_photo_uploads = intake_param_key.present? ? assign_captacao_style_attributes : []
       link_proprietor_from_intake_fields
       touch_manual_habitation_update!(@habitation)
 
@@ -182,7 +220,7 @@ module Admin
       end
 
       required_checks = active_broker_capture_checks
-      if @habitation.intake_ready_for_admin_review?(required_checks: required_checks, require_owner_city: true) && @habitation.save
+      if save_intake_with_photos(new_photo_uploads) && @habitation.reload.intake_ready_for_admin_review?(required_checks: required_checks, require_owner_city: true)
         submitted_records = HabitationIntakeSplitter.new(
           @habitation,
           target_intake_status: target_broker_capture_status
@@ -663,14 +701,7 @@ module Admin
         )
         .where("NULLIF(TRIM(nome_empreendimento), '') IS NOT NULL AND nome_empreendimento != '.'")
         .order(nome_empreendimento: :asc)
-      @proprietor_city_options = current_tenant.proprietors
-        .where.not(city: [nil, ""])
-        .distinct
-        .order(:city)
-        .limit(100)
-        .pluck(:city)
-        .map { |city| city.to_s.strip }
-        .compact_blank
+      @proprietor_city_options = current_tenant.proprietors.distinct_city_suggestions
       @internal_features = (
         current_tenant.attribute_options.where(context: "habitation", category: "feature").order(:name).pluck(:name) +
         Admin::HabitationsController::CUSTOM_FEATURE_OPTIONS

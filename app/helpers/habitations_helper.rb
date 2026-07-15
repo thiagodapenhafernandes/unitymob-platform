@@ -1,10 +1,12 @@
 module HabitationsHelper
+  CATALOG_PROPERTY_IMAGE_PREVIEW_LIMIT = 6
+
   def catalog_property_image_urls(property, limit: 8)
-    attached_sources = property.card_image_sources(6)
+    attached_sources = property.card_image_sources(CATALOG_PROPERTY_IMAGE_PREVIEW_LIMIT)
     urls = catalog_image_urls_from(attached_sources, limit:)
     return urls if urls.size >= limit
 
-    payload_sources = property.image_payload_sources.first(6)
+    payload_sources = property.image_payload_sources.first(CATALOG_PROPERTY_IMAGE_PREVIEW_LIMIT)
     if attached_sources.blank? && payload_sources.blank? && property.respond_to?(:use_development_photos?) && property.use_development_photos?
       payload_sources += property.development_image_payload_sources.first(6)
     end
@@ -14,6 +16,14 @@ module HabitationsHelper
 
   def catalog_property_image_url(source)
     Storage::PublicCdnImageUrl.resolve(source)
+  end
+
+  def catalog_property_image_count(property)
+    property.public_image_sources.size
+  end
+
+  def catalog_property_image_preview_count(property, total_count: nil)
+    [total_count || catalog_property_image_count(property), CATALOG_PROPERTY_IMAGE_PREVIEW_LIMIT].min
   end
 
   def catalog_image_urls_from(sources, limit:)

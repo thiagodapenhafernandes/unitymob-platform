@@ -26,12 +26,19 @@
                   <% existing = (profile.permissions || {})[resource[:key]] || {} %>
                   <tr>
                     <th scope="row">
-                      <div class="prof-res">
+                      <div class="prof-res <%= 'prof-res--with-action' if resource[:key] == 'imoveis' %>">
                           <span class="prof-res__icon"><i class="bi <%= resource[:icon] %>" aria-hidden="true"></i></span>
                           <div class="prof-res__main">
                             <strong><%= resource[:label] %></strong>
                             <span title="<%= resource[:description] %>"><%= resource[:description] %></span>
                           </div>
+                          <% if resource[:key] == "imoveis" %>
+                            <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost prof-res__field-locks"
+                                    data-ax-modal-open="#imoveisFieldLocksModal"
+                                    title="Configurar quais campos do cadastro este perfil pode editar">
+                              <i class="bi bi-sliders" aria-hidden="true"></i> Campos do cadastro
+                            </button>
+                          <% end %>
                       </div>
                     </th>
 
@@ -161,8 +168,17 @@
     </aside>
   </div>
 
+  <%# Modal de travas de campos do cadastro (card #1 / Opção B). Fica DENTRO do
+      form para os checkboxes submeterem em profile[permissions][imoveis][locked_fields]. %>
+  <%= render "admin/profiles/field_locks_modal", profile: profile %>
+
   <%= ax_sticky_action_footer do %>
     <%= link_to "Cancelar", admin_profiles_path, class: "ax-btn" %>
-    <%= f.submit (profile.persisted? ? "Salvar alterações" : "Criar perfil"), class: "ax-btn ax-btn--primary" %>
+    <% if profile.persisted? %>
+      <%= f.button "Salvar e sair", name: "save_navigation", value: "exit", class: "ax-btn" %>
+      <%= f.button "Salvar alterações", name: "save_navigation", value: "stay", class: "ax-btn ax-btn--primary" %>
+    <% else %>
+      <%= f.submit "Criar perfil", class: "ax-btn ax-btn--primary" %>
+    <% end %>
   <% end %>
 <% end %>

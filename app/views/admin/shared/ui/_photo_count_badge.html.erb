@@ -1,0 +1,19 @@
+<%
+  total_count = local_assigns.fetch(:total_count).to_i
+  preview_count = [local_assigns.fetch(:preview_count, total_count).to_i, total_count].min
+  compact = local_assigns.fetch(:compact, false)
+  label = if compact
+            total_count.to_s
+          else
+            "#{total_count} #{total_count == 1 ? 'foto' : 'fotos'}"
+          end
+%>
+
+<% if total_count.positive? %>
+  <span class="ax-photo-count-badge <%= 'ax-photo-count-badge--compact' if compact %>"
+        title="<%= preview_count < total_count ? "Prévia com #{preview_count} das #{total_count} fotos. Abra o imóvel para ver todas." : "#{total_count} #{total_count == 1 ? 'foto disponível' : 'fotos disponíveis'}." %>"
+        aria-label="<%= label %>">
+    <i class="bi bi-images" aria-hidden="true"></i>
+    <%= label %>
+  </span>
+<% end %>

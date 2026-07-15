@@ -1,14 +1,18 @@
 <%# O vínculo de empreendimento mora na aba Empreendimento
     (form_tabs/empreendimento/_vinculo). Aqui ficam os vínculos da unidade. %>
 <% if can_export_proprietor_data? %>
-  <%= ax_form_section(title: "Proprietário e captação", eyebrow: "Cadastro", icon: "person-vcard") do %>
+  <%= ax_form_section(title: "Proprietário e responsável", eyebrow: "Cadastro", icon: "person-vcard") do %>
     <%= ax_field_grid(columns: 12, gap: :compact) do %>
       <div class="ax-span-6">
         <% proprietor_action = capture do %>
           <%= link_to "#quickProprietorModal",
               class: "ax-btn ax-btn--ghost",
               title: "Cadastrar novo proprietário",
-              data: { ax_modal_open: "#quickProprietorModal" } do %>
+              data: {
+                ax_modal_open: "#quickProprietorModal",
+                broker_field_policy_lock: true,
+                field_lock_action: "acao:cadastrar_proprietario"
+              } do %>
             <i class="bi bi-plus"></i>
           <% end %>
         <% end %>

@@ -1,4 +1,8 @@
 <div class="tab-pane fade" id="documents" role="tabpanel" aria-labelledby="documents-tab">
+  <% can_upload_fichas = can_manage_internal_documents && habitation_field_editable?("fichas_cadastro") %>
+  <% can_upload_autorizacoes = can_manage_internal_documents && habitation_field_editable?("autorizacoes_venda") %>
+  <% can_remove_fichas = can_manage_internal_documents && habitation_field_editable?("acao:remover_fichas_cadastro") %>
+  <% can_remove_autorizacoes = can_manage_internal_documents && habitation_field_editable?("acao:remover_autorizacoes_venda") %>
   <div class="ax-form-workspace">
     <%= ax_form_section(
           title: "Documentos internos",
@@ -14,7 +18,7 @@
                 class_name: "ax-field-group--panel",
                 tooltip: "PDFs ou imagens da ficha física de cadastro do imóvel."
               ) do %>
-            <% if can_manage_internal_documents %>
+            <% if can_upload_fichas %>
               <div class="ax-upload-control">
                 <% if habitation.persisted? %>
                   <%= ax_file_upload_button(
@@ -39,7 +43,7 @@
                 <% habitation.fichas_cadastro.attachments.each do |attachment| %>
                   <% next unless attachment.persisted? && attachment.blob&.persisted? %>
                   <% attachment_actions = capture do %>
-                    <% if habitation.persisted? && can_manage_internal_documents %>
+                    <% if habitation.persisted? && can_remove_fichas %>
                       <%= ax_confirm_submit(
                             form_id: "purge_attachment_#{attachment.id}",
                             message: "Remover este arquivo?",
@@ -80,7 +84,7 @@
                 class_name: "ax-field-group--panel",
                 tooltip: "Imagens ou PDFs de autorizações assinadas pelo proprietário."
               ) do %>
-            <% if can_manage_internal_documents %>
+            <% if can_upload_autorizacoes %>
               <div class="ax-upload-control">
                 <% if habitation.persisted? %>
                   <%= ax_file_upload_button(
@@ -105,7 +109,7 @@
                 <% habitation.autorizacoes_venda.attachments.each do |attachment| %>
                   <% next unless attachment.persisted? && attachment.blob&.persisted? %>
                   <% attachment_actions = capture do %>
-                    <% if habitation.persisted? && can_manage_internal_documents %>
+                    <% if habitation.persisted? && can_remove_autorizacoes %>
                       <%= ax_confirm_submit(
                             form_id: "purge_attachment_#{attachment.id}",
                             message: "Remover este arquivo?",

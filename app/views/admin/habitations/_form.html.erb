@@ -150,6 +150,7 @@
 <div class="habitation-form-ui"
      data-controller="attribute-manager habitation-form habitation-duplicate-check ax-form-hints ax-checkbox-chips<%= ' broker-field-policy' if broker_restricted_habitation_edit? %>"
      <% if broker_restricted_habitation_edit? %>data-broker-field-policy-allowed-fields-value="<%= json_escape(broker_habitation_allowed_fields.to_json) %>"<% end %>
+     <% if broker_restricted_habitation_edit? %>data-broker-field-policy-allowed-actions-value="<%= json_escape(broker_habitation_allowed_actions.to_json) %>"<% end %>
      data-action="change->ax-checkbox-chips#sync"
      data-attribute-manager-modal-id-value="attributeManagerModal"
      data-habitation-form-categories-by-type-value="<%= json_escape(cadastro_categories.to_json) %>"
@@ -232,6 +233,12 @@
         <strong>Ficha de captação interna.</strong>
         Este cadastro entra no fluxo de captações. Use <strong>Enviar para corretor</strong> para repassar a publicação ao captador ou <strong>Salvar interno</strong> para deixar o imóvel disponível no catálogo sem publicar no site.
         <%= link_to "Cadastrar imóvel direto", new_admin_habitation_path, class: "habitation-new-mode-notice__link" %>
+      <% end %>
+    <% elsif can_create_internal_intake? %>
+      <%= ax_inline_notice(tone: :info, icon: "house-add", class_name: "habitation-new-mode-notice") do %>
+        <strong>Cadastro direto de imóvel.</strong>
+        Este cadastro não passa pelo fluxo de captação/revisão e fica sob gestão interna do catálogo.
+        <%= link_to "Criar ficha de captação interna", new_admin_habitation_path(intake_mode: "paper"), class: "habitation-new-mode-notice__link" %>
       <% end %>
     <% end %>
   <% end %>
@@ -388,7 +395,7 @@
   <% [
        ["fichas_cadastro", habitation.fichas_cadastro.attachments],
        ["autorizacoes_venda", habitation.autorizacoes_venda.attachments]
-     ].each do |association, attachments| %>
+    ].each do |association, attachments| %>
     <% attachments.each do |attachment| %>
       <% next unless attachment.persisted? && attachment.blob&.persisted? %>
       <%= form_with url: purge_attachment_admin_habitation_path(habitation.id, association: association, attachment_id: attachment.id),

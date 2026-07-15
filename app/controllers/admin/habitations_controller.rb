@@ -5,7 +5,7 @@ class Admin::HabitationsController < Admin::BaseController
   before_action -> { check_permission!(:manage, :imoveis) }, only: [:new, :create]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
   before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility]
-  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :gallery, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   require "csv"
   require "uri"
 
@@ -61,6 +61,7 @@ class Admin::HabitationsController < Admin::BaseController
   RETURN_PARAM_DENYLIST = %w[
     controller action id habitation_id return_to back_anchor authenticity_token _method utf8 commit
     habitation save_anchor save_navigation save_context release_to_broker_after_save save_internal_after_save
+    association attachment_id
   ].freeze
   LATEST_HUMAN_ACTIVITY_SQL = <<~SQL.squish.freeze
     COALESCE(
@@ -92,8 +93,9 @@ class Admin::HabitationsController < Admin::BaseController
     "valor_total_aluguel_cents" => { label: "Valor total aluguel", column: "valor_total_aluguel_cents", default_direction: "desc" }
   }.freeze
 
-  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :gallery, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   before_action :authorize_habitation_edit!, only: [:edit, :update]
+  before_action :authorize_habitation_ai_content!, only: [:generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
 
   before_action :load_autocomplete_data, only: [:new, :edit, :create, :update]
   before_action :load_property_setting, only: [:new, :edit, :create, :update]
@@ -105,7 +107,8 @@ class Admin::HabitationsController < Admin::BaseController
   helper_method :can_destroy_habitation?
   helper_method :can_bulk_publish_habitations?
   helper_method :can_edit_protected_habitation_fields?
-  helper_method :broker_restricted_habitation_edit?, :broker_habitation_allowed_fields
+  helper_method :broker_restricted_habitation_edit?, :broker_habitation_allowed_fields,
+                :broker_habitation_allowed_actions
   helper_method :active_extra_filters_count, :clear_extra_filter_params
   helper_method :owns_all_resource?
 
@@ -471,6 +474,22 @@ class Admin::HabitationsController < Admin::BaseController
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
   end
 
+  def gallery
+    items = @habitation.public_image_sources.each_with_index.filter_map do |source, index|
+      url = Storage::PublicCdnImageUrl.resolve(source)
+      next if url.blank?
+
+      {
+        src: url,
+        thumb_src: url,
+        type: "image",
+        caption: "#{@habitation.display_title} - Foto #{index + 1}"
+      }
+    end
+
+    render json: { items: }
+  end
+
   def create
     source_habitation
     permitted_attributes = habitation_params
@@ -725,6 +744,13 @@ class Admin::HabitationsController < Admin::BaseController
       redirect_to edit_habitation_path_with_return(@habitation, anchor: "documents"), alert: "Você não tem permissão para remover documentos internos."
       return
     end
+    if association.in?(%w[fichas_cadastro autorizacoes_venda])
+      action_key = "acao:remover_#{association}"
+      if Habitations::FieldLockPolicy.for(current_admin_user).action_locked?(action_key)
+        redirect_to edit_habitation_path_with_return(@habitation, anchor: "documents"), alert: "Este perfil não pode remover esse tipo de documento."
+        return
+      end
+    end
 
     attachment = @habitation.public_send(association).attachments.find_by(id: params[:attachment_id])
     if attachment.nil?
@@ -776,6 +802,20 @@ class Admin::HabitationsController < Admin::BaseController
     return if can_bulk_publish_habitations?
 
     render json: { error: "Você não tem permissão para publicação em massa de imóveis." }, status: :forbidden
+  end
+
+  # Card #1: geração/aplicação de conteúdo por IA escreve título, descrição e SEO
+  # do imóvel — campos bloqueados para o corretor. Restrito a quem edita os
+  # campos protegidos (dono do tenant ou imoveis escopo "all").
+  def authorize_habitation_ai_content!
+    return unless Habitations::FieldLockPolicy.for(current_admin_user).action_locked?("acao:gerar_ia")
+
+    message = "Geração de conteúdo com IA é restrita ao administrador."
+    if turbo_frame_request?
+      render_ai_content_preview(message: message, message_type: "warning")
+    else
+      redirect_to edit_admin_habitation_path(@habitation.id, anchor: "features"), alert: message
+    end
   end
 
   def sort_column
@@ -1129,7 +1169,7 @@ class Admin::HabitationsController < Admin::BaseController
     @permuta_min_garagens = params[:permuta_min_garagens]
     @key_location = params[:key_location]
     @salute_rental_management = params[:salute_rental_management]
-    @empreendimento_codigo = params[:empreendimento_codigo]
+    @empreendimento_codigo = normalize_development_filter_value(params[:empreendimento_codigo])
     @corretor_id = can_filter_by_broker? ? catalog_filter_admin_user_id(params[:corretor_id]) : nil
     @proprietor_id = can_filter_by_proprietor? ? params[:proprietor_id] : nil
     @destaque_web = params[:destaque_web]
@@ -1404,6 +1444,19 @@ class Admin::HabitationsController < Admin::BaseController
     end
   end
 
+  def normalize_development_filter_value(raw_value)
+    parsed = Admin::HabitationDevelopmentFilterOptions.parse(raw_value)
+    value = parsed[:value].to_s.strip
+    return nil if value.blank?
+    return raw_value if parsed[:type] != :legacy
+
+    if current_tenant.habitations.empreendimentos.exists?(codigo: value)
+      Admin::HabitationDevelopmentFilterOptions.development_value(value)
+    else
+      raw_value
+    end
+  end
+
   def normalize_development_filter_name(value)
     I18n.transliterate(value.to_s).squish.downcase
   end
@@ -1624,11 +1677,13 @@ class Admin::HabitationsController < Admin::BaseController
     return true if can_access_sensitive_habitation_data?
     return manager_can_view_proprietor_data?(habitation) if current_admin_user&.can_view_team?(:imoveis)
 
-    property_captured_by_current_user?(habitation)
+    false
   end
 
   def can_edit_habitation?(habitation)
-    can?(:manage, :imoveis) && property_accessible?(habitation)
+    return false unless property_accessible?(habitation)
+
+    can?(:manage, :imoveis) || property_belongs_to_current_user?(habitation)
   end
 
   # Acesso a um imóvel: dono direto / corretor designado / nome do corretor (próprio),
@@ -2138,11 +2193,9 @@ class Admin::HabitationsController < Admin::BaseController
     permitted = params.require(:habitation).permit(*permitted_habitation_fields)
     strip_blank_photo_uploads!(permitted)
 
-    permitted = Habitations::BrokerEditPolicy.filter(permitted, habitation: @habitation) if broker_restricted_habitation_edit?
-
-    unless can_edit_protected_habitation_fields?
-      permitted = permitted.except(*broker_protected_habitation_param_keys)
-    end
+    # Filtro por perfil (allowlist): já derruba tudo que a config trava, tornando
+    # o antigo deny-list (broker_protected_habitation_param_keys) redundante.
+    permitted = Habitations::BrokerEditPolicy.filter(permitted, habitation: @habitation, admin_user: current_admin_user) if broker_restricted_habitation_edit?
 
     unless can_view_proprietor_data?(@habitation)
       proprietor_locked_fields = %i[
@@ -2431,16 +2484,28 @@ class Admin::HabitationsController < Admin::BaseController
     tenant_owner? || (can?(:manage, :imoveis) && owns_all_resource?(:imoveis))
   end
 
+  # Card #1 (Fase 4): "edita os campos protegidos livremente" = perfil sem NENHUMA
+  # trava (dono do tenant, ou full-access semeado com locked_fields: []). Usado
+  # como gate GROSSO nos readonly/disabled de Endereço/Proprietário/Empreendimento.
+  # Para trava por campo específico, ver habitation_field_editable? (helper) —
+  # perfil PARCIALMENTE travado trava esses blocos de forma conservadora.
   def can_edit_protected_habitation_fields?
-    tenant_owner? || owns_all_resource?(:imoveis)
+    Habitations::FieldLockPolicy.for(current_admin_user).locked_keys.empty?
   end
 
+  # Card #1 (Fase 4): só o dono edita tudo; todo o resto passa pela config do
+  # perfil (FieldLockPolicy). Para full-access a config foi semeada vazia, então
+  # nada é travado — o filtro roda mas libera tudo.
   def broker_restricted_habitation_edit?
-    @habitation&.persisted? && !can_edit_protected_habitation_fields?
+    @habitation&.persisted? && !current_admin_user&.tenant_owner?
   end
 
   def broker_habitation_allowed_fields
-    Habitations::BrokerEditPolicy.allowed_fields
+    Habitations::FieldLockPolicy.for(current_admin_user).allowed_frontend_fields
+  end
+
+  def broker_habitation_allowed_actions
+    Habitations::FieldLockPolicy.for(current_admin_user).allowed_action_keys
   end
 
   def property_belongs_to_current_user?(habitation)

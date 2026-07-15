@@ -66,7 +66,8 @@ module Admin
         @profile.assign_attributes(attrs)
         render_profile_position_error(:edit)
       elsif update_profile_with_structural_reconciliation(attrs)
-        redirect_to admin_profiles_path, notice: "Perfil e permissões atualizados."
+        destination = params[:save_navigation] == "exit" ? admin_profiles_path : edit_admin_profile_path(@profile)
+        redirect_to destination, notice: "Perfil e permissões atualizados."
       else
         render :edit, status: :unprocessable_entity
       end
@@ -145,6 +146,15 @@ module Admin
           scope = "all" if base[:axis] == Profile::AXES[:horizontal] && scope == "team"
           res_perms["scope"] = scope
         end
+
+        # Imóveis: trava de campos do cadastro (card #1 / Opção B). Guarda os
+        # campos marcados (= travados) validados contra o registry. O hidden do
+        # modal garante que a chave sempre chega (mesmo com nada marcado).
+        if key == "imoveis"
+          submitted = Array(entry[:locked_fields]).map(&:to_s).reject(&:blank?)
+          res_perms["locked_fields"] = submitted & Habitations::CadastroFieldRegistry.all_keys
+        end
+
         perms[key] = res_perms
       end
 
@@ -156,7 +166,13 @@ module Admin
     end
 
     def default_permissions
-      params[:axis] == Profile::AXES[:horizontal] ? {} : Profile.default_permissions_for("Corretor")
+      return {} if params[:axis] == Profile::AXES[:horizontal]
+
+      base = Profile.default_permissions_for("Corretor").deep_dup
+      # Card #1: perfil novo nasce com TODOS os campos do cadastro travados.
+      base["imoveis"] ||= {}
+      base["imoveis"]["locked_fields"] = Habitations::CadastroFieldRegistry.all_keys
+      base
     end
 
     def vertical_position_after(profile_id)

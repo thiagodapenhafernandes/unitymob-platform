@@ -41,7 +41,7 @@ module Admin
       tenant_proprietors = current_tenant.proprietors
       tenant_habitations = current_tenant.habitations
       @name_options = tenant_proprietors.where.not(name: [nil, ""]).distinct.order(:name).pluck(:name)
-      @city_options = tenant_proprietors.where.not(city: [nil, ""]).distinct.order(:city).pluck(:city)
+      @city_options = tenant_proprietors.distinct_city_suggestions
       @email_options = tenant_proprietors.where.not(email: [nil, ""]).distinct.order(:email).pluck(:email)
       @phone_options = tenant_proprietors
         .pluck(:phone_primary, :mobile_phone, :residential_phone, :business_phone)

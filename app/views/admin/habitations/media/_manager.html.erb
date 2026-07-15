@@ -8,27 +8,34 @@
   media_gallery_count = media_gallery.media_gallery_count
   compact_mode = local_assigns[:compact] == true
   can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:manage, :imoveis))
+  media_policy = Habitations::FieldLockPolicy.for(current_admin_user)
+  can_edit_photos = can_edit_media && !media_policy.field_locked?("photos")
+  can_apply_watermark = can_edit_photos && !media_policy.field_locked?("apply_photo_watermark")
+  media_action_allowed = ->(key) { can_edit_photos && !media_policy.action_locked?(key) }
   can_manage_property_settings = respond_to?(:tenant_owner?) && tenant_owner?
   foto_ambientes = defined?(Habitation::FOTO_AMBIENTES) ? Habitation::FOTO_AMBIENTES : []
   media_controller_data = { controller: "photo-upload fancybox-gallery media-tools" }
   if habitation.persisted?
     media_controller_data.merge!(
       photo_upload_async_value: true,
-      photo_upload_upload_url_value: upload_admin_habitation_media_path(habitation.id, format: :json),
-      photo_upload_reorder_url_value: reorder_admin_habitation_media_path(habitation.id, format: :json),
-      photo_upload_visibility_url_value: visibility_admin_habitation_media_path(habitation.id, format: :json),
-      photo_upload_destroy_url_value: destroy_photo_admin_habitation_media_path(habitation.id, format: :json),
-      media_tools_ambiente_url_value: ambiente_admin_habitation_media_path(habitation.id, format: :json),
-      media_tools_organize_url_value: organize_admin_habitation_media_path(habitation.id, format: :json),
-      media_tools_share_url_value: share_admin_habitation_media_path(habitation.id, format: :json),
+      photo_upload_upload_url_value: upload_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_reorder_url_value: reorder_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_visibility_url_value: visibility_admin_habitation_media_path(habitation, format: :json),
+      photo_upload_destroy_url_value: destroy_photo_admin_habitation_media_path(habitation, format: :json),
+      media_tools_ambiente_url_value: ambiente_admin_habitation_media_path(habitation, format: :json),
+      media_tools_organize_url_value: organize_admin_habitation_media_path(habitation, format: :json),
+      media_tools_share_url_value: share_admin_habitation_media_path(habitation, format: :json),
       media_tools_ambientes_value: foto_ambientes.to_json,
       media_tools_can_edit_value: can_edit_media.to_s
     )
   end
 %>
 
+<%# Cards #16 + #1: a "Classificação das fotos" pode estar travada pelo perfil
+    (Habitations::FieldLockPolicy). %>
+<% can_edit_photo_classification = !habitation.persisted? || habitation_field_editable?("foto_classificacao") %>
 <% media_controls = capture do %>
-  <% if can_edit_media %>
+  <% if can_edit_media && can_edit_photo_classification %>
     <div class="ax-media-upload-panel__classification">
       <%= ax_select_field(
             form: f,
@@ -47,7 +54,7 @@
   <div class="ax-media-upload-panel__watermark">
     <label class="ax-toggle-chip <%= 'is-checked' if watermark_available %>" data-controller="ax-checkbox-chips">
       <%= hidden_field_tag "habitation[apply_photo_watermark]", "0" %>
-      <%= check_box_tag "habitation[apply_photo_watermark]", "1", watermark_available, class: "ax-toggle-chip__input", disabled: !watermark_available, data: { action: "change->ax-checkbox-chips#sync" } %>
+      <%= check_box_tag "habitation[apply_photo_watermark]", "1", watermark_available, class: "ax-toggle-chip__input", disabled: !watermark_available || !can_apply_watermark, data: { action: "change->ax-checkbox-chips#sync" } %>
       <span class="ax-toggle-chip__box" aria-hidden="true">
         <i class="bi bi-check-lg"></i>
       </span>
@@ -71,6 +78,7 @@
         input_id: upload_input_id,
         direct_upload: true,
         class_name: "ax-btn ax-btn--primary",
+        input_options: { disabled: !can_edit_photos },
         input_data: { action: "change->photo-upload#preview", photo_upload_target: "input" }
       ) %>
 <% end %>
@@ -91,13 +99,15 @@
             </button>
           <% end %>
           <% if can_edit_media && habitation.persisted? %>
-            <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="media-tools#organize" title="Organizar fotos por ambiente">
+            <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="media-tools#organize" title="Organizar fotos por ambiente"
+                    <%= "disabled" unless media_action_allowed.call("acao:organizar_fotos") %>>
               <i class="bi bi-diagram-3"></i>
               <span>Organizar por ambiente</span>
             </button>
           <% end %>
           <% if habitation.persisted? %>
-            <button type="button" class="ax-btn ax-btn--sm ax-btn--primary" data-action="media-tools#openShare" title="Enviar fotos selecionadas">
+            <button type="button" class="ax-btn ax-btn--sm ax-btn--primary" data-action="media-tools#openShare" title="Enviar fotos selecionadas"
+                    <%= "disabled" unless media_action_allowed.call("acao:enviar_fotos") %>>
               <i class="bi bi-send"></i>
               <span>Enviar fotos</span>
             </button>
@@ -199,7 +209,9 @@
                   linked_development: linked_development,
                   attached_media_photos: attached_media_photos,
                   api_media_pictures: api_media_pictures,
-                  can_edit_media: can_edit_media %>
+                  can_edit_media: can_edit_media,
+                  can_edit_photos: can_edit_photos,
+                  media_action_allowed: media_action_allowed %>
           <% end %>
         </div>
       </div>

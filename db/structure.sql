@@ -1,4 +1,4 @@
-\restrict YFMDifFKGiuHy0rsxepoc2rZ2iQdTNJ4020dCJPRptaILWLYrLpTpOZG0oMFvu0
+\restrict 1Kj6s5piOR0dGe9CKy8URwoJ3ndpVNhO0u7ecpPLlVjK3FwltwNHXFd7V39CBE3
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -2423,7 +2423,8 @@ CREATE TABLE public.habitations (
     public_street_view_mode character varying DEFAULT 'inherit'::character varying NOT NULL,
     searchable_features text GENERATED ALWAYS AS (public.habitation_searchable_features(caracteristicas, infra_estrutura, caracteristica_unica, descricao_web, (face)::text)) STORED,
     intake_review_policy_version integer,
-    intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL
+    intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    preco_atualizado_em timestamp(6) without time zone
 );
 
 
@@ -16056,11 +16057,14 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict YFMDifFKGiuHy0rsxepoc2rZ2iQdTNJ4020dCJPRptaILWLYrLpTpOZG0oMFvu0
+\unrestrict 1Kj6s5piOR0dGe9CKy8URwoJ3ndpVNhO0u7ecpPLlVjK3FwltwNHXFd7V39CBE3
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260715183000'),
+('20260715090000'),
+('20260714220000'),
 ('20260714213000'),
 ('20260714210000'),
 ('20260714203000'),
@@ -16430,3 +16434,4 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251122130154'),
 ('20251122125348'),
 ('20251122125042');
+

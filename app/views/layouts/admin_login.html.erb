@@ -221,6 +221,42 @@
         font-weight: 500;
       }
 
+      /* Toggle proprio de "ver senha": o reveal nativo do navegador
+         (Edge/::-ms-reveal) e inconsistente e some com overflow:hidden. */
+      .login-control--password {
+        grid-template-columns: 42px minmax(0, 1fr) 46px;
+      }
+
+      .login-input::-ms-reveal,
+      .login-input::-ms-clear {
+        display: none;
+      }
+
+      .login-reveal {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 0;
+        border: 0;
+        border-left: 1px solid #e3e8f1;
+        background: transparent;
+        color: #71809a;
+        font-size: 17px;
+        cursor: pointer;
+        transition: color .15s ease;
+      }
+
+      .login-reveal:hover,
+      .login-reveal:focus-visible {
+        color: var(--login-primary);
+        outline: 0;
+      }
+
+      .login-reveal.is-active {
+        color: var(--login-primary);
+      }
+
       .login-check {
         display: inline-flex;
         align-items: center;
@@ -327,6 +363,10 @@
 
         .login-control {
           grid-template-columns: 40px minmax(0, 1fr);
+        }
+
+        .login-control--password {
+          grid-template-columns: 40px minmax(0, 1fr) 44px;
         }
       }
     </style>

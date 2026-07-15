@@ -45,13 +45,14 @@ module Admin
     def update_review_workflow
       @page_title = "Fluxo de revisão de captações"
       set_review_context_params
-      @review_policy = find_or_initialize_review_policy
-      @review_policy.assign_attributes(review_policy_params)
+      @review_policy = find_or_initialize_review_policy(@review_category)
 
-      if @review_policy.save
+      saved_policies = save_review_policies_for_selected_categories
+      if saved_policies.all?(&:persisted?) && saved_policies.all? { |policy| policy.errors.blank? }
         redirect_to review_workflow_admin_property_setting_path(review_context_query),
-                    notice: "Regra de revisão salva para o conjunto selecionado."
+                    notice: review_workflow_save_notice(saved_policies)
       else
+        @review_policy = saved_policies.find { |policy| policy.errors.any? } || @review_policy
         set_review_workflow_context(policy: @review_policy)
         render :review_workflow, status: :unprocessable_entity
       end
@@ -76,6 +77,7 @@ module Admin
         PropertySetting::RETURNABLE_INTAKE_EDIT_SECTION_OPTIONS[key.to_s] || key
       end
       @review_categories = categories_for_review_registration_type(@review_registration_type)
+      @review_selected_categories = selected_review_categories_for(@review_registration_type, @review_categories)
       @review_modalities = PropertyReviewPolicy::MODALITIES.to_a.map { |key, label| [label, key] }
       @review_registration_types = PropertyReviewPolicy::REGISTRATION_TYPES.to_a.map { |key, label| [label, key] }
     end
@@ -180,36 +182,43 @@ module Admin
     def set_review_context_params
       @review_registration_type = params[:registration_type].presence_in(PropertyReviewPolicy::REGISTRATION_TYPES.keys) || "apartamentos"
       allowed_categories = categories_for_review_registration_type(@review_registration_type)
-      @review_category = params[:category].presence_in(allowed_categories) || default_category_for_review_registration_type(@review_registration_type)
+      @review_selected_categories = selected_review_categories_for(@review_registration_type, allowed_categories)
+      @review_category = @review_selected_categories.first || default_category_for_review_registration_type(@review_registration_type)
       @review_modality = params[:modality].presence_in(PropertyReviewPolicy::MODALITIES.keys) || "venda"
     end
 
     def review_context_query
       {
         registration_type: @review_registration_type,
-        category: @review_category,
+        category: review_context_category_param,
         modality: @review_modality
       }.compact
     end
 
-    def find_existing_review_policy
+    def review_context_category_param
+      return @review_category if @review_selected_categories.blank? || @review_selected_categories.one?
+
+      @review_selected_categories
+    end
+
+    def find_existing_review_policy(category = @review_category)
       PropertyReviewPolicy.active.find_by(
         tenant: current_tenant,
         registration_type: @review_registration_type,
-        category: @review_category,
+        category: category,
         modality: @review_modality
       )
     end
 
-    def find_or_initialize_review_policy
-      find_existing_review_policy || build_review_policy_from_fallback
+    def find_or_initialize_review_policy(category = @review_category)
+      find_existing_review_policy(category) || build_review_policy_from_fallback(category)
     end
 
-    def build_review_policy_from_fallback
+    def build_review_policy_from_fallback(category = @review_category)
       current_tenant.property_review_policies.new(
         property_setting: @property_setting,
         registration_type: @review_registration_type,
-        category: @review_category,
+        category: category,
         modality: @review_modality,
         required_broker_intake_checks: @property_setting.active_broker_capture_checks,
         returnable_intake_edit_sections: @property_setting.active_returnable_intake_edit_sections,
@@ -218,6 +227,35 @@ module Admin
         notify_email_review_events: @property_setting.notify_email_review_events,
         review_notification_emails: @property_setting.review_notification_emails
       )
+    end
+
+    def save_review_policies_for_selected_categories
+      categories = @review_selected_categories.presence || [@review_category]
+      categories.map do |category|
+        find_or_initialize_review_policy(category).tap do |policy|
+          policy.assign_attributes(review_policy_params)
+          policy.save
+        end
+      end
+    end
+
+    def review_workflow_save_notice(saved_policies)
+      if saved_policies.size > 1
+        "Regra de revisão salva para #{saved_policies.size} categorias selecionadas."
+      else
+        "Regra de revisão salva para o conjunto selecionado."
+      end
+    end
+
+    def selected_review_categories_for(registration_type, allowed_categories)
+      selected = Array(params[:category])
+        .flat_map { |value| value.to_s.split(",") }
+        .map(&:squish)
+        .select(&:present?)
+        .select { |category| allowed_categories.include?(category) }
+        .uniq
+
+      selected.presence || [default_category_for_review_registration_type(registration_type)]
     end
 
     def default_category_for_review_registration_type(registration_type)

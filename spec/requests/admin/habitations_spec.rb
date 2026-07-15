@@ -715,8 +715,8 @@ RSpec.describe "Admin::Habitations", type: :request do
       expect(purge_form_markup).to include('name="return_to"')
       expect(purge_form_markup).to include(%(value="#{CGI.escapeHTML(return_path)}"))
     end
-    expect(response.body).to include(purge_attachment_admin_habitation_path(habitation, association: "fichas_cadastro", attachment_id: ficha_attachment.id))
-    expect(response.body).to include(purge_attachment_admin_habitation_path(habitation, association: "autorizacoes_venda", attachment_id: authorization_attachment.id))
+    expect(response.body).to include(purge_attachment_admin_habitation_path(habitation.id, association: "fichas_cadastro", attachment_id: ficha_attachment.id))
+    expect(response.body).to include(purge_attachment_admin_habitation_path(habitation.id, association: "autorizacoes_venda", attachment_id: authorization_attachment.id))
   end
 
   it "exibe no topo o captador vindo dos responsáveis e agenciamento" do
@@ -904,17 +904,16 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(captador_index).to be > development_index
   end
 
-  it "renderiza todas as fotos do imóvel no fancybox do card e da tabela" do
+  it "carrega assincronamente todas as fotos do imóvel no fancybox do card e da tabela" do
+    pictures = 9.times.map do |index|
+      { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-#{index + 1}.jpg" }
+    end
     habitation = create(
       :habitation,
       tenant: admin.tenant,
       codigo: "GAL-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Apartamento com galeria completa",
-      pictures: [
-        { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-1.jpg" },
-        { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-2.jpg" },
-        { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-3.jpg" }
-      ]
+      pictures:
     )
 
     get admin_habitations_path(q: habitation.codigo)
@@ -922,22 +921,24 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
     gallery_links = html.css(%(a[data-fancybox="admin-property-card-#{habitation.id}"]))
-    expect(gallery_links.map { |node| node["href"] }).to contain_exactly(
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-1.jpg",
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-2.jpg",
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-3.jpg"
-    )
+    gallery_container = html.at_css(%([data-fancybox-gallery-source-url-value="#{gallery_admin_habitation_path(habitation)}"]))
+    photo_badge = html.at_css("#habitation_#{habitation.id} .ax-photo-count-badge")
+    expect(gallery_links.size).to eq(6)
+    expect(gallery_container).to be_present
+    expect(photo_badge.text.squish).to eq("9 fotos")
+    expect(photo_badge.text).not_to include("6 de")
 
     get admin_habitations_path(q: habitation.codigo, visualizacao: "tabela")
 
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
     gallery_links = html.css(%(a[data-fancybox="admin-property-row-#{habitation.id}"]))
-    expect(gallery_links.map { |node| node["href"] }).to contain_exactly(
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-1.jpg",
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-2.jpg",
-      "https://dwvimagesv1.b-cdn.net/spec/galeria-3.jpg"
-    )
+    expect(gallery_links.size).to eq(6)
+
+    get gallery_admin_habitation_path(habitation), as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("items").pluck("src")).to eq(pictures.pluck("url"))
   end
 
   it "não exibe badge de canais publicados no card do catálogo" do
@@ -1191,10 +1192,10 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:redirect)
     property.reload
     expect(property).to have_attributes(
-      tipo: "Comercial",
+      tipo: "Unitário",
       status: "Aluguel",
       situacao: "Usado",
-      titulo_anuncio: "Título permitido",
+      titulo_anuncio: "Título anterior",
       proprietario_email: "contato@proprietario.test",
       admin_user_id: broker.id,
       meta_title: "SEO protegido",
@@ -1203,7 +1204,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       regiao_foco: "Norte"
     )
     expect(property.proprietario_cidade).to eq("Camboriú")
-    expect(property.address.reload.logradouro).to eq("Rua Permitida")
+    expect(property.address.reload.logradouro).to eq("Rua Antiga")
 
     patch admin_habitation_path(property), params: {
       habitation: {
@@ -1732,7 +1733,7 @@ RSpec.describe "Admin::Habitations", type: :request do
         :habitation,
         codigo: "RET-PAGE-#{index.to_s.rjust(2, '0')}",
         titulo_anuncio: "Imóvel paginado #{index}",
-        categoria: "Apartamento",
+        categoria: "Casa em Condomínio",
         status: "Venda"
       ).tap do |habitation|
         habitation.address.update!(
@@ -2005,7 +2006,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "marca cards inativos com classe visual cinza" do
-    inactive = create(:habitation, codigo: "INATIVO-#{SecureRandom.hex(6)}", status: "Suspenso", titulo_anuncio: "Imóvel inativo")
+    inactive = create(:habitation, codigo: "INATIVO-#{SecureRandom.hex(6)}", status: "Suspenso", motivo_suspensao: "Validação visual do card", titulo_anuncio: "Imóvel inativo")
 
     get admin_habitations_path(q: inactive.codigo, status: "Suspenso")
 
@@ -2069,7 +2070,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     get admin_habitations_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to match(%r{<aside class="ax-sidebar"})
+    document = Nokogiri::HTML(response.body)
+    expect(document.at_css("aside.ax-sidebar")).to be_present
     expect(response.body).to match(%r{<body class="[^"]*\bax-habitations-workspace\b})
     expect(response.body).not_to match(%r{<body class="[^"]*\badmin-drawer-catalog-layout\b})
     expect(response.body).not_to match(%r{<body class="[^"]*\bax-catalog-layout\b})
@@ -2092,6 +2094,18 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to match(/class="[^"]*\bhabitations-scope-strip--inspector\b[^"]*"/)
     expect(response.body).to include("Frente Mar")
     expect(response.body).to include("is-active")
+  end
+
+  it "não recolhe o inspector ao limpar filtros do catálogo" do
+    get filter_inspector_admin_habitations_path(scope: "frente_mar"), headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+
+    clear_link = Nokogiri::HTML.fragment(response.body).css("a").find { |node| node.text.squish == "Limpar" }
+    expect(clear_link).to be_present
+    expect(clear_link["href"]).to include("clear_filters=1")
+    expect(clear_link["data-turbo-frame"]).to eq("_top")
+    expect(clear_link["data-action"].to_s).not_to include("ax-aside#collapse")
   end
 
   it "libera todos os status de imóvel no filtro do catálogo para corretor" do
@@ -2440,7 +2454,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Jeanine")
-    expect(response.body).to include("47 98868.0402")
+    expect(response.body).to include("55 (47) 98868-0402")
   end
 
   it "mantém classificação de fotos visível para o administrativo" do
@@ -2527,7 +2541,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     blob = ActiveStorage::Blob.create_and_upload!(
       io: direct_upload_io,
       filename: "direct-upload.jpg",
-      content_type: "image/jpeg"
+      content_type: "image/jpeg",
+      metadata: { "tenant_id" => admin.tenant_id }
     )
 
     patch admin_habitation_path(habitation), params: {
@@ -2559,7 +2574,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     blob = ActiveStorage::Blob.create_and_upload!(
       io: direct_upload_io,
       filename: "direct-watermark.jpg",
-      content_type: "image/jpeg"
+      content_type: "image/jpeg",
+      metadata: { "tenant_id" => admin.tenant_id }
     )
 
     expect do
@@ -2796,7 +2812,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       }
     }
 
-    expect(response).to redirect_to(edit_admin_habitation_path(habitation))
+    expect(response).to redirect_to(edit_admin_habitation_path(habitation.id))
     follow_redirect!
     expect(response.body).to include("Imóvel atualizado com sucesso. Você permaneceu na ficha de cadastro.")
     expect(habitation.reload.titulo_anuncio).to eq("Título salvo na ficha")
@@ -2905,7 +2921,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       }
     }
 
-    expect(response).to redirect_to(edit_admin_habitation_path(habitation, anchor: "documents"))
+    expect(response).to redirect_to(edit_admin_habitation_path(habitation.id, anchor: "documents"))
     expect(habitation.reload.fichas_cadastro.attachments.map { |attachment| attachment.filename.to_s }).to include("ficha-cadastro.txt")
 
     patch admin_habitation_path(habitation), params: {
@@ -2917,7 +2933,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       }
     }
 
-    expect(response).to redirect_to(edit_admin_habitation_path(habitation, anchor: "documents"))
+    expect(response).to redirect_to(edit_admin_habitation_path(habitation.id, anchor: "documents"))
     expect(habitation.reload.autorizacoes_venda.attachments.map { |attachment| attachment.filename.to_s }).to include("autorizacao-venda.txt")
   end
 
@@ -2951,11 +2967,11 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("ficha.txt")
     expect(response.body).not_to include("Adicionar arquivos")
-    expect(response.body).not_to include(purge_attachment_admin_habitation_path(habitation, association: "fichas_cadastro", attachment_id: attachment.id))
+    expect(response.body).not_to include(purge_attachment_admin_habitation_path(habitation.id, association: "fichas_cadastro", attachment_id: attachment.id))
 
-    delete purge_attachment_admin_habitation_path(habitation, association: "fichas_cadastro", attachment_id: attachment.id)
+    delete purge_attachment_admin_habitation_path(habitation.id, association: "fichas_cadastro", attachment_id: attachment.id)
 
-    expect(response).to redirect_to(edit_admin_habitation_path(habitation, anchor: "documents"))
+    expect(response).to redirect_to(edit_admin_habitation_path(habitation.id, anchor: "documents"))
     expect(habitation.reload.fichas_cadastro.attachments.count).to eq(1)
   end
 
@@ -3164,7 +3180,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     habitation.reload
     expect(habitation).to have_attributes(
       status: "Aluguel",
-      categoria: "Apartamento",
+      categoria: "Casa em Condomínio",
       dormitorios_qtd: 3,
       valor_venda_cents: 600_000_00,
       nome_empreendimento: "Empreendimento Original",
@@ -3334,8 +3350,8 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     get edit_admin_habitation_path(habitation)
 
-    expect(response.body).to include("Festival salute flag")
-    expect(response.body).to include("Ocupacao status")
+    expect(response.body).to include('name="habitation[festival_salute_flag]"')
+    expect(response.body).to include('name="habitation[ocupacao_status]"')
     expect(response.body).to include("Rua Auditoria Atualizada")
   end
 

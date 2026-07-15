@@ -2,7 +2,7 @@
   <%= ax_field_grid(columns: 12, gap: :compact) do %>
     <div class="ax-span-5" data-habitation-form-target="unitOnly">
       <% development_action = capture do %>
-        <% if can_edit_protected_habitation_fields %>
+        <% if habitation_field_editable?("acao:vincular_empreendimento") %>
           <% if habitation.persisted? %>
             <%= link_to new_admin_habitation_path(
                   habitation: { tipo: "Empreendimento", categoria: "Empreendimento" },
@@ -12,7 +12,8 @@
                 class: "ax-btn ax-btn--ghost",
                 title: "Cadastrar empreendimento e vincular esta unidade",
                 target: "_blank",
-                rel: "noopener" do %>
+                rel: "noopener",
+                data: { broker_field_policy_lock: true, field_lock_action: "acao:vincular_empreendimento" } do %>
               <i class="bi bi-plus"></i>
             <% end %>
           <% else %>
@@ -35,7 +36,7 @@
             text_method: :nome_empreendimento,
             select_options: { include_blank: true },
             html_options: {
-              disabled: !can_edit_protected_habitation_fields,
+              disabled: !habitation_field_editable?("codigo_empreendimento"),
               data: {
                 controller: "tom-select",
                 placeholder: "Selecione...",
@@ -63,7 +64,7 @@
             label: (f.object.tipo == "Empreendimento" ? "Nome do empreendimento" : "Nome do condomínio"),
             tooltip: (f.object.tipo == "Empreendimento" ? "Nome público e interno do cadastro de empreendimento." : "Campo gerenciado automaticamente para unidades vinculadas."),
             label_options: { data: { habitation_form_target: "developmentNameLabel" } },
-            readonly: !can_edit_protected_habitation_fields || f.object.codigo_empreendimento.present?,
+            readonly: !habitation_field_editable?("nome_empreendimento") || f.object.codigo_empreendimento.present?,
             data: {
               habitation_form_target: "developmentName",
               habitation_duplicate_check_target: "building",

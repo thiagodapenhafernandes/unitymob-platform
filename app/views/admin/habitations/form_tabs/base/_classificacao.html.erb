@@ -8,7 +8,9 @@
             aria: { label: "Tipo de cadastro" },
             data: {
               habitation_form_target: "cadastroType",
-              action: "change->habitation-form#cadastroTypeChanged"
+              action: "change->habitation-form#cadastroTypeChanged",
+              broker_field_policy_lock: true,
+              field_lock_field: "tipo"
             } %>
       <%= f.hidden_field :tipo, value: (f.object.tipo.presence || cadastro_tipo_by_type[inferred_cadastro_type]), data: { habitation_form_target: "tipo" } %>
     </div>

@@ -31,9 +31,11 @@
           card_return_params = admin_habitation_flat_return_params(card_return_to_path)
           details_path = admin_habitation_path_with_query(admin_habitation_path(imovel.id), card_return_params)
           edit_path = admin_habitation_path_with_query(edit_admin_habitation_path(imovel.id), card_return_params) if admin_can_edit_habitation?(imovel)
-          media_modal_path = admin_habitation_path_with_query(modal_admin_habitation_media_path(imovel.id), card_return_params) if admin_can_manage_habitation_media?(imovel)
+          media_modal_path = admin_habitation_path_with_query(modal_admin_habitation_media_path(imovel), card_return_params) if admin_can_manage_habitation_media?(imovel)
           catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
           image_urls = catalog_property_image_urls(imovel)
+          total_image_count = catalog_property_image_count(imovel)
+          preview_image_count = catalog_property_image_preview_count(imovel, total_count: total_image_count)
           image_url = image_urls.first
           fallback_image_urls = image_urls.drop(1)
           display_title = imovel.display_title
@@ -66,7 +68,9 @@
           <% end %>
           <td data-column="property">
             <div class="ax-property-table__property">
-              <div class="ax-property-table__thumb" data-controller="fancybox-gallery">
+              <div class="ax-property-table__thumb"
+                   data-controller="fancybox-gallery"
+                   data-fancybox-gallery-source-url-value="<%= gallery_admin_habitation_path(imovel) %>">
                 <% if image_url.present? %>
                   <%= link_to image_url,
                               class: "ax-property-table__thumb-link",
@@ -100,6 +104,10 @@
                 <% else %>
                   <i class="bi bi-image"></i>
                 <% end %>
+                <%= render "admin/shared/ui/photo_count_badge",
+                           total_count: total_image_count,
+                           preview_count: preview_image_count,
+                           compact: true %>
               </div>
               <div class="ax-property-table__main">
                 <%= link_to catalog_title,

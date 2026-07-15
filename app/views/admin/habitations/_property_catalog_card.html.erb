@@ -3,9 +3,11 @@
   card_return_params = admin_habitation_flat_return_params(card_return_to_path)
   details_path = admin_habitation_path_with_query(admin_habitation_path(imovel.id), card_return_params)
   edit_path = admin_habitation_path_with_query(edit_admin_habitation_path(imovel.id), card_return_params) if admin_can_edit_habitation?(imovel)
-  media_modal_path = admin_habitation_path_with_query(modal_admin_habitation_media_path(imovel.id), card_return_params) if admin_can_manage_habitation_media?(imovel)
+  media_modal_path = admin_habitation_path_with_query(modal_admin_habitation_media_path(imovel), card_return_params) if admin_can_manage_habitation_media?(imovel)
   catalog_card_path = admin_habitation_catalog_card_path(imovel, ownership_scope: @ownership_scope, intake_review: @intake_review, return_to: card_return_to_path)
   image_urls = catalog_property_image_urls(imovel)
+  total_image_count = catalog_property_image_count(imovel)
+  preview_image_count = catalog_property_image_preview_count(imovel, total_count: total_image_count)
   image_url = image_urls.first
   fallback_image_urls = image_urls.drop(1)
   display_title = imovel.display_title
@@ -57,7 +59,9 @@
          class="ax-property-card ax-property-card--catalog <%= 'is-muted property-card--inactive' if imovel.inactive_for_admin_card? %>"
          data-controller="clickable-card"
          data-clickable-card-url-value="<%= catalog_card_path %>">
-  <div class="ax-property-card__media" data-controller="fancybox-gallery">
+  <div class="ax-property-card__media"
+       data-controller="fancybox-gallery"
+       data-fancybox-gallery-source-url-value="<%= gallery_admin_habitation_path(imovel) %>">
     <% if image_url.present? %>
       <%= link_to image_url,
                   class: "ax-property-card__media-link",
@@ -112,11 +116,14 @@
       <% if !has_photo %>
         <span class="ax-property-badge ax-property-badge--danger">Sem fotos</span>
       <% elsif publication_channels.blank? %>
-        <span class="ax-property-badge ax-property-badge--danger">Não publicado</span>
+        <span class="ax-property-badge ax-property-badge--danger">Fora site</span>
       <% end %>
     </div>
 
     <div class="ax-property-card__media-badges">
+      <%= render "admin/shared/ui/photo_count_badge",
+                 total_count: total_image_count,
+                 preview_count: preview_image_count %>
       <span class="ax-property-update <%= update_state %>" title="<%= full_update_label %>">
         <i class="bi bi-clock-history"></i>
         <%= compact_update_label %>
@@ -175,7 +182,15 @@
     <footer class="ax-property-card__footer">
       <div class="ax-property-price">
         <span>Valor do imóvel</span>
-        <strong><%= price_label %></strong>
+        <div class="ax-property-price__value-row">
+          <strong><%= price_label %></strong>
+          <% if imovel.preco_atualizado_em.present? %>
+            <span class="ax-property-price__updated" title="Preço atualizado em <%= l(imovel.preco_atualizado_em, format: :long) rescue imovel.preco_atualizado_em.strftime('%d/%m/%Y') %>">
+              <i class="bi bi-tag-fill" aria-hidden="true"></i>
+              Preço atualizado há <%= time_ago_in_words(imovel.preco_atualizado_em) %>
+            </span>
+          <% end %>
+        </div>
       </div>
       <div class="ax-property-costs">
         <% costs.each do |label, value| %>

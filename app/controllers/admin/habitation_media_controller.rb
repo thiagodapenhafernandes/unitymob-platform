@@ -9,6 +9,14 @@ class Admin::HabitationMediaController < Admin::BaseController
   before_action :scope_habitation_by_permission
   before_action :load_property_setting
   before_action :authorize_media_management!, only: %i[update upload reorder visibility destroy_photo ambiente organize share]
+  before_action -> { authorize_profile_action!("acao:abrir_organizador_midia") }, only: %i[show modal]
+  before_action -> { authorize_profile_field!("photos") }, only: %i[upload reorder visibility destroy_photo ambiente organize share]
+  before_action -> { authorize_profile_action!("acao:gerenciar_ordem_fotos") }, only: :reorder
+  before_action -> { authorize_profile_action!("acao:alterar_visibilidade_fotos") }, only: :visibility
+  before_action -> { authorize_profile_action!("acao:remover_foto") }, only: :destroy_photo
+  before_action -> { authorize_profile_action!("acao:configurar_ambiente_foto") }, only: :ambiente
+  before_action -> { authorize_profile_action!("acao:organizar_fotos") }, only: :organize
+  before_action -> { authorize_profile_action!("acao:enviar_fotos") }, only: :share
 
   def show
     @page_title = "Mídia do Imóvel: #{@habitation.codigo}"
@@ -241,6 +249,25 @@ class Admin::HabitationMediaController < Admin::BaseController
     render_media_forbidden unless can_manage_media_tools?
   end
 
+  def authorize_profile_field!(key)
+    render_profile_media_forbidden if media_field_lock_policy.field_locked?(key)
+  end
+
+  def authorize_profile_action!(key)
+    render_profile_media_forbidden if media_field_lock_policy.action_locked?(key)
+  end
+
+  def media_field_lock_policy
+    @media_field_lock_policy ||= Habitations::FieldLockPolicy.for(current_admin_user)
+  end
+
+  def render_profile_media_forbidden
+    respond_to do |format|
+      format.json { render json: { ok: false, error: "forbidden" }, status: :forbidden }
+      format.html { redirect_to admin_habitations_path, alert: "Este perfil não pode executar essa ação de mídia." }
+    end
+  end
+
   def can_manage_media_tools?
     return false unless current_admin_user
     return false unless current_admin_user.can?(:media, :imoveis) || current_admin_user.can?(:manage, :imoveis)
@@ -312,11 +339,22 @@ class Admin::HabitationMediaController < Admin::BaseController
       photos: []
     )
 
+    # Cards #16 + #1: o corretor pode gerenciar a mídia, mas a "Classificação das
+    # fotos" pode estar travada pelo perfil (Habitations::FieldLockPolicy).
+    permitted = permitted.slice(*media_field_lock_policy.allowed_top_level_params)
+    permitted = permitted.except(:foto_classificacao) if photo_classification_locked?
+
     strip_blank_photo_uploads!(permitted)
+  end
+
+  def photo_classification_locked?
+    @habitation&.persisted? &&
+      Habitations::FieldLockPolicy.for(current_admin_user).field_locked?("foto_classificacao")
   end
 
   def upload_params
     permitted = params.require(:habitation).permit(:apply_photo_watermark, photos: [])
+    permitted = permitted.except(:apply_photo_watermark) if media_field_lock_policy.field_locked?("apply_photo_watermark")
     strip_blank_photo_uploads!(permitted)
   end
 

@@ -1,7 +1,9 @@
 <% habitation = f.object %>
 
 <% unique_feature_actions = capture do %>
-  <% if habitation.persisted? %>
+  <%# Card #1: "Gerar com IA" escreve título/descrição/SEO — pode estar travado
+      pelo perfil (Habitations::FieldLockPolicy). %>
+  <% if habitation.persisted? && !Habitations::FieldLockPolicy.for(current_admin_user).action_locked?("acao:gerar_ia") %>
     <%= link_to generate_ai_preview_admin_habitation_path(habitation.id),
         class: "ax-btn ax-btn--primary ax-btn--sm",
         data: {
@@ -21,6 +23,7 @@
           data-attribute-manager-field-name-value="habitation[caracteristica_unica][]"
           data-attribute-manager-modal-id-value="attributeManagerModal"
           data-action="click->attribute-manager#open"
+          data-field-lock-action="acao:gerenciar_destaques"
           data-title="Gerenciar Destaques"
           data-select-id="habitation_caracteristica_unica">
     <i class="bi bi-gear ax-ico"></i>Gerenciar
@@ -58,6 +61,7 @@
               form: f,
               method: :titulo_anuncio,
               label: "Título do anúncio",
+              readonly: !habitation_field_editable?("titulo_anuncio"),
               tooltip: "Usado em sites e portais."
             ) %>
       </div>

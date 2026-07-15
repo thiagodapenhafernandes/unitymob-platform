@@ -452,6 +452,8 @@ RSpec.describe "Habitation details", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("public-gallery-mobile")
       expect(response.body).to include("public-habitations-show__gallery-counter")
+      expect(response.body).to include("data-public-gallery-mobile-src")
+      expect(response.body).to include("data-public-gallery-mobile-srcset")
       expect(response.body).not_to include("public-habitations-show__gallery-arrow")
       expect(response.body).to include("Receber informações")
       expect(response.body).to include("Condições de pagamento")

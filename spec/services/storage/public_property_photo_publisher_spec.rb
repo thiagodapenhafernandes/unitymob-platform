@@ -49,6 +49,14 @@ RSpec.describe Storage::PublicPropertyPhotoPublisher do
     expect(described_class.progress(tenant: other_tenant)[:status]).to eq("idle")
   end
 
+  it "aceita atributos de progresso por keyword" do
+    current_tenant = Tenant.create!(name: "Tenant progress keyword #{SecureRandom.hex(3)}", slug: "tenant-progress-keyword-#{SecureRandom.hex(3)}")
+
+    described_class.write_progress(status: "running", total: 10, processed: 5, tenant: current_tenant)
+
+    expect(described_class.progress(tenant: current_tenant)).to include(status: "running", total: 10, processed: 5)
+  end
+
   def attach_photo(habitation, filename)
     habitation.photos.attach(
       io: StringIO.new("photo"),
