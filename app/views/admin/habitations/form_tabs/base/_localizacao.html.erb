@@ -164,7 +164,9 @@
                 choices: imediacoes_options,
                 selected: selected_imediacoes,
                 id: "address-imediacoes-tags",
-                disabled: !can_edit_protected_habitation_fields,
+                # Card #1: "Imediações" é a ÚNICA parte do endereço que o corretor
+                # pode editar — por isso não segue can_edit_protected aqui.
+                disabled: false,
                 placeholder: "Selecione ou digite...",
                 manager: {
                   title: "Gerenciar Imediações",

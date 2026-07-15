@@ -40,6 +40,27 @@ RSpec.describe Habitations::BrokerEditPolicy do
     expect(filter(blocked.index_with { "x" })).to be_empty
   end
 
+  it "libera SOMENTE Imediações dentro do endereço (card #1)" do
+    params = {
+      "address_attributes" => {
+        "imediacoes" => ["Praia", "Shopping"],
+        "logradouro" => "Rua Nova",
+        "numero" => "123",
+        "cidade" => "Itajaí",
+        "id" => "9"
+      }
+    }
+    result = described_class.filter(params, habitation: habitation)
+    expect(result["address_attributes"].keys).to match_array(%w[imediacoes id])
+    expect(result["address_attributes"]).not_to have_key("logradouro")
+    expect(result["address_attributes"]).not_to have_key("cidade")
+  end
+
+  it "não cria address_attributes quando só vieram campos de endereço bloqueados" do
+    params = { "address_attributes" => { "logradouro" => "Rua X", "cidade" => "BC" } }
+    expect(described_class.filter(params, habitation: habitation)).not_to have_key("address_attributes")
+  end
+
   it "deixa o corretor preencher e-mail/cidade do proprietário só quando vazios" do
     expect(filter("proprietario_email" => "a@b.com", "proprietario_cidade" => "Itajaí"))
       .to match_array(%w[proprietario_email proprietario_cidade])

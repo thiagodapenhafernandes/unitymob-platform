@@ -28,7 +28,10 @@ module Habitations
         # "Endereço e localização": SOMENTE "Imediações". NÃO altera
         # logradouro/nº/bairro/cidade/UF/complemento/bloco/lote, nem a
         # "Localização pública" (public_map_display_mode / public_street_view_mode).
-        endereco: %w[imediacoes],
+        # Imediações vive na tabela addresses, então chega como
+        # address_attributes[imediacoes]; o path aninhado é liberado no #filter
+        # e o front (broker-field-policy) reconhece "address_attributes.imediacoes".
+        endereco: %w[imediacoes address_attributes.imediacoes],
         # "Dimensões e estrutura física": tudo.
         dimensoes_estrutura: %w[
           dormitorios_qtd suites_qtd demi_suites_qtd salas_qtd varandas_qtd
@@ -110,10 +113,27 @@ module Habitations
       # (meta_title / meta_description / meta_keywords / slug — nada editável)
     }.freeze
 
+    # Todos os campos liberados (inclui o path aninhado address_attributes.imediacoes,
+    # que o front usa para reconhecer o widget de Imediações).
     ALLOWED_FIELDS = EDITABLE_MATRIX.values.flat_map(&:values).flatten.uniq.freeze
 
+    # Só os campos de topo (nível habitation[...]) — usado no slice do servidor.
+    TOP_LEVEL_ALLOWED_FIELDS = ALLOWED_FIELDS.reject { |field| field.include?(".") }.freeze
+
+    # Sub-chaves liberadas dentro de address_attributes (Endereço: só Imediações).
+    ALLOWED_ADDRESS_SUBKEYS = %w[imediacoes id].freeze
+
     def self.filter(parameters, habitation:)
-      filtered = parameters.slice(*ALLOWED_FIELDS)
+      filtered = parameters.slice(*TOP_LEVEL_ALLOWED_FIELDS)
+
+      # Endereço: mantém address_attributes apenas com Imediações (+ id p/ o
+      # update do registro aninhado). Todo o resto do endereço fica de fora.
+      address = parameters["address_attributes"]
+      if address.is_a?(Hash) || address.is_a?(ActionController::Parameters)
+        allowed_address = address.slice(*ALLOWED_ADDRESS_SUBKEYS)
+        filtered["address_attributes"] = allowed_address if allowed_address.keys.any? { |key| key != "id" }
+      end
+
       filtered.delete("proprietario_email") if habitation.proprietario_email.present?
       filtered.delete("proprietario_cidade") if habitation.proprietario_cidade.present?
       filtered
