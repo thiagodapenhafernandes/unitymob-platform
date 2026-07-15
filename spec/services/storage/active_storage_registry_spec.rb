@@ -20,6 +20,20 @@ RSpec.describe Storage::ActiveStorageRegistry do
     end
   end
 
+  describe "Active Storage job hooks" do
+    it "registra serviços dinâmicos antes do purge job nativo" do
+      blob = instance_double(ActiveStorage::Blob)
+
+      allow(Storage::ActiveStorageRegistry).to receive(:register_if_available!)
+      allow(blob).to receive(:purge)
+
+      ActiveStorage::PurgeJob.perform_now(blob)
+
+      expect(Storage::ActiveStorageRegistry).to have_received(:register_if_available!).ordered
+      expect(blob).to have_received(:purge).ordered
+    end
+  end
+
   describe ".add_static_compatibility_aliases!" do
     it "expõe do_spaces_db usando a configuração estática legada" do
       legacy = { service: "S3", bucket: "legacy-bucket" }

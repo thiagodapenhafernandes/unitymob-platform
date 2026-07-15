@@ -3,6 +3,7 @@ Rails.application.config.after_initialize do
 
   job_classes = []
   job_classes << ActiveStorage::AnalyzeJob if defined?(ActiveStorage::AnalyzeJob)
+  job_classes << ActiveStorage::PurgeJob if defined?(ActiveStorage::PurgeJob)
   job_classes << ActiveStorage::TransformJob if defined?(ActiveStorage::TransformJob)
 
   job_classes.each do |job_class|
