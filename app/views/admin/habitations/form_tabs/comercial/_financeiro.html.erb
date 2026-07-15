@@ -41,8 +41,8 @@
         <%= ax_currency_field(
               form: f,
               method: :valor_alugado_terceiros_formatted,
-              label: "Alugado por terceiros",
-              tooltip: "Use este valor quando o cadastro estiver como Alugado terceiros.",
+              label: "Valor comercializado (locação)",
+              tooltip: "Valor pelo qual a locação foi fechada (Alugado imobiliária ou terceiros).",
               disabled: !f.object.status.to_s.parameterize.include?("alugado"),
               required: f.object.status.to_s.parameterize.include?("alugado"),
               data: { controller: "mask", mask_type_value: "currency", conditional_required: true }
@@ -54,8 +54,8 @@
         <%= ax_currency_field(
               form: f,
               method: :valor_vendido_terceiros_formatted,
-              label: "Vendido por terceiros",
-              tooltip: "Use este valor quando o cadastro estiver como Vendido terceiros.",
+              label: "Valor comercializado (venda)",
+              tooltip: "Valor pelo qual a venda foi fechada (Vendido imobiliária ou terceiros).",
               disabled: !f.object.status.to_s.parameterize.include?("vendido"),
               required: f.object.status.to_s.parameterize.include?("vendido"),
               data: { controller: "mask", mask_type_value: "currency", conditional_required: true }
