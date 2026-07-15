@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly APP_DIR="${APP_DIR:-/home/salute/deploy/current}"
+readonly STATE_DIR="${STATE_DIR:-/run/solid-queue-media-autoscale}"
+readonly LOCK_FILE="$STATE_DIR/lock"
+readonly CONFIG_FILE="${CONFIG_FILE:-/run/solid_queue_media_drain.yml}"
+readonly EXTRA_UNIT="${EXTRA_UNIT:-solid_queue_media_drain.service}"
+readonly QUEUE_UNIT="${QUEUE_UNIT:-solid_queue_salute_imoveis_v3_production.service}"
+readonly RVM_SHELL="${RVM_SHELL:-/usr/local/rvm/bin/rvm-shell}"
+readonly RVM_RUBY="${RVM_RUBY:-3.2.3@default}"
+readonly RUN_USER="${RUN_USER:-salute}"
+
+readonly READY_HIGH="${READY_HIGH:-1500}"
+readonly READY_LOW="${READY_LOW:-300}"
+readonly OLDEST_HIGH_SECONDS="${OLDEST_HIGH_SECONDS:-900}"
+readonly MIN_AVAILABLE_MB="${MIN_AVAILABLE_MB:-700}"
+readonly MAX_SWAP_USED_MB="${MAX_SWAP_USED_MB:-1200}"
+readonly EXTRA_MEMORY_HIGH="${EXTRA_MEMORY_HIGH:-450M}"
+readonly EXTRA_MEMORY_MAX="${EXTRA_MEMORY_MAX:-650M}"
+readonly EXTRA_CACHE_MB="${EXTRA_CACHE_MB:-8}"
+readonly COOLDOWN_SECONDS="${COOLDOWN_SECONDS:-300}"
+
+mkdir -p "$STATE_DIR"
+exec 9>"$LOCK_FILE"
+flock -n 9 || exit 0
+
+log() {
+  logger -t solid-queue-media-autoscale "$*"
+}
+
+warn() {
+  logger -p daemon.warning -t solid-queue-media-autoscale "$*"
+}
+
+last_action_file="$STATE_DIR/last-action"
+now=$(date +%s)
+last_action=0
+[[ -f "$last_action_file" ]] && read -r last_action < "$last_action_file"
+
+cooldown_active() {
+  (( now - last_action < COOLDOWN_SECONDS ))
+}
+
+memory_available_mb=$(awk '/^MemAvailable:/ {print int($2 / 1024)}' /proc/meminfo)
+swap_total_mb=$(awk '/^SwapTotal:/ {print int($2 / 1024)}' /proc/meminfo)
+swap_free_mb=$(awk '/^SwapFree:/ {print int($2 / 1024)}' /proc/meminfo)
+swap_used_mb=$((swap_total_mb - swap_free_mb))
+
+memory_pressure=false
+if (( memory_available_mb < MIN_AVAILABLE_MB || swap_used_mb > MAX_SWAP_USED_MB )); then
+  memory_pressure=true
+fi
+
+extra_active=false
+if systemctl is-active --quiet "$EXTRA_UNIT"; then
+  extra_active=true
+fi
+
+queue_active=false
+if systemctl is-active --quiet "$QUEUE_UNIT"; then
+  queue_active=true
+fi
+
+if [[ "$queue_active" != true ]]; then
+  warn "main_queue_inactive unit=${QUEUE_UNIT}; stopping extra=${EXTRA_UNIT}"
+  systemctl stop "$EXTRA_UNIT" 2>/dev/null || true
+  echo "$now" > "$last_action_file"
+  exit 0
+fi
+
+metrics=$(
+  cd "$APP_DIR" &&
+    RAILS_ENV=production bundle exec rails runner '
+      scope = SolidQueue::ReadyExecution.joins(:job).where(solid_queue_jobs: { queue_name: "media" })
+      oldest = scope.minimum("solid_queue_jobs.created_at")
+      puts "ready=#{scope.count}"
+      puts "oldest_age=#{oldest ? (Time.current - oldest).to_i : 0}"
+      puts "claimed=#{SolidQueue::ClaimedExecution.joins(:job).where(solid_queue_jobs: { queue_name: "media" }).count}"
+    '
+)
+
+ready=$(awk -F= '$1 == "ready" {print $2}' <<< "$metrics")
+oldest_age=$(awk -F= '$1 == "oldest_age" {print $2}' <<< "$metrics")
+claimed=$(awk -F= '$1 == "claimed" {print $2}' <<< "$metrics")
+ready=${ready:-0}
+oldest_age=${oldest_age:-0}
+claimed=${claimed:-0}
+
+if [[ "$extra_active" == true && "$memory_pressure" == true ]]; then
+  warn "stopping extra=${EXTRA_UNIT} reason=memory ready=${ready} oldest_age=${oldest_age}s available_mb=${memory_available_mb} swap_used_mb=${swap_used_mb}"
+  systemctl stop "$EXTRA_UNIT"
+  echo "$now" > "$last_action_file"
+  exit 0
+fi
+
+if [[ "$extra_active" == true && "$ready" -le "$READY_LOW" ]]; then
+  log "stopping extra=${EXTRA_UNIT} reason=healthy ready=${ready} oldest_age=${oldest_age}s claimed=${claimed}"
+  systemctl stop "$EXTRA_UNIT"
+  echo "$now" > "$last_action_file"
+  exit 0
+fi
+
+if [[ "$extra_active" == true ]]; then
+  log "keep extra=${EXTRA_UNIT} ready=${ready} oldest_age=${oldest_age}s claimed=${claimed} available_mb=${memory_available_mb} swap_used_mb=${swap_used_mb}"
+  exit 0
+fi
+
+if cooldown_active; then
+  log "cooldown ready=${ready} oldest_age=${oldest_age}s remaining=$((COOLDOWN_SECONDS - now + last_action))s"
+  exit 0
+fi
+
+if [[ "$memory_pressure" == true ]]; then
+  warn "not_starting reason=memory ready=${ready} oldest_age=${oldest_age}s available_mb=${memory_available_mb} swap_used_mb=${swap_used_mb}"
+  exit 0
+fi
+
+if (( ready < READY_HIGH && oldest_age < OLDEST_HIGH_SECONDS )); then
+  log "healthy ready=${ready} oldest_age=${oldest_age}s claimed=${claimed}"
+  exit 0
+fi
+
+cat > "$CONFIG_FILE" <<YAML
+production:
+  workers:
+    - queues: media
+      threads: 1
+      processes: 1
+      polling_interval: 0.5
+YAML
+
+log "starting extra=${EXTRA_UNIT} ready=${ready} oldest_age=${oldest_age}s available_mb=${memory_available_mb} swap_used_mb=${swap_used_mb}"
+systemd-run \
+  --unit="${EXTRA_UNIT%.service}" \
+  --property="MemoryHigh=${EXTRA_MEMORY_HIGH}" \
+  --property="MemoryMax=${EXTRA_MEMORY_MAX}" \
+  --property=Restart=on-failure \
+  --property=RestartSec=5 \
+  --uid="$RUN_USER" \
+  "$RVM_SHELL" "$RVM_RUBY" -c "cd $APP_DIR && RAILS_ENV=production RAILS_MEMORY_CACHE_SIZE_MB=$EXTRA_CACHE_MB MALLOC_ARENA_MAX=2 bundle exec bin/jobs start -c $CONFIG_FILE --skip-recurring=true"
+echo "$now" > "$last_action_file"

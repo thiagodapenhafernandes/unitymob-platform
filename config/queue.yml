@@ -31,7 +31,7 @@ default: &default
     # Mantém mídia isolada e serializada para limitar pico de memória em produção.
     - queues: media
       threads: 1
-      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      processes: <%= ENV.fetch("MEDIA_JOB_CONCURRENCY", ENV.fetch("JOB_CONCURRENCY", 1)) %>
       polling_interval: 1
     # Operacionais leves compartilham um processo, priorizando check-ins.
     # O catch-all segue EXPLÍCITO — sem "*", que roubaria filas dedicadas.
