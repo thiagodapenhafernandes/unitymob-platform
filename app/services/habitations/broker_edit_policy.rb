@@ -123,14 +123,21 @@ module Habitations
     # Sub-chaves liberadas dentro de address_attributes (Endereço: só Imediações).
     ALLOWED_ADDRESS_SUBKEYS = %w[imediacoes id].freeze
 
-    def self.filter(parameters, habitation:)
-      filtered = parameters.slice(*TOP_LEVEL_ALLOWED_FIELDS)
+    # Com admin_user: resolve os campos liberados pelo módulo de Perfil/Permissão
+    # (Habitations::FieldLockPolicy — config do perfil ou default). Sem admin_user:
+    # usa a matriz fixa do card #1 (compat com chamadas antigas/testes).
+    def self.filter(parameters, habitation:, admin_user: nil)
+      policy = admin_user && FieldLockPolicy.for(admin_user)
+      top_allowed = policy ? policy.allowed_top_level_params : TOP_LEVEL_ALLOWED_FIELDS
+      address_subkeys = policy ? (policy.allowed_address_subkeys + ["id"]) : ALLOWED_ADDRESS_SUBKEYS
 
-      # Endereço: mantém address_attributes apenas com Imediações (+ id p/ o
-      # update do registro aninhado). Todo o resto do endereço fica de fora.
+      filtered = parameters.slice(*top_allowed)
+
+      # Endereço: mantém address_attributes apenas com as sub-chaves liberadas
+      # (Imediações + id p/ o update aninhado). O resto do endereço fica de fora.
       address = parameters["address_attributes"]
       if address.is_a?(Hash) || address.is_a?(ActionController::Parameters)
-        allowed_address = address.slice(*ALLOWED_ADDRESS_SUBKEYS)
+        allowed_address = address.slice(*address_subkeys)
         filtered["address_attributes"] = allowed_address if allowed_address.keys.any? { |key| key != "id" }
       end
 

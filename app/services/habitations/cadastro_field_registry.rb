@@ -249,7 +249,8 @@ module Habitations
       {
         tab: "Mídia", section: "Mídia e uploads",
         items: [
-          { key: "photos", label: "Fotos (upload/ordem/ocultar)" },
+          { key: "photos", label: "Fotos (upload/ordem/ocultar)",
+            extra_params: %w[ordered_photo_ids ordered_picture_indices site_hidden_photo_ids site_hidden_picture_urls] },
           { key: "videos", label: "Vídeos" },
           { key: "tour_virtual", label: "Tour virtual" },
           { key: "podcast_url", label: "Podcast (URL)" },

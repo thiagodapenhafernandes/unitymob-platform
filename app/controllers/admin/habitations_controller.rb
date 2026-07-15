@@ -2169,7 +2169,7 @@ class Admin::HabitationsController < Admin::BaseController
     permitted = params.require(:habitation).permit(*permitted_habitation_fields)
     strip_blank_photo_uploads!(permitted)
 
-    permitted = Habitations::BrokerEditPolicy.filter(permitted, habitation: @habitation) if broker_restricted_habitation_edit?
+    permitted = Habitations::BrokerEditPolicy.filter(permitted, habitation: @habitation, admin_user: current_admin_user) if broker_restricted_habitation_edit?
 
     unless can_edit_protected_habitation_fields?
       permitted = permitted.except(*broker_protected_habitation_param_keys)
@@ -2471,7 +2471,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def broker_habitation_allowed_fields
-    Habitations::BrokerEditPolicy.allowed_fields
+    Habitations::FieldLockPolicy.for(current_admin_user).allowed_frontend_fields
   end
 
   def property_belongs_to_current_user?(habitation)
