@@ -360,7 +360,8 @@
              contextbar_class: "habitation-property-middle-contextbar",
              controller: "ax-aside",
              storage_key: "admin-habitation-form-editor-collapsed",
-             preload_class: "ax-habitation-editor-collapsed-preload" %>
+             preload_class: "ax-habitation-editor-collapsed-preload",
+             interactive_media: "(max-width: 960px)" %>
 
 <% if habitation.persisted? && can_manage_internal_documents %>
   <% [
