@@ -262,10 +262,12 @@ module Admin
         return
       end
 
+      reviewed_at = Time.current
+      @habitation.finalize_broker_intake_registration!(submitted_at: @habitation.submitted_for_review_at.presence || reviewed_at)
       @habitation.update!(
         intake_status: "admin_approved",
         admin_reviewed_by: current_admin_user,
-        admin_reviewed_at: Time.current,
+        admin_reviewed_at: reviewed_at,
         admin_review_notes: admin_review_notes
       )
       snapshot_review_policy!(@habitation)
@@ -314,10 +316,12 @@ module Admin
         return
       end
 
+      released_at = Time.current
+      @habitation.finalize_broker_intake_registration!(submitted_at: @habitation.submitted_for_review_at.presence || released_at)
       @habitation.update!(
         intake_status: "published",
-        broker_released_at: Time.current,
-        data_atualizacao_crm: Time.current,
+        broker_released_at: released_at,
+        data_atualizacao_crm: released_at,
         exibir_no_site_flag: true,
         foto_classificacao: @habitation.foto_classificacao.presence || "Boas"
       )
