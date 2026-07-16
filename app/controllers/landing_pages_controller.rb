@@ -33,7 +33,7 @@ class LandingPagesController < ApplicationController
         { empreendimento: { constructor: { logo_attachment: :blob } } }
       )
       .paginate(page: params[:page], per_page: 12)
-    PublicSite::CardPhotoPreloader.new(@habitations.to_a, limit: 6).call
+    PublicSite::CardPhotoPreloader.new(@habitations.to_a, limit: 3).call
     
     # SEO meta tags
     @page_title = @landing_page.meta_title.presence || @landing_page.title
