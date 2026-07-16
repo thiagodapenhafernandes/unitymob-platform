@@ -974,9 +974,10 @@ class Habitation < ApplicationRecord
     if codigo.blank? || temporary_codigo?
       self.codigo = self.class.next_automatic_codigo
       self.slug = nil
+      self.data_cadastro_crm = submitted_at || Time.current
+    else
+      self.data_cadastro_crm ||= submitted_at || Time.current
     end
-
-    self.data_cadastro_crm ||= submitted_at || Time.current
   end
 
   def intake_status_label

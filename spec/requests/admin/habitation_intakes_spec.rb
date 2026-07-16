@@ -1323,7 +1323,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   it "envia, aprova e libera para o site quando a ficha está completa" do
     broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)
-    intake = create(:habitation, :broker_intake, admin_user: broker)
+    intake = create(:habitation, :broker_intake, admin_user: broker, codigo: nil)
     intake.create_address!(
       cep: "88330-000",
       logradouro: "Rua Central",
@@ -1341,8 +1341,11 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     sign_in broker
     post submit_for_review_admin_captacao_path(intake)
+    intake.reload
     expect(response).to redirect_to(admin_captacao_path(intake))
-    expect(intake.reload.intake_status).to eq("submitted_for_admin_review")
+    expect(intake.intake_status).to eq("submitted_for_admin_review")
+    expect(intake.codigo).to match(/\A\d+\z/)
+    expect(intake.data_cadastro_crm).to be_present
 
     sign_in admin
     post approve_admin_captacao_path(intake), params: { admin_review_notes: "Ok" }
@@ -1358,6 +1361,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     post release_to_site_admin_captacao_path(intake)
     expect(response).to redirect_to(admin_captacao_path(intake))
     expect(intake.reload).to have_attributes(intake_status: "published", exibir_no_site_flag: true)
+    expect(intake.codigo).to match(/\A\d+\z/)
   end
 
   it "mostra título e descrição do anúncio para o corretor conferir antes da publicação" do

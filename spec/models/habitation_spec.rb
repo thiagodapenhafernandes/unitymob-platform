@@ -106,6 +106,27 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.broker_responsible_for?(assigned)).to be(true)
       expect(habitation.broker_responsible_for?(outsider)).to be(false)
     end
+
+    it "replaces a temporary broker intake code and uses the submission date as registration date" do
+      baseline_codigo = (described_class.highest_numeric_codigo + 100).to_s
+      create(:habitation, codigo: baseline_codigo)
+      submitted_at = Time.zone.local(2026, 7, 16, 10, 30, 0)
+      old_registration_date = submitted_at - 7.days
+      expected_codigo = described_class.next_automatic_codigo
+      habitation = create(
+        :habitation,
+        :broker_intake,
+        codigo: nil,
+        data_cadastro_crm: old_registration_date
+      )
+
+      expect(habitation.codigo).to start_with(described_class::TEMPORARY_CODIGO_PREFIX)
+
+      habitation.finalize_broker_intake_registration!(submitted_at: submitted_at)
+
+      expect(habitation.codigo).to eq(expected_codigo)
+      expect(habitation.data_cadastro_crm).to eq(submitted_at)
+    end
   end
 
   describe "#inactive_for_admin_card?" do

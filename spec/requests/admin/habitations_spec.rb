@@ -2239,7 +2239,20 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "salva o imóvel completo e libera a captação para o corretor publicar" do
-    intake = create(:habitation, :broker_intake, admin_user: admin, codigo: "REL-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review")
+    submitted_at = Time.zone.local(2026, 7, 16, 10, 30, 0)
+    old_registration_date = submitted_at - 7.days
+    baseline_codigo = (Habitation.highest_numeric_codigo + 100).to_s
+    create(:habitation, codigo: baseline_codigo)
+    expected_codigo = Habitation.next_automatic_codigo
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      codigo: nil,
+      intake_status: "submitted_for_admin_review",
+      submitted_for_review_at: submitted_at,
+      data_cadastro_crm: old_registration_date
+    )
     intake.create_address!(
       cep: "88330-000",
       logradouro: "Rua Central",
@@ -2270,6 +2283,8 @@ RSpec.describe "Admin::Habitations", type: :request do
       exibir_no_site_flag: false,
       admin_reviewed_by_id: admin.id
     )
+    expect(intake.codigo).to eq(expected_codigo)
+    expect(intake.data_cadastro_crm).to eq(submitted_at)
     expect(intake.admin_reviewed_at).to be_present
   end
 

@@ -1973,16 +1973,20 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def mark_intake_as_admin_approved(habitation)
+    reviewed_at = Time.current
+    habitation.finalize_broker_intake_registration!(submitted_at: habitation.submitted_for_review_at.presence || reviewed_at)
     habitation.intake_status = "admin_approved"
     habitation.admin_reviewed_by = current_admin_user
-    habitation.admin_reviewed_at = Time.current
+    habitation.admin_reviewed_at = reviewed_at
     habitation.exibir_no_site_flag = false
   end
 
   def mark_intake_as_internal(habitation)
+    reviewed_at = Time.current
+    habitation.finalize_broker_intake_registration!(submitted_at: habitation.submitted_for_review_at.presence || reviewed_at)
     habitation.intake_status = "internal"
     habitation.admin_reviewed_by = current_admin_user
-    habitation.admin_reviewed_at = Time.current
+    habitation.admin_reviewed_at = reviewed_at
     habitation.exibir_no_site_flag = false
   end
 
