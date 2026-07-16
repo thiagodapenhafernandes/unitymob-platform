@@ -98,6 +98,24 @@ module Admin::HabitationsHelper
     }
   end
 
+  # Classe de cor do chip de status do card, baseada no significado comercial
+  # do valor (Habitation::STATUS_OPTIONS). Retorna vazio para status neutro.
+  def admin_habitation_status_chip_class(status)
+    key = status.to_s.parameterize.tr("-", "_")
+    return "" if key.blank?
+
+    case key
+    when /vendido/            then "ax-property-chip--status-sold"
+    when /alugado/            then "ax-property-chip--status-rented"
+    when /suspenso/           then "ax-property-chip--status-suspended"
+    when /pendente/           then "ax-property-chip--status-pending"
+    when /lancamento/         then "ax-property-chip--status-launch"
+    when /aluguel|locacao|diaria/ then "ax-property-chip--status-rent"
+    when /venda/              then "ax-property-chip--status-sale"
+    else                           ""
+    end
+  end
+
   def admin_habitation_catalog_title(habitation)
     parts = [
       admin_habitation_catalog_neighborhood(habitation),

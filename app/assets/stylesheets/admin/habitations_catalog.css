@@ -102,19 +102,113 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-price s
 .ax-property-price__updated {
   display: inline-flex;
   align-items: center;
-  gap: .28rem;
-  padding: .12rem .42rem;
+  gap: 4px;
+  min-height: 20px;
+  padding: 3px 8px;
+  border: 1px solid #e2e8f0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--admin-primary, #365f8f) 12%, #fff);
-  color: var(--admin-primary, #365f8f);
-  font-size: .66rem;
-  font-weight: 700;
-  line-height: 1.2;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .02em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
+.ax-property-price__updated .bi {
+  font-size: .78em;
+  color: var(--admin-primary, #365f8f);
+}
 html[data-admin-theme="dark"] .ax-property-price__updated {
-  background: color-mix(in srgb, var(--admin-primary, #365f8f) 26%, transparent);
-  color: var(--ax-dark-text, #e6edf7);
+  border-color: var(--ax-field-border, #2b3547);
+  background: color-mix(in srgb, var(--admin-surface-header) 68%, var(--admin-surface));
+  color: var(--ab-muted, #9aa7b8);
+}
+html[data-admin-theme="dark"] .ax-property-price__updated .bi {
+  color: color-mix(in srgb, var(--admin-primary, #365f8f) 55%, var(--ab-muted, #9aa7b8));
+}
+
+/* ===== Chips de identidade do card: status por cor + tipo em badge ===== */
+/* Tipo do imóvel (categoria) ganha um badge neutro-âmbar para se destacar
+   do texto ao redor sem competir com o chip de status. */
+.ax-property-card__identity-category {
+  border-color: #e2d6c3;
+  background: #fbf3e4;
+  color: #8a5a1a;
+}
+
+/* Status por significado comercial. Cores alinhadas à paleta dos chips
+   de intake já existentes (mesma linguagem de badge do sistema). */
+.ax-property-chip--status-sale {
+  border-color: #bfdbfe;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.ax-property-chip--status-rent {
+  border-color: #a7e8dd;
+  background: #d5f5ee;
+  color: #0f766e;
+}
+.ax-property-chip--status-launch {
+  border-color: #ddd6fe;
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.ax-property-chip--status-pending {
+  border-color: #fde68a;
+  background: #fef3c7;
+  color: #92400e;
+}
+.ax-property-chip--status-suspended {
+  border-color: #e2e8f0;
+  background: #eef2f7;
+  color: #475569;
+}
+.ax-property-chip--status-sold,
+.ax-property-chip--status-rented {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Dark mode: mantém a cor dos chips coloridos (o neutralizador geral só
+   afeta chips sem tonalidade). */
+html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__identity-category {
+  border-color: color-mix(in srgb, #f59e0b 42%, var(--admin-surface)) !important;
+  background: color-mix(in srgb, #f59e0b 20%, var(--admin-surface)) !important;
+  color: #fcd9a3 !important;
+}
+html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-chip--status-sale {
+  border-color: color-mix(in srgb, #3b82f6 46%, var(--admin-surface)) !important;
+  background: color-mix(in srgb, #3b82f6 22%, var(--admin-surface)) !important;
+  color: #bfdbff !important;
+}
+html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-chip--status-rent {
+  border-color: color-mix(in srgb, #14b8a6 46%, var(--admin-surface)) !important;
+  background: color-mix(in srgb, #14b8a6 22%, var(--admin-surface)) !important;
+  color: #9decdd !important;
+}
+html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-chip--status-launch {
+  border-color: color-mix(in srgb, #8b5cf6 46%, var(--admin-surface)) !important;
+  background: color-mix(in srgb, #8b5cf6 22%, var(--admin-surface)) !important;
+  color: #d6ccff !important;
+}
+html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-chip--status-pending {
+  border-color: color-mix(in srgb, #f59e0b 46%, var(--admin-surface)) !important;
+  background: color-mix(in srgb, #f59e0b 22%, var(--admin-surface)) !important;
+  color: #fcd9a3 !important;
+}
+html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-chip--status-suspended {
+  border-color: var(--ax-field-border) !important;
+  background: color-mix(in srgb, var(--admin-surface-header) 68%, var(--admin-surface)) !important;
+  color: var(--ab-muted) !important;
+}
+html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-chip--status-sold,
+html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-chip--status-rented {
+  border-color: color-mix(in srgb, #ef4444 46%, var(--admin-surface)) !important;
+  background: color-mix(in srgb, #ef4444 22%, var(--admin-surface)) !important;
+  color: #fca5a5 !important;
 }
 
 html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__meta,
@@ -222,7 +316,7 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .habitations-inspect
   accent-color: var(--admin-primary);
 }
 
-html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-chip:not(.ax-property-chip--warning):not([class*="ax-property-chip--intake"]) {
+html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-chip:not(.ax-property-chip--warning):not([class*="ax-property-chip--intake"]):not([class*="ax-property-chip--status-"]):not(.ax-property-card__identity-category) {
   border-color: var(--ax-field-border) !important;
   background: color-mix(in srgb, var(--admin-surface-header) 68%, var(--admin-surface)) !important;
   color: var(--ab-muted) !important;
