@@ -183,19 +183,13 @@
   ].select { |_label, value| value.present? }
 
   feature_fields = [
-    ["Dormitórios", @habitation.dormitorios_qtd],
-    ["Suítes", @habitation.suites_qtd],
     ["Demi-suítes", @habitation.demi_suites_qtd],
     ["Salas", @habitation.salas_qtd],
-    ["Banheiros", @habitation.banheiros_qtd],
-    ["Vagas", @habitation.vagas_qtd],
     ["Andar", @habitation.andar],
     ["Varandas", @habitation.varandas_qtd],
     ["Hidromassagem", @habitation.hidromassagem_qtd],
     ["Tipo de vaga", @habitation.tipo_vaga],
     ["Box", @habitation.numero_box],
-    ["Área privativa", @habitation.area_privativa_m2.present? ? "#{@habitation.area_privativa_m2} m²" : nil],
-    ["Área total", @habitation.area_total_m2.present? ? "#{@habitation.area_total_m2} m²" : nil],
     ["Área terreno", @habitation.area_terreno_m2.present? ? "#{@habitation.area_terreno_m2} m²" : nil],
     ["Dimensões terreno", @habitation.dimensoes_terreno],
     ["Topografia", @habitation.topografia],
@@ -212,8 +206,7 @@
     ["IPTU", money.call(@habitation.valor_iptu_cents)],
     ["Aceita parcelamento", yes_no.call(@habitation.aceita_parcelamento_flag)],
     ["Parcelas", @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.present? ? "#{@habitation.numero_prestacoes}x" : nil],
-    ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)],
-    ["Com Adm", yes_no.call(@habitation.salute_rental_management_flag)]
+    ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)]
   ].select { |_label, value| value.present? }
 
   commercial_fields = [
@@ -237,7 +230,7 @@
     ["Saldo devedor", money.call(@habitation.saldo_devedor_cents)]
   ].select { |_label, value| value.present? }
 
-  exchange_fields = [["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)]]
+  exchange_fields = []
   if @habitation.aceita_permuta_flag?
     exchange_fields << ["Valor total da permuta", money.call(@habitation.valor_aceito_permuta_cents)]
     if @habitation.aceita_permuta_veiculo_flag?
@@ -394,6 +387,8 @@
 
   description_section_class = media_links.any? && description.present? ? "ax-property-show-bottom__body--wide" : "ax-property-show-bottom__body--description-only"
   item_names = (feature_names + infrastructure_names + unique_feature_names).compact_blank.uniq
+  public_item_names = item_names.map { |name| name.to_s.parameterize }
+  public_flags = public_flags.reject { |label, _value| public_item_names.include?(label.to_s.parameterize) }
   operational_panels = [
     { eyebrow: "Comercial", title: "Condições e negociação", fields: commercial_fields },
     { eyebrow: "Atendimento", title: "Chaves e visitas", fields: attendance_fields },
