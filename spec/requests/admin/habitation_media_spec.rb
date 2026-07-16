@@ -24,6 +24,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
 
   before do
     host! "localhost"
+    allow(Storage::PublicPropertyPhoto).to receive(:public_base_url).and_return("https://cdn.saluteimoveis.com.br")
     allow_any_instance_of(HabitationDuplicateChecker).to receive(:call).and_return(
       HabitationDuplicateChecker::Result.new(complete: false, matches: [], comparison: :street)
     )
@@ -208,6 +209,27 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(response.body).to include("api-picture-item")
     expect(response.body).to include("data-media-tools-picture-index-param=\"0\"")
     expect(response.body).to include("Configurar ambiente")
+  end
+
+  it "exibe fotos do empreendimento vinculado no modal da unidade" do
+    development = create_media_habitation(
+      codigo: "DEV-MODAL-#{SecureRandom.hex(6)}",
+      tipo: "Empreendimento",
+      pictures: [{ "url" => "https://cdn.saluteimoveis.com.br/serenity-externa.jpg" }]
+    )
+    unit = create_media_habitation(
+      codigo_empreendimento: development.codigo,
+      use_development_photos_flag: true,
+      pictures: []
+    )
+    unit.photos.attach(io: StringIO.new("foto unidade"), filename: "unidade.jpg", content_type: "image/jpeg")
+
+    get modal_admin_habitation_media_path(unit), headers: { "X-Requested-With" => "XMLHttpRequest" }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("https://cdn.saluteimoveis.com.br/serenity-externa.jpg")
+    expect(response.body).to include("Foto herdada do empreendimento")
+    expect(response.body).to include("2 itens vinculados")
   end
 
   it "remove foto anexada por JSON e devolve a galeria atualizada" do

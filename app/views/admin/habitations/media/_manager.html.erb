@@ -5,6 +5,7 @@
   linked_development = media_gallery.linked_development
   attached_media_photos = media_gallery.attached_media_photos
   api_media_pictures = media_gallery.api_media_pictures
+  development_media_sources = media_gallery.development_media_sources
   media_gallery_count = media_gallery.media_gallery_count
   compact_mode = local_assigns[:compact] == true
   can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:manage, :imoveis))
@@ -209,6 +210,7 @@
                   linked_development: linked_development,
                   attached_media_photos: attached_media_photos,
                   api_media_pictures: api_media_pictures,
+                  development_media_sources: development_media_sources,
                   can_edit_media: can_edit_media,
                   can_edit_photos: can_edit_photos,
                   media_action_allowed: media_action_allowed %>
