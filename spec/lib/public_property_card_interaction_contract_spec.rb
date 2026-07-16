@@ -13,9 +13,9 @@ RSpec.describe "Interação do card público de imóvel" do
     expect(clickable_card_controller).to include("trackingLink.click()")
   end
 
-  it "mantém variants otimizadas somente nas seis primeiras imagens do card" do
-    expect(card_partial).to include("property.card_image_sources(6)")
-    expect(card_partial).to include("if index < 6")
+  it "mantém variants otimizadas somente nas três primeiras imagens do card" do
+    expect(card_partial).to include("property.card_image_sources(3)")
+    expect(card_partial).to include("if index < 3")
     expect(card_partial).to include("public_image_url(pic, resize_to_fill: [640, 480], format: :webp)")
     expect(card_partial).to include("public_image_url(pic)")
     expect(card_partial).to include("image_tag(index.zero? ? image_source : placeholder")
