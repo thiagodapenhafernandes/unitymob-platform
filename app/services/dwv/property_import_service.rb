@@ -128,7 +128,7 @@ module Dwv
       address_attrs = extract_address
       description = extract_description
       category = inferred_category
-      development_name = text_value(["building", "title"]) || inferred_condominium_name(category) || habitation.nome_empreendimento
+      development_name = resolved_development_name(category) || habitation.nome_empreendimento
 
       attrs = {
         codigo_dwv: dwv_id,
@@ -242,6 +242,12 @@ module Dwv
     end
 
     def inferred_category
+      return @inferred_category if defined?(@inferred_category)
+
+      @inferred_category = compute_inferred_category
+    end
+
+    def compute_inferred_category
       raw_category = value(
         ["unit", "floor_plan", "category", "title"],
         ["unit", "type"],
@@ -259,10 +265,15 @@ module Dwv
     end
 
     def condominium_context?
-      [
-        text_value(["third_party_property", "unit_info"], ["unit", "unit_info"], ["unit_info"]),
-        text_value(["advertisement_title"], ["title"], ["name"], ["titulo"], ["third_party_property", "title"])
-      ].compact.any? { |text| text.match?(/condom[ií]nio/i) }
+      unit_info = text_value(["third_party_property", "unit_info"], ["unit", "unit_info"], ["unit_info"])
+      title = text_value(["advertisement_title"], ["title"], ["name"], ["titulo"], ["third_party_property", "title"])
+
+      return true if [dwv_complement, unit_info, title].compact.any? { |t| t.match?(/condom[ií]nio/i) }
+
+      # Nome de empreendimento/residencial no complemento ou unit_info (campos
+      # estruturados) também caracteriza casa em condomínio — ex.: "BOULEVARD DA
+      # BARRA PARK RESIDENCE", "ED. SAINT PAUL".
+      [dwv_complement, unit_info].compact.any? { |t| Dwv::DevelopmentNameInference.development_name?(t) }
     end
 
     def inferred_condominium_name(category)
@@ -272,6 +283,51 @@ module Dwv
       return nil if title.blank?
 
       title.match(/(condom[ií]nio\s+.+)\z/i)&.[](1)&.squish
+    end
+
+    # Nome do empreendimento, em ordem de confiança: empreendimento DWV (building),
+    # nome extraído do título de "Casa em Condomínio" e, por fim, o nome inferido do
+    # complemento/unit_info quando ele é claramente um empreendimento/residencial.
+    def resolved_development_name(category)
+      text_value(["building", "title"]).presence ||
+        inferred_condominium_name(category).presence ||
+        development_name_from_unit_context.presence
+    end
+
+    def development_name_from_unit_context
+      Dwv::DevelopmentNameInference.call(
+        dwv_complement,
+        text_value(["third_party_property", "unit_info"], ["unit", "unit_info"], ["unit_info"])
+      )
+    end
+
+    # Quando o complemento é, na íntegra, o próprio nome do empreendimento promovido,
+    # ele deixa de ser um complemento de endereço válido e é removido para não
+    # duplicar a informação (endereço x título x empreendimento).
+    def complement_promoted_to_development?
+      complement = Dwv::DevelopmentNameInference.clean(dwv_complement)
+      return false if complement.blank?
+      # Complemento com número costuma carregar também o localizador da unidade
+      # (ex.: "Casa 12 Residencial X"): preserva o complemento e só promove o nome.
+      return false if complement.match?(/\d/)
+      # Invariante: nunca esvazia o complemento se o nome não fosse persistir
+      # (categorias standalone zeram nome_empreendimento via callback do model).
+      return false if Habitation.standalone_category_without_development_name?(inferred_category)
+      return false if text_value(["building", "title"]).present?
+      return false if inferred_condominium_name(inferred_category).present?
+
+      name = Dwv::DevelopmentNameInference.call(complement)
+      name.present? && Dwv::DevelopmentNameInference.fold(name) == Dwv::DevelopmentNameInference.fold(complement)
+    end
+
+    def dwv_complement
+      return @dwv_complement if defined?(@dwv_complement)
+
+      address = third_party? ? value(["third_party_property", "address"]) : nil
+      address = value(["address"]) if !address.is_a?(Hash)
+      address = {} unless address.is_a?(Hash)
+
+      @dwv_complement = (self.class.value(address, ["complement"]) || value(["third_party_property", "unit_info"])).to_s.strip.presence
     end
 
     def map_status(raw)
@@ -342,7 +398,9 @@ module Dwv
                  self.class.value(building_address, ["district"], ["neighborhood"], ["bairro"]) ||
                  value(["neighborhood"], ["bairro"])
 
-      complement = self.class.value(address, ["complement"]) || value(["third_party_property", "unit_info"])
+      # Se o complemento é, na verdade, o nome do empreendimento (promovido para
+      # nome_empreendimento), ele não deve permanecer no endereço.
+      complement = complement_promoted_to_development? ? nil : dwv_complement
       building_complement = self.class.value(building_address, ["complement"])
 
       normalized = {
@@ -370,7 +428,9 @@ module Dwv
       attrs = address_attrs.except(:logradouro, :imediacoes)
       attrs[:endereco] = address_attrs[:logradouro]
       attrs[:imediacoes] = Array(address_attrs[:imediacoes]).join(", ").presence
-      attrs[:bloco] = text_value(["unit", "title"], ["third_party_property", "unit_info"]) if attrs[:complemento].blank?
+      if attrs[:complemento].blank? && !complement_promoted_to_development?
+        attrs[:bloco] = text_value(["unit", "title"], ["third_party_property", "unit_info"])
+      end
       attrs
     end
 

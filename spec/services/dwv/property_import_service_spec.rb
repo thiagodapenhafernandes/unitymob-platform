@@ -118,6 +118,35 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.address.complemento).to eq("Casa 2")
     end
 
+    it "promotes a residence name stuck in the address complement to nome_empreendimento" do
+      payload = third_party_payload.deep_dup
+      payload["data"]["third_party_property"]["address"]["complement"] = "BOULEVARD DA BARRA PARK RESIDENCE"
+      payload["data"]["third_party_property"].delete("unit_info")
+
+      result = described_class.new(payload, tenant: tenant).perform
+      habitation = result[:habitation]
+
+      # casa com nome de residencial no complemento => Casa em Condomínio, para o
+      # nome persistir (categoria standalone zeraria nome_empreendimento).
+      expect(habitation.categoria).to eq("Casa em Condomínio")
+      expect(habitation.nome_empreendimento).to eq("BOULEVARD DA BARRA PARK RESIDENCE")
+      # o complemento era, na íntegra, o nome do empreendimento: sai do endereço
+      expect(habitation.address.complemento).to be_blank
+      expect(habitation.bloco).to be_blank
+    end
+
+    it "keeps a real unit complement in the address and out of nome_empreendimento" do
+      payload = third_party_payload.deep_dup
+      payload["data"]["third_party_property"]["address"]["complement"] = "Casa 2"
+      payload["data"]["third_party_property"].delete("unit_info")
+
+      result = described_class.new(payload, tenant: tenant).perform
+      habitation = result[:habitation]
+
+      expect(habitation.nome_empreendimento).to be_blank
+      expect(habitation.address.complemento).to eq("Casa 2")
+    end
+
     it "classifies third party house in gated condominium from DWV unit info" do
       payload = third_party_payload.deep_dup
       payload["data"]["third_party_property"].merge!(
