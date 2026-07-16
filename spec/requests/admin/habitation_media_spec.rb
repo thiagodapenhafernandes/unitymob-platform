@@ -102,6 +102,8 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     uploaded_photo = Tempfile.new(["media-upload", ".jpg"])
     uploaded_photo.write("foto nova")
     uploaded_photo.rewind
+    allow(Storage::PublicPropertyPhoto).to receive(:public_url_for_attachment).and_return("https://cdn.example.test/media-upload.jpg")
+    allow(Storage::PublicPropertyPhoto).to receive(:publish_attachment!).and_return(true)
 
     post upload_admin_habitation_media_path(habitation, format: :json), params: {
       habitation: {
@@ -118,6 +120,7 @@ RSpec.describe "Admin::HabitationMedia", type: :request do
     expect(payload.dig("counts", "photos")).to eq(1)
     expect(payload.dig("inputs", "ordered_photo_ids")).to eq(habitation.photos.attachments.first.id.to_s)
     expect(habitation.photos.attachments.size).to eq(1)
+    expect(Storage::PublicPropertyPhoto).to have_received(:publish_attachment!).with(instance_of(ActiveStorage::Attachment))
   ensure
     uploaded_photo&.close
     uploaded_photo&.unlink
