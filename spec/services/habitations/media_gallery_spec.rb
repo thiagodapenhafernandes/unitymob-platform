@@ -1,6 +1,35 @@
 require "rails_helper"
 
 RSpec.describe Habitations::MediaGallery do
+  before do
+    allow(Storage::PublicPropertyPhoto).to receive(:public_base_url).and_return("https://cdn.saluteimoveis.com.br")
+  end
+
+  describe "#development_media_sources" do
+    it "inclui fotos públicas do empreendimento vinculado mesmo quando a unidade tem foto própria" do
+      development = create(
+        :habitation,
+        codigo: "DEV-MEDIA-#{SecureRandom.hex(6)}",
+        tipo: "Empreendimento",
+        pictures: [{ "url" => "https://cdn.saluteimoveis.com.br/empreendimento.jpg" }]
+      )
+      unit = create(
+        :habitation,
+        codigo: "UNIT-MEDIA-#{SecureRandom.hex(6)}",
+        codigo_empreendimento: development.codigo,
+        use_development_photos_flag: true,
+        pictures: []
+      )
+      unit.photos.attach(io: StringIO.new("foto unidade"), filename: "unidade.jpg", content_type: "image/jpeg")
+
+      gallery = described_class.new(unit.reload)
+
+      expect(gallery.attached_media_photos.size).to eq(1)
+      expect(gallery.development_media_sources.map { |source| source["url"] }).to eq(["https://cdn.saluteimoveis.com.br/empreendimento.jpg"])
+      expect(gallery.media_gallery_count).to eq(2)
+    end
+  end
+
   describe "#api_media_pictures" do
     it "mantém URLs DWV como fonte operacional e elimina duplicatas materializadas" do
       habitation = create(

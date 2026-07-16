@@ -67,7 +67,7 @@
                 local: true,
                 class: "habitations-inspector__form",
                 autocomplete: "off",
-                data: { turbo_frame: "_top" } do |f| %>
+                data: { turbo_frame: "_top", action: "submit->ax-aside#collapseOnMobile" } do |f| %>
     <%= hidden_field_tag :sort, params[:sort] if params[:sort].present? %>
     <%= hidden_field_tag :direction, params[:direction] if params[:direction].present? %>
     <%= hidden_field_tag :scope, params[:scope] if params[:scope].present? %>

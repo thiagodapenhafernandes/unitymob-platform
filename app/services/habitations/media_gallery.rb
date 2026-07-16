@@ -9,7 +9,8 @@ module Habitations
         habitation: habitation,
         linked_development: linked_development,
         attached_media_photos: attached_media_photos,
-        api_media_pictures: api_media_pictures
+        api_media_pictures: api_media_pictures,
+        development_media_sources: development_media_sources
       }
     end
 
@@ -28,19 +29,19 @@ module Habitations
     end
 
     def media_gallery_count
-      attached_media_photos.size + api_media_pictures.size + development_fallback_count
+      attached_media_photos.size + api_media_pictures.size + development_media_sources.size
     end
 
     def linked_development
       @linked_development ||= habitation.empreendimento if habitation.codigo_empreendimento.present?
     end
 
-    def development_fallback_count
-      return 0 unless habitation.use_development_photos?
-      return 0 unless linked_development.present?
-      return 0 if attached_media_photos.present? || api_media_pictures.present?
-
-      linked_development_gallery.media_gallery_count.clamp(0, 12)
+    def development_media_sources
+      @development_media_sources ||= if habitation.use_development_photos? && linked_development.present?
+        linked_development.own_public_image_sources.first(12)
+      else
+        []
+      end
     end
 
     private
@@ -91,10 +92,6 @@ module Habitations
             File.basename(candidate_path.to_s) == source_filename
         end
       end
-    end
-
-    def linked_development_gallery
-      @linked_development_gallery ||= self.class.new(linked_development)
     end
 
     def source_path_from_url(url)

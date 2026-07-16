@@ -95,7 +95,7 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     close_button = document.at_css('.habitations-inspector__header button[aria-label="Recolher filtros do catálogo"]')
     clear_link = document.at_css('.habitations-inspector__actions a.ax-btn')
 
-    expect(form["data-action"].to_s).not_to include("ax-aside#collapse")
+    expect(form["data-action"].to_s).to include("submit->ax-aside#collapseOnMobile")
     expect(close_button.at_css("i")["class"]).to include("bi-x-lg")
     expect(clear_link["href"]).to eq(admin_habitations_path(ownership: "all", clear_filters: "1"))
     expect(clear_link["data-action"].to_s).not_to include("ax-aside#collapse")

@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 const DEFAULT_STORAGE_KEY = "ax-aside-collapsed"
 const DEFAULT_PRELOAD_CLASS = "ax-inspector-collapsed-preload"
+const MOBILE_COLLAPSE_QUERY = "(max-width: 767.98px)"
 
 export default class extends Controller {
   static targets = ["toggle", "panel", "rail"]
@@ -41,6 +42,10 @@ export default class extends Controller {
     this.setCollapsed(true)
   }
 
+  collapseOnMobile() {
+    if (window.matchMedia(MOBILE_COLLAPSE_QUERY).matches) this.setCollapsed(true)
+  }
+
   expand() {
     this.setCollapsed(false)
   }
@@ -67,7 +72,7 @@ export default class extends Controller {
     // filtro atrás do botão); no desktop segue expandido (inalterado). O default
     // mobile é só calculado por viewport, NÃO é persistido — não afeta o desktop.
     const collapsed = stored === "1" ||
-      (stored === null && window.matchMedia("(max-width: 767.98px)").matches)
+      (stored === null && window.matchMedia(MOBILE_COLLAPSE_QUERY).matches)
 
     this.element.classList.toggle(this.collapsedClassValue, collapsed)
   }
