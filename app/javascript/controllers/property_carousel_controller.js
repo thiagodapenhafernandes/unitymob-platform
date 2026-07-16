@@ -37,7 +37,7 @@ export default class extends Controller {
       // Pagination
       pagination: {
         el: paginationEl,
-        clickable: true,
+        clickable: false,
         dynamicBullets: true,
       },
 

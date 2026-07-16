@@ -67,6 +67,7 @@ class Habitation < ApplicationRecord
   INACTIVE_STATUS_KEYWORDS = %w[suspenso alugado vendido].freeze
   NUMERIC_CODIGO_SQL = "codigo ~ '^[0-9]+$'".freeze
   VISTA_REFERENCE_CODIGO_SQL = "#{NUMERIC_CODIGO_SQL} AND COALESCE(imovel_dwv, '') <> 'Sim'".freeze
+  TEMPORARY_CODIGO_PREFIX = "RASCUNHO-".freeze
   STANDALONE_CATEGORIES_WITHOUT_DEVELOPMENT_NAME = %w[casa sobrado rural chacara sitio].freeze
 
   def self.normalize_status(value)
@@ -91,6 +92,13 @@ class Habitation < ApplicationRecord
     next_code = [highest_numeric_codigo, highest_vista_reference_codigo].max + 1
     next_code += 1 while exists?(codigo: next_code.to_s)
     next_code.to_s
+  end
+
+  def self.next_temporary_codigo
+    loop do
+      candidate = "#{TEMPORARY_CODIGO_PREFIX}#{SecureRandom.hex(8).upcase}"
+      return candidate unless exists?(codigo: candidate)
+    end
   end
 
   SITUATIONS = [
@@ -954,6 +962,21 @@ class Habitation < ApplicationRecord
 
   def broker_intake?
     intake_origin == INTAKE_ORIGIN_BROKER
+  end
+
+  def temporary_codigo?
+    codigo.to_s.start_with?(TEMPORARY_CODIGO_PREFIX)
+  end
+
+  def finalize_broker_intake_registration!(submitted_at: Time.current)
+    return unless broker_intake?
+
+    if codigo.blank? || temporary_codigo?
+      self.codigo = self.class.next_automatic_codigo
+      self.slug = nil
+    end
+
+    self.data_cadastro_crm ||= submitted_at || Time.current
   end
 
   def intake_status_label
@@ -2059,7 +2082,7 @@ class Habitation < ApplicationRecord
   def assign_codigo_automaticamente
     return if codigo.present?
 
-    self.codigo = self.class.next_automatic_codigo
+    self.codigo = broker_intake? ? self.class.next_temporary_codigo : self.class.next_automatic_codigo
   end
 
   def slug_candidates
@@ -2078,7 +2101,10 @@ class Habitation < ApplicationRecord
   end
 
   def should_generate_new_friendly_id?
-    slug.blank? || (empreendimento? && will_save_change_to_nome_empreendimento?) || slug_category_mismatch?
+    slug.blank? ||
+      (broker_intake? && will_save_change_to_codigo? && !temporary_codigo?) ||
+      (empreendimento? && will_save_change_to_nome_empreendimento?) ||
+      slug_category_mismatch?
   end
 
   def slug_category_mismatch?
@@ -2165,6 +2191,8 @@ class Habitation < ApplicationRecord
   end
 
   def set_data_cadastro_crm
+    return if broker_intake?
+
     self.data_cadastro_crm ||= Time.current
   end
 

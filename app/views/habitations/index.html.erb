@@ -58,8 +58,9 @@
           <!-- Plus Button (Advanced Filters) -->
           <button type="button" 
                   data-action="click->advanced-filters#open"
-                  class="public-habitations-index__more-filters w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:border-blue-three hover:text-blue-three text-gray-500 transition-colors shadow-sm flex-shrink-0">
-            <i class="bi bi-plus-lg text-lg"></i>
+                  class="public-habitations-index__more-filters w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-lg hover:border-blue-three hover:text-blue-three text-gray-500 transition-colors shadow-sm flex-shrink-0"
+                  aria-label="Abrir filtros avançados">
+            <i class="bi bi-plus-lg text-lg" aria-hidden="true"></i>
           </button>
         </div>
 
@@ -98,8 +99,8 @@
         </h1>
         
         <div class="public-habitations-index__sort flex items-center gap-2">
-          <span class="public-habitations-index__sort-label text-sm text-gray-500">Ordenar por:</span>
-          <select class="public-habitations-index__sort-select border-none text-sm font-bold text-blue-three focus:ring-0 cursor-pointer bg-transparent py-0 pl-0 pr-8" onchange="window.location.href = this.value">
+          <label for="public-habitations-sort" class="public-habitations-index__sort-label text-sm text-gray-500">Ordenar por:</label>
+          <select id="public-habitations-sort" class="public-habitations-index__sort-select border-none text-sm font-bold text-blue-three focus:ring-0 cursor-pointer bg-transparent py-0 pl-0 pr-8" onchange="window.location.href = this.value">
             <option value="<%= habitations_path(request.query_parameters.merge(sort: 'newest', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'newest' || params[:sort].blank? %>>Mais recentes</option>
             <option value="<%= habitations_path(request.query_parameters.merge(sort: 'price_desc', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'price_desc' %>>Maior valor</option>
             <option value="<%= habitations_path(request.query_parameters.merge(sort: 'price_asc', page: nil).compact_blank) %>" <%= 'selected' if params[:sort] == 'price_asc' %>>Menor valor</option>

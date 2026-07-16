@@ -21,17 +21,19 @@
   <div class="flex justify-center mb-3 md:mb-4">
     <div class="inline-flex rounded-full border border-white/40 bg-white/85 p-1.5 shadow-[0_12px_34px_rgba(8,31,48,0.18)] backdrop-blur-xl">
       <button type="button"
-              class="px-6 sm:px-8 py-2 rounded-full text-sm font-bold text-hero-button-text bg-hero-button shadow-sm transition-all active-tab"
+              class="px-6 sm:px-8 py-2 rounded-full text-sm font-bold text-blue-three bg-hero-button shadow-sm transition-all active-tab"
               data-search-tabs-target="tab"
               data-action="click->search-tabs#switch"
-              data-value="venda">
+              data-value="venda"
+              aria-pressed="<%= params[:transaction_type].blank? || params[:transaction_type].to_s == "venda" %>">
         Comprar
       </button>
       <button type="button"
               class="px-6 sm:px-8 py-2 rounded-full text-sm font-bold text-gray-600 hover:text-blue-three transition-all"
               data-search-tabs-target="tab"
               data-action="click->search-tabs#switch"
-              data-value="aluguel">
+              data-value="aluguel"
+              aria-pressed="<%= params[:transaction_type].to_s == "aluguel" %>">
         Alugar
       </button>
     </div>
@@ -50,14 +52,15 @@
         
         <!-- Tipo de Imóvel (Checklist Dropdown) -->
         <div class="md:col-span-3" data-controller="category-filter">
-          <label class="sr-only">Tipos de imóveis</label>
+          <span id="hero-category-filter-label" class="sr-only">Tipos de imóveis</span>
           <% selected_categories = Array(params[:category]).reject(&:blank?) %>
           <div class="relative">
             <button type="button"
                     class="relative flex w-full min-h-[48px] items-center rounded-full border border-gray-200/80 bg-white/85 pl-10 pr-10 py-3 text-left text-sm font-medium text-gray-700 shadow-sm transition-colors focus:border-blue-three focus:ring-1 focus:ring-blue-three"
                     style="<%= search_filter_field_style %>"
                     data-category-filter-target="trigger"
-                    data-action="click->category-filter#toggle">
+                    data-action="click->category-filter#toggle"
+                    aria-labelledby="hero-category-filter-label">
               <i class="bi bi-building absolute left-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
               <span class="truncate" data-category-filter-target="summary">Tipos de imóveis</span>
               <i class="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
@@ -95,14 +98,15 @@
         
         <!-- Localização (Checklist Multiseleção) -->
         <div class="md:col-span-4" data-controller="location-filter">
-          <label class="sr-only">Localização</label>
+          <span id="hero-location-filter-label" class="sr-only">Localização</span>
           <% selected_locations = Array(params[:city]).reject(&:blank?) %>
           <div class="relative">
             <button type="button"
                     class="relative flex w-full min-h-[48px] items-center rounded-full border border-gray-200/80 bg-white/85 pl-10 pr-10 py-3 text-left text-sm font-medium text-gray-700 shadow-sm transition-colors focus:border-blue-three focus:ring-1 focus:ring-blue-three"
                     style="<%= search_filter_field_style %>"
                     data-location-filter-target="trigger"
-                    data-action="click->location-filter#toggle">
+                    data-action="click->location-filter#toggle"
+                    aria-labelledby="hero-location-filter-label">
               <i class="bi bi-geo-alt absolute left-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
               <span class="truncate" data-location-filter-target="summary">Selecione bairros ou cidades</span>
               <i class="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-current opacity-45"></i>
@@ -124,6 +128,7 @@
                   </div>
                 </div>
                 <input type="text"
+                       aria-label="Filtrar bairros e cidades"
                        placeholder="Filtrar bairros/cidades"
                        class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-1 focus:ring-blue-three focus:border-blue-three"
                        data-location-filter-target="search"
@@ -161,7 +166,7 @@
         
         <!-- Valores -->
         <div class="md:col-span-2">
-          <label class="sr-only">Valores</label>
+          <%= f.label :price_range, "Valores", class: "sr-only" %>
           <div class="relative">
             <i class="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-current opacity-45 pointer-events-none"></i>
             <%= f.select :price_range,
@@ -174,7 +179,7 @@
         </div>
 
         <div class="md:col-span-3">
-          <%= button_tag type: 'submit', name: nil, class: "flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-hero-button py-3 text-sm font-bold uppercase tracking-wide text-hero-button-text shadow-[0_10px_24px_rgba(190,139,38,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:opacity-95 hover:shadow-[0_14px_30px_rgba(190,139,38,0.34)]" do %>
+          <%= button_tag type: 'submit', name: nil, class: "flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-hero-button py-3 text-sm font-bold uppercase tracking-wide text-blue-three shadow-[0_10px_24px_rgba(190,139,38,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:opacity-95 hover:shadow-[0_14px_30px_rgba(190,139,38,0.34)]" do %>
             <i class="bi bi-search"></i>
             <%= @home_setting.hero_cta_text.presence || "Buscar" %>
           <% end %>
@@ -278,14 +283,16 @@
          style="<%= search_filter_style %>; background-color: var(--search-filter-bg); border: var(--search-filter-border); border-radius: var(--search-filter-radius); color: var(--search-filter-text); backdrop-filter: blur(var(--search-filter-blur)); -webkit-backdrop-filter: blur(var(--search-filter-blur));">
       <button type="button"
               class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-golden-one sm:flex-none sm:gap-1.5"
-              data-action="click->search-tabs#toggleAdvanced">
+              data-action="click->search-tabs#toggleAdvanced"
+              aria-label="Mostrar filtros avançados">
         <i class="bi bi-list text-[0.95em]" data-search-tabs-target="advancedIcon"></i>
         <span data-search-tabs-target="advancedLabel">Avançado</span>
       </button>
 
       <button type="button"
               onclick="document.dispatchEvent(new CustomEvent('open-code-search'))"
-              class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-golden-one sm:flex-none sm:gap-1.5">
+              class="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap transition-colors hover:text-golden-one sm:flex-none sm:gap-1.5"
+              aria-label="Buscar imóvel por código">
         <i class="bi bi-upc-scan text-[0.95em]"></i>
         Por código
       </button>

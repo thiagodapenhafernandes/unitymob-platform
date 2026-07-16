@@ -1,28 +1,68 @@
 <% tracking_setting ||= TrackingIntegrationSetting.current %>
 <% gtm_container_id = tracking_setting.normalized_google_tag_manager_container_id %>
 <% meta_pixel_id = tracking_setting.normalized_meta_pixel_id %>
+<% tracking_requires_consent = !lgpd_consent_accepted? %>
+<% has_gtm = tracking_setting.google_tag_manager_enabled? && gtm_container_id.present? %>
+<% has_meta_pixel = tracking_setting.meta_pixel_enabled? && meta_pixel_id.present? %>
 
-<% if tracking_setting.google_tag_manager_enabled? && gtm_container_id.present? %>
+<% if has_gtm || has_meta_pixel %>
   <script>
-    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','<%= gtm_container_id %>');
-  </script>
-<% end %>
+    (function(w,d){
+      var COOKIE_KEY = "salute_lgpd_consent";
+      var STORAGE_KEY = "salute_lgpd_consent_v1";
+      var ACCEPTED_VALUE = "accepted";
+      var loaded = false;
 
-<% if tracking_setting.meta_pixel_enabled? && meta_pixel_id.present? %>
-  <script>
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '<%= meta_pixel_id %>');
-    fbq('track', 'PageView');
+      function consentAccepted() {
+        if (!<%= tracking_requires_consent ? "true" : "false" %>) return true;
+        if (d.cookie.split(";").some(function(cookie) { return cookie.trim() === COOKIE_KEY + "=" + ACCEPTED_VALUE; })) return true;
+
+        try {
+          return w.localStorage.getItem(STORAGE_KEY) === ACCEPTED_VALUE;
+        } catch (_error) {
+          return false;
+        }
+      }
+
+      function loadScript(src) {
+        if (d.querySelector('script[src="' + src + '"]')) return;
+
+        var script = d.createElement("script");
+        script.async = true;
+        script.src = src;
+        d.head.appendChild(script);
+      }
+
+      function loadTracking() {
+        if (loaded || !consentAccepted()) return;
+        loaded = true;
+
+        <% if has_gtm %>
+          w.dataLayer = w.dataLayer || [];
+          w.dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+          loadScript("https://www.googletagmanager.com/gtm.js?id=<%= j gtm_container_id %>");
+        <% end %>
+
+        <% if has_meta_pixel %>
+          if (!w.fbq) {
+            var fbq = w.fbq = function() {
+              fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments);
+            };
+            if (!w._fbq) w._fbq = fbq;
+            fbq.push = fbq;
+            fbq.loaded = true;
+            fbq.version = "2.0";
+            fbq.queue = [];
+          }
+          loadScript("https://connect.facebook.net/en_US/fbevents.js");
+          w.fbq("init", "<%= j meta_pixel_id %>");
+          w.fbq("track", "PageView");
+        <% end %>
+      }
+
+      w.SaluteTracking = { load: loadTracking };
+      loadTracking();
+      w.addEventListener("salute:lgpd-consent-accepted", loadTracking);
+    })(window, document);
   </script>
 <% end %>

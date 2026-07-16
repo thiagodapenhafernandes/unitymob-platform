@@ -115,8 +115,8 @@
           <h4 class="font-bold text-white mb-3"><%= @footer_setting.social_title %></h4>
           <div class="flex flex-wrap gap-2">
             <% @footer_social_links.each do |social| %>
-              <a href="<%= social.url %>" target="_blank" class="w-10 h-10 rounded-full bg-white/10 hover:bg-golden-one hover:text-blue-three flex items-center justify-center transition-all" title="<%= social.platform %>">
-                <i class="bi <%= social.icon_class %>"></i>
+              <a href="<%= social.url %>" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-white/10 hover:bg-golden-one hover:text-blue-three flex items-center justify-center transition-all" title="<%= social.platform %>" aria-label="Acessar <%= social.platform %> da Salute Imóveis">
+                <i class="bi <%= social.icon_class %>" aria-hidden="true"></i>
               </a>
             <% end %>
           </div>

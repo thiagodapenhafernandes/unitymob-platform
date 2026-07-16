@@ -13,6 +13,28 @@
     end
   %>
 <ul class="ax-nav <%= 'ax-nav--sectioned' unless system_admin_without_tenant %>" data-controller="menu-sections">
+  <% if respond_to?(:impersonating_admin_user?) && impersonating_admin_user? %>
+    <%# Aviso de impersonação: discreto e sempre visível no topo do menu. Em modo
+        compacto sobra só o ícone, e o title carrega o contexto completo. %>
+    <li class="ax-nav__impersonation"
+        title="Você está acessando como <%= current_admin_user.name %>. Admin original: <%= impersonation_admin_user.name %>.">
+      <span class="ax-nav__impersonation-icon" aria-hidden="true"><i class="bi bi-person-check-fill"></i></span>
+      <span class="ax-nav__impersonation-body">
+        <small>Acessando como</small>
+        <strong><%= current_admin_user.name %></strong>
+        <em>via <%= impersonation_admin_user.name %></em>
+      </span>
+      <%= button_to admin_impersonation_path,
+            method: :delete,
+            class: "ax-nav__impersonation-exit",
+            form_class: "ax-nav__impersonation-form",
+            title: "Voltar ao admin",
+            aria: { label: "Voltar ao admin" },
+            form: { data: { turbo: false } } do %>
+        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+      <% end %>
+    </li>
+  <% end %>
   <% if system_admin_without_tenant %>
     <li class="ax-nav__section">Sistema</li>
     <li class="ax-nav__item">

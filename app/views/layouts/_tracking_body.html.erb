@@ -2,7 +2,7 @@
 <% gtm_container_id = tracking_setting.normalized_google_tag_manager_container_id %>
 <% meta_pixel_id = tracking_setting.normalized_meta_pixel_id %>
 
-<% if tracking_setting.google_tag_manager_enabled? && gtm_container_id.present? %>
+<% if lgpd_consent_accepted? && tracking_setting.google_tag_manager_enabled? && gtm_container_id.present? %>
   <noscript>
     <iframe src="https://www.googletagmanager.com/ns.html?id=<%= gtm_container_id %>"
             height="0"
@@ -11,7 +11,7 @@
   </noscript>
 <% end %>
 
-<% if tracking_setting.meta_pixel_enabled? && meta_pixel_id.present? %>
+<% if lgpd_consent_accepted? && tracking_setting.meta_pixel_enabled? && meta_pixel_id.present? %>
   <noscript>
     <img height="1"
          width="1"

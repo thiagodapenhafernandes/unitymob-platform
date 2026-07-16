@@ -61,6 +61,16 @@ Rails.application.configure do
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   config.force_ssl = true
+  config.ssl_options = {
+    hsts: {
+      expires: 2.years,
+      subdomains: true,
+      preload: true
+    }
+  }
+  config.action_dispatch.default_headers.merge!(
+    "Cross-Origin-Opener-Policy" => "same-origin-allow-popups"
+  )
 
   # URLs generated outside a request (mailers/jobs) need an explicit host.
   public_app_url = URI.parse(ENV.fetch("APP_HOST", "https://saluteimoveis.com.br"))

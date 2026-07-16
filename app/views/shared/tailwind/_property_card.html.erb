@@ -26,7 +26,8 @@
     <!-- Badges (Top Left) - Dynamic with max 2 -->
     <div class="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start">
       <% property.display_badges.each do |badge| %>
-        <span class="px-2.5 py-1 bg-<%= badge[:tailwind_color] %> text-white text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-[0_8px_18px_rgba(2,43,58,0.12)] border border-white/25">
+        <% badge_text_class = badge[:tailwind_color].to_s.match?(/\A(yellow|amber)-/) ? "text-blue-three" : "text-white" %>
+        <span class="px-2.5 py-1 bg-<%= badge[:tailwind_color] %> <%= badge_text_class %> text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-[0_8px_18px_rgba(2,43,58,0.12)] border border-white/25">
           <%= badge[:text] %>
         </span>
       <% end %>
@@ -96,8 +97,8 @@
       </div>
       
       <!-- Navigation (Visible on Hover) -->
-      <div class="swiper-button-next !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
-      <div class="swiper-button-prev !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
+      <button type="button" class="swiper-button-next !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);" aria-label="Ver próxima foto de <%= property_title %>"></button>
+      <button type="button" class="swiper-button-prev !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);" aria-label="Ver foto anterior de <%= property_title %>"></button>
       
       <!-- Pagination -->
       <div class="swiper-pagination !bottom-2 !z-30"></div>
@@ -109,6 +110,7 @@
     <%= link_to "",
                 property_path,
                 class: "absolute inset-0 z-10 pointer-events-none",
+                aria: { label: "Ver detalhes de #{property_title}" },
                 data: {
                   clickable_card_tracking_link: true,
                   controller: "marketing-tracker",
@@ -153,10 +155,10 @@
         
         <!-- Preço Anterior Riscado + Badge de Desconto -->
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-sm text-gray-400 line-through font-medium">
+          <span class="text-sm text-gray-600 line-through font-medium">
             de <%= number_to_currency(previous_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
           </span>
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-700 text-white text-xs font-bold rounded">
             <i class="bi bi-arrow-down"></i>
             <%= desconto_percentual %>%
           </span>
@@ -168,7 +170,7 @@
             Por <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
           </p>
           <button type="button"
-                  class="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 focus:outline-none"
+                  class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"
                   data-action="click->marketing-tracker#track click->lead-capture#open"
                   data-controller="marketing-tracker"
                   data-marketing-tracker-event-type-value="whatsapp_click"
@@ -181,8 +183,9 @@
                   data-property-title="<%= property_title %>"
                   data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
                   data-whatsapp-message="Olá, vi o imóvel <%= property_title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
-                  title="Falar no WhatsApp">
-            <i class="bi bi-whatsapp text-lg"></i>
+                  title="Falar no WhatsApp"
+                  aria-label="Falar no WhatsApp sobre <%= property_title %>">
+            <i class="bi bi-whatsapp text-lg" aria-hidden="true"></i>
           </button>
         </div>
       <% else %>
@@ -192,7 +195,7 @@
             <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
           </p>
           <button type="button"
-                  class="w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 focus:outline-none"
+                  class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"
                   data-action="click->marketing-tracker#track click->lead-capture#open"
                   data-controller="marketing-tracker"
                   data-marketing-tracker-event-type-value="whatsapp_click"
@@ -205,8 +208,9 @@
                   data-property-title="<%= property_title %>"
                   data-negotiation-type="<%= property.whatsapp_negotiation_type %>"
                   data-whatsapp-message="Olá, vi o imóvel <%= property_title %> (Cód: <%= property.codigo %>) no site e gostaria de mais informações."
-                  title="Falar no WhatsApp">
-            <i class="bi bi-whatsapp text-lg"></i>
+                  title="Falar no WhatsApp"
+                  aria-label="Falar no WhatsApp sobre <%= property_title %>">
+            <i class="bi bi-whatsapp text-lg" aria-hidden="true"></i>
           </button>
         </div>
       <% end %>
@@ -237,7 +241,7 @@
 
   <!-- Opportunity Banner (Bottom) - Reduced sale or rent prices -->
   <% if sale_discount || rent_discount %>
-    <div class="w-full bg-green-600 py-2 px-4 flex items-center justify-center">
+    <div class="w-full bg-green-700 py-2 px-4 flex items-center justify-center">
       <span class="text-white text-xs font-bold uppercase tracking-widest"><%= rent_discount ? "LOCAÇÃO COM PREÇO REDUZIDO" : "OPORTUNIDADE" %></span>
     </div>
   <% end %>
