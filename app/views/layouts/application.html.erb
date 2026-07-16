@@ -46,12 +46,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <% if defined?(@hero_preload_source) && @hero_preload_source.present? %>
-      <% hero_preload_source = public_image_url(@hero_preload_source, resize_to_limit: [1920, 1080], format: :webp, representation_proxy: true) %>
-      <% hero_preload_mobile_source = public_image_url(@hero_preload_mobile_source || @hero_preload_source, resize_to_limit: [900, 1600], format: :webp, representation_proxy: true) %>
+      <%
+        hero_preload_mobile_source = @hero_preload_mobile_source || @hero_preload_source
+        hero_preload_mobile_640 = public_image_url(hero_preload_mobile_source, resize_to_limit: [640, 1138], format: :webp, representation_proxy: true)
+        hero_preload_mobile_900 = public_image_url(hero_preload_mobile_source, resize_to_limit: [900, 1600], format: :webp, representation_proxy: true)
+        hero_preload_desktop_1440 = public_image_url(@hero_preload_source, resize_to_limit: [1440, 810], format: :webp, representation_proxy: true)
+        hero_preload_desktop_1920 = public_image_url(@hero_preload_source, resize_to_limit: [1920, 1080], format: :webp, representation_proxy: true)
+        hero_preload_srcset = [
+          ("#{hero_preload_mobile_640} 640w" if hero_preload_mobile_640.present?),
+          ("#{hero_preload_mobile_900} 900w" if hero_preload_mobile_900.present?),
+          ("#{hero_preload_desktop_1440} 1440w" if hero_preload_desktop_1440.present?),
+          ("#{hero_preload_desktop_1920} 1920w" if hero_preload_desktop_1920.present?)
+        ].compact.join(", ")
+        hero_preload_href = hero_preload_mobile_640.presence || hero_preload_mobile_900.presence || hero_preload_desktop_1440.presence || hero_preload_desktop_1920
+      %>
       <link rel="preload"
             as="image"
-            href="<%= hero_preload_source %>"
-            imagesrcset="<%= "#{hero_preload_mobile_source} 900w, #{hero_preload_source} 1920w" %>"
+            href="<%= hero_preload_href %>"
+            imagesrcset="<%= hero_preload_srcset %>"
             imagesizes="100vw"
             fetchpriority="high">
     <% end %>
@@ -132,7 +144,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" media="print" onload="this.media='all'">
 
     <%# Fonts loading with swap %>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     
     <%# Layout Settings (Colors) %>
     <style>
