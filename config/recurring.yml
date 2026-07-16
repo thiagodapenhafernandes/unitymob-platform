@@ -31,6 +31,10 @@ production:
     class: SolidQueueFailedExecutionsCleanupJob
     queue: checkin
     schedule: every day at 4:05am
+  publish_public_property_photos:
+    class: Storage::PublishPublicPropertyPhotosJob
+    queue: default
+    schedule: every day at 2:35am
   habitations_hierarchy_audit:
     command: "Tenant.find_each { |tenant| result = Habitations::HierarchyAuditService.new(strict: false, tenant: tenant).call; Rails.logger.info(\"[HierarchyAudit] tenant_id=#{tenant.id} #{result.to_json}\") }"
     schedule: every day at 3:40am

@@ -60,6 +60,36 @@ RSpec.describe "Sync job tenant actor resolution" do
     expect(logged_messages.join).not_to include("admin_user_id=#{other_admin.id}")
   end
 
+  it "agenda publicacao de fotos publicas para cada tenant ativo quando roda pelo recurring" do
+    active_tenant = Tenant.create!(name: "Tenant fotos #{SecureRandom.hex(3)}", slug: "tenant-fotos-#{SecureRandom.hex(3)}", active: true)
+    inactive_tenant = Tenant.create!(name: "Tenant fotos inativo #{SecureRandom.hex(3)}", slug: "tenant-fotos-inativo-#{SecureRandom.hex(3)}", active: false)
+
+    Storage::PublishPublicPropertyPhotosJob.perform_now
+
+    enqueued_args = enqueued_jobs
+      .select { |job| job[:job] == Storage::PublishPublicPropertyPhotosJob }
+      .map { |job| job[:args] }
+
+    expect(enqueued_args).to include([nil, active_tenant.id])
+    expect(enqueued_args).not_to include([nil, inactive_tenant.id])
+  end
+
+  it "restaura o tenant corrente depois de publicar fotos publicas por tenant" do
+    tenant, = create_tenant_with_admin("Storage current")
+    previous_tenant = Tenant.create!(name: "Tenant anterior #{SecureRandom.hex(3)}", slug: "tenant-anterior-#{SecureRandom.hex(3)}")
+    publisher = instance_double(Storage::PublicPropertyPhotoPublisher, publish_all: { processed: 0 })
+
+    allow(Storage::PublicPropertyPhotoPublisher).to receive(:new).with(tenant: tenant).and_return(publisher)
+    allow(Storage::PublicPropertyPhotoPublisher).to receive(:result_message).and_return("sem imóveis")
+    Current.tenant = previous_tenant
+
+    Storage::PublishPublicPropertyPhotosJob.perform_now(nil, tenant.id)
+
+    expect(Current.tenant).to eq(previous_tenant)
+  ensure
+    Current.tenant = nil
+  end
+
   it "agenda sync Loft para cada tenant ativo" do
     Tenant.create!(name: "Tenant agenda Loft #{SecureRandom.hex(3)}", slug: "tenant-agenda-loft-#{SecureRandom.hex(3)}")
     Tenant.create!(name: "Outro agenda Loft #{SecureRandom.hex(3)}", slug: "outro-agenda-loft-#{SecureRandom.hex(3)}")
