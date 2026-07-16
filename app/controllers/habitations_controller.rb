@@ -47,7 +47,7 @@ class HabitationsController < ApplicationController
         { empreendimento: { constructor: { logo_attachment: :blob } } }
       )
       .paginate(page: requested_public_listing_page, per_page: PUBLIC_LISTING_PER_PAGE, total_entries: total_entries)
-    PublicSite::CardPhotoPreloader.new(@habitations.to_a, limit: 5).call
+    PublicSite::CardPhotoPreloader.new(@habitations.to_a, limit: 6).call
     
     # SEO page name
     @page_name = 'imoveis'
@@ -218,7 +218,7 @@ class HabitationsController < ApplicationController
           { empreendimento: { constructor: { logo_attachment: :blob } } }
         )
         .to_a
-      PublicSite::CardPhotoPreloader.new(@development_units, limit: 5).call
+      PublicSite::CardPhotoPreloader.new(@development_units, limit: 6).call
       # Usar template específico para empreendimentos
       render 'empreendimento_show' and return
     end
@@ -252,7 +252,7 @@ class HabitationsController < ApplicationController
           .newest_first
           .limit(6)
           .to_a
-        PublicSite::CardPhotoPreloader.new(@related_properties, limit: 5).call
+        PublicSite::CardPhotoPreloader.new(@related_properties, limit: 6).call
       end
     end
     

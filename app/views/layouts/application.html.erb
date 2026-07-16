@@ -125,11 +125,11 @@
     <%= csp_meta_tag %>
     <%= render "layouts/tracking_head", tracking_setting: @tracking_setting %>
     <%= yield :head %>
+    <meta name="fancybox-css-path" content="<%= stylesheet_path('vendor/fancybox') %>">
 
     <%# Critical Third Party Styles %>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" media="print" onload="this.media='all'">
+    <%= stylesheet_link_tag "vendor/bootstrap-icons", media: "print", onload: "this.media='all'" %>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" media="print" onload="this.media='all'">
 
     <%# Fonts loading with swap %>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
