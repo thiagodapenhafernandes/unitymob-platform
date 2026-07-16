@@ -14,6 +14,7 @@
   storage_key = local_assigns[:storage_key]
   preload_class = local_assigns[:preload_class]
   pin_workspace = local_assigns[:pin_workspace]
+  interactive_media = local_assigns[:interactive_media]
   contextbar = local_assigns.fetch(:contextbar) { true }
   contextbar_actions = contextbar ? local_assigns.fetch(:contextbar_actions) { admin_contextbar_actions } : nil
   contextbar_breadcrumb = contextbar ? local_assigns.fetch(:contextbar_breadcrumb) { admin_contextbar_breadcrumb } : nil
@@ -23,6 +24,7 @@
     shell_data[:"#{controller_data_prefix}_storage_key_value"] = storage_key if storage_key.present?
     shell_data[:"#{controller_data_prefix}_preload_class_value"] = preload_class if preload_class.present?
     shell_data[:"#{controller_data_prefix}_pin_workspace_value"] = pin_workspace unless pin_workspace.nil?
+    shell_data[:"#{controller_data_prefix}_interactive_media_value"] = interactive_media if interactive_media.present?
   end
   shell_attributes = { class: shell_class }
   shell_attributes[:data] = shell_data if shell_data.any?

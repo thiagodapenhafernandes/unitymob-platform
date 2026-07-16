@@ -9,16 +9,25 @@ export default class extends Controller {
     storageKey: String,
     preloadClass: String,
     collapsedClass: { type: String, default: "is-inspector-collapsed" },
-    pinWorkspace: { type: Boolean, default: false }
+    pinWorkspace: { type: Boolean, default: false },
+    interactiveMedia: String
   }
 
   connect() {
     this.element.dataset.axAsideReady = "true"
     this.applyStoredState()
     this.assignRelationships()
+    this.watchInteractiveMedia()
     this.syncPreloadState()
     this.syncAccessibility()
     this.keepWorkspacePinned()
+  }
+
+  disconnect() {
+    if (!this.interactiveMediaQuery) return
+
+    this.interactiveMediaQuery.removeEventListener("change", this.syncAccessibilityBound)
+    this.interactiveMediaQuery = null
   }
 
   toggle(event) {
@@ -78,19 +87,35 @@ export default class extends Controller {
     )
   }
 
+  // Media query em que o CSS mantém o painel visível mesmo recolhido (ex.: no
+  // mobile o editor de imóveis vira uma barra horizontal). Sem isso o `inert`
+  // de recolhido deixaria o painel visível porém sem clique/toque.
+  watchInteractiveMedia() {
+    if (!this.hasInteractiveMediaValue || this.interactiveMediaValue.trim() === "") return
+
+    this.syncAccessibilityBound = this.syncAccessibility.bind(this)
+    this.interactiveMediaQuery = window.matchMedia(this.interactiveMediaValue)
+    this.interactiveMediaQuery.addEventListener("change", this.syncAccessibilityBound)
+  }
+
+  get panelAlwaysInteractive() {
+    return Boolean(this.interactiveMediaQuery?.matches)
+  }
+
   syncAccessibility() {
     const expanded = !this.element.classList.contains(this.collapsedClassValue)
+    const panelUsable = expanded || this.panelAlwaysInteractive
     this.toggleTargets.forEach((button) => {
       button.setAttribute("aria-expanded", expanded ? "true" : "false")
     })
 
     if (this.hasPanelTarget) {
-      this.panelTarget.toggleAttribute("inert", !expanded)
-      this.panelTarget.setAttribute("aria-hidden", expanded ? "false" : "true")
+      this.panelTarget.toggleAttribute("inert", !panelUsable)
+      this.panelTarget.setAttribute("aria-hidden", panelUsable ? "false" : "true")
     }
     if (this.hasRailTarget) {
-      this.railTarget.toggleAttribute("inert", expanded)
-      this.railTarget.setAttribute("aria-hidden", expanded ? "true" : "false")
+      this.railTarget.toggleAttribute("inert", panelUsable)
+      this.railTarget.setAttribute("aria-hidden", panelUsable ? "true" : "false")
     }
   }
 
@@ -103,6 +128,7 @@ export default class extends Controller {
 
   focusWillBeHidden(activeElement, collapsed) {
     if (!activeElement) return false
+    if (this.panelAlwaysInteractive) return false
     if (collapsed && this.hasPanelTarget) return this.panelTarget.contains(activeElement)
     if (!collapsed && this.hasRailTarget) return this.railTarget === activeElement || this.railTarget.contains(activeElement)
 
