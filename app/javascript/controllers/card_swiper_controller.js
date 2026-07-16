@@ -33,7 +33,7 @@ export default class extends Controller {
         // Pagination dots
         pagination: {
           el: this.element.querySelector('.swiper-pagination'),
-          clickable: true,
+          clickable: false,
           dynamicBullets: false,
         },
 

@@ -40,6 +40,7 @@
 .public-habitations-show__gallery-counter,
 .public-habitations-show__mobile-price,
 .public-habitations-show__mobile-costs,
+.public-habitations-show__facts--mobile,
 .public-habitations-show__cta-label--mobile,
 .public-habitations-show__cta--mobile-only {
   display: none;
@@ -943,23 +944,33 @@
     font-size: 0.75rem;
   }
 
-  .public-habitations-show__mobile-costs {
-    margin-top: 12px;
+  .public-habitations-show__facts--mobile {
+    display: block;
+    margin-top: 20px;
     border-top: 1px solid rgba(2, 43, 58, 0.08);
-    padding-top: 12px;
+    padding-top: 14px;
     text-align: left;
   }
 
-  .public-habitations-show__mobile-costs summary {
-    cursor: pointer;
-    color: var(--public-show-muted);
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-align: center;
+  .public-habitations-show__facts--mobile .public-habitations-show__fact {
+    min-height: 34px;
+    padding-top: 12px;
   }
 
-  .public-habitations-show__mobile-costs[open] .public-habitations-show__facts {
-    margin-top: 14px;
+  .public-habitations-show__facts--mobile .public-habitations-show__fact:first-child {
+    padding-top: 0;
+  }
+
+  .public-habitations-show__facts--mobile dt {
+    color: var(--public-show-muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .public-habitations-show__facts--mobile dd {
+    color: #111827;
+    font-size: 0.95rem;
+    font-weight: 800;
   }
 
   .public-habitations-show__feature-grid {

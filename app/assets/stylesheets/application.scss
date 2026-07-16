@@ -122,6 +122,26 @@
   padding-right: 1rem;
 }
 
+/* Public accessibility: icon-only controls must be large enough for touch and keyboard users. */
+.card-swiper .swiper-button-next,
+.card-swiper .swiper-button-prev,
+.property-carousel-wrapper > .swiper-button-next,
+.property-carousel-wrapper > .swiper-button-prev,
+.code-search-modal__close,
+.public-habitations-index__more-filters,
+.public-habitations-index__icon-button,
+.hero-search-shortcuts button,
+.hero-search-shortcuts a {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.card-swiper .swiper-button-next,
+.card-swiper .swiper-button-prev {
+  width: 44px !important;
+  height: 44px !important;
+}
+
 .home-deferred-section {
   content-visibility: auto;
   contain-intrinsic-size: 760px;

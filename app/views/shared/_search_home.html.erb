@@ -6,7 +6,7 @@
       
       <!-- Finalidade -->
       <div>
-        <label class="block text-white text-sm font-semibold mb-2">Finalidade</label>
+        <%= f.label :finalidade, "Finalidade", class: "block text-white text-sm font-semibold mb-2" %>
         <%= f.select :finalidade,
             options_for_select([['Comprar', 'Venda'], ['Alugar', 'Locação']], params[:finalidade]),
             { prompt: 'Selecione' },
@@ -15,7 +15,7 @@
       
       <!-- Tipo -->
       <div>
-        <label class="block text-white text-sm font-semibold mb-2">Tipo</label>
+        <%= f.label :tipo, "Tipo", class: "block text-white text-sm font-semibold mb-2" %>
         <%= f.select :tipo,
             options_for_select([
               ['Apartamento', 'Apartamento'],
@@ -30,7 +30,7 @@
       
       <!-- Cidade -->
       <div>
-        <label class="block text-white text-sm font-semibold mb-2">Cidade</label>
+        <%= f.label :cidade, "Cidade", class: "block text-white text-sm font-semibold mb-2" %>
         <%= f.text_field :cidade,
             value: params[:cidade],
             placeholder: "Ex: Balneário Camboriú",

@@ -34,6 +34,35 @@
     <p class="public-habitations-show__price mt-2 text-3xl font-extrabold text-blue-three">Sob consulta</p>
   <% end %>
 
+  <dl class="public-habitations-show__facts public-habitations-show__facts--mobile space-y-3 text-sm">
+    <div class="public-habitations-show__fact flex justify-between gap-4">
+      <dt>Status</dt>
+      <dd><%= habitation.status.presence || "Disponível" %></dd>
+    </div>
+    <div class="public-habitations-show__fact flex justify-between gap-4">
+      <dt>Tipo</dt>
+      <dd><%= habitation.categoria %></dd>
+    </div>
+    <% if habitation.displayable_condominio_cents.present? %>
+      <div class="public-habitations-show__fact flex justify-between gap-4">
+        <dt>Condomínio</dt>
+        <dd><%= number_to_currency(habitation.displayable_condominio_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+      </div>
+    <% end %>
+    <% if habitation.displayable_iptu_cents.present? %>
+      <div class="public-habitations-show__fact flex justify-between gap-4">
+        <dt>IPTU</dt>
+        <dd><%= number_to_currency(habitation.displayable_iptu_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
+      </div>
+    <% end %>
+    <% if habitation.taxes_included_indicator? %>
+      <div class="public-habitations-show__fact flex justify-between gap-4">
+        <dt>Taxas</dt>
+        <dd>Taxas inclusas</dd>
+      </div>
+    <% end %>
+  </dl>
+
   <div class="public-habitations-show__price-divider my-6 h-px bg-gray-100"></div>
 
   <dl class="public-habitations-show__facts public-habitations-show__facts--desktop space-y-3 text-sm">
@@ -128,32 +157,6 @@
     <i class="bi bi-whatsapp"></i>
     Condições de pagamento
   </button>
-
-  <details class="public-habitations-show__mobile-costs">
-    <summary>Ver custos e informações</summary>
-    <dl class="public-habitations-show__facts space-y-3 text-sm">
-      <div class="public-habitations-show__fact flex justify-between gap-4">
-        <dt>Status</dt>
-        <dd><%= habitation.status.presence || "Disponível" %></dd>
-      </div>
-      <div class="public-habitations-show__fact flex justify-between gap-4">
-        <dt>Tipo</dt>
-        <dd><%= habitation.categoria %></dd>
-      </div>
-      <% if habitation.displayable_condominio_cents.present? %>
-        <div class="public-habitations-show__fact flex justify-between gap-4">
-          <dt>Condomínio</dt>
-          <dd><%= number_to_currency(habitation.displayable_condominio_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
-        </div>
-      <% end %>
-      <% if habitation.displayable_iptu_cents.present? %>
-        <div class="public-habitations-show__fact flex justify-between gap-4">
-          <dt>IPTU</dt>
-          <dd><%= number_to_currency(habitation.displayable_iptu_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
-        </div>
-      <% end %>
-    </dl>
-  </details>
 
   <p class="public-habitations-show__price-code mt-4 text-center text-xs text-gray-400">Código: <%= habitation.codigo %></p>
 </section>

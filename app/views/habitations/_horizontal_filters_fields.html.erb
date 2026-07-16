@@ -4,7 +4,8 @@
             <button type="button"
                     class="block w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg leading-5 bg-white text-gray-700 text-left focus:outline-none focus:ring-1 focus:ring-blue-three focus:border-blue-three sm:text-sm"
                     data-category-filter-target="trigger"
-                    data-action="click->category-filter#toggle">
+                    data-action="click->category-filter#toggle"
+                    aria-label="Selecionar tipo de imóvel">
               <i class="bi bi-building absolute left-3 top-2.5 text-gray-400"></i>
               <span data-category-filter-target="summary">Tipo de imóvel</span>
               <i class="bi bi-chevron-down absolute right-3 top-2.5 text-gray-400"></i>
@@ -44,7 +45,8 @@
             <button type="button"
                     class="block w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-lg leading-5 bg-white text-gray-700 text-left focus:outline-none focus:ring-1 focus:ring-blue-three focus:border-blue-three sm:text-sm"
                     data-location-filter-target="trigger"
-                    data-action="click->location-filter#toggle">
+                    data-action="click->location-filter#toggle"
+                    aria-label="Selecionar localização">
               <i class="bi bi-geo-alt absolute left-3 top-2.5 text-gray-400"></i>
               <span data-location-filter-target="summary">Localização</span>
               <i class="bi bi-chevron-down absolute right-3 top-2.5 text-gray-400"></i>
@@ -66,6 +68,7 @@
                   </div>
                 </div>
                 <input type="text"
+                       aria-label="Filtrar bairros e cidades"
                        placeholder="Filtrar bairros/cidades"
                        class="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:ring-1 focus:ring-blue-three focus:border-blue-three"
                        data-location-filter-target="search"
@@ -106,6 +109,7 @@
           <div class="relative min-w-[160px]">
             <% price_range_options = public_price_range_options(params[:transaction_type]) %>
             <i class="bi bi-chevron-down absolute right-3 top-2.5 text-gray-400 pointer-events-none"></i>
+            <%= f.label :price_range, "Valores", class: "sr-only" %>
             <%= f.select :price_range,
                 options_for_select(price_range_options, params[:price_range]),
                 {},
@@ -116,7 +120,8 @@
           <button type="button" 
                   onclick="document.dispatchEvent(new CustomEvent('open-code-search'))"
                   class="px-4 py-2.5 bg-white border border-gray-200 rounded-lg hover:border-blue-three hover:text-blue-three text-gray-500 text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
-                  title="Buscar por código">
+                  title="Buscar por código"
+                  aria-label="Buscar imóvel por código">
             <i class="bi bi-house-check"></i>
             <span>Cód</span>
           </button>

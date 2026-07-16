@@ -16,6 +16,7 @@ class HabitationIntakeSplitter
   private
 
   def submit_single!
+    @habitation.finalize_broker_intake_registration!(submitted_at: @submitted_at)
     @habitation.update!(
       intake_status: @target_intake_status,
       submitted_for_review_at: @submitted_at,
@@ -31,6 +32,7 @@ class HabitationIntakeSplitter
     rental = nil
 
     Habitation.transaction do
+      @habitation.finalize_broker_intake_registration!(submitted_at: @submitted_at)
       @habitation.update!(
         intake_group_uuid: group_uuid,
         intake_modalidade: "venda",
@@ -65,6 +67,7 @@ class HabitationIntakeSplitter
       copy.submitted_for_review_at = @submitted_at
       copy.intake_step = "review"
       copy.exibir_no_site_flag = false
+      copy.finalize_broker_intake_registration!(submitted_at: @submitted_at)
     end
   end
 
