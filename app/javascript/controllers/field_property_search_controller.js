@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["query", "micButton", "recordingState", "timer", "recordBars", "pauseButton", "submitButton", "status", "processing", "processingText", "confirmation", "filterChips", "results", "newSearch", "selectionBar", "selectionCount"]
+  static targets = ["query", "micButton", "recordingState", "timer", "recordBars", "pauseButton", "submitButton", "status", "processing", "processingText", "confirmation", "filterChips", "results", "newSearch", "selectionBar", "selectionCount", "previewDialog", "previewBody", "previewTitle"]
   static values = { createUrl: String, selectUrl: String, shareUrl: String, maxDuration: Number, processingMessage: String, selectionMessage: String, shareErrorMessage: String, linkCopiedMessage: String, autoStart: Boolean }
 
   connect() {
@@ -10,6 +10,8 @@ export default class extends Controller {
     this.transcription = null
     this.currentFilters = {}
     this.selectedIds = new Set()
+    this.previewCloseHandler = () => document.documentElement.classList.remove("field-preview-open")
+    if (this.hasPreviewDialogTarget) this.previewDialogTarget.addEventListener("close", this.previewCloseHandler)
     if (this.autoStartValue && this.hasMicButtonTarget) window.requestAnimationFrame(() => this.startRecording())
   }
 
@@ -18,6 +20,8 @@ export default class extends Controller {
     this.stopRecording()
     this.stopTracks()
     this.stopWaveform()
+    this.closePreview()
+    if (this.hasPreviewDialogTarget && this.previewCloseHandler) this.previewDialogTarget.removeEventListener("close", this.previewCloseHandler)
   }
 
   async startRecording() {
@@ -275,7 +279,9 @@ export default class extends Controller {
     const select = document.createElement("button"); select.type = "button"; select.className = "field-ai-property-choice__select"; select.setAttribute("aria-label", "Selecionar imóvel"); select.innerHTML = '<i class="bi bi-check-lg"></i>'
     select.addEventListener("click", () => { this.selectedIds.has(property.id) ? this.selectedIds.delete(property.id) : this.selectedIds.add(property.id); wrapper.classList.toggle("is-selected", this.selectedIds.has(property.id)); this.syncSelectionBar() })
     const link = document.createElement("a"); link.className = "field-ai-property-card"; link.href = property.path
-    link.addEventListener("click", () => this.recordSelection(historyId, property.id))
+    link.dataset.previewUrl = property.preview_path || property.path
+    link.dataset.propertyTitle = property.title || property.property_code || "Imóvel"
+    link.addEventListener("click", (event) => this.openPreview(event, historyId, property.id))
     if (property.cover_image) { const image = document.createElement("img"); image.src = property.cover_image; image.alt = property.title || "Imóvel"; image.loading = "lazy"; link.append(image) }
     const body = document.createElement("span"); body.className = "field-ai-property-card__body"
     const title = document.createElement("strong"); title.textContent = property.title || property.property_code || "Imóvel"; body.append(title)
@@ -302,6 +308,36 @@ export default class extends Controller {
     if (!historyId) return
     const body = new FormData(); body.append("history_id", historyId); body.append("habitation_id", habitationId)
     fetch(this.selectUrlValue, { method: "POST", headers: { "X-CSRF-Token": this.csrfToken, Accept: "application/json" }, body, keepalive: true }).catch(() => {})
+  }
+
+  async openPreview(event, historyId, habitationId) {
+    event.preventDefault()
+    const link = event.currentTarget
+    this.recordSelection(historyId, habitationId)
+    if (!this.hasPreviewDialogTarget || !this.hasPreviewBodyTarget) {
+      window.location.href = link.href
+      return
+    }
+
+    this.previewTitleTarget.textContent = link.dataset.propertyTitle || "Detalhes do imóvel"
+    this.previewBodyTarget.innerHTML = '<div class="field-property-preview__loading">Carregando detalhes...</div>'
+    if (!this.previewDialogTarget.open) this.previewDialogTarget.showModal()
+    document.documentElement.classList.add("field-preview-open")
+
+    try {
+      const response = await fetch(link.dataset.previewUrl || link.href, { headers: { Accept: "text/html" } })
+      if (!response.ok) throw new Error("Falha ao carregar detalhes.")
+      this.previewBodyTarget.innerHTML = await response.text()
+    } catch (error) {
+      this.previewBodyTarget.innerHTML = `<div class="field-property-preview__error">${error.message}</div>`
+    }
+  }
+
+  closePreview() {
+    if (!this.hasPreviewDialogTarget || !this.previewDialogTarget.open) return
+
+    this.previewDialogTarget.close()
+    document.documentElement.classList.remove("field-preview-open")
   }
 
   resetRecordingState() { this.recording = false; this.recordPaused = false; this.audioBlob = null; this.recordedSeconds = 0; this.pausedElapsedMs = 0; this.discardNext = false; this.sendAfterStop = false }

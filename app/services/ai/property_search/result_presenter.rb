@@ -9,6 +9,7 @@ module Ai
         values = {
           "id" => habitation.id,
           "path" => Rails.application.routes.url_helpers.admin_habitation_path(habitation),
+          "preview_path" => Rails.application.routes.url_helpers.property_preview_field_property_search_path(habitation_id: habitation.id),
           "cover_image" => cover_image(habitation),
           "property_code" => habitation.codigo,
           "title" => habitation.display_title,
@@ -21,7 +22,7 @@ module Ai
           "private_area" => habitation.area_privativa_m2,
           "development_name" => habitation.nome_empreendimento
         }
-        values.slice("id", "path", *@fields).compact
+        values.slice("id", "path", "preview_path", *@fields).compact
       end
 
       private

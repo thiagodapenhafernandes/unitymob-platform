@@ -44,4 +44,23 @@ RSpec.describe "Field theme shell", type: :request do
     expect(response.body).to include("--field-primary: #3E6F9E", "field-theme-toggle", 'aria-checked="true"')
     expect(response.body).to include('data-controller="theme-preference"', 'submit-&gt;theme-preference#submit')
   end
+
+  it "mantem a busca inteligente coberta pelo tema escuro do PWA" do
+    stylesheet = Rails.root.join("app/assets/stylesheets/field_theme.css").read
+
+    expect(stylesheet).to include(
+      '[data-field-theme="dark"] :is(.field-ai-search__composer, .field-ai-search__confirmation)',
+      '[data-field-theme="dark"] .field-ai-search__input',
+      '[data-field-theme="dark"] .field-ai-property-card',
+      '[data-field-theme="dark"] .field-ai-selection-bar',
+      '[data-field-theme="dark"] .field-property-preview-modal'
+    )
+    expect(stylesheet).to include(
+      "background: var(--field-surface);",
+      "background: var(--field-surface-muted);",
+      "color: var(--field-text);",
+      "object-position: center center;",
+      ".field-property-preview-modal"
+    )
+  end
 end

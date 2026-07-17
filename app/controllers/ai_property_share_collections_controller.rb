@@ -7,6 +7,18 @@ class AiPropertyShareCollectionsController < ApplicationController
     @collection.record!("collection_opened", metadata: request_metadata)
   end
 
+  def preview
+    load_collection
+    @habitation = @collection.habitations
+      .active
+      .includes(:address, photos_attachments: :blob)
+      .find(params[:habitation_id])
+
+    render partial: "ai_property_share_collections/property_preview",
+           formats: [:html],
+           locals: { habitation: @habitation }
+  end
+
   def interest
     load_collection
     habitation = @collection.habitations.active.find(params[:habitation_id])

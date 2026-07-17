@@ -3,27 +3,30 @@ require "rails_helper"
 RSpec.describe Habitation, type: :model do
   describe ".next_automatic_codigo" do
     it "continues the CRM sequence after the highest imported Vista reference" do
-      create(:habitation, codigo: "8628", imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
+      reference_codigo = (described_class.highest_numeric_codigo + 100).to_s
+      create(:habitation, codigo: reference_codigo, imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
       create(:habitation, codigo: "DWV-9999", imovel_dwv: "Sim")
 
-      expect(described_class.next_automatic_codigo).to eq("8629")
+      expect(described_class.next_automatic_codigo).to eq((reference_codigo.to_i + 1).to_s)
     end
 
     it "skips numeric codes that are already occupied" do
-      create(:habitation, codigo: "8628", imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
-      create(:habitation, codigo: "8629", imovel_dwv: "Nao")
+      reference_codigo = described_class.highest_numeric_codigo + 100
+      create(:habitation, codigo: reference_codigo.to_s, imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
+      create(:habitation, codigo: (reference_codigo + 1).to_s, imovel_dwv: "Nao")
 
-      expect(described_class.next_automatic_codigo).to eq("8630")
+      expect(described_class.next_automatic_codigo).to eq((reference_codigo + 2).to_s)
     end
   end
 
   describe "#assign_codigo_automaticamente" do
     it "fills blank codigo with the next CRM sequence value on create" do
-      create(:habitation, codigo: "8628", imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
+      reference_codigo = (described_class.highest_numeric_codigo + 100).to_s
+      create(:habitation, codigo: reference_codigo, imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
 
       habitation = described_class.create!(categoria: "Apartamento")
 
-      expect(habitation.codigo).to eq("8629")
+      expect(habitation.codigo).to eq((reference_codigo.to_i + 1).to_s)
     end
   end
 
@@ -71,6 +74,59 @@ RSpec.describe Habitation, type: :model do
 
       expect(habitation.permuta_veiculo_valor_cents).to eq(8_500_000)
       expect(habitation.permuta_outros_valor_cents).to eq(1_250_000)
+    end
+
+    it "does not revert the commercial exchange flag from an old intake answer" do
+      habitation = create(:habitation, aceita_permuta_answer: "nao", aceita_permuta_flag: false)
+
+      habitation.update!(aceita_permuta_flag: true)
+
+      expect(habitation.reload.aceita_permuta_flag).to be(true)
+    end
+
+    it "syncs the commercial exchange flag when the intake answer changes" do
+      habitation = create(:habitation, aceita_permuta_answer: "nao", aceita_permuta_flag: false)
+
+      habitation.update!(aceita_permuta_answer: "sim")
+
+      expect(habitation.reload.aceita_permuta_flag).to be(true)
+    end
+
+    it "does not revert commercial flags when unchanged characteristics are present" do
+      habitation = create(
+        :habitation,
+        caracteristicas: ["Sacada"],
+        aceita_financiamento_flag: false,
+        aceita_permuta_flag: false
+      )
+
+      habitation.update!(aceita_financiamento_flag: true, aceita_permuta_flag: true)
+
+      expect(habitation.reload).to have_attributes(
+        aceita_financiamento_flag: true,
+        aceita_permuta_flag: true
+      )
+    end
+
+    it "keeps explicit commercial flags when characteristics are updated in the same save" do
+      habitation = create(
+        :habitation,
+        caracteristicas: ["Sacada"],
+        aceita_financiamento_flag: false,
+        aceita_permuta_flag: false
+      )
+
+      habitation.update!(
+        caracteristicas: ["Sacada", "Lavabo"],
+        aceita_financiamento_flag: true,
+        aceita_permuta_flag: true
+      )
+
+      expect(habitation.reload).to have_attributes(
+        aceita_financiamento_flag: true,
+        aceita_permuta_flag: true,
+        lavabo_flag: true
+      )
     end
   end
 
@@ -326,6 +382,28 @@ RSpec.describe Habitation, type: :model do
       missing = habitation.intake_missing_requirements(required_checks: %w[proprietario], require_owner_city: true)
 
       expect(missing).not_to include("Cidade do proprietário")
+    end
+
+    it "requires development name for apartment intakes even outside the operational checklist" do
+      habitation = build(:habitation, :broker_intake, categoria: "Apartamento", nome_empreendimento: nil)
+
+      missing = habitation.intake_missing_requirements(required_checks: %w[proprietario])
+
+      expect(missing).to include("Empreendimento")
+    end
+
+    it "accepts a manually informed development name without a linked development code" do
+      habitation = build(
+        :habitation,
+        :broker_intake,
+        categoria: "Apartamento",
+        codigo_empreendimento: nil,
+        nome_empreendimento: "Residencial Manual"
+      )
+
+      missing = habitation.intake_missing_requirements(required_checks: %w[proprietario])
+
+      expect(missing).not_to include("Empreendimento")
     end
 
     it "keeps exchange acceptance controlled by its own operational check" do

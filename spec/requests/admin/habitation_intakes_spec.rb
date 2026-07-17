@@ -901,6 +901,74 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Residencial PWA Busca")
   end
 
+  it "bloqueia avanço de apartamento sem nome do empreendimento mesmo fora do checklist operacional" do
+    PropertySetting.instance.update!(required_broker_intake_checks: %w[proprietario])
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      categoria: "Apartamento",
+      intake_step: "endereco",
+      nome_empreendimento: nil,
+      codigo_empreendimento: nil,
+      bloco: "1201"
+    )
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco",
+      direction: "forward",
+      habitation: {
+        zip_code: "88330-030",
+        street: "Rua 1500",
+        street_number: "123",
+        neighborhood: "Centro",
+        city: "Balneário Camboriú",
+        state: "SC",
+        edificio_nome: "",
+        unidade_numero: "1201"
+      }
+    }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Informe o empreendimento/condomínio.")
+    expect(intake.reload.intake_step).to eq("endereco")
+    expect(intake.nome_empreendimento).to be_blank
+  end
+
+  it "preserva nome manual do empreendimento sem exigir vínculo cadastrado" do
+    PropertySetting.instance.update!(required_broker_intake_checks: %w[proprietario])
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      categoria: "Apartamento",
+      intake_step: "endereco",
+      nome_empreendimento: nil,
+      codigo_empreendimento: nil,
+      bloco: nil
+    )
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco",
+      direction: "forward",
+      habitation: {
+        zip_code: "88330-030",
+        street: "Rua 1500",
+        street_number: "123",
+        neighborhood: "Centro",
+        city: "Balneário Camboriú",
+        state: "SC",
+        edificio_nome: "Residencial Manual",
+        unidade_numero: "1201"
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
+    intake.reload
+    expect(intake.codigo_empreendimento).to be_blank
+    expect(intake.nome_empreendimento).to eq("Residencial Manual")
+  end
+
   it "aceita valores monetários formatados na negociação" do
     intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "negociacao")
 

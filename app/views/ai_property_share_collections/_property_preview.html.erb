@@ -1,0 +1,68 @@
+<%
+  images = habitation.public_image_sources.first(12)
+  image_url = ->(source, fill = [960, 640]) { public_image_url(source, resize_to_fill: fill, format: :webp) }
+  facts = [
+    (habitation.dormitorios_qtd.to_i.positive? ? "#{habitation.dormitorios_qtd} dorm." : nil),
+    (habitation.suites_qtd.to_i.positive? ? "#{habitation.suites_qtd} suítes" : nil),
+    (habitation.vagas_qtd.to_i.positive? ? "#{habitation.vagas_qtd} vagas" : nil),
+    (habitation.public_area_m2.present? ? "#{number_with_precision(habitation.public_area_m2, precision: 1, strip_insignificant_zeros: true)} m²" : nil)
+  ].compact
+  address = [
+    habitation.endereco,
+    habitation.numero,
+    habitation.complemento,
+    habitation.public_neighborhood,
+    habitation.cidade,
+    habitation.uf
+  ].compact_blank.join(" · ")
+%>
+
+<article class="shared-property-preview">
+  <header class="shared-property-preview__hero">
+    <% if images.first.present? %>
+      <%= image_tag image_url.call(images.first),
+          alt: habitation.display_title,
+          class: "shared-property-preview__hero-image",
+          loading: "eager",
+          decoding: "async" %>
+    <% else %>
+      <div class="shared-property-preview__empty-image"><i class="bi bi-image"></i></div>
+    <% end %>
+
+    <div class="shared-property-preview__hero-body">
+      <span class="shared-property-preview__eyebrow">Código <%= habitation.codigo.presence || habitation.id %></span>
+      <h2><%= habitation.display_title %></h2>
+      <% if address.present? %>
+        <p><i class="bi bi-geo-alt"></i><%= address %></p>
+      <% end %>
+      <% if facts.any? %>
+        <div class="shared-property-preview__facts">
+          <% facts.each do |fact| %><span><%= fact %></span><% end %>
+        </div>
+      <% end %>
+      <strong class="shared-property-preview__price"><%= habitation.preco_principal.presence || "Valor sob consulta" %></strong>
+    </div>
+  </header>
+
+  <% if images.many? %>
+    <section class="shared-property-preview__gallery" aria-label="Fotos do imóvel">
+      <% images.drop(1).each do |source| %>
+        <%= image_tag image_url.call(source, [420, 300]),
+            alt: habitation.display_title,
+            loading: "lazy",
+            decoding: "async" %>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% if habitation.display_description.present? %>
+    <section class="shared-property-preview__section">
+      <h3>Descrição</h3>
+      <div><%= simple_format(strip_tags(habitation.display_description).squish) %></div>
+    </section>
+  <% end %>
+
+  <footer class="shared-property-preview__actions">
+    <%= link_to "Abrir página completa", habitation_path(habitation), class: "shared-property-preview__link", target: "_blank", rel: "noopener" %>
+  </footer>
+</article>

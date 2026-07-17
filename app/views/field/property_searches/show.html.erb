@@ -54,4 +54,12 @@
   </section>
   <section class="field-ai-search__results" aria-live="polite" data-field-property-search-target="results"></section>
   <div class="field-ai-selection-bar" hidden data-field-property-search-target="selectionBar"><strong data-field-property-search-target="selectionCount"><%= @setting.ai_property_search_message(:ai_property_search_selection_count_message, count: 0) %></strong><button type="button" data-action="field-property-search#shareSelection"><i class="bi bi-share"></i> <%= @setting.ai_property_search_share_button_label %></button></div>
+
+  <dialog class="field-property-preview-modal" data-field-property-search-target="previewDialog" aria-labelledby="field-property-preview-title">
+    <header class="field-property-preview-modal__bar">
+      <strong id="field-property-preview-title" data-field-property-search-target="previewTitle">Detalhes do imóvel</strong>
+      <button type="button" data-action="field-property-search#closePreview" aria-label="Fechar detalhes"><i class="bi bi-x-lg"></i></button>
+    </header>
+    <div class="field-property-preview-modal__body" data-field-property-search-target="previewBody"></div>
+  </dialog>
 </section>
