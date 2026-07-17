@@ -26,6 +26,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   before do
+    ActionController::Base.allow_forgery_protection = false
     host! "localhost"
     sign_in admin
   end
@@ -2292,6 +2293,46 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(intake.codigo).to eq(expected_codigo)
     expect(intake.data_cadastro_crm).to eq(submitted_at)
     expect(intake.admin_reviewed_at).to be_present
+  end
+
+  it "assume ausência de permuta quando devolve captação para o captador pela ficha completa" do
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      codigo: "NO-PERMUTA-#{SecureRandom.hex(6)}",
+      intake_status: "submitted_for_admin_review",
+      aceita_permuta_flag: false
+    )
+    intake.update_columns(aceita_permuta_answer: nil, aceita_permuta_flag: false)
+    intake.create_address!(
+      cep: "88330-000",
+      logradouro: "Rua Sem Permuta",
+      numero: "100",
+      complemento: "Casa 12",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+    intake.autorizacoes_venda.attach(
+      io: StringIO.new("autorizacao"),
+      filename: "autorizacao.txt",
+      content_type: "text/plain"
+    )
+
+    patch admin_habitation_path(intake), params: {
+      release_to_broker_after_save: "1",
+      habitation: {
+        titulo_anuncio: "Casa sem permuta revisada pelo administrativo"
+      }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(intake.reload).to have_attributes(
+      intake_status: "admin_approved",
+      aceita_permuta_answer: "nao",
+      aceita_permuta_flag: false
+    )
   end
 
   it "não remove autorização existente quando devolve para captador com campo de arquivo vazio" do

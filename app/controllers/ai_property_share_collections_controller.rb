@@ -4,6 +4,7 @@ class AiPropertyShareCollectionsController < ApplicationController
   def show
     load_collection
     @habitations = @collection.habitations.active.includes(:address)
+    assign_social_metadata
     @collection.record!("collection_opened", metadata: request_metadata)
   end
 
@@ -43,6 +44,18 @@ class AiPropertyShareCollectionsController < ApplicationController
     Current.tenant = @collection.tenant
     @setting = PropertySetting.instance(tenant: @collection.tenant)
     raise ActiveRecord::RecordNotFound unless @setting.ai_property_search_sharing_enabled?
+  end
+
+  def assign_social_metadata
+    share_message = @setting.ai_property_search_message(:ai_property_search_share_message, count: @habitations.size)
+    @page_title = @setting.ai_property_search_share_title.presence || share_message
+    @page_description = share_message
+    @canonical_url = ai_property_share_collection_url(@collection.token)
+    @social_url = @canonical_url
+    @page_image = view_context.public_pwa_icon_url(size: 512)
+    @page_image_type = "image/png"
+    @page_image_width = 512
+    @page_image_height = 512
   end
 
   def recognized_lead

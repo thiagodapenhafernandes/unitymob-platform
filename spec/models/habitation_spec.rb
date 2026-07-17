@@ -406,11 +406,20 @@ RSpec.describe Habitation, type: :model do
       expect(missing).not_to include("Empreendimento")
     end
 
-    it "keeps exchange acceptance controlled by its own operational check" do
+    it "assumes blank exchange acceptance as no exchange" do
       habitation = build(:habitation, :broker_intake, aceita_permuta_answer: nil)
 
       expect(habitation.intake_missing_requirements(required_checks: %w[valor_negociacao])).not_to include("Aceita permuta")
-      expect(habitation.intake_missing_requirements(required_checks: %w[permuta])).to include("Aceita permuta")
+      expect(habitation.intake_missing_requirements(required_checks: %w[permuta])).not_to include("Aceita permuta")
+    end
+
+    it "normalizes blank exchange acceptance to no before saving sale intakes" do
+      habitation = build(:habitation, :broker_intake, aceita_permuta_answer: nil, aceita_permuta_flag: false)
+
+      habitation.valid?
+
+      expect(habitation.aceita_permuta_answer).to eq("nao")
+      expect(habitation.aceita_permuta_flag).to be(false)
     end
 
     it "checks parking type and box only when those operational checks are active" do

@@ -822,7 +822,6 @@ module Admin
           missing << @habitation.intake_rent_price_requirement_message
         end
         missing << "Informe ao menos condomínio ou IPTU." if intake_check_enabled?(:financeiro) && @habitation.requires_intake_expense_amount? && @habitation.valor_condominio_cents.blank? && @habitation.valor_iptu_cents.blank?
-        missing << "Informe se aceita permuta." if intake_check_enabled?(:permuta) && @habitation.sale_intake? && @habitation.aceita_permuta_answer.blank?
         if intake_check_enabled?(:admin_locacao) && @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
           missing << "Informe se a administração da locação será feita internamente."
         end
@@ -937,7 +936,6 @@ module Admin
           fields[:valor_condominio] = true
           fields[:valor_iptu] = true
         end
-        fields[:aceita_permuta_answer] = true if intake_check_enabled?(:permuta) && @habitation.sale_intake? && @habitation.aceita_permuta_answer.blank?
         fields[:salute_rental_management_answer] = true if intake_check_enabled?(:admin_locacao) && @habitation.rental_intake? && @habitation.salute_rental_management_answer.blank?
         fields[:rental_guarantee_method] = true if intake_check_enabled?(:garantia_locaticia) && @habitation.rental_intake? && @habitation.rental_guarantee_method.blank?
         fields[:numero_prestacoes] = true if intake_check_enabled?(:parcelamento) && @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.blank?

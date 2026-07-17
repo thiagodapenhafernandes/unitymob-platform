@@ -99,7 +99,11 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).not_to include("vistahost.com.br")
-      expect(response.body).to include(%(property="og:image" content="http://localhost/icon.png"))
+      expect(response.body).to include(%(property="og:image" content="http://localhost/pwa-icon-512?v=))
+      expect(response.body).to include(%(property="og:image:type" content="image/png"))
+      expect(response.body).to include(%(property="og:image:width" content="512"))
+      expect(response.body).to include(%(property="og:image:height" content="512"))
+      expect(response.body).to include(%(rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192?v=))
       expect(response.body).to include(%(property="og:title" content="OG-IMG - ))
     end
 
@@ -136,7 +140,8 @@ RSpec.describe "Habitation details", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include(%(property="og:image" content="https://cdn.saluteimoveis.com.br/properties/foto-local.png"))
       expect(response.body).to include(%(property="og:image:type" content="image/png"))
-      expect(response.body).not_to include("/rails/active_storage/")
+      og_image = response.body[/<meta property="og:image" content="([^"]+)"/, 1]
+      expect(og_image).not_to include("/rails/active_storage/")
     end
 
     it "does not expose broker phone or direct whatsapp link in the responsible attendant card" do

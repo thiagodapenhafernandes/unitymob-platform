@@ -71,13 +71,21 @@
     <%# Image Metadata Logic %>
     <% 
       sanitize_utf8 = ->(value) { value.to_s.encode("UTF-8", invalid: :replace, undef: :replace, replace: "").scrub }
+      social_fallback_image = public_pwa_icon_url(size: 512)
+      social_fallback_icon_192 = public_pwa_icon_path(size: 192)
+      social_fallback_icon_512 = public_pwa_icon_path(size: 512)
       final_image = if property_page
-        @page_image.presence || "#{request.base_url}/icon.png"
+        @page_image.presence || social_fallback_image
       else
-        seo&.social_image_url(base_url: request.base_url, page_image: @page_image) ||
+        seo&.social_image_url(base_url: request.base_url, page_image: @page_image, fallback_image: social_fallback_image) ||
           @page_image.presence ||
-          "#{request.base_url}/icon.png"
+          social_fallback_image
       end
+      normalized_social_fallback_image = social_fallback_image.to_s.sub("http://", "https://")
+      using_social_fallback_image = final_image.in?([social_fallback_image, normalized_social_fallback_image])
+      final_image_type = @page_image_type.presence || ("image/png" if using_social_fallback_image)
+      final_image_width = @page_image_width.presence || (512 if using_social_fallback_image)
+      final_image_height = @page_image_height.presence || (512 if using_social_fallback_image)
       canonical_url = sanitize_utf8.call(@canonical_url.presence || (seo_public ? seo.public_url(request.base_url) : request.original_url))
       social_url = sanitize_utf8.call(@social_url.presence || canonical_url)
       og_title = sanitize_utf8.call(property_page ? effective_title : ((seo_public ? seo.og_title.presence : nil) || effective_title))
@@ -102,12 +110,12 @@
     <meta property="og:image" content="<%= final_image %>">
     <meta property="og:image:secure_url" content="<%= final_image.to_s.sub('http://', 'https://') %>">
     <meta property="og:image:alt" content="<%= image_alt %>">
-    <% if @page_image_type.present? %>
-      <meta property="og:image:type" content="<%= @page_image_type %>">
+    <% if final_image_type.present? %>
+      <meta property="og:image:type" content="<%= final_image_type %>">
     <% end %>
-    <% if @page_image_width.present? && @page_image_height.present? %>
-      <meta property="og:image:width" content="<%= @page_image_width %>">
-      <meta property="og:image:height" content="<%= @page_image_height %>">
+    <% if final_image_width.present? && final_image_height.present? %>
+      <meta property="og:image:width" content="<%= final_image_width %>">
+      <meta property="og:image:height" content="<%= final_image_height %>">
     <% end %>
     <% if social_modified_at.present? %>
       <meta property="og:updated_time" content="<%= social_modified_at.iso8601 %>">
@@ -127,11 +135,9 @@
     <meta name="twitter:image:alt" content="<%= image_alt %>">
     
     <link rel="canonical" href="<%= canonical_url %>">
-    <% if @layout_setting&.favicon&.attached? %>
-      <link rel="icon" href="<%= public_image_url(@layout_setting.favicon) %>">
-    <% else %>
-      <link rel="icon" href="/icon.png">
-    <% end %>
+    <link rel="apple-touch-icon" href="<%= social_fallback_icon_192 %>">
+    <link rel="icon" type="image/png" sizes="192x192" href="<%= social_fallback_icon_192 %>">
+    <link rel="icon" type="image/png" sizes="512x512" href="<%= social_fallback_icon_512 %>">
     
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>

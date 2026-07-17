@@ -62,6 +62,7 @@ export default class extends Controller {
       const startIndex = Math.max(items.findIndex((item) => item.src === galleryTrigger.href), 0)
       this.debug("open:fancybox", { links: items.length, startIndex, href: galleryTrigger.href })
       this.pauseEmbeddableMedia()
+      const restoreDialog = this.suspendTopLayerDialog(galleryTrigger)
 
       Fancybox.show(
         items,
@@ -89,7 +90,10 @@ export default class extends Controller {
           on: {
             ready: () => loadingCard?.classList.remove("is-loading"),
             close: () => this.pauseEmbeddableMedia(),
-            destroy: () => this.pauseEmbeddableMedia()
+            destroy: () => {
+              this.pauseEmbeddableMedia()
+              restoreDialog()
+            }
           }
         }
       )
@@ -262,6 +266,31 @@ export default class extends Controller {
     document.querySelectorAll("audio, video").forEach((media) => {
       if (typeof media.pause === "function") media.pause()
     })
+  }
+
+  suspendTopLayerDialog(trigger) {
+    const dialog = trigger.closest("dialog[open]")
+    if (!dialog || typeof dialog.close !== "function" || typeof dialog.showModal !== "function") {
+      return () => {}
+    }
+
+    const body = dialog.querySelector("[class$='preview-modal__body']")
+    const scrollTop = body?.scrollTop || 0
+    const previewOpenClasses = ["shared-property-preview-open", "field-preview-open"].filter((className) => (
+      document.documentElement.classList.contains(className)
+    ))
+    let restored = false
+
+    dialog.close()
+
+    return () => {
+      if (restored || !document.body.contains(dialog) || dialog.open) return
+
+      restored = true
+      dialog.showModal()
+      previewOpenClasses.forEach((className) => document.documentElement.classList.add(className))
+      if (body) body.scrollTop = scrollTop
+    }
   }
 
   ensureFancyboxAssets() {

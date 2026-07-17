@@ -104,13 +104,40 @@ RSpec.describe "Field::PropertySearches", type: :request do
     expect(item.fetch("preview_path")).to eq(property_preview_field_property_search_path(habitation_id: property.id))
   end
 
-  it "renderiza preview server-side para abrir o detalhe no modal do PWA" do
-    property = create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "MODAL-PREVIEW", categoria: "Apartamento")
+  it "renderiza preview server-side com detalhes do cadastro para abrir no modal do PWA" do
+    property = create(
+      :habitation,
+      tenant: broker.tenant,
+      admin_user: broker,
+      codigo: "MODAL-PREVIEW",
+      codigo_dwv: "DWV-777",
+      categoria: "Apartamento",
+      nome_empreendimento: "Residencial Atlântico",
+      dormitorios_qtd: 3,
+      suites_qtd: 1,
+      banheiros_qtd: 2,
+      vagas_qtd: 2,
+      area_privativa_m2: 123.4,
+      valor_venda_cents: 1_250_000_00,
+      valor_condominio_cents: 890_00,
+      descricao_web: "-> Empreendimento Piscina infantil Academia -> Unidade Living Lavabo",
+      observacoes_visitas: "Agendar com portaria",
+      key_location: "Portaria",
+      senha_portaria: "1234"
+    )
 
     get property_preview_field_property_search_path(habitation_id: property.id), headers: mobile_headers.except("Accept")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("field-property-preview", "MODAL-PREVIEW", "Abrir cadastro completo")
+    expect(response.body).to include("field-property-preview__hero-link", 'data-fancybox="field-property-preview')
+    expect(response.body).to include("field-property-preview__photo-count", "1 foto")
+    expect(response.body).not_to include("field-property-preview__gallery-link")
+    expect(response.body).to include("Cadastro", "Localização", "Estrutura", "Valores", "Atendimento")
+    expect(response.body).to include("DWV-777", "Residencial Atlântico", "123,4 m²", "R$ 1.250.000", "Agendar com portaria", "1234")
+    expect(response.body).to include("field-property-preview__description")
+    expect(response.body).to include("<p>Empreendimento Piscina infantil Academia</p>", "<p>Unidade Living Lavabo</p>")
+    expect(response.body).not_to include("-&gt;")
   end
 
   it "executa a busca imediatamente mesmo quando a confirmação estava configurada" do

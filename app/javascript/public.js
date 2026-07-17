@@ -12,6 +12,7 @@ import CategoryFilterController from "controllers/category_filter_controller"
 import ClickableCardController from "controllers/clickable_card_controller"
 import CodeSearchController from "controllers/code_search_controller"
 import FiltersController from "controllers/filters_controller"
+import FancyboxGalleryController from "controllers/fancybox_gallery_controller"
 import HeroSliderController from "controllers/hero_slider_controller"
 import LeadCaptureController from "controllers/lead_capture_controller"
 import LgpdConsentController from "controllers/lgpd_consent_controller"
@@ -20,6 +21,7 @@ import MarketingTrackerController from "controllers/marketing_tracker_controller
 import NavbarController from "controllers/navbar_controller"
 import PhotoGalleryController from "controllers/photo_gallery_controller"
 import PhoneInputController from "controllers/phone_input_controller"
+import PropertyShareInterestController from "controllers/property_share_interest_controller"
 import PropertyCarouselController from "controllers/property_carousel_controller"
 import PublicPropertyMapController from "controllers/public_property_map_controller"
 import SearchFormController from "controllers/search_form_controller"
@@ -34,6 +36,7 @@ application.register("category-filter", CategoryFilterController)
 application.register("clickable-card", ClickableCardController)
 application.register("code-search", CodeSearchController)
 application.register("filters", FiltersController)
+application.register("fancybox-gallery", FancyboxGalleryController)
 application.register("hero-slider", HeroSliderController)
 application.register("lead-capture", LeadCaptureController)
 application.register("lgpd-consent", LgpdConsentController)
@@ -42,6 +45,7 @@ application.register("marketing-tracker", MarketingTrackerController)
 application.register("navbar", NavbarController)
 application.register("photo-gallery", PhotoGalleryController)
 application.register("phone-input", PhoneInputController)
+application.register("property-share-interest", PropertyShareInterestController)
 application.register("property-carousel", PropertyCarouselController)
 application.register("public-property-map", PublicPropertyMapController)
 application.register("search-form", SearchFormController)
@@ -56,7 +60,6 @@ application.register("transaction-toggle", TransactionToggleController)
 // acordar controllers dormentes de proposito (ex.: public-interest-tracker).
 const pageScopedControllers = [
   ["advanced-filters", () => import("controllers/advanced_filters_controller")],
-  ["fancybox-gallery", () => import("controllers/fancybox_gallery_controller")],
   ["public-favorites", () => import("controllers/public_favorites_controller")],
   ["public-gallery-mobile", () => import("controllers/public_gallery_mobile_controller")],
   ["sidebar", () => import("controllers/sidebar_controller")]

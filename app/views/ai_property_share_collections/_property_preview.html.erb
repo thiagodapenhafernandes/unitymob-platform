@@ -1,6 +1,9 @@
 <%
-  images = habitation.public_image_sources.first(12)
+  images = habitation.public_image_sources
   image_url = ->(source, fill = [960, 640]) { public_image_url(source, resize_to_fill: fill, format: :webp) }
+  gallery_url = ->(source) { public_image_url(source, resize_to_limit: [1600, 1200], format: :webp, representation_proxy: true) }
+  gallery_group = "shared-property-preview-#{habitation.id}"
+  photo_count = images.size
   facts = [
     (habitation.dormitorios_qtd.to_i.positive? ? "#{habitation.dormitorios_qtd} dorm." : nil),
     (habitation.suites_qtd.to_i.positive? ? "#{habitation.suites_qtd} suítes" : nil),
@@ -20,11 +23,19 @@
 <article class="shared-property-preview">
   <header class="shared-property-preview__hero">
     <% if images.first.present? %>
-      <%= image_tag image_url.call(images.first),
-          alt: habitation.display_title,
-          class: "shared-property-preview__hero-image",
-          loading: "eager",
-          decoding: "async" %>
+      <%= link_to gallery_url.call(images.first),
+          class: "shared-property-preview__hero-link",
+          data: { fancybox: gallery_group, caption: "#{habitation.display_title} - Foto 1", thumb_src: image_url.call(images.first, [420, 300]) } do %>
+        <%= image_tag image_url.call(images.first),
+            alt: habitation.display_title,
+            class: "shared-property-preview__hero-image",
+            loading: "eager",
+            decoding: "async" %>
+        <span class="shared-property-preview__photo-count" aria-label="<%= photo_count %> <%= photo_count == 1 ? 'foto' : 'fotos' %>">
+          <i class="bi bi-images" aria-hidden="true"></i>
+          <%= photo_count %> <%= photo_count == 1 ? "foto" : "fotos" %>
+        </span>
+      <% end %>
     <% else %>
       <div class="shared-property-preview__empty-image"><i class="bi bi-image"></i></div>
     <% end %>
@@ -45,20 +56,22 @@
   </header>
 
   <% if images.many? %>
-    <section class="shared-property-preview__gallery" aria-label="Fotos do imóvel">
-      <% images.drop(1).each do |source| %>
-        <%= image_tag image_url.call(source, [420, 300]),
-            alt: habitation.display_title,
-            loading: "lazy",
-            decoding: "async" %>
+    <div class="shared-property-preview__gallery-links" aria-hidden="true">
+      <% images.drop(1).each_with_index do |source, index| %>
+        <%= link_to gallery_url.call(source),
+            "#{habitation.display_title} - Foto #{index + 2}",
+            class: "shared-property-preview__gallery-hidden-link",
+            data: { fancybox: gallery_group, caption: "#{habitation.display_title} - Foto #{index + 2}", thumb_src: image_url.call(source, [420, 300]) },
+            tabindex: "-1",
+            aria: { hidden: "true" } %>
       <% end %>
-    </section>
+    </div>
   <% end %>
 
   <% if habitation.display_description.present? %>
     <section class="shared-property-preview__section">
       <h3>Descrição</h3>
-      <div><%= simple_format(strip_tags(habitation.display_description).squish) %></div>
+      <div class="shared-property-preview__description"><%= formatted_habitation_description(habitation.display_description) %></div>
     </section>
   <% end %>
 

@@ -232,12 +232,7 @@ module HabitationsHelper
   end
 
   def formatted_habitation_description(content)
-    description = content.to_s
-      .gsub(/\r\n?/, "\n")
-      .gsub(/[ \t]+/, " ")
-      .gsub(/([.!?])(?=[^\s<])/, "\\1 ")
-      .gsub(/\n{3,}/, "\n\n")
-      .strip
+    description = normalize_habitation_description_text(content.to_s)
     return tag.p("Sem descrição disponível.") if description.blank?
 
     if description.match?(/<[^>]+>/)
@@ -262,9 +257,13 @@ module HabitationsHelper
 
   def paragraphize_single_block_description(html)
     fragment = Nokogiri::HTML::DocumentFragment.parse(html)
+    fragment.css("script, style").remove
+    text = normalize_habitation_description_text(fragment.text)
+    paragraphs = text.split(/\n{2,}/).map(&:strip).reject(&:blank?)
+    return paragraphs.map { |paragraph| tag.p(paragraph) }.join if paragraphs.size > 1
+
     return html if fragment.css("p, br, ul, ol, li, h3, h4, h5, blockquote").any?
 
-    text = fragment.text.squish
     return html if text.length < 700
 
     paragraphs = description_sentences(text).each_with_object([]) do |sentence, memo|
@@ -278,6 +277,17 @@ module HabitationsHelper
     return html if paragraphs.size < 2
 
     paragraphs.map { |paragraph| tag.p(paragraph) }.join
+  end
+
+  def normalize_habitation_description_text(text)
+    text.to_s
+      .gsub(/\r\n?/, "\n")
+      .gsub(/(?:\A|\s)(?:-+>|–>|→)\s*/, "\n\n")
+      .gsub(/\s*(?:-+>|–>|→)(?=\s|\z)/, "\n\n")
+      .gsub(/[ \t]+/, " ")
+      .gsub(/([.!?])(?=[^\s<])/, "\\1 ")
+      .gsub(/\n{3,}/, "\n\n")
+      .strip
   end
 
   def description_sentences(text)
