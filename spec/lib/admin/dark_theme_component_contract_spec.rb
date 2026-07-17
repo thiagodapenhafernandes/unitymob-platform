@@ -3983,10 +3983,13 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
 
 
   it "mantem os paineis compartilhados do registro do imovel no contrato dark" do
+    expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-property-hero-panel/m)
+    expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-property-gallery/m)
     expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-property-record-panel/m)
     expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-property-show-price/m)
     expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-property-stat/m)
     expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-property-record-section__head/m)
+    expect(stylesheet).to match(/data-admin-theme=["']dark["'][^{]*\.ax-property-show-actions \.ax-btn:not\(\.ax-btn--primary\)/m)
     expect(stylesheet).to match(/\.ax-property-show-price--discounted\s*\{[^}]*--ax-dark-success-surface/m)
   end
 
@@ -4159,6 +4162,10 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     )
     expect(pwa_meta).to include("local_assigns.fetch(:theme_color, '#022B3A')")
     expect(pwa_meta.scan(/<meta name="theme-color"/).size).to eq(1)
+    expect(pwa_meta).not_to include('/manifest.json')
+    expect(pwa_meta).not_to include('/icon.png')
+    expect(pwa_meta).to include("pwa_manifest_href = local_assigns[:manifest_href]")
+    expect(pwa_meta).to include("pwa_icon_href = local_assigns[:icon_href]")
     expect(admin_layout).not_to include('content="#ffffff"')
     expect(wizard_layout).not_to include("#0d6efd")
     expect(wizard_layout).not_to match(/rgba\(13,\s*110,\s*253/)

@@ -18,7 +18,7 @@
     const bannerId = "admin-push-banner";
 
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("/field-service-worker.js", { scope: "/field/", updateViaCache: "none" })
+      navigator.serviceWorker.register("/field-service-worker.js", { scope: "/", updateViaCache: "none" })
         .then(function (registration) {
           if (Notification.permission === "granted") {
             subscribeToLeadPush(registration);

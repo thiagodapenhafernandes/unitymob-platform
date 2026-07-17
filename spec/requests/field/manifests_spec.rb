@@ -17,6 +17,7 @@ RSpec.describe "Field::Manifests", type: :request do
       expect(payload["start_url"]).to eq("/field")
       expect(payload["display"]).to eq("standalone")
       expect(payload["icons"].map { |i| i["sizes"] }).to match_array(%w[192x192 512x512])
+      expect(payload["icons"].map { |i| i["src"] }).to all(match(%r{\A/pwa-icon-(192|512)\?v=\d+\z}))
     end
 
     it "não exige autenticação (manifest pode ser lido pelo browser)" do

@@ -3,13 +3,18 @@
 <%
   pwa_site_name = @layout_setting&.site_name.presence || "Unitymob"
   pwa_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : "Plataforma"
+  pwa_manifest_href = local_assigns[:manifest_href]
+  pwa_icon_href = local_assigns[:icon_href]
 %>
 <meta name="theme-color" content="<%= local_assigns.fetch(:theme_color, '#022B3A') %>">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="<%= pwa_site_name %> <%= pwa_area_name %>">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon.png">
-<link rel="icon" type="image/png" sizes="512x512" href="/icon.png">
+<% if pwa_manifest_href.present? %>
+  <link rel="manifest" href="<%= pwa_manifest_href %>">
+<% end %>
+<% if pwa_icon_href.present? %>
+  <link rel="apple-touch-icon" href="<%= pwa_icon_href %>">
+  <link rel="icon" type="image/png" sizes="192x192" href="<%= pwa_icon_href %>">
+<% end %>

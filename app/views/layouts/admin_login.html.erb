@@ -4,12 +4,18 @@
     <% login_layout_setting = @layout_setting || LayoutSetting.instance %>
     <% login_site_name = login_layout_setting&.site_name.presence || "Salute Imóveis" %>
     <% login_admin_area_name = login_layout_setting.respond_to?(:admin_area_label) ? login_layout_setting.admin_area_label : "Plataforma" %>
+    <% login_theme = login_layout_setting.effective_admin_theme(mode: AdminUser::ADMIN_THEME_MODE_DEFAULT) %>
+    <% login_icon_href = "/pwa-icon-192?v=#{login_layout_setting&.updated_at.to_i}" %>
     <title>Login - <%= login_site_name %> <%= login_admin_area_name %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= render "layouts/no_zoom" %>
-    <%= render "layouts/pwa_meta" %>
+    <%= render "layouts/pwa_meta",
+               theme_color: login_theme[:header],
+               manifest_href: admin_manifest_path(format: :json),
+               icon_href: login_icon_href %>
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-icon-512?v=<%= login_layout_setting&.updated_at.to_i %>">
     <%= javascript_include_tag "admin_login_submit_guard", defer: true %>
 
     <%# Fontes e ícones self-hosted (antes Google Fonts + jsdelivr) %>

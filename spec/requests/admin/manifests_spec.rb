@@ -16,6 +16,7 @@ RSpec.describe "Admin::Manifests", type: :request do
       expect(payload["start_url"]).to eq("/admin/")
       expect(payload["scope"]).to eq("/")
       expect(payload["display"]).to eq("standalone")
+      expect(payload["icons"].map { |i| i["src"] }).to all(match(%r{\A/pwa-icon-(192|512)\?v=\d+\z}))
     end
 
     it "não exige autenticação" do

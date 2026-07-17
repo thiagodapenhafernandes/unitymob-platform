@@ -2,7 +2,7 @@ module Notifications
   # Envia notificações Web Push (VAPID) para um AdminUser.
   # Remove subscriptions expiradas (410 Gone) automaticamente.
   class PushDispatcher
-    def self.deliver(admin_user_id:, title:, body:, url: "/field", icon: "/field-icons/icon-192.png", accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false)
+    def self.deliver(admin_user_id:, title:, body:, url: "/field", icon: "/pwa-icon-192", accept_url: nil, tag: nil, urgency: "normal", ttl: 86_400, require_interaction: false)
       new(admin_user_id: admin_user_id).deliver(
         title: title,
         body: body,
