@@ -8,7 +8,9 @@
         <div class="prof-body">
           <p class="prof-hint">Marque o que este perfil pode fazer. O menu lateral esconde automaticamente o que não for permitido.</p>
 
-          <% all_actions = %w[view media manage review publish sync] %>
+          <%# Colunas derivadas do catálogo: ação nova em Profile::ACTION_LABELS
+              entra na matriz sem editar esta view (a ordem do hash é a ordem das colunas). %>
+          <% all_actions = Profile::ACTION_LABELS.keys %>
           <div class="prof-matrix-wrap">
             <table class="ax-table prof-matrix">
               <caption class="tw-sr-only">Permissões por recurso, ação e escopo deste perfil</caption>

@@ -44,7 +44,9 @@ RSpec.describe "Admin::Profiles index", type: :request do
     html = Nokogiri::HTML(response.body)
     matrix = html.at_css("table.prof-matrix")
     expect(matrix.at_css("caption").text).to include("Permissões por recurso")
-    expect(matrix.css("thead th[scope='col']").size).to eq(8)
+    # Recurso + uma coluna por ação do catálogo + Escopo. Derivado de propósito:
+    # a matriz acompanha Profile::ACTION_LABELS, então ação nova não rebenta aqui.
+    expect(matrix.css("thead th[scope='col']").size).to eq(Profile::ACTION_LABELS.size + 2)
     expect(matrix.css("tbody th[scope='row']").size).to eq(Profile::RESOURCES.size)
     expect(matrix.css("select[aria-label^='Escopo de ']").size).to eq(Profile::RESOURCES.count { |resource| resource[:scopeable] })
   end

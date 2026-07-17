@@ -25,11 +25,12 @@ module Admin
       brand = layout.site_name.to_s.strip.presence || "Salute Imóveis"
 
       {
+        id: "/admin",
         name: "#{brand} — Plataforma",
         short_name: brand.truncate(12, omission: ""),
         description: "CRM e atendimento #{brand}.",
         start_url: "/admin/",
-        scope: "/admin/",
+        scope: "/",
         display: "standalone",
         background_color: "#ffffff",
         theme_color: layout.admin_primary_color.presence || "#365F8F",

@@ -116,7 +116,7 @@
         <span>Ver no site</span>
       <% end %>
 
-      <% if can_destroy_habitation? %>
+      <% if can_destroy_habitation?(imovel) %>
         <div class="ax-menu__sep admin-property-menu__sep"></div>
         <%= button_to admin_habitation_path(imovel.id),
                       method: :delete,

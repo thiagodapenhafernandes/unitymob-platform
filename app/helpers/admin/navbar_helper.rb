@@ -70,10 +70,15 @@ module Admin::NavbarHelper
                   [
                     admin_contextbar_link("Voltar", admin_leads_path(view: view_mode), icon: "arrow-left", if: can?(:view, :leads))
                   ]
+                elsif action_name.in?(%w[new create])
+                  [
+                    admin_contextbar_link("Voltar", admin_leads_path, icon: "arrow-left", if: can?(:view, :leads))
+                  ]
                 else
                   [
                     admin_contextbar_link("Atendimento", admin_whatsapp_conversations_path, icon: "whatsapp", if: can?(:view, :whatsapp_inbox)),
-                    admin_contextbar_link("Tarefas", admin_tasks_path, icon: "check2-square", if: can?(:view, :comercial))
+                    admin_contextbar_link("Tarefas", admin_tasks_path, icon: "check2-square", if: can?(:view, :comercial)),
+                    admin_contextbar_link("Novo lead", new_admin_lead_path, icon: "plus-lg", primary: true, if: can?(:create, :leads))
                   ]
                 end
               when "tasks"
@@ -220,7 +225,7 @@ module Admin::NavbarHelper
     [
       admin_contextbar_link("Proprietários", admin_proprietors_path, icon: "person-vcard", if: can?(:view, :proprietarios)),
       admin_contextbar_button("Exportar", icon: "download", data: { ax_modal_open: "#habitationsExportModal" }, if: tenant_owner? || current_admin_user&.owns_all?(:imoveis)),
-      admin_contextbar_link("Novo imóvel", new_admin_habitation_path, icon: "plus-lg", primary: true, if: can?(:manage, :imoveis))
+      admin_contextbar_link("Novo imóvel", new_admin_habitation_path, icon: "plus-lg", primary: true, if: can?(:create, :imoveis))
     ]
   end
 

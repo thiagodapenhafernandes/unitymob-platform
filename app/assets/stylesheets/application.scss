@@ -18,6 +18,47 @@
   --golden-two: #E1C340;
 }
 
+form.is-submitting [type="submit"].is-submitting,
+form.is-submitting button.is-submitting,
+[aria-busy="true"].is-submitting {
+  cursor: wait !important;
+  opacity: .72;
+}
+
+form.is-submitting [aria-disabled="true"] {
+  cursor: wait !important;
+}
+
+@keyframes submit-guard-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes submit-guard-pulse {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+form.is-submitting button.is-submitting[type="submit"]::after,
+form.is-submitting button.is-submitting:not([type])::after {
+  content: "";
+  display: inline-block;
+  width: .85em;
+  height: .85em;
+  margin-left: .5rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  opacity: .72;
+  vertical-align: -.12em;
+  animation: submit-guard-spin .7s linear infinite;
+}
+
+form.is-submitting input[type="submit"].is-submitting {
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, .28), transparent);
+  background-size: 220% 100%;
+  animation: submit-guard-pulse 1.1s ease-in-out infinite;
+}
+
 .shared-property-selection { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; color: #172033; }
 .shared-property-selection header { margin-bottom: 20px; }
 .shared-property-selection header span { color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }

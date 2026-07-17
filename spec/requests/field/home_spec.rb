@@ -42,6 +42,19 @@ RSpec.describe "Field::Home", type: :request do
     expect(response.body).not_to include("Fazer check-in agora")
   end
 
+  it "oculta qualquer estado de check-in quando o módulo está pausado" do
+    Setting.set("field_checkin_enabled", "false")
+    broker = create(:admin_user, :field_agent, name: "Thiago Dev")
+    sign_in broker
+
+    get field_root_path, headers: mobile_headers
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Check-in indisponível")
+    expect(response.body).not_to include("Fazer check-in agora")
+    expect(response.body).not_to include("Check-in ativo")
+  end
+
   it "direciona o atalho Imóveis para a aba Todos" do
     broker = create(:admin_user, :field_agent, name: "Luciana Indalécio")
     sign_in broker

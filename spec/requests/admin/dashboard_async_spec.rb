@@ -119,12 +119,17 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   it "oculta Campo quando o módulo está pausado e volta para a visão geral" do
     allow(Setting).to receive(:get).and_call_original
     allow(Setting).to receive(:get).with("field_checkin_enabled", "false").and_return("false")
+    store = create(:store, tenant: admin.tenant)
+    agent = create(:admin_user, :field_agent, tenant: admin.tenant)
+    create(:manual_checkin_request, tenant: admin.tenant, admin_user: agent, store: store)
 
     get admin_root_path(tab: "field")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).not_to include("<span>Campo</span>")
+    expect(response.body).to include("Campo pausado")
     expect(response.body).to include("Atenção necessária")
+    expect(response.body).not_to include("Pedidos manuais pendentes")
     expect(response.body).not_to include('id="admin_dashboard_operations"')
   end
   it "exibe os painéis de Campo quando o módulo está ativo" do
@@ -316,10 +321,15 @@ RSpec.describe "Admin dashboard async slices", type: :request do
   end
 
   it "gera a serie de leads dos ultimos 30 dias incluindo o dia atual" do
+    isolated_tenant = Tenant.create!(name: "Tenant dashboard serie #{SecureRandom.hex(3)}", slug: "tenant-dashboard-serie-#{SecureRandom.hex(3)}")
+    isolated_admin = create(:admin_user, :admin, tenant: isolated_tenant)
+    sign_out admin
+    sign_in isolated_admin
+
     travel_to Time.zone.local(2026, 6, 16, 10, 0, 0) do
-      create(:lead, created_at: Time.zone.local(2026, 6, 16, 9, 0, 0))
-      create(:lead, created_at: Time.zone.local(2026, 5, 18, 9, 0, 0))
-      create(:lead, created_at: Time.zone.local(2026, 5, 17, 9, 0, 0))
+      create(:lead, tenant: isolated_tenant, created_at: Time.zone.local(2026, 6, 16, 9, 0, 0))
+      create(:lead, tenant: isolated_tenant, created_at: Time.zone.local(2026, 5, 18, 9, 0, 0))
+      create(:lead, tenant: isolated_tenant, created_at: Time.zone.local(2026, 5, 17, 9, 0, 0))
 
       get admin_dashboard_section_path("charts"), headers: { "Turbo-Frame" => "admin_dashboard_charts" }
     end

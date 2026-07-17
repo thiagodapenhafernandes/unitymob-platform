@@ -2,7 +2,7 @@ class Admin::HabitationsController < Admin::BaseController
   include RentalGuaranteeParamNormalizer
 
   before_action -> { check_permission!(:view, :imoveis) }
-  before_action -> { check_permission!(:manage, :imoveis) }, only: [:new, :create]
+  before_action -> { check_permission!(:create, :imoveis) }, only: [:new, :create]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
   before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility]
   before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :gallery, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
@@ -944,7 +944,7 @@ class Admin::HabitationsController < Admin::BaseController
   def load_filter_data
     tenant_habitations = current_tenant.habitations
 
-    cached = Rails.cache.fetch("admin/habitations/filter_data/v6/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
+    cached = Rails.cache.fetch("admin/habitations/filter_data/v7/tenant/#{current_tenant.id}", expires_in: 2.minutes) do
       city_sql = "COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), ''))"
       neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), ''))"
       commercial_neighborhood_sql = "COALESCE(NULLIF(TRIM(addresses.bairro_comercial), ''), NULLIF(TRIM(habitations.bairro_comercial), ''))"
@@ -981,11 +981,11 @@ class Admin::HabitationsController < Admin::BaseController
           .sort_by { |status| I18n.transliterate(status).downcase }),
         key_locations: (Habitation::KEY_LOCATION_OPTIONS + existing_key_locations).uniq,
         empreendimentos: filter_empreendimento_options,
-        amenities: (
+        amenities: normalized_amenity_filter_options(
           AMENITY_FILTER_OPTIONS +
           current_tenant.attribute_options.where(context: 'habitation', category: 'feature').order(name: :asc).pluck(:name) +
           current_tenant.attribute_options.where(context: 'habitation', category: 'infrastructure').order(name: :asc).pluck(:name)
-        ).compact_blank.uniq.sort_by { |name| I18n.transliterate(name.to_s).downcase },
+        ),
         situacoes: (Habitation::SITUATIONS + tenant_habitations.where("NULLIF(TRIM(situacao), '') IS NOT NULL AND situacao != '.'")
                                                        .distinct
                                                        .pluck(:situacao)).uniq.sort,
@@ -1165,7 +1165,7 @@ class Admin::HabitationsController < Admin::BaseController
     @permuta_others = params[:permuta_others]
     @foto_classificacoes = Array(params[:foto_classificacao]).map(&:to_s).map(&:strip).reject(&:blank?).uniq
     @permuta_location = params[:permuta_location]
-    @amenities = Array(params[:amenities]).map(&:to_s).map(&:strip).reject(&:blank?).uniq
+    @amenities = normalize_amenity_filter_values(params[:amenities])
     @permuta_min_dorms = params[:permuta_min_dorms]
     @permuta_min_suites = params[:permuta_min_suites]
     @permuta_min_garagens = params[:permuta_min_garagens]
@@ -1685,7 +1685,7 @@ class Admin::HabitationsController < Admin::BaseController
   def can_edit_habitation?(habitation)
     return false unless property_accessible?(habitation)
 
-    can?(:manage, :imoveis) || property_belongs_to_current_user?(habitation)
+    can?(:edit, :imoveis) || property_belongs_to_current_user?(habitation)
   end
 
   # Acesso a um imóvel: dono direto / corretor designado / nome do corretor (próprio),
@@ -2145,6 +2145,19 @@ class Admin::HabitationsController < Admin::BaseController
     Habitations::AmenityFilter.call(scope, amenity)
   end
 
+  def normalized_amenity_filter_options(values)
+    normalize_amenity_filter_values(values)
+      .sort_by { |name| AttributeOptions::HabitationFeatureNormalizer.key(name) }
+  end
+
+  def normalize_amenity_filter_values(values)
+    Array(values)
+      .flatten
+      .filter_map { |value| AttributeOptions::HabitationFeatureNormalizer.label(value, category: "infrastructure") }
+      .index_by { |value| AttributeOptions::HabitationFeatureNormalizer.key(value) }
+      .values
+  end
+
   def apply_front_sea_filter(scope)
     Habitations::AmenityFilter.call(scope, "Frente mar")
   end
@@ -2485,12 +2498,34 @@ class Admin::HabitationsController < Admin::BaseController
     tenant_owner? || owns_all_resource?(:imoveis) || can_review_captacao?(@habitation)
   end
 
-  def can_destroy_habitation?
-    tenant_owner? || (can?(:manage, :imoveis) && owns_all_resource?(:imoveis))
+  # Excluir é permissão própria (:delete), não mais efeito colateral de
+  # manage + escopo "todos". Divisão de papéis: :delete diz SE pode excluir; o
+  # escopo diz QUAIS imóveis alcança. O recorte por registro é obrigatório aqui
+  # porque set_habitation resolve só por tenant — sem ele, "próprios" + delete
+  # excluiria imóvel alheio. Mesmo formato de can_review_captacao?.
+  def can_destroy_habitation?(habitation = @habitation)
+    return true if tenant_owner?
+    return false unless can?(:delete, :imoveis)
+    return true if owns_all_resource?(:imoveis)
+    return false unless habitation
+    return true if property_belongs_to_current_user?(habitation)
+    return false unless current_admin_user&.can_view_team?(:imoveis)
+
+    team_ids = manager_team_user_ids
+    return false if team_ids.blank?
+    return true if habitation.admin_user_id.in?(team_ids)
+
+    # O catálogo já faz includes(broker_assignments:) — usar a associação
+    # carregada evita um exists? por card na listagem.
+    if habitation.broker_assignments.loaded?
+      habitation.broker_assignments.any? { |assignment| assignment.admin_user_id.in?(team_ids) }
+    else
+      habitation.broker_assignments.exists?(admin_user_id: team_ids)
+    end
   end
 
   def can_bulk_publish_habitations?
-    tenant_owner? || (can?(:manage, :imoveis) && owns_all_resource?(:imoveis))
+    tenant_owner? || (can?(:edit, :imoveis) && owns_all_resource?(:imoveis))
   end
 
   # Card #1 (Fase 4): "edita os campos protegidos livremente" = perfil sem NENHUMA

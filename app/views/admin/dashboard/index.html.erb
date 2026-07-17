@@ -32,7 +32,9 @@
     pending_items << { path: admin_captacoes_path(status: "draft"), icon: "file-earmark-text", tone: "amber", label: "Captações em rascunho", count: @drafts_count, detail: draft_detail }
   end
   pending_items << { path: admin_leads_path(status: "represado"), icon: "hourglass-split", tone: "red", label: "Leads represados", count: @holding_leads, detail: "aguardando distribuição" } if @holding_leads.to_i.positive?
-  pending_items << { path: admin_field_manual_checkin_requests_path, icon: "hand-index-thumb", tone: "amber", label: "Pedidos manuais pendentes", count: @pending_manual_requests } if @pending_manual_requests.to_i.positive?
+  if @field_feature_enabled && @pending_manual_requests.to_i.positive?
+    pending_items << { path: admin_field_manual_checkin_requests_path, icon: "hand-index-thumb", tone: "amber", label: "Pedidos manuais pendentes", count: @pending_manual_requests }
+  end
   pending_items << { path: admin_habitations_path(status: "error"), icon: "exclamation-triangle-fill", tone: "red", label: "Imóveis com erro de sync", count: @sync_errors_count, detail: "requerem revisão da integração" } if @sync_errors_count.to_i.positive?
 %>
 

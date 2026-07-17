@@ -72,6 +72,11 @@ export default class extends Controller {
 
   initializeTomSelect() {
     if (this.tomSelect) return
+    if (this.element.tomselect) {
+      this.tomSelect = this.element.tomselect
+      this.unbindDeferredInitialization()
+      return
+    }
 
     // Default configuration suitable for Bootstrap 5
     const isMultiple = this.element.hasAttribute("multiple") || this.tagsValue;
@@ -237,8 +242,9 @@ export default class extends Controller {
   disconnect() {
     this.unbindDeferredInitialization()
     this.unbindDropdownViewportSync()
-    if (this.tomSelect) {
+    if (this.tomSelect && this.element.tomselect === this.tomSelect) {
       this.tomSelect.destroy()
     }
+    this.tomSelect = null
   }
 }

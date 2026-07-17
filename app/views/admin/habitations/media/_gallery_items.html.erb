@@ -6,7 +6,7 @@
   development_media_sources = local_assigns.fetch(:development_media_sources) do
     Habitations::MediaGallery.new(habitation).development_media_sources
   end
-  can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:manage, :imoveis))
+  can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:edit, :imoveis))
   can_edit_photos = local_assigns.fetch(:can_edit_photos, can_edit_media)
   media_action_allowed = local_assigns.fetch(:media_action_allowed, ->(_key) { can_edit_media })
 %>

@@ -3,12 +3,13 @@
 # Preload do entrypoint só nos layouts que o usam (admin/field/wizard) — evita
 # o waterfall HTML -> application.js -> controllers no boot de cada full load.
 pin "application", preload: "application"
-pin "public"
-pin "ax_toast", preload: true
+pin "public", preload: false
+pin "ax_toast", preload: false
+pin "submit_guard", preload: false
 pin "@hotwired/turbo-rails", to: "turbo.min.js"
 pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
-pin "@rails/actioncable", to: "actioncable.esm.js"
+pin "@rails/actioncable", to: "actioncable.esm.js", preload: false
 pin_all_from "app/javascript/controllers", under: "controllers", preload: false
 pin_all_from "app/javascript/channels", under: "channels", preload: false
 pin "swiper/bundle", to: "https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.mjs", preload: false

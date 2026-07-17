@@ -2,7 +2,7 @@
 <% ordered_photos = @captacao.respond_to?(:ordered_photos) ? @captacao.ordered_photos : photos_attachment %>
 <% authorization_attachments = @captacao.respond_to?(:autorizacoes_venda) ? @captacao.autorizacoes_venda : @captacao.autorizacao_pdf %>
 <% captacao_foto_ambientes = defined?(Habitation::FOTO_AMBIENTES) ? Habitation::FOTO_AMBIENTES : [] %>
-<% captacao_ambiente_editable = @captacao.respond_to?(:photo_ambiente) && captacao_foto_ambientes.any? && can?(:manage, :imoveis) %>
+<% captacao_ambiente_editable = @captacao.respond_to?(:photo_ambiente) && captacao_foto_ambientes.any? && can?(:edit, :imoveis) %>
 <% photo_flow_options = Habitation::PHOTO_FLOW_CHOICES.map { |key, label| [label, key] } %>
 
 <section data-controller="captacao-photos"

@@ -70,6 +70,29 @@ RSpec.describe "Admin habitation filter inspector", type: :request do
     expect(response.body.index("Características internas e lazer")).to be < response.body.index("Imagens e portais")
   end
 
+  it "deduplica características equivalentes por caixa e acento" do
+    tenant = admin.tenant
+    ["Piscina coletiva", "Porteiro eletrônico", "Quadra de esportes"].each do |name|
+      tenant.attribute_options.find_or_create_by!(context: "habitation", category: "infrastructure", name: name)
+    end
+
+    Rails.cache.clear
+
+    get filter_inspector_admin_habitations_path(amenities: ["Porteiro Eletrônico"]),
+        headers: { "Turbo-Frame" => "admin_habitations_filter_inspector" }
+
+    expect(response).to have_http_status(:ok)
+
+    document = Nokogiri::HTML(response.body)
+    amenity_section = document.css(".ax-filter-section").find { |section| section.text.include?("Características internas e lazer") }
+    labels = amenity_section.css(".ax-filter-check").map { |label| label.text.squish }
+
+    expect(labels.grep(/\APiscina coletiva\z/i).size).to eq(1)
+    expect(labels.grep(/\APorteiro eletrônico\z/i).size).to eq(1)
+    expect(labels.grep(/\AQuadra de esportes\z/i).size).to eq(1)
+    expect(amenity_section.at_css('input[name="amenities[]"][checked]')["value"]).to eq("Porteiro eletrônico")
+  end
+
   it "mantém o inspector pesado fora da primeira resposta da listagem" do
     get admin_habitations_path
 

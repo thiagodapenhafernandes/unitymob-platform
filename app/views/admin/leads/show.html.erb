@@ -231,7 +231,7 @@
           </div>
           <div class="tw-grid tw-gap-3">
             <%# Status sai daqui: o funil no topo da página já troca a etapa. %>
-            <% if can?(:manage, :leads) && current_admin_user.scope_for(:leads) != "own" %>
+            <% if can?(:edit, :leads) && current_admin_user.scope_for(:leads) != "own" %>
               <div>
                 <label class="ax-label">Corretor</label>
                 <%= f.select :admin_user_id, @broker_options, { include_blank: "Sem corretor" }, class: "ax-select" %>

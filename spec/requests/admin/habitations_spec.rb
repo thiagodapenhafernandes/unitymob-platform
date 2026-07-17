@@ -475,7 +475,8 @@ RSpec.describe "Admin::Habitations", type: :request do
       position: 300,
       permissions: {
         "dashboard" => { "view" => true },
-        "imoveis" => { "view" => true, "manage" => true, "scope" => "all" }
+        # Excluir virou ação própria: manage já não basta, precisa do switch.
+        "imoveis" => { "view" => true, "manage" => true, "delete" => true, "scope" => "all" }
       }
     )
     operator = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
@@ -490,7 +491,11 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to redirect_to(admin_habitations_path)
   end
 
-  it "bloqueia exclusão de imóvel para perfil operacional limitado à equipe" do
+  # Antes este caso era barrado pelo escopo ("equipe" não era "todos"). Agora é
+  # barrado pela ausência da permissão de excluir — este é O caso do
+  # "gerencia mas não exclui". Quem tem :delete e escopo de equipe exclui dentro
+  # da equipe; a fronteira de escopo está coberta em delete_permission_spec.rb.
+  it "bloqueia exclusão de imóvel para perfil que gerencia mas não tem permissão de excluir" do
     tenant = Tenant.create!(name: "Tenant team delete #{SecureRandom.hex(3)}", slug: "tenant-team-delete-#{SecureRandom.hex(3)}")
     profile = Profile.create!(
       tenant: tenant,
@@ -499,7 +504,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       position: 300,
       permissions: {
         "dashboard" => { "view" => true },
-        "imoveis" => { "view" => true, "manage" => true, "scope" => "team" }
+        "imoveis" => { "view" => true, "manage" => true, "delete" => false, "scope" => "team" }
       }
     )
     manager = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
@@ -524,7 +529,8 @@ RSpec.describe "Admin::Habitations", type: :request do
       position: 300,
       permissions: {
         "dashboard" => { "view" => true },
-        "imoveis" => { "view" => true, "manage" => true, "scope" => "all" }
+        # Publicar em massa altera imóveis => permissão de editar (antes: manage).
+        "imoveis" => { "view" => true, "edit" => true, "scope" => "all" }
       }
     )
     operator = create(:admin_user, tenant: tenant, profile: profile, role: :editor)

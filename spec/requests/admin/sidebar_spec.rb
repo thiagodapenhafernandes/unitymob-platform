@@ -76,6 +76,25 @@ RSpec.describe "Admin sidebar", type: :request do
     expect(response.body).not_to include(dashboard_admin_captacoes_path)
   end
 
+  it "mostra Início apontando para o PWA no primeiro item do menu do corretor" do
+    tenant = Tenant.default
+    broker_profile = tenant.profiles.find_by!(key: "agent")
+    broker_profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+    broker = create(:admin_user, tenant: tenant, profile: broker_profile, field_agent_enabled: true)
+    sign_in broker
+
+    get admin_habitations_path(ownership: "all"), headers: { "User-Agent" => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile" }
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    product_items = html.css('.ax-nav__section[data-nav-section="product"] .ax-nav__section-items a.ax-nav__link')
+    home_link = product_items.find { |link| link.text.squish == "Início" }
+
+    expect(home_link).to be_present
+    expect(home_link["href"]).to eq(field_root_path)
+    expect(product_items.map { |link| link.text.squish }).not_to include("Painel")
+  end
+
   it "marca Captações como ativo para o controller real e não deixa Produto aberto por padrão" do
     admin = create(:admin_user, :admin)
     sign_in admin

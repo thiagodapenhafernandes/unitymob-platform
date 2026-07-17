@@ -1,11 +1,19 @@
 class Admin::LeadsController < Admin::BaseController
   # Kanban nunca renderiza mais que isso por coluna (paginação continua na lista).
   KANBAN_COLUMN_LIMIT = 75
+  # Origem default do lead cadastrado na mão: separa do que veio de site/portal.
+  MANUAL_LEAD_ORIGIN = "Cadastro manual".freeze
 
   before_action -> { check_permission!(:view, :leads) }
+  # Editar exige permissão própria: antes o update só pedia :view + escopo do
+  # registro, então quem enxergasse o lead podia alterá-lo (inclusive arrastar
+  # no kanban). O recorte por registro continua vindo do authorize_lead_access!.
+  before_action -> { check_permission!(:edit, :leads) }, only: [:update]
+  before_action -> { check_permission!(:create, :leads) }, only: [:new, :create]
+  helper_method :can_destroy_lead?, :can_assign_lead_owner?
   before_action :set_lead, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
   before_action :authorize_lead_access!, only: [:show, :update, :destroy, :log_contact, :reprocess_interest, :simulate_interest, :open_whatsapp_conversation, :activate_whatsapp_template]
-  before_action :load_origin_options, only: [:index, :show, :update]
+  before_action :load_origin_options, only: [:index, :new, :create, :show, :update]
 
   def index
     @q = params[:q]
@@ -142,6 +150,32 @@ class Admin::LeadsController < Admin::BaseController
     open_attended_lead(@lead)
   end
 
+  def new
+    @lead = current_tenant.leads.new(
+      status: Lead.default_status(tenant: current_tenant),
+      origin: MANUAL_LEAD_ORIGIN,
+      admin_user_id: current_admin_user&.id
+    )
+    @page_title = "Novo lead"
+  end
+
+  def create
+    @lead = current_tenant.leads.new(new_lead_params)
+    @lead.admin_user_id = resolved_owner_id_for_new_lead
+
+    if @lead.save
+      LeadActivity.log!(
+        lead: @lead,
+        kind: "created",
+        metadata: { by: current_admin_user&.name, origin: @lead.origin, owner: @lead.admin_user&.name }.compact
+      )
+      redirect_to admin_lead_path(@lead), notice: lead_created_notice
+    else
+      @page_title = "Novo lead"
+      render :new, status: :unprocessable_entity
+    end
+  end
+
   def log_contact
     kind = params[:contact_kind].presence || "note"
     body = params[:body].to_s.strip
@@ -174,7 +208,7 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def reprocess_interest
-    unless can?(:manage, :leads) || can?(:manage, :comercial) || owns_all_resource?(:leads)
+    unless can?(:edit, :leads) || can?(:manage, :comercial) || owns_all_resource?(:leads)
       redirect_to admin_lead_path(@lead), alert: "Você não tem permissão para reprocessar a inteligência deste lead."
       return
     end
@@ -231,6 +265,13 @@ class Admin::LeadsController < Admin::BaseController
   end
 
   def destroy
+    # Antes daqui só passavam :view + escopo do registro — ou seja, quem
+    # enxergasse o lead podia apagá-lo. Excluir agora exige a permissão própria.
+    unless can_destroy_lead?
+      redirect_to admin_leads_path, alert: "Você não tem permissão para excluir leads."
+      return
+    end
+
     @lead.destroy
     redirect_to admin_leads_path, notice: "Lead excluído com sucesso."
   end
@@ -444,6 +485,13 @@ class Admin::LeadsController < Admin::BaseController
     lead.admin_user_id.present? && lead.admin_user_id == current_admin_user&.id
   end
 
+  # Só a permissão da ação: o recorte por registro já vem do
+  # authorize_lead_access! (before_action do destroy), que garante que o lead
+  # está no escopo acessível do usuário.
+  def can_destroy_lead?
+    tenant_owner? || can?(:delete, :leads)
+  end
+
   def authorize_lead_access!
     return if accessible_lead_scope_for_current_user.where(id: @lead.id).exists?
 
@@ -461,11 +509,74 @@ class Admin::LeadsController < Admin::BaseController
     end
   end
 
+  # Cadastro manual: o form é completo, então permite os campos de contato e
+  # qualificação — ao contrário do update, que só mexe em status/notas/dono.
+  # admin_user_id fica FORA da permit list de propósito: o dono é decidido por
+  # resolved_owner_id_for_new_lead, nunca pelo que veio no request.
+  def new_lead_params
+    attributes = params.require(:lead).permit(
+      :name, :email, :phone,
+      :status, :origin, :product, :lead_type,
+      :notes, :tags
+    )
+
+    attributes[:status] = Lead.status_value(attributes[:status], tenant: current_tenant)
+    attributes[:origin] = attributes[:origin].presence || MANUAL_LEAD_ORIGIN
+    # tags: o model já parseia string separada por vírgula (normalize_tags_value).
+
+    property_id = resolved_property_id_for_new_lead
+    attributes[:property_id] = property_id if property_id
+
+    attributes
+  end
+
+  # Imóvel de interesse é informado pelo CÓDIGO (é assim que o operador conhece
+  # o imóvel: "REF: 4664"), sempre resolvido dentro do tenant.
+  def resolved_property_id_for_new_lead
+    identifier = params.dig(:lead, :property_code).to_s.strip
+    return nil if identifier.blank?
+
+    scope = current_tenant.habitations
+    habitation = scope.find_by(codigo: identifier)
+    habitation ||= scope.find_by(id: identifier) if identifier.match?(/\A\d+\z/)
+    @unresolved_property_code = identifier if habitation.nil?
+    habitation&.id
+  end
+
+  # Código de imóvel inexistente não derruba o cadastro (o lead é o que importa),
+  # mas o operador precisa saber que o vínculo não foi feito — falhar calado aqui
+  # viraria lead "sem imóvel" sem explicação.
+  def lead_created_notice
+    return "Lead cadastrado com sucesso." if @unresolved_property_code.blank?
+
+    "Lead cadastrado, mas nenhum imóvel com o código \"#{@unresolved_property_code}\" foi encontrado — o lead ficou sem imóvel de interesse."
+  end
+
+  # Dono do lead novo: por padrão quem criou. Só quem tem escopo além de
+  # "próprios" (gestor da subárvore / conta) pode nascer com outro dono, e ainda
+  # assim restrito a permitted_admin_user_ids_for_leads. Corretor sempre vira
+  # dono do que cadastra.
+  def resolved_owner_id_for_new_lead
+    return current_admin_user&.id unless can_assign_lead_owner?
+
+    requested = params.dig(:lead, :admin_user_id).presence
+    return current_admin_user&.id if requested.blank?
+    return current_admin_user&.id if permitted_admin_user_ids_for_leads.exclude?(requested.to_i)
+
+    requested.to_i
+  end
+
+  def can_assign_lead_owner?
+    return false unless current_admin_user
+
+    tenant_owner? || current_admin_user.scope_for(:leads) != "own"
+  end
+
   def lead_params
     permitted = [:status, :notes]
     # Reatribuir corretor: só gestores (escopo team/all em Leads); corretor
     # com escopo "own" edita o lead, mas não troca o dono.
-    permitted << :admin_user_id if can?(:manage, :leads) && current_admin_user.scope_for(:leads) != "own"
+    permitted << :admin_user_id if can?(:edit, :leads) && current_admin_user.scope_for(:leads) != "own"
     attributes = params.require(:lead).permit(permitted)
 
     if attributes[:admin_user_id].present? && permitted_admin_user_ids_for_leads.exclude?(attributes[:admin_user_id].to_i)

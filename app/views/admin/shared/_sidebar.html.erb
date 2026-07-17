@@ -81,6 +81,9 @@
                      can_access.call(:manage, :lojas) || can_access.call(:view, :corretores) ||
                      can_access.call(:view, :metas_captacao)
     crescimento_visible = can_access.call(:manage, :marketing)
+    field_home_navigation = current_admin_user&.field_agent_enabled? || current_admin_user&.profile&.key.to_s == "agent"
+    dashboard_nav_path = field_home_navigation ? field_root_path : admin_root_path
+    dashboard_nav_label = field_home_navigation ? "Início" : "Painel"
   %>
     <% if produto_visible %>
       <li class="ax-nav__section" data-nav-section="product">
@@ -89,11 +92,11 @@
         </button>
         <ul class="ax-nav__section-items" id="nav-section-product" data-menu-sections-target="items">
 
-    <%# 1. Painel %>
+    <%# 1. Início/Painel %>
     <% if can_access.call(:view, :dashboard) %>
       <li>
-        <%= link_to admin_root_path, class: "ax-nav__link #{'active' if request.path == admin_root_path}" do %>
-          <i class="bi bi-speedometer2"></i><span>Painel</span>
+        <%= link_to dashboard_nav_path, class: "ax-nav__link #{'active' if request.path == dashboard_nav_path}" do %>
+          <i class="bi bi-speedometer2"></i><span><%= dashboard_nav_label %></span>
         <% end %>
       </li>
     <% end %>

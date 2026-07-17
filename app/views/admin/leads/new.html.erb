@@ -1,0 +1,12 @@
+<div class="lead-editor">
+  <%= ax_workspace_heading(
+        eyebrow: "Produto · Leads",
+        icon: "person-plus",
+        title: "Novo lead",
+        subtitle: "Cadastre um lead recebido fora do site: telefone, indicação, plantão ou visita."
+      ) %>
+
+  <%= ax_operational_panel(eyebrow: "Cadastro", title: "Dados do lead") do %>
+    <%= render "form", lead: @lead %>
+  <% end %>
+</div>

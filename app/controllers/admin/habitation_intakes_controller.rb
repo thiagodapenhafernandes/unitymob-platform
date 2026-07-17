@@ -394,7 +394,7 @@ module Admin
     # [photo_ambientes][<attachment_id>] => ambiente). Mesmo gate do editor: só quem
     # pode gerenciar imóveis (corretor não). Best-effort: nunca derruba o save.
     def apply_intake_photo_ambientes!(record)
-      return unless current_admin_user&.can?(:manage, :imoveis)
+      return unless current_admin_user&.can?(:edit, :imoveis)
       return unless record.respond_to?(:set_photo_ambiente!)
 
       raw = params.dig(:habitation, :photo_ambientes) || params.dig(:captacao, :photo_ambientes)
@@ -1025,7 +1025,7 @@ module Admin
     end
 
     def published_restricted_update?
-      @habitation.intake_published? && !can?(:manage, :imoveis)
+      @habitation.intake_published? && !can?(:edit, :imoveis)
     end
 
     def published_restricted_params
