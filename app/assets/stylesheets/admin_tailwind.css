@@ -26028,6 +26028,8 @@ html[data-admin-theme="dark"] .ax-dashboard-campaign-row { border-color: var(--a
 
 /* Shared dark surfaces that are rendered outside the dense workspace wrappers. */
 html[data-admin-theme="dark"] :where(
+  .ax-property-hero-panel,
+  .ax-property-gallery,
   .ax-property-record-panel,
   .ax-property-show-price,
   .ax-property-record-section
@@ -26035,6 +26037,58 @@ html[data-admin-theme="dark"] :where(
   border-color: var(--ax-dark-border-soft);
   background: var(--ax-dark-surface);
   color: var(--ax-dark-text);
+}
+
+html[data-admin-theme="dark"] .ax-property-hero-panel {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--admin-primary) 18%, transparent), color-mix(in srgb, var(--ax-dark-surface) 94%, transparent)),
+    var(--ax-dark-surface);
+}
+
+html[data-admin-theme="dark"] :where(
+  .ax-property-hero-panel h1,
+  .ax-property-gallery__head strong
+) {
+  color: var(--ax-dark-text);
+}
+
+html[data-admin-theme="dark"] :where(
+  .ax-property-show-hero__meta,
+  .ax-property-hero-panel p,
+  .ax-property-gallery__head span,
+  .ax-property-gallery__notice
+) {
+  color: var(--ax-dark-text-muted);
+}
+
+html[data-admin-theme="dark"] .ax-property-gallery__head {
+  border-color: var(--ax-dark-border-soft);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text);
+}
+
+html[data-admin-theme="dark"] .ax-property-gallery__hero {
+  background: var(--ax-dark-surface-raised);
+}
+
+html[data-admin-theme="dark"] .ax-property-gallery__empty {
+  color: var(--ax-dark-text-muted);
+}
+
+html[data-admin-theme="dark"] .ax-property-show-actions .ax-btn:not(.ax-btn--primary) {
+  border-color: var(--ax-dark-border);
+  background: var(--ax-dark-surface-raised);
+  color: var(--ax-dark-text);
+  box-shadow: none;
+}
+
+html[data-admin-theme="dark"] .ax-property-show-actions .ax-btn:not(.ax-btn--primary):hover,
+html[data-admin-theme="dark"] .ax-property-show-actions .ax-btn:not(.ax-btn--primary):focus-visible,
+html[data-admin-theme="dark"] .ax-property-gallery__head .ax-btn:hover,
+html[data-admin-theme="dark"] .ax-property-gallery__head .ax-btn:focus-visible {
+  border-color: var(--ax-dark-focus-border);
+  background: var(--ax-dark-surface-hover);
+  color: #fff;
 }
 
 html[data-admin-theme="dark"] .ax-property-show-price--discounted {

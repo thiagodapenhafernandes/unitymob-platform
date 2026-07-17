@@ -1,5 +1,5 @@
-// Service worker for /field PWA.
-// Scope: /field/  — installed via navigator.serviceWorker.register("/field-service-worker.js", { scope: "/field/" })
+// Service worker for the mobile PWA.
+// Scope: /  — push notifications can open /field, /admin/leads/:id/attend, or secure lead links.
 //
 // Strategy:
 //   - Cache shell (network-first, fallback offline page)
@@ -7,15 +7,17 @@
 //
 // NOTE: Keep this file minimal and dependency-free. Bumps cache version when shipping changes.
 
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v8";
 const SHELL_CACHE = `field-shell-${CACHE_VERSION}`;
 const PING_QUEUE_DB = "field-ping-queue";
 const PING_QUEUE_STORE = "pings";
+const OFFLINE_FALLBACK_PAGE = "/offline.html";
 
 const SHELL_URLS = [
   "/field",
-  "/field-icons/icon-192.png",
-  "/field-icons/icon-512.png",
+  OFFLINE_FALLBACK_PAGE,
+  "/pwa-icon-192",
+  "/pwa-icon-512",
   "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
   "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
 ];
@@ -66,8 +68,29 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Only handle same-origin /field/* requests beyond this point.
+  // Push clicks may open /admin routes, but this worker only caches /field shell
+  // and handles field ping queue requests. Let other routes use the network.
   if (url.origin !== self.location.origin) return;
+
+  if (!url.pathname.startsWith("/field") && request.method === "GET" && request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(() =>
+        caches.match(OFFLINE_FALLBACK_PAGE).then((offlineCached) => {
+          if (offlineCached) return offlineCached;
+
+          return new Response(
+            "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Salute Imóveis</title></head><body><h1>Sem conexão</h1><p>Não foi possível carregar a página no momento.</p></body></html>",
+            {
+              status: 503,
+              headers: { "Content-Type": "text/html; charset=utf-8" }
+            }
+          );
+        })
+      )
+    );
+    return;
+  }
+
   if (!url.pathname.startsWith("/field")) return;
 
   // Location ping: try network, queue on failure.
@@ -210,8 +233,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Salute Campo";
   const options = {
     body:  data.body || "Nova atualização",
-    icon:  data.icon || "/field-icons/icon-192.png",
-    badge: "/field-icons/icon-192.png",
+    icon:  data.icon || "/pwa-icon-192",
+    badge: "/pwa-icon-192",
     tag: data.tag || undefined,
     renotify: Boolean(data.tag),
     requireInteraction: Boolean(data.require_interaction || data.requireInteraction),
@@ -355,7 +378,7 @@ function urlBase64ToUint8Array(base64) {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const data = event.notification.data || {};
-  const target = data.url || "/field";
+  const target = notificationTargetUrl(data.url);
   const acceptUrl = data.acceptUrl || data.accept_url;
 
   event.waitUntil((async () => {
@@ -373,8 +396,24 @@ self.addEventListener("notificationclick", (event) => {
     // Abre o destino direto (conversa do WhatsApp do lead, ou tela do sistema).
     const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const c of list) {
-      if (c.url.includes(target) && "focus" in c) return c.focus();
+      if (sameClientUrl(c.url, target) && "focus" in c) return c.focus();
     }
-    if (clients.openWindow) return clients.openWindow(target);
+    if (clients.openWindow) return clients.openWindow(target.href);
   })());
 });
+
+function notificationTargetUrl(raw) {
+  try {
+    return new URL(raw || "/field", self.location.origin);
+  } catch (_) {
+    return new URL("/field", self.location.origin);
+  }
+}
+
+function sameClientUrl(clientUrl, targetUrl) {
+  try {
+    return new URL(clientUrl).href === targetUrl.href;
+  } catch (_) {
+    return false;
+  }
+}

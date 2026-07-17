@@ -1,10 +1,19 @@
-<%# Registra /service-worker.js (escopo /) em produção. Em dev, desregistra qualquer SW pré-existente pra evitar surpresa de cache. %>
+<%# Registra o service worker raiz em produção. No mobile/PWA usamos o worker
+    com Web Push; no desktop mantemos o fallback offline genérico. Em dev,
+    desregistra qualquer SW pré-existente pra evitar surpresa de cache. %>
 <script>
   if ('serviceWorker' in navigator) {
     var isProd = <%= Rails.env.production? ? 'true' : 'false' %>;
     if (isProd) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/service-worker.js')
+        var ua = navigator.userAgent;
+        var isIosDevice = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+        var isAndroid = /Android/i.test(ua);
+        var isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+        var isMobileViewport = window.matchMedia("(max-width: 767.98px)").matches;
+        var workerPath = (isIosDevice || isAndroid || isStandalone || isMobileViewport) ? '/field-service-worker.js' : '/service-worker.js';
+
+        navigator.serviceWorker.register(workerPath, { scope: '/', updateViaCache: 'none' })
           .catch(function (err) { console.warn('[SW] register failed:', err); });
       });
     } else {

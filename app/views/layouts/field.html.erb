@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR" data-field-theme="<%= current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>">
   <head>
-    <% field_primary_color = (defined?(LayoutSetting) ? LayoutSetting.instance.admin_primary_color.presence : nil) || '#365F8F' %>
+    <% field_layout_setting = defined?(LayoutSetting) ? LayoutSetting.instance : nil %>
+    <% field_primary_color = field_layout_setting&.admin_primary_color.presence || '#365F8F' %>
+    <% field_icon_version = field_layout_setting&.updated_at.to_i %>
     <% field_theme_mode = current_admin_user&.effective_admin_theme_mode || AdminUser::ADMIN_THEME_MODE_DEFAULT %>
     <% field_theme_color = field_theme_mode == "dark" ? LayoutSetting::ADMIN_DARK_THEME[:header] : field_primary_color %>
     <title>Salute Imóveis — Campo</title>
@@ -17,9 +19,9 @@
     <%= render 'layouts/no_zoom' %>
 
     <link rel="manifest" href="<%= field_manifest_path(format: :json) %>">
-    <link rel="apple-touch-icon" href="/pwa-icon-192">
-    <link rel="icon" type="image/png" sizes="192x192" href="/field-icons/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/field-icons/icon-512.png">
+    <link rel="apple-touch-icon" href="/pwa-icon-192?v=<%= field_icon_version %>">
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192?v=<%= field_icon_version %>">
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-icon-512?v=<%= field_icon_version %>">
 
     <%# Bootstrap e ícones self-hosted (antes jsdelivr) %>
     <%= stylesheet_link_tag "vendor/bootstrap.min" %>
@@ -36,7 +38,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
-          navigator.serviceWorker.register("/field-service-worker.js", { scope: "/field/", updateViaCache: "none" })
+          navigator.serviceWorker.register("/field-service-worker.js", { scope: "/", updateViaCache: "none" })
             .then(function (reg) {
               console.log("[field SW] registered, scope:", reg.scope);
               window.__fieldSWReg = reg;

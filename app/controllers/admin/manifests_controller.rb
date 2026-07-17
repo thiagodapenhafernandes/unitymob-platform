@@ -21,8 +21,9 @@ module Admin
     private
 
     def manifest_payload
-      layout = LayoutSetting.instance
+      layout = layout_setting
       brand = layout.site_name.to_s.strip.presence || "Salute Imóveis"
+      icon_version = layout.updated_at.to_i
 
       {
         id: "/admin",
@@ -37,10 +38,15 @@ module Admin
         lang: "pt-BR",
         categories: %w[business productivity],
         icons: [
-          { src: "/pwa-icon-192", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-          { src: "/pwa-icon-512", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+          { src: "/pwa-icon-192?v=#{icon_version}", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+          { src: "/pwa-icon-512?v=#{icon_version}", sizes: "512x512", type: "image/png", purpose: "any maskable" }
         ]
       }
+    end
+
+    def layout_setting
+      tenant = current_admin_user&.tenant || Tenant.public_for
+      LayoutSetting.find_by(tenant: tenant) || LayoutSetting.instance(tenant: tenant)
     end
   end
 end
