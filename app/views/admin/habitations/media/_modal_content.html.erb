@@ -1,7 +1,7 @@
 <%
   habitation = local_assigns.fetch(:habitation)
   return_to_path = local_assigns[:return_to_path]
-  can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:manage, :imoveis))
+  can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:edit, :imoveis))
   media_count = Habitations::MediaGallery.new(habitation).media_gallery_count
   upload_input_id = "habitation_media_modal_photos_#{habitation.id}"
 %>

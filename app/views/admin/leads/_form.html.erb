@@ -1,0 +1,98 @@
+<%
+  # Cadastro manual de lead. Só quem tem escopo além de "próprios" escolhe o
+  # dono; corretor cadastra sempre para si (o controller decide de novo no
+  # servidor — este bloco é só a UI).
+  assignable_owner = can_assign_lead_owner? && @broker_options.present?
+%>
+<%= form_with(model: [:admin, lead], local: true, class: "lead-form") do |f| %>
+  <%= ax_error_summary(lead) %>
+
+  <%= ax_form_section(eyebrow: "Contato", title: "Quem é o lead", icon: "person-lines-fill") do %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-6">
+        <%= ax_text_field(form: f, method: :name, label: "Nome", required: true, autocomplete: "name") %>
+      </div>
+      <div class="ax-span-3">
+        <%= ax_text_field(form: f, method: :phone, label: "Telefone", type: :tel, required: true,
+                          autocomplete: "tel", data: { controller: "phone-input" }) %>
+      </div>
+      <div class="ax-span-3">
+        <%= ax_text_field(form: f, method: :email, label: "E-mail", type: :email, autocomplete: "email") %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= ax_form_section(eyebrow: "Qualificação", title: "Situação e interesse", icon: "clipboard-check") do %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-3">
+        <%= ax_select_field(form: f, method: :status, label: "Status",
+                            tooltip: "Todos os status do funil, incluindo os criados no catálogo da conta.",
+                            choices: @status_options.map { |status| [status, status] }) %>
+      </div>
+      <div class="ax-span-3">
+        <%= ax_text_field(form: f, method: :origin, label: "Origem",
+                          hint: "Ex.: indicação, telefone, plantão.",
+                          list: "lead-origin-options") %>
+        <datalist id="lead-origin-options">
+          <% Array(@origin_options).each do |origin| %>
+            <option value="<%= origin %>"></option>
+          <% end %>
+        </datalist>
+      </div>
+      <div class="ax-span-3">
+        <%= ax_text_field(form: f, method: :product, label: "Produto",
+                          hint: "Ex.: apartamento, sala comercial.") %>
+      </div>
+      <div class="ax-span-3">
+        <%= ax_text_field(form: f, method: :lead_type, label: "Tipo",
+                          hint: "Ex.: venda, locação.") %>
+      </div>
+
+      <div class="ax-span-4">
+        <%= ax_standalone_field(
+              name: "lead[property_code]",
+              id: "lead_property_code",
+              label: "Imóvel de interesse",
+              value: params.dig(:lead, :property_code),
+              hint: "Código do imóvel (ex.: 4664). Deixe vazio se não houver.") %>
+      </div>
+      <div class="ax-span-8">
+        <%= ax_text_field(form: f, method: :tags, label: "Tags",
+                          hint: "Separe por vírgula. Ex.: investidor, urgente.",
+                          value: Array(lead.tags).join(", ")) %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= ax_form_section(eyebrow: "Atendimento", title: "Responsável e observações", icon: "person-check") do %>
+    <%= ax_field_grid do %>
+      <div class="ax-span-4">
+        <% if assignable_owner %>
+          <%= ax_select_field(form: f, method: :admin_user_id, label: "Responsável",
+                              tooltip: "Corretores do seu escopo. Em branco, o lead fica com você.",
+                              choices: @broker_options,
+                              select_options: { include_blank: "Eu mesmo" }) %>
+        <% else %>
+          <%= ax_standalone_field(
+                name: "lead[owner_display]",
+                id: "lead_owner_display",
+                label: "Responsável",
+                value: current_admin_user&.name,
+                readonly: true,
+                disabled: true,
+                hint: "Leads que você cadastra ficam sob sua responsabilidade.") %>
+        <% end %>
+      </div>
+      <div class="ax-span-8">
+        <%= ax_text_field(form: f, method: :notes, label: "Observações", type: :textarea, rows: 3,
+                          hint: "Contexto do contato: o que o cliente procura, combinados, prazos.") %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <%= ax_form_actions(
+        cancel_path: admin_leads_path,
+        submit_label: "Cadastrar lead",
+        form: f
+      ) %>
+<% end %>

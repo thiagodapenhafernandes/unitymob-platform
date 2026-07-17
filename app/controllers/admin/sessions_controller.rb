@@ -1,4 +1,5 @@
 class Admin::SessionsController < Devise::SessionsController
+  include Devise::Controllers::Rememberable
   include DeviceRequest
 
   layout 'admin_login'
@@ -139,6 +140,7 @@ class Admin::SessionsController < Devise::SessionsController
   def finish_sign_in!(resource, email, access_result)
     resource.remember_me = true
     sign_in(resource_name, resource)
+    remember_me(resource)
     AccessAuditLog.log!(
       event_type: "login",
       result: "allowed",

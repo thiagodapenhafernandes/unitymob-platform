@@ -753,15 +753,17 @@
                 <%= link_to admin_lead_path(lead, return_to: lead_return_to_path), class: "ax-btn ax-btn--sm ax-btn--primary" do %>
                   <i class="bi bi-eye ax-ico"></i><span>Atender</span>
                 <% end %>
-                <%= form_with url: admin_lead_path(lead), method: :delete,
-                              id: "delete_lead_#{lead.id}", class: "tw-hidden" do %><% end %>
-                <%= ax_confirm_submit(
-                      form_id: "delete_lead_#{lead.id}",
-                      message: "Excluir este lead?",
-                      confirm_label: "Excluir"
-                    ) do %>
-                  <%= ax_icon_button label: "Excluir", icon: "trash", variant: :danger,
-                                     data: { action: "click->ax-confirm-submit#request" } %>
+                <% if can_destroy_lead? %>
+                  <%= form_with url: admin_lead_path(lead), method: :delete,
+                                id: "delete_lead_#{lead.id}", class: "tw-hidden" do %><% end %>
+                  <%= ax_confirm_submit(
+                        form_id: "delete_lead_#{lead.id}",
+                        message: "Excluir este lead?",
+                        confirm_label: "Excluir"
+                      ) do %>
+                    <%= ax_icon_button label: "Excluir", icon: "trash", variant: :danger,
+                                       data: { action: "click->ax-confirm-submit#request" } %>
+                  <% end %>
                 <% end %>
               </div>
             </article>

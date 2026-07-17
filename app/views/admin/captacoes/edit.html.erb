@@ -59,7 +59,7 @@
     <% end %>
   <% end %>
 
-  <% if @captacao.intake_published? && !can?(:manage, :imoveis) %>
+  <% if @captacao.intake_published? && !can?(:edit, :imoveis) %>
     <%= ax_inline_notice(tone: :warning, icon: "lock-fill") do %>
       <strong>Imóvel publicado no site.</strong>
       Nome do empreendimento, endereço, dados do proprietário, título e descrição ficam bloqueados para corretores.

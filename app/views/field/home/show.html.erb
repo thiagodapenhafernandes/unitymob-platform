@@ -377,15 +377,7 @@
     </span>
     <i class="bi bi-chevron-right field-checkin-cta__chevron"></i>
   <% end %>
-<% elsif !@field_enabled %>
-  <div class="field-checkin-cta field-checkin-cta--paused" role="status">
-    <span class="field-checkin-cta__icon"><i class="bi bi-pause-circle"></i></span>
-    <span class="field-checkin-cta__copy">
-      <span class="field-checkin-cta__title">Check-in indisponível</span>
-      <span class="field-checkin-cta__subtitle">A operação de check-in não está aberta no momento.</span>
-    </span>
-  </div>
-<% else %>
+<% elsif @field_enabled %>
   <div class="field-checkin-cta field-checkin-cta--paused" role="status">
     <span class="field-checkin-cta__icon"><i class="bi bi-person-lock"></i></span>
     <span class="field-checkin-cta__copy">

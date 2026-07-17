@@ -270,7 +270,7 @@ class Admin::HabitationMediaController < Admin::BaseController
 
   def can_manage_media_tools?
     return false unless current_admin_user
-    return false unless current_admin_user.can?(:media, :imoveis) || current_admin_user.can?(:manage, :imoveis)
+    return false unless current_admin_user.can?(:media, :imoveis) || current_admin_user.can?(:edit, :imoveis)
     return true if owns_all_resource?(:imoveis)
     return true if property_belongs_to_current_user?(@habitation)
     return property_owned_by_team?(@habitation) if current_admin_user&.can_view_team?(:imoveis)

@@ -8,7 +8,7 @@
   development_media_sources = media_gallery.development_media_sources
   media_gallery_count = media_gallery.media_gallery_count
   compact_mode = local_assigns[:compact] == true
-  can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:manage, :imoveis))
+  can_edit_media = local_assigns.key?(:can_edit_media) ? local_assigns[:can_edit_media] : (can?(:media, :imoveis) || can?(:edit, :imoveis))
   media_policy = Habitations::FieldLockPolicy.for(current_admin_user)
   can_edit_photos = can_edit_media && !media_policy.field_locked?("photos")
   can_apply_watermark = can_edit_photos && !media_policy.field_locked?("apply_photo_watermark")

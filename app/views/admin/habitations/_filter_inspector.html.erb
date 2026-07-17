@@ -44,7 +44,10 @@
   date_count = filter_active_count.call(date_filter_keys)
 
   selected_foto_classificacoes = Array(params[:foto_classificacao]).map(&:to_s)
-  selected_amenities = Array(params[:amenities]).map(&:to_s)
+  selected_amenity_keys = Array(params[:amenities])
+    .flatten
+    .filter_map { |value| AttributeOptions::HabitationFeatureNormalizer.label(value, category: "infrastructure") }
+    .map { |value| AttributeOptions::HabitationFeatureNormalizer.key(value) }
   selected_bairros = Array(params[:bairro]).flatten.map(&:to_s).map(&:strip).reject(&:blank?)
   amenity_options = @filter_amenity_options.presence || Admin::HabitationsController::AMENITY_FILTER_OPTIONS
 %>
@@ -356,7 +359,7 @@
     <%= ax_filter_section(title: "Características internas e lazer", icon: "stars", count: amenity_count, open: amenity_count.positive?) do %>
       <div class="ax-filter-checks">
         <% amenity_options.each_with_index do |opcao, idx| %>
-          <%= ax_filter_check(name: "amenities[]", value: opcao, checked: selected_amenities.include?(opcao), label: opcao, id: "amenity_filter_#{idx}") %>
+          <%= ax_filter_check(name: "amenities[]", value: opcao, checked: selected_amenity_keys.include?(AttributeOptions::HabitationFeatureNormalizer.key(opcao)), label: opcao, id: "amenity_filter_#{idx}") %>
         <% end %>
       </div>
     <% end %>

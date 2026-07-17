@@ -22,11 +22,12 @@ module Field
       identity = Tenants::PublicIdentity.new(public_tenant)
       brand = identity.name
       {
+        id: "/field",
         name: "#{brand} — Campo",
         short_name: "#{brand} Campo".truncate(12, omission: ""),
         description: "Check-in geolocalizado dos corretores em plantão.",
         start_url: "/field",
-        scope: "/field/",
+        scope: "/",
         display: "standalone",
         orientation: "portrait",
         background_color: "#f8f9fa",

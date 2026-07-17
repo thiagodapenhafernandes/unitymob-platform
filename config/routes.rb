@@ -203,7 +203,7 @@ Rails.application.routes.draw do
       patch :apply_ai_suggestion, on: :member
       delete "purge_attachment/:association/:attachment_id", on: :member, action: :purge_attachment, as: :purge_attachment
     end
-    resources :leads, only: [:index, :show, :update, :destroy] do
+    resources :leads, only: [:index, :new, :create, :show, :update, :destroy] do
       get :attend, on: :member
       post :log_contact, on: :member
       post :reprocess_interest, on: :member

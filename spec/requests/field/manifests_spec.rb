@@ -11,8 +11,9 @@ RSpec.describe "Field::Manifests", type: :request do
       get "/field/manifest.json"
       expect(response).to have_http_status(:ok)
       payload = JSON.parse(response.body)
+      expect(payload["id"]).to eq("/field")
       expect(payload["name"]).to eq("Salute Imóveis — Campo")
-      expect(payload["scope"]).to eq("/field/")
+      expect(payload["scope"]).to eq("/")
       expect(payload["start_url"]).to eq("/field")
       expect(payload["display"]).to eq("standalone")
       expect(payload["icons"].map { |i| i["sizes"] }).to match_array(%w[192x192 512x512])

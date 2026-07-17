@@ -253,7 +253,7 @@ module Admin::HabitationsHelper
 
   def admin_can_manage_habitation_media?(habitation)
     return false unless current_admin_user && habitation
-    return false unless admin_current_user_can?(:media, :imoveis) || admin_current_user_can?(:manage, :imoveis)
+    return false unless admin_current_user_can?(:media, :imoveis) || admin_current_user_can?(:edit, :imoveis)
     return false if Habitations::FieldLockPolicy.for(current_admin_user).action_locked?("acao:abrir_organizador_midia")
     return true if current_admin_user.owns_all?(:imoveis)
     return true if admin_can_edit_habitation?(habitation)

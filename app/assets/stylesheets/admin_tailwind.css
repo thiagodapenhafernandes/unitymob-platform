@@ -26336,3 +26336,40 @@ html[data-admin-theme="dark"] .wa-inbox-thread__scroll {
   border-color: var(--ax-dark-border-soft);
   background: var(--ax-dark-surface-raised);
 }
+
+.ax-app form.is-submitting [type="submit"].is-submitting,
+.ax-app form.is-submitting button.is-submitting,
+.ax-app [aria-busy="true"].is-submitting {
+  cursor: wait !important;
+  opacity: .72;
+}
+
+@keyframes submit-guard-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes submit-guard-pulse {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.ax-app form.is-submitting button.is-submitting[type="submit"]::after,
+.ax-app form.is-submitting button.is-submitting:not([type])::after {
+  content: "";
+  display: inline-block;
+  width: .85em;
+  height: .85em;
+  margin-left: .5rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  opacity: .72;
+  vertical-align: -.12em;
+  animation: submit-guard-spin .7s linear infinite;
+}
+
+.ax-app form.is-submitting input[type="submit"].is-submitting {
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, .28), transparent);
+  background-size: 220% 100%;
+  animation: submit-guard-pulse 1.1s ease-in-out infinite;
+}

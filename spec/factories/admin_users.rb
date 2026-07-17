@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :admin_user do
-    tenant { super_admin ? nil : Tenant.default }
+    tenant { super_admin ? nil : (profile&.tenant || Current.tenant || Tenant.default) }
     sequence(:email) { |n| "admin#{n}-#{SecureRandom.hex(4)}@salute.test" }
     password { "password123" }
     password_confirmation { "password123" }

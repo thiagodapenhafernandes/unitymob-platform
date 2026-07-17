@@ -56,8 +56,9 @@ class Profile < ApplicationRecord
   # Catálogo de recursos configuráveis via UI em /admin/profiles.
   # Cada entrada define: label humano, ícone, ações disponíveis e se suporta scope own/all.
   RESOURCES = [
-    { key: "imoveis",            label: "Imóveis",                icon: "bi-houses",           actions: %w[view media manage], scopeable: true,  description: "Catálogo de imóveis, mídia e uploads" },
-    { key: "leads",              label: "Leads",                  icon: "bi-megaphone",        actions: %w[view manage],       scopeable: true,  description: "Atendimento e gestão de leads" },
+    # Imóveis e Leads: `manage` desmembrado em create/edit/delete (Fase 2).
+    { key: "imoveis",            label: "Imóveis",                icon: "bi-houses",           actions: %w[view media create edit delete], scopeable: true, description: "Catálogo de imóveis, mídia e uploads" },
+    { key: "leads",              label: "Leads",                  icon: "bi-megaphone",        actions: %w[view create edit delete], scopeable: true,  description: "Atendimento e gestão de leads" },
     { key: "comercial",          label: "Comercial",              icon: "bi-briefcase",        actions: %w[view manage],       scopeable: true,  description: "Tarefas, agenda e propostas comerciais" },
     { key: "whatsapp_inbox",     label: "Atendimento WhatsApp",   icon: "bi-whatsapp",         actions: %w[view manage],       scopeable: true,  description: "Central de atendimento (inbox) do WhatsApp" },
     { key: "whatsapp_campaigns", label: "Disparos WhatsApp",      icon: "bi-send",             actions: %w[view manage],       scopeable: true,  description: "Campanhas e disparos em massa pelo WhatsApp" },
@@ -85,15 +86,30 @@ class Profile < ApplicationRecord
   ].freeze
 
   # Label human-friendly das ações
+  # Nenhuma ação implica outra: can? é lookup plano, então cada switch é uma
+  # decisão explícita ("gerencia mas não exclui" só existe por isso).
+  #
+  # `manage` é o balde legado (criar + editar juntos) e segue valendo nos recursos
+  # ainda não desmembrados. Imóveis e Leads já usam create/edit/delete separados —
+  # neles `manage` não é mais lido por ninguém.
+  #
+  # A ordem deste hash é a ordem das colunas da matriz em /admin/profiles.
   ACTION_LABELS = {
     "view"    => "Visualizar",
     "media"   => "Mídia",
+    "create"  => "Criar",
+    "edit"    => "Editar",
     "manage"  => "Gerenciar",
+    "delete"  => "Excluir",
     "review"  => "Aprovar",
     "publish" => "Publicar",
     "sync"    => "Sincronizar"
   }.freeze
 
+  # Presets = ponto de partida de perfil NOVO (find_or_create_by! só roda o bloco
+  # na criação; perfis existentes não são tocados). Exclusão nasce desligada em
+  # todos: só o Administrador (admin => true) exclui por padrão. Quem precisar
+  # liga o switch — excluir é opt-in consciente, não herança de "gerenciar".
   PROFILE_PRESETS = {
     "Administrador" => {
       "admin" => true
@@ -101,8 +117,8 @@ class Profile < ApplicationRecord
     "Corretor" => {
       "admin" => false,
       "dashboard" => { "view" => true },
-      "imoveis" => { "view" => true, "media" => true, "manage" => false, "scope" => "own" },
-      "leads" => { "view" => true, "manage" => true, "scope" => "own" },
+      "imoveis" => { "view" => true, "media" => true, "create" => false, "edit" => false, "delete" => false, "scope" => "own" },
+      "leads" => { "view" => true, "create" => true, "edit" => true, "delete" => false, "scope" => "own" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "own" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "own" },
       "captacoes" => { "view" => true, "manage" => true, "review" => false, "publish" => true, "scope" => "own" }
@@ -110,8 +126,8 @@ class Profile < ApplicationRecord
     "Administrativo" => {
       "admin" => false,
       "dashboard" => { "view" => true },
-      "imoveis" => { "view" => true, "media" => true, "manage" => true, "scope" => "all" },
-      "leads" => { "view" => true, "manage" => true, "scope" => "all" },
+      "imoveis" => { "view" => true, "media" => true, "create" => true, "edit" => true, "delete" => false, "scope" => "all" },
+      "leads" => { "view" => true, "create" => true, "edit" => true, "delete" => false, "scope" => "all" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "all" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "all" },
       "whatsapp_campaigns" => { "view" => true, "manage" => true, "scope" => "all" },
@@ -124,8 +140,8 @@ class Profile < ApplicationRecord
     "Gerente" => {
       "admin" => false,
       "dashboard" => { "view" => true },
-      "imoveis" => { "view" => true, "media" => true, "manage" => true, "scope" => "team" },
-      "leads" => { "view" => true, "manage" => true, "scope" => "team" },
+      "imoveis" => { "view" => true, "media" => true, "create" => true, "edit" => true, "delete" => false, "scope" => "team" },
+      "leads" => { "view" => true, "create" => true, "edit" => true, "delete" => false, "scope" => "team" },
       "comercial" => { "view" => true, "manage" => true, "scope" => "team" },
       "whatsapp_inbox" => { "view" => true, "manage" => true, "scope" => "team" },
       "whatsapp_campaigns" => { "view" => true, "manage" => true, "scope" => "team" },
