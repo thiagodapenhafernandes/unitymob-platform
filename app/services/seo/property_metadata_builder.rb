@@ -57,7 +57,7 @@ module Seo
         @habitation.categoria,
         @habitation.tipo_transacao,
         @habitation.cidade,
-        @habitation.bairro,
+        @habitation.public_neighborhood,
         development_keyword,
         site_name,
         "imobiliaria"
@@ -67,7 +67,7 @@ module Seo
     def fallback_description
       parts = []
       parts << @habitation.display_title
-      parts << [@habitation.bairro, @habitation.cidade].compact_blank.join(", ")
+      parts << [@habitation.public_neighborhood, @habitation.cidade].compact_blank.join(", ")
       parts << "#{@habitation.dormitorios_qtd} dormitorios" if @habitation.dormitorios_qtd.to_i.positive?
       parts << "#{@habitation.suites_qtd} suites" if @habitation.suites_qtd.to_i.positive?
       parts << "#{@habitation.vagas_qtd} vagas" if @habitation.vagas_qtd.to_i.positive?

@@ -45,7 +45,7 @@
           <div class="public-development-show__hero-meta flex flex-wrap items-center gap-6 mb-8">
             <div class="public-development-show__hero-meta-item flex items-center gap-2">
               <i class="bi bi-geo-alt text-golden-one text-xl"></i>
-              <span class="text-lg"><%= [@habitation.bairro, @habitation.cidade].compact.join(' - ') %>, <%= @habitation.uf %></span>
+              <span class="text-lg"><%= [@habitation.public_neighborhood, @habitation.cidade].compact.join(' - ') %>, <%= @habitation.uf %></span>
             </div>
             
             <div class="public-development-show__availability flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
@@ -295,7 +295,7 @@
                   <%= [@habitation.endereco, @habitation.numero].compact.join(', ') %>
                 </p>
                 <p class="text-gray-600">
-                  <%= [@habitation.bairro, @habitation.cidade, @habitation.uf].compact.join(' - ') %>
+                  <%= [@habitation.public_neighborhood, @habitation.cidade, @habitation.uf].compact.join(' - ') %>
                   <% if @habitation.cep.present? %>
                     - CEP: <%= @habitation.cep %>
                   <% end %>

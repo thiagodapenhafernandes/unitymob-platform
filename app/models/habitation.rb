@@ -933,9 +933,9 @@ class Habitation < ApplicationRecord
 
   def preco_principal
     if valor_venda_cents.to_i > 0
-      ActiveSupport::NumberHelper.number_to_currency(valor_venda_cents / 100.0)
+      ActiveSupport::NumberHelper.number_to_currency(valor_venda_cents / 100.0, precision: 0)
     elsif valor_locacao_cents.to_i > 0
-      "#{ActiveSupport::NumberHelper.number_to_currency(valor_locacao_cents / 100.0)}/mês"
+      "#{ActiveSupport::NumberHelper.number_to_currency(valor_locacao_cents / 100.0, precision: 0)}/mês"
     else
       "Sob Consulta"
     end
@@ -1802,6 +1802,14 @@ class Habitation < ApplicationRecord
   def leisure_features_for_display
     normalize_feature_values(infra_estrutura, category: "infrastructure")
   end
+
+  def public_neighborhood
+    bairro_comercial.presence || bairro
+  end
+
+  def public_location_label
+    [cidade, public_neighborhood].compact_blank.join(" - ")
+  end
   
   # Título padrão baseado nas características
   def default_title
@@ -1955,9 +1963,10 @@ class Habitation < ApplicationRecord
     force_sync = new_record? || will_save_change_to_codigo_empreendimento?
 
     self.nome_empreendimento = parent.nome_empreendimento.presence || parent.titulo_anuncio
+    self.use_development_photos_flag = true if force_sync
     assign_development_value(:constructor_id, parent.constructor_id, force: force_sync)
     assign_development_value(:proprietor_id, parent.proprietor_id, force: force_sync)
-    assign_development_value(:admin_user_id, parent.admin_user_id, force: force_sync)
+    assign_development_value(:descricao_empreendimento, development_description_for_unit(parent), force: force_sync)
     assign_development_value(:data_entrega, parent.data_entrega, force: force_sync)
     assign_development_value(:perfil_construcao, parent.perfil_construcao, force: force_sync)
     sync_address_from_development(parent, force: force_sync)
@@ -1971,6 +1980,10 @@ class Habitation < ApplicationRecord
     return if value.blank?
 
     self[attribute] = value if force || self[attribute].blank?
+  end
+
+  def development_description_for_unit(parent)
+    parent.descricao_empreendimento.presence || parent.display_description.to_s.presence
   end
 
   def sync_address_from_development(parent, force: false)

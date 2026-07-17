@@ -6,11 +6,11 @@
   <% if has_sale_price %>
     <% if has_discount %>
       <p class="mt-3 text-sm font-semibold text-gray-400 line-through">
-        <%= number_to_currency(habitation.valor_venda_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+        <%= number_to_currency(habitation.valor_venda_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
       </p>
     <% end %>
     <p class="public-habitations-show__price mt-2 text-4xl font-extrabold text-blue-three">
-      <%= number_to_currency(habitation.valor_venda_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+      <%= number_to_currency(habitation.valor_venda_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
     </p>
     <% if has_discount %>
       <% discount_percent = ((habitation.valor_venda_anterior_cents - habitation.valor_venda_cents).to_f / habitation.valor_venda_anterior_cents * 100).round(1) %>
@@ -19,11 +19,11 @@
   <% elsif has_rent_price %>
     <% if has_rent_discount %>
       <p class="mt-3 text-sm font-semibold text-gray-400 line-through">
-        <%= number_to_currency(habitation.valor_locacao_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+        <%= number_to_currency(habitation.valor_locacao_anterior_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
       </p>
     <% end %>
     <p class="public-habitations-show__price mt-2 text-4xl font-extrabold text-blue-three">
-      <%= number_to_currency(habitation.valor_locacao_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %>
+      <%= number_to_currency(habitation.valor_locacao_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
     </p>
     <p class="text-sm font-semibold text-gray-500">/mês</p>
     <% if has_rent_discount %>
@@ -114,7 +114,7 @@
   <% if habitation.valor_promocional_cents.to_i.positive? %>
     <div class="public-habitations-show__promotional-price mt-4">
       <span>Valor promocional</span>
-      <strong><%= number_to_currency(habitation.valor_promocional_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></strong>
+      <strong><%= number_to_currency(habitation.valor_promocional_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %></strong>
     </div>
   <% end %>
 

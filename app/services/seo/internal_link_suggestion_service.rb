@@ -45,7 +45,7 @@ module Seo
 
     def property_suggestions
       seo.tenant.habitations.active.without_developments.limit(30).filter_map do |habitation|
-        score = candidate_score(habitation.display_title, habitation.bairro, habitation.cidade)
+        score = candidate_score(habitation.display_title, habitation.public_neighborhood, habitation.cidade)
         next if score <= 0
 
         Suggestion.new(

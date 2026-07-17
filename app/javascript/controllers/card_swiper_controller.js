@@ -16,6 +16,9 @@ export default class extends Controller {
         loop: false,
         effect: 'slide',
         speed: 300,
+        watchOverflow: true,
+        preventClicks: true,
+        preventClicksPropagation: true,
         // Allow events to bubble
         touchEventsTarget: 'wrapper',
         nested: true,
@@ -60,6 +63,10 @@ export default class extends Controller {
     } catch (error) {
       console.error('Error initializing card swiper:', error);
     }
+  }
+
+  keepInside(event) {
+    event.stopPropagation()
   }
 
   loadSlide(index) {

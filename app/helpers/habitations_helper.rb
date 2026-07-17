@@ -90,7 +90,7 @@ module HabitationsHelper
   end
 
   def public_property_map_place_label(property)
-    [property&.bairro, property&.cidade, property&.uf].compact_blank.join(" - ")
+    [property&.public_neighborhood, property&.cidade, property&.uf].compact_blank.join(" - ")
   end
 
   def public_property_media_url(property)

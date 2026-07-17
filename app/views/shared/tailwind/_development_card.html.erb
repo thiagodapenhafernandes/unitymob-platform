@@ -1,7 +1,7 @@
 <%
   image = development.primary_image_source || development.primary_image_url || development.image_urls.first
   title = development.nome_empreendimento.presence || development.titulo_anuncio.presence || development.display_title
-  location = [development.bairro, development.cidade].compact_blank.join(" - ")
+  location = [development.public_neighborhood, development.cidade].compact_blank.join(" - ")
   units_count = local_assigns[:unit_count].presence || development.available_units_count
   unit_metric = local_assigns[:unit_metric]
   area_label = unit_metric ? unit_metric[:area_label] : development.card_area_text

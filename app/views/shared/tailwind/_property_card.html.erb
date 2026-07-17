@@ -97,8 +97,16 @@
       </div>
       
       <!-- Navigation (Visible on Hover) -->
-      <button type="button" class="swiper-button-next !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);" aria-label="Ver próxima foto de <%= property_title %>"></button>
-      <button type="button" class="swiper-button-prev !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);" aria-label="Ver foto anterior de <%= property_title %>"></button>
+      <button type="button"
+              class="swiper-button-next !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md"
+              style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"
+              aria-label="Ver próxima foto de <%= property_title %>"
+              data-action="pointerdown->card-swiper#keepInside click->card-swiper#keepInside"></button>
+      <button type="button"
+              class="swiper-button-prev !text-white hover:!text-blue-three !z-30 transition-colors shadow-sm drop-shadow-md"
+              style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);"
+              aria-label="Ver foto anterior de <%= property_title %>"
+              data-action="pointerdown->card-swiper#keepInside click->card-swiper#keepInside"></button>
       
       <!-- Pagination -->
       <div class="swiper-pagination !bottom-2 !z-30"></div>
@@ -129,7 +137,7 @@
     <!-- Location -->
     <div class="flex items-center gap-1.5 text-gray-500 mb-2 text-xs font-medium uppercase tracking-wide">
       <i class="bi bi-geo-alt text-golden-one"></i>
-      <span class="truncate"><%= property.cidade %> - <%= property.bairro %></span>
+      <span class="truncate"><%= property.public_location_label %></span>
     </div>
 
     <!-- Title -->
@@ -156,7 +164,7 @@
         <!-- Preço Anterior Riscado + Badge de Desconto -->
         <div class="flex items-center gap-2 mb-1">
           <span class="text-sm text-gray-600 line-through font-medium">
-            de <%= number_to_currency(previous_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
+            de <%= number_to_currency(previous_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
           </span>
           <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-700 text-white text-xs font-bold rounded">
             <i class="bi bi-arrow-down"></i>
@@ -167,7 +175,7 @@
         <!-- Preço Atual Destacado -->
         <div class="flex items-center justify-between">
           <p class="text-xl font-bold text-gray-800">
-            Por <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
+            Por <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
           </p>
           <button type="button"
                   class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"
@@ -192,7 +200,7 @@
         <!-- Preço Normal -->
         <div class="flex items-center justify-between">
           <p class="text-lg font-bold text-gray-800">
-            <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".") %>
+            <%= number_to_currency(current_price.to_f / 100, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %>
           </p>
           <button type="button"
                   class="w-11 h-11 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-105 focus:outline-none"

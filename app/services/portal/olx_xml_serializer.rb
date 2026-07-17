@@ -46,7 +46,7 @@ module Portal
               # Preços (PrecoVenda tem precedência sobre PrecoLocacao na OLX)
               xml.PrecoVenda    cents_to_units(habitation.valor_venda_cents)    if habitation.valor_venda_cents.to_i.positive?
               xml.PrecoLocacao  cents_to_units(habitation.valor_locacao_cents)  if habitation.valor_locacao_cents.to_i.positive?
-              xml.PrecoCondominio cents_to_units(habitation.valor_condominio_cents) if habitation.valor_condominio_cents.to_i.positive?
+              add_condominium_fee!(xml, habitation)
               xml.ValorIPTU     cents_to_units(habitation.valor_iptu_cents)    if habitation.valor_iptu_cents.to_i.positive?
 
               # Áreas
@@ -165,6 +165,18 @@ module Portal
         xml.TipoPublicacao habitation.tipo_publicacao_imovelweb_2 if habitation.tipo_publicacao_imovelweb_2.present?
         xml.MostrarMapa    habitation.mostrar_mapa_imovelweb_2    if habitation.mostrar_mapa_imovelweb_2.present?
       end
+    end
+
+    def add_condominium_fee!(xml, habitation)
+      return unless habitation.valor_condominio_cents.to_i.positive?
+
+      fee = cents_to_units(habitation.valor_condominio_cents)
+      xml.PrecoCondominio fee
+      xml.ValorCondominio fee if imovelweb_portal?
+    end
+
+    def imovelweb_portal?
+      @integration.portal.to_s.in?(%w[imovelweb imovelweb_2])
     end
 
     def integer_or_zero(value)

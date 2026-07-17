@@ -562,7 +562,6 @@ class HabitationsController < ApplicationController
   
   # SEO OPTIMIZATION - Dynamic & Varied Meta Tags (Style: Conexão Imobiliária)
   def build_index_title
-    count = @habitations.total_entries rescue @habitations.count
     city = location_label
     category = category_label
     
@@ -609,7 +608,7 @@ class HabitationsController < ApplicationController
     selected_title = templates[seed % templates.length]
     
     # Append minimal suffix
-    "#{selected_title} (#{count}) | #{public_site_name}"
+    "#{selected_title} | #{public_site_name}"
   end
   
   def build_index_description
@@ -743,7 +742,7 @@ class HabitationsController < ApplicationController
     base = [
       habitation.display_title,
       habitation.categoria,
-      habitation.bairro,
+      habitation.public_neighborhood,
       habitation.cidade
     ].compact.join(" • ")
     description = habitation.display_description.to_s.gsub(/<[^>]*>/, " ").squish
