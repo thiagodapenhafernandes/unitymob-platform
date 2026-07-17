@@ -24,6 +24,7 @@
                   <%= ax_file_upload_button(
                         label: "Adicionar arquivos",
                         input_id: "habitation_fichas_cadastro",
+                        accept: "image/*,application/pdf",
                         label_data: { internal_document_upload_label: true }
                       ) %>
                 <% else %>
@@ -31,7 +32,8 @@
                         form: f,
                         method: :fichas_cadastro,
                         label: "Adicionar arquivos",
-                        input_id: "habitation_fichas_cadastro"
+                        input_id: "habitation_fichas_cadastro",
+                        accept: "image/*,application/pdf"
                       ) %>
                 <% end %>
                 <div class="ax-upload-status" hidden data-internal-document-upload-status="habitation_fichas_cadastro"></div>
@@ -90,6 +92,7 @@
                   <%= ax_file_upload_button(
                         label: "Adicionar arquivos",
                         input_id: "habitation_autorizacoes_venda",
+                        accept: "image/*,application/pdf",
                         label_data: { internal_document_upload_label: true }
                       ) %>
                 <% else %>
@@ -97,7 +100,8 @@
                         form: f,
                         method: :autorizacoes_venda,
                         label: "Adicionar arquivos",
-                        input_id: "habitation_autorizacoes_venda"
+                        input_id: "habitation_autorizacoes_venda",
+                        accept: "image/*,application/pdf"
                       ) %>
                 <% end %>
                 <div class="ax-upload-status" hidden data-internal-document-upload-status="habitation_autorizacoes_venda"></div>

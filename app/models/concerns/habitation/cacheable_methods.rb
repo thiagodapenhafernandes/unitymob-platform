@@ -41,9 +41,9 @@ module Habitation::CacheableMethods
   
   # Retorna endereço resumido com cache
   def short_address
-    Rails.cache.fetch([cache_key_with_version, 'short_address'], expires_in: CACHE_EXPIRATION) do
+    Rails.cache.fetch([cache_key_with_version, 'short_address_v2'], expires_in: CACHE_EXPIRATION) do
       parts = []
-      parts << bairro if bairro.present?
+      parts << public_neighborhood if public_neighborhood.present?
       parts << cidade if cidade.present?
       parts.join(', ')
     end

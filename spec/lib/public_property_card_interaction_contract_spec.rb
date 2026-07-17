@@ -11,6 +11,9 @@ RSpec.describe "Interação do card público de imóvel" do
     expect(clickable_card_controller).to include("target.closest('.swiper-button-prev')")
     expect(clickable_card_controller).to include("target.closest('.swiper-pagination')")
     expect(clickable_card_controller).to include("trackingLink.click()")
+    expect(card_partial).to include("pointerdown->card-swiper#keepInside")
+    expect(card_partial).to include("click->card-swiper#keepInside")
+    expect(Rails.root.join("app/javascript/controllers/card_swiper_controller.js").read).to include("preventClicksPropagation: true")
   end
 
   it "mantém variants otimizadas somente nas três primeiras imagens do card" do

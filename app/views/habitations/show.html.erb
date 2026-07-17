@@ -2,7 +2,7 @@
 <% image_url = ->(photo) { public_image_url(photo) } %>
 <% gallery_original_url = ->(photo) { image_url.call(photo) } %>
 <% title = @habitation.display_title %>
-<% address_parts = [@habitation.endereco, @habitation.bairro, @habitation.cidade].compact_blank %>
+<% address_parts = [@habitation.endereco, @habitation.public_neighborhood, @habitation.cidade].compact_blank %>
 <% address_text = address_parts.join(" - ") %>
 <% area_text = @habitation.public_area_m2 %>
 <% has_sale_price = @habitation.valor_venda_cents.to_i.positive? %>
@@ -60,7 +60,7 @@
              data-public-gallery-mobile-property-url-value="<%= habitation_path(@habitation) %>"
              data-public-gallery-mobile-property-title-value="<%= title %>"
              data-public-gallery-mobile-property-image-url-value="<%= image_url.call(images.first) if images.any? %>"
-             data-public-gallery-mobile-property-price-value="<%= number_to_currency((has_rent_price ? @habitation.valor_locacao_cents : @habitation.valor_venda_cents).to_i / 100.0, unit: 'R$ ', separator: ',', delimiter: '.') if (has_rent_price || has_sale_price) %>"
+             data-public-gallery-mobile-property-price-value="<%= number_to_currency((has_rent_price ? @habitation.valor_locacao_cents : @habitation.valor_venda_cents).to_i / 100.0, unit: 'R$ ', separator: ',', delimiter: '.', precision: 0) if (has_rent_price || has_sale_price) %>"
              data-public-gallery-mobile-property-location-value="<%= address_text %>">
       <% if images.any? %>
         <div class="public-habitations-show__gallery-badges">
@@ -196,7 +196,7 @@
 
     <nav class="public-habitations-show__breadcrumb public-habitations-show__breadcrumb--mobile" aria-label="Navegação estrutural">
       <%= link_to "Início", root_path %>
-      <% [@habitation.cidade, @habitation.bairro, @habitation.categoria].compact_blank.each do |breadcrumb_item| %>
+      <% [@habitation.cidade, @habitation.public_neighborhood, @habitation.categoria].compact_blank.each do |breadcrumb_item| %>
         <i class="bi bi-chevron-right"></i>
         <span><%= breadcrumb_item %></span>
       <% end %>

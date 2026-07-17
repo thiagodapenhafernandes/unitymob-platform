@@ -132,7 +132,7 @@ module Seo
     def strategic_property?(habitation)
       text = [
         habitation.titulo_anuncio,
-        habitation.bairro,
+        habitation.public_neighborhood,
         habitation.cidade,
         habitation.caracteristicas,
         habitation.infra_estrutura

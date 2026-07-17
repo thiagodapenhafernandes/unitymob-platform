@@ -151,6 +151,64 @@ RSpec.describe Habitation, type: :model do
     end
   end
 
+  describe "development hierarchy sync" do
+    it "copies public development data without replacing the unit broker" do
+      development_broker = create(:admin_user)
+      unit_broker = create(:admin_user)
+      development = create(
+        :habitation,
+        codigo: "DEV-SYNC-#{SecureRandom.hex(6)}",
+        tipo: "Empreendimento",
+        admin_user: development_broker,
+        nome_empreendimento: "Edifício Atlântico",
+        descricao_empreendimento: "Descrição pública do empreendimento.",
+        pictures: [{ "url" => "https://cdn.saluteimoveis.com.br/empreendimento.jpg" }]
+      )
+      development.address.update!(
+        bairro: "Centro",
+        bairro_comercial: "Barra Sul",
+        cidade: "Balneário Camboriú"
+      )
+
+      unit = create(
+        :habitation,
+        codigo: "UNIT-SYNC-#{SecureRandom.hex(6)}",
+        admin_user: unit_broker,
+        codigo_empreendimento: development.codigo,
+        use_development_photos_flag: false,
+        nome_empreendimento: nil,
+        descricao_empreendimento: nil,
+        pictures: []
+      )
+
+      expect(unit.reload).to have_attributes(
+        admin_user_id: unit_broker.id,
+        nome_empreendimento: "Edifício Atlântico",
+        descricao_empreendimento: "Descrição pública do empreendimento.",
+        use_development_photos_flag: true
+      )
+      expect(unit.bairro_comercial).to eq("Barra Sul")
+      expect(unit.public_neighborhood).to eq("Barra Sul")
+    end
+  end
+
+  describe "public presentation helpers" do
+    it "uses commercial neighborhood and whole currency values for public cards" do
+      habitation = build(
+        :habitation,
+        valor_venda_cents: 1_590_000_99,
+        valor_locacao_cents: 0
+      )
+      habitation.address.bairro = "Centro"
+      habitation.address.bairro_comercial = "Barra Sul"
+      habitation.address.cidade = "Balneário Camboriú"
+
+      expect(habitation.public_neighborhood).to eq("Barra Sul")
+      expect(habitation.short_address).to eq("Barra Sul, Balneário Camboriú")
+      expect(habitation.preco_principal).to eq("R$ 1.590.001")
+    end
+  end
+
   describe "photo environment ordering" do
     it "uses manual environment positions before current gallery order" do
       habitation = create(:habitation, codigo: "PHOTO-ENV-#{SecureRandom.hex(6)}")

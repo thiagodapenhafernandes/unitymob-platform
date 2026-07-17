@@ -30,6 +30,8 @@ class Admin::HabitationsController < Admin::BaseController
   DEFAULT_INDEX_PAGE_SIZE = 10
   DASHBOARD_QUALITY_FILTERS = %w[missing_address missing_photos missing_price stale].freeze
   REPORT_MAX_PAGES = 100
+  DEFAULT_CATALOG_STATUSES = ["Venda", "Aluguel", "Diária"].freeze
+  DEFAULT_CODIGO_SORT_SQL = "CASE WHEN (habitations.codigo ~ '^[0-9]+$') THEN habitations.codigo::bigint ELSE 0 END".freeze
   CUSTOM_FEATURE_OPTIONS = [
     "Cozinha gourmet com churrasqueira",
     "Sol da manhã",
@@ -77,8 +79,8 @@ class Admin::HabitationsController < Admin::BaseController
     )
   SQL
   SORT_OPTIONS = {
-    "data_cadastro_crm" => { label: "Mais recentes", column: LATEST_HUMAN_ACTIVITY_SQL, default_direction: "desc" },
-    "codigo" => { label: "Referência", column: "codigo", default_direction: "asc" },
+    "data_cadastro_crm" => { label: "Última atividade", column: LATEST_HUMAN_ACTIVITY_SQL, default_direction: "desc" },
+    "codigo" => { label: "Código mais recente", column: DEFAULT_CODIGO_SORT_SQL, default_direction: "desc" },
     "categoria" => { label: "Categoria", column: "categoria", default_direction: "asc" },
     "endereco" => { label: "Endereço", column: "endereco", default_direction: "asc" },
     "numero" => { label: "Endereço número", column: "numero", default_direction: "asc" },
@@ -819,7 +821,7 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def sort_column
-    sort_options.fetch(params[:sort].presence, sort_options["data_cadastro_crm"])[:column]
+    sort_options.fetch(params[:sort].presence, sort_options["codigo"])[:column]
   end
 
   def sort_expression
@@ -830,7 +832,7 @@ class Admin::HabitationsController < Admin::BaseController
   def sort_direction
     return params[:direction] if %w[asc desc].include?(params[:direction])
 
-    sort_options.fetch(params[:sort].presence, sort_options["data_cadastro_crm"])[:default_direction]
+    sort_options.fetch(params[:sort].presence, sort_options["codigo"])[:default_direction]
   end
   helper_method :sort_column, :sort_direction
 
@@ -2029,7 +2031,10 @@ class Admin::HabitationsController < Admin::BaseController
 
   def apply_status_filter(scope, raw_statuses)
     statuses = Array(raw_statuses).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
-    return scope.where.not("unaccent(TRIM(habitations.status)) = unaccent(?)", "Suspenso") if statuses.blank?
+    if statuses.blank?
+      default_conditions = DEFAULT_CATALOG_STATUSES.map { "unaccent(TRIM(habitations.status)) = unaccent(?)" }
+      return scope.where(default_conditions.join(" OR "), *DEFAULT_CATALOG_STATUSES)
+    end
     return scope if statuses.any? { |status| I18n.transliterate(status).downcase == "todos" }
 
     normalized_statuses = statuses
