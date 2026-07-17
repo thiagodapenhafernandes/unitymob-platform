@@ -15,11 +15,10 @@
         choices: Array(@sale_reasons), select_options: { include_blank: "Selecione" }, class_name: "wizard-field-group") %>
 
   <%= ax_select_field(form: f, method: :aceita_permuta_answer,
-        label: safe_join(["Aceita permuta?", tag.span("*", class: "required-star")], " "),
+        label: "Aceita permuta?",
         choices: Habitation::YES_NO_ANSWERS.map { |key, label| [label, key] },
-        select_options: { include_blank: "Selecione" }, class_name: "wizard-field-group",
+        select_options: { include_blank: "Não" }, class_name: "wizard-field-group",
         html_options: { class: field_state.call(:aceita_permuta_answer, "ax-control") }) %>
-  <% if field_invalid.call(:aceita_permuta_answer) %><div class="invalid-feedback d-block">Informe se aceita permuta.</div><% end %>
 
   <%= ax_field_grid do %>
     <div class="ax-span-6">

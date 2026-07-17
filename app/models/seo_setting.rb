@@ -115,12 +115,12 @@ class SeoSetting < ApplicationRecord
     path.start_with?("http") ? sanitize_url(path, base_url: base) : "#{base}#{path.start_with?("/") ? path : "/#{path}"}"
   end
 
-  def social_image_url(base_url:, page_image: nil)
+  def social_image_url(base_url:, page_image: nil, fallback_image: "/icon.png")
     base = base_url.to_s.delete_suffix("/")
     source = page_image.presence ||
              attached_og_image_path.presence ||
              related_habitation_image_url.presence ||
-             "/icon.png"
+             fallback_image
 
     absolute_url(source, base)
   end

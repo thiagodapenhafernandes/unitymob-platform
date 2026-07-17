@@ -16,9 +16,9 @@ RSpec.describe "AI property share collections", type: :request do
 
   it "cria seleção tenant-scoped e registra auditoria" do
     sign_in broker
-    post field_property_share_collections_path, params: { habitation_ids: [first_property.id, second_property.id] }, headers: mobile_headers
+    post field_property_share_collections_path, params: { habitation_ids: [first_property.id, second_property.id] }, headers: json_headers
 
-    collection = AiPropertyShareCollection.last
+    collection = collection_from_response
     expect(response).to have_http_status(:ok)
     expect(collection).to have_attributes(tenant_id: broker.tenant_id, admin_user_id: broker.id)
     expect(collection.habitations).to contain_exactly(first_property, second_property)
@@ -37,25 +37,43 @@ RSpec.describe "AI property share collections", type: :request do
     )
     sign_in broker
 
-    post field_property_share_collections_path, params: { habitation_ids: [first_property.id, second_property.id] }, headers: mobile_headers
+    post field_property_share_collections_path, params: { habitation_ids: [first_property.id, second_property.id] }, headers: json_headers
 
-    collection = AiPropertyShareCollection.last
+    collection = collection_from_response
     expect(collection.habitations.size).to eq(1)
     expect(collection.expires_at).to be_within(5.seconds).of(7.days.from_now)
     expect(response.parsed_body).to include("share_title" => "Curadoria personalizada", "share_message" => "1 opção para você")
 
     get ai_property_share_collection_path(collection.token)
     expect(response.body).to include("Escolhas do corretor", "Quero conversar")
+    expect(response.body).to include(%(property="og:image" content="https://localhost/pwa-icon-512?v=))
+    expect(response.body).to include(%(name="twitter:image" content="https://localhost/pwa-icon-512?v=))
+    expect(response.body).to include(%(property="og:image:type" content="image/png"))
+    expect(response.body).to include(%(property="og:image:width" content="512"))
+    expect(response.body).to include(%(property="og:image:height" content="512"))
+    expect(response.body).to include(%(rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192?v=))
+    expect(response.body).to include('data-controller="property-share-interest"')
+    expect(response.body).to include('data-controller="fancybox-gallery"')
     expect(response.body).to include("property-share-interest#preview", preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id))
   end
 
   it "renderiza preview server-side do imóvel selecionado para o cliente" do
     collection = create_collection
+    first_property.update!(
+      descricao_web: "-> Empreendimento Piscina infantil <script>alert('x')</script> -> Unidade Living Lavabo"
+    )
 
     get preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id)
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("shared-property-preview", first_property.display_title, "Abrir página completa")
+    expect(response.body).to include("shared-property-preview__hero-link", 'data-fancybox="shared-property-preview')
+    expect(response.body).to include("shared-property-preview__photo-count", "1 foto")
+    expect(response.body).not_to include("shared-property-preview__gallery-link")
+    expect(response.body).to include("shared-property-preview__description")
+    expect(response.body).to include("<p>Empreendimento Piscina infantil")
+    expect(response.body).to include("<p>Unidade Living Lavabo</p>")
+    expect(response.body).not_to include("-&gt;", "<script>")
   end
 
   it "pede identificação uma vez, cria lead e agrupa interesses posteriores" do
@@ -100,7 +118,21 @@ RSpec.describe "AI property share collections", type: :request do
 
   def post_interest(collection, **params)
     get ai_property_share_collection_path(collection.token)
-    csrf = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.fetch("content")
+    csrf = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content")
     post interest_ai_property_share_collection_path(collection.token), params:, headers: { "X-CSRF-Token" => csrf, "Accept" => "application/json" }
+  end
+
+  def json_headers
+    mobile_headers.merge("X-CSRF-Token" => csrf_token)
+  end
+
+  def csrf_token
+    get field_property_search_path, headers: mobile_headers.except("Accept")
+    Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')&.[]("content")
+  end
+
+  def collection_from_response
+    token = response.parsed_body.fetch("url").split("/").last
+    AiPropertyShareCollection.find_by!(token:)
   end
 end

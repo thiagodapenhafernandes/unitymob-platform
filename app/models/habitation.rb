@@ -475,6 +475,7 @@ class Habitation < ApplicationRecord
   before_validation :sync_hierarchy_data
   before_validation :sync_construtora_from_constructor
   before_validation :sanitize_fields
+  before_validation :normalize_blank_exchange_answer
   before_validation :clear_motivo_suspensao_unless_suspended
   before_save :capture_price_reductions
   before_update :stamp_preco_atualizado_em
@@ -1130,7 +1131,6 @@ class Habitation < ApplicationRecord
     missing << "Financeiro e valores" if check.call("financeiro") && requires_intake_expense_amount? && valor_condominio_cents.blank? && valor_iptu_cents.blank?
     missing << "Administração da locação" if check.call("admin_locacao") && rental_intake? && salute_rental_management_answer.blank?
     missing << "Meio de garantia locatícia" if check.call("garantia_locaticia") && rental_intake? && rental_guarantee_method.blank?
-    missing << "Aceita permuta" if check.call("permuta") && sale_intake? && aceita_permuta_answer.blank?
     missing << "Quantidade de parcelas" if check.call("parcelamento") && aceita_parcelamento_flag? && numero_prestacoes.blank?
     missing << "Chaves" if check.call("chaves") && requires_intake_key_location? && key_location.blank?
     missing << "Dias de visita" if check.call("visitas") && !skip_visitas? && !intake_visit_days_present?
@@ -1604,6 +1604,13 @@ class Habitation < ApplicationRecord
   def sync_intake_answers
     self.aceita_permuta_flag = aceita_permuta_answer == "sim" if aceita_permuta_answer.present? && will_save_change_to_aceita_permuta_answer?
     self.salute_rental_management_flag = salute_rental_management_answer == "sim" if salute_rental_management_answer.present? && will_save_change_to_salute_rental_management_answer?
+  end
+
+  def normalize_blank_exchange_answer
+    return unless sale_intake?
+    return if aceita_permuta_answer.present?
+
+    self.aceita_permuta_answer = aceita_permuta_flag? ? "sim" : "nao"
   end
 
   # Dynamic Field Setters (Array handling)

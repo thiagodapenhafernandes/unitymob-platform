@@ -1,6 +1,9 @@
 <%
-  images = habitation.public_image_sources.first(12)
+  images = habitation.public_image_sources
   image_url = ->(source, fill = [960, 640]) { public_image_url(source, resize_to_fill: fill, format: :webp) }
+  gallery_url = ->(source) { public_image_url(source, resize_to_limit: [1600, 1200], format: :webp, representation_proxy: true) }
+  gallery_group = "field-property-preview-#{habitation.id}"
+  photo_count = images.size
   facts = [
     (habitation.dormitorios_qtd.to_i.positive? ? "#{habitation.dormitorios_qtd} dorm." : nil),
     (habitation.suites_qtd.to_i.positive? ? "#{habitation.suites_qtd} suítes" : nil),
@@ -15,16 +18,129 @@
     habitation.cidade,
     habitation.uf
   ].compact_blank.join(" · ")
+  money = ->(cents) { cents.to_i.positive? ? number_to_currency(cents.to_i / 100.0) : nil }
+  yes_no = ->(value) { value.nil? ? nil : (value ? "Sim" : "Não") }
+  measurement = ->(value) { value.to_f.positive? ? "#{number_with_precision(value, precision: 1, strip_insignificant_zeros: true)} m²" : nil }
+  show_value = lambda do |value|
+    case value
+    when Array
+      value.compact_blank.join(", ")
+    when Hash
+      value.values.compact_blank.join(", ")
+    when ActiveSupport::TimeWithZone, Time
+      l(value, format: :short)
+    when Date
+      l(value)
+    else
+      value
+    end.presence || "Não informado"
+  end
+  compact_fields = ->(fields) { fields.select { |_label, value| value.present? } }
+  registration_fields = compact_fields.call([
+    ["Referência", habitation.codigo],
+    ["Cód. DWV", habitation.codigo_dwv],
+    ["Tipo", habitation.tipo],
+    ["Categoria", habitation.categoria],
+    ["Modalidade", habitation.status],
+    ["Situação", habitation.situacao],
+    ["Status da captação", habitation.intake_status],
+    ["Captador", habitation.primary_captador_name],
+    ["Empreendimento", habitation.nome_empreendimento],
+    ["Ocupação", habitation.ocupacao_status],
+    ["Estado", habitation.estado_conservacao],
+    ["Cadastro", habitation.data_cadastro_crm],
+    ["Atualização", habitation.data_atualizacao_crm]
+  ])
+  location_fields = compact_fields.call([
+    ["Endereço", [habitation.endereco, habitation.numero].compact_blank.join(", ")],
+    ["Complemento", habitation.complemento],
+    ["Bairro", habitation.bairro],
+    ["Bairro comercial", habitation.bairro_comercial],
+    ["Cidade", [habitation.cidade, habitation.uf].compact_blank.join(" - ")],
+    ["CEP", habitation.cep],
+    ["Bloco", habitation.bloco],
+    ["Imediações", habitation.imediacoes]
+  ])
+  structure_fields = compact_fields.call([
+    ["Dormitórios", habitation.dormitorios_qtd],
+    ["Suítes", habitation.suites_qtd],
+    ["Demi-suítes", habitation.demi_suites_qtd],
+    ["Banheiros", habitation.banheiros_qtd],
+    ["Salas", habitation.salas_qtd],
+    ["Vagas", habitation.vagas_qtd],
+    ["Tipo de vaga", habitation.tipo_vaga],
+    ["Box", habitation.numero_box],
+    ["Área privativa", measurement.call(habitation.area_privativa_m2)],
+    ["Área total", measurement.call(habitation.area_total_m2)],
+    ["Área terreno", measurement.call(habitation.area_terreno_m2)],
+    ["Face", habitation.face]
+  ])
+  value_fields = compact_fields.call([
+    ["Venda", money.call(habitation.valor_venda_cents)],
+    ["Locação", money.call(habitation.valor_locacao_cents)],
+    ["Total aluguel", money.call(habitation.valor_total_aluguel_cents)],
+    ["Condomínio", money.call(habitation.valor_condominio_cents)],
+    ["IPTU", money.call(habitation.valor_iptu_cents)],
+    ["Aceita parcelamento", yes_no.call(habitation.aceita_parcelamento_flag)],
+    ["Parcelas", habitation.aceita_parcelamento_flag? && habitation.numero_prestacoes.present? ? "#{habitation.numero_prestacoes}x" : nil],
+    ["Aceita permuta", yes_no.call(habitation.aceita_permuta_flag)]
+  ])
+  attendance_fields = compact_fields.call([
+    ["Chaves", habitation.key_location],
+    ["Detalhe das chaves", habitation.key_location_notes],
+    ["Senha da portaria", habitation.senha_portaria],
+    ["Senha do imóvel", habitation.senha_imovel],
+    ["Observações para visitas", habitation.observacoes_visitas],
+    ["Zelador", habitation.zelador_nome],
+    ["Telefone do zelador", format_phone(habitation.zelador_telefone)],
+    ["Região foco", habitation.regiao_foco]
+  ])
+  building_fields = compact_fields.call([
+    ["Construtora", habitation.construtora],
+    ["Perfil de construção", habitation.perfil_construcao],
+    ["Data entrega", habitation.data_entrega],
+    ["Ano construção", habitation.ano_construcao.to_i.positive? ? habitation.ano_construcao : nil],
+    ["Elevadores", habitation.elevadores_qtd.to_i.positive? ? habitation.elevadores_qtd : nil],
+    ["Imóveis / andar", habitation.aptos_andar.to_i.positive? ? habitation.aptos_andar : nil]
+  ])
+  flags = [
+    ["Mobiliado", habitation.mobiliado_flag],
+    ["Decorado", habitation.decorado_flag],
+    ["Piscina", habitation.piscina_flag],
+    ["Lavabo", habitation.lavabo_flag],
+    ["Quadra mar", habitation.quadra_mar_flag],
+    ["Vista frente mar", habitation.vista_frente_mar_flag],
+    ["Frente mar Av. Atlântica", habitation.frente_mar_avenida_atlantica_flag],
+    ["Exclusivo", habitation.exclusivo_flag],
+    ["Lançamento", habitation.lancamento_flag],
+    ["Tem placa", habitation.tem_placa_flag]
+  ].select { |_label, value| value.present? && value != false }
+  field_groups = [
+    ["Cadastro", registration_fields],
+    ["Localização", location_fields],
+    ["Estrutura", structure_fields],
+    ["Valores", value_fields],
+    ["Atendimento", attendance_fields],
+    ["Empreendimento", building_fields]
+  ].select { |_title, fields| fields.any? }
 %>
 
 <article class="field-property-preview">
   <header class="field-property-preview__hero">
     <% if images.first.present? %>
-      <%= image_tag image_url.call(images.first),
-          alt: habitation.display_title,
-          class: "field-property-preview__hero-image",
-          loading: "eager",
-          decoding: "async" %>
+      <%= link_to gallery_url.call(images.first),
+          class: "field-property-preview__hero-link",
+          data: { fancybox: gallery_group, caption: "#{habitation.display_title} - Foto 1", thumb_src: image_url.call(images.first, [420, 300]) } do %>
+        <%= image_tag image_url.call(images.first),
+            alt: habitation.display_title,
+            class: "field-property-preview__hero-image",
+            loading: "eager",
+            decoding: "async" %>
+        <span class="field-property-preview__photo-count" aria-label="<%= photo_count %> <%= photo_count == 1 ? 'foto' : 'fotos' %>">
+          <i class="bi bi-images" aria-hidden="true"></i>
+          <%= photo_count %> <%= photo_count == 1 ? "foto" : "fotos" %>
+        </span>
+      <% end %>
     <% else %>
       <div class="field-property-preview__empty-image"><i class="bi bi-image"></i></div>
     <% end %>
@@ -45,32 +161,46 @@
   </header>
 
   <% if images.many? %>
-    <section class="field-property-preview__gallery" aria-label="Fotos do imóvel">
-      <% images.drop(1).each do |source| %>
-        <%= image_tag image_url.call(source, [420, 300]),
-            alt: habitation.display_title,
-            loading: "lazy",
-            decoding: "async" %>
+    <div class="field-property-preview__gallery-links" aria-hidden="true">
+      <% images.drop(1).each_with_index do |source, index| %>
+        <%= link_to gallery_url.call(source),
+            "#{habitation.display_title} - Foto #{index + 2}",
+            class: "field-property-preview__gallery-hidden-link",
+            data: { fancybox: gallery_group, caption: "#{habitation.display_title} - Foto #{index + 2}", thumb_src: image_url.call(source, [420, 300]) },
+            tabindex: "-1",
+            aria: { hidden: "true" } %>
       <% end %>
-    </section>
+    </div>
   <% end %>
 
   <% if habitation.display_description.present? %>
     <section class="field-property-preview__section">
       <h3>Descrição</h3>
-      <div><%= simple_format(strip_tags(habitation.display_description).squish) %></div>
+      <div class="field-property-preview__description"><%= formatted_habitation_description(habitation.display_description) %></div>
     </section>
   <% end %>
 
-  <section class="field-property-preview__section">
-    <h3>Cadastro</h3>
-    <dl class="field-property-preview__data">
-      <div><dt>Status</dt><dd><%= habitation.status.presence || "Não informado" %></dd></div>
-      <div><dt>Categoria</dt><dd><%= habitation.categoria.presence || "Não informado" %></dd></div>
-      <div><dt>Empreendimento</dt><dd><%= habitation.nome_empreendimento.presence || "Não informado" %></dd></div>
-      <div><dt>Captador</dt><dd><%= habitation.admin_user&.name.presence || "Não informado" %></dd></div>
-    </dl>
+  <section class="field-property-preview__details" aria-label="Detalhes do cadastro">
+    <% field_groups.each do |title, fields| %>
+      <section class="field-property-preview__section field-property-preview__section--data">
+        <h3><%= title %></h3>
+        <dl class="field-property-preview__data">
+          <% fields.each do |label, value| %>
+            <div><dt><%= label %></dt><dd><%= show_value.call(value) %></dd></div>
+          <% end %>
+        </dl>
+      </section>
+    <% end %>
   </section>
+
+  <% if flags.any? %>
+    <section class="field-property-preview__section">
+      <h3>Sinalizadores</h3>
+      <div class="field-property-preview__flags">
+        <% flags.each do |label, _value| %><span><%= label %></span><% end %>
+      </div>
+    </section>
+  <% end %>
 
   <footer class="field-property-preview__actions">
     <%= link_to "Abrir cadastro completo", admin_habitation_path(habitation), class: "field-property-preview__link" %>
