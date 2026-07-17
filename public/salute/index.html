@@ -243,7 +243,7 @@ header.scrolled{
 
 /* ===== Filtro detalhado — trigger + drawer ===== */
 .filtro-link{
-  display:inline-flex;align-items:center;gap:9px;margin-top:20px;position:relative;z-index:6;
+  display:inline-flex;align-items:center;gap:9px;margin-top:20px;position:relative;z-index:4;
   color:var(--gold-soft);font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:500;
   padding-bottom:3px;transition:color .3s;
 }
@@ -583,7 +583,7 @@ footer .logo .mark .stroke{stroke:var(--gold)}
   .cbx-panel{min-width:0;left:0;right:0}
 }
 @media(max-width:760px){
-  .container{width:calc(100% - 36px)}
+  .container{width:calc(100% - 32px)}
   nav.menu,header .btn.hide-mobile{display:none}
   header{padding:16px 0}
   header.scrolled{padding:12px 0}
@@ -598,7 +598,7 @@ footer .logo .mark .stroke{stroke:var(--gold)}
   .hero p.lead{font-size:15.5px;margin-top:20px}
   .hero-cta{gap:12px;margin-top:30px}
   .hero-cta .btn{width:100%;justify-content:center}
-  .search{margin-top:40px;grid-template-columns:1fr 1fr}
+  .search{margin-top:40px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .search .field{border-right:none;border-bottom:1px solid rgba(255,255,255,.12)}
   .search .field:nth-child(1){border-right:1px solid rgba(255,255,255,.12)}
   .search .field:nth-child(3){grid-column:span 2}
@@ -626,7 +626,7 @@ footer .logo .mark .stroke{stroke:var(--gold)}
   .wa svg{width:26px;height:26px}
 }
 @media(max-width:400px){
-  .search{grid-template-columns:1fr}
+  .search{grid-template-columns:minmax(0,1fr)}
   .search .field:nth-child(1){border-right:none}
   .search .field,.search .field:nth-child(3){grid-column:auto}
   .search .go{grid-column:auto}
