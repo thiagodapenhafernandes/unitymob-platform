@@ -6,6 +6,7 @@ pin "application", preload: "application"
 pin "public", preload: false
 pin "ax_toast", preload: false
 pin "submit_guard", preload: false
+pin "pwa_scope_guard", preload: false
 pin "@hotwired/turbo-rails", to: "turbo.min.js"
 pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"

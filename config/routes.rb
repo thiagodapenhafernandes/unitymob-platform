@@ -425,6 +425,7 @@ Rails.application.routes.draw do
     get "", to: "home#show", as: :root
     resource :property_search, only: [:show, :create] do
       post :select
+      get "properties/:habitation_id/preview", to: "property_searches#preview", as: :property_preview
     end
     resources :property_share_collections, only: [:create]
     get "stores/discover", to: "stores#discover"
@@ -442,6 +443,7 @@ Rails.application.routes.draw do
   end
 
   get "selecoes/:token", to: "ai_property_share_collections#show", as: :ai_property_share_collection
+  get "selecoes/:token/imoveis/:habitation_id/preview", to: "ai_property_share_collections#preview", as: :preview_ai_property_share_collection
   post "selecoes/:token/interesses", to: "ai_property_share_collections#interest", as: :interest_ai_property_share_collection
 
   namespace :api do

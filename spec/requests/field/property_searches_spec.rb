@@ -101,6 +101,16 @@ RSpec.describe "Field::PropertySearches", type: :request do
     item = response.parsed_body.fetch("results").find { |result| result["id"] == property.id }
     expect(item).to be_present
     expect(item.fetch("path")).to eq(admin_habitation_path(property))
+    expect(item.fetch("preview_path")).to eq(property_preview_field_property_search_path(habitation_id: property.id))
+  end
+
+  it "renderiza preview server-side para abrir o detalhe no modal do PWA" do
+    property = create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "MODAL-PREVIEW", categoria: "Apartamento")
+
+    get property_preview_field_property_search_path(habitation_id: property.id), headers: mobile_headers.except("Accept")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("field-property-preview", "MODAL-PREVIEW", "Abrir cadastro completo")
   end
 
   it "executa a busca imediatamente mesmo quando a confirmação estava configurada" do
@@ -209,7 +219,7 @@ RSpec.describe "Field::PropertySearches", type: :request do
   end
 
   it "bloqueia alternativas aproximadas quando a flexibilidade é desativada" do
-    setting.update!(ai_property_search_allow_flexible_results: false)
+    setting.update!(ai_property_search_allow_flexible_results: false, ai_property_search_resilient_search_enabled: false)
     alternative = create(:habitation, tenant: broker.tenant, admin_user: broker, categoria: "Apartamento", dormitorios_qtd: 4, cidade: "Cidade Flexível", valor_venda_cents: 3_100_000_00, codigo: "POST-RESILIENT-SUGGESTION")
     alternative.address.update!(cidade: "Cidade Flexível", bairro: "Bairro Flexível")
     interpretation = Ai::PropertySearch::Interpreter::Result.new(

@@ -46,6 +46,16 @@ RSpec.describe "AI property share collections", type: :request do
 
     get ai_property_share_collection_path(collection.token)
     expect(response.body).to include("Escolhas do corretor", "Quero conversar")
+    expect(response.body).to include("property-share-interest#preview", preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id))
+  end
+
+  it "renderiza preview server-side do imóvel selecionado para o cliente" do
+    collection = create_collection
+
+    get preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("shared-property-preview", first_property.display_title, "Abrir página completa")
   end
 
   it "pede identificação uma vez, cria lead e agrupa interesses posteriores" do

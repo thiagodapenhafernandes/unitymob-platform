@@ -1,6 +1,7 @@
 import "@hotwired/turbo-rails"
 import { application } from "controllers/application"
 import "ax_toast"
+import "pwa_scope_guard"
 
 // Controllers presentes na home / above-the-fold / modais sempre no DOM:
 // registro eager para evitar qualquer regressao no fluxo publico principal.

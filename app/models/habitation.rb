@@ -611,6 +611,10 @@ class Habitation < ApplicationRecord
     property_kind_apartment_unit? || condominium_house? || condominium_land?
   end
 
+  def missing_required_intake_development_name?
+    requires_intake_development_name? && nome_empreendimento.blank?
+  end
+
   def requires_intake_address_complement?
     requires_unit_number? ||
       condominium_house? ||
@@ -1094,7 +1098,7 @@ class Habitation < ApplicationRecord
     missing << "Dados do proprietário" if check.call("proprietario") && intake_owner_data_missing?(require_owner_city: false)
     missing << "Cidade do proprietário" if owner_city_required && proprietario_cidade.blank?
     missing << "Endereço e localização" if check.call("endereco") && (address.blank? || cep.blank? || logradouro.blank? || bairro.blank? || cidade.blank? || uf.blank?)
-    missing << "Empreendimento" if check.call("empreendimento") && requires_intake_development_name? && nome_empreendimento.blank?
+    missing << "Empreendimento" if missing_required_intake_development_name?
     missing << "Número da unidade" if check.call("unidade") && requires_unit_number? && bloco.blank?
     missing << "Complemento" if check.call("endereco") && requires_intake_address_complement? && !requires_unit_number? && complemento.blank?
     missing << "Definições básicas" if check.call("definicoes") && (categoria.blank? || status.blank?)
@@ -1598,8 +1602,8 @@ class Habitation < ApplicationRecord
   end
 
   def sync_intake_answers
-    self.aceita_permuta_flag = aceita_permuta_answer == "sim" if aceita_permuta_answer.present?
-    self.salute_rental_management_flag = salute_rental_management_answer == "sim" if salute_rental_management_answer.present?
+    self.aceita_permuta_flag = aceita_permuta_answer == "sim" if aceita_permuta_answer.present? && will_save_change_to_aceita_permuta_answer?
+    self.salute_rental_management_flag = salute_rental_management_answer == "sim" if salute_rental_management_answer.present? && will_save_change_to_salute_rental_management_answer?
   end
 
   # Dynamic Field Setters (Array handling)
@@ -2007,23 +2011,31 @@ class Habitation < ApplicationRecord
   end
 
   def sync_flags_from_features
-    return unless caracteristicas.is_a?(Array)
+    return unless will_save_change_to_caracteristicas?
+
+    feature_names = caracteristicas.is_a?(Hash) ? caracteristicas.values : Array(caracteristicas)
     
-    self.mobiliado_flag = caracteristicas.include?('Mobiliado')
-    self.sem_mobilia_flag = caracteristicas.include?('Sem Mobília')
-    self.decorado_flag = caracteristicas.include?('Decorado')
+    assign_feature_flag(:mobiliado_flag, feature_names.include?('Mobiliado'))
+    assign_feature_flag(:sem_mobilia_flag, feature_names.include?('Sem Mobília'))
+    assign_feature_flag(:decorado_flag, feature_names.include?('Decorado'))
     # Piscina can be 'Piscina' or 'Piscina Privativa', let's cover both for the flag if appropriate, or just the specific one.
     # Assessing based on usual logic:
-    self.piscina_flag = caracteristicas.include?('Piscina Privativa') || caracteristicas.include?('Piscina')
-    self.varanda_gourmet_flag = caracteristicas.include?('Varanda Gourmet')
-    self.garden_flag = caracteristicas.include?('Garden')
-    self.quadra_mar_flag = caracteristicas.include?('Quadra Mar')
-    self.frente_mar_avenida_atlantica_flag = caracteristicas.include?('Frente Mar')
+    assign_feature_flag(:piscina_flag, feature_names.include?('Piscina Privativa') || feature_names.include?('Piscina'))
+    assign_feature_flag(:varanda_gourmet_flag, feature_names.include?('Varanda Gourmet'))
+    assign_feature_flag(:garden_flag, feature_names.include?('Garden'))
+    assign_feature_flag(:quadra_mar_flag, feature_names.include?('Quadra Mar'))
+    assign_feature_flag(:frente_mar_avenida_atlantica_flag, feature_names.include?('Frente Mar'))
     # Vista mar usually maps to vista mar
-    self.vista_frente_mar_flag = caracteristicas.include?('Vista Mar') || caracteristicas.include?('Vista para o Mar')
-    self.aceita_financiamento_flag = caracteristicas.include?('Aceita Financiamento')
-    self.aceita_permuta_flag = caracteristicas.include?('Aceita Permuta')
-    self.lavabo_flag = caracteristicas.include?('Lavabo')
+    assign_feature_flag(:vista_frente_mar_flag, feature_names.include?('Vista Mar') || feature_names.include?('Vista para o Mar'))
+    assign_feature_flag(:aceita_financiamento_flag, feature_names.include?('Aceita Financiamento'))
+    assign_feature_flag(:aceita_permuta_flag, feature_names.include?('Aceita Permuta'))
+    assign_feature_flag(:lavabo_flag, feature_names.include?('Lavabo'))
+  end
+
+  def assign_feature_flag(attribute, value)
+    return if public_send("will_save_change_to_#{attribute}?")
+
+    public_send("#{attribute}=", value)
   end
 
   def sanitize_fields

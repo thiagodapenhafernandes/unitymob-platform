@@ -1,0 +1,81 @@
+<%
+  images = habitation.public_image_sources.first(12)
+  image_url = ->(source, fill = [960, 640]) { public_image_url(source, resize_to_fill: fill, format: :webp) }
+  facts = [
+    (habitation.dormitorios_qtd.to_i.positive? ? "#{habitation.dormitorios_qtd} dorm." : nil),
+    (habitation.suites_qtd.to_i.positive? ? "#{habitation.suites_qtd} suítes" : nil),
+    (habitation.vagas_qtd.to_i.positive? ? "#{habitation.vagas_qtd} vagas" : nil),
+    (habitation.public_area_m2.present? ? "#{number_with_precision(habitation.public_area_m2, precision: 1, strip_insignificant_zeros: true)} m²" : nil)
+  ].compact
+  address = [
+    habitation.endereco,
+    habitation.numero,
+    habitation.complemento,
+    habitation.bairro_comercial.presence || habitation.bairro,
+    habitation.cidade,
+    habitation.uf
+  ].compact_blank.join(" · ")
+%>
+
+<article class="field-property-preview">
+  <header class="field-property-preview__hero">
+    <% if images.first.present? %>
+      <%= image_tag image_url.call(images.first),
+          alt: habitation.display_title,
+          class: "field-property-preview__hero-image",
+          loading: "eager",
+          decoding: "async" %>
+    <% else %>
+      <div class="field-property-preview__empty-image"><i class="bi bi-image"></i></div>
+    <% end %>
+
+    <div class="field-property-preview__hero-body">
+      <span class="field-property-preview__eyebrow">REF <%= habitation.codigo.presence || habitation.id %></span>
+      <h2><%= habitation.display_title %></h2>
+      <% if address.present? %>
+        <p><i class="bi bi-geo-alt"></i><%= address %></p>
+      <% end %>
+      <% if facts.any? %>
+        <div class="field-property-preview__facts">
+          <% facts.each do |fact| %><span><%= fact %></span><% end %>
+        </div>
+      <% end %>
+      <strong class="field-property-preview__price"><%= habitation.preco_principal.presence || "Valor sob consulta" %></strong>
+    </div>
+  </header>
+
+  <% if images.many? %>
+    <section class="field-property-preview__gallery" aria-label="Fotos do imóvel">
+      <% images.drop(1).each do |source| %>
+        <%= image_tag image_url.call(source, [420, 300]),
+            alt: habitation.display_title,
+            loading: "lazy",
+            decoding: "async" %>
+      <% end %>
+    </section>
+  <% end %>
+
+  <% if habitation.display_description.present? %>
+    <section class="field-property-preview__section">
+      <h3>Descrição</h3>
+      <div><%= simple_format(strip_tags(habitation.display_description).squish) %></div>
+    </section>
+  <% end %>
+
+  <section class="field-property-preview__section">
+    <h3>Cadastro</h3>
+    <dl class="field-property-preview__data">
+      <div><dt>Status</dt><dd><%= habitation.status.presence || "Não informado" %></dd></div>
+      <div><dt>Categoria</dt><dd><%= habitation.categoria.presence || "Não informado" %></dd></div>
+      <div><dt>Empreendimento</dt><dd><%= habitation.nome_empreendimento.presence || "Não informado" %></dd></div>
+      <div><dt>Captador</dt><dd><%= habitation.admin_user&.name.presence || "Não informado" %></dd></div>
+    </dl>
+  </section>
+
+  <footer class="field-property-preview__actions">
+    <%= link_to "Abrir cadastro completo", admin_habitation_path(habitation), class: "field-property-preview__link" %>
+    <% if habitation.publicly_viewable? %>
+      <%= link_to "Ver no site", habitation_path(habitation), class: "field-property-preview__link field-property-preview__link--ghost", target: "_blank", rel: "noopener" %>
+    <% end %>
+  </footer>
+</article>

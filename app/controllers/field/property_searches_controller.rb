@@ -7,6 +7,16 @@ module Field
       @page_title = "Busca inteligente de imóveis"
     end
 
+    def preview
+      @habitation = current_tenant.habitations
+        .includes(:address, photos_attachments: :blob)
+        .find(params[:habitation_id])
+
+      render partial: "field/property_searches/property_preview",
+             formats: [:html],
+             locals: { habitation: @habitation }
+    end
+
     def create
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       transcription = search_text

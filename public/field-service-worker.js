@@ -7,7 +7,7 @@
 //
 // NOTE: Keep this file minimal and dependency-free. Bumps cache version when shipping changes.
 
-const CACHE_VERSION = "v8";
+const CACHE_VERSION = "v9";
 const SHELL_CACHE = `field-shell-${CACHE_VERSION}`;
 const PING_QUEUE_DB = "field-ping-queue";
 const PING_QUEUE_STORE = "pings";
@@ -394,9 +394,18 @@ self.addEventListener("notificationclick", (event) => {
     }
 
     // Abre o destino direto (conversa do WhatsApp do lead, ou tela do sistema).
+    // Em iOS PWA, reaproveitar uma janela same-origin existente evita escapar
+    // para uma aba do Safari quando o clique vem de uma notificação.
     const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const c of list) {
       if (sameClientUrl(c.url, target) && "focus" in c) return c.focus();
+    }
+    for (const c of list) {
+      if (sameOriginClient(c.url, target) && "navigate" in c) {
+        await c.navigate(target.href);
+        if ("focus" in c) return c.focus();
+        return c;
+      }
     }
     if (clients.openWindow) return clients.openWindow(target.href);
   })());
@@ -413,6 +422,14 @@ function notificationTargetUrl(raw) {
 function sameClientUrl(clientUrl, targetUrl) {
   try {
     return new URL(clientUrl).href === targetUrl.href;
+  } catch (_) {
+    return false;
+  }
+}
+
+function sameOriginClient(clientUrl, targetUrl) {
+  try {
+    return new URL(clientUrl).origin === targetUrl.origin;
   } catch (_) {
     return false;
   }

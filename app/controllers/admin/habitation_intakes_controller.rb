@@ -777,7 +777,7 @@ module Admin
         missing << "Informe o bairro." if @habitation.bairro.blank?
         missing << "Informe a cidade." if @habitation.cidade.blank?
         missing << "Informe a UF." if @habitation.uf.blank?
-        missing << "Informe o empreendimento/condomínio." if intake_check_enabled?(:empreendimento) && @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
+        missing << "Informe o empreendimento/condomínio." if @habitation.missing_required_intake_development_name?
         missing << "Informe o número da unidade." if intake_check_enabled?(:unidade) && @habitation.requires_unit_number? && @habitation.bloco.blank?
         missing << "Informe o complemento." if @habitation.requires_intake_address_complement? && !@habitation.requires_unit_number? && @habitation.complemento.blank?
         missing
@@ -900,7 +900,7 @@ module Admin
         fields[:neighborhood] = true if @habitation.bairro.blank?
         fields[:city] = true if @habitation.cidade.blank?
         fields[:state] = true if @habitation.uf.blank?
-        fields[:edificio_nome] = true if intake_check_enabled?(:empreendimento) && @habitation.requires_intake_development_name? && @habitation.nome_empreendimento.blank?
+        fields[:edificio_nome] = true if @habitation.missing_required_intake_development_name?
         fields[:unidade_numero] = true if intake_check_enabled?(:unidade) && @habitation.requires_unit_number? && @habitation.bloco.blank?
         fields[:complemento] = true if @habitation.requires_intake_address_complement? && !@habitation.requires_unit_number? && @habitation.complemento.blank?
       when "caracteristicas"
