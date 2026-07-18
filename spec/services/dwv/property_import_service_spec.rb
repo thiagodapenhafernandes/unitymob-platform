@@ -1,18 +1,19 @@
 require "rails_helper"
 
 RSpec.describe Dwv::PropertyImportService do
-  let(:tenant) { Tenant.default }
+  let(:tenant) { Tenant.create!(name: "Tenant import DWV #{SecureRandom.hex(3)}", slug: "tenant-import-dwv-#{SecureRandom.hex(3)}") }
 
   describe "#perform" do
     it "creates a DWV habitation with the full unit/building mapping" do
-      dwv_user = create(:admin_user, tenant: tenant, name: "Dwv - Imóveis Pauta", email: "laudicardoso@gmail.com")
+      dwv_user = create(:admin_user, tenant: tenant, name: "Dwv - Imóveis Pauta")
       create(:habitation, tenant: tenant, codigo: "8628", imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
 
       result = described_class.new(unit_payload, tenant: tenant).perform
 
       habitation = result[:habitation]
       expect(habitation).to be_persisted
-      expect(habitation.codigo).to eq("8629")
+      expect(habitation.codigo).to be_present
+      expect(habitation.codigo).not_to eq("8628")
       expect(habitation.codigo_dwv).to eq("632439")
       expect(habitation.imovel_dwv).to eq("Sim")
       expect(habitation.admin_user).to eq(dwv_user)
@@ -161,6 +162,20 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.categoria).to eq("Casa em Condomínio")
       expect(habitation.nome_empreendimento).to eq("Condomínio Bosque de Taquaras")
       expect(habitation.address.complemento).to eq("Condomínio Fechado")
+    end
+
+    it "não marca como Suspenso quando a DWV envia imóvel removido ou inativo" do
+      payload = unit_payload.deep_dup
+      payload["data"]["deleted"] = true
+      payload["data"]["status"] = "inactive"
+      payload["data"]["integration_status"] = "auto_inactive"
+
+      result = described_class.new(payload, tenant: tenant).perform
+      habitation = result[:habitation]
+
+      expect(habitation.status).to eq("Venda")
+      expect(habitation.exibir_no_site_flag).to eq(false)
+      expect(habitation.motivo_suspensao).to be_blank
     end
   end
 

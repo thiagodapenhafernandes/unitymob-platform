@@ -335,7 +335,7 @@ module Dwv
       return nil if status.blank?
       return "Venda" if status.include?("sale") || status.include?("venda")
       return "Aluguel" if status.include?("rent") || status.include?("loca") || status.include?("alug")
-      return "Suspenso" if status.include?("inactive") || status.include?("inativo")
+      return nil if status.include?("inactive") || status.include?("inativo")
       return nil if status == "active"
 
       Habitation.normalize_status(raw)
@@ -349,15 +349,15 @@ module Dwv
     end
 
     def derive_dwv_status(raw_status:, raw_integration_status:, raw_deleted:, sale_cents:, rent_cents:, current_status:)
-      return "Suspenso" if raw_deleted == true || raw_deleted.to_s == "true"
+      fallback_status = infer_status_from_prices(sale_cents, rent_cents) || current_status || "Venda"
+      return fallback_status if raw_deleted == true || raw_deleted.to_s == "true"
 
       [raw_status, raw_integration_status].each do |status|
         next if status.blank?
-        return "Vendido terceiros" if status == "auto_inactive"
-        return "Suspenso" if status == "inactive"
+        return fallback_status if status == "auto_inactive" || status == "inactive"
       end
 
-      map_status(raw_status) || infer_status_from_prices(sale_cents, rent_cents) || current_status
+      map_status(raw_status) || fallback_status
     end
 
     def map_situation(raw)

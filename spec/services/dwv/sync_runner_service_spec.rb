@@ -37,7 +37,7 @@ RSpec.describe Dwv::SyncRunnerService do
       result = described_class.new(tenant: current_tenant).send(:deactivate_removed_properties_by_ids, ["DWV-RUN-1"])
 
       expect(result).to eq(1)
-      expect(current_habitation.reload).to have_attributes(status: "Suspenso", exibir_no_site_flag: false, last_sync_status: "inactive")
+      expect(current_habitation.reload).to have_attributes(status: "Venda", exibir_no_site_flag: false, last_sync_status: "inactive")
       expect(other_habitation.reload).to have_attributes(status: "Venda", exibir_no_site_flag: true, last_sync_status: nil)
     end
   end
