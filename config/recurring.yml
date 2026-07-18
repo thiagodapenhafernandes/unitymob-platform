@@ -53,7 +53,7 @@ production:
     queue: dwv
     args:
       - mode: "incremental"
-    schedule: every 5 minutes
+    schedule: every 15 minutes
   seo_discovery:
     class: SeoDiscoveryJob
     queue: sync
