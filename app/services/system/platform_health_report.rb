@@ -74,12 +74,17 @@ module System
     end
 
     def habitation_storage_bytes(tenant_ids)
-      ActiveStorage::Attachment
-        .joins("INNER JOIN habitations ON habitations.id = active_storage_attachments.record_id")
-        .joins(:blob)
-        .where(record_type: "Habitation", habitations: { tenant_id: tenant_ids })
-        .group("habitations.tenant_id")
-        .sum("active_storage_blobs.byte_size")
+      normalized_ids = Array(tenant_ids).compact_blank.map(&:to_i).uniq.sort
+      return {} if normalized_ids.blank?
+
+      Rails.cache.fetch("system/platform_health_report/storage_bytes/v1/#{normalized_ids.join('-')}", expires_in: 15.minutes) do
+        ActiveStorage::Attachment
+          .joins("INNER JOIN habitations ON habitations.id = active_storage_attachments.record_id")
+          .joins(:blob)
+          .where(record_type: "Habitation", habitations: { tenant_id: normalized_ids })
+          .group("habitations.tenant_id")
+          .sum("active_storage_blobs.byte_size")
+      end
     rescue StandardError
       {}
     end
