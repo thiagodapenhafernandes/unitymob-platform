@@ -1266,6 +1266,63 @@ RSpec.describe "Admin::Habitations", type: :request do
     )
   end
 
+  it "não substitui o endereço existente quando o formulário omite seu id e a atualização falha" do
+    property = create(:habitation, captador_commission_percentage: 3)
+    property.address.update!(imediacoes: ["Centro"])
+    original_address_id = property.address.id
+
+    patch admin_habitation_path(property), params: {
+      habitation: {
+        captador_commission_percentage: "101",
+        address_attributes: { imediacoes: ["Praia Brava"] }
+      }
+    }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(Address.exists?(original_address_id)).to be(true)
+    expect(property.reload.address).to have_attributes(
+      id: original_address_id,
+      imediacoes: ["Centro"]
+    )
+  end
+
+  it "altera somente o aluguel quando o imóvel ainda não possui endereço recuperável" do
+    broker = create(:admin_user, profile: default_agent_profile, name: "Corretor sem endereço")
+    property = create(
+      :habitation,
+      admin_user: broker,
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 4_000_00
+    )
+    property.address.destroy!
+    property.update_columns(endereco: nil, bairro: nil, cidade: nil, uf: nil, pais: "Brasil")
+
+    sign_in broker
+    patch admin_habitation_path(property), params: {
+      habitation: {
+        valor_locacao_formatted: "4.500,00",
+        address_attributes: {
+          logradouro: "",
+          bairro: "",
+          cidade: "",
+          uf: "",
+          imediacoes: [""]
+        }
+      }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(property.reload).to have_attributes(
+      valor_locacao_cents: 4_500_00,
+      endereco: nil,
+      bairro: nil,
+      cidade: nil,
+      uf: nil
+    )
+    expect(property.address).to be_nil
+  end
+
   it "permite que corretor filtre imóveis por colegas da mesma conta no catálogo" do
     broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Filtro")
