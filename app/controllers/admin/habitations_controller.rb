@@ -842,7 +842,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   def set_habitation
     @habitation = find_admin_habitation_param!(params[:id])
-    @habitation.build_address if @habitation.address.nil?
+    @habitation.ensure_address
   end
 
   def find_admin_habitation_param!(identifier)

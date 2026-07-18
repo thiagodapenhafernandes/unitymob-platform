@@ -933,7 +933,25 @@ class Habitation < ApplicationRecord
   end
 
   def ensure_address
-    address || build_address
+    address || build_address(legacy_address_attributes)
+  end
+
+  def legacy_address_attributes
+    {
+      tipo_endereco: self[:tipo_endereco],
+      logradouro: self[:endereco],
+      numero: self[:numero],
+      complemento: self[:complemento],
+      bairro: self[:bairro],
+      cidade: self[:cidade],
+      uf: self[:uf],
+      cep: self[:cep],
+      latitude: self[:latitude],
+      longitude: self[:longitude],
+      bairro_comercial: self[:bairro_comercial],
+      pais: self[:pais],
+      imediacoes: self[:imediacoes]
+    }.compact
   end
 
   def preco_principal
