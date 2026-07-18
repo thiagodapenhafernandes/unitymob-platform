@@ -1224,6 +1224,48 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(property.proprietario_cidade).to eq("Camboriú")
   end
 
+  it "preserva e migra o endereço legado quando o corretor altera somente o aluguel" do
+    broker = create(:admin_user, profile: default_agent_profile, name: "Corretor com imóvel legado")
+    property = create(
+      :habitation,
+      admin_user: broker,
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 6_000_00
+    )
+    property.address.destroy!
+    property.update_columns(
+      tipo_endereco: "Rua",
+      endereco: "1101",
+      numero: "8466",
+      complemento: "Apartamento 1201",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC",
+      cep: "88330-774",
+      pais: "Brasil"
+    )
+
+    sign_in broker
+    patch admin_habitation_path(property), params: {
+      habitation: { valor_locacao_formatted: "6.500,00" }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(property.reload.valor_locacao_cents).to eq(6_500_00)
+    expect(property.address).to have_attributes(
+      tipo_endereco: "Rua",
+      logradouro: "1101",
+      numero: "8466",
+      complemento: "Apartamento 1201",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC",
+      cep: "88330-774",
+      pais: "Brasil"
+    )
+  end
+
   it "permite que corretor filtre imóveis por colegas da mesma conta no catálogo" do
     broker_profile = default_agent_profile
     luciana = create(:admin_user, profile: broker_profile, name: "Luciana Filtro")
