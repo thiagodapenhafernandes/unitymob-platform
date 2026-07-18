@@ -267,7 +267,7 @@ class Habitation < ApplicationRecord
 
   # Endereço e Localização
   has_one :address, as: :addressable, dependent: :destroy
-  accepts_nested_attributes_for :address, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :address, allow_destroy: true, reject_if: :all_blank, update_only: true
   
   # Delegations for backward compatibility
   delegate :logradouro, :numero, :complemento, :bairro, :cidade, :uf, :cep, :latitude, :longitude,
@@ -934,6 +934,16 @@ class Habitation < ApplicationRecord
 
   def ensure_address
     address || build_address(legacy_address_attributes)
+  end
+
+  def ensure_legacy_address
+    return address if address
+
+    build_address(legacy_address_attributes) if legacy_address_complete?
+  end
+
+  def legacy_address_complete?
+    %i[logradouro bairro cidade uf].all? { |attribute| legacy_address_attributes[attribute].present? }
   end
 
   def legacy_address_attributes

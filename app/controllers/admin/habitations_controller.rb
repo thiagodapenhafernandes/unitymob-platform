@@ -96,6 +96,8 @@ class Admin::HabitationsController < Admin::BaseController
   }.freeze
 
   before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :gallery, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :prepare_habitation_address, only: [:show, :edit, :operational_hub]
+  before_action :prepare_legacy_habitation_address, only: [:update]
   before_action :authorize_habitation_edit!, only: [:edit, :update]
   before_action :authorize_habitation_ai_content!, only: [:generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
 
@@ -609,6 +611,7 @@ class Admin::HabitationsController < Admin::BaseController
     keep_admin_review_intake_hidden
 
     unless no_duplicate_address?(@habitation)
+      prepare_habitation_address
       load_ai_suggestion
       render :edit, status: :unprocessable_entity
       return
@@ -630,6 +633,7 @@ class Admin::HabitationsController < Admin::BaseController
       required_checks = review_required_checks_for(@habitation)
       unless @habitation.intake_ready_for_admin_review?(required_checks: required_checks, require_owner_city: true)
         @habitation.intake_missing_requirements(required_checks: required_checks, require_owner_city: true).each { |message| @habitation.errors.add(:base, message) }
+        prepare_habitation_address
         load_ai_suggestion
         render :edit, status: :unprocessable_entity
         return
@@ -659,6 +663,7 @@ class Admin::HabitationsController < Admin::BaseController
                end
       redirect_after_habitation_save(@habitation, notice: notice)
     else
+      prepare_habitation_address
       load_ai_suggestion
       render :edit, status: :unprocessable_entity
     end
@@ -842,7 +847,14 @@ class Admin::HabitationsController < Admin::BaseController
 
   def set_habitation
     @habitation = find_admin_habitation_param!(params[:id])
+  end
+
+  def prepare_habitation_address
     @habitation.ensure_address
+  end
+
+  def prepare_legacy_habitation_address
+    @habitation.ensure_legacy_address
   end
 
   def find_admin_habitation_param!(identifier)
@@ -2214,6 +2226,7 @@ class Admin::HabitationsController < Admin::BaseController
     normalize_rental_guarantee_method_param!
     permitted = params.require(:habitation).permit(*permitted_habitation_fields)
     strip_blank_photo_uploads!(permitted)
+    normalize_blank_address_list_values!(permitted)
 
     # Filtro por perfil (allowlist): já derruba tudo que a config trava, tornando
     # o antigo deny-list (broker_protected_habitation_param_keys) redundante.
@@ -2235,6 +2248,15 @@ class Admin::HabitationsController < Admin::BaseController
 
   def strip_blank_photo_uploads!(permitted)
     Habitations::MediaUpdater.strip_blank_photo_uploads!(permitted)
+  end
+
+  def normalize_blank_address_list_values!(permitted)
+    address_attributes = permitted[:address_attributes]
+    return unless address_attributes&.key?(:imediacoes)
+
+    address_attributes[:imediacoes] = Array(address_attributes[:imediacoes])
+      .map { |value| value.to_s.strip }
+      .reject(&:blank?)
   end
 
   def extract_photo_uploads!(permitted)
