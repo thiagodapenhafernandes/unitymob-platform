@@ -6,26 +6,21 @@ import {
   monitorForElements
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter"
 
-// Calibração do arraste de reordenação de fotos. Todos os "números mágicos" da
-// detecção/troca vivem aqui para ajuste fino num só lugar.
+// Calibração do arraste de reordenação de fotos.
+//
+// MODELO: grade congelada. Durante o arraste NADA se move — o tile de origem
+// continua ocupando o próprio espaço (vira placeholder tracejado) e as demais
+// fotos ficam paradas. O destino é comunicado por uma barra vertical entre os
+// tiles, e a reordenação real acontece UMA vez, no drop. Isso elimina o antigo
+// efeito de "fotos correndo de um lado pro outro", em que o reflow movia os
+// tiles sob o ponteiro parado e o alvo oscilava sozinho.
 const MEDIA_DRAG_TUNING = {
-  // Margem de detecção ao redor de cada foto (o "espaço útil de observação").
-  hitExpandXRatio: 0.36, hitExpandXMin: 28, hitExpandXMax: 64,
-  hitExpandYRatio: 0.32, hitExpandYMin: 22, hitExpandYMax: 58,
-  // Tolerância para detectar "antes da 1ª" / "depois da última" linha.
-  edgeSlackRatio: 0.34, edgeSlackMin: 36,
-  // Fração do tile que o ponteiro precisa ultrapassar para trocar de
-  // "inserir antes" → "inserir depois". Maior = zona morta central maior =
-  // menos oscilação (0.5 = exatamente o meio).
-  insertAfterFraction: 0.55,
-  // Movimento mínimo (px) para registrar intenção de direção do ponteiro.
-  directionThresholdPx: 1,
-  // HYSTERESIS: distância (px) que o ponteiro precisa andar DESDE a última
-  // reordenação para permitir a próxima. É o que mata os "pulos desenfreados":
-  // o reflow move os tiles sob um ponteiro parado; sem a zona morta, isso
-  // re-dispara reorder em cascata. Suba se ainda pular; baixe se ficar "preso".
-  reorderDeadzonePx: 14,
-  // Animação de reacomodação das fotos vizinhas (FLIP).
+  // Fração da largura do tile que o ponteiro precisa ultrapassar para a barra
+  // ir do lado esquerdo para o direito (0.5 = exatamente o meio).
+  insertAfterFraction: 0.5,
+  // Metade da calha entre tiles: onde a barra é desenhada.
+  indicatorGapPx: 6,
+  // Animação de reacomodação das fotos depois do drop (FLIP).
   reorderAnimationMs: 170,
   reorderAnimationEasing: "cubic-bezier(.2, .8, .2, 1)"
 }
@@ -129,7 +124,7 @@ export default class extends Controller {
         canMonitor: ({ source }) => this.isMediaDragSource(source),
         onDrag: ({ source, location }) => this.moveMediaItemWithPointer(source, location),
         onDropTargetChange: ({ source, location }) => this.moveMediaItemWithPointer(source, location),
-        onDrop: ({ source }) => this.commitMediaDrop(source)
+        onDrop: ({ source }) => this.handleMediaDrop(source)
       })
     )
   }
@@ -154,8 +149,10 @@ export default class extends Controller {
       element: item,
       canDrag: () => this.dragAllowedItem === item,
       getInitialData: () => ({ type: "media-item" }),
-      onDragStart: () => this.beginMediaDrag(item),
-      onDrop: () => this.finishMediaDrag(item)
+      onDragStart: () => this.beginMediaDrag(item)
+      // O drop é tratado só no monitor: o adapter despacha onDrop primeiro no
+      // draggable e só depois no monitor, e a limpeza zera o mediaDragState —
+      // que é justamente o que o commit precisa ler.
     })
   }
 
@@ -166,239 +163,201 @@ export default class extends Controller {
   }
 
   beginMediaDrag(item) {
-    this.clearMediaDropTarget()
+    const items = this.mediaDragItems()
+    const dragIndex = items.indexOf(item)
     this.mediaDragState = {
       item,
-      directionX: 0,
-      directionY: 0,
-      lastPointerX: null,
-      lastPointerY: null,
-      placementKey: null,
-      lastReorderPointer: null
+      items,
+      // Geometria congelada no início do arraste, em coordenadas RELATIVAS ao
+      // container. Como nada se move até o drop, ela continua válida o arraste
+      // inteiro — inclusive durante o autoscroll, já que o retângulo do
+      // container é relido a cada movimento. Custo: N rects uma única vez.
+      rects: this.captureMediaLayout(items),
+      dragIndex,
+      // Começa em "fica onde está": a barra já nasce na borda esquerda do
+      // próprio tile, então nunca há um frame sem indicação de destino.
+      insertionIndex: dragIndex
     }
-    item.classList.add("sortable-chosen", "sortable-drag")
+    item.classList.add("sortable-ghost")
     this.previewContainerTarget.classList.add("is-sorting")
+    this.positionMediaDropIndicator(this.mediaDragState.rects[dragIndex], false)
     this.startSortableAutoScroll()
   }
 
-  // Aplica imediatamente o último movimento coalescido que ainda não rodou no
-  // rAF — garante que o DOM reflita a posição final ANTES de soltar/commitar
-  // (senão o drop poderia gravar a posição defasada em um frame).
-  flushPendingMediaMove() {
-    if (this.mediaMoveFrame) {
-      window.cancelAnimationFrame(this.mediaMoveFrame)
-      this.mediaMoveFrame = null
-    }
-    const pending = this.pendingMediaMove
-    this.pendingMediaMove = null
-    if (pending && this.mediaDragState) {
-      this.applyMediaPointerMove(pending.item, pending.clientX, pending.clientY)
-    }
-  }
-
   finishMediaDrag(item) {
-    this.flushPendingMediaMove()
-    item?.classList.remove("sortable-chosen", "sortable-drag")
+    this.cancelPendingMediaMove()
+    item?.classList.remove("sortable-ghost")
     this.previewContainerTarget?.classList?.remove("is-sorting")
-    this.clearMediaDropTarget()
+    this.hideMediaDropIndicator()
     this.stopSortableAutoScroll()
     window.setTimeout(() => {
       this.recentlyReorderedMedia = false
     }, 120)
   }
 
+  cancelPendingMediaMove() {
+    if (this.mediaMoveFrame) {
+      window.cancelAnimationFrame(this.mediaMoveFrame)
+      this.mediaMoveFrame = null
+    }
+    this.pendingMediaMove = null
+  }
+
   moveMediaItemWithPointer(source, location) {
     if (!this.isMediaDragSource(source) || !this.hasPreviewContainerTarget) return
 
     const input = location?.current?.input
-    const item = source.element
-    if (!item || !input) return
+    if (!input) return
 
-    // Autoscroll acompanha o ponteiro imediatamente (barato). O recálculo de
-    // posição — caro: getBoundingClientRect em todos os tiles — é coalescido
-    // para 1x por frame de animação. Sem isso, o onDrag disparava esse cálculo
-    // dezenas de vezes por frame (layout thrashing) e o arraste travava.
+    // Autoscroll acompanha o ponteiro imediatamente (barato). O recálculo do
+    // destino é coalescido para 1x por frame — sem isso o onDrag dispararia
+    // dezenas de vezes por frame e o arraste travava.
     this.handleSortableAutoScrollPointer(input)
 
-    this.pendingMediaMove = { item, clientX: input.clientX, clientY: input.clientY }
+    this.pendingMediaMove = { clientX: input.clientX, clientY: input.clientY }
     if (this.mediaMoveFrame) return
     this.mediaMoveFrame = window.requestAnimationFrame(() => {
       this.mediaMoveFrame = null
       const pending = this.pendingMediaMove
       this.pendingMediaMove = null
       if (pending && this.mediaDragState) {
-        this.applyMediaPointerMove(pending.item, pending.clientX, pending.clientY)
+        this.applyMediaPointerMove(pending.clientX, pending.clientY)
       }
     })
   }
 
-  applyMediaPointerMove(item, clientX, clientY) {
-    if (!this.hasPreviewContainerTarget) return
+  // Só decide o destino e move a barra. NÃO toca na ordem do DOM: a grade
+  // permanece exatamente como estava até o usuário soltar.
+  applyMediaPointerMove(clientX, clientY) {
+    const state = this.mediaDragState
+    if (!state || !this.hasPreviewContainerTarget) return
 
-    this.updateMediaPointerDirection(clientX, clientY)
+    const containerRect = this.previewContainerTarget.getBoundingClientRect()
+    const pointerX = clientX - containerRect.left
+    const pointerY = clientY - containerRect.top
 
-    // Zona morta (hysteresis): só reordena de novo depois que o ponteiro andar
-    // MEDIA_DRAG_TUNING.reorderDeadzonePx desde a última reordenação. Como o
-    // reflow move os tiles sob um ponteiro parado, sem isto o alvo recalculado
-    // flip-flopa entre vizinhos e a foto "pula" sem parar (pior com várias
-    // linhas). A âncora só existe após a 1ª reordenação, então ela nunca atrasa.
-    const anchor = this.mediaDragState?.lastReorderPointer
-    if (anchor) {
-      const moved = Math.hypot(clientX - anchor.x, clientY - anchor.y)
-      if (moved < MEDIA_DRAG_TUNING.reorderDeadzonePx) return
-    }
+    const target = this.closestMediaRectForPointer(state.rects, pointerX, pointerY)
+    if (!target) return
 
-    const placement = this.mediaPlacementForPointer(item, clientX, clientY)
-    this.setMediaDropTarget(placement?.target)
-    const referenceItem = this.mediaInsertReference(item, placement)
-    const placementKey = referenceItem ? `before:${this.mediaItemKey(referenceItem)}` : "append"
-
-    if (this.mediaDragState?.placementKey === placementKey) return
-    if (referenceItem === item || item.nextElementSibling === referenceItem) {
-      if (this.mediaDragState) this.mediaDragState.placementKey = placementKey
-      return
-    }
-
-    const previousRects = this.captureMediaItemRects()
-    if (referenceItem) {
-      this.previewContainerTarget.insertBefore(item, referenceItem)
-    } else {
-      this.previewContainerTarget.appendChild(item)
-    }
-
-    if (this.mediaDragState) {
-      this.mediaDragState.placementKey = placementKey
-      this.mediaDragState.lastReorderPointer = { x: clientX, y: clientY }
-    }
-    this.animateMediaReorder(previousRects, item)
+    const insertAfter = pointerX >= target.left + target.width * MEDIA_DRAG_TUNING.insertAfterFraction
+    state.insertionIndex = target.index + (insertAfter ? 1 : 0)
+    this.positionMediaDropIndicator(target, insertAfter)
   }
 
-  setMediaDropTarget(target) {
-    if (this.mediaDropTarget === target) return
+  // Tile mais próximo do ponteiro pela distância até o retângulo (0 se dentro).
+  // Com a grade parada, o "mais próximo" é sempre estável — não precisa de
+  // margens de tolerância nem de histerese para evitar oscilação.
+  closestMediaRectForPointer(rects, pointerX, pointerY) {
+    return rects.reduce((best, rect) => {
+      const dx = Math.max(rect.left - pointerX, 0, pointerX - rect.right)
+      const dy = Math.max(rect.top - pointerY, 0, pointerY - rect.bottom)
+      const distance = Math.hypot(dx, dy)
 
-    this.clearMediaDropTarget()
-    this.mediaDropTarget = target || null
-    this.mediaDropTarget?.classList?.add("media-drop-target")
+      if (!best || distance < best.distance) return { ...rect, distance }
+      return best
+    }, null)
   }
 
-  clearMediaDropTarget() {
-    this.mediaDropTarget?.classList?.remove("media-drop-target")
-    this.mediaDropTarget = null
-  }
-
-  commitMediaDrop(source) {
+  // Ordem importa: commita a inserção enquanto o mediaDragState ainda existe e
+  // só então limpa o arraste (que zera esse estado).
+  handleMediaDrop(source) {
     if (!this.isMediaDragSource(source)) return
 
-    this.flushPendingMediaMove()
+    const item = this.mediaDragState?.item || source.element
+    this.commitMediaDrop()
+    this.finishMediaDrag(item)
+  }
+
+  commitMediaDrop() {
+    if (!this.mediaDragState) return
+
+    this.cancelPendingMediaMove()
+    // Tira a barra antes de mexer no DOM para ela nunca virar filha "solta" da
+    // grade no meio da inserção.
+    this.hideMediaDropIndicator()
+    const reordered = this.applyMediaInsertion()
+    // Suprime o clique pós-arraste mesmo sem mudança (senão soltar em cima da
+    // própria foto abriria o modal), mas só persiste se a ordem mudou.
     this.recentlyReorderedMedia = true
+    if (!reordered) return
+
     this.syncNewFilesFromDom()
     this.updateOrder()
     this.refreshPhotoBadges()
     this.syncReorder()
   }
 
-  mediaPlacementForPointer(draggedItem, pointerX, pointerY) {
-    const items = this.mediaDragItems().filter((item) => item !== draggedItem)
-    if (items.length === 0) return { target: null, insertAfter: true }
+  // A ÚNICA mutação de ordem do arraste inteiro, executada no drop.
+  applyMediaInsertion() {
+    const state = this.mediaDragState
+    if (!state || state.insertionIndex === null) return false
 
-    const target = this.closestMediaItemForPointer(items, pointerX, pointerY) ||
-      this.mediaEdgeItemForPointer(items, pointerX, pointerY)
-    if (!target) return null
+    const { item, items, dragIndex, insertionIndex } = state
+    // insertionIndex é a fronteira entre tiles: as duas fronteiras vizinhas ao
+    // próprio tile arrastado significam "ficar onde está".
+    if (insertionIndex === dragIndex || insertionIndex === dragIndex + 1) return false
 
-    return {
-      target,
-      insertAfter: this.shouldInsertMediaAfterTarget(target, pointerX, pointerY)
+    const previousRects = this.captureMediaItemRects()
+    const reference = items[insertionIndex] || null
+    if (reference) {
+      this.previewContainerTarget.insertBefore(item, reference)
+    } else {
+      this.previewContainerTarget.appendChild(item)
     }
+    this.animateMediaReorder(previousRects, item)
+
+    return true
   }
 
-  closestMediaItemForPointer(items, pointerX, pointerY) {
-    return items.reduce((best, item) => {
+  mediaDropIndicator() {
+    if (this.mediaDropIndicatorElement?.isConnected) return this.mediaDropIndicatorElement
+
+    const indicator = document.createElement("div")
+    indicator.className = "ax-media-drop-indicator"
+    indicator.setAttribute("aria-hidden", "true")
+    // Sem transição no primeiro posicionamento: senão a barra "voaria" do
+    // canto da grade até o tile de origem ao começar o arraste.
+    indicator.style.transition = "none"
+    this.previewContainerTarget.appendChild(indicator)
+    this.mediaDropIndicatorElement = indicator
+    window.requestAnimationFrame(() => { indicator.style.transition = "" })
+
+    return indicator
+  }
+
+  hideMediaDropIndicator() {
+    this.mediaDropIndicatorElement?.remove()
+    this.mediaDropIndicatorElement = null
+  }
+
+  positionMediaDropIndicator(rect, insertAfter) {
+    if (!rect) return
+
+    const gap = MEDIA_DRAG_TUNING.indicatorGapPx
+    const indicator = this.mediaDropIndicator()
+    const x = insertAfter ? rect.right + gap : rect.left - gap
+
+    indicator.style.transform = `translate(${Math.round(x)}px, ${Math.round(rect.top)}px)`
+    indicator.style.height = `${Math.round(rect.height)}px`
+  }
+
+  // Retângulos relativos ao container (imunes a scroll da página).
+  captureMediaLayout(items) {
+    const containerRect = this.previewContainerTarget.getBoundingClientRect()
+
+    return items.map((item, index) => {
       const rect = item.getBoundingClientRect()
-      const t = MEDIA_DRAG_TUNING
-      const expandX = Math.max(t.hitExpandXMin, Math.min(t.hitExpandXMax, rect.width * t.hitExpandXRatio))
-      const expandY = Math.max(t.hitExpandYMin, Math.min(t.hitExpandYMax, rect.height * t.hitExpandYRatio))
 
-      if (
-        pointerX < rect.left - expandX ||
-        pointerX > rect.right + expandX ||
-        pointerY < rect.top - expandY ||
-        pointerY > rect.bottom + expandY
-      ) {
-        return best
+      return {
+        index,
+        left: rect.left - containerRect.left,
+        right: rect.right - containerRect.left,
+        top: rect.top - containerRect.top,
+        bottom: rect.bottom - containerRect.top,
+        width: rect.width,
+        height: rect.height
       }
-
-      const centerX = rect.left + rect.width / 2
-      const centerY = rect.top + rect.height / 2
-      const normalizedX = (pointerX - centerX) / Math.max(rect.width, 1)
-      const normalizedY = (pointerY - centerY) / Math.max(rect.height, 1)
-      const score = Math.hypot(normalizedX, normalizedY)
-
-      if (!best || score < best.score) return { item, score }
-      return best
-    }, null)?.item
-  }
-
-  mediaEdgeItemForPointer(items, pointerX, pointerY) {
-    const first = items[0]
-    const last = items[items.length - 1]
-    const firstRect = first.getBoundingClientRect()
-    const lastRect = last.getBoundingClientRect()
-    const verticalSlack = Math.max(MEDIA_DRAG_TUNING.edgeSlackMin, firstRect.height * MEDIA_DRAG_TUNING.edgeSlackRatio)
-
-    if (pointerY < firstRect.top - verticalSlack) return first
-    if (pointerY > lastRect.bottom + verticalSlack) return last
-
-    const sameLastRow = pointerY >= lastRect.top - verticalSlack && pointerY <= lastRect.bottom + verticalSlack
-    if (sameLastRow && pointerX > lastRect.right) return last
-
-    return null
-  }
-
-  shouldInsertMediaAfterTarget(target, pointerX, pointerY) {
-    const rect = target.getBoundingClientRect()
-    const directionX = this.mediaDragState?.directionX || 0
-    const directionY = this.mediaDragState?.directionY || 0
-    const horizontalIntent = Math.abs(directionX) >= Math.abs(directionY)
-    const dirThreshold = MEDIA_DRAG_TUNING.directionThresholdPx
-    const fraction = MEDIA_DRAG_TUNING.insertAfterFraction
-
-    if (horizontalIntent && Math.abs(directionX) > dirThreshold) return directionX > 0
-    if (!horizontalIntent && Math.abs(directionY) > dirThreshold) return directionY > 0
-
-    const sameRow = pointerY >= rect.top && pointerY <= rect.bottom
-    if (sameRow) return pointerX >= rect.left + rect.width * fraction
-
-    return pointerY >= rect.top + rect.height * fraction
-  }
-
-  mediaInsertReference(draggedItem, placement) {
-    if (!placement) return draggedItem.nextElementSibling
-    if (!placement.target) return null
-    if (!placement.insertAfter) return placement.target
-
-    let reference = placement.target.nextElementSibling
-    while (reference === draggedItem) reference = reference.nextElementSibling
-
-    return reference
-  }
-
-  updateMediaPointerDirection(pointerX, pointerY) {
-    if (!this.mediaDragState) return
-
-    const lastX = this.mediaDragState.lastPointerX
-    const lastY = this.mediaDragState.lastPointerY
-    const dirThreshold = MEDIA_DRAG_TUNING.directionThresholdPx
-    if (typeof lastX === "number") {
-      const deltaX = pointerX - lastX
-      if (Math.abs(deltaX) > dirThreshold) this.mediaDragState.directionX = deltaX
-    }
-    if (typeof lastY === "number") {
-      const deltaY = pointerY - lastY
-      if (Math.abs(deltaY) > dirThreshold) this.mediaDragState.directionY = deltaY
-    }
-
-    this.mediaDragState.lastPointerX = pointerX
-    this.mediaDragState.lastPointerY = pointerY
+    })
   }
 
   captureMediaItemRects() {
@@ -432,13 +391,6 @@ export default class extends Controller {
         }
       )
     })
-  }
-
-  mediaItemKey(item) {
-    return item.dataset.id ||
-      item.dataset.apiIndex ||
-      item.dataset.newFileId ||
-      Array.from(item.parentElement?.children || []).indexOf(item).toString()
   }
 
   prepareMediaPointerIntent(event) {
