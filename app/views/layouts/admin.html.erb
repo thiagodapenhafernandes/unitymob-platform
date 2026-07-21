@@ -138,13 +138,10 @@
         min-width: 0;
       }
 
+      /* A grade fica congelada durante o arraste: sem mudança de gap/padding
+         no is-sorting, senão os tiles refluem sob o ponteiro. */
       body.ax-app .habitation-form-ui .ax-media-grid {
-        transition: gap .16s ease, padding .16s ease !important;
-      }
-
-      body.ax-app .habitation-form-ui .ax-media-grid.is-sorting {
-        gap: 16px 10px !important;
-        padding-block: 6px !important;
+        position: relative !important;
       }
 
       body.ax-app .habitation-form-ui .media-gallery-scroll {
@@ -158,6 +155,10 @@
 
       body.ax-app .habitation-form-ui .ax-media-tile__link {
         cursor: zoom-in !important;
+      }
+
+      body.ax-app .habitation-form-ui .ax-media-grid.is-sorting .ax-media-tile__link {
+        cursor: grabbing !important;
       }
 
       body.ax-app .habitation-form-ui .media-photo-tile > .media-photo-overlay {
@@ -204,10 +205,6 @@
 
       body.ax-app .habitation-form-ui .ax-media-tile__footer .media-photo-action-button {
         height: 26px !important;
-      }
-
-      body.ax-app .habitation-form-ui .sortable-chosen {
-        z-index: 4 !important;
       }
 
       body.ax-app .habitation-form-ui .sortable-ghost {

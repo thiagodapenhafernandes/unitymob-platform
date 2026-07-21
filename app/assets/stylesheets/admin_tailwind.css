@@ -12835,21 +12835,36 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
 }
 
 .habitation-form-ui .ax-media-grid {
+  /* Âncora da barra de inserção, que é posicionada em absoluto. */
+  position: relative;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 12px;
-  transition: gap .16s ease, padding .16s ease;
 }
 
-.habitation-form-ui .ax-media-grid.is-sorting {
-  gap: 16px 10px;
-  padding-block: 6px;
-}
+/* Durante o arraste a grade fica CONGELADA: nenhuma mudança de gap/padding
+   aqui. Qualquer alteração de layout no is-sorting reflui os tiles sob o
+   ponteiro e traz de volta o efeito de "fotos correndo". */
 
 /* Só durante o arraste: promove os tiles a camada de composição para as
-   animações de reacomodação (FLIP) rodarem suaves, sem custo permanente. */
+   animações de reacomodação (FLIP) do drop rodarem suaves. */
 .habitation-form-ui .ax-media-grid.is-sorting .ax-media-grid__item {
   will-change: transform;
+}
+
+/* Barra vertical que marca onde a foto será inserida. Posicionada em absoluto
+   para não entrar no fluxo da grade. */
+.habitation-form-ui .ax-media-drop-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--admin-primary, #365f8f);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-primary, #365f8f) 20%, transparent);
+  pointer-events: none;
+  transition: transform .1s ease-out, height .1s ease-out;
 }
 
 .habitation-form-ui .ax-media-grid__item {
@@ -13355,15 +13370,9 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
   cursor: grabbing;
 }
 
-.habitation-form-ui .sortable-chosen {
-  z-index: 4;
-}
-
-.habitation-form-ui .sortable-chosen .ax-media-tile__frame {
-  border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 45%, #d8e1ec);
-  box-shadow: 0 10px 28px rgba(15, 23, 42, .16);
-}
-
+/* Tile de origem durante o arraste: NÃO sai do fluxo. Ele continua ocupando
+   exatamente o próprio espaço (vira um vão tracejado), que é o que mantém as
+   outras fotos imóveis. Só a aparência muda — nada de position/display. */
 .habitation-form-ui .sortable-ghost {
   opacity: 1;
 }
@@ -13377,21 +13386,9 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
     0 0 0 4px rgba(54, 95, 143, .10);
 }
 
-.habitation-form-ui .sortable-drag .ax-media-tile__frame {
-  transform: scale(.99);
-  opacity: .58;
-}
-
-.habitation-form-ui .sortable-drag,
-.habitation-form-ui .sortable-drag .ax-media-tile__link {
+.habitation-form-ui .ax-media-grid.is-sorting,
+.habitation-form-ui .ax-media-grid.is-sorting .ax-media-tile__link {
   cursor: grabbing;
-}
-
-.habitation-form-ui .media-drop-target .ax-media-tile__frame {
-  border-color: color-mix(in srgb, var(--admin-primary, #365f8f) 78%, #fff);
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--admin-primary, #365f8f) 22%, transparent),
-    0 12px 26px rgba(15, 23, 42, .14);
 }
 
 body.ax-app .ax-media-sortable-fallback {
