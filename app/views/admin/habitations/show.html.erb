@@ -138,6 +138,7 @@
                   else
                     "Valor sob consulta"
                   end
+  rental_listing = @habitation.valor_locacao_cents.to_i.positive? || @habitation.status.to_s.match?(/aluguel|loca[cç][aã]o/i)
 
   last_update_at = [@habitation.data_atualizacao_crm, @habitation.updated_at].compact.max
   updated_label = last_update_at.present? ? "Atualizado #{time_ago_in_words(last_update_at)} atrás" : "Atualização não informada"
@@ -204,6 +205,7 @@
     ["Total aluguel", total_rent_price],
     ["Condomínio", money.call(@habitation.valor_condominio_cents)],
     ["IPTU", money.call(@habitation.valor_iptu_cents)],
+    ["Administração Salute", rental_listing ? yes_no.call(@habitation.salute_rental_management_flag) : nil],
     ["Aceita parcelamento", yes_no.call(@habitation.aceita_parcelamento_flag)],
     ["Parcelas", @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.present? ? "#{@habitation.numero_prestacoes}x" : nil],
     ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)]
@@ -326,7 +328,6 @@
     [
       ["Comissão captador (%)", @habitation.captador_commission_percentage],
       ["Comissão corretor (%)", @habitation.broker_commission_percentage],
-      ["Administração de locação", yes_no.call(@habitation.salute_rental_management_flag)],
       ["Vitrine Corporate", yes_no.call(@habitation.home_corporate_flag)],
       ["Posição na Home", @habitation.home_corporate_position]
     ].select { |_label, value| value.present? }
