@@ -16,11 +16,86 @@ RSpec.describe Dwv::SyncRunnerService do
 
       allow(service).to receive(:build_client).and_return(client)
       allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false, last_updates: "2026-07-07,2026-07-07").and_return({ "data" => [{ "id" => "DWV-INC-1" }] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false).and_return({ "data" => [{ "id" => "DWV-INC-1" }] })
       allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: true, last_updates: "2026-07-07,2026-07-07").and_return({ "data" => [] })
       allow(client).to receive(:property_details).with("DWV-INC-1").and_return(details)
       allow(Dwv::PropertyImportService).to receive(:new).with(details, tenant: current_tenant).and_return(importer)
 
       result = service.call(mode: "incremental", limit: 50, max_pages: 1, last_updates: "07/07/2026", status_service: status_service)
+
+      expect(result).to include(imported: 1, deactivated: 0, errors_count: 0)
+      expect(Dwv::PropertyImportService).to have_received(:new).with(details, tenant: current_tenant)
+    end
+
+    it "importa imóvel ativo ausente localmente mesmo quando o filtro incremental não retorna alterações" do
+      current_tenant = Tenant.create!(name: "Tenant active missing DWV #{SecureRandom.hex(3)}", slug: "tenant-active-missing-dwv-#{SecureRandom.hex(3)}")
+      Current.tenant = current_tenant
+      Setting.set("dwv_enabled", "true", "teste", tenant: current_tenant)
+      Setting.set("dwv_api_token", "token-dwv", "teste", tenant: current_tenant)
+
+      client = instance_double(Dwv::Client)
+      service = described_class.new(tenant: current_tenant)
+      status_service = instance_double(Dwv::SyncStatusService, mark_processing!: true, update_progress!: true)
+      details = { "id" => "653408" }
+      importer = instance_double(Dwv::PropertyImportService, perform: { success: true })
+
+      allow(service).to receive(:build_client).and_return(client)
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false, last_updates: "2026-07-21,2026-07-21").and_return({ "data" => [] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false).and_return({ "data" => [{ "id" => "653408" }] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: true, last_updates: "2026-07-21,2026-07-21").and_return({ "data" => [] })
+      allow(client).to receive(:property_details).with("653408").and_return(details)
+      allow(Dwv::PropertyImportService).to receive(:new).with(details, tenant: current_tenant).and_return(importer)
+
+      result = service.call(mode: "incremental", limit: 50, max_pages: 1, last_updates: "21/07/2026", status_service: status_service)
+
+      expect(result).to include(imported: 1, deactivated: 0, errors_count: 0)
+      expect(Dwv::PropertyImportService).to have_received(:new).with(details, tenant: current_tenant)
+    end
+
+    it "remove imóvel DWV local que desapareceu da lista ativa durante o incremental" do
+      current_tenant = Tenant.create!(name: "Tenant incremental removed DWV #{SecureRandom.hex(3)}", slug: "tenant-incremental-removed-dwv-#{SecureRandom.hex(3)}")
+      Current.tenant = current_tenant
+      Setting.set("dwv_enabled", "true", "teste", tenant: current_tenant)
+      Setting.set("dwv_api_token", "token-dwv", "teste", tenant: current_tenant)
+      kept_habitation = create(:habitation, tenant: current_tenant, codigo: "DWV-KEPT", codigo_dwv: "DWV-KEPT", imovel_dwv: "Sim", status: "Venda", exibir_no_site_flag: true)
+      removed_habitation = create(:habitation, tenant: current_tenant, codigo: "DWV-GONE", codigo_dwv: "DWV-GONE", imovel_dwv: "Sim", status: "Venda", exibir_no_site_flag: true)
+
+      client = instance_double(Dwv::Client)
+      service = described_class.new(tenant: current_tenant)
+      status_service = instance_double(Dwv::SyncStatusService, mark_processing!: true, update_progress!: true)
+
+      allow(service).to receive(:build_client).and_return(client)
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false, last_updates: "2026-07-21,2026-07-21").and_return({ "data" => [] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false).and_return({ "data" => [{ "id" => "DWV-KEPT" }] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: true, last_updates: "2026-07-21,2026-07-21").and_return({ "data" => [] })
+
+      result = service.call(mode: "incremental", limit: 50, max_pages: 1, last_updates: "21/07/2026", status_service: status_service)
+
+      expect(result).to include(imported: 0, deactivated: 1, errors_count: 0)
+      expect(current_tenant.habitations.where(id: kept_habitation.id)).to exist
+      expect(current_tenant.habitations.where(id: removed_habitation.id)).not_to exist
+    end
+
+    it "importa imóvel de locação ativo que ainda não existe localmente" do
+      current_tenant = Tenant.create!(name: "Tenant incremental rent DWV #{SecureRandom.hex(3)}", slug: "tenant-incremental-rent-dwv-#{SecureRandom.hex(3)}")
+      Current.tenant = current_tenant
+      Setting.set("dwv_enabled", "true", "teste", tenant: current_tenant)
+      Setting.set("dwv_api_token", "token-dwv", "teste", tenant: current_tenant)
+
+      client = instance_double(Dwv::Client)
+      service = described_class.new(tenant: current_tenant)
+      status_service = instance_double(Dwv::SyncStatusService, mark_processing!: true, update_progress!: true)
+      details = { "id" => "DWV-RENT", "unit" => { "rent" => true, "price" => nil }, "rent_price" => "12000.00" }
+      importer = instance_double(Dwv::PropertyImportService, perform: { success: true })
+
+      allow(service).to receive(:build_client).and_return(client)
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false, last_updates: "2026-07-21,2026-07-21").and_return({ "data" => [] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false).and_return({ "data" => [{ "id" => "DWV-RENT", "unit" => { "rent" => true } }] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: true, last_updates: "2026-07-21,2026-07-21").and_return({ "data" => [] })
+      allow(client).to receive(:property_details).with("DWV-RENT").and_return(details)
+      allow(Dwv::PropertyImportService).to receive(:new).with(details, tenant: current_tenant).and_return(importer)
+
+      result = service.call(mode: "incremental", limit: 50, max_pages: 1, last_updates: "21/07/2026", status_service: status_service)
 
       expect(result).to include(imported: 1, deactivated: 0, errors_count: 0)
       expect(Dwv::PropertyImportService).to have_received(:new).with(details, tenant: current_tenant)

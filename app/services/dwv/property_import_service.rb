@@ -3,6 +3,8 @@ require "bigdecimal"
 module Dwv
   class PropertyImportService
     DEFAULT_CATEGORY = "Apartamento".freeze
+    SALE_PRICE_PATHS = [["price"], ["sale_price"], ["valor_venda"], ["unit", "price"], ["third_party_property", "price"]].freeze
+    RENT_PRICE_PATHS = [["rent_price"], ["valor_locacao"], ["unit", "rent"], ["third_party_property", "rent"]].freeze
 
     def self.extract_collection(payload)
       case payload
@@ -36,9 +38,97 @@ module Dwv
       nil
     end
 
+    def self.sale_listing?(payload)
+      active_listing?(payload)
+    end
+
+    def self.active_listing?(payload)
+      payload = unwrap_payload(payload)
+      return false if removed_listing?(payload)
+
+      operation_status = operation_status_for(payload)
+      return operation_status.in?(%w[Venda Aluguel]) if operation_status.present?
+
+      true
+    end
+
+    def self.operation_status_for(payload)
+      payload = unwrap_payload(payload)
+      return "Aluguel" if truthy?(value(payload, ["rent"], ["unit", "rent"], ["third_party_property", "rent"]))
+
+      raw_status = value(payload, ["status"], ["property_status"]).to_s.strip.downcase
+      return "Venda" if raw_status.include?("sale") || raw_status.include?("venda")
+      return "Aluguel" if raw_status.include?("rent") || raw_status.include?("loca") || raw_status.include?("alug")
+
+      sale_cents = cents_from_first(payload, SALE_PRICE_PATHS)
+      rent_cents = cents_from_first(payload, RENT_PRICE_PATHS)
+      return "Venda" if sale_cents.to_i.positive?
+      return "Aluguel" if rent_cents.to_i.positive?
+
+      nil
+    end
+
+    def self.removed_listing?(payload)
+      payload = unwrap_payload(payload)
+      raw_status = value(payload, ["status"], ["integration_status"]).to_s.strip.downcase
+      deleted = value(payload, ["deleted"])
+
+      deleted == true ||
+        deleted.to_s == "true" ||
+        raw_status == "inactive" ||
+        raw_status == "auto_inactive"
+    end
+
+    def self.truthy?(raw)
+      raw == true || raw.to_s.strip.downcase.in?(%w[true 1 sim yes])
+    end
+
+    def self.unwrap_payload(payload)
+      return {} unless payload.is_a?(Hash)
+
+      data = payload["data"] || payload[:data]
+      return data if data.is_a?(Hash)
+
+      payload
+    end
+
+    def self.cents_from_first(payload, paths)
+      paths.each do |path|
+        cents = cents_from(value(payload, path))
+        return cents if cents.present?
+      end
+      nil
+    end
+
+    def self.cents_from(raw)
+      return nil if raw.blank?
+
+      number = normalized_number(raw)
+      return nil if number.nil? || number <= 0
+
+      (number * 100).round
+    end
+
+    def self.normalized_number(raw)
+      return raw if raw.is_a?(Numeric)
+
+      text = raw.to_s.gsub(/[^\d,.-]/, "")
+      return nil if text.blank?
+
+      if text.include?(",") && text.include?(".")
+        text = text.gsub(".", "").tr(",", ".")
+      else
+        text = text.tr(",", ".")
+      end
+
+      BigDecimal(text)
+    rescue ArgumentError
+      nil
+    end
+
     def initialize(payload, tenant: nil)
       @raw_payload = payload || {}
-      @payload = unwrap_payload(@raw_payload)
+      @payload = self.class.unwrap_payload(@raw_payload)
       @tenant = tenant || Current.tenant
       raise ArgumentError, "Tenant obrigatório para Dwv::PropertyImportService" if @tenant.blank?
     end
@@ -57,7 +147,7 @@ module Dwv
       end
 
       if !existing_record && removed_from_dwv?
-        raise "Imóvel DWV removido/inativo não deve criar novo cadastro (id=#{dwv_id})."
+        raise "Imóvel DWV fora da pauta não deve criar novo cadastro (id=#{dwv_id})."
       end
 
       assign_habitation_attributes(habitation, dwv_id:, incoming_codigo:, existing_record:)
@@ -94,21 +184,12 @@ module Dwv
     end
 
     def unwrap_payload(payload)
-      return {} unless payload.is_a?(Hash)
-
-      data = payload["data"] || payload[:data]
-      return data if data.is_a?(Hash)
-
-      payload
+      self.class.unwrap_payload(payload)
     end
 
     def assign_habitation_attributes(habitation, dwv_id:, incoming_codigo:, existing_record:)
-      sale_cents = first_cents(
-        value(["price"], ["sale_price"], ["valor_venda"], ["unit", "price"], ["third_party_property", "price"])
-      )
-      rent_cents = first_cents(
-        value(["rent_price"], ["valor_locacao"], ["unit", "rent"], ["third_party_property", "rent"])
-      )
+      sale_cents = self.class.cents_from_first(@payload, SALE_PRICE_PATHS)
+      rent_cents = self.class.cents_from_first(@payload, RENT_PRICE_PATHS)
       effective_sale = sale_cents || habitation.valor_venda_cents
       effective_rent = rent_cents || habitation.valor_locacao_cents
 
@@ -192,15 +273,12 @@ module Dwv
       attrs.slice(
         :codigo_dwv,
         :imovel_dwv,
-        :status,
         :valor_venda_cents,
         :valor_locacao_cents,
-        :exibir_no_site_flag,
         :data_atualizacao_crm,
         :last_sync_at,
         :last_sync_status,
-        :last_sync_message,
-        :dwv_payload
+        :last_sync_message
       ).merge(last_sync_message: "Sincronizado via DWV (preço atualizado)")
     end
 
@@ -690,13 +768,7 @@ module Dwv
     end
 
     def removed_from_dwv?
-      raw_status = value(["status"], ["integration_status"]).to_s.strip.downcase
-      deleted = value(["deleted"])
-
-      deleted == true ||
-        deleted.to_s == "true" ||
-        raw_status == "inactive" ||
-        raw_status == "auto_inactive"
+      !self.class.sale_listing?(@payload)
     end
   end
 end
