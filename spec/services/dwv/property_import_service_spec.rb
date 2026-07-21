@@ -53,7 +53,7 @@ RSpec.describe Dwv::PropertyImportService do
       expect(address.imediacoes).to eq(["A 30m da Av. Brasil"])
     end
 
-    it "updates rich fields on an existing DWV record" do
+    it "updates only price and sync metadata on an existing DWV record" do
       habitation = create(
         :habitation,
         tenant: tenant,
@@ -61,20 +61,51 @@ RSpec.describe Dwv::PropertyImportService do
         codigo_dwv: "632439",
         imovel_dwv: "Sim",
         titulo_anuncio: "Título antigo",
-        descricao_web: nil,
-        pictures: [],
-        area_privativa_m2: nil
+        descricao_web: "Descrição antiga",
+        pictures: [{ "url" => "https://cdn.dwv.test/old.jpg" }],
+        area_privativa_m2: BigDecimal("99.0"),
+        valor_venda_cents: 1_000_000_00
       )
 
       described_class.new(unit_payload, tenant: tenant).perform
       habitation.reload
 
-      expect(habitation.titulo_anuncio).to eq("Apartamento com vista mar")
-      expect(habitation.descricao_web.to_plain_text).to include("Descrição completa do imóvel")
-      expect(habitation.area_privativa_m2).to eq(BigDecimal("186.0"))
-      expect(habitation.pictures.map { |pic| pic["url"] }).to include("https://cdn.dwv.test/unit-cover.jpg")
-      expect(habitation.address.logradouro).to eq("Rua 2450")
-      expect(habitation.last_sync_message).to eq("Sincronizado via DWV (mapeamento completo)")
+      expect(habitation.titulo_anuncio).to eq("Título antigo")
+      expect(habitation.descricao_web.to_plain_text).to include("Descrição antiga")
+      expect(habitation.area_privativa_m2).to eq(BigDecimal("99.0"))
+      expect(habitation.pictures.map { |pic| pic["url"] }).to eq(["https://cdn.dwv.test/old.jpg"])
+      expect(habitation.valor_venda_cents).to eq(439_776_500)
+      expect(habitation.preco_atualizado_em).to be_present
+      expect(habitation.last_sync_message).to eq("Sincronizado via DWV (preço atualizado)")
+    end
+
+    it "does not create a new habitation from a removed DWV payload" do
+      payload = unit_payload.deep_dup
+      payload["data"]["deleted"] = true
+      payload["data"]["status"] = "inactive"
+
+      count_before = tenant.habitations.count
+      expect do
+        described_class.new(payload, tenant: tenant).perform
+      end.to raise_error(RuntimeError, /removido\/inativo/)
+      expect(tenant.habitations.count).to eq(count_before)
+    end
+
+    it "maps real DWV feature title arrays and payment condition values on insert" do
+      payload = unit_payload.deep_dup
+      payload["data"]["building"]["features"] = [
+        { "titles" => ["Academia", "Piscina"], "type" => "Empreendimento" },
+        { "titles" => ["Lavabo", "Churrasqueira"], "type" => "Apartamento" }
+      ]
+      payload["data"]["unit"]["payment_conditions"] = [
+        { "title" => "Entrada 40%", "value" => "1.420.000,00" }
+      ]
+
+      habitation = described_class.new(payload, tenant: tenant).perform.fetch(:habitation)
+
+      expect(habitation.infra_estrutura).to include("Academia", "Piscina")
+      expect(habitation.caracteristicas.values).to include("Lavabo", "Churrasqueira")
+      expect(habitation.condicoes_negociacao).to include("Entrada 40%: 1.420.000,00")
     end
 
     it "não atualiza imóvel DWV de outro tenant com o mesmo código externo" do
@@ -165,13 +196,23 @@ RSpec.describe Dwv::PropertyImportService do
     end
 
     it "não marca como Suspenso quando a DWV envia imóvel removido ou inativo" do
+      habitation = create(
+        :habitation,
+        tenant: tenant,
+        codigo: "DWV-632439",
+        codigo_dwv: "632439",
+        imovel_dwv: "Sim",
+        status: "Venda",
+        exibir_no_site_flag: true
+      )
       payload = unit_payload.deep_dup
       payload["data"]["deleted"] = true
       payload["data"]["status"] = "inactive"
       payload["data"]["integration_status"] = "auto_inactive"
 
       result = described_class.new(payload, tenant: tenant).perform
-      habitation = result[:habitation]
+      expect(result[:habitation]).to eq(habitation)
+      habitation.reload
 
       expect(habitation.status).to eq("Venda")
       expect(habitation.exibir_no_site_flag).to eq(false)

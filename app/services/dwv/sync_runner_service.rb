@@ -51,8 +51,8 @@ module Dwv
       errors_count = 0
       errors_by_reason = Hash.new(0)
       filters = { last_updates: last_updates }
-      active_ids = collect_property_ids(client, deleted: nil, limit: limit, max_pages: max_pages, filters: filters)
-      removed_ids = collect_property_ids(client, deleted: true, limit: limit, max_pages: max_pages, filters: filters)
+      active_ids = collect_active_property_ids(client, limit: limit, max_pages: max_pages, filters: filters)
+      removed_ids = collect_removed_property_ids(client, limit: limit, max_pages: max_pages, filters: filters)
       total_steps = active_ids.size + removed_ids.size
       processed_steps = 0
 
@@ -93,8 +93,12 @@ module Dwv
       imported = 0
       errors_count = 0
       errors_by_reason = Hash.new(0)
-      active_ids = collect_property_ids(client, deleted: nil, limit: limit, max_pages: max_pages)
-      removed_ids = deactivate_removed ? collect_property_ids(client, deleted: true, limit: limit, max_pages: max_pages) : []
+      active_ids = collect_active_property_ids(client, limit: limit, max_pages: max_pages)
+      removed_ids = if deactivate_removed
+        (collect_removed_property_ids(client, limit: limit, max_pages: max_pages) + local_dwv_ids_missing_from(active_ids)).uniq
+      else
+        []
+      end
       total_steps = active_ids.size + removed_ids.size
       processed_steps = 0
 
@@ -132,7 +136,7 @@ module Dwv
 
     def deactivate_removed_properties(limit:, max_pages:, client: nil)
       client ||= build_client
-      removed_ids = collect_property_ids(client, deleted: true, limit: limit, max_pages: max_pages)
+      removed_ids = collect_removed_property_ids(client, limit: limit, max_pages: max_pages)
       return 0 if removed_ids.empty?
 
       @status_service&.update_progress!(progress: 40, message: "Aplicando desativação de removidos DWV...")
@@ -152,7 +156,24 @@ module Dwv
       )
     end
 
-    def collect_property_ids(client, deleted:, limit:, max_pages:, filters: {})
+    def local_dwv_ids_missing_from(active_ids)
+      active_ids = active_ids.map(&:to_s)
+      scope = tenant.habitations.where(imovel_dwv: "Sim").where.not(codigo_dwv: [nil, ""])
+      scope = active_ids.any? ? scope.where.not(codigo_dwv: active_ids) : scope
+      scope.distinct.pluck(:codigo_dwv)
+    end
+
+    def collect_active_property_ids(client, limit:, max_pages:, filters: {})
+      collect_property_ids(client, deleted: false, limit: limit, max_pages: max_pages, filters: filters, state: :active)
+    end
+
+    def collect_removed_property_ids(client, limit:, max_pages:, filters: {})
+      ids = collect_property_ids(client, deleted: true, limit: limit, max_pages: max_pages, filters: filters, state: :removed)
+      inactive_ids = collect_property_ids(client, deleted: false, limit: limit, max_pages: max_pages, filters: filters, state: :removed)
+      (ids + inactive_ids).uniq
+    end
+
+    def collect_property_ids(client, deleted:, limit:, max_pages:, filters: {}, state: nil)
       ids = Set.new
 
       (1..max_pages).each do |page|
@@ -161,6 +182,9 @@ module Dwv
         break if collection.blank?
 
         collection.each do |item|
+          next if state == :active && removed_property_item?(item)
+          next if state == :removed && !removed_property_item?(item)
+
           property_id = Dwv::PropertyImportService.extract_property_id(item).to_s.strip
           next if property_id.blank?
 
@@ -171,6 +195,18 @@ module Dwv
       end
 
       ids.to_a
+    end
+
+    def removed_property_item?(item)
+      return false unless item.is_a?(Hash)
+
+      deleted = item["deleted"] || item[:deleted]
+      status = (item["status"] || item[:status] || item["integration_status"] || item[:integration_status]).to_s.strip.downcase
+
+      deleted == true ||
+        deleted.to_s == "true" ||
+        status == "inactive" ||
+        status == "auto_inactive"
     end
 
     def normalize_limit(raw)
