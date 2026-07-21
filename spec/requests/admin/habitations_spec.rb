@@ -89,19 +89,61 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include("Box garagem")
   end
 
-  it "exibe administração de locação no painel de valores" do
+  it "exibe administração Salute no painel de valores para imóveis de locação" do
     habitation = create(
       :habitation,
       codigo: "ADM-LOC-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Apartamento com administração de locação",
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 6_700_00,
       salute_rental_management_flag: true
     )
 
     get admin_habitation_path(habitation)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Com Adm")
-    expect(response.body).to include("Sim")
+    html = Nokogiri::HTML(response.body)
+    values_section = html.css(".ax-property-record-section").find do |section|
+      section.at_css(".ax-property-record-section__head")&.text&.include?("Valores")
+    end
+
+    expect(values_section&.text).to include("Administração Salute")
+    expect(values_section&.text).to include("Sim")
+  end
+
+  it "exibe administração Salute como Não para locação sem administração e oculta em venda" do
+    rental = create(
+      :habitation,
+      codigo: "ADM-LOC-NAO-#{SecureRandom.hex(6)}",
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 6_700_00,
+      salute_rental_management_flag: false
+    )
+    sale = create(
+      :habitation,
+      codigo: "ADM-VENDA-#{SecureRandom.hex(6)}",
+      status: "Venda",
+      valor_venda_cents: 900_000_00,
+      valor_locacao_cents: 0,
+      salute_rental_management_flag: false
+    )
+
+    get admin_habitation_path(rental)
+    expect(response).to have_http_status(:ok)
+    rental_values_section = Nokogiri::HTML(response.body).css(".ax-property-record-section").find do |section|
+      section.at_css(".ax-property-record-section__head")&.text&.include?("Valores")
+    end
+    expect(rental_values_section&.text).to include("Administração Salute")
+    expect(rental_values_section&.text).to include("Não")
+
+    get admin_habitation_path(sale)
+    expect(response).to have_http_status(:ok)
+    sale_values_section = Nokogiri::HTML(response.body).css(".ax-property-record-section").find do |section|
+      section.at_css(".ax-property-record-section__head")&.text&.include?("Valores")
+    end
+    expect(sale_values_section&.text).not_to include("Administração Salute")
   end
 
   it "exibe parcelamento e quantidade de parcelas no painel de valores" do
