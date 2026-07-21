@@ -894,7 +894,9 @@ class Admin::HabitationsController < Admin::BaseController
   def load_autocomplete_data
     tenant_habitations = current_tenant.habitations
 
-    @proprietors = current_tenant.proprietors.select(:id, :name).order(name: :asc)
+    @proprietors = current_tenant.proprietors
+      .select(:id, :name, :phone_primary, :mobile_phone, :residential_phone, :business_phone, :email)
+      .order(name: :asc, id: :asc)
     @developments = tenant_habitations.empreendimentos
                               .includes(:address)
                               .select(

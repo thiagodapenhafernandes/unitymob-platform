@@ -489,7 +489,6 @@ export default class extends Controller {
   }
 
   syncDevelopmentRelationshipFields(developmentData) {
-    this.setSelectTargetValue("proprietorSelect", developmentData.proprietor_id)
     this.setSelectTargetValue("captadorSelect", developmentData.admin_user_id)
     this.setInputTargetValue("deliveryDate", developmentData.data_entrega)
     this.setSelectTargetValue("constructionProfileSelect", developmentData.perfil_construcao)

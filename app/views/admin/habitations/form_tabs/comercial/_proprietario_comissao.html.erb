@@ -3,55 +3,76 @@
     <% if can_view_proprietor_data?(habitation) %>
       <div>
         <%= ax_field_group(title: "Proprietário e contatos") do %>
+          <% proprietor_action = capture do %>
+            <%= link_to "#quickProprietorModal",
+                class: "ax-btn ax-btn--ghost",
+                title: "Cadastrar novo proprietário",
+                data: {
+                  ax_modal_open: "#quickProprietorModal",
+                  broker_field_policy_lock: true,
+                  field_lock_action: "acao:cadastrar_proprietario"
+                } do %>
+              <i class="bi bi-plus"></i>
+            <% end %>
+          <% end %>
+
           <%= ax_field_grid do %>
-            <div class="ax-span-8">
-              <%= ax_text_field(form: f, method: :proprietario, label: "Nome", readonly: !habitation_field_editable?("proprietario")) %>
-            </div>
             <div class="ax-span-12">
-              <%= ax_text_field(
+              <%= ax_relationship_select(
                     form: f,
-                    method: :proprietario_email,
-                    label: "E-mail",
-                    readonly: !habitation_field_editable?("proprietario_email")
+                    method: :proprietor_id,
+                    label: "Proprietário",
+                    collection: @proprietors,
+                    value_method: :id,
+                    text_method: :name,
+                    select_options: { include_blank: "Selecione..." },
+                    html_options: {
+                      data: { controller: "tom-select", placeholder: "Selecione...", habitation_form_target: "proprietorSelect" },
+                      disabled: !habitation_field_editable?("proprietor_id")
+                    },
+                    action: proprietor_action,
+                    tooltip: "Cadastro único do proprietário. Os contatos exibidos abaixo vêm deste vínculo."
                   ) %>
             </div>
             <div class="ax-span-12">
-              <%= ax_text_field(
-                    form: f,
-                    method: :proprietario_cidade,
-                    label: "Cidade",
-                    readonly: !habitation_field_editable?("proprietario_cidade")
-                  ) %>
+              <%= ax_field_label(nil, nil, text: "E-mail", for: "habitation_proprietor_email_display") %>
+              <%= tag.input type: "text",
+                    value: habitation.proprietario_email_display,
+                    id: "habitation_proprietor_email_display",
+                    class: "ax-control",
+                    readonly: true %>
             </div>
             <div class="ax-span-12">
-              <%= ax_text_field(
-                    form: f,
-                    method: :proprietario_celular,
-                    label: "Celular",
+              <%= ax_field_label(nil, nil, text: "Cidade", for: "habitation_proprietor_city_display") %>
+              <%= tag.input type: "text",
+                    value: habitation.proprietor&.city.presence || habitation.proprietario_cidade,
+                    id: "habitation_proprietor_city_display",
+                    class: "ax-control",
+                    readonly: true %>
+            </div>
+            <div class="ax-span-12">
+              <%= ax_field_label(nil, nil, text: "Celular", for: "habitation_proprietor_mobile_display") %>
+              <%= tag.input type: "text",
                     value: Phones::Normalizer.display(habitation.proprietario_telefone),
-                    readonly: !habitation_field_editable?("proprietario_celular"),
-                    data: { controller: "phone-input" }
-                  ) %>
+                    id: "habitation_proprietor_mobile_display",
+                    class: "ax-control",
+                    readonly: true %>
             </div>
             <div class="ax-span-6">
-              <%= ax_text_field(
-                    form: f,
-                    method: :proprietario_telefone_comercial,
-                    label: "F. Comercial",
+              <%= ax_field_label(nil, nil, text: "F. Comercial", for: "habitation_proprietor_business_phone_display") %>
+              <%= tag.input type: "text",
                     value: Phones::Normalizer.display(habitation.proprietario_telefone_comercial_display),
-                    readonly: !habitation_field_editable?("proprietario_telefone_comercial"),
-                    data: { controller: "phone-input" }
-                  ) %>
+                    id: "habitation_proprietor_business_phone_display",
+                    class: "ax-control",
+                    readonly: true %>
             </div>
             <div class="ax-span-6">
-              <%= ax_text_field(
-                    form: f,
-                    method: :proprietario_telefone_residencial,
-                    label: "F. Residencial",
+              <%= ax_field_label(nil, nil, text: "F. Residencial", for: "habitation_proprietor_residential_phone_display") %>
+              <%= tag.input type: "text",
                     value: Phones::Normalizer.display(habitation.proprietario_telefone_residencial_display),
-                    readonly: !habitation_field_editable?("proprietario_telefone_residencial"),
-                    data: { controller: "phone-input" }
-                  ) %>
+                    id: "habitation_proprietor_residential_phone_display",
+                    class: "ax-control",
+                    readonly: true %>
             </div>
           <% end %>
         <% end %>

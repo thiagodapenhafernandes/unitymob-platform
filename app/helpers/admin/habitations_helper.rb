@@ -383,11 +383,8 @@ module Admin::HabitationsHelper
     case message.to_s
     when "Dados do proprietário"
       {
-        mode: "groups_present",
-        groups: [
-          %w[habitation[proprietario] habitation[proprietor_id]],
-          %w[habitation[proprietario_celular] habitation[proprietario_telefone_comercial] habitation[proprietario_telefone_residencial] habitation[proprietario_email]]
-        ]
+        mode: "any_present",
+        names: %w[habitation[proprietor_id]]
       }
     when "Cidade do proprietário"
       { mode: "any_present", names: %w[habitation[proprietario_cidade]] }

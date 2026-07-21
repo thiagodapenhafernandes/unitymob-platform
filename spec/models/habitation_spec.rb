@@ -45,6 +45,37 @@ RSpec.describe Habitation, type: :model do
     end
   end
 
+  describe "dados do proprietário" do
+    it "prefere o cadastro vinculado aos campos legados do imóvel" do
+      proprietor = create(
+        :proprietor,
+        name: "Proprietário Canônico",
+        email: "canonico@example.com",
+        mobile_phone: "47 98868.0402",
+        business_phone: "47 3344.5566",
+        residential_phone: "47 3355.6677",
+        vista_code: "PROP-CANONICO"
+      )
+      habitation = build(
+        :habitation,
+        proprietor: proprietor,
+        proprietario: "Proprietário Legado",
+        proprietario_email: "legado@example.com",
+        proprietario_celular: "47 99999.0000",
+        proprietario_telefone_comercial: "47 3000.0000",
+        proprietario_telefone_residencial: "47 4000.0000",
+        proprietario_codigo: "PROP-LEGADO"
+      )
+
+      expect(habitation.proprietario_nome).to eq("Proprietário Canônico")
+      expect(habitation.proprietario_email_display).to eq("canonico@example.com")
+      expect(habitation.proprietario_telefone).to eq("5547988680402")
+      expect(habitation.proprietario_telefone_comercial_display).to eq("554733445566")
+      expect(habitation.proprietario_telefone_residencial_display).to eq("554733556677")
+      expect(habitation.proprietario_cpf_cnpj).to eq("PROP-CANONICO")
+    end
+  end
+
   describe "third-party commercial values" do
     it "stores formatted third-party values in cents" do
       habitation = described_class.new(
