@@ -104,11 +104,13 @@ candidates.each do |habitation|
 
   case action
   when "unpublish"
-    habitation.update!(
+    now = Time.current
+    habitation.update_columns(
       exibir_no_site_flag: false,
-      last_sync_at: Time.current,
+      last_sync_at: now,
       last_sync_status: "inactive",
-      last_sync_message: "Removido da pauta DWV por backfill"
+      last_sync_message: "Removido da pauta DWV por backfill",
+      updated_at: now
     )
     stats[:unpublished] += 1
     report_rows << before.merge(reason: reason, action: action, apply_status: "unpublished", error: nil)
