@@ -64,7 +64,11 @@ RSpec.describe Dwv::PropertyImportService do
         descricao_web: "Descrição antiga",
         pictures: [{ "url" => "https://cdn.dwv.test/old.jpg" }],
         area_privativa_m2: BigDecimal("99.0"),
-        valor_venda_cents: 1_000_000_00
+        status: "Aluguel",
+        exibir_no_site_flag: false,
+        dwv_payload: { "id" => 632439, "title" => "Payload antigo" },
+        valor_venda_cents: 1_000_000_00,
+        valor_locacao_cents: 5_000_00
       )
 
       described_class.new(unit_payload, tenant: tenant).perform
@@ -74,6 +78,9 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.descricao_web.to_plain_text).to include("Descrição antiga")
       expect(habitation.area_privativa_m2).to eq(BigDecimal("99.0"))
       expect(habitation.pictures.map { |pic| pic["url"] }).to eq(["https://cdn.dwv.test/old.jpg"])
+      expect(habitation.status).to eq("Aluguel")
+      expect(habitation.exibir_no_site_flag).to eq(false)
+      expect(habitation.dwv_payload).to include("title" => "Payload antigo")
       expect(habitation.valor_venda_cents).to eq(439_776_500)
       expect(habitation.preco_atualizado_em).to be_present
       expect(habitation.last_sync_message).to eq("Sincronizado via DWV (preço atualizado)")
@@ -87,7 +94,7 @@ RSpec.describe Dwv::PropertyImportService do
       count_before = tenant.habitations.count
       expect do
         described_class.new(payload, tenant: tenant).perform
-      end.to raise_error(RuntimeError, /removido\/inativo/)
+      end.to raise_error(RuntimeError, /fora da pauta/)
       expect(tenant.habitations.count).to eq(count_before)
     end
 
@@ -195,7 +202,7 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.address.complemento).to eq("Condomínio Fechado")
     end
 
-    it "não marca como Suspenso quando a DWV envia imóvel removido ou inativo" do
+    it "não altera status nem publicação quando a DWV envia payload removido para imóvel existente" do
       habitation = create(
         :habitation,
         tenant: tenant,
@@ -215,7 +222,7 @@ RSpec.describe Dwv::PropertyImportService do
       habitation.reload
 
       expect(habitation.status).to eq("Venda")
-      expect(habitation.exibir_no_site_flag).to eq(false)
+      expect(habitation.exibir_no_site_flag).to eq(true)
       expect(habitation.motivo_suspensao).to be_blank
     end
   end

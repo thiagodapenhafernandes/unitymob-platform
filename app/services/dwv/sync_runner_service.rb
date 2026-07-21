@@ -48,11 +48,17 @@ module Dwv
     def sync_incremental_properties(limit:, max_pages:, last_updates:)
       client = build_client
       imported = 0
+      deactivated = 0
       errors_count = 0
       errors_by_reason = Hash.new(0)
       filters = { last_updates: last_updates }
-      active_ids = collect_active_property_ids(client, limit: limit, max_pages: max_pages, filters: filters)
+      changed_active_ids = collect_active_property_ids(client, limit: limit, max_pages: max_pages, filters: filters)
+      active_ids_snapshot = collect_active_property_ids(client, limit: limit, max_pages: max_pages)
+      missing_active_ids = active_ids_missing_locally(active_ids_snapshot)
+      active_ids = (changed_active_ids + missing_active_ids).uniq
       removed_ids = collect_removed_property_ids(client, limit: limit, max_pages: max_pages, filters: filters)
+      removed_ids += local_dwv_ids_missing_from(active_ids_snapshot)
+      removed_ids = removed_ids.uniq
       total_steps = active_ids.size + removed_ids.size
       processed_steps = 0
 
@@ -63,8 +69,12 @@ module Dwv
       active_ids.each do |property_id|
         begin
           details = client.property_details(property_id)
-          Dwv::PropertyImportService.new(details, tenant: tenant).perform
-          imported += 1
+          if Dwv::PropertyImportService.active_listing?(details)
+            Dwv::PropertyImportService.new(details, tenant: tenant).perform
+            imported += 1
+          else
+            deactivated += destroy_removed_properties_by_ids([property_id])
+          end
         rescue => e
           errors_count += 1
           errors_by_reason[normalize_error_message(e.message)] += 1
@@ -76,7 +86,7 @@ module Dwv
         end
       end
 
-      deactivated = destroy_removed_properties_by_ids(removed_ids)
+      deactivated += destroy_removed_properties_by_ids(removed_ids)
       processed_steps += removed_ids.size
       publish_progress(processed_steps, total_steps, "Sincronização DWV incremental concluída.")
 
@@ -91,6 +101,7 @@ module Dwv
     def sync_active_properties(limit:, max_pages:, deactivate_removed:)
       client = build_client
       imported = 0
+      deactivated = 0
       errors_count = 0
       errors_by_reason = Hash.new(0)
       active_ids = collect_active_property_ids(client, limit: limit, max_pages: max_pages)
@@ -109,8 +120,12 @@ module Dwv
       active_ids.each do |property_id|
         begin
           details = client.property_details(property_id)
-          Dwv::PropertyImportService.new(details, tenant: tenant).perform
-          imported += 1
+          if Dwv::PropertyImportService.active_listing?(details)
+            Dwv::PropertyImportService.new(details, tenant: tenant).perform
+            imported += 1
+          else
+            deactivated += destroy_removed_properties_by_ids([property_id])
+          end
         rescue => e
           errors_count += 1
           errors_by_reason[normalize_error_message(e.message)] += 1
@@ -122,7 +137,7 @@ module Dwv
         end
       end
 
-      deactivated = deactivate_removed ? destroy_removed_properties_by_ids(removed_ids) : 0
+      deactivated += destroy_removed_properties_by_ids(removed_ids) if deactivate_removed
       processed_steps += removed_ids.size
       publish_progress(processed_steps, total_steps, "Remoção de removidos DWV concluída.")
 
@@ -177,6 +192,14 @@ module Dwv
       scope.distinct.pluck(:codigo_dwv)
     end
 
+    def active_ids_missing_locally(active_ids)
+      active_ids = active_ids.map(&:to_s).reject(&:blank?)
+      return [] if active_ids.empty?
+
+      local_ids = tenant.habitations.where(imovel_dwv: "Sim", codigo_dwv: active_ids).distinct.pluck(:codigo_dwv).map(&:to_s)
+      active_ids - local_ids
+    end
+
     def collect_active_property_ids(client, limit:, max_pages:, filters: {})
       collect_property_ids(client, deleted: false, limit: limit, max_pages: max_pages, filters: filters, state: :active)
     end
@@ -195,9 +218,9 @@ module Dwv
         collection = Dwv::PropertyImportService.extract_collection(response)
         break if collection.blank?
 
-        collection.each do |item|
-          next if state == :active && removed_property_item?(item)
-          next if state == :removed && !removed_property_item?(item)
+      collection.each do |item|
+          next if state == :active && !Dwv::PropertyImportService.active_listing?(item)
+          next if state == :removed && Dwv::PropertyImportService.active_listing?(item)
 
           property_id = Dwv::PropertyImportService.extract_property_id(item).to_s.strip
           next if property_id.blank?
@@ -209,18 +232,6 @@ module Dwv
       end
 
       ids.to_a
-    end
-
-    def removed_property_item?(item)
-      return false unless item.is_a?(Hash)
-
-      deleted = item["deleted"] || item[:deleted]
-      status = (item["status"] || item[:status] || item["integration_status"] || item[:integration_status]).to_s.strip.downcase
-
-      deleted == true ||
-        deleted.to_s == "true" ||
-        status == "inactive" ||
-        status == "auto_inactive"
     end
 
     def normalize_limit(raw)
