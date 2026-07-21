@@ -15,7 +15,7 @@ RSpec.describe Dwv::SyncRunnerService do
       importer = instance_double(Dwv::PropertyImportService, perform: { success: true })
 
       allow(service).to receive(:build_client).and_return(client)
-      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: nil, last_updates: "2026-07-07,2026-07-07").and_return({ "data" => [{ "id" => "DWV-INC-1" }] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false, last_updates: "2026-07-07,2026-07-07").and_return({ "data" => [{ "id" => "DWV-INC-1" }] })
       allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: true, last_updates: "2026-07-07,2026-07-07").and_return({ "data" => [] })
       allow(client).to receive(:property_details).with("DWV-INC-1").and_return(details)
       allow(Dwv::PropertyImportService).to receive(:new).with(details, tenant: current_tenant).and_return(importer)
@@ -24,6 +24,53 @@ RSpec.describe Dwv::SyncRunnerService do
 
       expect(result).to include(imported: 1, deactivated: 0, errors_count: 0)
       expect(Dwv::PropertyImportService).to have_received(:new).with(details, tenant: current_tenant)
+    end
+  end
+
+  describe "sincronização full" do
+    it "consulta imóveis ativos explicitamente com deleted=false" do
+      current_tenant = Tenant.create!(name: "Tenant full DWV #{SecureRandom.hex(3)}", slug: "tenant-full-dwv-#{SecureRandom.hex(3)}")
+      Current.tenant = current_tenant
+      Setting.set("dwv_enabled", "true", "teste", tenant: current_tenant)
+      Setting.set("dwv_api_token", "token-dwv", "teste", tenant: current_tenant)
+
+      client = instance_double(Dwv::Client)
+      service = described_class.new(tenant: current_tenant)
+      status_service = instance_double(Dwv::SyncStatusService, mark_processing!: true, update_progress!: true)
+      details = { "id" => "DWV-FULL-1" }
+      importer = instance_double(Dwv::PropertyImportService, perform: { success: true })
+
+      allow(service).to receive(:build_client).and_return(client)
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false).and_return({ "data" => [{ "id" => "DWV-FULL-1" }] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: true).and_return({ "data" => [] })
+      allow(client).to receive(:property_details).with("DWV-FULL-1").and_return(details)
+      allow(Dwv::PropertyImportService).to receive(:new).with(details, tenant: current_tenant).and_return(importer)
+
+      result = service.call(mode: "full", limit: 50, max_pages: 1, status_service: status_service)
+
+      expect(result).to include(imported: 1, deactivated: 0, errors_count: 0)
+      expect(client).to have_received(:list_properties).with(limit: 50, page: 1, deleted: false).twice
+    end
+
+    it "desativa imóvel DWV local que não aparece mais na lista ativa" do
+      current_tenant = Tenant.create!(name: "Tenant missing DWV #{SecureRandom.hex(3)}", slug: "tenant-missing-dwv-#{SecureRandom.hex(3)}")
+      Current.tenant = current_tenant
+      Setting.set("dwv_enabled", "true", "teste", tenant: current_tenant)
+      Setting.set("dwv_api_token", "token-dwv", "teste", tenant: current_tenant)
+      missing_habitation = create(:habitation, tenant: current_tenant, codigo: "DWV-MISSING", codigo_dwv: "DWV-MISSING", imovel_dwv: "Sim", exibir_no_site_flag: true)
+
+      client = instance_double(Dwv::Client)
+      service = described_class.new(tenant: current_tenant)
+      status_service = instance_double(Dwv::SyncStatusService, mark_processing!: true, update_progress!: true)
+
+      allow(service).to receive(:build_client).and_return(client)
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: false).and_return({ "data" => [] })
+      allow(client).to receive(:list_properties).with(limit: 50, page: 1, deleted: true).and_return({ "data" => [] })
+
+      result = service.call(mode: "full", limit: 50, max_pages: 1, status_service: status_service)
+
+      expect(result).to include(imported: 0, deactivated: 1, errors_count: 0)
+      expect(missing_habitation.reload).to have_attributes(exibir_no_site_flag: false, last_sync_status: "inactive")
     end
   end
 

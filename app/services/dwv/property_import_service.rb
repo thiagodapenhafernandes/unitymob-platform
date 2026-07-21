@@ -56,6 +56,10 @@ module Dwv
         raise "Payload DWV incompleto para novo cadastro (id=#{dwv_id})."
       end
 
+      if !existing_record && removed_from_dwv?
+        raise "Imóvel DWV removido/inativo não deve criar novo cadastro (id=#{dwv_id})."
+      end
+
       assign_habitation_attributes(habitation, dwv_id:, incoming_codigo:, existing_record:)
       address_attrs = extract_address
 
@@ -179,7 +183,25 @@ module Dwv
       attrs.merge!(derived_feature_flags(features + infrastructure))
       attrs[:codigo] = resolve_codigo_for(habitation) unless existing_record
 
+      attrs = existing_record_attrs(attrs) if existing_record
+
       habitation.assign_attributes(attrs)
+    end
+
+    def existing_record_attrs(attrs)
+      attrs.slice(
+        :codigo_dwv,
+        :imovel_dwv,
+        :status,
+        :valor_venda_cents,
+        :valor_locacao_cents,
+        :exibir_no_site_flag,
+        :data_atualizacao_crm,
+        :last_sync_at,
+        :last_sync_status,
+        :last_sync_message,
+        :dwv_payload
+      ).merge(last_sync_message: "Sincronizado via DWV (preço atualizado)")
     end
 
     def find_existing_habitation(dwv_id:, codigo:)
@@ -544,8 +566,10 @@ module Dwv
         next unless feature.is_a?(Hash)
 
         type = feature["type"] || feature[:type] || feature["category"] || feature[:category]
+        titles = feature["titles"] || feature[:titles]
         title = feature["title"] || feature[:title] || feature["name"] || feature[:name] || feature["tag"] || feature[:tag]
-        next if title.blank?
+        titles = Array(titles.presence || title).compact_blank
+        next if titles.blank?
 
         if category == "infrastructure"
           next unless type.to_s.match?(/empreendimento|building|infra|lazer/i)
@@ -553,8 +577,8 @@ module Dwv
           next if type.to_s.match?(/empreendimento|building|infra|lazer/i)
         end
 
-        title.to_s.strip
-      end.uniq
+        titles.map { |item| item.to_s.strip }
+      end.flatten.uniq
     end
 
     def derived_feature_flags(features)
@@ -663,6 +687,16 @@ module Dwv
       has_pictures = extract_pictures.present?
 
       !title_present && !category_present && !has_any_price && !has_location && !has_pictures
+    end
+
+    def removed_from_dwv?
+      raw_status = value(["status"], ["integration_status"]).to_s.strip.downcase
+      deleted = value(["deleted"])
+
+      deleted == true ||
+        deleted.to_s == "true" ||
+        raw_status == "inactive" ||
+        raw_status == "auto_inactive"
     end
   end
 end
