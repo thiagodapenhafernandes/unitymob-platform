@@ -106,7 +106,7 @@ class Admin::DwvIntegrationsController < Admin::BaseController
 
   def deactivate_removed
     ensure_enabled_and_token!
-    mark_processing!("Desativação de removidos DWV iniciada em background.")
+    mark_processing!("Remoção de removidos DWV iniciada em background.")
 
     DwvSyncJob.perform_later(
       mode: "deactivate_removed",
@@ -114,10 +114,10 @@ class Admin::DwvIntegrationsController < Admin::BaseController
       triggered_by_id: current_admin_user.id
     )
 
-    redirect_to admin_dwv_integrations_path, notice: "Desativação de removidos iniciada em segundo plano."
+    redirect_to admin_dwv_integrations_path, notice: "Remoção de removidos iniciada em segundo plano."
   rescue => e
-    stamp_sync!("Erro ao desativar removidos DWV: #{e.message}")
-    redirect_to admin_dwv_integrations_path, alert: "Falha ao desativar removidos: #{e.message}"
+    stamp_sync!("Erro ao remover removidos DWV: #{e.message}")
+    redirect_to admin_dwv_integrations_path, alert: "Falha ao remover removidos: #{e.message}"
   end
 
   private

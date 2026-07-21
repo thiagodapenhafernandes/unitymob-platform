@@ -52,7 +52,7 @@ RSpec.describe Dwv::SyncRunnerService do
       expect(client).to have_received(:list_properties).with(limit: 50, page: 1, deleted: false).twice
     end
 
-    it "desativa imóvel DWV local que não aparece mais na lista ativa" do
+    it "remove imóvel DWV local que não aparece mais na lista ativa" do
       current_tenant = Tenant.create!(name: "Tenant missing DWV #{SecureRandom.hex(3)}", slug: "tenant-missing-dwv-#{SecureRandom.hex(3)}")
       Current.tenant = current_tenant
       Setting.set("dwv_enabled", "true", "teste", tenant: current_tenant)
@@ -70,22 +70,66 @@ RSpec.describe Dwv::SyncRunnerService do
       result = service.call(mode: "full", limit: 50, max_pages: 1, status_service: status_service)
 
       expect(result).to include(imported: 0, deactivated: 1, errors_count: 0)
-      expect(missing_habitation.reload).to have_attributes(exibir_no_site_flag: false, last_sync_status: "inactive")
+      expect(current_tenant.habitations.where(id: missing_habitation.id)).not_to exist
     end
   end
 
-  describe "desativação de removidos" do
-    it "desativa imóveis DWV apenas no tenant informado" do
+  describe "remoção de removidos" do
+    it "remove imóveis DWV apenas no tenant informado" do
       current_tenant = Tenant.create!(name: "Tenant runner DWV #{SecureRandom.hex(3)}", slug: "tenant-runner-dwv-#{SecureRandom.hex(3)}")
       other_tenant = Tenant.create!(name: "Outro runner DWV #{SecureRandom.hex(3)}", slug: "outro-runner-dwv-#{SecureRandom.hex(3)}")
       current_habitation = create(:habitation, tenant: current_tenant, codigo: "CUR-RUN-DWV", codigo_dwv: "DWV-RUN-1", imovel_dwv: "Sim", status: "Venda", exibir_no_site_flag: true)
       other_habitation = create(:habitation, tenant: other_tenant, codigo: "OUT-RUN-DWV", codigo_dwv: "DWV-RUN-1", imovel_dwv: "Sim", status: "Venda", exibir_no_site_flag: true)
 
-      result = described_class.new(tenant: current_tenant).send(:deactivate_removed_properties_by_ids, ["DWV-RUN-1"])
+      result = described_class.new(tenant: current_tenant).send(:destroy_removed_properties_by_ids, ["DWV-RUN-1"])
 
       expect(result).to eq(1)
-      expect(current_habitation.reload).to have_attributes(status: "Venda", exibir_no_site_flag: false, last_sync_status: "inactive")
+      expect(current_tenant.habitations.where(id: current_habitation.id)).not_to exist
       expect(other_habitation.reload).to have_attributes(status: "Venda", exibir_no_site_flag: true, last_sync_status: nil)
+    end
+
+    it "desvincula referências opcionais que bloqueiam FK antes de remover o imóvel" do
+      current_tenant = Tenant.create!(name: "Tenant refs DWV #{SecureRandom.hex(3)}", slug: "tenant-refs-dwv-#{SecureRandom.hex(3)}")
+      Current.tenant = current_tenant
+      admin_user = create(:admin_user, tenant: current_tenant)
+      habitation = create(:habitation, tenant: current_tenant, codigo: "DWV-REFS", codigo_dwv: "DWV-REFS", imovel_dwv: "Sim", status: "Venda", exibir_no_site_flag: true)
+      batch = VistaImportBatch.create!(dump_dir: "spec/dwv/#{SecureRandom.hex(4)}", status: "completed")
+      vista_file_asset = VistaFileAsset.create!(
+        vista_import_batch: batch,
+        habitation: habitation,
+        table_name: "imoveis",
+        kind: "property_photo",
+        source_path: "dwv/#{habitation.codigo}/foto.jpg",
+        filename: "foto.jpg",
+        status: "downloaded"
+      )
+      seo_event = SeoConversionEvent.create!(
+        habitation: habitation,
+        event_type: "property_card_click",
+        occurred_at: Time.current
+      )
+      interaction = HabitationInteraction.create!(
+        habitation: habitation,
+        source_table: "DWV",
+        source_key: "DWV-REFS-#{SecureRandom.hex(4)}"
+      )
+      broker_assignment = HabitationBrokerAssignment.create!(
+        habitation: habitation,
+        admin_user: admin_user,
+        role: "captador",
+        commission_type: "percentage"
+      )
+      share_link = HabitationShareLink.create!(habitation: habitation, admin_user: admin_user)
+
+      result = described_class.new(tenant: current_tenant).send(:destroy_removed_properties_by_ids, ["DWV-REFS"])
+
+      expect(result).to eq(1)
+      expect(current_tenant.habitations.where(id: habitation.id)).not_to exist
+      expect(vista_file_asset.reload.habitation_id).to be_nil
+      expect(seo_event.reload.habitation_id).to be_nil
+      expect(interaction.reload.habitation_id).to be_nil
+      expect(HabitationBrokerAssignment.where(id: broker_assignment.id)).not_to exist
+      expect(HabitationShareLink.where(id: share_link.id)).not_to exist
     end
   end
 end

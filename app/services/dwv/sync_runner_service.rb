@@ -35,7 +35,7 @@ module Dwv
       when "incremental"
         sync_incremental_properties(limit: normalized_limit, max_pages: normalized_max_pages, last_updates: normalized_last_updates)
       when "deactivate_removed"
-        { imported: 0, deactivated: deactivate_removed_properties(limit: normalized_limit, max_pages: normalized_max_pages), errors_count: 0 }
+        { imported: 0, deactivated: remove_removed_properties(limit: normalized_limit, max_pages: normalized_max_pages), errors_count: 0 }
       else
         raise ArgumentError, "Modo de sincronização DWV inválido: #{mode}"
       end
@@ -76,7 +76,7 @@ module Dwv
         end
       end
 
-      deactivated = deactivate_removed_properties_by_ids(removed_ids)
+      deactivated = destroy_removed_properties_by_ids(removed_ids)
       processed_steps += removed_ids.size
       publish_progress(processed_steps, total_steps, "Sincronização DWV incremental concluída.")
 
@@ -122,9 +122,9 @@ module Dwv
         end
       end
 
-      deactivated = deactivate_removed ? deactivate_removed_properties_by_ids(removed_ids) : 0
+      deactivated = deactivate_removed ? destroy_removed_properties_by_ids(removed_ids) : 0
       processed_steps += removed_ids.size
-      publish_progress(processed_steps, total_steps, "Desativação de removidos concluída.")
+      publish_progress(processed_steps, total_steps, "Remoção de removidos DWV concluída.")
 
       {
         imported: imported,
@@ -134,26 +134,40 @@ module Dwv
       }
     end
 
-    def deactivate_removed_properties(limit:, max_pages:, client: nil)
+    def remove_removed_properties(limit:, max_pages:, client: nil)
       client ||= build_client
       removed_ids = collect_removed_property_ids(client, limit: limit, max_pages: max_pages)
       return 0 if removed_ids.empty?
 
-      @status_service&.update_progress!(progress: 40, message: "Aplicando desativação de removidos DWV...")
-      result = deactivate_removed_properties_by_ids(removed_ids)
-      @status_service&.update_progress!(progress: 100, message: "Desativação de removidos DWV concluída.")
+      @status_service&.update_progress!(progress: 40, message: "Aplicando remoção de removidos DWV...")
+      result = destroy_removed_properties_by_ids(removed_ids)
+      @status_service&.update_progress!(progress: 100, message: "Remoção de removidos DWV concluída.")
       result
     end
 
-    def deactivate_removed_properties_by_ids(removed_ids)
+    def destroy_removed_properties_by_ids(removed_ids)
       return 0 if removed_ids.empty?
 
-      tenant.habitations.where(codigo_dwv: removed_ids).update_all(
-        exibir_no_site_flag: false,
-        last_sync_at: Time.current,
-        last_sync_status: "inactive",
-        last_sync_message: "Despublicado localmente por status removido na DWV"
-      )
+      destroyed = 0
+      tenant.habitations.where(imovel_dwv: "Sim", codigo_dwv: removed_ids).find_each do |habitation|
+        Habitation.transaction do
+          nullify_destroy_blocking_optional_references(habitation.id)
+          habitation.destroy!
+        end
+        destroyed += 1
+      end
+      destroyed
+    end
+
+    def nullify_destroy_blocking_optional_references(habitation_id)
+      now = Time.current
+      vista_attrs = { habitation_id: nil }
+      vista_attrs[:updated_at] = now if VistaFileAsset.column_names.include?("updated_at")
+      VistaFileAsset.where(habitation_id: habitation_id).update_all(vista_attrs)
+
+      seo_attrs = { habitation_id: nil }
+      seo_attrs[:updated_at] = now if SeoConversionEvent.column_names.include?("updated_at")
+      SeoConversionEvent.where(habitation_id: habitation_id).update_all(seo_attrs)
     end
 
     def local_dwv_ids_missing_from(active_ids)

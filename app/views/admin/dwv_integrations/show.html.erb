@@ -88,7 +88,7 @@
         <div class="tw-flex tw-flex-wrap tw-gap-2">
           <%= button_to "Sincronizar Tudo Agora (Job)", sync_now_admin_dwv_integrations_path, method: :post, class: "ax-btn ax-btn--primary" %>
           <%= button_to "Sincronizar Lote (1 página)", sync_recent_admin_dwv_integrations_path(limit: @dwv_sync_limit), method: :post, class: "ax-btn ax-btn--ghost" %>
-          <%= button_to "Desativar Removidos DWV", deactivate_removed_admin_dwv_integrations_path, method: :post, class: "ax-btn ax-btn--danger", data: { confirm: "Isso vai desativar no site imóveis marcados como removidos na DWV. Continuar?" } %>
+          <%= button_to "Remover Removidos DWV", deactivate_removed_admin_dwv_integrations_path, method: :post, class: "ax-btn ax-btn--danger", data: { confirm: "Isso vai excluir do banco imóveis marcados como removidos na DWV. Continuar?" } %>
         </div>
       </div>
     </div>

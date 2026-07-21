@@ -33,7 +33,7 @@ class DwvSyncJob < ApplicationJob
     message = [
       "DWV sync (#{mode}) concluído",
       "importados=#{result[:imported]}",
-      "desativados=#{result[:deactivated]}",
+      "removidos=#{result[:deactivated]}",
       "erros=#{result[:errors_count]}",
       ("dedup_grupos=#{dedup_result[:duplicate_groups]} | dedup_desvinculados=#{dedup_result[:detached]}" if dedup_result.present?),
       ("top_erro=#{top_error[1]}x #{top_error[0]}" if top_error.present?),
