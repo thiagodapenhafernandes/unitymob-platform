@@ -528,9 +528,6 @@ module Dwv
       attrs = address_attrs.except(:logradouro, :imediacoes)
       attrs[:endereco] = address_attrs[:logradouro]
       attrs[:imediacoes] = Array(address_attrs[:imediacoes]).join(", ").presence
-      if attrs[:complemento].blank? && !complement_promoted_to_development?
-        attrs[:bloco] = text_value(["unit", "title"], ["third_party_property", "unit_info"])
-      end
       attrs
     end
 

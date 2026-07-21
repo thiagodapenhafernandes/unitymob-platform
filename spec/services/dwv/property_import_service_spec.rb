@@ -53,6 +53,17 @@ RSpec.describe Dwv::PropertyImportService do
       expect(address.imediacoes).to eq(["A 30m da Av. Brasil"])
     end
 
+    it "não usa o número da unidade DWV como bloco quando o complemento vem vazio" do
+      payload = unit_payload.deep_dup
+      payload["data"]["unit"]["title"] = "101"
+      payload["data"]["building"]["address"]["complement"] = nil
+
+      habitation = described_class.new(payload, tenant: tenant).perform.fetch(:habitation)
+
+      expect(habitation.bloco).to be_blank
+      expect(habitation.address.complemento).to be_blank
+    end
+
     it "updates only price and sync metadata on an existing DWV record" do
       habitation = create(
         :habitation,
