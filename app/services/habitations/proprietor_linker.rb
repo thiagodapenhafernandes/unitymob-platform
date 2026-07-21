@@ -7,7 +7,12 @@ module Habitations
     end
 
     def call
-      proprietor = selected_proprietor || existing_proprietor || new_proprietor
+      if (proprietor = selected_proprietor)
+        sync_habitation_from(proprietor)
+        return proprietor
+      end
+
+      proprietor = existing_proprietor || new_proprietor
       return unless proprietor
 
       apply_habitation_data_to(proprietor)
@@ -42,9 +47,7 @@ module Habitations
     end
 
     def find_by_vista_code
-      return if vista_code.blank?
-
-      habitation.tenant.proprietors.find_by(vista_code: vista_code)
+      legacy_vista_proprietor
     end
 
     def find_by_phone
@@ -89,6 +92,15 @@ module Habitations
       find_by_name
     end
 
+    def legacy_vista_proprietor
+      return if vista_code.blank?
+
+      matches = habitation.tenant.proprietors.where(vista_code: vista_code).limit(2).to_a
+      return unless matches.one?
+
+      matches.first
+    end
+
     def apply_habitation_data_to(proprietor)
       proprietor.name = owner_name if owner_name.present?
       proprietor.email = email if email.present?
@@ -100,16 +112,15 @@ module Habitations
     end
 
     def sync_habitation_from(proprietor)
+      habitation.proprietor = proprietor
       habitation.proprietor_id = proprietor.id
-      habitation.proprietario = proprietor.name if proprietor.name.present?
-      habitation.proprietario_codigo = proprietor.vista_code if proprietor.vista_code.present?
-      habitation.proprietario_email = proprietor.email if proprietor.email.present?
-      if proprietor.mobile_phone.present? || proprietor.phone_primary.present?
-        habitation.proprietario_celular = proprietor.mobile_phone.presence || proprietor.phone_primary
-      end
-      habitation.proprietario_telefone_comercial = proprietor.business_phone if proprietor.business_phone.present?
-      habitation.proprietario_telefone_residencial = proprietor.residential_phone if proprietor.residential_phone.present?
-      habitation.proprietario_cidade = proprietor.city if proprietor.city.present?
+      habitation.proprietario = proprietor.name
+      habitation.proprietario_codigo = proprietor.vista_code
+      habitation.proprietario_email = proprietor.email
+      habitation.proprietario_celular = proprietor.mobile_phone.presence || proprietor.phone_primary
+      habitation.proprietario_telefone_comercial = proprietor.business_phone
+      habitation.proprietario_telefone_residencial = proprietor.residential_phone
+      habitation.proprietario_cidade = proprietor.city
     end
 
     def owner_name

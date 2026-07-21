@@ -746,24 +746,31 @@ class Habitation < ApplicationRecord
   def edificio_nome = nome_empreendimento
   def unidade_numero = bloco
 
-  def proprietario_nome = proprietario
+  def proprietario_nome = proprietor&.name.presence || proprietario
+
+  def proprietario_email_display
+    proprietor&.email.presence || proprietario_email
+  end
+
   def proprietario_telefone
-    proprietario_celular.presence ||
-      proprietor&.mobile_phone.presence ||
+    proprietor&.mobile_phone.presence ||
       proprietor&.phone_primary.presence ||
       proprietor&.business_phone.presence ||
-      proprietor&.residential_phone.presence
+      proprietor&.residential_phone.presence ||
+      proprietario_celular.presence
   end
 
   def proprietario_telefone_comercial_display
-    proprietario_telefone_comercial.presence || proprietor&.business_phone
+    proprietor&.business_phone.presence || proprietario_telefone_comercial
   end
 
   def proprietario_telefone_residencial_display
-    proprietario_telefone_residencial.presence || proprietor&.residential_phone
+    proprietor&.residential_phone.presence || proprietario_telefone_residencial
   end
 
-  def proprietario_cpf_cnpj = proprietario_codigo
+  def proprietario_cpf_cnpj
+    proprietor&.cpf_cnpj.presence || proprietor&.vista_code.presence || proprietario_codigo
+  end
   def proprietario_cidade = captacao_note_value("Cidade do proprietário")
 
   def area_total = area_total_m2
@@ -1170,8 +1177,8 @@ class Habitation < ApplicationRecord
   end
 
   def intake_owner_data_missing?(require_owner_city: false)
-    owner_name = proprietario.presence || proprietor&.name
-    owner_contact = proprietario_celular.presence || proprietario_telefone.presence || proprietario_email.presence || proprietor&.mobile_phone || proprietor&.phone_primary || proprietor&.email
+    owner_name = proprietor&.name.presence || proprietario
+    owner_contact = proprietario_telefone.presence || proprietario_email_display.presence
 
     owner_name.blank? || owner_contact.blank? || (require_owner_city && proprietario_cidade.blank?)
   end

@@ -2593,10 +2593,11 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(options).not_to include("Centro")
   end
 
-  it "exibe telefone do proprietário vinculado quando o imóvel não tem telefone legado" do
+  it "exibe dados do proprietário vinculado como fonte do cadastro comercial" do
     proprietor = create(
       :proprietor,
       name: "Jeanine",
+      email: "jeanine@example.com",
       phone_primary: "47 98868.0402",
       mobile_phone: nil,
       business_phone: nil,
@@ -2605,8 +2606,9 @@ RSpec.describe "Admin::Habitations", type: :request do
     habitation = create(
       :habitation,
       proprietor: proprietor,
-      proprietario: "Jeanine",
-      proprietario_celular: nil,
+      proprietario: "Nome legado divergente",
+      proprietario_email: "legado@example.com",
+      proprietario_celular: "47 99999-0000",
       proprietario_telefone_comercial: nil,
       proprietario_telefone_residencial: nil
     )
@@ -2614,8 +2616,50 @@ RSpec.describe "Admin::Habitations", type: :request do
     get edit_admin_habitation_path(habitation)
 
     expect(response).to have_http_status(:ok)
+    page = Nokogiri::HTML(response.body)
+    general_tab = page.at_css("#general")
+    expect(general_tab.text).not_to include("Responsável pelo cadastro")
+    expect(general_tab.at_css('select[name="habitation[admin_user_id]"]')).to be_nil
+    expect(page.at_css('select[name="habitation[proprietor_id]"]')).to be_present
+    expect(page.at_css('input[name="habitation[proprietario]"]')).to be_nil
     expect(response.body).to include("Jeanine")
+    expect(response.body).to include("jeanine@example.com")
     expect(response.body).to include("55 (47) 98868-0402")
+    expect(response.body).not_to include("Nome legado divergente")
+  end
+
+  it "não substitui o proprietário da unidade pelo proprietário do empreendimento vinculado" do
+    development_proprietor = create(:proprietor, name: "Embraed Empreendimentos", vista_code: "14")
+    unit_proprietor = create(:proprietor, name: "Marcelo", vista_code: "24518")
+    development = create(
+      :habitation,
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      codigo: "EMP-#{SecureRandom.hex(4)}",
+      proprietor: development_proprietor
+    )
+    habitation = create(
+      :habitation,
+      codigo_empreendimento: development.codigo,
+      proprietor: unit_proprietor,
+      proprietario: "Marcelo",
+      proprietario_codigo: "24518",
+      proprietario_celular: "47 99289-8305"
+    )
+    habitation.update_columns(
+      proprietor_id: unit_proprietor.id,
+      proprietario: "Marcelo",
+      proprietario_codigo: "24518"
+    )
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    page = Nokogiri::HTML(response.body)
+    selected_option = page.at_css('select[name="habitation[proprietor_id]"] option[selected]')
+    expect(selected_option["value"]).to eq(unit_proprietor.id.to_s)
+    expect(selected_option.text).to eq("Marcelo")
+    expect(selected_option.text).not_to include("Vista")
   end
 
   it "mantém classificação de fotos visível para o administrativo" do
@@ -3309,7 +3353,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     page = Nokogiri::HTML(response.body)
     expect(page.at_css('input[name="habitation[titulo_anuncio]"]')["readonly"]).to eq("readonly")
     expect(page.at_css('input[name="habitation[nome_empreendimento]"]')["readonly"]).to eq("readonly")
-    expect(page.at_css('input[name="habitation[proprietario]"]')["readonly"]).to eq("readonly")
+    expect(page.at_css('select[name="habitation[proprietor_id]"]')["disabled"]).to eq("disabled")
     expect(page.at_css('input[name="habitation[address_attributes][logradouro]"]')["readonly"]).to eq("readonly")
     expect(response.body).not_to include("Adicionar arquivos")
 

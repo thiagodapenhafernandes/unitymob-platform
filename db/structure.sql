@@ -1,4 +1,4 @@
-\restrict G68movdF1492VGqOB3WQCX9ceumz2V5taYIsoSF0zpvB68h7zmovggdcvvPZX7T
+\restrict 3MLoHiJzgkaD89S9iqPZ1Y0fsIckC5Ka5tNUxExf2lancdVXKsGPure63RegpWk
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -8963,6 +8963,13 @@ CREATE INDEX idx_habitations_public_development_units ON public.habitations USIN
 
 
 --
+-- Name: idx_habitations_public_filter_price; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_habitations_public_filter_price ON public.habitations USING btree (tenant_id, exibir_no_site_flag, status, tipo, valor_venda_cents, valor_locacao_cents);
+
+
+--
 -- Name: idx_habitations_public_tenant_status_order; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9254,6 +9261,20 @@ CREATE UNIQUE INDEX idx_review_policy_audits_setting_version ON public.property_
 --
 
 CREATE INDEX idx_review_policy_audits_tenant_created ON public.property_review_policy_audit_logs USING btree (tenant_id, created_at);
+
+
+--
+-- Name: idx_seo_settings_public_canonical; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_seo_settings_public_canonical ON public.seo_settings USING btree (tenant_id, canonical_path);
+
+
+--
+-- Name: idx_seo_settings_public_links_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_seo_settings_public_links_order ON public.seo_settings USING btree (tenant_id, active, apply_to_public, robots_index, page_type, access_count DESC, last_accessed_at DESC, seo_score DESC);
 
 
 --
@@ -16057,11 +16078,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict G68movdF1492VGqOB3WQCX9ceumz2V5taYIsoSF0zpvB68h7zmovggdcvvPZX7T
+\unrestrict 3MLoHiJzgkaD89S9iqPZ1Y0fsIckC5Ka5tNUxExf2lancdVXKsGPure63RegpWk
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260718143000'),
 ('20260717090000'),
 ('20260716140000'),
 ('20260716120000'),
