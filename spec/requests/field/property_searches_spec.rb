@@ -39,7 +39,7 @@ RSpec.describe "Field::PropertySearches", type: :request do
   end
 
   it "interpreta filtros, consulta o escopo autorizado e registra histórico sem áudio" do
-    property = create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "VOICE-SEARCH", categoria: "Apartamento", dormitorios_qtd: 3)
+    property = create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "VOICE-SEARCH", categoria: "Apartamento", nome_empreendimento: "Granada", dormitorios_qtd: 3)
     interpretation = Ai::PropertySearch::Interpreter::Result.new(
       intent: "search_properties",
       filters: { "property_type" => "apartments", "bedrooms_min" => 3 },
@@ -54,8 +54,29 @@ RSpec.describe "Field::PropertySearches", type: :request do
     expect(response).to have_http_status(:ok)
     payload = response.parsed_body
     expect(payload.fetch("results").map { |item| item["id"] }).to include(property.id)
+    item = payload.fetch("results").find { |result| result["id"] == property.id }
+    expect(item.fetch("card_title")).to eq("VOICE-SEARCH - Granada")
     history = AiPropertySearchHistory.last
     expect(history).to have_attributes(tenant_id: broker.tenant_id, admin_user_id: broker.id, original_audio_reference: nil, status: "completed")
+  end
+
+  it "mantém título do card com código e empreendimento mesmo quando esses campos não estão marcados nos detalhes visíveis" do
+    setting.update!(ai_property_search_result_fields: %w[title price])
+    property = create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "140", categoria: "Apartamento", nome_empreendimento: "Granada")
+    interpretation = Ai::PropertySearch::Interpreter::Result.new(
+      intent: "search_properties",
+      filters: { "property_type" => "apartments" },
+      missing_required_information: [],
+      clarifying_question: nil
+    )
+    allow(Ai::PropertySearch::Interpreter).to receive(:new).and_return(instance_double(Ai::PropertySearch::Interpreter, call: interpretation))
+
+    post field_property_search_path(format: :json), params: { query: "Apartamento" }, headers: json_headers
+
+    item = response.parsed_body.fetch("results").find { |result| result["id"] == property.id }
+    expect(item.fetch("card_title")).to eq("140 - Granada")
+    expect(item).not_to have_key("property_code")
+    expect(item).not_to have_key("development_name")
   end
 
   it "interpreta faixa falada como intervalo e não como valores soltos" do

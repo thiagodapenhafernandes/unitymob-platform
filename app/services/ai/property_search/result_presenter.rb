@@ -12,6 +12,7 @@ module Ai
           "preview_path" => Rails.application.routes.url_helpers.property_preview_field_property_search_path(habitation_id: habitation.id),
           "cover_image" => cover_image(habitation),
           "property_code" => habitation.codigo,
+          "card_title" => card_title(habitation),
           "title" => habitation.display_title,
           "neighborhood" => habitation.address&.bairro.presence || habitation.bairro,
           "city" => habitation.address&.cidade.presence || habitation.cidade,
@@ -22,10 +23,18 @@ module Ai
           "private_area" => habitation.area_privativa_m2,
           "development_name" => habitation.nome_empreendimento
         }
-        values.slice("id", "path", "preview_path", *@fields).compact
+        values.slice("id", "path", "preview_path", "card_title", *@fields).compact
       end
 
       private
+
+      def card_title(habitation)
+        code = habitation.codigo.to_s.strip
+        development_name = habitation.nome_empreendimento.to_s.strip
+        return "#{code} - #{development_name}" if code.present? && development_name.present?
+
+        habitation.display_title.presence || code.presence || "Imóvel"
+      end
 
       def cover_image(habitation)
         source = habitation.public_image_sources.first
