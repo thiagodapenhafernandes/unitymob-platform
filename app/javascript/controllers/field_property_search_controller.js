@@ -280,11 +280,12 @@ export default class extends Controller {
     select.addEventListener("click", () => { this.selectedIds.has(property.id) ? this.selectedIds.delete(property.id) : this.selectedIds.add(property.id); wrapper.classList.toggle("is-selected", this.selectedIds.has(property.id)); this.syncSelectionBar() })
     const link = document.createElement("a"); link.className = "field-ai-property-card"; link.href = property.path
     link.dataset.previewUrl = property.preview_path || property.path
-    link.dataset.propertyTitle = property.title || property.property_code || "Imóvel"
+    const cardTitle = property.card_title || property.title || property.property_code || "Imóvel"
+    link.dataset.propertyTitle = cardTitle
     link.addEventListener("click", (event) => this.openPreview(event, historyId, property.id))
-    if (property.cover_image) { const image = document.createElement("img"); image.src = property.cover_image; image.alt = property.title || "Imóvel"; image.loading = "lazy"; link.append(image) }
+    if (property.cover_image) { const image = document.createElement("img"); image.src = property.cover_image; image.alt = cardTitle; image.loading = "lazy"; link.append(image) }
     const body = document.createElement("span"); body.className = "field-ai-property-card__body"
-    const title = document.createElement("strong"); title.textContent = property.title || property.property_code || "Imóvel"; body.append(title)
+    const title = document.createElement("strong"); title.textContent = cardTitle; body.append(title)
     const location = [property.neighborhood, property.city].filter(Boolean).join(" · "); if (location) body.append(this.text("small", location))
     const facts = [property.bedrooms && `${property.bedrooms} qtos`, property.suites && `${property.suites} suítes`, property.parking_spaces && `${property.parking_spaces} vagas`, property.private_area && `${property.private_area} m²`].filter(Boolean).join(" · "); if (facts) body.append(this.text("small", facts))
     if (property.price) body.append(this.text("b", new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(property.price)))
