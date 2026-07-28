@@ -11,6 +11,12 @@ export default class extends Controller {
     "inactiveStatusHint",
     "rentedStatusPanel",
     "soldStatusPanel",
+    "rentedClosedValue",
+    "soldClosedValue",
+    "statusNegotiationModal",
+    "statusNegotiationHint",
+    "statusNegotiationValue",
+    "statusNegotiationError",
     "unitOnly",
     "developmentSelect",
     "developmentName",
@@ -48,6 +54,8 @@ export default class extends Controller {
     this.applyCadastroType()
     this.applySuspensionReasonVisibility()
     this.applyInactiveStatusVisibility()
+    this.previousStatusValue = this.hasStatusSelectTarget ? this.statusSelectTarget.value : ""
+    this.statusNegotiationConfirmed = false
     this.syncFromDevelopmentSelection()
     this.applyServerValidationErrors()
     this.refreshValidationBadges()
@@ -352,6 +360,7 @@ export default class extends Controller {
   statusChanged() {
     this.applySuspensionReasonVisibility(true)
     this.applyInactiveStatusVisibility()
+    this.maybeOpenStatusNegotiationModal()
   }
 
   applySuspensionReasonVisibility(fromUser = false) {
@@ -387,6 +396,80 @@ export default class extends Controller {
     if (this.hasRentedStatusPanelTarget) this.setConditionalSectionState(this.rentedStatusPanelTarget, rented)
     if (this.hasSoldStatusPanelTarget) this.setConditionalSectionState(this.soldStatusPanelTarget, sold)
     if (this.hasInactiveStatusHintTarget) this.setVisible(this.inactiveStatusHintTarget, !rented && !sold)
+  }
+
+  maybeOpenStatusNegotiationModal() {
+    if (!this.hasStatusNegotiationModalTarget || !this.hasStatusNegotiationValueTarget) {
+      this.previousStatusValue = this.statusSelectTarget.value
+      return
+    }
+
+    const status = this.normalizedStatusValue()
+    const kind = status.includes("alugado") ? "rented" : (status.includes("vendido") ? "sold" : null)
+    if (!kind) {
+      this.previousStatusValue = this.statusSelectTarget.value
+      return
+    }
+
+    const target = kind === "rented" ? this.rentedClosedValueTarget : this.soldClosedValueTarget
+    if (String(target.value || "").trim().length > 0) {
+      this.previousStatusValue = this.statusSelectTarget.value
+      return
+    }
+
+    this.pendingStatusNegotiationKind = kind
+    this.statusNegotiationConfirmed = false
+    this.statusNegotiationValueTarget.value = ""
+    if (this.hasStatusNegotiationErrorTarget) this.statusNegotiationErrorTarget.hidden = true
+    if (this.hasStatusNegotiationHintTarget) {
+      this.statusNegotiationHintTarget.textContent = kind === "rented"
+        ? "Informe o valor pelo qual a locação foi fechada."
+        : "Informe o valor pelo qual a venda foi fechada."
+    }
+    this.statusNegotiationModalTarget.dispatchEvent(new CustomEvent("ax-modal:open", { bubbles: true }))
+  }
+
+  confirmStatusNegotiation(event) {
+    event?.preventDefault()
+    const value = String(this.statusNegotiationValueTarget.value || "").trim()
+    if (!value) {
+      if (this.hasStatusNegotiationErrorTarget) this.statusNegotiationErrorTarget.hidden = false
+      this.statusNegotiationValueTarget.focus()
+      return
+    }
+
+    const target = this.pendingStatusNegotiationKind === "rented" ? this.rentedClosedValueTarget : this.soldClosedValueTarget
+    target.value = value
+    target.dispatchEvent(new Event("input", { bubbles: true }))
+    target.dispatchEvent(new Event("change", { bubbles: true }))
+    this.statusNegotiationConfirmed = true
+    this.previousStatusValue = this.statusSelectTarget.value
+    this.statusNegotiationModalTarget.dispatchEvent(new CustomEvent("ax-modal:close", { bubbles: true }))
+  }
+
+  cancelStatusNegotiation(event) {
+    event?.preventDefault()
+    this.revertPendingStatusNegotiation()
+    this.statusNegotiationConfirmed = true
+    this.statusNegotiationModalTarget.dispatchEvent(new CustomEvent("ax-modal:close", { bubbles: true }))
+  }
+
+  statusNegotiationClosed() {
+    if (this.statusNegotiationConfirmed) return
+
+    this.revertPendingStatusNegotiation()
+  }
+
+  revertPendingStatusNegotiation() {
+    if (!this.hasStatusSelectTarget) return
+
+    if (this.statusSelectTarget.tomselect) {
+      this.statusSelectTarget.tomselect.setValue(this.previousStatusValue || "", true)
+    } else {
+      this.statusSelectTarget.value = this.previousStatusValue || ""
+    }
+    this.applySuspensionReasonVisibility(false)
+    this.applyInactiveStatusVisibility()
   }
 
   setConditionalSectionState(section, enabled) {

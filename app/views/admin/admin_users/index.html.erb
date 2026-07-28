@@ -2,6 +2,7 @@
 <%
   acting_options = AdminUser.acting_types.keys.map { |k| [I18n.t("enums.admin_user.acting_type.#{k}", default: k.humanize), k] }
   acting_badge = ->(t) { { "sales" => ["Venda", :blue], "rentals" => ["Locação", :amber], "both" => ["Ambos", :green] }[t.to_s] }
+  selected_status = @status_filter.presence || params[:status]
   filters_active = params[:query].present? || params[:profile_id].present? || params[:status].present? || params[:acting_type].present? || params[:manager_id].present?
 %>
 
@@ -50,7 +51,7 @@
     <%= ax_select_field(form: f, method: :profile_id, label: "Perfil de acesso", choices: @available_profiles.map { |profile| [profile_filter_label(profile), profile.id] }, select_options: { include_blank: "Todos os perfis", selected: params[:profile_id] }, html_options: { data: { action: "change->auto-submit#submit" } }) %>
     <%= ax_select_field(form: f, method: :acting_type, label: "Atuação", choices: acting_options, select_options: { prompt: "Todas as atuações", selected: params[:acting_type] }, html_options: { data: { action: "change->auto-submit#submit" } }) %>
     <%= ax_select_field(form: f, method: :manager_id, label: "Gestor", choices: @manager_options.map { |manager| [manager.name, manager.id] }, select_options: { prompt: "Todos os gestores", selected: params[:manager_id] }, html_options: { data: { action: "change->auto-submit#submit" } }) %>
-    <%= ax_select_field(form: f, method: :status, label: "Status", choices: [["Todos", ""], ["Apenas ativos", "active"], ["Apenas inativos", "inactive"]], select_options: { selected: params[:status] }, html_options: { data: { action: "change->auto-submit#submit" } }) %>
+    <%= ax_select_field(form: f, method: :status, label: "Status", choices: [["Apenas ativos", "active"], ["Apenas inativos", "inactive"], ["Todos", "all"]], select_options: { selected: selected_status }, html_options: { data: { action: "change->auto-submit#submit" } }) %>
   <% end %>
 
   <div class="ax-table-wrap">

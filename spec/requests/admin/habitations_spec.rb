@@ -218,7 +218,6 @@ RSpec.describe "Admin::Habitations", type: :request do
     active_fields = %w[
       habitation_numero_prestacoes
       habitation_home_corporate_position
-      habitation_valor_vendido_terceiros_formatted
       habitation_senha_portaria
       habitation_tipo_vaga
       habitation_numero_box
@@ -234,7 +233,11 @@ RSpec.describe "Admin::Habitations", type: :request do
       expect(panel.key?("hidden")).to be(false)
     end
 
-    expect(html.at_css('[data-habitation-form-target="rentedStatusPanel"]').key?("hidden")).to be(true)
+    closed_value = html.at_css('input[type="hidden"][name="habitation[valor_vendido_terceiros_formatted]"]')
+    expect(closed_value).to be_present
+    expect(closed_value["value"]).to eq("R$ 850.000,00")
+    expect(html.at_css("#statusNegotiationModal")).to be_present
+    expect(html.text).not_to include("Valor comercializado (venda)")
   end
 
   it "preserva contextos legados ambíguos sem ativar o seletor automaticamente" do
@@ -1584,7 +1587,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body.index(human_edited.titulo_anuncio)).to be < response.body.index(synced_by_dwv.titulo_anuncio)
   end
 
-  it "filtra por rua considerando endereço estruturado e legado" do
+  it "ignora filtro legado de rua removido da localização" do
     structured = create(:habitation, codigo: "RUA-EST-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel Rua Estruturada")
     structured.create_address!(
       tipo_endereco: "Rua",
@@ -1605,16 +1608,18 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(structured.titulo_anuncio)
-    expect(response.body).not_to include(legacy.titulo_anuncio)
+    expect(response.body).to include(legacy.titulo_anuncio)
+    expect(response.body).not_to include("Rua: Central Norte")
 
     get admin_habitations_path(logradouro: "Atlântica")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(legacy.titulo_anuncio)
-    expect(response.body).not_to include(structured.titulo_anuncio)
+    expect(response.body).to include(structured.titulo_anuncio)
+    expect(response.body).not_to include("Rua: Atlântica")
   end
 
-  it "filtra por múltiplos bairros no catálogo" do
+  it "ignora filtro legado de bairro removido da localização" do
     centro = create(:habitation, codigo: "BAIRRO-CENTRO-#{SecureRandom.hex(4)}", titulo_anuncio: "Imóvel bairro Centro").tap { |habitation| habitation.address.update!(bairro: "Centro") }
     barra = create(:habitation, codigo: "BAIRRO-BARRA-#{SecureRandom.hex(4)}", titulo_anuncio: "Imóvel bairro Barra Sul").tap { |habitation| habitation.address.update!(bairro: "Barra Sul") }
     outro = create(:habitation, codigo: "BAIRRO-OUTRO-#{SecureRandom.hex(4)}", titulo_anuncio: "Imóvel bairro Outro").tap { |habitation| habitation.address.update!(bairro: "Nações") }
@@ -1624,8 +1629,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(centro.titulo_anuncio)
     expect(response.body).to include(barra.titulo_anuncio)
-    expect(response.body).not_to include(outro.titulo_anuncio)
-    expect(response.body).to include("Bairro: Centro, Barra Sul")
+    expect(response.body).to include(outro.titulo_anuncio)
+    expect(response.body).not_to include("Bairro: Centro, Barra Sul")
   end
 
   it "inclui nome de prédio sem cadastro de empreendimento no filtro de imóveis" do
@@ -1836,10 +1841,10 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
-    card_link = html.at_css(%([data-clickable-card-url-value*="/admin/habitations/#{habitation.id}/edit"]))
+    card_link = html.at_css(%([data-clickable-card-url-value*="/admin/habitations/#{habitation.id}"]))
     expect(card_link).to be_present
     card_url = CGI.unescapeHTML(card_link["data-clickable-card-url-value"])
-    expect(card_url).to include(edit_admin_habitation_path(habitation.id))
+    expect(card_url).to include(admin_habitation_path(habitation.id))
     expect(card_url).to include("return_to=/admin/habitations")
     expect(card_url).to include("ownership=all")
     expect(card_url).to include("empreendimento_codigo=name%3AVermont")
@@ -1906,7 +1911,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     html = Nokogiri::HTML(response.body)
-    card_link = html.at_css(%([data-clickable-card-url-value*="/admin/habitations/#{target.id}/edit"]))
+    card_link = html.at_css(%([data-clickable-card-url-value*="/admin/habitations/#{target.id}"]))
     expect(card_link).to be_present
     card_url = CGI.unescapeHTML(card_link["data-clickable-card-url-value"])
     expect(card_url).to include("return_to=/admin/habitations")
@@ -2265,13 +2270,12 @@ RSpec.describe "Admin::Habitations", type: :request do
     get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
-    expected_statuses = (Habitation::STATUS_OPTIONS - ["Lançamento"]) + ["Todos", "Status operacional personalizado"]
+    expected_statuses = Habitation::STATUS_OPTIONS + ["Todos", "Status operacional personalizado"]
     expected_statuses.each do |status|
       expect(response.body).to include(status)
     end
     status_options = Nokogiri::HTML.fragment(response.body).css("select[name='status[]'] option").map(&:text)
     expect(status_options).to include(*expected_statuses)
-    expect(status_options).not_to include("Ambos", "Lançamento")
     expect(status_options.first).to eq("Todos")
     expect(status_options.drop(1)).to eq(status_options.drop(1).sort_by { |status| I18n.transliterate(status).downcase })
   end
@@ -2283,7 +2287,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(suspended.codigo)
-    expect(response.body).to include("Status: Todos")
+    expect(response.body).not_to include("Status: Todos")
   end
 
   it "permite selecionar e combinar mais de um status no catálogo" do
@@ -3285,7 +3289,6 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Captador Responsável")
     expect(response.body).to include("Valores")
     expect(response.body).to include("Endereço")
-    expect(response.body).to include("Características")
     expect(response.body).to include("Mídia complementar")
     expect(response.body).to include("Balneário Camboriú")
     expect(response.body).to include("https://example.com/tour")

@@ -72,7 +72,9 @@ module Admin
         @admin_users = @admin_users.where(id: manager ? manager.descendant_ids : [])
       end
 
-      case params[:status]
+      @status_filter = params[:status].presence || "active"
+
+      case @status_filter
       when "active"   then @admin_users = @admin_users.active
       when "inactive" then @admin_users = @admin_users.inactive
       end

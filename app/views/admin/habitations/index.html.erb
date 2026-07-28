@@ -422,17 +422,13 @@
 <div class="habitations-results-shell">
 <%
   active_filter_chips = []
+  show_administrative_filter_chips = can_view_habitation_administrative_filters?
   active_filter_chips << "Código: #{params[:codigo]}" if params[:codigo].present?
   active_filter_chips << "Busca: #{params[:q]}" if params[:q].present?
   selected_status_chips = Array(params[:status]).flatten.map(&:to_s).map(&:strip).reject(&:blank?)
+  selected_status_chips.reject! { |value| I18n.transliterate(value).downcase == "todos" }
   active_filter_chips << "Status: #{selected_status_chips.join(', ')}" if selected_status_chips.any?
   active_filter_chips << "Categoria: #{params[:categoria]}" if params[:categoria].present?
-  active_filter_chips << "Rua: #{params[:logradouro]}" if params[:logradouro].present?
-  active_filter_chips << "Número: #{params[:numero]}" if params[:numero].present?
-  active_filter_chips << "CEP: #{params[:cep]}" if params[:cep].present?
-  active_filter_chips << "Cidade: #{params[:cidade]}" if params[:cidade].present?
-  selected_bairro_chips = Array(params[:bairro]).flatten.map(&:to_s).map(&:strip).reject(&:blank?)
-  active_filter_chips << "Bairro: #{selected_bairro_chips.join(', ')}" if selected_bairro_chips.any?
   active_filter_chips << "Bairro comercial: #{params[:bairro_comercial]}" if params[:bairro_comercial].present?
   active_filter_chips << "Situação: #{params[:situacao]}" if params[:situacao].present?
   active_filter_chips << "Preço reduzido: Sim" if params[:promotion_status] == "with_promo"
@@ -440,61 +436,60 @@
   active_filter_chips << "Chaves: #{params[:key_location]}" if params[:key_location].present?
   active_filter_chips << "Adm. locação: Sim" if params[:salute_rental_management] == "1"
   active_filter_chips << "Adm. locação: Não" if params[:salute_rental_management] == "0"
+  active_filter_chips << "Parcelamento: Sim" if params[:accepts_installments] == "1"
+  active_filter_chips << "Parcelamento: Não" if params[:accepts_installments] == "0"
   active_filter_chips << "Preço mín.: R$ #{params[:min_price]}" if params[:min_price].present?
   active_filter_chips << "Preço máx.: R$ #{params[:max_price]}" if params[:max_price].present?
-  active_filter_chips << "Face: #{params[:face]}" if params[:face].present?
-  active_filter_chips << "Ocupação: #{params[:ocupacao_status]}" if params[:ocupacao_status].present?
-  active_filter_chips << "Conservação: #{params[:estado_conservacao]}" if params[:estado_conservacao].present?
-  Array(params[:banheiros]).reject(&:blank?).each { |value| active_filter_chips << "Banheiros: #{value}" }
-  Array(params[:dorms]).reject(&:blank?).each { |value| active_filter_chips << "Dormitórios: #{value}" }
-  Array(params[:suites]).reject(&:blank?).each { |value| active_filter_chips << "Suítes: #{value}" }
-  Array(params[:vagas]).reject(&:blank?).each { |value| active_filter_chips << "Vagas: #{value}" }
+  active_filter_chips << "Dormitórios mín.: #{params[:dorms_min]}" if params[:dorms_min].present?
+  active_filter_chips << "Dormitórios máx.: #{params[:dorms_max]}" if params[:dorms_max].present?
+  active_filter_chips << "Suítes mín.: #{params[:suites_min]}" if params[:suites_min].present?
+  active_filter_chips << "Suítes máx.: #{params[:suites_max]}" if params[:suites_max].present?
+  active_filter_chips << "Banheiros mín.: #{params[:banheiros_min]}" if params[:banheiros_min].present?
+  active_filter_chips << "Banheiros máx.: #{params[:banheiros_max]}" if params[:banheiros_max].present?
+  active_filter_chips << "Vagas mín.: #{params[:vagas_min]}" if params[:vagas_min].present?
+  active_filter_chips << "Vagas máx.: #{params[:vagas_max]}" if params[:vagas_max].present?
   active_filter_chips << "Área total mín.: #{params[:area_total_min]}" if params[:area_total_min].present?
   active_filter_chips << "Área total máx.: #{params[:area_total_max]}" if params[:area_total_max].present?
   active_filter_chips << "Área privativa mín.: #{params[:area_privativa_min]}" if params[:area_privativa_min].present?
   active_filter_chips << "Área privativa máx.: #{params[:area_privativa_max]}" if params[:area_privativa_max].present?
-  active_filter_chips << "Somente com imagens" if params[:somente_com_imagens] == "1"
-  active_filter_chips << "Somente sem imagens" if params[:somente_sem_imagens] == "1"
-  active_filter_chips << "Somente imóveis do DWV" if params[:somente_dwv] == "1"
-  active_filter_chips << "Destaque Web: Sim" if params[:destaque_web] == "1"
-  active_filter_chips << "Destaque Web: Não" if params[:destaque_web] == "0"
-  active_filter_chips << "Super Destaque: Sim" if params[:festival_salute] == "1"
-  active_filter_chips << "Super Destaque: Não" if params[:festival_salute] == "0"
-  active_filter_chips << "Exibir no site: Sim" if params[:exibir_no_site_salute] == "1"
-  active_filter_chips << "Exibir no site: Não" if params[:exibir_no_site_salute] == "0"
-  active_filter_chips << "Portal: Imovelweb 2" if params[:publicar_imovelweb_2] == "1"
-  active_filter_chips << "Portal: Lais Ai" if params[:publicar_lais_ai] == "1"
-  active_filter_chips << "Portal: Chaves Na Mao" if params[:publicar_chaves_na_mao] == "1"
-  active_filter_chips << "Portal: Casa Mineira" if params[:publicar_casa_mineira] == "1"
-  active_filter_chips << "Portal: Imovelweb" if params[:publicar_imovelweb] == "1"
-  active_filter_chips << "Portal: Viva Real VRSync" if params[:publicar_viva_real_vrsync] == "1"
-  Array(params[:foto_classificacao]).reject(&:blank?).each do |fc|
-    active_filter_chips << "Foto: #{fc}"
-  end
   Array(params[:amenities]).reject(&:blank?).each do |amenity|
     active_filter_chips << "Item: #{amenity}"
   end
-  active_filter_chips << "Tem Placa" if params[:tem_placa] == "1"
-  active_filter_chips << "Exclusivo" if params[:exclusivo] == "1"
   active_filter_chips << "Permuta: Sim" if params[:accepts_exchange] == "1"
   active_filter_chips << "Permuta: Não" if params[:accepts_exchange] == "0"
   active_filter_chips << "Permuta veículo: Sim" if params[:permuta_vehicle] == "1"
   active_filter_chips << "Permuta imóvel: Sim" if params[:permuta_property] == "1"
   active_filter_chips << "Permuta outros: Sim" if params[:permuta_others] == "1"
-  active_filter_chips << "Valor mín. permuta: R$ #{params[:permuta_min_value]}" if params[:permuta_min_value].present?
-  active_filter_chips << "Localização permuta: #{params[:permuta_location]}" if params[:permuta_location].present?
-  active_filter_chips << "Dorms permuta ≥ #{params[:permuta_min_dorms]}" if params[:permuta_min_dorms].present?
-  active_filter_chips << "Suítes permuta ≥ #{params[:permuta_min_suites]}" if params[:permuta_min_suites].present?
-  active_filter_chips << "Garagens permuta ≥ #{params[:permuta_min_garagens]}" if params[:permuta_min_garagens].present?
   active_filter_chips << "Empreendimento: #{admin_habitation_development_filter_label(params[:empreendimento_codigo])}" if params[:empreendimento_codigo].present?
   active_filter_chips << "Corretor: #{params[:corretor_id]}" if params[:corretor_id].present?
-  active_filter_chips << "Proprietário: #{params[:proprietor_id]}" if can_export_proprietor_data? && params[:proprietor_id].present?
-  active_filter_chips << "Região foco?: #{params[:regiao_foco]}" if params[:regiao_foco].present?
   active_filter_chips << "Pendente de revisão" if @intake_review == "pending"
-  active_filter_chips << "Captação de: #{params[:captacao_inicio]}" if params[:captacao_inicio].present?
-  active_filter_chips << "Captação até: #{params[:captacao_fim]}" if params[:captacao_fim].present?
-  active_filter_chips << "Atualiz. de: #{params[:atualizacao_inicio]}" if params[:atualizacao_inicio].present?
-  active_filter_chips << "Atualiz. até: #{params[:atualizacao_fim]}" if params[:atualizacao_fim].present?
+  if show_administrative_filter_chips
+    active_filter_chips << "Somente com imagens" if params[:somente_com_imagens] == "1"
+    active_filter_chips << "Somente sem imagens" if params[:somente_sem_imagens] == "1"
+    active_filter_chips << "Somente imóveis do DWV" if params[:somente_dwv] == "1"
+    active_filter_chips << "Destaque Web: Sim" if params[:destaque_web] == "1"
+    active_filter_chips << "Destaque Web: Não" if params[:destaque_web] == "0"
+    active_filter_chips << "Super Destaque: Sim" if params[:festival_salute] == "1"
+    active_filter_chips << "Super Destaque: Não" if params[:festival_salute] == "0"
+    active_filter_chips << "Exibir no site: Sim" if params[:exibir_no_site_salute] == "1"
+    active_filter_chips << "Exibir no site: Não" if params[:exibir_no_site_salute] == "0"
+    active_filter_chips << "Portal: Imovelweb 2" if params[:publicar_imovelweb_2] == "1"
+    active_filter_chips << "Portal: Lais Ai" if params[:publicar_lais_ai] == "1"
+    active_filter_chips << "Portal: Chaves Na Mao" if params[:publicar_chaves_na_mao] == "1"
+    active_filter_chips << "Portal: Casa Mineira" if params[:publicar_casa_mineira] == "1"
+    active_filter_chips << "Portal: Imovelweb" if params[:publicar_imovelweb] == "1"
+    active_filter_chips << "Portal: Viva Real VRSync" if params[:publicar_viva_real_vrsync] == "1"
+    Array(params[:foto_classificacao]).reject(&:blank?).each do |fc|
+      active_filter_chips << "Foto: #{fc}"
+    end
+    active_filter_chips << "Tem Placa" if params[:tem_placa] == "1"
+    active_filter_chips << "Exclusivo" if params[:exclusivo] == "1"
+    active_filter_chips << "Região foco?: #{params[:regiao_foco]}" if params[:regiao_foco].present?
+    active_filter_chips << "Captação de: #{params[:captacao_inicio]}" if params[:captacao_inicio].present?
+    active_filter_chips << "Captação até: #{params[:captacao_fim]}" if params[:captacao_fim].present?
+    active_filter_chips << "Atualiz. de: #{params[:atualizacao_inicio]}" if params[:atualizacao_inicio].present?
+    active_filter_chips << "Atualiz. até: #{params[:atualizacao_fim]}" if params[:atualizacao_fim].present?
+  end
   active_filter_chips << "Escopo: #{params[:scope]}" if params[:scope].present?
 %>
 

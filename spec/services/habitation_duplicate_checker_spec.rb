@@ -100,8 +100,8 @@ RSpec.describe HabitationDuplicateChecker do
   end
 
 
-  it "ignora imóveis inativos como duplicados" do
-    inactive = create(:habitation, :unavailable, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: "501")
+  it "ignora imóveis com status comercial inativo como duplicados" do
+    inactive = create(:habitation, status: "Suspenso", motivo_suspensao: "Duplicidade ignorada", nome_empreendimento: "Edifício Solar", bloco: "501")
     inactive.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
 
     result = described_class.new(
@@ -114,6 +114,22 @@ RSpec.describe HabitationDuplicateChecker do
 
     expect(result.complete).to be(true)
     expect(result.matches).to be_empty
+  end
+
+  it "considera imóveis internos ativos como candidatos de duplicidade" do
+    internal = create(:habitation, exibir_no_site_flag: false, status: "Venda", nome_empreendimento: "Edifício Solar", bloco: "501")
+    internal.create_address!(logradouro: "Rua 1500", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC")
+
+    result = described_class.new(
+      street: "Rua 1500",
+      number: "10",
+      building: "Edifício Solar",
+      unit: "501",
+      status: "Venda"
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.matches).to include(internal)
   end
 
   it "considera captação de corretor enviada para revisão como candidata de duplicidade" do
@@ -355,6 +371,32 @@ RSpec.describe HabitationDuplicateChecker do
       building: "Residencial Paris",
       unit: "B",
       complement: "801",
+      category: "Apartamento",
+      status: "Venda",
+      comparison: :unit
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.matches).to include(existing)
+  end
+
+  it "usa a unidade presente no complemento do apartamento mesmo com texto extra" do
+    existing = create(:habitation, categoria: "Apartamento", status: "Venda", bloco: nil, complemento: "Apto 2901")
+    existing.create_address!(
+      logradouro: "Avenida Atlantica",
+      numero: "4870",
+      complemento: "Apto 2901",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+
+    result = described_class.new(
+      street: "Avenida Atlantica",
+      number: "4870",
+      building: "Renaissance",
+      unit: "",
+      complement: "Apto 2901 Diferenciado",
       category: "Apartamento",
       status: "Venda",
       comparison: :unit

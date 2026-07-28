@@ -21,10 +21,25 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(response.body).not_to include("Proprietário Outro Tenant")
     html = Nokogiri::HTML(response.body)
     expect(html.at_css('label[for="filters_name"]')).to be_present
+    expect(html.at_css('label[for="filters_phone"]')).to be_present
+    expect(html.at_css('label[for="filters_email"]')).to be_present
     expect(html.at_css('label[for="filters_city"]')).to be_present
-    expect(html.at_css('label[for="filters_vista_code"]')).to be_present
-    expect(html.at_css('label[for="filters_cpf_cnpj"]')).to be_present
+    expect(html.at_css('label[for="filters_vista_code"]')).to be_nil
+    expect(html.at_css('label[for="filters_cpf_cnpj"]')).to be_nil
     expect(html.at_css('a[aria-label="Editar proprietário Proprietário Visível"] i[aria-hidden="true"]')).to be_present
+  end
+
+  it "filtra proprietários por telefone e email sem usar filtros administrativos removidos" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    matching = create(:proprietor, tenant: admin.tenant, name: "Proprietário Telefone", email: "telefone@example.com", phone_primary: "(47) 99999-0000", cpf_cnpj: "12345678901")
+    create(:proprietor, tenant: admin.tenant, name: "Proprietário Outro", email: "outro@example.com", phone_primary: "(47) 98888-0000", cpf_cnpj: "98765432100")
+
+    get admin_proprietors_path, params: { filters: { phone: "99999", email: "telefone", cpf_cnpj: "98765432100" } }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(matching.name)
+    expect(response.body).not_to include("Proprietário Outro")
   end
 
   it "renderiza o editor com imóveis filtrados apenas do proprietário e tenant atuais" do
@@ -84,7 +99,7 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(payload["name"]).to include("Proprietário Modal")
     expect(proprietor).to have_attributes(
       role: "owner",
-      phone_primary: "(47) 99999-1111",
+      phone_primary: "5547999991111",
       email: "modal@example.com"
     )
   end

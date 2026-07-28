@@ -67,7 +67,9 @@ export default class extends Controller {
   }
 
   comparisonIdentityComplete() {
-    if (this.comparisonValue() === "unit") return this.targetValue("unit").trim().length > 0
+    if (this.comparisonValue() === "unit") {
+      return this.targetValue("unit").trim().length > 0 || this.apartmentUnitComplementPresent()
+    }
     if (this.comparisonValue() === "condominium_unit") {
       return this.targetValue("unit").trim().length > 0 || this.targetValue("complement").trim().length > 0
     }
@@ -96,6 +98,15 @@ export default class extends Controller {
   complementBlockCategorySelected() {
     const category = this.normalizedCategory()
     return category.includes("casa em condominio") || category.includes("terreno")
+  }
+
+  apartmentUnitComplementPresent() {
+    const category = this.normalizedCategory()
+    if (category.length > 0 && !category.match(/apartamento|cobertura|loft|studio/)) return false
+
+    const complement = this.targetValue("complement").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    return /\b(?:apartamento|apto|unidade|unid|un|ap)\.?\s*[a-z]?\d+[a-z0-9-]*\b/.test(complement) ||
+      /\b\d{2,5}[a-z0-9-]*\b/.test(complement)
   }
 
   normalizedCategory() {

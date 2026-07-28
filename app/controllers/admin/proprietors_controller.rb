@@ -238,10 +238,7 @@ module Admin
 
     def proprietor_filter_params
       params.fetch(:filters, {}).permit(
-        :vista_code, :registered_at, :name, :email, :phone, :cpf_cnpj, :capture_vehicle, :city,
-        :spouse_name, :spouse_email, :spouse_phone, :spouse_cpf_cnpj,
-        :habitation_reference, :habitation_registered_at, :habitation_updated_at,
-        :habitation_address, :habitation_number, :habitation_category, :habitation_status
+        :name, :phone, :email, :city
       )
     end
 

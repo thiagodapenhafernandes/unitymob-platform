@@ -13,21 +13,21 @@
 <%# Filtros principais %>
 <%= ax_filter_form(url: admin_proprietors_path, reset_path: (@filters.values.any?(&:present?) ? admin_proprietors_path : nil), submit_label: "Pesquisar", class_name: "tw-mb-3", scope: :filters) do |f| %>
   <%= ax_field_grid do %>
-      <div class="ax-span-4">
+      <div class="ax-span-3">
         <label class="ax-label" for="filters_name">Nome / Denominação</label>
         <%= f.search_field :name, value: @filters[:name], class: "ax-search ax-search--fluid", placeholder: "Buscar por nome..." %>
       </div>
       <div class="ax-span-3">
-        <label class="ax-label" for="filters_city">Cidade</label>
-        <%= f.text_field :city, value: @filters[:city], class: "ax-control", placeholder: "Cidade" %>
-      </div>
-      <div class="ax-span-2">
-        <label class="ax-label" for="filters_vista_code">Código Vista</label>
-        <%= f.text_field :vista_code, value: @filters[:vista_code], class: "ax-control", placeholder: "Código" %>
+        <label class="ax-label" for="filters_phone">Telefone</label>
+        <%= f.telephone_field :phone, value: @filters[:phone], class: "ax-control", placeholder: "Telefone ou WhatsApp" %>
       </div>
       <div class="ax-span-3">
-        <label class="ax-label" for="filters_cpf_cnpj">CPF / CNPJ</label>
-        <%= f.text_field :cpf_cnpj, value: @filters[:cpf_cnpj], class: "ax-control", placeholder: "Documento" %>
+        <label class="ax-label" for="filters_email">Email</label>
+        <%= f.email_field :email, value: @filters[:email], class: "ax-control", placeholder: "email@exemplo.com" %>
+      </div>
+      <div class="ax-span-3">
+        <label class="ax-label" for="filters_city">Cidade</label>
+        <%= f.text_field :city, value: @filters[:city], class: "ax-control", placeholder: "Cidade" %>
       </div>
   <% end %>
 <% end %>
