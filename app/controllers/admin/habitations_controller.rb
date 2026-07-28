@@ -107,6 +107,7 @@ class Admin::HabitationsController < Admin::BaseController
                 :can_view_habitation_show_sensitive_data?, :can_edit_habitation?, :sort_options
   helper_method :can_release_intake_to_broker?, :can_manage_intake_status?, :can_complete_admin_intake_review?
   helper_method :can_filter_by_broker?, :can_filter_by_proprietor?, :can_export_proprietor_data?
+  helper_method :can_view_habitation_administrative_filters?
   helper_method :can_create_internal_intake?
   helper_method :can_destroy_habitation?
   helper_method :can_bulk_publish_habitations?
@@ -991,7 +992,7 @@ class Admin::HabitationsController < Admin::BaseController
           tenant_habitations.where("NULLIF(TRIM(status), '') IS NOT NULL AND status != '.'")
                              .distinct
                              .pluck(:status)
-        ).compact_blank.uniq.reject { |status| status.in?(["Ambos", "Lançamento"]) }
+        ).compact_blank.uniq
           .sort_by { |status| I18n.transliterate(status).downcase }),
         key_locations: (Habitation::KEY_LOCATION_OPTIONS + existing_key_locations).uniq,
         empreendimentos: filter_empreendimento_options,
@@ -1048,26 +1049,36 @@ class Admin::HabitationsController < Admin::BaseController
   end
 
   def extra_filter_keys
-    %w[
-      codigo logradouro numero cep cidade bairro bairro_comercial promotion_status accepts_exchange key_location salute_rental_management min_price max_price
-      foto_classificacao
+    keys = %w[
+      codigo bairro_comercial promotion_status accepts_exchange accepts_installments key_location salute_rental_management min_price max_price
       amenities
-      permuta_vehicle permuta_property permuta_others permuta_min_value permuta_location
-      permuta_min_dorms permuta_min_suites permuta_min_garagens
-      situacao face ocupacao_status estado_conservacao area_total_min area_total_max area_privativa_min area_privativa_max
-      destaque_web festival_salute exibir_no_site exibir_no_site_salute tem_placa exclusivo empreendimento_codigo corretor_id proprietor_id regiao_foco
-      publicar_imovelweb_2 publicar_lais_ai
-      publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
-      captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim somente_com_imagens somente_sem_imagens somente_dwv
+      permuta_vehicle permuta_property permuta_others
+      situacao area_total_min area_total_max area_privativa_min area_privativa_max
+      dorms_min dorms_max suites_min suites_max vagas_min vagas_max banheiros_min banheiros_max
+      empreendimento_codigo corretor_id
       dashboard_quality
-      dorms suites vagas banheiros
     ]
+
+    if can_view_habitation_administrative_filters?
+      keys += %w[
+        destaque_web festival_salute exibir_no_site exibir_no_site_salute tem_placa exclusivo regiao_foco
+        foto_classificacao publicar_imovelweb_2 publicar_lais_ai
+        publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync
+        captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim somente_com_imagens somente_sem_imagens somente_dwv
+      ]
+    end
+
+    keys
   end
 
   def active_extra_filters_count
     extra_filter_keys.count do |key|
       value = params[key]
-      value.is_a?(Array) ? value.reject(&:blank?).any? : value.present?
+      if value.is_a?(Array)
+        value.reject { |item| item.blank? || I18n.transliterate(item.to_s).downcase == "todos" }.any?
+      else
+        value.present? && I18n.transliterate(value.to_s).downcase != "todos"
+      end
     end
   end
 
@@ -1156,38 +1167,47 @@ class Admin::HabitationsController < Admin::BaseController
     @statuses = Array(params[:status]).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
     @status = @statuses.first
     @categoria = params[:categoria]
-    @logradouro = params[:logradouro]
-    @numero = params[:numero]
-    @cep = params[:cep]
-    @cidade = params[:cidade]
-    @bairros = Array(params[:bairro]).flatten.map(&:to_s).map(&:strip).reject(&:blank?).uniq
+    @logradouro = nil
+    @numero = nil
+    @cep = nil
+    @cidade = nil
+    @bairros = []
     @bairro = @bairros.first
     @bairro_comercial = params[:bairro_comercial]
-    @dorms = extract_multi_select_integers(:dorms)
-    @suites = extract_multi_select_integers(:suites)
-    @vagas = extract_multi_select_integers(:vagas)
-    @banheiros = extract_multi_select_integers(:banheiros)
+    @dorms = []
+    @suites = []
+    @vagas = []
+    @banheiros = []
+    @dorms_min = params[:dorms_min]
+    @dorms_max = params[:dorms_max]
+    @suites_min = params[:suites_min]
+    @suites_max = params[:suites_max]
+    @vagas_min = params[:vagas_min]
+    @vagas_max = params[:vagas_max]
+    @banheiros_min = params[:banheiros_min]
+    @banheiros_max = params[:banheiros_max]
     @situacao = params[:situacao]
-    @face = params[:face]
-    @ocupacao_status = params[:ocupacao_status]
-    @estado_conservacao = params[:estado_conservacao]
+    @face = nil
+    @ocupacao_status = nil
+    @estado_conservacao = nil
     @regiao_foco = params[:regiao_foco]
     @promotion_status = params[:promotion_status]
     @accepts_exchange = params[:accepts_exchange]
+    @accepts_installments = params[:accepts_installments]
     @permuta_vehicle = params[:permuta_vehicle]
     @permuta_property = params[:permuta_property]
     @permuta_others = params[:permuta_others]
     @foto_classificacoes = Array(params[:foto_classificacao]).map(&:to_s).map(&:strip).reject(&:blank?).uniq
-    @permuta_location = params[:permuta_location]
+    @permuta_location = nil
     @amenities = normalize_amenity_filter_values(params[:amenities])
-    @permuta_min_dorms = params[:permuta_min_dorms]
-    @permuta_min_suites = params[:permuta_min_suites]
-    @permuta_min_garagens = params[:permuta_min_garagens]
+    @permuta_min_dorms = nil
+    @permuta_min_suites = nil
+    @permuta_min_garagens = nil
     @key_location = params[:key_location]
     @salute_rental_management = params[:salute_rental_management]
     @empreendimento_codigo = normalize_development_filter_value(params[:empreendimento_codigo])
     @corretor_id = can_filter_by_broker? ? catalog_filter_admin_user_id(params[:corretor_id]) : nil
-    @proprietor_id = can_filter_by_proprietor? ? params[:proprietor_id] : nil
+    @proprietor_id = nil
     @destaque_web = params[:destaque_web]
     @festival_salute = params[:festival_salute]
     @exibir_no_site = params[:exibir_no_site].presence || params[:exibir_no_site_salute]
@@ -1210,7 +1230,7 @@ class Admin::HabitationsController < Admin::BaseController
     @area_privativa_max = params[:area_privativa_max]
     @min_price = params[:min_price].to_s.gsub(/[^\d]/, '').to_i
     @max_price = params[:max_price].to_s.gsub(/[^\d]/, '').to_i
-    @permuta_min_value = params[:permuta_min_value].to_s.gsub(/[^\d]/, '').to_i
+    @permuta_min_value = 0
     @scope = params[:scope]
     # Catálogo: o corretor também pode navegar todos os imóveis (curadoria), então
     # "all" é permitido para todos. O default é "all" para quem tem escopo total e
@@ -1224,6 +1244,31 @@ class Admin::HabitationsController < Admin::BaseController
     @atualizacao_inicio = params[:atualizacao_inicio]
     @atualizacao_fim = params[:atualizacao_fim]
     @dashboard_quality = params[:dashboard_quality].presence_in(DASHBOARD_QUALITY_FILTERS)
+
+    unless can_view_habitation_administrative_filters?
+      @regiao_foco = nil
+      @destaque_web = nil
+      @festival_salute = nil
+      @exibir_no_site = nil
+      @publicar_imovelweb_2 = nil
+      @publicar_netimoveis_2 = nil
+      @publicar_lais_ai = nil
+      @publicar_loft = nil
+      @publicar_chaves_na_mao = nil
+      @publicar_casa_mineira = nil
+      @publicar_imovelweb = nil
+      @publicar_viva_real_vrsync = nil
+      @somente_com_imagens = nil
+      @somente_sem_imagens = nil
+      @somente_dwv = nil
+      @tem_placa = nil
+      @exclusivo = nil
+      @foto_classificacoes = []
+      @captacao_inicio = nil
+      @captacao_fim = nil
+      @atualizacao_inicio = nil
+      @atualizacao_fim = nil
+    end
   end
 
   def filtered_habitations_scope
@@ -1274,6 +1319,10 @@ class Admin::HabitationsController < Admin::BaseController
     scope = scope.where(suites_qtd: @suites) if @suites.any?
     scope = scope.where(vagas_qtd: @vagas) if @vagas.any?
     scope = scope.where(banheiros_qtd: @banheiros) if @banheiros.any?
+    scope = apply_integer_range_filter(scope, :dormitorios_qtd, @dorms_min, @dorms_max)
+    scope = apply_integer_range_filter(scope, :suites_qtd, @suites_min, @suites_max)
+    scope = apply_integer_range_filter(scope, :vagas_qtd, @vagas_min, @vagas_max)
+    scope = apply_integer_range_filter(scope, :banheiros_qtd, @banheiros_min, @banheiros_max)
     scope = scope.where(situacao: @situacao) if @situacao.present?
     scope = scope.where(face: @face) if @face.present?
     scope = scope.where(ocupacao_status: @ocupacao_status) if @ocupacao_status.present?
@@ -1302,6 +1351,7 @@ class Admin::HabitationsController < Admin::BaseController
     end
 
     scope = apply_boolean_filter(scope, @accepts_exchange, :aceita_permuta_flag)
+    scope = apply_boolean_filter(scope, @accepts_installments, :aceita_parcelamento_flag)
     scope = apply_boolean_filter(scope, @permuta_vehicle, :aceita_permuta_veiculo_flag)
     scope = apply_boolean_filter(scope, @permuta_property, :aceita_permuta_imovel_flag)
     scope = apply_boolean_filter(scope, @permuta_others, :aceita_permuta_outros_flag)
@@ -2045,10 +2095,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   def apply_status_filter(scope, raw_statuses)
     statuses = Array(raw_statuses).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
-    if statuses.blank?
-      default_conditions = DEFAULT_CATALOG_STATUSES.map { "unaccent(TRIM(habitations.status)) = unaccent(?)" }
-      return scope.where(default_conditions.join(" OR "), *DEFAULT_CATALOG_STATUSES)
-    end
+    return scope if statuses.blank?
     return scope if statuses.any? { |status| I18n.transliterate(status).downcase == "todos" }
 
     normalized_statuses = statuses
@@ -2107,8 +2154,12 @@ class Admin::HabitationsController < Admin::BaseController
       scope.where("unaccent(COALESCE(habitations.situacao, '')) ILIKE unaccent(?) OR unaccent(COALESCE(habitations.situacao, '')) = unaccent(?)", "%Planta%", "Construção")
     when "mobiliado"
       apply_catalog_text_feature_filter(scope, "mobiliado", boolean_column: :mobiliado_flag)
-    when "sacada"
-      apply_catalog_text_feature_filter(scope, "sacada", boolean_column: :varanda_gourmet_flag)
+    when "sem_mobilia"
+      apply_catalog_text_feature_filter(scope, "sem mob", boolean_column: :sem_mobilia_flag)
+    when "diferenciado"
+      scope.diferenciado
+    when "quadra_mar"
+      scope.quadra_mar
     when "dependencia_empregada"
       scope.dependencia_empregada
     when "cozinha_gourmet_churrasqueira"
@@ -2145,6 +2196,16 @@ class Admin::HabitationsController < Admin::BaseController
     end
 
     scope.where("(#{sale_conditions.join(' AND ')}) OR (#{rent_conditions.join(' AND ')})")
+  end
+
+  def apply_integer_range_filter(scope, column_name, min_value, max_value)
+    column = ActiveRecord::Base.connection.quote_column_name(column_name.to_s)
+    min = min_value.to_i if min_value.present?
+    max = max_value.to_i if max_value.present?
+
+    scope = scope.where("COALESCE(habitations.#{column}, 0) >= ?", min) if min.to_i.positive?
+    scope = scope.where("COALESCE(habitations.#{column}, 0) <= ?", max) if max.to_i.positive?
+    scope
   end
 
   def parse_date_param(value)
@@ -2606,6 +2667,14 @@ class Admin::HabitationsController < Admin::BaseController
     tenant_owner? || can?(:view, :imoveis)
   end
 
+  def can_view_habitation_administrative_filters?
+    return true if system_admin? || tenant_owner?
+
+    profile = current_admin_user&.access_profile
+    root_profile = profile&.root_vertical_profile || current_admin_user&.vertical_profile
+    root_profile&.administrativo? || root_profile&.gerente?
+  end
+
   def can_export_proprietor_data?
     can_access_sensitive_habitation_data?
   end
@@ -2615,7 +2684,7 @@ class Admin::HabitationsController < Admin::BaseController
     # chamada — usado em @brokers e por corretor no form.
     @habitation_visible_admin_users ||= begin
       ids = accessible_owner_ids(:imoveis)
-      scope = current_tenant.admin_users.account_members
+      scope = current_tenant.admin_users.active
       ids.nil? ? scope : scope.where(id: ids)
     end
   end
@@ -2623,7 +2692,7 @@ class Admin::HabitationsController < Admin::BaseController
   def catalog_filter_admin_users
     # O catálogo operacional pode ser filtrado por colegas da mesma conta.
     # Edição/atribuição de responsáveis continua usando habitation_visible_admin_users.
-    current_tenant.admin_users.account_members
+    current_tenant.admin_users.active
   end
 
   def catalog_filter_admin_user_id(value)

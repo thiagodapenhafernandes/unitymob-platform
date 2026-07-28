@@ -55,6 +55,33 @@ RSpec.describe "Admin user governance", type: :request do
     expect(response).to redirect_to(admin_admin_users_path)
   end
 
+  it "lista apenas usuarios ativos por padrao e permite consultar inativos por filtro explicito" do
+    tenant = Tenant.create!(name: "Tenant usuarios ativos #{SecureRandom.hex(3)}", slug: "tenant-usuarios-ativos-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor, name: "Owner ativo")
+    active_broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Corretor Ativo", active: true)
+    inactive_broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Corretor Inativo", active: false)
+
+    sign_in owner
+
+    get admin_admin_users_path
+
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML(response.body)
+    row_text = doc.css("table.ax-table tbody tr").map(&:text).join("\n")
+    expect(row_text).to include(active_broker.name)
+    expect(row_text).not_to include(inactive_broker.name)
+    expect(doc.at_css('select[name="status"] option[value="active"][selected]')).to be_present
+
+    get admin_admin_users_path(status: "inactive")
+
+    expect(response).to have_http_status(:ok)
+    row_text = Nokogiri::HTML(response.body).css("table.ax-table tbody tr").map(&:text).join("\n")
+    expect(row_text).not_to include(active_broker.name)
+    expect(row_text).to include(inactive_broker.name)
+  end
+
   it "impede gestor de atribuir perfil vertical acima ou gestor fora do proprio escopo" do
     tenant = Tenant.create!(name: "Tenant usuarios #{SecureRandom.hex(3)}", slug: "tenant-usuarios-#{SecureRandom.hex(3)}")
     owner_profile = tenant.profiles.find_by!(key: "tenant_owner")

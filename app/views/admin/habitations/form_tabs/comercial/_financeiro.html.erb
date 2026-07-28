@@ -30,37 +30,12 @@
       </div>
     </div>
 
+    <%= f.hidden_field :valor_alugado_terceiros_formatted,
+                       data: { habitation_form_target: "rentedClosedValue" } %>
+    <%= f.hidden_field :valor_vendido_terceiros_formatted,
+                       data: { habitation_form_target: "soldClosedValue" } %>
+
     <div class="ax-finance-secondary-grid">
-      <div class="ax-reactive-inactive-hint ax-finance-status-context" data-habitation-form-target="inactiveStatusHint"
-           <%= "hidden" if f.object.status.to_s.parameterize.include?("alugado") || f.object.status.to_s.parameterize.include?("vendido") %>>
-        Os valores de baixa serão exibidos quando o status comercial for alugado ou vendido.
-      </div>
-      <div class="ax-reactive-context ax-reactive-context--inline ax-finance-status-context"
-           data-habitation-form-target="rentedStatusPanel"
-           <%= "hidden" unless f.object.status.to_s.parameterize.include?("alugado") %>>
-        <%= ax_currency_field(
-              form: f,
-              method: :valor_alugado_terceiros_formatted,
-              label: "Valor comercializado (locação)",
-              tooltip: "Valor pelo qual a locação foi fechada (Alugado imobiliária ou terceiros).",
-              disabled: !f.object.status.to_s.parameterize.include?("alugado"),
-              required: f.object.status.to_s.parameterize.include?("alugado"),
-              data: { controller: "mask", mask_type_value: "currency", conditional_required: true }
-            ) %>
-      </div>
-      <div class="ax-reactive-context ax-reactive-context--inline ax-finance-status-context"
-           data-habitation-form-target="soldStatusPanel"
-           <%= "hidden" unless f.object.status.to_s.parameterize.include?("vendido") %>>
-        <%= ax_currency_field(
-              form: f,
-              method: :valor_vendido_terceiros_formatted,
-              label: "Valor comercializado (venda)",
-              tooltip: "Valor pelo qual a venda foi fechada (Vendido imobiliária ou terceiros).",
-              disabled: !f.object.status.to_s.parameterize.include?("vendido"),
-              required: f.object.status.to_s.parameterize.include?("vendido"),
-              data: { controller: "mask", mask_type_value: "currency", conditional_required: true }
-            ) %>
-      </div>
       <div>
         <%= ax_field_label(nil, nil, text: "Venda anterior") %>
         <%= ax_input_group(prefix: "R$") do %>

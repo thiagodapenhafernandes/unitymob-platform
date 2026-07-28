@@ -407,7 +407,19 @@ module Habitation::SearchScopes
 
     # Quadra Mar
     scope :quadra_mar, lambda {
-      where("quadra_mar_flag = true OR caracteristicas ? 'quadra_mar'")
+      where(
+        "quadra_mar_flag = true OR " \
+        "unaccent(COALESCE(searchable_features, '')) ILIKE unaccent('%quadra%mar%') OR " \
+        "(jsonb_typeof(caracteristicas) = 'array' AND EXISTS (" \
+        "SELECT 1 FROM jsonb_array_elements_text(caracteristicas) value " \
+        "WHERE unaccent(value) ILIKE unaccent('%quadra%mar%')" \
+        ")) OR " \
+        "(jsonb_typeof(caracteristicas) = 'object' AND (" \
+        "caracteristicas ? 'quadra_mar' OR caracteristicas ? 'quadramar' OR caracteristicas ? 'Quadra mar' OR " \
+        "EXISTS (SELECT 1 FROM jsonb_each_text(caracteristicas) kv " \
+        "WHERE unaccent(kv.key) ILIKE unaccent('%quadra%mar%') OR unaccent(kv.value) ILIKE unaccent('%quadra%mar%'))" \
+        "))"
+      )
     }
 
     # Sacada
@@ -451,10 +463,6 @@ module Habitation::SearchScopes
       where(
         "valor_venda_anterior_cents > valor_venda_cents AND valor_venda_cents > 0"
       )
-    }
-    
-    scope :quadra_mar, -> { 
-      where("quadra_mar_flag = true OR caracteristicas ? 'quadramar'")
     }
     
     scope :varanda, -> { 

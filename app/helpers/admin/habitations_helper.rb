@@ -75,7 +75,10 @@ module Admin::HabitationsHelper
   end
 
   def admin_habitation_catalog_card_path(habitation, ownership_scope:, intake_review:, return_to: nil)
-    admin_habitation_internal_path(habitation, return_to: return_to)
+    admin_habitation_path_with_query(
+      admin_habitation_path(habitation.id),
+      admin_habitation_flat_return_params(return_to)
+    )
   end
 
   def admin_habitation_catalog_action_label(habitation, ownership_scope:, intake_review:)

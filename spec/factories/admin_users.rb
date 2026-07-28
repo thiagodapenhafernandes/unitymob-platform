@@ -7,6 +7,7 @@ FactoryBot.define do
     name { Faker::Name.name }
     role { :editor }
     acting_type { :both }
+    active { true }
     field_agent_enabled { false }
 
     trait :admin do

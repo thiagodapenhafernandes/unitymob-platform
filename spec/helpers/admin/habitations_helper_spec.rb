@@ -235,7 +235,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
   end
 
   describe "#admin_habitation_catalog_card_path" do
-    it "returns the edit path on the all tab when the user can edit" do
+    it "returns the details path on the all tab even when the user can edit" do
       broker = create(:admin_user, :admin, name: "Vera Corretora")
       habitation = create_helper_habitation(admin_user: broker)
 
@@ -248,10 +248,10 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
           intake_review: nil,
           return_to: "/admin/habitations?ownership=all"
         )
-      ).to eq(edit_admin_habitation_path(habitation.id) + "?return_to=/admin/habitations&ownership=all")
+      ).to eq(admin_habitation_path(habitation.id) + "?return_to=/admin/habitations&ownership=all")
     end
 
-    it "returns the edit path on the mine tab when the user can edit" do
+    it "returns the details path on the mine tab when the user can edit" do
       broker = create(:admin_user, :admin, name: "Vera Corretora")
       habitation = create_helper_habitation(admin_user: broker)
 
@@ -264,7 +264,7 @@ RSpec.describe Admin::HabitationsHelper, type: :helper do
           intake_review: nil,
           return_to: "/admin/habitations?ownership=mine"
         )
-      ).to eq(edit_admin_habitation_path(habitation.id) + "?return_to=/admin/habitations&ownership=mine")
+      ).to eq(admin_habitation_path(habitation.id) + "?return_to=/admin/habitations&ownership=mine")
     end
   end
 end

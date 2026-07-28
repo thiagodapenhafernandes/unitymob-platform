@@ -490,4 +490,44 @@
       }
     ) %>
 
+<% status_negotiation_body = capture do %>
+  <div class="ax-field-grid ax-field-grid--compact">
+    <div class="ax-span-12">
+      <p class="tw-text-sm tw-text-ink-muted tw-mb-0" data-habitation-form-target="statusNegotiationHint">
+        Informe o valor da negociação para registrar a alteração de status.
+      </p>
+    </div>
+    <div class="ax-span-12">
+      <%= ax_field_label(nil, nil, text: "Valor da negociação", for: "status_negotiation_value") %>
+      <%= ax_input_group(prefix: "R$") do %>
+        <input type="text"
+               id="status_negotiation_value"
+               class="ax-control"
+               data-controller="mask"
+               data-mask-type-value="currency"
+               data-habitation-form-target="statusNegotiationValue">
+      <% end %>
+      <p class="tw-text-xs tw-text-danger tw-mt-1 tw-mb-0" hidden data-habitation-form-target="statusNegotiationError">
+        Informe o valor para continuar.
+      </p>
+    </div>
+  </div>
+<% end %>
+
+<% status_negotiation_footer = capture do %>
+  <button type="button" class="ax-btn" data-action="habitation-form#cancelStatusNegotiation">Cancelar</button>
+  <button type="button" class="ax-btn ax-btn--primary" data-action="habitation-form#confirmStatusNegotiation">Aplicar</button>
+<% end %>
+
+<%= ax_quick_modal(
+      id: "statusNegotiationModal",
+      title: "Valor da negociação",
+      footer: status_negotiation_footer,
+      body: status_negotiation_body,
+      data: {
+        habitation_form_target: "statusNegotiationModal",
+        action: "ax-modal:closed->habitation-form#statusNegotiationClosed"
+      }
+    ) %>
+
 </div>

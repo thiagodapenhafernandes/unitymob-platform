@@ -6,6 +6,12 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
   let(:admin) { create(:admin_user, :admin, email: "admin-#{SecureRandom.hex(8)}@salute.test") }
   let(:turbo_frame_headers) { { "Turbo-Frame" => "habitations_filter_inspector" } }
 
+  def default_agent_profile
+    admin.tenant.profiles.find_by!(key: "agent").tap do |profile|
+      profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+    end
+  end
+
   before do
     host! "localhost"
     sign_in admin
@@ -82,6 +88,27 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     expect(response.body).not_to include(nonmatching_title)
   end
 
+  it "aplica os novos filtros rápidos do catálogo" do
+    expect_catalog_filter(
+      "sem_mobilia",
+      { scope: "sem_mobilia" },
+      matching_attrs: { sem_mobilia_flag: true },
+      nonmatching_attrs: { sem_mobilia_flag: false }
+    )
+    expect_catalog_filter(
+      "diferenciado",
+      { scope: "diferenciado" },
+      matching_attrs: { categoria: "Diferenciado" },
+      nonmatching_attrs: { categoria: "Apartamento" }
+    )
+    expect_catalog_filter(
+      "quadra_mar",
+      { scope: "quadra_mar" },
+      matching_attrs: { quadra_mar_flag: true },
+      nonmatching_attrs: { quadra_mar_flag: false }
+    )
+  end
+
   it "renderiza campos de preço com teclado numérico e máscara BR no inspector" do
     get filter_inspector_admin_habitations_path(min_price: "800000", max_price: "1200000"),
         headers: turbo_frame_headers
@@ -110,7 +137,6 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
 
   it "aplica todos os filtros principais do inspector do catálogo" do
     broker = create(:admin_user, name: "Corretor Filtro")
-    proprietor = create(:proprietor, name: "Proprietário Filtro")
     create_catalog_property(codigo: "EMP-900", tipo: "Empreendimento", categoria: "Empreendimento", nome_empreendimento: "Empreendimento 900")
     create_catalog_property(codigo: "EMP-100", tipo: "Empreendimento", categoria: "Empreendimento", nome_empreendimento: "Empreendimento 100")
 
@@ -119,23 +145,22 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       ["q", { q: "Vista Alpha" }, { titulo_anuncio: "Filtro q match Vista Alpha #{SecureRandom.hex(6)}" }, { titulo_anuncio: "Filtro q miss Beta #{SecureRandom.hex(6)}" }],
       ["status", { status: "Aluguel" }, { status: "Aluguel", valor_locacao_cents: 450_000 }, { status: "Venda" }],
       ["categoria", { categoria: "Terreno" }, { categoria: "Terreno" }, { categoria: "Apartamento" }],
-      ["numero", { numero: "505" }, { numero: "505" }, { numero: "808" }],
-      ["cep", { cep: "88330-590" }, { cep: "88330-590" }, { cep: "88000-000" }],
-      ["cidade", { cidade: "Itapema" }, { cidade: "Itapema" }, { cidade: "Balneário Camboriú" }],
       ["bairro_comercial", { bairro_comercial: "Meia Praia" }, { bairro_comercial: "Meia Praia" }, { bairro_comercial: "Centro" }],
       ["situacao", { situacao: "Novo" }, { situacao: "Novo" }, { situacao: "Usado" }],
       ["promotion_status", { promotion_status: "with_promo" }, { valor_venda_cents: 900_000_00, valor_venda_anterior_cents: 1_000_000_00 }, { valor_venda_cents: 900_000_00, valor_venda_anterior_cents: nil }],
       ["accepts_exchange", { accepts_exchange: "1" }, { aceita_permuta_flag: true }, { aceita_permuta_flag: false }],
+      ["accepts_installments", { accepts_installments: "1" }, { aceita_parcelamento_flag: true }, { aceita_parcelamento_flag: false }],
       ["key_location", { key_location: "Portaria" }, { key_location: "Portaria" }, { key_location: "Zelador" }],
       ["salute_rental_management", { salute_rental_management: "1" }, { salute_rental_management_flag: true }, { salute_rental_management_flag: false }],
-      ["face", { face: "Norte" }, { face: "Norte" }, { face: "Sul" }],
-      ["ocupacao_status", { ocupacao_status: "Desocupado" }, { ocupacao_status: "Desocupado" }, { ocupacao_status: "Ocupado" }],
-      ["estado_conservacao", { estado_conservacao: "Novo" }, { estado_conservacao: "Novo" }, { estado_conservacao: "Usado" }],
       ["regiao_foco", { regiao_foco: "Sim" }, { regiao_foco: "Centro" }, { regiao_foco: "Não" }],
-      ["banheiros", { banheiros: ["3"] }, { banheiros_qtd: 3 }, { banheiros_qtd: 1 }],
-      ["dorms", { dorms: ["4"] }, { dormitorios_qtd: 4 }, { dormitorios_qtd: 2 }],
-      ["suites", { suites: ["2"] }, { suites_qtd: 2 }, { suites_qtd: 0 }],
-      ["vagas", { vagas: ["3"] }, { vagas_qtd: 3 }, { vagas_qtd: 1 }],
+      ["dorms_min", { dorms_min: "3" }, { dormitorios_qtd: 4 }, { dormitorios_qtd: 2 }],
+      ["dorms_max", { dorms_max: "2" }, { dormitorios_qtd: 2 }, { dormitorios_qtd: 4 }],
+      ["suites_min", { suites_min: "2" }, { suites_qtd: 2 }, { suites_qtd: 1 }],
+      ["suites_max", { suites_max: "1" }, { suites_qtd: 1 }, { suites_qtd: 2 }],
+      ["banheiros_min", { banheiros_min: "3" }, { banheiros_qtd: 3 }, { banheiros_qtd: 1 }],
+      ["banheiros_max", { banheiros_max: "1" }, { banheiros_qtd: 1 }, { banheiros_qtd: 3 }],
+      ["vagas_min", { vagas_min: "3" }, { vagas_qtd: 3 }, { vagas_qtd: 1 }],
+      ["vagas_max", { vagas_max: "1" }, { vagas_qtd: 1 }, { vagas_qtd: 3 }],
       ["area_total_min", { area_total_min: "180" }, { area_total_m2: 200 }, { area_total_m2: 120 }],
       ["area_total_max", { area_total_max: "150" }, { area_total_m2: 120 }, { area_total_m2: 220 }],
       ["area_privativa_min", { area_privativa_min: "90" }, { area_privativa_m2: 100 }, { area_privativa_m2: 70 }],
@@ -159,40 +184,18 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       ["permuta_vehicle", { permuta_vehicle: "1" }, { aceita_permuta_veiculo_flag: true }, { aceita_permuta_veiculo_flag: false }],
       ["permuta_property", { permuta_property: "1" }, { aceita_permuta_imovel_flag: true }, { aceita_permuta_imovel_flag: false }],
       ["permuta_others", { permuta_others: "1" }, { aceita_permuta_outros_flag: true }, { aceita_permuta_outros_flag: false }],
-      ["permuta_min_value", { permuta_min_value: "200000" }, { permuta_valor_cents: 250_000_00 }, { permuta_valor_cents: 100_000_00 }],
-      ["permuta_location", { permuta_location: "Itajaí" }, { permuta_localizacao: "Itajaí Centro" }, { permuta_localizacao: "Itapema" }],
-      ["permuta_min_dorms", { permuta_min_dorms: "3" }, { permuta_dormitorios_qtd: 3 }, { permuta_dormitorios_qtd: 1 }],
-      ["permuta_min_suites", { permuta_min_suites: "2" }, { permuta_suites_qtd: 2 }, { permuta_suites_qtd: 0 }],
-      ["permuta_min_garagens", { permuta_min_garagens: "2" }, { permuta_garagens_qtd: 2 }, { permuta_garagens_qtd: 0 }],
       ["captacao_inicio", { captacao_inicio: "2026-06-10" }, { data_cadastro_crm: Time.zone.local(2026, 6, 20) }, { data_cadastro_crm: Time.zone.local(2026, 6, 1) }],
       ["captacao_fim", { captacao_fim: "2026-06-10" }, { data_cadastro_crm: Time.zone.local(2026, 6, 9) }, { data_cadastro_crm: Time.zone.local(2026, 6, 12) }],
       ["atualizacao_inicio", { atualizacao_inicio: "2026-06-10" }, { data_atualizacao_crm: Time.zone.local(2026, 6, 20) }, { data_atualizacao_crm: Time.zone.local(2026, 6, 1) }],
       ["atualizacao_fim", { atualizacao_fim: "2026-06-10" }, { data_atualizacao_crm: Time.zone.local(2026, 6, 9) }, { data_atualizacao_crm: Time.zone.local(2026, 6, 12) }],
       ["min_price", { min_price: "800000" }, { valor_venda_cents: 900_000_00 }, { valor_venda_cents: 700_000_00, valor_locacao_cents: 0 }],
       ["max_price", { max_price: "800000" }, { valor_venda_cents: 700_000_00 }, { valor_venda_cents: 900_000_00, valor_locacao_cents: 0 }],
-      ["empreendimento_codigo", { empreendimento_codigo: "Residencial Filtro" }, { nome_empreendimento: "Residencial Filtro" }, { nome_empreendimento: "Residencial Outro" }],
-      ["proprietor_id", { proprietor_id: proprietor.id }, { proprietor_id: proprietor.id }, { proprietor_id: nil }]
+      ["empreendimento_codigo", { empreendimento_codigo: "Residencial Filtro" }, { nome_empreendimento: "Residencial Filtro" }, { nome_empreendimento: "Residencial Outro" }]
     ]
 
     scalar_filter_cases.each do |label, params, matching_attrs, nonmatching_attrs|
       expect_catalog_filter(label, params, matching_attrs:, nonmatching_attrs:)
     end
-
-    expect_catalog_filter(
-      "logradouro",
-      { logradouro: "Avenida Brasil" },
-      matching_attrs: {},
-      nonmatching_attrs: {},
-      matching_address: { tipo_endereco: "Avenida", logradouro: "Brasil", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC" },
-      nonmatching_address: { tipo_endereco: "Rua", logradouro: "Central", numero: "10", bairro: "Centro", cidade: "Balneário Camboriú", uf: "SC" }
-    )
-
-    expect_catalog_filter(
-      "bairro",
-      { bairro: ["Centro", "Barra Sul"] },
-      matching_attrs: { bairro: "Barra Sul" },
-      nonmatching_attrs: { bairro: "Nações" }
-    )
 
     expect_catalog_filter(
       "corretor_id",
@@ -216,5 +219,60 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
     clear_href = document.at_css('a.ax-btn--ghost[href]')["href"]
     expect(clear_href).not_to include("atualizacao_inicio")
     expect(clear_href).not_to include("atualizacao_fim")
+  end
+
+  it "ignora filtros removidos do inspector enviados por URL antiga" do
+    proprietor = create(:proprietor)
+    visible_one = "Filtro removido visível um #{SecureRandom.hex(6)}"
+    visible_two = "Filtro removido visível dois #{SecureRandom.hex(6)}"
+    create_catalog_property(
+      titulo_anuncio: visible_one,
+      dormitorios_qtd: 1,
+      face: "Sul",
+      proprietor_id: nil,
+      permuta_valor_cents: 100_000_00,
+      address: { logradouro: "Rua Livre", bairro: "Nações" }
+    )
+    create_catalog_property(
+      titulo_anuncio: visible_two,
+      dormitorios_qtd: 5,
+      face: "Norte",
+      proprietor_id: proprietor.id,
+      permuta_valor_cents: 1_000_000_00,
+      address: { logradouro: "Rua Antiga", bairro: "Centro" }
+    )
+
+    get admin_habitations_path(
+      logradouro: "Rua Antiga",
+      bairro: ["Centro"],
+      face: "Norte",
+      dorms: ["5"],
+      proprietor_id: proprietor.id,
+      permuta_min_value: "900000"
+    )
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(visible_one)
+    expect(response.body).to include(visible_two)
+    expect(response.body).not_to include("Rua: Rua Antiga")
+    expect(response.body).not_to include("Proprietário:")
+  end
+
+  it "ignora filtros administrativos enviados por URL para corretor" do
+    agent = create(:admin_user, email: "agent-admin-filter-#{SecureRandom.hex(6)}@salute.test", profile: default_agent_profile)
+    sign_in agent
+
+    visible_without_admin_flag = "Filtro administrativo ignorado #{SecureRandom.hex(6)}"
+    visible_with_admin_flag = "Filtro administrativo permitido #{SecureRandom.hex(6)}"
+    create_catalog_property(titulo_anuncio: visible_without_admin_flag, destaque_web_flag: false, regiao_foco: "Não")
+    create_catalog_property(titulo_anuncio: visible_with_admin_flag, destaque_web_flag: true, regiao_foco: "Centro")
+
+    get admin_habitations_path(ownership: "all", destaque_web: "1", regiao_foco: "Sim")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(visible_without_admin_flag)
+    expect(response.body).to include(visible_with_admin_flag)
+    expect(response.body).not_to include("Destaque Web: Sim")
+    expect(response.body).not_to include("Região foco?: Sim")
   end
 end

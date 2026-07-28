@@ -26,7 +26,6 @@ class HabitationDuplicateChecker
       .where(street_match_sql("COALESCE(addresses.logradouro, habitations.endereco)"), street: normalize_street(@street))
       .where("#{normalized_sql("COALESCE(addresses.numero, habitations.numero)")} = :number", number: normalize(@number))
       .where(status: normalized_status)
-      .where("habitations.exibir_no_site_flag = ? OR habitations.intake_origin = ?", true, Habitation::INTAKE_ORIGIN_BROKER)
       .where.not("habitations.status ~* ?", "suspenso|vendido|alugado")
       .limit(20)
 
@@ -67,20 +66,25 @@ class HabitationDuplicateChecker
     when :condominium_unit
       normalize_unit(@unit).present? || normalize(@complement).present?
     else
-      normalize_unit(@unit).present?
+      normalized_expected_unit.present?
     end
   end
 
   def active_duplicate_candidate?(habitation)
+    return false if draft_broker_intake?(habitation)
     return true if active_broker_intake?(habitation)
 
-    !habitation.unavailable_for_duplicate_check?
+    !habitation.inactive_for_admin_card?
   end
 
   def active_broker_intake?(habitation)
     habitation.intake_origin == Habitation::INTAKE_ORIGIN_BROKER &&
       !habitation.intake_draft? &&
       !habitation.exibir_no_site_flag?
+  end
+
+  def draft_broker_intake?(habitation)
+    habitation.intake_origin == Habitation::INTAKE_ORIGIN_BROKER && habitation.intake_draft?
   end
 
   def same_status?(habitation)
@@ -99,13 +103,15 @@ class HabitationDuplicateChecker
   end
 
   def same_unit?(habitation)
-    expected = normalize_unit(@unit)
-    actual = normalize_unit(habitation.bloco.presence || habitation.complemento)
+    expected = normalized_expected_unit
+    actual = normalized_candidate_unit(habitation)
 
     return false unless expected.present? && actual == expected
 
+    return true unless normalize_unit(@unit).present? && normalize_unit(habitation.bloco).present?
+
     expected_complement = normalize(@complement)
-    actual_complement = normalize(habitation.complemento)
+    actual_complement = normalize(habitation.address&.complemento.presence || habitation.complemento)
     return true if expected_complement.blank? || actual_complement.blank?
 
     expected_complement == actual_complement
@@ -123,7 +129,7 @@ class HabitationDuplicateChecker
   def comparison
     @comparison ||= if complement_block_category? && (normalize_unit(@unit).present? || normalize(@complement).present?)
                       :condominium_unit
-                    elsif normalize_unit(@unit).present?
+                    elsif normalized_expected_unit.present?
                       :unit
                     else
                       :street
@@ -157,9 +163,33 @@ class HabitationDuplicateChecker
     normalize(value).sub(/\A(apartamento|apto|unidade|unid|un|bloco|bl|ap)/, "")
   end
 
+  def normalized_expected_unit
+    @normalized_expected_unit ||= normalize_unit(@unit).presence || normalize_apartment_unit_from_complement(@complement)
+  end
+
+  def normalized_candidate_unit(habitation)
+    normalize_unit(habitation.bloco).presence ||
+      normalize_apartment_unit_from_complement(habitation.address&.complemento) ||
+      normalize_apartment_unit_from_complement(habitation.complemento)
+  end
+
+  def normalize_apartment_unit_from_complement(value)
+    return unless apartment_unit_category?
+
+    text = I18n.transliterate(value.to_s.downcase)
+    token = text[/\b(?:apartamento|apto|unidade|unid|un|ap)\.?\s*([a-z]?\d+[a-z0-9-]*)\b/i, 1]
+    token ||= text[/\b(\d{2,5}[a-z0-9-]*)\b/i, 1]
+    normalize_unit(token)
+  end
+
   def complement_block_category?
     normalized_category = I18n.transliterate(@category.to_s.downcase)
     normalized_category.include?("casa em condominio") || normalized_category.include?("terreno")
+  end
+
+  def apartment_unit_category?
+    normalized_category = I18n.transliterate(@category.to_s.downcase)
+    normalized_category.blank? || normalized_category.match?(/apartamento|cobertura|loft|studio/)
   end
 
   def normalized_sql(expression)

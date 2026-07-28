@@ -266,6 +266,16 @@ class HabitationsController < ApplicationController
   end
 
   def share_link
+    unless @habitation.publicly_viewable?
+      Rails.logger.info(
+        "[HabitationShare] blocked unshareable habitation_id=#{@habitation.id} reason=#{@habitation.public_unavailable_reason}"
+      )
+      return render json: {
+        success: false,
+        error: "Este imóvel não está liberado para compartilhamento público."
+      }, status: :unprocessable_entity
+    end
+
     ensure_social_photo_public!(@habitation)
     link = HabitationShareLink.create_or_reuse_for(
       habitation: @habitation,
@@ -327,6 +337,7 @@ class HabitationsController < ApplicationController
 
   def valid_share_token_for?(habitation)
     return false unless habitation
+    return false unless habitation.publicly_viewable?
 
     token = params[:share_token].to_s.strip
     return false if token.blank?
