@@ -32,8 +32,6 @@
   end
 %>
 
-<%# Cards #16 + #1: a "Classificação das fotos" pode estar travada pelo perfil
-    (Habitations::FieldLockPolicy). %>
 <% can_edit_photo_classification = !habitation.persisted? || habitation_field_editable?("foto_classificacao") %>
 <% media_controls = capture do %>
   <% if can_edit_media && can_edit_photo_classification %>

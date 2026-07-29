@@ -5,7 +5,7 @@ class HabitationDuplicateChecker
     end
   end
 
-  def initialize(street:, number:, building:, unit:, status: nil, comparison: nil, ignored_id: nil, complement: nil, category: nil, tenant: nil)
+  def initialize(street:, number:, building:, unit:, status: nil, comparison: nil, ignored_id: nil, complement: nil, category: nil, tenant: nil, lot: nil, block_section: nil)
     @street = street
     @number = number
     @building = building
@@ -15,6 +15,8 @@ class HabitationDuplicateChecker
     @ignored_id = ignored_id
     @complement = complement
     @category = category
+    @lot = lot
+    @block_section = block_section
     @tenant = tenant || Current.tenant
     raise ArgumentError, "Tenant obrigatório para verificar duplicidade de imóvel" if @tenant.blank?
   end
@@ -118,8 +120,12 @@ class HabitationDuplicateChecker
   end
 
   def same_condominium_unit?(habitation)
-    normalize(@complement) == normalize(habitation.complemento) &&
-      normalize_unit(@unit) == normalize_unit(habitation.bloco)
+    expected_unit = normalized_condominium_unit(@complement, @unit)
+    actual_unit = normalized_condominium_unit(candidate_complement(habitation), habitation.bloco)
+    return false unless expected_unit.present? && actual_unit == expected_unit
+
+    same_optional_identity_part?(@lot, habitation.lote) &&
+      same_optional_identity_part?(@block_section, candidate_block_section(habitation))
   end
 
   def street_level_candidate?(habitation)
@@ -171,6 +177,29 @@ class HabitationDuplicateChecker
     normalize_unit(habitation.bloco).presence ||
       normalize_apartment_unit_from_complement(habitation.address&.complemento) ||
       normalize_apartment_unit_from_complement(habitation.complemento)
+  end
+
+  def candidate_complement(habitation)
+    habitation.address&.complemento.presence || habitation.complemento
+  end
+
+  def candidate_block_section(habitation)
+    habitation.respond_to?(:quadra) ? habitation.quadra : nil
+  end
+
+  def normalized_condominium_unit(complement, unit)
+    normalize_unit(complement).presence || normalize_unit(unit)
+  end
+
+  def same_optional_identity_part?(expected, actual)
+    normalized_expected = normalize_lot_or_block_section(expected)
+    return true if normalized_expected.blank?
+
+    normalize_lot_or_block_section(actual) == normalized_expected
+  end
+
+  def normalize_lot_or_block_section(value)
+    normalize_unit(value).sub(/\A(lote|lt|quadra|qd|q)/, "")
   end
 
   def normalize_apartment_unit_from_complement(value)

@@ -57,16 +57,8 @@
                            data: { habitation_duplicate_check_target: "comparison" } %>
     </div>
 
-    <div class="ax-span-4 <%= "tw-hidden" unless suspended_status %>" data-habitation-form-target="suspensionReasonField">
-      <%= ax_text_field(
-            form: f,
-            method: :motivo_suspensao,
-            label: "Motivo de suspensão",
-            disabled: !suspended_status,
-            data: { habitation_form_target: "suspensionReasonInput" },
-            placeholder: "Informe quando o status estiver Suspenso"
-          ) %>
-    </div>
+    <%= f.hidden_field :motivo_suspensao,
+                       data: { habitation_form_target: "suspensionReasonInput" } %>
 
     <% if habitation.broker_intake? %>
       <div class="ax-span-3">

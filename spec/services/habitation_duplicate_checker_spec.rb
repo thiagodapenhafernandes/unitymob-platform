@@ -244,6 +244,44 @@ RSpec.describe HabitationDuplicateChecker do
     expect(result.matches).to include(existing)
   end
 
+  it "usa lote como parte opcional da identidade de casa em condomínio" do
+    existing = create(:habitation, categoria: "Casa em Condomínio", status: "Venda", bloco: "A", lote: "12")
+    existing.create_address!(
+      logradouro: "Rua Higino João Pio",
+      numero: "420",
+      complemento: "Casa 01",
+      bairro: "Praia do Estaleirinho",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+
+    matching = described_class.new(
+      street: "Rua Higino Joao Pio",
+      number: "420",
+      building: "",
+      unit: "Bloco A",
+      complement: "Casa 01",
+      lot: "Lote 12",
+      category: "Casa em Condomínio",
+      status: "Venda",
+      comparison: :condominium_unit
+    ).call
+    different_lot = described_class.new(
+      street: "Rua Higino Joao Pio",
+      number: "420",
+      building: "",
+      unit: "Bloco A",
+      complement: "Casa 01",
+      lot: "Lote 13",
+      category: "Casa em Condomínio",
+      status: "Venda",
+      comparison: :condominium_unit
+    ).call
+
+    expect(matching.matches).to include(existing)
+    expect(different_lot.matches).not_to include(existing)
+  end
+
   it "libera terreno no mesmo endereço quando complemento é diferente" do
     existing = create(:habitation, categoria: "Terreno", status: "Venda", bloco: nil)
     existing.create_address!(

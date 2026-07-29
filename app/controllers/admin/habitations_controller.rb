@@ -1838,6 +1838,8 @@ class Admin::HabitationsController < Admin::BaseController
       status: habitation.status,
       complement: habitation.complemento,
       category: habitation.categoria,
+      lot: habitation.lote,
+      block_section: habitation.respond_to?(:quadra) ? habitation.quadra : nil,
       comparison: habitation.duplicate_identity_scope,
       ignored_id: habitation.id,
       tenant: Current.tenant
@@ -1849,9 +1851,9 @@ class Admin::HabitationsController < Admin::BaseController
     message = if habitation.duplicate_identity_scope == :unit
                 "Já existe imóvel cadastrado com esta rua, número, unidade e status comercial#{code}."
               elsif habitation.duplicate_identity_scope == :condominium_unit && habitation.property_kind_terreno?
-                "Já existe terreno cadastrado com esta rua, número, complemento, bloco e status comercial#{code}."
+                "Já existe terreno cadastrado com esta rua, número, complemento, lote, quadra e status comercial#{code}."
               elsif habitation.duplicate_identity_scope == :condominium_unit
-                "Já existe casa em condomínio cadastrada com esta rua, número, complemento, bloco e status comercial#{code}."
+                "Já existe casa em condomínio cadastrada com esta rua, número, unidade, lote, quadra e status comercial#{code}."
               else
                 "Já existe imóvel cadastrado com esta rua, número e status comercial#{code}."
               end
