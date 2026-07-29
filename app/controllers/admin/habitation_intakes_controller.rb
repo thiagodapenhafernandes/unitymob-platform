@@ -997,6 +997,8 @@ module Admin
         status: @habitation.status,
         complement: @habitation.complemento,
         category: @habitation.categoria,
+        lot: @habitation.lote,
+        block_section: @habitation.respond_to?(:quadra) ? @habitation.quadra : nil,
         comparison: @habitation.duplicate_identity_scope,
         ignored_id: @habitation.id,
         tenant: Current.tenant

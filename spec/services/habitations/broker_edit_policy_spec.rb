@@ -17,7 +17,7 @@ RSpec.describe Habitations::BrokerEditPolicy do
       construtora andares_qtd infra_estrutura
       condicoes_negociacao aceita_permuta_flag rental_guarantee_method
       key_location zelador_nome responsavel_reserva
-      photos ordered_photo_ids videos
+      photos ordered_photo_ids videos foto_classificacao
     ]
     expect(filter(allowed.index_with { "x" })).to match_array(allowed)
   end
@@ -34,7 +34,6 @@ RSpec.describe Habitations::BrokerEditPolicy do
       broker_commission_percentage valor_comissao_formatted valor_livre_proprietario_formatted
       admin_user_id
       meta_title meta_keywords meta_description slug
-      foto_classificacao
       titulo_anuncio descricao_web
     ]
     expect(filter(blocked.index_with { "x" })).to be_empty

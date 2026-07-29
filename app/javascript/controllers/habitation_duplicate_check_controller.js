@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["street", "number", "building", "unit", "complement", "category", "commercialStatus", "comparison", "status", "submit"]
+  static targets = ["street", "number", "building", "unit", "complement", "lot", "blockSection", "category", "commercialStatus", "comparison", "status", "submit"]
   static values = {
     url: String,
     ignoredId: String
@@ -33,6 +33,8 @@ export default class extends Controller {
         building: this.targetValue("building"),
         unit: this.targetValue("unit"),
         complement: this.targetValue("complement"),
+        lot: this.targetValue("lot"),
+        block_section: this.targetValue("blockSection"),
         category: this.targetValue("category"),
         status: this.statusValue(),
         comparison: this.comparisonValue()
@@ -124,7 +126,7 @@ export default class extends Controller {
     }).join('<span class="ax-duplicate-status__separator">,</span>')
     const identity = this.comparisonValue() === "unit"
       ? "este endereço, unidade e status comercial"
-      : (this.comparisonValue() === "condominium_unit" ? "este endereço, complemento, bloco e status comercial" : "este endereço e status comercial")
+      : (this.comparisonValue() === "condominium_unit" ? "este endereço, unidade, lote, quadra e status comercial" : "este endereço e status comercial")
     this.statusTarget.innerHTML = `
       <span class="ax-duplicate-status__message">Já existe imóvel com ${identity}${links ? ":" : "."}</span>
       ${links ? `<span class="ax-duplicate-status__links">${links}</span>` : ""}

@@ -339,17 +339,9 @@ class Admin::HabitationMediaController < Admin::BaseController
       photos: []
     )
 
-    # Cards #16 + #1: o corretor pode gerenciar a mídia, mas a "Classificação das
-    # fotos" pode estar travada pelo perfil (Habitations::FieldLockPolicy).
     permitted = permitted.slice(*media_field_lock_policy.allowed_top_level_params)
-    permitted = permitted.except(:foto_classificacao) if photo_classification_locked?
 
     strip_blank_photo_uploads!(permitted)
-  end
-
-  def photo_classification_locked?
-    @habitation&.persisted? &&
-      Habitations::FieldLockPolicy.for(current_admin_user).field_locked?("foto_classificacao")
   end
 
   def upload_params

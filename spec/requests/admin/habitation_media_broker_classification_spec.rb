@@ -14,7 +14,7 @@ RSpec.describe "Admin::HabitationMedia classificação x corretor", type: :reque
     allow_any_instance_of(Admin::HabitationMediaController).to receive(:verify_authenticity_token)
   end
 
-  it "não deixa o corretor alterar a classificação das fotos, mas o admin deixa" do
+  it "deixa o corretor alterar a classificação das fotos" do
     agent = create(:admin_user, email: "agent-cls-#{SecureRandom.hex(6)}@salute.test")
     agent.update!(profile: agent_profile)
     habitation = create(:habitation, admin_user: agent, foto_classificacao: "Boas",
@@ -22,11 +22,6 @@ RSpec.describe "Admin::HabitationMedia classificação x corretor", type: :reque
 
     sign_in agent
     patch admin_habitation_media_path(habitation), params: { habitation: { foto_classificacao: "Amadoras" } }
-    expect(habitation.reload.foto_classificacao).to eq("Boas")
-
-    admin = create(:admin_user, :admin, email: "admin-cls-#{SecureRandom.hex(6)}@salute.test")
-    sign_in admin
-    patch admin_habitation_media_path(habitation), params: { habitation: { foto_classificacao: "Profissionais" } }
-    expect(habitation.reload.foto_classificacao).to eq("Profissionais")
+    expect(habitation.reload.foto_classificacao).to eq("Amadoras")
   end
 end

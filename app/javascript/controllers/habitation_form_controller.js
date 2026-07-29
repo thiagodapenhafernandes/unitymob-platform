@@ -15,7 +15,11 @@ export default class extends Controller {
     "soldClosedValue",
     "statusNegotiationModal",
     "statusNegotiationHint",
+    "statusNegotiationLabel",
+    "statusNegotiationCurrencyField",
+    "statusNegotiationReasonField",
     "statusNegotiationValue",
+    "statusNegotiationReason",
     "statusNegotiationError",
     "unitOnly",
     "developmentSelect",
@@ -364,10 +368,9 @@ export default class extends Controller {
   }
 
   applySuspensionReasonVisibility(fromUser = false) {
-    if (!this.hasSuspensionReasonFieldTarget || !this.hasSuspensionReasonInputTarget || !this.hasStatusSelectTarget) return
+    if (!this.hasSuspensionReasonInputTarget || !this.hasStatusSelectTarget) return
 
     const visible = this.normalizedStatusValue() === "suspenso"
-    this.setVisible(this.suspensionReasonFieldTarget, visible)
     this.suspensionReasonInputTarget.disabled = !visible
 
     if (!visible && fromUser) {
@@ -390,8 +393,8 @@ export default class extends Controller {
     if (!this.hasStatusSelectTarget) return
 
     const status = this.normalizedStatusValue()
-    const rented = status.includes("alugado")
-    const sold = status.includes("vendido")
+    const rented = this.statusKind(status) === "rented"
+    const sold = this.statusKind(status) === "sold"
 
     if (this.hasRentedStatusPanelTarget) this.setConditionalSectionState(this.rentedStatusPanelTarget, rented)
     if (this.hasSoldStatusPanelTarget) this.setConditionalSectionState(this.soldStatusPanelTarget, sold)
@@ -405,13 +408,13 @@ export default class extends Controller {
     }
 
     const status = this.normalizedStatusValue()
-    const kind = status.includes("alugado") ? "rented" : (status.includes("vendido") ? "sold" : null)
+    const kind = this.statusKind(status)
     if (!kind) {
       this.previousStatusValue = this.statusSelectTarget.value
       return
     }
 
-    const target = kind === "rented" ? this.rentedClosedValueTarget : this.soldClosedValueTarget
+    const target = this.statusNegotiationTargetFor(kind)
     if (String(target.value || "").trim().length > 0) {
       this.previousStatusValue = this.statusSelectTarget.value
       return
@@ -420,31 +423,67 @@ export default class extends Controller {
     this.pendingStatusNegotiationKind = kind
     this.statusNegotiationConfirmed = false
     this.statusNegotiationValueTarget.value = ""
+    if (this.hasStatusNegotiationReasonTarget) this.statusNegotiationReasonTarget.value = ""
     if (this.hasStatusNegotiationErrorTarget) this.statusNegotiationErrorTarget.hidden = true
-    if (this.hasStatusNegotiationHintTarget) {
-      this.statusNegotiationHintTarget.textContent = kind === "rented"
-        ? "Informe o valor pelo qual a locação foi fechada."
-        : "Informe o valor pelo qual a venda foi fechada."
-    }
+    this.configureStatusNegotiationModal(kind)
     this.statusNegotiationModalTarget.dispatchEvent(new CustomEvent("ax-modal:open", { bubbles: true }))
+  }
+
+  statusKind(status = this.normalizedStatusValue()) {
+    if (status.includes("alugado")) return "rented"
+    if (status.includes("vendido")) return "sold"
+    if (status.includes("suspenso")) return "suspended"
+
+    return null
+  }
+
+  statusNegotiationTargetFor(kind) {
+    if (kind === "rented") return this.rentedClosedValueTarget
+    if (kind === "sold") return this.soldClosedValueTarget
+    return this.suspensionReasonInputTarget
+  }
+
+  configureStatusNegotiationModal(kind) {
+    const isSuspended = kind === "suspended"
+    this.setVisible(this.statusNegotiationCurrencyFieldTarget, !isSuspended)
+    this.setVisible(this.statusNegotiationReasonFieldTarget, isSuspended)
+
+    if (this.hasStatusNegotiationLabelTarget) {
+      this.statusNegotiationLabelTarget.textContent = kind === "rented" ? "Valor de aluguel:" : "Valor de venda:"
+    }
+
+    if (this.hasStatusNegotiationHintTarget) {
+      if (kind === "rented") this.statusNegotiationHintTarget.textContent = "Informe o valor pelo qual a locação foi fechada."
+      if (kind === "sold") this.statusNegotiationHintTarget.textContent = "Informe o valor pelo qual a venda foi fechada."
+      if (kind === "suspended") this.statusNegotiationHintTarget.textContent = "Informe o motivo da suspensão para registrar no histórico do imóvel."
+    }
+
+    if (this.hasStatusNegotiationErrorTarget) {
+      this.statusNegotiationErrorTarget.textContent = isSuspended
+        ? "Informe o motivo para continuar."
+        : "Informe o valor para continuar."
+    }
   }
 
   confirmStatusNegotiation(event) {
     event?.preventDefault()
-    const value = String(this.statusNegotiationValueTarget.value || "").trim()
+    const kind = this.pendingStatusNegotiationKind
+    const input = kind === "suspended" ? this.statusNegotiationReasonTarget : this.statusNegotiationValueTarget
+    const value = String(input?.value || "").trim()
     if (!value) {
       if (this.hasStatusNegotiationErrorTarget) this.statusNegotiationErrorTarget.hidden = false
-      this.statusNegotiationValueTarget.focus()
+      input?.focus()
       return
     }
 
-    const target = this.pendingStatusNegotiationKind === "rented" ? this.rentedClosedValueTarget : this.soldClosedValueTarget
+    const target = this.statusNegotiationTargetFor(kind)
     target.value = value
     target.dispatchEvent(new Event("input", { bubbles: true }))
     target.dispatchEvent(new Event("change", { bubbles: true }))
     this.statusNegotiationConfirmed = true
     this.previousStatusValue = this.statusSelectTarget.value
     this.statusNegotiationModalTarget.dispatchEvent(new CustomEvent("ax-modal:close", { bubbles: true }))
+    this.submitStatusNegotiation(event?.currentTarget?.dataset?.saveChoice || "stay")
   }
 
   cancelStatusNegotiation(event) {
@@ -470,6 +509,23 @@ export default class extends Controller {
     }
     this.applySuspensionReasonVisibility(false)
     this.applyInactiveStatusVisibility()
+  }
+
+  submitStatusNegotiation(choice) {
+    const form = this.element.querySelector("#admin_habitation_form")
+    if (!form) return
+
+    const submitter = Array.from(form.querySelectorAll('button[name="save_navigation"]'))
+      .find((button) => button.value === choice) ||
+      form.querySelector('button[name="save_navigation"][value="stay"]')
+    const choiceInput = form.querySelector('input[name="save_navigation"]')
+    if (choiceInput) choiceInput.value = choice
+
+    if (submitter) {
+      form.requestSubmit(submitter)
+    } else {
+      form.requestSubmit()
+    }
   }
 
   setConditionalSectionState(section, enabled) {

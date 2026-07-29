@@ -121,10 +121,14 @@
   <% end %>
   <% if @captacao.requires_intake_lot_block? %>
     <%= ax_text_field(form: f, method: :lote, label: "Lote", field_class: "wizard-field-group",
-          class: field_state.call(:lote), placeholder: "Ex.: 12") %>
+          class: field_state.call(:lote), placeholder: "Ex.: 12",
+          data: { habitation_duplicate_check_target: "lot",
+                  action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check" }) %>
     <% if field_invalid.call(:lote) %><div class="invalid-feedback d-block">Informe o lote.</div><% end %>
     <%= ax_text_field(form: f, method: :quadra, label: "Quadra", field_class: "wizard-field-group",
-          class: field_state.call(:quadra), placeholder: "Ex.: B") %>
+          class: field_state.call(:quadra), placeholder: "Ex.: B",
+          data: { habitation_duplicate_check_target: "blockSection",
+                  action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check" }) %>
     <% if field_invalid.call(:quadra) %><div class="invalid-feedback d-block">Informe a quadra.</div><% end %>
   <% end %>
   <div data-habitation-duplicate-check-target="status"></div>

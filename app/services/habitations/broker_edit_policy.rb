@@ -99,13 +99,11 @@ module Habitations
       },
       # ======================= Aba "Mídia": pode alterar =======================
       midia: {
-        # NOTA (card #16): a "Classificação das fotos" (foto_classificacao) NÃO
-        # pode ser alterada pelo corretor — por isso fica FORA da lista, ainda que
-        # a aba Mídia seja liberada.
         media: %w[
           photos ordered_photo_ids ordered_picture_indices site_hidden_photo_ids
           site_hidden_picture_urls videos tour_virtual podcast_url plantas
           fotos_empreendimento use_development_photos_flag apply_photo_watermark
+          foto_classificacao
         ]
       }
       # ======================= Aba "Documentos": bloqueada (nada) =======================

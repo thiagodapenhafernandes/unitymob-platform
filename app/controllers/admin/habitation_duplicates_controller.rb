@@ -11,6 +11,8 @@ module Admin
         status: params[:status],
         complement: params[:complement],
         category: params[:category],
+        lot: params[:lot],
+        block_section: params[:block_section],
         comparison: params[:comparison],
         ignored_id: params[:ignored_id],
         tenant: Current.tenant

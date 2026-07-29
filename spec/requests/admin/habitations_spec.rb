@@ -237,7 +237,31 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(closed_value).to be_present
     expect(closed_value["value"]).to eq("R$ 850.000,00")
     expect(html.at_css("#statusNegotiationModal")).to be_present
+    expect(html.text).to include("Valor de venda:")
+    expect(html.text).to include("Motivo:")
     expect(html.text).not_to include("Valor comercializado (venda)")
+  end
+
+  it "salva motivo de suspensão enviado pelo popup e registra no histórico" do
+    habitation = create(:habitation, codigo: "STATUS-SUSP-#{SecureRandom.hex(6)}", status: "Venda")
+
+    patch admin_habitation_path(habitation), params: {
+      save_navigation: "exit",
+      habitation: {
+        status: "Suspenso",
+        motivo_suspensao: "Proprietário pausou a negociação"
+      }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(habitation.reload).to have_attributes(
+      status: "Suspenso",
+      motivo_suspensao: "Proprietário pausou a negociação",
+      exibir_no_site_flag: false
+    )
+
+    log = HabitationAuditLog.where(habitation_id: habitation.id, action: "unpublished").recent.first
+    expect(log.changed_fields).to include("status", "motivo_suspensao", "exibir_no_site_flag")
   end
 
   it "preserva contextos legados ambíguos sem ativar o seletor automaticamente" do

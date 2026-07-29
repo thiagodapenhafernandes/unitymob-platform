@@ -494,11 +494,11 @@
   <div class="ax-field-grid ax-field-grid--compact">
     <div class="ax-span-12">
       <p class="tw-text-sm tw-text-ink-muted tw-mb-0" data-habitation-form-target="statusNegotiationHint">
-        Informe o valor da negociação para registrar a alteração de status.
+        Informe o complemento do status comercial para registrar no histórico do imóvel.
       </p>
     </div>
-    <div class="ax-span-12">
-      <%= ax_field_label(nil, nil, text: "Valor da negociação", for: "status_negotiation_value") %>
+    <div class="ax-span-12" data-habitation-form-target="statusNegotiationCurrencyField">
+      <%= ax_field_label(nil, nil, text: "Valor de venda:", for: "status_negotiation_value", data: { habitation_form_target: "statusNegotiationLabel" }) %>
       <%= ax_input_group(prefix: "R$") do %>
         <input type="text"
                id="status_negotiation_value"
@@ -507,16 +507,24 @@
                data-mask-type-value="currency"
                data-habitation-form-target="statusNegotiationValue">
       <% end %>
-      <p class="tw-text-xs tw-text-danger tw-mt-1 tw-mb-0" hidden data-habitation-form-target="statusNegotiationError">
-        Informe o valor para continuar.
-      </p>
     </div>
+    <div class="ax-span-12" hidden data-habitation-form-target="statusNegotiationReasonField">
+      <%= ax_field_label(nil, nil, text: "Motivo:", for: "status_negotiation_reason") %>
+      <textarea id="status_negotiation_reason"
+                class="ax-control"
+                rows="3"
+                data-habitation-form-target="statusNegotiationReason"></textarea>
+    </div>
+    <p class="tw-text-xs tw-text-danger tw-mt-1 tw-mb-0" hidden data-habitation-form-target="statusNegotiationError">
+      Informe o valor para continuar.
+    </p>
   </div>
 <% end %>
 
 <% status_negotiation_footer = capture do %>
   <button type="button" class="ax-btn" data-action="habitation-form#cancelStatusNegotiation">Cancelar</button>
-  <button type="button" class="ax-btn ax-btn--primary" data-action="habitation-form#confirmStatusNegotiation">Aplicar</button>
+  <button type="button" class="ax-btn" data-save-choice="stay" data-action="habitation-form#confirmStatusNegotiation">Salvar</button>
+  <button type="button" class="ax-btn ax-btn--primary" data-save-choice="exit" data-action="habitation-form#confirmStatusNegotiation">Salvar e sair</button>
 <% end %>
 
 <%= ax_quick_modal(
