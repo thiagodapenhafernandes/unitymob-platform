@@ -361,6 +361,29 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).to include("Taxas inclusas")
       expect(response.body).not_to include("R$ 0,01")
       expect(response.body).not_to include("R$ 1,00")
+      expect(response.body).not_to include("Total mensal")
+    end
+
+    it "shows the monthly rent total with condominium and IPTU on the public details page" do
+      habitation = create(
+        :habitation,
+        codigo: "RENT-TOTAL",
+        slug: "locacao-total-mensal",
+        status: "Aluguel",
+        valor_venda_cents: 0,
+        valor_locacao_cents: 4_900_00,
+        valor_condominio_cents: 672_63,
+        valor_iptu_cents: 126_62
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      page_text = Nokogiri::HTML(response.body).text.squish
+      expect(page_text).to include("Aluguel", "R$ 4.900,00")
+      expect(page_text).to include("Condomínio", "R$ 672,63")
+      expect(page_text).to include("IPTU", "R$ 126,62")
+      expect(page_text).to include("Total mensal", "R$ 5.699,25")
     end
 
     it "shows reduced rent in the public details page" do
@@ -435,6 +458,32 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).not_to include("public-habitations-show__features")
+    end
+
+    it "usa a área total no detalhe público quando o imóvel é terreno" do
+      habitation = create(
+        :habitation,
+        codigo: "LAND-AREA",
+        slug: "terreno-area-total-publica",
+        categoria: "Terreno",
+        area_privativa_m2: nil,
+        area_total_m2: 252,
+        dormitorios_qtd: 0,
+        suites_qtd: 0,
+        vagas_qtd: 0
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      page = Nokogiri::HTML(response.body)
+      features_text = page.at_css(".public-habitations-show__features")&.text&.squish
+      listing_schema = page.css('script[type="application/ld+json"]')
+        .filter_map { |node| JSON.parse(node.text) rescue nil }
+        .find { |schema| schema["@type"] == "RealEstateListing" }
+
+      expect(features_text).to include("252 m²")
+      expect(listing_schema.dig("floorSize", "value")).to eq(252.0)
     end
 
     it "omite características sem valor informado" do
@@ -669,6 +718,45 @@ RSpec.describe "Habitation details", type: :request do
   end
 
   describe "GET /imoveis" do
+    it "renders and applies the public development advanced filter" do
+      development = create(
+        :habitation,
+        codigo: "DEV-FILTRO-PUBLICO",
+        tipo: "Empreendimento",
+        nome_empreendimento: "Atlântico Residence",
+        valor_venda_cents: 0,
+        pictures: [],
+        fotos_empreendimento: [{ "url" => public_photo_url("development.jpg") }]
+      )
+      matching_unit = create(
+        :habitation,
+        codigo: "UNIT-ATLANTICO",
+        titulo_anuncio: "Unidade no Atlântico",
+        codigo_empreendimento: development.codigo,
+        nome_empreendimento: development.nome_empreendimento
+      )
+      outside = create(
+        :habitation,
+        codigo: "UNIT-OUTRO",
+        titulo_anuncio: "Unidade fora do filtro",
+        nome_empreendimento: "Outro Residencial"
+      )
+
+      get habitations_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Empreendimento")
+      expect(response.body).to include('name="development"')
+
+      get habitations_path(development: "Atlantico", format: :json)
+
+      expect(response).to have_http_status(:ok)
+      codes = JSON.parse(response.body).map { |item| item.fetch("codigo") }
+      expect(codes).to include(matching_unit.codigo)
+      expect(codes).not_to include(outside.codigo)
+      expect(codes).not_to include(development.codigo)
+    end
+
     it "does not list developments" do
       development = create(
         :habitation,

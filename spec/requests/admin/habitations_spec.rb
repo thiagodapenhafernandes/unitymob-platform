@@ -1422,7 +1422,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     get filter_inspector_admin_habitations_path(ownership: "all"), headers: turbo_frame_headers
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('name="corretor_id"')
+    expect(response.body).to include('name="corretor_id[]"')
     expect(response.body).to include("Luciana Filtro")
     expect(response.body).to include("Patrícia Filtro")
     expect(response.body).not_to include("Corretor Outra Conta")
@@ -1583,6 +1583,62 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(owned_by_broker.titulo_anuncio)
     expect(response.body).not_to include(owned_by_other.titulo_anuncio)
+  end
+
+  it "combina múltiplas categorias, corretores, bairros comerciais, situações e empreendimentos" do
+    first_broker = create(:admin_user, name: "Corretor Multi A")
+    second_broker = create(:admin_user, name: "Corretor Multi B")
+    outside_broker = create(:admin_user, name: "Corretor Multi C")
+    first_development = create(:habitation, codigo: "DEV-MULTI-A", tipo: "Empreendimento", categoria: "Empreendimento", nome_empreendimento: "Multi A")
+    second_development = create(:habitation, codigo: "DEV-MULTI-B", tipo: "Empreendimento", categoria: "Empreendimento", nome_empreendimento: "Multi B")
+    other_development = create(:habitation, codigo: "DEV-MULTI-C", tipo: "Empreendimento", categoria: "Empreendimento", nome_empreendimento: "Multi C")
+    first_match = create(
+      :habitation,
+      admin_user: first_broker,
+      codigo: "MULTI-OK-A",
+      titulo_anuncio: "Filtro multi apartamento",
+      categoria: "Apartamento",
+      situacao: "Novo",
+      bairro_comercial: "Centro",
+      codigo_empreendimento: first_development.codigo
+    )
+    second_match = create(
+      :habitation,
+      admin_user: second_broker,
+      codigo: "MULTI-OK-B",
+      titulo_anuncio: "Filtro multi casa",
+      categoria: "Casa",
+      situacao: "Usado",
+      bairro_comercial: "Barra Sul",
+      codigo_empreendimento: second_development.codigo
+    )
+    outside = create(
+      :habitation,
+      admin_user: outside_broker,
+      codigo: "MULTI-OUT",
+      titulo_anuncio: "Filtro multi fora",
+      categoria: "Terreno",
+      situacao: "Construção",
+      bairro_comercial: "Praia Brava",
+      codigo_empreendimento: other_development.codigo
+    )
+
+    get admin_habitations_path(
+      ownership: "all",
+      categoria: %w[Apartamento Casa],
+      corretor_id: [first_broker.id, second_broker.id],
+      bairro_comercial: ["Centro", "Barra Sul"],
+      situacao: %w[Novo Usado],
+      empreendimento_codigo: [
+        Admin::HabitationDevelopmentFilterOptions.development_value(first_development.codigo),
+        Admin::HabitationDevelopmentFilterOptions.development_value(second_development.codigo)
+      ]
+    )
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(first_match.titulo_anuncio)
+    expect(response.body).to include(second_match.titulo_anuncio)
+    expect(response.body).not_to include(outside.titulo_anuncio)
   end
 
   it "ordena 'Mais recentes' pela última atividade humana e ignora sincronizações técnicas" do
@@ -2302,6 +2358,26 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(status_options).to include(*expected_statuses)
     expect(status_options.first).to eq("Todos")
     expect(status_options.drop(1)).to eq(status_options.drop(1).sort_by { |status| I18n.transliterate(status).downcase })
+  end
+
+  it "renderiza filtros solicitados como multiselect no catálogo" do
+    get filter_inspector_admin_habitations_path, headers: turbo_frame_headers
+
+    expect(response).to have_http_status(:ok)
+    fragment = Nokogiri::HTML.fragment(response.body)
+
+    %w[
+      empreendimento_codigo[]
+      corretor_id[]
+      status[]
+      categoria[]
+      bairro_comercial[]
+      situacao[]
+    ].each do |name|
+      select = fragment.at_css("select[name='#{name}']")
+      expect(select).to be_present
+      expect(select["multiple"]).to be_present
+    end
   end
 
   it "permite selecionar Todos para incluir inclusive imóveis suspensos" do
@@ -3514,6 +3590,44 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Título do anúncio")
     expect(response.body).to include("Título antigo")
     expect(response.body).to include("Título novo")
+  end
+
+  it "registra contato com proprietário sem alteração e atualiza o relógio do imóvel" do
+    habitation = create(
+      :habitation,
+      codigo: "OWNER-CONTACT-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel com contato confirmado",
+      data_atualizacao_crm: 10.days.ago
+    )
+    previous_reference = habitation.data_atualizacao_crm
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Atualizado")
+    expect(response.body).to include("Falei com proprietário e não houve alteração")
+
+    expect {
+      post confirm_owner_contact_admin_habitation_path(habitation), params: { owner_contact_confirmed: "1" }
+    }.to change(HabitationAuditLog, :count).by(1)
+
+    expect(response).to redirect_to(edit_admin_habitation_path(habitation))
+    expect(habitation.reload.data_atualizacao_crm).to be > previous_reference
+
+    log = HabitationAuditLog.where(habitation_id: habitation.id).last
+    expect(log).to have_attributes(action: "owner_contact_confirmed", admin_user_id: admin.id)
+    expect(log.change_summaries).to include(
+      hash_including(
+        label: "Contato com proprietário",
+        after: "Falei com proprietário e não houve alteração"
+      )
+    )
+
+    get operational_hub_admin_habitation_path(habitation, tab: "changes")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("confirmou contato com o proprietário")
+    expect(response.body).to include("Falei com proprietário e não houve alteração")
   end
 
   it "mantém a central do imóvel independente da timeline importada do Vista" do

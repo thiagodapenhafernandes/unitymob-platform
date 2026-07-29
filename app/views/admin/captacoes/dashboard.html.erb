@@ -413,7 +413,12 @@
           <div class="ax-card__body">
             <div class="capt-panel-title capt-panel-title--spaced">Ranking de corretores</div>
             <div class="capt-ranking-scroll">
-              <%= render "ranking_table", rows: @ranking_locacao, value_key: :total_value, value_label: "Total Locação" %>
+              <%= render "ranking_table",
+                    rows: @ranking_locacao,
+                    value_key: :total_value,
+                    value_label: "Total Locação",
+                    secondary_count_key: :adm_ct,
+                    secondary_count_label: "Captação com Adm" %>
             </div>
           </div>
         </div>

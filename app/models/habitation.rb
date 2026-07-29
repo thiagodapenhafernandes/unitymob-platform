@@ -803,6 +803,19 @@ class Habitation < ApplicationRecord
       displayable_condominio_cents.blank? && displayable_iptu_cents.blank?
   end
 
+  def displayable_rent_total_cents
+    rent_cents = valor_locacao_cents.to_i
+    return nil unless rent_cents.positive?
+
+    stored_total_cents = valor_total_aluguel_cents.to_i
+    return stored_total_cents if stored_total_cents > rent_cents
+
+    taxes_total_cents = displayable_condominio_cents.to_i + displayable_iptu_cents.to_i
+    return nil unless taxes_total_cents.positive?
+
+    rent_cents + taxes_total_cents
+  end
+
   def rent_discount?
     valor_locacao_cents.to_i.positive? &&
       valor_locacao_anterior_cents.to_i > valor_locacao_cents.to_i
@@ -1822,10 +1835,15 @@ class Habitation < ApplicationRecord
     end
   end
 
-  # A metragem divulgada no site representa exclusivamente a area privativa.
-  # Area total continua disponivel para operacao, filtros e integracoes.
+  # A metragem divulgada no site representa area privativa, exceto terrenos.
   def public_area_m2
-    area_privativa_m2.to_f.positive? ? area_privativa_m2 : nil
+    return area_privativa_m2 if area_privativa_m2.to_f.positive?
+    return nil unless property_kind_terreno?
+
+    return area_total_m2 if area_total_m2.to_f.positive?
+    return area_terreno_m2 if area_terreno_m2.to_f.positive?
+
+    nil
   end
   
   # Retorna o título para exibição

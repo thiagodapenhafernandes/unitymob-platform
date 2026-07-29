@@ -159,7 +159,8 @@
                                            method: :empreendimento_codigo,
                                            label: "Empreendimento",
                                            choices: @filter_empreendimentos,
-                                           select_options: { include_blank: "Todos", selected: params[:empreendimento_codigo] },
+                                           select_options: { selected: @empreendimento_codigos },
+                                           multiple: true,
                                            placeholder: "Selecione empreendimento") %>
         </div>
         <% if can_filter_by_broker? %>
@@ -168,7 +169,8 @@
                                              method: :corretor_id,
                                              label: "Corretor",
                                              choices: @filter_brokers,
-                                             select_options: { include_blank: "Todos", selected: params[:corretor_id] },
+                                             select_options: { selected: @corretor_ids },
+                                             multiple: true,
                                              placeholder: "Selecione corretor") %>
           </div>
         <% end %>
@@ -180,7 +182,7 @@
           <%= ax_autocomplete_select_field(clearable: true, form: f, method: :status, label: "Status", choices: options_for_select(@filter_statuses, @statuses.presence || ["Todos"]), select_options: {}, multiple: true, placeholder: "Todos", html_options: { class: "filter-multi-compact" }) %>
         </div>
         <div class="ax-span-2">
-          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :categoria, label: "Categoria", choices: @filter_categories, select_options: { include_blank: "Todas", selected: params[:categoria] }, placeholder: "Todas") %>
+          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :categoria, label: "Categoria", choices: @filter_categories, select_options: { selected: @categorias }, multiple: true, placeholder: "Todas") %>
         </div>
         <div class="ax-span-2">
           <%= ax_field_label(nil, nil, text: "Valor") %>
@@ -239,7 +241,8 @@
                                            method: :bairro_comercial,
                                            label: "Bairro comercial",
                                            choices: @filter_bairros_comerciais,
-                                           select_options: { include_blank: "Todos", selected: params[:bairro_comercial] },
+                                           select_options: { selected: @bairros_comerciais },
+                                           multiple: true,
                                            placeholder: "Ex: Barra") %>
         </div>
       <% end %>
@@ -248,7 +251,7 @@
     <%= ax_filter_section(title: "Negociação", icon: "cash-coin", count: business_count, open: business_count.positive?) do %>
       <%= ax_field_grid columns: 2, gap: :compact, class_name: "ax-filter-section__grid" do %>
         <div>
-          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :situacao, label: "Situação", choices: @filter_situacoes, select_options: { include_blank: "Todas", selected: params[:situacao] }, placeholder: "Todas") %>
+          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :situacao, label: "Situação", choices: @filter_situacoes, select_options: { selected: @situacoes }, multiple: true, placeholder: "Todas") %>
         </div>
         <div>
           <%= ax_autocomplete_select_field(clearable: true, form: f,

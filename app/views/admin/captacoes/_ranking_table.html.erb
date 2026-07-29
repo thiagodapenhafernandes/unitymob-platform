@@ -1,4 +1,9 @@
 <% max_ct = rows.first&.ct || 1 %>
+<% secondary_count_key = local_assigns[:secondary_count_key] %>
+<% secondary_count_label = local_assigns[:secondary_count_label] %>
+<% has_secondary_count = secondary_count_key.present? %>
+<% max_secondary_ct = has_secondary_count ? rows.map { |row| row.public_send(secondary_count_key).to_i }.max.to_i : 1 %>
+<% max_secondary_ct = 1 if max_secondary_ct.zero? %>
 <div class="ax-table-wrap">
   <table class="ax-table">
     <thead class="capt-ranking-table__head">
@@ -6,11 +11,15 @@
         <th class="ax-table__col--w-40">Rank</th>
         <th>Corretor</th>
         <th class="capt-ranking-table__col-chart">Captação</th>
+        <% if has_secondary_count %>
+          <th class="capt-ranking-table__col-chart"><%= secondary_count_label %></th>
+        <% end %>
         <th class="tw-text-right"><%= value_label %></th>
       </tr>
     </thead>
     <tbody>
       <% rows.each_with_index do |row, i| %>
+        <% secondary_count = has_secondary_count ? row.public_send(secondary_count_key).to_i : nil %>
         <tr class="capt-ranking-row">
           <td class="tw-font-bold tw-text-ink-muted"><%= i + 1 %></td>
           <td><%= row.name %></td>
@@ -24,13 +33,25 @@
               <span class="label"><%= row.ct %></span>
             </div>
           </td>
+          <% if has_secondary_count %>
+            <td>
+              <div class="bar-cell">
+                <%= ax_progress(
+                  value: (secondary_count.to_f / max_secondary_ct * 100).to_i,
+                  class_name: "capt-ranking-row__progress capt-ranking-row__progress--secondary",
+                  label: "#{row.name}: #{secondary_count} captações com administração"
+                ) %>
+                <span class="label"><%= secondary_count %></span>
+              </div>
+            </td>
+          <% end %>
           <td class="tw-text-right tw-font-semibold">
             <%= number_to_currency(row.total_value.to_f, unit: "R$ ", precision: 0) %>
           </td>
         </tr>
       <% end %>
       <% if rows.empty? %>
-        <tr><td colspan="4" class="tw-text-center tw-text-ink-muted tw-py-2"><i class="bi bi-inbox"></i> Sem dados no período.</td></tr>
+        <tr><td colspan="<%= has_secondary_count ? 5 : 4 %>" class="tw-text-center tw-text-ink-muted tw-py-2"><i class="bi bi-inbox"></i> Sem dados no período.</td></tr>
       <% end %>
     </tbody>
   </table>

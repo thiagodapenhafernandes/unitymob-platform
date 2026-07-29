@@ -178,6 +178,14 @@
 
   <%= ax_sticky_action_footer(meta: action_footer_meta, class_name: "habitation-action-bar--top") do %>
     <%= link_to "Cancelar", (@return_to_path || admin_habitations_path), class: "ax-btn", data: { save_state_target: "cancelButton" } %>
+    <% if habitation.persisted? %>
+      <button type="button"
+              class="ax-btn"
+              data-ax-modal-open="#ownerContactConfirmationModal">
+        <i class="bi bi-clock-history ax-ico"></i>
+        Atualizado
+      </button>
+    <% end %>
     <% if can_release_intake_to_broker?(habitation) || (habitation.new_record? && can_complete_admin_intake_review?(habitation)) %>
       <%= f.button type: "submit",
                    name: "release_to_broker_after_save",
@@ -537,5 +545,42 @@
         action: "ax-modal:closed->habitation-form#statusNegotiationClosed"
       }
     ) %>
+
+<% if habitation.persisted? %>
+  <% owner_contact_body = capture do %>
+    <%= form_with url: confirm_owner_contact_admin_habitation_path(habitation),
+                  method: :post,
+                  local: true,
+                  html: { id: "ownerContactConfirmationForm" },
+                  data: { turbo: false } do %>
+      <label class="ax-toggle-chip" data-controller="ax-checkbox-chips">
+        <%= hidden_field_tag :owner_contact_confirmed, "0" %>
+        <%= check_box_tag :owner_contact_confirmed,
+                          "1",
+                          false,
+                          class: "ax-toggle-chip__input",
+                          data: { action: "change->ax-checkbox-chips#sync" } %>
+        <span class="ax-toggle-chip__box" aria-hidden="true">
+          <i class="bi bi-check-lg"></i>
+        </span>
+        <span class="ax-toggle-chip__label">Falei com proprietário e não houve alteração</span>
+      </label>
+    <% end %>
+  <% end %>
+
+  <% owner_contact_footer = capture do %>
+    <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
+    <button type="submit" form="ownerContactConfirmationForm" class="ax-btn ax-btn--primary">
+      Salvar
+    </button>
+  <% end %>
+
+  <%= ax_quick_modal(
+        id: "ownerContactConfirmationModal",
+        title: "Atualizado",
+        footer: owner_contact_footer,
+        body: owner_contact_body
+      ) %>
+<% end %>
 
 </div>
