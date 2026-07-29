@@ -712,11 +712,7 @@ class HabitationsController < ApplicationController
   end
 
   def discounted_results_present?
-    @habitations.any? do |habitation|
-      previous = habitation.valor_venda_anterior_cents.to_i
-      current = habitation.valor_venda_cents.to_i
-      previous.positive? && current.positive? && previous > current
-    end
+    @habitations.any? { |habitation| habitation.sale_discount? || habitation.rent_discount? }
   end
 
   def cached_listing_total_entries(scope, filters)

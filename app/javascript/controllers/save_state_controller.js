@@ -8,14 +8,26 @@ export default class extends Controller {
     this.submittingNow = false
     this.saveOptionsConfirmed = false
     this.saveOptionsSubmitter = null
+    this.dirty = false
     this.defaultLabel = this.hasLabelTarget ? this.labelTarget.textContent : ""
     this.toastTimeout = null
     this.boundCloseOnEscape = this.closeOnEscape.bind(this)
+    this.boundMarkDirty = this.markDirty.bind(this)
+    this.boundBeforeUnload = this.beforeUnload.bind(this)
+    this.boundConfirmNavigation = this.confirmNavigation.bind(this)
+    this.element.addEventListener("input", this.boundMarkDirty, true)
+    this.element.addEventListener("change", this.boundMarkDirty, true)
+    window.addEventListener("beforeunload", this.boundBeforeUnload)
+    document.addEventListener("click", this.boundConfirmNavigation, true)
   }
 
   disconnect() {
     this.unlockScroll()
     document.removeEventListener("keydown", this.boundCloseOnEscape)
+    document.removeEventListener("click", this.boundConfirmNavigation, true)
+    window.removeEventListener("beforeunload", this.boundBeforeUnload)
+    this.element.removeEventListener("input", this.boundMarkDirty, true)
+    this.element.removeEventListener("change", this.boundMarkDirty, true)
     if (this.toastTimeout) window.clearTimeout(this.toastTimeout)
   }
 
@@ -36,6 +48,7 @@ export default class extends Controller {
     if (event.defaultPrevented || this.submittingNow) return
 
     this.submittingNow = true
+    this.dirty = false
 
     if (this.hasSubmitButtonTarget) {
       this.submitButtonTarget.disabled = true
@@ -186,6 +199,36 @@ export default class extends Controller {
 
   closeOnEscape(event) {
     if (event.key === "Escape") this.hideModal()
+  }
+
+  markDirty(event) {
+    if (this.submittingNow || event.target?.dataset?.adminNavigationIgnore === "true") return
+
+    this.dirty = true
+  }
+
+  beforeUnload(event) {
+    if (!this.dirty || this.submittingNow) return
+
+    event.preventDefault()
+    event.returnValue = ""
+  }
+
+  confirmNavigation(event) {
+    if (!this.dirty || this.submittingNow) return
+
+    const link = event.target.closest?.("a[href]")
+    if (!link || link.dataset.adminNavigationIgnore === "true") return
+    if (link.target && link.target !== "_self") return
+    if (link.href === window.location.href || link.getAttribute("href")?.startsWith("#")) return
+
+    if (window.confirm("Existem alterações não salvas. Deseja sair sem salvar?")) {
+      this.dirty = false
+      return
+    }
+
+    event.preventDefault()
+    event.stopImmediatePropagation()
   }
 
   lockScroll() {

@@ -442,10 +442,10 @@ export default class extends Controller {
       if (!container.tomselect.options[attr.name]) {
         container.tomselect.addOption({ value: attr.name, text: attr.name })
       }
+      container.tomselect.refreshOptions(false)
       if (!container.tomselect.items.includes(attr.name)) {
         container.tomselect.addItem(attr.name)
       }
-
     } else if (container.tagName === 'DIV' && container.id.includes('checkbox-list')) {
       const escapedName = this.escapeHtml(attr.name)
       const label = document.createElement('label')
@@ -456,10 +456,11 @@ export default class extends Controller {
         <span title="${escapedName}">${escapedName}</span>
       `
       container.appendChild(label)
-
+      this.sortCheckboxList(container)
     } else {
       const option = new Option(attr.name, attr.name)
       container.add(option, undefined)
+      this.sortSelectOptions(container)
     }
   }
 
@@ -507,6 +508,7 @@ export default class extends Controller {
         label.textContent = newName
         label.title = newName
       }
+      this.sortCheckboxList(container)
       return
     }
 
@@ -514,6 +516,25 @@ export default class extends Controller {
     if (option) {
       option.value = newName
       option.text = newName
+      this.sortSelectOptions(container)
     }
+  }
+
+  sortCheckboxList(container) {
+    const labels = Array.from(container.querySelectorAll("label"))
+    labels
+      .sort((a, b) => a.textContent.trim().localeCompare(b.textContent.trim(), "pt-BR", { sensitivity: "base" }))
+      .forEach((label) => container.appendChild(label))
+  }
+
+  sortSelectOptions(container) {
+    const selectedValues = Array.from(container.selectedOptions || []).map((option) => option.value)
+    const options = Array.from(container.options)
+    options
+      .sort((a, b) => a.text.trim().localeCompare(b.text.trim(), "pt-BR", { sensitivity: "base" }))
+      .forEach((option) => container.appendChild(option))
+    Array.from(container.options).forEach((option) => {
+      option.selected = selectedValues.includes(option.value)
+    })
   }
 }

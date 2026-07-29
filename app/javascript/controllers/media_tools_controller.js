@@ -24,12 +24,14 @@ export default class extends Controller {
     this.activePictureIndex = null
     this.selectedPhotoIds = new Set()
     this.selectedPictureIndices = new Set()
+    this.selectedDownloadUrls = new Map()
     this.populateAmbienteOptions()
   }
 
   disconnect() {
     this.selectedPhotoIds.clear()
     this.selectedPictureIndices.clear()
+    this.selectedDownloadUrls.clear()
   }
 
   // --- Ambiente por foto -----------------------------------------------------
@@ -136,11 +138,35 @@ export default class extends Controller {
 
     if (checked) {
       selection.add(id)
+      if (event.params?.downloadUrl) this.selectedDownloadUrls.set(`${photoId === undefined || photoId === null || photoId === "" ? "picture" : "photo"}:${id}`, event.params.downloadUrl)
     } else {
       selection.delete(id)
+      this.selectedDownloadUrls.delete(`${photoId === undefined || photoId === null || photoId === "" ? "picture" : "photo"}:${id}`)
     }
 
     this.reflectSelectionState(id, checked, photoId === undefined || photoId === null || photoId === "" ? "picture" : "photo")
+  }
+
+  downloadSelected(event) {
+    event?.preventDefault?.()
+
+    const urls = Array.from(this.selectedDownloadUrls.values()).filter(Boolean)
+    if (urls.length === 0) {
+      this.toast("Selecione ao menos uma foto para baixar.", "warning")
+      return
+    }
+
+    urls.forEach((url, index) => {
+      window.setTimeout(() => {
+        const link = document.createElement("a")
+        link.href = url
+        link.download = ""
+        link.rel = "noopener"
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+      }, index * 150)
+    })
   }
 
   async openShare(event) {
@@ -242,12 +268,18 @@ export default class extends Controller {
       })
     }
 
+    this.selectedDownloadUrls.clear()
     container?.querySelectorAll('[data-action*="media-tools#toggleSelect"]').forEach((input) => {
       const photoId = input.getAttribute("data-media-tools-photo-id-param")
       const pictureIndex = input.getAttribute("data-media-tools-picture-index-param")
-      const checked = photoId !== null ? this.selectedPhotoIds.has(String(photoId)) : this.selectedPictureIndices.has(String(pictureIndex))
+      const kind = photoId !== null ? "photo" : "picture"
+      const id = String(photoId !== null ? photoId : pictureIndex)
+      const checked = kind === "photo" ? this.selectedPhotoIds.has(id) : this.selectedPictureIndices.has(id)
       if ("checked" in input) input.checked = checked
       input.closest(".ax-media-grid__item")?.classList?.toggle("is-media-selected", checked)
+      if (checked && input.getAttribute("data-media-tools-download-url-param")) {
+        this.selectedDownloadUrls.set(`${kind}:${id}`, input.getAttribute("data-media-tools-download-url-param"))
+      }
     })
   }
 

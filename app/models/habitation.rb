@@ -298,7 +298,7 @@ class Habitation < ApplicationRecord
     "Fachada", "Sala de estar", "Sala de jantar", "Sacada", "Cozinha",
     "Lavanderia", "Lavabo", "Quartos", "Banheiros", "Área externa", "Garagem", "Planta"
   ].freeze
-  KEY_LOCATION_OPTIONS = ["Imobiliária", "Corretor(a)", "Proprietário", "Zelador", "Portaria", "Inquilino", "Outro"].freeze
+  KEY_LOCATION_OPTIONS = ["Imobiliária", "Corretor(a)", "Proprietário", "Zelador", "Portaria", "Inquilino", "Construtora", "Outro"].freeze
   CAPTACAO_KEY_LOCATION_OPTIONS = {
     "imobiliaria" => "Imobiliária",
     "corretor" => "Corretor(a)",
@@ -306,6 +306,7 @@ class Habitation < ApplicationRecord
     "zelador" => "Zelador",
     "portaria" => "Portaria",
     "inquilino" => "Inquilino",
+    "construtora" => "Construtora",
     "outro" => "Outro"
   }.freeze
   RENTAL_GUARANTEE_METHOD_OPTIONS = ["Seguro fiança", "Caução", "Fiador", "Título de capitalização", "Garantidora", "A combinar"].freeze
@@ -744,7 +745,7 @@ class Habitation < ApplicationRecord
   def state = uf
 
   def edificio_nome = nome_empreendimento
-  def unidade_numero = bloco
+  def unidade_numero = bloco.presence || complemento
 
   def proprietario_nome = proprietor&.name.presence || proprietario
 
@@ -1135,7 +1136,7 @@ class Habitation < ApplicationRecord
     missing << "Cidade do proprietário" if owner_city_required && proprietario_cidade.blank?
     missing << "Endereço e localização" if check.call("endereco") && (address.blank? || cep.blank? || logradouro.blank? || bairro.blank? || cidade.blank? || uf.blank?)
     missing << "Empreendimento" if missing_required_intake_development_name?
-    missing << "Número da unidade" if check.call("unidade") && requires_unit_number? && bloco.blank?
+    missing << "Número da unidade" if check.call("unidade") && requires_unit_number? && unidade_numero.blank?
     missing << "Complemento" if check.call("endereco") && requires_intake_address_complement? && !requires_unit_number? && complemento.blank?
     missing << "Definições básicas" if check.call("definicoes") && (categoria.blank? || status.blank?)
     missing << "Título do anúncio" if check.call("titulo") && titulo_anuncio.blank?

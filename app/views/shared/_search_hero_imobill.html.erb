@@ -221,13 +221,12 @@
               <% quick_filters = [
                 ['frente_mar', 'Frente Mar', 'bi-water'],
                 ['quadra_mar', 'Quadra Mar', 'bi-building'],
+                ['vista_mar', 'Vista Mar', 'bi-eye'],
                 ['mobiliado', 'Mobiliado', 'bi-house-heart'],
                 ['pronto', 'Pronto Morar', 'bi-check2-circle'],
                 ['na_planta', 'Na Planta', 'bi-map'],
                 ['opportunity', 'Ofertas', 'bi-tag-fill'],
-                ['lancamento', 'Lançamento', 'bi-stars'],
-                ['churrasqueira', 'Churrasqueira', 'bi-fire'],
-                ['sacada', 'Sacada', 'bi-door-open']
+                ['lancamento', 'Lançamento', 'bi-stars']
               ] %>
               <div class="flex flex-wrap gap-2">
                 <% quick_filters.each do |value, label, icon| %>
@@ -250,15 +249,9 @@
               </div>
             </div>
 
-            <div>
+            <div hidden>
               <div class="mb-2 text-xs font-bold uppercase tracking-wide text-current opacity-70">Mais características</div>
-              <% extra_filters = [
-                ['cozinha_gourmet_churrasqueira', 'Cozinha gourmet com churrasqueira', 'bi-fire'],
-                ['dependencia_empregada', 'Dependência', 'bi-door-closed'],
-                ['sol_manha', 'Sol da manhã', 'bi-sunrise'],
-                ['sol_tarde', 'Sol da tarde', 'bi-sunset'],
-                ['sol_dia_todo', 'Sol o dia todo', 'bi-sun']
-              ] %>
+              <% extra_filters = [] %>
               <div class="flex flex-wrap gap-2">
                 <% extra_filters.each do |value, label, icon| %>
                   <label class="cursor-pointer">

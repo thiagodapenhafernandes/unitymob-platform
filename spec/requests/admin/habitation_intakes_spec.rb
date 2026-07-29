@@ -1170,7 +1170,9 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     }
 
     expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
-    expect(intake.reload.bloco).to eq("ap 302")
+    intake.reload
+    expect(intake.bloco).to be_blank
+    expect(intake.complemento).to eq("ap 302")
   end
 
   it "trata casa de rua como casa quando o campo de edifício veio como Casa sem unidade" do

@@ -35,7 +35,7 @@ RSpec.describe "Admin::Proprietors", type: :request do
     matching = create(:proprietor, tenant: admin.tenant, name: "Proprietário Telefone", email: "telefone@example.com", phone_primary: "(47) 99999-0000", cpf_cnpj: "12345678901")
     create(:proprietor, tenant: admin.tenant, name: "Proprietário Outro", email: "outro@example.com", phone_primary: "(47) 98888-0000", cpf_cnpj: "98765432100")
 
-    get admin_proprietors_path, params: { filters: { phone: "99999", email: "telefone", cpf_cnpj: "98765432100" } }
+    get admin_proprietors_path, params: { filters: { phone: "(47) 99999-0000", email: "telefone", cpf_cnpj: "98765432100" } }
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(matching.name)

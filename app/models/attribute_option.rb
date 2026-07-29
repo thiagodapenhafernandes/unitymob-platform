@@ -21,7 +21,8 @@ class AttributeOption < ApplicationRecord
   scope :search_name, ->(query) { where("name ILIKE ?", "%#{query}%") if query.present? }
   scope :ordered, lambda {
     if column_names.include?("position")
-      order(Arel.sql("position ASC NULLS LAST")).order(name: :asc)
+      order(Arel.sql("CASE WHEN context = 'lead' AND category = 'status' THEN position END ASC NULLS LAST"))
+        .order(name: :asc)
     else
       order(name: :asc)
     end

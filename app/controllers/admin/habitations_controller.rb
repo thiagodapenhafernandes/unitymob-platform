@@ -1345,9 +1345,15 @@ class Admin::HabitationsController < Admin::BaseController
     @amenities.each { |amenity| scope = apply_amenity_filter(scope, amenity) } if @amenities.any?
 
     if @promotion_status == "with_promo"
-      scope = scope.where("COALESCE(valor_venda_anterior_cents, 0) > COALESCE(valor_venda_cents, 0) AND COALESCE(valor_venda_cents, 0) > 0")
+      scope = scope.where(
+        "(COALESCE(valor_venda_anterior_cents, 0) > COALESCE(valor_venda_cents, 0) AND COALESCE(valor_venda_cents, 0) > 0) OR " \
+        "(COALESCE(valor_locacao_anterior_cents, 0) > COALESCE(valor_locacao_cents, 0) AND COALESCE(valor_locacao_cents, 0) > 0)"
+      )
     elsif @promotion_status == "without_promo"
-      scope = scope.where("NOT (COALESCE(valor_venda_anterior_cents, 0) > COALESCE(valor_venda_cents, 0) AND COALESCE(valor_venda_cents, 0) > 0)")
+      scope = scope.where(
+        "NOT ((COALESCE(valor_venda_anterior_cents, 0) > COALESCE(valor_venda_cents, 0) AND COALESCE(valor_venda_cents, 0) > 0) OR " \
+        "(COALESCE(valor_locacao_anterior_cents, 0) > COALESCE(valor_locacao_cents, 0) AND COALESCE(valor_locacao_cents, 0) > 0))"
+      )
     end
 
     scope = apply_boolean_filter(scope, @accepts_exchange, :aceita_permuta_flag)
@@ -1374,17 +1380,15 @@ class Admin::HabitationsController < Admin::BaseController
       scope = apply_development_filter(scope, @empreendimento_codigo)
     end
     if @corretor_id.present?
-      broker_name = current_tenant.admin_users.where(id: @corretor_id).pick(:name).to_s
       scope = scope.where(
         "EXISTS (
            SELECT 1
 	         FROM habitation_broker_assignments
 	         WHERE habitation_broker_assignments.habitation_id = habitations.id
 	           AND habitation_broker_assignments.admin_user_id = :id
-	         ) OR habitations.admin_user_id = :id OR habitations.corretor_nome ILIKE :name",
-	        id: @corretor_id.to_i,
-	        name: "%#{broker_name}%"
-	      )
+	         ) OR habitations.admin_user_id = :id",
+	        id: @corretor_id.to_i
+      )
     end
     scope = scope.where(proprietor_id: @proprietor_id) if @proprietor_id.present?
 

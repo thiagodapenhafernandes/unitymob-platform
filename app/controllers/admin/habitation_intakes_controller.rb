@@ -778,7 +778,7 @@ module Admin
         missing << "Informe a cidade." if @habitation.cidade.blank?
         missing << "Informe a UF." if @habitation.uf.blank?
         missing << "Informe o empreendimento/condomínio." if @habitation.missing_required_intake_development_name?
-        missing << "Informe o número da unidade." if intake_check_enabled?(:unidade) && @habitation.requires_unit_number? && @habitation.bloco.blank?
+        missing << "Informe o número da unidade." if intake_check_enabled?(:unidade) && @habitation.requires_unit_number? && @habitation.unidade_numero.blank?
         missing << "Informe o complemento." if @habitation.requires_intake_address_complement? && !@habitation.requires_unit_number? && @habitation.complemento.blank?
         missing
       when "caracteristicas"
@@ -900,7 +900,7 @@ module Admin
         fields[:city] = true if @habitation.cidade.blank?
         fields[:state] = true if @habitation.uf.blank?
         fields[:edificio_nome] = true if @habitation.missing_required_intake_development_name?
-        fields[:unidade_numero] = true if intake_check_enabled?(:unidade) && @habitation.requires_unit_number? && @habitation.bloco.blank?
+        fields[:unidade_numero] = true if intake_check_enabled?(:unidade) && @habitation.requires_unit_number? && @habitation.unidade_numero.blank?
         fields[:complemento] = true if @habitation.requires_intake_address_complement? && !@habitation.requires_unit_number? && @habitation.complemento.blank?
       when "caracteristicas"
         if intake_check_enabled?(:area)
@@ -993,7 +993,7 @@ module Admin
         street: @habitation.logradouro,
         number: @habitation.numero,
         building: @habitation.nome_empreendimento,
-        unit: @habitation.bloco,
+        unit: @habitation.unidade_numero,
         status: @habitation.status,
         complement: @habitation.complemento,
         category: @habitation.categoria,
@@ -1134,7 +1134,7 @@ module Admin
       attrs["valor_iptu_formatted"] = attrs.delete("valor_iptu") if attrs["valor_iptu"].present?
       attrs["saldo_devedor_formatted"] = attrs.delete("saldo_devedor") if attrs["saldo_devedor"].present?
       attrs["nome_empreendimento"] = attrs.delete("edificio_nome") if attrs["edificio_nome"].present?
-      attrs["bloco"] = attrs.delete("unidade_numero") if attrs["unidade_numero"].present?
+      attrs["complemento"] = attrs.delete("unidade_numero") if attrs["unidade_numero"].present?
       normalize_street_house_category!(attrs)
       attrs["ocupacao_status"] = attrs.delete("ocupacao") if attrs["ocupacao"].present?
       attrs["estado_conservacao"] = attrs.delete("estado_imovel") if attrs["estado_imovel"].present?

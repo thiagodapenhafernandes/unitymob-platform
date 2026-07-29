@@ -30,6 +30,7 @@ export default class extends Controller {
     "captadorSelect",
     "deliveryDate",
     "constructionProfileSelect",
+    "useDevelopmentPhotos",
     "streetTypeSelect",
     "street",
     "streetNumber",
@@ -625,12 +626,20 @@ export default class extends Controller {
     this.syncDevelopmentEditLink(developmentData.edit_url)
     this.syncDevelopmentRelationshipFields(developmentData)
     this.syncDevelopmentAddressFields(developmentData.address)
+    if (fromUser) this.enableDevelopmentPhotosFallback()
   }
 
   syncDevelopmentRelationshipFields(developmentData) {
-    this.setSelectTargetValue("captadorSelect", developmentData.admin_user_id)
     this.setInputTargetValue("deliveryDate", developmentData.data_entrega)
     this.setSelectTargetValue("constructionProfileSelect", developmentData.perfil_construcao)
+  }
+
+  enableDevelopmentPhotosFallback() {
+    const input = this.optionalTarget("useDevelopmentPhotos")
+    if (!input || input.checked) return
+
+    input.checked = true
+    input.dispatchEvent(new Event("change", { bubbles: true }))
   }
 
   syncDevelopmentAddressFields(address = {}) {
