@@ -175,7 +175,7 @@ class SyncPropertyService
       tipo_endereco: hb['TipoEndereco'],
       logradouro: hb['Endereco'],
       numero: hb['Numero'],
-      complemento: hb['Complemento'],
+      complemento: unit_value(hb['Complemento']),
       bairro: hb['Bairro'],
       bairro_comercial: hb['BairroComercial'],
       cidade: hb['Cidade'],
@@ -277,14 +277,35 @@ class SyncPropertyService
   # Preserva valor atual se não conseguir resolver (não sobrescreve com nil).
   def resolve_broker(hb)
     code = hb['CodigoCorretor'].to_s.strip.presence
-    return current_broker_id if code.blank?
+    user = tenant.admin_users.find_by(vista_id: code) if code.present?
 
-    user = tenant.admin_users.find_by(vista_id: code)
-    user&.id || current_broker_id
+    user&.id || resolve_broker_by_name(hb) || current_broker_id
+  end
+
+  def resolve_broker_by_name(hb)
+    normalized_name = normalized_broker_name(hb['CorretorNome'].presence || hb['Corretor'])
+    return if normalized_name.blank?
+
+    tenant.admin_users.active.find_each do |admin_user|
+      return admin_user.id if normalized_broker_name(admin_user.name) == normalized_name
+    end
+
+    nil
+  end
+
+  def normalized_broker_name(raw)
+    I18n.transliterate(raw.to_s).squish.downcase.presence
   end
 
   def current_broker_id
     tenant.habitations.where(codigo: @codigo).limit(1).pluck(:admin_user_id).first
+  end
+
+  def unit_value(raw)
+    normalized = raw.to_s.strip.presence
+    return if normalized.to_s.match?(/\A0+\z/)
+
+    normalized
   end
 
   def resolve_proprietor(hb, owner_data = {})

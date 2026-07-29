@@ -194,6 +194,7 @@ RSpec.describe Vista::PropertyReconciliationService do
       current_profile = current_tenant.profiles.find_by!(key: "agent")
       other_profile = other_tenant.profiles.find_by!(key: "agent")
       current_broker = create(:admin_user, tenant: current_tenant, profile: current_profile, vista_id: "BROKER-REC-1")
+      broker_by_name = create(:admin_user, tenant: current_tenant, profile: current_profile, name: "Fabíana Albuquerque", vista_id: nil)
       create(:admin_user, tenant: other_tenant, profile: other_profile, vista_id: "BROKER-REC-2")
       other_proprietor = create(:proprietor, tenant: other_tenant, vista_code: "PROP-REC-1", name: "Proprietário Externo")
 
@@ -202,10 +203,18 @@ RSpec.describe Vista::PropertyReconciliationService do
 
       expect(service.send(:resolve_broker, { "CodigoCorretor" => "BROKER-REC-1" })).to eq(current_broker)
       expect(service.send(:resolve_broker, { "CodigoCorretor" => "BROKER-REC-2" })).to be_nil
+      expect(service.send(:resolve_broker, { "Corretor" => "Fabiana Albuquerque" })).to eq(broker_by_name)
 
       proprietor = service.send(:resolve_proprietor, { "CodigoProprietario" => "PROP-REC-1", "Proprietario" => "Proprietário Atual" })
       expect(proprietor.tenant).to eq(current_tenant)
       expect(proprietor.id).not_to eq(other_proprietor.id)
+    end
+
+    it "clears all-zero Vista complements instead of showing apartment 0000" do
+      service = described_class.new(codigos: ["6425"], dry_run: true)
+
+      expect(service.send(:clearable_property_attrs, { "Complemento" => "0000" })[:complemento]).to be_nil
+      expect(service.send(:clearable_address_attrs, { "Complemento" => "2901" })[:complemento]).to eq("2901")
     end
 
     it "valida duplicidade de codigo DWV apenas dentro do Tenant corrente" do

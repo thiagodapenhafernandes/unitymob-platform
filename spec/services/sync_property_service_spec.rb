@@ -53,6 +53,7 @@ RSpec.describe SyncPropertyService do
       current_profile = current_tenant.profiles.find_by!(key: "agent")
       other_profile = other_tenant.profiles.find_by!(key: "agent")
       current_broker = create(:admin_user, tenant: current_tenant, profile: current_profile, vista_id: "BROKER-1")
+      broker_by_name = create(:admin_user, tenant: current_tenant, profile: current_profile, name: "Fabíana Albuquerque", vista_id: nil)
       create(:admin_user, tenant: other_tenant, profile: other_profile, vista_id: "BROKER-2")
 
       Current.tenant = current_tenant
@@ -60,6 +61,14 @@ RSpec.describe SyncPropertyService do
 
       expect(service.send(:resolve_broker, { "CodigoCorretor" => "BROKER-1" })).to eq(current_broker.id)
       expect(service.send(:resolve_broker, { "CodigoCorretor" => "BROKER-2" })).to be_nil
+      expect(service.send(:resolve_broker, { "Corretor" => "Fabiana Albuquerque" })).to eq(broker_by_name.id)
+    end
+
+    it "does not import an all-zero Vista complement as apartment/unit" do
+      service = described_class.new("SYNC-ZERO")
+
+      expect(service.send(:unit_value, "0000")).to be_nil
+      expect(service.send(:unit_value, "2901")).to eq("2901")
     end
 
     it "resolve proprietario apenas dentro do Tenant corrente" do

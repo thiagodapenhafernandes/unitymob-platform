@@ -424,7 +424,7 @@ module Vista
         tipo_endereco: value(api["TipoEndereco"]),
         endereco: value(api["Endereco"]),
         numero: value(api["Numero"]),
-        complemento: value(api["Complemento"]),
+        complemento: unit_value(api["Complemento"]),
         bairro: value(api["Bairro"]),
         bairro_comercial: value(api["BairroComercial"]),
         cidade: value(api["Cidade"]),
@@ -602,7 +602,7 @@ module Vista
           tipo_endereco: value(api["TipoEndereco"]),
           logradouro: value(api["Endereco"]),
           numero: value(api["Numero"]),
-          complemento: value(api["Complemento"]),
+          complemento: unit_value(api["Complemento"]),
           bairro: value(api["Bairro"]),
           bairro_comercial: value(api["BairroComercial"]),
           cidade: value(api["Cidade"]),
@@ -1075,13 +1075,26 @@ module Vista
 
     def resolve_broker(api)
       code = broker_code_from_api(api)
-      return if code.blank?
+      broker = tenant.admin_users.find_by(vista_id: code) if code.present?
 
-      tenant.admin_users.find_by(vista_id: code)
+      broker || resolve_broker_by_name(api)
     end
 
     def broker_code_from_api(api)
       value(api["CodigoCorretor"]) || value(api["Agenciador"])
+    end
+
+    def resolve_broker_by_name(api)
+      normalized_name = normalized_broker_name(value(api["CorretorNome"]) || value(api["Corretor"]))
+      return if normalized_name.blank?
+
+      tenant.admin_users.active.find_each.find do |admin_user|
+        normalized_broker_name(admin_user.name) == normalized_name
+      end
+    end
+
+    def normalized_broker_name(raw)
+      I18n.transliterate(raw.to_s).squish.downcase.presence
     end
 
     def media_codes_for(api, photos)
@@ -1431,7 +1444,7 @@ module Vista
     def clearable_property_attrs(api)
       {
         pais: clearable_value(api, "Pais"),
-        complemento: clearable_value(api, "Complemento"),
+        complemento: clearable_unit_value(api, "Complemento"),
         codigo_empreendimento: clearable_development_code(api),
         nome_empreendimento: clearable_development_name(api),
         titulo_anuncio: clearable_value(api, "TituloSite"),
@@ -1472,7 +1485,7 @@ module Vista
     def clearable_address_attrs(api)
       {
         pais: clearable_value(api, "Pais"),
-        complemento: clearable_value(api, "Complemento")
+        complemento: clearable_unit_value(api, "Complemento")
       }.reject { |_key, attr_value| attr_value == :__not_available__ }
     end
 
@@ -1480,6 +1493,19 @@ module Vista
       return :__not_available__ unless api.key?(field)
 
       value(api[field])
+    end
+
+    def clearable_unit_value(api, field)
+      return :__not_available__ unless api.key?(field)
+
+      unit_value(api[field])
+    end
+
+    def unit_value(raw)
+      normalized = value(raw)
+      return if normalized.to_s.match?(/\A0+\z/)
+
+      normalized
     end
 
     def clearable_development_name(api)
