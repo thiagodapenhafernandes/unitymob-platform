@@ -1,6 +1,14 @@
 
         <!-- Faixa de Preço (Sincronizada) -->
         <div class="mb-6">
+          <label for="development" class="block text-sm font-bold text-gray-700 mb-2">Empreendimento</label>
+          <%= text_field_tag :development,
+                params[:development].presence || params[:empreendimento],
+                placeholder: "Nome ou código do empreendimento",
+                class: "w-full rounded-lg border-gray-200 focus:ring-blue-three focus:border-blue-three" %>
+        </div>
+
+        <div class="mb-6">
           <label class="block text-sm font-bold text-gray-700 mb-2">Faixa de Preço (R$)</label>
           <div class="flex gap-4 items-center">
             <% 

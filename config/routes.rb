@@ -33,6 +33,7 @@ Rails.application.routes.draw do
       member do
         get :operational_hub
         get :gallery
+        post :confirm_owner_contact
       end
       collection do
         get :print

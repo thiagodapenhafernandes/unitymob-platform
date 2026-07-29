@@ -395,6 +395,8 @@ class HabitationsController < ApplicationController
       :city,
       :cidade,
       :neighborhood,
+      :development,
+      :empreendimento,
       :state,
       :min_bedrooms,
       :min_suites,
@@ -413,6 +415,8 @@ class HabitationsController < ApplicationController
       :sort,
       category: [],
       city: [],
+      development: [],
+      empreendimento: [],
       characteristics: []
     )
     permitted.delete(:page)
@@ -427,6 +431,9 @@ class HabitationsController < ApplicationController
 
     city_values = normalize_filter_values(permitted[:city])
     permitted[:city] = city_values if city_values.any?
+
+    development_values = normalize_filter_values(permitted[:development].presence || permitted[:empreendimento])
+    permitted[:development] = development_values if development_values.any?
 
     permitted
   end

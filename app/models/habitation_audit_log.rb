@@ -3,7 +3,7 @@ class HabitationAuditLog < ApplicationRecord
 
   ACTIONS = %w[
     created updated deleted published unpublished intake_status_changed
-    attachments_changed broker_assignments_changed bulk_updated
+    attachments_changed broker_assignments_changed bulk_updated owner_contact_confirmed
   ].freeze
   SOURCE_LABELS = {
     "admin" => "Admin",
@@ -69,6 +69,7 @@ class HabitationAuditLog < ApplicationRecord
     "fichas_cadastro_attachments" => "Fichas de cadastro",
     "autorizacoes_venda_attachments" => "Autorizações de venda",
     "broker_assignments" => "Corretores vinculados",
+    "owner_contact_confirmation" => "Contato com proprietário",
     "intake_status" => "Status da captação",
     "intake_origin" => "Origem da captação",
     "intake_modalidade" => "Modalidade da captação",
@@ -133,6 +134,7 @@ class HabitationAuditLog < ApplicationRecord
     when "attachments_changed" then "#{actor_name} alterou anexos do imóvel"
     when "broker_assignments_changed" then "#{actor_name} alterou corretores vinculados"
     when "bulk_updated" then "#{actor_name} fez uma alteração em massa no imóvel"
+    when "owner_contact_confirmed" then "#{actor_name} confirmou contato com o proprietário"
     when "deleted" then "#{actor_name} excluiu o imóvel"
     else "#{actor_name} alterou o imóvel"
     end

@@ -53,7 +53,12 @@ module Admin
       @ranking_locacao = locacao_scope
         .left_joins(:admin_user)
         .group("admin_users.id", "admin_users.name")
-        .select("admin_users.id, COALESCE(admin_users.name, 'Sem corretor') AS name, COUNT(habitations.id) AS ct, COALESCE(SUM(habitations.valor_locacao_cents),0) / 100.0 AS total_value")
+        .select(
+          "admin_users.id, COALESCE(admin_users.name, 'Sem corretor') AS name, " \
+          "COUNT(habitations.id) AS ct, " \
+          "SUM(CASE WHEN habitations.salute_rental_management_flag = TRUE THEN 1 ELSE 0 END) AS adm_ct, " \
+          "COALESCE(SUM(habitations.valor_locacao_cents),0) / 100.0 AS total_value"
+        )
         .order("ct DESC, total_value DESC")
         .limit(15)
 

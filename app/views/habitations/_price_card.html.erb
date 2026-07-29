@@ -34,6 +34,8 @@
     <p class="public-habitations-show__price mt-2 text-3xl font-extrabold text-blue-three">Sob consulta</p>
   <% end %>
 
+  <% rent_total_cents = habitation.displayable_rent_total_cents %>
+
   <dl class="public-habitations-show__facts public-habitations-show__facts--mobile space-y-3 text-sm">
     <div class="public-habitations-show__fact flex justify-between gap-4">
       <dt>Status</dt>
@@ -59,6 +61,12 @@
       <div class="public-habitations-show__fact flex justify-between gap-4">
         <dt>Taxas</dt>
         <dd>Taxas inclusas</dd>
+      </div>
+    <% end %>
+    <% if rent_total_cents.present? %>
+      <div class="public-habitations-show__fact public-habitations-show__fact--total flex justify-between gap-4">
+        <dt>Total mensal</dt>
+        <dd><%= number_to_currency(rent_total_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
       </div>
     <% end %>
   </dl>
@@ -90,6 +98,12 @@
       <div class="public-habitations-show__fact flex justify-between gap-4">
         <dt class="text-gray-500">Taxas</dt>
         <dd class="font-bold text-green-700">Taxas inclusas</dd>
+      </div>
+    <% end %>
+    <% if rent_total_cents.present? %>
+      <div class="public-habitations-show__fact public-habitations-show__fact--total flex justify-between gap-4 border-t border-gray-100 pt-3">
+        <dt class="text-gray-500">Total mensal</dt>
+        <dd class="font-extrabold text-blue-three"><%= number_to_currency(rent_total_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
       </div>
     <% end %>
   </dl>

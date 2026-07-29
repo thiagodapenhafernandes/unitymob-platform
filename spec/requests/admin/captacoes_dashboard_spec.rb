@@ -36,6 +36,11 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     expect(response.body).to include("de 2 captações de venda")
     expect(response.body).to include("de 2 captações de locação")
     expect(response.body).to include("50%")
+    page = Nokogiri::HTML(response.body)
+    locacao_table = page.at_css("#tab-locacao .capt-ranking-table__head")&.text&.squish
+    locacao_row = page.css("#tab-locacao .capt-ranking-row").find { |row| row.text.include?(dashboard_admin.name) }&.text&.squish
+    expect(locacao_table).to include("Captação", "Captação com Adm", "Total Locação")
+    expect(locacao_row).to include(dashboard_admin.name, "2", "1", "R$ 7.000")
     ranking_progress = Nokogiri::HTML(response.body).css(".capt-ranking-row__progress progress.ax-progress__bar")
     expect(ranking_progress).not_to be_empty
     expect(ranking_progress).to all(satisfy { |bar| bar["style"].nil? && bar["max"] == "100" })

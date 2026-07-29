@@ -243,6 +243,35 @@ module Habitation::SearchScopes
         all
       end
     }
+    scope :by_development, ->(development) {
+      terms = normalize_location_values(development)
+
+      if terms.any?
+        values = []
+        conditions = terms.map do |term|
+          pattern = "%#{term}%"
+          values.concat([pattern, pattern, pattern, pattern, pattern])
+
+          "LOWER(unaccent(COALESCE(habitations.nome_empreendimento, ''))) ILIKE ? OR " \
+            "LOWER(unaccent(COALESCE(habitations.codigo_empreendimento, ''))) ILIKE ? OR " \
+            "EXISTS (" \
+            "SELECT 1 FROM habitations developments " \
+            "WHERE developments.codigo = habitations.codigo_empreendimento " \
+            "AND developments.tenant_id = habitations.tenant_id " \
+            "AND COALESCE(developments.tipo, '') = 'Empreendimento' " \
+            "AND (" \
+            "LOWER(unaccent(COALESCE(developments.nome_empreendimento, ''))) ILIKE ? OR " \
+            "LOWER(unaccent(COALESCE(developments.titulo_anuncio, ''))) ILIKE ? OR " \
+            "LOWER(unaccent(COALESCE(developments.codigo, ''))) ILIKE ?" \
+            ")" \
+            ")"
+        end.join(" OR ")
+
+        where(conditions, *values)
+      else
+        all
+      end
+    }
     scope :by_state, ->(state) { left_outer_joins(:address).where("COALESCE(addresses.uf, habitations.uf) = ?", state) if state.present? }
     
     # Scopes por características
@@ -731,6 +760,7 @@ module Habitation::SearchScopes
       if params[:neighborhood].present?
         query = query.by_neighborhood(params[:neighborhood])
       end
+      query = query.by_development(params[:development]) if params[:development].present?
       query = query.by_state(params[:state]) if params[:state].present?
       
       # Características numéricas

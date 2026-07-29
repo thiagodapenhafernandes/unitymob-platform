@@ -12907,7 +12907,8 @@ body.ax-habitations-workspace .ts-dropdown .create.active {
 .habitation-form-ui .ax-media-tile__image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: #eef3f8;
   border: 1px solid #d8e1ec;
   border-radius: 8px;
   pointer-events: none;
@@ -13424,7 +13425,8 @@ body.ax-app .ax-media-sortable-fallback .ax-media-tile__link {
 body.ax-app .ax-media-sortable-fallback .ax-media-tile__image {
   width: 100% !important;
   height: 100% !important;
-  object-fit: cover !important;
+  object-fit: contain !important;
+  background: #eef3f8 !important;
   border-radius: 8px !important;
   pointer-events: none !important;
 }
@@ -25547,6 +25549,7 @@ html[data-admin-theme="dark"] .property-settings-alias-item {
 }
 [data-admin-theme="dark"] .habitation-form-ui .ax-media-tile__image {
   border-color: #3b4d68;
+  background: #141f32;
 }
 [data-admin-theme="dark"] .habitation-form-ui .ax-media-action {
   border-color: #4a5e7a;

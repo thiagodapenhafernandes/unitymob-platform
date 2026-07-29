@@ -539,5 +539,38 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.card_data[:area]).to be_nil
       expect(habitation.area_formatted).to be_nil
     end
+
+    it "falls back to total area for land properties" do
+      habitation = build(:habitation, categoria: "Terreno", area_privativa_m2: nil, area_total_m2: 252)
+
+      expect(habitation.public_area_m2).to eq(252)
+      expect(habitation.card_data[:area]).to eq(252)
+      expect(habitation.area_formatted).to eq("252 m²")
+    end
+  end
+
+  describe "#displayable_rent_total_cents" do
+    it "sums rent with displayable condominium and IPTU values" do
+      habitation = build(
+        :habitation,
+        valor_locacao_cents: 4_900_00,
+        valor_condominio_cents: 672_63,
+        valor_iptu_cents: 126_62
+      )
+
+      expect(habitation.displayable_rent_total_cents).to eq(5_699_25)
+    end
+
+    it "uses the stored rent total when it is greater than the rent value" do
+      habitation = build(:habitation, valor_locacao_cents: 4_900_00, valor_total_aluguel_cents: 5_700_00)
+
+      expect(habitation.displayable_rent_total_cents).to eq(5_700_00)
+    end
+
+    it "does not expose strategic placeholder taxes as a numeric total" do
+      habitation = build(:habitation, valor_locacao_cents: 4_900_00, valor_condominio_cents: 1, valor_iptu_cents: 100)
+
+      expect(habitation.displayable_rent_total_cents).to be_nil
+    end
   end
 end

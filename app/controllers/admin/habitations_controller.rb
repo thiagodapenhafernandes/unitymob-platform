@@ -5,7 +5,7 @@ class Admin::HabitationsController < Admin::BaseController
   before_action -> { check_permission!(:create, :imoveis) }, only: [:new, :create]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
   before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility]
-  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :gallery, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :gallery, :confirm_owner_contact, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   require "csv"
   require "uri"
 
@@ -95,7 +95,7 @@ class Admin::HabitationsController < Admin::BaseController
     "valor_total_aluguel_cents" => { label: "Valor total aluguel", column: "valor_total_aluguel_cents", default_direction: "desc" }
   }.freeze
 
-  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :gallery, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
+  before_action :set_habitation, only: [:show, :edit, :update, :destroy, :operational_hub, :gallery, :confirm_owner_contact, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   before_action :prepare_habitation_address, only: [:show, :edit, :operational_hub]
   before_action :prepare_legacy_habitation_address, only: [:update]
   before_action :authorize_habitation_edit!, only: [:edit, :update]
@@ -493,6 +493,22 @@ class Admin::HabitationsController < Admin::BaseController
     end
 
     render json: { items: }
+  end
+
+  def confirm_owner_contact
+    unless ActiveModel::Type::Boolean.new.cast(params[:owner_contact_confirmed])
+      redirect_to edit_admin_habitation_path(@habitation),
+                  alert: "Confirme que falou com o proprietário e não houve alteração."
+      return
+    end
+
+    confirmed_at = Time.current
+    @habitation.skip_auto_audit = true
+    @habitation.update!(data_atualizacao_crm: confirmed_at)
+    record_owner_contact_confirmed(@habitation, confirmed_at:)
+
+    redirect_to edit_admin_habitation_path(@habitation),
+                notice: "Atualização registrada no histórico do imóvel."
   end
 
   def create
@@ -1166,14 +1182,16 @@ class Admin::HabitationsController < Admin::BaseController
     @q = params[:q]
     @statuses = Array(params[:status]).flatten.map(&:to_s).map(&:squish).reject(&:blank?).uniq
     @status = @statuses.first
-    @categoria = params[:categoria]
+    @categorias = filter_values(params[:categoria], except: "Todas")
+    @categoria = @categorias.first
     @logradouro = nil
     @numero = nil
     @cep = nil
     @cidade = nil
     @bairros = []
     @bairro = @bairros.first
-    @bairro_comercial = params[:bairro_comercial]
+    @bairros_comerciais = filter_values(params[:bairro_comercial], except: "Todos")
+    @bairro_comercial = @bairros_comerciais.first
     @dorms = []
     @suites = []
     @vagas = []
@@ -1186,7 +1204,8 @@ class Admin::HabitationsController < Admin::BaseController
     @vagas_max = params[:vagas_max]
     @banheiros_min = params[:banheiros_min]
     @banheiros_max = params[:banheiros_max]
-    @situacao = params[:situacao]
+    @situacoes = filter_values(params[:situacao], except: "Todas")
+    @situacao = @situacoes.first
     @face = nil
     @ocupacao_status = nil
     @estado_conservacao = nil
@@ -1205,8 +1224,10 @@ class Admin::HabitationsController < Admin::BaseController
     @permuta_min_garagens = nil
     @key_location = params[:key_location]
     @salute_rental_management = params[:salute_rental_management]
-    @empreendimento_codigo = normalize_development_filter_value(params[:empreendimento_codigo])
-    @corretor_id = can_filter_by_broker? ? catalog_filter_admin_user_id(params[:corretor_id]) : nil
+    @empreendimento_codigos = filter_values(params[:empreendimento_codigo], except: "Todos").filter_map { |value| normalize_development_filter_value(value) }
+    @empreendimento_codigo = @empreendimento_codigos.first
+    @corretor_ids = can_filter_by_broker? ? catalog_filter_admin_user_ids(params[:corretor_id]) : []
+    @corretor_id = @corretor_ids.first
     @proprietor_id = nil
     @destaque_web = params[:destaque_web]
     @festival_salute = params[:festival_salute]
@@ -1289,7 +1310,7 @@ class Admin::HabitationsController < Admin::BaseController
     scope = scope.admin_search_text(@q) if @q.present?
 
     scope = apply_status_filter(scope, @statuses)
-    scope = apply_category_filter(scope, @categoria)
+    scope = apply_category_filter(scope, @categorias)
     scope = scope.where(
       "unaccent(CONCAT_WS(' ', " \
       "COALESCE(NULLIF(TRIM(addresses.tipo_endereco), ''), NULLIF(TRIM(habitations.tipo_endereco), '')), " \
@@ -1314,7 +1335,11 @@ class Admin::HabitationsController < Admin::BaseController
       neighborhood_conditions = @bairros.map { "#{neighborhood_sql} ILIKE unaccent(?)" }.join(" OR ")
       scope = scope.where(neighborhood_conditions, *@bairros.map { |bairro| "%#{bairro}%" })
     end
-    scope = scope.where("unaccent(COALESCE(NULLIF(TRIM(addresses.bairro_comercial), ''), NULLIF(TRIM(habitations.bairro_comercial), ''))) ILIKE unaccent(?)", "%#{@bairro_comercial}%") if @bairro_comercial.present?
+    if @bairros_comerciais.any?
+      commercial_neighborhood_sql = "unaccent(COALESCE(NULLIF(TRIM(addresses.bairro_comercial), ''), NULLIF(TRIM(habitations.bairro_comercial), '')))"
+      commercial_neighborhood_conditions = @bairros_comerciais.map { "#{commercial_neighborhood_sql} ILIKE unaccent(?)" }.join(" OR ")
+      scope = scope.where(commercial_neighborhood_conditions, *@bairros_comerciais.map { |bairro| "%#{bairro}%" })
+    end
     scope = scope.where(dormitorios_qtd: @dorms) if @dorms.any?
     scope = scope.where(suites_qtd: @suites) if @suites.any?
     scope = scope.where(vagas_qtd: @vagas) if @vagas.any?
@@ -1323,7 +1348,7 @@ class Admin::HabitationsController < Admin::BaseController
     scope = apply_integer_range_filter(scope, :suites_qtd, @suites_min, @suites_max)
     scope = apply_integer_range_filter(scope, :vagas_qtd, @vagas_min, @vagas_max)
     scope = apply_integer_range_filter(scope, :banheiros_qtd, @banheiros_min, @banheiros_max)
-    scope = scope.where(situacao: @situacao) if @situacao.present?
+    scope = scope.where(situacao: @situacoes) if @situacoes.any?
     scope = scope.where(face: @face) if @face.present?
     scope = scope.where(ocupacao_status: @ocupacao_status) if @ocupacao_status.present?
     scope = scope.where(estado_conservacao: @estado_conservacao) if @estado_conservacao.present?
@@ -1376,18 +1401,20 @@ class Admin::HabitationsController < Admin::BaseController
     scope = scope.where("COALESCE(permuta_suites_qtd, 0) >= ?", @permuta_min_suites.to_i) if @permuta_min_suites.present?
     scope = scope.where("COALESCE(permuta_garagens_qtd, 0) >= ?", @permuta_min_garagens.to_i) if @permuta_min_garagens.present?
     scope = scope.where(key_location: @key_location) if @key_location.present?
-    if @empreendimento_codigo.present?
-      scope = apply_development_filter(scope, @empreendimento_codigo)
+    if @empreendimento_codigos.any?
+      scope = @empreendimento_codigos.reduce(scope.none) do |combined_scope, value|
+        combined_scope.or(apply_development_filter(scope, value))
+      end
     end
-    if @corretor_id.present?
+    if @corretor_ids.any?
       scope = scope.where(
         "EXISTS (
            SELECT 1
 	         FROM habitation_broker_assignments
 	         WHERE habitation_broker_assignments.habitation_id = habitations.id
-	           AND habitation_broker_assignments.admin_user_id = :id
-	         ) OR habitations.admin_user_id = :id",
-	        id: @corretor_id.to_i
+	           AND habitation_broker_assignments.admin_user_id IN (:ids)
+	         ) OR habitations.admin_user_id IN (:ids)",
+	        ids: @corretor_ids
       )
     end
     scope = scope.where(proprietor_id: @proprietor_id) if @proprietor_id.present?
@@ -2116,31 +2143,35 @@ class Admin::HabitationsController < Admin::BaseController
     scope.where(conditions.join(" OR "), *values)
   end
 
-  def apply_category_filter(scope, raw_category)
-    category = raw_category.to_s.squish
-    return scope if category.blank? || category == "Todas"
+  def apply_category_filter(scope, raw_categories)
+    categories = filter_values(raw_categories, except: "Todas")
+    return scope if categories.blank?
 
-    normalized_category = I18n.transliterate(category).downcase
+    categories.reduce(scope.none) do |combined_scope, category|
+      normalized_category = I18n.transliterate(category).downcase
 
-    case normalized_category
-    when "apartamento"
-      scope.where("unaccent(habitations.categoria) ILIKE unaccent(?)", "%apartamento%")
-    when "casa"
-      scope.where("unaccent(habitations.categoria) IN (unaccent('Casa'), unaccent('Casa de Rua'))")
-    when "casa em condominio"
-      scope.where("unaccent(habitations.categoria) ILIKE unaccent(?)", "%casa%condominio%")
-    when "sala comercial"
-      scope.where("unaccent(habitations.categoria) ILIKE unaccent(?)", "%sala%comercial%")
-    when "terreno"
-      scope.where("unaccent(habitations.categoria) ILIKE unaccent(?)", "%terreno%")
-    when "empreendimento"
-      scope.where(tipo: "Empreendimento")
-    when "garden"
-      scope.garden
-    when "diferenciado"
-      scope.diferenciado
-    else
-      scope.where("unaccent(TRIM(habitations.categoria)) = unaccent(?)", category)
+      category_scope = case normalized_category
+                       when "apartamento"
+                         scope.where("unaccent(habitations.categoria) ILIKE unaccent(?)", "%apartamento%")
+                       when "casa"
+                         scope.where("unaccent(habitations.categoria) IN (unaccent('Casa'), unaccent('Casa de Rua'))")
+                       when "casa em condominio"
+                         scope.where("unaccent(habitations.categoria) ILIKE unaccent(?)", "%casa%condominio%")
+                       when "sala comercial"
+                         scope.where("unaccent(habitations.categoria) ILIKE unaccent(?)", "%sala%comercial%")
+                       when "terreno"
+                         scope.where("unaccent(habitations.categoria) ILIKE unaccent(?)", "%terreno%")
+                       when "empreendimento"
+                         scope.where(tipo: "Empreendimento")
+                       when "garden"
+                         scope.garden
+                       when "diferenciado"
+                         scope.diferenciado
+                       else
+                         scope.where("unaccent(TRIM(habitations.categoria)) = unaccent(?)", category)
+                       end
+
+      combined_scope.or(category_scope)
     end
   end
 
@@ -2414,6 +2445,32 @@ class Admin::HabitationsController < Admin::BaseController
     ).record_attachment_removed!(
       association: association,
       attachment_payload: attachment_payload
+    )
+  end
+
+  def record_owner_contact_confirmed(habitation, confirmed_at:)
+    HabitationAuditLog.create!(
+      habitation: habitation,
+      admin_user: current_admin_user,
+      action: "owner_contact_confirmed",
+      source: habitation_audit_source(habitation),
+      changed_fields: ["owner_contact_confirmation", "data_atualizacao_crm"],
+      changeset: {
+        "owner_contact_confirmation" => {
+          before: nil,
+          after: "Falei com proprietário e não houve alteração"
+        },
+        "data_atualizacao_crm" => {
+          before: nil,
+          after: confirmed_at
+        }
+      },
+      metadata: {
+        owner_contact_confirmed: true,
+        confirmed_at: confirmed_at.iso8601
+      },
+      ip: request.remote_ip,
+      user_agent: request.user_agent.to_s.first(255)
     )
   end
 
@@ -2708,6 +2765,29 @@ class Admin::HabitationsController < Admin::BaseController
     return nil unless id.positive?
 
     catalog_filter_admin_users.exists?(id: id) ? id.to_s : nil
+  end
+
+  def catalog_filter_admin_user_ids(value)
+    ids = Array(value)
+      .flatten
+      .flat_map { |item| item.to_s.split(",") }
+      .filter_map { |item| Integer(item, exception: false) }
+      .select(&:positive?)
+      .uniq
+
+    ids.blank? ? [] : catalog_filter_admin_users.where(id: ids).pluck(:id)
+  end
+
+  def filter_values(value, except: nil)
+    normalized_except = I18n.transliterate(except.to_s).downcase if except.present?
+
+    Array(value)
+      .flatten
+      .flat_map { |item| item.to_s.split(",") }
+      .map(&:squish)
+      .reject(&:blank?)
+      .reject { |item| normalized_except.present? && I18n.transliterate(item).downcase == normalized_except }
+      .uniq
   end
 
   def visible_habitation_admin_user_id(value)
