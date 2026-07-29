@@ -268,12 +268,19 @@ module Admin
       end
 
       if filters[:phone].present?
-        phone_like = like(filters[:phone])
-        scope = scope.where(
-          "proprietors.phone_primary ILIKE :q OR proprietors.mobile_phone ILIKE :q OR " \
-          "proprietors.residential_phone ILIKE :q OR proprietors.business_phone ILIKE :q",
-          q: phone_like
-        )
+        phone_digits = filters[:phone].to_s.gsub(/\D/, "")
+        if phone_digits.length >= 8
+          normalized_phone = Proprietor.normalized_phone(filters[:phone])
+          scope = scope.with_normalized_phone(normalized_phone)
+        elsif phone_digits.present?
+          scope = scope.where(
+            "regexp_replace(COALESCE(proprietors.phone_primary, ''), '\\D', '', 'g') LIKE :q OR " \
+            "regexp_replace(COALESCE(proprietors.mobile_phone, ''), '\\D', '', 'g') LIKE :q OR " \
+            "regexp_replace(COALESCE(proprietors.residential_phone, ''), '\\D', '', 'g') LIKE :q OR " \
+            "regexp_replace(COALESCE(proprietors.business_phone, ''), '\\D', '', 'g') LIKE :q",
+            q: "%#{phone_digits}%"
+          )
+        end
       end
 
       if filters[:cpf_cnpj].present?

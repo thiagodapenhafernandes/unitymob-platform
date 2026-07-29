@@ -147,7 +147,7 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       ["categoria", { categoria: "Terreno" }, { categoria: "Terreno" }, { categoria: "Apartamento" }],
       ["bairro_comercial", { bairro_comercial: "Meia Praia" }, { bairro_comercial: "Meia Praia" }, { bairro_comercial: "Centro" }],
       ["situacao", { situacao: "Novo" }, { situacao: "Novo" }, { situacao: "Usado" }],
-      ["promotion_status", { promotion_status: "with_promo" }, { valor_venda_cents: 900_000_00, valor_venda_anterior_cents: 1_000_000_00 }, { valor_venda_cents: 900_000_00, valor_venda_anterior_cents: nil }],
+      ["promotion_status", { promotion_status: "with_promo" }, { status: "Aluguel", valor_locacao_cents: 8_000_00, valor_locacao_anterior_cents: 10_000_00 }, { status: "Aluguel", valor_locacao_cents: 8_000_00, valor_locacao_anterior_cents: nil }],
       ["accepts_exchange", { accepts_exchange: "1" }, { aceita_permuta_flag: true }, { aceita_permuta_flag: false }],
       ["accepts_installments", { accepts_installments: "1" }, { aceita_parcelamento_flag: true }, { aceita_parcelamento_flag: false }],
       ["key_location", { key_location: "Portaria" }, { key_location: "Portaria" }, { key_location: "Zelador" }],
@@ -203,6 +203,21 @@ RSpec.describe "Admin habitation catalog filters", type: :request do
       matching_attrs: { admin_user_id: broker.id },
       nonmatching_attrs: { admin_user_id: admin.id }
     )
+  end
+
+  it "não usa corretor_nome legado para casar o filtro explícito por corretor" do
+    broker = create(:admin_user, name: "Corretora Amanda")
+    matching_title = "Filtro corretor vínculo real #{SecureRandom.hex(6)}"
+    legacy_title = "Filtro corretor nome legado #{SecureRandom.hex(6)}"
+
+    create_catalog_property(titulo_anuncio: matching_title, admin_user_id: broker.id)
+    create_catalog_property(titulo_anuncio: legacy_title, admin_user_id: admin.id, corretor_nome: broker.name)
+
+    get admin_habitations_path(corretor_id: broker.id)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(matching_title)
+    expect(response.body).not_to include(legacy_title)
   end
 
   it "considera filtros de atualização como filtros extras limpáveis" do

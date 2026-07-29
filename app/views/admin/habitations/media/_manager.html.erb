@@ -104,10 +104,14 @@
               <span>Organizar por ambiente</span>
             </button>
           <% end %>
-          <% if habitation.persisted? %>
-            <button type="button" class="ax-btn ax-btn--sm ax-btn--primary" data-action="media-tools#openShare" title="Enviar fotos selecionadas"
-                    <%= "disabled" unless media_action_allowed.call("acao:enviar_fotos") %>>
-              <i class="bi bi-send"></i>
+	          <% if habitation.persisted? %>
+	            <button type="button" class="ax-btn ax-btn--sm ax-btn--ghost" data-action="media-tools#downloadSelected" title="Baixar fotos selecionadas">
+	              <i class="bi bi-download"></i>
+	              <span>Baixar fotos</span>
+	            </button>
+	            <button type="button" class="ax-btn ax-btn--sm ax-btn--primary" data-action="media-tools#openShare" title="Enviar fotos selecionadas"
+	                    <%= "disabled" unless media_action_allowed.call("acao:enviar_fotos") %>>
+	              <i class="bi bi-send"></i>
               <span>Enviar fotos</span>
             </button>
           <% end %>
@@ -132,7 +136,9 @@
       <% if linked_development.present? %>
         <% linked_development_name = linked_development.nome_empreendimento.presence || linked_development.codigo %>
         <% development_photo_action = capture do %>
-          <%= ax_toggle_chip(f, :use_development_photos_flag, label: "Usar fotos do empreendimento") %>
+          <%= ax_toggle_chip(f, :use_development_photos_flag,
+                label: "Usar fotos do empreendimento",
+                input_data: { habitation_form_target: "useDevelopmentPhotos" }) %>
         <% end %>
         <% if compact_mode %>
           <details class="ax-media-compact-details">

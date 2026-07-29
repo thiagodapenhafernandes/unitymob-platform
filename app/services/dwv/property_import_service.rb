@@ -210,6 +210,7 @@ module Dwv
       features = extract_features(category: "feature")
       infrastructure = extract_features(category: "infrastructure")
       constructor = find_or_build_constructor
+      proprietor = find_or_build_proprietor
       address_attrs = extract_address
       description = extract_description
       category = inferred_category
@@ -251,6 +252,7 @@ module Dwv
         condicoes_negociacao: extract_payment_conditions || habitation.condicoes_negociacao,
         construtora: text_value(["construction_company", "title"]) || habitation.construtora,
         constructor: constructor || habitation.constructor,
+        proprietor: proprietor || habitation.proprietor,
         data_cadastro_crm: habitation.data_cadastro_crm || parse_time(value(["inserted_at"], ["created_at"])),
         data_atualizacao_crm: parse_time(value(["last_updated_at"], ["updated_at"])) || Time.current,
         last_sync_at: Time.current,
@@ -681,6 +683,16 @@ module Dwv
       constructor.website_url ||= text_value(["construction_company", "site"])
       constructor.save! if constructor.changed?
       constructor
+    end
+
+    def find_or_build_proprietor
+      name = text_value(["owner", "name"], ["proprietor", "name"], ["construction_company", "title"])
+      return nil if name.blank?
+
+      proprietor = tenant.proprietors.where("LOWER(TRIM(name)) = ?", name.downcase.strip).order(:id).first
+      return proprietor if proprietor
+
+      tenant.proprietors.create!(name: name, role: "builder")
     end
 
     def third_party?

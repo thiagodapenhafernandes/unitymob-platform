@@ -41,6 +41,8 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.tour_virtual).to eq("https://tour.dwv.test/linea")
       expect(habitation.condicoes_negociacao).to include("Entrada: 1000000.00")
       expect(habitation.constructor.name).to eq("Rzilli")
+      expect(habitation.proprietor.name).to eq("Rzilli")
+      expect(habitation.proprietor).to be_role_builder
       expect(habitation.dwv_payload).to include("id" => 632439)
 
       address = habitation.address

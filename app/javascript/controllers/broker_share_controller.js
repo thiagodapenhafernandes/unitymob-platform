@@ -134,11 +134,45 @@ export default class extends Controller {
   }
 
   async copyFromUrl(url) {
-    try {
-      await navigator.clipboard.writeText(url)
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(url)
+        this.flashStatus("Link copiado")
+        return
+      } catch (_error) {
+        // Alguns navegadores desktop bloqueiam Clipboard API mesmo em clique do usuário.
+      }
+    }
+
+    if (this.copyWithFallback(url)) {
       this.flashStatus("Link copiado")
-    } catch (_error) {
+    } else {
       this.flashStatus("Copie manualmente")
+    }
+  }
+
+  copyWithFallback(url) {
+    const input = document.createElement("textarea")
+    input.value = url
+    input.setAttribute("readonly", "")
+    input.style.position = "fixed"
+    input.style.top = "0"
+    input.style.left = "0"
+    input.style.width = "1px"
+    input.style.height = "1px"
+    input.style.opacity = "0"
+    document.body.appendChild(input)
+
+    input.focus()
+    input.select()
+    input.setSelectionRange(0, input.value.length)
+
+    try {
+      return document.execCommand("copy")
+    } catch (_error) {
+      return false
+    } finally {
+      input.remove()
     }
   }
 
