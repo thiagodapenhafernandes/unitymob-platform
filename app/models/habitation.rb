@@ -470,6 +470,7 @@ class Habitation < ApplicationRecord
   before_validation :unpublish_when_commercial_status_inactive
   before_validation :clear_category_mismatched_slug, prepend: true
   before_validation :assign_codigo_automaticamente, on: :create
+  before_validation :finalize_temporary_broker_intake_codigo_for_registered_status
   before_validation :set_data_cadastro_crm, on: :create
   before_validation :normalize_codigo_empreendimento
   before_validation :clear_unlinked_standalone_development_name
@@ -2152,6 +2153,14 @@ class Habitation < ApplicationRecord
     return if codigo.present?
 
     self.codigo = broker_intake? ? self.class.next_temporary_codigo : self.class.next_automatic_codigo
+  end
+
+  def finalize_temporary_broker_intake_codigo_for_registered_status
+    return unless broker_intake?
+    return unless temporary_codigo? || codigo.blank?
+    return if intake_status.blank? || intake_status == "draft"
+
+    finalize_broker_intake_registration!(submitted_at: submitted_for_review_at.presence || Time.current)
   end
 
   def slug_candidates

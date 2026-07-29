@@ -28,6 +28,17 @@ RSpec.describe Habitation, type: :model do
 
       expect(habitation.codigo).to eq((reference_codigo.to_i + 1).to_s)
     end
+
+    it "does not keep a temporary broker intake code when the intake leaves draft" do
+      reference_codigo = (described_class.highest_numeric_codigo + 100).to_s
+      create(:habitation, codigo: reference_codigo, imovel_dwv: "Nao", last_sync_message: "Importado do dump Vista")
+      expected_codigo = described_class.next_automatic_codigo
+
+      habitation = create(:habitation, :broker_intake, codigo: nil, intake_status: "published")
+
+      expect(habitation.codigo).to eq(expected_codigo)
+      expect(habitation.codigo).not_to start_with(described_class::TEMPORARY_CODIGO_PREFIX)
+    end
   end
 
   describe "#data_cadastro_crm" do
