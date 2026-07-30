@@ -58,9 +58,13 @@ Rails.application.routes.draw do
       post :bulk_update, on: :collection
     end
     resources :proprietors do
+      member do
+        patch :quick_update
+      end
       collection do
         get :print
         get :export
+        get :quick_search
         post :quick_create
       end
     end

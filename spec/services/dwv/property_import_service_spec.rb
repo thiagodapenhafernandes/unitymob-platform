@@ -66,7 +66,7 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.address.complemento).to be_blank
     end
 
-    it "updates only price and sync metadata on an existing DWV record" do
+    it "updates price, owner link and sync metadata on an existing DWV record" do
       habitation = create(
         :habitation,
         tenant: tenant,
@@ -95,6 +95,9 @@ RSpec.describe Dwv::PropertyImportService do
       expect(habitation.exibir_no_site_flag).to eq(false)
       expect(habitation.dwv_payload).to include("title" => "Payload antigo")
       expect(habitation.valor_venda_cents).to eq(439_776_500)
+      expect(habitation.construtora).to eq("Rzilli")
+      expect(habitation.proprietor.name).to eq("Rzilli")
+      expect(habitation.proprietario).to eq("Rzilli")
       expect(habitation.preco_atualizado_em).to be_present
       expect(habitation.last_sync_message).to eq("Sincronizado via DWV (preço atualizado)")
     end

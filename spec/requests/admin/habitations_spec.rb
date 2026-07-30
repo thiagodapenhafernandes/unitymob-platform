@@ -3540,6 +3540,20 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(new_admin_proprietor_path(embed: "modal"))
   end
 
+  it "não exibe modal de troca de proprietário para corretor em imóvel publicado" do
+    broker_profile = default_agent_profile
+    broker = create(:admin_user, profile: broker_profile)
+    habitation = create(:habitation, admin_user: broker, codigo: "PROP-COR-#{SecureRandom.hex(6)}", intake_status: "published")
+
+    sign_in broker
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Proprietário e contatos")
+    expect(response.body).not_to include('id="quickProprietorModal"')
+    expect(response.body).not_to include(quick_search_admin_proprietors_path)
+  end
+
   it "permite captador visualizar documentos sem anexar ou remover" do
     broker_profile = default_agent_profile
     broker = create(:admin_user, profile: broker_profile)

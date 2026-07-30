@@ -86,7 +86,8 @@ RSpec.describe "Admin::Proprietors", type: :request do
              proprietor: {
                name: "Proprietário Modal",
                phone_primary: "(47) 99999-1111",
-               email: "modal@example.com"
+               email: "modal@example.com",
+               city: "Itajaí"
              }
            },
            headers: { "ACCEPT" => "application/json" }
@@ -100,8 +101,57 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(proprietor).to have_attributes(
       role: "owner",
       phone_primary: "5547999991111",
-      email: "modal@example.com"
+      email: "modal@example.com",
+      city: "Itajaí"
     )
+  end
+
+  it "busca e edita proprietário rápido somente para administrador/administrativo" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    proprietor = create(:proprietor, tenant: admin.tenant, name: "Dono Busca", phone_primary: "(47) 98888-7777", city: "Itapema")
+
+    get quick_search_admin_proprietors_path,
+        params: { q: "8888" },
+        headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    payload = JSON.parse(response.body)
+    expect(payload.fetch("proprietors").first).to include(
+      "id" => proprietor.id,
+      "name" => "Dono Busca",
+      "city" => "Itapema"
+    )
+
+    patch quick_update_admin_proprietor_path(proprietor),
+          params: { proprietor: { name: "Dono Atualizado", phone_primary: "(47) 97777-6666", email: "dono@example.com", city: "Camboriú" } },
+          headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(proprietor.reload).to have_attributes(
+      name: "Dono Atualizado",
+      phone_primary: "5547977776666",
+      email: "dono@example.com",
+      city: "Camboriú"
+    )
+  end
+
+  it "bloqueia busca rápida para corretor mesmo com visualização de proprietários" do
+    broker_profile = Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
+      profile.update!(
+        permissions: Profile.default_permissions_for("Corretor").merge(
+          "proprietarios" => { "view" => true, "manage" => false }
+        )
+      )
+    end
+    broker = create(:admin_user, profile: broker_profile)
+    sign_in broker
+
+    get quick_search_admin_proprietors_path,
+        params: { q: "Dono" },
+        headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:forbidden)
   end
 
   it "permite criação rápida para perfil Administrativo" do
