@@ -217,6 +217,13 @@ export default class extends Controller {
       .phone-input-group > span[class*="bg-"] {
         display: none;
       }
+      .iti.is-readonly .iti__selected-country {
+        pointer-events: none;
+      }
+      .iti.is-readonly input {
+        background-color: #f4f7fb;
+        cursor: not-allowed;
+      }
     `
     document.head.appendChild(style)
   }
