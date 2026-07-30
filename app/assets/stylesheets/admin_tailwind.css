@@ -10347,6 +10347,26 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
   min-width: 0;
 }
 
+.habitation-form-ui .habitation-owner-action-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.habitation-form-ui .habitation-owner-action-trigger {
+  gap: 5px;
+  min-width: 34px;
+  padding-inline: 8px;
+}
+
+.habitation-form-ui .habitation-owner-action-trigger__caret {
+  color: #6b7a90;
+  font-size: 10px;
+}
+
+.habitation-form-ui .habitation-owner-action-menu {
+  min-width: 190px;
+}
+
 .habitation-form-ui .habitation-owner-card {
   display: grid;
   gap: 10px;

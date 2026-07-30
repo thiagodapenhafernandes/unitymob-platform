@@ -3005,12 +3005,12 @@ RSpec.describe "Admin::Habitations", type: :request do
     general_tab = page.at_css("#general")
     expect(general_tab.text).not_to include("Responsável pelo cadastro")
     expect(general_tab.at_css('select[name="habitation[admin_user_id]"]')).to be_nil
-    expect(page.at_css('select[name="habitation[proprietor_id]"]')).to be_present
-    expect(page.at_css('input[name="habitation[proprietario]"]')).to be_nil
+    expect(page.at_css('input[type="hidden"][name="habitation[proprietor_id]"]')).to be_present
+    expect(page.at_css('input[type="hidden"][name="habitation[proprietario]"]')).to be_present
     expect(response.body).to include("Jeanine")
     expect(response.body).to include("jeanine@example.com")
     expect(response.body).to include("55 (47) 98868-0402")
-    expect(response.body).not_to include("Nome legado divergente")
+    expect(page.text).not_to include("Nome legado divergente")
   end
 
   it "não substitui o proprietário da unidade pelo proprietário do empreendimento vinculado" do
@@ -3536,8 +3536,70 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include('id="quickProprietorModal"')
     expect(response.body).to include(quick_create_admin_proprietors_path)
     expect(response.body).to include("Salvar e selecionar")
+    page = Nokogiri::HTML(response.body)
+    expect(page.at_css("#editQuickProprietorForm")).to be_present
+    expect(page.at_css('input[name="proprietor[phone_primary]"][data-habitation-owner-selector-target="editPhone"]')).to be_present
+    expect(page.at_css('input[name="proprietor[email]"][data-habitation-owner-selector-target="editEmail"]')).to be_present
+    expect(page.at_css('input[name="proprietor[city]"][data-habitation-owner-selector-target="editCity"]')).to be_present
+    expect(page.at_css('[data-habitation-owner-selector-target="directAction"]')["hidden"]).to be_nil
+    expect(page.at_css('[data-habitation-owner-selector-target="menuAction"]')["hidden"]).not_to be_nil
     expect(response.body).not_to include("<iframe")
     expect(response.body).not_to include(new_admin_proprietor_path(embed: "modal"))
+  end
+
+  it "exibe menu para trocar ou remover proprietário quando já existe vínculo" do
+    proprietor = create(:proprietor, name: "Proprietário Vinculado")
+    habitation = create(:habitation, proprietor:, codigo: "PROP-MENU-#{SecureRandom.hex(6)}")
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    page = Nokogiri::HTML(response.body)
+    menu = page.at_css(".habitation-owner-action-menu")
+
+    expect(menu).to be_present
+    expect(menu.text).to include("Trocar proprietário")
+    expect(menu.text).to include("Remover proprietário")
+    expect(menu.at_css('[data-action*="habitation-owner-selector#remove"]')).to be_present
+    expect(page.at_css('[data-habitation-owner-selector-target="directAction"]')).to be_present
+    expect(page.at_css('[data-habitation-owner-selector-target="menuAction"]')).to be_present
+  end
+
+  it "remove proprietário vinculado e dados legados ao salvar o imóvel" do
+    proprietor = create(:proprietor, name: "Proprietário Antigo")
+    habitation = create(
+      :habitation,
+      proprietor:,
+      codigo: "PROP-REMOVE-#{SecureRandom.hex(6)}",
+      proprietario: "Proprietário legado",
+      proprietario_codigo: "LEG-123",
+      proprietario_celular: "(47) 99999-0000",
+      proprietario_telefone_comercial: "(47) 3333-0000",
+      proprietario_telefone_residencial: "(47) 4444-0000",
+      proprietario_email: "legado@example.com",
+      proprietario_cidade: "Camboriú"
+    )
+
+    patch admin_habitation_path(habitation), params: {
+      habitation: {
+        proprietor_id: "",
+        proprietario: "",
+        proprietario_codigo: "",
+        proprietario_celular: "",
+        proprietario_telefone_comercial: "",
+        proprietario_telefone_residencial: "",
+        proprietario_email: "",
+        proprietario_cidade: ""
+      }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    habitation.reload
+    expect(habitation.proprietor_id).to be_nil
+    expect(habitation.proprietario).to be_blank
+    expect(habitation.proprietario_celular).to be_blank
+    expect(habitation.proprietario_email).to be_blank
+    expect(habitation.proprietario_cidade).to be_blank
   end
 
   it "não exibe modal de troca de proprietário para corretor em imóvel publicado" do
