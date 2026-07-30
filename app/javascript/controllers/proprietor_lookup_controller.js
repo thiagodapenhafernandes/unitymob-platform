@@ -169,12 +169,17 @@ export default class extends Controller {
   syncPhoneLock() {
     if (!this.hasPhoneTarget) return
 
-    this.phoneTarget.readOnly = this.selectedProprietor()
-    this.phoneTarget.classList.toggle("is-readonly", this.selectedProprietor())
+    const locked = this.selectedProprietor()
+
+    this.phoneTarget.readOnly = locked
+    this.phoneTarget.toggleAttribute("readonly", locked)
+    this.phoneTarget.classList.toggle("is-readonly", locked)
+    this.phoneTarget.classList.toggle("ax-readonly-input", locked)
     this.phoneTarget.setAttribute(
       "aria-readonly",
-      this.selectedProprietor() ? "true" : "false"
+      locked ? "true" : "false"
     )
+    this.phoneTarget.closest(".iti")?.classList.toggle("is-readonly", locked)
   }
 
   selectedProprietor() {

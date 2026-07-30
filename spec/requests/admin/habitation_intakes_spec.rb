@@ -237,6 +237,33 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include('value="Balneário Camboriú"')
   end
 
+  it "bloqueia telefone quando a captação está vinculada a proprietário existente" do
+    proprietor = create(:proprietor, name: "Grasiele Cardozo", phone_primary: "5547988516745", city: "Apucarana")
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      intake_step: "proprietario",
+      proprietor: proprietor,
+      proprietario_nome: proprietor.name,
+      proprietario_telefone: "(47) 98851-6745",
+      proprietario_cidade: proprietor.city
+    )
+
+    get edit_admin_captacao_path(intake, step: "proprietario")
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    phone_input = document.at_css('input[type="tel"][name="habitation[proprietario_telefone]"]')
+    city_select = document.at_css('select[name="habitation[proprietario_cidade]"]')
+
+    expect(phone_input["readonly"]).to eq("readonly")
+    expect(phone_input["class"]).to include("ax-readonly-input")
+    expect(phone_input["data-controller"].to_s).not_to include("phone-input")
+    expect(city_select).to be_present
+    expect(response.body).to include("Cidade do proprietário", "required-star")
+  end
+
   it "localiza proprietário pelo código para autocompletar a captação" do
     proprietor = create(
       :proprietor,

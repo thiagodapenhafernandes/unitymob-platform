@@ -4,6 +4,7 @@
 <div data-controller="proprietor-lookup"
      data-proprietor-lookup-url-value="<%= proprietor_lookup_admin_captacoes_path %>">
   <%= f.hidden_field :proprietor_id, data: { proprietor_lookup_target: "proprietorId" } %>
+  <% linked_proprietor = @captacao.proprietor_id.present? %>
 
   <div class="tw-hidden ax-inline-notice ax-inline-notice--info tw-mb-3"
        data-proprietor-lookup-target="matchBox">
@@ -63,20 +64,24 @@
     ) %>
 <% if field_invalid.call(:proprietario_nome) %><div class="invalid-feedback d-block">Informe o nome completo do proprietário.</div><% end %>
 
+<%
+  proprietor_phone_data = {
+    proprietor_lookup_target: "phone",
+    action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
+  }
+  proprietor_phone_data[:controller] = "phone-input" unless linked_proprietor
+%>
 <%= ax_text_field(
       form: f,
       method: :proprietario_telefone,
       label: safe_join(["Telefone / WhatsApp", tag.span("*", class: "required-star")], " "),
       type: :tel,
       field_class: "wizard-field-group",
-      class: field_state.call(:proprietario_telefone),
+      class: [field_state.call(:proprietario_telefone), ("ax-readonly-input" if linked_proprietor)].compact_blank.join(" "),
       placeholder: "(47) 99999-0000",
       autocomplete: "tel",
-      data: {
-        controller: "phone-input",
-        proprietor_lookup_target: "phone",
-        action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
-      }
+      readonly: linked_proprietor,
+      data: proprietor_phone_data
     ) %>
 <% if field_invalid.call(:proprietario_telefone) %><div class="invalid-feedback d-block">Informe o telefone/WhatsApp do proprietário.</div><% end %>
 
