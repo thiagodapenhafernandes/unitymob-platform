@@ -285,7 +285,7 @@ class Habitation < ApplicationRecord
   OCUPACAO_STATUS = ["Desocupado", "Ocupado", "Inquilino", "Proprietário", "Reservado"].freeze
   ESTADO_CONSERVACAO = ["Novo", "Ótimo", "Bom", "Regular", "Seminovo", "Usado", "Reformado", "Original", "Em Obras", "Na Planta"].freeze
   TOPOGRAFIA_OPTIONS = ["Plano", "Aclive", "Declive", "Irregular"].freeze
-  FOTO_CLASSIFICACAO = ["Profissionais", "Boas", "Aceitáveis", "Amadoras", "Não tem fotos"].freeze
+  FOTO_CLASSIFICACAO = ["Profissionais", "Boas", "Aceitáveis", "Não tem fotos"].freeze
   # Ambientes das fotos do imóvel (armazenados em blob.metadata["ambiente"]).
   # A ordem também é a ordem de exibição no select do modal de configuração.
   FOTO_AMBIENTES = [

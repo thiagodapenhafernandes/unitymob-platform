@@ -712,6 +712,58 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(intake.reload.intake_step).to eq("proprietario")
   end
 
+  it "atualiza dados faltantes do proprietário vinculado no passo de proprietário" do
+    proprietor = create(:proprietor, name: "Proprietário Sem Contato", phone_primary: nil, email: nil, city: nil)
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "proprietario")
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "proprietario",
+      direction: "forward",
+      habitation: {
+        proprietor_id: proprietor.id,
+        proprietario_nome: proprietor.name,
+        proprietario_telefone: "(47) 98851-6745",
+        proprietario_email: "proprietario@example.com",
+        proprietario_cidade: "Apucarana"
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: intake.reload.intake_step))
+    proprietor.reload
+    expect(proprietor.phone_primary).to eq(Proprietor.normalized_phone("(47) 98851-6745"))
+    expect(proprietor.email).to eq("proprietario@example.com")
+    expect(proprietor.city).to eq("Apucarana")
+  end
+
+  it "não sobrescreve telefone existente do proprietário vinculado pela captação" do
+    proprietor = create(
+      :proprietor,
+      name: "Proprietário Com Telefone",
+      phone_primary: "(47) 99615-8980",
+      email: nil,
+      city: nil
+    )
+    intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "proprietario")
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "proprietario",
+      direction: "forward",
+      habitation: {
+        proprietor_id: proprietor.id,
+        proprietario_nome: proprietor.name,
+        proprietario_telefone: "(47) 98851-6745",
+        proprietario_email: "novo@example.com",
+        proprietario_cidade: "Apucarana"
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: intake.reload.intake_step))
+    proprietor.reload
+    expect(proprietor.phone_primary).to eq(Proprietor.normalized_phone("(47) 99615-8980"))
+    expect(proprietor.email).to eq("novo@example.com")
+    expect(proprietor.city).to eq("Apucarana")
+  end
+
   it "marca quantidades obrigatórias zeradas no step de características" do
     intake = create(:habitation, :broker_intake, admin_user: admin, categoria: "Apartamento", intake_step: "caracteristicas")
 

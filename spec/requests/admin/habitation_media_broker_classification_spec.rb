@@ -21,7 +21,7 @@ RSpec.describe "Admin::HabitationMedia classificação x corretor", type: :reque
                         codigo: "9#{SecureRandom.random_number(10**10)}")
 
     sign_in agent
-    patch admin_habitation_media_path(habitation), params: { habitation: { foto_classificacao: "Amadoras" } }
-    expect(habitation.reload.foto_classificacao).to eq("Amadoras")
+    patch admin_habitation_media_path(habitation), params: { habitation: { foto_classificacao: "Aceitáveis" } }
+    expect(habitation.reload.foto_classificacao).to eq("Aceitáveis")
   end
 end

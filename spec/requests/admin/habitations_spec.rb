@@ -913,7 +913,7 @@ RSpec.describe "Admin::Habitations", type: :request do
   end
 
   it "exibe no topo o captador vindo dos responsáveis e agenciamento" do
-    captador = create(:admin_user, name: "Luciana Indalécio")
+    captador = create(:admin_user, name: "Luciana Indalécio", email: "luciana-captador-card@example.com", phone: nil)
     habitation = create(
       :habitation,
       admin_user: nil,
@@ -929,6 +929,9 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Luciana Indalécio")
     expect(response.body).to include("Captador responsável:")
     expect(response.body).not_to include("Corretor responsável:")
+    page = Nokogiri::HTML(response.body)
+    captador_card = page.at_css(".ax-captador-card")
+    expect(captador_card.text).not_to include("luciana-captador-card@example.com")
   end
 
   it "exibe nome do empreendimento no cadastro do tipo empreendimento" do
@@ -3054,6 +3057,10 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Classificação das fotos")
+    Habitation::FOTO_CLASSIFICACAO.each do |classification|
+      expect(response.body).to include(classification)
+    end
+    expect(response.body).not_to include("Amadoras")
   end
 
   it "não remove fotos existentes quando o formulário envia upload vazio" do
