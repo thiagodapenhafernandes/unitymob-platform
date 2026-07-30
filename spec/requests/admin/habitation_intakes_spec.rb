@@ -257,9 +257,13 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     phone_input = document.at_css('input[type="tel"][name="habitation[proprietario_telefone]"]')
     city_select = document.at_css('select[name="habitation[proprietario_cidade]"]')
 
-    expect(phone_input["readonly"]).to eq("readonly")
+    phone_hidden = document.at_css('input[type="hidden"][name="habitation[proprietario_telefone]"][data-proprietor-lookup-target="phoneHidden"]')
+
+    expect(phone_input["disabled"]).to eq("disabled")
     expect(phone_input["class"]).to include("ax-readonly-input")
+    expect(phone_input["value"]).to eq("(47) 98851-6745")
     expect(phone_input["data-controller"].to_s).not_to include("phone-input")
+    expect(phone_hidden["value"]).to eq("5547988516745")
     expect(city_select).to be_present
     expect(response.body).to include("Cidade do proprietário", "required-star")
   end
