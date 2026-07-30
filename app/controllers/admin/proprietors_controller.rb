@@ -2,7 +2,9 @@ module Admin
   class ProprietorsController < BaseController
     require "csv"
     before_action -> { check_permission!(:view, :proprietarios) }
-    before_action -> { check_permission!(:manage, :proprietarios) }, only: %i[new create edit update destroy quick_create]
+    before_action -> { check_permission!(:manage, :proprietarios) }, only: %i[new create edit update destroy]
+    before_action :require_admin_or_administrative_user!, only: %i[quick_search quick_create quick_update]
+    before_action :set_quick_proprietor, only: %i[quick_update]
 
     EXPORT_FIELDS = {
       "name" => "Nome/Denominação",
@@ -162,9 +164,45 @@ module Admin
       end
     end
 
+    def quick_search
+      query = params[:q].to_s.strip
+      proprietors =
+        if query.present?
+          term = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
+          digits = query.gsub(/\D/, "")
+          scope = current_tenant.proprietors
+          text_matches = scope.where(
+            "proprietors.name ILIKE :term OR proprietors.email ILIKE :term OR proprietors.city ILIKE :term",
+            term:
+          )
+
+          matches =
+            if digits.present?
+              phone_matches = scope.where(
+                "regexp_replace(COALESCE(proprietors.phone_primary, ''), '\\D', '', 'g') LIKE :digits OR " \
+                "regexp_replace(COALESCE(proprietors.mobile_phone, ''), '\\D', '', 'g') LIKE :digits OR " \
+                "regexp_replace(COALESCE(proprietors.residential_phone, ''), '\\D', '', 'g') LIKE :digits OR " \
+                "regexp_replace(COALESCE(proprietors.business_phone, ''), '\\D', '', 'g') LIKE :digits",
+                digits: "%#{digits}%"
+              )
+              text_matches.or(phone_matches)
+            else
+              text_matches
+            end
+
+          matches.distinct.order(:name).limit(12)
+        else
+          current_tenant.proprietors.none
+        end
+
+      render json: {
+        proprietors: proprietors.map { |proprietor| quick_proprietor_payload(proprietor) }
+      }
+    end
+
     def quick_create
       permitted = quick_proprietor_params
-      phone = permitted[:mobile_phone].presence || permitted[:phone_primary].presence
+      phone = permitted[:phone_primary].presence
       phone_digits = Proprietor.normalized_phone(phone)
       @proprietor = current_tenant.proprietors.with_normalized_phone(phone_digits).order(:id).first if phone_digits.present?
       @proprietor ||= current_tenant.proprietors.new(role: :owner)
@@ -172,11 +210,18 @@ module Admin
       @proprietor.name = permitted[:name] if permitted[:name].present?
       @proprietor.email = permitted[:email] if permitted[:email].present?
       @proprietor.phone_primary = permitted[:phone_primary] if permitted[:phone_primary].present?
-      @proprietor.mobile_phone = permitted[:mobile_phone] if permitted[:mobile_phone].present?
-      @proprietor.cpf_cnpj = permitted[:cpf_cnpj] if permitted[:cpf_cnpj].present?
+      @proprietor.city = permitted[:city] if permitted[:city].present?
 
       if @proprietor.save
-        render json: { id: @proprietor.id, name: @proprietor.select_label }, status: :created
+        render json: quick_proprietor_payload(@proprietor), status: :created
+      else
+        render json: { errors: @proprietor.errors.full_messages }, status: :unprocessable_entity
+      end
+    end
+
+    def quick_update
+      if @proprietor.update(quick_proprietor_params)
+        render json: quick_proprietor_payload(@proprietor)
       else
         render json: { errors: @proprietor.errors.full_messages }, status: :unprocessable_entity
       end
@@ -214,6 +259,11 @@ module Admin
       redirect_to admin_proprietors_path, alert: "Proprietário não encontrado."
     end
 
+    def set_quick_proprietor
+      @proprietor = current_tenant.proprietors.find_by(id: params[:id])
+      render json: { errors: ["Proprietário não encontrado."] }, status: :not_found unless @proprietor
+    end
+
     def proprietor_params
       params.require(:proprietor).permit(
         :name, :role, :vista_code, :cpf_cnpj, :rg_ie, :issuing_authority,
@@ -231,9 +281,30 @@ module Admin
         :name,
         :email,
         :phone_primary,
-        :mobile_phone,
-        :cpf_cnpj
+        :city
       )
+    end
+
+    def quick_proprietor_payload(proprietor)
+      phones = [
+        proprietor.phone_primary,
+        proprietor.mobile_phone,
+        proprietor.business_phone,
+        proprietor.residential_phone
+      ].compact_blank.uniq
+
+      {
+        id: proprietor.id,
+        name: proprietor.name,
+        label: proprietor.select_label,
+        phone_primary: phones.first,
+        phone_primary_display: Phones::Normalizer.display(phones.first),
+        phone_secondary: phones.second,
+        phone_secondary_display: Phones::Normalizer.display(phones.second),
+        email: proprietor.email,
+        city: proprietor.city,
+        edit_path: edit_admin_proprietor_path(proprietor)
+      }
     end
 
     def proprietor_filter_params

@@ -5,6 +5,9 @@
 #   bin/rails proprietors:merge_candidates               # DRY-RUN dos candidatos automaticos
 #   bin/rails proprietors:merge_candidates EXECUTE=1     # executa candidatos automaticos
 #   bin/rails proprietors:merge_candidates EXECUTE=1 RISKS=automatic_candidate,review_required
+#   bin/rails proprietors:merge_ids CANONICAL_ID=3884 DUPLICATE_IDS=37139,37140
+#   bin/rails proprietors:merge_ids CANONICAL_CODE=3884 DUPLICATE_CODES=37139,37140
+#   bin/rails proprietors:merge_ids CANONICAL_ID=3884 DUPLICATE_IDS=37139,37140 EXECUTE=1
 #   bin/rails proprietors:dedupe                    # DRY-RUN legado (só relata)
 #   bin/rails proprietors:dedupe EXECUTE=1          # executa fusão por nome exato; usar só após revisar CSV
 #
@@ -19,6 +22,45 @@
 namespace :proprietors do
   def proprietor_tenant_scope
     ENV["TENANT_ID"].present? ? Tenant.where(id: ENV["TENANT_ID"]) : Tenant.all
+  end
+
+  def proprietor_merge_reference(prefix)
+    id = ENV["#{prefix}_ID"].to_i
+    code = ENV["#{prefix}_CODE"].to_s.strip
+    scope = ENV["TENANT_ID"].present? ? Proprietor.where(tenant_id: ENV["TENANT_ID"]) : Proprietor.all
+
+    return scope.find_by(id: id) if id.positive?
+    return nil if code.blank?
+
+    scope.where(vista_code: code).to_a.max_by { |proprietor| proprietor_merge_score(proprietor) }
+  end
+
+  def proprietor_merge_duplicates(canonical)
+    ids = ENV.fetch("DUPLICATE_IDS", "").split(",").map { |id| id.to_s.strip.to_i }.reject(&:zero?)
+    codes = ENV.fetch("DUPLICATE_CODES", "").split(",").map { |code| code.to_s.strip }.reject(&:blank?)
+    scope = ENV["TENANT_ID"].present? ? Proprietor.where(tenant_id: ENV["TENANT_ID"]) : Proprietor.all
+
+    duplicates = []
+    duplicates += scope.where(id: ids).to_a if ids.any?
+    duplicates += scope.where(vista_code: codes).to_a if codes.any?
+    duplicates.uniq.reject { |proprietor| proprietor.id == canonical.id }.sort_by(&:id)
+  end
+
+  def proprietor_merge_score(proprietor)
+    [
+      proprietor_reference_count(proprietor),
+      %i[name vista_code cpf_cnpj_digits email phone_primary mobile_phone residential_phone business_phone city street cep notes].count { |field| proprietor.respond_to?(field) && proprietor.public_send(field).present? },
+      proprietor.created_at ? -proprietor.created_at.to_i : 0,
+      -proprietor.id
+    ]
+  end
+
+  def proprietor_reference_count(proprietor)
+    Proprietors::DuplicateAnalyzer::REFERENCING_TABLES.sum do |table|
+      ActiveRecord::Base.connection.select_value(
+        ActiveRecord::Base.sanitize_sql_array(["SELECT COUNT(*) FROM #{table} WHERE proprietor_id = ?", proprietor.id])
+      ).to_i
+    end
   end
 
   desc "Gera CSV com candidatos a proprietários duplicados, sem alterar dados"
@@ -88,6 +130,44 @@ namespace :proprietors do
     puts "-" * 60
     puts "#{execute ? 'EXECUTADO' : 'DRY-RUN'} risks=#{risks.join(',')}"
     puts "#{result.groups} grupos | #{result.deleted} duplicados #{execute ? 'removidos' : 'a remover'} | #{result.repointed} referências #{execute ? 'reapontadas' : 'a reapontar'} | #{result.skipped} ignorados"
+    puts "log: #{result.log_path}" if result.log_path
+  end
+
+  desc "Funde proprietários específicos por ID ou código Vista (DRY-RUN por padrão; EXECUTE=1 aplica)"
+  task merge_ids: :environment do
+    execute = ENV["EXECUTE"] == "1"
+
+    abort "Informe CANONICAL_ID ou CANONICAL_CODE." if ENV["CANONICAL_ID"].blank? && ENV["CANONICAL_CODE"].blank?
+    abort "Informe DUPLICATE_IDS ou DUPLICATE_CODES separados por vírgula." if ENV["DUPLICATE_IDS"].blank? && ENV["DUPLICATE_CODES"].blank?
+
+    canonical = proprietor_merge_reference("CANONICAL")
+    abort "Proprietário canônico não encontrado." unless canonical
+
+    duplicates = proprietor_merge_duplicates(canonical)
+    abort "Nenhum duplicado encontrado para os parâmetros informados." if duplicates.blank?
+
+    different_tenant_ids = duplicates.map(&:tenant_id).uniq - [canonical.tenant_id]
+    abort "Todos os proprietários precisam pertencer ao mesmo tenant do canônico." if different_tenant_ids.any?
+
+    candidate = Proprietors::DuplicateAnalyzer::Candidate.new(
+      tenant_id: canonical.tenant_id,
+      match_type: "manual_ids",
+      match_key: "canonical:#{canonical.id}",
+      risk: "manual",
+      reason: "Fusão manual informada por IDs",
+      canonical_id: canonical.id,
+      duplicate_ids: duplicates.map(&:id),
+      proprietor_count: duplicates.size + 1,
+      linked_records_count: nil,
+      canonical_snapshot: { id: canonical.id, name: canonical.name, vista_code: canonical.vista_code },
+      duplicate_snapshots: duplicates.map { |proprietor| { id: proprietor.id, name: proprietor.name, vista_code: proprietor.vista_code } }
+    )
+
+    result = Proprietors::DuplicateMerger.new(candidates: [candidate], risks: ["manual"], execute: execute).call
+
+    puts "-" * 60
+    puts "#{execute ? 'EXECUTADO' : 'DRY-RUN'} canonical=#{canonical.id} duplicate_ids=#{duplicates.map(&:id).join(',')}"
+    puts "#{result.groups} grupo | #{result.deleted} duplicados #{execute ? 'removidos' : 'a remover'} | #{result.repointed} referências #{execute ? 'reapontadas' : 'a reapontar'} | #{result.skipped} ignorados"
     puts "log: #{result.log_path}" if result.log_path
   end
 

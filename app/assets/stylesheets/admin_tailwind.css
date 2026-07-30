@@ -10341,6 +10341,150 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
   grid-template-columns: 1fr;
 }
 
+.habitation-form-ui .habitation-owner-selector {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.habitation-form-ui .habitation-owner-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.habitation-form-ui .habitation-owner-card__empty {
+  padding: 10px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: 13px;
+}
+
+.habitation-form-ui .habitation-owner-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.habitation-form-ui .habitation-owner-card__head strong {
+  min-width: 0;
+  color: #1f2733;
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.habitation-form-ui .habitation-owner-card__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.habitation-form-ui .habitation-owner-card__facts div {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #d7e0ea;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.habitation-form-ui .habitation-owner-card__facts dt {
+  margin: 0 0 3px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.habitation-form-ui .habitation-owner-card__facts dd {
+  margin: 0;
+  color: #1f2733;
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.habitation-owner-modal {
+  display: grid;
+  gap: 12px;
+}
+
+.habitation-owner-results {
+  display: grid;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.habitation-owner-result {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d7e0ea;
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.habitation-owner-result:hover,
+.habitation-owner-result:focus-visible {
+  border-color: #2f8798;
+  background: #eef8fb;
+  outline: none;
+}
+
+.habitation-owner-result__name {
+  color: #1f2733;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.habitation-owner-result__meta {
+  color: #64748b;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.habitation-owner-no-results {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: 13px;
+}
+
+.habitation-owner-modal-panel {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.habitation-owner-modal-panel h4 {
+  margin: 0;
+  color: #1f2733;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.habitation-owner-modal-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .habitation-form-ui .ax-commercial-workspace .ax-form-section__body {
   padding: 7px 10px 9px;
 }
@@ -25834,6 +25978,34 @@ html[data-admin-theme="dark"] .property-settings-alias-item {
   border-color: #33445d !important;
   background: transparent !important;
   color: #dce6f3 !important;
+}
+[data-admin-theme="dark"] .habitation-form-ui .habitation-owner-card__empty,
+[data-admin-theme="dark"] .habitation-form-ui .habitation-owner-card__facts div,
+[data-admin-theme="dark"] .habitation-owner-no-results,
+[data-admin-theme="dark"] .habitation-owner-result {
+  border-color: #33445d !important;
+  background: #142033 !important;
+  color: #dce6f3 !important;
+}
+[data-admin-theme="dark"] .habitation-form-ui .habitation-owner-card__head strong,
+[data-admin-theme="dark"] .habitation-form-ui .habitation-owner-card__facts dd,
+[data-admin-theme="dark"] .habitation-owner-result__name,
+[data-admin-theme="dark"] .habitation-owner-modal-panel h4 {
+  color: #e8eef7 !important;
+}
+[data-admin-theme="dark"] .habitation-form-ui .habitation-owner-card__empty,
+[data-admin-theme="dark"] .habitation-form-ui .habitation-owner-card__facts dt,
+[data-admin-theme="dark"] .habitation-owner-no-results,
+[data-admin-theme="dark"] .habitation-owner-result__meta {
+  color: #96a5ba !important;
+}
+[data-admin-theme="dark"] .habitation-owner-result:hover,
+[data-admin-theme="dark"] .habitation-owner-result:focus-visible {
+  border-color: #5aa6bb !important;
+  background: #19334a !important;
+}
+[data-admin-theme="dark"] .habitation-owner-modal-panel {
+  border-color: #33445d !important;
 }
 [data-admin-theme="dark"] .habitation-form-ui .ax-dynamic-list__item { box-shadow: none !important; }
 [data-admin-theme="dark"] .habitation-form-ui .portal-publication-section.is-open .ax-portal-publication-section__header {

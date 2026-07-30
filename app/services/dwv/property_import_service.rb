@@ -251,8 +251,10 @@ module Dwv
         tour_virtual: text_value(["building", "virtual_tour"], ["building", "tour_360"], ["third_party_property", "virtual_tour"]) || habitation.tour_virtual,
         condicoes_negociacao: extract_payment_conditions || habitation.condicoes_negociacao,
         construtora: text_value(["construction_company", "title"]) || habitation.construtora,
-        constructor: constructor || habitation.constructor,
-        proprietor: proprietor || habitation.proprietor,
+        constructor_id: constructor&.id || habitation.constructor_id,
+        proprietor_id: proprietor&.id || habitation.proprietor_id,
+        proprietario: proprietor&.name || habitation.proprietario,
+        proprietario_codigo: proprietor&.vista_code || habitation.proprietario_codigo,
         data_cadastro_crm: habitation.data_cadastro_crm || parse_time(value(["inserted_at"], ["created_at"])),
         data_atualizacao_crm: parse_time(value(["last_updated_at"], ["updated_at"])) || Time.current,
         last_sync_at: Time.current,
@@ -275,6 +277,11 @@ module Dwv
       attrs.slice(
         :codigo_dwv,
         :imovel_dwv,
+        :construtora,
+        :constructor_id,
+        :proprietor_id,
+        :proprietario,
+        :proprietario_codigo,
         :valor_venda_cents,
         :valor_locacao_cents,
         :data_atualizacao_crm,
@@ -686,13 +693,18 @@ module Dwv
     end
 
     def find_or_build_proprietor
-      name = text_value(["owner", "name"], ["proprietor", "name"], ["construction_company", "title"])
+      name = text_value(["construction_company", "title"], ["owner", "name"], ["proprietor", "name"])
       return nil if name.blank?
 
-      proprietor = tenant.proprietors.where("LOWER(TRIM(name)) = ?", name.downcase.strip).order(:id).first
-      return proprietor if proprietor
-
-      tenant.proprietors.create!(name: name, role: "builder")
+      Dwv::ProprietorResolver.new(
+        tenant: tenant,
+        name: name,
+        email: text_value(["construction_company", "email"], ["owner", "email"], ["proprietor", "email"]),
+        phone_primary: text_value(["construction_company", "phone"], ["construction_company", "phone_number"], ["construction_company", "telephone"], ["owner", "phone"], ["proprietor", "phone"]),
+        mobile_phone: text_value(["construction_company", "mobile"], ["construction_company", "whatsapp"], ["owner", "mobile"], ["proprietor", "mobile"]),
+        business_phone: text_value(["construction_company", "business_phone"], ["owner", "business_phone"], ["proprietor", "business_phone"]),
+        cpf_cnpj: text_value(["construction_company", "cpf_cnpj"], ["construction_company", "cnpj"], ["construction_company", "document"], ["owner", "cpf_cnpj"], ["proprietor", "cpf_cnpj"])
+      ).call.proprietor
     end
 
     def third_party?

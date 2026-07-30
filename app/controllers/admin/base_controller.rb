@@ -173,6 +173,27 @@ class Admin::BaseController < ApplicationController
   end
   helper_method :tenant_owner?
 
+  def admin_or_administrative_user?
+    return false unless current_admin_user
+    return true if current_admin_user.admin? || tenant_owner?
+
+    [
+      current_admin_user.access_profile,
+      current_admin_user.profile,
+      current_admin_user.horizontal_profile
+    ].compact.any? { |profile| profile.respond_to?(:administrativo?) && profile.administrativo? }
+  end
+  helper_method :admin_or_administrative_user?
+
+  def require_admin_or_administrative_user!
+    return if admin_or_administrative_user?
+
+    respond_to do |format|
+      format.json { render json: { errors: ["Acesso restrito ao Administrador e Administrativo."] }, status: :forbidden }
+      format.html { redirect_to admin_root_path, alert: "Acesso restrito ao Administrador e Administrativo." }
+    end
+  end
+
   def require_system_admin!
     unless system_admin?
       redirect_to admin_root_path, alert: 'Acesso restrito ao Admin do Sistema.'
