@@ -70,7 +70,28 @@
     action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
   }
   proprietor_phone_data[:controller] = "phone-input" unless linked_proprietor
+  linked_proprietor_phone = @captacao.proprietario_telefone.to_s
+  linked_proprietor_phone_digits = linked_proprietor_phone.gsub(/\D/, "")
+  linked_proprietor_phone_national =
+    if linked_proprietor_phone_digits.start_with?("55") && [12, 13].include?(linked_proprietor_phone_digits.length)
+      linked_proprietor_phone_digits.delete_prefix("55")
+    else
+      linked_proprietor_phone_digits
+    end
+  linked_proprietor_phone_display =
+    if linked_proprietor_phone_national.length == 11
+      "(#{linked_proprietor_phone_national[0, 2]}) #{linked_proprietor_phone_national[2, 5]}-#{linked_proprietor_phone_national[7, 4]}"
+    elsif linked_proprietor_phone_national.length == 10
+      "(#{linked_proprietor_phone_national[0, 2]}) #{linked_proprietor_phone_national[2, 4]}-#{linked_proprietor_phone_national[6, 4]}"
+    else
+      format_phone(linked_proprietor_phone)
+    end
 %>
+<% if linked_proprietor %>
+  <%= f.hidden_field :proprietario_telefone,
+        value: @captacao.proprietario_telefone,
+        data: { proprietor_lookup_target: "phoneHidden" } %>
+<% end %>
 <%= ax_text_field(
       form: f,
       method: :proprietario_telefone,
@@ -78,9 +99,10 @@
       type: :tel,
       field_class: "wizard-field-group",
       class: [field_state.call(:proprietario_telefone), ("ax-readonly-input" if linked_proprietor)].compact_blank.join(" "),
+      value: (linked_proprietor_phone_display if linked_proprietor),
       placeholder: "(47) 99999-0000",
       autocomplete: "tel",
-      readonly: linked_proprietor,
+      disabled: linked_proprietor,
       data: proprietor_phone_data
     ) %>
 <% if field_invalid.call(:proprietario_telefone) %><div class="invalid-feedback d-block">Informe o telefone/WhatsApp do proprietário.</div><% end %>

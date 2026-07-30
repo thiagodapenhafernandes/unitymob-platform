@@ -5,6 +5,7 @@ export default class extends Controller {
     "code",
     "name",
     "phone",
+    "phoneHidden",
     "cpfCnpj",
     "email",
     "city",
@@ -156,7 +157,7 @@ export default class extends Controller {
   showLinked(proprietor) {
     if (!this.hasLinkedBoxTarget) return
 
-    this.linkedDescriptionTarget.textContent = `Os dados desta captação estão vinculados a ${this.matchLabel(proprietor)}. Se você alterar os campos abaixo, o vínculo é removido para evitar sobrescrever o cadastro existente.`
+    this.linkedDescriptionTarget.textContent = `Os dados desta captação estão vinculados a ${this.matchLabel(proprietor)}. O telefone fica bloqueado; cidade e e-mail podem ser preenchidos quando estiverem faltando no cadastro.`
     this.linkedBoxTarget.classList.remove("tw-hidden")
   }
 
@@ -171,8 +172,8 @@ export default class extends Controller {
 
     const locked = this.selectedProprietor()
 
-    this.phoneTarget.readOnly = locked
-    this.phoneTarget.toggleAttribute("readonly", locked)
+    this.phoneTarget.disabled = locked
+    this.phoneTarget.toggleAttribute("disabled", locked)
     this.phoneTarget.classList.toggle("is-readonly", locked)
     this.phoneTarget.classList.toggle("ax-readonly-input", locked)
     this.phoneTarget.setAttribute(
@@ -180,6 +181,28 @@ export default class extends Controller {
       locked ? "true" : "false"
     )
     this.phoneTarget.closest(".iti")?.classList.toggle("is-readonly", locked)
+    this.syncPhoneHidden(locked)
+  }
+
+  syncPhoneHidden(locked) {
+    if (!this.hasPhoneTarget) return
+
+    if (!locked) {
+      this.phoneHiddenTargets.forEach((field) => field.remove())
+      return
+    }
+
+    const hidden = this.phoneHiddenTargets[0] || this.buildPhoneHiddenInput()
+    hidden.value = this.phoneTarget.value
+  }
+
+  buildPhoneHiddenInput() {
+    const hidden = document.createElement("input")
+    hidden.type = "hidden"
+    hidden.name = this.phoneTarget.name
+    hidden.dataset.proprietorLookupTarget = "phoneHidden"
+    this.phoneTarget.insertAdjacentElement("beforebegin", hidden)
+    return hidden
   }
 
   selectedProprietor() {
