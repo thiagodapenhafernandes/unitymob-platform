@@ -28,6 +28,7 @@
     email: owner_email,
     city: owner_city
   }.compact
+  owner_present = habitation.proprietor_id.present? || owner_name != "Proprietário não vinculado"
   owner_selector_data = owner_visible ? { controller: "habitation-owner-selector" } : {}
   if owner_can_manage
     owner_selector_data.merge!(
@@ -43,13 +44,44 @@
   <% if owner_visible %>
     <% owner_actions = capture do %>
       <% if owner_can_manage %>
-        <%= ax_icon_button(
-              label: "Gerenciar proprietário",
-              icon: "gear",
-              variant: :secondary,
-              size: :sm,
-              data: { ax_modal_open: "#quickProprietorModal" }
-            ) %>
+        <span data-habitation-owner-selector-target="directAction" <%= "hidden" if owner_present %>>
+          <%= ax_icon_button(
+                label: "Gerenciar proprietário",
+                icon: "gear",
+                variant: :secondary,
+                size: :sm,
+                data: { ax_modal_open: "#quickProprietorModal" }
+              ) %>
+        </span>
+        <span class="habitation-owner-action-dropdown"
+              data-controller="ax-dropdown"
+              data-habitation-owner-selector-target="menuAction"
+              <%= "hidden" unless owner_present %>>
+          <button type="button"
+                  class="ax-btn ax-btn--secondary ax-btn--sm habitation-owner-action-trigger"
+                  title="Gerenciar proprietário"
+                  aria-label="Gerenciar proprietário"
+                  data-ax-dropdown-target="trigger"
+                  data-action="click->ax-dropdown#toggle">
+            <i class="bi bi-gear-fill"></i>
+            <i class="bi bi-chevron-down habitation-owner-action-trigger__caret"></i>
+          </button>
+          <div class="ax-menu ax-menu--end admin-property-menu habitation-owner-action-menu"
+               data-ax-dropdown-target="menu"
+               hidden>
+            <button type="button"
+                    class="ax-menu__item admin-property-menu__item"
+                    data-ax-modal-open="#quickProprietorModal"
+                    data-action="click->habitation-owner-selector#prepareExchange click->ax-dropdown#close">
+              Trocar proprietário
+            </button>
+            <button type="button"
+                    class="ax-menu__item admin-property-menu__item admin-property-menu__item--danger"
+                    data-action="click->habitation-owner-selector#remove click->ax-dropdown#close">
+              Remover proprietário
+            </button>
+          </div>
+        </span>
       <% end %>
     <% end %>
 
@@ -61,13 +93,20 @@
               field_lock_action: "campo:proprietor_id"
             },
             disabled: !habitation_field_editable?("proprietor_id") %>
+      <% if owner_can_manage %>
+        <%= f.hidden_field :proprietario, data: { habitation_owner_selector_target: "legacyName" } %>
+        <%= f.hidden_field :proprietario_codigo, data: { habitation_owner_selector_target: "legacyCode" } %>
+        <%= f.hidden_field :proprietario_celular, data: { habitation_owner_selector_target: "legacyPhonePrimary" } %>
+        <%= f.hidden_field :proprietario_telefone_comercial, data: { habitation_owner_selector_target: "legacyPhoneSecondary" } %>
+        <%= f.hidden_field :proprietario_telefone_residencial, data: { habitation_owner_selector_target: "legacyPhoneResidential" } %>
+        <%= f.hidden_field :proprietario_email, data: { habitation_owner_selector_target: "legacyEmail" } %>
+        <%= f.hidden_field :proprietario_cidade, data: { habitation_owner_selector_target: "legacyCity" } %>
+      <% end %>
 
       <div class="habitation-owner-card" data-owner-payload="<%= json_escape(owner_payload.to_json) %>">
-        <% if habitation.proprietor_id.blank? && owner_name == "Proprietário não vinculado" %>
-          <div class="habitation-owner-card__empty" data-habitation-owner-selector-target="empty">
-            Nenhum proprietário vinculado.
-          </div>
-        <% end %>
+        <div class="habitation-owner-card__empty" data-habitation-owner-selector-target="empty" <%= "hidden" if owner_present %>>
+          Nenhum proprietário vinculado.
+        </div>
         <div class="habitation-owner-card__head">
           <strong data-habitation-owner-selector-target="name"><%= owner_name %></strong>
           <% if owner_can_manage && habitation.proprietor_id.present? %>
@@ -75,6 +114,7 @@
                     class="ax-icon-btn"
                     title="Editar proprietário"
                     aria-label="Editar proprietário"
+                    data-habitation-owner-selector-target="editAction"
                     data-action="habitation-owner-selector#showEdit"
                     data-ax-modal-open="#quickProprietorModal">
               <i class="bi bi-pencil"></i>
@@ -241,7 +281,7 @@
                 <input type="text" class="ax-control" id="edit_quick_proprietor_city" name="proprietor[city]" data-habitation-owner-selector-target="editCity">
               </div>
               <div class="ax-span-12 habitation-owner-modal-panel__actions">
-                <button type="button" class="ax-btn ax-btn--primary" data-action="habitation-owner-selector#update">Salvar proprietário</button>
+                <button type="button" class="ax-btn ax-btn--primary" data-action="habitation-owner-selector#update">Salvar e selecionar</button>
               </div>
             <% end %>
           </div>

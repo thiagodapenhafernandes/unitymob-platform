@@ -9,6 +9,9 @@ export default class extends Controller {
     "email",
     "city",
     "empty",
+    "directAction",
+    "menuAction",
+    "editAction",
     "query",
     "results",
     "noResults",
@@ -24,7 +27,14 @@ export default class extends Controller {
     "editName",
     "editPhone",
     "editEmail",
-    "editCity"
+    "editCity",
+    "legacyName",
+    "legacyCode",
+    "legacyPhonePrimary",
+    "legacyPhoneSecondary",
+    "legacyPhoneResidential",
+    "legacyEmail",
+    "legacyCity"
   ]
 
   static values = {
@@ -37,11 +47,21 @@ export default class extends Controller {
   connect() {
     this.searchTimeout = null
     this.selectedProprietor = this.currentPayload()
+    this.editingProprietor = null
   }
 
   search() {
     window.clearTimeout(this.searchTimeout)
     this.searchTimeout = window.setTimeout(() => this.fetchResults(), 250)
+  }
+
+  prepareExchange(event) {
+    event?.preventDefault()
+    this.clearError()
+    this.hidePanels()
+    if (this.hasQueryTarget) this.queryTarget.value = ""
+    if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
+    if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
   }
 
   async fetchResults() {
@@ -72,6 +92,12 @@ export default class extends Controller {
 
   select(event) {
     const payload = this.payloadFromElement(event.currentTarget)
+    if (this.needsContactCompletion(payload)) {
+      this.editingProprietor = payload
+      this.showEditPanel(payload, { focusFirstMissing: true, clearSearchResults: true })
+      return
+    }
+
     this.applyProprietor(payload)
     this.closeModal()
   }
@@ -98,24 +124,57 @@ export default class extends Controller {
     event?.preventDefault()
     if (!this.canEditValue || !this.selectedProprietor?.id) return
 
+    this.editingProprietor = this.selectedProprietor
+    this.showEditPanel(this.selectedProprietor)
+  }
+
+  showEditPanel(proprietor, options = {}) {
     this.clearError()
     this.createPanelTarget.hidden = true
     this.editPanelTarget.hidden = false
-    this.editNameTarget.value = this.selectedProprietor.name || ""
-    this.editPhoneTarget.value = this.selectedProprietor.phone_primary || this.selectedProprietor.phone_primary_display || ""
-    this.editEmailTarget.value = this.selectedProprietor.email || ""
-    this.editCityTarget.value = this.selectedProprietor.city || ""
-    this.editNameTarget.focus()
+    if (options.clearSearchResults) {
+      if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
+      if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
+    }
+    this.editNameTarget.value = proprietor.name || ""
+    this.editPhoneTarget.value = proprietor.phone_primary || proprietor.phone_primary_display || ""
+    this.editEmailTarget.value = proprietor.email || ""
+    this.editCityTarget.value = proprietor.city || ""
+    this.focusEditField(options)
   }
 
   async update(event) {
     event?.preventDefault()
-    if (!this.selectedProprietor?.id) return
+    const proprietor = this.editingProprietor || this.selectedProprietor
+    if (!proprietor?.id) return
 
-    await this.submitForm(this.editFormTarget, this.updateUrlFor(this.selectedProprietor.id), "PATCH", (payload) => {
+    await this.submitForm(this.editFormTarget, this.updateUrlFor(proprietor.id), "PATCH", (payload) => {
       this.applyProprietor(payload)
       this.editPanelTarget.hidden = true
+      this.editingProprietor = null
+      this.closeModal()
     })
+  }
+
+  remove(event) {
+    event?.preventDefault()
+    this.clearError()
+    this.hidePanels()
+    if (this.hasQueryTarget) this.queryTarget.value = ""
+    if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
+    if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
+
+    this.applyProprietor({
+      id: "",
+      name: "Proprietário não vinculado",
+      phone_primary: "",
+      phone_primary_display: "",
+      phone_secondary: "",
+      phone_secondary_display: "",
+      email: "",
+      city: ""
+    })
+    this.clearLegacyOwnerFields()
   }
 
   renderResults(proprietors) {
@@ -172,7 +231,7 @@ export default class extends Controller {
     this.phoneSecondaryTarget.parentElement.hidden = !(proprietor.phone_secondary_display || proprietor.phone_secondary)
     this.emailTarget.textContent = proprietor.email || "-"
     this.cityTarget.textContent = proprietor.city || "-"
-    if (this.hasEmptyTarget) this.emptyTarget.hidden = true
+    this.syncOwnerState(proprietor)
   }
 
   currentPayload() {
@@ -196,6 +255,32 @@ export default class extends Controller {
 
   updateUrlFor(id) {
     return this.updateUrlTemplateValue.replace(":id", id)
+  }
+
+  needsContactCompletion(proprietor) {
+    return !this.hasText(proprietor.phone_primary || proprietor.phone_primary_display) ||
+      !this.hasText(proprietor.email) ||
+      !this.hasText(proprietor.city)
+  }
+
+  hasText(value) {
+    const text = String(value || "").trim()
+    return text.length > 0 && text !== "-"
+  }
+
+  focusEditField(options = {}) {
+    if (!options.focusFirstMissing) {
+      this.editNameTarget.focus()
+      return
+    }
+
+    const target = [
+      this.editPhoneTarget,
+      this.editEmailTarget,
+      this.editCityTarget
+    ].find((field) => !this.hasText(field.value))
+
+    ;(target || this.editNameTarget).focus()
   }
 
   hidePanels() {
@@ -225,6 +310,38 @@ export default class extends Controller {
         field.value = ""
       }
     })
+  }
+
+  clearLegacyOwnerFields() {
+    [
+      "legacyName",
+      "legacyCode",
+      "legacyPhonePrimary",
+      "legacyPhoneSecondary",
+      "legacyPhoneResidential",
+      "legacyEmail",
+      "legacyCity"
+    ].forEach((targetName) => {
+      if (!this[`has${this.capitalize(targetName)}Target`]) return
+
+      this[`${targetName}Target`].value = ""
+    })
+  }
+
+  syncOwnerState(proprietor) {
+    const hasOwner = this.hasOwner(proprietor)
+    if (this.hasEmptyTarget) this.emptyTarget.hidden = hasOwner
+    if (this.hasDirectActionTarget) this.directActionTarget.hidden = hasOwner
+    if (this.hasMenuActionTarget) this.menuActionTarget.hidden = !hasOwner
+    if (this.hasEditActionTarget) this.editActionTarget.hidden = !hasOwner || !proprietor?.id
+  }
+
+  hasOwner(proprietor) {
+    return Boolean(proprietor?.id || (proprietor?.name && proprietor.name !== "Proprietário não vinculado"))
+  }
+
+  capitalize(value) {
+    return value.charAt(0).toUpperCase() + value.slice(1)
   }
 
   closeModal() {
