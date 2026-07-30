@@ -234,12 +234,15 @@ module Admin::HabitationsHelper
     @admin_habitation_edit_permissions ||= {}
     return @admin_habitation_edit_permissions[cache_key] if @admin_habitation_edit_permissions.key?(cache_key)
 
-    @admin_habitation_edit_permissions[cache_key] =
-      current_admin_user.owns_all?(:imoveis) ||
+    owns_or_matches =
       habitation.admin_user_id == current_admin_user.id ||
       habitation_assigned_to_current_user?(habitation) ||
       habitation_matches_current_broker_name?(habitation) ||
       (current_admin_user.can_view_team?(:imoveis) && habitation_owned_by_current_team?(habitation))
+
+    @admin_habitation_edit_permissions[cache_key] =
+      current_admin_user.owns_all?(:imoveis) ||
+      (admin_habitation_matches_current_user_acting_type?(habitation) && owns_or_matches)
   end
 
   def habitation_owned_by_current_team?(habitation)
@@ -319,6 +322,34 @@ module Admin::HabitationsHelper
     return can?(action, resource) if respond_to?(:can?)
 
     current_admin_user&.can?(action, resource)
+  end
+
+  def admin_habitation_matches_current_user_acting_type?(habitation)
+    return true if current_admin_user.blank? || habitation.blank?
+    return true if current_admin_user.both?
+
+    sale_property = admin_sale_area_habitation?(habitation)
+    rental_property = admin_rental_area_habitation?(habitation)
+    return true unless sale_property || rental_property
+
+    case current_admin_user.acting_type
+    when "sales"
+      sale_property
+    when "rentals"
+      rental_property
+    else
+      true
+    end
+  end
+
+  def admin_sale_area_habitation?(habitation)
+    status = habitation.status.to_s.parameterize
+    habitation.valor_venda_cents.to_i.positive? || status.match?(/venda|vendido/)
+  end
+
+  def admin_rental_area_habitation?(habitation)
+    status = habitation.status.to_s.parameterize
+    habitation.valor_locacao_cents.to_i.positive? || status.match?(/aluguel|locacao|diaria|alugado/)
   end
 
   private
