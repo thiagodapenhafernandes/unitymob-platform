@@ -118,6 +118,8 @@ module Admin
           return
         end
 
+        sync_linked_intake_proprietor!(current_step)
+
         if current_step == "review"
           required_checks = active_broker_capture_checks
           missing_requirements = @habitation.intake_missing_requirements(
@@ -168,6 +170,33 @@ module Admin
       photo_uploads = extract_intake_photo_uploads!(attributes)
       @habitation.assign_attributes(attributes)
       photo_uploads
+    end
+
+    def sync_linked_intake_proprietor!(current_step)
+      return unless current_step == "proprietario"
+      return if @habitation.proprietor_id.blank?
+
+      proprietor = current_tenant.proprietors.find_by(id: @habitation.proprietor_id)
+      return unless proprietor
+
+      attrs = {}
+      attrs[:email] = @habitation.proprietario_email.to_s.strip if @habitation.proprietario_email.present?
+      attrs[:city] = @habitation.proprietario_cidade.to_s.strip if @habitation.proprietario_cidade.present?
+
+      if linked_proprietor_without_phone?(proprietor) && @habitation.proprietario_celular.present?
+        attrs[:phone_primary] = @habitation.proprietario_celular
+      end
+
+      proprietor.update(attrs) if attrs.any?
+    end
+
+    def linked_proprietor_without_phone?(proprietor)
+      [
+        proprietor.phone_primary,
+        proprietor.mobile_phone,
+        proprietor.business_phone,
+        proprietor.residential_phone
+      ].compact_blank.empty?
     end
 
     def extract_intake_photo_uploads!(attributes)

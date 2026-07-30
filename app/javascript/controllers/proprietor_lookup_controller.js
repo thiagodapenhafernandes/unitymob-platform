@@ -23,6 +23,7 @@ export default class extends Controller {
     this.pendingMatch = null
     this.appliedFingerprint = this.currentFingerprint()
     this.syncLinkedState()
+    this.syncPhoneLock()
   }
 
   disconnect() {
@@ -89,15 +90,20 @@ export default class extends Controller {
     const proprietor = this.pendingMatch?.proprietor
     if (!proprietor) return
 
+    const typedPhone = this.phoneValue
+    const typedEmail = this.emailValue
+    const typedCity = this.cityValue
+
     this.proprietorIdTarget.value = proprietor.id || ""
     if (this.hasCodeTarget && proprietor.code) this.codeTarget.value = proprietor.code
     if (this.hasNameTarget && proprietor.name) this.nameTarget.value = proprietor.name
-    if (this.hasPhoneTarget && proprietor.phone) this.phoneTarget.value = proprietor.phone
+    if (this.hasPhoneTarget) this.phoneTarget.value = proprietor.phone || typedPhone
     if (this.hasCpfCnpjTarget && proprietor.cpf_cnpj) this.cpfCnpjTarget.value = proprietor.cpf_cnpj
-    if (this.hasEmailTarget && proprietor.email) this.emailTarget.value = proprietor.email
-    if (this.hasCityTarget && proprietor.city) this.cityTarget.value = proprietor.city
+    if (this.hasEmailTarget) this.emailTarget.value = proprietor.email || typedEmail
+    if (this.hasCityTarget) this.cityTarget.value = proprietor.city || typedCity
 
     this.appliedFingerprint = this.currentFingerprint()
+    this.syncPhoneLock()
     this.hideMatch()
     this.showLinked(proprietor)
   }
@@ -113,6 +119,7 @@ export default class extends Controller {
 
     this.proprietorIdTarget.value = ""
     this.pendingMatch = null
+    this.syncPhoneLock()
     this.hideLinked()
   }
 
@@ -128,6 +135,7 @@ export default class extends Controller {
       phone: this.phoneValue,
       email: this.emailValue
     })
+    this.syncPhoneLock()
   }
 
   showMatch(data) {
@@ -156,6 +164,17 @@ export default class extends Controller {
     if (!this.hasLinkedBoxTarget) return
 
     this.linkedBoxTarget.classList.add("tw-hidden")
+  }
+
+  syncPhoneLock() {
+    if (!this.hasPhoneTarget) return
+
+    this.phoneTarget.readOnly = this.selectedProprietor()
+    this.phoneTarget.classList.toggle("is-readonly", this.selectedProprietor())
+    this.phoneTarget.setAttribute(
+      "aria-readonly",
+      this.selectedProprietor() ? "true" : "false"
+    )
   }
 
   selectedProprietor() {
@@ -192,9 +211,7 @@ export default class extends Controller {
       (this.codeValue || "").trim().toLowerCase(),
       (this.nameValue || "").trim().toLowerCase(),
       this.normalizedPhone(this.phoneValue),
-      this.onlyDigits(this.cpfCnpjValue),
-      (this.emailValue || "").trim().toLowerCase(),
-      (this.cityValue || "").trim().toLowerCase()
+      this.onlyDigits(this.cpfCnpjValue)
     ].join("|")
   }
 
