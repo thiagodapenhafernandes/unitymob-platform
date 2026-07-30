@@ -417,7 +417,8 @@ RSpec.describe "Habitation details", type: :request do
         valor_locacao_cents: 7_000_00,
         valor_condominio_cents: 1_350_00,
         valor_iptu_cents: 450_00,
-        valor_total_aluguel_cents: 7_500_00
+        valor_total_aluguel_cents: 7_500_00,
+        valor_promocional_cents: 7_000_00
       )
 
       get habitation_path(habitation)
@@ -427,6 +428,7 @@ RSpec.describe "Habitation details", type: :request do
       expect(page_text).to include("Locação com preço reduzido")
       expect(page_text).to include("Total mensal", "R$ 8.800,00")
       expect(page_text).not_to include("R$ 7.500,00")
+      expect(page_text).not_to include("Valor promocional")
     end
 
     it "posiciona o preço antes das características e da descrição" do

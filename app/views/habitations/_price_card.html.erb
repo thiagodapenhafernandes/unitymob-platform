@@ -125,7 +125,7 @@
     </div>
   <% end %>
 
-  <% if habitation.valor_promocional_cents.to_i.positive? %>
+  <% if habitation.valor_promocional_cents.to_i.positive? && !has_rent_price %>
     <div class="public-habitations-show__promotional-price mt-4">
       <span>Valor promocional</span>
       <strong><%= number_to_currency(habitation.valor_promocional_cents / 100.0, unit: "R$ ", separator: ",", delimiter: ".", precision: 0) %></strong>
