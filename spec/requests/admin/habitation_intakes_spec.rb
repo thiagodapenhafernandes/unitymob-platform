@@ -47,7 +47,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Iniciar captação")
     expect(response.body).to include("Tipo de cadastro")
     expect(response.body).to include("Comerciais e industriais")
-    expect(response.body).to include("Categoria relacionada")
+    expect(response.body).to include("Categoria")
+    expect(response.body).to include("Status comercial")
     document = Nokogiri::HTML(response.body)
     expect(document.at_css('select[name="habitation[categoria]"][data-habitation-form-target="category"]')).to be_present
     expect(response.body).to include("wizard-top-bar__summary", "wizard-nav-action")
@@ -873,6 +874,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Empreendimento cadastrado")
     expect(response.body).to include("Residencial PWA Busca")
     document = Nokogiri::HTML(response.body)
+    expect(document.at_css('select[name="habitation[street_type]"] option[value="Rua"]')).to be_present
     expect(document.at_css('input[name="habitation[street]"][data-habitation-duplicate-check-target="street"]')).to be_present
     expect(document.at_css('input[name="habitation[state]"][data-cep-lookup-target="uf"]')).to be_present
 
@@ -881,6 +883,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       direction: "forward",
       habitation: {
         zip_code: "88330-030",
+        street_type: "Rua",
         street: "Rua 1500",
         street_number: "123",
         neighborhood: "Centro",
@@ -893,6 +896,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
     intake.reload
+    expect(intake.tipo_endereco).to eq("Rua")
     expect(intake.codigo_empreendimento).to eq(development.codigo)
     expect(intake.nome_empreendimento).to eq("Residencial PWA Busca")
 

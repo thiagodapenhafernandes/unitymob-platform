@@ -76,9 +76,10 @@ module AttributeOptions
             changed = true
           end
         elsif delete?
+          size_before = updated.size
           removed_key = updated.delete(@old_name)
-          removed_values_count = updated.delete_if { |_k, v| v.to_s == @old_name }.size
-          changed = removed_key.present? || removed_values_count.positive?
+          updated.delete_if { |_k, v| v.to_s == @old_name }
+          changed = removed_key.present? || updated.size != size_before
         end
 
         persist_habitation_changes(habitation, caracteristicas: updated) if changed

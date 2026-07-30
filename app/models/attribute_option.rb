@@ -5,6 +5,7 @@ class AttributeOption < ApplicationRecord
   CATEGORIES = %w[feature infrastructure unique_feature source status imediacoes sale_reason].freeze
 
   before_validation :normalize_fields
+  after_commit :clear_habitation_catalog_caches, on: [:create, :update, :destroy]
   after_update_commit :sync_usage_on_rename, if: :saved_change_to_name?
   before_destroy :sync_usage_on_delete
 
@@ -39,6 +40,18 @@ class AttributeOption < ApplicationRecord
 
     max = tenant.attribute_options.where(context: context, category: category).maximum(:position)
     self.position = (max || -1) + 1
+  end
+
+  def clear_habitation_catalog_caches
+    return unless context == "habitation" && tenant_id.present?
+
+    Rails.cache.delete("admin/habitations/form_options/v2/tenant/#{tenant_id}")
+    Rails.cache.delete("admin/habitations/filter_data/v7/tenant/#{tenant_id}")
+    Rails.cache.delete("admin/habitations/filter_data/v8/tenant/#{tenant_id}")
+    if Rails.cache.respond_to?(:delete_matched)
+      Rails.cache.delete_matched("admin/habitations/form_options/*/tenant/#{tenant_id}")
+      Rails.cache.delete_matched("admin/habitations/filter_data/*/tenant/#{tenant_id}")
+    end
   end
 
   def normalize_fields

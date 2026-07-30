@@ -39,4 +39,14 @@ RSpec.describe AttributeOption, type: :model do
 
     expect(option).to be_valid
   end
+
+  it "remove característica excluída dos imóveis do mesmo tenant" do
+    tenant = Tenant.create!(name: "Catalog delete #{SecureRandom.hex(3)}", slug: "catalog-delete-#{SecureRandom.hex(3)}")
+    option = tenant.attribute_options.create!(context: "habitation", category: "feature", name: "Piscina")
+    habitation = create(:habitation, tenant: tenant, caracteristicas: { "Piscina" => "Piscina", "Lavabo" => "Lavabo" })
+
+    option.destroy!
+
+    expect(habitation.reload.caracteristicas).to eq("Lavabo" => "Lavabo")
+  end
 end

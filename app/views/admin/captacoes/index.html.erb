@@ -46,13 +46,13 @@
 
   <section class="captacoes-signal-strip" aria-label="Indicadores rápidos">
     <div class="captacoes-signal-group">
-      <span class="captacoes-signal-label">Tipos</span>
+      <span class="captacoes-signal-label">Tipos de cadastro</span>
       <span class="ax-badge ax-badge--gray">Residencial: <%= dashboard.dig(:property_kinds, :residencial).to_i %></span>
       <span class="ax-badge ax-badge--gray">Comercial: <%= dashboard.dig(:property_kinds, :sala_comercial).to_i %></span>
       <span class="ax-badge ax-badge--gray">Terreno: <%= dashboard.dig(:property_kinds, :terreno).to_i %></span>
     </div>
     <div class="captacoes-signal-group">
-      <span class="captacoes-signal-label">Modalidades</span>
+      <span class="captacoes-signal-label">Status comercial</span>
       <span class="ax-badge ax-badge--blue">Venda: <%= dashboard.dig(:modalities, :venda).to_i %></span>
       <span class="ax-badge ax-badge--amber">Locação: <%= dashboard.dig(:modalities, :locacao_anual).to_i %></span>
       <span class="ax-badge ax-badge--green">Ambos: <%= dashboard.dig(:modalities, :ambos).to_i %></span>
@@ -77,19 +77,19 @@
     </div>
     <div class="captacoes-filter-grid">
       <div class="captacoes-filter-field">
-        <label class="ax-label" for="property_kind">Tipo</label>
+        <label class="ax-label" for="property_kind">Tipo de cadastro</label>
         <%= select_tag :property_kind, options_for_select([["Todos os tipos", ""], ["Residencial", "residencial"], ["Sala comercial", "sala_comercial"], ["Terreno", "terreno"]], params[:property_kind]), class: "ax-select" %>
       </div>
       <div class="captacoes-filter-field">
-        <label class="ax-label" for="status">Status</label>
+        <label class="ax-label" for="status">Status da captação</label>
         <%= select_tag :status, options_for_select([["Todos status", ""], ["Rascunhos", "draft"], ["Finalizadas", "completed"], ["Publicadas no site", "published"]], params[:status]), class: "ax-select" %>
       </div>
       <% if can_filter_intakes_by_broker? %>
         <div class="captacoes-filter-field captacoes-filter-field--broker">
-          <label class="ax-label" for="corretor_id">Corretor</label>
+          <label class="ax-label" for="corretor_id">Captador responsável</label>
           <%= select_tag :corretor_id,
                          options_from_collection_for_select(@captacao_brokers, :id, :name, params[:corretor_id]),
-                         include_blank: "Todos corretores",
+                         include_blank: "Todos captadores",
                          class: "ax-select" %>
         </div>
       <% end %>
@@ -105,12 +105,12 @@
       <thead>
         <tr>
           <th>Imóvel</th>
-          <th class="ax-table__col--compact">Código</th>
-          <th class="ax-table__col--w-120">Tipo</th>
-          <th class="ax-table__col--md">Modalidade</th>
-          <% if can_filter_intakes_by_broker? %><th class="ax-table__col--w-150">Corretor</th><% end %>
+          <th class="ax-table__col--compact">Referência</th>
+          <th class="ax-table__col--w-120">Tipo de cadastro</th>
+          <th class="ax-table__col--md">Status comercial</th>
+          <% if can_filter_intakes_by_broker? %><th class="ax-table__col--w-150">Captador responsável</th><% end %>
           <th class="ax-num ax-table__col--w-130">Valor</th>
-          <th class="ax-table__col--md">Status</th>
+          <th class="ax-table__col--md">Status da captação</th>
           <th class="ax-table__col--sm">Atualizada</th>
           <th class="ax-num ax-table__col--sm">Ações</th>
         </tr>

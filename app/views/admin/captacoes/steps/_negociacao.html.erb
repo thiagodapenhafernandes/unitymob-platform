@@ -1,6 +1,6 @@
 <h1 class="wizard-section-title"><i class="bi bi-cash-stack tw-text-primary"></i>Negociação</h1>
 <p class="wizard-section-subtitle">
-  Modalidade: <strong><%= @captacao.modalidade.to_s.humanize %></strong>. Preencha conforme aplicável.
+  Status comercial: <strong><%= @captacao.modalidade.to_s.humanize %></strong>. Preencha conforme aplicável.
 </p>
 
 <% if @captacao.requires_sale_price? %>

@@ -318,13 +318,13 @@
     ["Modelo Casa Mineira", @habitation.modelo_casa_mineira]
   ].select { |_label, value| value.present? }
 
-  owner_fields = if can_view_habitation_show_sensitive_data?(@habitation)
+  owner_phone = @habitation.proprietario_telefone.presence ||
+                @habitation.proprietario_telefone_comercial_display.presence ||
+                @habitation.proprietario_telefone_residencial_display.presence
+  owner_fields = if can_view_habitation_owner_contact_data?(@habitation)
     [
-      ["Proprietário", @habitation.proprietario],
-      ["E-mail", @habitation.proprietario_email],
-      ["Celular", format_phone(@habitation.proprietario_celular)],
-      ["F. Comercial", format_phone(@habitation.proprietario_telefone_comercial)],
-      ["F. Residencial", format_phone(@habitation.proprietario_telefone_residencial)]
+      ["Nome", @habitation.proprietario_nome],
+      ["Telefone", admin_habitation_owner_phone_contact(owner_phone)]
     ].select { |_label, value| value.present? }
   else
     []

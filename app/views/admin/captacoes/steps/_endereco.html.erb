@@ -21,17 +21,28 @@
   </div>
 
   <%= ax_field_grid do %>
-    <div class="ax-span-8">
+    <div class="ax-span-3">
+      <%= ax_select_field(form: f, method: :street_type,
+            label: "Endereço",
+            choices: Habitation::STREET_TYPES,
+            select_options: { include_blank: "Selecione..." },
+            class_name: "wizard-field-group",
+            html_options: {
+              class: field_state.call(:street_type, "ax-control"),
+              data: { controller: "tom-select", placeholder: "Selecione..." }
+            }) %>
+    </div>
+    <div class="ax-span-6">
       <%= ax_text_field(form: f, method: :street,
-            label: safe_join(["Rua / Avenida", tag.span("*", class: "required-star")], " "),
+            label: safe_join(["Logradouro", tag.span("*", class: "required-star")], " "),
             field_class: "wizard-field-group", class: field_state.call(:street), autocomplete: "address-line1",
             data: { cep_lookup_target: "address", habitation_duplicate_check_target: "street",
                     action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check" }) %>
       <% if field_invalid.call(:street) %><div class="invalid-feedback d-block">Informe a rua/avenida.</div><% end %>
     </div>
-    <div class="ax-span-4">
+    <div class="ax-span-3">
       <%= ax_text_field(form: f, method: :street_number,
-            label: safe_join(["Número", tag.span("*", class: "required-star")], " "),
+            label: safe_join(["Nº", tag.span("*", class: "required-star")], " "),
             field_class: "wizard-field-group", class: field_state.call(:street_number), inputmode: "numeric",
             autocomplete: "address-line2", data: { cep_lookup_target: "number", habitation_duplicate_check_target: "number",
                     action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check" }) %>
