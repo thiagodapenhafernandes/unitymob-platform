@@ -174,6 +174,8 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Qtd. parcelas")
     expect(response.body).to include("habitation_aceita_parcelamento_flag")
     expect(response.body).to include("habitation_numero_prestacoes")
+    expect(response.body).to include("Compartilhar")
+    expect(response.body).to include("data-controller=\"broker-share ax-dropdown\"")
   end
 
   it "renderiza progresso e editores ricos sem geometria inline" do
@@ -262,6 +264,61 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     log = HabitationAuditLog.where(habitation_id: habitation.id, action: "unpublished").recent.first
     expect(log.changed_fields).to include("status", "motivo_suspensao", "exibir_no_site_flag")
+  end
+
+  it "registra alerta quando locação recente sai de pauta em menos de 30 dias" do
+    habitation = create(
+      :habitation,
+      codigo: "SHORT-RENT-#{SecureRandom.hex(6)}",
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 4_500_00,
+      data_cadastro_crm: 12.days.ago
+    )
+
+    patch admin_habitation_path(habitation), params: {
+      save_navigation: "exit",
+      habitation: {
+        status: "Alugado imobiliária",
+        valor_alugado_terceiros_formatted: "R$ 4.100,00"
+      }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(flash[:notice]).to include("Alerta registrado: locação encerrada em menos de 30 dias.")
+
+    alert = HabitationAuditLog.where(habitation_id: habitation.id, action: "rental_short_cycle_alert").recent.first
+    expect(alert).to be_present
+    expect(alert.title).to include("alerta de locação encerrada em menos de 30 dias")
+    expect(alert.changed_fields).to include("status", "rental_short_cycle_alert")
+    expect(alert.metadata).to include(
+      "previous_status" => "Aluguel",
+      "new_status" => "Alugado imobiliária",
+      "days_in_market" => 12,
+      "alert_reason" => "Locação saiu de pauta em menos de 30 dias"
+    )
+  end
+
+  it "não registra alerta de ciclo curto para locação antiga" do
+    habitation = create(
+      :habitation,
+      codigo: "OLD-RENT-#{SecureRandom.hex(6)}",
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 4_500_00,
+      data_cadastro_crm: 31.days.ago
+    )
+
+    patch admin_habitation_path(habitation), params: {
+      save_navigation: "exit",
+      habitation: {
+        status: "Alugado imobiliária",
+        valor_alugado_terceiros_formatted: "R$ 4.100,00"
+      }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    expect(HabitationAuditLog.where(habitation_id: habitation.id, action: "rental_short_cycle_alert")).to be_empty
   end
 
   it "preserva contextos legados ambíguos sem ativar o seletor automaticamente" do
@@ -536,7 +593,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Salvar e sair")
   end
 
-  it "permite excluir imóvel por permissão operacional com escopo total, sem exigir Tenant Owner" do
+  it "bloqueia exclusão de imóvel para perfil operacional mesmo com delete e escopo total" do
     tenant = Tenant.create!(name: "Tenant delete #{SecureRandom.hex(3)}", slug: "tenant-delete-#{SecureRandom.hex(3)}")
     profile = Profile.create!(
       tenant: tenant,
@@ -556,15 +613,14 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect {
       delete admin_habitation_path(habitation)
-    }.to change(Habitation, :count).by(-1)
+    }.not_to change(Habitation, :count)
 
     expect(response).to redirect_to(admin_habitations_path)
+    expect(flash[:alert]).to eq("Você não tem permissão para excluir imóveis.")
   end
 
-  # Antes este caso era barrado pelo escopo ("equipe" não era "todos"). Agora é
-  # barrado pela ausência da permissão de excluir — este é O caso do
-  # "gerencia mas não exclui". Quem tem :delete e escopo de equipe exclui dentro
-  # da equipe; a fronteira de escopo está coberta em delete_permission_spec.rb.
+  # Antes este caso era barrado pela ausência da permissão de excluir. Agora a
+  # regra do lixeiro é mais restritiva: qualquer usuário de tenant fica bloqueado.
   it "bloqueia exclusão de imóvel para perfil que gerencia mas não tem permissão de excluir" do
     tenant = Tenant.create!(name: "Tenant team delete #{SecureRandom.hex(3)}", slug: "tenant-team-delete-#{SecureRandom.hex(3)}")
     profile = Profile.create!(

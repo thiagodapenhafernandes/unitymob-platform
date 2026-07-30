@@ -113,6 +113,20 @@
                 <span class="au-actions">
                   <%= ax_icon_button(label: "Editar usuário #{user.name}", icon: "pencil", url: edit_admin_admin_user_path(user)) %>
                   <% if user != current_admin_user %>
+                    <% if user.active? %>
+                      <%= ax_icon_button(
+                            label: "Inativar usuário #{user.name}",
+                            icon: "person-dash",
+                            data: {
+                              controller: "admin-user-inactivation",
+                              ax_modal_open: "#inactivateUserModal",
+                              action: "click->admin-user-inactivation#prepare",
+                              url: inactivate_admin_admin_user_path(user),
+                              user_id: user.id,
+                              user_name: user.name
+                            }
+                          ) %>
+                    <% end %>
                     <%= ax_icon_button(
                           label: "Excluir usuário #{user.name}",
                           icon: "trash",
@@ -143,6 +157,47 @@
 
   <%= ax_pagination @admin_users, params: request.query_parameters %>
 </div>
+
+<%= ax_quick_modal(id: "inactivateUserModal", title: "Inativação de usuário", size: :md, footer: nil) do %>
+  <div data-controller="admin-user-inactivation">
+    <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle") do %>
+      <span>Você está inativando <strong data-admin-user-inactivation-target="name">este usuário</strong>. Ele sairá da distribuição e do site.</span>
+    <% end %>
+
+    <%= form_tag("", method: :patch, data: { admin_user_inactivation_target: "form" }, class: "reassign-delete__form") do %>
+      <p class="reassign-delete__hint">Escolha o que fazer com os leads, imóveis do captador principal e vínculos de corretor deste usuário.</p>
+
+      <div class="ax-chip-grid" role="radiogroup" aria-label="Carteira do usuário">
+        <label class="ax-chip">
+          <%= radio_button_tag :portfolio_action, "reassign", true, data: { action: "change->admin-user-inactivation#modeChanged" } %>
+          <span>Transferir carteira</span>
+        </label>
+        <label class="ax-chip">
+          <%= radio_button_tag :portfolio_action, "detach", false, data: { action: "change->admin-user-inactivation#modeChanged" } %>
+          <span>Desvincular carteira</span>
+        </label>
+      </div>
+
+      <div data-admin-user-inactivation-target="reassignFields">
+        <% manageable_reassign_users = tenant_owner? ? current_tenant.admin_users.account_members.active.order(:name) : current_tenant.admin_users.account_members.active.where(id: [current_admin_user.id] + current_admin_user.descendant_ids).order(:name) %>
+        <%= ax_standalone_select_field(
+              name: :reassign_to_id,
+              id: "inactivate_reassign_to_id",
+              label: "Transferir para",
+              choices: manageable_reassign_users.map { |option_user| [safe_join([option_user.name, ("(você)" if option_user == current_admin_user)].compact, " "), option_user.id] },
+              selected: current_admin_user.id,
+              required: true,
+              data: { admin_user_inactivation_target: "select" }
+            ) %>
+      </div>
+
+      <%= ax_form_actions(sticky: false) do %>
+        <button type="button" class="ax-btn" data-action="ax-modal#close">Cancelar</button>
+        <button type="submit" class="ax-btn ax-btn--danger">Inativar usuário</button>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
 
 <%= ax_quick_modal(id: "reassignDeleteModal", title: "Excluir usuário", size: :md, footer: nil) do %>
   <div data-controller="reassign-delete">

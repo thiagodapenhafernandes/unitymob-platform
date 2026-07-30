@@ -567,6 +567,19 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.displayable_rent_total_cents).to eq(5_700_00)
     end
 
+    it "recalculates total from current rent and visible taxes when rent was reduced" do
+      habitation = build(
+        :habitation,
+        valor_locacao_anterior_cents: 7_600_00,
+        valor_locacao_cents: 7_000_00,
+        valor_condominio_cents: 1_350_00,
+        valor_iptu_cents: 450_00,
+        valor_total_aluguel_cents: 7_500_00
+      )
+
+      expect(habitation.displayable_rent_total_cents).to eq(8_800_00)
+    end
+
     it "does not expose strategic placeholder taxes as a numeric total" do
       habitation = build(:habitation, valor_locacao_cents: 4_900_00, valor_condominio_cents: 1, valor_iptu_cents: 100)
 

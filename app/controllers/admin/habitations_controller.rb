@@ -666,10 +666,12 @@ class Admin::HabitationsController < Admin::BaseController
 
     assign_proprietor_from_legacy_fields(@habitation) if can_access_sensitive_habitation_data?
     apply_intake_status_transition_metadata(@habitation)
+    rental_short_cycle_alert = rental_short_cycle_alert_payload(@habitation, before_snapshot: audit_snapshot_before)
     if @habitation.save
       attach_new_photos(@habitation, new_photo_uploads, apply_watermark: apply_photo_watermark_requested?)
       attach_new_documents(@habitation, new_document_uploads)
       record_habitation_updated(@habitation, before_snapshot: audit_snapshot_before)
+      record_rental_short_cycle_alert(@habitation, rental_short_cycle_alert) if rental_short_cycle_alert.present?
       apply_saved_photo_removals(@habitation)
       notice = if releasing_to_broker
                  "Imóvel salvo e enviado ao captador para publicar no site."
@@ -678,6 +680,9 @@ class Admin::HabitationsController < Admin::BaseController
                else
                  "Imóvel atualizado com sucesso."
                end
+      if rental_short_cycle_alert.present?
+        notice = "#{notice} Alerta registrado: locação encerrada em menos de 30 dias."
+      end
       redirect_after_habitation_save(@habitation, notice: notice)
     else
       prepare_habitation_address
@@ -2474,6 +2479,71 @@ class Admin::HabitationsController < Admin::BaseController
     )
   end
 
+  def record_rental_short_cycle_alert(habitation, payload)
+    HabitationAuditLog.create!(
+      habitation: habitation,
+      admin_user: current_admin_user,
+      action: "rental_short_cycle_alert",
+      source: habitation_audit_source(habitation),
+      changed_fields: ["status", "rental_short_cycle_alert"],
+      changeset: {
+        "status" => {
+          before: payload[:previous_status],
+          after: payload[:new_status]
+        },
+        "rental_short_cycle_alert" => {
+          before: nil,
+          after: "Locação encerrada com #{payload[:days_in_market]} dias em pauta"
+        }
+      },
+      metadata: payload,
+      ip: request.remote_ip,
+      user_agent: request.user_agent.to_s.first(255)
+    )
+  end
+
+  def rental_short_cycle_alert_payload(habitation, before_snapshot:)
+    before_attributes = before_snapshot.to_h.fetch("attributes", {})
+    previous_status = before_attributes["status"].to_s
+    new_status = habitation.status.to_s
+    return nil if previous_status == new_status
+    return nil unless rental_before_status_change?(before_attributes)
+    return nil unless new_status_for_rental_short_cycle_alert?(habitation)
+
+    entered_at = rental_market_entry_at(habitation, before_attributes)
+    return nil unless entered_at.present?
+
+    days_in_market = ((Time.current - entered_at) / 1.day).floor
+    return nil unless days_in_market >= 0 && days_in_market < 30
+
+    {
+      previous_status: previous_status.presence,
+      new_status: new_status,
+      days_in_market: days_in_market,
+      market_entry_at: entered_at.iso8601,
+      alert_reason: "Locação saiu de pauta em menos de 30 dias"
+    }
+  end
+
+  def rental_before_status_change?(attributes)
+    return true if attributes["valor_locacao_cents"].to_i.positive?
+    return true if attributes["intake_modalidade"].to_s.in?(%w[locacao_anual locacao_diaria ambos])
+
+    attributes["status"].to_s.match?(/aluguel|loca/i)
+  end
+
+  def new_status_for_rental_short_cycle_alert?(habitation)
+    normalized_status = Habitation.normalize_status(habitation.status).to_s.parameterize
+    normalized_status.include?("alugado") || normalized_status.include?("suspenso")
+  end
+
+  def rental_market_entry_at(habitation, attributes)
+    raw_value = attributes["data_cadastro_crm"].presence || habitation.data_cadastro_crm || habitation.created_at
+    raw_value.is_a?(String) ? Time.zone.parse(raw_value) : raw_value
+  rescue ArgumentError, TypeError
+    habitation.created_at
+  end
+
   def bulk_habitation_audit_changesets(ids, updates)
     audit_fields = updates.keys.map(&:to_s) & Habitations::AuditChangeRecorder.audited_habitation_fields
     audit_fields -= %w[updated_at]
@@ -2646,30 +2716,11 @@ class Admin::HabitationsController < Admin::BaseController
     tenant_owner? || owns_all_resource?(:imoveis) || can_review_captacao?(@habitation)
   end
 
-  # Excluir é permissão própria (:delete), não mais efeito colateral de
-  # manage + escopo "todos". Divisão de papéis: :delete diz SE pode excluir; o
-  # escopo diz QUAIS imóveis alcança. O recorte por registro é obrigatório aqui
-  # porque set_habitation resolve só por tenant — sem ele, "próprios" + delete
-  # excluiria imóvel alheio. Mesmo formato de can_review_captacao?.
-  def can_destroy_habitation?(habitation = @habitation)
-    return true if tenant_owner?
-    return false unless can?(:delete, :imoveis)
-    return true if owns_all_resource?(:imoveis)
-    return false unless habitation
-    return true if property_belongs_to_current_user?(habitation)
-    return false unless current_admin_user&.can_view_team?(:imoveis)
-
-    team_ids = manager_team_user_ids
-    return false if team_ids.blank?
-    return true if habitation.admin_user_id.in?(team_ids)
-
-    # O catálogo já faz includes(broker_assignments:) — usar a associação
-    # carregada evita um exists? por card na listagem.
-    if habitation.broker_assignments.loaded?
-      habitation.broker_assignments.any? { |assignment| assignment.admin_user_id.in?(team_ids) }
-    else
-      habitation.broker_assignments.exists?(admin_user_id: team_ids)
-    end
+  # Trello rw4mT6Ry: o lixeiro deve ficar restrito ao Admin do Sistema.
+  # Usuários de tenant, inclusive Dono da conta/perfis com :delete legado, não
+  # removem imóveis pela tela operacional.
+  def can_destroy_habitation?(_habitation = @habitation)
+    current_admin_user&.system_admin?
   end
 
   def can_bulk_publish_habitations?

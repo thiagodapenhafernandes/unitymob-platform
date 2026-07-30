@@ -380,7 +380,7 @@ RSpec.describe "Habitation details", type: :request do
 
       expect(response).to have_http_status(:ok)
       page_text = Nokogiri::HTML(response.body).text.squish
-      expect(page_text).to include("Aluguel", "R$ 4.900,00")
+      expect(page_text).to include("Aluguel", "R$ 4.900")
       expect(page_text).to include("Condomínio", "R$ 672,63")
       expect(page_text).to include("IPTU", "R$ 126,62")
       expect(page_text).to include("Total mensal", "R$ 5.699,25")
@@ -402,8 +402,31 @@ RSpec.describe "Habitation details", type: :request do
       expect(response).to have_http_status(:ok)
       page_text = Nokogiri::HTML(response.body).text.squish
       expect(page_text).to include("Locação com preço reduzido")
-      expect(page_text).to include("R$ 6.000,00")
-      expect(page_text).to include("R$ 5.000,00")
+      expect(page_text).to include("R$ 6.000")
+      expect(page_text).to include("R$ 5.000")
+    end
+
+    it "shows recalculated monthly total when reduced rent has condominium and IPTU" do
+      habitation = create(
+        :habitation,
+        codigo: "RENT-DISCOUNT-TOTAL",
+        slug: "locacao-reduzida-total",
+        status: "Aluguel",
+        valor_venda_cents: 0,
+        valor_locacao_anterior_cents: 7_600_00,
+        valor_locacao_cents: 7_000_00,
+        valor_condominio_cents: 1_350_00,
+        valor_iptu_cents: 450_00,
+        valor_total_aluguel_cents: 7_500_00
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      page_text = Nokogiri::HTML(response.body).text.squish
+      expect(page_text).to include("Locação com preço reduzido")
+      expect(page_text).to include("Total mensal", "R$ 8.800,00")
+      expect(page_text).not_to include("R$ 7.500,00")
     end
 
     it "posiciona o preço antes das características e da descrição" do

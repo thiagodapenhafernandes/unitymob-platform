@@ -84,6 +84,21 @@ module Admin
       @pre_cadastro_admin_approved = intake_scope.where(intake_status: "admin_approved").count
       @pre_cadastro_published = intake_scope.where(intake_status: "published").count
 
+      release_scope = current_tenant.habitations.broker_intakes
+        .where(intake_status: "published")
+        .where(broker_released_at: @period_start.beginning_of_day..@period_end.end_of_day)
+      release_scope = release_scope.where("EXTRACT(MONTH FROM habitations.broker_released_at) = ?", @month_filter.to_i) if @month_filter.present?
+      unless owns_all_resource?(:pre_cadastros) || can?(:review, :pre_cadastros)
+        release_owner_ids = visible_owner_ids(:captacoes)
+        release_scope = release_scope.where(admin_user_id: release_owner_ids) unless release_owner_ids.nil?
+      end
+      @release_ranking = release_scope
+        .left_joins(:admin_user)
+        .group("admin_users.id", "admin_users.name")
+        .select("admin_users.id, COALESCE(admin_users.name, 'Sem corretor') AS name, COUNT(habitations.id) AS releases_count, MAX(habitations.broker_released_at) AS last_release_at")
+        .order("releases_count DESC, last_release_at DESC")
+        .limit(15)
+
       build_leads_heatmap
     end
 

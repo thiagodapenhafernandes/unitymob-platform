@@ -269,6 +269,39 @@
         </div>
       </div>
     <% end %>
+
+    <div class="ax-card tw-mt-3 capt-release-ranking-card">
+      <div class="ax-card__body">
+        <div class="capt-panel-title capt-panel-title--spaced">Liberações por corretor</div>
+        <div class="ax-table-wrap">
+          <table class="ax-table">
+            <thead>
+              <tr>
+                <th class="ax-table__col--w-40">Rank</th>
+                <th>Corretor</th>
+                <th class="tw-text-right">Liberações</th>
+                <th class="tw-text-right">Última liberação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @release_ranking.each_with_index do |row, index| %>
+                <tr>
+                  <td class="tw-font-bold tw-text-ink-muted"><%= index + 1 %></td>
+                  <td><%= row.name %></td>
+                  <td class="tw-text-right tw-font-semibold"><%= row.releases_count.to_i %></td>
+                  <td class="tw-text-right"><%= row.last_release_at.present? ? l(row.last_release_at.to_time, format: :short) : "—" %></td>
+                </tr>
+              <% end %>
+              <% if @release_ranking.empty? %>
+                <tr>
+                  <td colspan="4" class="ax-table__empty"><i class="bi bi-inbox"></i> Sem liberações no período.</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- VENDA -->

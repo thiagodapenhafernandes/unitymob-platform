@@ -21,6 +21,9 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 700_000_00, valor_locacao_cents: 0, regiao_foco: "Não")
     create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 0, valor_locacao_cents: 4_000_00, regiao_foco: "Sim", salute_rental_management_flag: true)
     create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 0, valor_locacao_cents: 3_000_00, regiao_foco: "Não", salute_rental_management_flag: false)
+    create(:habitation, :broker_intake, tenant:, codigo: "REL-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 2.days.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
+    create(:habitation, :broker_intake, tenant:, codigo: "REL-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 1.day.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
+    create(:habitation, :broker_intake, tenant:, codigo: "REL-OLD-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 45.days.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
 
     get dashboard_admin_captacoes_path
 
@@ -39,8 +42,10 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     page = Nokogiri::HTML(response.body)
     locacao_table = page.at_css("#tab-locacao .capt-ranking-table__head")&.text&.squish
     locacao_row = page.css("#tab-locacao .capt-ranking-row").find { |row| row.text.include?(dashboard_admin.name) }&.text&.squish
+    release_ranking = page.at_css(".capt-release-ranking-card")&.text&.squish
     expect(locacao_table).to include("Captação", "Captação com Adm", "Total Locação")
     expect(locacao_row).to include(dashboard_admin.name, "2", "1", "R$ 7.000")
+    expect(release_ranking).to include("Liberações por corretor", dashboard_admin.name, "2")
     ranking_progress = Nokogiri::HTML(response.body).css(".capt-ranking-row__progress progress.ax-progress__bar")
     expect(ranking_progress).not_to be_empty
     expect(ranking_progress).to all(satisfy { |bar| bar["style"].nil? && bar["max"] == "100" })

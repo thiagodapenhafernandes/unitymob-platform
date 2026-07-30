@@ -179,6 +179,13 @@
   <%= ax_sticky_action_footer(meta: action_footer_meta, class_name: "habitation-action-bar--top") do %>
     <%= link_to "Cancelar", (@return_to_path || admin_habitations_path), class: "ax-btn", data: { save_state_target: "cancelButton" } %>
     <% if habitation.persisted? %>
+      <%= render "admin/habitations/share_menu",
+                 habitation: habitation,
+                 button_class: "ax-btn",
+                 icon_class: "bi bi-share ax-ico",
+                 label: "Compartilhar" %>
+    <% end %>
+    <% if habitation.persisted? %>
       <button type="button"
               class="ax-btn"
               data-ax-modal-open="#ownerContactConfirmationModal">
