@@ -1,8 +1,8 @@
 module Admin
   class AdminUsersController < BaseController
     before_action -> { check_permission!(:manage, :corretores) }
-    before_action :set_admin_user, only: %i[show edit update destroy]
-    before_action :authorize_admin_user_management!, only: %i[show edit update destroy]
+    before_action :set_admin_user, only: %i[show edit update destroy inactivate]
+    before_action :authorize_admin_user_management!, only: %i[show edit update destroy inactivate]
     before_action :authorize_hierarchy_management!, only: %i[new create move_hierarchy]
     before_action :load_access_options, only: %i[new edit create update]
 
@@ -242,7 +242,13 @@ module Admin
         params[:admin_user].delete(:password_confirmation)
       end
 
-      if @admin_user.update(admin_user_params)
+      attrs = admin_user_params
+      if direct_inactivation_without_portfolio_action?(attrs)
+        redirect_to admin_admin_users_path, alert: "Use a ação Inativar para escolher o destino da carteira do usuário."
+        return
+      end
+
+      if @admin_user.update(attrs)
         redirect_to admin_admin_users_path, notice: 'Usuário atualizado com sucesso.'
       else
         render :edit, status: :unprocessable_entity
@@ -268,6 +274,33 @@ module Admin
                   notice: "Usuário excluído. Carteira (leads, imóveis, tarefas...) reatribuída para #{target.name}."
     rescue AdminUsers::HardDeleter::Error, ActiveRecord::RecordNotDestroyed, ActiveRecord::InvalidForeignKey => e
       redirect_to admin_admin_users_path, alert: "Não foi possível excluir o usuário: #{e.message}"
+    end
+
+    def inactivate
+      if @admin_user == current_admin_user
+        redirect_to admin_admin_users_path, alert: "Você não pode inativar o próprio usuário."
+        return
+      end
+
+      reassign_scope = current_tenant.admin_users.account_members.active.where.not(id: @admin_user.id)
+      reassign_scope = reassign_scope.where(id: [current_admin_user.id] + current_admin_user.descendant_ids) unless tenant_owner?
+      target = reassign_scope.find_by(id: params[:reassign_to_id]) if params[:portfolio_action].to_s != "detach"
+
+      result = AdminUsers::InactivationTransfer.call(
+        user: @admin_user,
+        target: target,
+        mode: params[:portfolio_action]
+      )
+
+      notice = +"Usuário inativado."
+      if params[:portfolio_action].to_s == "detach"
+        notice << " Carteira desvinculada: #{result.leads_count} leads, #{result.habitations_count} imóveis e #{result.broker_assignments_count} vínculos."
+      else
+        notice << " Carteira transferida para #{target.name}: #{result.leads_count} leads, #{result.habitations_count} imóveis e #{result.broker_assignments_count} vínculos."
+      end
+      redirect_to admin_admin_users_path(status: "inactive"), notice: notice
+    rescue AdminUsers::InactivationTransfer::Error, ActiveRecord::RecordInvalid => e
+      redirect_to admin_admin_users_path, alert: "Não foi possível inativar o usuário: #{e.message}"
     end
 
     private
@@ -368,6 +401,13 @@ module Admin
         attrs.delete(:password_confirmation)
       end
       restrict_profile_params_to_current_tenant(attrs)
+    end
+
+    def direct_inactivation_without_portfolio_action?(attrs)
+      return false unless @admin_user&.active?
+      return false unless attrs.key?(:active)
+
+      ActiveModel::Type::Boolean.new.cast(attrs[:active]) == false
     end
 
     # Select único "Perfil de acesso": o EIXO é decidido aqui. Perfil vertical

@@ -178,6 +178,7 @@ Rails.application.routes.draw do
     end
     resources :admin_users, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       post :reset_two_factor, on: :member
+      patch :inactivate, on: :member
       collection do
         get   :hierarchy
         patch :move_hierarchy

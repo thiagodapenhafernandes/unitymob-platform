@@ -439,30 +439,11 @@
           <% if can_edit_habitation?(@habitation) %>
             <%= link_to safe_join([tag.i(class: "bi bi-pencil-square ax-ico"), tag.span("Editar")]), admin_habitation_path_with_query(edit_admin_habitation_path(@habitation.id), admin_habitation_flat_return_params(@return_to_path)), class: "ax-btn ax-btn--primary ax-btn--sm" %>
           <% end %>
-          <div class="admin-property-action-dropdown"
-               data-controller="broker-share ax-dropdown"
-               data-broker-share-generate-url-value="<%= current_admin_user.present? ? share_link_habitation_path(@habitation) : '' %>"
-               data-broker-share-fallback-url-value="<%= habitation_url(@habitation) %>"
-               data-broker-share-property-title-value="<%= @habitation.display_title %>">
-            <button type="button"
-                    class="ax-btn ax-btn--sm"
-                    title="Compartilhar imóvel"
-                    aria-label="Compartilhar imóvel"
-                    aria-expanded="false"
-                    data-ax-dropdown-target="trigger"
-                    data-action="click->ax-dropdown#toggle">
-              <i class="bi bi-share ax-ico"></i><span>Compartilhar</span>
-            </button>
-            <div class="ax-menu ax-menu--end admin-property-menu admin-property-menu--share"
-                 data-ax-dropdown-target="menu"
-                 hidden>
-              <div class="ax-menu__header admin-property-menu__header"><span>Compartilhar</span></div>
-              <button type="button" class="ax-menu__item admin-property-menu__item" data-action="click->broker-share#whatsapp click->ax-dropdown#close"><i class="bi bi-whatsapp"></i><span>WhatsApp</span></button>
-              <button type="button" class="ax-menu__item admin-property-menu__item" data-action="click->broker-share#email click->ax-dropdown#close"><i class="bi bi-envelope"></i><span>Email</span></button>
-              <button type="button" class="ax-menu__item admin-property-menu__item" data-action="click->broker-share#copy"><i class="bi bi-link-45deg"></i><span>Copiar link</span></button>
-              <p class="admin-property-menu__status hidden tw-hidden" data-broker-share-target="status"></p>
-            </div>
-          </div>
+          <%= render "admin/habitations/share_menu",
+                     habitation: @habitation,
+                     button_class: "ax-btn ax-btn--sm",
+                     icon_class: "bi bi-share ax-ico",
+                     label: "Compartilhar" %>
           <%= link_to safe_join([tag.i(class: "bi bi-box-arrow-up-right ax-ico"), tag.span("Ver no site")]), habitation_path(@habitation), target: "_blank", rel: "noopener", class: "ax-btn ax-btn--sm" %>
         </div>
       </div>

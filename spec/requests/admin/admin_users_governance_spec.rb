@@ -43,6 +43,8 @@ RSpec.describe "Admin user governance", type: :request do
     expect(doc.css('table.ax-table thead th[scope="col"]').size).to eq(7)
     expect(doc.at_css('select#reassign_to_id[name="reassign_to_id"][data-reassign-delete-target="select"]')).to be_present
     expect(doc.at_css("#reassignDeleteModal .ax-form-actions--static")).to be_present
+    expect(doc.at_css("#inactivateUserModal")).to be_present
+    expect(doc.at_css('select#inactivate_reassign_to_id[name="reassign_to_id"][data-admin-user-inactivation-target="select"]')).to be_present
 
     get admin_admin_user_path(subordinate)
     expect(response).to have_http_status(:ok)
@@ -80,6 +82,82 @@ RSpec.describe "Admin user governance", type: :request do
     row_text = Nokogiri::HTML(response.body).css("table.ax-table tbody tr").map(&:text).join("\n")
     expect(row_text).not_to include(active_broker.name)
     expect(row_text).to include(inactive_broker.name)
+  end
+
+  it "inativa usuario transferindo leads, imoveis e vinculos de corretor para outro usuario ativo" do
+    tenant = Tenant.create!(name: "Tenant inativacao #{SecureRandom.hex(3)}", slug: "tenant-inativacao-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor, name: "Owner")
+    broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Corretor Saindo")
+    target = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Corretor Destino")
+    lead = create(:lead, tenant: tenant, admin_user: broker)
+    habitation = create(:habitation, tenant: tenant, admin_user: broker)
+    assignment = HabitationBrokerAssignment.create!(habitation: habitation, admin_user: broker, role: "captador")
+
+    sign_in owner
+
+    patch inactivate_admin_admin_user_path(broker), params: {
+      portfolio_action: "reassign",
+      reassign_to_id: target.id
+    }
+
+    expect(response).to redirect_to(admin_admin_users_path(status: "inactive"))
+    expect(broker.reload).not_to be_active
+    expect(broker.display_on_site).to eq(false)
+    expect(lead.reload.admin_user_id).to eq(target.id)
+    expect(habitation.reload.admin_user_id).to eq(target.id)
+    expect(assignment.reload.admin_user_id).to eq(target.id)
+    follow_redirect!
+    expect(response.body).to include("Carteira transferida para Corretor Destino")
+  end
+
+  it "inativa usuario desvinculando carteira quando escolhido no modal" do
+    tenant = Tenant.create!(name: "Tenant desvincular #{SecureRandom.hex(3)}", slug: "tenant-desvincular-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor, name: "Owner")
+    broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Corretor Saindo")
+    lead = create(:lead, tenant: tenant, admin_user: broker)
+    habitation = create(:habitation, tenant: tenant, admin_user: broker)
+    HabitationBrokerAssignment.create!(habitation: habitation, admin_user: broker, role: "captador")
+
+    sign_in owner
+
+    patch inactivate_admin_admin_user_path(broker), params: { portfolio_action: "detach" }
+
+    expect(response).to redirect_to(admin_admin_users_path(status: "inactive"))
+    expect(broker.reload).not_to be_active
+    expect(lead.reload.admin_user_id).to be_nil
+    expect(habitation.reload.admin_user_id).to be_nil
+    expect(HabitationBrokerAssignment.where(admin_user_id: broker.id)).to be_empty
+    follow_redirect!
+    expect(response.body).to include("Carteira desvinculada")
+  end
+
+  it "bloqueia inativacao direta pelo formulario geral sem decisao de carteira" do
+    tenant = Tenant.create!(name: "Tenant bloqueio inativacao #{SecureRandom.hex(3)}", slug: "tenant-bloqueio-inativacao-#{SecureRandom.hex(3)}")
+    owner_profile = tenant.profiles.find_by!(key: "tenant_owner")
+    agent_profile = tenant.profiles.find_by!(key: "agent")
+    owner = create(:admin_user, tenant: tenant, profile: owner_profile, role: :editor, name: "Owner")
+    broker = create(:admin_user, tenant: tenant, profile: agent_profile, manager: owner, name: "Corretor Ativo")
+
+    sign_in owner
+
+    patch admin_admin_user_path(broker), params: {
+      admin_user: {
+        name: broker.name,
+        email: broker.email,
+        access_profile_id: agent_profile.id,
+        acting_type: broker.acting_type,
+        active: "0"
+      }
+    }
+
+    expect(response).to redirect_to(admin_admin_users_path)
+    expect(broker.reload).to be_active
+    follow_redirect!
+    expect(response.body).to include("Use a ação Inativar")
   end
 
   it "impede gestor de atribuir perfil vertical acima ou gestor fora do proprio escopo" do

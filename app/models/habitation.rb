@@ -807,13 +807,13 @@ class Habitation < ApplicationRecord
     rent_cents = valor_locacao_cents.to_i
     return nil unless rent_cents.positive?
 
+    taxes_total_cents = displayable_condominio_cents.to_i + displayable_iptu_cents.to_i
+    return rent_cents + taxes_total_cents if taxes_total_cents.positive?
+
     stored_total_cents = valor_total_aluguel_cents.to_i
     return stored_total_cents if stored_total_cents > rent_cents
 
-    taxes_total_cents = displayable_condominio_cents.to_i + displayable_iptu_cents.to_i
-    return nil unless taxes_total_cents.positive?
-
-    rent_cents + taxes_total_cents
+    nil
   end
 
   def rent_discount?
