@@ -89,7 +89,47 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include("Box garagem")
   end
 
-  it "exibe administração Salute no painel de valores para imóveis de locação" do
+  it "usa empreendimento e unidade no subtítulo do topo do detalhe" do
+    habitation = create(
+      :habitation,
+      codigo: "HERO-#{SecureRandom.hex(6)}",
+      categoria: "Apartamento",
+      titulo_anuncio: "Apartamento no empreendimento",
+      nome_empreendimento: "Residencial Vista",
+      endereco: "Rua do Endereço",
+      numero: "123"
+    )
+    habitation.address.update!(complemento: "3101")
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    hero_subtitle = Nokogiri::HTML(response.body).at_css(".ax-property-show-hero__title p")&.text.to_s
+    expect(hero_subtitle).to include("Residencial Vista")
+    expect(hero_subtitle).to include("Apto. 3101")
+    expect(hero_subtitle).not_to include("Rua do Endereço")
+  end
+
+  it "mantém box, condomínio e IPTU fixos no detalhe mesmo sem valores" do
+    habitation = create(
+      :habitation,
+      codigo: "FIXOS-#{SecureRandom.hex(6)}",
+      valor_condominio_cents: 0,
+      valor_iptu_cents: 0,
+      numero_box: nil
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    page_text = Nokogiri::HTML(response.body).text
+    expect(page_text).to include("Box")
+    expect(page_text).to include("Condomínio")
+    expect(page_text).to include("IPTU")
+    expect(page_text).to include("Não informado")
+  end
+
+  it "exibe administração de locação no painel de valores para imóveis de locação" do
     habitation = create(
       :habitation,
       codigo: "ADM-LOC-#{SecureRandom.hex(6)}",
@@ -108,11 +148,11 @@ RSpec.describe "Admin::Habitations", type: :request do
       section.at_css(".ax-property-record-section__head")&.text&.include?("Valores")
     end
 
-    expect(values_section&.text).to include("Administração Salute")
+    expect(values_section&.text).to include("Administração de locação")
     expect(values_section&.text).to include("Sim")
   end
 
-  it "exibe administração Salute como Não para locação sem administração e oculta em venda" do
+  it "exibe administração de locação como Não para locação sem administração e oculta em venda" do
     rental = create(
       :habitation,
       codigo: "ADM-LOC-NAO-#{SecureRandom.hex(6)}",
@@ -135,7 +175,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     rental_values_section = Nokogiri::HTML(response.body).css(".ax-property-record-section").find do |section|
       section.at_css(".ax-property-record-section__head")&.text&.include?("Valores")
     end
-    expect(rental_values_section&.text).to include("Administração Salute")
+    expect(rental_values_section&.text).to include("Administração de locação")
     expect(rental_values_section&.text).to include("Não")
 
     get admin_habitation_path(sale)
@@ -143,7 +183,28 @@ RSpec.describe "Admin::Habitations", type: :request do
     sale_values_section = Nokogiri::HTML(response.body).css(".ax-property-record-section").find do |section|
       section.at_css(".ax-property-record-section__head")&.text&.include?("Valores")
     end
-    expect(sale_values_section&.text).not_to include("Administração Salute")
+    expect(sale_values_section&.text).not_to include("Administração de locação")
+  end
+
+  it "separa características internas da infraestrutura no detalhe" do
+    habitation = create(
+      :habitation,
+      codigo: "CARACT-#{SecureRandom.hex(6)}",
+      caracteristicas: ["Sacada fechada"],
+      infra_estrutura: ["Piscina coletiva"]
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    internal_panel = html.css(".ax-operational-panel").find { |panel| panel.text.include?("Características internas") }
+    infrastructure_panel = html.css(".ax-operational-panel").find { |panel| panel.text.include?("Diferenciais e infraestrutura") }
+
+    expect(internal_panel&.text).to include("Sacada fechada")
+    expect(internal_panel&.text).not_to include("Piscina coletiva")
+    expect(infrastructure_panel&.text).to include("Piscina coletiva")
+    expect(infrastructure_panel&.text).not_to include("Sacada fechada")
   end
 
   it "exibe parcelamento e quantidade de parcelas no painel de valores" do
@@ -1246,6 +1307,122 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     get edit_admin_habitation_path(outside_property)
     expect(response).to redirect_to(admin_habitations_path)
+  end
+
+  it "bloqueia edição de locação para gerente de venda mesmo dentro da equipe" do
+    manager_profile = Profile.create!(
+      tenant: Tenant.default,
+      name: "Gerente venda #{SecureRandom.hex(6)}",
+      axis: Profile::AXES[:vertical],
+      position: 702,
+      permissions: Profile.default_permissions_for("Gerente")
+    )
+    manager = create(:admin_user, profile: manager_profile, acting_type: :sales, name: "Gerente venda")
+    team_broker = create(:admin_user, profile: default_agent_profile, manager: manager, acting_type: :both, name: "Corretor ambos")
+    rental_property = create(
+      :habitation,
+      admin_user: team_broker,
+      codigo: "TEAM-RENT-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel de locação da equipe",
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 5_000_00
+    )
+
+    sign_in manager
+
+    get admin_habitation_path(rental_property)
+    expect(response).to have_http_status(:ok)
+    action_links = Nokogiri::HTML(response.body).css(".ax-property-show-actions a").map { |link| link["href"].to_s }
+    expect(action_links.grep(%r{/admin/habitations/#{rental_property.id}/edit})).to be_empty
+
+    get edit_admin_habitation_path(rental_property)
+    expect(response).to redirect_to(admin_habitations_path)
+    follow_redirect!
+    expect(response.body).to include("Você não tem permissão para editar este imóvel.")
+  end
+
+  it "bloqueia edição de venda para gestora de locação mesmo dentro da equipe" do
+    manager_profile = Profile.create!(
+      tenant: Tenant.default,
+      name: "Gerente locação #{SecureRandom.hex(6)}",
+      axis: Profile::AXES[:vertical],
+      position: 704,
+      permissions: Profile.default_permissions_for("Gerente")
+    )
+    manager = create(:admin_user, profile: manager_profile, acting_type: :rentals, name: "Gestora locação")
+    broker_attrs = { profile: default_agent_profile, acting_type: :rentals, name: "Corretor locação" }
+    if AdminUser.column_names.include?("rentals_manager_id")
+      broker_attrs[:rentals_manager] = manager
+    else
+      broker_attrs[:manager] = manager
+    end
+    team_broker = create(:admin_user, broker_attrs)
+    sale_property = create(
+      :habitation,
+      admin_user: team_broker,
+      codigo: "TEAM-SALE-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel de venda da equipe",
+      status: "Venda",
+      valor_venda_cents: 900_000_00,
+      valor_locacao_cents: 0
+    )
+
+    sign_in manager
+
+    get admin_habitation_path(sale_property)
+    expect(response).to have_http_status(:ok)
+    action_links = Nokogiri::HTML(response.body).css(".ax-property-show-actions a").map { |link| link["href"].to_s }
+    expect(action_links.grep(%r{/admin/habitations/#{sale_property.id}/edit})).to be_empty
+
+    get edit_admin_habitation_path(sale_property)
+    expect(response).to redirect_to(admin_habitations_path)
+    follow_redirect!
+    expect(response.body).to include("Você não tem permissão para editar este imóvel.")
+  end
+
+  it "mostra dados do proprietário para gestor somente quando a área combina com o imóvel" do
+    manager_profile = Profile.create!(
+      tenant: Tenant.default,
+      name: "Gerente proprietário #{SecureRandom.hex(6)}",
+      axis: Profile::AXES[:vertical],
+      position: 706,
+      permissions: Profile.default_permissions_for("Gerente")
+    )
+    manager = create(:admin_user, profile: manager_profile, acting_type: :sales, name: "Gerente proprietário")
+    team_broker = create(:admin_user, profile: default_agent_profile, manager: manager, acting_type: :both, name: "Corretor proprietário")
+    sale_property = create(
+      :habitation,
+      admin_user: team_broker,
+      codigo: "OWNER-SALE-#{SecureRandom.hex(6)}",
+      status: "Venda",
+      valor_venda_cents: 900_000_00,
+      valor_locacao_cents: 0,
+      proprietario: "Proprietário Venda",
+      proprietario_email: "venda@example.com"
+    )
+    rental_property = create(
+      :habitation,
+      admin_user: team_broker,
+      codigo: "OWNER-RENT-#{SecureRandom.hex(6)}",
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 5_000_00,
+      proprietario: "Proprietário Locação",
+      proprietario_email: "locacao@example.com"
+    )
+
+    sign_in manager
+
+    get admin_habitation_path(sale_property)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Proprietário Venda")
+    expect(response.body).to include("venda@example.com")
+
+    get admin_habitation_path(rental_property)
+    expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include("Proprietário Locação")
+    expect(response.body).not_to include("locacao@example.com")
   end
 
   it "mostra botão de edição e permite editar imóvel da equipe identificado por nome legado do captador" do

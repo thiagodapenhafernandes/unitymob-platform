@@ -1784,6 +1784,7 @@ class Admin::HabitationsController < Admin::BaseController
 
   def can_edit_habitation?(habitation)
     return false unless property_accessible?(habitation)
+    return false unless habitation_matches_current_user_acting_type?(habitation)
 
     can?(:edit, :imoveis) || property_belongs_to_current_user?(habitation)
   end
@@ -2859,12 +2860,43 @@ class Admin::HabitationsController < Admin::BaseController
 
   # manager_team_user_ids / manager_allowed_acting_types vivem no BaseController.
   def manager_can_view_proprietor_data?(habitation)
+    return false unless habitation_matches_current_user_acting_type?(habitation, total_access: false)
+
     team_ids = manager_team_user_ids
     return false if team_ids.blank?
     return true if habitation.admin_user_id.in?(team_ids)
     return true if habitation.broker_assignments.exists?(admin_user_id: team_ids)
 
     false
+  end
+
+  def habitation_matches_current_user_acting_type?(habitation, total_access: true)
+    return true if habitation.blank? || current_admin_user.blank?
+    return true if total_access && (tenant_owner? || owns_all_resource?(:imoveis))
+    return true if current_admin_user.both?
+
+    sale_property = sale_area_habitation?(habitation)
+    rental_property = rental_area_habitation?(habitation)
+    return true unless sale_property || rental_property
+
+    case current_admin_user.acting_type
+    when "sales"
+      sale_property
+    when "rentals"
+      rental_property
+    else
+      true
+    end
+  end
+
+  def sale_area_habitation?(habitation)
+    status = habitation.status.to_s.parameterize
+    habitation.valor_venda_cents.to_i.positive? || status.match?(/venda|vendido/)
+  end
+
+  def rental_area_habitation?(habitation)
+    status = habitation.status.to_s.parameterize
+    habitation.valor_locacao_cents.to_i.positive? || status.match?(/aluguel|locacao|diaria|alugado/)
   end
 
   def restrict_pending_review_to_manager_team(scope)

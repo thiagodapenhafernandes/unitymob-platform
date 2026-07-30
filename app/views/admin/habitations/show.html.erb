@@ -3,6 +3,8 @@
   title = @habitation.titulo_anuncio.presence || @habitation.display_title || "Detalhes do imóvel"
   return_path = @return_to_path.presence || admin_habitations_path
   address_parts = [@habitation.endereco, @habitation.numero, admin_habitation_address_unit_label(@habitation), @habitation.bairro, @habitation.cidade, @habitation.uf].compact_blank
+  hero_identity_parts = [@habitation.nome_empreendimento, admin_habitation_address_unit_label(@habitation)].compact_blank
+  hero_subtitle_parts = hero_identity_parts.presence || address_parts
   description = @habitation.display_description
 
   money = lambda do |cents|
@@ -30,6 +32,10 @@
 
   rich_text_value = lambda do |value|
     ActionView::Base.full_sanitizer.sanitize(value.to_s).squish.presence
+  end
+
+  field_visible = lambda do |(_label, value, required)|
+    required || value.present?
   end
 
   array_value = lambda do |value|
@@ -190,12 +196,12 @@
     ["Varandas", @habitation.varandas_qtd],
     ["Hidromassagem", @habitation.hidromassagem_qtd],
     ["Tipo de vaga", @habitation.tipo_vaga],
-    ["Box", @habitation.numero_box],
+    ["Box", @habitation.numero_box, true],
     ["Área terreno", @habitation.area_terreno_m2.present? ? "#{@habitation.area_terreno_m2} m²" : nil],
     ["Dimensões terreno", @habitation.dimensoes_terreno],
     ["Topografia", @habitation.topografia],
     ["Face", @habitation.face]
-  ].select { |_label, value| value.present? }
+  ].select { |field| field_visible.call(field) }
 
   value_fields = [
     ["Venda", sale_price],
@@ -203,13 +209,13 @@
     ["Locação", rent_price],
     ["Locação anterior", previous_rent_price],
     ["Total aluguel", total_rent_price],
-    ["Condomínio", money.call(@habitation.valor_condominio_cents)],
-    ["IPTU", money.call(@habitation.valor_iptu_cents)],
-    ["Administração Salute", rental_listing ? yes_no.call(@habitation.salute_rental_management_flag) : nil],
+    ["Condomínio", money.call(@habitation.valor_condominio_cents), true],
+    ["IPTU", money.call(@habitation.valor_iptu_cents), true],
+    ["Administração de locação", rental_listing ? yes_no.call(@habitation.salute_rental_management_flag) : nil, rental_listing],
     ["Aceita parcelamento", yes_no.call(@habitation.aceita_parcelamento_flag)],
     ["Parcelas", @habitation.aceita_parcelamento_flag? && @habitation.numero_prestacoes.present? ? "#{@habitation.numero_prestacoes}x" : nil],
     ["Aceita permuta", yes_no.call(@habitation.aceita_permuta_flag)]
-  ].select { |_label, value| value.present? }
+  ].select { |field| field_visible.call(field) }
 
   commercial_fields = [
     ["Nº de matrícula", @habitation.matricula_imovel],
@@ -369,9 +375,9 @@
 
   internal_note_fields = if can_view_habitation_show_sensitive_data?(@habitation)
     [
-      ["Observações internas", @habitation.observacoes],
+      ["Observações internas e restritas", @habitation.observacoes, true],
       ["Descrição interna", @habitation.descricao_interna]
-    ].select { |_label, value| value.present? }
+    ].select { |field| field_visible.call(field) }
   else
     []
   end
@@ -387,7 +393,9 @@
   end
 
   description_section_class = media_links.any? && description.present? ? "ax-property-show-bottom__body--wide" : "ax-property-show-bottom__body--description-only"
-  item_names = (feature_names + infrastructure_names + unique_feature_names).compact_blank.uniq
+  internal_feature_names = feature_names.compact_blank.uniq
+  infrastructure_item_names = (infrastructure_names + unique_feature_names).compact_blank.uniq
+  item_names = (internal_feature_names + infrastructure_item_names).compact_blank.uniq
   public_item_names = item_names.map { |name| name.to_s.parameterize }
   public_flags = public_flags.reject { |label, _value| public_item_names.include?(label.to_s.parameterize) }
   operational_panels = [
@@ -427,8 +435,8 @@
       <div class="ax-property-show-hero__row">
         <div class="ax-property-show-hero__title">
           <h1><%= title %></h1>
-          <% if address_parts.any? %>
-            <p><i class="bi bi-geo-alt"></i><%= address_parts.join(" · ") %></p>
+          <% if hero_subtitle_parts.any? %>
+            <p><i class="bi bi-building"></i><%= hero_subtitle_parts.join(" · ") %></p>
           <% end %>
         </div>
 
@@ -677,10 +685,27 @@
     <% end %>
   </section>
 
-  <% if item_names.any? || public_flags.any? %>
+  <% if internal_feature_names.any? %>
+    <% internal_features_panel_body = capture do %>
+      <div class="ax-property-chip-list">
+        <% internal_feature_names.each do |name| %>
+          <span class="ax-badge ax-badge--gray"><%= name %></span>
+        <% end %>
+      </div>
+    <% end %>
+    <%= ax_operational_panel(
+          eyebrow: "Características internas",
+          title: "Características internas",
+          class_name: "ax-property-detail-panel",
+          actions: tag.span("#{internal_feature_names.size} itens", class: "ax-badge ax-badge--gray"),
+          body: internal_features_panel_body
+        ) %>
+  <% end %>
+
+  <% if infrastructure_item_names.any? || public_flags.any? %>
     <% items_panel_body = capture do %>
       <div class="ax-property-chip-list">
-        <% item_names.each do |name| %>
+        <% infrastructure_item_names.each do |name| %>
           <span class="ax-badge ax-badge--gray"><%= name %></span>
         <% end %>
         <% public_flags.each do |label, value| %>
@@ -694,7 +719,7 @@
           eyebrow: "Itens do imóvel",
           title: "Diferenciais e infraestrutura",
           class_name: "ax-property-detail-panel",
-          actions: tag.span("#{item_names.size + public_flags.size} itens", class: "ax-badge ax-badge--gray"),
+          actions: tag.span("#{infrastructure_item_names.size + public_flags.size} itens", class: "ax-badge ax-badge--gray"),
           body: items_panel_body
         ) %>
   <% end %>
