@@ -10,8 +10,8 @@
   <div class="ax-card__body">
     <h6 class="tw-font-bold text-uppercase tw-text-sm tw-text-ink-muted tw-mb-2">Imóvel</h6>
     <dl class="tw-grid tw-text-sm capt-detail-definition-grid">
-      <dt class="ax-span-6">Tipo</dt><dd class="ax-span-6"><%= @captacao.property_kind.humanize %></dd>
-      <dt class="ax-span-6">Modalidade</dt><dd class="ax-span-6"><%= @captacao.modalidade.humanize %></dd>
+      <dt class="ax-span-6">Tipo de cadastro</dt><dd class="ax-span-6"><%= @captacao.property_kind.humanize %></dd>
+      <dt class="ax-span-6">Status comercial</dt><dd class="ax-span-6"><%= @captacao.modalidade.humanize %></dd>
       <dt class="ax-span-6">Endereço</dt>
       <dd class="ax-span-6"><%= [@captacao.street, @captacao.street_number].compact_blank.join(", ").presence || "—" %></dd>
       <% if @captacao.edificio_nome.present? %>
@@ -59,7 +59,7 @@
         <dd class="ax-span-6"><%= number_to_currency(@captacao.valor_venda, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
       <% end %>
       <% if @captacao.valor_locacao.present? %>
-        <dt class="ax-span-6">Valor locação</dt>
+        <dt class="ax-span-6">Valor de locação</dt>
         <dd class="ax-span-6"><%= number_to_currency(@captacao.valor_locacao, unit: "R$ ", separator: ",", delimiter: ".") %></dd>
       <% end %>
       <% if @captacao.valor_condominio.present? %>

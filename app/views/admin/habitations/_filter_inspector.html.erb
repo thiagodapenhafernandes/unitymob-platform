@@ -11,7 +11,7 @@
   end
 
   data_filter_keys = %w[codigo empreendimento_codigo corretor_id status categoria min_price max_price]
-  location_filter_keys = %w[bairro_comercial]
+  location_filter_keys = %w[cidade logradouro numero bairro_comercial]
   business_filter_keys = %w[situacao promotion_status accepts_exchange accepts_installments key_location salute_rental_management permuta_vehicle permuta_property permuta_others]
   feature_filter_keys = %w[dorms_min dorms_max suites_min suites_max banheiros_min banheiros_max vagas_min vagas_max area_total_min area_total_max area_privativa_min area_privativa_max amenities]
   administrative_filter_keys = %w[destaque_web festival_salute exibir_no_site_salute tem_placa exclusivo somente_com_imagens somente_sem_imagens somente_dwv foto_classificacao publicar_imovelweb_2 publicar_lais_ai publicar_chaves_na_mao publicar_casa_mineira publicar_imovelweb publicar_viva_real_vrsync captacao_inicio captacao_fim atualizacao_inicio atualizacao_fim regiao_foco]
@@ -45,7 +45,8 @@
     .flatten
     .filter_map { |value| AttributeOptions::HabitationFeatureNormalizer.label(value, category: "infrastructure") }
     .map { |value| AttributeOptions::HabitationFeatureNormalizer.key(value) }
-  amenity_options = @filter_amenity_options.presence || Admin::HabitationsController::AMENITY_FILTER_OPTIONS
+  amenity_feature_options = @filter_amenity_feature_options.to_a
+  amenity_infrastructure_options = @filter_amenity_infrastructure_options.to_a
 %>
 
 <%= ax_aside_panel(
@@ -131,7 +132,7 @@
       <%= ax_field_grid columns: 2, gap: :compact, class_name: "ax-filter-section__grid habitations-catalog-data-grid" do %>
         <div class="ax-span-2">
           <%= ax_field_label(nil, nil,
-                text: "Código / Referência",
+                text: "Referência",
                 for: "admin_habitation_catalog_code_search") %>
           <%= ax_input_group(prefix: "#") do %>
             <div class="ax-clearable-control ax-clearable-control--group-item" data-controller="ax-clear-field">
@@ -145,7 +146,7 @@
               <button class="ax-clearable-control__button"
                       type="button"
                       title="Limpar campo"
-                      aria-label="Limpar Código"
+                      aria-label="Limpar referência"
                       data-ax-clear-field-target="button"
                       data-action="click->ax-clear-field#clear"
                       hidden>
@@ -167,19 +168,19 @@
           <div class="ax-span-2">
             <%= ax_autocomplete_select_field(clearable: true, form: f,
                                              method: :corretor_id,
-                                             label: "Corretor",
+                                             label: "Captador responsável",
                                              choices: @filter_brokers,
                                              select_options: { selected: @corretor_ids },
                                              multiple: true,
-                                             placeholder: "Selecione corretor") %>
+                                             placeholder: "Selecione captador") %>
           </div>
         <% end %>
         <div class="ax-span-2 habitations-catalog-data-divider">
           <span>Recorte</span>
-          <strong>Tipo e status</strong>
+          <strong>Tipo de cadastro e status comercial</strong>
         </div>
         <div class="ax-span-2">
-          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :status, label: "Status", choices: options_for_select(@filter_statuses, @statuses.presence || ["Todos"]), select_options: {}, multiple: true, placeholder: "Todos", html_options: { class: "filter-multi-compact" }) %>
+          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :status, label: "Status comercial", choices: options_for_select(@filter_statuses, @statuses.presence || ["Todos"]), select_options: {}, multiple: true, placeholder: "Todos", html_options: { class: "filter-multi-compact" }) %>
         </div>
         <div class="ax-span-2">
           <%= ax_autocomplete_select_field(clearable: true, form: f, method: :categoria, label: "Categoria", choices: @filter_categories, select_options: { selected: @categorias }, multiple: true, placeholder: "Todas") %>
@@ -238,6 +239,30 @@
       <%= ax_field_grid columns: 2, gap: :compact, class_name: "ax-filter-section__grid" do %>
         <div class="ax-span-2">
           <%= ax_autocomplete_select_field(clearable: true, form: f,
+                                           method: :cidade,
+                                           label: "Cidade",
+                                           choices: @filter_cities,
+                                           select_options: { include_blank: "Todas", selected: @cidade },
+                                           placeholder: "Todas") %>
+        </div>
+        <div>
+          <%= ax_text_field(clearable: true, form: f,
+                            method: :logradouro,
+                            label: "Logradouro",
+                            value: @logradouro,
+                            placeholder: "Ex: Avenida Brasil",
+                            autocomplete: "off") %>
+        </div>
+        <div>
+          <%= ax_text_field(clearable: true, form: f,
+                            method: :numero,
+                            label: "Nº",
+                            value: @numero,
+                            placeholder: "Ex: 100",
+                            autocomplete: "off") %>
+        </div>
+        <div class="ax-span-2">
+          <%= ax_autocomplete_select_field(clearable: true, form: f,
                                            method: :bairro_comercial,
                                            label: "Bairro comercial",
                                            choices: @filter_bairros_comerciais,
@@ -271,7 +296,7 @@
           <%= ax_autocomplete_select_field(clearable: true, form: f, method: :key_location, label: "Chaves", choices: @filter_key_locations, select_options: { include_blank: "Todos", selected: params[:key_location] }, placeholder: "Todos") %>
         </div>
         <div>
-          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :salute_rental_management, label: "Adm. locação", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:salute_rental_management] }, placeholder: "Todos") %>
+          <%= ax_autocomplete_select_field(clearable: true, form: f, method: :salute_rental_management, label: "Administração de locação", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:salute_rental_management] }, placeholder: "Todos") %>
         </div>
         <div class="ax-span-2 ax-filter-checks">
           <%= ax_filter_check(name: :permuta_vehicle, checked: params[:permuta_vehicle] == "1", label: "Aceita veículo", id: "permuta_vehicle_filter") %>
@@ -281,7 +306,7 @@
       <% end %>
     <% end %>
 
-    <%= ax_filter_section(title: "Características imóvel", icon: "sliders", count: feature_count, open: feature_count.positive?) do %>
+    <%= ax_filter_section(title: "Características do imóvel", icon: "sliders", count: feature_count, open: feature_count.positive?) do %>
       <%= ax_field_grid columns: 2, gap: :compact, class_name: "ax-filter-section__grid" do %>
         <div>
           <%= ax_number_field(clearable: true, form: f, method: :dorms_min, label: "Dormitórios mín.", value: params[:dorms_min], min: 0) %>
@@ -314,16 +339,24 @@
           <%= ax_number_field(clearable: true, form: f, method: :area_total_max, label: "Área total máx.", value: params[:area_total_max], step: "0.01", min: "0") %>
         </div>
         <div>
-          <%= ax_number_field(clearable: true, form: f, method: :area_privativa_min, label: "Privativa mín.", value: params[:area_privativa_min], step: "0.01", min: "0") %>
+          <%= ax_number_field(clearable: true, form: f, method: :area_privativa_min, label: "Área privativa mín.", value: params[:area_privativa_min], step: "0.01", min: "0") %>
         </div>
         <div>
-          <%= ax_number_field(clearable: true, form: f, method: :area_privativa_max, label: "Privativa máx.", value: params[:area_privativa_max], step: "0.01", min: "0") %>
+          <%= ax_number_field(clearable: true, form: f, method: :area_privativa_max, label: "Área privativa máx.", value: params[:area_privativa_max], step: "0.01", min: "0") %>
         </div>
         <div class="ax-span-2">
           <%= ax_field_label(nil, nil, text: "Características internas") %>
           <div class="ax-filter-checks">
-            <% amenity_options.each_with_index do |opcao, idx| %>
+            <% amenity_feature_options.each_with_index do |opcao, idx| %>
               <%= ax_filter_check(name: "amenities[]", value: opcao, checked: selected_amenity_keys.include?(AttributeOptions::HabitationFeatureNormalizer.key(opcao)), label: opcao, id: "amenity_filter_#{idx}") %>
+            <% end %>
+          </div>
+        </div>
+        <div class="ax-span-2">
+          <%= ax_field_label(nil, nil, text: "Características do empreendimento") %>
+          <div class="ax-filter-checks">
+            <% amenity_infrastructure_options.each_with_index do |opcao, idx| %>
+              <%= ax_filter_check(name: "amenities[]", value: opcao, checked: selected_amenity_keys.include?(AttributeOptions::HabitationFeatureNormalizer.key(opcao)), label: opcao, id: "infrastructure_amenity_filter_#{idx}") %>
             <% end %>
           </div>
         </div>
@@ -337,10 +370,10 @@
             <%= ax_autocomplete_select_field(clearable: true, form: f, method: :regiao_foco, label: "Região foco", choices: @filter_regioes_foco, select_options: { include_blank: "Todas", selected: params[:regiao_foco] }, placeholder: "Todas") %>
           </div>
           <div>
-            <%= ax_autocomplete_select_field(clearable: true, form: f, method: :destaque_web, label: "Destaque Web", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:destaque_web] }, placeholder: "Todos") %>
+            <%= ax_autocomplete_select_field(clearable: true, form: f, method: :destaque_web, label: "Destaque", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:destaque_web] }, placeholder: "Todos") %>
           </div>
           <div>
-            <%= ax_autocomplete_select_field(clearable: true, form: f, method: :festival_salute, label: "Super Destaque", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:festival_salute] }, placeholder: "Todos") %>
+            <%= ax_autocomplete_select_field(clearable: true, form: f, method: :festival_salute, label: "Super destaque", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:festival_salute] }, placeholder: "Todos") %>
           </div>
           <div class="ax-span-2">
             <%= ax_autocomplete_select_field(clearable: true, form: f, method: :exibir_no_site_salute, label: "Exibir no site", choices: [["Sim", "1"], ["Não", "0"]], select_options: { include_blank: "Todos", selected: params[:exibir_no_site_salute] }, placeholder: "Todos") %>
@@ -382,10 +415,10 @@
             <%= ax_date_field(clearable: true, form: f, method: :captacao_fim, label: "Cadastro até", value: params[:captacao_fim]) %>
           </div>
           <div>
-            <%= ax_date_field(clearable: true, form: f, method: :atualizacao_inicio, label: "Atualiz. de", value: params[:atualizacao_inicio]) %>
+            <%= ax_date_field(clearable: true, form: f, method: :atualizacao_inicio, label: "Atualização de", value: params[:atualizacao_inicio]) %>
           </div>
           <div>
-            <%= ax_date_field(clearable: true, form: f, method: :atualizacao_fim, label: "Atualiz. até", value: params[:atualizacao_fim]) %>
+            <%= ax_date_field(clearable: true, form: f, method: :atualizacao_fim, label: "Atualização até", value: params[:atualizacao_fim]) %>
           </div>
         <% end %>
       <% end %>

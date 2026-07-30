@@ -707,8 +707,7 @@ module Admin
         .order(nome_empreendimento: :asc)
       @proprietor_city_options = current_tenant.proprietors.distinct_city_suggestions
       @internal_features = (
-        current_tenant.attribute_options.where(context: "habitation", category: "feature").order(:name).pluck(:name) +
-        Admin::HabitationsController::CUSTOM_FEATURE_OPTIONS
+        current_tenant.attribute_options.where(context: "habitation", category: "feature").order(:name).pluck(:name)
       ).uniq.sort
       @external_features = current_tenant.attribute_options.where(context: "habitation", category: "infrastructure").order(:name).pluck(:name)
       @badges = current_tenant.attribute_options.where(context: "habitation", category: "unique_feature").order(:name).pluck(:name)
@@ -1083,7 +1082,7 @@ module Admin
         :andar, :ano_construcao, :demi_suites_qtd, :numero_box, :tipo_vaga,
         :dimensoes_terreno, :topografia, :key_location, :key_location_notes, :zelador_nome, :zelador_telefone,
         :corretor_nome, :corretor_telefone, :corretor_email, :ordered_photo_ids,
-        :zip_code, :street, :street_number, :neighborhood, :city, :state, :complemento, :edificio_nome, :unidade_numero,
+        :zip_code, :street_type, :street, :street_number, :neighborhood, :city, :state, :complemento, :edificio_nome, :unidade_numero,
         :lote, :quadra,
         :chaves_com, :senha_imovel, :senha_portaria,
         { rental_guarantee_method: [],
@@ -1151,10 +1150,11 @@ module Admin
       attrs["photos"] = attrs.delete("fotos") if attrs["fotos"].present?
       attrs["autorizacoes_venda"] = Array(attrs.delete("autorizacao_pdf")) if attrs["autorizacao_pdf"].present?
       normalize_intake_land_extra_fields!(attrs)
-      address_keys = %w[zip_code street street_number neighborhood city state complemento]
+      address_keys = %w[zip_code street_type street street_number neighborhood city state complemento]
       if address_keys.any? { |key| attrs.key?(key) }
         attrs["address_attributes"] = {
           cep: attrs.delete("zip_code"),
+          tipo_endereco: attrs.delete("street_type"),
           logradouro: attrs.delete("street"),
           numero: attrs.delete("street_number"),
           complemento: attrs.delete("complemento"),

@@ -1,6 +1,6 @@
 <h1 class="wizard-section-title"><i class="bi bi-house-heart-fill tw-text-primary"></i>Vamos começar</h1>
 <p class="wizard-section-subtitle">
-  Olá, <strong><%= current_admin_user.name.split.first %></strong>! Selecione o tipo de cadastro, a categoria e a modalidade.
+  Olá, <strong><%= current_admin_user.name.split.first %></strong>! Selecione o tipo de cadastro, a categoria e o status comercial.
 </p>
 
 <%
@@ -51,13 +51,13 @@
     <%= f.hidden_field :tipo, value: "Unitário", data: { habitation_form_target: "tipo" } %>
   </div>
 
-  <%= ax_select_field(form: f, method: :categoria, label: "Categoria relacionada",
+  <%= ax_select_field(form: f, method: :categoria, label: "Categoria",
         choices: cadastro_categories.fetch(inferred_cadastro_type),
         select_options: { include_blank: "Selecione..." }, class_name: "wizard-field-group",
         html_options: { data: { habitation_form_target: "category" } }) %>
 
   <div class="wizard-field-group">
-    <label class="ax-label">Modalidade <span class="required-star">*</span></label>
+    <label class="ax-label">Status comercial <span class="required-star">*</span></label>
     <div class="wizard-option-grid" data-controller="option-picker">
       <% [
         ["venda",          "Venda",           "bi-cash-coin"],

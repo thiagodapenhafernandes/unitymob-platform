@@ -69,13 +69,18 @@ module Admin
         return redirect_to admin_attribute_options_path, alert: 'Atributo não encontrado.'
       end
 
-      @attribute_option.destroy
+      if @attribute_option.destroy
+        return head :no_content if modal_request?
 
-      return head :no_content if modal_request?
+        respond_to do |format|
+          format.html { redirect_to admin_attribute_options_path, notice: 'Atributo removido.' }
+          format.json { head :no_content }
+        end
+      else
+        errors = @attribute_option.errors.full_messages.presence || ["Não foi possível remover o atributo."]
+        return render json: { errors: errors }, status: :unprocessable_entity if modal_request?
 
-      respond_to do |format|
-        format.html { redirect_to admin_attribute_options_path, notice: 'Atributo removido.' }
-        format.json { head :no_content }
+        redirect_to admin_attribute_options_path, alert: errors.to_sentence
       end
     end
 

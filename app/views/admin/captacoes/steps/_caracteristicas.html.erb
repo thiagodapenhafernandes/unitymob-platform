@@ -1,17 +1,6 @@
 <%
   kind = @captacao.property_kind.to_s
-  fallback_features_imovel = case kind
-                             when "residencial"
-                               ["Armários nos quartos", "Cozinha planejada", "Ar-condicionado", "Aquecimento a gás",
-                                "Fechadura digital", "Lavabo", "Piscina", "Churrasqueira", "Área de serviço"]
-                             when "sala_comercial"
-                               ["Ar-condicionado", "Recepção", "Sanitários", "Copa/cozinha", "Piso elevado", "Sprinklers",
-                                "Sistema de segurança", "Divisórias prontas"]
-                             else  # terreno
-                               ["Murado", "Cercado", "Aterrado", "Com edificação", "Esquina", "Frente para mar"]
-                             end
-
-  features_imovel = captacao_feature_options(@internal_features, fallback_features_imovel, @captacao.caracteristicas_imovel)
+  features_imovel = captacao_feature_options(@internal_features, @captacao.caracteristicas_imovel)
 %>
 
 <h1 class="wizard-section-title"><i class="bi bi-rulers tw-text-primary"></i>Características do imóvel</h1>

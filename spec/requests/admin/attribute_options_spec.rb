@@ -51,4 +51,36 @@ RSpec.describe "Admin::AttributeOptions", type: :request do
     expect(admin.tenant.attribute_options.find_by!(name: attribute_name)).to be_present
     expect(response).to redirect_to(admin_attribute_options_path)
   end
+
+  it "limpa caches de filtros e formulários de imóveis ao criar e excluir característica" do
+    form_cache_key = "admin/habitations/form_options/v2/tenant/#{admin.tenant_id}"
+    filter_cache_key = "admin/habitations/filter_data/v8/tenant/#{admin.tenant_id}"
+    attribute_name = "Característica cache #{SecureRandom.hex(4)}"
+
+    Rails.cache.write(form_cache_key, { internal_features: ["cache antigo"] })
+    Rails.cache.write(filter_cache_key, { amenities: ["cache antigo"] })
+
+    post admin_attribute_options_path(format: :json), params: {
+      attribute_option: {
+        context: "habitation",
+        category: "feature",
+        name: attribute_name
+      }
+    }, headers: { "X-Requested-With" => "XMLHttpRequest" }
+
+    expect(response).to have_http_status(:created)
+    expect(Rails.cache.read(form_cache_key)).to be_nil
+    expect(Rails.cache.read(filter_cache_key)).to be_nil
+
+    option = admin.tenant.attribute_options.find_by!(name: attribute_name)
+    Rails.cache.write(form_cache_key, { internal_features: [attribute_name] })
+    Rails.cache.write(filter_cache_key, { amenities: [attribute_name] })
+
+    delete admin_attribute_option_path(option, format: :json), headers: { "X-Requested-With" => "XMLHttpRequest" }
+
+    expect(response).to have_http_status(:no_content)
+    expect(admin.tenant.attribute_options.where(id: option.id)).to be_empty
+    expect(Rails.cache.read(form_cache_key)).to be_nil
+    expect(Rails.cache.read(filter_cache_key)).to be_nil
+  end
 end

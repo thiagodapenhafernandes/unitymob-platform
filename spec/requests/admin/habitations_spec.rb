@@ -1399,6 +1399,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       valor_venda_cents: 900_000_00,
       valor_locacao_cents: 0,
       proprietario: "Proprietário Venda",
+      proprietario_celular: "(47) 98888-0000",
       proprietario_email: "venda@example.com"
     )
     rental_property = create(
@@ -1409,6 +1410,7 @@ RSpec.describe "Admin::Habitations", type: :request do
       valor_venda_cents: 0,
       valor_locacao_cents: 5_000_00,
       proprietario: "Proprietário Locação",
+      proprietario_celular: "(47) 97777-0000",
       proprietario_email: "locacao@example.com"
     )
 
@@ -1417,11 +1419,14 @@ RSpec.describe "Admin::Habitations", type: :request do
     get admin_habitation_path(sale_property)
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Proprietário Venda")
-    expect(response.body).to include("venda@example.com")
+    expect(response.body).to include("55 (47) 98888-0000")
+    expect(response.body).to include("https://wa.me/5547988880000")
+    expect(response.body).not_to include("venda@example.com")
 
     get admin_habitation_path(rental_property)
     expect(response).to have_http_status(:ok)
     expect(response.body).not_to include("Proprietário Locação")
+    expect(response.body).not_to include("55 (47) 97777-0000")
     expect(response.body).not_to include("locacao@example.com")
   end
 
@@ -1900,7 +1905,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body.index(human_edited.titulo_anuncio)).to be < response.body.index(synced_by_dwv.titulo_anuncio)
   end
 
-  it "ignora filtro legado de rua removido da localização" do
+  it "filtra por rua e número na localização do catálogo" do
     structured = create(:habitation, codigo: "RUA-EST-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel Rua Estruturada")
     structured.create_address!(
       tipo_endereco: "Rua",
@@ -1910,26 +1915,27 @@ RSpec.describe "Admin::Habitations", type: :request do
       cidade: "Balneário Camboriú",
       uf: "SC"
     )
-    legacy = create(
-      :habitation,
-      codigo: "RUA-LEG-#{SecureRandom.hex(6)}",
-      titulo_anuncio: "Imóvel Rua Legada",
-      endereco: "Avenida Atlântica, 500"
+    other = create(:habitation, codigo: "RUA-OUT-#{SecureRandom.hex(6)}", titulo_anuncio: "Imóvel Rua Diferente")
+    other.address.update!(
+      tipo_endereco: "Avenida",
+      logradouro: "Atlântica",
+      numero: "500",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
     )
 
     get admin_habitations_path(logradouro: "Central Norte")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(structured.titulo_anuncio)
-    expect(response.body).to include(legacy.titulo_anuncio)
-    expect(response.body).not_to include("Rua: Central Norte")
+    expect(response.body).not_to include(other.titulo_anuncio)
 
-    get admin_habitations_path(logradouro: "Atlântica")
+    get admin_habitations_path(numero: "500")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include(legacy.titulo_anuncio)
-    expect(response.body).to include(structured.titulo_anuncio)
-    expect(response.body).not_to include("Rua: Atlântica")
+    expect(response.body).to include(other.titulo_anuncio)
+    expect(response.body).not_to include(structured.titulo_anuncio)
   end
 
   it "ignora filtro legado de bairro removido da localização" do
@@ -3670,7 +3676,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Elevadores")
   end
 
-  it "mantém proprietário e anexos fora do detalhe simplificado para o captador do imóvel" do
+  it "mostra nome e telefone do proprietário para o captador do imóvel" do
     broker_profile = default_agent_profile
     captador = create(:admin_user, profile: broker_profile, name: "Captador Show")
     habitation = create(
@@ -3679,7 +3685,8 @@ RSpec.describe "Admin::Habitations", type: :request do
       codigo: "SHOW-CAP-#{SecureRandom.hex(6)}",
       titulo_anuncio: "Imóvel do captador",
       proprietario: "Proprietário do Captador",
-      proprietario_email: "proprietario@example.com"
+      proprietario_email: "proprietario@example.com",
+      proprietario_celular: "(47) 99999-9999"
     )
     habitation.fichas_cadastro.attach(
       io: StringIO.new("documento"),
@@ -3693,7 +3700,9 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Imóvel do captador")
     expect(response.body).to include("Editar")
-    expect(response.body).not_to include("Proprietário do Captador")
+    expect(response.body).to include("Proprietário do Captador")
+    expect(response.body).to include("55 (47) 99999-9999")
+    expect(response.body).to include("https://wa.me/5547999999999")
     expect(response.body).not_to include("proprietario@example.com")
     expect(response.body).not_to include("Anexos e documentos internos")
     expect(response.body).not_to include("ficha-captador.txt")

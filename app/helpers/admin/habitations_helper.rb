@@ -119,6 +119,29 @@ module Admin::HabitationsHelper
     end
   end
 
+  def admin_habitation_owner_phone_contact(value)
+    phone = value.to_s.strip
+    return if phone.blank?
+
+    label = format_phone(phone)
+    whatsapp_digits = admin_habitation_owner_whatsapp_digits(phone)
+    return label if whatsapp_digits.blank?
+
+    link_to(
+      safe_join([tag.i(class: "bi bi-whatsapp ax-ico"), tag.span(label)]),
+      "https://wa.me/#{whatsapp_digits}",
+      target: "_blank",
+      rel: "noopener"
+    )
+  end
+
+  def admin_habitation_owner_whatsapp_digits(value)
+    digits = Phones::Normalizer.call(value).to_s
+    return if digits.blank?
+
+    digits if digits.match?(/\A55\d{2}9\d{8}\z/)
+  end
+
   def admin_habitation_catalog_title(habitation)
     parts = [
       admin_habitation_catalog_neighborhood(habitation),

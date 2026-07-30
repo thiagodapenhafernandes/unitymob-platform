@@ -293,11 +293,18 @@ export default class extends Controller {
       })
 
       if (response.ok) {
-        this.fetchAttributes()
         this.removeOptionFromUI(name)
+        await this.fetchAttributes()
         this.showMessage("Opção removida da lista.", "success")
       } else {
-        this.showMessage("Erro ao excluir.", "danger")
+        let errorData = null
+        try {
+          errorData = await response.json()
+        } catch (_e) {
+          errorData = null
+        }
+        const errors = errorData?.errors || errorData?.base || errorData?.name
+        this.showMessage(Array.isArray(errors) ? errors.join(", ") : "Erro ao excluir.", "danger")
       }
     } catch (error) {
       console.error("Error deleting attribute:", error)

@@ -739,6 +739,7 @@ class Habitation < ApplicationRecord
   end
 
   def zip_code = cep
+  def street_type = tipo_endereco
   def street = logradouro
   def street_number = numero
   def neighborhood = bairro
@@ -872,6 +873,7 @@ class Habitation < ApplicationRecord
 
   {
     zip_code: [:address, :cep],
+    street_type: [:address, :tipo_endereco],
     street: [:address, :logradouro],
     street_number: [:address, :numero],
     neighborhood: [:address, :bairro],
