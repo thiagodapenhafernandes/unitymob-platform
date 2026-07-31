@@ -2033,7 +2033,6 @@ class Habitation < ApplicationRecord
     self.nome_empreendimento = parent.nome_empreendimento.presence || parent.titulo_anuncio
     self.use_development_photos_flag = true if force_sync
     assign_development_value(:constructor_id, parent.constructor_id, force: force_sync)
-    assign_development_value(:proprietor_id, parent.proprietor_id, force: force_sync)
     assign_development_value(:descricao_empreendimento, development_description_for_unit(parent), force: force_sync)
     assign_development_value(:data_entrega, parent.data_entrega, force: force_sync)
     assign_development_value(:perfil_construcao, parent.perfil_construcao, force: force_sync)

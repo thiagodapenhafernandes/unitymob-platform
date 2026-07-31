@@ -100,6 +100,50 @@ RSpec.describe Habitations::ProprietorLinker do
     expect(habitation.proprietario_codigo).to eq("24518")
   end
 
+  it "ignora proprietário herdado do empreendimento quando a captação tem proprietário divergente" do
+    development_proprietor = create(
+      :proprietor,
+      tenant: tenant,
+      name: "Clh",
+      vista_code: "13835",
+      mobile_phone: "55 (47) 99911-0007"
+    )
+    intake_proprietor = create(
+      :proprietor,
+      tenant: tenant,
+      name: "Edison Correa da Silva",
+      vista_code: "35507",
+      mobile_phone: "55 (47) 99762-2109",
+      city: "Curitiba"
+    )
+    development = create(
+      :habitation,
+      tenant: tenant,
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      codigo: "2984",
+      proprietor: development_proprietor
+    )
+    habitation = create(
+      :habitation,
+      :broker_intake,
+      tenant: tenant,
+      codigo_empreendimento: development.codigo,
+      proprietor: development_proprietor,
+      proprietario: "Edison",
+      proprietario_celular: "55 (47) 99762-2109",
+      proprietario_cidade: "Curitiba"
+    )
+
+    described_class.new(habitation).call
+
+    expect(habitation.proprietor).to eq(intake_proprietor)
+    expect(habitation.proprietario).to eq("Edison")
+    expect(habitation.proprietario_codigo).to eq("35507")
+    expect(habitation.proprietario_celular).to eq("5547997622109")
+    expect(habitation.proprietario_cidade).to eq("Curitiba")
+  end
+
   it "sincroniza cidade do proprietário nas observações de captação" do
     proprietor = create(:proprietor, tenant: tenant, name: "Proprietário Local", city: "Itajaí")
     habitation = create(

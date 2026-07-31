@@ -253,11 +253,13 @@ RSpec.describe Habitation, type: :model do
     it "copies public development data without replacing the unit broker" do
       development_broker = create(:admin_user)
       unit_broker = create(:admin_user)
+      development_proprietor = create(:proprietor)
       development = create(
         :habitation,
         codigo: "DEV-SYNC-#{SecureRandom.hex(6)}",
         tipo: "Empreendimento",
         admin_user: development_broker,
+        proprietor: development_proprietor,
         nome_empreendimento: "Edifício Atlântico",
         descricao_empreendimento: "Descrição pública do empreendimento.",
         pictures: [{ "url" => "https://cdn.saluteimoveis.com.br/empreendimento.jpg" }]
@@ -281,6 +283,7 @@ RSpec.describe Habitation, type: :model do
 
       expect(unit.reload).to have_attributes(
         admin_user_id: unit_broker.id,
+        proprietor_id: nil,
         nome_empreendimento: "Edifício Atlântico",
         descricao_empreendimento: "Descrição pública do empreendimento.",
         use_development_photos_flag: true
