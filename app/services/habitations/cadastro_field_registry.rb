@@ -201,6 +201,7 @@ module Habitations
         tab: "Comercial", section: "Proprietário e comissões",
         items: [
           { key: "proprietario", label: "Proprietário (nome)" },
+          { key: "proprietario_codigo", label: "Código do proprietário" },
           { key: "proprietario_email", label: "E-mail do proprietário" },
           { key: "proprietario_cidade", label: "Cidade do proprietário" },
           { key: "proprietario_celular", label: "Celular do proprietário" },

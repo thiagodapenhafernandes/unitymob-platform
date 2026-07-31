@@ -48,8 +48,9 @@
       <div>
         <%= ax_field_label(f, :valor_total_aluguel_cents, text: "*Vlr total aluguel") %>
         <%= ax_input_group(prefix: "R$") do %>
+          <% displayable_rent_total_cents = f.object.displayable_rent_total_cents.to_i %>
           <input type="text" class="ax-control ax-readonly-input ax-readonly-input--success"
-                 value="<%= number_to_currency(f.object.valor_total_aluguel_cents.to_i / 100.0, unit: '', separator: ',', delimiter: '.') %>"
+                 value="<%= number_to_currency(displayable_rent_total_cents / 100.0, unit: '', separator: ',', delimiter: '.') %>"
                  readonly
                  data-rent-calculator-target="total">
         <% end %>

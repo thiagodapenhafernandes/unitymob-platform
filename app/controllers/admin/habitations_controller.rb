@@ -87,6 +87,7 @@ class Admin::HabitationsController < Admin::BaseController
   helper_method :can_destroy_habitation?
   helper_method :can_bulk_publish_habitations?
   helper_method :can_edit_protected_habitation_fields?
+  helper_method :can_manage_habitation_responsibles?
   helper_method :broker_restricted_habitation_edit?, :broker_habitation_allowed_fields,
                 :broker_habitation_allowed_actions
   helper_method :active_extra_filters_count, :clear_extra_filter_params
@@ -572,9 +573,16 @@ class Admin::HabitationsController < Admin::BaseController
       logs = operational_hub_logs.select { |log| (log.changed_fields & HabitationAuditLog.publication_fields).any? }
       summary = Habitations::OperationalSummary.new(@habitation)
       render partial: "admin/habitations/operational_publication", locals: { habitation: @habitation, summary: summary, logs: logs }
+    when "intake"
+      logs = operational_hub_logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? }
+      render partial: "admin/habitations/operational_intake",
+             locals: {
+               habitation: @habitation,
+               logs: logs,
+               can_view_owner_contact_data: can_view_habitation_owner_contact_data?(@habitation)
+             }
     else
       logs = operational_hub_logs
-      logs = logs.select { |log| (log.changed_fields & HabitationAuditLog.intake_fields).any? } if tab == "intake"
       render partial: "admin/habitations/audit_history_timeline", locals: { tab_id: "hub-#{tab}", active: true, logs: logs }
     end
   end
@@ -2317,12 +2325,14 @@ class Admin::HabitationsController < Admin::BaseController
   def habitation_params
     normalize_rental_guarantee_method_param!
     permitted = params.require(:habitation).permit(*permitted_habitation_fields)
+    responsible_attributes = permitted.slice(:admin_user_id, :broker_assignments_attributes)
     strip_blank_photo_uploads!(permitted)
     normalize_blank_address_list_values!(permitted)
 
     # Filtro por perfil (allowlist): já derruba tudo que a config trava, tornando
     # o antigo deny-list (broker_protected_habitation_param_keys) redundante.
     permitted = Habitations::BrokerEditPolicy.filter(permitted, habitation: @habitation, admin_user: current_admin_user) if broker_restricted_habitation_edit?
+    permitted.merge!(responsible_attributes) if can_manage_habitation_responsibles?
 
     unless can_view_proprietor_data?(@habitation)
       proprietor_locked_fields = %i[
@@ -2712,6 +2722,14 @@ class Admin::HabitationsController < Admin::BaseController
 
   def can_bulk_publish_habitations?
     tenant_owner? || (can?(:edit, :imoveis) && owns_all_resource?(:imoveis))
+  end
+
+  def can_manage_habitation_responsibles?(_habitation = @habitation)
+    return false unless current_admin_user
+    return true if admin_or_administrative_user?
+
+    team_manager = current_admin_user.can_view_team?(:imoveis) || current_admin_user.can_view_team?(:captacoes)
+    team_manager && (can?(:edit, :imoveis) || can?(:review, :captacoes))
   end
 
   # Card #1 (Fase 4): "edita os campos protegidos livremente" = perfil sem NENHUMA

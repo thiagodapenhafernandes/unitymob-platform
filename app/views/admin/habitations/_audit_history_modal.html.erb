@@ -286,4 +286,188 @@
     white-space: pre-wrap;
     word-break: break-word;
   }
+
+  .habitation-intake-operational {
+    padding: 0;
+  }
+
+  .habitation-intake-snapshot,
+  .habitation-intake-history {
+    border: 1px solid var(--ab-line, #d8dee8);
+    border-radius: 12px;
+    background: var(--hab-audit-card-bg, #fff);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .04);
+  }
+
+  .habitation-intake-snapshot__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    border-bottom: 1px solid var(--ab-line-soft, #e7ebf2);
+  }
+
+  .habitation-intake-snapshot__eyebrow {
+    display: block;
+    color: var(--admin-primary);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .habitation-intake-snapshot__header h3 {
+    margin: 2px 0 0;
+    color: var(--ab-ink, #202a37);
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .habitation-intake-snapshot__meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    color: var(--ab-muted, #657386);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .habitation-intake-snapshot__meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .habitation-intake-snapshot__notice {
+    margin: 12px 16px 0;
+    padding: 10px 12px;
+    border: 1px dashed var(--ab-line, #d8dee8);
+    border-radius: 10px;
+    color: var(--ab-muted, #657386);
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+
+  .habitation-intake-snapshot__sections {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .habitation-intake-snapshot__section {
+    border: 1px solid var(--ab-line-soft, #e7ebf2);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .habitation-intake-snapshot__section h4 {
+    margin: 0;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--ab-line-soft, #e7ebf2);
+    background: var(--ab-panel-soft, #f4f7fb);
+    color: var(--ab-ink, #202a37);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .habitation-intake-snapshot__section dl {
+    margin: 0;
+  }
+
+  .habitation-intake-snapshot__section dl > div {
+    display: grid;
+    grid-template-columns: minmax(112px, .45fr) minmax(0, 1fr);
+    gap: 10px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--ab-line-soft, #e7ebf2);
+  }
+
+  .habitation-intake-snapshot__section dl > div:last-child {
+    border-bottom: 0;
+  }
+
+  .habitation-intake-snapshot__section dt {
+    color: var(--ab-muted, #657386);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .habitation-intake-snapshot__section dd {
+    margin: 0;
+    min-width: 0;
+    color: var(--ab-ink, #202a37);
+    font-size: 12.5px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .habitation-intake-snapshot__section dd span {
+    margin: 0;
+  }
+
+  .habitation-intake-snapshot-empty {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border: 1px dashed var(--ab-line, #d8dee8);
+    border-radius: 12px;
+    background: var(--ab-panel-soft, #f4f7fb);
+    color: var(--ab-muted, #657386);
+  }
+
+  .habitation-intake-snapshot-empty i {
+    color: var(--admin-primary);
+    font-size: 22px;
+  }
+
+  .habitation-intake-snapshot-empty strong,
+  .habitation-intake-snapshot-empty span {
+    display: block;
+  }
+
+  .habitation-intake-snapshot-empty strong {
+    color: var(--ab-ink, #202a37);
+  }
+
+  .habitation-intake-history {
+    margin-top: 14px;
+    overflow: hidden;
+  }
+
+  .habitation-intake-history__header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ab-line-soft, #e7ebf2);
+    background: var(--ab-panel-soft, #f4f7fb);
+    color: var(--ab-ink, #202a37);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .habitation-intake-history .tab-pane {
+    padding: 14px;
+  }
+
+  @media (max-width: 720px) {
+    .habitation-intake-snapshot__header {
+      flex-direction: column;
+    }
+
+    .habitation-intake-snapshot__meta {
+      justify-content: flex-start;
+    }
+
+    .habitation-intake-snapshot__sections {
+      grid-template-columns: 1fr;
+    }
+
+    .habitation-intake-snapshot__section dl > div {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+  }
 </style>

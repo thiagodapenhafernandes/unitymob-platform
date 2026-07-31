@@ -133,10 +133,12 @@ module Admin
             return
           end
 
+          broker_intake_snapshot = build_broker_intake_snapshot
           submitted_records = HabitationIntakeSplitter.new(
             @habitation,
             target_intake_status: target_broker_capture_status
           ).call!
+          persist_broker_intake_snapshot!(submitted_records, broker_intake_snapshot)
           snapshot_review_policy!(submitted_records)
           redirect_to admin_captacao_path(@habitation),
                       notice: submission_notice(submitted_records, target_broker_capture_status)
@@ -250,10 +252,12 @@ module Admin
 
       required_checks = active_broker_capture_checks
       if save_intake_with_photos(new_photo_uploads) && @habitation.reload.intake_ready_for_admin_review?(required_checks: required_checks, require_owner_city: true)
+        broker_intake_snapshot = build_broker_intake_snapshot
         submitted_records = HabitationIntakeSplitter.new(
           @habitation,
           target_intake_status: target_broker_capture_status
         ).call!
+        persist_broker_intake_snapshot!(submitted_records, broker_intake_snapshot)
         snapshot_review_policy!(submitted_records)
         notify_review_events(submitted_records, event: "submit_for_review")
         redirect_to admin_captacao_path(@habitation),
@@ -586,11 +590,13 @@ module Admin
 
       case params[:status].presence
       when "draft"
-        scope = scope.where(intake_status: [nil, "draft", "returned_to_broker"])
-      when "completed"
-        scope = scope.where(intake_status: %w[submitted_for_admin_review admin_approved])
+        scope = scope.where(intake_status: [nil, "draft"])
+      when "completed", "submitted_for_admin_review"
+        scope = scope.where(intake_status: "submitted_for_admin_review")
       when "admin_approved"
         scope = scope.where(intake_status: "admin_approved")
+      when "returned_to_broker"
+        scope = scope.where(intake_status: "returned_to_broker")
       when "internal"
         scope = scope.where(intake_status: "internal")
       when "published"
@@ -621,6 +627,8 @@ module Admin
       status_counts = scope.group(:intake_status).count
       modality_counts = scope.group(:intake_modalidade).count
       total = scope.count
+      site_release_count = status_counts["admin_approved"].to_i + status_counts["published"].to_i
+      internal_release_count = status_counts["internal"].to_i
       commercial_count = scope.where(
         "categoria ILIKE :sala OR categoria ILIKE :loja OR categoria ILIKE :comercial",
         sala: "%Sala%",
@@ -635,7 +643,11 @@ module Admin
         returned_to_broker: status_counts["returned_to_broker"].to_i,
         submitted_for_admin_review: status_counts["submitted_for_admin_review"].to_i,
         admin_approved: status_counts["admin_approved"].to_i,
+        internal: internal_release_count,
         published: status_counts["published"].to_i,
+        admin_releases: site_release_count + internal_release_count,
+        site_releases: site_release_count,
+        internal_releases: internal_release_count,
         last_7_days: scope.where(created_at: 7.days.ago.beginning_of_day..Time.current).count,
         missing_photos: missing_photos_count(scope),
         property_kinds: {
@@ -916,6 +928,14 @@ module Admin
           updated_at: Time.current
         )
       end
+    end
+
+    def build_broker_intake_snapshot
+      Habitations::BrokerIntakeSnapshot.build(@habitation, actor: current_admin_user)
+    end
+
+    def persist_broker_intake_snapshot!(records, snapshot)
+      Habitations::BrokerIntakeSnapshot.persist!(records, snapshot: snapshot)
     end
 
     def invalid_fields_for_step(step)

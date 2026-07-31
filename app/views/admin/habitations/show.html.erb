@@ -117,7 +117,7 @@
 
   sale_price = money.call(@habitation.valor_venda_cents)
   rent_price = money.call(@habitation.valor_locacao_cents)
-  total_rent_price = money.call(@habitation.valor_total_aluguel_cents)
+  total_rent_price = money.call(@habitation.displayable_rent_total_cents)
   has_sale_discount = @habitation.sale_discount?
   has_rent_discount = @habitation.rent_discount?
   previous_sale_price = has_sale_discount ? money.call(@habitation.valor_venda_anterior_cents) : nil
@@ -134,13 +134,13 @@
                     elsif has_rent_discount && discount_label.present?
                       "Locação com preço reduzido · #{discount_label}% de desconto"
                     end
-  main_price = sale_price || (has_rent_discount && rent_price.present? ? "#{rent_price}/mês" : nil) || total_rent_price || (rent_price.present? ? "#{rent_price}/mês" : nil) || "Sob consulta"
+  main_price = sale_price || (rent_price.present? ? "#{rent_price}/mês" : nil) || total_rent_price || "Sob consulta"
   price_context = if sale_price.present?
                     "Venda"
-                  elsif total_rent_price.present?
-                    "Pacote locação"
                   elsif rent_price.present?
                     "Locação"
+                  elsif total_rent_price.present?
+                    "Pacote locação"
                   else
                     "Valor sob consulta"
                   end
@@ -509,10 +509,10 @@
             <% if reduction_label.present? %>
               <small class="ax-property-show-price__discount"><i class="bi bi-arrow-down-right"></i><%= reduction_label %></small>
             <% end %>
-            <% if sale_price.present? && total_rent_price.present? %>
-              <small>Locação: <%= total_rent_price %></small>
-            <% elsif sale_price.present? && rent_price.present? %>
+            <% if sale_price.present? && rent_price.present? %>
               <small>Locação: <%= rent_price %>/mês</small>
+            <% elsif sale_price.present? && total_rent_price.present? %>
+              <small>Pacote locação: <%= total_rent_price %></small>
             <% end %>
           </div>
 

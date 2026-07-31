@@ -2424,7 +2424,8 @@ CREATE TABLE public.habitations (
     searchable_features text GENERATED ALWAYS AS (public.habitation_searchable_features(caracteristicas, infra_estrutura, caracteristica_unica, descricao_web, (face)::text)) STORED,
     intake_review_policy_version integer,
     intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
-    preco_atualizado_em timestamp(6) without time zone
+    preco_atualizado_em timestamp(6) without time zone,
+    broker_intake_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -16083,6 +16084,7 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260731160000'),
 ('20260718143000'),
 ('20260717090000'),
 ('20260716140000'),
@@ -16459,4 +16461,3 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20251122130154'),
 ('20251122125348'),
 ('20251122125042');
-

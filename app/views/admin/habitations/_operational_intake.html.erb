@@ -1,0 +1,63 @@
+<div class="tab-pane fade show active habitation-intake-operational" id="hub-intake" role="tabpanel">
+  <% snapshot = habitation.has_attribute?(:broker_intake_snapshot) ? habitation.broker_intake_snapshot.to_h : {} %>
+  <% snapshot_present = Habitations::BrokerIntakeSnapshot.snapshot_present?(snapshot) %>
+
+  <% if snapshot_present %>
+    <% captured_at = Time.zone.parse(snapshot["captured_at"].to_s) rescue nil %>
+    <% visible_sections = Array(snapshot["sections"]).reject { |section| section["key"] == "proprietario" && !can_view_owner_contact_data } %>
+
+    <section class="habitation-intake-snapshot" aria-label="Fotografia inicial da captação">
+      <header class="habitation-intake-snapshot__header">
+        <div>
+          <span class="habitation-intake-snapshot__eyebrow">Fotografia inicial</span>
+          <h3>Dados enviados pelo corretor</h3>
+        </div>
+        <div class="habitation-intake-snapshot__meta">
+          <% if captured_at.present? %>
+            <span><i class="bi bi-calendar-check" aria-hidden="true"></i><%= l(captured_at, format: "%d/%m/%Y %H:%M") %></span>
+          <% end %>
+          <% if snapshot.dig("captured_by", "name").present? %>
+            <span><i class="bi bi-person-check" aria-hidden="true"></i><%= snapshot.dig("captured_by", "name") %></span>
+          <% end %>
+        </div>
+      </header>
+
+      <% unless can_view_owner_contact_data %>
+        <div class="habitation-intake-snapshot__notice">
+          Dados do proprietário ocultos conforme sua permissão de acesso.
+        </div>
+      <% end %>
+
+      <div class="habitation-intake-snapshot__sections">
+        <% visible_sections.each do |section| %>
+          <article class="habitation-intake-snapshot__section">
+            <h4><%= section["title"] %></h4>
+            <dl>
+              <% Array(section["rows"]).each do |row| %>
+                <div>
+                  <dt><%= row["label"] %></dt>
+                  <dd><%= simple_format(row["value"].presence || "-", {}, wrapper_tag: "span") %></dd>
+                </div>
+              <% end %>
+            </dl>
+          </article>
+        <% end %>
+      </div>
+    </section>
+  <% else %>
+    <div class="habitation-intake-snapshot-empty">
+      <i class="bi bi-camera" aria-hidden="true"></i>
+      <div>
+        <strong>Fotografia inicial ainda não registrada.</strong>
+        <span>Novos envios de captação passam a gravar automaticamente os dados enviados pelo corretor.</span>
+      </div>
+    </div>
+  <% end %>
+
+  <section class="habitation-intake-history" aria-label="Histórico da captação">
+    <header class="habitation-intake-history__header">
+      <span>Histórico da captação</span>
+    </header>
+    <%= render "admin/habitations/audit_history_timeline", tab_id: "hub-intake-history", active: true, logs: logs %>
+  </section>
+</div>

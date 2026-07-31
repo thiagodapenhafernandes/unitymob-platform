@@ -26,11 +26,11 @@
       </div>
     <% elsif habitation.broker_intake? && habitation.intake_admin_approved? %>
       <div class="tw-mt-2">
-        <%= ax_badge("Aguardando aceite do corretor", tone: :amber) %>
+        <%= ax_badge("Publicar no site", tone: :amber) %>
       </div>
     <% elsif habitation.broker_intake? && habitation.intake_internal? %>
       <div class="tw-mt-2">
-        <%= ax_badge("Disponível internamente", tone: :blue) %>
+        <%= ax_badge("Interno", tone: :blue) %>
       </div>
     <% end %>
   </div>
