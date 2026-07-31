@@ -47,6 +47,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("Iniciar captação")
     expect(response.body).to include("Tipo de cadastro")
     expect(response.body).to include("Comerciais e industriais")
+    expect(response.body).to include("Empreendimento")
     expect(response.body).to include("Categoria")
     expect(response.body).to include("Status comercial")
     document = Nokogiri::HTML(response.body)
@@ -54,6 +55,22 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include("wizard-top-bar__summary", "wizard-nav-action")
     expect(response.body).to include('progress class="ax-progress__bar"', 'aria-label="Progresso da captação: 0%"')
     expect(response.body).not_to include("wizard-progress-bar")
+  end
+
+  it "inicia captação manual como empreendimento quando esse tipo de cadastro é escolhido" do
+    post admin_captacoes_path, params: {
+      habitation: {
+        cadastro_type: "empreendimento",
+        categoria: "",
+        modalidade: "venda"
+      }
+    }
+
+    captacao = Habitation.broker_intakes.order(:created_at).last
+    expect(response).to redirect_to(edit_admin_captacao_path(captacao, step: "proprietario"))
+    expect(captacao.tipo).to eq("Empreendimento")
+    expect(captacao.categoria).to eq("Empreendimento")
+    expect(captacao.status).to eq("Venda")
   end
 
   it "exibe exportador de planilha somente para administrador ou administrativo" do
@@ -987,10 +1004,12 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Empreendimento cadastrado")
     expect(response.body).to include("Residencial PWA Busca")
+    expect(response.body.index('name="habitation[codigo_empreendimento]"')).to be < response.body.index('name="habitation[zip_code]"')
     document = Nokogiri::HTML(response.body)
     expect(document.at_css('select[name="habitation[street_type]"] option[value="Rua"]')).to be_present
     expect(document.at_css('input[name="habitation[street]"][data-habitation-duplicate-check-target="street"]')).to be_present
     expect(document.at_css('input[name="habitation[state]"][data-cep-lookup-target="uf"]')).to be_present
+    expect(document.at_css('input[name="habitation[zip_code]"][data-habitation-form-target="zipCode"]')).to be_present
 
     patch admin_captacao_path(intake), params: {
       current_step: "endereco",
@@ -1017,6 +1036,69 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     get edit_admin_captacao_path(intake, step: "endereco")
 
     expect(response.body).to include("Residencial PWA Busca")
+  end
+
+  it "converte captação de empreendimento cadastrado em unidade vinculada e herda dados do empreendimento" do
+    development = create(
+      :habitation,
+      codigo: "DEV-CAPTACAO-#{SecureRandom.hex(4)}",
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      nome_empreendimento: "Império do Sol",
+      descricao_web: "<p>Descrição pública do empreendimento.</p>",
+      descricao_empreendimento: "Descrição do empreendimento para unidades.",
+      data_entrega: Date.new(2027, 6, 15),
+      perfil_construcao: "Em construção"
+    )
+    development.address.update!(
+      tipo_endereco: "Avenida",
+      logradouro: "Governador Celso Ramos",
+      numero: "2",
+      bairro: "Perequê",
+      bairro_comercial: "Perequê",
+      cidade: "Porto Belo",
+      uf: "SC",
+      cep: "88210-000"
+    )
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      intake_step: "endereco",
+      nome_empreendimento: nil,
+      codigo_empreendimento: nil,
+      use_development_photos_flag: false
+    )
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco",
+      direction: "forward",
+      habitation: {
+        codigo_empreendimento: development.codigo,
+        unidade_numero: "1203"
+      }
+    }
+
+    expect(response).to redirect_to(edit_admin_captacao_path(intake, step: "caracteristicas"))
+    intake.reload
+    expect(intake.tipo).to eq("Unitário")
+    expect(intake.categoria).to eq("Apartamento")
+    expect(intake.codigo_empreendimento).to eq(development.codigo)
+    expect(intake.nome_empreendimento).to eq("Império do Sol")
+    expect(intake.complemento).to eq("1203")
+    expect(intake.use_development_photos_flag).to eq(true)
+    expect(intake.data_entrega).to eq(Date.new(2027, 6, 15))
+    expect(intake.perfil_construcao).to eq("Em construção")
+    expect(intake.descricao_empreendimento).to eq("Descrição do empreendimento para unidades.")
+    expect(intake.address.logradouro).to eq("Governador Celso Ramos")
+    expect(intake.address.numero).to eq("2")
+    expect(intake.address.bairro).to eq("Perequê")
+    expect(intake.address.bairro_comercial).to eq("Perequê")
+    expect(intake.address.cidade).to eq("Porto Belo")
+    expect(intake.address.uf).to eq("SC")
+    expect(intake.address.cep).to eq("88210-000")
   end
 
   it "bloqueia avanço de apartamento sem nome do empreendimento mesmo fora do checklist operacional" do

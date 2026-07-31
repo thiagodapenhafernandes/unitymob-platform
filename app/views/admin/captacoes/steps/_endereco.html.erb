@@ -1,7 +1,59 @@
 <h1 class="wizard-section-title"><i class="bi bi-geo-alt-fill tw-text-primary"></i>Endereço do imóvel</h1>
 <p class="wizard-section-subtitle">Digite o CEP e nós preenchemos o endereço. Complete número e complemento quando necessário.</p>
 
-<div data-controller="cep-lookup">
+<%
+  captacao_developments = Array(@developments)
+  captacao_development_lookup = captacao_developments.each_with_object({}) do |development, hash|
+    development_address = development.address
+    hash[development.codigo.to_s] = {
+      nome_empreendimento: development.nome_empreendimento.presence || development.titulo_anuncio.to_s,
+      data_entrega: development.data_entrega&.iso8601,
+      perfil_construcao: development.perfil_construcao.to_s,
+      address: {
+        tipo_endereco: (development_address&.tipo_endereco.presence || development.tipo_endereco).to_s,
+        logradouro: (development_address&.logradouro.presence || development.endereco).to_s,
+        numero: (development_address&.numero.presence || development.numero).to_s,
+        bairro: (development_address&.bairro.presence || development.bairro).to_s,
+        bairro_comercial: (development_address&.bairro_comercial.presence || development.bairro_comercial).to_s,
+        cidade: (development_address&.cidade.presence || development.cidade).to_s,
+        uf: (development_address&.uf.presence || development.uf).to_s,
+        cep: (development_address&.cep.presence || development.cep).to_s
+      }
+    }
+  end
+  show_development_picker = @captacao.requires_intake_development_name? || @captacao.empreendimento? || @captacao.categoria.to_s == "Empreendimento"
+  show_unit_field = @captacao.requires_unit_number? || @captacao.empreendimento? || @captacao.categoria.to_s == "Empreendimento"
+  unit_field_label = show_unit_field && !@captacao.requires_unit_number? ? "Unidade / Apto" : @captacao.intake_address_complement_label
+%>
+
+<div data-controller="cep-lookup habitation-form"
+     data-habitation-form-developments-value="<%= json_escape(captacao_development_lookup.to_json) %>">
+  <% if show_development_picker %>
+    <div class="wizard-field-group">
+      <% if captacao_developments.any? %>
+        <%= ax_autocomplete_select_field(
+              clearable: true,
+              form: f,
+              method: :codigo_empreendimento,
+              label: "Empreendimento cadastrado",
+              choices: captacao_developments.map { |development| [development.nome_empreendimento.presence || development.titulo_anuncio.to_s, development.codigo] },
+              select_options: { include_blank: "Buscar pelo nome...", selected: @captacao.codigo_empreendimento },
+              placeholder: "Buscar pelo nome...",
+              html_options: {
+                data: {
+                  habitation_form_target: "developmentSelect",
+                  action: "change->habitation-form#developmentChanged"
+                }
+              }
+            ) %>
+      <% else %>
+        <%= ax_inline_notice(tone: :neutral, icon: "building") do %>
+          Nenhum empreendimento cadastrado encontrado. Continue preenchendo manualmente.
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
   <div class="wizard-field-group wizard-field-group--cep">
     <%= ax_field_label(f, :zip_code, text: "CEP") %>
     <div class="wizard-cep-row">
@@ -11,7 +63,7 @@
                        placeholder: "88330-030",
                        maxlength: 9,
                        inputmode: "numeric",
-                       data: { cep_lookup_target: "cep", action: "blur->cep-lookup#lookup" } %>
+                       data: { cep_lookup_target: "cep", habitation_form_target: "zipCode", action: "blur->cep-lookup#lookup" } %>
       <button type="button" class="ax-btn ax-btn--ghost wizard-cep-button" data-cep-lookup-target="button" data-action="cep-lookup#lookup">
         <i class="bi bi-search"></i><span>Buscar</span>
       </button>
@@ -29,14 +81,14 @@
             class_name: "wizard-field-group",
             html_options: {
               class: field_state.call(:street_type, "ax-control"),
-              data: { controller: "tom-select", placeholder: "Selecione..." }
+              data: { controller: "tom-select", placeholder: "Selecione...", habitation_form_target: "streetTypeSelect" }
             }) %>
     </div>
     <div class="ax-span-6">
       <%= ax_text_field(form: f, method: :street,
             label: safe_join(["Logradouro", tag.span("*", class: "required-star")], " "),
             field_class: "wizard-field-group", class: field_state.call(:street), autocomplete: "address-line1",
-            data: { cep_lookup_target: "address", habitation_duplicate_check_target: "street",
+            data: { cep_lookup_target: "address", habitation_form_target: "street", habitation_duplicate_check_target: "street",
                     action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check" }) %>
       <% if field_invalid.call(:street) %><div class="invalid-feedback d-block">Informe a rua/avenida.</div><% end %>
     </div>
@@ -44,7 +96,7 @@
       <%= ax_text_field(form: f, method: :street_number,
             label: safe_join(["Nº", tag.span("*", class: "required-star")], " "),
             field_class: "wizard-field-group", class: field_state.call(:street_number), inputmode: "numeric",
-            autocomplete: "address-line2", data: { cep_lookup_target: "number", habitation_duplicate_check_target: "number",
+            autocomplete: "address-line2", data: { cep_lookup_target: "number", habitation_form_target: "streetNumber", habitation_duplicate_check_target: "number",
                     action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check" }) %>
       <% if field_invalid.call(:street_number) %><div class="invalid-feedback d-block">Informe o número.</div><% end %>
     </div>
@@ -53,57 +105,28 @@
   <%= ax_field_grid(class_name: "wizard-address-locality-grid") do %>
     <div class="ax-span-6">
       <%= ax_text_field(form: f, method: :neighborhood, label: "Bairro", field_class: "wizard-field-group",
-            class: field_state.call(:neighborhood), autocomplete: "address-level3", data: { cep_lookup_target: "neighborhood" }) %>
+            class: field_state.call(:neighborhood), autocomplete: "address-level3",
+            data: { cep_lookup_target: "neighborhood", habitation_form_target: "neighborhoodSelect" }) %>
       <% if field_invalid.call(:neighborhood) %><div class="invalid-feedback d-block">Informe o bairro.</div><% end %>
     </div>
     <div class="ax-span-4">
       <%= ax_text_field(form: f, method: :city,
             label: safe_join(["Cidade", tag.span("*", class: "required-star")], " "),
             field_class: "wizard-field-group", class: field_state.call(:city), autocomplete: "address-level2",
-            data: { cep_lookup_target: "city" }) %>
+            data: { cep_lookup_target: "city", habitation_form_target: "citySelect" }) %>
       <% if field_invalid.call(:city) %><div class="invalid-feedback d-block">Informe a cidade.</div><% end %>
     </div>
     <div class="ax-span-2">
       <%= ax_text_field(form: f, method: :state, label: "UF", field_class: "wizard-field-group",
             class: field_state.call(:state, "ax-control text-uppercase"), maxlength: 2, autocomplete: "address-level1",
-            data: { cep_lookup_target: "uf" }) %>
+            data: { cep_lookup_target: "uf", habitation_form_target: "stateSelect" }) %>
       <% if field_invalid.call(:state) %><div class="invalid-feedback d-block">Informe a UF.</div><% end %>
     </div>
   <% end %>
-</div>
-
-<% if @captacao.requires_intake_development_name? || @captacao.requires_intake_address_complement? %>
+  <% if show_development_picker || @captacao.requires_intake_address_complement? %>
   <hr class="my-3">
   <%# Campos condicionais ao tipo do imóvel, empilhados em largura total (mobile-first). %>
-  <% if @captacao.requires_intake_development_name? %>
-    <%
-      captacao_developments = Array(@developments)
-      captacao_development_lookup = captacao_developments.each_with_object({}) do |development, hash|
-        hash[development.codigo.to_s] = {
-          nome_empreendimento: development.nome_empreendimento.presence || development.titulo_anuncio.to_s
-        }
-      end
-    %>
-    <div data-controller="habitation-form"
-         data-habitation-form-developments-value="<%= json_escape(captacao_development_lookup.to_json) %>">
-      <% if captacao_developments.any? %>
-        <%= ax_autocomplete_select_field(
-              clearable: true,
-              form: f,
-              method: :codigo_empreendimento,
-              label: "Empreendimento cadastrado",
-              choices: captacao_developments.map { |development| [development.nome_empreendimento.presence || development.titulo_anuncio.to_s, development.codigo] },
-              select_options: { include_blank: "Buscar pelo nome...", selected: @captacao.codigo_empreendimento },
-              placeholder: "Buscar pelo nome...",
-              html_options: {
-                data: {
-                  habitation_form_target: "developmentSelect",
-                  action: "change->habitation-form#developmentChanged"
-                }
-              }
-            ) %>
-      <% end %>
-
+  <% if show_development_picker %>
       <%= ax_text_field(form: f, method: :edificio_nome,
             label: safe_join(["Edifício / Condomínio", tag.span("*", class: "required-star")], " "),
             field_class: "wizard-field-group", class: field_state.call(:edificio_nome),
@@ -111,11 +134,10 @@
             data: { habitation_form_target: "developmentName", habitation_duplicate_check_target: "building",
                     action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check" }) %>
       <% if field_invalid.call(:edificio_nome) %><div class="invalid-feedback d-block">Informe o nome do condomínio/empreendimento.</div><% end %>
-    </div>
   <% end %>
-  <% if @captacao.requires_unit_number? %>
+  <% if show_unit_field %>
     <%= ax_text_field(form: f, method: :unidade_numero,
-          label: safe_join([@captacao.intake_address_complement_label, tag.span("*", class: "required-star")], " "),
+          label: safe_join([unit_field_label, tag.span("*", class: "required-star")], " "),
           field_class: "wizard-field-group", class: field_state.call(:unidade_numero),
           placeholder: @captacao.intake_address_complement_placeholder,
           data: { habitation_duplicate_check_target: "unit",
@@ -143,7 +165,7 @@
     <% if field_invalid.call(:quadra) %><div class="invalid-feedback d-block">Informe a quadra.</div><% end %>
   <% end %>
   <div data-habitation-duplicate-check-target="status"></div>
-<% else %>
+  <% else %>
   <hr class="my-3">
   <%= ax_field_grid do %>
     <div class="ax-span-12">
@@ -154,4 +176,5 @@
     </div>
   <% end %>
   <div data-habitation-duplicate-check-target="status"></div>
-<% end %>
+  <% end %>
+</div>
