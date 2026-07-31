@@ -101,10 +101,15 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Total")
     expect(response.body).to include("Rascunhos")
-    expect(response.body).to include("Em revisão")
-    expect(response.body).to include("Aprovadas")
-    expect(response.body).to include("Publicadas")
+    expect(response.body).to include("Em revisão adm.")
+    expect(response.body).to include("Publicar no site")
+    expect(response.body).to include("Internas")
+    expect(response.body).to include("Publicadas no site")
     expect(response.body).to include("Devolvidas")
+    expect(response.body).to include("Administrativo")
+    expect(response.body).to include("liberações")
+    expect(response.body).to include("para site")
+    expect(response.body).to include("internas")
     expect(response.body).to match(/Residencial:\s*\d+/)
     expect(response.body).to match(/Comercial:\s*\d+/)
     expect(response.body).to match(/Terreno:\s*\d+/)
@@ -170,6 +175,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     second_broker = create(:admin_user, name: "Corretor Beta")
     first_visible = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação Alfa em revisão")
     second_visible = create(:habitation, :broker_intake, admin_user: second_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "admin_approved", titulo_anuncio: "Captação Beta aprovada")
+    returned = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "returned_to_broker", titulo_anuncio: "Captação Alfa devolvida")
     internal = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "internal", titulo_anuncio: "Captação Alfa interna")
     published = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "published", titulo_anuncio: "Captação Alfa publicada")
 
@@ -179,6 +185,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include('name="corretor_id"')
     expect(response.body).to include(first_visible.titulo_anuncio)
     expect(response.body).not_to include(second_visible.titulo_anuncio)
+    expect(response.body).not_to include(returned.titulo_anuncio)
     expect(response.body).not_to include(internal.titulo_anuncio)
     expect(response.body).not_to include(published.titulo_anuncio)
 
@@ -186,6 +193,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response.body).to include(first_visible.titulo_anuncio)
     expect(response.body).not_to include(second_visible.titulo_anuncio)
+    expect(response.body).not_to include(returned.titulo_anuncio)
     expect(response.body).not_to include(internal.titulo_anuncio)
 
     get admin_captacoes_path(status: "admin_approved")
@@ -196,6 +204,11 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     get admin_captacoes_path(status: "internal")
 
     expect(response.body).to include(internal.titulo_anuncio)
+    expect(response.body).not_to include(first_visible.titulo_anuncio)
+
+    get admin_captacoes_path(status: "returned_to_broker")
+
+    expect(response.body).to include(returned.titulo_anuncio)
     expect(response.body).not_to include(first_visible.titulo_anuncio)
   end
 
@@ -506,6 +519,12 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(intake.reload).to have_attributes(
       intake_status: "submitted_for_admin_review",
       salas_qtd: 1
+    )
+    expect(intake.broker_intake_snapshot_present?).to eq(true)
+    snapshot_rows = intake.broker_intake_snapshot.fetch("sections").flat_map { |section| section.fetch("rows") }
+    expect(snapshot_rows).to include(
+      hash_including("label" => "Categoria", "value" => "Sala Comercial"),
+      hash_including("label" => "Salas", "value" => "1")
     )
   end
 

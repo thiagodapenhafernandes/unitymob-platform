@@ -5,11 +5,20 @@
 <% status_tiles = [
   ["Total", dashboard[:total].to_i, "neutral"],
   ["Rascunhos", dashboard[:draft].to_i, "amber"],
-  ["Em revisão", dashboard[:submitted_for_admin_review].to_i, "blue"],
-  ["Aprovadas", dashboard[:admin_approved].to_i, "cyan"],
-  ["Publicadas", dashboard[:published].to_i, "green"],
+  ["Em revisão adm.", dashboard[:submitted_for_admin_review].to_i, "blue"],
+  ["Publicar no site", dashboard[:admin_approved].to_i, "cyan"],
+  ["Internas", dashboard[:internal].to_i, "neutral"],
+  ["Publicadas no site", dashboard[:published].to_i, "green"],
   ["Devolvidas", dashboard[:returned_to_broker].to_i, "red"]
 ] %>
+<% intake_status_badge_tones = {
+  "draft" => "amber",
+  "submitted_for_admin_review" => "blue",
+  "admin_approved" => "cyan",
+  "internal" => "gray",
+  "published" => "green",
+  "returned_to_broker" => "red"
+} %>
 <% heading_actions = capture do %>
   <% if can_export_captacoes? %>
     <%= link_to export_admin_captacoes_path(request.query_parameters), class: "ax-workspace-heading__tool captacoes-heading-action" do %>
@@ -29,7 +38,7 @@
         eyebrow: "Operação",
         icon: "journal-plus",
         subtitle: (tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes) || current_admin_user.can_view_team?(:captacoes)) ? "Captações da equipe, revisão e publicação." : "Suas captações em andamento.",
-        pills: [filters_active ? "Filtrado" : "Pendentes de revisão"],
+        pills: [filters_active ? "Filtrado" : "Em revisão administrativa"],
         metrics: [
           { value: dashboard[:total].to_i, label: "total" },
           { value: dashboard[:missing_photos].to_i, label: "sem fotos" }
@@ -66,6 +75,18 @@
     </div>
   </section>
 
+  <section class="captacoes-admin-strip" aria-label="Resumo administrativo das captações">
+    <div class="captacoes-admin-strip__header">
+      <i class="bi bi-clipboard-check" aria-hidden="true"></i>
+      <span>Administrativo</span>
+    </div>
+    <div class="captacoes-admin-strip__metrics">
+      <span><strong><%= dashboard[:admin_releases].to_i %></strong> liberações</span>
+      <span><strong><%= dashboard[:site_releases].to_i %></strong> para site</span>
+      <span><strong><%= dashboard[:internal_releases].to_i %></strong> internas</span>
+    </div>
+  </section>
+
   <%= form_with url: admin_captacoes_path, method: :get, local: true, class: "captacoes-filter-panel" do %>
     <%= hidden_field_tag :team, params[:team] if params[:team].present? %>
     <div class="captacoes-filter-panel__header">
@@ -82,7 +103,7 @@
       </div>
       <div class="captacoes-filter-field">
         <label class="ax-label" for="status">Status da captação</label>
-        <%= select_tag :status, options_for_select([["Pendentes de revisão", ""], ["Rascunhos e devolvidas", "draft"], ["Aguardando aceite do corretor", "admin_approved"], ["Disponíveis internamente", "internal"], ["Publicadas no site", "published"]], params[:status]), class: "ax-select" %>
+        <%= select_tag :status, options_for_select([["Em revisão administrativa", ""], ["Rascunho", "draft"], ["Publicar no site", "admin_approved"], ["Interno", "internal"], ["Publicado no site", "published"], ["Devolvido ao corretor", "returned_to_broker"]], params[:status]), class: "ax-select" %>
       </div>
       <% if can_filter_intakes_by_broker? %>
         <div class="captacoes-filter-field captacoes-filter-field--broker">
@@ -129,7 +150,8 @@
             <% if can_filter_intakes_by_broker? %><td><%= c.corretor.name %></td><% end %>
             <td class="ax-num"><% if c.valor_venda.present? %><%= number_to_currency(c.valor_venda, unit: "R$ ", precision: 0) %><% elsif c.valor_locacao.present? %><%= number_to_currency(c.valor_locacao, unit: "R$ ", precision: 0) %>/mês<% else %>—<% end %></td>
             <td>
-              <% if c.published_on_site? %><span class="ax-badge ax-badge--green ax-badge--dot">Publicada</span><% elsif c.completed? %><span class="ax-badge ax-badge--blue ax-badge--dot">Finalizada</span><% else %><span class="ax-badge ax-badge--amber ax-badge--dot">Rascunho</span><% end %>
+              <% badge_tone = intake_status_badge_tones.fetch(c.intake_status, "gray") %>
+              <span class="ax-badge ax-badge--<%= badge_tone %> ax-badge--dot"><%= c.intake_status_label %></span>
             </td>
             <td class="tw-text-2xs tw-text-ink-muted"><%= time_ago_in_words(c.updated_at) %></td>
             <td class="ax-num">
@@ -169,7 +191,8 @@
           <div class="captacao-mobile-card__badges">
             <span class="ax-badge ax-badge--gray"><%= c.property_kind.humanize %></span>
             <span class="ax-badge ax-badge--<%= mod_color %>"><%= mod_label %></span>
-            <% if c.published_on_site? %><span class="ax-badge ax-badge--green ax-badge--dot">Publicada</span><% elsif c.completed? %><span class="ax-badge ax-badge--blue ax-badge--dot">Finalizada</span><% else %><span class="ax-badge ax-badge--amber ax-badge--dot">Rascunho</span><% end %>
+            <% badge_tone = intake_status_badge_tones.fetch(c.intake_status, "gray") %>
+            <span class="ax-badge ax-badge--<%= badge_tone %> ax-badge--dot"><%= c.intake_status_label %></span>
           </div>
         </div>
         <div class="captacao-mobile-card__side">

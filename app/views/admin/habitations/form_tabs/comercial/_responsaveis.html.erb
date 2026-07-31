@@ -1,6 +1,6 @@
 <%# Card #1: "Responsáveis e agenciamento" pode estar travado pelo perfil
     (Habitations::FieldLockPolicy). %>
-<% can_manage_responsibles = !(f.object.persisted? && Habitations::FieldLockPolicy.for(current_admin_user).action_locked?("acao:gerenciar_responsaveis")) %>
+<% can_manage_responsibles = can_manage_habitation_responsibles?(f.object) || !(f.object.persisted? && Habitations::FieldLockPolicy.for(current_admin_user).action_locked?("acao:gerenciar_responsaveis")) %>
 <% broker_group_actions = capture do %>
   <% if can_manage_responsibles %>
     <%= ax_button("Adicionar", variant: :ghost, size: :sm, icon: "person-plus", data: { ax_modal_open: "#addBrokerModal", action: "habitation-brokers#resetModal" }) %>
@@ -17,12 +17,20 @@
         .compact
     %>
     <% if f.object.admin_user.present? && !assigned_captador_ids.include?(f.object.admin_user_id) %>
+      <% primary_captador_actions = capture do %>
+        <% if can_manage_habitation_responsibles?(f.object) %>
+          <button type="button" class="ax-btn ax-btn--danger ax-btn--sm" data-action="habitation-brokers#removePrimaryCaptador" title="Remover captador">
+            <i class="bi bi-x-circle"></i>
+          </button>
+        <% end %>
+      <% end %>
       <%= ax_record_item(
             eyebrow: "Captador",
             title: f.object.admin_user.name,
             meta: "Captador responsável pelo cadastro do imóvel",
             icon: "person-badge",
-            class_name: "ax-record-item--readonly"
+            class_name: "ax-record-item--readonly",
+            actions: primary_captador_actions
           ) %>
     <% end %>
 

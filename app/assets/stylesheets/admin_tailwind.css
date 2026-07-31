@@ -15884,7 +15884,7 @@ body.capt-dashboard-tv-active .capt-foco-stat__value {
 }
 
 .captacoes-kpi-strip {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -15948,6 +15948,56 @@ body.capt-dashboard-tv-active .capt-foco-stat__value {
   color: #334155;
   font-size: .74rem;
   font-weight: 800;
+}
+
+.captacoes-admin-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--ab-line, #d8dee8);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fff, #f8fbfc);
+}
+
+.captacoes-admin-strip__header,
+.captacoes-admin-strip__metrics {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.captacoes-admin-strip__header {
+  color: #334155;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.captacoes-admin-strip__header i {
+  color: var(--admin-primary, #365f8f);
+}
+
+.captacoes-admin-strip__metrics {
+  justify-content: flex-end;
+  color: #475569;
+  font-size: .74rem;
+  font-weight: 800;
+}
+
+.captacoes-admin-strip__metrics span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.captacoes-admin-strip__metrics strong {
+  color: var(--admin-primary, #365f8f);
+  font-size: .95rem;
+  font-weight: 900;
 }
 
 .captacoes-filter-panel {
@@ -17035,6 +17085,15 @@ html[data-admin-theme="dark"] .wizard-review-title-icon {
   }
 
   .captacoes-signal-group--risk {
+    justify-content: flex-start;
+  }
+
+  .captacoes-admin-strip {
+    display: grid;
+    gap: 7px;
+  }
+
+  .captacoes-admin-strip__metrics {
     justify-content: flex-start;
   }
 
@@ -24821,6 +24880,21 @@ html[data-admin-theme="dark"] .captacoes-workspace .captacoes-kpi--blue .ax-metr
 html[data-admin-theme="dark"] .captacoes-workspace .captacoes-kpi--cyan .ax-metric-card__value { color: #63c3d8 !important; }
 html[data-admin-theme="dark"] .captacoes-workspace .captacoes-kpi--green .ax-metric-card__value { color: #68c58d !important; }
 html[data-admin-theme="dark"] .captacoes-workspace .captacoes-kpi--red .ax-metric-card__value { color: #ff8c86 !important; }
+
+html[data-admin-theme="dark"] .captacoes-workspace .captacoes-admin-strip {
+  background: var(--ax-dark-surface) !important;
+  border-color: var(--ax-dark-border-soft) !important;
+  color: var(--capt-list-text) !important;
+}
+
+html[data-admin-theme="dark"] .captacoes-workspace .captacoes-admin-strip__header,
+html[data-admin-theme="dark"] .captacoes-workspace .captacoes-admin-strip__metrics {
+  color: var(--capt-list-muted) !important;
+}
+
+html[data-admin-theme="dark"] .captacoes-workspace .captacoes-admin-strip__metrics strong {
+  color: #78a9df !important;
+}
 
 html[data-admin-theme="dark"] .captacoes-workspace .captacoes-signal-group--risk {
   color: var(--capt-list-muted) !important;

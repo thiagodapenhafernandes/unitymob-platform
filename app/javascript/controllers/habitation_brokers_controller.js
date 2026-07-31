@@ -55,6 +55,31 @@ export default class extends Controller {
     }
   }
 
+  removePrimaryCaptador(event) {
+    event.preventDefault()
+
+    const form = event.currentTarget.closest("form")
+    if (!form) return
+
+    let captadorField = form.querySelector("[name='habitation[admin_user_id]']")
+
+    if (!captadorField) {
+      captadorField = document.createElement("input")
+      captadorField.type = "hidden"
+      captadorField.name = "habitation[admin_user_id]"
+      form.appendChild(captadorField)
+    }
+
+    captadorField.value = ""
+
+    if (captadorField.tomselect) {
+      captadorField.tomselect.clear()
+    }
+
+    const wrapper = event.currentTarget.closest(".ax-record-item")
+    if (wrapper) wrapper.style.display = "none"
+  }
+
   resetModal() {
     ;[this.typeSelectTarget, this.brokerSelectTarget, this.commissionTypeSelectTarget].forEach((select) => {
       select.value = ""

@@ -111,13 +111,13 @@ class Habitation < ApplicationRecord
   INTAKE_STATUSES = {
     "draft" => "Rascunho",
     "submitted_for_admin_review" => "Em revisão administrativa",
-    "admin_approved" => "Aguardando aceite do corretor",
+    "admin_approved" => "Publicar no site",
     "returned_to_broker" => "Devolvido ao corretor",
-    "internal" => "Disponível internamente",
-    "published" => "Liberado para site"
+    "internal" => "Interno",
+    "published" => "Publicado no site"
   }.freeze
   CATALOG_VISIBLE_INTAKE_STATUSES = %w[internal published].freeze
-  PENDING_REVIEW_INTAKE_STATUSES = %w[submitted_for_admin_review admin_approved].freeze
+  PENDING_REVIEW_INTAKE_STATUSES = %w[submitted_for_admin_review].freeze
   PENDING_WORKFLOW_INTAKE_STATUSES = %w[draft submitted_for_admin_review admin_approved returned_to_broker].freeze
   SITE_RELEASABLE_INTAKE_STATUSES = %w[admin_approved returned_to_broker internal].freeze
   PHOTO_FLOW_CHOICES = {
@@ -465,6 +465,7 @@ class Habitation < ApplicationRecord
   validate :codigo_empreendimento_cannot_reference_self
   validate :key_location_notes_required_for_other
   validate :inactive_commercial_status_details_required
+  validate :broker_intake_snapshot_is_immutable
   
   # Callbacks
   before_validation :unpublish_when_commercial_status_inactive
@@ -1039,6 +1040,12 @@ class Habitation < ApplicationRecord
 
   def intake_status_label
     INTAKE_STATUSES[intake_status] || intake_status.to_s.humanize
+  end
+
+  def broker_intake_snapshot_present?
+    return false unless has_attribute?(:broker_intake_snapshot)
+
+    Habitations::BrokerIntakeSnapshot.snapshot_present?(broker_intake_snapshot)
   end
 
   def intake_draft?
@@ -2291,6 +2298,16 @@ class Habitation < ApplicationRecord
     return if broker_intake?
 
     self.data_cadastro_crm ||= Time.current
+  end
+
+  def broker_intake_snapshot_is_immutable
+    return unless has_attribute?(:broker_intake_snapshot)
+    return unless will_save_change_to_broker_intake_snapshot?
+
+    previous_snapshot = broker_intake_snapshot_in_database
+    return unless Habitations::BrokerIntakeSnapshot.snapshot_present?(previous_snapshot)
+
+    errors.add(:broker_intake_snapshot, "não pode ser alterado após registrado")
   end
 
   def capture_price_reductions

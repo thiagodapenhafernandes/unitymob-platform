@@ -75,7 +75,7 @@ RSpec.describe Habitations::CadastroFieldRegistry do
       "acao:gerenciar_destaques" => "data-field-lock-action=\"acao:gerenciar_destaques\"",
       "acao:gerenciar_caracteristicas" => "data-field-lock-action=\"acao:gerenciar_caracteristicas\"",
       "acao:gerenciar_infraestrutura" => "data-field-lock-action=\"acao:gerenciar_infraestrutura\"",
-      "acao:cadastrar_proprietario" => "field_lock_action: \"acao:cadastrar_proprietario\"",
+      "acao:cadastrar_proprietario" => "data-field-lock-action=\"acao:cadastrar_proprietario\"",
       "acao:gerenciar_responsaveis" => "action_locked?(\"acao:gerenciar_responsaveis\")",
       "acao:abrir_organizador_midia" => "data-field-lock-action=\"acao:abrir_organizador_midia\"",
       "acao:organizar_fotos" => "acao:organizar_fotos",

@@ -70,6 +70,34 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include("Locação com preço reduzido")
   end
 
+  it "prioriza o aluguel atual no topo quando o total mensal salvo está defasado" do
+    habitation = create(
+      :habitation,
+      codigo: "RENT-TOTAL-STALE-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Apartamento com aluguel atualizado",
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 16_000_00,
+      valor_condominio_cents: 100,
+      valor_iptu_cents: 100,
+      valor_total_aluguel_cents: 13_000_00
+    )
+
+    get admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+    price_card = html.at_css(".ax-property-show-price")
+    values_section = html.css(".ax-property-record-section").find do |section|
+      section.at_css(".ax-property-record-section__head")&.text&.include?("Valores")
+    end
+
+    expect(price_card&.text).to include("R$ 16.000,00/mês")
+    expect(price_card&.text).not_to include("R$ 13.000,00")
+    expect(values_section&.text).not_to include("Total aluguel")
+    expect(values_section&.text).not_to include("R$ 13.000,00")
+  end
+
   it "exibe o box da vaga na estrutura do detalhe do imóvel" do
     habitation = create(
       :habitation,
@@ -556,34 +584,34 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).not_to include(approved.titulo_anuncio)
     expect(response.body).not_to include(draft.titulo_anuncio)
     expect(response.body).not_to include(returned.titulo_anuncio)
-    expect(response.body).not_to include("Disponível internamente")
-    expect(response.body).not_to include("Liberado para site")
+    expect(response.body).not_to include("Interno")
+    expect(response.body).not_to include("Publicado no site")
 
     get admin_habitations_path(intake_review: "pending", ownership: "all")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include(submitted.titulo_anuncio)
-    expect(response.body).to include(approved.titulo_anuncio)
+    expect(response.body).not_to include(approved.titulo_anuncio)
     expect(response.body).not_to include(draft.titulo_anuncio)
     expect(response.body).not_to include(returned.titulo_anuncio)
     expect(response.body).to include("Em revisão administrativa")
-    expect(response.body).to include("Aguardando aceite do corretor")
+    expect(response.body).not_to include("Publicar no site")
     expect(response.body).not_to include(internal.titulo_anuncio)
     expect(response.body).not_to include(published.titulo_anuncio)
 
     html = Nokogiri::HTML(response.body)
     expect(response.body).to include("ax-property-chip--intake-review")
-    expect(response.body).to include("ax-property-chip--intake-approved")
+    expect(response.body).not_to include("ax-property-chip--intake-approved")
 
     get admin_habitations_path(intake_review: "pending", ownership: "all", visualizacao: "tabela")
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Em revisão administrativa")
-    expect(response.body).to include("Aguardando aceite do corretor")
+    expect(response.body).not_to include("Publicar no site")
     expect(response.body).to include("ax-property-chip--intake-review")
-    expect(response.body).to include("ax-property-chip--intake-approved")
-    expect(response.body).not_to include("Disponível internamente")
-    expect(response.body).not_to include("Liberado para site")
+    expect(response.body).not_to include("ax-property-chip--intake-approved")
+    expect(response.body).not_to include("Interno")
+    expect(response.body).not_to include("Publicado no site")
   end
 
   it "mostra para o administrativo apenas captações enviadas para revisão, não as aguardando aceite do corretor" do
@@ -3953,6 +3981,34 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("confirmou contato com o proprietário")
     expect(response.body).to include("Falei com proprietário e não houve alteração")
+  end
+
+  it "mostra a fotografia inicial da captação na central do imóvel" do
+    habitation = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      codigo: "CAP-SNAPSHOT-#{SecureRandom.hex(4)}",
+      titulo_anuncio: "Título enviado na captação",
+      nome_empreendimento: "Edifício Imutável",
+      valor_venda_cents: 900_000_00,
+      intake_status: "submitted_for_admin_review"
+    )
+    snapshot = Habitations::BrokerIntakeSnapshot.build(
+      habitation,
+      actor: admin,
+      captured_at: Time.zone.local(2026, 7, 31, 9, 45)
+    )
+    habitation.update_columns(broker_intake_snapshot: snapshot, titulo_anuncio: "Título alterado pelo administrativo")
+
+    get operational_hub_admin_habitation_path(habitation, tab: "intake")
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Fotografia inicial")
+    expect(response.body).to include("Dados enviados pelo corretor")
+    expect(response.body).to include("Título enviado na captação")
+    expect(response.body).to include("Edifício Imutável")
+    expect(response.body).not_to include("Título alterado pelo administrativo")
   end
 
   it "mantém a central do imóvel independente da timeline importada do Vista" do
