@@ -1101,6 +1101,65 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(intake.address.cep).to eq("88210-000")
   end
 
+  it "bloqueia captação de unidade vinculada quando complemento já existe no empreendimento" do
+    development = create(
+      :habitation,
+      codigo: "DEV-APICE-#{SecureRandom.hex(4)}",
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      nome_empreendimento: "Ápice Towers"
+    )
+    development.address.update!(
+      tipo_endereco: "Rua",
+      logradouro: "3250",
+      numero: "110",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC",
+      cep: "88330-278"
+    )
+    existing_unit = create(
+      :habitation,
+      codigo: "APICE-1101-#{SecureRandom.hex(4)}",
+      categoria: "Apartamento",
+      status: "Venda",
+      codigo_empreendimento: development.codigo,
+      nome_empreendimento: "Ápice Towers",
+      bloco: nil
+    )
+    existing_unit.address.update!(
+      logradouro: "Endereço antigo divergente",
+      numero: "999",
+      complemento: "1101",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+    intake = create(
+      :habitation,
+      :broker_intake,
+      admin_user: admin,
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      intake_step: "endereco",
+      codigo_empreendimento: nil
+    )
+
+    patch admin_captacao_path(intake), params: {
+      current_step: "endereco",
+      direction: "forward",
+      habitation: {
+        codigo_empreendimento: development.codigo,
+        unidade_numero: "1101"
+      }
+    }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.body).to include("Já existe imóvel cadastrado com este empreendimento, complemento e status comercial")
+    expect(response.body).to include(existing_unit.codigo)
+    expect(intake.reload.intake_step).to eq("endereco")
+  end
+
   it "bloqueia avanço de apartamento sem nome do empreendimento mesmo fora do checklist operacional" do
     PropertySetting.instance.update!(required_broker_intake_checks: %w[proprietario])
     intake = create(

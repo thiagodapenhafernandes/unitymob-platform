@@ -13,6 +13,7 @@ module Admin
         category: params[:category],
         lot: params[:lot],
         block_section: params[:block_section],
+        development_code: params[:development_code],
         comparison: params[:comparison],
         ignored_id: params[:ignored_id],
         tenant: Current.tenant

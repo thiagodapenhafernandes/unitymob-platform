@@ -5,7 +5,7 @@ class HabitationDuplicateChecker
     end
   end
 
-  def initialize(street:, number:, building:, unit:, status: nil, comparison: nil, ignored_id: nil, complement: nil, category: nil, tenant: nil, lot: nil, block_section: nil)
+  def initialize(street:, number:, building:, unit:, status: nil, comparison: nil, ignored_id: nil, complement: nil, category: nil, tenant: nil, lot: nil, block_section: nil, development_code: nil)
     @street = street
     @number = number
     @building = building
@@ -17,6 +17,7 @@ class HabitationDuplicateChecker
     @category = category
     @lot = lot
     @block_section = block_section
+    @development_code = development_code
     @tenant = tenant || Current.tenant
     raise ArgumentError, "Tenant obrigatório para verificar duplicidade de imóvel" if @tenant.blank?
   end
@@ -24,12 +25,7 @@ class HabitationDuplicateChecker
   def call
     return Result.new(complete: false, matches: [], comparison: comparison) unless complete_identity?
 
-    candidates = base_scope
-      .where(street_match_sql("COALESCE(addresses.logradouro, habitations.endereco)"), street: normalize_street(@street))
-      .where("#{normalized_sql("COALESCE(addresses.numero, habitations.numero)")} = :number", number: normalize(@number))
-      .where(status: normalized_status)
-      .where.not("habitations.status ~* ?", "suspenso|vendido|alugado")
-      .limit(20)
+    candidates = duplicate_candidate_scope.limit(40)
 
     matches = candidates.select do |habitation|
       active_duplicate_candidate?(habitation) &&
@@ -59,8 +55,10 @@ class HabitationDuplicateChecker
   end
 
   def complete_identity?
-    base_complete = [@street, @number].all? { |value| normalize(value).present? } && normalized_status.present?
-    return false unless base_complete
+    return false unless normalized_status.present?
+    return true if linked_development_identity_complete?
+
+    return false unless street_identity_complete?
 
     case comparison
     when :street
@@ -70,6 +68,25 @@ class HabitationDuplicateChecker
     else
       normalized_expected_unit.present?
     end
+  end
+
+  def duplicate_candidate_scope
+    scope = base_scope.where(status: normalized_status).where.not("habitations.status ~* ?", "suspenso|vendido|alugado")
+    if linked_development_identity_complete?
+      return scope.where(development_match_sql, development_code: normalize(@development_code), building: normalize(@building))
+    end
+
+    scope
+      .where(street_match_sql("COALESCE(addresses.logradouro, habitations.endereco)"), street: normalize_street(@street))
+      .where("#{normalized_sql("COALESCE(addresses.numero, habitations.numero)")} = :number", number: normalize(@number))
+  end
+
+  def street_identity_complete?
+    [@street, @number].all? { |value| normalize(value).present? }
+  end
+
+  def linked_development_identity_complete?
+    normalize(@development_code).present? && normalized_expected_unit.present?
   end
 
   def active_duplicate_candidate?(habitation)
@@ -133,6 +150,8 @@ class HabitationDuplicateChecker
   end
 
   def comparison
+    return :unit if linked_development_identity_complete?
+
     @comparison ||= if complement_block_category? && (normalize_unit(@unit).present? || normalize(@complement).present?)
                       :condominium_unit
                     elsif normalized_expected_unit.present?
@@ -233,6 +252,11 @@ class HabitationDuplicateChecker
 
   def street_match_sql(expression)
     "(#{normalized_sql(expression)} = :street OR #{normalized_street_sql(expression)} = :street)"
+  end
+
+  def development_match_sql
+    "#{normalized_sql("habitations.codigo_empreendimento")} = :development_code OR " \
+      "(#{normalized_sql("habitations.nome_empreendimento")} = :building AND :building != '')"
   end
 
   def strip_street_type(value)
