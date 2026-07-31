@@ -23,7 +23,7 @@
   end
   show_development_picker = @captacao.requires_intake_development_name? || @captacao.empreendimento? || @captacao.categoria.to_s == "Empreendimento"
   show_unit_field = @captacao.requires_unit_number? || @captacao.empreendimento? || @captacao.categoria.to_s == "Empreendimento"
-  unit_field_label = show_unit_field && !@captacao.requires_unit_number? ? "Unidade / Apto" : @captacao.intake_address_complement_label
+  unit_field_label = show_unit_field ? "Compl." : @captacao.intake_address_complement_label
 %>
 
 <div data-controller="cep-lookup habitation-form"
@@ -42,7 +42,8 @@
               html_options: {
                 data: {
                   habitation_form_target: "developmentSelect",
-                  action: "change->habitation-form#developmentChanged"
+                  habitation_duplicate_check_target: "developmentCode",
+                  action: "change->habitation-form#developmentChanged change->habitation-duplicate-check#check"
                 }
               }
             ) %>
@@ -142,7 +143,7 @@
           placeholder: @captacao.intake_address_complement_placeholder,
           data: { habitation_duplicate_check_target: "unit",
                   action: "input->habitation-duplicate-check#schedule blur->habitation-duplicate-check#check" }) %>
-    <% if field_invalid.call(:unidade_numero) %><div class="invalid-feedback d-block">Informe o número da unidade.</div><% end %>
+    <% if field_invalid.call(:unidade_numero) %><div class="invalid-feedback d-block">Informe o complemento.</div><% end %>
   <% elsif @captacao.requires_intake_address_complement? %>
     <%= ax_text_field(form: f, method: :complemento,
           label: safe_join([@captacao.intake_address_complement_label, tag.span("*", class: "required-star")], " "),

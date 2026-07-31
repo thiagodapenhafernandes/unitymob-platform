@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["street", "number", "building", "unit", "complement", "lot", "blockSection", "category", "commercialStatus", "comparison", "status", "submit"]
+  static targets = ["street", "number", "building", "unit", "complement", "lot", "blockSection", "developmentCode", "category", "commercialStatus", "comparison", "status", "submit"]
   static values = {
     url: String,
     ignoredId: String
@@ -35,6 +35,7 @@ export default class extends Controller {
         complement: this.targetValue("complement"),
         lot: this.targetValue("lot"),
         block_section: this.targetValue("blockSection"),
+        development_code: this.targetValue("developmentCode"),
         category: this.targetValue("category"),
         status: this.statusValue(),
         comparison: this.comparisonValue()
@@ -61,10 +62,11 @@ export default class extends Controller {
   }
 
   identityComplete() {
+    if (this.statusValue().trim().length === 0) return false
+    if (this.linkedDevelopmentIdentityComplete()) return true
     if (!this.hasStreetTarget || !this.hasNumberTarget) return false
 
     return [this.streetTarget, this.numberTarget].every((target) => target.value.trim().length > 0) &&
-      this.statusValue().trim().length > 0 &&
       this.comparisonIdentityComplete()
   }
 
@@ -90,6 +92,8 @@ export default class extends Controller {
   }
 
   comparisonValue() {
+    if (this.linkedDevelopmentIdentityComplete()) return "unit"
+
     if (this.complementBlockCategorySelected() && (this.targetValue("unit").trim().length > 0 || this.targetValue("complement").trim().length > 0)) {
       return "condominium_unit"
     }
@@ -111,6 +115,11 @@ export default class extends Controller {
       /\b\d{2,5}[a-z0-9-]*\b/.test(complement)
   }
 
+  linkedDevelopmentIdentityComplete() {
+    return this.targetValue("developmentCode").trim().length > 0 &&
+      (this.targetValue("unit").trim().length > 0 || this.apartmentUnitComplementPresent())
+  }
+
   normalizedCategory() {
     return this.targetValue("category").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
   }
@@ -124,14 +133,26 @@ export default class extends Controller {
       const code = match.codigo ? `#${match.codigo}` : `ID ${match.id}`
       return `<a href="${match.edit_url}" class="ax-duplicate-status__link" target="_blank" rel="noopener">${this.escapeHtml(code)}</a>`
     }).join('<span class="ax-duplicate-status__separator">,</span>')
-    const identity = this.comparisonValue() === "unit"
-      ? "este endereço, unidade e status comercial"
-      : (this.comparisonValue() === "condominium_unit" ? "este endereço, unidade, lote, quadra e status comercial" : "este endereço e status comercial")
+    const identity = this.duplicateIdentityMessage()
     this.statusTarget.innerHTML = `
       <span class="ax-duplicate-status__message">Já existe imóvel com ${identity}${links ? ":" : "."}</span>
       ${links ? `<span class="ax-duplicate-status__links">${links}</span>` : ""}
       <span class="ax-duplicate-status__hint">Ajuste os dados antes de salvar.</span>
     `
+  }
+
+  duplicateIdentityMessage() {
+    if (this.targetValue("developmentCode").trim().length > 0) {
+      return "este empreendimento, complemento e status comercial"
+    }
+    if (this.comparisonValue() === "unit") {
+      return "este endereço, complemento e status comercial"
+    }
+    if (this.comparisonValue() === "condominium_unit") {
+      return "este endereço, unidade, lote, quadra e status comercial"
+    }
+
+    return "este endereço e status comercial"
   }
 
   showAvailable() {

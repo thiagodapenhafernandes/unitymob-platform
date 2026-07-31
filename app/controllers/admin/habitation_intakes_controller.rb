@@ -1032,6 +1032,7 @@ module Admin
         category: @habitation.categoria,
         lot: @habitation.lote,
         block_section: @habitation.respond_to?(:quadra) ? @habitation.quadra : nil,
+        development_code: @habitation.codigo_empreendimento,
         comparison: @habitation.duplicate_identity_scope,
         ignored_id: @habitation.id,
         tenant: Current.tenant
@@ -1042,7 +1043,7 @@ module Admin
       duplicated = duplicate_address_result.matches.first
       code = duplicated&.codigo.present? ? " ##{duplicated.codigo}" : ""
       message = if @habitation.duplicate_identity_scope == :unit
-                  "Já existe imóvel cadastrado com esta rua, número, unidade e status comercial#{code}."
+                  "Já existe imóvel cadastrado com este empreendimento, complemento e status comercial#{code}."
                 else
                   "Já existe imóvel cadastrado com esta rua, número e status comercial#{code}."
                 end

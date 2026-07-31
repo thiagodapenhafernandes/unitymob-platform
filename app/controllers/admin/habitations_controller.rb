@@ -1862,6 +1862,7 @@ class Admin::HabitationsController < Admin::BaseController
       category: habitation.categoria,
       lot: habitation.lote,
       block_section: habitation.respond_to?(:quadra) ? habitation.quadra : nil,
+      development_code: habitation.codigo_empreendimento,
       comparison: habitation.duplicate_identity_scope,
       ignored_id: habitation.id,
       tenant: Current.tenant

@@ -443,4 +443,45 @@ RSpec.describe HabitationDuplicateChecker do
     expect(result.complete).to be(true)
     expect(result.matches).to include(existing)
   end
+
+  it "bloqueia unidade pelo empreendimento vinculado e complemento mesmo com endereço divergente" do
+    create(
+      :habitation,
+      codigo: "DEV-APICE",
+      tipo: "Empreendimento",
+      categoria: "Empreendimento",
+      nome_empreendimento: "Ápice Towers"
+    )
+    existing = create(
+      :habitation,
+      categoria: "Apartamento",
+      status: "Venda",
+      codigo_empreendimento: "DEV-APICE",
+      nome_empreendimento: "Ápice Towers",
+      bloco: nil
+    )
+    existing.address.update!(
+      logradouro: "Rua antiga",
+      numero: "999",
+      complemento: "1101",
+      bairro: "Centro",
+      cidade: "Balneário Camboriú",
+      uf: "SC"
+    )
+
+    result = described_class.new(
+      street: "",
+      number: "",
+      building: "Ápice Towers",
+      unit: "1101",
+      complement: "",
+      category: "Apartamento",
+      status: "Venda",
+      development_code: "DEV-APICE"
+    ).call
+
+    expect(result.complete).to be(true)
+    expect(result.comparison).to eq(:unit)
+    expect(result.matches).to include(existing)
+  end
 end
