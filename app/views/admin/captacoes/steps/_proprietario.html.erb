@@ -72,11 +72,11 @@
       <%= ax_field_grid(columns: 12, gap: :compact) do %>
         <div class="ax-span-12">
           <%= ax_field_label(nil, nil, text: safe_join(["Nome", tag.span("*", class: "required-star")], " "), for: "captacao_quick_proprietor_name") %>
-          <input type="text" class="ax-control" id="captacao_quick_proprietor_name" name="proprietor[name]" required data-habitation-owner-selector-target="createName">
+          <input type="text" class="ax-control" id="captacao_quick_proprietor_name" name="proprietor[name]" data-habitation-owner-selector-target="createName">
         </div>
         <div class="ax-span-6">
           <%= ax_field_label(nil, nil, text: safe_join(["Telefone", tag.span("*", class: "required-star")], " "), for: "captacao_quick_proprietor_phone") %>
-          <input type="tel" class="ax-control" id="captacao_quick_proprietor_phone" name="proprietor[phone_primary]" required data-controller="phone-input" data-habitation-owner-selector-target="createPhone">
+          <input type="tel" class="ax-control" id="captacao_quick_proprietor_phone" name="proprietor[phone_primary]" data-controller="phone-input" data-habitation-owner-selector-target="createPhone">
         </div>
         <div class="ax-span-6">
           <%= ax_field_label(nil, nil, text: "E-mail", for: "captacao_quick_proprietor_email") %>
@@ -84,7 +84,7 @@
         </div>
         <div class="ax-span-12">
           <%= ax_field_label(nil, nil, text: safe_join(["Cidade", tag.span("*", class: "required-star")], " "), for: "captacao_quick_proprietor_city") %>
-          <input type="text" class="ax-control" id="captacao_quick_proprietor_city" name="proprietor[city]" required data-habitation-owner-selector-target="createCity">
+          <input type="text" class="ax-control" id="captacao_quick_proprietor_city" name="proprietor[city]" data-habitation-owner-selector-target="createCity">
         </div>
         <div class="ax-span-12 habitation-owner-modal-panel__actions">
           <button type="button" class="ax-btn ax-btn--primary" data-action="habitation-owner-selector#create">Salvar e selecionar</button>
@@ -100,11 +100,11 @@
       <%= ax_field_grid(columns: 12, gap: :compact) do %>
         <div class="ax-span-12">
           <%= ax_field_label(nil, nil, text: safe_join(["Nome", tag.span("*", class: "required-star")], " "), for: "captacao_edit_quick_proprietor_name") %>
-          <input type="text" class="ax-control" id="captacao_edit_quick_proprietor_name" name="proprietor[name]" required data-habitation-owner-selector-target="editName">
+          <input type="text" class="ax-control" id="captacao_edit_quick_proprietor_name" name="proprietor[name]" data-habitation-owner-selector-target="editName">
         </div>
         <div class="ax-span-6">
           <%= ax_field_label(nil, nil, text: safe_join(["Telefone", tag.span("*", class: "required-star")], " "), for: "captacao_edit_quick_proprietor_phone") %>
-          <input type="tel" class="ax-control" id="captacao_edit_quick_proprietor_phone" name="proprietor[phone_primary]" required data-controller="phone-input" data-habitation-owner-selector-target="editPhone">
+          <input type="tel" class="ax-control" id="captacao_edit_quick_proprietor_phone" name="proprietor[phone_primary]" data-controller="phone-input" data-habitation-owner-selector-target="editPhone">
         </div>
         <div class="ax-span-6">
           <%= ax_field_label(nil, nil, text: "E-mail", for: "captacao_edit_quick_proprietor_email") %>
@@ -112,7 +112,7 @@
         </div>
         <div class="ax-span-12">
           <%= ax_field_label(nil, nil, text: safe_join(["Cidade", tag.span("*", class: "required-star")], " "), for: "captacao_edit_quick_proprietor_city") %>
-          <input type="text" class="ax-control" id="captacao_edit_quick_proprietor_city" name="proprietor[city]" required data-habitation-owner-selector-target="editCity">
+          <input type="text" class="ax-control" id="captacao_edit_quick_proprietor_city" name="proprietor[city]" data-habitation-owner-selector-target="editCity">
         </div>
         <div class="ax-span-12 habitation-owner-modal-panel__actions">
           <button type="button" class="ax-btn ax-btn--primary" data-action="habitation-owner-selector#update">Salvar e selecionar</button>

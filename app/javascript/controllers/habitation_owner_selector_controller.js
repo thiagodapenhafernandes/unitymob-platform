@@ -124,10 +124,7 @@ export default class extends Controller {
       this.resetFields(this.createFormTarget)
       this.finishSelection()
     }, (payload) => {
-      if (!payload.proprietor) return
-
-      this.editingProprietor = payload.proprietor
-      this.showEditPanel(payload.proprietor, { focusFirstMissing: true, clearSearchResults: true })
+      this.redirectDuplicateToSearch(payload, this.createPhoneTarget)
     })
   }
 
@@ -168,6 +165,8 @@ export default class extends Controller {
       this.editPanelTarget.hidden = true
       this.editingProprietor = null
       this.finishSelection()
+    }, (payload) => {
+      this.redirectDuplicateToSearch(payload, this.editPhoneTarget)
     })
   }
 
@@ -403,30 +402,63 @@ export default class extends Controller {
   }
 
   phoneValidationError(field) {
-    const normalized = this.normalizedPhoneValue(field)
-    const normalizedText = String(normalized || "").trim()
-    const digits = normalizedText.replace(/\D/g, "")
-    if (!digits) return "Informe um telefone válido."
+    const metadata = this.phoneMetadata(field)
+    const rawDigits = String(metadata.rawValue || field.value || "").replace(/\D/g, "")
+    if (!rawDigits) return "Informe um telefone válido."
 
-    if (normalizedText.startsWith("+")) {
-      if (digits.length >= 8 && digits.length <= 15) return null
+    if (String(metadata.rawValue || field.value || "").trim().startsWith("+") && !rawDigits.startsWith("55")) {
+      if (metadata.isValidNumber || (rawDigits.length >= 8 && rawDigits.length <= 15)) return null
       return "Telefone inválido. Números internacionais devem ter entre 8 e 15 dígitos."
     }
 
-    if (digits.startsWith("55")) {
-      const nationalDigits = digits.slice(2)
-      if (nationalDigits.length === 10 || nationalDigits.length === 11) return null
-    } else if (digits.length === 10 || digits.length === 11) {
-      return null
+    if (metadata.countryIso2 && metadata.countryIso2 !== "br") {
+      if (metadata.isValidNumber) return null
+      return "Telefone inválido. Selecione o país correto e informe um número válido."
     }
 
-    return "Telefone inválido. Para Brasil, informe DDD + número. Para estrangeiro, selecione o país e informe o número completo."
+    const nationalDigits = this.brazilianNationalDigits(rawDigits)
+    if (nationalDigits.length === 11 && nationalDigits[2] === "9") return null
+
+    return "Telefone inválido para WhatsApp no Brasil. Informe DDD + número com 9 dígitos, exemplo: (47) 98851-6745."
   }
 
   normalizedPhoneValue(field) {
     const detail = { value: field.value }
     field.dispatchEvent(new CustomEvent("phone-input:normalize", { detail, bubbles: true }))
     return detail.value || field.value
+  }
+
+  phoneMetadata(field) {
+    const detail = { rawValue: field.value }
+    field.dispatchEvent(new CustomEvent("phone-input:metadata", { detail, bubbles: true }))
+    return detail
+  }
+
+  brazilianNationalDigits(digits) {
+    return digits.startsWith("55") ? digits.slice(2) : digits
+  }
+
+  redirectDuplicateToSearch(payload, phoneField) {
+    this.hidePanels()
+    this.editingProprietor = null
+
+    const phone = this.searchablePhoneValue(payload, phoneField)
+    if (this.hasQueryTarget && phone) {
+      this.queryTarget.value = phone
+      this.queryTarget.focus()
+      const message = this.errorMessage(payload)
+      this.fetchResults().finally(() => this.showError(message))
+    }
+  }
+
+  searchablePhoneValue(payload, phoneField) {
+    const proprietor = payload?.proprietor || {}
+    const phone = proprietor.phone_primary_display ||
+      proprietor.phone_primary ||
+      this.normalizedPhoneValue(phoneField) ||
+      phoneField?.value
+
+    return String(phone || "").trim()
   }
 
   syncEditNamePermission() {

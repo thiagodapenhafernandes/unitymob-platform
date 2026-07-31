@@ -152,6 +152,20 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(names).not_to include("Outro Proprietário")
   end
 
+  it "busca proprietário por telefone brasileiro mesmo quando a consulta vem sem o nono dígito" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    proprietor = create(:proprietor, tenant: admin.tenant, name: "Marilucia Existente", phone_primary: "(47) 98851-6745", city: "Balneário Camboriú")
+
+    get quick_search_admin_proprietors_path,
+        params: { q: "47 8851-6745" },
+        headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    names = JSON.parse(response.body).fetch("proprietors").map { |row| row["name"] }
+    expect(names).to include(proprietor.name)
+  end
+
   it "bloqueia busca rápida para usuário sem gerenciar captações" do
     broker_profile = Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
       profile.update!(
@@ -223,7 +237,11 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(response).to have_http_status(:conflict)
     payload = JSON.parse(response.body)
     expect(payload).to include("duplicate" => true)
-    expect(payload.fetch("errors").join).to include("Cadastro já existe", "Dono Existente", "entre em contato com o administrador")
+    expect(payload.fetch("errors").join).to include(
+      "Já existe um proprietário cadastrado com este telefone",
+      "Dono Existente",
+      "Pesquise pelo telefone informado e selecione o cadastro existente"
+    )
     expect(payload.fetch("proprietor")).to include("id" => existing.id, "name" => "Dono Existente", "city" => "Itajaí")
     expect(existing.reload).to have_attributes(name: "Dono Existente", city: "Itajaí")
   end
@@ -231,6 +249,17 @@ RSpec.describe "Admin::Proprietors", type: :request do
   it "valida quantidade de dígitos no telefone da criação rápida" do
     admin = create(:admin_user, :admin)
     sign_in admin
+
+    post quick_create_admin_proprietors_path,
+         params: { proprietor: { name: "Celular Sem Nono Digito", phone_primary: "(47) 8851-6745", city: "Itajaí" } },
+         headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(JSON.parse(response.body).fetch("errors").join).to include(
+      "Telefone inválido para WhatsApp no Brasil",
+      "DDD + número com 9 dígitos",
+      "(47) 98851-6745"
+    )
 
     post quick_create_admin_proprietors_path,
          params: { proprietor: { name: "Telefone Curto", phone_primary: "99999-0000", city: "Itajaí" } },
@@ -326,8 +355,15 @@ RSpec.describe "Admin::Proprietors", type: :request do
           params: { proprietor: { name: "Outro Nome", phone_primary: "(47) 96666-2222", city: "Itapema" } },
           headers: { "ACCEPT" => "application/json" }
 
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(JSON.parse(response.body)["errors"]).to include("Telefone já vinculado ao proprietário #{duplicate.name}.")
+    expect(response).to have_http_status(:conflict)
+    duplicate_payload = JSON.parse(response.body)
+    expect(duplicate_payload).to include("duplicate" => true)
+    expect(duplicate_payload["errors"].join).to include(
+      "Já existe um proprietário cadastrado com este telefone",
+      duplicate.name,
+      "Pesquise pelo telefone informado e selecione o cadastro existente"
+    )
+    expect(duplicate_payload.fetch("proprietor")).to include("id" => duplicate.id, "name" => duplicate.name)
     expect(proprietor.reload.phone_primary).to eq("5547977771111")
   end
 end
