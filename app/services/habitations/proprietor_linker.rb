@@ -29,7 +29,10 @@ module Habitations
     def selected_proprietor
       return if habitation.proprietor_id.blank?
 
-      habitation.tenant.proprietors.find_by(id: habitation.proprietor_id)
+      proprietor = habitation.tenant.proprietors.find_by(id: habitation.proprietor_id)
+      return if development_inherited_proprietor_conflicts_with_owner_data?(proprietor)
+
+      proprietor
     end
 
     def existing_proprietor
@@ -99,6 +102,44 @@ module Habitations
       return unless matches.one?
 
       matches.first
+    end
+
+    def development_inherited_proprietor_conflicts_with_owner_data?(proprietor)
+      return false unless proprietor
+      return false unless habitation.respond_to?(:broker_intake?) && habitation.broker_intake?
+      return false if habitation.codigo_empreendimento.blank?
+
+      parent_proprietor_id = habitation.tenant.habitations
+        .empreendimentos
+        .where(codigo: habitation.codigo_empreendimento)
+        .pick(:proprietor_id)
+      return false if parent_proprietor_id.blank? || parent_proprietor_id != proprietor.id
+
+      owner_data_conflicts_with?(proprietor)
+    end
+
+    def owner_data_conflicts_with?(proprietor)
+      owner_name_conflicts_with?(proprietor) || owner_phone_conflicts_with?(proprietor)
+    end
+
+    def owner_name_conflicts_with?(proprietor)
+      owner_name.present? &&
+        proprietor.name.to_s.strip.present? &&
+        owner_name.casecmp?(proprietor.name.to_s.strip) == false
+    end
+
+    def owner_phone_conflicts_with?(proprietor)
+      owner_phone_digits = Proprietor.normalized_phone(primary_phone)
+      proprietor_phone_digits = [
+        proprietor.mobile_phone,
+        proprietor.phone_primary,
+        proprietor.business_phone,
+        proprietor.residential_phone
+      ].filter_map { |phone| Proprietor.normalized_phone(phone) }.first
+
+      owner_phone_digits.present? &&
+        proprietor_phone_digits.present? &&
+        owner_phone_digits != proprietor_phone_digits
     end
 
     def apply_habitation_data_to(proprietor)
