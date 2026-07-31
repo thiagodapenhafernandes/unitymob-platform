@@ -9,6 +9,7 @@ export default class extends Controller {
     "email",
     "city",
     "empty",
+    "ownerCard",
     "directAction",
     "menuAction",
     "editAction",
@@ -41,7 +42,9 @@ export default class extends Controller {
     searchUrl: String,
     createUrl: String,
     updateUrlTemplate: String,
-    canEdit: Boolean
+    canEdit: Boolean,
+    inline: Boolean,
+    requireEmail: { type: Boolean, default: true }
   }
 
   connect() {
@@ -92,14 +95,14 @@ export default class extends Controller {
 
   select(event) {
     const payload = this.payloadFromElement(event.currentTarget)
-    if (this.needsContactCompletion(payload)) {
+    if (this.inlineValue || this.needsContactCompletion(payload)) {
       this.editingProprietor = payload
       this.showEditPanel(payload, { focusFirstMissing: true, clearSearchResults: true })
       return
     }
 
     this.applyProprietor(payload)
-    this.closeModal()
+    this.finishSelection()
   }
 
   showCreate(event) {
@@ -107,16 +110,18 @@ export default class extends Controller {
     this.clearError()
     this.editPanelTarget.hidden = true
     this.createPanelTarget.hidden = false
-    this.createNameTarget.value = this.queryTarget.value.trim()
-    this.createPhoneTarget.focus()
+    this.prefillCreateFields(this.queryTarget.value.trim())
+    this.firstMissingQuickField("create")?.focus()
   }
 
   async create(event) {
     event?.preventDefault()
+    if (!this.validateQuickFields("create")) return
+
     await this.submitForm(this.createFormTarget, this.createUrlValue, "POST", (payload) => {
       this.applyProprietor(payload)
       this.resetFields(this.createFormTarget)
-      this.closeModal()
+      this.finishSelection()
     })
   }
 
@@ -140,6 +145,8 @@ export default class extends Controller {
     this.editPhoneTarget.value = proprietor.phone_primary || proprietor.phone_primary_display || ""
     this.editEmailTarget.value = proprietor.email || ""
     this.editCityTarget.value = proprietor.city || ""
+    this.unlockEditPhone()
+    this.dispatchPhoneMask(this.editPhoneTarget)
     this.focusEditField(options)
   }
 
@@ -147,12 +154,13 @@ export default class extends Controller {
     event?.preventDefault()
     const proprietor = this.editingProprietor || this.selectedProprietor
     if (!proprietor?.id) return
+    if (!this.validateQuickFields("edit")) return
 
     await this.submitForm(this.editFormTarget, this.updateUrlFor(proprietor.id), "PATCH", (payload) => {
       this.applyProprietor(payload)
       this.editPanelTarget.hidden = true
       this.editingProprietor = null
-      this.closeModal()
+      this.finishSelection()
     })
   }
 
@@ -231,6 +239,7 @@ export default class extends Controller {
     this.phoneSecondaryTarget.parentElement.hidden = !(proprietor.phone_secondary_display || proprietor.phone_secondary)
     this.emailTarget.textContent = proprietor.email || "-"
     this.cityTarget.textContent = proprietor.city || "-"
+    this.syncLegacyOwnerFields(proprietor)
     this.syncOwnerState(proprietor)
   }
 
@@ -258,9 +267,11 @@ export default class extends Controller {
   }
 
   needsContactCompletion(proprietor) {
-    return !this.hasText(proprietor.phone_primary || proprietor.phone_primary_display) ||
-      !this.hasText(proprietor.email) ||
+    const missingRequired = !this.hasText(proprietor.phone_primary || proprietor.phone_primary_display) ||
       !this.hasText(proprietor.city)
+    const missingEmail = this.requireEmailValue && !this.hasText(proprietor.email)
+
+    return missingRequired || missingEmail
   }
 
   hasText(value) {
@@ -281,6 +292,18 @@ export default class extends Controller {
     ].find((field) => !this.hasText(field.value))
 
     ;(target || this.editNameTarget).focus()
+  }
+
+  unlockEditPhone() {
+    if (!this.hasEditPhoneTarget) return
+
+    this.editPhoneTarget.readOnly = false
+    this.editPhoneTarget.classList.remove("ax-readonly-input")
+    this.editPhoneTarget.removeAttribute("aria-readonly")
+  }
+
+  dispatchPhoneMask(field) {
+    field?.dispatchEvent(new Event("input", { bubbles: true }))
   }
 
   hidePanels() {
@@ -312,6 +335,44 @@ export default class extends Controller {
     })
   }
 
+  prefillCreateFields(query) {
+    this.createNameTarget.value = ""
+    this.createPhoneTarget.value = ""
+    this.createEmailTarget.value = ""
+    this.createCityTarget.value = ""
+
+    if (!query) return
+
+    if (/^[\d\s()+.-]+$/.test(query)) {
+      this.createPhoneTarget.value = query
+      this.dispatchPhoneMask(this.createPhoneTarget)
+    } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query)) {
+      this.createEmailTarget.value = query
+    } else {
+      this.createNameTarget.value = query
+    }
+  }
+
+  validateQuickFields(prefix) {
+    const missing = this.firstMissingQuickField(prefix)
+    if (!missing) {
+      this.clearError()
+      return true
+    }
+
+    this.showError(this.requireEmailValue ? "Informe nome, telefone, e-mail e cidade." : "Informe nome, telefone e cidade.")
+    missing.focus()
+    return false
+  }
+
+  firstMissingQuickField(prefix) {
+    const fields = prefix === "edit"
+      ? [this.editNameTarget, this.editPhoneTarget, this.editCityTarget, ...(this.requireEmailValue ? [this.editEmailTarget] : [])]
+      : [this.createNameTarget, this.createPhoneTarget, this.createCityTarget, ...(this.requireEmailValue ? [this.createEmailTarget] : [])]
+
+    return fields.find((field) => !this.hasText(field.value))
+  }
+
   clearLegacyOwnerFields() {
     [
       "legacyName",
@@ -328,9 +389,25 @@ export default class extends Controller {
     })
   }
 
+  syncLegacyOwnerFields(proprietor) {
+    if (this.hasLegacyNameTarget) this.legacyNameTarget.value = this.legacyValue(proprietor.name)
+    if (this.hasLegacyCodeTarget) this.legacyCodeTarget.value = this.legacyValue(proprietor.code || proprietor.vista_code)
+    if (this.hasLegacyPhonePrimaryTarget) this.legacyPhonePrimaryTarget.value = this.legacyValue(proprietor.phone_primary || proprietor.phone_primary_display)
+    if (this.hasLegacyPhoneSecondaryTarget) this.legacyPhoneSecondaryTarget.value = this.legacyValue(proprietor.phone_secondary || proprietor.phone_secondary_display)
+    if (this.hasLegacyPhoneResidentialTarget) this.legacyPhoneResidentialTarget.value = this.legacyValue(proprietor.phone_residential || proprietor.residential_phone)
+    if (this.hasLegacyEmailTarget) this.legacyEmailTarget.value = this.legacyValue(proprietor.email)
+    if (this.hasLegacyCityTarget) this.legacyCityTarget.value = this.legacyValue(proprietor.city)
+  }
+
+  legacyValue(value) {
+    const text = String(value || "").trim()
+    return text === "-" ? "" : text
+  }
+
   syncOwnerState(proprietor) {
     const hasOwner = this.hasOwner(proprietor)
     if (this.hasEmptyTarget) this.emptyTarget.hidden = hasOwner
+    if (this.hasOwnerCardTarget) this.ownerCardTarget.hidden = !hasOwner
     if (this.hasDirectActionTarget) this.directActionTarget.hidden = hasOwner
     if (this.hasMenuActionTarget) this.menuActionTarget.hidden = !hasOwner
     if (this.hasEditActionTarget) this.editActionTarget.hidden = !hasOwner || !proprietor?.id
@@ -345,8 +422,22 @@ export default class extends Controller {
   }
 
   closeModal() {
+    if (this.inlineValue) return
+
     const modal = document.getElementById("quickProprietorModal")
     modal?.dispatchEvent(new CustomEvent("ax-modal:close", { bubbles: true }))
+  }
+
+  finishSelection() {
+    if (this.inlineValue) {
+      this.hidePanels()
+      if (this.hasQueryTarget) this.queryTarget.value = ""
+      if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
+      if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
+      return
+    }
+
+    this.closeModal()
   }
 
   showError(message) {

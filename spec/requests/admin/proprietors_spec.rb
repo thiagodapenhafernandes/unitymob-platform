@@ -136,10 +136,11 @@ RSpec.describe "Admin::Proprietors", type: :request do
     )
   end
 
-  it "bloqueia busca rápida para corretor mesmo com visualização de proprietários" do
+  it "bloqueia busca rápida para usuário sem gerenciar captações" do
     broker_profile = Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
       profile.update!(
         permissions: Profile.default_permissions_for("Corretor").merge(
+          "captacoes" => { "view" => true, "manage" => false },
           "proprietarios" => { "view" => true, "manage" => false }
         )
       )
@@ -174,7 +175,107 @@ RSpec.describe "Admin::Proprietors", type: :request do
          params: { proprietor: { name: "Proprietário Administrativo" } },
          headers: { "ACCEPT" => "application/json" }
 
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(JSON.parse(response.body)["errors"]).to include("Telefone é obrigatório.", "Cidade é obrigatória.")
+
+    post quick_create_admin_proprietors_path,
+         params: { proprietor: { name: "Proprietário Administrativo", phone_primary: "(47) 98888-0001", city: "Camboriú" } },
+         headers: { "ACCEPT" => "application/json" }
+
     expect(response).to have_http_status(:created)
     expect(JSON.parse(response.body)["name"]).to eq("Proprietário Administrativo")
+  end
+
+  it "não duplica proprietário rápido quando o telefone já existe" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    existing = create(:proprietor, tenant: admin.tenant, name: "Dono Existente", phone_primary: "(47) 99999-2222", city: "Itajaí")
+
+    expect {
+      post quick_create_admin_proprietors_path,
+           params: {
+             proprietor: {
+               name: "Outro Nome",
+               phone_primary: "55 (47) 99999-2222",
+               email: "novo@example.com",
+               city: "Camboriú"
+             }
+           },
+           headers: { "ACCEPT" => "application/json" }
+    }.not_to change(Proprietor, :count)
+
+    expect(response).to have_http_status(:created)
+    payload = JSON.parse(response.body)
+    expect(payload).to include("id" => existing.id, "name" => "Dono Existente", "city" => "Itajaí")
+    expect(existing.reload).to have_attributes(name: "Dono Existente", city: "Itajaí")
+  end
+
+  it "permite busca e criação rápida para corretor com captações sem liberar CRUD de proprietários" do
+    broker_profile = Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
+      profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+    end
+    broker = create(:admin_user, profile: broker_profile)
+    sign_in broker
+    create(:proprietor, tenant: broker.tenant, name: "Proprietário Captação", phone_primary: "(47) 97777-1111", city: "Itajaí")
+
+    get quick_search_admin_proprietors_path,
+        params: { q: "97777" },
+        headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(JSON.parse(response.body).fetch("proprietors").first["name"]).to eq("Proprietário Captação")
+
+    expect {
+      post quick_create_admin_proprietors_path,
+           params: { proprietor: { name: "Novo Captado", phone_primary: "(47) 96666-2222", city: "Itapema" } },
+           headers: { "ACCEPT" => "application/json" }
+    }.to change(Proprietor, :count).by(1)
+
+    get admin_proprietors_path
+    expect(response).to redirect_to(admin_root_path)
+  end
+
+  it "permite corretor atualizar campos preenchidos no fluxo rápido da captação e bloqueia telefone duplicado" do
+    broker_profile = Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
+      profile.update!(permissions: Profile.default_permissions_for("Corretor"))
+    end
+    broker = create(:admin_user, profile: broker_profile)
+    sign_in broker
+    proprietor = create(
+      :proprietor,
+      tenant: broker.tenant,
+      name: "Dono Antigo",
+      phone_primary: "(47) 97777-1111",
+      email: "antigo@example.com",
+      city: "Itajaí"
+    )
+    duplicate = create(:proprietor, tenant: broker.tenant, name: "Dono Duplicado", phone_primary: "(47) 96666-2222", city: "Camboriú")
+
+    patch quick_update_admin_proprietor_path(proprietor),
+          params: {
+            proprietor: {
+              name: "Dono Atualizado",
+              phone_primary: "(47) 95555-3333",
+              email: "",
+              city: "Porto Belo"
+            }
+          },
+          headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(proprietor.reload).to have_attributes(
+      name: "Dono Atualizado",
+      phone_primary: "5547955553333",
+      email: "",
+      city: "Porto Belo"
+    )
+
+    patch quick_update_admin_proprietor_path(proprietor),
+          params: { proprietor: { name: "Outro Nome", phone_primary: "(47) 96666-2222", city: "Itapema" } },
+          headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(JSON.parse(response.body)["errors"]).to include("Telefone já vinculado ao proprietário #{duplicate.name}.")
+    expect(proprietor.reload.phone_primary).to eq("5547955553333")
   end
 end

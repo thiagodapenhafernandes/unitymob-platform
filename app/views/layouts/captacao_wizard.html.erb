@@ -18,6 +18,7 @@
     <link rel="apple-touch-icon" href="/field-icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/field-icons/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/field-icons/icon-512.png">
+    <%= favicon_link_tag "logo-unitymob-platform-favicon.svg", type: "image/svg+xml" %>
 
     <%# Bootstrap e ícones self-hosted (antes jsdelivr) %>
     <%= stylesheet_link_tag "vendor/bootstrap.min" %>
@@ -1375,7 +1376,9 @@
         wizard_admin_area_name = @layout_setting.respond_to?(:admin_area_label) ? @layout_setting.admin_area_label : 'Plataforma'
       %>
       <%= link_to((tenant_owner? ? admin_root_path : field_root_path), class: "admin-navbar-brand") do %>
-        <i class="bi bi-speedometer2"></i>
+        <span class="admin-navbar-brand-mark">
+          <%= image_tag "logo-unitymob-platform.svg", alt: "", class: "admin-navbar-brand-logo", aria: { hidden: true } %>
+        </span>
         <span class="admin-navbar-brand-text"><%= wizard_site_name %> <%= wizard_admin_area_name %></span>
       <% end %>
       <div class="admin-navbar-user">

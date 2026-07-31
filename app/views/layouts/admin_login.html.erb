@@ -16,6 +16,7 @@
                manifest_href: admin_manifest_path(format: :json),
                icon_href: login_icon_href %>
     <link rel="icon" type="image/png" sizes="512x512" href="/pwa-icon-512?v=<%= login_layout_setting&.updated_at.to_i %>">
+    <%= favicon_link_tag "logo-unitymob-platform-favicon.svg", type: "image/svg+xml" %>
     <%= javascript_include_tag "admin_login_submit_guard", defer: true %>
 
     <%# Fontes e ícones self-hosted (antes Google Fonts + jsdelivr) %>

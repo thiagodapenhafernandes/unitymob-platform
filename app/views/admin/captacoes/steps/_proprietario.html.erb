@@ -1,164 +1,166 @@
+<%
+  owner_phones = if @captacao.proprietor
+                   [
+                     @captacao.proprietor.phone_primary,
+                     @captacao.proprietor.mobile_phone,
+                     @captacao.proprietor.business_phone,
+                     @captacao.proprietor.residential_phone
+                   ]
+                 else
+                   [
+                     @captacao.proprietario_telefone,
+                     @captacao.proprietario_celular,
+                     @captacao.proprietario_telefone_comercial,
+                     @captacao.proprietario_telefone_residencial
+                   ]
+                 end.compact_blank.uniq
+  owner_name = @captacao.proprietario_nome.presence
+  owner_phone = owner_phones.first
+  owner_email = @captacao.proprietario_email_display.presence
+  owner_city = @captacao.proprietor&.city.presence || @captacao.proprietario_cidade.presence
+  owner_present = @captacao.proprietor_id.present? || owner_name.present? || owner_phone.present? || owner_email.present? || owner_city.present?
+  owner_display_name = owner_name.presence || "Proprietário não vinculado"
+  owner_display_phone = Phones::Normalizer.display(owner_phone).presence || format_phone(owner_phone).presence || "-"
+  owner_selector_data = {
+    controller: "habitation-owner-selector",
+    habitation_owner_selector_search_url_value: quick_search_admin_proprietors_path,
+    habitation_owner_selector_create_url_value: quick_create_admin_proprietors_path,
+    habitation_owner_selector_update_url_template_value: quick_update_admin_proprietor_path(":id"),
+    habitation_owner_selector_inline_value: true,
+    habitation_owner_selector_require_email_value: false
+  }
+%>
+
 <h1 class="wizard-section-title"><i class="bi bi-person-vcard-fill tw-text-primary"></i>Dados do proprietário</h1>
 <p class="wizard-section-subtitle">Informações básicas de contato para a captação.</p>
 
-<div data-controller="proprietor-lookup"
-     data-proprietor-lookup-url-value="<%= proprietor_lookup_admin_captacoes_path %>">
-  <%= f.hidden_field :proprietor_id, data: { proprietor_lookup_target: "proprietorId" } %>
-  <% linked_proprietor = @captacao.proprietor_id.present? %>
+<%= tag.div class: "captacao-owner-inline habitation-owner-selector", data: owner_selector_data do %>
+  <%= f.hidden_field :proprietor_id, data: { habitation_owner_selector_target: "hiddenInput" } %>
+  <%= f.hidden_field :proprietario_nome, value: owner_name, data: { habitation_owner_selector_target: "legacyName" } %>
+  <%= f.hidden_field :proprietario_telefone, value: owner_phone, data: { habitation_owner_selector_target: "legacyPhonePrimary" } %>
+  <%= f.hidden_field :proprietario_email, value: owner_email, data: { habitation_owner_selector_target: "legacyEmail" } %>
+  <%= f.hidden_field :proprietario_cidade, value: owner_city, data: { habitation_owner_selector_target: "legacyCity" } %>
 
-  <div class="tw-hidden ax-inline-notice ax-inline-notice--info tw-mb-3"
-       data-proprietor-lookup-target="matchBox">
-    <div class="ax-inline-notice__icon"><i class="bi bi-person-check-fill"></i></div>
-    <div class="ax-inline-notice__content">
-      <strong data-proprietor-lookup-target="matchTitle">Proprietário já cadastrado</strong>
-      <div class="tw-text-sm tw-text-ink-muted" data-proprietor-lookup-target="matchDescription"></div>
-      <div class="tw-flex tw-gap-2 tw-mt-2">
-        <button type="button"
-                class="ax-btn ax-btn--sm ax-btn--primary"
-                data-action="proprietor-lookup#applyMatch">
-          Usar cadastro existente
-        </button>
-        <button type="button"
-                class="ax-btn ax-btn--sm ax-btn--ghost"
-                data-action="proprietor-lookup#dismissMatch">
-          Manter digitado
-        </button>
+  <div class="ax-quick-modal__error" data-habitation-owner-selector-target="error" hidden></div>
+
+  <div class="habitation-owner-search wizard-field-group">
+    <%= ax_field_label(nil, nil, text: "Buscar proprietário", for: "captacao_proprietor_query") %>
+    <input type="search"
+           id="captacao_proprietor_query"
+           class="ax-control"
+           placeholder="Nome, telefone, e-mail ou cidade"
+           autocomplete="off"
+           data-habitation-owner-selector-target="query"
+           data-action="input->habitation-owner-selector#search">
+  </div>
+
+  <div class="habitation-owner-results" data-habitation-owner-selector-target="results" aria-live="polite"></div>
+
+  <div class="habitation-owner-no-results" data-habitation-owner-selector-target="noResults" hidden>
+    <span>Nenhum proprietário encontrado.</span>
+    <button type="button" class="ax-btn ax-btn--sm ax-btn--primary" data-action="habitation-owner-selector#showCreate">
+      <i class="bi bi-plus-circle"></i>
+      Cadastrar novo proprietário
+    </button>
+  </div>
+
+  <section class="habitation-owner-modal-panel captacao-owner-inline__panel" data-habitation-owner-selector-target="createPanel" hidden>
+    <h4>Novo proprietário</h4>
+    <div id="captacaoQuickProprietorForm" data-habitation-owner-selector-target="createForm">
+      <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+      <%= ax_field_grid(columns: 12, gap: :compact) do %>
+        <div class="ax-span-12">
+          <%= ax_field_label(nil, nil, text: safe_join(["Nome", tag.span("*", class: "required-star")], " "), for: "captacao_quick_proprietor_name") %>
+          <input type="text" class="ax-control" id="captacao_quick_proprietor_name" name="proprietor[name]" required data-habitation-owner-selector-target="createName">
+        </div>
+        <div class="ax-span-6">
+          <%= ax_field_label(nil, nil, text: safe_join(["Telefone", tag.span("*", class: "required-star")], " "), for: "captacao_quick_proprietor_phone") %>
+          <input type="tel" class="ax-control" id="captacao_quick_proprietor_phone" name="proprietor[phone_primary]" required data-controller="phone-input" data-habitation-owner-selector-target="createPhone">
+        </div>
+        <div class="ax-span-6">
+          <%= ax_field_label(nil, nil, text: "E-mail", for: "captacao_quick_proprietor_email") %>
+          <input type="email" class="ax-control" id="captacao_quick_proprietor_email" name="proprietor[email]" data-habitation-owner-selector-target="createEmail">
+        </div>
+        <div class="ax-span-12">
+          <%= ax_field_label(nil, nil, text: safe_join(["Cidade", tag.span("*", class: "required-star")], " "), for: "captacao_quick_proprietor_city") %>
+          <input type="text" class="ax-control" id="captacao_quick_proprietor_city" name="proprietor[city]" required data-habitation-owner-selector-target="createCity">
+        </div>
+        <div class="ax-span-12 habitation-owner-modal-panel__actions">
+          <button type="button" class="ax-btn ax-btn--primary" data-action="habitation-owner-selector#create">Salvar e selecionar</button>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <section class="habitation-owner-modal-panel captacao-owner-inline__panel" data-habitation-owner-selector-target="editPanel" hidden>
+    <h4>Completar dados do proprietário</h4>
+    <div id="captacaoEditQuickProprietorForm" data-habitation-owner-selector-target="editForm">
+      <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+      <%= ax_field_grid(columns: 12, gap: :compact) do %>
+        <div class="ax-span-12">
+          <%= ax_field_label(nil, nil, text: safe_join(["Nome", tag.span("*", class: "required-star")], " "), for: "captacao_edit_quick_proprietor_name") %>
+          <input type="text" class="ax-control" id="captacao_edit_quick_proprietor_name" name="proprietor[name]" required data-habitation-owner-selector-target="editName">
+        </div>
+        <div class="ax-span-6">
+          <%= ax_field_label(nil, nil, text: safe_join(["Telefone", tag.span("*", class: "required-star")], " "), for: "captacao_edit_quick_proprietor_phone") %>
+          <input type="tel" class="ax-control" id="captacao_edit_quick_proprietor_phone" name="proprietor[phone_primary]" required data-controller="phone-input" data-habitation-owner-selector-target="editPhone">
+        </div>
+        <div class="ax-span-6">
+          <%= ax_field_label(nil, nil, text: "E-mail", for: "captacao_edit_quick_proprietor_email") %>
+          <input type="email" class="ax-control" id="captacao_edit_quick_proprietor_email" name="proprietor[email]" data-habitation-owner-selector-target="editEmail">
+        </div>
+        <div class="ax-span-12">
+          <%= ax_field_label(nil, nil, text: safe_join(["Cidade", tag.span("*", class: "required-star")], " "), for: "captacao_edit_quick_proprietor_city") %>
+          <input type="text" class="ax-control" id="captacao_edit_quick_proprietor_city" name="proprietor[city]" required data-habitation-owner-selector-target="editCity">
+        </div>
+        <div class="ax-span-12 habitation-owner-modal-panel__actions">
+          <button type="button" class="ax-btn ax-btn--primary" data-action="habitation-owner-selector#update">Salvar e selecionar</button>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <div class="habitation-owner-card__empty habitation-owner-card__empty--standalone" data-habitation-owner-selector-target="empty" <%= "hidden" if owner_present %>>
+    Nenhum proprietário selecionado.
+  </div>
+
+  <div class="habitation-owner-card captacao-owner-inline__card"
+       data-habitation-owner-selector-target="ownerCard"
+       <%= "hidden" unless owner_present %>>
+    <div class="habitation-owner-card__avatar" aria-hidden="true">
+      <i class="bi bi-person-lines-fill"></i>
+    </div>
+
+    <div class="habitation-owner-card__body">
+      <div class="habitation-owner-card__head">
+        <div>
+          <span class="habitation-owner-card__eyebrow">Proprietário</span>
+          <strong data-habitation-owner-selector-target="name"><%= owner_display_name %></strong>
+        </div>
       </div>
+
+      <dl class="habitation-owner-card__facts">
+        <div>
+          <dt><i class="bi bi-telephone"></i><span>Telefone</span></dt>
+          <dd data-habitation-owner-selector-target="phonePrimary"><%= owner_display_phone %></dd>
+        </div>
+        <div <%= "hidden" if owner_phones.second.blank? %>>
+          <dt><i class="bi bi-telephone-plus"></i><span>Telefone 2</span></dt>
+          <dd data-habitation-owner-selector-target="phoneSecondary"><%= Phones::Normalizer.display(owner_phones.second).presence || format_phone(owner_phones.second) %></dd>
+        </div>
+        <div>
+          <dt><i class="bi bi-envelope"></i><span>E-mail</span></dt>
+          <dd data-habitation-owner-selector-target="email"><%= owner_email.presence || "-" %></dd>
+        </div>
+        <div>
+          <dt><i class="bi bi-geo-alt"></i><span>Cidade</span></dt>
+          <dd data-habitation-owner-selector-target="city"><%= owner_city.presence || "-" %></dd>
+        </div>
+      </dl>
     </div>
   </div>
 
-  <div class="tw-hidden ax-inline-notice ax-inline-notice--success tw-mb-3"
-       data-proprietor-lookup-target="linkedBox">
-    <div class="ax-inline-notice__icon"><i class="bi bi-check-circle-fill"></i></div>
-    <div class="ax-inline-notice__content">
-      <strong>Cadastro existente vinculado</strong>
-      <div class="tw-text-sm tw-text-ink-muted" data-proprietor-lookup-target="linkedDescription"></div>
-    </div>
-  </div>
-
-<%= ax_standalone_field(
-      name: :proprietario_lookup_codigo,
-      id: :proprietario_lookup_codigo,
-      label: "Código do proprietário",
-      value: @captacao.proprietor&.vista_code,
-      class_name: "wizard-field-group",
-      placeholder: "Ex.: código Vista ou código interno",
-      autocomplete: "off",
-      data: {
-        proprietor_lookup_target: "code",
-        action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup"
-      }
-    ) %>
-
-<%= ax_text_field(
-      form: f,
-      method: :proprietario_nome,
-      label: safe_join(["Nome completo", tag.span("*", class: "required-star")], " "),
-      field_class: "wizard-field-group",
-      class: field_state.call(:proprietario_nome),
-      autocomplete: "name",
-      data: {
-        proprietor_lookup_target: "name",
-        action: "input->proprietor-lookup#handleManualEdit"
-      }
-    ) %>
-<% if field_invalid.call(:proprietario_nome) %><div class="invalid-feedback d-block">Informe o nome completo do proprietário.</div><% end %>
-
-<%
-  proprietor_phone_data = {
-    proprietor_lookup_target: "phone",
-    action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
-  }
-  proprietor_phone_data[:controller] = "phone-input" unless linked_proprietor
-  linked_proprietor_phone = @captacao.proprietario_telefone.to_s
-  linked_proprietor_phone_digits = linked_proprietor_phone.gsub(/\D/, "")
-  linked_proprietor_phone_national =
-    if linked_proprietor_phone_digits.start_with?("55") && [12, 13].include?(linked_proprietor_phone_digits.length)
-      linked_proprietor_phone_digits.delete_prefix("55")
-    else
-      linked_proprietor_phone_digits
-    end
-  linked_proprietor_phone_display =
-    if linked_proprietor_phone_national.length == 11
-      "(#{linked_proprietor_phone_national[0, 2]}) #{linked_proprietor_phone_national[2, 5]}-#{linked_proprietor_phone_national[7, 4]}"
-    elsif linked_proprietor_phone_national.length == 10
-      "(#{linked_proprietor_phone_national[0, 2]}) #{linked_proprietor_phone_national[2, 4]}-#{linked_proprietor_phone_national[6, 4]}"
-    else
-      format_phone(linked_proprietor_phone)
-    end
-%>
-<% if linked_proprietor %>
-  <%= f.hidden_field :proprietario_telefone,
-        value: @captacao.proprietario_telefone,
-        data: { proprietor_lookup_target: "phoneHidden" } %>
-<% end %>
-<%= ax_text_field(
-      form: f,
-      method: :proprietario_telefone,
-      label: safe_join(["Telefone / WhatsApp", tag.span("*", class: "required-star")], " "),
-      type: :tel,
-      field_class: "wizard-field-group",
-      class: [field_state.call(:proprietario_telefone), ("ax-readonly-input" if linked_proprietor)].compact_blank.join(" "),
-      value: (linked_proprietor_phone_display if linked_proprietor),
-      placeholder: "(47) 99999-0000",
-      autocomplete: "tel",
-      disabled: linked_proprietor,
-      data: proprietor_phone_data
-    ) %>
-<% if field_invalid.call(:proprietario_telefone) %><div class="invalid-feedback d-block">Informe o telefone/WhatsApp do proprietário.</div><% end %>
-
-<%= ax_field_grid do %>
-  <div class="ax-span-6">
-    <%= ax_text_field(
-          form: f,
-          method: :proprietario_cpf_cnpj,
-          label: "CPF ou CNPJ",
-          field_class: "wizard-field-group",
-          placeholder: "000.000.000-00",
-          data: {
-            controller: "mask",
-            mask_type_value: "cpf_cnpj",
-            proprietor_lookup_target: "cpfCnpj",
-            action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
-          }
-        ) %>
-  </div>
-  <div class="ax-span-6">
-    <%= ax_text_field(
-          form: f,
-          method: :proprietario_email,
-          label: "E-mail",
-          type: :email,
-          field_class: "wizard-field-group",
-          autocomplete: "email",
-          data: {
-            proprietor_lookup_target: "email",
-            action: "input->proprietor-lookup#lookup blur->proprietor-lookup#lookup input->proprietor-lookup#handleManualEdit"
-          }
-        ) %>
-  </div>
-<% end %>
-
-<%
-  proprietor_city_choices = (@proprietor_city_options.to_a + [@captacao.proprietario_cidade]).compact_blank.uniq
-%>
-<%= ax_autocomplete_select_field(
-      form: f,
-      method: :proprietario_cidade,
-      label: safe_join(["Cidade do proprietário", tag.span("*", class: "required-star")], " "),
-      choices: options_for_select(proprietor_city_choices, @captacao.proprietario_cidade),
-      select_options: { include_blank: true },
-      placeholder: "Balneário Camboriú",
-      create: true,
-      class_name: "wizard-field-group",
-      html_options: {
-        class: field_state.call(:proprietario_cidade),
-        autocomplete: "address-level2",
-        data: {
-          proprietor_lookup_target: "city",
-          action: "change->proprietor-lookup#handleManualEdit"
-        }
-      }
-    ) %>
+  <% if field_invalid.call(:proprietario_nome) %><div class="invalid-feedback d-block">Informe o nome completo do proprietário.</div><% end %>
+  <% if field_invalid.call(:proprietario_telefone) %><div class="invalid-feedback d-block">Informe o telefone/WhatsApp do proprietário.</div><% end %>
   <% if field_invalid.call(:proprietario_cidade) %><div class="invalid-feedback d-block">Informe a cidade do proprietário.</div><% end %>
-</div>
+<% end %>
