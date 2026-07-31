@@ -7,18 +7,21 @@
   cadastro_categories = {
     "apartamentos" => ["Apartamento", "Cobertura", "Loft", "Studio"],
     "comerciais_industriais" => ["Sala Comercial", "Loja", "Prédio Comercial", "Galpão", "Galpão Industrial", "Área", "Casa comercial", "Condomínio Industrial", "Ponto Comercial", "Salas/Conjuntos"],
+    "empreendimento" => ["Empreendimento"],
     "imoveis_residenciais" => ["Casa", "Casa em Condomínio", "Sobrado", "Rural", "Condomínio", "Chácara", "Sítio"],
     "terrenos" => ["Terreno", "Terreno em Condomínio", "Área", "Terreno Comercial", "Terreno Industrial"]
   }
   cadastro_type_labels = {
     "apartamentos" => "Apartamentos",
     "comerciais_industriais" => "Comerciais e industriais",
+    "empreendimento" => "Empreendimento",
     "imoveis_residenciais" => "Imóveis residenciais",
     "terrenos" => "Terrenos"
   }
   cadastro_type_icons = {
     "apartamentos" => "bi-building-fill",
     "comerciais_industriais" => "bi-shop",
+    "empreendimento" => "bi-buildings-fill",
     "imoveis_residenciais" => "bi-house-door-fill",
     "terrenos" => "bi-tree-fill"
   }
@@ -28,7 +31,7 @@
 <div class="wizard-start-grid"
      data-controller="habitation-form"
      data-habitation-form-categories-by-type-value="<%= json_escape(cadastro_categories.to_json) %>"
-     data-habitation-form-tipo-by-type-value="<%= json_escape({ apartamentos: "Unitário", comerciais_industriais: "Unitário", imoveis_residenciais: "Unitário", terrenos: "Unitário" }.to_json) %>">
+     data-habitation-form-tipo-by-type-value="<%= json_escape({ apartamentos: "Unitário", comerciais_industriais: "Unitário", empreendimento: "Empreendimento", imoveis_residenciais: "Unitário", terrenos: "Unitário" }.to_json) %>">
   <div class="wizard-field-group">
     <label class="ax-label">Tipo de cadastro <span class="required-star">*</span></label>
     <div class="wizard-option-grid" data-controller="option-picker">
@@ -48,7 +51,7 @@
         </div>
       <% end %>
     </div>
-    <%= f.hidden_field :tipo, value: "Unitário", data: { habitation_form_target: "tipo" } %>
+    <%= f.hidden_field :tipo, value: (@captacao.tipo.presence || (inferred_cadastro_type == "empreendimento" ? "Empreendimento" : "Unitário")), data: { habitation_form_target: "tipo" } %>
   </div>
 
   <%= ax_select_field(form: f, method: :categoria, label: "Categoria",

@@ -477,11 +477,12 @@ module Admin
     end
 
     def initial_intake_params
-      attrs = params.require(:habitation).permit(:cadastro_type, :property_kind, :categoria, :modalidade).compact_blank.to_h
+      attrs = params.require(:habitation).permit(:cadastro_type, :property_kind, :categoria, :modalidade, :tipo).compact_blank.to_h
       cadastro_type = attrs.delete("cadastro_type")
       property_kind = attrs.delete("property_kind")
       default_category = default_category_for_cadastro_type(cadastro_type.presence || property_kind)
       attrs["categoria"] = default_category if attrs["categoria"].blank? && default_category.present?
+      attrs["tipo"] = cadastro_type == "empreendimento" ? "Empreendimento" : "Unitário" if cadastro_type.present?
       if (modalidade = attrs.delete("modalidade")).present?
         attrs["intake_modalidade"] = modalidade
         attrs["status"] = modalidade.in?(%w[locacao_anual locacao_diaria]) ? "Aluguel" : "Venda"
@@ -1142,6 +1143,7 @@ module Admin
       property_kind = attrs.delete("property_kind")
       default_category = default_category_for_cadastro_type(cadastro_type.presence || property_kind)
       attrs["categoria"] = default_category if attrs["categoria"].blank? && default_category.present?
+      attrs["tipo"] = cadastro_type == "empreendimento" ? "Empreendimento" : "Unitário" if cadastro_type.present?
       if (modalidade = attrs.delete("modalidade")).present?
         attrs["intake_modalidade"] = modalidade
         attrs["status"] = modalidade.in?(%w[locacao_anual locacao_diaria]) ? "Aluguel" : "Venda"
@@ -1167,6 +1169,7 @@ module Admin
       attrs["saldo_devedor_formatted"] = attrs.delete("saldo_devedor") if attrs["saldo_devedor"].present?
       attrs["nome_empreendimento"] = attrs.delete("edificio_nome") if attrs["edificio_nome"].present?
       attrs["complemento"] = attrs.delete("unidade_numero") if attrs["unidade_numero"].present?
+      normalize_linked_development_intake_unit!(attrs)
       normalize_street_house_category!(attrs)
       attrs["ocupacao_status"] = attrs.delete("ocupacao") if attrs["ocupacao"].present?
       attrs["estado_conservacao"] = attrs.delete("estado_imovel") if attrs["estado_imovel"].present?
@@ -1288,8 +1291,20 @@ module Admin
       when "apartamentos" then "Apartamento"
       when "residencial", "imoveis_residenciais" then "Casa"
       when "comerciais_industriais", "sala_comercial" then "Sala Comercial"
+      when "empreendimento" then "Empreendimento"
       when "terrenos", "terreno" then "Terreno"
       end
+    end
+
+    def normalize_linked_development_intake_unit!(attrs)
+      return if attrs["codigo_empreendimento"].blank?
+
+      current_tipo = attrs["tipo"].presence || @habitation&.tipo
+      current_categoria = attrs["categoria"].presence || @habitation&.categoria
+      return unless current_tipo.to_s == "Empreendimento" || current_categoria.to_s == "Empreendimento"
+
+      attrs["tipo"] = "Unitário"
+      attrs["categoria"] = "Apartamento"
     end
 
     def normalize_street_house_category!(attrs)

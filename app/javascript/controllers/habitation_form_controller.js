@@ -625,7 +625,7 @@ export default class extends Controller {
 
     this.syncDevelopmentEditLink(developmentData.edit_url)
     this.syncDevelopmentRelationshipFields(developmentData)
-    this.syncDevelopmentAddressFields(developmentData.address)
+    this.syncDevelopmentAddressFields(developmentData.address, { overwrite: fromUser })
     if (fromUser) this.enableDevelopmentPhotosFallback()
   }
 
@@ -642,17 +642,18 @@ export default class extends Controller {
     input.dispatchEvent(new Event("change", { bubbles: true }))
   }
 
-  syncDevelopmentAddressFields(address = {}) {
+  syncDevelopmentAddressFields(address = {}, options = {}) {
     if (!address) return
 
-    this.setSelectTargetValue("streetTypeSelect", address.tipo_endereco, { onlyWhenBlank: true })
-    this.setInputTargetValue("street", address.logradouro, { onlyWhenBlank: true })
-    this.setInputTargetValue("streetNumber", address.numero, { onlyWhenBlank: true })
-    this.setSelectTargetValue("stateSelect", address.uf, { onlyWhenBlank: true })
-    this.setInputTargetValue("zipCode", address.cep, { onlyWhenBlank: true })
-    this.setSelectTargetValue("neighborhoodSelect", address.bairro, { onlyWhenBlank: true, createOption: true })
-    this.setSelectTargetValue("commercialNeighborhoodSelect", address.bairro_comercial, { onlyWhenBlank: true, createOption: true })
-    this.setSelectTargetValue("citySelect", address.cidade, { onlyWhenBlank: true, createOption: true })
+    const fieldOptions = { onlyWhenBlank: !options.overwrite }
+    this.setSelectTargetValue("streetTypeSelect", address.tipo_endereco, fieldOptions)
+    this.setInputTargetValue("street", address.logradouro, fieldOptions)
+    this.setInputTargetValue("streetNumber", address.numero, fieldOptions)
+    this.setSelectTargetValue("stateSelect", address.uf, fieldOptions)
+    this.setInputTargetValue("zipCode", address.cep, fieldOptions)
+    this.setSelectTargetValue("neighborhoodSelect", address.bairro, { ...fieldOptions, createOption: true })
+    this.setSelectTargetValue("commercialNeighborhoodSelect", address.bairro_comercial, { ...fieldOptions, createOption: true })
+    this.setSelectTargetValue("citySelect", address.cidade, { ...fieldOptions, createOption: true })
   }
 
   setInputTargetValue(targetName, value, options = {}) {
@@ -667,6 +668,13 @@ export default class extends Controller {
   setSelectTargetValue(targetName, value, options = {}) {
     const select = this.optionalTarget(targetName)
     if (!this.canWriteField(select, value, options)) return
+
+    if (select.tagName !== "SELECT") {
+      select.value = String(value)
+      select.dispatchEvent(new Event("input", { bubbles: true }))
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+      return
+    }
 
     this.setSelectValue(select, value, { createOption: options.createOption })
   }
