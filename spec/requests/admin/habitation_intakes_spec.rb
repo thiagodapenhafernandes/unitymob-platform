@@ -148,7 +148,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include(submitted.titulo_anuncio)
   end
 
-  it "oculta captações internas/publicadas da lista padrão e filtra por corretor para perfis autorizados" do
+  it "mostra somente captações em revisão na lista padrão e mantém demais status por filtro explícito" do
     first_broker = create(:admin_user, name: "Corretor Alfa")
     second_broker = create(:admin_user, name: "Corretor Beta")
     first_visible = create(:habitation, :broker_intake, admin_user: first_broker, codigo: "CAP-#{SecureRandom.hex(6)}", intake_status: "submitted_for_admin_review", titulo_anuncio: "Captação Alfa em revisão")
@@ -161,7 +161,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('name="corretor_id"')
     expect(response.body).to include(first_visible.titulo_anuncio)
-    expect(response.body).to include(second_visible.titulo_anuncio)
+    expect(response.body).not_to include(second_visible.titulo_anuncio)
     expect(response.body).not_to include(internal.titulo_anuncio)
     expect(response.body).not_to include(published.titulo_anuncio)
 
@@ -169,6 +169,17 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response.body).to include(first_visible.titulo_anuncio)
     expect(response.body).not_to include(second_visible.titulo_anuncio)
+    expect(response.body).not_to include(internal.titulo_anuncio)
+
+    get admin_captacoes_path(status: "admin_approved")
+
+    expect(response.body).to include(second_visible.titulo_anuncio)
+    expect(response.body).not_to include(first_visible.titulo_anuncio)
+
+    get admin_captacoes_path(status: "internal")
+
+    expect(response.body).to include(internal.titulo_anuncio)
+    expect(response.body).not_to include(first_visible.titulo_anuncio)
   end
 
   it "usa rótulos claros para enviar análise e publicar no site pelo captador" do
@@ -327,6 +338,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
       proprietario_email: "proprietario@example.com",
       categoria: "Apartamento",
       intake_modalidade: "venda",
+      intake_status: "submitted_for_admin_review",
       status: "Venda",
       regiao_foco: "Sim",
       valor_venda_cents: 17_000_000_00,

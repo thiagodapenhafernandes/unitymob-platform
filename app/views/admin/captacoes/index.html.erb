@@ -29,7 +29,7 @@
         eyebrow: "Operação",
         icon: "journal-plus",
         subtitle: (tenant_owner? || owns_all_resource?(:captacoes) || can?(:review, :captacoes) || current_admin_user.can_view_team?(:captacoes)) ? "Captações da equipe, revisão e publicação." : "Suas captações em andamento.",
-        pills: [filters_active ? "Filtrado" : "Todos"],
+        pills: [filters_active ? "Filtrado" : "Pendentes de revisão"],
         metrics: [
           { value: dashboard[:total].to_i, label: "total" },
           { value: dashboard[:missing_photos].to_i, label: "sem fotos" }
@@ -82,7 +82,7 @@
       </div>
       <div class="captacoes-filter-field">
         <label class="ax-label" for="status">Status da captação</label>
-        <%= select_tag :status, options_for_select([["Todos status", ""], ["Rascunhos", "draft"], ["Finalizadas", "completed"], ["Publicadas no site", "published"]], params[:status]), class: "ax-select" %>
+        <%= select_tag :status, options_for_select([["Pendentes de revisão", ""], ["Rascunhos e devolvidas", "draft"], ["Aguardando aceite do corretor", "admin_approved"], ["Disponíveis internamente", "internal"], ["Publicadas no site", "published"]], params[:status]), class: "ax-select" %>
       </div>
       <% if can_filter_intakes_by_broker? %>
         <div class="captacoes-filter-field captacoes-filter-field--broker">

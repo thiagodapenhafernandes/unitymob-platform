@@ -588,10 +588,14 @@ module Admin
         scope = scope.where(intake_status: [nil, "draft", "returned_to_broker"])
       when "completed"
         scope = scope.where(intake_status: %w[submitted_for_admin_review admin_approved])
+      when "admin_approved"
+        scope = scope.where(intake_status: "admin_approved")
+      when "internal"
+        scope = scope.where(intake_status: "internal")
       when "published"
         scope = scope.where(intake_status: "published")
       when nil, ""
-        scope = scope.where.not(intake_status: %w[internal published])
+        scope = scope.where(intake_status: "submitted_for_admin_review")
       else
         scope = scope.where(intake_status: params[:status]) if params[:status].present?
       end
