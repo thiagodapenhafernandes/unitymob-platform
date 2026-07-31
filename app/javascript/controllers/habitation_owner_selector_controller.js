@@ -43,6 +43,7 @@ export default class extends Controller {
     createUrl: String,
     updateUrlTemplate: String,
     canEdit: Boolean,
+    canEditName: Boolean,
     inline: Boolean,
     requireEmail: { type: Boolean, default: true }
   }
@@ -122,6 +123,11 @@ export default class extends Controller {
       this.applyProprietor(payload)
       this.resetFields(this.createFormTarget)
       this.finishSelection()
+    }, (payload) => {
+      if (!payload.proprietor) return
+
+      this.editingProprietor = payload.proprietor
+      this.showEditPanel(payload.proprietor, { focusFirstMissing: true, clearSearchResults: true })
     })
   }
 
@@ -145,7 +151,8 @@ export default class extends Controller {
     this.editPhoneTarget.value = proprietor.phone_primary || proprietor.phone_primary_display || ""
     this.editEmailTarget.value = proprietor.email || ""
     this.editCityTarget.value = proprietor.city || ""
-    this.unlockEditPhone()
+    this.syncEditNamePermission()
+    this.syncEditPhonePermission(proprietor)
     this.dispatchPhoneMask(this.editPhoneTarget)
     this.focusEditField(options)
   }
@@ -207,7 +214,7 @@ export default class extends Controller {
     `
   }
 
-  async submitForm(form, url, method, onSuccess) {
+  async submitForm(form, url, method, onSuccess, onConflict = null) {
     this.clearError()
 
     try {
@@ -220,7 +227,15 @@ export default class extends Controller {
         body: this.formDataFrom(form)
       })
       const payload = await response.json()
-      if (!response.ok) throw new Error(this.errorMessage(payload))
+      if (!response.ok) {
+        if (response.status === 409 && payload.proprietor && onConflict) {
+          this.showError(this.errorMessage(payload))
+          onConflict(payload)
+          return
+        }
+
+        throw new Error(this.errorMessage(payload))
+      }
 
       onSuccess(payload)
     } catch (error) {
@@ -294,12 +309,17 @@ export default class extends Controller {
     ;(target || this.editNameTarget).focus()
   }
 
-  unlockEditPhone() {
+  syncEditPhonePermission(proprietor) {
     if (!this.hasEditPhoneTarget) return
 
-    this.editPhoneTarget.readOnly = false
-    this.editPhoneTarget.classList.remove("ax-readonly-input")
-    this.editPhoneTarget.removeAttribute("aria-readonly")
+    const canEditPhone = this.canEditNameValue || !this.hasText(proprietor.phone_primary || proprietor.phone_primary_display)
+    this.editPhoneTarget.readOnly = !canEditPhone
+    this.editPhoneTarget.classList.toggle("ax-readonly-input", !canEditPhone)
+    if (canEditPhone) {
+      this.editPhoneTarget.removeAttribute("aria-readonly")
+    } else {
+      this.editPhoneTarget.setAttribute("aria-readonly", "true")
+    }
   }
 
   dispatchPhoneMask(field) {
@@ -319,7 +339,8 @@ export default class extends Controller {
       if (field.disabled) return
       if ((field.type === "checkbox" || field.type === "radio") && !field.checked) return
 
-      formData.append(field.name, field.value)
+      const value = field.type === "tel" ? this.normalizedPhoneValue(field) : field.value
+      formData.append(field.name, value)
     })
     return formData
   }
@@ -355,14 +376,22 @@ export default class extends Controller {
 
   validateQuickFields(prefix) {
     const missing = this.firstMissingQuickField(prefix)
-    if (!missing) {
-      this.clearError()
-      return true
+    if (missing) {
+      this.showError(this.requireEmailValue ? "Informe nome, telefone, e-mail e cidade." : "Informe nome, telefone e cidade.")
+      missing.focus()
+      return false
     }
 
-    this.showError(this.requireEmailValue ? "Informe nome, telefone, e-mail e cidade." : "Informe nome, telefone e cidade.")
-    missing.focus()
-    return false
+    const phoneField = prefix === "edit" ? this.editPhoneTarget : this.createPhoneTarget
+    const phoneError = this.phoneValidationError(phoneField)
+    if (phoneError) {
+      this.showError(phoneError)
+      phoneField.focus()
+      return false
+    }
+
+    this.clearError()
+    return true
   }
 
   firstMissingQuickField(prefix) {
@@ -371,6 +400,45 @@ export default class extends Controller {
       : [this.createNameTarget, this.createPhoneTarget, this.createCityTarget, ...(this.requireEmailValue ? [this.createEmailTarget] : [])]
 
     return fields.find((field) => !this.hasText(field.value))
+  }
+
+  phoneValidationError(field) {
+    const normalized = this.normalizedPhoneValue(field)
+    const normalizedText = String(normalized || "").trim()
+    const digits = normalizedText.replace(/\D/g, "")
+    if (!digits) return "Informe um telefone válido."
+
+    if (normalizedText.startsWith("+")) {
+      if (digits.length >= 8 && digits.length <= 15) return null
+      return "Telefone inválido. Números internacionais devem ter entre 8 e 15 dígitos."
+    }
+
+    if (digits.startsWith("55")) {
+      const nationalDigits = digits.slice(2)
+      if (nationalDigits.length === 10 || nationalDigits.length === 11) return null
+    } else if (digits.length === 10 || digits.length === 11) {
+      return null
+    }
+
+    return "Telefone inválido. Para Brasil, informe DDD + número. Para estrangeiro, selecione o país e informe o número completo."
+  }
+
+  normalizedPhoneValue(field) {
+    const detail = { value: field.value }
+    field.dispatchEvent(new CustomEvent("phone-input:normalize", { detail, bubbles: true }))
+    return detail.value || field.value
+  }
+
+  syncEditNamePermission() {
+    if (!this.hasEditNameTarget) return
+
+    this.editNameTarget.readOnly = !this.canEditNameValue
+    this.editNameTarget.classList.toggle("ax-readonly-input", !this.canEditNameValue)
+    if (this.canEditNameValue) {
+      this.editNameTarget.removeAttribute("aria-readonly")
+    } else {
+      this.editNameTarget.setAttribute("aria-readonly", "true")
+    }
   }
 
   clearLegacyOwnerFields() {

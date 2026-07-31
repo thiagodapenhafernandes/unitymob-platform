@@ -3044,10 +3044,10 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to have_http_status(:ok)
     page = Nokogiri::HTML(response.body)
-    selected_option = page.at_css('select[name="habitation[proprietor_id]"] option[selected]')
-    expect(selected_option["value"]).to eq(unit_proprietor.id.to_s)
-    expect(selected_option.text).to eq("Marcelo")
-    expect(selected_option.text).not_to include("Vista")
+    proprietor_input = page.at_css('input[type="hidden"][name="habitation[proprietor_id]"]')
+    expect(proprietor_input["value"]).to eq(unit_proprietor.id.to_s)
+    expect(page.at_css('[data-habitation-owner-selector-target="name"]').text).to eq("Marcelo")
+    expect(page.at_css('[data-habitation-owner-selector-target="name"]').text).not_to include("Vista")
   end
 
   it "mantém classificação de fotos visível para o administrativo" do
@@ -3823,7 +3823,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     page = Nokogiri::HTML(response.body)
     expect(page.at_css('input[name="habitation[titulo_anuncio]"]')["readonly"]).to eq("readonly")
     expect(page.at_css('input[name="habitation[nome_empreendimento]"]')["readonly"]).to eq("readonly")
-    expect(page.at_css('select[name="habitation[proprietor_id]"]')["disabled"]).to eq("disabled")
+    expect(page.at_css('input[type="hidden"][name="habitation[proprietor_id]"]')["disabled"]).to eq("disabled")
     expect(page.at_css('input[name="habitation[address_attributes][logradouro]"]')["readonly"]).to eq("readonly")
     expect(response.body).not_to include("Adicionar arquivos")
 

@@ -136,6 +136,22 @@ RSpec.describe "Admin::Proprietors", type: :request do
     )
   end
 
+  it "busca proprietário por partes do nome quando a consulta tem nome e sobrenome" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+    proprietor = create(:proprietor, tenant: admin.tenant, name: "Grasiele", phone_primary: "(47) 98851-6745", city: "Apucarana")
+    create(:proprietor, tenant: admin.tenant, name: "Outro Proprietário", phone_primary: "(47) 98851-1111", city: "Itajaí")
+
+    get quick_search_admin_proprietors_path,
+        params: { q: "Grasiele Cardozo" },
+        headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    names = JSON.parse(response.body).fetch("proprietors").map { |row| row["name"] }
+    expect(names).to include(proprietor.name)
+    expect(names).not_to include("Outro Proprietário")
+  end
+
   it "bloqueia busca rápida para usuário sem gerenciar captações" do
     broker_profile = Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
       profile.update!(
@@ -186,7 +202,7 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(JSON.parse(response.body)["name"]).to eq("Proprietário Administrativo")
   end
 
-  it "não duplica proprietário rápido quando o telefone já existe" do
+  it "avisa e retorna proprietário existente quando criação rápida usa telefone já cadastrado" do
     admin = create(:admin_user, :admin)
     sign_in admin
     existing = create(:proprietor, tenant: admin.tenant, name: "Dono Existente", phone_primary: "(47) 99999-2222", city: "Itajaí")
@@ -204,10 +220,45 @@ RSpec.describe "Admin::Proprietors", type: :request do
            headers: { "ACCEPT" => "application/json" }
     }.not_to change(Proprietor, :count)
 
-    expect(response).to have_http_status(:created)
+    expect(response).to have_http_status(:conflict)
     payload = JSON.parse(response.body)
-    expect(payload).to include("id" => existing.id, "name" => "Dono Existente", "city" => "Itajaí")
+    expect(payload).to include("duplicate" => true)
+    expect(payload.fetch("errors").join).to include("Cadastro já existe", "Dono Existente", "entre em contato com o administrador")
+    expect(payload.fetch("proprietor")).to include("id" => existing.id, "name" => "Dono Existente", "city" => "Itajaí")
     expect(existing.reload).to have_attributes(name: "Dono Existente", city: "Itajaí")
+  end
+
+  it "valida quantidade de dígitos no telefone da criação rápida" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    post quick_create_admin_proprietors_path,
+         params: { proprietor: { name: "Telefone Curto", phone_primary: "99999-0000", city: "Itajaí" } },
+         headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(JSON.parse(response.body).fetch("errors").join).to include("Telefone inválido")
+
+    post quick_create_admin_proprietors_path,
+         params: { proprietor: { name: "Telefone Longo", phone_primary: "55 47 99999 0000 1234", city: "Itajaí" } },
+         headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(JSON.parse(response.body).fetch("errors").join).to include("Telefone inválido")
+  end
+
+  it "aceita telefone estrangeiro na criação rápida quando vem com DDI explícito" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    expect {
+      post quick_create_admin_proprietors_path,
+           params: { proprietor: { name: "Owner Estrangeiro", phone_primary: "+1 415 555 2671", city: "San Francisco" } },
+           headers: { "ACCEPT" => "application/json" }
+    }.to change(Proprietor, :count).by(1)
+
+    expect(response).to have_http_status(:created)
+    expect(Proprietor.last.phone_primary).to eq("14155552671")
   end
 
   it "permite busca e criação rápida para corretor com captações sem liberar CRUD de proprietários" do
@@ -235,7 +286,7 @@ RSpec.describe "Admin::Proprietors", type: :request do
     expect(response).to redirect_to(admin_root_path)
   end
 
-  it "permite corretor atualizar campos preenchidos no fluxo rápido da captação e bloqueia telefone duplicado" do
+  it "permite corretor completar contatos no fluxo rápido da captação sem alterar nome existente e bloqueia telefone duplicado" do
     broker_profile = Tenant.default.profiles.find_by!(key: "agent").tap do |profile|
       profile.update!(permissions: Profile.default_permissions_for("Corretor"))
     end
@@ -250,6 +301,7 @@ RSpec.describe "Admin::Proprietors", type: :request do
       city: "Itajaí"
     )
     duplicate = create(:proprietor, tenant: broker.tenant, name: "Dono Duplicado", phone_primary: "(47) 96666-2222", city: "Camboriú")
+    blank_phone_proprietor = create(:proprietor, tenant: broker.tenant, name: "Dono Sem Telefone", phone_primary: nil, city: nil)
 
     patch quick_update_admin_proprietor_path(proprietor),
           params: {
@@ -264,18 +316,18 @@ RSpec.describe "Admin::Proprietors", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(proprietor.reload).to have_attributes(
-      name: "Dono Atualizado",
-      phone_primary: "5547955553333",
+      name: "Dono Antigo",
+      phone_primary: "5547977771111",
       email: "",
       city: "Porto Belo"
     )
 
-    patch quick_update_admin_proprietor_path(proprietor),
+    patch quick_update_admin_proprietor_path(blank_phone_proprietor),
           params: { proprietor: { name: "Outro Nome", phone_primary: "(47) 96666-2222", city: "Itapema" } },
           headers: { "ACCEPT" => "application/json" }
 
     expect(response).to have_http_status(:unprocessable_entity)
     expect(JSON.parse(response.body)["errors"]).to include("Telefone já vinculado ao proprietário #{duplicate.name}.")
-    expect(proprietor.reload.phone_primary).to eq("5547955553333")
+    expect(proprietor.reload.phone_primary).to eq("5547977771111")
   end
 end

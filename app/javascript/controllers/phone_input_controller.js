@@ -14,10 +14,12 @@ export default class extends Controller {
     this.handleSubmit = this.handleSubmit.bind(this)
     this.handleInput = this.handleInput.bind(this)
     this.handleCountryChange = this.handleCountryChange.bind(this)
+    this.handleNormalizeRequest = this.handleNormalizeRequest.bind(this)
 
     this.element.form?.addEventListener("submit", this.handleSubmit)
     this.element.addEventListener("input", this.handleInput)
     this.element.addEventListener("countrychange", this.handleCountryChange)
+    this.element.addEventListener("phone-input:normalize", this.handleNormalizeRequest)
     this.loadStylesheet()
     this.initialize()
   }
@@ -26,6 +28,7 @@ export default class extends Controller {
     this.element.form?.removeEventListener("submit", this.handleSubmit)
     this.element.removeEventListener("input", this.handleInput)
     this.element.removeEventListener("countrychange", this.handleCountryChange)
+    this.element.removeEventListener("phone-input:normalize", this.handleNormalizeRequest)
     this.iti?.destroy()
     this.inputGroup?.classList.remove("phone-input-group")
   }
@@ -71,6 +74,15 @@ export default class extends Controller {
     this.applyDisplayMask()
   }
 
+  handleNormalizeRequest(event) {
+    if (event.detail) {
+      event.detail.value = this.normalizeForAjax(this.element.value)
+      return
+    }
+
+    this.element.value = this.normalizeForSubmit(this.element.value)
+  }
+
   prepareInitialValue() {
     const value = this.element.value.trim()
     const digits = value.replace(/\D/g, "")
@@ -113,6 +125,15 @@ export default class extends Controller {
     }
 
     return normalizedDigits
+  }
+
+  normalizeForAjax(value) {
+    const selectedCountry = this.selectedCountryIso2()
+    if (selectedCountry !== "br" && this.iti?.isValidNumber()) {
+      return this.iti.getNumber()
+    }
+
+    return this.normalizeForSubmit(value)
   }
 
   applyDisplayMask() {
