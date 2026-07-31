@@ -15,11 +15,13 @@ export default class extends Controller {
     this.handleInput = this.handleInput.bind(this)
     this.handleCountryChange = this.handleCountryChange.bind(this)
     this.handleNormalizeRequest = this.handleNormalizeRequest.bind(this)
+    this.handleMetadataRequest = this.handleMetadataRequest.bind(this)
 
     this.element.form?.addEventListener("submit", this.handleSubmit)
     this.element.addEventListener("input", this.handleInput)
     this.element.addEventListener("countrychange", this.handleCountryChange)
     this.element.addEventListener("phone-input:normalize", this.handleNormalizeRequest)
+    this.element.addEventListener("phone-input:metadata", this.handleMetadataRequest)
     this.loadStylesheet()
     this.initialize()
   }
@@ -29,6 +31,7 @@ export default class extends Controller {
     this.element.removeEventListener("input", this.handleInput)
     this.element.removeEventListener("countrychange", this.handleCountryChange)
     this.element.removeEventListener("phone-input:normalize", this.handleNormalizeRequest)
+    this.element.removeEventListener("phone-input:metadata", this.handleMetadataRequest)
     this.iti?.destroy()
     this.inputGroup?.classList.remove("phone-input-group")
   }
@@ -81,6 +84,20 @@ export default class extends Controller {
     }
 
     this.element.value = this.normalizeForSubmit(this.element.value)
+  }
+
+  handleMetadataRequest(event) {
+    if (!event.detail) return
+
+    const rawValue = this.element.value.toString()
+    const validNumber = Boolean(this.iti?.isValidNumber())
+
+    event.detail.rawValue = rawValue
+    event.detail.digits = rawValue.replace(/\D/g, "")
+    event.detail.countryIso2 = this.selectedCountryIso2()
+    event.detail.isValidNumber = validNumber
+    event.detail.e164 = validNumber ? this.iti.getNumber() : ""
+    event.detail.normalized = this.normalizeForAjax(rawValue)
   }
 
   prepareInitialValue() {
@@ -174,7 +191,7 @@ export default class extends Controller {
   }
 
   normalizeBrazilianMobileDigits(digits) {
-    if (this.initialCountryValue !== "br") return digits
+    if (this.selectedCountryIso2() !== "br") return digits
 
     if (digits.length === 8 && this.brazilianMobileSubscriberWithoutNinthDigit(digits)) {
       return `9${digits}`

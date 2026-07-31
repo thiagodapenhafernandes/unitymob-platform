@@ -245,9 +245,12 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(document.at_css('input[type="hidden"][name="habitation[proprietario_cidade]"][data-habitation-owner-selector-target="legacyCity"]')).to be_present
     expect(document.at_css('input[type="search"][data-habitation-owner-selector-target="query"]')).to be_present
     expect(document.at_css('input[name="proprietor[name]"][data-habitation-owner-selector-target="createName"]')).to be_present
-    expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="createPhone"][required]')).to be_present
-    expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="editPhone"][required]')).to be_present
-    expect(document.at_css('input[name="proprietor[city]"][data-habitation-owner-selector-target="createCity"][required]')).to be_present
+    expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="createPhone"]')).to be_present
+    expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="editPhone"]')).to be_present
+    expect(document.at_css('input[name="proprietor[city]"][data-habitation-owner-selector-target="createCity"]')).to be_present
+    expect(document.at_css('input[name="proprietor[name]"][data-habitation-owner-selector-target="createName"][required]')).to be_nil
+    expect(document.at_css('input[name="proprietor[phone_primary]"][data-habitation-owner-selector-target="createPhone"][required]')).to be_nil
+    expect(document.at_css('input[name="proprietor[city]"][data-habitation-owner-selector-target="createCity"][required]')).to be_nil
     expect(document.at_css('[data-habitation-owner-selector-target="ownerCard"][hidden]')).to be_present
     expect(response.body).to include("wizard-top-bar__summary", "wizard-nav-action")
     expect(response.body).to include('progress class="ax-progress__bar"', "Progresso da captação:")

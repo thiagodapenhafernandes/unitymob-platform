@@ -174,13 +174,7 @@ module Admin
 
           matches =
             if digits.present?
-              phone_matches = scope.where(
-                "regexp_replace(COALESCE(proprietors.phone_primary, ''), '\\D', '', 'g') LIKE :digits OR " \
-                "regexp_replace(COALESCE(proprietors.mobile_phone, ''), '\\D', '', 'g') LIKE :digits OR " \
-                "regexp_replace(COALESCE(proprietors.residential_phone, ''), '\\D', '', 'g') LIKE :digits OR " \
-                "regexp_replace(COALESCE(proprietors.business_phone, ''), '\\D', '', 'g') LIKE :digits",
-                digits: "%#{digits}%"
-              )
+              phone_matches = quick_search_phone_scope(scope, query)
               text_matches.or(phone_matches)
             else
               text_matches
@@ -238,7 +232,11 @@ module Admin
       return render json: { errors: [phone_error] }, status: :unprocessable_entity if phone_error.present?
 
       if (duplicate = duplicate_quick_proprietor_for(attributes))
-        render json: { errors: ["Telefone já vinculado ao proprietário #{duplicate.name}."] }, status: :unprocessable_entity
+        render json: {
+          duplicate: true,
+          errors: [duplicate_quick_proprietor_message(duplicate)],
+          proprietor: quick_proprietor_payload(duplicate)
+        }, status: :conflict
       elsif @proprietor.update(attributes)
         render json: quick_proprietor_payload(@proprietor)
       else
@@ -339,6 +337,36 @@ module Admin
       scope.where(predicates.map { |predicate| "(#{predicate})" }.join(" OR "), bindings)
     end
 
+    def quick_search_phone_scope(scope, query)
+      digits = query.to_s.gsub(/\D/, "")
+      candidates = quick_phone_search_candidates(query)
+      predicates = [
+        "regexp_replace(COALESCE(proprietors.phone_primary, ''), '\\D', '', 'g') LIKE :raw_digits",
+        "regexp_replace(COALESCE(proprietors.mobile_phone, ''), '\\D', '', 'g') LIKE :raw_digits",
+        "regexp_replace(COALESCE(proprietors.residential_phone, ''), '\\D', '', 'g') LIKE :raw_digits",
+        "regexp_replace(COALESCE(proprietors.business_phone, ''), '\\D', '', 'g') LIKE :raw_digits"
+      ]
+      bindings = { raw_digits: "%#{digits}%" }
+
+      if candidates.any?
+        predicates.concat([
+          "regexp_replace(COALESCE(proprietors.phone_primary, ''), '\\D', '', 'g') IN (:phone_candidates)",
+          "regexp_replace(COALESCE(proprietors.mobile_phone, ''), '\\D', '', 'g') IN (:phone_candidates)",
+          "regexp_replace(COALESCE(proprietors.residential_phone, ''), '\\D', '', 'g') IN (:phone_candidates)",
+          "regexp_replace(COALESCE(proprietors.business_phone, ''), '\\D', '', 'g') IN (:phone_candidates)"
+        ])
+        bindings[:phone_candidates] = candidates
+      end
+
+      scope.where(predicates.map { |predicate| "(#{predicate})" }.join(" OR "), bindings)
+    end
+
+    def quick_phone_search_candidates(query)
+      digits = query.to_s.gsub(/\D/, "")
+      normalized = Proprietor.normalized_phone(query)
+      [digits, normalized].compact_blank.uniq.select { |candidate| candidate.length >= 8 }
+    end
+
     def quick_phone_error(value)
       raw_value = value.to_s.strip
       digits = raw_value.gsub(/\D/, "")
@@ -347,24 +375,26 @@ module Admin
       return "Telefone inválido. Informe um telefone válido com DDD." if normalized.blank?
       return "Telefone inválido. Informe um telefone com DDD ou selecione o país correto." if digits.blank?
 
-      if raw_value.start_with?("+")
+      if raw_value.start_with?("+") && !digits.start_with?(Phones::Normalizer::BRAZIL_COUNTRY_CODE)
         return if normalized.length.between?(Phones::Normalizer::MIN_E164_LENGTH, Phones::Normalizer::MAX_E164_LENGTH)
 
         return "Telefone inválido. Números internacionais devem ter entre 8 e 15 dígitos."
       end
 
-      if digits.start_with?(Phones::Normalizer::BRAZIL_COUNTRY_CODE)
-        national_digits = digits.delete_prefix(Phones::Normalizer::BRAZIL_COUNTRY_CODE)
-        return if national_digits.length.in?([10, 11])
-      elsif digits.length.in?([10, 11])
-        return
-      end
+      national_digits = quick_brazilian_national_digits(digits)
+      return if national_digits.length == 11 && national_digits[2] == "9"
 
-      "Telefone inválido. Para Brasil, informe DDD + número. Para estrangeiro, selecione o país e informe o número completo."
+      "Telefone inválido para WhatsApp no Brasil. Informe DDD + número com 9 dígitos, exemplo: (47) 98851-6745."
+    end
+
+    def quick_brazilian_national_digits(digits)
+      return digits.delete_prefix(Phones::Normalizer::BRAZIL_COUNTRY_CODE) if digits.start_with?(Phones::Normalizer::BRAZIL_COUNTRY_CODE)
+
+      digits
     end
 
     def duplicate_quick_proprietor_message(proprietor)
-      "Cadastro já existe para este telefone: #{proprietor.name}. Se precisar atualizar o nome, entre em contato com o administrador."
+      "Já existe um proprietário cadastrado com este telefone: #{proprietor.name}. Pesquise pelo telefone informado e selecione o cadastro existente."
     end
 
     def quick_proprietor_phone_blank?(proprietor)
