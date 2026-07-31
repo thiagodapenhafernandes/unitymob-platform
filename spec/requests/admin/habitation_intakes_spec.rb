@@ -200,29 +200,50 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).not_to include("Publicar Site")
   end
 
-  it "exibe campo auxiliar para buscar proprietário por código na etapa do PWA" do
+  it "exibe seletor inline de proprietário na etapa do PWA" do
     intake = create(
       :habitation,
       :broker_intake,
       codigo: "CAP-WIZ-#{SecureRandom.hex(6)}",
       admin_user: admin,
-      intake_step: "proprietario"
+      intake_step: "proprietario",
+      proprietor: nil,
+      proprietario: nil,
+      proprietario_celular: nil,
+      proprietario_telefone_comercial: nil,
+      proprietario_telefone_residencial: nil,
+      proprietario_email: nil,
+      proprietario_cidade: nil
     )
 
     get edit_admin_captacao_path(intake, step: "proprietario")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Código do proprietário")
-    expect(response.body).to include('data-proprietor-lookup-target="code"')
+    expect(response.body).to include("Buscar proprietário")
+    expect(response.body).to include(quick_search_admin_proprietors_path)
+    expect(response.body).to include(quick_create_admin_proprietors_path)
+    expect(response.body).to include('data-controller="habitation-owner-selector"')
+    expect(response.body).to include('data-habitation-owner-selector-inline-value="true"')
+    expect(response.body).not_to include("Código do proprietário")
+    expect(response.body).not_to include("Usar cadastro existente")
+    expect(response.body).not_to include("Manter digitado")
     document = Nokogiri::HTML(response.body)
-    expect(document.at_css('input[type="tel"][name="habitation[proprietario_telefone]"][data-controller="phone-input"]')).to be_present
-    expect(document.at_css('input[type="email"][name="habitation[proprietario_email]"]')).to be_present
+    expect(document.at_css('input[type="hidden"][name="habitation[proprietor_id]"][data-habitation-owner-selector-target="hiddenInput"]')).to be_present
+    expect(document.at_css('input[type="hidden"][name="habitation[proprietario_nome]"][data-habitation-owner-selector-target="legacyName"]')).to be_present
+    expect(document.at_css('input[type="hidden"][name="habitation[proprietario_telefone]"][data-habitation-owner-selector-target="legacyPhonePrimary"]')).to be_present
+    expect(document.at_css('input[type="hidden"][name="habitation[proprietario_cidade]"][data-habitation-owner-selector-target="legacyCity"]')).to be_present
+    expect(document.at_css('input[type="search"][data-habitation-owner-selector-target="query"]')).to be_present
+    expect(document.at_css('input[name="proprietor[name]"][data-habitation-owner-selector-target="createName"]')).to be_present
+    expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="createPhone"][required]')).to be_present
+    expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="editPhone"][required]')).to be_present
+    expect(document.at_css('input[name="proprietor[city]"][data-habitation-owner-selector-target="createCity"][required]')).to be_present
+    expect(document.at_css('[data-habitation-owner-selector-target="ownerCard"][hidden]')).to be_present
     expect(response.body).to include("wizard-top-bar__summary", "wizard-nav-action")
     expect(response.body).to include('progress class="ax-progress__bar"', "Progresso da captação:")
     expect(response.body).not_to include("wizard-progress-bar")
   end
 
-  it "sugere cidades de proprietários já cadastrados na etapa do PWA" do
+  it "usa busca de proprietários em vez de autocomplete de cidades na etapa do PWA" do
     create(:proprietor, city: "Itajaí")
     create(:proprietor, city: "Balneário Camboriú")
     intake = create(:habitation, :broker_intake, admin_user: admin, intake_step: "proprietario")
@@ -230,14 +251,13 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     get edit_admin_captacao_path(intake, step: "proprietario")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("ax-autocomplete-select")
-    expect(response.body).to include('data-controller="tom-select"')
-    expect(response.body).to include('data-tom-select-create-value="true"')
-    expect(response.body).to include('value="Itajaí"')
-    expect(response.body).to include('value="Balneário Camboriú"')
+    expect(response.body).to include("Buscar proprietário")
+    expect(response.body).to include("Cadastrar novo proprietário")
+    expect(response.body).not_to include("ax-autocomplete-select")
+    expect(response.body).not_to include('data-controller="tom-select"')
   end
 
-  it "bloqueia telefone quando a captação está vinculada a proprietário existente" do
+  it "renderiza proprietário vinculado em cartão e mantém campos ocultos para submissão" do
     proprietor = create(:proprietor, name: "Grasiele Cardozo", phone_primary: "5547988516745", city: "Apucarana")
     intake = create(
       :habitation,
@@ -254,18 +274,14 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
-    phone_input = document.at_css('input[type="tel"][name="habitation[proprietario_telefone]"]')
-    city_select = document.at_css('select[name="habitation[proprietario_cidade]"]')
+    phone_hidden = document.at_css('input[type="hidden"][name="habitation[proprietario_telefone]"][data-habitation-owner-selector-target="legacyPhonePrimary"]')
+    city_hidden = document.at_css('input[type="hidden"][name="habitation[proprietario_cidade]"][data-habitation-owner-selector-target="legacyCity"]')
+    proprietor_hidden = document.at_css('input[type="hidden"][name="habitation[proprietor_id]"][data-habitation-owner-selector-target="hiddenInput"]')
 
-    phone_hidden = document.at_css('input[type="hidden"][name="habitation[proprietario_telefone]"][data-proprietor-lookup-target="phoneHidden"]')
-
-    expect(phone_input["disabled"]).to eq("disabled")
-    expect(phone_input["class"]).to include("ax-readonly-input")
-    expect(phone_input["value"]).to eq("(47) 98851-6745")
-    expect(phone_input["data-controller"].to_s).not_to include("phone-input")
+    expect(proprietor_hidden["value"]).to eq(proprietor.id.to_s)
     expect(phone_hidden["value"]).to eq("5547988516745")
-    expect(city_select).to be_present
-    expect(response.body).to include("Cidade do proprietário", "required-star")
+    expect(city_hidden["value"]).to eq("Apucarana")
+    expect(response.body).to include("Grasiele Cardozo", "(47) 98851-6745", "Apucarana")
   end
 
   it "localiza proprietário pelo código para autocompletar a captação" do

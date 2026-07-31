@@ -1,9 +1,9 @@
 module Admin
   class ProprietorsController < BaseController
     require "csv"
-    before_action -> { check_permission!(:view, :proprietarios) }
+    before_action -> { check_permission!(:view, :proprietarios) }, except: %i[quick_search quick_create quick_update]
     before_action -> { check_permission!(:manage, :proprietarios) }, only: %i[new create edit update destroy]
-    before_action :require_admin_or_administrative_user!, only: %i[quick_search quick_create quick_update]
+    before_action :authorize_quick_proprietor_access!, only: %i[quick_search quick_create quick_update]
     before_action :set_quick_proprietor, only: %i[quick_update]
 
     EXPORT_FIELDS = {
@@ -202,15 +202,23 @@ module Admin
 
     def quick_create
       permitted = quick_proprietor_params
+      missing = []
+      missing << "Nome é obrigatório." if permitted[:name].blank?
+      missing << "Telefone é obrigatório." if permitted[:phone_primary].blank?
+      missing << "Cidade é obrigatória." if permitted[:city].blank?
+      return render json: { errors: missing }, status: :unprocessable_entity if missing.any?
+
       phone = permitted[:phone_primary].presence
       phone_digits = Proprietor.normalized_phone(phone)
       @proprietor = current_tenant.proprietors.with_normalized_phone(phone_digits).order(:id).first if phone_digits.present?
+      existing_record = @proprietor.present?
       @proprietor ||= current_tenant.proprietors.new(role: :owner)
 
-      @proprietor.name = permitted[:name] if permitted[:name].present?
-      @proprietor.email = permitted[:email] if permitted[:email].present?
-      @proprietor.phone_primary = permitted[:phone_primary] if permitted[:phone_primary].present?
-      @proprietor.city = permitted[:city] if permitted[:city].present?
+      quick_proprietor_params.to_h.compact_blank.each do |attribute, value|
+        next if existing_record && @proprietor.public_send(attribute).present?
+
+        @proprietor.public_send("#{attribute}=", value)
+      end
 
       if @proprietor.save
         render json: quick_proprietor_payload(@proprietor), status: :created
@@ -220,7 +228,10 @@ module Admin
     end
 
     def quick_update
-      if @proprietor.update(quick_proprietor_params)
+      attributes = quick_update_attributes
+      if (duplicate = duplicate_quick_proprietor_for(attributes))
+        render json: { errors: ["Telefone já vinculado ao proprietário #{duplicate.name}."] }, status: :unprocessable_entity
+      elsif @proprietor.update(attributes)
         render json: quick_proprietor_payload(@proprietor)
       else
         render json: { errors: @proprietor.errors.full_messages }, status: :unprocessable_entity
@@ -264,6 +275,12 @@ module Admin
       render json: { errors: ["Proprietário não encontrado."] }, status: :not_found unless @proprietor
     end
 
+    def authorize_quick_proprietor_access!
+      return if admin_or_administrative_user? || can?(:manage, :captacoes)
+
+      render json: { errors: ["Acesso restrito a usuários com permissão para gerenciar captações."] }, status: :forbidden
+    end
+
     def proprietor_params
       params.require(:proprietor).permit(
         :name, :role, :vista_code, :cpf_cnpj, :rg_ie, :issuing_authority,
@@ -283,6 +300,27 @@ module Admin
         :phone_primary,
         :city
       )
+    end
+
+    def quick_update_attributes
+      permitted = quick_proprietor_params.to_h
+      permitted.delete_if { |attribute, value| value.blank? && attribute.to_s != "email" }
+      return permitted if admin_or_administrative_user? || can?(:manage, :captacoes)
+
+      permitted.select do |attribute, value|
+        value.present? && @proprietor.public_send(attribute).blank?
+      end
+    end
+
+    def duplicate_quick_proprietor_for(attributes)
+      phone_digits = Proprietor.normalized_phone(attributes[:phone_primary])
+      return if phone_digits.blank?
+
+      current_tenant.proprietors
+                    .with_normalized_phone(phone_digits)
+                    .where.not(id: @proprietor.id)
+                    .order(:id)
+                    .first
     end
 
     def quick_proprietor_payload(proprietor)

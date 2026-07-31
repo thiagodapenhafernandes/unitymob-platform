@@ -35,7 +35,8 @@
       habitation_owner_selector_search_url_value: quick_search_admin_proprietors_path,
       habitation_owner_selector_create_url_value: quick_create_admin_proprietors_path,
       habitation_owner_selector_update_url_template_value: quick_update_admin_proprietor_path(":id"),
-      habitation_owner_selector_can_edit_value: true
+      habitation_owner_selector_can_edit_value: true,
+      habitation_owner_selector_require_email_value: true
     )
   end
 %>
@@ -103,42 +104,56 @@
         <%= f.hidden_field :proprietario_cidade, data: { habitation_owner_selector_target: "legacyCity" } %>
       <% end %>
 
-      <div class="habitation-owner-card" data-owner-payload="<%= json_escape(owner_payload.to_json) %>">
-        <div class="habitation-owner-card__empty" data-habitation-owner-selector-target="empty" <%= "hidden" if owner_present %>>
-          Nenhum proprietário vinculado.
+      <div class="habitation-owner-card__empty habitation-owner-card__empty--standalone" data-habitation-owner-selector-target="empty" <%= "hidden" if owner_present %>>
+        Nenhum proprietário selecionado.
+      </div>
+
+      <div class="habitation-owner-card"
+           data-habitation-owner-selector-target="ownerCard"
+           data-owner-payload="<%= json_escape(owner_payload.to_json) %>"
+           <%= "hidden" unless owner_present %>>
+        <div class="habitation-owner-card__avatar" aria-hidden="true">
+          <i class="bi bi-person-lines-fill"></i>
         </div>
-        <div class="habitation-owner-card__head">
-          <strong data-habitation-owner-selector-target="name"><%= owner_name %></strong>
-          <% if owner_can_manage && habitation.proprietor_id.present? %>
-            <button type="button"
-                    class="ax-icon-btn"
-                    title="Editar proprietário"
-                    aria-label="Editar proprietário"
-                    data-habitation-owner-selector-target="editAction"
-                    data-action="habitation-owner-selector#showEdit"
-                    data-ax-modal-open="#quickProprietorModal">
-              <i class="bi bi-pencil"></i>
-            </button>
-          <% end %>
+
+        <div class="habitation-owner-card__body">
+          <div class="habitation-owner-card__head">
+            <div>
+              <span class="habitation-owner-card__eyebrow">Proprietário</span>
+              <strong data-habitation-owner-selector-target="name"><%= owner_name %></strong>
+            </div>
+            <% if owner_can_manage && habitation.proprietor_id.present? %>
+              <button type="button"
+                      class="ax-icon-btn"
+                      title="Editar proprietário"
+                      aria-label="Editar proprietário"
+                      data-habitation-owner-selector-target="editAction"
+                      data-action="habitation-owner-selector#showEdit"
+                      data-ax-modal-open="#quickProprietorModal">
+                <i class="bi bi-pencil"></i>
+              </button>
+            <% end %>
+          </div>
+
+          <dl class="habitation-owner-card__facts">
+            <div>
+              <dt><i class="bi bi-telephone"></i><span>Telefone</span></dt>
+              <dd data-habitation-owner-selector-target="phonePrimary"><%= Phones::Normalizer.display(owner_phones.first).presence || "-" %></dd>
+            </div>
+            <div <%= "hidden" if owner_phones.second.blank? %>>
+              <dt><i class="bi bi-telephone-plus"></i><span>Telefone 2</span></dt>
+              <dd data-habitation-owner-selector-target="phoneSecondary"><%= Phones::Normalizer.display(owner_phones.second) %></dd>
+            </div>
+            <div>
+              <dt><i class="bi bi-envelope"></i><span>E-mail</span></dt>
+              <dd data-habitation-owner-selector-target="email"><%= owner_email.presence || "-" %></dd>
+            </div>
+            <div>
+              <dt><i class="bi bi-geo-alt"></i><span>Cidade</span></dt>
+              <dd data-habitation-owner-selector-target="city"><%= owner_city.presence || "-" %></dd>
+            </div>
+          </dl>
         </div>
-        <dl class="habitation-owner-card__facts">
-          <div>
-            <dt>Telefone</dt>
-            <dd data-habitation-owner-selector-target="phonePrimary"><%= Phones::Normalizer.display(owner_phones.first).presence || "-" %></dd>
-          </div>
-          <div <%= "hidden" if owner_phones.second.blank? %>>
-            <dt>Telefone 2</dt>
-            <dd data-habitation-owner-selector-target="phoneSecondary"><%= Phones::Normalizer.display(owner_phones.second) %></dd>
-          </div>
-          <div>
-            <dt>E-mail</dt>
-            <dd data-habitation-owner-selector-target="email"><%= owner_email.presence || "-" %></dd>
-          </div>
-          <div>
-            <dt>Cidade</dt>
-            <dd data-habitation-owner-selector-target="city"><%= owner_city.presence || "-" %></dd>
-          </div>
-        </dl>
       </div>
     <% end %>
   <% else %>
@@ -241,7 +256,7 @@
               </div>
               <div class="ax-span-6">
                 <%= ax_field_label(nil, nil, text: "Telefone", for: "quick_proprietor_phone") %>
-                <input type="text" class="ax-control" id="quick_proprietor_phone" name="proprietor[phone_primary]" data-controller="phone-input" data-habitation-owner-selector-target="createPhone">
+                <input type="tel" class="ax-control" id="quick_proprietor_phone" name="proprietor[phone_primary]" data-controller="phone-input" data-habitation-owner-selector-target="createPhone">
               </div>
               <div class="ax-span-6">
                 <%= ax_field_label(nil, nil, text: "E-mail", for: "quick_proprietor_email") %>
@@ -270,7 +285,7 @@
               </div>
               <div class="ax-span-6">
                 <%= ax_field_label(nil, nil, text: "Telefone", for: "edit_quick_proprietor_phone") %>
-                <input type="text" class="ax-control" id="edit_quick_proprietor_phone" name="proprietor[phone_primary]" data-controller="phone-input" data-habitation-owner-selector-target="editPhone">
+                <input type="tel" class="ax-control" id="edit_quick_proprietor_phone" name="proprietor[phone_primary]" data-controller="phone-input" data-habitation-owner-selector-target="editPhone">
               </div>
               <div class="ax-span-6">
                 <%= ax_field_label(nil, nil, text: "E-mail", for: "edit_quick_proprietor_email") %>
