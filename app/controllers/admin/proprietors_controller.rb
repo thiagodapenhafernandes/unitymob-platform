@@ -168,13 +168,9 @@ module Admin
       query = params[:q].to_s.strip
       proprietors =
         if query.present?
-          term = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
           digits = query.gsub(/\D/, "")
           scope = current_tenant.proprietors
-          text_matches = scope.where(
-            "proprietors.name ILIKE :term OR proprietors.email ILIKE :term OR proprietors.city ILIKE :term",
-            term:
-          )
+          text_matches = quick_search_text_scope(scope, query)
 
           matches =
             if digits.present?
@@ -206,17 +202,26 @@ module Admin
       missing << "Nome é obrigatório." if permitted[:name].blank?
       missing << "Telefone é obrigatório." if permitted[:phone_primary].blank?
       missing << "Cidade é obrigatória." if permitted[:city].blank?
+      missing << quick_phone_error(permitted[:phone_primary]) if permitted[:phone_primary].present?
+      missing.compact!
       return render json: { errors: missing }, status: :unprocessable_entity if missing.any?
 
       phone = permitted[:phone_primary].presence
       phone_digits = Proprietor.normalized_phone(phone)
-      @proprietor = current_tenant.proprietors.with_normalized_phone(phone_digits).order(:id).first if phone_digits.present?
-      existing_record = @proprietor.present?
-      @proprietor ||= current_tenant.proprietors.new(role: :owner)
+      if phone_digits.present?
+        @proprietor = current_tenant.proprietors.with_normalized_phone(phone_digits).order(:id).first
+        if @proprietor.present?
+          render json: {
+            duplicate: true,
+            errors: [duplicate_quick_proprietor_message(@proprietor)],
+            proprietor: quick_proprietor_payload(@proprietor)
+          }, status: :conflict
+          return
+        end
+      end
 
+      @proprietor = current_tenant.proprietors.new(role: :owner)
       quick_proprietor_params.to_h.compact_blank.each do |attribute, value|
-        next if existing_record && @proprietor.public_send(attribute).present?
-
         @proprietor.public_send("#{attribute}=", value)
       end
 
@@ -229,6 +234,9 @@ module Admin
 
     def quick_update
       attributes = quick_update_attributes
+      phone_error = quick_phone_error(attributes[:phone_primary]) if attributes[:phone_primary].present?
+      return render json: { errors: [phone_error] }, status: :unprocessable_entity if phone_error.present?
+
       if (duplicate = duplicate_quick_proprietor_for(attributes))
         render json: { errors: ["Telefone já vinculado ao proprietário #{duplicate.name}."] }, status: :unprocessable_entity
       elsif @proprietor.update(attributes)
@@ -303,13 +311,69 @@ module Admin
     end
 
     def quick_update_attributes
-      permitted = quick_proprietor_params.to_h
-      permitted.delete_if { |attribute, value| value.blank? && attribute.to_s != "email" }
-      return permitted if admin_or_administrative_user? || can?(:manage, :captacoes)
+      permitted = quick_proprietor_params.to_h.symbolize_keys
+      permitted.delete_if { |attribute, value| value.blank? && attribute != :email }
+      return permitted if admin_or_administrative_user?
 
-      permitted.select do |attribute, value|
-        value.present? && @proprietor.public_send(attribute).blank?
+      attributes = permitted.slice(:email, :city)
+      attributes[:phone_primary] = permitted[:phone_primary] if permitted[:phone_primary].present? && quick_proprietor_phone_blank?(@proprietor)
+      attributes
+    end
+
+    def quick_search_text_scope(scope, query)
+      terms = query.split(/\s+/).filter_map do |word|
+        sanitized = ActiveRecord::Base.sanitize_sql_like(word.to_s.strip)
+        sanitized if sanitized.length >= 2
       end
+
+      terms = [ActiveRecord::Base.sanitize_sql_like(query)] if terms.blank?
+
+      predicates = []
+      bindings = {}
+      terms.each_with_index do |term, index|
+        key = :"term_#{index}"
+        predicates << "proprietors.name ILIKE :#{key} OR proprietors.email ILIKE :#{key} OR proprietors.city ILIKE :#{key}"
+        bindings[key] = "%#{term}%"
+      end
+
+      scope.where(predicates.map { |predicate| "(#{predicate})" }.join(" OR "), bindings)
+    end
+
+    def quick_phone_error(value)
+      raw_value = value.to_s.strip
+      digits = raw_value.gsub(/\D/, "")
+      normalized = Proprietor.normalized_phone(raw_value)
+
+      return "Telefone inválido. Informe um telefone válido com DDD." if normalized.blank?
+      return "Telefone inválido. Informe um telefone com DDD ou selecione o país correto." if digits.blank?
+
+      if raw_value.start_with?("+")
+        return if normalized.length.between?(Phones::Normalizer::MIN_E164_LENGTH, Phones::Normalizer::MAX_E164_LENGTH)
+
+        return "Telefone inválido. Números internacionais devem ter entre 8 e 15 dígitos."
+      end
+
+      if digits.start_with?(Phones::Normalizer::BRAZIL_COUNTRY_CODE)
+        national_digits = digits.delete_prefix(Phones::Normalizer::BRAZIL_COUNTRY_CODE)
+        return if national_digits.length.in?([10, 11])
+      elsif digits.length.in?([10, 11])
+        return
+      end
+
+      "Telefone inválido. Para Brasil, informe DDD + número. Para estrangeiro, selecione o país e informe o número completo."
+    end
+
+    def duplicate_quick_proprietor_message(proprietor)
+      "Cadastro já existe para este telefone: #{proprietor.name}. Se precisar atualizar o nome, entre em contato com o administrador."
+    end
+
+    def quick_proprietor_phone_blank?(proprietor)
+      [
+        proprietor.phone_primary,
+        proprietor.mobile_phone,
+        proprietor.residential_phone,
+        proprietor.business_phone
+      ].compact_blank.empty?
     end
 
     def duplicate_quick_proprietor_for(attributes)

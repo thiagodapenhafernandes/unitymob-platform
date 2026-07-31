@@ -1,4 +1,4 @@
-const CACHE = "salute-admin-cache-v3";
+const CACHE = "salute-admin-cache-v4";
 const offlineFallbackPage = "/offline.html";
 const fieldFallbackPage = "/field";
 
