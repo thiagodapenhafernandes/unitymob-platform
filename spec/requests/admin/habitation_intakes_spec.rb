@@ -265,6 +265,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(response.body).to include(quick_create_admin_proprietors_path)
     expect(response.body).to include('data-controller="habitation-owner-selector"')
     expect(response.body).to include('data-habitation-owner-selector-inline-value="true"')
+    expect(response.body).to include('data-habitation-owner-selector-require-email-value="false"')
     expect(response.body).not_to include("Código do proprietário")
     expect(response.body).not_to include("Usar cadastro existente")
     expect(response.body).not_to include("Manter digitado")

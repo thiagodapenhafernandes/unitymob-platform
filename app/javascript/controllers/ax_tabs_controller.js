@@ -138,8 +138,23 @@ export default class extends Controller {
     const tabId = window.location.hash?.replace("#", "")
     if (!tabId) return
 
-    const trigger = this.tabTargets.find((tab) => this.targetSelectorFor(tab) === `#${this.escapeSelector(tabId)}`)
+    const panel = document.getElementById(tabId)
+    const trigger = this.tabTargets.find((tab) => this.targetSelectorFor(tab) === `#${this.escapeSelector(tabId)}`) || this.triggerForAncestorPanel(panel)
     if (trigger) requestAnimationFrame(() => this.show(trigger))
+  }
+
+  triggerForAncestorPanel(panel) {
+    let current = panel?.parentElement?.closest(".ax-form-tabs__panel[id], .tab-pane[id]")
+
+    while (current) {
+      const selector = `#${this.escapeSelector(current.id)}`
+      const trigger = this.tabTargets.find((tab) => this.targetSelectorFor(tab) === selector)
+      if (trigger) return trigger
+
+      current = current.parentElement?.closest(".ax-form-tabs__panel[id], .tab-pane[id]")
+    }
+
+    return null
   }
 
   syncPeerTriggers(targetSelector, content) {

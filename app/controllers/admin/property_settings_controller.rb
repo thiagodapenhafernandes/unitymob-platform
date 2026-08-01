@@ -1,9 +1,23 @@
 module Admin
   class PropertySettingsController < BaseController
+    RETURN_ANCHORS = %w[
+      property-settings-media
+      property-settings-ai-search
+      property-settings-ai-activation
+      property-settings-ai-interpretation
+      property-settings-ai-scope
+      property-settings-ai-context
+      property-settings-ai-access
+      property-settings-ai-aliases
+      property-settings-ai-sharing
+      property-settings-ai-learning
+    ].freeze
+
     before_action :require_admin!
     before_action :set_property_setting
     before_action :set_broker_capture_fallback_users, only: %i[edit review_workflow update update_review_workflow]
     before_action :set_ai_development_alias_context, only: %i[edit update]
+    before_action :set_ai_learning_context, only: %i[edit update]
 
     def edit
       @page_title = "Config Imóveis"
@@ -23,7 +37,8 @@ module Admin
         if return_to_review_workflow
           redirect_to review_workflow_admin_property_setting_path, notice: "Configurações de revisão atualizadas com sucesso."
         else
-          redirect_to edit_admin_property_setting_path, notice: "Configurações de imóveis atualizadas com sucesso."
+          redirect_to edit_admin_property_setting_path(anchor: property_settings_return_anchor),
+                      notice: "Configurações de imóveis atualizadas com sucesso."
         end
       else
         if return_to_review_workflow
@@ -86,6 +101,35 @@ module Admin
 
     def set_property_setting
       @property_setting = PropertySetting.instance
+    end
+
+    def property_settings_return_anchor
+      anchor = params[:return_anchor].to_s.delete_prefix("#")
+      anchor.presence_in(RETURN_ANCHORS)
+    end
+
+    def set_ai_learning_context
+      histories = AiPropertySearchHistory.where(tenant: current_tenant)
+      recent_histories = histories.order(created_at: :desc).limit(250).to_a
+      completed_histories = recent_histories.select { |history| history.status == "completed" }
+      no_result_histories = completed_histories.select { |history| history.result_count.to_i.zero? }
+      selected_histories = completed_histories.select { |history| history.selected_habitation_id.present? }
+      processing_times = recent_histories.filter_map(&:processing_time_ms)
+
+      @ai_learning_metrics = {
+        total: histories.count,
+        no_results: no_result_histories.size,
+        selected: selected_histories.size,
+        failed: recent_histories.count { |history| history.status == "failed" },
+        average_processing_time_ms: processing_times.any? ? (processing_times.sum / processing_times.size) : nil
+      }
+      @ai_learning_candidate_terms = no_result_histories
+        .map { |history| history.transcription.to_s.squish }
+        .reject(&:blank?)
+        .tally
+        .sort_by { |term, count| [-count, term] }
+        .first(8)
+      @ai_learning_recent_histories = recent_histories.first(8)
     end
 
     def property_setting_params

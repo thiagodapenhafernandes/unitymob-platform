@@ -62,7 +62,8 @@ RSpec.describe "Field::PropertySearches", type: :request do
 
   it "mantém título do card com código e empreendimento mesmo quando esses campos não estão marcados nos detalhes visíveis" do
     setting.update!(ai_property_search_result_fields: %w[title price])
-    property = create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: "140", categoria: "Apartamento", nome_empreendimento: "Granada")
+    property_code = "VOICE-CARD-#{SecureRandom.hex(4).upcase}"
+    property = create(:habitation, tenant: broker.tenant, admin_user: broker, codigo: property_code, categoria: "Apartamento", nome_empreendimento: "Granada")
     interpretation = Ai::PropertySearch::Interpreter::Result.new(
       intent: "search_properties",
       filters: { "property_type" => "apartments" },
@@ -74,7 +75,7 @@ RSpec.describe "Field::PropertySearches", type: :request do
     post field_property_search_path(format: :json), params: { query: "Apartamento" }, headers: json_headers
 
     item = response.parsed_body.fetch("results").find { |result| result["id"] == property.id }
-    expect(item.fetch("card_title")).to eq("140 - Granada")
+    expect(item.fetch("card_title")).to eq("#{property_code} - Granada")
     expect(item).not_to have_key("property_code")
     expect(item).not_to have_key("development_name")
   end

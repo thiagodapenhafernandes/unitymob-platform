@@ -3572,6 +3572,7 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(response.body).to include(quick_create_admin_proprietors_path)
     expect(response.body).to include("Salvar e selecionar")
     page = Nokogiri::HTML(response.body)
+    expect(page.at_css('[data-controller="habitation-owner-selector"]')["data-habitation-owner-selector-require-email-value"]).to eq("false")
     expect(page.at_css("#editQuickProprietorForm")).to be_present
     expect(page.at_css('input[name="proprietor[phone_primary]"][data-habitation-owner-selector-target="editPhone"]')).to be_present
     expect(page.at_css('input[name="proprietor[email]"][data-habitation-owner-selector-target="editEmail"]')).to be_present

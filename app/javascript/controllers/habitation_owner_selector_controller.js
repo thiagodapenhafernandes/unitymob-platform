@@ -299,11 +299,12 @@ export default class extends Controller {
       return
     }
 
-    const target = [
+    const fields = [
       this.editPhoneTarget,
-      this.editEmailTarget,
-      this.editCityTarget
-    ].find((field) => !this.hasText(field.value))
+      this.editCityTarget,
+      ...(this.requireEmailValue ? [this.editEmailTarget] : [])
+    ]
+    const target = fields.find((field) => !this.hasText(field.value))
 
     ;(target || this.editNameTarget).focus()
   }
