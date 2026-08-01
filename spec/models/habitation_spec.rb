@@ -589,4 +589,34 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.displayable_rent_total_cents).to be_nil
     end
   end
+
+  describe "#normalize_rent_total_cents" do
+    it "clears a stale stored rent total when it is lower than the current rent" do
+      habitation = create(
+        :habitation,
+        valor_venda_cents: 0,
+        valor_locacao_cents: 16_000_00,
+        valor_condominio_cents: 100,
+        valor_iptu_cents: 100,
+        valor_total_aluguel_cents: 13_000_00
+      )
+
+      expect(habitation.reload.valor_total_aluguel_cents).to be_nil
+      expect(habitation.displayable_rent_total_cents).to be_nil
+    end
+
+    it "persists the rent total from current rent and visible taxes" do
+      habitation = create(
+        :habitation,
+        valor_venda_cents: 0,
+        valor_locacao_cents: 16_000_00,
+        valor_condominio_cents: 1_200_00,
+        valor_iptu_cents: 350_00,
+        valor_total_aluguel_cents: 13_000_00
+      )
+
+      expect(habitation.reload.valor_total_aluguel_cents).to eq(17_550_00)
+      expect(habitation.displayable_rent_total_cents).to eq(17_550_00)
+    end
+  end
 end

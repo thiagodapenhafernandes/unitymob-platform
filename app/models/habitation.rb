@@ -481,6 +481,7 @@ class Habitation < ApplicationRecord
   before_validation :normalize_blank_exchange_answer
   before_validation :clear_motivo_suspensao_unless_suspended
   before_save :capture_price_reductions
+  before_save :normalize_rent_total_cents
   before_update :stamp_preco_atualizado_em
   before_save :sync_flags_from_features
   before_save :sync_intake_answers
@@ -816,6 +817,22 @@ class Habitation < ApplicationRecord
     return stored_total_cents if stored_total_cents > rent_cents
 
     nil
+  end
+
+  def normalize_rent_total_cents
+    rent_cents = valor_locacao_cents.to_i
+    unless rent_cents.positive?
+      self.valor_total_aluguel_cents = nil
+      return
+    end
+
+    taxes_total_cents = displayable_condominio_cents.to_i + displayable_iptu_cents.to_i
+    if taxes_total_cents.positive?
+      self.valor_total_aluguel_cents = rent_cents + taxes_total_cents
+      return
+    end
+
+    self.valor_total_aluguel_cents = nil if valor_total_aluguel_cents.to_i < rent_cents
   end
 
   def rent_discount?
