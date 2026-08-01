@@ -258,6 +258,30 @@ RSpec.describe "Habitation details", type: :request do
       expect(document.css("body script[type='application/ld+json']")).to be_empty
     end
 
+    it "renders public aggregate rating when configured" do
+      habitation = create(
+        :habitation,
+        codigo: "RATING-#{SecureRandom.hex(6)}",
+        slug: "apartamento-com-rating",
+        public_rating_value: 5.0,
+        public_rating_count: 4,
+        public_rating_source: "Avaliação editorial"
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+      payload = JSON.parse(document.at_css("head script[type='application/ld+json']").text)
+
+      expect(payload.fetch("aggregateRating")).to include(
+        "@type" => "AggregateRating",
+        "ratingValue" => "5.00",
+        "ratingCount" => 4
+      )
+      expect(document.text.squish).to include("5,0", "(4 avaliações)")
+    end
+
     it "adds readable spacing to plain text descriptions without spaces after punctuation" do
       habitation = create(
         :habitation,
@@ -646,6 +670,80 @@ RSpec.describe "Habitation details", type: :request do
   end
 
   describe "GET /empreendimento/:id" do
+    it "renders development SEO with the canonical development URL" do
+      suffix = SecureRandom.hex(4)
+      development = create(
+        :habitation,
+        codigo: "SEO-EPIC-#{suffix}",
+        slug: "epic-tower-#{suffix}",
+        tipo: "Empreendimento",
+        nome_empreendimento: "Epic Tower",
+        endereco: "Avenida Atlântica",
+        valor_venda_cents: 0,
+        public_rating_value: 5.0,
+        public_rating_count: 4,
+        pictures: [],
+        fotos_empreendimento: [{ "url" => public_photo_url("epic-tower.jpg") }],
+        address_attributes: {
+          logradouro: "Avenida Atlântica",
+          numero: "4700",
+          bairro: "Barra Sul",
+          cidade: "Balneário Camboriú",
+          uf: "SC",
+          cep: "88330-024"
+        }
+      )
+      create(
+        :habitation,
+        codigo_empreendimento: development.codigo,
+        dormitorios_qtd: 4,
+        suites_qtd: 4,
+        vagas_qtd: 4,
+        area_privativa_m2: 298
+      )
+
+      get empreendimento_details_path(development)
+
+      expect(response).to have_http_status(:ok)
+      document = Nokogiri::HTML(response.body)
+
+      expect(document.at_css("title").text).to include("Epic Tower em Barra Sul, Balneário Camboriú")
+      expect(document.at_css("title").text).not_to start_with("3 -")
+      expect(document.at_css("link[rel='canonical']")["href"]).to eq("http://localhost#{empreendimento_details_path(development)}")
+      expect(document.at_css("meta[name='description']")["content"]).to include("Epic Tower")
+      graph = JSON.parse(document.at_css("script[type='application/ld+json']").text).fetch("@graph")
+      development_payload = graph.detect { |entry| entry["@type"] == "ApartmentComplex" }
+      expect(development_payload.fetch("aggregateRating")).to include(
+        "@type" => "AggregateRating",
+        "ratingValue" => "5.00",
+        "ratingCount" => 4
+      )
+      expect(document.text.squish).to include(
+        "Epic Tower em Barra Sul, Balneário Camboriú - SC",
+        "5,0",
+        "(4 avaliações)",
+        "Unidades disponíveis com 298 m², 4 suítes e 4 vagas.",
+        "Perguntas frequentes sobre Epic Tower"
+      )
+    end
+
+    it "redirects the property URL for developments to the canonical development URL" do
+      suffix = SecureRandom.hex(4)
+      development = create(
+        :habitation,
+        codigo: "DEV-CANON-#{suffix}",
+        slug: "empreendimento-canonico-#{suffix}",
+        tipo: "Empreendimento",
+        nome_empreendimento: "Empreendimento Canônico",
+        valor_venda_cents: 0
+      )
+
+      get habitation_path(development, share_token: "abc")
+
+      expect(response).to redirect_to("#{empreendimento_details_path(development)}?share_token=abc")
+      expect(response).to have_http_status(:moved_permanently)
+    end
+
     it "uses the development name as the public URL slug" do
       development = create(
         :habitation,

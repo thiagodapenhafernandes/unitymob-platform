@@ -459,6 +459,12 @@ class Habitation < ApplicationRecord
   validates :broker_commission_percentage,
             numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
             allow_nil: true
+  validates :public_rating_value,
+            numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 5 },
+            allow_nil: true
+  validates :public_rating_count,
+            numericality: { only_integer: true, greater_than_or_equal_to: 0 },
+            allow_nil: true
   validates :key_location, inclusion: { in: KEY_LOCATION_OPTIONS }, allow_blank: true
   validate :rental_guarantee_methods_must_be_valid
   validate :codigo_empreendimento_must_exist, if: :validate_codigo_empreendimento?
@@ -1902,7 +1908,17 @@ class Habitation < ApplicationRecord
   def public_location_label
     [cidade, public_neighborhood].compact_blank.join(" - ")
   end
-  
+
+  def public_rating_configured?
+    public_rating_value.to_f.positive? && public_rating_count.to_i.positive?
+  end
+
+  def public_rating_value_for_schema
+    return unless public_rating_configured?
+
+    public_rating_value.to_f.round(2)
+  end
+
   # Título padrão baseado nas características
   def default_title
     parts = []

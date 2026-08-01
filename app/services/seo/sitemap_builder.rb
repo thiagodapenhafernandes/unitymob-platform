@@ -63,7 +63,7 @@ module Seo
         .select(:id, :slug, :tipo, :updated_at)
         .find_each
         .filter_map do |habitation|
-          path = @url_helpers.habitation_path(habitation)
+          path = habitation.empreendimento? ? @url_helpers.empreendimento_details_path(habitation) : @url_helpers.habitation_path(habitation)
           add_entry(
             loc: absolute_url(path),
             lastmod: habitation.updated_at,

@@ -49,6 +49,12 @@ module ApplicationHelper
     )
   end
 
+  def public_habitation_detail_path(property)
+    return "#" if property.blank?
+
+    property.empreendimento? ? empreendimento_details_path(property) : habitation_path(property)
+  end
+
   def public_image_srcset(source, widths:, aspect_ratio: nil, crop: false, format: :webp, representation_proxy: false)
     widths.filter_map do |width|
       dimensions = aspect_ratio ? [width, (width / aspect_ratio.to_f).round] : [width, width]
@@ -141,8 +147,45 @@ module ApplicationHelper
       "floorSize" => listing_floor_size_schema(habitation),
       "numberOfRooms" => positive_integer_or_nil(habitation.dormitorios_qtd),
       "numberOfBathroomsTotal" => positive_integer_or_nil(habitation.banheiros_qtd),
+      "aggregateRating" => public_rating_schema(habitation),
       "offers" => listing_offer_schema(habitation, price_cents)
     }.compact
+  end
+
+  def public_rating_schema(habitation)
+    return unless habitation&.public_rating_configured?
+
+    {
+      "@type" => "AggregateRating",
+      "ratingValue" => format("%.2f", habitation.public_rating_value_for_schema),
+      "bestRating" => "5",
+      "worstRating" => "0",
+      "ratingCount" => habitation.public_rating_count.to_i
+    }
+  end
+
+  def public_rating_value_label(habitation)
+    return unless habitation&.public_rating_configured?
+
+    number_with_precision(habitation.public_rating_value_for_schema, precision: 1, separator: ",", delimiter: ".")
+  end
+
+  def public_rating_count_label(habitation)
+    count = habitation.public_rating_count.to_i
+    count == 1 ? "1 avaliação" : "#{count} avaliações"
+  end
+
+  def public_rating_star_icon_names(habitation)
+    value = habitation.public_rating_value_for_schema.to_f.clamp(0, 5)
+    (1..5).map do |position|
+      if value >= position
+        "bi-star-fill"
+      elsif value >= position - 0.5
+        "bi-star-half"
+      else
+        "bi-star"
+      end
+    end
   end
 
   # SEO Helper - Dynamic meta tags

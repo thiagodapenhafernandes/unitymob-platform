@@ -2425,7 +2425,10 @@ CREATE TABLE public.habitations (
     intake_review_policy_version integer,
     intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
     preco_atualizado_em timestamp(6) without time zone,
-    broker_intake_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL
+    broker_intake_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    public_rating_value numeric(3,2),
+    public_rating_count integer,
+    public_rating_source character varying
 );
 
 
@@ -16084,6 +16087,7 @@ ALTER TABLE ONLY public.push_subscriptions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260801143000'),
 ('20260801105259'),
 ('20260731160000'),
 ('20260718143000'),

@@ -1,22 +1,104 @@
-<!-- Página de Empreendimento - Enhanced Layout -->
-<script type="application/ld+json">
-  <%= raw({
-    "@context" => "https://schema.org",
+<%
+  development_name = @habitation.nome_empreendimento.presence || @habitation.display_title
+  development_units = Array(@development_units)
+  development_units_count = development_units.count
+  development_location = [@habitation.public_neighborhood, @habitation.cidade].compact_blank.join(", ")
+  development_full_location = [development_location, @habitation.uf].compact_blank.join(" - ")
+  development_address = [@habitation.endereco, @habitation.numero].compact_blank.join(", ")
+  development_full_address = [development_address, development_full_location].compact_blank.join(" - ")
+  development_city_slug = @habitation.cidade.to_s.parameterize.presence
+  development_neighborhood_slug = @habitation.public_neighborhood.to_s.parameterize.presence
+  development_city_path = strategic_empreendimentos_path(development_city_slug) if development_city_slug.present? && Seo::StrategicLanding.development(development_city_slug).present?
+  development_neighborhood_path = strategic_empreendimentos_path(development_neighborhood_slug) if development_neighborhood_slug.present? && Seo::StrategicLanding.development(development_neighborhood_slug).present?
+  range_label = lambda do |values, suffix = nil|
+    normalized = values.map(&:to_f).select(&:positive?).map(&:round).uniq.sort
+    next if normalized.blank?
+
+    label = normalized.one? ? normalized.first.to_s : "#{normalized.first} a #{normalized.last}"
+    suffix.present? ? "#{label} #{suffix}" : label
+  end
+  area_label = range_label.call(development_units.filter_map(&:public_area_m2), "m²")
+  suites_label = range_label.call(development_units.map(&:suites_qtd), "suítes")
+  dorms_label = range_label.call(development_units.map(&:dormitorios_qtd), "dormitórios")
+  vagas_label = range_label.call(development_units.map(&:vagas_qtd), "vagas")
+  development_summary_metrics = [area_label, suites_label.presence || dorms_label, vagas_label].compact_blank
+  development_summary = [
+    "#{development_name} em #{development_full_location.presence || @habitation.cidade}.",
+    (@habitation.constructor_name.present? ? "Empreendimento da #{@habitation.constructor_name}." : nil),
+    (development_summary_metrics.any? ? "Unidades disponíveis com #{development_summary_metrics.to_sentence}." : nil),
+    (development_units_count.positive? ? "#{development_units_count} #{development_units_count == 1 ? "unidade disponível" : "unidades disponíveis"} para consulta." : nil)
+  ].compact_blank.join(" ")
+  development_faq_items = []
+  if development_full_address.present?
+    development_faq_items << {
+      question: "Onde fica o #{development_name}?",
+      answer: "O #{development_name} fica em #{development_full_address}."
+    }
+  end
+  if development_units_count.positive?
+    development_faq_items << {
+      question: "Há unidades disponíveis no #{development_name}?",
+      answer: "Sim. A página lista #{development_units_count} #{development_units_count == 1 ? "unidade disponível" : "unidades disponíveis"} para consulta."
+    }
+  end
+  if development_summary_metrics.any?
+    development_faq_items << {
+      question: "Quais configurações aparecem nas unidades do #{development_name}?",
+      answer: "As unidades disponíveis apresentam #{development_summary_metrics.to_sentence}."
+    }
+  end
+  if @habitation.constructor_name.present?
+    development_faq_items << {
+      question: "Quem é a construtora do #{development_name}?",
+      answer: "A construtora informada para o #{development_name} é #{@habitation.constructor_name}."
+    }
+  end
+  development_schema = {
     "@type" => "ApartmentComplex",
-    "name" => @habitation.nome_empreendimento.presence || @habitation.display_title,
-    "url" => empreendimento_details_url(@habitation),
+    "@id" => "#{@canonical_url.presence || empreendimento_details_url(@habitation)}#empreendimento",
+    "name" => development_name,
+    "url" => @canonical_url.presence || empreendimento_details_url(@habitation),
     "image" => @habitation.image_urls.presence,
     "address" => {
       "@type" => "PostalAddress",
-      "streetAddress" => @habitation.logradouro.presence,
+      "streetAddress" => development_address.presence,
       "addressLocality" => @habitation.cidade.presence,
       "addressRegion" => @habitation.uf.presence,
       "postalCode" => @habitation.cep.presence,
       "addressCountry" => "BR"
     }.compact,
-    "description" => @habitation.seo_description.presence
-  }.compact.to_json) %>
-</script>
+    "description" => @page_description.presence || @habitation.seo_description.presence || development_summary.presence,
+    "numberOfAvailableAccommodationUnits" => (development_units_count if development_units_count.positive?),
+    "aggregateRating" => public_rating_schema(@habitation),
+    "amenityFeature" => (@habitation.property_features_for_display + @habitation.leisure_features_for_display).first(20).map do |feature|
+      { "@type" => "LocationFeatureSpecification", "name" => feature }
+    end.presence
+  }.compact
+  breadcrumb_schema = {
+    "@type" => "BreadcrumbList",
+    "itemListElement" => [
+      { "@type" => "ListItem", "position" => 1, "name" => "Início", "item" => root_url },
+      { "@type" => "ListItem", "position" => 2, "name" => "Empreendimentos", "item" => empreendimentos_url },
+      { "@type" => "ListItem", "position" => 3, "name" => development_name, "item" => @canonical_url.presence || empreendimento_details_url(@habitation) }
+    ]
+  }
+  faq_schema = if development_faq_items.any?
+    {
+      "@type" => "FAQPage",
+      "mainEntity" => development_faq_items.map do |item|
+        {
+          "@type" => "Question",
+          "name" => item[:question],
+          "acceptedAnswer" => {
+            "@type" => "Answer",
+            "text" => item[:answer]
+          }
+        }
+      end
+    }
+  end
+%>
+<%= json_ld_tag({ "@context" => "https://schema.org", "@graph" => [development_schema, breadcrumb_schema, faq_schema].compact }) %>
 
 <div class="public-development-show bg-gray-50 min-h-screen">
   
@@ -41,6 +123,18 @@
           <h1 class="public-development-show__title text-4xl lg:text-5xl font-bold mb-4">
             <%= @habitation.nome_empreendimento %>
           </h1>
+
+          <% if @habitation.public_rating_configured? %>
+            <div class="public-development-show__rating mb-5 flex flex-wrap items-center gap-2 text-sm font-semibold text-white">
+              <span class="inline-flex items-center gap-1 text-golden-one" aria-label="Avaliação <%= public_rating_value_label(@habitation) %> de 5">
+                <% public_rating_star_icon_names(@habitation).each do |icon_name| %>
+                  <i class="bi <%= icon_name %>" aria-hidden="true"></i>
+                <% end %>
+              </span>
+              <span><%= public_rating_value_label(@habitation) %></span>
+              <span class="text-white/70">(<%= public_rating_count_label(@habitation) %>)</span>
+            </div>
+          <% end %>
           
           <div class="public-development-show__hero-meta flex flex-wrap items-center gap-6 mb-8">
             <div class="public-development-show__hero-meta-item flex items-center gap-2">
@@ -184,6 +278,38 @@
       
       <!-- Main Column (2/3) -->
       <div class="public-development-show__main lg:col-span-2 space-y-12">
+        <section class="public-development-show__section public-development-show__seo-summary bg-white rounded-xl shadow-sm p-8 border border-blue-100">
+          <p class="text-sm font-bold uppercase tracking-wide text-golden-one mb-3">Empreendimento em destaque</p>
+          <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-4">
+            <%= development_name %><%= " em #{development_full_location}" if development_full_location.present? %>
+          </h2>
+          <% if development_summary.present? %>
+            <p class="text-gray-700 leading-relaxed"><%= development_summary %></p>
+          <% end %>
+
+          <% if development_summary_metrics.any? %>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+              <% development_summary_metrics.each do |metric| %>
+                <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-blue-three">
+                  <%= metric %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <div class="flex flex-wrap gap-3 mt-6">
+            <% if @habitation.cidade.present? && development_city_path.present? %>
+              <%= link_to "Empreendimentos em #{@habitation.cidade}",
+                  development_city_path,
+                  class: "inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-three hover:bg-blue-100 transition" %>
+            <% end %>
+            <% if @habitation.public_neighborhood.present? && development_neighborhood_path.present? %>
+              <%= link_to "Empreendimentos em #{@habitation.public_neighborhood}",
+                  development_neighborhood_path,
+                  class: "inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-three hover:bg-blue-100 transition" %>
+            <% end %>
+          </div>
+        </section>
         
         <!-- About Section -->
         <% description_content = @habitation.display_description %>
@@ -340,6 +466,24 @@
             </div>
           <% end %>
         </section>
+
+        <% if development_faq_items.any? %>
+          <section class="public-development-show__section public-development-show__faq bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+            <h2 class="public-development-show__section-title text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <div class="w-1 h-8 bg-golden-one rounded"></div>
+              Perguntas frequentes sobre <%= development_name %>
+            </h2>
+
+            <div class="divide-y divide-gray-100">
+              <% development_faq_items.each do |item| %>
+                <div class="py-5 first:pt-0 last:pb-0">
+                  <h3 class="text-lg font-semibold text-blue-three mb-2"><%= item[:question] %></h3>
+                  <p class="text-gray-700 leading-relaxed"><%= item[:answer] %></p>
+                </div>
+              <% end %>
+            </div>
+          </section>
+        <% end %>
 
       </div>
 

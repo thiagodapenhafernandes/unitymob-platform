@@ -84,7 +84,7 @@ class HabitationsController < ApplicationController
     property = public_tenant.habitations.find_by(codigo: code)
     
     if property&.publicly_viewable?
-      redirect_to habitation_path(property), notice: "Imóvel ##{code} encontrado!"
+      redirect_to public_habitation_details_path(property), notice: "Imóvel ##{code} encontrado!"
     else
       redirect_to habitations_path(search: code), 
                   alert: "Imóvel com código #{code} não encontrado. Veja outros imóveis disponíveis."
@@ -158,7 +158,7 @@ class HabitationsController < ApplicationController
           label: "#{e.nome_empreendimento} (Empreendimento)", 
           value: e.nome_empreendimento, 
           type: 'empreendimento',
-          url: habitation_path(e) # URL para redirecionamento direto
+          url: public_habitation_details_path(e)
         } 
       end
     else
@@ -193,11 +193,11 @@ class HabitationsController < ApplicationController
     # increment_view_count(@habitation.id)
     
     property_metadata = Seo::PropertyMetadataBuilder.new(@habitation).attributes
-    @page_title = [@habitation.codigo.presence, property_metadata[:meta_title]].compact.join(" - ")
+    @page_title = public_habitation_page_title(property_metadata)
     @page_description = property_metadata[:meta_description].presence || default_property_description(@habitation)
     @page_keywords = property_metadata[:meta_keywords]
     @page_name = property_metadata[:page_name]
-    @canonical_url = habitation_url(@habitation)
+    @canonical_url = absolute_public_url_for_path(property_metadata[:canonical_path])
     @social_url = request.original_url if params[:share_token].present?
     
     # Image for social sharing (Open Graph)
@@ -699,13 +699,35 @@ class HabitationsController < ApplicationController
   def redirect_to_canonical_habitation_url
     return unless @habitation&.publicly_viewable?
     return unless request.get? && request.format.html?
-    return unless request.path.start_with?("/imovel/")
 
-    canonical_path = habitation_path(@habitation)
+    canonical_path = public_habitation_details_path(@habitation)
+    canonical_request = request.path == canonical_path
+    legacy_property_path = request.path.start_with?("/imovel/")
+    legacy_development_path = @habitation.empreendimento? && request.path.start_with?("/imoveis/")
+    return if canonical_request || (!legacy_property_path && !legacy_development_path)
+
     return if request.path == canonical_path
 
     target = request.query_string.present? ? "#{canonical_path}?#{request.query_string}" : canonical_path
     redirect_to target, status: :moved_permanently
+  end
+
+  def public_habitation_details_path(habitation)
+    habitation.empreendimento? ? empreendimento_details_path(habitation) : habitation_path(habitation)
+  end
+
+  def public_habitation_page_title(property_metadata)
+    title = property_metadata[:meta_title]
+    return title if @habitation.empreendimento?
+
+    [@habitation.codigo.presence, title].compact.join(" - ")
+  end
+
+  def absolute_public_url_for_path(path)
+    value = path.to_s
+    return value if value.start_with?("http://", "https://")
+
+    "#{request.base_url}#{value.start_with?("/") ? value : "/#{value}"}"
   end
 
   def public_site_name

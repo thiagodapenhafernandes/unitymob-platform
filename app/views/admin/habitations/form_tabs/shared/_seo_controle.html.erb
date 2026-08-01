@@ -26,3 +26,49 @@
     </div>
   <% end %>
 <% end %>
+
+<%= ax_form_section(
+      title: "Avaliação pública",
+      eyebrow: "Rich snippet",
+      icon: "star",
+      tooltip: "Quando preenchido, informa a avaliação no JSON-LD da página pública. A exibição das estrelas no Google depende da política e da reindexação do buscador."
+    ) do %>
+  <%= ax_inline_notice(tone: :warning, icon: "exclamation-triangle", class_name: "tw-mb-3") do %>
+    Use apenas uma avaliação real e auditável. O Google pode ignorar notas controladas pelo próprio site quando entender como avaliação autopromocional.
+  <% end %>
+
+  <%= ax_field_grid(columns: 12, gap: :compact) do %>
+    <div class="ax-span-3">
+      <%= ax_number_field(
+            form: f,
+            method: :public_rating_value,
+            label: "Nota",
+            min: 0,
+            max: 5,
+            step: 0.1,
+            placeholder: "5,0",
+            hint: "Escala de 0 a 5."
+          ) %>
+    </div>
+    <div class="ax-span-3">
+      <%= ax_number_field(
+            form: f,
+            method: :public_rating_count,
+            label: "Qtd. avaliações",
+            min: 0,
+            step: 1,
+            placeholder: "4",
+            hint: "Obrigatório para exibir a nota no schema."
+          ) %>
+    </div>
+    <div class="ax-span-6">
+      <%= ax_text_field(
+            form: f,
+            method: :public_rating_source,
+            label: "Origem da avaliação",
+            placeholder: "Ex: Google, avaliação editorial, pesquisa interna",
+            hint: "Controle interno para auditoria; não aparece como dado estruturado."
+          ) %>
+    </div>
+  <% end %>
+<% end %>

@@ -1,6 +1,6 @@
 <% property_title = property.display_title %>
 <% property_constructor = property.effective_constructor %>
-<% property_path = habitation_path(property) %>
+<% property_path = public_habitation_detail_path(property) %>
 <% sale_discount = property.sale_discount? %>
 <% rent_discount = property.rent_discount? %>
 <% available_units_count = property.empreendimento? ? property.available_units_count : 0 %>
