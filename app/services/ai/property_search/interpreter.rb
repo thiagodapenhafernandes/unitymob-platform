@@ -15,7 +15,7 @@ module Ai
       def call
         raise ArgumentError, "Descreva o imóvel que você procura." if @text.blank?
 
-        response = OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key).create_response(payload)
+        response = OpenAi::Client.new(api_key: Configuration.api_key(tenant: @setting.tenant)).create_response(payload)
         parsed = JSON.parse(extract_text(response))
         Result.new(
           intent: parsed.fetch("intent"),
@@ -29,7 +29,7 @@ module Ai
 
       def payload
         {
-          model: Ai::PropertyContentService.model,
+          model: Configuration.model(tenant: @setting.tenant),
           instructions: instructions,
           input: {
             request: @text,

@@ -1,102 +1,194 @@
 <div class="integration-workspace ai-integration-workspace">
 <%= ax_workspace_heading(
-      eyebrow: "Integrações · Conteúdo",
+      eyebrow: "Integrações · IA",
       icon: "stars",
       title: "IA",
-      pills: [@openai_connected ? "conectada" : "configuração pendente"],
-      subtitle: "Configure o provedor e acompanhe a geração assistida de conteúdo dos imóveis.",
+      pills: [@openai_connected ? "conteúdo conectado" : "conteúdo pendente", @property_search_connected ? "voice ativo" : "voice pendente"],
+      subtitle: "Configure credenciais de IA e acompanhe a geração assistida de conteúdo dos imóveis.",
       metrics: [
         { value: number_with_delimiter(@pending_suggestions_count), label: "pendentes" },
         { value: number_with_delimiter(@failed_suggestions_count), label: "falhas" }
       ]
     ) %>
 
-<div class="integration-split-layout">
-  <main class="integration-split-layout__main">
-    <%= ax_panel(title: "Configuração do provedor", subtitle: "Credencial, modelo e instrução principal.", actions: ax_badge(@openai_connected ? "conectada" : "aguardando token", tone: @openai_connected ? :green : :amber)) do %>
-        <%= ax_inline_notice(tone: @openai_connected ? :success : :warning, icon: @openai_connected ? "check-circle" : "exclamation-triangle") do %>
-          <span>
-            Status:
-            <strong><%= @openai_connected ? "Conectado" : "Aguardando token" %></strong>
-          </span>
-        <% end %>
+<ul class="ax-form-tabs tw-mb-4" role="tablist" data-controller="ax-tabs" data-ax-tabs-panel-selector-value="#ai-integration-tab-content">
+  <li>
+    <button class="ax-form-tabs__item active" id="ai-integration-content-tab" type="button" role="tab" aria-controls="ai-integration-content" aria-selected="true" tabindex="0" data-ax-tabs-target="tab" data-ax-tabs-target-param="#ai-integration-content" data-action="click->ax-tabs#select">
+      <i class="bi bi-pencil-square" aria-hidden="true"></i> Conteúdo
+    </button>
+  </li>
+  <li>
+    <button class="ax-form-tabs__item" id="ai-integration-voice-tab" type="button" role="tab" aria-controls="ai-integration-voice" aria-selected="false" tabindex="-1" data-ax-tabs-target="tab" data-ax-tabs-target-param="#ai-integration-voice" data-action="click->ax-tabs#select">
+      <i class="bi bi-mic" aria-hidden="true"></i> Voice PWA
+    </button>
+  </li>
+</ul>
 
-        <%= form_with url: admin_ai_integration_path, method: :patch, scope: :ai, local: true do |f| %>
-          <div class="tw-mb-3">
-            <%= f.label :api_key, "Token da OpenAI", class: "ax-label tw-font-semibold" %>
-            <%= f.password_field :api_key,
-                class: "ax-control",
-                autocomplete: "off",
-                placeholder: (@openai_connected ? "Token já configurado. Preencha apenas para substituir." : "Cole o token da OpenAI") %>
-            <div class="ax-field-hint">Preencha somente para configurar ou substituir a credencial atual.</div>
-          </div>
-
-          <div class="tw-mb-3">
-            <%= f.label :model, "Modelo", class: "ax-label tw-font-semibold" %>
-            <%= f.text_field :model, class: "ax-control", value: @openai_model %>
-            <div class="ax-field-hint">Padrão: <code><%= Ai::PropertyContentService::DEFAULT_MODEL %></code>.</div>
-          </div>
-
-          <div class="tw-mb-3">
-            <%= f.label :property_enrichment_prompt, "Instruções para autopreenchimento e enriquecimento", class: "ax-label tw-font-semibold" %>
-            <%= f.text_area :property_enrichment_prompt,
-                class: "ax-control font-monospace",
-                rows: 18,
-                value: @openai_prompt %>
-            <div class="ax-field-hint">
-              Este texto é a instrução principal usada pela IA. Alterações aqui passam a valer para as próximas sugestões.
-            </div>
-          </div>
-
-          <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
-        <% end %>
-    <% end %>
-  </main>
-
-  <aside class="integration-split-layout__aside">
-    <%= ax_operational_panel(eyebrow: "Operação", title: "Geração em lote", actions: ax_badge(@batch_status, tone: @batch_status == "failed" ? :red : :blue)) do %>
-        <p class="tw-text-sm tw-text-ink-muted">
-          O lote gera sugestões de título e descrição para os imóveis, mas não aplica automaticamente. Cada sugestão precisa ser revisada e confirmada na edição do imóvel.
-        </p>
-
-        <div class="tw-mb-3">
-          <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1">
-            <span>Status: <strong><%= @batch_status %></strong></span>
-            <span><%= @batch_progress %>%</span>
-          </div>
-          <%= ax_progress(value: @batch_progress, tone: @batch_status == "failed" ? :red : :blue) %>
-          <p class="tw-text-sm tw-text-ink-muted tw-mt-2 tw-mb-0"><%= @batch_message %></p>
-          <% if @batch_last_at.present? %>
-            <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Última atualização: <%= l(@batch_last_at, format: :short) %></p>
+<div class="ax-form-tabs__panels" id="ai-integration-tab-content">
+  <section class="ax-form-tabs__panel" id="ai-integration-content" role="tabpanel" aria-labelledby="ai-integration-content-tab" aria-hidden="false" tabindex="0">
+    <div class="integration-split-layout">
+      <main class="integration-split-layout__main">
+        <%= ax_panel(title: "Configuração do provedor", subtitle: "Credencial, modelo e instrução principal.", actions: ax_badge(@openai_connected ? "conectada" : "aguardando token", tone: @openai_connected ? :green : :amber)) do %>
+          <%= ax_inline_notice(tone: @openai_connected ? :success : :warning, icon: @openai_connected ? "check-circle" : "exclamation-triangle") do %>
+            <span>
+              Status:
+              <strong><%= @openai_connected ? "Conectado" : "Aguardando token" %></strong>
+            </span>
           <% end %>
-        </div>
 
-        <%= ax_field_grid do %>
-          <div class="ax-span-6">
-            <div class="integration-stat-tile">
-              <strong><%= number_with_delimiter(@pending_suggestions_count) %></strong>
-              <div class="tw-text-sm tw-text-ink-muted">Sugestões pendentes</div>
+          <%= form_with url: admin_ai_integration_path, method: :patch, scope: :ai, local: true do |f| %>
+            <%= f.hidden_field :section, value: "content" %>
+
+            <div class="tw-mb-3">
+              <%= f.label :api_key, "Token da OpenAI", class: "ax-label tw-font-semibold" %>
+              <%= f.password_field :api_key,
+                  class: "ax-control",
+                  autocomplete: "off",
+                  placeholder: (@openai_connected ? "Token já configurado. Preencha apenas para substituir." : "Cole o token da OpenAI") %>
+              <div class="ax-field-hint">Preencha somente para configurar ou substituir a credencial atual.</div>
             </div>
-          </div>
-          <div class="ax-span-6">
-            <div class="integration-stat-tile">
-              <strong><%= number_with_delimiter(@failed_suggestions_count) %></strong>
-              <div class="tw-text-sm tw-text-ink-muted">Falhas</div>
+
+            <div class="tw-mb-3">
+              <%= f.label :model, "Modelo", class: "ax-label tw-font-semibold" %>
+              <%= f.text_field :model, class: "ax-control", value: @openai_model %>
+              <div class="ax-field-hint">Padrão: <code><%= Ai::PropertyContentService::DEFAULT_MODEL %></code>.</div>
             </div>
+
+            <div class="tw-mb-3">
+              <%= f.label :property_enrichment_prompt, "Instruções para autopreenchimento e enriquecimento", class: "ax-label tw-font-semibold" %>
+              <%= f.text_area :property_enrichment_prompt,
+                  class: "ax-control font-monospace",
+                  rows: 18,
+                  value: @openai_prompt %>
+              <div class="ax-field-hint">
+                Este texto é a instrução principal usada pela IA. Alterações aqui passam a valer para as próximas sugestões.
+              </div>
+            </div>
+
+            <%= f.submit "Salvar Configurações", class: "ax-btn ax-btn--primary" %>
+          <% end %>
+        <% end %>
+      </main>
+
+      <aside class="integration-split-layout__aside">
+        <%= ax_operational_panel(eyebrow: "Operação", title: "Geração em lote", actions: ax_badge(@batch_status, tone: @batch_status == "failed" ? :red : :blue)) do %>
+          <p class="tw-text-sm tw-text-ink-muted">
+            O lote gera sugestões de título e descrição para os imóveis, mas não aplica automaticamente. Cada sugestão precisa ser revisada e confirmada na edição do imóvel.
+          </p>
+
+          <div class="tw-mb-3">
+            <div class="tw-flex tw-justify-between tw-text-sm tw-mb-1">
+              <span>Status: <strong><%= @batch_status %></strong></span>
+              <span><%= @batch_progress %>%</span>
+            </div>
+            <%= ax_progress(value: @batch_progress, tone: @batch_status == "failed" ? :red : :blue) %>
+            <p class="tw-text-sm tw-text-ink-muted tw-mt-2 tw-mb-0"><%= @batch_message %></p>
+            <% if @batch_last_at.present? %>
+              <p class="tw-text-sm tw-text-ink-muted tw-mb-0">Última atualização: <%= l(@batch_last_at, format: :short) %></p>
+            <% end %>
           </div>
+
+          <%= ax_field_grid do %>
+            <div class="ax-span-6">
+              <div class="integration-stat-tile">
+                <strong><%= number_with_delimiter(@pending_suggestions_count) %></strong>
+                <div class="tw-text-sm tw-text-ink-muted">Sugestões pendentes</div>
+              </div>
+            </div>
+            <div class="ax-span-6">
+              <div class="integration-stat-tile">
+                <strong><%= number_with_delimiter(@failed_suggestions_count) %></strong>
+                <div class="tw-text-sm tw-text-ink-muted">Falhas</div>
+              </div>
+            </div>
+          <% end %>
+
+          <%= button_to generate_batch_admin_ai_integration_path,
+              method: :post,
+              class: "ax-btn ax-btn--ghost tw-w-full",
+              data: { turbo_confirm: "Gerar sugestões para todos os imóveis em segundo plano? Nada será aplicado automaticamente." } do %>
+            <i class="bi bi-magic ax-ico"></i>Gerar sugestões para todos os imóveis
+          <% end %>
         <% end %>
 
-        <%= button_to generate_batch_admin_ai_integration_path,
-            method: :post,
-            class: "ax-btn ax-btn--ghost tw-w-full",
-            data: { turbo_confirm: "Gerar sugestões para todos os imóveis em segundo plano? Nada será aplicado automaticamente." } do %>
-          <i class="bi bi-magic ax-ico"></i>Gerar sugestões para todos os imóveis
+        <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
+          <strong>Fluxo seguro:</strong> a IA apenas sugere. Para alterar título, descrição e SEO do imóvel, abra a edição do imóvel e confirme a sugestão manualmente.
         <% end %>
-    <% end %>
+      </aside>
+    </div>
+  </section>
 
-    <%= ax_inline_notice(tone: :info, icon: "info-circle") do %>
-      <strong>Fluxo seguro:</strong> a IA apenas sugere. Para alterar título, descrição e SEO do imóvel, abra a edição do imóvel e confirme a sugestão manualmente.
-    <% end %>
-  </aside>
+  <section class="ax-form-tabs__panel" id="ai-integration-voice" role="tabpanel" aria-labelledby="ai-integration-voice-tab" aria-hidden="true" tabindex="0" hidden>
+    <div class="integration-split-layout">
+      <main class="integration-split-layout__main">
+        <%= ax_panel(title: "Voice PWA", subtitle: "Credencial e modelos usados pela busca inteligente do PWA.", actions: ax_badge(@property_search_dedicated_token ? "token dedicado" : "fallback geral", tone: @property_search_dedicated_token ? :green : :blue)) do %>
+          <%= ax_inline_notice(tone: @property_search_connected ? :success : :warning, icon: @property_search_connected ? "check-circle" : "exclamation-triangle") do %>
+            <span>
+              Status:
+              <strong><%= @property_search_connected ? (@property_search_dedicated_token ? "Usando token dedicado" : "Usando token geral") : "Aguardando token" %></strong>
+            </span>
+          <% end %>
+
+          <%= form_with url: admin_ai_integration_path(anchor: "ai-integration-voice"), method: :patch, scope: :ai, local: true do |f| %>
+            <%= f.hidden_field :section, value: "voice_pwa" %>
+
+            <div class="tw-mb-3">
+              <%= f.label :property_search_api_key, "Token dedicado da OpenAI", class: "ax-label tw-font-semibold" %>
+              <%= f.password_field :property_search_api_key,
+                  class: "ax-control",
+                  autocomplete: "off",
+                  placeholder: (@property_search_dedicated_token ? "Token dedicado configurado. Preencha apenas para substituir." : "Opcional: usa o token geral se ficar vazio") %>
+              <div class="ax-field-hint">Quando vazio, o Voice PWA usa o token geral da aba Conteúdo.</div>
+            </div>
+
+            <% if @property_search_dedicated_token %>
+              <div class="tw-mb-3">
+                <%= ax_check_field(
+                      name: "ai[clear_property_search_api_key]",
+                      value: "1",
+                      id: "ai_clear_property_search_api_key",
+                      label: "Remover token dedicado e voltar ao fallback geral"
+                    ) %>
+              </div>
+            <% end %>
+
+            <div class="property-settings-ai-fields">
+              <%= ax_standalone_field(
+                    name: "ai[property_search_model]",
+                    id: "ai_property_search_model",
+                    label: "Modelo de interpretação",
+                    value: @property_search_model,
+                    class_name: "ax-span-6",
+                    hint: "Padrão: #{Ai::PropertySearch::Configuration::DEFAULT_MODEL}."
+                  ) %>
+              <%= ax_standalone_field(
+                    name: "ai[property_search_transcription_model]",
+                    id: "ai_property_search_transcription_model",
+                    label: "Modelo de transcrição",
+                    value: @property_search_transcription_model,
+                    class_name: "ax-span-6",
+                    hint: "Padrão: #{Ai::PropertySearch::Configuration::DEFAULT_TRANSCRIPTION_MODEL}."
+                  ) %>
+            </div>
+
+            <div class="tw-mt-3">
+              <%= f.submit "Salvar Voice PWA", class: "ax-btn ax-btn--primary" %>
+            </div>
+          <% end %>
+        <% end %>
+      </main>
+
+      <aside class="integration-split-layout__aside">
+        <%= ax_operational_panel(eyebrow: "Busca inteligente", title: "Ajustes operacionais", actions: ax_badge("PropertySetting", tone: :gray)) do %>
+          <p class="tw-text-sm tw-text-ink-muted">
+            Ativação, abrangência, tolerâncias, histórico e compartilhamento continuam nas configurações de imóveis.
+          </p>
+          <%= link_to edit_admin_property_setting_path(anchor: "property-settings-ai-search"), class: "ax-btn ax-btn--ghost tw-w-full" do %>
+            <i class="bi bi-sliders ax-ico"></i><span>Abrir ajustes da busca</span>
+          <% end %>
+        <% end %>
+      </aside>
+    </div>
+  </section>
 </div>
 </div>

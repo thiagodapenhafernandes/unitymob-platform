@@ -15,9 +15,10 @@ module Ai
         raise ArgumentError, "O áudio ultrapassa o limite de 15 MB." if @audio.size.to_i > MAX_BYTES
         raise ArgumentError, "Busca por voz desativada para esta conta." unless @setting.voice_property_search_enabled?
 
-        OpenAi::Client.new(api_key: Ai::PropertyContentService.api_key).transcribe(
+        OpenAi::Client.new(api_key: Configuration.api_key(tenant: @setting.tenant)).transcribe(
           file: @audio,
           language: @setting.ai_property_search_language,
+          model: Configuration.transcription_model(tenant: @setting.tenant),
           prompt: vocabulary_prompt
         )
       end

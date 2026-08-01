@@ -24,21 +24,29 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("Prévia")
     expect(response.body).to include("Busca Inteligente por IA")
     expect(response.body).to include(
-      "property-settings-ai-panel--search",
+      "property-settings-ai-panel--activation",
+      "property-settings-ai-panel--interpretation",
+      "property-settings-ai-panel--scope",
+      "property-settings-ai-panel--context",
       "property-settings-ai-panel--access",
       "property-settings-ai-panel--aliases",
-      "property-settings-ai-panel--sharing"
+      "property-settings-ai-panel--sharing",
+      "property-settings-ai-panel--learning"
     )
+    expect(response.body).to include("Ativação", "Interpretação", "Abrangência", "Contexto", "Acesso e resultado", "Aliases", "Compartilhamento", "Aprendizado")
     expect(response.body).to include("Seleção e validade", "Página pública", "Identificação e lead", "Mensagens operacionais")
-    expect(response.body).to include("Recursos da busca", "Interpretação e mensagens", "Consulta e limites", "Profundidade do contexto do catálogo")
-    expect(Nokogiri::HTML(response.body).css(".property-settings-ai-search-group").size).to eq(4)
+    expect(response.body).to include("Recursos da busca", "Instruções da IA", "Consulta e mensagens", "Profundidade do contexto do catálogo")
+    expect(Nokogiri::HTML(response.body).css(".property-settings-ai-search-group").size).to eq(9)
     expect(response.body).to include("Nenhum alias cadastrado", "ax-empty-state")
+    expect(response.body).to include("Aprendizado supervisionado", "Termos candidatos", "Buscas recentes")
     html = Nokogiri::HTML(response.body)
     expect(html.css(".ax-range-field").size).to eq(2)
     expect(html.css('.ax-radio-group input[data-watermark-preview-target="positionInput"]').size).to eq(PropertySetting::WATERMARK_POSITIONS.size)
     expect(html.at_css('.ax-file-field input[data-watermark-preview-target="fileInput"]')).to be_present
     expect(html.css(".tab-content, .tab-pane, .property-settings-tabs-card, .property-settings-range, .property-settings-position-option")).to be_empty
     expect(html.css("#property-settings-ai-search .ax-field > label.ax-field-label").size).to be >= 35
+    expect(html.css("#property-settings-ai-search .property-settings-ai-subtabs .ax-form-tabs__item").size).to eq(8)
+    expect(html.at_css('input[name="return_anchor"][data-form-return-anchor-target="input"]')).to be_present
     expect(html.at_css('select#development_id[name="development_id"]')).to be_present
     expect(html.at_css('textarea#development_alias_names[name="names"]')).to be_present
     expect(html.css("#property-settings-ai-search label.ax-field")).to be_empty
@@ -118,6 +126,25 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     )
   end
 
+  it "preserva a sub-aba ativa após salvar configurações" do
+    admin = create(:admin_user, :admin)
+    sign_in admin
+
+    with_forgery_protection_disabled do
+      patch admin_property_setting_path, params: {
+        return_anchor: "property-settings-ai-scope",
+        property_setting: {
+          ai_property_search_enabled: "1",
+          ai_property_search_allowed_fields: %w[city price],
+          ai_property_search_result_fields: %w[property_code title],
+          ai_property_search_allowed_profiles: %w[account_owner]
+        }
+      }
+    end
+
+    expect(response).to redirect_to(edit_admin_property_setting_path(anchor: "property-settings-ai-scope"))
+  end
+
   it "gerencia aliases de empreendimento na aba da busca inteligente" do
     admin = create(:admin_user, :admin)
     development = create(:habitation, tenant: admin.tenant, tipo: "Empreendimento", nome_empreendimento: "Reserva do Parque", codigo: "RESERVA-#{SecureRandom.hex(3)}")
@@ -182,7 +209,7 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     expect(response.body).to include("Não se aplica neste conjunto")
     expect(response.body).to include("Ajustar regra deste conjunto")
     expect(response.body).to include("Sempre manual")
-    expect(response.body).to include("Regra padrão da conta")
+    expect(response.body).to include("Leitura rápida")
   end
 
   it "deixa claro que revisão desligada não publica automaticamente" do
@@ -198,8 +225,8 @@ RSpec.describe "Admin::PropertySettings", type: :request do
     get review_workflow_admin_property_setting_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Próximo passo após checklist")
-    expect(response.body).to include("Publicar Site")
+    expect(response.body).to include("Tipo")
+    expect(response.body).to include("Validações ativas")
   end
 
   it "salva regra específica de revisão para o conjunto selecionado" do

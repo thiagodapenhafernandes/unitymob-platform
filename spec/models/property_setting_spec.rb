@@ -46,6 +46,31 @@ RSpec.describe PropertySetting, type: :model do
     expect(second.ai_property_search_welcome_message).not_to eq("Mensagem A")
   end
 
+  it "usa instruções padrão alinhadas com busca imediata sem sobrescrever customizações" do
+    setting = described_class.new(watermark_position: "bottom_left")
+    setting.valid?
+
+    expect(setting.ai_property_search_instructions).to include("Nunca interrompa a busca com pergunta complementar")
+    expect(setting.ai_property_search_instructions).to include("Retorne clarifying_question como null")
+    expect(setting.ai_property_search_instructions).not_to include("solicite esclarecimento")
+
+    setting.ai_property_search_instructions = "Minha instrução customizada"
+    setting.valid?
+
+    expect(setting.ai_property_search_instructions).to eq("Minha instrução customizada")
+  end
+
+  it "atualiza somente o texto padrão legado da busca inteligente" do
+    setting = described_class.new(
+      watermark_position: "bottom_left",
+      ai_property_search_instructions: "  #{described_class::LEGACY_AI_PROPERTY_SEARCH_INSTRUCTIONS.gsub("\n", "\r\n  ")}  "
+    )
+
+    setting.valid?
+
+    expect(setting.ai_property_search_instructions).to eq(described_class::DEFAULT_AI_PROPERTY_SEARCH_INSTRUCTIONS)
+  end
+
   it "rejeita allowlists, limites e fontes inválidas" do
     setting = described_class.instance
     setting.assign_attributes(
