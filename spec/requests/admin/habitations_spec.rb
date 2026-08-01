@@ -1569,7 +1569,10 @@ RSpec.describe "Admin::Habitations", type: :request do
       admin_user: broker,
       status: "Aluguel",
       valor_venda_cents: 0,
-      valor_locacao_cents: 6_000_00
+      valor_locacao_cents: 6_000_00,
+      valor_condominio_cents: 100,
+      valor_iptu_cents: 100,
+      valor_total_aluguel_cents: 5_500_00
     )
     property.address.destroy!
     property.update_columns(
@@ -1591,6 +1594,7 @@ RSpec.describe "Admin::Habitations", type: :request do
 
     expect(response).to redirect_to(admin_habitations_path)
     expect(property.reload.valor_locacao_cents).to eq(6_500_00)
+    expect(property.valor_total_aluguel_cents).to be_nil
     expect(property.address).to have_attributes(
       tipo_endereco: "Rua",
       logradouro: "1101",
