@@ -39,6 +39,45 @@ RSpec.describe Leads::NotificationDispatcher do
       expect(args[:ttl]).to eq(900)
       expect(args[:require_interaction]).to be(true)
       expect(args[:tag]).to eq("lead-#{lead.id}-#{corretor.id}")
+      expect(args[:body]).to eq("Contato novo aguardando atendimento")
+      expect(args[:body]).not_to include("Origem")
+      expect(args[:body]).not_to include("webhook")
+    end
+  end
+
+  it "usa o imóvel de interesse no corpo do push sem expor origem técnica" do
+    property_code = "PUSH-#{SecureRandom.hex(4).upcase}"
+    property = create(
+      :habitation,
+      codigo: property_code,
+      titulo_anuncio: "Império do Sol",
+      status: "Aluguel",
+      valor_venda_cents: 0,
+      valor_locacao_cents: 16_000_00
+    )
+    lead.update!(property_id: property.id, origin: "Google Ads")
+    PushSetting.instance.update!(lead_click_action: "system")
+
+    described_class.deliver(lead)
+
+    expect(Notifications::PushDispatcher).to have_received(:deliver) do |args|
+      expect(args[:title]).to eq("Novo lead: Cliente Push")
+      expect(args[:body]).to eq("REF #{property_code} · Império do Sol · Aluguel · Toque para atender")
+      expect(args[:body]).not_to include("Origem")
+      expect(args[:body]).not_to include("Google Ads")
+    end
+  end
+
+  it "usa o produto como interesse quando o lead não tem imóvel vinculado" do
+    lead.update!(product: "apartamento em Balneário Camboriú até R$ 800 mil", origin: "Direto / origem desconhecida")
+    PushSetting.instance.update!(lead_click_action: "system")
+
+    described_class.deliver(lead)
+
+    expect(Notifications::PushDispatcher).to have_received(:deliver) do |args|
+      expect(args[:body]).to eq("Interesse: apartamento em Balneário Camboriú até R$ 800 mil · Toque para atender")
+      expect(args[:body]).not_to include("Origem")
+      expect(args[:body]).not_to include("Direto")
     end
   end
 

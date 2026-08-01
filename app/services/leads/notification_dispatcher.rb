@@ -30,7 +30,7 @@ module Leads
 
       push_to(lead.admin_user,
               title: "Novo lead: #{lead.display_name}",
-              body:  "#{lead.display_phone} · Origem: #{lead.origin}",
+              body:  push_body_for(lead, secure: false),
               url:   "/admin/leads/#{lead.id}/attend")
     end
 
@@ -40,7 +40,7 @@ module Leads
 
       push_to(new_corretor,
               title: "Lead atribuído a você: #{lead.display_name}",
-              body:  "#{lead.display_phone} · Origem: #{lead.origin}",
+              body:  push_body_for(lead, secure: false),
               url:   "/admin/leads/#{lead.id}/attend")
     end
 
@@ -62,6 +62,10 @@ module Leads
       Notifications::PushDispatcher.deliver(admin_user_id: corretor.id, title: title, body: body, url: url, urgency: "high", ttl: 3600)
     rescue => e
       Rails.logger.warn("[LeadNotify] push de evento falhou pro corretor #{corretor&.id}: #{e.message}")
+    end
+
+    def self.push_body_for(lead, secure:)
+      new(lead).send(:push_body, secure: secure)
     end
 
     def initialize(lead, sticky: false)
@@ -161,7 +165,7 @@ module Leads
         accept_url = nil
       end
 
-      body = secure ? "Toque para atender · Origem: #{@lead.origin}" : "#{@lead.display_phone} · Origem: #{@lead.origin}"
+      body = push_body(secure: secure)
 
       sent = Notifications::PushDispatcher.deliver(
         admin_user_id: @corretor.id,
@@ -186,6 +190,66 @@ module Leads
       host = ENV["APP_HOST"].presence
       path = "/admin/leads/#{@lead.id}/attend"
       host ? "#{host}#{path}" : path
+    end
+
+    def push_body(secure:)
+      context = push_context
+      parts = []
+      parts << @lead.display_phone if !secure && @lead.display_phone.present?
+      parts << context if context.present?
+
+      if parts.present?
+        parts << "Toque para atender"
+        return parts.join(" · ")
+      end
+
+      "Contato novo aguardando atendimento"
+    end
+
+    def push_context
+      property = push_property
+      return push_property_context(property) if property.present?
+
+      product = push_text(@lead.product, max: 80)
+      return "Interesse: #{product}" if product.present?
+
+      nil
+    end
+
+    def push_property
+      if @lead.property_id.present?
+        property = @lead.tenant.habitations.find_by(id: @lead.property_id)
+        return property if property
+      end
+
+      @lead.interest_properties.order(:id).first
+    end
+
+    def push_property_context(property)
+      identity = [
+        ("REF #{property.codigo}" if property.codigo.present?),
+        push_text(property.display_title, max: 54)
+      ].compact_blank.join(" · ")
+
+      [identity, push_property_modality(property)].compact_blank.join(" · ").presence
+    end
+
+    def push_property_modality(property)
+      case property.whatsapp_negotiation_type
+      when "rent"
+        "Aluguel"
+      when "sale_rent"
+        "Venda/Aluguel"
+      else
+        "Venda"
+      end
+    end
+
+    def push_text(value, max:)
+      text = value.to_s.gsub(/\s+/, " ").strip
+      return nil if text.blank?
+
+      text.truncate(max, separator: " ", omission: "...")
     end
 
     # Template aprovado para notificar o corretor de um novo lead (pt_BR).
