@@ -222,6 +222,18 @@
           <%= title %>
         </h1>
 
+        <% if @habitation.public_rating_configured? %>
+          <div class="mt-3 flex flex-wrap items-center gap-2 text-sm font-semibold text-gray-700">
+            <span class="inline-flex items-center gap-1 text-golden-one" aria-label="Avaliação <%= public_rating_value_label(@habitation) %> de 5">
+              <% public_rating_star_icon_names(@habitation).each do |icon_name| %>
+                <i class="bi <%= icon_name %>" aria-hidden="true"></i>
+              <% end %>
+            </span>
+            <span><%= public_rating_value_label(@habitation) %></span>
+            <span class="text-gray-400">(<%= public_rating_count_label(@habitation) %>)</span>
+          </div>
+        <% end %>
+
         <% if address_text.present? %>
           <p class="public-habitations-show__address mt-3 flex items-start gap-2 text-sm text-gray-500">
             <i class="bi bi-geo-alt text-golden-one"></i>

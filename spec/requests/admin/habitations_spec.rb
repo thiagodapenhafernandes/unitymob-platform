@@ -1562,6 +1562,34 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(property.proprietario_cidade).to eq("Camboriú")
   end
 
+  it "permite ao administrador configurar avaliação pública na aba SEO e Controle" do
+    property = create(:habitation, codigo: "SEO-RATING-#{SecureRandom.hex(6)}")
+
+    get edit_admin_habitation_path(property)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include("Avaliação pública")
+    expect(response.body).to include("Rich snippet")
+    expect(response.body).to include("public_rating_value")
+    expect(response.body).to include("public_rating_count")
+    expect(response.body).to include("public_rating_source")
+
+    patch admin_habitation_path(property), params: {
+      habitation: {
+        public_rating_value: "5.0",
+        public_rating_count: "4",
+        public_rating_source: "Avaliação editorial auditada"
+      }
+    }
+
+    expect(response).to have_http_status(:redirect)
+    expect(property.reload).to have_attributes(
+      public_rating_value: BigDecimal("5.0"),
+      public_rating_count: 4,
+      public_rating_source: "Avaliação editorial auditada"
+    )
+  end
+
   it "preserva e migra o endereço legado quando o corretor altera somente o aluguel" do
     broker = create(:admin_user, profile: default_agent_profile, name: "Corretor com imóvel legado")
     property = create(

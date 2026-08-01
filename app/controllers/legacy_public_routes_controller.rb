@@ -43,7 +43,7 @@ class LegacyPublicRoutesController < ApplicationController
     habitation = scope.find_by(codigo: identifier) || scope.find_by(id: identifier)
     return unless habitation&.publicly_viewable?
 
-    habitation_path(habitation)
+    habitation.empreendimento? ? empreendimento_details_path(habitation) : habitation_path(habitation)
   end
 
   def listing_target

@@ -5,7 +5,7 @@
     <% @habitations.each do |property| %>
       <article class="shared-property-card">
         <% if (image = property.public_image_sources.first) %><%= image_tag Storage::PublicCdnImageUrl.resolve(image, resize_to_fill: [640, 420], format: :webp), alt: property.display_title %><% end %>
-        <div><strong><%= property.display_title %></strong><small><%= [property.address&.bairro || property.bairro, property.address&.cidade || property.cidade].compact_blank.join(" · ") %></small><%= link_to @setting.ai_property_search_view_property_label, habitation_path(property), class: "shared-property-card__link", data: { action: "property-share-interest#preview", preview_url: preview_ai_property_share_collection_path(@collection.token, habitation_id: property.id), property_title: property.display_title } %><button type="button" data-action="property-share-interest#interest" data-habitation-id="<%= property.id %>"><%= @setting.ai_property_search_interest_button_label %></button></div>
+        <div><strong><%= property.display_title %></strong><small><%= [property.address&.bairro || property.bairro, property.address&.cidade || property.cidade].compact_blank.join(" · ") %></small><%= link_to @setting.ai_property_search_view_property_label, public_habitation_detail_path(property), class: "shared-property-card__link", data: { action: "property-share-interest#preview", preview_url: preview_ai_property_share_collection_path(@collection.token, habitation_id: property.id), property_title: property.display_title } %><button type="button" data-action="property-share-interest#interest" data-habitation-id="<%= property.id %>"><%= @setting.ai_property_search_interest_button_label %></button></div>
       </article>
     <% end %>
   </section>

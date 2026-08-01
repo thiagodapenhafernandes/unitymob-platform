@@ -2602,7 +2602,7 @@ class Admin::HabitationsController < Admin::BaseController
       :exibir_no_site_flag, :destaque_web_flag, :lancamento_flag, :aceita_permuta_flag,
       :aceita_permuta_veiculo_flag, :aceita_permuta_imovel_flag, :aceita_permuta_outros_flag,
       :aceita_financiamento_flag, :aceita_parcelamento_flag, :mobiliado_flag, :data_entrega,
-      :meta_title, :meta_description, :meta_keywords, 
+      :meta_title, :meta_description, :meta_keywords, :public_rating_value, :public_rating_count, :public_rating_source,
       :piscina_flag, :lavabo_flag, :varanda_gourmet_flag, :bloco, :lote,
       :banheiro_social_qtd, :decorado_flag, :aptos_andar, :aptos_edificio,
       :garden_flag, :quadra_mar_flag, :sem_mobilia_flag, 
