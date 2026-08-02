@@ -64,8 +64,7 @@ export default class extends Controller {
     this.clearError()
     this.hidePanels()
     if (this.hasQueryTarget) this.queryTarget.value = ""
-    if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
-    if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
+    this.hideSearchSuggestions()
   }
 
   async fetchResults() {
@@ -112,7 +111,8 @@ export default class extends Controller {
     this.editPanelTarget.hidden = true
     this.createPanelTarget.hidden = false
     this.prefillCreateFields(this.queryTarget.value.trim())
-    this.firstMissingQuickField("create")?.focus()
+    this.hideSearchSuggestions()
+    this.focusQuickField("create", this.createPanelTarget)
   }
 
   async create(event) {
@@ -141,8 +141,7 @@ export default class extends Controller {
     this.createPanelTarget.hidden = true
     this.editPanelTarget.hidden = false
     if (options.clearSearchResults) {
-      if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
-      if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
+      this.hideSearchSuggestions()
     }
     this.editNameTarget.value = proprietor.name || ""
     this.editPhoneTarget.value = proprietor.phone_primary || proprietor.phone_primary_display || ""
@@ -175,8 +174,7 @@ export default class extends Controller {
     this.clearError()
     this.hidePanels()
     if (this.hasQueryTarget) this.queryTarget.value = ""
-    if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
-    if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
+    this.hideSearchSuggestions()
 
     this.applyProprietor({
       id: "",
@@ -349,6 +347,11 @@ export default class extends Controller {
     if (this.hasEditPanelTarget) this.editPanelTarget.hidden = true
   }
 
+  hideSearchSuggestions() {
+    if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
+    if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
+  }
+
   formDataFrom(container) {
     if (container instanceof HTMLFormElement) return new FormData(container)
 
@@ -418,6 +421,15 @@ export default class extends Controller {
       : [this.createNameTarget, this.createPhoneTarget, this.createCityTarget, ...(this.requireEmailValue ? [this.createEmailTarget] : [])]
 
     return fields.find((field) => !this.hasText(field.value))
+  }
+
+  focusQuickField(prefix, panel) {
+    const field = this.firstMissingQuickField(prefix)
+
+    window.requestAnimationFrame(() => {
+      panel?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+      field?.focus()
+    })
   }
 
   phoneValidationError(field) {
@@ -551,8 +563,7 @@ export default class extends Controller {
     if (this.inlineValue) {
       this.hidePanels()
       if (this.hasQueryTarget) this.queryTarget.value = ""
-      if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
-      if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
+      this.hideSearchSuggestions()
       return
     }
 

@@ -17,4 +17,15 @@ RSpec.describe "habitation owner selector controller" do
     expect(select_method).to include("this.applyProprietor(payload)")
     expect(select_method).to include("this.finishSelection()")
   end
+
+  it "abre cadastro novo limpando sugestões e rolando o painel para o mobile" do
+    show_create_method = source[/showCreate\(event\) \{.*?\n  \}/m]
+    focus_method = source[/focusQuickField\(prefix, panel\) \{.*?\n  \}/m]
+
+    expect(show_create_method).to include("this.prefillCreateFields(this.queryTarget.value.trim())")
+    expect(show_create_method).to include("this.hideSearchSuggestions()")
+    expect(show_create_method).to include('this.focusQuickField("create", this.createPanelTarget)')
+    expect(focus_method).to include("panel?.scrollIntoView")
+    expect(focus_method).to include("field?.focus()")
+  end
 end

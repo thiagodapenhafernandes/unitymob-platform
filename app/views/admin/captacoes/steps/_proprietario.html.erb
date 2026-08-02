@@ -45,7 +45,7 @@
   <div class="ax-quick-modal__error" data-habitation-owner-selector-target="error" hidden></div>
 
   <div class="habitation-owner-search wizard-field-group">
-    <%= ax_field_label(nil, nil, text: "Buscar proprietário", for: "captacao_proprietor_query") %>
+    <%= ax_field_label(nil, nil, text: "Buscar proprietário existente", for: "captacao_proprietor_query") %>
     <input type="search"
            id="captacao_proprietor_query"
            class="ax-control"
@@ -53,6 +53,17 @@
            autocomplete="off"
            data-habitation-owner-selector-target="query"
            data-action="input->habitation-owner-selector#search">
+  </div>
+
+  <div class="captacao-owner-inline__direct-create"
+       data-habitation-owner-selector-target="directAction"
+       <%= "hidden" if owner_present %>>
+    <button type="button"
+            class="ax-btn ax-btn--secondary"
+            data-action="habitation-owner-selector#showCreate">
+      <i class="bi bi-plus-circle"></i>
+      Cadastrar novo proprietário
+    </button>
   </div>
 
   <div class="habitation-owner-results" data-habitation-owner-selector-target="results" aria-live="polite"></div>
@@ -66,7 +77,7 @@
   </div>
 
   <section class="habitation-owner-modal-panel captacao-owner-inline__panel" data-habitation-owner-selector-target="createPanel" hidden>
-    <h4>Novo proprietário</h4>
+    <h4>Cadastrar novo proprietário</h4>
     <div id="captacaoQuickProprietorForm" data-habitation-owner-selector-target="createForm">
       <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
       <%= ax_field_grid(columns: 12, gap: :compact) do %>
