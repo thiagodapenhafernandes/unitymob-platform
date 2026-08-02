@@ -28,4 +28,15 @@ RSpec.describe "habitation owner selector controller" do
     expect(focus_method).to include("panel?.scrollIntoView")
     expect(focus_method).to include("field?.focus()")
   end
+
+  it "bloqueia o avanço da captação enquanto o proprietário inline não foi salvo" do
+    submit_method = source[/handleWizardSubmit\(event\) \{.*?\n  \}/m]
+
+    expect(source).to include('this.form?.addEventListener("submit", this.boundHandleWizardSubmit, true)')
+    expect(submit_method).to include("event.preventDefault()")
+    expect(submit_method).to include("event.stopImmediatePropagation()")
+    expect(submit_method).to include('mode === "create" ? await this.createProprietor() : await this.updateProprietor()')
+    expect(submit_method).to include("this.requestWizardSubmit(event.submitter)")
+    expect(source).to include('submitter?.name === "direction" && submitter.value === "back"')
+  end
 end

@@ -52,6 +52,17 @@ export default class extends Controller {
     this.searchTimeout = null
     this.selectedProprietor = this.currentPayload()
     this.editingProprietor = null
+    this.resubmittingAfterQuickSave = false
+
+    if (this.inlineValue) {
+      this.form = this.element.closest("form")
+      this.boundHandleWizardSubmit = this.handleWizardSubmit.bind(this)
+      this.form?.addEventListener("submit", this.boundHandleWizardSubmit, true)
+    }
+  }
+
+  disconnect() {
+    this.form?.removeEventListener("submit", this.boundHandleWizardSubmit, true)
   }
 
   search() {
@@ -117,9 +128,13 @@ export default class extends Controller {
 
   async create(event) {
     event?.preventDefault()
-    if (!this.validateQuickFields("create")) return
+    await this.createProprietor()
+  }
 
-    await this.submitForm(this.createFormTarget, this.createUrlValue, "POST", (payload) => {
+  async createProprietor() {
+    if (!this.validateQuickFields("create")) return false
+
+    return this.submitForm(this.createFormTarget, this.createUrlValue, "POST", (payload) => {
       this.applyProprietor(payload)
       this.resetFields(this.createFormTarget)
       this.finishSelection()
@@ -155,11 +170,18 @@ export default class extends Controller {
 
   async update(event) {
     event?.preventDefault()
-    const proprietor = this.editingProprietor || this.selectedProprietor
-    if (!proprietor?.id) return
-    if (!this.validateQuickFields("edit")) return
+    await this.updateProprietor()
+  }
 
-    await this.submitForm(this.editFormTarget, this.updateUrlFor(proprietor.id), "PATCH", (payload) => {
+  async updateProprietor() {
+    const proprietor = this.editingProprietor || this.selectedProprietor
+    if (!proprietor?.id) {
+      this.showError("Selecione um proprietário antes de avançar.")
+      return false
+    }
+    if (!this.validateQuickFields("edit")) return false
+
+    return this.submitForm(this.editFormTarget, this.updateUrlFor(proprietor.id), "PATCH", (payload) => {
       this.applyProprietor(payload)
       this.editPanelTarget.hidden = true
       this.editingProprietor = null
@@ -231,6 +253,8 @@ export default class extends Controller {
 
   async submitForm(form, url, method, onSuccess, onConflict = null) {
     this.clearError()
+    if (this.quickSaving) return false
+    this.quickSaving = true
 
     try {
       const response = await fetch(url, {
@@ -246,15 +270,19 @@ export default class extends Controller {
         if (response.status === 409 && payload.proprietor && onConflict) {
           this.showError(this.errorMessage(payload))
           onConflict(payload)
-          return
+          return false
         }
 
         throw new Error(this.errorMessage(payload))
       }
 
       onSuccess(payload)
+      return true
     } catch (error) {
       this.showError(error.message || "Erro ao salvar proprietário.")
+      return false
+    } finally {
+      this.quickSaving = false
     }
   }
 
@@ -350,6 +378,70 @@ export default class extends Controller {
   hideSearchSuggestions() {
     if (this.hasResultsTarget) this.resultsTarget.innerHTML = ""
     if (this.hasNoResultsTarget) this.noResultsTarget.hidden = true
+  }
+
+  async handleWizardSubmit(event) {
+    if (this.resubmittingAfterQuickSave) {
+      this.resubmittingAfterQuickSave = false
+      return
+    }
+    if (this.backSubmitter(event.submitter)) return
+
+    const mode = this.openQuickPanelMode()
+    if (!mode) return
+
+    event.preventDefault()
+    event.stopImmediatePropagation()
+
+    const saved = mode === "create" ? await this.createProprietor() : await this.updateProprietor()
+    if (!saved) {
+      this.focusQuickField(mode, this.quickPanelFor(mode))
+      return
+    }
+
+    this.resubmittingAfterQuickSave = true
+    this.requestWizardSubmit(event.submitter)
+  }
+
+  backSubmitter(submitter) {
+    return submitter?.name === "direction" && submitter.value === "back"
+  }
+
+  openQuickPanelMode() {
+    if (this.hasCreatePanelTarget && !this.createPanelTarget.hidden) return "create"
+    if (this.hasEditPanelTarget && !this.editPanelTarget.hidden) return "edit"
+    return null
+  }
+
+  quickPanelFor(mode) {
+    return mode === "edit" ? this.editPanelTarget : this.createPanelTarget
+  }
+
+  requestWizardSubmit(submitter) {
+    window.requestAnimationFrame(() => {
+      if (typeof this.form?.requestSubmit === "function") {
+        try {
+          this.form.requestSubmit(submitter)
+        } catch (_error) {
+          this.form.requestSubmit()
+        }
+        return
+      }
+
+      this.appendSubmitterFallback(submitter)
+      this.form?.submit()
+    })
+  }
+
+  appendSubmitterFallback(submitter) {
+    if (!submitter?.name) return
+
+    const input = document.createElement("input")
+    input.type = "hidden"
+    input.name = submitter.name
+    input.value = submitter.value || ""
+    input.dataset.habitationOwnerSelectorSubmitter = "true"
+    this.form.appendChild(input)
   }
 
   formDataFrom(container) {
@@ -573,7 +665,11 @@ export default class extends Controller {
   showError(message) {
     if (!this.hasErrorTarget) return
     this.errorTarget.textContent = message
+    this.errorTarget.setAttribute("role", "alert")
     this.errorTarget.hidden = false
+    window.requestAnimationFrame(() => {
+      this.errorTarget.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    })
   }
 
   clearError() {
