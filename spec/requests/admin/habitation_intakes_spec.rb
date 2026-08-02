@@ -260,7 +260,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     get edit_admin_captacao_path(intake, step: "proprietario")
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Buscar proprietário")
+    expect(response.body).to include("Buscar proprietário existente")
     expect(response.body).to include(quick_search_admin_proprietors_path)
     expect(response.body).to include(quick_create_admin_proprietors_path)
     expect(response.body).to include('data-controller="habitation-owner-selector"')
@@ -275,6 +275,16 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(document.at_css('input[type="hidden"][name="habitation[proprietario_telefone]"][data-habitation-owner-selector-target="legacyPhonePrimary"]')).to be_present
     expect(document.at_css('input[type="hidden"][name="habitation[proprietario_cidade]"][data-habitation-owner-selector-target="legacyCity"]')).to be_present
     expect(document.at_css('input[type="search"][data-habitation-owner-selector-target="query"]')).to be_present
+    direct_create = document.at_css('.captacao-owner-inline__direct-create[data-habitation-owner-selector-target="directAction"]')
+    expect(direct_create).to be_present
+    expect(direct_create["hidden"]).to be_nil
+    expect(direct_create.text).to include("Cadastrar novo proprietário")
+    owner_flow_nodes = document.css(".habitation-owner-search, .captacao-owner-inline__direct-create, .habitation-owner-results")
+    expect(owner_flow_nodes.map { |node| node["class"] }).to eq([
+      "habitation-owner-search wizard-field-group",
+      "captacao-owner-inline__direct-create",
+      "habitation-owner-results"
+    ])
     expect(document.at_css('input[name="proprietor[name]"][data-habitation-owner-selector-target="createName"]')).to be_present
     expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="createPhone"]')).to be_present
     expect(document.at_css('input[type="tel"][name="proprietor[phone_primary]"][data-controller="phone-input"][data-habitation-owner-selector-target="editPhone"]')).to be_present
@@ -303,7 +313,8 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
   end
 
   it "renderiza proprietário vinculado em cartão e mantém campos ocultos para submissão" do
-    proprietor = create(:proprietor, name: "Grasiele Cardozo", phone_primary: "5547988516745", city: "Apucarana")
+    proprietor_name = "Proprietário Vinculado #{SecureRandom.hex(6)}"
+    proprietor = create(:proprietor, name: proprietor_name, phone_primary: "5547988516745", city: "Apucarana")
     intake = create(
       :habitation,
       :broker_intake,
@@ -319,6 +330,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
 
     expect(response).to have_http_status(:ok)
     document = Nokogiri::HTML(response.body)
+    expect(document.at_css('.captacao-owner-inline__direct-create[data-habitation-owner-selector-target="directAction"]')["hidden"]).not_to be_nil
     phone_hidden = document.at_css('input[type="hidden"][name="habitation[proprietario_telefone]"][data-habitation-owner-selector-target="legacyPhonePrimary"]')
     city_hidden = document.at_css('input[type="hidden"][name="habitation[proprietario_cidade]"][data-habitation-owner-selector-target="legacyCity"]')
     proprietor_hidden = document.at_css('input[type="hidden"][name="habitation[proprietor_id]"][data-habitation-owner-selector-target="hiddenInput"]')
@@ -326,7 +338,7 @@ RSpec.describe "Admin::HabitationIntakes", type: :request do
     expect(proprietor_hidden["value"]).to eq(proprietor.id.to_s)
     expect(phone_hidden["value"]).to eq("5547988516745")
     expect(city_hidden["value"]).to eq("Apucarana")
-    expect(response.body).to include("Grasiele Cardozo", "(47) 98851-6745", "Apucarana")
+    expect(response.body).to include(proprietor_name, "(47) 98851-6745", "Apucarana")
   end
 
   it "localiza proprietário pelo código para autocompletar a captação" do

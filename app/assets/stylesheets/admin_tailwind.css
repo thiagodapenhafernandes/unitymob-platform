@@ -10525,6 +10525,15 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
   gap: 12px;
 }
 
+.captacao-owner-inline__direct-create {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.captacao-owner-inline__direct-create .ax-btn {
+  min-height: 44px;
+}
+
 .captacao-owner-inline__panel {
   padding: 14px;
   border: 1px solid #d7e0ea;
@@ -10533,6 +10542,11 @@ html.ax-habitation-editor-collapsed-preload body.ax-habitation-editor-workspace 
 }
 
 @media (max-width: 640px) {
+  .captacao-owner-inline__direct-create .ax-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
   .habitation-owner-no-results {
     align-items: stretch;
     flex-direction: column;
