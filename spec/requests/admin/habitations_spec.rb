@@ -138,6 +138,24 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(hero_subtitle).not_to include("Rua do Endereço")
   end
 
+  it "não exibe chips de filtros quando selects múltiplos enviam apenas valores vazios" do
+    get admin_habitations_path(
+      ownership: "all",
+      status: ["", "Todos"],
+      categoria: [""],
+      bairro_comercial: [""],
+      situacao: [""],
+      empreendimento_codigo: [""],
+      corretor_id: [""]
+    )
+
+    expect(response).to have_http_status(:ok)
+    html = Nokogiri::HTML(response.body)
+
+    expect(html.css(".habitations-active-filter-chips").text.squish).to be_blank
+    expect(html.css(".habitations-workspace-heading__scope").map { |node| node.text.squish }).not_to include("Filtros ativos")
+  end
+
   it "mantém box, condomínio e IPTU fixos no detalhe mesmo sem valores" do
     habitation = create(
       :habitation,

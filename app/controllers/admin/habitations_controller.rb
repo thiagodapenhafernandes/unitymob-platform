@@ -1219,6 +1219,7 @@ class Admin::HabitationsController < Admin::BaseController
     @empreendimento_codigo = @empreendimento_codigos.first
     @corretor_ids = can_filter_by_broker? ? catalog_filter_admin_user_ids(params[:corretor_id]) : []
     @corretor_id = @corretor_ids.first
+    @corretor_filter_labels = @corretor_ids.any? ? catalog_filter_admin_users.where(id: @corretor_ids).order(:name).pluck(:name) : []
     @proprietor_id = nil
     @destaque_web = params[:destaque_web]
     @festival_salute = params[:festival_salute]
