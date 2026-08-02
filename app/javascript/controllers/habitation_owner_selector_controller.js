@@ -75,7 +75,7 @@ export default class extends Controller {
 
     if (query.length < 2) {
       this.resultsTarget.innerHTML = ""
-      this.noResultsTarget.hidden = true
+      this.hideNoResultsAction()
       return
     }
 
@@ -88,7 +88,7 @@ export default class extends Controller {
 
       const proprietors = Array.isArray(payload.proprietors) ? payload.proprietors : []
       this.renderResults(proprietors)
-      this.noResultsTarget.hidden = proprietors.length > 0
+      this.updateNoResultsAction(proprietors.length)
     } catch (error) {
       this.showError(error.message || "Erro ao buscar proprietários.")
     }
@@ -96,7 +96,7 @@ export default class extends Controller {
 
   select(event) {
     const payload = this.payloadFromElement(event.currentTarget)
-    if (this.inlineValue || this.needsContactCompletion(payload)) {
+    if (this.needsContactCompletion(payload)) {
       this.editingProprietor = payload
       this.showEditPanel(payload, { focusFirstMissing: true, clearSearchResults: true })
       return
@@ -193,6 +193,24 @@ export default class extends Controller {
 
   renderResults(proprietors) {
     this.resultsTarget.innerHTML = proprietors.map((proprietor) => this.resultTemplate(proprietor)).join("")
+  }
+
+  updateNoResultsAction(resultCount) {
+    if (!this.hasNoResultsTarget) return
+
+    const text = this.noResultsTarget.querySelector("span")
+    if (text) {
+      text.textContent = resultCount > 0 ? "Não é nenhum destes?" : "Nenhum proprietário encontrado."
+    }
+    this.noResultsTarget.hidden = false
+  }
+
+  hideNoResultsAction() {
+    if (!this.hasNoResultsTarget) return
+
+    const text = this.noResultsTarget.querySelector("span")
+    if (text) text.textContent = "Nenhum proprietário encontrado."
+    this.noResultsTarget.hidden = true
   }
 
   resultTemplate(proprietor) {

@@ -34,10 +34,22 @@
   page_size_options = @page_size_options.presence || [10, 20]
   catalog_controller_names = ["catalog-anchor-scroll"]
   catalog_controller_names << "bulk-publish" if bulk_actions_allowed
+  normalized_filter_values = lambda do |value, except: nil|
+    normalized_except = I18n.transliterate(except.to_s).downcase if except.present?
+
+    Array(value)
+      .flatten
+      .flat_map { |item| item.to_s.split(",") }
+      .map(&:squish)
+      .reject(&:blank?)
+      .reject { |item| normalized_except.present? && I18n.transliterate(item).downcase == normalized_except }
+      .uniq
+  end
+  selected_status_filter_values = normalized_filter_values.call(params[:status], except: "Todos")
   filtering_active = params[:codigo].present? ||
                      params[:q].present? ||
-                     params[:status].present? ||
-                     params[:categoria].present? ||
+                     selected_status_filter_values.any? ||
+                     @categorias.present? ||
                      params[:scope].present? ||
                      @intake_review.present? ||
                      active_extra_filters_count.positive?
@@ -425,12 +437,11 @@
   show_administrative_filter_chips = can_view_habitation_administrative_filters?
   active_filter_chips << "Código: #{params[:codigo]}" if params[:codigo].present?
   active_filter_chips << "Busca: #{params[:q]}" if params[:q].present?
-  selected_status_chips = Array(params[:status]).flatten.map(&:to_s).map(&:strip).reject(&:blank?)
-  selected_status_chips.reject! { |value| I18n.transliterate(value).downcase == "todos" }
+  selected_status_chips = selected_status_filter_values
   active_filter_chips << "Status: #{selected_status_chips.join(', ')}" if selected_status_chips.any?
-  active_filter_chips << "Categoria: #{params[:categoria]}" if params[:categoria].present?
-  active_filter_chips << "Bairro comercial: #{params[:bairro_comercial]}" if params[:bairro_comercial].present?
-  active_filter_chips << "Situação: #{params[:situacao]}" if params[:situacao].present?
+  active_filter_chips << "Categoria: #{@categorias.join(', ')}" if @categorias.any?
+  active_filter_chips << "Bairro comercial: #{@bairros_comerciais.join(', ')}" if @bairros_comerciais.any?
+  active_filter_chips << "Situação: #{@situacoes.join(', ')}" if @situacoes.any?
   active_filter_chips << "Preço reduzido: Sim" if params[:promotion_status] == "with_promo"
   active_filter_chips << "Preço reduzido: Não" if params[:promotion_status] == "without_promo"
   active_filter_chips << "Chaves: #{params[:key_location]}" if params[:key_location].present?
@@ -460,8 +471,10 @@
   active_filter_chips << "Permuta veículo: Sim" if params[:permuta_vehicle] == "1"
   active_filter_chips << "Permuta imóvel: Sim" if params[:permuta_property] == "1"
   active_filter_chips << "Permuta outros: Sim" if params[:permuta_others] == "1"
-  active_filter_chips << "Empreendimento: #{admin_habitation_development_filter_label(params[:empreendimento_codigo])}" if params[:empreendimento_codigo].present?
-  active_filter_chips << "Corretor: #{params[:corretor_id]}" if params[:corretor_id].present?
+  if @empreendimento_codigos.any?
+    active_filter_chips << "Empreendimento: #{@empreendimento_codigos.map { |codigo| admin_habitation_development_filter_label(codigo) }.join(', ')}"
+  end
+  active_filter_chips << "Corretor: #{@corretor_filter_labels.join(', ')}" if @corretor_filter_labels.any?
   active_filter_chips << "Pendente de revisão" if @intake_review == "pending"
   if show_administrative_filter_chips
     active_filter_chips << "Somente com imagens" if params[:somente_com_imagens] == "1"
