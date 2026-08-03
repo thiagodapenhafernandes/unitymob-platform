@@ -405,7 +405,10 @@ RSpec.describe Habitation, type: :model do
         status: "Suspenso",
         motivo_suspensao: nil,
         exibir_no_site_flag: true,
+        exibir_no_site_salute_flag: true,
         publicar_lais_ai: true,
+        publicar_zapimoveis: true,
+        publicar_netimoveis_2: true,
         publicar_imovelweb: true,
         publicar_imovelweb_2: true,
         publicar_chaves_na_mao: true,
@@ -417,7 +420,41 @@ RSpec.describe Habitation, type: :model do
       expect(habitation).not_to be_valid
       expect(habitation.errors[:motivo_suspensao]).to include("deve ser informado quando o status estiver Suspenso")
       expect(habitation.exibir_no_site_flag).to be(false)
+      expect(habitation.exibir_no_site_salute_flag).to be(false)
       expect(habitation.publicar_lais_ai).to be(false)
+      expect(habitation.publicar_zapimoveis).to be(false)
+      expect(habitation.publicar_netimoveis_2).to be(false)
+      expect(habitation.publicar_imovelweb).to be(false)
+      expect(habitation.publicar_imovelweb_2).to be(false)
+      expect(habitation.publicar_chaves_na_mao).to be(false)
+      expect(habitation.publicar_casa_mineira).to be(false)
+      expect(habitation.publicar_viva_real_vrsync).to be(false)
+      expect(habitation.publicar_loft).to be(false)
+    end
+
+    it "disables site and every portal publication for pending commercial status" do
+      habitation = build(
+        :habitation,
+        status: "Pendente",
+        exibir_no_site_flag: true,
+        exibir_no_site_salute_flag: true,
+        publicar_lais_ai: true,
+        publicar_zapimoveis: true,
+        publicar_netimoveis_2: true,
+        publicar_imovelweb: true,
+        publicar_imovelweb_2: true,
+        publicar_chaves_na_mao: true,
+        publicar_casa_mineira: true,
+        publicar_viva_real_vrsync: true,
+        publicar_loft: true
+      )
+
+      expect(habitation).to be_valid
+      expect(habitation.exibir_no_site_flag).to be(false)
+      expect(habitation.exibir_no_site_salute_flag).to be(false)
+      expect(habitation.publicar_lais_ai).to be(false)
+      expect(habitation.publicar_zapimoveis).to be(false)
+      expect(habitation.publicar_netimoveis_2).to be(false)
       expect(habitation.publicar_imovelweb).to be(false)
       expect(habitation.publicar_imovelweb_2).to be(false)
       expect(habitation.publicar_chaves_na_mao).to be(false)

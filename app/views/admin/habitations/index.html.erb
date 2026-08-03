@@ -69,6 +69,7 @@
 <% catalog_main = capture do %>
     <div class="habitations-master-content" data-controller="<%= catalog_controller_names.join(" ") %>" <% if bulk_actions_allowed %>
          data-bulk-publish-url-value="<%= bulk_publish_admin_habitations_path %>"
+         data-bulk-publish-share-url-value="<%= share_selection_admin_habitations_path %>"
          data-bulk-publish-csrf-value="<%= form_authenticity_token %>"
          data-bulk-publish-filtered-total-value="<%= @filtered_count %>"
          data-bulk-publish-filters-json-value='<%= filters_json %>'<% end %>>
@@ -321,6 +322,13 @@
         </span>
         <button type="button" class="habitations-workspace-selection__button" data-action="click->bulk-publish#clearSelection">
           Limpar
+        </button>
+        <button type="button"
+                class="habitations-workspace-selection__button"
+                data-bulk-publish-target="shareButton"
+                data-action="click->bulk-publish#shareSelection"
+                hidden>
+          <i class="bi bi-link-45deg"></i> Compartilhar seleção
         </button>
         <button type="button" class="habitations-workspace-selection__button habitations-workspace-selection__button--primary" data-action="click->bulk-publish#openModal">
           <i class="bi bi-megaphone"></i> Divulgar

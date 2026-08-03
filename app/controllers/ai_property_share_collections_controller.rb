@@ -3,15 +3,14 @@ class AiPropertyShareCollectionsController < ApplicationController
 
   def show
     load_collection
-    @habitations = @collection.habitations.active.includes(:address)
+    @habitations = shareable_collection_habitations.includes(:address)
     assign_social_metadata
     @collection.record!("collection_opened", metadata: request_metadata)
   end
 
   def preview
     load_collection
-    @habitation = @collection.habitations
-      .active
+    @habitation = shareable_collection_habitations
       .includes(:address, photos_attachments: :blob)
       .find(params[:habitation_id])
 
@@ -22,7 +21,7 @@ class AiPropertyShareCollectionsController < ApplicationController
 
   def interest
     load_collection
-    habitation = @collection.habitations.active.find(params[:habitation_id])
+    habitation = shareable_collection_habitations.find(params[:habitation_id])
     lead = recognized_lead || identify_lead
     return render json: { requires_identity: true }, status: :unprocessable_entity unless lead
 
@@ -44,6 +43,10 @@ class AiPropertyShareCollectionsController < ApplicationController
     Current.tenant = @collection.tenant
     @setting = PropertySetting.instance(tenant: @collection.tenant)
     raise ActiveRecord::RecordNotFound unless @setting.ai_property_search_sharing_enabled?
+  end
+
+  def shareable_collection_habitations
+    @collection.habitations.shareable_commercial_selection
   end
 
   def assign_social_metadata

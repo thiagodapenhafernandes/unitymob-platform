@@ -76,6 +76,17 @@ RSpec.describe "AI property share collections", type: :request do
     expect(response.body).not_to include("-&gt;", "<script>")
   end
 
+  it "mantém a seleção pública para imóvel comercial mesmo quando ele não está publicado no site" do
+    first_property.update!(exibir_no_site_flag: false, status: "Venda")
+    collection = create_collection
+
+    get ai_property_share_collection_path(collection.token)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include(first_property.display_title)
+    expect(response.body).to include(preview_ai_property_share_collection_path(collection.token, habitation_id: first_property.id))
+  end
+
   it "pede identificação uma vez, cria lead e agrupa interesses posteriores" do
     collection = create_collection
 

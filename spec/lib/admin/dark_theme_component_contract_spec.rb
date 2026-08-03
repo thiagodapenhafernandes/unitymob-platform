@@ -2324,6 +2324,19 @@ RSpec.describe "Contrato dark dos componentes compartilhados do admin" do
     expect(habitations_catalog_stylesheet).to include('html[data-admin-theme="dark"] .bulk-publish-modal__accent')
   end
 
+  it "gera e copia link de seleção em massa sem abrir compartilhamento nativo" do
+    view = File.read(File.expand_path("../../../app/views/admin/habitations/index.html.erb", __dir__))
+
+    expect(view).to include("data-bulk-publish-share-url-value")
+    expect(view).to include("share_selection_admin_habitations_path")
+    expect(view).to include("Compartilhar seleção")
+    expect(view).to include("click->bulk-publish#shareSelection")
+    expect(bulk_publish_controller).to include("shareSelection(event)")
+    expect(bulk_publish_controller).to include("copyToClipboard(data.url)")
+    expect(bulk_publish_controller).to include("navigator.clipboard.writeText(text)")
+    expect(bulk_publish_controller).not_to include("navigator.share")
+  end
+
 
   it "carrega o contrato dark do modal de midia depois do refresh do formulario" do
     layout = File.read(File.expand_path("../../../app/views/layouts/admin.html.erb", __dir__))

@@ -781,6 +781,73 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(habitation.reload.exibir_no_site_flag).to be(true)
   end
 
+  it "impede publicação em massa de imóveis com status comercial inativo" do
+    tenant = Tenant.create!(name: "Tenant inactive bulk #{SecureRandom.hex(3)}", slug: "tenant-inactive-bulk-#{SecureRandom.hex(3)}")
+    profile = Profile.create!(
+      tenant: tenant,
+      name: "Inactive bulk publisher #{SecureRandom.hex(3)}",
+      axis: "vertical",
+      position: 300,
+      permissions: {
+        "dashboard" => { "view" => true },
+        "imoveis" => { "view" => true, "edit" => true, "scope" => "all" }
+      }
+    )
+    operator = create(:admin_user, tenant: tenant, profile: profile, role: :editor)
+    suspended = create(:habitation, tenant: tenant, admin_user: operator, codigo: "BULK-SUSP-#{SecureRandom.hex(6)}", status: "Suspenso", motivo_suspensao: "Venda pausada")
+    pending = create(:habitation, tenant: tenant, admin_user: operator, codigo: "BULK-PEND-#{SecureRandom.hex(6)}", status: "Pendente")
+
+    sign_in operator
+
+    post bulk_publish_admin_habitations_path, params: {
+      selected_ids: [suspended.id, pending.id],
+      action_type: "publicar",
+      channels: %w[site chaves_na_mao]
+    }
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body["error"]).to eq("Nenhum imóvel selecionado pode ser publicado com o status comercial atual.")
+    expect(suspended.reload.exibir_no_site_flag).to be(false)
+    expect(suspended.publicar_chaves_na_mao).to be(false)
+    expect(pending.reload.exibir_no_site_flag).to be(false)
+    expect(pending.publicar_chaves_na_mao).to be(false)
+  end
+
+  it "gera link público de seleção em massa e inclui imóveis comerciais fora do site" do
+    first_property = create(:habitation, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Venda", exibir_no_site_flag: false)
+    second_property = create(:habitation, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Aluguel", exibir_no_site_flag: false)
+    blocked_daily = create(:habitation, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Diária", exibir_no_site_flag: true)
+    other_tenant = Tenant.create!(name: "Outro tenant #{SecureRandom.hex(3)}", slug: "outro-tenant-#{SecureRandom.hex(3)}")
+    other_property = create(:habitation, tenant: other_tenant, codigo: "SHARE-#{SecureRandom.hex(4)}", status: "Venda", exibir_no_site_flag: false)
+
+    expect {
+      post share_selection_admin_habitations_path, params: {
+        selected_ids: [first_property.id, second_property.id, blocked_daily.id, other_property.id]
+      }, headers: { "Accept" => "application/json" }
+    }.to change(AiPropertyShareCollection, :count).by(1)
+
+    expect(response).to have_http_status(:ok)
+    collection = AiPropertyShareCollection.order(:created_at).last
+    expect(collection).to have_attributes(tenant_id: admin.tenant_id, admin_user_id: admin.id)
+    expect(collection.habitations).to contain_exactly(first_property, second_property)
+    expect(response.parsed_body["url"]).to eq(ai_property_share_collection_url(collection.token))
+    expect(response.parsed_body["message"]).to eq("Link da seleção copiado. Agora você pode compartilhar.")
+  end
+
+  it "não cria seleção em massa quando há menos de dois imóveis compartilháveis" do
+    sale_property = create(:habitation, codigo: "SHARE-ONE-#{SecureRandom.hex(4)}", status: "Venda")
+    daily_property = create(:habitation, codigo: "SHARE-ONE-#{SecureRandom.hex(4)}", status: "Diária")
+
+    expect {
+      post share_selection_admin_habitations_path, params: {
+        selected_ids: [sale_property.id, daily_property.id]
+      }, headers: { "Accept" => "application/json" }
+    }.not_to change(AiPropertyShareCollection, :count)
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body["error"]).to eq("Selecione ao menos dois imóveis com status Venda ou Aluguel.")
+  end
+
   it "renderiza o modal de divulgação em lote sem estilos inline" do
     get admin_habitations_path
 
