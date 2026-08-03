@@ -112,11 +112,16 @@
       <% end %>
     <% end %>
 
-    <% if can?(:view, :field_audit) || can?(:view, :access_audit) || can?(:view, :data_export_audit) %>
+    <% if tenant_owner? || can?(:view, :field_audit) || can?(:view, :access_audit) || can?(:view, :data_export_audit) %>
       <%= ax_operational_panel(eyebrow: "Compliance", title: panel_title.call("bi-clipboard-check", "Auditorias")) do %>
         <div class="ax-panel-body">
-          <p class="ax-field__hint tw-mt-0">Trilhas de acesso, campo, apresentações e exportações de dados.</p>
+          <p class="ax-field__hint tw-mt-0">Trilhas de uso operacional, acesso, campo, apresentações e exportações de dados.</p>
           <div class="tw-flex tw-flex-wrap tw-gap-2">
+            <% if tenant_owner? %>
+              <%= link_to admin_user_activity_sessions_path, class: "ax-btn ax-btn--sm" do %>
+                <i class="bi bi-activity ax-ico"></i><span>Operacional</span>
+              <% end %>
+            <% end %>
             <% if can?(:view, :field_audit) %>
               <%= link_to admin_field_audit_logs_path, class: "ax-btn ax-btn--sm" do %>
                 <i class="bi bi-shield-lock-fill ax-ico"></i><span>Campo</span>

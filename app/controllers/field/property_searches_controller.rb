@@ -69,6 +69,21 @@ module Field
         status: "completed",
         started_at:
       )
+      record_user_activity!(
+        params[:audio].present? ? "ai_voice_search" : "ai_text_search",
+        query_text: transcription,
+        filter_params: history_filters,
+        result_count: results.size + suggestions.size,
+        visible_habitation_ids: (query_result.records + Array(suggestion&.records)).map(&:id),
+        metadata: {
+          source: "field_property_search",
+          history_id: history&.id,
+          search_mode: contextual.mode,
+          flexible: query_result.flexible,
+          match_quality: results.any? ? "exact" : (suggestions.any? ? "approximate" : "none"),
+          relaxed_criteria: suggestion&.relaxed || []
+        }
+      )
 
       render json: {
         status: "completed",
@@ -106,6 +121,14 @@ module Field
       raise ActiveRecord::RecordNotFound unless habitation
 
       history.update!(selected_habitation: habitation)
+      record_user_activity!(
+        "ai_property_selected",
+        habitation: habitation,
+        query_text: history.transcription,
+        filter_params: history.interpreted_filters,
+        result_count: history.result_count,
+        metadata: { source: "field_property_search", history_id: history.id, codigo: habitation.codigo }
+      )
       head :no_content
     end
 

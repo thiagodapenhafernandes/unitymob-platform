@@ -1,5 +1,6 @@
 class Admin::BaseController < ApplicationController
   include Admin::ContextItems
+  include UserActivityTrackable
 
   SENSITIVE_ACCESS_AUDIT_CONTROLLERS = %w[
     admin/access_security

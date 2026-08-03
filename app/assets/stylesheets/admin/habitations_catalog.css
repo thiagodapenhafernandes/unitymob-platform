@@ -2167,6 +2167,20 @@ html[data-admin-theme="dark"] body.ax-habitations-workspace .ax-property-card__f
     }
   }
 
+  @media (min-width: 768px) {
+    body.ax-habitations-workspace .ax-property-card--catalog {
+      height: auto;
+      min-height: 224px;
+      align-items: stretch;
+    }
+
+    body.ax-habitations-workspace .ax-property-card--catalog .ax-property-card__media {
+      height: auto;
+      min-height: 224px;
+      align-self: stretch;
+    }
+  }
+
   /* PWA/mobile only: catálogo compacto + filtro fullscreen explícito.
      Mantém o desktop no inspector lateral existente. */
   @media (max-width: 767.98px) {

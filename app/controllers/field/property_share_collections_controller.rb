@@ -14,6 +14,12 @@ module Field
         scope: current_tenant.habitations.active.where(id: ids),
         source: "field_property_search"
       )
+      record_user_activity!(
+        "selection_shared",
+        result_count: result.habitations.size,
+        visible_habitation_ids: result.habitations.map(&:id),
+        metadata: { source: "field_property_search", requested_count: ids.size }
+      )
 
       render json: {
         url: ai_property_share_collection_url(result.collection.token),
