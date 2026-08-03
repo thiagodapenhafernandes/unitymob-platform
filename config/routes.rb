@@ -47,6 +47,7 @@ Rails.application.routes.draw do
         get :search_by_code
         post :bulk_publish
         post :bulk_publish_eligibility
+        post :share_selection
       end
     end
     resource :habitation_duplicate, only: [] do

@@ -64,7 +64,9 @@ class Habitation < ApplicationRecord
   }.freeze
 
   PUBLIC_STATUSES = ['Venda', 'Aluguel', 'Locação', 'Locacao'].freeze
-  INACTIVE_STATUS_KEYWORDS = %w[suspenso alugado vendido].freeze
+  INACTIVE_STATUS_KEYWORDS = %w[suspenso alugado vendido pendente].freeze
+  INACTIVE_COMMERCIAL_STATUS_REGEX = "(suspenso|alugado|vendido|pendente)".freeze
+  SITE_PUBLICATION_FIELDS = %i[exibir_no_site_flag exibir_no_site_salute_flag].freeze
   NUMERIC_CODIGO_SQL = "codigo ~ '^[0-9]+$'".freeze
   VISTA_REFERENCE_CODIGO_SQL = "#{NUMERIC_CODIGO_SQL} AND COALESCE(imovel_dwv, '') <> 'Sim'".freeze
   TEMPORARY_CODIGO_PREFIX = "RASCUNHO-".freeze
@@ -2198,8 +2200,7 @@ class Habitation < ApplicationRecord
   def unpublish_when_commercial_status_inactive
     return unless inactive_commercial_status?
 
-    self.exibir_no_site_flag = false
-    portal_publication_attribute_names.each do |attribute|
+    publication_attribute_names.each do |attribute|
       public_send("#{attribute}=", false) if respond_to?("#{attribute}=")
     end
   end
@@ -2209,11 +2210,11 @@ class Habitation < ApplicationRecord
     INACTIVE_STATUS_KEYWORDS.find { |keyword| normalized_status.include?(keyword) }
   end
 
-  def portal_publication_attribute_names
+  def publication_attribute_names
     portal_columns = self.class::PORTAL_PUBLICATION_FIELDS.values
     dynamic_columns = self.class.column_names.grep(/\Apublicar_/).map(&:to_sym)
 
-    (portal_columns + dynamic_columns).uniq
+    (self.class::SITE_PUBLICATION_FIELDS + portal_columns + dynamic_columns).uniq
   end
 
   def assign_codigo_automaticamente

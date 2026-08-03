@@ -19,6 +19,16 @@ module Habitation::SearchScopes
       where(exibir_no_site_flag: true)
         .where(status: Habitation::PUBLIC_STATUSES)
     }
+    scope :inactive_commercial_statuses, -> {
+      where("LOWER(unaccent(COALESCE(habitations.status, ''))) ~ ?", Habitation::INACTIVE_COMMERCIAL_STATUS_REGEX)
+    }
+    scope :commercially_publishable, -> {
+      where("NOT (LOWER(unaccent(COALESCE(habitations.status, ''))) ~ ?)", Habitation::INACTIVE_COMMERCIAL_STATUS_REGEX)
+    }
+    scope :shareable_commercial_selection, -> {
+      where(status: Habitation::PUBLIC_STATUSES)
+        .commercially_publishable
+    }
     scope :public_filterable_locations, -> {
       publicly_listable
         .without_developments

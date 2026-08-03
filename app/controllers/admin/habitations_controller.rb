@@ -4,7 +4,7 @@ class Admin::HabitationsController < Admin::BaseController
   before_action -> { check_permission!(:view, :imoveis) }
   before_action -> { check_permission!(:create, :imoveis) }, only: [:new, :create]
   before_action :authorize_data_export!, only: [:print, :export, :exports, :export_status, :download_export, :destroy_export]
-  before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility]
+  before_action :authorize_bulk_publish!, only: [:bulk_publish, :bulk_publish_eligibility, :share_selection]
   before_action :scope_habitations_by_permission, only: [:edit, :update, :destroy, :operational_hub, :gallery, :confirm_owner_contact, :purge_attachment, :generate_ai_preview, :format_ai_suggestion, :apply_ai_suggestion]
   require "csv"
   require "uri"
@@ -389,18 +389,26 @@ class Admin::HabitationsController < Admin::BaseController
       end
     end
 
+    target_ids = ids
+    if flag_value
+      target_ids = current_tenant.habitations.where(id: ids).commercially_publishable.reorder(nil).pluck(:id)
+      if target_ids.empty?
+        return render json: { error: "Nenhum imóvel selecionado pode ser publicado com o status comercial atual." }, status: :unprocessable_entity
+      end
+    end
+
     # Bump updated_at so feed ETags e cache_keys das habitations invalidem automaticamente
     updates[:updated_at] = Time.current
-    bulk_audit_changesets = bulk_habitation_audit_changesets(ids, updates)
+    bulk_audit_changesets = bulk_habitation_audit_changesets(target_ids, updates)
 
     updated_count = 0
     Habitation.transaction do
-      updated_count = current_tenant.habitations.where(id: ids).update_all(updates)
+      updated_count = current_tenant.habitations.where(id: target_ids).update_all(updates)
       record_bulk_habitation_updates(bulk_audit_changesets, action_type: action_type, channels: channels)
     end
 
     # Invalida caches individuais (replica o after_save :clear_cache manualmente, pois update_all pula callbacks)
-    ids.each do |habitation_id|
+    target_ids.each do |habitation_id|
       Rails.cache.delete("habitation_#{habitation_id}")
       Rails.cache.delete([Habitation.name, habitation_id])
     end
@@ -418,6 +426,7 @@ class Admin::HabitationsController < Admin::BaseController
 
     render json: {
       updated: updated_count,
+      skipped_inactive_status: ids.size - target_ids.size,
       action_type: action_type,
       channels: channels
     }
@@ -435,9 +444,40 @@ class Admin::HabitationsController < Admin::BaseController
 
     flag_column = config[:flag]
     target_flag = (action_type == "despublicar")
-    eligible = current_tenant.habitations.where(id: ids).where(flag_column => target_flag).count
+    eligible_scope = current_tenant.habitations.where(id: ids).where(flag_column => target_flag)
+    eligible_scope = eligible_scope.commercially_publishable if action_type == "publicar"
+    eligible = eligible_scope.count
 
     render json: { total: ids.size, eligible: eligible }
+  end
+
+  def share_selection
+    setting = PropertySetting.instance(tenant: current_tenant)
+    return render json: { error: setting.ai_property_search_sharing_disabled_message }, status: :forbidden unless setting.ai_property_search_sharing_enabled?
+
+    ids = resolve_bulk_ids
+    if ids.empty?
+      return render json: { error: "Selecione ao menos dois imóveis para compartilhar." }, status: :unprocessable_entity
+    end
+
+    result = Ai::PropertyShareCollectionCreator.call(
+      tenant: current_tenant,
+      admin_user: current_admin_user,
+      setting:,
+      scope: current_tenant.habitations.where(id: ids),
+      source: "admin_catalog_selection",
+      min_count: 2
+    )
+
+    render json: {
+      url: ai_property_share_collection_url(result.collection.token),
+      count: result.habitations.size,
+      message: "Link da seleção copiado. Agora você pode compartilhar."
+    }
+  rescue Ai::PropertyShareCollectionCreator::TooFewShareableRecords
+    render json: { error: "Selecione ao menos dois imóveis com status Venda ou Aluguel." }, status: :unprocessable_entity
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Nenhum imóvel selecionado pode ser compartilhado." }, status: :unprocessable_entity
   end
 
   def new

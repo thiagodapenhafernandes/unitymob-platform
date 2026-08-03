@@ -11,6 +11,7 @@ const CHANNELS_WITH_OPTIONS = new Set([
 export default class extends Controller {
   static targets = [
     "item", "master", "toolbar", "count",
+    "shareButton",
     "modal", "modalCount", "form",
     "channelSelect", "actionRadio",
     "channelOptionsWrapper",
@@ -18,6 +19,7 @@ export default class extends Controller {
   ]
   static values = {
     url: String,
+    shareUrl: String,
     csrf: String,
     eligibilityUrl: String,
     filteredTotal: Number,
@@ -73,6 +75,9 @@ export default class extends Controller {
     if (this.hasCountTarget) this.countTarget.textContent = count
     if (this.hasToolbarTarget) {
       this.toolbarTarget.hidden = count === 0
+    }
+    if (this.hasShareButtonTarget) {
+      this.shareButtonTarget.hidden = count < 2
     }
   }
 
@@ -205,6 +210,79 @@ export default class extends Controller {
     }
   }
 
+  async shareSelection(event) {
+    event.preventDefault()
+
+    const count = this.effectiveCount()
+    if (count < 2) {
+      window.axToast({ message: "Selecione ao menos dois imóveis para compartilhar.", type: "warning" })
+      return
+    }
+
+    const button = event.currentTarget
+    const originalHTML = button.innerHTML
+    button.disabled = true
+    button.innerHTML = '<span class="ax-spinner" aria-hidden="true"></span> Gerando...'
+
+    const formData = new FormData()
+    this.appendBulkParams(formData)
+
+    try {
+      const response = await fetch(this.shareUrlValue, {
+        method: "POST",
+        body: formData,
+        headers: {
+          "X-CSRF-Token": this.csrfValue,
+          "Accept": "application/json"
+        },
+        credentials: "same-origin"
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        window.axToast({ message: `Erro: ${data.error || "Falha ao gerar a seleção."}`, type: "danger" })
+        return
+      }
+
+      try {
+        await this.copyToClipboard(data.url)
+      } catch (_) {
+        window.axToast({ message: "Link gerado, mas não foi possível copiar automaticamente.", type: "danger" })
+        return
+      }
+
+      window.axToast({ message: data.message || "Link da seleção copiado. Agora você pode compartilhar.", type: "success", timeout: 3200 })
+      this.clearSelection()
+    } catch (err) {
+      window.axToast({ message: `Erro de conexão: ${err.message}`, type: "danger" })
+    } finally {
+      button.disabled = false
+      button.innerHTML = originalHTML
+    }
+  }
+
+  async copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+      return
+    }
+
+    const textarea = document.createElement("textarea")
+    textarea.value = text
+    textarea.setAttribute("readonly", "")
+    textarea.style.position = "fixed"
+    textarea.style.opacity = "0"
+    document.body.appendChild(textarea)
+    textarea.select()
+
+    try {
+      document.execCommand("copy")
+    } finally {
+      textarea.remove()
+    }
+  }
+
   // --- Submit ---
 
   async submit(event) {
@@ -251,7 +329,11 @@ export default class extends Controller {
       if (response.ok) {
         const modalEl = document.getElementById("bulkPublishModal")
         modalEl.dispatchEvent(new CustomEvent("ax-modal:close"))
-        window.axToast({ message: `${data.updated || count} imóvel(is) atualizado(s) com sucesso.`, type: "success" })
+        const skipped = Number(data.skipped_inactive_status || 0)
+        const message = data.message || (skipped > 0
+          ? `${data.updated || 0} imóvel(is) atualizado(s). ${skipped} ignorado(s) por status comercial inativo.`
+          : `${data.updated || count} imóvel(is) atualizado(s) com sucesso.`)
+        window.axToast({ message, type: "success" })
         setTimeout(() => window.location.reload(), 1200)
       } else {
         window.axToast({ message: `Erro: ${data.error || "Falha na requisição."}`, type: "danger" })
