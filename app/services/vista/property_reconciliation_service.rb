@@ -81,6 +81,7 @@ module Vista
       @dry_run = ActiveModel::Type::Boolean.new.cast(dry_run)
       @host = host.presence || ENV.fetch("VISTA_HOST")
       @key = key.presence || ENV.fetch("VISTA_KEY")
+      @host_header = ENV["VISTA_HOST_HEADER"].presence
       @report_path = report_path.presence || default_report_path
       @replace_photos = ActiveModel::Type::Boolean.new.cast(replace_photos)
       @replace_documents = ActiveModel::Type::Boolean.new.cast(replace_documents)
@@ -353,13 +354,16 @@ module Vista
     end
 
     def fetch_detail(codigo, fields)
+      headers = {
+        params: { key: @key, imovel: codigo, pesquisa: { "fields" => fields }.to_json, showSuspended: 1 },
+        accept: :json
+      }
+      headers[:host] = @host_header if @host_header.present?
+
       response = RestClient::Request.execute(
         method: :get,
         url: "#{@host}/imoveis/detalhes",
-        headers: {
-          params: { key: @key, imovel: codigo, pesquisa: { "fields" => fields }.to_json, showSuspended: 1 },
-          accept: :json
-        },
+        headers: headers,
         open_timeout: @api_open_timeout,
         timeout: @api_timeout
       )

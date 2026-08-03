@@ -279,5 +279,22 @@ RSpec.describe Vista::PropertyReconciliationService do
 
       expect(service.send(:fetch_detail, "7110", ["Codigo"])).to eq("Codigo" => "7110")
     end
+
+    it "permite forcar o header Host quando a execucao aponta para um IP especifico" do
+      previous_host_header = ENV["VISTA_HOST_HEADER"]
+      ENV["VISTA_HOST_HEADER"] = "saluteim20174-rest.vistahost.com.br"
+      service = described_class.new(codigos: ["7110"], dry_run: true, host: "http://100.55.193.123")
+
+      expect(RestClient::Request).to receive(:execute).with(
+        hash_including(
+          url: "http://100.55.193.123/imoveis/detalhes",
+          headers: hash_including(host: "saluteim20174-rest.vistahost.com.br")
+        )
+      ).and_return(double(body: { "Codigo" => "7110" }.to_json))
+
+      expect(service.send(:fetch_detail, "7110", ["Codigo"])).to eq("Codigo" => "7110")
+    ensure
+      ENV["VISTA_HOST_HEADER"] = previous_host_header
+    end
   end
 end
