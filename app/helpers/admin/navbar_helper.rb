@@ -36,6 +36,7 @@ module Admin::NavbarHelper
     "admin_users" => "Usuários",
     "profiles" => "Perfis",
     "access_audit_logs" => "Auditoria",
+    "user_activity_sessions" => "Auditoria Operacional",
     "data_export_audit_logs" => "Exportações",
     "layout_settings" => "Identidade e Marca",
     "lead_settings" => "Configurações de Leads",

@@ -23,6 +23,8 @@ class AdminUser < ApplicationRecord
   has_one :inbound_webhook_token, dependent: :destroy
   has_many :habitation_audit_logs
   has_many :access_audit_logs
+  has_many :operational_user_sessions, dependent: :restrict_with_error
+  has_many :operational_user_events, dependent: :restrict_with_error
   has_many :data_export_audit_logs
   has_many :lead_audit_logs
   has_many :trusted_devices, dependent: :destroy

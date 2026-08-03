@@ -1,0 +1,108 @@
+<%= ax_page_header(
+      title: "Auditoria operacional",
+      subtitle: "Sessões condensadas de uso do catálogo, buscas, imóveis abertos e compartilhamentos.",
+      icon: "activity"
+    ) %>
+
+<div class="ax-metric-grid tw-mb-3" aria-label="Resumo da auditoria operacional">
+  <%= ax_metric_card(label: "Sessões filtradas", value: number_with_delimiter(@total_sessions)) %>
+  <%= ax_metric_card(label: "Tempo ativo estimado", value: operational_duration_label(@total_duration_seconds)) %>
+  <%= ax_metric_card(label: "Pesquisas", value: number_with_delimiter(@total_searches), badge: ax_badge("Filtros/IA", tone: :blue, dot: true)) %>
+  <%= ax_metric_card(label: "Imóveis abertos", value: number_with_delimiter(@total_property_views)) %>
+  <%= ax_metric_card(label: "Seleções compartilhadas", value: number_with_delimiter(@total_shared)) %>
+  <%= ax_metric_card(label: "Ativas agora", value: number_with_delimiter(@active_sessions), badge: ax_badge("30 min", tone: @active_sessions.positive? ? :green : :gray, dot: @active_sessions.positive?)) %>
+</div>
+
+<div class="ax-card tw-mb-3">
+  <div class="ax-card__body">
+    <%= form_with url: admin_user_activity_sessions_path, method: :get, local: true, class: "ax-field-grid ax-field-grid--12 tw-items-end", data: { controller: "auto-submit" } do %>
+      <div class="ax-span-3">
+        <label class="ax-label">Usuário</label>
+        <%= select_tag :admin_user_id,
+                       options_from_collection_for_select(@available_users, :id, ->(user) { "#{user.name} · #{user.email}" }, params[:admin_user_id]),
+                       include_blank: "Todos",
+                       class: "ax-control ax-control--sm",
+                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar usuário..." }, action: "change->auto-submit#submit" } %>
+      </div>
+      <div class="ax-span-2">
+        <label class="ax-label">Evento</label>
+        <%= select_tag :event_name,
+                       options_for_select([["Todos", ""]] + OperationalUserEvent::EVENT_NAMES.map { |name| [OperationalUserEvent::EVENT_LABELS[name], name] }, params[:event_name]),
+                       class: "ax-control ax-control--sm",
+                       data: { action: "change->auto-submit#submit" } %>
+      </div>
+      <div class="ax-span-2">
+        <label class="ax-label">Dispositivo</label>
+        <%= select_tag :device_type,
+                       options_for_select([["Todos", ""]] + @available_device_types.map { |value| [value, value] }, params[:device_type]),
+                       class: "ax-control ax-control--sm",
+                       data: { controller: "tom-select", tom_select_options_value: { placeholder: "Buscar dispositivo..." }, action: "change->auto-submit#submit" } %>
+      </div>
+      <div class="ax-span-2">
+        <label class="ax-label">De</label>
+        <%= date_field_tag :start_date, params[:start_date], class: "ax-control ax-control--sm" %>
+      </div>
+      <div class="ax-span-2">
+        <label class="ax-label">Até</label>
+        <%= date_field_tag :end_date, params[:end_date], class: "ax-control ax-control--sm" %>
+      </div>
+      <div class="ax-span-3 tw-flex tw-gap-2">
+        <%= submit_tag "Filtrar", class: "ax-btn ax-btn--primary ax-btn--sm tw-w-full" %>
+        <%= link_to "Limpar", admin_user_activity_sessions_path, class: "ax-btn ax-btn--ghost ax-btn--sm" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="ax-card">
+  <div class="ax-card__body">
+    <% if @sessions.any? %>
+      <% @sessions.each do |activity_session| %>
+        <%
+          search_count = operational_event_count(@session_event_counts, activity_session, "catalog_search", "ai_text_search", "ai_voice_search")
+          opened_count = operational_event_count(@session_event_counts, activity_session, "property_opened", "ai_property_selected")
+          shared_count = operational_event_count(@session_event_counts, activity_session, "selection_shared")
+          list_count = operational_event_count(@session_event_counts, activity_session, "property_list_viewed", "catalog_search")
+          visible_count = @session_visible_counts[activity_session.id].to_i
+        %>
+        <div class="user-activity-session-row">
+          <div class="tw-flex tw-justify-between tw-items-start tw-gap-3 tw-flex-wrap">
+            <div class="tw-flex-1 tw-min-w-0">
+              <div class="user-activity-session-title">
+                <%= activity_session.admin_user&.name.presence || "Usuário não identificado" %>
+                <% if activity_session.last_seen_at >= 30.minutes.ago %>
+                  <%= ax_badge("ativa", tone: :green, dot: true) %>
+                <% end %>
+              </div>
+              <div class="user-activity-session-meta tw-mt-1">
+                <i class="bi bi-clock"></i>
+                <%= l(activity_session.started_at, format: "%d/%m/%Y às %H:%M") %>
+                até <%= l(activity_session.last_seen_at, format: "%H:%M") %>
+                · <%= activity_session.duration_label %>
+                · <%= activity_session.device_type.presence || "Dispositivo não identificado" %>
+                <% if activity_session.browser.present? %> · <%= activity_session.browser %><% end %>
+              </div>
+              <div class="user-activity-session-kpis">
+                <span><%= pluralize(search_count, "pesquisa") %></span>
+                <span><%= pluralize(list_count, "listagem") %></span>
+                <span><%= pluralize(visible_count, "imóvel exibido") %></span>
+                <span><%= pluralize(opened_count, "imóvel aberto") %></span>
+                <span><%= pluralize(shared_count, "seleção compartilhada") %></span>
+                <span><%= pluralize(activity_session.events_count.to_i, "evento") %></span>
+              </div>
+            </div>
+            <%= link_to "Ver detalhes", admin_user_activity_session_path(activity_session), class: "ax-btn ax-btn--sm" %>
+          </div>
+        </div>
+      <% end %>
+
+      <%= ax_pagination @sessions, params: request.query_parameters %>
+    <% else %>
+      <%= ax_empty_state(
+            title: "Nenhuma sessão operacional encontrada",
+            description: "A auditoria começará a aparecer conforme usuários navegarem no catálogo e na busca inteligente.",
+            icon: "activity"
+          ) %>
+    <% end %>
+  </div>
+</div>

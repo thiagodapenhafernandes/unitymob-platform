@@ -1,0 +1,106 @@
+<%= ax_page_header(
+      title: "Sessão operacional",
+      subtitle: "#{@session.admin_user&.name || "Usuário"} · #{l(@session.started_at, format: "%d/%m/%Y às %H:%M")}",
+      icon: "activity",
+      actions: ax_button("Voltar", admin_user_activity_sessions_path, variant: :ghost, size: :sm, icon: "arrow-left")
+    ) %>
+
+<div class="ax-metric-grid tw-mb-3" aria-label="Resumo da sessão operacional">
+  <%= ax_metric_card(label: "Tempo ativo estimado", value: @session.duration_label) %>
+  <%= ax_metric_card(label: "Eventos", value: number_with_delimiter(@session.events_count)) %>
+  <%= ax_metric_card(label: "Pesquisas", value: number_with_delimiter(@event_counts.values_at("catalog_search", "ai_text_search", "ai_voice_search").compact.sum)) %>
+  <%= ax_metric_card(label: "Imóveis exibidos", value: number_with_delimiter(@visible_habitation_count)) %>
+  <%= ax_metric_card(label: "Imóveis abertos", value: number_with_delimiter(@event_counts.values_at("property_opened", "ai_property_selected").compact.sum)) %>
+  <%= ax_metric_card(label: "Compartilhamentos", value: number_with_delimiter(@event_counts["selection_shared"].to_i)) %>
+</div>
+
+<div class="user-activity-detail-grid tw-mb-3">
+  <div class="ax-card">
+    <div class="ax-card__body">
+      <h3 class="tw-text-base tw-font-bold tw-mb-3">Pesquisas da sessão</h3>
+      <div class="user-activity-detail-list">
+        <% @search_events.each do |event| %>
+          <div class="user-activity-detail-item">
+            <strong><%= event.query_text.presence || event.event_label %></strong>
+            <small>
+              <%= event.event_label %> ·
+              <%= pluralize(event.result_count.to_i, "resultado") %> ·
+              <%= event.visible_count %> imóveis exibidos nesta página ·
+              <%= l(event.occurred_at, format: "%H:%M") %>
+            </small>
+          </div>
+        <% end %>
+        <% if @search_events.empty? %>
+          <%= ax_empty_state(title: "Sem pesquisas nesta sessão", description: "A sessão não teve filtros do catálogo nem busca inteligente.", icon: "search", compact: true) %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="ax-card">
+    <div class="ax-card__body">
+      <h3 class="tw-text-base tw-font-bold tw-mb-3">Imóveis abertos ou selecionados</h3>
+      <div class="user-activity-detail-list">
+        <% @opened_properties.each do |event| %>
+          <div class="user-activity-detail-item">
+            <strong>
+              <% if event.habitation.present? %>
+                REF: <%= event.habitation.codigo %> · <%= event.habitation.display_title %>
+              <% else %>
+                Imóvel não disponível
+              <% end %>
+            </strong>
+            <small><%= event.event_label %> · <%= l(event.occurred_at, format: "%H:%M") %></small>
+          </div>
+        <% end %>
+        <% if @opened_properties.empty? %>
+          <%= ax_empty_state(title: "Nenhum imóvel aberto", description: "Não houve abertura de cadastro ou seleção de imóvel nesta sessão.", icon: "building", compact: true) %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ax-card">
+  <div class="ax-card__body">
+    <h3 class="tw-text-base tw-font-bold tw-mb-3">Linha do tempo detalhada</h3>
+    <% if @events.any? %>
+      <% @events.each do |event| %>
+        <div class="user-activity-event">
+          <div class="tw-flex tw-justify-between tw-gap-3 tw-flex-wrap">
+            <div>
+              <strong><%= event.event_label %></strong>
+              <% if event.query_text.present? %>
+                <div class="tw-text-sm tw-mt-1"><%= event.query_text %></div>
+              <% end %>
+              <% if event.habitation.present? %>
+                <div class="tw-text-sm tw-mt-1">REF: <%= event.habitation.codigo %> · <%= event.habitation.display_title %></div>
+              <% end %>
+            </div>
+            <div class="user-activity-event__meta"><%= l(event.occurred_at, format: "%d/%m/%Y às %H:%M:%S") %></div>
+          </div>
+          <div class="user-activity-event__meta tw-mt-2">
+            <% if event.result_count.present? %><%= pluralize(event.result_count.to_i, "resultado") %><% end %>
+            <% if event.visible_count.positive? %> · <%= event.visible_count %> imóveis exibidos<% end %>
+            <% if event.path.present? %> · <%= event.request_method %> <%= event.path.to_s.split("?").first %><% end %>
+          </div>
+          <% if event.filter_params.present? || event.metadata.present? %>
+            <details class="tw-mt-2">
+              <summary class="tw-text-sm tw-text-ink-muted">Ver filtros e metadados</summary>
+              <% if (payload = operational_event_payload(event.filter_params)).present? %>
+                <pre><%= payload %></pre>
+              <% end %>
+              <% if (payload = operational_event_payload(event.metadata)).present? %>
+                <pre><%= payload %></pre>
+              <% end %>
+            </details>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%= ax_pagination @events, params: request.query_parameters %>
+    <% else %>
+      <%= ax_empty_state(title: "Sem eventos", description: "Nenhum evento foi registrado nesta sessão.", icon: "inbox") %>
+    <% end %>
+  </div>
+</div>

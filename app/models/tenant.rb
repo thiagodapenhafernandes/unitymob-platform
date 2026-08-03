@@ -42,6 +42,8 @@ class Tenant < ApplicationRecord
   has_many :manual_checkin_requests, dependent: :restrict_with_error
   has_many :proprietors, dependent: :restrict_with_error
   has_many :access_audit_logs, dependent: :restrict_with_error
+  has_many :operational_user_sessions, dependent: :restrict_with_error
+  has_many :operational_user_events, dependent: :restrict_with_error
   has_many :access_control_rules, dependent: :restrict_with_error
   has_many :trusted_devices, dependent: :restrict_with_error
   has_many :data_export_audit_logs, dependent: :restrict_with_error

@@ -124,6 +124,7 @@ class Admin::HabitationsController < Admin::BaseController
     @export_fields = EXPORT_FIELDS
     @default_export_fields = %w[codigo categoria logradouro numero complemento dormitorios_qtd valor_venda valor_locacao]
     @recent_exports = current_admin_user.habitation_exports.recent.limit(5)
+    record_catalog_user_activity
   end
 
   def filter_inspector
@@ -468,6 +469,12 @@ class Admin::HabitationsController < Admin::BaseController
       source: "admin_catalog_selection",
       min_count: 2
     )
+    record_user_activity!(
+      "selection_shared",
+      result_count: result.habitations.size,
+      visible_habitation_ids: result.habitations.map(&:id),
+      metadata: { source: "admin_catalog_selection", requested_count: ids.size }
+    )
 
     render json: {
       url: ai_property_share_collection_url(result.collection.token),
@@ -493,6 +500,16 @@ class Admin::HabitationsController < Admin::BaseController
   def show
     @page_title = "Detalhes do Imóvel: #{@habitation.codigo}"
     @return_to_path = safe_admin_habitations_return_path(params[:return_to])
+    record_user_activity!(
+      "property_opened",
+      habitation: @habitation,
+      metadata: {
+        codigo: @habitation.codigo,
+        status: @habitation.status,
+        category: @habitation.categoria,
+        source: "admin_habitation_show"
+      }
+    )
   end
 
   def gallery
@@ -1747,6 +1764,45 @@ class Admin::HabitationsController < Admin::BaseController
       "q", "status", "categoria", "tipo", "bairro", "cidade", "codigo", "corretor",
       "selected_ids", "report_type", "data_format", "fields", "sort", "direction"
     )
+  end
+
+  def record_catalog_user_activity
+    return unless request.format.html?
+
+    filters = request.query_parameters
+    event_name = catalog_filter_activity?(filters) ? "catalog_search" : "property_list_viewed"
+    record_user_activity!(
+      event_name,
+      query_text: [@q, @codigo].compact_blank.join(" ").presence,
+      filter_params: filters,
+      result_count: @filtered_count,
+      visible_habitation_ids: @habitations.map(&:id),
+      metadata: {
+        source: "admin_habitations_index",
+        view_mode: params[:visualizacao].to_s == "tabela" ? "tabela" : "cards",
+        page: @habitations.current_page,
+        per_page: @per_page,
+        page_count: @habitations.size,
+        sort: @sort_column,
+        direction: @sort_direction
+      }
+    )
+  end
+
+  def catalog_filter_activity?(filters)
+    ignored_keys = %w[ownership visualizacao page per_page sort direction back_anchor return_to]
+    filters.except(*ignored_keys).any? { |_key, value| audit_filter_value_present?(value) }
+  end
+
+  def audit_filter_value_present?(value)
+    case value
+    when Hash
+      value.any? { |_key, item| audit_filter_value_present?(item) }
+    when Array
+      value.any? { |item| audit_filter_value_present?(item) }
+    else
+      value.present?
+    end
   end
 
   def data_export_count_for(scope)

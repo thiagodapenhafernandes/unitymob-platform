@@ -7,6 +7,7 @@ module Field
   class BaseController < ApplicationController
     include FieldFeatureGate
     include DeviceRequest
+    include UserActivityTrackable
 
     prepend_before_action :redirect_desktop_to_admin
     before_action :authenticate_admin_user!

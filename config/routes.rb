@@ -319,6 +319,7 @@ Rails.application.routes.draw do
     end
 
     resources :access_audit_logs, only: [:index]
+    resources :user_activity_sessions, only: [:index, :show]
     resources :data_export_audit_logs, only: [:index]
     resources :presentation_audit_logs, only: [:index]
     resource :access_security, only: [:show, :update], controller: "access_security"

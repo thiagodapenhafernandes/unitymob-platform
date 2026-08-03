@@ -402,7 +402,7 @@
 
     <%# Configurações da Conta (ex-Administração + marca + notificações) %>
     <%
-      audit_menu_visible = can_access.call(:view, :field_audit) || can_access.call(:view, :access_audit) || can_access.call(:view, :data_export_audit)
+      audit_menu_visible = tenant_owner? || can_access.call(:view, :field_audit) || can_access.call(:view, :access_audit) || can_access.call(:view, :data_export_audit)
       security_menu_visible = can_access.call(:manage, :access_security)
       whatsapp_admin_menu_visible = can_access.call(:view, :whatsapp_campaigns)
       brand_menu_visible = can_access.call(:manage, :marketing)
@@ -437,6 +437,9 @@
       <% end %>
       <% if audit_menu_visible %>
         <li class="ax-nav__caption">Auditorias</li>
+      <% end %>
+      <% if tenant_owner? %>
+        <li><%= link_to admin_user_activity_sessions_path, class: "ax-nav__link #{'active' if controller_name == 'user_activity_sessions'}" do %><i class="bi bi-activity"></i><span>Auditoria Operacional</span><% end %></li>
       <% end %>
       <% if can_access.call(:view, :field_audit) %>
         <li><%= link_to admin_field_audit_logs_path, class: "ax-nav__link #{'active' if controller_path == 'admin/field/audit_logs'}" do %><i class="bi bi-shield-lock-fill"></i><span>Auditoria de Campo</span><% end %></li>
