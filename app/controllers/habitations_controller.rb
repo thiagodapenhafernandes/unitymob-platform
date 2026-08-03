@@ -256,8 +256,12 @@ class HabitationsController < ApplicationController
       end
     end
     
-    # Cache da página
-    cache_show_page(@habitation)
+    # Links privados por token não devem ser armazenados por cache compartilhado.
+    if cache_shared_property_page?
+      no_store
+    else
+      cache_show_page(@habitation)
+    end
     
     respond_to do |format|
       format.html
@@ -266,13 +270,13 @@ class HabitationsController < ApplicationController
   end
 
   def share_link
-    unless @habitation.publicly_viewable?
+    unless shareable_commercial_status?(@habitation)
       Rails.logger.info(
-        "[HabitationShare] blocked unshareable habitation_id=#{@habitation.id} reason=#{@habitation.public_unavailable_reason}"
+        "[HabitationShare] blocked non-commercial-status habitation_id=#{@habitation.id} status=#{@habitation.status.inspect}"
       )
       return render json: {
         success: false,
-        error: "Este imóvel não está liberado para compartilhamento público."
+        error: "Este imóvel só pode ser compartilhado quando estiver com status Venda ou Aluguel."
       }, status: :unprocessable_entity
     end
 
@@ -294,6 +298,10 @@ class HabitationsController < ApplicationController
   end
   
   private
+
+  def shareable_commercial_status?(habitation)
+    Habitation.normalize_status(habitation.status).in?(%w[Venda Aluguel])
+  end
 
   def ensure_social_photo_public!(habitation)
     source = habitation.primary_image_source
@@ -337,7 +345,7 @@ class HabitationsController < ApplicationController
 
   def valid_share_token_for?(habitation)
     return false unless habitation
-    return false unless habitation.publicly_viewable?
+    return false unless shareable_commercial_status?(habitation)
 
     token = params[:share_token].to_s.strip
     return false if token.blank?
@@ -563,6 +571,10 @@ class HabitationsController < ApplicationController
       habitation: @habitation,
       metadata: { broker_id: link.admin_user_id }
     )
+  end
+
+  def cache_shared_property_page?
+    params[:share_token].present? || @share_link.present?
   end
 
   def remember_share_link(link)

@@ -83,7 +83,7 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.body).not_to include("Entrega")
     end
 
-    it "does not expose an unavailable Vista-photo-only property through a share token" do
+    it "does not expose a Vista photo when no local CDN attachment exists" do
       vista_url = "https://cdn.vistahost.com.br/saluteim20174/vista.imobi/fotos/123/first-property.jpg"
       habitation = create(
         :habitation,
@@ -97,10 +97,17 @@ RSpec.describe "Habitation details", type: :request do
 
       get habitation_path(habitation, share_token: share_link.token)
 
-      expect(response).to redirect_to(habitations_path)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("vistahost.com.br")
+      expect(response.body).to include(%(property="og:image" content="http://localhost/pwa-icon-512?v=))
+      expect(response.body).to include(%(property="og:image:type" content="image/png"))
+      expect(response.body).to include(%(property="og:image:width" content="512"))
+      expect(response.body).to include(%(property="og:image:height" content="512"))
+      expect(response.body).to include(%(rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192?v=))
+      expect(response.body).to include(%(property="og:title" content="OG-IMG - ))
     end
 
-    it "does not expose an unavailable Vista-compatible external URL through a share token" do
+    it "does not expose a Vista-compatible external URL in social sharing metadata" do
       source = "https://cdn.vistahost.com.br//saluteim20174/vista.imobi/fotos/123/first-property.jpg"
       habitation = create(
         :habitation,
@@ -112,7 +119,8 @@ RSpec.describe "Habitation details", type: :request do
 
       get habitation_path(habitation, share_token: share_link.token)
 
-      expect(response).to redirect_to(habitations_path)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to include("vistahost.com.br")
     end
 
     it "uses the original locally attached photo without an on-demand social transformation" do
@@ -165,26 +173,43 @@ RSpec.describe "Habitation details", type: :request do
       expect(response.parsed_body.fetch("url")).to include("preview=")
     end
 
-    it "rejects share link generation for an unavailable property" do
+    it "creates a private tracked link for an unavailable property without making its plain URL public" do
       admin = create(:admin_user)
       habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-OFF", slug: "share-off")
       sign_in admin
 
       post share_link_habitation_path(habitation), as: :json
 
-      expect(response).to have_http_status(:unprocessable_entity)
-      expect(response.parsed_body.fetch("success")).to be(false)
-      expect(response.parsed_body.fetch("error")).to eq("Este imóvel não está liberado para compartilhamento público.")
-      expect(HabitationShareLink.where(habitation: habitation)).to be_empty
-    end
+      expect(response).to have_http_status(:ok)
+      shared_url = response.parsed_body.fetch("url")
+      token = Rack::Utils.parse_query(URI.parse(shared_url).query).fetch("share_token")
 
-    it "does not allow an existing share token to expose an unavailable property" do
-      admin = create(:admin_user)
-      habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-OFF-TOKEN", slug: "share-off-token")
-      share_link = HabitationShareLink.create!(habitation: habitation, admin_user: admin)
-
+      sign_out admin
       get habitation_path(habitation)
       expect(response).to redirect_to(habitations_path)
+
+      get habitation_path(habitation, share_token: token)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(habitation.display_title)
+      expect(response.headers["Cache-Control"]).to include("no-store")
+    end
+
+    it "does not create a tracked share link for a property outside sale or rent status" do
+      admin = create(:admin_user)
+      habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-DAY", slug: "share-day", status: "Diária")
+      sign_in admin
+
+      post share_link_habitation_path(habitation), as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body.fetch("error")).to include("Venda ou Aluguel")
+      expect(HabitationShareLink.where(habitation: habitation)).not_to exist
+    end
+
+    it "does not allow an existing share token to expose a property outside sale or rent status" do
+      admin = create(:admin_user)
+      habitation = create(:habitation, :unavailable, tenant: admin.tenant, codigo: "SHARE-DAY-TOKEN", slug: "share-day-token", status: "Diária")
+      share_link = HabitationShareLink.create!(habitation: habitation, admin_user: admin)
 
       get habitation_path(habitation, share_token: share_link.token)
       expect(response).to redirect_to(habitations_path)
