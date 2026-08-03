@@ -85,6 +85,27 @@ RSpec.describe Habitation, type: :model do
       expect(habitation.proprietario_telefone_residencial_display).to eq("554733556677")
       expect(habitation.proprietario_cpf_cnpj).to eq("PROP-CANONICO")
     end
+
+    it "usa o primeiro telefone preenchido com prioridade para celular e fallback legado" do
+      proprietor = create(
+        :proprietor,
+        name: "Proprietário Sem Telefone",
+        phone_primary: nil,
+        mobile_phone: nil,
+        business_phone: nil,
+        residential_phone: nil
+      )
+      habitation = create(
+        :habitation,
+        proprietor: proprietor,
+        proprietario_celular: nil,
+        proprietario_telefone_comercial: "47 3333.0000",
+        proprietario_telefone_residencial: "47 4444.0000"
+      )
+
+      expect(habitation.proprietario_telefones).to eq(%w[554733330000 554744440000])
+      expect(habitation.proprietario_telefone).to eq("554733330000")
+    end
   end
 
   describe "third-party commercial values" do

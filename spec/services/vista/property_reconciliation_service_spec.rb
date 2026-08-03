@@ -229,4 +229,34 @@ RSpec.describe Vista::PropertyReconciliationService do
       expect(service.send(:unique_dwv_code, { "CodigoDWV" => "DWV-1" }, habitation)).to eq("DWV-1")
     end
   end
+
+  describe "owner phone reconciliation" do
+    it "espelha o telefone principal da Vista nos campos legados do imóvel" do
+      tenant = Tenant.create!(name: "Tenant owner phones #{SecureRandom.hex(3)}", slug: "tenant-owner-phones-#{SecureRandom.hex(3)}")
+      Current.tenant = tenant
+      habitation = create(:habitation, tenant: tenant, codigo: "7110", proprietario_celular: nil)
+      service = described_class.new(codigos: ["7110"], dry_run: true)
+      api = {
+        "Codigo" => "7110",
+        "CodigoProprietario" => "28615",
+        "Proprietario" => "Eliseu",
+        "proprietarios" => {
+          "28615" => {
+            "Codigo" => "28615",
+            "Nome" => "Eliseu",
+            "Celular" => "",
+            "FonePrincipal" => "41 98428.2142",
+            "FoneComercial" => "",
+            "FoneResidencial" => ""
+          }
+        }
+      }
+
+      owner = service.send(:resolve_proprietor, api)
+      service.send(:update_property!, habitation, api, owner, nil, [], [])
+
+      expect(habitation.reload.proprietario_celular).to eq("5541984282142")
+      expect(habitation.proprietario_telefone).to eq("5541984282142")
+    end
+  end
 end

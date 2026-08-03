@@ -763,12 +763,20 @@ class Habitation < ApplicationRecord
     proprietor&.email.presence || proprietario_email
   end
 
+  def proprietario_telefones
+    [
+      proprietor&.mobile_phone,
+      proprietor&.phone_primary,
+      proprietor&.business_phone,
+      proprietor&.residential_phone,
+      proprietario_celular,
+      proprietario_telefone_comercial,
+      proprietario_telefone_residencial
+    ].compact_blank.uniq
+  end
+
   def proprietario_telefone
-    proprietor&.mobile_phone.presence ||
-      proprietor&.phone_primary.presence ||
-      proprietor&.business_phone.presence ||
-      proprietor&.residential_phone.presence ||
-      proprietario_celular.presence
+    proprietario_telefones.first
   end
 
   def proprietario_telefone_comercial_display

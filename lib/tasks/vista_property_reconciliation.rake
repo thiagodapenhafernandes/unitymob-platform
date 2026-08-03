@@ -1,17 +1,33 @@
 namespace :vista do
   desc "Reconcilia imóveis locais com a API atual da Vista, reaproveitando arquivos já baixados quando possível"
   task reconcile_properties: :environment do
+    tenant = ENV["TENANT_ID"].present? ? Tenant.find(ENV.fetch("TENANT_ID")) : (Current.tenant || Tenant.default)
+    raise "Tenant obrigatório para reconciliação Vista. Informe TENANT_ID." if tenant.blank?
+
+    Current.tenant = tenant
     dry_run = ActiveModel::Type::Boolean.new.cast(ENV.fetch("DRY_RUN", "true"))
     limit = ENV.fetch("LIMIT", "10").to_i
     explicit_codes = ENV.fetch("CODES", "").split(",").map(&:strip).reject(&:blank?)
     codes_file = ENV["CODES_FILE"].presence
+    missing_owner_phone = ActiveModel::Type::Boolean.new.cast(ENV.fetch("MISSING_OWNER_PHONE", "false"))
 
     codigos = if explicit_codes.any?
                 explicit_codes
               elsif codes_file
                 File.readlines(codes_file, chomp: true).map(&:strip).reject(&:blank?).uniq
               else
-                scope = Habitation.where("COALESCE(NULLIF(vista_codigo, ''), codigo) ~ ?", "^[0-9]+$")
+                scope = tenant.habitations.where("COALESCE(NULLIF(vista_codigo, ''), codigo) ~ ?", "^[0-9]+$")
+                if missing_owner_phone
+                  scope = scope.left_outer_joins(:proprietor).where(
+                    "NULLIF(TRIM(COALESCE(proprietors.phone_primary, '')), '') IS NULL " \
+                    "AND NULLIF(TRIM(COALESCE(proprietors.mobile_phone, '')), '') IS NULL " \
+                    "AND NULLIF(TRIM(COALESCE(proprietors.business_phone, '')), '') IS NULL " \
+                    "AND NULLIF(TRIM(COALESCE(proprietors.residential_phone, '')), '') IS NULL " \
+                    "AND NULLIF(TRIM(COALESCE(habitations.proprietario_celular, '')), '') IS NULL " \
+                    "AND NULLIF(TRIM(COALESCE(habitations.proprietario_telefone_comercial, '')), '') IS NULL " \
+                    "AND NULLIF(TRIM(COALESCE(habitations.proprietario_telefone_residencial, '')), '') IS NULL"
+                  )
+                end
                 if ENV["START_BELOW"].present?
                   scope = scope.where("COALESCE(NULLIF(vista_codigo, ''), codigo)::bigint < ?", ENV.fetch("START_BELOW").to_i)
                 end
@@ -25,10 +41,9 @@ namespace :vista do
                   scope = scope.where("COALESCE(NULLIF(vista_codigo, ''), codigo)::bigint <= ?", ENV.fetch("MAX_CODE").to_i)
                 end
 
-                scope
-                  .order(Arel.sql("COALESCE(NULLIF(vista_codigo, ''), codigo)::bigint DESC"))
-                  .limit(limit.positive? ? limit : 10)
-                  .pluck(Arel.sql("COALESCE(NULLIF(vista_codigo, ''), codigo)"))
+                scope = scope.order(Arel.sql("COALESCE(NULLIF(vista_codigo, ''), codigo)::bigint DESC"))
+                scope = scope.limit(limit) if limit.positive?
+                scope.pluck(Arel.sql("COALESCE(NULLIF(vista_codigo, ''), codigo)"))
               end
 
     replace_photos = ActiveModel::Type::Boolean.new.cast(ENV.fetch("REPLACE_PHOTOS", "false"))
@@ -40,7 +55,8 @@ namespace :vista do
     started_at = Time.current
 
     puts "Reconciliação Vista iniciada em #{started_at.strftime('%Y-%m-%d %H:%M:%S')}"
-    puts "Total planejado: #{codigos.size} imóveis | workers=#{workers} | dry_run=#{dry_run} | replace_photos=#{replace_photos} | replace_documents=#{replace_documents} | download_files=#{download_files}"
+    puts "Tenant: #{tenant.id} #{tenant.name}"
+    puts "Total planejado: #{codigos.size} imóveis | workers=#{workers} | dry_run=#{dry_run} | missing_owner_phone=#{missing_owner_phone} | replace_photos=#{replace_photos} | replace_documents=#{replace_documents} | download_files=#{download_files}"
 
     progress_callback = lambda do |progress|
       should_print = progress[:current] == 1 ||
@@ -117,6 +133,8 @@ namespace :vista do
       puts "Erros:"
       result.errors.each { |row| puts row.to_json }
     end
+  ensure
+    Current.tenant = nil
   end
 
   def format_duration(seconds)

@@ -50,6 +50,22 @@ RSpec.describe Habitation::SearchScopes, type: :model do
       expect(options).to include(hash_including(type: "neighborhood", label: "Praia Brava de Itajaí - Balneário Camboriú"))
     end
 
+    it "uses commercial neighborhood for public neighborhood options when present" do
+      habitation = create(:habitation, cidade: nil, bairro: "Centro", bairro_comercial: "Barra Sul")
+      habitation.address.update!(
+        bairro: "Centro",
+        bairro_comercial: "Barra Sul",
+        cidade: "Cidade Comercial Única",
+        uf: "SC"
+      )
+
+      options = Habitation.public_location_options
+      neighborhood_labels = options.select { |item| item[:type] == "neighborhood" }.map { |item| item[:label] }
+
+      expect(neighborhood_labels).to include("Barra Sul - Cidade Comercial Única")
+      expect(neighborhood_labels).not_to include("Centro - Cidade Comercial Única")
+    end
+
     it "uses lightweight public listing filters without requiring photo checks" do
       visible_without_photo = create(
         :habitation,
@@ -408,6 +424,30 @@ RSpec.describe Habitation::SearchScopes, type: :model do
 
       expect(result).to include(matching)
       expect(result).not_to include(non_matching)
+    end
+
+    it "filters public neighborhood by commercial neighborhood before physical neighborhood" do
+      matching = create(
+        :habitation,
+        codigo: "PUBLIC-COMMERCIAL-NEIGHBORHOOD-MATCH",
+        cidade: "Balneário Camboriú",
+        bairro: "Centro",
+        bairro_comercial: "Barra Sul"
+      )
+      matching.address.update!(cidade: "Balneário Camboriú", bairro: "Centro", bairro_comercial: "Barra Sul")
+      physical_only = create(
+        :habitation,
+        codigo: "PUBLIC-COMMERCIAL-NEIGHBORHOOD-OUT",
+        cidade: "Balneário Camboriú",
+        bairro: "Barra Sul",
+        bairro_comercial: "Centro"
+      )
+      physical_only.address.update!(cidade: "Balneário Camboriú", bairro: "Barra Sul", bairro_comercial: "Centro")
+
+      result = Habitation.public_property_search(neighborhood: "Barra Sul")
+
+      expect(result).to include(matching)
+      expect(result).not_to include(physical_only)
     end
   end
 end

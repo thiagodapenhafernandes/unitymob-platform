@@ -1,20 +1,7 @@
 <%
   owner_visible = can_view_proprietor_data?(habitation)
   owner_can_manage = owner_visible && admin_or_administrative_user? && habitation_field_editable?("proprietor_id")
-  owner_phones = if habitation.proprietor
-                   [
-                     habitation.proprietor.phone_primary,
-                     habitation.proprietor.mobile_phone,
-                     habitation.proprietor.business_phone,
-                     habitation.proprietor.residential_phone
-                   ]
-                 else
-                   [
-                     habitation.proprietario_celular,
-                     habitation.proprietario_telefone_comercial,
-                     habitation.proprietario_telefone_residencial
-                   ]
-                 end.compact_blank.uniq
+  owner_phones = habitation.proprietario_telefones
   owner_name = habitation.proprietario_nome.presence || "Proprietário não vinculado"
   owner_email = habitation.proprietario_email_display.presence
   owner_city = habitation.proprietor&.city.presence || habitation.proprietario_cidade.presence

@@ -7,7 +7,7 @@ module Habitation::SearchScopes
                               "ELSE string_to_array(COALESCE(habitations.caracteristica_unica::text, ''), ',') " \
                               "END".freeze
   LOCATION_CITY_SQL = "COALESCE(NULLIF(TRIM(addresses.cidade), ''), NULLIF(TRIM(habitations.cidade), ''))".freeze
-  LOCATION_NEIGHBORHOOD_SQL = "COALESCE(NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), ''))".freeze
+  LOCATION_NEIGHBORHOOD_SQL = "COALESCE(NULLIF(TRIM(addresses.bairro_comercial), ''), NULLIF(TRIM(habitations.bairro_comercial), ''), NULLIF(TRIM(addresses.bairro), ''), NULLIF(TRIM(habitations.bairro), ''))".freeze
   LOCATION_CITY_NORM_SQL = "LOWER(unaccent(#{LOCATION_CITY_SQL}))".freeze
   LOCATION_NEIGHBORHOOD_NORM_SQL = "LOWER(unaccent(#{LOCATION_NEIGHBORHOOD_SQL}))".freeze
   LOCATION_LABEL_NORM_SQL = "LOWER(unaccent(CONCAT_WS(' - ', #{LOCATION_NEIGHBORHOOD_SQL}, #{LOCATION_CITY_SQL})))".freeze
@@ -331,7 +331,7 @@ module Habitation::SearchScopes
           "unaccent(titulo_anuncio) ILIKE unaccent(:q) OR " \
           "unaccent(descricao_web) ILIKE unaccent(:q) OR " \
           "unaccent(COALESCE(addresses.logradouro, habitations.endereco)) ILIKE unaccent(:q) OR " \
-          "unaccent(COALESCE(addresses.bairro, habitations.bairro)) ILIKE unaccent(:q) OR " \
+          "unaccent(#{LOCATION_NEIGHBORHOOD_SQL}) ILIKE unaccent(:q) OR " \
           "unaccent(COALESCE(addresses.cidade, habitations.cidade)) ILIKE unaccent(:q) OR " \
           "unaccent(nome_empreendimento) ILIKE unaccent(:q) OR " \
           "EXISTS (" \
@@ -877,7 +877,7 @@ module Habitation::SearchScopes
           "unaccent(titulo_anuncio) ILIKE unaccent(:q) OR " \
           "unaccent(descricao_web) ILIKE unaccent(:q) OR " \
           "unaccent(COALESCE(addresses.logradouro, habitations.endereco)) ILIKE unaccent(:q) OR " \
-          "unaccent(COALESCE(addresses.bairro, habitations.bairro)) ILIKE unaccent(:q) OR " \
+          "unaccent(#{LOCATION_NEIGHBORHOOD_SQL}) ILIKE unaccent(:q) OR " \
           "unaccent(COALESCE(addresses.cidade, habitations.cidade)) ILIKE unaccent(:q) OR " \
           "unaccent(nome_empreendimento) ILIKE unaccent(:q) OR " \
           "codigo ILIKE :q OR " \
