@@ -142,6 +142,27 @@ module Admin::HabitationsHelper
     digits if digits.match?(/\A55\d{2}9\d{8}\z/)
   end
 
+  def admin_habitation_catalog_owner_contact(habitation)
+    return unless admin_habitation_catalog_owner_contact_visible?(habitation)
+
+    name = habitation.proprietario_nome.to_s.strip
+    phone = habitation.proprietario_telefone.to_s.strip
+    return if name.blank? && phone.blank?
+
+    { name:, phone: }
+  end
+
+  def admin_habitation_catalog_owner_contact_visible?(habitation)
+    return false if habitation.blank? || current_admin_user.blank?
+
+    primary_assignment = habitation.primary_captador_assignment
+    if primary_assignment.present?
+      return primary_assignment.admin_user_id == current_admin_user.id
+    end
+
+    habitation.admin_user_id == current_admin_user.id
+  end
+
   def admin_habitation_catalog_title(habitation)
     parts = [
       admin_habitation_catalog_neighborhood(habitation),

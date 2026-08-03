@@ -114,7 +114,7 @@ class Admin::HabitationsController < Admin::BaseController
     @page_size_options = INDEX_PAGE_SIZE_OPTIONS
     filtered_scope = filtered_habitations_scope
     @habitations = filtered_scope
-      .includes(:address, :admin_user, { empreendimento: { photos_attachments: :blob } }, { broker_assignments: :admin_user }, { photos_attachments: :blob })
+      .includes(:address, :admin_user, :proprietor, { empreendimento: { photos_attachments: :blob } }, { broker_assignments: :admin_user }, { photos_attachments: :blob })
       .order(Arel.sql("#{sort_expression} #{@sort_direction} NULLS LAST"))
 
     @habitations = @habitations.paginate(page: params[:page], per_page: @per_page)

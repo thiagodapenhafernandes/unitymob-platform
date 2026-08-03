@@ -19,6 +19,7 @@
   publication_channels = admin_habitation_publication_channels(imovel)
   captador_name = imovel.primary_captador_name
   captador_label = captador_name.presence || "Não informado"
+  owner_contact = admin_habitation_catalog_owner_contact(imovel)
   data_referencia = [imovel.data_atualizacao_crm, imovel.updated_at].compact.max || Time.current
   seconds_since_update = [Time.current - data_referencia, 0].max
   days_since_update = (seconds_since_update / 1.day).to_i
@@ -170,6 +171,19 @@
         <span><i class="bi bi-building"></i> Empreendimento: <strong><%= development_name %></strong></span>
       <% end %>
       <span><i class="bi bi-person-badge"></i> Captador: <strong><%= captador_label %></strong></span>
+      <% if owner_contact.present? %>
+        <span class="ax-property-card__owner-contact">
+          <i class="bi bi-person-lines-fill"></i>
+          Proprietário:
+          <% if owner_contact[:name].present? %>
+            <strong><%= owner_contact[:name] %></strong>
+          <% end %>
+          <% if owner_contact[:phone].present? %>
+            <%= " · " if owner_contact[:name].present? %>
+            <%= admin_habitation_owner_phone_contact(owner_contact[:phone]) %>
+          <% end %>
+        </span>
+      <% end %>
     </div>
 
     <div class="ax-property-card__features" aria-label="Características do imóvel">

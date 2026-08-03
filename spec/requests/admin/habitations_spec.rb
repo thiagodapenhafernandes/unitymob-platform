@@ -1213,6 +1213,49 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(captador_index).to be > development_index
   end
 
+  it "exibe proprietário no card do catálogo somente para o primeiro captador vinculado" do
+    broker_profile = default_agent_profile
+    primary_captador = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Captador Principal")
+    secondary_captador = create(:admin_user, tenant: admin.tenant, profile: broker_profile, name: "Captador Secundário")
+    owner_name = "Proprietário Catalog #{SecureRandom.hex(4)}"
+    habitation = create(
+      :habitation,
+      tenant: admin.tenant,
+      admin_user: secondary_captador,
+      codigo: "OWNER-CARD-#{SecureRandom.hex(6)}",
+      titulo_anuncio: "Imóvel com proprietário no card",
+      proprietario: owner_name,
+      proprietario_email: "catalog-owner@example.com",
+      proprietario_celular: "(47) 99999-9999"
+    )
+    habitation.broker_assignments.create!(admin_user: primary_captador, role: "captador")
+    habitation.broker_assignments.create!(admin_user: secondary_captador, role: "captador")
+
+    sign_in primary_captador
+    get admin_habitations_path(ownership: "all", q: habitation.codigo)
+
+    expect(response).to have_http_status(:ok)
+    card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(habitation.codigo) }
+    expect(card).to be_present
+    expect(card.text).to include("Captador: Captador Principal")
+    expect(card.text).to include("Proprietário:")
+    expect(card.text).to include(owner_name)
+    expect(response.body).to include("https://wa.me/5547999999999")
+    expect(response.body).not_to include("catalog-owner@example.com")
+
+    sign_in secondary_captador
+    get admin_habitations_path(ownership: "all", q: habitation.codigo)
+
+    expect(response).to have_http_status(:ok)
+    card = Nokogiri::HTML(response.body).css(".ax-property-card").find { |node| node.text.include?(habitation.codigo) }
+    expect(card).to be_present
+    expect(card.text).to include("Captador: Captador Principal")
+    expect(card.text).not_to include("Proprietário:")
+    expect(response.body).not_to include(owner_name)
+    expect(response.body).not_to include("https://wa.me/5547999999999")
+    expect(response.body).not_to include("catalog-owner@example.com")
+  end
+
   it "carrega assincronamente todas as fotos do imóvel no fancybox do card e da tabela" do
     pictures = 9.times.map do |index|
       { "url" => "https://dwvimagesv1.b-cdn.net/spec/galeria-#{index + 1}.jpg" }
