@@ -66,6 +66,8 @@ module Vista
     API_FILE_ASSET_DUMP_DIR = "api:vista".freeze
     API_PHOTO_TABLE_NAME = "API_FOTO".freeze
     API_DOCUMENT_TABLE_NAME = "API_ANEXO".freeze
+    DEFAULT_API_OPEN_TIMEOUT = 10
+    DEFAULT_API_TIMEOUT = 30
 
     Result = Struct.new(
       :dry_run, :scanned, :updated, :skipped, :failed, :photos_reused, :photos_downloaded,
@@ -86,6 +88,8 @@ module Vista
       @workers = normalize_workers(workers)
       @progress_callback = progress_callback
       @api_file_asset_batch_mutex = Mutex.new
+      @api_open_timeout = positive_integer(ENV["VISTA_API_OPEN_TIMEOUT"], DEFAULT_API_OPEN_TIMEOUT)
+      @api_timeout = positive_integer(ENV["VISTA_API_TIMEOUT"], DEFAULT_API_TIMEOUT)
     end
 
     def call
@@ -349,10 +353,15 @@ module Vista
     end
 
     def fetch_detail(codigo, fields)
-      response = RestClient.get(
-        "#{@host}/imoveis/detalhes",
-        params: { key: @key, imovel: codigo, pesquisa: { "fields" => fields }.to_json, showSuspended: 1 },
-        accept: :json
+      response = RestClient::Request.execute(
+        method: :get,
+        url: "#{@host}/imoveis/detalhes",
+        headers: {
+          params: { key: @key, imovel: codigo, pesquisa: { "fields" => fields }.to_json, showSuspended: 1 },
+          accept: :json
+        },
+        open_timeout: @api_open_timeout,
+        timeout: @api_timeout
       )
       normalize_detail_response(JSON.parse(response.body))
     rescue RestClient::ExceptionWithResponse => e
@@ -374,6 +383,11 @@ module Vista
       left = fetch_detail(codigo, fields[0...midpoint])
       right = fetch_detail(codigo, fields[midpoint..])
       merge_api!(left, right)
+    end
+
+    def positive_integer(value, fallback)
+      integer = value.to_i
+      integer.positive? ? integer : fallback
     end
 
     def normalize_detail_response(parsed)

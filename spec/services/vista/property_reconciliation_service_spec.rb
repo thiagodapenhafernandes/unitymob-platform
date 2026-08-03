@@ -259,4 +259,25 @@ RSpec.describe Vista::PropertyReconciliationService do
       expect(habitation.proprietario_telefone).to eq("5541984282142")
     end
   end
+
+  describe "Vista API requests" do
+    it "usa timeouts explicitos nas consultas de detalhes" do
+      service = described_class.new(codigos: ["7110"], dry_run: true)
+
+      expect(RestClient::Request).to receive(:execute).with(
+        hash_including(
+          method: :get,
+          url: a_string_ending_with("/imoveis/detalhes"),
+          headers: hash_including(
+            accept: :json,
+            params: hash_including(imovel: "7110")
+          ),
+          open_timeout: 10,
+          timeout: 30
+        )
+      ).and_return(double(body: { "Codigo" => "7110" }.to_json))
+
+      expect(service.send(:fetch_detail, "7110", ["Codigo"])).to eq("Codigo" => "7110")
+    end
+  end
 end
