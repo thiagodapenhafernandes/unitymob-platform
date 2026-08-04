@@ -72,6 +72,7 @@ class HomeController < ApplicationController
     @hero_images = build_hero_images(@home_setting)
     @hero_preload_source = @hero_images.first&.fetch(:source, nil)
     @hero_preload_mobile_source = @hero_images.first&.fetch(:mobile_source, nil)
+    @announce_property_form = public_tenant.public_forms.active.find_by(slug: PublicForm::DEFAULT_ANNOUNCE_SLUG) if PublicForm.table_exists?
     
     # SEO
     @page_name = 'home'

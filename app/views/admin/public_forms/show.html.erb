@@ -1,0 +1,80 @@
+<%= ax_workspace_heading(
+      eyebrow: "Site público · Formulários",
+      icon: "inbox",
+      title: @public_form.name,
+      pills: [@public_form.active? ? "Ativo" : "Inativo", @public_form.category_label],
+      subtitle: "Envios recebidos e contrato do formulário.",
+      metrics: [
+        { value: number_with_delimiter(@public_form.submissions.count), label: "envios" },
+        { value: number_with_delimiter(@public_form.fields.count), label: "campos" }
+      ],
+      actions: safe_join([
+        ax_button("Editar", edit_admin_public_form_path(@public_form), variant: :primary, size: :sm, icon: "pencil-square"),
+        ax_button("Voltar", admin_public_forms_path, variant: :ghost, size: :sm, icon: "arrow-left")
+      ])
+    ) %>
+
+<div class="tw-grid tw-grid-cols-1 xl:tw-grid-cols-[minmax(0,1fr)_360px] tw-gap-4">
+  <%= ax_operational_panel(eyebrow: "Submissões", title: "Envios recebidos") do %>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead>
+          <tr>
+            <th>Contato</th>
+            <th>Dados</th>
+            <th class="ax-table__col--w-160">Recebido em</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @submissions.each do |submission| %>
+            <tr>
+              <td>
+                <div class="ax-strong"><%= submission.normalized_name.presence || "Sem nome" %></div>
+                <div class="tw-text-2xs tw-text-ink-faint"><%= [submission.normalized_email, submission.normalized_phone].compact_blank.join(" · ") %></div>
+              </td>
+              <td>
+                <div class="tw-flex tw-flex-wrap tw-gap-1">
+                  <% submission.payload.first(8).each do |key, value| %>
+                    <span class="ax-badge ax-badge--gray"><%= key %>: <%= truncate(Array(value).join(", "), length: 40) %></span>
+                  <% end %>
+                </div>
+              </td>
+              <td><%= l(submission.created_at, format: :short) %></td>
+            </tr>
+          <% end %>
+
+          <% if @submissions.empty? %>
+            <tr>
+              <td colspan="3"><%= ax_empty_state(title: "Nenhum envio recebido", description: "Os envios aparecerão aqui assim que o formulário for usado no site.", icon: "inbox", compact: true) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+
+  <%= ax_operational_panel(eyebrow: "Contrato", title: "Uso público") do %>
+    <div class="tw-grid tw-gap-3">
+      <div>
+        <div class="ax-label">Endpoint</div>
+        <code class="tw-text-primary"><%= public_form_submissions_path(@public_form.slug) %></code>
+      </div>
+      <div>
+        <div class="ax-label">Origem no webhook</div>
+        <code class="tw-text-primary"><%= @public_form.webhook_origin %></code>
+      </div>
+      <div>
+        <div class="ax-label">Campos</div>
+        <div class="tw-flex tw-flex-wrap tw-gap-1">
+          <% @public_form.fields.each do |field| %>
+            <span class="ax-badge ax-badge--gray"><%= field.name %> · <%= field.field_type %></span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<% if @submissions.respond_to?(:total_pages) && @submissions.total_pages > 1 %>
+  <%= ax_pagination @submissions, params: request.query_parameters %>
+<% end %>

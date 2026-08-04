@@ -1,0 +1,60 @@
+<%= ax_workspace_heading(
+      eyebrow: "Site público · Captação",
+      icon: "ui-checks-grid",
+      title: "Formulários",
+      subtitle: "Crie formulários seguros para modais, landing pages e captações do site.",
+      metrics: [
+        { value: number_with_delimiter(@public_forms.size), label: "formulários" },
+        { value: number_with_delimiter(@submissions_count), label: "envios" }
+      ],
+      actions: ax_button("Novo formulário", new_admin_public_form_path, variant: :primary, size: :sm, icon: "plus-lg")
+    ) %>
+
+<div class="ax-table-wrap">
+  <table class="ax-table">
+    <thead>
+      <tr>
+        <th>Formulário</th>
+        <th>Categoria</th>
+        <th>Campos</th>
+        <th>Endpoint público</th>
+        <th class="ax-table__col--sm">Status</th>
+        <th class="ax-num ax-table__col--compact">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @public_forms.each do |form| %>
+        <tr>
+          <td>
+            <div class="ax-strong"><%= form.name %></div>
+            <div class="tw-text-2xs tw-text-ink-faint"><%= form.title %></div>
+          </td>
+          <td><%= ax_badge(form.category_label, tone: :blue) %></td>
+          <td><%= form.fields.size %></td>
+          <td><code class="tw-text-primary"><%= public_form_submissions_path(form.slug) %></code></td>
+          <td>
+            <% if form.active? %><span class="ax-badge ax-badge--green ax-badge--dot">Ativo</span>
+            <% else %><span class="ax-badge ax-badge--gray ax-badge--dot">Inativo</span><% end %>
+          </td>
+          <td class="ax-num">
+            <span class="tw-inline-flex tw-gap-0.5">
+              <%= link_to admin_public_form_path(form), class: "ax-ico-btn", title: "Ver envios" do %><i class="bi bi-inbox"></i><% end %>
+              <%= link_to edit_admin_public_form_path(form), class: "ax-ico-btn", title: "Editar" do %><i class="bi bi-pencil"></i><% end %>
+              <%= button_to admin_public_form_path(form), method: :delete, form_class: "tw-inline", form: { data: { turbo_confirm: "Remover este formulário?" } }, class: "ax-ico-btn", title: "Excluir" do %><i class="bi bi-trash"></i><% end %>
+            </span>
+          </td>
+        </tr>
+      <% end %>
+
+      <% if @public_forms.empty? %>
+        <tr>
+          <td colspan="6"><%= ax_empty_state(title: "Nenhum formulário criado", description: "Crie o primeiro formulário para usar em modais e páginas públicas.", icon: "ui-checks-grid", action: ax_button("Novo formulário", new_admin_public_form_path, variant: :primary, size: :sm), compact: true) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<% if @public_forms.respond_to?(:total_pages) && @public_forms.total_pages > 1 %>
+  <%= ax_pagination @public_forms, params: request.query_parameters %>
+<% end %>

@@ -54,6 +54,8 @@ class Tenant < ApplicationRecord
   has_many :habitation_exports, dependent: :restrict_with_error
   has_many :captacao_goals, dependent: :restrict_with_error
   has_many :landing_pages, dependent: :restrict_with_error
+  has_many :public_forms, dependent: :restrict_with_error
+  has_many :public_form_submissions, dependent: :restrict_with_error
   has_many :webhook_settings, dependent: :restrict_with_error
   has_many :home_sections, dependent: :restrict_with_error
   has_many :home_section_items, dependent: :restrict_with_error

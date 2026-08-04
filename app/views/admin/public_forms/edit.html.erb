@@ -1,0 +1,13 @@
+<%= ax_workspace_heading(
+      eyebrow: "Site público · Formulários",
+      icon: "pencil-square",
+      title: @public_form.name,
+      pills: [@public_form.active? ? "Ativo" : "Inativo", @public_form.category_label],
+      subtitle: "Edite conteúdo, campos e comportamento do modal.",
+      actions: safe_join([
+        ax_button("Voltar", admin_public_forms_path, variant: :ghost, size: :sm, icon: "arrow-left"),
+        ax_button("Ver envios", admin_public_form_path(@public_form), variant: :secondary, size: :sm, icon: "inbox")
+      ])
+    ) %>
+
+<%= render "form", public_form: @public_form %>

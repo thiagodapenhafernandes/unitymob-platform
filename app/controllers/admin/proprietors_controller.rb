@@ -283,8 +283,9 @@ module Admin
 
     def authorize_quick_proprietor_access!
       return if admin_or_administrative_user? || can?(:manage, :captacoes)
+      return if quick_property_owner_permission?
 
-      render json: { errors: ["Acesso restrito a usuários com permissão para gerenciar captações."] }, status: :forbidden
+      render json: { errors: ["Acesso restrito a usuários com permissão para gerenciar proprietários no cadastro do imóvel."] }, status: :forbidden
     end
 
     def proprietor_params
@@ -311,11 +312,21 @@ module Admin
     def quick_update_attributes
       permitted = quick_proprietor_params.to_h.symbolize_keys
       permitted.delete_if { |attribute, value| value.blank? && attribute != :email }
-      return permitted if admin_or_administrative_user?
+      return permitted if admin_or_administrative_user? || quick_property_owner_permission?
 
       attributes = permitted.slice(:email, :city)
       attributes[:phone_primary] = permitted[:phone_primary] if permitted[:phone_primary].present? && quick_proprietor_phone_blank?(@proprietor)
       attributes
+    end
+
+    def quick_property_owner_permission?
+      return false unless can?(:edit, :imoveis)
+
+      policy = Habitations::FieldLockPolicy.for(current_admin_user)
+      return false if policy.field_locked?("proprietor_id")
+      return true unless action_name == "quick_create"
+
+      !policy.action_locked?("acao:cadastrar_proprietario")
     end
 
     def quick_search_text_scope(scope, query)

@@ -28,7 +28,9 @@ class WebhookService
       tenant = options[:tenant] || Current.tenant
       return false unless tenant
 
-      active_settings = tenant.webhook_settings.active
+      active_settings = tenant.webhook_settings.active.select do |setting|
+        setting.delivers_form?(origin_form, public_form: options[:public_form])
+      end
       return false if active_settings.empty?
 
       results = active_settings.map do |setting|

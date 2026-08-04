@@ -1,6 +1,6 @@
 <%
   owner_visible = can_view_proprietor_data?(habitation)
-  owner_can_manage = owner_visible && admin_or_administrative_user? && habitation_field_editable?("proprietor_id")
+  owner_can_manage = owner_visible && can?(:edit, :imoveis) && habitation_field_editable?("proprietor_id")
   owner_phones = habitation.proprietario_telefones
   owner_name = habitation.proprietario_nome.presence || "Proprietário não vinculado"
   owner_email = habitation.proprietario_email_display.presence

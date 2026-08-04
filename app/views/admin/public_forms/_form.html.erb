@@ -1,0 +1,167 @@
+<% field_type_options = [
+  ["Texto curto", "text"],
+  ["E-mail", "email"],
+  ["Telefone", "tel"],
+  ["URL", "url"],
+  ["Busca", "search"],
+  ["Número", "number"],
+  ["Moeda", "currency"],
+  ["Data", "date"],
+  ["Hora", "time"],
+  ["Data e hora", "datetime-local"],
+  ["Mês", "month"],
+  ["Semana", "week"],
+  ["Cor", "color"],
+  ["Faixa", "range"],
+  ["Texto longo", "textarea"],
+  ["Seleção", "select"],
+  ["Múltipla escolha", "radio"],
+  ["Checkbox", "checkbox"],
+  ["Oculto", "hidden"]
+] %>
+
+<% field_palette = [
+  ["text", "input-cursor-text", "Texto"],
+  ["email", "envelope", "E-mail"],
+  ["tel", "telephone", "Telefone"],
+  ["url", "link-45deg", "URL"],
+  ["search", "search", "Busca"],
+  ["number", "123", "Número"],
+  ["currency", "cash-coin", "Moeda"],
+  ["date", "calendar-event", "Data"],
+  ["time", "clock", "Hora"],
+  ["datetime-local", "calendar2-week", "Data/hora"],
+  ["month", "calendar-month", "Mês"],
+  ["week", "calendar-week", "Semana"],
+  ["color", "palette", "Cor"],
+  ["range", "sliders", "Faixa"],
+  ["textarea", "textarea-t", "Texto longo"],
+  ["select", "list-ul", "Select"],
+  ["radio", "record-circle", "Rádio"],
+  ["checkbox", "check-square", "Checkbox"],
+  ["hidden", "eye-slash", "Oculto"]
+] %>
+
+<%= form_with(model: [:admin, public_form], local: true, class: "ax-field-grid", data: { controller: "public-form-builder" }) do |f| %>
+  <%= ax_error_summary(public_form) %>
+
+  <div class="ax-span-8">
+    <%= ax_operational_panel(eyebrow: "Configuração", title: "Identidade do formulário") do %>
+      <%= ax_field_grid do %>
+        <%= ax_text_field(form: f, method: :name, label: "Nome interno", class_name: "ax-span-6") %>
+        <%= ax_text_field(form: f, method: :slug, label: "Slug", hint: "Usado no endpoint e no origin_form do webhook.", class_name: "ax-span-6") %>
+        <%= ax_select_field(form: f, method: :category, label: "Categoria", choices: PublicForm::CATEGORIES.map { |value, label| [label, value] }, class_name: "ax-span-6") %>
+        <%= ax_text_field(form: f, method: :submit_label, label: "Texto do botão", class_name: "ax-span-6") %>
+        <%= ax_text_field(form: f, method: :title, label: "Título público", class_name: "ax-span-6") %>
+        <%= ax_text_field(form: f, method: :subtitle, label: "Subtítulo público", class_name: "ax-span-6") %>
+        <%= ax_text_field(form: f, method: :success_message, label: "Mensagem de sucesso", class_name: "ax-span-6") %>
+        <%= ax_text_field(form: f, method: :redirect_url, label: "URL pós-envio", type: :url, hint: "Opcional. Se vazio, mantém o usuário na página.", class_name: "ax-span-6") %>
+      <% end %>
+
+      <div class="tw-grid md:tw-grid-cols-2 tw-gap-3 tw-mt-4">
+        <%= ax_switch_field(label: "Ativo no site", form: f, method: :active) %>
+        <%= ax_switch_field(label: "Disponível para modal", form: f, method: :modal_enabled) %>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Campos", title: "Builder HTML do formulário", class_name: "tw-mt-4") do %>
+      <div class="public-form-builder">
+        <div class="public-form-builder__palette" aria-label="Adicionar campos">
+          <% field_palette.each do |type, icon, label| %>
+            <button type="button"
+                    class="public-form-builder__palette-button"
+                    data-field-type="<%= type %>"
+                    data-action="public-form-builder#add">
+              <i class="bi bi-<%= icon %>" aria-hidden="true"></i>
+              <span><%= label %></span>
+            </button>
+          <% end %>
+        </div>
+
+        <div class="public-form-builder__bar">
+          <div>
+            <strong>Estrutura do formulário</strong>
+            <span data-public-form-builder-target="counter">0 campos</span>
+          </div>
+          <button type="button"
+                  class="ax-btn ax-btn--primary ax-btn--sm"
+                  data-field-type="text"
+                  data-action="public-form-builder#add">
+            <i class="bi bi-plus-lg ax-ico" aria-hidden="true"></i>
+            Adicionar campo
+          </button>
+        </div>
+
+        <details class="public-form-builder__bulk">
+          <summary>
+            <i class="bi bi-lightning-charge" aria-hidden="true"></i>
+            Criar vários campos de uma vez
+          </summary>
+          <div class="public-form-builder__bulk-body">
+            <div>
+              <%= label_tag "public_form_bulk_fields", "Campos em lote", class: "ax-label" %>
+              <textarea id="public_form_bulk_fields"
+                        class="ax-control"
+                        rows="4"
+                        placeholder="Nome completo;text;name;obrigatorio&#10;WhatsApp;tel;phone;obrigatorio&#10;Interesse;select;interest;obrigatorio;Venda|venda,Locação|locacao"
+                        data-public-form-builder-target="bulkInput"></textarea>
+              <small class="tw-text-ink-muted">Formato: Label;tipo;nome_tecnico;obrigatorio;opcao1,opcao2. Se informar só o label, o builder completa o restante.</small>
+            </div>
+            <button type="button" class="ax-btn ax-btn--info ax-btn--sm" data-action="public-form-builder#addBulk">
+              <i class="bi bi-plus-square ax-ico" aria-hidden="true"></i>
+              Gerar campos
+            </button>
+          </div>
+        </details>
+
+        <div class="public-form-builder__empty" data-public-form-builder-target="empty">
+          <i class="bi bi-ui-checks-grid" aria-hidden="true"></i>
+          <strong>Nenhum campo criado</strong>
+          <span>Use a paleta acima para montar qualquer formulário com tipos HTML seguros.</span>
+        </div>
+
+        <div class="public-form-builder__list" data-public-form-builder-target="list">
+          <%= f.fields_for :fields do |field_form| %>
+            <%= render "admin/public_forms/field_fields", field_form: field_form, field_type_options: field_type_options %>
+          <% end %>
+        </div>
+
+        <template data-public-form-builder-target="template">
+          <%= f.fields_for :fields, PublicFormField.new(field_type: "text"), child_index: "NEW_RECORD" do |field_form| %>
+            <%= render "admin/public_forms/field_fields", field_form: field_form, field_type_options: field_type_options %>
+          <% end %>
+        </template>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="ax-span-4">
+    <%= ax_operational_panel(eyebrow: "Modal", title: "Texto lateral") do %>
+      <% modal_config = public_form.modal_config.to_h %>
+      <div class="tw-grid tw-gap-3">
+        <div>
+          <%= label_tag "public_form_modal_config_eyebrow", "Chamada", class: "ax-label" %>
+          <%= text_field_tag "public_form[modal_config][eyebrow]", modal_config["eyebrow"], class: "ax-control" %>
+        </div>
+        <div>
+          <%= label_tag "public_form_modal_config_headline", "Texto principal", class: "ax-label" %>
+          <%= text_area_tag "public_form[modal_config][headline]", modal_config["headline"], rows: 3, class: "ax-control" %>
+        </div>
+        <div>
+          <%= label_tag "public_form_modal_config_benefits", "Benefícios", class: "ax-label" %>
+          <%= text_area_tag "public_form[modal_config][benefits]", Array(modal_config["benefits"]).join("\n"), rows: 4, class: "ax-control", placeholder: "Um por linha" %>
+        </div>
+      </div>
+    <% end %>
+
+    <%= ax_operational_panel(eyebrow: "Webhook", title: "Contrato de saída", class_name: "tw-mt-4") do %>
+      <div class="tw-grid tw-gap-2">
+        <span class="tw-text-sm tw-text-ink-muted">Ao enviar, o payload sai com:</span>
+        <code class="tw-text-primary"><%= public_form.persisted? ? public_form.webhook_origin : "public_form:{slug}" %></code>
+        <span class="tw-text-sm tw-text-ink-muted">Em Webhooks, filtre por categoria ou por este formulário.</span>
+      </div>
+    <% end %>
+
+    <%= ax_form_actions(form: f, submit_label: "Salvar formulário", cancel_path: admin_public_forms_path, sticky: false) %>
+  </div>
+<% end %>
