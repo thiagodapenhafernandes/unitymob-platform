@@ -123,7 +123,7 @@
   <div class="capt-dashboard-filter-field">
     <%= ax_field_label(nil, nil, text: "Mês") %>
     <%= select_tag :month,
-                   options_for_select([["Todos", ""]] + (1..12).map { |m| [I18n.l(Date.new(2026, m), format: "%B").capitalize, m] }, @month_filter),
+                   options_for_select([["Todos", ""]] + (1..12).map { |m| [I18n.l(Date.new(@dashboard_year || Date.current.year, m), format: "%B").capitalize, m] }, @month_filter),
                    class: "ax-control ax-control--sm" %>
   </div>
   <%= submit_tag "Aplicar", class: "ax-btn ax-btn--primary ax-btn--sm capt-dashboard-filters__submit" %>

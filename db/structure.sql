@@ -1,4 +1,4 @@
-\restrict 3MLoHiJzgkaD89S9iqPZ1Y0fsIckC5Ka5tNUxExf2lancdVXKsGPure63RegpWk
+\restrict dPnJHKEPx715NvkDZHOBlABPHCKC4CTnCTN93zR745itI0WgpcRMA2k00hUPkWG
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -3985,6 +3985,95 @@ ALTER SEQUENCE public.notification_template_settings_id_seq OWNED BY public.noti
 
 
 --
+-- Name: operational_user_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.operational_user_events (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    operational_user_session_id bigint NOT NULL,
+    habitation_id bigint,
+    name character varying NOT NULL,
+    path character varying,
+    request_method character varying,
+    occurred_at timestamp(6) without time zone NOT NULL,
+    duration_seconds integer,
+    query_text character varying,
+    result_count integer,
+    filter_params jsonb DEFAULT '{}'::jsonb NOT NULL,
+    visible_habitation_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: operational_user_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.operational_user_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: operational_user_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.operational_user_events_id_seq OWNED BY public.operational_user_events.id;
+
+
+--
+-- Name: operational_user_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.operational_user_sessions (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    admin_user_id bigint NOT NULL,
+    token character varying NOT NULL,
+    started_at timestamp(6) without time zone NOT NULL,
+    last_seen_at timestamp(6) without time zone NOT NULL,
+    ended_at timestamp(6) without time zone,
+    duration_seconds integer DEFAULT 0 NOT NULL,
+    events_count integer DEFAULT 0 NOT NULL,
+    device_type character varying,
+    browser character varying,
+    platform character varying,
+    ip_digest character varying,
+    user_agent_digest character varying,
+    entry_path character varying,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: operational_user_sessions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.operational_user_sessions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: operational_user_sessions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.operational_user_sessions_id_seq OWNED BY public.operational_user_sessions.id;
+
+
+--
 -- Name: photography_schedule_blocks; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7124,6 +7213,20 @@ ALTER TABLE ONLY public.notification_template_settings ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: operational_user_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_events ALTER COLUMN id SET DEFAULT nextval('public.operational_user_events_id_seq'::regclass);
+
+
+--
+-- Name: operational_user_sessions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_sessions ALTER COLUMN id SET DEFAULT nextval('public.operational_user_sessions_id_seq'::regclass);
+
+
+--
 -- Name: photography_schedule_blocks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8207,6 +8310,22 @@ ALTER TABLE ONLY public.notification_template_settings
 
 
 --
+-- Name: operational_user_events operational_user_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_events
+    ADD CONSTRAINT operational_user_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: operational_user_sessions operational_user_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_sessions
+    ADD CONSTRAINT operational_user_sessions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: photography_schedule_blocks photography_schedule_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9051,6 +9170,13 @@ CREATE UNIQUE INDEX idx_notification_template_settings_unique_purpose ON public.
 
 
 --
+-- Name: idx_on_admin_user_id_last_seen_at_79b655dbfe; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_admin_user_id_last_seen_at_79b655dbfe ON public.operational_user_sessions USING btree (admin_user_id, last_seen_at);
+
+
+--
 -- Name: idx_on_automation_execution_step_id_3b66d0bae6; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9181,6 +9307,27 @@ CREATE INDEX idx_on_whatsapp_business_integration_id_1506c99b7b ON public.whatsa
 --
 
 CREATE INDEX idx_on_whatsapp_conversation_id_created_at_858d582181 ON public.whatsapp_messages USING btree (whatsapp_conversation_id, created_at);
+
+
+--
+-- Name: idx_operational_events_on_habitation_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_operational_events_on_habitation_name ON public.operational_user_events USING btree (habitation_id, name);
+
+
+--
+-- Name: idx_operational_events_on_session_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_operational_events_on_session_id ON public.operational_user_events USING btree (operational_user_session_id);
+
+
+--
+-- Name: idx_operational_events_on_tenant_name_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_operational_events_on_tenant_name_time ON public.operational_user_events USING btree (tenant_id, name, occurred_at);
 
 
 --
@@ -12103,6 +12250,69 @@ CREATE INDEX index_notification_template_settings_on_whatsapp_template_id ON pub
 
 
 --
+-- Name: index_operational_user_events_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_operational_user_events_on_admin_user_id ON public.operational_user_events USING btree (admin_user_id);
+
+
+--
+-- Name: index_operational_user_events_on_admin_user_id_and_occurred_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_operational_user_events_on_admin_user_id_and_occurred_at ON public.operational_user_events USING btree (admin_user_id, occurred_at);
+
+
+--
+-- Name: index_operational_user_events_on_habitation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_operational_user_events_on_habitation_id ON public.operational_user_events USING btree (habitation_id);
+
+
+--
+-- Name: index_operational_user_events_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_operational_user_events_on_tenant_id ON public.operational_user_events USING btree (tenant_id);
+
+
+--
+-- Name: index_operational_user_events_on_tenant_id_and_occurred_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_operational_user_events_on_tenant_id_and_occurred_at ON public.operational_user_events USING btree (tenant_id, occurred_at);
+
+
+--
+-- Name: index_operational_user_sessions_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_operational_user_sessions_on_admin_user_id ON public.operational_user_sessions USING btree (admin_user_id);
+
+
+--
+-- Name: index_operational_user_sessions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_operational_user_sessions_on_tenant_id ON public.operational_user_sessions USING btree (tenant_id);
+
+
+--
+-- Name: index_operational_user_sessions_on_tenant_id_and_last_seen_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_operational_user_sessions_on_tenant_id_and_last_seen_at ON public.operational_user_sessions USING btree (tenant_id, last_seen_at);
+
+
+--
+-- Name: index_operational_user_sessions_on_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_operational_user_sessions_on_token ON public.operational_user_sessions USING btree (token);
+
+
+--
 -- Name: index_photography_schedule_blocks_on_created_by_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14703,6 +14913,14 @@ ALTER TABLE ONLY public.client_interactions
 
 
 --
+-- Name: operational_user_sessions fk_rails_5d5d5049a6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_sessions
+    ADD CONSTRAINT fk_rails_5d5d5049a6 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: seo_redirects fk_rails_5d82a6fd98; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14767,11 +14985,27 @@ ALTER TABLE ONLY public.proprietors
 
 
 --
+-- Name: operational_user_events fk_rails_641b7784d6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_events
+    ADD CONSTRAINT fk_rails_641b7784d6 FOREIGN KEY (operational_user_session_id) REFERENCES public.operational_user_sessions(id);
+
+
+--
 -- Name: whatsapp_campaign_unsubscribes fk_rails_658c0aa041; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
     ADD CONSTRAINT fk_rails_658c0aa041 FOREIGN KEY (reenabled_by_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: operational_user_sessions fk_rails_6a036a16d5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_sessions
+    ADD CONSTRAINT fk_rails_6a036a16d5 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -14884,6 +15118,14 @@ ALTER TABLE ONLY public.home_section_items
 
 ALTER TABLE ONLY public.contact_settings
     ADD CONSTRAINT fk_rails_7b2d3b7408 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: operational_user_events fk_rails_7b321c64f6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_events
+    ADD CONSTRAINT fk_rails_7b321c64f6 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
 
 
 --
@@ -15367,6 +15609,14 @@ ALTER TABLE ONLY public.automation_events
 
 
 --
+-- Name: operational_user_events fk_rails_b3b6e1b618; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_events
+    ADD CONSTRAINT fk_rails_b3b6e1b618 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: whatsapp_campaign_recipients fk_rails_b3ebdb9b63; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15436,6 +15686,14 @@ ALTER TABLE ONLY public.manual_checkin_requests
 
 ALTER TABLE ONLY public.marketing_campaigns
     ADD CONSTRAINT fk_rails_bac0f15c01 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
+
+
+--
+-- Name: operational_user_events fk_rails_bb05f0e0b4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operational_user_events
+    ADD CONSTRAINT fk_rails_bb05f0e0b4 FOREIGN KEY (habitation_id) REFERENCES public.habitations(id);
 
 
 --
@@ -16082,11 +16340,12 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 3MLoHiJzgkaD89S9iqPZ1Y0fsIckC5Ka5tNUxExf2lancdVXKsGPure63RegpWk
+\unrestrict dPnJHKEPx715NvkDZHOBlABPHCKC4CTnCTN93zR745itI0WgpcRMA2k00hUPkWG
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260803203000'),
 ('20260803190000'),
 ('20260801143000'),
 ('20260801105259'),

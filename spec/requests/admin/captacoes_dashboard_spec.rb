@@ -23,7 +23,7 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
     create(:habitation, tenant:, codigo: "CAP-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, valor_venda_cents: 0, valor_locacao_cents: 3_000_00, regiao_foco: "Não", salute_rental_management_flag: false)
     create(:habitation, :broker_intake, tenant:, codigo: "REL-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 2.days.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
     create(:habitation, :broker_intake, tenant:, codigo: "REL-DASH-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 1.day.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
-    create(:habitation, :broker_intake, tenant:, codigo: "REL-OLD-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 45.days.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
+    create(:habitation, :broker_intake, tenant:, codigo: "REL-OLD-#{SecureRandom.hex(4)}", admin_user: dashboard_admin, intake_status: "published", broker_released_at: 1.year.ago, valor_venda_cents: 0, valor_locacao_cents: 0)
 
     get dashboard_admin_captacoes_path
 
@@ -64,6 +64,37 @@ RSpec.describe "Admin::Captacoes dashboard", type: :request do
 
     expect(response.body).to include("Meta do mês")
     expect(response.body).to include("Captação Salute")
+  end
+
+  it "usa o mês selecionado como período efetivo mesmo quando datas antigas permanecem no formulário" do
+    travel_to Time.zone.local(2026, 8, 4, 10, 0, 0) do
+      tenant = Tenant.create!(name: "Tenant agosto #{SecureRandom.hex(4)}", slug: "tenant-agosto-#{SecureRandom.hex(4)}")
+      dashboard_admin = create(:admin_user, tenant:, profile: tenant.profiles.find_by!(key: "tenant_owner"), role: :editor)
+      sign_out admin
+      sign_in dashboard_admin
+
+      create(
+        :habitation,
+        tenant:,
+        codigo: "AGO-LOC-#{SecureRandom.hex(4)}",
+        admin_user: dashboard_admin,
+        data_cadastro_crm: Time.zone.local(2026, 8, 3, 14, 0, 0),
+        valor_venda_cents: 0,
+        valor_locacao_cents: 5_000_00
+      )
+
+      get dashboard_admin_captacoes_path, params: {
+        start_date: "2026-07-01",
+        end_date: "2026-07-31",
+        month: "8"
+      }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Agosto")
+      page = Nokogiri::HTML(response.body)
+      locacao_summary = page.css("#tab-locacao .capt-total-card").find { |card| card.text.include?("Total Captação Locação") }
+      expect(locacao_summary&.text&.squish).to include("Total Captação Locação 1")
+    end
   end
 
   it "mostra atalho de metas por permissão funcional sem exigir Tenant Owner" do

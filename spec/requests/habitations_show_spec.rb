@@ -21,6 +21,24 @@ RSpec.describe "Habitation details", type: :request do
       expect(JSON.parse(response.body).fetch("codigo")).to eq("8397")
     end
 
+    it "não publica título de venda quando o imóvel é de locação" do
+      habitation = create(
+        :habitation,
+        codigo: "RENT-TITLE-#{SecureRandom.hex(4)}",
+        slug: "apartamento-titulo-locacao-#{SecureRandom.hex(4)}",
+        status: "Aluguel",
+        valor_venda_cents: 0,
+        valor_locacao_cents: 8_500_00,
+        titulo_anuncio: "Apartamento à venda com 3 dormitórios na Barra Sul"
+      )
+
+      get habitation_path(habitation)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Apartamento para alugar com 3 dormitórios na Barra Sul")
+      expect(response.body).not_to include("Apartamento à venda com 3 dormitórios na Barra Sul")
+    end
+
     it "não renderiza imóvel público de outro tenant pelo slug" do
       other_tenant = Tenant.create!(name: "Outro hab public #{SecureRandom.hex(3)}", slug: "outro-hab-public-#{SecureRandom.hex(3)}")
       habitation = create(:habitation, tenant: other_tenant, codigo: "TENANT-X", slug: "imovel-outro-tenant")
