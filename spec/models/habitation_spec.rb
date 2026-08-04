@@ -56,6 +56,32 @@ RSpec.describe Habitation, type: :model do
     end
   end
 
+  describe "#display_title" do
+    it "corrige título importado como venda quando o imóvel é de locação" do
+      habitation = build(
+        :habitation,
+        status: "Aluguel",
+        valor_venda_cents: 0,
+        valor_locacao_cents: 8_500_00,
+        titulo_anuncio: "Apartamento à venda com 3 dormitórios na Barra Sul"
+      )
+
+      expect(habitation.display_title).to eq("Apartamento para alugar com 3 dormitórios na Barra Sul")
+    end
+
+    it "corrige título importado como locação quando o imóvel é de venda" do
+      habitation = build(
+        :habitation,
+        status: "Venda",
+        valor_venda_cents: 900_000_00,
+        valor_locacao_cents: 0,
+        titulo_anuncio: "Apartamento para alugar com 2 dormitórios no Centro"
+      )
+
+      expect(habitation.display_title).to eq("Apartamento à venda com 2 dormitórios no Centro")
+    end
+  end
+
   describe "dados do proprietário" do
     it "prefere o cadastro vinculado aos campos legados do imóvel" do
       proprietor = create(

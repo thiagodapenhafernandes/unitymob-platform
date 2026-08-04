@@ -33,6 +33,8 @@ class Habitation < ApplicationRecord
   ].freeze
 
   TITLE_CATEGORY_TERMS = (CATEGORIES + PUBLIC_FILTER_EXTRA_CATEGORIES).sort_by { |category| -category.length }.freeze
+  SALE_TITLE_PATTERN = /\b(?:[aà]\s+venda|para\s+venda|vende-se)\b/i
+  RENT_TITLE_PATTERN = /\b(?:para\s+alugar|aluguel|loca[cç][aã]o)\b/i
 
   STATUS_OPTIONS = [
     'Venda', 'Aluguel', 'Diária', 'Pendente', 'Lançamento', 'Suspenso',
@@ -1890,7 +1892,10 @@ class Habitation < ApplicationRecord
   
   # Retorna o título para exibição
   def display_title
-    titulo_anuncio.presence || default_title
+    title = titulo_anuncio.to_s.squish
+    return transaction_consistent_title(title) if title.present?
+
+    default_title
   end
 
   # Description fallback for legacy/plain-text and rich text sources.
@@ -1937,6 +1942,37 @@ class Habitation < ApplicationRecord
     parts << "em #{bairro}" if bairro.present?
     parts << cidade if cidade.present?
     parts.join(' ')
+  end
+
+  def transaction_consistent_title(title)
+    if rental_listing? && title.match?(SALE_TITLE_PATTERN)
+      return title
+        .gsub(/\b[aà]\s+venda\b/i, "para alugar")
+        .gsub(/\bpara\s+venda\b/i, "para alugar")
+        .gsub(/\bvende-se\b/i, "para alugar")
+        .squish
+    end
+
+    if sale_listing? && title.match?(RENT_TITLE_PATTERN)
+      return title
+        .gsub(/\bpara\s+alugar\b/i, "à venda")
+        .gsub(/\baluguel\b/i, "à venda")
+        .gsub(/\bloca[cç][aã]o\b/i, "à venda")
+        .squish
+    end
+
+    title
+  end
+
+  def rental_listing?
+    status.to_s.downcase.match?(/aluguel|loca/) ||
+      (valor_locacao_cents.to_i.positive? && !valor_venda_cents.to_i.positive?)
+  end
+
+  def sale_listing?
+    return false if rental_listing?
+
+    status.to_s.downcase.include?("venda") || valor_venda_cents.to_i.positive?
   end
 
   def title_category_terms_in_title

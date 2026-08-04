@@ -15,9 +15,7 @@ module Admin
     def dashboard
       set_dashboard_title
 
-      @period_start = parse_date(params[:start_date]) || Date.current.beginning_of_year
-      @period_end   = parse_date(params[:end_date])   || Date.current
-      @month_filter = params[:month].presence
+      resolve_dashboard_period!
       @target_month_label = target_month_label(@month_filter)
 
       scope = captacao_habitation_scope
@@ -201,6 +199,29 @@ module Admin
       params.require(:dashboard).permit(:eyebrow, :title)
     end
 
+    def resolve_dashboard_period!
+      parsed_start = parse_date(params[:start_date])
+      parsed_end = parse_date(params[:end_date])
+      @month_filter = parse_month_filter(params[:month])
+      @dashboard_year = (parsed_start || parsed_end || Date.current).year
+
+      if @month_filter.present?
+        month_start = Date.new(@dashboard_year, @month_filter.to_i, 1)
+        @period_start = month_start.beginning_of_month
+        @period_end = month_start.end_of_month
+      else
+        @period_start = parsed_start || Date.current.beginning_of_year
+        @period_end = parsed_end || Date.current
+      end
+
+      @period_start, @period_end = @period_end, @period_start if @period_start > @period_end
+    end
+
+    def parse_month_filter(value)
+      month = value.to_i
+      month.between?(1, 12) ? month.to_s : nil
+    end
+
     def require_admin!
       return if tenant_owner?
 
@@ -240,7 +261,7 @@ module Admin
     def target_month_label(month)
       return "Todos" if month.blank?
 
-      I18n.l(Date.new(Date.current.year, month.to_i), format: "%B").capitalize
+      I18n.l(Date.new(@dashboard_year || Date.current.year, month.to_i), format: "%B").capitalize
     rescue ArgumentError
       "Todos"
     end
