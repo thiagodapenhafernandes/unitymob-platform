@@ -79,10 +79,6 @@ class Proprietor < ApplicationRecord
   validates :name, presence: true
   normalize_phone_fields :phone_primary, :mobile_phone, :residential_phone, :business_phone, :spouse_phone
   validate :cpf_cnpj_must_be_unique
-  # Cadastro MANUAL não pode repetir proprietário existente (a base do Vista
-  # importa o espelho de lá e fica de fora — vista_code presente). Homônimo
-  # legítimo passa informando um CPF diferente dos já cadastrados.
-  validate :name_must_not_duplicate_existing, on: :create
 
   scope :ordered, -> { order(name: :asc) }
 
@@ -201,27 +197,6 @@ class Proprietor < ApplicationRecord
   end
 
   private
-
-  def name_must_not_duplicate_existing
-    return if vista_code.present?
-    return if name.to_s.strip.blank?
-
-    same_name = self.class.where(tenant_id: tenant_id)
-                    .where("lower(trim(name)) = ?", name.to_s.strip.downcase)
-    same_name = same_name.where.not(id: id) if persisted?
-    return unless same_name.exists?
-
-    if cpf_cnpj.present?
-      digits = self.class.normalized_cpf_cnpj(cpf_cnpj)
-      homonimo_legitimo = same_name.none? do |p|
-        existing = self.class.normalized_cpf_cnpj(p.cpf_cnpj)
-        existing.blank? || existing == digits
-      end
-      return if homonimo_legitimo
-    end
-
-    errors.add(:name, "já cadastrado — selecione o proprietário existente na lista. Se for outra pessoa com o mesmo nome, informe o CPF para diferenciar.")
-  end
 
   def cpf_cnpj_must_be_unique
     return if vista_code.present?

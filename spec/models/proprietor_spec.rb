@@ -1,6 +1,16 @@
 require "rails_helper"
 
 RSpec.describe Proprietor, type: :model do
+  describe "name duplication" do
+    it "allows different proprietors with the same name" do
+      create(:proprietor, name: "Marta", cpf_cnpj: nil)
+
+      same_name = build(:proprietor, name: "Marta", cpf_cnpj: nil)
+
+      expect(same_name).to be_valid
+    end
+  end
+
   describe "CPF/CNPJ uniqueness" do
     it "blocks a second manual proprietor with the same CPF/CNPJ" do
       create(:proprietor, cpf_cnpj: "123.456.789-00")
