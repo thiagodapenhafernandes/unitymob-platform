@@ -121,6 +121,7 @@ Rails.application.routes.draw do
         post "inbound_tokens/:token_id/regenerate", to: "webhook_settings#regenerate_inbound_token", as: :regenerate_inbound_token
       end
     end
+    resources :public_forms
     resource :whatsapp_integration, only: [:show, :update]
     resource :whatsapp_service_setting, only: [:edit, :update]
     get "manifest", to: "manifests#show", as: :manifest, defaults: { format: :json }
@@ -524,6 +525,7 @@ Rails.application.routes.draw do
   
   # Form submissions
   resources :contacts, only: [:create]
+  post "formularios/:slug", to: "public_form_submissions#create", as: :public_form_submissions
   post 'trabalhe-conosco/submit', to: 'pages#submit_trabalhe_conosco', as: :submit_trabalhe_conosco
   post 'salute-parcerias/submit', to: 'pages#submit_parcerias', as: :submit_parcerias
   # Alternative routes for SEO

@@ -67,4 +67,5 @@
  *= require admin/components/audit_history_modal
  *= require admin/components/system_workspace
  *= require admin/components/workflow
+ *= require admin/components/public_form_builder
  */

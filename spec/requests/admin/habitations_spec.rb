@@ -3761,6 +3761,72 @@ RSpec.describe "Admin::Habitations", type: :request do
     expect(page.at_css('[data-habitation-owner-selector-target="menuAction"]')).to be_present
   end
 
+  it "permite gerente destravado pelo perfil gerenciar proprietário no cadastro do imóvel" do
+    locked_fields = Habitations::CadastroFieldRegistry.all_keys - %w[
+      proprietor_id
+      acao:cadastrar_proprietario
+    ]
+    manager_profile = Profile.create!(
+      tenant: Tenant.default,
+      name: "Gerente proprietário liberado #{SecureRandom.hex(6)}",
+      axis: Profile::AXES[:vertical],
+      position: 708,
+      permissions: {
+        "admin" => false,
+        "imoveis" => {
+          "view" => true,
+          "edit" => true,
+          "scope" => "team",
+          "locked_fields" => locked_fields
+        }
+      }
+    )
+    manager = create(:admin_user, profile: manager_profile, acting_type: :sales, name: "Gerente proprietário liberado")
+    broker = create(:admin_user, profile: default_agent_profile, manager:, acting_type: :sales, name: "Corretor da equipe proprietário")
+    proprietor = create(
+      :proprietor,
+      tenant: Tenant.default,
+      name: "Novo Proprietário Selecionado",
+      phone_primary: "(47) 99999-1111",
+      email: "novo-proprietario@example.com",
+      city: "Itajaí"
+    )
+    habitation = create(
+      :habitation,
+      tenant: Tenant.default,
+      admin_user: broker,
+      codigo: "PROP-GER-#{SecureRandom.hex(6)}",
+      status: "Venda",
+      valor_venda_cents: 900_000_00,
+      valor_locacao_cents: 0,
+      proprietor_id: nil,
+      proprietario: nil
+    )
+
+    sign_in manager
+
+    get edit_admin_habitation_path(habitation)
+
+    expect(response).to have_http_status(:ok)
+    page = Nokogiri::HTML(response.body)
+    expect(page.at_css("#quickProprietorModal")).to be_present
+    expect(page.at_css('input[type="hidden"][name="habitation[proprietor_id]"]')["disabled"]).to be_nil
+    expect(page.at_css('[data-habitation-owner-selector-target="directAction"]')["hidden"]).to be_nil
+
+    patch admin_habitation_path(habitation), params: {
+      habitation: {
+        proprietor_id: proprietor.id
+      }
+    }
+
+    expect(response).to redirect_to(admin_habitations_path)
+    habitation.reload
+    expect(habitation.proprietor).to eq(proprietor)
+    expect(habitation.proprietario).to eq("Novo Proprietário Selecionado")
+    expect(habitation.proprietario_email).to eq("novo-proprietario@example.com")
+    expect(habitation.proprietario_cidade).to eq("Itajaí")
+  end
+
   it "remove proprietário vinculado e dados legados ao salvar o imóvel" do
     proprietor = create(:proprietor, name: "Proprietário Antigo")
     habitation = create(

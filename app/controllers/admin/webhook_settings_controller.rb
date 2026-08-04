@@ -6,6 +6,7 @@ class Admin::WebhookSettingsController < Admin::BaseController
   before_action :require_outbound_permission!, only: [:new, :create, :edit, :update, :destroy, :test, :share_tracking]
   before_action :set_webhook_setting, only: [:edit, :update, :destroy, :test]
   before_action :set_inbound_webhook_token, only: [:update_inbound_token, :regenerate_inbound_token]
+  before_action :load_public_forms, only: [:new, :create, :edit, :update]
 
   def index
     @can_manage_outbound_webhooks = current_admin_user&.can?(:manage, :integracoes)
@@ -121,10 +122,19 @@ class Admin::WebhookSettingsController < Admin::BaseController
   end
 
   def webhook_params
-    params.require(:webhook_setting).permit(:webhook_url, :whatsapp_webhook_url, :enabled, :lead_capture_enabled, :description)
+    params.require(:webhook_setting).permit(
+      :webhook_url, :whatsapp_webhook_url, :enabled, :lead_capture_enabled,
+      :description, :form_delivery_scope,
+      form_categories: [],
+      public_form_ids: []
+    )
   end
 
   def inbound_webhook_token_params
     params.require(:inbound_webhook_token).permit(:enabled)
+  end
+
+  def load_public_forms
+    @public_forms = current_tenant.public_forms.ordered
   end
 end

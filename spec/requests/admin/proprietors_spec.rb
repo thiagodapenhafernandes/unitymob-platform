@@ -136,6 +136,43 @@ RSpec.describe "Admin::Proprietors", type: :request do
     )
   end
 
+  it "permite edição rápida para gerente quando proprietário está liberado nas travas do cadastro" do
+    locked_fields = Habitations::CadastroFieldRegistry.all_keys - %w[
+      proprietor_id
+      acao:cadastrar_proprietario
+    ]
+    manager_profile = Profile.create!(
+      tenant: Tenant.default,
+      name: "Gerente quick proprietário #{SecureRandom.hex(6)}",
+      axis: Profile::AXES[:vertical],
+      position: 709,
+      permissions: {
+        "admin" => false,
+        "imoveis" => {
+          "view" => true,
+          "edit" => true,
+          "scope" => "team",
+          "locked_fields" => locked_fields
+        }
+      }
+    )
+    manager = create(:admin_user, profile: manager_profile)
+    proprietor = create(:proprietor, tenant: manager.tenant, name: "Dono Gerente", phone_primary: "(47) 98888-7777", city: "Itapema")
+    sign_in manager
+
+    patch quick_update_admin_proprietor_path(proprietor),
+          params: { proprietor: { name: "Dono Gerente Atualizado", phone_primary: "(47) 97777-6666", email: "gerente@example.com", city: "Camboriú" } },
+          headers: { "ACCEPT" => "application/json" }
+
+    expect(response).to have_http_status(:ok)
+    expect(proprietor.reload).to have_attributes(
+      name: "Dono Gerente Atualizado",
+      phone_primary: "5547977776666",
+      email: "gerente@example.com",
+      city: "Camboriú"
+    )
+  end
+
   it "busca proprietário por partes do nome quando a consulta tem nome e sobrenome" do
     admin = create(:admin_user, :admin)
     sign_in admin

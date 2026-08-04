@@ -43,6 +43,7 @@ module Admin::NavbarHelper
     "email_settings" => "E-mail (SMTP)",
     "push_settings" => "Push no PWA",
     "webhook_settings" => "Webhooks",
+    "public_forms" => "Formulários",
     "landing_pages" => "Landing pages",
     "banners" => "Banners"
   }.freeze
@@ -113,6 +114,10 @@ module Admin::NavbarHelper
               when "landing_pages"
                 [
                   admin_contextbar_link("Nova landing", new_admin_landing_page_path, icon: "plus-lg", primary: true, if: can?(:view, :marketing))
+                ]
+              when "public_forms"
+                [
+                  admin_contextbar_link("Novo formulário", new_admin_public_form_path, icon: "plus-lg", primary: true, if: can?(:manage, :marketing))
                 ]
               when "banners"
                 [

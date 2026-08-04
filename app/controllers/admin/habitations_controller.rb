@@ -580,7 +580,7 @@ class Admin::HabitationsController < Admin::BaseController
       snapshot_review_policy!(@habitation)
     end
 
-    assign_proprietor_from_legacy_fields(@habitation) if can_access_sensitive_habitation_data?
+    assign_proprietor_from_legacy_fields(@habitation) if can_sync_habitation_proprietor?
     apply_intake_status_transition_metadata(@habitation)
 
     unless no_duplicate_address?(@habitation)
@@ -704,7 +704,7 @@ class Admin::HabitationsController < Admin::BaseController
       snapshot_review_policy!(@habitation)
     end
 
-    assign_proprietor_from_legacy_fields(@habitation) if can_access_sensitive_habitation_data?
+    assign_proprietor_from_legacy_fields(@habitation) if can_sync_habitation_proprietor?
     apply_intake_status_transition_metadata(@habitation)
     rental_short_cycle_alert = rental_short_cycle_alert_payload(@habitation, before_snapshot: audit_snapshot_before)
     if @habitation.save
@@ -2957,6 +2957,14 @@ class Admin::HabitationsController < Admin::BaseController
   # (manager_can_view_proprietor_data?), nunca por este atalho global.
   def can_access_sensitive_habitation_data?
     tenant_owner? || owns_all_resource?(:imoveis) || (can?(:review, :captacoes) && owns_all_resource?(:captacoes))
+  end
+
+  def can_sync_habitation_proprietor?
+    return true if can_access_sensitive_habitation_data?
+    return false unless current_admin_user
+    return false unless can?(:edit, :imoveis)
+
+    !Habitations::FieldLockPolicy.for(current_admin_user).field_locked?("proprietor_id")
   end
 
   # manager_team_user_ids / manager_allowed_acting_types vivem no BaseController.

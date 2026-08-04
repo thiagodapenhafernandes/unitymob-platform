@@ -22,6 +22,7 @@
           <tr>
             <th>Descrição</th>
             <th>URL do Webhook</th>
+            <th>Escopo</th>
             <th class="ax-table__col--w-120">Captura Leads?</th>
             <th class="ax-table__col--sm">Status</th>
             <th class="ax-num ax-table__col--md">Ações</th>
@@ -37,6 +38,14 @@
               <td>
                 <code class="tw-text-primary"><%= truncate(webhook.webhook_url, length: 50) %></code>
                 <% if webhook.whatsapp_webhook_url.present? %><div class="tw-text-2xs tw-text-green-600"><i class="bi bi-whatsapp"></i> <%= truncate(webhook.whatsapp_webhook_url, length: 50) %></div><% end %>
+              </td>
+              <td>
+                <div class="ax-strong"><%= webhook.form_delivery_scope_label %></div>
+                <% if webhook.form_delivery_scope == "categories" && webhook.form_category_list.any? %>
+                  <div class="tw-text-2xs tw-text-ink-faint"><%= webhook.form_category_list.map { |key| PublicForm::CATEGORIES[key] || key }.to_sentence %></div>
+                <% elsif webhook.form_delivery_scope == "forms" && webhook.public_form_id_list.any? %>
+                  <div class="tw-text-2xs tw-text-ink-faint"><%= webhook.public_form_id_list.size %> formulário(s)</div>
+                <% end %>
               </td>
               <td>
                 <% if webhook.lead_capture_enabled? %><span class="ax-badge ax-badge--blue ax-badge--dot">Ativa</span>
@@ -57,7 +66,7 @@
           <% end %>
 
           <% if webhook_settings.empty? %>
-            <tr><td colspan="5"><div class="ax-empty">
+            <tr><td colspan="6"><div class="ax-empty">
               <i class="bi bi-broadcast tw-text-2xl tw-block tw-mb-2 tw-text-ink-faint"></i>Nenhum webhook configurado.
             </div></td></tr>
           <% end %>

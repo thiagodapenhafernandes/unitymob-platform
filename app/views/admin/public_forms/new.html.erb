@@ -1,0 +1,9 @@
+<%= ax_workspace_heading(
+      eyebrow: "Site público · Formulários",
+      icon: "ui-checks-grid",
+      title: "Novo formulário",
+      subtitle: "Defina estrutura, campos e comportamento do envio.",
+      actions: ax_button("Voltar", admin_public_forms_path, variant: :ghost, size: :sm, icon: "arrow-left")
+    ) %>
+
+<%= render "form", public_form: @public_form %>

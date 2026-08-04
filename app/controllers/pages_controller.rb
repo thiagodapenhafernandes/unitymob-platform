@@ -3,6 +3,7 @@ class PagesController < ApplicationController
 
   def trabalhe_conosco
     @page_name = 'trabalhe_conosco'
+    @work_with_us_form = public_tenant.public_forms.active.find_by(slug: PublicForm::DEFAULT_WORK_WITH_US_SLUG) if PublicForm.table_exists?
     # Página "Trabalhe Conosco" / "Seja um Corretor Parceiro"
   end
 
@@ -10,6 +11,7 @@ class PagesController < ApplicationController
     @page_name = 'parcerias'
     @page_title = "#{@public_identity.name} | Seja nosso corretor parceiro"
     @page_description = "Seja um corretor parceiro da #{@public_identity.name} e tenha acesso a imóveis, suporte especializado e novas oportunidades de negócio."
+    @partnership_form = public_tenant.public_forms.active.find_by(slug: PublicForm::DEFAULT_PARTNERSHIP_SLUG) if PublicForm.table_exists?
   end
   
   def submit_trabalhe_conosco

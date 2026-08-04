@@ -150,6 +150,14 @@
           <%= link_to contato_path, class: "px-8 py-3 bg-golden-one text-blue-three font-bold rounded-lg hover:bg-golden-two transition-colors" do %>
             Fale Conosco
           <% end %>
+
+          <% if @announce_property_form.present? %>
+            <%= public_form_modal(
+                  @announce_property_form,
+                  trigger_label: "Anuncie seu imóvel",
+                  trigger_class: "px-8 py-3 bg-white text-blue-three font-bold rounded-lg hover:bg-golden-one transition-colors inline-flex items-center justify-center gap-2"
+                ) %>
+          <% end %>
           
           <%= link_to "tel:+5547999999999", class: "px-8 py-3 border-2 border-white text-white font-bold rounded-lg hover:bg-white hover:text-blue-three transition-colors" do %>
             WhatsApp

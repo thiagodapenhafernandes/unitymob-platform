@@ -1,0 +1,78 @@
+<div data-controller="public-form-modal"
+     data-public-form-modal-success-message-value="<%= form.success_message %>"
+     class="public-form-modal">
+  <button type="button"
+          class="<%= trigger_class %>"
+          data-action="click->public-form-modal#open">
+    <span><%= trigger_label %></span>
+    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+  </button>
+
+  <div class="public-form-modal__overlay" hidden data-public-form-modal-target="overlay">
+    <div class="public-form-modal__backdrop" data-action="click->public-form-modal#close"></div>
+    <section class="public-form-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="public-form-modal-title-<%= form.id %>">
+      <% modal_config = form.modal_config.to_h %>
+      <aside class="public-form-modal__aside">
+        <div>
+          <span class="public-form-modal__eyebrow"><%= modal_config["eyebrow"].presence || form.name %></span>
+          <h2><%= modal_config["headline"].presence || form.title %></h2>
+        </div>
+
+        <% benefits = Array(modal_config["benefits"]).reject(&:blank?) %>
+        <% if benefits.any? %>
+          <ul class="public-form-modal__benefits">
+            <% benefits.each do |benefit| %>
+              <li><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span><%= benefit %></span></li>
+            <% end %>
+          </ul>
+        <% end %>
+      </aside>
+
+      <div class="public-form-modal__body">
+        <button type="button" class="public-form-modal__close" data-action="click->public-form-modal#close" aria-label="Fechar">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+
+        <header>
+          <h3 id="public-form-modal-title-<%= form.id %>"><%= form.title %></h3>
+          <% if form.subtitle.present? %><p><%= form.subtitle %></p><% end %>
+        </header>
+
+        <%= form_with url: public_form_submissions_path(form.slug),
+                      scope: :public_form_submission,
+                      method: :post,
+                      html: { class: "public-form-modal__form", data: { action: "submit->public-form-modal#submit", public_form_modal_target: "form" } } do %>
+          <%= hidden_field_tag :page_url, request.original_url %>
+
+          <div class="public-form-modal__grid">
+            <% form.fields.each do |field| %>
+              <% next if field.hidden? %>
+              <div class="public-form-modal__field public-form-modal__field--<%= field.field_type %>">
+                <label for="public_form_<%= field.public_form_id %>_<%= field.name %>">
+                  <%= field.label %><%= tag.span(" *", class: "public-form-modal__required") if field.required? %>
+                </label>
+                <%= public_form_field_input(nil, field) %>
+                <% if field.hint.present? %><small><%= field.hint %></small><% end %>
+              </div>
+            <% end %>
+          </div>
+
+          <% form.fields.select(&:hidden?).each do |field| %>
+            <%= public_form_field_input(nil, field) %>
+          <% end %>
+
+          <div class="public-form-modal__feedback" data-public-form-modal-target="feedback" hidden></div>
+
+          <button type="submit" class="public-form-modal__submit" data-public-form-modal-target="submit">
+            <span><%= form.submit_label %></span>
+            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+          </button>
+
+          <%= render "shared/form_consent_notice",
+                     class_name: "public-form-modal__consent",
+                     link_class: "underline" %>
+        <% end %>
+      </div>
+    </section>
+  </div>
+</div>

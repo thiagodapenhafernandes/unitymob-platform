@@ -1,0 +1,123 @@
+<% field = field_form.object %>
+<% choice_field = field.choice_field? %>
+<% auto_name = field.name.blank? %>
+
+<section class="public-form-builder__field"
+         data-public-form-builder-target="field"
+         data-field-type="<%= field.field_type.presence || "text" %>">
+  <%= field_form.hidden_field :id if field.persisted? %>
+  <%= field_form.hidden_field :_destroy, value: "0", data: { public_form_builder_target: "destroyInput" } %>
+  <%= field_form.hidden_field :position, value: field.position.presence, data: { public_form_builder_target: "positionInput" } %>
+
+  <div class="public-form-builder__field-header">
+    <button type="button"
+            class="public-form-builder__drag-handle"
+            title="Mover campo"
+            aria-label="Mover campo">
+      <i class="bi bi-grip-vertical" aria-hidden="true"></i>
+    </button>
+    <div class="public-form-builder__field-title">
+      <strong data-public-form-builder-target="fieldTitle"><%= field.label.presence || "Novo campo" %></strong>
+      <span data-public-form-builder-target="fieldMeta"><%= field.field_type.presence || "text" %></span>
+    </div>
+    <div class="public-form-builder__field-actions">
+      <button type="button"
+              class="ax-icon-btn"
+              title="Mover para cima"
+              aria-label="Mover para cima"
+              data-action="public-form-builder#moveUp">
+        <i class="bi bi-arrow-up" aria-hidden="true"></i>
+      </button>
+      <button type="button"
+              class="ax-icon-btn"
+              title="Mover para baixo"
+              aria-label="Mover para baixo"
+              data-action="public-form-builder#moveDown">
+        <i class="bi bi-arrow-down" aria-hidden="true"></i>
+      </button>
+      <button type="button"
+              class="ax-icon-btn"
+              title="Duplicar campo"
+              aria-label="Duplicar campo"
+              data-action="public-form-builder#duplicate">
+        <i class="bi bi-files" aria-hidden="true"></i>
+      </button>
+      <button type="button"
+              class="ax-icon-btn public-form-builder__remove"
+              title="Remover campo"
+              aria-label="Remover campo"
+              data-action="public-form-builder#remove">
+        <i class="bi bi-trash" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="public-form-builder__field-grid">
+    <div class="public-form-builder__cell public-form-builder__cell--type">
+      <%= field_form.label :field_type, "Tipo HTML", class: "ax-label" %>
+      <%= field_form.select :field_type,
+                            field_type_options,
+                            {},
+                            class: "ax-control",
+                            data: {
+                              public_form_builder_target: "typeInput",
+                              action: "public-form-builder#fieldTypeChanged"
+                            } %>
+    </div>
+
+    <div class="public-form-builder__cell public-form-builder__cell--name">
+      <%= field_form.label :name, "Nome técnico", class: "ax-label" %>
+      <%= field_form.text_field :name,
+                                class: "ax-control",
+                                placeholder: "ex: telefone",
+                                data: {
+                                  public_form_builder_target: "nameInput",
+                                  auto_name: auto_name,
+                                  action: "input->public-form-builder#nameChanged"
+                                } %>
+    </div>
+
+    <div class="public-form-builder__cell public-form-builder__cell--label">
+      <%= field_form.label :label, "Label", class: "ax-label" %>
+      <%= field_form.text_field :label,
+                                class: "ax-control",
+                                placeholder: "Texto visível para o visitante",
+                                data: {
+                                  public_form_builder_target: "labelInput",
+                                  action: "input->public-form-builder#labelChanged"
+                                } %>
+    </div>
+
+    <div class="public-form-builder__cell public-form-builder__cell--placeholder">
+      <%= field_form.label :placeholder, "Placeholder", class: "ax-label" %>
+      <%= field_form.text_field :placeholder,
+                                class: "ax-control",
+                                data: { public_form_builder_target: "placeholderInput" } %>
+    </div>
+
+    <div class="public-form-builder__cell public-form-builder__cell--hint">
+      <%= field_form.label :hint, "Ajuda", class: "ax-label" %>
+      <%= field_form.text_field :hint, class: "ax-control" %>
+    </div>
+
+    <div class="public-form-builder__cell public-form-builder__cell--required">
+      <%= ax_switch_field(
+            label: "Obrigatório",
+            form: field_form,
+            method: :required,
+            input_html: { data: { public_form_builder_target: "requiredInput" } }
+          ) %>
+    </div>
+
+    <div class="public-form-builder__cell public-form-builder__cell--options <%= "is-hidden" unless choice_field %>"
+         data-public-form-builder-target="optionsBlock">
+      <%= field_form.label :options_text, "Opções", class: "ax-label" %>
+      <%= field_form.text_area :options_text,
+                               rows: 4,
+                               class: "ax-control",
+                               placeholder: "Uma por linha. Ex: Venda|venda",
+                               data: { public_form_builder_target: "optionsInput" } %>
+      <small class="tw-text-ink-muted">Use uma opção por linha. O formato aceito é Label ou Label|valor.</small>
+    </div>
+  </div>
+</section>

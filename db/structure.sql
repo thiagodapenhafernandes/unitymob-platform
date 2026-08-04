@@ -1,4 +1,4 @@
-\restrict dPnJHKEPx715NvkDZHOBlABPHCKC4CTnCTN93zR745itI0WgpcRMA2k00hUPkWG
+\restrict bzU0kwOwjfdUWbXUghpj72SGtBbIjoPgn0JB0063k0hnhTcW76yt30W8HfX0fgE
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -14,6 +14,20 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+
 
 --
 -- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
@@ -2422,8 +2436,6 @@ CREATE TABLE public.habitations (
     public_map_display_mode character varying DEFAULT 'inherit'::character varying NOT NULL,
     public_street_view_mode character varying DEFAULT 'inherit'::character varying NOT NULL,
     searchable_features text GENERATED ALWAYS AS (public.habitation_searchable_features(caracteristicas, infra_estrutura, caracteristica_unica, descricao_web, (face)::text)) STORED,
-    intake_review_policy_version integer,
-    intake_review_policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
     preco_atualizado_em timestamp(6) without time zone,
     broker_intake_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
     public_rating_value numeric(3,2),
@@ -3206,12 +3218,7 @@ CREATE TABLE public.landing_pages (
     description text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    tenant_id bigint NOT NULL,
-    page_type character varying DEFAULT 'property_listing'::character varying NOT NULL,
-    status character varying DEFAULT 'draft'::character varying NOT NULL,
-    published_at timestamp(6) without time zone,
-    preview_token_digest character varying,
-    system_path character varying
+    tenant_id bigint NOT NULL
 );
 
 
@@ -3606,184 +3613,6 @@ CREATE SEQUENCE public.location_pings_id_seq
 --
 
 ALTER SEQUENCE public.location_pings_id_seq OWNED BY public.location_pings.id;
-
-
---
--- Name: maglev_assets; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maglev_assets (
-    id bigint NOT NULL,
-    filename character varying,
-    content_type character varying,
-    width integer,
-    height integer,
-    byte_size integer,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: maglev_assets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maglev_assets_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maglev_assets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maglev_assets_id_seq OWNED BY public.maglev_assets.id;
-
-
---
--- Name: maglev_page_paths; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maglev_page_paths (
-    id bigint NOT NULL,
-    maglev_page_id bigint,
-    locale character varying NOT NULL,
-    value character varying NOT NULL,
-    canonical boolean DEFAULT true
-);
-
-
---
--- Name: maglev_page_paths_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maglev_page_paths_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maglev_page_paths_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maglev_page_paths_id_seq OWNED BY public.maglev_page_paths.id;
-
-
---
--- Name: maglev_pages; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maglev_pages (
-    id bigint NOT NULL,
-    visible boolean DEFAULT true,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    title_translations jsonb DEFAULT '{}'::jsonb,
-    seo_title_translations jsonb DEFAULT '{}'::jsonb,
-    meta_description_translations jsonb DEFAULT '{}'::jsonb,
-    sections_translations jsonb DEFAULT '{}'::jsonb,
-    lock_version integer,
-    og_title_translations jsonb DEFAULT '{}'::jsonb,
-    og_description_translations jsonb DEFAULT '{}'::jsonb,
-    og_image_url_translations jsonb DEFAULT '{}'::jsonb,
-    published_at timestamp without time zone,
-    published_payload jsonb DEFAULT '{}'::jsonb
-);
-
-
---
--- Name: maglev_pages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maglev_pages_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maglev_pages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maglev_pages_id_seq OWNED BY public.maglev_pages.id;
-
-
---
--- Name: maglev_sections_content_stores; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maglev_sections_content_stores (
-    id bigint NOT NULL,
-    container_id character varying,
-    container_type character varying,
-    sections_translations jsonb DEFAULT '{}'::jsonb,
-    published boolean DEFAULT false,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: maglev_sections_content_stores_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maglev_sections_content_stores_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maglev_sections_content_stores_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maglev_sections_content_stores_id_seq OWNED BY public.maglev_sections_content_stores.id;
-
-
---
--- Name: maglev_sites; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maglev_sites (
-    id bigint NOT NULL,
-    name character varying,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    locales jsonb DEFAULT '[]'::jsonb,
-    sections_translations jsonb DEFAULT '{}'::jsonb,
-    lock_version integer,
-    style jsonb DEFAULT '[]'::jsonb,
-    published_at timestamp without time zone
-);
-
-
---
--- Name: maglev_sites_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maglev_sites_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maglev_sites_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maglev_sites_id_seq OWNED BY public.maglev_sites.id;
 
 
 --
@@ -4387,42 +4216,6 @@ ALTER SEQUENCE public.property_review_policies_id_seq OWNED BY public.property_r
 
 
 --
--- Name: property_review_policy_audit_logs; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.property_review_policy_audit_logs (
-    id bigint NOT NULL,
-    tenant_id bigint NOT NULL,
-    property_setting_id bigint NOT NULL,
-    admin_user_id bigint NOT NULL,
-    version integer NOT NULL,
-    changeset jsonb DEFAULT '{}'::jsonb NOT NULL,
-    impact_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    policy_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL
-);
-
-
---
--- Name: property_review_policy_audit_logs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.property_review_policy_audit_logs_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: property_review_policy_audit_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.property_review_policy_audit_logs_id_seq OWNED BY public.property_review_policy_audit_logs.id;
-
-
---
 -- Name: property_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4441,7 +4234,6 @@ CREATE TABLE public.property_settings (
     notify_email_review_events boolean DEFAULT false NOT NULL,
     review_notification_emails text,
     tenant_id bigint,
-    review_policy_version integer DEFAULT 1 NOT NULL,
     ai_property_search_enabled boolean DEFAULT false NOT NULL,
     voice_property_search_enabled boolean DEFAULT false NOT NULL,
     ai_property_search_instructions text,
@@ -4648,6 +4440,127 @@ CREATE SEQUENCE public.proprietors_id_seq
 --
 
 ALTER SEQUENCE public.proprietors_id_seq OWNED BY public.proprietors.id;
+
+
+--
+-- Name: public_form_fields; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.public_form_fields (
+    id bigint NOT NULL,
+    public_form_id bigint NOT NULL,
+    field_type character varying NOT NULL,
+    name character varying NOT NULL,
+    label character varying NOT NULL,
+    placeholder character varying,
+    hint text,
+    required boolean DEFAULT false NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    options jsonb DEFAULT '[]'::jsonb NOT NULL,
+    config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: public_form_fields_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.public_form_fields_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: public_form_fields_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.public_form_fields_id_seq OWNED BY public.public_form_fields.id;
+
+
+--
+-- Name: public_form_submissions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.public_form_submissions (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    public_form_id bigint NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb NOT NULL,
+    source jsonb DEFAULT '{}'::jsonb NOT NULL,
+    normalized_name character varying,
+    normalized_email character varying,
+    normalized_phone character varying,
+    status character varying DEFAULT 'received'::character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: public_form_submissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.public_form_submissions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: public_form_submissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.public_form_submissions_id_seq OWNED BY public.public_form_submissions.id;
+
+
+--
+-- Name: public_forms; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.public_forms (
+    id bigint NOT NULL,
+    tenant_id bigint NOT NULL,
+    name character varying NOT NULL,
+    slug character varying NOT NULL,
+    category character varying DEFAULT 'custom'::character varying NOT NULL,
+    title character varying NOT NULL,
+    subtitle text,
+    submit_label character varying DEFAULT 'Enviar'::character varying NOT NULL,
+    success_message character varying DEFAULT 'Mensagem enviada com sucesso.'::character varying NOT NULL,
+    redirect_url character varying,
+    active boolean DEFAULT true NOT NULL,
+    modal_enabled boolean DEFAULT true NOT NULL,
+    modal_config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: public_forms_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.public_forms_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: public_forms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.public_forms_id_seq OWNED BY public.public_forms.id;
 
 
 --
@@ -5170,82 +5083,6 @@ CREATE SEQUENCE public.settings_id_seq
 --
 
 ALTER SEQUENCE public.settings_id_seq OWNED BY public.settings.id;
-
-
---
--- Name: site_navigation_items; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.site_navigation_items (
-    id bigint NOT NULL,
-    tenant_id bigint NOT NULL,
-    landing_page_id bigint,
-    parent_id bigint,
-    label character varying NOT NULL,
-    placement character varying NOT NULL,
-    destination_type character varying DEFAULT 'internal_path'::character varying NOT NULL,
-    destination character varying,
-    "position" integer DEFAULT 0 NOT NULL,
-    active boolean DEFAULT true NOT NULL,
-    new_tab boolean DEFAULT false NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: site_navigation_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.site_navigation_items_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: site_navigation_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.site_navigation_items_id_seq OWNED BY public.site_navigation_items.id;
-
-
---
--- Name: site_page_blocks; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.site_page_blocks (
-    id bigint NOT NULL,
-    tenant_id bigint NOT NULL,
-    landing_page_id bigint NOT NULL,
-    block_type character varying NOT NULL,
-    "position" integer DEFAULT 0 NOT NULL,
-    visible boolean DEFAULT true NOT NULL,
-    settings jsonb DEFAULT '{}'::jsonb NOT NULL,
-    created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
-);
-
-
---
--- Name: site_page_blocks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.site_page_blocks_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: site_page_blocks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.site_page_blocks_id_seq OWNED BY public.site_page_blocks.id;
 
 
 --
@@ -6174,7 +6011,10 @@ CREATE TABLE public.webhook_settings (
     updated_at timestamp(6) without time zone NOT NULL,
     whatsapp_webhook_url character varying,
     lead_capture_enabled boolean,
-    tenant_id bigint NOT NULL
+    tenant_id bigint NOT NULL,
+    form_delivery_scope character varying DEFAULT 'all'::character varying NOT NULL,
+    form_categories jsonb DEFAULT '[]'::jsonb NOT NULL,
+    public_form_ids jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 
 
@@ -6577,7 +6417,6 @@ CREATE TABLE public.whatsapp_sender_numbers (
     cpl_sent_unit_price numeric(10,2) DEFAULT 0.59 NOT NULL,
     cpl_fla_unit_price numeric(10,2) DEFAULT 0.12 NOT NULL,
     tenant_id bigint NOT NULL,
-    use_for_campaigns boolean DEFAULT true NOT NULL,
     use_for_notifications boolean DEFAULT false NOT NULL
 );
 
@@ -7143,41 +6982,6 @@ ALTER TABLE ONLY public.location_pings ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
--- Name: maglev_assets id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_assets ALTER COLUMN id SET DEFAULT nextval('public.maglev_assets_id_seq'::regclass);
-
-
---
--- Name: maglev_page_paths id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_page_paths ALTER COLUMN id SET DEFAULT nextval('public.maglev_page_paths_id_seq'::regclass);
-
-
---
--- Name: maglev_pages id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_pages ALTER COLUMN id SET DEFAULT nextval('public.maglev_pages_id_seq'::regclass);
-
-
---
--- Name: maglev_sections_content_stores id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_sections_content_stores ALTER COLUMN id SET DEFAULT nextval('public.maglev_sections_content_stores_id_seq'::regclass);
-
-
---
--- Name: maglev_sites id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_sites ALTER COLUMN id SET DEFAULT nextval('public.maglev_sites_id_seq'::regclass);
-
-
---
 -- Name: manual_checkin_requests id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7283,13 +7087,6 @@ ALTER TABLE ONLY public.property_review_policies ALTER COLUMN id SET DEFAULT nex
 
 
 --
--- Name: property_review_policy_audit_logs id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.property_review_policy_audit_logs ALTER COLUMN id SET DEFAULT nextval('public.property_review_policy_audit_logs_id_seq'::regclass);
-
-
---
 -- Name: property_settings id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7308,6 +7105,27 @@ ALTER TABLE ONLY public.proposals ALTER COLUMN id SET DEFAULT nextval('public.pr
 --
 
 ALTER TABLE ONLY public.proprietors ALTER COLUMN id SET DEFAULT nextval('public.proprietors_id_seq'::regclass);
+
+
+--
+-- Name: public_form_fields id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_form_fields ALTER COLUMN id SET DEFAULT nextval('public.public_form_fields_id_seq'::regclass);
+
+
+--
+-- Name: public_form_submissions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_form_submissions ALTER COLUMN id SET DEFAULT nextval('public.public_form_submissions_id_seq'::regclass);
+
+
+--
+-- Name: public_forms id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_forms ALTER COLUMN id SET DEFAULT nextval('public.public_forms_id_seq'::regclass);
 
 
 --
@@ -7399,20 +7217,6 @@ ALTER TABLE ONLY public.seo_settings ALTER COLUMN id SET DEFAULT nextval('public
 --
 
 ALTER TABLE ONLY public.settings ALTER COLUMN id SET DEFAULT nextval('public.settings_id_seq'::regclass);
-
-
---
--- Name: site_navigation_items id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.site_navigation_items ALTER COLUMN id SET DEFAULT nextval('public.site_navigation_items_id_seq'::regclass);
-
-
---
--- Name: site_page_blocks id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.site_page_blocks ALTER COLUMN id SET DEFAULT nextval('public.site_page_blocks_id_seq'::regclass);
 
 
 --
@@ -8230,46 +8034,6 @@ ALTER TABLE ONLY public.location_pings
 
 
 --
--- Name: maglev_assets maglev_assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_assets
-    ADD CONSTRAINT maglev_assets_pkey PRIMARY KEY (id);
-
-
---
--- Name: maglev_page_paths maglev_page_paths_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_page_paths
-    ADD CONSTRAINT maglev_page_paths_pkey PRIMARY KEY (id);
-
-
---
--- Name: maglev_pages maglev_pages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_pages
-    ADD CONSTRAINT maglev_pages_pkey PRIMARY KEY (id);
-
-
---
--- Name: maglev_sections_content_stores maglev_sections_content_stores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_sections_content_stores
-    ADD CONSTRAINT maglev_sections_content_stores_pkey PRIMARY KEY (id);
-
-
---
--- Name: maglev_sites maglev_sites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maglev_sites
-    ADD CONSTRAINT maglev_sites_pkey PRIMARY KEY (id);
-
-
---
 -- Name: manual_checkin_requests manual_checkin_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8430,14 +8194,6 @@ ALTER TABLE ONLY public.property_review_policies
 
 
 --
--- Name: property_review_policy_audit_logs property_review_policy_audit_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.property_review_policy_audit_logs
-    ADD CONSTRAINT property_review_policy_audit_logs_pkey PRIMARY KEY (id);
-
-
---
 -- Name: property_settings property_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8459,6 +8215,30 @@ ALTER TABLE ONLY public.proposals
 
 ALTER TABLE ONLY public.proprietors
     ADD CONSTRAINT proprietors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: public_form_fields public_form_fields_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_form_fields
+    ADD CONSTRAINT public_form_fields_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: public_form_submissions public_form_submissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_form_submissions
+    ADD CONSTRAINT public_form_submissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: public_forms public_forms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_forms
+    ADD CONSTRAINT public_forms_pkey PRIMARY KEY (id);
 
 
 --
@@ -8571,22 +8351,6 @@ ALTER TABLE ONLY public.seo_settings
 
 ALTER TABLE ONLY public.settings
     ADD CONSTRAINT settings_pkey PRIMARY KEY (id);
-
-
---
--- Name: site_navigation_items site_navigation_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.site_navigation_items
-    ADD CONSTRAINT site_navigation_items_pkey PRIMARY KEY (id);
-
-
---
--- Name: site_page_blocks site_page_blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.site_page_blocks
-    ADD CONSTRAINT site_page_blocks_pkey PRIMARY KEY (id);
 
 
 --
@@ -8862,13 +8626,6 @@ ALTER TABLE ONLY public.whatsapp_templates
 
 
 --
--- Name: canonical_speed; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX canonical_speed ON public.maglev_page_paths USING btree (canonical, locale, value);
-
-
---
 -- Name: idx_account_memberships_live_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9111,13 +8868,6 @@ CREATE INDEX idx_habitations_searchable_features_trgm ON public.habitations USIN
 --
 
 CREATE INDEX idx_habitations_status_categoria_cidade ON public.habitations USING btree (status, categoria, cidade);
-
-
---
--- Name: idx_habitations_tenant_review_policy_version; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_habitations_tenant_review_policy_version ON public.habitations USING btree (tenant_id, intake_review_policy_version);
 
 
 --
@@ -9401,20 +9151,6 @@ CREATE INDEX idx_public_nav_events_session_time ON public.public_navigation_even
 
 
 --
--- Name: idx_review_policy_audits_setting_version; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_review_policy_audits_setting_version ON public.property_review_policy_audit_logs USING btree (property_setting_id, version);
-
-
---
--- Name: idx_review_policy_audits_tenant_created; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_review_policy_audits_tenant_created ON public.property_review_policy_audit_logs USING btree (tenant_id, created_at);
-
-
---
 -- Name: idx_seo_settings_public_canonical; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9440,13 +9176,6 @@ CREATE UNIQUE INDEX idx_settings_global_key_unique ON public.settings USING btre
 --
 
 CREATE UNIQUE INDEX idx_settings_tenant_key_unique ON public.settings USING btree (tenant_id, key) WHERE (tenant_id IS NOT NULL);
-
-
---
--- Name: idx_site_navigation_items_scope; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_site_navigation_items_scope ON public.site_navigation_items USING btree (tenant_id, placement, "position");
 
 
 --
@@ -9534,13 +9263,6 @@ CREATE INDEX idx_wa_conversations_on_tenant_unread ON public.whatsapp_conversati
 
 
 --
--- Name: idx_wa_sender_numbers_campaign_usage; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_wa_sender_numbers_campaign_usage ON public.whatsapp_sender_numbers USING btree (tenant_id, active, use_for_campaigns);
-
-
---
 -- Name: idx_wa_sender_numbers_notification_usage; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9552,6 +9274,13 @@ CREATE INDEX idx_wa_sender_numbers_notification_usage ON public.whatsapp_sender_
 --
 
 CREATE UNIQUE INDEX idx_wa_sender_numbers_on_tenant_and_phone_number ON public.whatsapp_sender_numbers USING btree (tenant_id, phone_number_id);
+
+
+--
+-- Name: idx_wa_sender_numbers_one_notification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_wa_sender_numbers_one_notification ON public.whatsapp_sender_numbers USING btree (tenant_id) WHERE ((active = true) AND (use_for_notifications = true));
 
 
 --
@@ -11711,31 +11440,10 @@ CREATE INDEX index_landing_pages_on_tenant_id ON public.landing_pages USING btre
 
 
 --
--- Name: index_landing_pages_on_tenant_id_and_page_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_landing_pages_on_tenant_id_and_page_type ON public.landing_pages USING btree (tenant_id, page_type);
-
-
---
 -- Name: index_landing_pages_on_tenant_id_and_slug; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX index_landing_pages_on_tenant_id_and_slug ON public.landing_pages USING btree (tenant_id, slug);
-
-
---
--- Name: index_landing_pages_on_tenant_id_and_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_landing_pages_on_tenant_id_and_status ON public.landing_pages USING btree (tenant_id, status);
-
-
---
--- Name: index_landing_pages_on_tenant_id_and_system_path; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_landing_pages_on_tenant_id_and_system_path ON public.landing_pages USING btree (tenant_id, system_path) WHERE (system_path IS NOT NULL);
 
 
 --
@@ -12100,13 +11808,6 @@ CREATE INDEX index_location_pings_on_check_in_id ON public.location_pings USING 
 --
 
 CREATE INDEX index_location_pings_on_check_in_id_and_recorded_at ON public.location_pings USING btree (check_in_id, recorded_at);
-
-
---
--- Name: index_maglev_page_paths_on_maglev_page_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_maglev_page_paths_on_maglev_page_id ON public.maglev_page_paths USING btree (maglev_page_id);
 
 
 --
@@ -12488,27 +12189,6 @@ CREATE INDEX index_property_review_policies_on_tenant_id ON public.property_revi
 
 
 --
--- Name: index_property_review_policy_audit_logs_on_admin_user_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_property_review_policy_audit_logs_on_admin_user_id ON public.property_review_policy_audit_logs USING btree (admin_user_id);
-
-
---
--- Name: index_property_review_policy_audit_logs_on_property_setting_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_property_review_policy_audit_logs_on_property_setting_id ON public.property_review_policy_audit_logs USING btree (property_setting_id);
-
-
---
--- Name: index_property_review_policy_audit_logs_on_tenant_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_property_review_policy_audit_logs_on_tenant_id ON public.property_review_policy_audit_logs USING btree (tenant_id);
-
-
---
 -- Name: index_property_settings_on_broker_capture_layer_enabled; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12639,6 +12319,97 @@ CREATE INDEX index_proprietors_on_vista_import_batch_id ON public.proprietors US
 --
 
 CREATE INDEX index_proprietors_on_vista_payload ON public.proprietors USING gin (vista_payload);
+
+
+--
+-- Name: index_public_form_fields_on_public_form_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_form_fields_on_public_form_id ON public.public_form_fields USING btree (public_form_id);
+
+
+--
+-- Name: index_public_form_fields_on_public_form_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_public_form_fields_on_public_form_id_and_name ON public.public_form_fields USING btree (public_form_id, name);
+
+
+--
+-- Name: index_public_form_fields_on_public_form_id_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_form_fields_on_public_form_id_and_position ON public.public_form_fields USING btree (public_form_id, "position");
+
+
+--
+-- Name: index_public_form_submissions_on_normalized_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_form_submissions_on_normalized_email ON public.public_form_submissions USING btree (normalized_email);
+
+
+--
+-- Name: index_public_form_submissions_on_normalized_phone; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_form_submissions_on_normalized_phone ON public.public_form_submissions USING btree (normalized_phone);
+
+
+--
+-- Name: index_public_form_submissions_on_public_form_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_form_submissions_on_public_form_id ON public.public_form_submissions USING btree (public_form_id);
+
+
+--
+-- Name: index_public_form_submissions_on_public_form_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_form_submissions_on_public_form_id_and_created_at ON public.public_form_submissions USING btree (public_form_id, created_at);
+
+
+--
+-- Name: index_public_form_submissions_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_form_submissions_on_tenant_id ON public.public_form_submissions USING btree (tenant_id);
+
+
+--
+-- Name: index_public_form_submissions_on_tenant_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_form_submissions_on_tenant_id_and_created_at ON public.public_form_submissions USING btree (tenant_id, created_at);
+
+
+--
+-- Name: index_public_forms_on_tenant_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_forms_on_tenant_id ON public.public_forms USING btree (tenant_id);
+
+
+--
+-- Name: index_public_forms_on_tenant_id_and_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_forms_on_tenant_id_and_active ON public.public_forms USING btree (tenant_id, active);
+
+
+--
+-- Name: index_public_forms_on_tenant_id_and_category; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_public_forms_on_tenant_id_and_category ON public.public_forms USING btree (tenant_id, category);
+
+
+--
+-- Name: index_public_forms_on_tenant_id_and_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_public_forms_on_tenant_id_and_slug ON public.public_forms USING btree (tenant_id, slug);
 
 
 --
@@ -12982,48 +12753,6 @@ CREATE UNIQUE INDEX index_seo_settings_on_tenant_id_and_page_name ON public.seo_
 --
 
 CREATE INDEX index_settings_on_tenant_id ON public.settings USING btree (tenant_id);
-
-
---
--- Name: index_site_navigation_items_on_landing_page_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_site_navigation_items_on_landing_page_id ON public.site_navigation_items USING btree (landing_page_id);
-
-
---
--- Name: index_site_navigation_items_on_parent_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_site_navigation_items_on_parent_id ON public.site_navigation_items USING btree (parent_id);
-
-
---
--- Name: index_site_navigation_items_on_tenant_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_site_navigation_items_on_tenant_id ON public.site_navigation_items USING btree (tenant_id);
-
-
---
--- Name: index_site_page_blocks_on_landing_page_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_site_page_blocks_on_landing_page_id ON public.site_page_blocks USING btree (landing_page_id);
-
-
---
--- Name: index_site_page_blocks_on_landing_page_id_and_position; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_site_page_blocks_on_landing_page_id_and_position ON public.site_page_blocks USING btree (landing_page_id, "position");
-
-
---
--- Name: index_site_page_blocks_on_tenant_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_site_page_blocks_on_tenant_id ON public.site_page_blocks USING btree (tenant_id);
 
 
 --
@@ -13580,6 +13309,13 @@ CREATE UNIQUE INDEX index_wa_conversations_on_tenant_and_phone ON public.whatsap
 
 
 --
+-- Name: index_webhook_settings_on_form_delivery_scope; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_settings_on_form_delivery_scope ON public.webhook_settings USING btree (form_delivery_scope);
+
+
+--
 -- Name: index_webhook_settings_on_tenant_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13972,20 +13708,6 @@ CREATE INDEX index_whatsapp_templates_on_tenant_id_and_status ON public.whatsapp
 
 
 --
--- Name: maglev_sections_content_stores_container_and_published; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX maglev_sections_content_stores_container_and_published ON public.maglev_sections_content_stores USING btree (container_id, container_type, published);
-
-
---
--- Name: scoped_canonical_speed; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX scoped_canonical_speed ON public.maglev_page_paths USING btree (canonical, maglev_page_id, locale);
-
-
---
 -- Name: access_audit_logs access_audit_logs_no_update; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -14129,19 +13851,19 @@ ALTER TABLE ONLY public.whatsapp_campaign_unsubscribes
 
 
 --
--- Name: property_review_policy_audit_logs fk_rails_09a9273b20; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.property_review_policy_audit_logs
-    ADD CONSTRAINT fk_rails_09a9273b20 FOREIGN KEY (admin_user_id) REFERENCES public.admin_users(id);
-
-
---
 -- Name: email_settings fk_rails_09c40e8cf2; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.email_settings
     ADD CONSTRAINT fk_rails_09c40e8cf2 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: public_forms fk_rails_0b11a15ebf; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_forms
+    ADD CONSTRAINT fk_rails_0b11a15ebf FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
 
 
 --
@@ -14601,14 +14323,6 @@ ALTER TABLE ONLY public.appointments
 
 
 --
--- Name: property_review_policy_audit_logs fk_rails_431ffbf173; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.property_review_policy_audit_logs
-    ADD CONSTRAINT fk_rails_431ffbf173 FOREIGN KEY (property_setting_id) REFERENCES public.property_settings(id);
-
-
---
 -- Name: distribution_rule_agents fk_rails_43433f55b6; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14638,14 +14352,6 @@ ALTER TABLE ONLY public.public_navigation_sessions
 
 ALTER TABLE ONLY public.development_aliases
     ADD CONSTRAINT fk_rails_448c7e2a78 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
-
-
---
--- Name: site_page_blocks fk_rails_44b66de6bc; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.site_page_blocks
-    ADD CONSTRAINT fk_rails_44b66de6bc FOREIGN KEY (landing_page_id) REFERENCES public.landing_pages(id);
 
 
 --
@@ -14737,14 +14443,6 @@ ALTER TABLE ONLY public.check_ins
 
 
 --
--- Name: site_page_blocks fk_rails_503ad8d4df; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.site_page_blocks
-    ADD CONSTRAINT fk_rails_503ad8d4df FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
-
-
---
 -- Name: seo_conversion_events fk_rails_52d0966b31; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14822,14 +14520,6 @@ ALTER TABLE ONLY public.client_property_interests
 
 ALTER TABLE ONLY public.google_maps_integration_settings
     ADD CONSTRAINT fk_rails_55dd38d915 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
-
-
---
--- Name: site_navigation_items fk_rails_56ce029201; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.site_navigation_items
-    ADD CONSTRAINT fk_rails_56ce029201 FOREIGN KEY (landing_page_id) REFERENCES public.landing_pages(id);
 
 
 --
@@ -15897,6 +15587,14 @@ ALTER TABLE ONLY public.presentation_cards
 
 
 --
+-- Name: public_form_submissions fk_rails_ccb759e247; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_form_submissions
+    ADD CONSTRAINT fk_rails_ccb759e247 FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
 -- Name: lead_labels fk_rails_cd877c6e53; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16089,22 +15787,6 @@ ALTER TABLE ONLY public.location_pings
 
 
 --
--- Name: site_navigation_items fk_rails_e274181308; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.site_navigation_items
-    ADD CONSTRAINT fk_rails_e274181308 FOREIGN KEY (parent_id) REFERENCES public.site_navigation_items(id);
-
-
---
--- Name: property_review_policy_audit_logs fk_rails_e274961d8b; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.property_review_policy_audit_logs
-    ADD CONSTRAINT fk_rails_e274961d8b FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
-
-
---
 -- Name: client_property_interests fk_rails_e2de1e8832; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16209,6 +15891,14 @@ ALTER TABLE ONLY public.habitation_interactions
 
 
 --
+-- Name: public_form_submissions fk_rails_eb5aeea3f6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.public_form_submissions
+    ADD CONSTRAINT fk_rails_eb5aeea3f6 FOREIGN KEY (public_form_id) REFERENCES public.public_forms(id);
+
+
+--
 -- Name: tasks fk_rails_ec34c29a53; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16289,11 +15979,11 @@ ALTER TABLE ONLY public.landing_pages
 
 
 --
--- Name: site_navigation_items fk_rails_f4d96da8ad; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: public_form_fields fk_rails_f6b270450b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.site_navigation_items
-    ADD CONSTRAINT fk_rails_f4d96da8ad FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+ALTER TABLE ONLY public.public_form_fields
+    ADD CONSTRAINT fk_rails_f6b270450b FOREIGN KEY (public_form_id) REFERENCES public.public_forms(id);
 
 
 --
@@ -16340,11 +16030,14 @@ ALTER TABLE ONLY public.push_subscriptions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dPnJHKEPx715NvkDZHOBlABPHCKC4CTnCTN93zR745itI0WgpcRMA2k00hUPkWG
+\unrestrict bzU0kwOwjfdUWbXUghpj72SGtBbIjoPgn0JB0063k0hnhTcW76yt30W8HfX0fgE
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260804122000'),
+('20260804121000'),
+('20260804120000'),
 ('20260803203000'),
 ('20260803190000'),
 ('20260801143000'),
@@ -16368,33 +16061,11 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20260714120000'),
 ('20260713230000'),
 ('20260713224000'),
-('20260713015757'),
-('20260713015756'),
-('20260713015755'),
-('20260713015754'),
-('20260713015753'),
-('20260713015752'),
-('20260713015751'),
-('20260713015750'),
-('20260713015749'),
-('20260713015748'),
-('20260713015747'),
-('20260713015746'),
-('20260713015745'),
-('20260713015744'),
-('20260713015743'),
-('20260713015742'),
-('20260713015741'),
 ('20260712203000'),
 ('20260712193000'),
-('20260712184500'),
-('20260712183000'),
-('20260712180000'),
 ('20260712173000'),
 ('20260712170000'),
 ('20260712123000'),
-('20260712120001'),
-('20260712120000'),
 ('20260712110000'),
 ('20260711144500'),
 ('20260711143000'),

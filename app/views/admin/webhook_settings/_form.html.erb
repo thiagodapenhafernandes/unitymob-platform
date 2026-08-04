@@ -73,6 +73,36 @@
             </div>
           <% end %>
 
+          <div class="tw-mb-4">
+            <%= f.label :form_delivery_scope, "Escopo dos formulários do site", class: "ax-label" %>
+            <%= f.select :form_delivery_scope,
+                         WebhookSetting::FORM_DELIVERY_SCOPES.map { |value, label| [label, value] },
+                         {},
+                         class: "ax-control" %>
+            <small class="tw-text-ink-muted">Use este filtro para ter uma saída por tipo de formulário sem misturar captação, parceria e carreira.</small>
+          </div>
+
+          <%= ax_field_grid(class_name: "tw-mb-4") do %>
+            <div class="ax-span-6">
+              <%= f.label :form_categories, "Categorias atendidas", class: "ax-label" %>
+              <%= hidden_field_tag "webhook_setting[form_categories][]", "" %>
+              <%= select_tag "webhook_setting[form_categories][]",
+                             options_for_select(PublicForm::CATEGORIES.map { |value, label| [label, value] }, webhook_setting.form_category_list),
+                             multiple: true,
+                             class: "ax-control",
+                             size: 5 %>
+            </div>
+            <div class="ax-span-6">
+              <%= f.label :public_form_ids, "Formulários específicos", class: "ax-label" %>
+              <%= hidden_field_tag "webhook_setting[public_form_ids][]", "" %>
+              <%= select_tag "webhook_setting[public_form_ids][]",
+                             options_from_collection_for_select(@public_forms || [], :id, :name, webhook_setting.public_form_id_list),
+                             multiple: true,
+                             class: "ax-control",
+                             size: 5 %>
+            </div>
+          <% end %>
+
           <!-- Description -->
           <div>
             <%= f.label :description, "Descrição / Identificação", class: "ax-label" %>
@@ -92,15 +122,15 @@
     <% unless local_assigns[:main_only] %>
     <div class="ax-span-4">
       <%= ax_operational_panel(eyebrow: "Escopo", title: "Eventos monitorados", class_name: "tw-mb-4") do %>
-          <p class="tw-text-ink-muted tw-text-sm">Este webhook disparará sempre que um formulário for preenchido no site.</p>
+          <p class="tw-text-ink-muted tw-text-sm">Este webhook pode receber todos os formulários ou apenas categorias/formulários específicos.</p>
           <hr>
           <h6>Formulários Monitorados:</h6>
           <ul class="ax-field__hint ax-field__hint--steps">
-            <li>Contato Geral</li>
-            <li>Agendamento de Visita</li>
+            <li>Anuncie seu imóvel</li>
+            <li>Parcerias</li>
             <li>Trabalhe Conosco</li>
-            <li>Busca de Imóveis</li>
-            <li>Captura de Leads (WhatsApp)</li>
+            <li>Landing pages</li>
+            <li>Personalizados</li>
           </ul>
       <% end %>
 
